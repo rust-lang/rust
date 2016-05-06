@@ -8,21 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(libc)]
-#![no_std]
-#![feature(lang_items)]
+//! The `svh-a-*.rs` files are all deviations from the base file
+//! svh-a-base.rs with some difference (usually in `fn foo`) that
+//! should not affect the strict version hash (SVH) computation
+//! (#14132).
 
-extern crate core;
-extern crate libc;
+#![crate_name = "a"]
 
-#[lang = "eh_personality"]
-extern fn eh_personality() {}
+macro_rules! three {
+    () => { 3 }
+}
 
-#[lang = "eh_unwind_resume"]
-extern fn eh_unwind_resume() {}
+pub trait U {}
+pub trait V {}
+impl U for () {}
+impl V for () {}
 
-#[lang = "panic_fmt"]
-extern fn rust_begin_unwind(msg: core::fmt::Arguments, file: &'static str,
-                            line: u32) -> ! {
-    loop {}
+static A_CONSTANT : isize = 2;
+
+pub fn foo<T:U>(_: isize) -> isize {
+    3
+}
+
+pub fn an_unused_name() -> isize {
+    4
 }

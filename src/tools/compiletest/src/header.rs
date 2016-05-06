@@ -18,6 +18,111 @@ use common::Config;
 use common;
 use util;
 
+/// Properties which must be known very early, before actually running
+/// the test.
+pub struct EarlyProps {
+    pub ignore: bool,
+    pub should_fail: bool,
+}
+
+impl EarlyProps {
+    pub fn from_file(config: &Config, testfile: &Path) -> Self {
+        let mut props = EarlyProps {
+            ignore: false,
+            should_fail: false,
+        };
+
+        iter_header(testfile, None, &mut |ln| {
+            props.ignore =
+                props.ignore ||
+                parse_name_directive(ln, "ignore-test") ||
+                parse_name_directive(ln, &ignore_target(config)) ||
+                parse_name_directive(ln, &ignore_architecture(config)) ||
+                parse_name_directive(ln, &ignore_stage(config)) ||
+                parse_name_directive(ln, &ignore_env(config)) ||
+                (config.mode == common::Pretty &&
+                 parse_name_directive(ln, "ignore-pretty")) ||
+                (config.target != config.host &&
+                 parse_name_directive(ln, "ignore-cross-compile")) ||
+                ignore_gdb(config, ln) ||
+                ignore_lldb(config, ln);
+
+            props.should_fail =
+                props.should_fail ||
+                parse_name_directive(ln, "should-fail");
+        });
+
+        return props;
+
+        fn ignore_target(config: &Config) -> String {
+            format!("ignore-{}", util::get_os(&config.target))
+        }
+        fn ignore_architecture(config: &Config) -> String {
+            format!("ignore-{}", util::get_arch(&config.target))
+        }
+        fn ignore_stage(config: &Config) -> String {
+            format!("ignore-{}",
+                    config.stage_id.split('-').next().unwrap())
+        }
+        fn ignore_env(config: &Config) -> String {
+            format!("ignore-{}", util::get_env(&config.target).unwrap_or("<unknown>"))
+        }
+        fn ignore_gdb(config: &Config, line: &str) -> bool {
+            if config.mode != common::DebugInfoGdb {
+                return false;
+            }
+
+            if parse_name_directive(line, "ignore-gdb") {
+                return true;
+            }
+
+            if let Some(ref actual_version) = config.gdb_version {
+                if line.contains("min-gdb-version") {
+                    let min_version = line.trim()
+                                          .split(' ')
+                                          .last()
+                                          .expect("Malformed GDB version directive");
+                    // Ignore if actual version is smaller the minimum required
+                    // version
+                    gdb_version_to_int(actual_version) <
+                        gdb_version_to_int(min_version)
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        }
+
+        fn ignore_lldb(config: &Config, line: &str) -> bool {
+            if config.mode != common::DebugInfoLldb {
+                return false;
+            }
+
+            if parse_name_directive(line, "ignore-lldb") {
+                return true;
+            }
+
+            if let Some(ref actual_version) = config.lldb_version {
+                if line.contains("min-lldb-version") {
+                    let min_version = line.trim()
+                                          .split(' ')
+                                          .last()
+                                          .expect("Malformed lldb version directive");
+                    // Ignore if actual version is smaller the minimum required
+                    // version
+                    lldb_version_to_int(actual_version) <
+                        lldb_version_to_int(min_version)
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
@@ -29,7 +134,9 @@ pub struct TestProps {
     // If present, the name of a file that this test should match when
     // pretty-printed
     pub pp_exact: Option<PathBuf>,
-    // Modules from aux directory that should be compiled
+    // Other crates that should be compiled (typically from the same
+    // directory as the test, but for backwards compatibility reasons
+    // we also check the auxiliary directory)
     pub aux_builds: Vec<String> ,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String,String)> ,
@@ -57,233 +164,134 @@ pub struct TestProps {
     pub revisions: Vec<String>,
 }
 
-// Load any test directives embedded in the file
-pub fn load_props(testfile: &Path) -> TestProps {
-    let error_patterns = Vec::new();
-    let aux_builds = Vec::new();
-    let exec_env = Vec::new();
-    let run_flags = None;
-    let pp_exact = None;
-    let check_lines = Vec::new();
-    let build_aux_docs = false;
-    let force_host = false;
-    let check_stdout = false;
-    let no_prefer_dynamic = false;
-    let pretty_expanded = false;
-    let pretty_compare_only = false;
-    let forbid_output = Vec::new();
-    let mut props = TestProps {
-        error_patterns: error_patterns,
-        compile_flags: vec![],
-        run_flags: run_flags,
-        pp_exact: pp_exact,
-        aux_builds: aux_builds,
-        revisions: vec![],
-        rustc_env: vec![],
-        exec_env: exec_env,
-        check_lines: check_lines,
-        build_aux_docs: build_aux_docs,
-        force_host: force_host,
-        check_stdout: check_stdout,
-        no_prefer_dynamic: no_prefer_dynamic,
-        pretty_expanded: pretty_expanded,
-        pretty_mode: format!("normal"),
-        pretty_compare_only: pretty_compare_only,
-        forbid_output: forbid_output,
-    };
-    load_props_into(&mut props, testfile, None);
-    props
-}
-
-/// Load properties from `testfile` into `props`. If a property is
-/// tied to a particular revision `foo` (indicated by writing
-/// `//[foo]`), then the property is ignored unless `cfg` is
-/// `Some("foo")`.
-pub fn load_props_into(props: &mut TestProps, testfile: &Path, cfg: Option<&str>)  {
-    iter_header(testfile, cfg, &mut |ln| {
-        if let Some(ep) = parse_error_pattern(ln) {
-            props.error_patterns.push(ep);
-        }
-
-        if let Some(flags) = parse_compile_flags(ln) {
-            props.compile_flags.extend(
-                flags
-                    .split_whitespace()
-                    .map(|s| s.to_owned()));
-        }
-
-        if let Some(r) = parse_revisions(ln) {
-            props.revisions.extend(r);
-        }
-
-        if props.run_flags.is_none() {
-            props.run_flags = parse_run_flags(ln);
-        }
-
-        if props.pp_exact.is_none() {
-            props.pp_exact = parse_pp_exact(ln, testfile);
-        }
-
-        if !props.build_aux_docs {
-            props.build_aux_docs = parse_build_aux_docs(ln);
-        }
-
-        if !props.force_host {
-            props.force_host = parse_force_host(ln);
-        }
-
-        if !props.check_stdout {
-            props.check_stdout = parse_check_stdout(ln);
-        }
-
-        if !props.no_prefer_dynamic {
-            props.no_prefer_dynamic = parse_no_prefer_dynamic(ln);
-        }
-
-        if !props.pretty_expanded {
-            props.pretty_expanded = parse_pretty_expanded(ln);
-        }
-
-        if let Some(m) = parse_pretty_mode(ln) {
-            props.pretty_mode = m;
-        }
-
-        if !props.pretty_compare_only {
-            props.pretty_compare_only = parse_pretty_compare_only(ln);
-        }
-
-        if let  Some(ab) = parse_aux_build(ln) {
-            props.aux_builds.push(ab);
-        }
-
-        if let Some(ee) = parse_env(ln, "exec-env") {
-            props.exec_env.push(ee);
-        }
-
-        if let Some(ee) = parse_env(ln, "rustc-env") {
-            props.rustc_env.push(ee);
-        }
-
-        if let Some(cl) =  parse_check_line(ln) {
-            props.check_lines.push(cl);
-        }
-
-        if let Some(of) = parse_forbid_output(ln) {
-            props.forbid_output.push(of);
-        }
-    });
-
-    for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
-        match env::var(key) {
-            Ok(val) =>
-                if props.exec_env.iter().find(|&&(ref x, _)| *x == key).is_none() {
-                    props.exec_env.push((key.to_owned(), val))
-                },
-            Err(..) => {}
+impl TestProps {
+    pub fn new() -> Self {
+        let error_patterns = Vec::new();
+        let aux_builds = Vec::new();
+        let exec_env = Vec::new();
+        let run_flags = None;
+        let pp_exact = None;
+        let check_lines = Vec::new();
+        let build_aux_docs = false;
+        let force_host = false;
+        let check_stdout = false;
+        let no_prefer_dynamic = false;
+        let pretty_expanded = false;
+        let pretty_compare_only = false;
+        let forbid_output = Vec::new();
+        TestProps {
+            error_patterns: error_patterns,
+            compile_flags: vec![],
+            run_flags: run_flags,
+            pp_exact: pp_exact,
+            aux_builds: aux_builds,
+            revisions: vec![],
+            rustc_env: vec![],
+            exec_env: exec_env,
+            check_lines: check_lines,
+            build_aux_docs: build_aux_docs,
+            force_host: force_host,
+            check_stdout: check_stdout,
+            no_prefer_dynamic: no_prefer_dynamic,
+            pretty_expanded: pretty_expanded,
+            pretty_mode: format!("normal"),
+            pretty_compare_only: pretty_compare_only,
+            forbid_output: forbid_output,
         }
     }
-}
 
-pub struct EarlyProps {
-    pub ignore: bool,
-    pub should_fail: bool,
-}
-
-// scan the file to detect whether the test should be ignored and
-// whether it should panic; these are two things the test runner needs
-// to know early, before actually running the test
-pub fn early_props(config: &Config, testfile: &Path) -> EarlyProps {
-    let mut props = EarlyProps {
-        ignore: false,
-        should_fail: false,
-    };
-
-    iter_header(testfile, None, &mut |ln| {
-        props.ignore =
-            props.ignore ||
-            parse_name_directive(ln, "ignore-test") ||
-            parse_name_directive(ln, &ignore_target(config)) ||
-            parse_name_directive(ln, &ignore_architecture(config)) ||
-            parse_name_directive(ln, &ignore_stage(config)) ||
-            parse_name_directive(ln, &ignore_env(config)) ||
-            (config.mode == common::Pretty &&
-             parse_name_directive(ln, "ignore-pretty")) ||
-            (config.target != config.host &&
-             parse_name_directive(ln, "ignore-cross-compile")) ||
-            ignore_gdb(config, ln) ||
-            ignore_lldb(config, ln);
-
-        props.should_fail =
-            props.should_fail ||
-            parse_name_directive(ln, "should-fail");
-    });
-
-    return props;
-
-    fn ignore_target(config: &Config) -> String {
-        format!("ignore-{}", util::get_os(&config.target))
+    pub fn from_file(testfile: &Path) -> Self {
+        let mut props = TestProps::new();
+        props.load_from(testfile, None);
+        props
     }
-    fn ignore_architecture(config: &Config) -> String {
-        format!("ignore-{}", util::get_arch(&config.target))
-    }
-    fn ignore_stage(config: &Config) -> String {
-        format!("ignore-{}",
-                config.stage_id.split('-').next().unwrap())
-    }
-    fn ignore_env(config: &Config) -> String {
-        format!("ignore-{}", util::get_env(&config.target).unwrap_or("<unknown>"))
-    }
-    fn ignore_gdb(config: &Config, line: &str) -> bool {
-        if config.mode != common::DebugInfoGdb {
-            return false;
-        }
 
-        if parse_name_directive(line, "ignore-gdb") {
-            return true;
-        }
-
-        if let Some(ref actual_version) = config.gdb_version {
-            if line.contains("min-gdb-version") {
-                let min_version = line.trim()
-                                      .split(' ')
-                                      .last()
-                                      .expect("Malformed GDB version directive");
-                // Ignore if actual version is smaller the minimum required
-                // version
-                gdb_version_to_int(actual_version) <
-                    gdb_version_to_int(min_version)
-            } else {
-                false
+    /// Load properties from `testfile` into `props`. If a property is
+    /// tied to a particular revision `foo` (indicated by writing
+    /// `//[foo]`), then the property is ignored unless `cfg` is
+    /// `Some("foo")`.
+    pub fn load_from(&mut self, testfile: &Path, cfg: Option<&str>)  {
+        iter_header(testfile, cfg, &mut |ln| {
+            if let Some(ep) = parse_error_pattern(ln) {
+                self.error_patterns.push(ep);
             }
-        } else {
-            false
-        }
-    }
 
-    fn ignore_lldb(config: &Config, line: &str) -> bool {
-        if config.mode != common::DebugInfoLldb {
-            return false;
-        }
-
-        if parse_name_directive(line, "ignore-lldb") {
-            return true;
-        }
-
-        if let Some(ref actual_version) = config.lldb_version {
-            if line.contains("min-lldb-version") {
-                let min_version = line.trim()
-                                      .split(' ')
-                                      .last()
-                                      .expect("Malformed lldb version directive");
-                // Ignore if actual version is smaller the minimum required
-                // version
-                lldb_version_to_int(actual_version) <
-                    lldb_version_to_int(min_version)
-            } else {
-                false
+            if let Some(flags) = parse_compile_flags(ln) {
+                self.compile_flags.extend(
+                    flags
+                        .split_whitespace()
+                        .map(|s| s.to_owned()));
             }
-        } else {
-            false
+
+            if let Some(r) = parse_revisions(ln) {
+                self.revisions.extend(r);
+            }
+
+            if self.run_flags.is_none() {
+                self.run_flags = parse_run_flags(ln);
+            }
+
+            if self.pp_exact.is_none() {
+                self.pp_exact = parse_pp_exact(ln, testfile);
+            }
+
+            if !self.build_aux_docs {
+                self.build_aux_docs = parse_build_aux_docs(ln);
+            }
+
+            if !self.force_host {
+                self.force_host = parse_force_host(ln);
+            }
+
+            if !self.check_stdout {
+                self.check_stdout = parse_check_stdout(ln);
+            }
+
+            if !self.no_prefer_dynamic {
+                self.no_prefer_dynamic = parse_no_prefer_dynamic(ln);
+            }
+
+            if !self.pretty_expanded {
+                self.pretty_expanded = parse_pretty_expanded(ln);
+            }
+
+            if let Some(m) = parse_pretty_mode(ln) {
+                self.pretty_mode = m;
+            }
+
+            if !self.pretty_compare_only {
+                self.pretty_compare_only = parse_pretty_compare_only(ln);
+            }
+
+            if let  Some(ab) = parse_aux_build(ln) {
+                self.aux_builds.push(ab);
+            }
+
+            if let Some(ee) = parse_env(ln, "exec-env") {
+                self.exec_env.push(ee);
+            }
+
+            if let Some(ee) = parse_env(ln, "rustc-env") {
+                self.rustc_env.push(ee);
+            }
+
+            if let Some(cl) =  parse_check_line(ln) {
+                self.check_lines.push(cl);
+            }
+
+            if let Some(of) = parse_forbid_output(ln) {
+                self.forbid_output.push(of);
+            }
+        });
+
+        for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
+            match env::var(key) {
+                Ok(val) =>
+                    if self.exec_env.iter().find(|&&(ref x, _)| *x == key).is_none() {
+                        self.exec_env.push((key.to_owned(), val))
+                    },
+                Err(..) => {}
+            }
         }
     }
 }

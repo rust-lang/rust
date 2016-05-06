@@ -108,9 +108,6 @@ pub struct Config {
     // The directory where programs should be built
     pub build_base: PathBuf,
 
-    // Directory for auxiliary libraries
-    pub aux_base: PathBuf,
-
     // The name of the stage being built (stage1, etc)
     pub stage_id: String,
 

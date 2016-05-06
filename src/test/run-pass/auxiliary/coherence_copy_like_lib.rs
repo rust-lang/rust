@@ -8,6 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: expected item, found `parse_error`
-include!("auxiliary/issue-21146-inc.rs");
-fn main() {}
+#![crate_type = "rlib"]
+#![feature(fundamental)]
+
+pub trait MyCopy { }
+impl MyCopy for i32 { }
+
+pub struct MyStruct<T>(T);
+
+#[fundamental]
+pub struct MyFundamentalStruct<T>(T);

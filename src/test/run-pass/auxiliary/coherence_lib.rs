@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: expected item, found `parse_error`
-include!("auxiliary/issue-21146-inc.rs");
-fn main() {}
+#![crate_type="lib"]
+
+pub trait Remote {
+    fn foo(&self) { }
+}
+
+pub trait Remote1<T> {
+    fn foo(&self, t: T) { }
+}
+
+pub trait Remote2<T, U> {
+    fn foo(&self, t: T, u: U) { }
+}
+
+pub struct Pair<T,U>(T,U);

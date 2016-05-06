@@ -8,13 +8,34 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
+#![feature(associated_consts)]
 
-fn bar() {}
+pub use self::sub::{Bar, Baz};
 
-include!(concat!("", "", "auxiliary/", "macro-include-items-item.rs"));
+pub trait Trait {
+    fn foo(&self);
+    type Assoc;
+    const CONST: u32;
+}
 
-fn main() {
-    foo();
-    assert_eq!(include!(concat!("", "auxiliary/", "macro-include-items-expr.rs")), 1_usize);
+struct Foo;
+
+impl Foo {
+    pub fn new() {}
+
+    pub const C: u32 = 0;
+}
+
+mod sub {
+    pub struct Bar;
+
+    impl Bar {
+        pub fn new() {}
+    }
+
+    pub enum Baz {}
+
+    impl Baz {
+        pub fn new() {}
+    }
 }

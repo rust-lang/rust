@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: expected item, found `parse_error`
-include!("auxiliary/issue-21146-inc.rs");
-fn main() {}
+pub fn increment(x: usize) -> usize {
+    x + 1
+}
+
+#[macro_export]
+macro_rules! increment {
+    ($x:expr) => ($crate::increment($x))
+}
+
+pub fn check_local() {
+    assert_eq!(increment!(3), 4);
+}
