@@ -25,6 +25,8 @@ pub enum Abi {
     X86Interrupt,
     AmdGpuKernel,
     EfiApi,
+    AvrInterrupt,
+    AvrNonBlockingInterrupt,
 
     // Multiplatform / generic ABIs
     Rust,
@@ -63,6 +65,12 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::X86Interrupt, name: "x86-interrupt", generic: false },
     AbiData { abi: Abi::AmdGpuKernel, name: "amdgpu-kernel", generic: false },
     AbiData { abi: Abi::EfiApi, name: "efiapi", generic: false },
+    AbiData { abi: Abi::AvrInterrupt, name: "avr-interrupt", generic: false },
+    AbiData {
+        abi: Abi::AvrNonBlockingInterrupt,
+        name: "avr-non-blocking-interrupt",
+        generic: false,
+    },
     // Cross-platform ABIs
     AbiData { abi: Abi::Rust, name: "Rust", generic: true },
     AbiData { abi: Abi::C, name: "C", generic: true },

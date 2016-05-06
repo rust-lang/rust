@@ -47,6 +47,7 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("armv7", "arm"),
     ("armv7s", "arm"),
     ("asmjs", "asmjs"),
+    ("avr", "avr"),
     ("hexagon", "hexagon"),
     ("i386", "x86"),
     ("i586", "x86"),

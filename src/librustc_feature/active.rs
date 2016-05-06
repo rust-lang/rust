@@ -347,6 +347,9 @@ declare_features! (
     /// Allows `extern "msp430-interrupt" fn()`.
     (active, abi_msp430_interrupt, "1.16.0", Some(38487), None),
 
+    /// Allows `extern "avr-interrupt" fn()` and `extern "avr-non-blocking-interrupt" fn()`.
+    (active, abi_avr_interrupt, "1.41.0", None, None),
+
     /// Allows declarative macros 2.0 (`macro`).
     (active, decl_macro, "1.17.0", Some(39412), None),
 

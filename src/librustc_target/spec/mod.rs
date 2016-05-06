@@ -65,6 +65,7 @@ mod linux_kernel_base;
 mod linux_musl_base;
 mod msvc_base;
 mod netbsd_base;
+mod none_base;
 mod openbsd_base;
 mod redox_base;
 mod riscv_base;
@@ -578,6 +579,8 @@ supported_targets! {
 
     ("aarch64-fuchsia", aarch64_fuchsia),
     ("x86_64-fuchsia", x86_64_fuchsia),
+
+    ("avr-unknown-unknown", avr_unknown_unknown),
 
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
