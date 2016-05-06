@@ -2144,7 +2144,7 @@ fn render_stability_since_raw<'a>(w: &mut fmt::Formatter,
                                   containing_ver: Option<&'a str>) -> fmt::Result {
     if let Some(v) = ver {
         if containing_ver != ver && v.len() > 0 {
-            write!(w, "<span class=\"since\">{}</span>",
+            write!(w, "<div class=\"since\">{}</div>",
                    v)?
         }
     }
@@ -2545,13 +2545,16 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                render_header: bool, outer_version: Option<&str>) -> fmt::Result {
     if render_header {
         write!(w, "<h3 class='impl'><span class='in-band'><code>{}</code>", i.inner_impl())?;
-        let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
-        render_stability_since_raw(w, since, outer_version)?;
         write!(w, "</span><span class='out-of-band'>")?;
+        let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
         if let Some(l) = (Item { item: &i.impl_item, cx: cx }).href() {
+            write!(w, "<div class='ghost'></div>")?;
+            render_stability_since_raw(w, since, outer_version)?;
             write!(w, "<a id='src-{}' class='srclink' \
                        href='{}' title='{}'>[src]</a>",
                    i.impl_item.def_id.index.as_usize(), l, "goto source code")?;
+        } else {
+            render_stability_since_raw(w, since, outer_version)?;
         }
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
