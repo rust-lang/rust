@@ -36,7 +36,7 @@ use rustc::{cfg, infer};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::adjustment;
-use rustc::traits::{self, ProjectionMode};
+use rustc::traits::{self, SelectionOk, ProjectionMode};
 use rustc::hir::map as hir_map;
 use util::nodemap::{NodeSet};
 use lint::{Level, LateContext, LintContext, LintArray, Lint};
@@ -879,7 +879,11 @@ impl LateLintPass for UnconditionalRecursion {
                         // The method comes from a `T: Trait` bound.
                         // If `T` is `Self`, then this call is inside
                         // a default method definition.
-                        Ok(Some(traits::VtableParam(_))) => {
+                        Ok(Some(SelectionOk { selection: traits::VtableParam(_),
+                                              obligations })) => {
+                            // FIXME(#32730) propagate obligations (... but... is it really
+                            // necessary here?)
+                            assert!(obligations.is_empty());
                             let self_ty = callee_substs.self_ty();
                             let on_self = self_ty.map_or(false, |t| t.is_self());
                             // We can only be recurring in a default
@@ -890,7 +894,11 @@ impl LateLintPass for UnconditionalRecursion {
 
                         // The `impl` is known, so we check that with a
                         // special case:
-                        Ok(Some(traits::VtableImpl(vtable_impl))) => {
+                        Ok(Some(SelectionOk { selection: traits::VtableImpl(vtable_impl),
+                                              obligations })) => {
+                            // FIXME(#32730) propagate obligations (... but... is it really
+                            // necessary here?)
+                            assert!(obligations.is_empty());
                             let container = ty::ImplContainer(vtable_impl.impl_def_id);
                             // It matches if it comes from the same impl,
                             // and has the same method name.

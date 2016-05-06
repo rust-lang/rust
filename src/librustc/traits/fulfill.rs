@@ -28,6 +28,7 @@ use super::PredicateObligation;
 use super::project;
 use super::report_overflow_error_cycle;
 use super::select::SelectionContext;
+use super::SelectionOk;
 use super::Unimplemented;
 use super::util::predicate_for_builtin_bound;
 
@@ -541,10 +542,11 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
 
             let trait_obligation = obligation.with(data.clone());
             match selcx.select(&trait_obligation) {
-                Ok(Some(vtable)) => {
+                Ok(Some(SelectionOk{ selection: vtable, mut obligations })) => {
                     debug!("selecting trait `{:?}` at depth {} yielded Ok(Some)",
                           data, obligation.recursion_depth);
-                    Ok(Some(vtable.nested_obligations()))
+                    obligations.extend(vtable.nested_obligations());
+                    Ok(Some(obligations))
                 }
                 Ok(None) => {
                     debug!("selecting trait `{:?}` at depth {} yielded Ok(None)",

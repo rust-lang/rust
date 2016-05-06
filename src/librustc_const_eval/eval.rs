@@ -24,7 +24,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util::def_to_path;
 use rustc::ty::{self, Ty, TyCtxt, subst};
 use rustc::ty::util::IntTypeExt;
-use rustc::traits::ProjectionMode;
+use rustc::traits::{SelectionOk, ProjectionMode};
 use rustc::middle::astconv_util::ast_ty_to_prim_ty;
 use rustc::util::nodemap::NodeMap;
 use rustc::lint;
@@ -1016,7 +1016,11 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
     let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
                                              trait_ref.to_poly_trait_predicate());
     let selection = match selcx.select(&obligation) {
-        Ok(Some(vtable)) => vtable,
+        Ok(Some(SelectionOk { selection: vtable, obligations })) => {
+            // FIXME(#32730) propagate obligations
+            assert!(obligations.is_empty());
+            vtable
+        },
         // Still ambiguous, so give up and let the caller decide whether this
         // expression is really needed yet. Some associated constant values
         // can't be evaluated until monomorphization is done in trans.
