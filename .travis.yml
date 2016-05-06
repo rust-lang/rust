@@ -14,6 +14,7 @@ install:
   - npm install remark remark-lint
 
 script:
+ - set -e
  - remark -f README.md -u remark-lint > /dev/null
  - python util/update_lints.py -c
  - cargo build --features debugging
