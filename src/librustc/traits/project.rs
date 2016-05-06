@@ -927,7 +927,7 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
             candidate_set.vec.push(
                 ProjectionTyCandidate::Closure(data));
         }
-        super::VtableFnPointer(fn_type) => {
+        super::VtableFnPointer(fn_type, _) => {
             candidate_set.vec.push(
                 ProjectionTyCandidate::FnPointer(fn_type));
         }

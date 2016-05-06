@@ -10,7 +10,6 @@
 
 //! Trait Resolution. See the Book for more.
 
-pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
@@ -47,6 +46,8 @@ pub use self::object_safety::is_vtable_safe_method;
 pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
 pub use self::select::{MethodMatchedData}; // intentionally don't export variants
+pub use self::select::{Selection, SelectionError, SelectionResult};
+pub use self::select::{Unimplemented, OutputTypeParameterMismatch, TraitNotObjectSafe};
 pub use self::specialize::{Overlap, specialization_graph, specializes, translate_substs};
 pub use self::util::elaborate_predicates;
 pub use self::util::get_vtable_index_of_object_method;
@@ -162,17 +163,6 @@ pub type Obligations<'tcx, O> = Vec<Obligation<'tcx, O>>;
 pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
-pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
-
-#[derive(Clone,Debug)]
-pub enum SelectionError<'tcx> {
-    Unimplemented,
-    OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
-                                ty::PolyTraitRef<'tcx>,
-                                ty::error::TypeError<'tcx>),
-    TraitNotObjectSafe(DefId),
-}
-
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>
@@ -184,15 +174,6 @@ pub enum FulfillmentErrorCode<'tcx> {
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
     CodeAmbiguity,
 }
-
-/// When performing resolution, it is typically the case that there
-/// can be one of three outcomes:
-///
-/// - `Ok(Some(r))`: success occurred with result `r`
-/// - `Ok(None)`: could not definitely determine anything, usually due
-///   to inconclusive type inference.
-/// - `Err(e)`: error `e` occurred
-pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 
 /// Given the successful resolution of an obligation, the `Vtable`
 /// indicates where the vtable comes from. Note that while we call this
@@ -250,7 +231,7 @@ pub enum Vtable<'tcx, N> {
     VtableParam(Vec<N>),
 
     /// Virtual calls through an object
-    VtableObject(VtableObjectData<'tcx>),
+    VtableObject(VtableObjectData<'tcx, N>),
 
     /// Successful resolution for a builtin trait.
     VtableBuiltin(VtableBuiltinData<N>),
@@ -261,7 +242,7 @@ pub enum Vtable<'tcx, N> {
     VtableClosure(VtableClosureData<'tcx, N>),
 
     /// Same as above, but for a fn pointer type with the given signature.
-    VtableFnPointer(ty::Ty<'tcx>),
+    VtableFnPointer(ty::Ty<'tcx>, Vec<N>),
 }
 
 /// Identifies a particular impl in the source, along with a set of
@@ -304,14 +285,15 @@ pub struct VtableBuiltinData<N> {
 /// A vtable for some object-safe trait `Foo` automatically derived
 /// for the object type `Foo`.
 #[derive(PartialEq,Eq,Clone)]
-pub struct VtableObjectData<'tcx> {
+pub struct VtableObjectData<'tcx, N> {
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
 
     /// The vtable is formed by concatenating together the method lists of
     /// the base object trait and all supertraits; this is the start of
     /// `upcast_trait_ref`'s methods in that vtable.
-    pub vtable_base: usize
+    pub vtable_base: usize,
+    pub nested: Vec<N>
 }
 
 /// Creates predicate obligations from the generic bounds.
@@ -577,7 +559,20 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableBuiltin(i) => i.nested,
             VtableDefaultImpl(d) => d.nested,
             VtableClosure(c) => c.nested,
-            VtableObject(_) | VtableFnPointer(..) => vec![]
+            VtableObject(i) => i.nested,
+            VtableFnPointer(_, n) => n
+        }
+    }
+
+    fn nested_obligations_mut(&mut self) -> &mut Vec<N> {
+        match self {
+            &mut VtableImpl(ref mut i) => &mut i.nested,
+            &mut VtableParam(ref mut n) => n,
+            &mut VtableBuiltin(ref mut i) => &mut i.nested,
+            &mut VtableDefaultImpl(ref mut d) => &mut d.nested,
+            &mut VtableClosure(ref mut c) => &mut c.nested,
+            &mut VtableObject(ref mut i) => &mut i.nested,
+            &mut VtableFnPointer(_, ref mut n) => n
         }
     }
 
@@ -592,12 +587,16 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableBuiltin(i) => VtableBuiltin(VtableBuiltinData {
                 nested: i.nested.into_iter().map(f).collect()
             }),
-            VtableObject(o) => VtableObject(o),
+            VtableObject(o) => VtableObject(VtableObjectData {
+                upcast_trait_ref: o.upcast_trait_ref,
+                vtable_base: o.vtable_base,
+                nested: o.nested.into_iter().map(f).collect(),
+            }),
             VtableDefaultImpl(d) => VtableDefaultImpl(VtableDefaultImplData {
                 trait_def_id: d.trait_def_id,
                 nested: d.nested.into_iter().map(f).collect()
             }),
-            VtableFnPointer(f) => VtableFnPointer(f),
+            VtableFnPointer(r, n) => VtableFnPointer(r, n.into_iter().map(f).collect()),
             VtableClosure(c) => VtableClosure(VtableClosureData {
                 closure_def_id: c.closure_def_id,
                 substs: c.substs,
