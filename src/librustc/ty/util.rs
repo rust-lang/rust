@@ -368,7 +368,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     tcx.sess.cstore.crate_hash(did.krate)
                 };
-                h.as_str().hash(state);
+                h.hash(state);
                 did.index.hash(state);
             };
             let mt = |state: &mut SipHasher, mt: TypeAndMut| {

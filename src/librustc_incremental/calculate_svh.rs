@@ -72,11 +72,13 @@ impl<'a, 'tcx> SvhCalculate for TyCtxt<'a, 'tcx, 'tcx> {
             attr.node.value.hash(&mut state);
         }
 
-        Svh::from_hash(state.finish())
+        Svh::new(state.finish())
     }
 
     fn calculate_item_hash(self, def_id: DefId) -> u64 {
         assert!(def_id.is_local());
+
+        debug!("calculate_item_hash(def_id={:?})", def_id);
 
         let mut state = SipHasher::new();
 
@@ -89,11 +91,16 @@ impl<'a, 'tcx> SvhCalculate for TyCtxt<'a, 'tcx, 'tcx> {
                 intravisit::walk_crate(&mut visit, krate);
             } else {
                 let node_id = self.map.as_local_node_id(def_id).unwrap();
-                visit.visit_item(self.map.expect_item(node_id));
+                let item = self.map.expect_item(node_id);
+                visit.visit_item(item);
             }
         }
 
-        state.finish()
+        let hash = state.finish();
+
+        debug!("calculate_item_hash: def_id={:?} hash={:?}", def_id, hash);
+
+        hash
     }
 }
 

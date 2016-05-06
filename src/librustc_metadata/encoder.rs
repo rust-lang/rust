@@ -1793,14 +1793,14 @@ fn encode_crate_dep(rbml_w: &mut Encoder,
     rbml_w.start_tag(tag_crate_dep);
     rbml_w.wr_tagged_str(tag_crate_dep_crate_name, &dep.name());
     let hash = decoder::get_crate_hash(dep.data());
-    rbml_w.wr_tagged_str(tag_crate_dep_hash, hash.as_str());
+    rbml_w.wr_tagged_u64(tag_crate_dep_hash, hash.as_u64());
     rbml_w.wr_tagged_u8(tag_crate_dep_explicitly_linked,
                         dep.explicitly_linked.get() as u8);
     rbml_w.end_tag();
 }
 
 fn encode_hash(rbml_w: &mut Encoder, hash: &Svh) {
-    rbml_w.wr_tagged_str(tag_crate_hash, hash.as_str());
+    rbml_w.wr_tagged_u64(tag_crate_hash, hash.as_u64());
 }
 
 fn encode_rustc_version(rbml_w: &mut Encoder) {
