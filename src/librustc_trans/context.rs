@@ -190,6 +190,9 @@ impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
     }
 }
 
+/// This list owns a number of LocalCrateContexts and binds them to their common
+/// SharedCrateContext. This type just exists as a convenience, something to
+/// pass around all LocalCrateContexts with and get an iterator over them.
 pub struct CrateContextList<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'a, 'tcx>,
     local_ccxs: Vec<LocalCrateContext<'tcx>>,
@@ -229,6 +232,9 @@ impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
     }
 }
 
+/// A CrateContext value binds together one LocalCrateContext with the
+/// SharedCrateContext. It exists as a convenience wrapper, so we don't have to
+/// pass around (SharedCrateContext, LocalCrateContext) tuples all over trans.
 pub struct CrateContext<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'a, 'tcx>,
     local_ccxs: &'a [LocalCrateContext<'tcx>],
