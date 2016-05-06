@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod debug;
 mod dep_node;
 mod dep_tracking_map;
 mod edges;
