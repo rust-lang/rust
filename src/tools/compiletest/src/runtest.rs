@@ -880,58 +880,62 @@ fn cleanup_debug_info_options(options: &Option<String>) -> Option<String> {
 
 fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) {
     let num_check_lines = check_lines.len();
-    if num_check_lines > 0 {
+
+    let mut check_line_index = 0;
+    for line in debugger_run_result.stdout.lines() {
+        if check_line_index >= num_check_lines {
+            break;
+        }
+
+        if check_single_line(line, &(check_lines[check_line_index])[..]) {
+            check_line_index += 1;
+        }
+    }
+    if check_line_index != num_check_lines && num_check_lines > 0 {
+        fatal_proc_rec(None, &format!("line not found in debugger output: {}",
+                                check_lines[check_line_index]),
+                      debugger_run_result);
+    }
+
+    fn check_single_line(line: &str, check_line: &str) -> bool {
         // Allow check lines to leave parts unspecified (e.g., uninitialized
-        // bits in the wrong case of an enum) with the notation "[...]".
-        let check_fragments: Vec<Vec<String>> =
-            check_lines.iter().map(|s| {
-                s
-                 .trim()
-                 .split("[...]")
-                 .map(str::to_owned)
-                 .collect()
-            }).collect();
-        // check if each line in props.check_lines appears in the
-        // output (in order)
-        let mut i = 0;
-        for line in debugger_run_result.stdout.lines() {
-            let mut rest = line.trim();
-            let mut first = true;
-            let mut failed = false;
-            for frag in &check_fragments[i] {
-                let found = if first {
-                    if rest.starts_with(frag) {
-                        Some(0)
-                    } else {
-                        None
-                    }
-                } else {
-                    rest.find(frag)
-                };
-                match found {
-                    None => {
-                        failed = true;
-                        break;
-                    }
-                    Some(i) => {
-                        rest = &rest[(i + frag.len())..];
-                    }
+        // bits in the  wrong case of an enum) with the notation "[...]".
+        let line = line.trim();
+        let check_line = check_line.trim();
+        let can_start_anywhere = check_line.starts_with("[...]");
+        let can_end_anywhere = check_line.ends_with("[...]");
+
+        let check_fragments: Vec<&str> = check_line.split("[...]")
+                                                   .filter(|frag| !frag.is_empty())
+                                                   .collect();
+        if check_fragments.is_empty() {
+            return true;
+        }
+
+        let (mut rest, first_fragment) = if can_start_anywhere {
+            match line.find(check_fragments[0]) {
+                Some(pos) => (&line[pos + check_fragments[0].len() ..], 1),
+                None => return false
+            }
+        } else {
+            (line, 0)
+        };
+
+        for fragment_index in first_fragment .. check_fragments.len() {
+            let current_fragment = check_fragments[fragment_index];
+            match rest.find(current_fragment) {
+                Some(pos) => {
+                    rest = &rest[pos + current_fragment.len() .. ];
                 }
-                first = false;
-            }
-            if !failed && rest.is_empty() {
-                i += 1;
-            }
-            if i == num_check_lines {
-                // all lines checked
-                break;
+                None => return false
             }
         }
-        if i != num_check_lines {
-            fatal_proc_rec(None, &format!("line not found in debugger output: {}",
-                                    check_lines.get(i).unwrap()),
-                          debugger_run_result);
+
+        if !can_end_anywhere && !rest.is_empty() {
+            return false;
         }
+
+        return true;
     }
 }
 

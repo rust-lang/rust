@@ -1159,12 +1159,12 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let struct_name = compute_debuginfo_type_name(cx, struct_type, false);
     let struct_llvm_type = type_of::in_memory_type_of(cx, struct_type);
 
-    let (variant, substs) = match struct_type.sty {
-        ty::TyStruct(def, substs) => (def.struct_variant(), substs),
+    let (struct_def_id, variant, substs) = match struct_type.sty {
+        ty::TyStruct(def, substs) => (def.did, def.struct_variant(), substs),
         _ => bug!("prepare_struct_metadata on a non-struct")
     };
 
-    let (containing_scope, _) = get_namespace_and_span_for_item(cx, variant.did);
+    let (containing_scope, _) = get_namespace_and_span_for_item(cx, struct_def_id);
 
     let struct_metadata_stub = create_struct_stub(cx,
                                                   struct_llvm_type,
