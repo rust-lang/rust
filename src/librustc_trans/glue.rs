@@ -489,7 +489,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
 fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueKind<'tcx>)
                               -> Block<'blk, 'tcx> {
-    if collector::collecting_debug_information(bcx.ccx()) {
+    if collector::collecting_debug_information(bcx.ccx().shared()) {
         bcx.ccx()
            .record_translation_item_as_generated(TransItem::DropGlue(g));
     }
