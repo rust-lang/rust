@@ -38,8 +38,8 @@ use sys_common::rwlock as sys;
 ///
 /// # Poisoning
 ///
-/// RwLocks, like Mutexes, will become poisoned on panics. Note, however, that
-/// an RwLock may only be poisoned if a panic occurs while it is locked
+/// An `RwLock`, like `Mutex`, will become poisoned on a panic. Note, however,
+/// that an `RwLock` may only be poisoned if a panic occurs while it is locked
 /// exclusively (write mode). If a panic occurs in any reader, then the lock
 /// will not be poisoned.
 ///
