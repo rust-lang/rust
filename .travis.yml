@@ -15,7 +15,7 @@ install:
 
 script:
  - set -e
- - remark -f README.md -u remark-lint -c .remarkrc.json > /dev/null
+ - remark -f README.md > /dev/null
  - python util/update_lints.py -c
  - cargo build --features debugging
  - rm -rf target/ Cargo.lock
