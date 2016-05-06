@@ -15,6 +15,7 @@ use super::err::*;
 /// Anything else is an error. This invariant is checked at several locations
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, Hash, Eq, PartialEq)]
 pub enum ConstUsize {
+    Us16(u16),
     Us32(u32),
     Us64(u64),
 }
@@ -23,6 +24,7 @@ pub use self::ConstUsize::*;
 impl ConstUsize {
     pub fn as_u64(self, target_uint_ty: ast::UintTy) -> u64 {
         match (self, target_uint_ty) {
+            (Us16(i), ast::UintTy::U16) => i as u64,
             (Us32(i), ast::UintTy::U32) => i as u64,
             (Us64(i), ast::UintTy::U64) => i,
             _ => panic!("got invalid usize size for target"),
@@ -30,6 +32,8 @@ impl ConstUsize {
     }
     pub fn new(i: u64, target_uint_ty: ast::UintTy) -> Result<Self, ConstMathErr> {
         match target_uint_ty {
+            ast::UintTy::U16 if i as u16 as u64 == i => Ok(Us16(i as u16)),
+            ast::UintTy::U16 => Err(ULitOutOfRange(ast::UintTy::Us)),
             ast::UintTy::U32 if i as u32 as u64 == i => Ok(Us32(i as u32)),
             ast::UintTy::U32 => Err(ULitOutOfRange(ast::UintTy::Us)),
             ast::UintTy::U64 => Ok(Us64(i)),
