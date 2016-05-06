@@ -42,7 +42,7 @@ fn read_u32v_be(dst: &mut[u32], input: &[u8]) {
     }
 }
 
-trait ToBits {
+trait ToBits: Sized {
     /// Convert the value in bytes to the number of bits, a tuple where the 1st item is the
     /// high-order value and the 2nd item is the low order value.
     fn to_bits(self) -> (Self, Self);

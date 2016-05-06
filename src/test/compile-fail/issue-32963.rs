@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: overflow representing the type `S`
+use std::mem;
 
-trait Mirror { type It: ?Sized; }
-impl<T: ?Sized> Mirror for T { type It = Self; }
-struct S(Option<<S as Mirror>::It>);
+trait Misc {}
+
+fn size_of_copy<T: Copy+?Sized>() -> usize { mem::size_of::<T>() }
 
 fn main() {
-    let _s = S(None);
+    size_of_copy::<Misc+Copy>();
+    //~^ ERROR `Misc + Copy: std::marker::Copy` is not satisfied
 }

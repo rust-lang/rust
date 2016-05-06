@@ -23,5 +23,4 @@ pub fn main() {
     let arr: &[_] = &[1, 2, 3];
     let range = *arr..;
     //~^ ERROR `[_]: std::marker::Sized` is not satisfied
-    //~| ERROR `[_]: std::marker::Sized` is not satisfied
 }

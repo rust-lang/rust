@@ -18,6 +18,39 @@ use util::nodemap::FnvHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
+fn anonymize_predicate<'tcx>(tcx: &TyCtxt<'tcx>, pred: &ty::Predicate<'tcx>)
+                             -> ty::Predicate<'tcx> {
+    match *pred {
+        ty::Predicate::Trait(ref data) =>
+            ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data)),
+
+        ty::Predicate::Rfc1592(ref data) =>
+            ty::Predicate::Rfc1592(Box::new(anonymize_predicate(tcx, data))),
+
+        ty::Predicate::Equate(ref data) =>
+            ty::Predicate::Equate(tcx.anonymize_late_bound_regions(data)),
+
+        ty::Predicate::RegionOutlives(ref data) =>
+            ty::Predicate::RegionOutlives(tcx.anonymize_late_bound_regions(data)),
+
+        ty::Predicate::TypeOutlives(ref data) =>
+            ty::Predicate::TypeOutlives(tcx.anonymize_late_bound_regions(data)),
+
+        ty::Predicate::Projection(ref data) =>
+            ty::Predicate::Projection(tcx.anonymize_late_bound_regions(data)),
+
+        ty::Predicate::WellFormed(data) =>
+            ty::Predicate::WellFormed(data),
+
+        ty::Predicate::ObjectSafe(data) =>
+            ty::Predicate::ObjectSafe(data),
+
+        ty::Predicate::ClosureKind(closure_def_id, kind) =>
+            ty::Predicate::ClosureKind(closure_def_id, kind)
+    }
+}
+
+
 struct PredicateSet<'a,'tcx:'a> {
     tcx: &'a TyCtxt<'tcx>,
     set: FnvHashSet<ty::Predicate<'tcx>>,
@@ -39,32 +72,7 @@ impl<'a,'tcx> PredicateSet<'a,'tcx> {
         //
         // to be considered equivalent. So normalize all late-bound
         // regions before we throw things into the underlying set.
-        let normalized_pred = match *pred {
-            ty::Predicate::Trait(ref data) =>
-                ty::Predicate::Trait(self.tcx.anonymize_late_bound_regions(data)),
-
-            ty::Predicate::Equate(ref data) =>
-                ty::Predicate::Equate(self.tcx.anonymize_late_bound_regions(data)),
-
-            ty::Predicate::RegionOutlives(ref data) =>
-                ty::Predicate::RegionOutlives(self.tcx.anonymize_late_bound_regions(data)),
-
-            ty::Predicate::TypeOutlives(ref data) =>
-                ty::Predicate::TypeOutlives(self.tcx.anonymize_late_bound_regions(data)),
-
-            ty::Predicate::Projection(ref data) =>
-                ty::Predicate::Projection(self.tcx.anonymize_late_bound_regions(data)),
-
-            ty::Predicate::WellFormed(data) =>
-                ty::Predicate::WellFormed(data),
-
-            ty::Predicate::ObjectSafe(data) =>
-                ty::Predicate::ObjectSafe(data),
-
-            ty::Predicate::ClosureKind(closure_def_id, kind) =>
-                ty::Predicate::ClosureKind(closure_def_id, kind)
-        };
-        self.set.insert(normalized_pred)
+        self.set.insert(anonymize_predicate(self.tcx, pred))
     }
 }
 
@@ -142,6 +150,9 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
                 predicates.retain(|r| self.visited.insert(r));
 
                 self.stack.extend(predicates);
+            }
+            ty::Predicate::Rfc1592(..) => {
+                // Nothing to elaborate.
             }
             ty::Predicate::WellFormed(..) => {
                 // Currently, we do not elaborate WF predicates,

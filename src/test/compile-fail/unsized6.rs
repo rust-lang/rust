@@ -14,9 +14,9 @@ trait T {}
 
 fn f1<X: ?Sized>(x: &X) {
     let _: X; // <-- this is OK, no bindings created, no initializer.
-    let _: (isize, (X, isize)); // same
+    let _: (isize, (X, isize));
     let y: X; //~ERROR `X: std::marker::Sized` is not satisfied
-    let y: (isize, (X, isize)); //~ERROR `X: std::marker::Sized` is not satisfied
+    let y: (isize, (X, usize)); //~ERROR `X: std::marker::Sized` is not satisfied
 }
 fn f2<X: ?Sized + T>(x: &X) {
     let y: X; //~ERROR `X: std::marker::Sized` is not satisfied
