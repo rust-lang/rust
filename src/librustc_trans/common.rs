@@ -1052,17 +1052,17 @@ pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &hir::Expr) ->
 /// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
 /// do not (necessarily) resolve all nested obligations on the impl. Note that type check should
 /// guarantee to us that all nested obligations *could be* resolved if we wanted to.
-pub fn fulfill_obligation<'a, 'tcx>(ccx: &SharedCrateContext<'a, 'tcx>,
+pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                     span: Span,
                                     trait_ref: ty::PolyTraitRef<'tcx>)
                                     -> traits::Vtable<'tcx, ()>
 {
-    let tcx = ccx.tcx();
+    let tcx = scx.tcx();
 
     // Remove any references to regions; this helps improve caching.
     let trait_ref = tcx.erase_regions(&trait_ref);
 
-    ccx.trait_cache().memoize(trait_ref, || {
+    scx.trait_cache().memoize(trait_ref, || {
         debug!("trans fulfill_obligation: trait_ref={:?} def_id={:?}",
                trait_ref, trait_ref.def_id());
 
@@ -1090,7 +1090,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &SharedCrateContext<'a, 'tcx>,
                 debug!("Encountered ambiguity selecting `{:?}` during trans, \
                         presuming due to overflow",
                        trait_ref);
-                ccx.sess().span_fatal(
+                tcx.sess.span_fatal(
                     span,
                     "reached the recursion limit during monomorphization \
                      (selection ambiguity)");
