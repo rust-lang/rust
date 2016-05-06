@@ -364,7 +364,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         def_id: tcx.lang_items.drop_trait().unwrap(),
         substs: tcx.mk_substs(Substs::empty().with_self_ty(t))
     });
-    let vtbl = match fulfill_obligation(bcx.ccx(), DUMMY_SP, trait_ref) {
+    let vtbl = match fulfill_obligation(bcx.ccx().shared(), DUMMY_SP, trait_ref) {
         traits::VtableImpl(data) => data,
         _ => bug!("dtor for {:?} is not an impl???", t)
     };

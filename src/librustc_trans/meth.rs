@@ -144,7 +144,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Not in the cache. Build it.
     let methods = traits::supertraits(tcx, trait_ref.clone()).flat_map(|trait_ref| {
-        let vtable = fulfill_obligation(ccx, DUMMY_SP, trait_ref.clone());
+        let vtable = fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref.clone());
         match vtable {
             // Should default trait error here?
             traits::VtableDefaultImpl(_) |
