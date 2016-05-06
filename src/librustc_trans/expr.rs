@@ -510,7 +510,9 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let source = unpack_datum!(bcx, source.to_ref_datum(bcx));
             assert!(target.kind.is_by_ref());
 
-            let kind = custom_coerce_unsize_info(bcx.ccx(), source.ty, target.ty);
+            let kind = custom_coerce_unsize_info(bcx.ccx().shared(),
+                                                 source.ty,
+                                                 target.ty);
 
             let repr_source = adt::represent_type(bcx.ccx(), source.ty);
             let src_fields = match &*repr_source {
