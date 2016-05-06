@@ -41,7 +41,7 @@ impl DefIdDirectory {
 
     pub fn retrace(&self, tcx: TyCtxt) -> RetracedDefIdDirectory {
         let ids = self.paths.iter()
-                            .map(|path| tcx.map.retrace_path(path))
+                            .map(|path| tcx.retrace_path(path))
                             .collect();
         RetracedDefIdDirectory { ids: ids }
     }

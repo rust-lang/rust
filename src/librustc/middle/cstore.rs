@@ -22,12 +22,13 @@
 // are *mostly* used as a part of that interface, but these should
 // probably get a better home if someone can find one.
 
-use hir::svh::Svh;
-use hir::map as hir_map;
 use hir::def::{self, Def};
+use hir::def_id::{DefId, DefIndex};
+use hir::map as hir_map;
+use hir::map::definitions::DefKey;
+use hir::svh::Svh;
 use middle::lang_items;
 use ty::{self, Ty, TyCtxt, VariantKind};
-use hir::def_id::{DefId, DefIndex};
 use mir::repr::Mir;
 use mir::mir_map::MirMap;
 use session::Session;
@@ -234,6 +235,10 @@ pub trait CrateStore<'tcx> {
     fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId>;
 
     // resolve
+    fn def_index_for_def_key(&self,
+                             cnum: ast::CrateNum,
+                             def: DefKey)
+                             -> Option<DefIndex>;
     fn def_key(&self, def: DefId) -> hir_map::DefKey;
     fn relative_def_path(&self, def: DefId) -> hir_map::DefPath;
     fn variant_kind(&self, def_id: DefId) -> Option<VariantKind>;
@@ -361,6 +366,12 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                                   -> Vec<Rc<ty::Method<'tcx>>> { bug!("provided_trait_methods") }
     fn trait_item_def_ids(&self, def: DefId)
                           -> Vec<ty::ImplOrTraitItemId> { bug!("trait_item_def_ids") }
+    fn def_index_for_def_key(&self,
+                             cnum: ast::CrateNum,
+                             def: DefKey)
+                             -> Option<DefIndex> {
+        None
+    }
 
     // impl info
     fn impl_items(&self, impl_def_id: DefId) -> Vec<ty::ImplOrTraitItemId>

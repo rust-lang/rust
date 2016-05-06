@@ -25,6 +25,7 @@ use tydecode::TyDecoder;
 
 use rustc::hir::svh::Svh;
 use rustc::hir::map as hir_map;
+use rustc::hir::map::DefKey;
 use rustc::util::nodemap::FnvHashMap;
 use rustc::hir;
 use rustc::session::config::PanicStrategy;
@@ -93,6 +94,29 @@ pub fn crate_rustc_version(data: &[u8]) -> Option<String> {
 pub fn load_xrefs(data: &[u8]) -> index::DenseIndex {
     let index = reader::get_doc(rbml::Doc::new(data), tag_xref_index);
     index::DenseIndex::from_buf(index.data, index.start, index.end)
+}
+
+// Go through each item in the metadata and create a map from that
+// item's def-key to the item's DefIndex.
+pub fn load_key_map(data: &[u8]) -> FnvHashMap<DefKey, DefIndex> {
+    let root_doc = rbml::Doc::new(data);
+    let items_doc = reader::get_doc(root_doc, tag_items);
+    let items_data_doc = reader::get_doc(items_doc, tag_items_data);
+    reader::docs(items_data_doc)
+        .filter(|&(tag, _)| tag == tag_items_data_item)
+        .map(|(_, item_doc)| {
+            // load def-key from item
+            let key = item_def_key(item_doc);
+
+            // load def-index from item; we only encode the full def-id,
+            // so just pull out the index
+            let def_id_doc = reader::get_doc(item_doc, tag_def_id);
+            let def_id = untranslated_def_id(def_id_doc);
+            assert!(def_id.is_local()); // local to the crate we are decoding, that is
+
+            (key, def_id.index)
+        })
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -193,10 +217,14 @@ fn item_symbol(item: rbml::Doc) -> String {
     reader::get_doc(item, tag_items_data_item_symbol).as_str().to_string()
 }
 
-fn translated_def_id(cdata: Cmd, d: rbml::Doc) -> DefId {
+fn untranslated_def_id(d: rbml::Doc) -> DefId {
     let id = reader::doc_as_u64(d);
     let index = DefIndex::new((id & 0xFFFF_FFFF) as usize);
-    let def_id = DefId { krate: (id >> 32) as u32, index: index };
+    DefId { krate: (id >> 32) as u32, index: index }
+}
+
+fn translated_def_id(cdata: Cmd, d: rbml::Doc) -> DefId {
+    let def_id = untranslated_def_id(d);
     translate_def_id(cdata, def_id)
 }
 
@@ -1750,6 +1778,10 @@ pub fn closure_ty<'a, 'tcx>(cdata: Cmd, closure_id: DefIndex, tcx: TyCtxt<'a, 't
 pub fn def_key(cdata: Cmd, id: DefIndex) -> hir_map::DefKey {
     debug!("def_key: id={:?}", id);
     let item_doc = cdata.lookup_item(id);
+    item_def_key(item_doc)
+}
+
+fn item_def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
     match reader::maybe_get_doc(item_doc, tag_def_key) {
         Some(def_key_doc) => {
             let mut decoder = reader::Decoder::new(def_key_doc);

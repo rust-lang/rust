@@ -21,7 +21,8 @@ use index;
 use loader;
 
 use rustc::dep_graph::DepGraph;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefIndex, DefId};
+use rustc::hir::map::DefKey;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{ExternCrate};
 use rustc::session::config::PanicStrategy;
@@ -78,6 +79,13 @@ pub struct crate_metadata {
 
     pub index: index::Index,
     pub xref_index: index::DenseIndex,
+
+    /// For each public item in this crate, we encode a key.  When the
+    /// crate is loaded, we read all the keys and put them in this
+    /// hashmap, which gives the reverse mapping.  This allows us to
+    /// quickly retrace a `DefPath`, which is needed for incremental
+    /// compilation support.
+    pub key_map: FnvHashMap<DefKey, DefIndex>,
 
     /// Flag if this crate is required by an rlib version of this crate, or in
     /// other words whether it was explicitly linked to. An example of a crate
