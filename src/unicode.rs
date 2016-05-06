@@ -40,7 +40,7 @@ declare_lint! {
 declare_lint! {
     pub UNICODE_NOT_NFC, Allow,
     "using a unicode literal not in NFC normal form (see \
-     http://www.unicode.org/reports/tr15/ for further information)"
+     [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
 }
 
 
