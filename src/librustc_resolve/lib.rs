@@ -1098,11 +1098,12 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         }
     }
 
-    fn def_map(&mut self) -> &mut DefMap {
-        &mut self.def_map
+    fn record_resolution(&mut self, id: NodeId, def: Def) {
+        self.def_map.insert(id, PathResolution { base_def: def, depth: 0 });
     }
-    fn definitions(&mut self) -> &mut Definitions {
-        self.definitions
+
+    fn definitions(&mut self) -> Option<&mut Definitions> {
+        Some(self.definitions)
     }
 }
 
