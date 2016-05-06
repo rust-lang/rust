@@ -15,6 +15,7 @@
 mod data;
 mod directory;
 mod dirty_clean;
+mod hash;
 mod load;
 mod save;
 mod util;
