@@ -96,6 +96,7 @@ pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
     tn: TypeNames, // FIXME: This seems to be largely unused.
+    codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, ValueRef>>,
@@ -201,18 +202,8 @@ impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
                -> CrateContextList<'a, 'tcx> {
         CrateContextList {
             shared: shared_ccx,
-            // FIXME: We don't actually use the codegen unit partitioning yet.
-            local_ccxs: codegen_units.iter().map(|cgu| {
-                // Append ".rs" to crate name as LLVM module identifier.
-                //
-                // LLVM code generator emits a ".file filename" directive
-                // for ELF backends. Value of the "filename" is set as the
-                // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
-                // crashes if the module identifier is same as other symbols
-                // such as a function name in the module.
-                // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-                let llmod_id = format!("{}.rs", cgu.name);
-                LocalCrateContext::new(shared_ccx, &llmod_id[..])
+            local_ccxs: codegen_units.into_iter().map(|codegen_unit| {
+                LocalCrateContext::new(shared_ccx, codegen_unit)
             }).collect()
         }
     }
@@ -497,10 +488,21 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
 impl<'tcx> LocalCrateContext<'tcx> {
     fn new<'a>(shared: &SharedCrateContext<'a, 'tcx>,
-           name: &str)
+               codegen_unit: CodegenUnit<'tcx>)
            -> LocalCrateContext<'tcx> {
         unsafe {
-            let (llcx, llmod) = create_context_and_module(&shared.tcx.sess, name);
+            // Append ".rs" to LLVM module identifier.
+            //
+            // LLVM code generator emits a ".file filename" directive
+            // for ELF backends. Value of the "filename" is set as the
+            // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
+            // crashes if the module identifier is same as other symbols
+            // such as a function name in the module.
+            // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
+            let llmod_id = format!("{}.rs", codegen_unit.name);
+
+            let (llcx, llmod) = create_context_and_module(&shared.tcx.sess,
+                                                          &llmod_id[..]);
 
             let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))
@@ -511,6 +513,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
             let local_ccx = LocalCrateContext {
                 llmod: llmod,
                 llcx: llcx,
+                codegen_unit: codegen_unit,
                 tn: TypeNames::new(),
                 needs_unwind_cleanup_cache: RefCell::new(FnvHashMap()),
                 fn_pointer_shims: RefCell::new(FnvHashMap()),
@@ -666,6 +669,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn llcx(&self) -> ContextRef {
         self.local().llcx
+    }
+
+    pub fn codegen_unit(&self) -> &CodegenUnit<'tcx> {
+        &self.local().codegen_unit
     }
 
     pub fn td(&self) -> llvm::TargetDataRef {
