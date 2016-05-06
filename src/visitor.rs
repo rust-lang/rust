@@ -22,6 +22,14 @@ use comment::rewrite_comment;
 use macros::rewrite_macro;
 use items::{rewrite_static, rewrite_associated_type, rewrite_type_alias, format_impl, format_trait};
 
+// For format_missing and last_pos, need to use the source callsite (if applicable).
+// Required as generated code spans aren't guaranteed to follow on from the last span.
+macro_rules! source {
+    ($this:ident, $sp: expr) => {
+        $this.codemap.source_callsite($sp)
+    }
+}
+
 pub struct FmtVisitor<'a> {
     pub parse_session: &'a ParseSess,
     pub codemap: &'a CodeMap,
@@ -55,7 +63,7 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(stmt.span, rewrite);
             }
             ast::StmtKind::Mac(ref mac, _macro_style, _) => {
-                self.format_missing_with_indent(stmt.span.lo);
+                self.format_missing_with_indent(source!(self, stmt.span).lo);
                 self.visit_mac(mac, None);
             }
         }
@@ -84,14 +92,14 @@ impl<'a> FmtVisitor<'a> {
         }
 
         if let Some(ref e) = b.expr {
-            self.format_missing_with_indent(e.span.lo);
+            self.format_missing_with_indent(source!(self, e.span).lo);
             let rewrite = e.rewrite(&self.get_context(),
                          self.config.max_width - self.block_indent.width(),
                          self.block_indent)
                 .unwrap_or_else(|| self.snippet(e.span));
 
             self.buffer.push_str(&rewrite);
-            self.last_pos = e.span.hi;
+            self.last_pos = source!(self, e.span).hi;
 
             if utils::semicolon_for_expr(e) {
                 self.buffer.push_str(";");
@@ -99,9 +107,9 @@ impl<'a> FmtVisitor<'a> {
         }
 
         // FIXME: we should compress any newlines here to just one
-        self.format_missing_with_indent(b.span.hi - brace_compensation);
+        self.format_missing_with_indent(source!(self, b.span).hi - brace_compensation);
         self.close_block();
-        self.last_pos = b.span.hi;
+        self.last_pos = source!(self, b.span).hi;
     }
 
     // FIXME: this is a terrible hack to indent the comments between the last
@@ -160,19 +168,19 @@ impl<'a> FmtVisitor<'a> {
         };
 
         if let Some(fn_str) = rewrite {
-            self.format_missing_with_indent(s.lo);
+            self.format_missing_with_indent(source!(self, s).lo);
             self.buffer.push_str(&fn_str);
             if let Some(c) = fn_str.chars().last() {
                 if c == '}' {
-                    self.last_pos = b.span.hi;
+                    self.last_pos = source!(self, b.span).hi;
                     return;
                 }
             }
         } else {
-            self.format_missing(b.span.lo);
+            self.format_missing(source!(self, b.span).lo);
         }
 
-        self.last_pos = b.span.lo;
+        self.last_pos = source!(self, b.span).lo;
         self.visit_block(b)
     }
 
@@ -206,10 +214,10 @@ impl<'a> FmtVisitor<'a> {
                 self.format_import(&item.vis, vp, item.span);
             }
             ast::ItemKind::Impl(..) => {
-                self.format_missing_with_indent(item.span.lo);
+                self.format_missing_with_indent(source!(self, item.span).lo);
                 if let Some(impl_str) = format_impl(&self.get_context(), item, self.block_indent) {
                     self.buffer.push_str(&impl_str);
-                    self.last_pos = item.span.hi;
+                    self.last_pos = source!(self, item.span).hi;
                 }
             }
             ast::ItemKind::Trait(..) => {
@@ -218,14 +226,14 @@ impl<'a> FmtVisitor<'a> {
                                                       item,
                                                       self.block_indent) {
                     self.buffer.push_str(&trait_str);
-                    self.last_pos = item.span.hi;
+                    self.last_pos = source!(self, item.span).hi;
                 }
             }
             ast::ItemKind::ExternCrate(_) => {
-                self.format_missing_with_indent(item.span.lo);
+                self.format_missing_with_indent(source!(self, item.span).lo);
                 let new_str = self.snippet(item.span);
                 self.buffer.push_str(&new_str);
-                self.last_pos = item.span.hi;
+                self.last_pos = source!(self, item.span).hi;
             }
             ast::ItemKind::Struct(ref def, ref generics) => {
                 let rewrite = {
@@ -249,20 +257,20 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::Enum(ref def, ref generics) => {
-                self.format_missing_with_indent(item.span.lo);
+                self.format_missing_with_indent(source!(self, item.span).lo);
                 self.visit_enum(item.ident, &item.vis, def, generics, item.span);
-                self.last_pos = item.span.hi;
+                self.last_pos = source!(self, item.span).hi;
             }
             ast::ItemKind::Mod(ref module) => {
-                self.format_missing_with_indent(item.span.lo);
+                self.format_missing_with_indent(source!(self, item.span).lo);
                 self.format_mod(module, &item.vis, item.span, item.ident);
             }
             ast::ItemKind::Mac(ref mac) => {
-                self.format_missing_with_indent(item.span.lo);
+                self.format_missing_with_indent(source!(self, item.span).lo);
                 self.visit_mac(mac, Some(item.ident));
             }
             ast::ItemKind::ForeignMod(ref foreign_mod) => {
-                self.format_missing_with_indent(item.span.lo);
+                self.format_missing_with_indent(source!(self, item.span).lo);
                 self.format_foreign_mod(foreign_mod, item.span);
             }
             ast::ItemKind::Static(ref ty, mutability, ref expr) => {
@@ -384,7 +392,7 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(ii.span, rewrite);
             }
             ast::ImplItemKind::Macro(ref mac) => {
-                self.format_missing_with_indent(ii.span.lo);
+                self.format_missing_with_indent(source!(self, ii.span).lo);
                 self.visit_mac(mac, Some(ii.ident));
             }
         }
@@ -397,15 +405,15 @@ impl<'a> FmtVisitor<'a> {
 
         if let Some(res) = rewrite {
             self.buffer.push_str(&res);
-            self.last_pos = mac.span.hi;
+            self.last_pos = source!(self, mac.span).hi;
         }
     }
 
     fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
-        self.format_missing_with_indent(span.lo);
+        self.format_missing_with_indent(source!(self, span).lo);
         let result = rewrite.unwrap_or_else(|| self.snippet(span));
         self.buffer.push_str(&result);
-        self.last_pos = span.hi;
+        self.last_pos = source!(self, span).hi;
     }
 
     pub fn from_codemap(parse_session: &'a ParseSess, config: &'a Config) -> FmtVisitor<'a> {
@@ -449,7 +457,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let first = &outers[0];
-        self.format_missing_with_indent(first.span.lo);
+        self.format_missing_with_indent(source!(self, first.span).lo);
 
         let rewrite = outers.rewrite(&self.get_context(),
                      self.config.max_width - self.block_indent.width(),
@@ -457,7 +465,7 @@ impl<'a> FmtVisitor<'a> {
             .unwrap();
         self.buffer.push_str(&rewrite);
         let last = outers.last().unwrap();
-        self.last_pos = last.span.hi;
+        self.last_pos = source!(self, last.span).hi;
         false
     }
 
@@ -470,7 +478,7 @@ impl<'a> FmtVisitor<'a> {
     fn format_mod(&mut self, m: &ast::Mod, vis: &ast::Visibility, s: Span, ident: ast::Ident) {
         // Decide whether this is an inline mod or an external mod.
         let local_file_name = self.codemap.span_to_filename(s);
-        let is_internal = local_file_name == self.codemap.span_to_filename(m.inner);
+        let is_internal = local_file_name == self.codemap.span_to_filename(source!(self, m.inner));
 
         if let Some(vis) = utils::format_visibility(vis) {
             self.buffer.push_str(vis);
@@ -481,8 +489,9 @@ impl<'a> FmtVisitor<'a> {
         if is_internal {
             self.buffer.push_str(" {");
             // Hackery to account for the closing }.
-            let mod_lo = self.codemap.span_after(s, "{");
-            let body_snippet = self.snippet(codemap::mk_sp(mod_lo, m.inner.hi - BytePos(1)));
+            let mod_lo = self.codemap.span_after(source!(self, s), "{");
+            let body_snippet =
+                self.snippet(codemap::mk_sp(mod_lo, source!(self, m.inner).hi - BytePos(1)));
             let body_snippet = body_snippet.trim();
             if body_snippet.is_empty() {
                 self.buffer.push_str("}");
@@ -490,18 +499,18 @@ impl<'a> FmtVisitor<'a> {
                 self.last_pos = mod_lo;
                 self.block_indent = self.block_indent.block_indent(self.config);
                 self.walk_mod_items(m);
-                self.format_missing_with_indent(m.inner.hi - BytePos(1));
+                self.format_missing_with_indent(source!(self, m.inner).hi - BytePos(1));
                 self.close_block();
             }
-            self.last_pos = m.inner.hi;
+            self.last_pos = source!(self, m.inner).hi;
         } else {
             self.buffer.push_str(";");
-            self.last_pos = s.hi;
+            self.last_pos = source!(self, s).hi;
         }
     }
 
     pub fn format_separate_mod(&mut self, m: &ast::Mod) {
-        let filemap = self.codemap.lookup_char_pos(m.inner.lo).file;
+        let filemap = self.codemap.lookup_char_pos(source!(self, m.inner).lo).file;
         self.last_pos = filemap.start_pos;
         self.block_indent = Indent::empty();
         self.walk_mod_items(m);
@@ -521,23 +530,23 @@ impl<'a> FmtVisitor<'a> {
                          offset) {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
-                let prev_span = codemap::mk_sp(self.last_pos, span.lo);
+                let prev_span = codemap::mk_sp(self.last_pos, source!(self, span).lo);
                 let span_end = match self.snippet(prev_span).rfind('\n') {
                     Some(offset) => self.last_pos + BytePos(offset as u32),
-                    None => span.lo,
+                    None => source!(self, span).lo,
                 };
                 self.format_missing(span_end);
-                self.last_pos = span.hi;
+                self.last_pos = source!(self, span).hi;
             }
             Some(ref s) => {
                 let s = format!("{}use {};", vis, s);
-                self.format_missing_with_indent(span.lo);
+                self.format_missing_with_indent(source!(self, span).lo);
                 self.buffer.push_str(&s);
-                self.last_pos = span.hi;
+                self.last_pos = source!(self, span).hi;
             }
             None => {
-                self.format_missing_with_indent(span.lo);
-                self.format_missing(span.hi);
+                self.format_missing_with_indent(source!(self, span).lo);
+                self.format_missing(source!(self, span).hi);
             }
         }
     }
