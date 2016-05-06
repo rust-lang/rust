@@ -70,7 +70,6 @@ pub fn compiletest(build: &Build,
     cmd.arg("--rustc-path").arg(build.compiler_path(compiler));
     cmd.arg("--rustdoc-path").arg(build.rustdoc(compiler));
     cmd.arg("--src-base").arg(build.src.join("src/test").join(suite));
-    cmd.arg("--aux-base").arg(build.src.join("src/test/auxiliary"));
     cmd.arg("--build-base").arg(testdir(build, compiler.host).join(suite));
     cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
     cmd.arg("--mode").arg(mode);

@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: expected item, found `parse_error`
-include!("auxiliary/issue-21146-inc.rs");
-fn main() {}
+// Crate that exports a const fn. Used for testing cross-crate.
+
+#![crate_type="rlib"]
+#![feature(const_fn)]
+
+pub const fn foo() -> usize { 22 } //~ ERROR const fn is unstable

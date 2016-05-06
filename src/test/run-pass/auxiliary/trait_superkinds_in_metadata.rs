@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: expected item, found `parse_error`
-include!("auxiliary/issue-21146-inc.rs");
-fn main() {}
+// Test library crate for cross-crate usages of traits inheriting
+// from the builtin kinds. Mostly tests metadata correctness.
+
+#![crate_type="lib"]
+
+pub trait RequiresShare : Sync { }
+pub trait RequiresRequiresShareAndSend : RequiresShare + Send { }
+pub trait RequiresCopy : Copy { }

@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: expected item, found `parse_error`
-include!("auxiliary/issue-21146-inc.rs");
-fn main() {}
+pub struct XEmpty1 {}
+pub struct XEmpty2;
+
+pub enum XE {
+    XEmpty3 {},
+    XEmpty4,
+}
