@@ -24,6 +24,7 @@ use std::path::Path;
 use super::data::*;
 use super::directory::*;
 use super::dirty_clean;
+use super::hash::*;
 use super::util::*;
 
 type DirtyNodes = FnvHashSet<DepNode<DefId>>;
@@ -133,13 +134,13 @@ fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  hashes: &[SerializedHash],
                                  retraced: &RetracedDefIdDirectory)
                                  -> DirtyNodes {
+    let mut hcx = HashContext::new(tcx);
     let mut items_removed = false;
     let mut dirty_nodes = FnvHashSet();
     for hash in hashes {
         match hash.node.map_def(|&i| retraced.def_id(i)) {
             Some(dep_node) => {
-                // FIXME(#32753) -- should we use a distinct hash here
-                let current_hash = dep_node.hash(tcx).unwrap();
+                let current_hash = hcx.hash(dep_node).unwrap();
                 debug!("initial_dirty_nodes: hash of {:?} is {:?}, was {:?}",
                        dep_node, current_hash, hash.hash);
                 if current_hash != hash.hash {

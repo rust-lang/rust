@@ -20,18 +20,23 @@ use std::path::PathBuf;
 
 use super::data::*;
 use super::directory::*;
+use super::hash::*;
 use super::util::*;
 
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
-
-    save_in(tcx, dep_graph_path(tcx), encode_dep_graph);
-    save_in(tcx, metadata_hash_path(tcx, LOCAL_CRATE), encode_metadata_hashes);
+    let mut hcx = HashContext::new(tcx);
+    save_in(&mut hcx, dep_graph_path(tcx), encode_dep_graph);
+    save_in(&mut hcx, metadata_hash_path(tcx, LOCAL_CRATE), encode_metadata_hashes);
 }
 
-fn save_in<'a,'tcx,F>(tcx: TyCtxt<'a, 'tcx, 'tcx>, opt_path_buf: Option<PathBuf>, encode: F)
-    where F: FnOnce(TyCtxt<'a, 'tcx, 'tcx>, &mut Encoder) -> io::Result<()>
+fn save_in<'a, 'tcx, F>(hcx: &mut HashContext<'a, 'tcx>,
+                        opt_path_buf: Option<PathBuf>,
+                        encode: F)
+    where F: FnOnce(&mut HashContext<'a, 'tcx>, &mut Encoder) -> io::Result<()>
 {
+    let tcx = hcx.tcx;
+
     let path_buf = match opt_path_buf {
         Some(p) => p,
         None => return
@@ -54,7 +59,7 @@ fn save_in<'a,'tcx,F>(tcx: TyCtxt<'a, 'tcx, 'tcx>, opt_path_buf: Option<PathBuf>
 
     // generate the data in a memory buffer
     let mut wr = Cursor::new(Vec::new());
-    match encode(tcx, &mut Encoder::new(&mut wr)) {
+    match encode(hcx, &mut Encoder::new(&mut wr)) {
         Ok(()) => { }
         Err(err) => {
             tcx.sess.err(
@@ -80,9 +85,11 @@ fn save_in<'a,'tcx,F>(tcx: TyCtxt<'a, 'tcx, 'tcx>, opt_path_buf: Option<PathBuf>
     }
 }
 
-pub fn encode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn encode_dep_graph<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
                                   encoder: &mut Encoder)
-                                  -> io::Result<()> {
+                                  -> io::Result<()>
+{
+    let tcx = hcx.tcx;
     let query = tcx.dep_graph.query();
 
     let mut builder = DefIdDirectoryBuilder::new(tcx);
@@ -92,29 +99,24 @@ pub fn encode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         query.nodes()
              .into_iter()
              .filter_map(|dep_node| {
-                 dep_node.hash(tcx)
-                         .map(|hash| {
-                             let node = builder.map(dep_node).unwrap();
-                             SerializedHash { node: node, hash: hash }
-                         })
+                 hcx.hash(dep_node)
+                    .map(|hash| {
+                        let node = builder.map(dep_node);
+                        SerializedHash { node: node, hash: hash }
+                    })
              })
              .collect();
 
-    // Create the serialized dep-graph, dropping nodes that are
-    // from other crates or from inlined items.
-    //
-    // FIXME(#32015) fix handling of other crates
+    // Create the serialized dep-graph.
     let graph = SerializedDepGraph {
         nodes: query.nodes().into_iter()
-                            .flat_map(|node| builder.map(node))
+                            .map(|node| builder.map(node))
                             .collect(),
         edges: query.edges().into_iter()
-                            .flat_map(|(source_node, target_node)| {
-                                builder.map(source_node)
-                                       .and_then(|source| {
-                                           builder.map(target_node)
-                                                  .map(|target| (source, target))
-                                       })
+                            .map(|(source_node, target_node)| {
+                                let source = builder.map(source_node);
+                                let target = builder.map(target_node);
+                                (source, target)
                             })
                             .collect(),
         hashes: hashes,
@@ -130,13 +132,12 @@ pub fn encode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     Ok(())
 }
 
-pub fn encode_metadata_hashes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn encode_metadata_hashes<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
                                         encoder: &mut Encoder)
                                         -> io::Result<()>
 {
+    let tcx = hcx.tcx;
     let query = tcx.dep_graph.query();
-
-    let mut builder = DefIdDirectoryBuilder::new(tcx);
 
     let serialized_hashes = {
         // Identify the `MetaData(X)` nodes where `X` is local. These are
@@ -152,32 +153,31 @@ pub fn encode_metadata_hashes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                  });
 
         // To create the hash for each item `X`, we don't hash the raw
-        // bytes of the metadata (though in principle we could). Instead,
-        // we walk the predecessors of `MetaData(X)` from the
-        // dep-graph. This corresponds to all the inputs that were read to
-        // construct the metadata. To create the hash for the metadata, we
-        // hash (the hash of) all of those inputs.
+        // bytes of the metadata (though in principle we
+        // could). Instead, we walk the predecessors of `MetaData(X)`
+        // from the dep-graph. This corresponds to all the inputs that
+        // were read to construct the metadata. To create the hash for
+        // the metadata, we hash (the hash of) all of those inputs.
         let hashes =
             meta_data_def_ids
             .map(|def_id| {
+                assert!(def_id.is_local());
+                let dep_node = DepNode::MetaData(def_id);
                 let mut state = SipHasher::new();
-                for node in query.transitive_predecessors(DepNode::MetaData(def_id)) {
-                    if let Some(hash) = node.hash(tcx) {
+                debug!("save: computing metadata hash for {:?}", dep_node);
+                for node in query.transitive_predecessors(dep_node) {
+                    if let Some(hash) = hcx.hash(node) {
+                        debug!("save: predecessor {:?} has hash {}", node, hash);
                         state.write_u64(hash.to_le());
+                    } else {
+                        debug!("save: predecessor {:?} cannot be hashed", node);
                     }
                 }
-                (def_id, state.finish())
-            });
-
-        // Now create the `SerializedHash` data structures that others
-        // will load later.
-        let hashes =
-            hashes
-            .map(|(def_id, hash)| {
-                let index = builder.add(def_id).unwrap();
-                SerializedHash {
-                    node: DepNode::MetaData(index),
-                    hash: hash
+                let hash = state.finish();
+                debug!("save: metadata hash for {:?} is {}", dep_node, hash);
+                SerializedMetadataHash {
+                    def_index: def_id.index,
+                    hash: hash,
                 }
             });
 
@@ -188,8 +188,6 @@ pub fn encode_metadata_hashes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     // Encode everything.
-    let directory = builder.into_directory();
-    try!(directory.encode(encoder));
     try!(serialized_hashes.encode(encoder));
 
     Ok(())

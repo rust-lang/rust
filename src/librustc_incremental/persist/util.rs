@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use calculate_svh::SvhCalculate;
-use rustc::dep_graph::DepNode;
-use rustc::hir::def_id::DefId;
 use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::ty::TyCtxt;
 
@@ -72,21 +69,3 @@ fn create_dir_racy(path: &Path) -> io::Result<()> {
     }
 }
 
-pub trait DepNodeHash {
-    /// Hash this dep-node, if it is of the kind that we know how to
-    /// hash.
-    fn hash<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<u64>;
-}
-
-impl DepNodeHash for DepNode<DefId> {
-    fn hash<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<u64> {
-        match *self {
-            DepNode::Hir(def_id) => {
-                // FIXME(#32753) -- should we use a distinct hash here
-                assert!(def_id.is_local());
-                Some(tcx.calculate_item_hash(def_id))
-            }
-            _ => None
-        }
-    }
-}
