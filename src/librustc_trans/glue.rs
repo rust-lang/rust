@@ -19,7 +19,7 @@ use llvm;
 use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
 use rustc::ty::subst::{Substs};
-use rustc::traits;
+use rustc::{infer, traits};
 use rustc::ty::{self, Ty, TyCtxt};
 use abi::{Abi, FnType};
 use adt;
@@ -92,13 +92,12 @@ pub fn type_needs_drop<'tcx>(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     tcx.type_needs_drop_given_env(ty, &tcx.empty_parameter_environment())
 }
 
-pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                    t: Ty<'tcx>) -> Ty<'tcx> {
-    let tcx = ccx.tcx();
+pub fn get_drop_glue_type<'tcx>(tcx: &TyCtxt<'tcx>,
+                                t: Ty<'tcx>) -> Ty<'tcx> {
     // Even if there is no dtor for t, there might be one deeper down and we
     // might need to pass in the vtable ptr.
     if !type_is_sized(tcx, t) {
-        return ccx.tcx().erase_regions(&t);
+        return tcx.erase_regions(&t);
     }
 
     // FIXME (#22815): note that type_needs_drop conservatively
@@ -116,15 +115,18 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     match t.sty {
         ty::TyBox(typ) if !type_needs_drop(&tcx, typ)
                          && type_is_sized(tcx, typ) => {
-            let llty = sizing_type_of(ccx, typ);
-            // `Box<ZeroSizeType>` does not allocate.
-            if llsize_of_alloc(ccx, llty) == 0 {
+            let infcx = infer::normalizing_infer_ctxt(tcx,
+                                                      &tcx.tables,
+                                                      traits::ProjectionMode::Any);
+            let layout = t.layout(&infcx).unwrap();
+            if layout.size(&tcx.data_layout).bytes() == 0 {
+                // `Box<ZeroSizeType>` does not allocate.
                 tcx.types.i8
             } else {
-                ccx.tcx().erase_regions(&t)
+                tcx.erase_regions(&t)
             }
         }
-        _ => ccx.tcx().erase_regions(&t)
+        _ => tcx.erase_regions(&t)
     }
 }
 
@@ -154,7 +156,7 @@ pub fn drop_ty_core<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             DropGlueKind::Ty(t)
         };
         let glue = get_drop_glue_core(ccx, g);
-        let glue_type = get_drop_glue_type(ccx, t);
+        let glue_type = get_drop_glue_type(ccx.tcx(), t);
         let ptr = if glue_type != t {
             PointerCast(bcx, v, type_of(ccx, glue_type).ptr_to())
         } else {
@@ -231,7 +233,7 @@ impl<'tcx> DropGlueKind<'tcx> {
 fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 g: DropGlueKind<'tcx>) -> ValueRef {
     debug!("make drop glue for {:?}", g);
-    let g = g.map_ty(|t| get_drop_glue_type(ccx, t));
+    let g = g.map_ty(|t| get_drop_glue_type(ccx.tcx(), t));
     debug!("drop glue type {:?}", g);
     match ccx.drop_glues().borrow().get(&g) {
         Some(&glue) => return glue,
