@@ -11,7 +11,7 @@
 // compile-flags: -Z parse-only
 
 extern {
-    f(); //~ ERROR expected one of `fn`, `pub`, `static`, `unsafe`, or `}`, found `f`
+    f(); //~ ERROR expected one of `fn`, `pub`, `static`, or `}`, found `f`
 }
 
 fn main() {

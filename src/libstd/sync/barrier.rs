@@ -71,7 +71,7 @@ impl Barrier {
         }
     }
 
-    /// Blocks the current thread until all threads has rendezvoused here.
+    /// Blocks the current thread until all threads have rendezvoused here.
     ///
     /// Barriers are re-usable after all threads have rendezvoused once, and can
     /// be used continuously.
