@@ -285,18 +285,21 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             .enumerate()
             .map(|(index, (ty, pattern))| {
                 let lvalue = Lvalue::Arg(index as u32);
-                if let Some(pattern) = pattern {
-                    let pattern = self.hir.irrefutable_pat(pattern);
-                    unpack!(block = self.lvalue_into_pattern(block,
-                                                             argument_scope_id,
-                                                             pattern,
-                                                             &lvalue));
-                }
 
                 // Make sure we drop (parts of) the argument even when not matched on.
                 let argument_extent = self.scope_auxiliary[argument_scope_id].extent;
                 self.schedule_drop(pattern.as_ref().map_or(ast_block.span, |pat| pat.span),
                                    argument_extent, &lvalue, ty);
+
+                if let Some(pattern) = pattern {
+                    let pattern = self.hir.irrefutable_pat(pattern);
+                    self.declare_bindings(argument_scope_id, &pattern);
+
+                    // Don't have the argument scope around when matching the pattern.
+                    let arg_scope = self.scopes.pop().unwrap();
+                    unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
+                    self.scopes.push(arg_scope);
+                }
 
                 let mut name = keywords::Invalid.name();
                 if let Some(pat) = pattern {
