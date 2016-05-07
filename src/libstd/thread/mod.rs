@@ -13,7 +13,8 @@
 //! ## The threading model
 //!
 //! An executing Rust program consists of a collection of native OS threads,
-//! each with their own stack and local state.
+//! each with their own stack and local state. Threads can be named, and
+//! provide some built-in support for low-level synchronization.
 //!
 //! Communication between threads can be done through
 //! [channels](../../std/sync/mpsc/index.html), Rust's message-passing
@@ -36,20 +37,6 @@
 //! down, even if other threads are still running. However, this module provides
 //! convenient facilities for automatically waiting for the termination of a
 //! child thread (i.e., join).
-//!
-//! ## The `Thread` type
-//!
-//! Threads are represented via the `Thread` type, which you can
-//! get in one of two ways:
-//!
-//! * By spawning a new thread, e.g. using the `thread::spawn` function.
-//! * By requesting the current thread, using the `thread::current` function.
-//!
-//! Threads can be named, and provide some built-in support for low-level
-//! synchronization (described below).
-//!
-//! The `thread::current()` function is available even for threads not spawned
-//! by the APIs of this module.
 //!
 //! ## Spawning a thread
 //!
@@ -98,6 +85,18 @@
 //!     println!("Hello, world!");
 //! });
 //! ```
+//!
+//! ## The `Thread` type
+//!
+//! Threads are represented via the `Thread` type, which you can get in one of
+//! two ways:
+//!
+//! * By spawning a new thread, e.g. using the `thread::spawn` function, and
+//!   calling `thread()` on the `JoinHandle`.
+//! * By requesting the current thread, using the `thread::current` function.
+//!
+//! The `thread::current()` function is available even for threads not spawned
+//! by the APIs of this module.
 //!
 //! ## Blocking support: park and unpark
 //!
