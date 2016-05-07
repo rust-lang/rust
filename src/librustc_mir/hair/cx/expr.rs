@@ -351,21 +351,39 @@ fn make_mirror_unadjusted<'a, 'tcx>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr
                                     pass_args, lhs.to_ref(), vec![rhs])
             } else {
                 // FIXME overflow
-                match op.node {
-                    hir::BinOp_::BiAnd => {
+                match (op.node, cx.constness) {
+                    // FIXME(eddyb) use logical ops in constants when
+                    // they can handle that kind of control-flow.
+                    (hir::BinOp_::BiAnd, hir::Constness::Const) => {
+                        ExprKind::Binary {
+                            op: BinOp::BitAnd,
+                            lhs: lhs.to_ref(),
+                            rhs: rhs.to_ref(),
+                        }
+                    }
+                    (hir::BinOp_::BiOr, hir::Constness::Const) => {
+                        ExprKind::Binary {
+                            op: BinOp::BitOr,
+                            lhs: lhs.to_ref(),
+                            rhs: rhs.to_ref(),
+                        }
+                    }
+
+                    (hir::BinOp_::BiAnd, hir::Constness::NotConst) => {
                         ExprKind::LogicalOp {
                             op: LogicalOp::And,
                             lhs: lhs.to_ref(),
                             rhs: rhs.to_ref(),
                         }
                     }
-                    hir::BinOp_::BiOr => {
+                    (hir::BinOp_::BiOr, hir::Constness::NotConst) => {
                         ExprKind::LogicalOp {
                             op: LogicalOp::Or,
                             lhs: lhs.to_ref(),
                             rhs: rhs.to_ref(),
                         }
                     }
+
                     _ => {
                         let op = bin_op(op.node);
                         ExprKind::Binary {

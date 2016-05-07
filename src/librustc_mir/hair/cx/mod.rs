@@ -32,13 +32,17 @@ use rustc_const_math::{ConstInt, ConstUsize};
 pub struct Cx<'a, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
+    constness: hir::Constness
 }
 
 impl<'a,'tcx> Cx<'a,'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Cx<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>,
+               constness: hir::Constness)
+               -> Cx<'a, 'tcx> {
         Cx {
             tcx: infcx.tcx,
             infcx: infcx,
+            constness: constness,
         }
     }
 }

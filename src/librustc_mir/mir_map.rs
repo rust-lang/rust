@@ -29,7 +29,8 @@ use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::NodeMap;
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, FnKind, Visitor};
+use rustc::hir::map::blocks::FnLikeNode;
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -59,13 +60,27 @@ impl<'a, 'tcx> BuildMir<'a, 'tcx> {
     fn build<F>(&mut self, src: MirSource, f: F)
         where F: for<'b> FnOnce(Cx<'b, 'tcx>) -> (Mir<'tcx>, build::ScopeAuxiliaryVec)
     {
+        let constness = match src {
+            MirSource::Const(_) |
+            MirSource::Static(..) => hir::Constness::Const,
+            MirSource::Fn(id) => {
+                let fn_like = FnLikeNode::from_node(self.tcx.map.get(id));
+                match fn_like.map(|f| f.kind()) {
+                    Some(FnKind::ItemFn(_, _, _, c, _, _, _)) => c,
+                    Some(FnKind::Method(_, m, _, _)) => m.constness,
+                    _ => hir::Constness::NotConst
+                }
+            }
+            MirSource::Promoted(..) => bug!()
+        };
+
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, src.item_id());
         let infcx = infer::new_infer_ctxt(self.tcx,
                                           &self.tcx.tables,
                                           Some(param_env),
                                           ProjectionMode::AnyFinal);
 
-        let (mir, scope_auxiliary) = f(Cx::new(&infcx));
+        let (mir, scope_auxiliary) = f(Cx::new(&infcx, constness));
 
         pretty::dump_mir(self.tcx, "mir_map", &0, src, &mir, Some(&scope_auxiliary));
 
@@ -151,7 +166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self,
-                fk: intravisit::FnKind<'tcx>,
+                fk: FnKind<'tcx>,
                 decl: &'tcx hir::FnDecl,
                 body: &'tcx hir::Block,
                 span: Span,
@@ -165,7 +180,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
             }
         };
 
-        let implicit_argument = if let intravisit::FnKind::Closure(..) = fk {
+        let implicit_argument = if let FnKind::Closure(..) = fk {
             Some((closure_self_ty(&self.tcx, id, body.id), None))
         } else {
             None
