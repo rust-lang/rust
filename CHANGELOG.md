@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.65 — 2016-05-08
+* Rustup to *rustc 1.10.0-nightly (62e2b2fb7 2016-05-06)*
+* New lints: [`float_arithmetic`], [`integer_arithmetic`]
+
 ## 0.0.64 — 2016-04-26
 * Rustup to *rustc 1.10.0-nightly (645dd013a 2016-04-24)*
 * New lints: [`temporary_cstring_as_ptr`], [`unsafe_removed_from_name`], and [`mem_forget`]
