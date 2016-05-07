@@ -6013,7 +6013,7 @@ impl<'a> Parser<'a> {
             // FOREIGN STATIC ITEM
             return Ok(Some(self.parse_item_foreign_static(visibility, lo, attrs)?));
         }
-        if self.check_keyword(keywords::Fn) || self.check_keyword(keywords::Unsafe) {
+        if self.check_keyword(keywords::Fn) {
             // FOREIGN FUNCTION ITEM
             return Ok(Some(self.parse_item_foreign_fn(visibility, lo, attrs)?));
         }
