@@ -215,12 +215,38 @@ impl Command {
     ///
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// Command::new("sh")
+    ///         .spawn()
+    ///         .expect("sh command failed to start");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr>>(program: S) -> Command {
         Command { inner: imp::Command::new(program.as_ref()) }
     }
 
     /// Add an argument to pass to the program.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// Command::new("ls")
+    ///         .arg("-l")
+    ///         .arg("-a")
+    ///         .spawn()
+    ///         .expect("ls command failed to start");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Command {
         self.inner.arg(arg.as_ref());
@@ -228,6 +254,19 @@ impl Command {
     }
 
     /// Add multiple arguments to pass to the program.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// Command::new("ls")
+    ///         .args(&["-l", "-a"])
+    ///         .spawn()
+    ///         .expect("ls command failed to start");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn args<S: AsRef<OsStr>>(&mut self, args: &[S]) -> &mut Command {
         for arg in args {
@@ -240,6 +279,19 @@ impl Command {
     ///
     /// Note that environment variable names are case-insensitive (but case-preserving) on Windows,
     /// and case-sensitive on all other platforms.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// Command::new("ls")
+    ///         .env("PATH", "/bin")
+    ///         .spawn()
+    ///         .expect("ls command failed to start");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env<K, V>(&mut self, key: K, val: V) -> &mut Command
         where K: AsRef<OsStr>, V: AsRef<OsStr>
@@ -249,6 +301,19 @@ impl Command {
     }
 
     /// Removes an environment variable mapping.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// Command::new("ls")
+    ///         .env_remove("PATH")
+    ///         .spawn()
+    ///         .expect("ls command failed to start");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env_remove<K: AsRef<OsStr>>(&mut self, key: K) -> &mut Command {
         self.inner.env_remove(key.as_ref());
@@ -256,6 +321,19 @@ impl Command {
     }
 
     /// Clears the entire environment map for the child process.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// Command::new("ls")
+    ///         .env_clear()
+    ///         .spawn()
+    ///         .expect("ls command failed to start");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env_clear(&mut self) -> &mut Command {
         self.inner.env_clear();
@@ -263,6 +341,19 @@ impl Command {
     }
 
     /// Sets the working directory for the child process.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// Command::new("ls")
+    ///         .current_dir("/bin")
+    ///         .spawn()
+    ///         .expect("ls command failed to start");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Command {
         self.inner.cwd(dir.as_ref().as_ref());
@@ -270,6 +361,19 @@ impl Command {
     }
 
     /// Configuration for the child process's stdin handle (file descriptor 0).
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// Command::new("ls")
+    ///         .stdin(Stdio::null())
+    ///         .spawn()
+    ///         .expect("ls command failed to start");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdin(&mut self, cfg: Stdio) -> &mut Command {
         self.inner.stdin(cfg.0);
@@ -277,6 +381,19 @@ impl Command {
     }
 
     /// Configuration for the child process's stdout handle (file descriptor 1).
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// Command::new("ls")
+    ///         .stdout(Stdio::null())
+    ///         .spawn()
+    ///         .expect("ls command failed to start");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdout(&mut self, cfg: Stdio) -> &mut Command {
         self.inner.stdout(cfg.0);
@@ -284,6 +401,19 @@ impl Command {
     }
 
     /// Configuration for the child process's stderr handle (file descriptor 2).
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// Command::new("ls")
+    ///         .stderr(Stdio::null())
+    ///         .spawn()
+    ///         .expect("ls command failed to start");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stderr(&mut self, cfg: Stdio) -> &mut Command {
         self.inner.stderr(cfg.0);
@@ -293,6 +423,18 @@ impl Command {
     /// Executes the command as a child process, returning a handle to it.
     ///
     /// By default, stdin, stdout and stderr are inherited from the parent.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// Command::new("ls")
+    ///         .spawn()
+    ///         .expect("ls command failed to start");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn spawn(&mut self) -> io::Result<Child> {
         self.inner.spawn(imp::Stdio::Inherit, true).map(Child::from_inner)
@@ -308,8 +450,10 @@ impl Command {
     ///
     /// ```should_panic
     /// use std::process::Command;
-    /// let output = Command::new("/bin/cat").arg("file.txt").output()
-    ///     .expect("failed to execute process");
+    /// let output = Command::new("/bin/cat")
+    ///                      .arg("file.txt")
+    ///                      .output()
+    ///                      .expect("failed to execute process");
     ///
     /// println!("status: {}", output.status);
     /// println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
@@ -333,8 +477,10 @@ impl Command {
     /// ```should_panic
     /// use std::process::Command;
     ///
-    /// let status = Command::new("/bin/cat").arg("file.txt").status()
-    ///     .expect("failed to execute process");
+    /// let status = Command::new("/bin/cat")
+    ///                      .arg("file.txt")
+    ///                      .status()
+    ///                      .expect("failed to execute process");
     ///
     /// println!("process exited with: {}", status);
     ///
@@ -469,12 +615,42 @@ impl fmt::Display for ExitStatus {
 impl Child {
     /// Forces the child to exit. This is equivalent to sending a
     /// SIGKILL on unix platforms.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// let mut command = Command::new("yes");
+    /// if let Ok(mut child) = command.spawn() {
+    ///     child.kill().expect("command wasn't running");
+    /// } else {
+    ///     println!("yes command didn't start");
+    /// }
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
         self.handle.kill()
     }
 
     /// Returns the OS-assigned process identifier associated with this child.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// let mut command = Command::new("ls");
+    /// if let Ok(child) = command.spawn() {
+    ///     println!("Child's id is {}", child.id());
+    /// } else {
+    ///     println!("ls command didn't start");
+    /// }
+    /// ```
     #[stable(feature = "process_id", since = "1.3.0")]
     pub fn id(&self) -> u32 {
         self.handle.id()
@@ -488,6 +664,22 @@ impl Child {
     /// before waiting. This helps avoid deadlock: it ensures that the
     /// child does not block waiting for input from the parent, while
     /// the parent waits for the child to exit.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// let mut command = Command::new("ls");
+    /// if let Ok(mut child) = command.spawn() {
+    ///     child.wait().expect("command wasn't running");
+    ///     println!("Child has finished its execution!");
+    /// } else {
+    ///     println!("ls command didn't start");
+    /// }
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         drop(self.stdin.take());
