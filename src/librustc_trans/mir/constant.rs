@@ -140,6 +140,9 @@ enum Base {
     /// A constant value without an unique address.
     Value(ValueRef),
 
+    /// String literal base pointer (cast from array).
+    Str(ValueRef),
+
     /// The address of a static.
     Static(ValueRef)
 }
@@ -156,6 +159,10 @@ impl<'tcx> ConstLvalue<'tcx> {
     fn to_const(&self, span: Span) -> Const<'tcx> {
         match self.base {
             Base::Value(val) => Const::new(val, self.ty),
+            Base::Str(ptr) => {
+                span_bug!(span, "loading from `str` ({:?}) in constant",
+                          Value(ptr))
+            }
             Base::Static(val) => {
                 span_bug!(span, "loading from `static` ({:?}) in constant",
                           Value(val))
@@ -375,6 +382,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         };
                         if self.ccx.statics().borrow().contains_key(&base) {
                             (Base::Static(base), extra)
+                        } else if let ty::TyStr = projected_ty.sty {
+                            (Base::Str(base), extra)
                         } else {
                             let val = consts::load_const(self.ccx, base, projected_ty);
                             if val.is_null() {
@@ -669,6 +678,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             consts::addr_of(self.ccx, llval, align, "ref")
                         }
                     }
+                    Base::Str(llval) |
                     Base::Static(llval) => llval
                 };
 
