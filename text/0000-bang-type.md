@@ -12,10 +12,11 @@ Promote `!` to be a full-fledged type equivalent to an `enum` with no variants.
 To understand the motivation for this it's necessary to understand the concept
 of empty types. An empty type is a type with no inhabitants, ie. a type for
 which there is nothing of that type. For example consider the type `enum Never
-{}`. This type has no constructors and therefore can never be instantiated. It is empty, in the sense that there are no values of type `Never`. Note
-that `Never` is not equivalent to `()` or `struct Foo {}` each of which have
-exactly one inhabitant. Empty types have some interesting properties that may
-be unfamiliar to programmers who have not encountered them before.
+{}`. This type has no constructors and therefore can never be instantiated. It
+is empty, in the sense that there are no values of type `Never`. Note that
+`Never` is not equivalent to `()` or `struct Foo {}` each of which have exactly
+one inhabitant. Empty types have some interesting properties that may be
+unfamiliar to programmers who have not encountered them before.
 
   * They never exist at runtime.
     Because there is no way to create one.
@@ -42,8 +43,9 @@ be unfamiliar to programmers who have not encountered them before.
   * They represent the return type of functions that don't return.
     For a function that never returns, such as `exit`, the set of all values it
     may return is the empty set. That is to say, the type of all values it may
-    return is the type of no inhabitants, ie. `Never` or anything equivalent to
-    it.
+    return is the type of no inhabitants, ie. `Never` or anything isomorphic to
+    it. Similarly, they are the logical type for expressions that never return
+    to their caller such as `break`, `continue` and `return`.
 
   * They can be converted to any other type.
     To specify a function `A -> B` we need to specify a return value in `B` for
@@ -98,8 +100,8 @@ fn wrap_exit() -> Never {
 // we can use a `Never` value to diverge without using unsafe code or calling
 // any diverging intrinsics
 fn diverge_from_never(n: Never) -> ! {
-  match n {
-  }
+    match n {
+    }
 }
 
 fn main() {
@@ -263,6 +265,20 @@ So why do this? AFAICS there are 3 main reasons
     use cases. Doing so would standardise the concept and prevent different
     people reimplementing it under different names.
 
+  * **Better dead code detection**
+
+    Consider the following code:
+
+    ```
+    let t = std::thread::spawn(|| panic!("nope"));
+    t.join().unwrap();
+    println!("hello");
+
+    ```
+    Under this RFC: the closure body gets typed `!` instead of `()`, the `unwrap()`
+    gets typed `!`, and the `println!` will raise a dead code warning. There's no
+    way current rust can detect cases like that.
+
   * **Because it's the correct thing to do.**
 
     The empty type is such a fundamental concept that - given that it already
@@ -326,6 +342,12 @@ written with this RFC's `!` can already be written by swapping out `!` with
 issues for the language (such as making it unsound or complicating the
 compiler) then these issues would already exist for `Never`.
 
+It's also worth noting that the `!` proposed here is *not* the bottom type that
+used to exist in Rust in the very early days. Making `!` a subtype of all types
+would greatly complicate things as it would require, for example, `Vec<!>` be a
+subtype of `Vec<T>`. This `!` is simply an empty type (albeit one that can be
+cast to any other type)
+
 # Detailed design
 
 Add a type `!` to Rust. `!` behaves like an empty enum except that it can be
@@ -352,10 +374,11 @@ match break {
     ()  => 23,  // matching with a `()` forces the match argument to be cast to type `()`
 }
 ```
+These casts can be implemented by having the compiler assign a fresh, diverging
+type variable to any expression of type `!`.
 
-In the compiler, remove the distinctions that treat diverging and converging
-expressions as two different kinds of things (eg. stuff like `FnConverging` vs
-`FnDiverging`). Use the type system to do things like reachability analysis.
+In the compiler, remove the distinction between diverging and converging
+functions. Use the type system to do things like reachability analysis.
 
 Add an implementation for `!` of any trait that it can trivially implement. Add
 methods to `Result<T, !>` and `Result<!, E>` for safely extracting the inner
@@ -378,14 +401,6 @@ Someone would have to implement this.
     but it can be easy to confuse the two.
 
 # Unresolved questions
-
-Apparently, rust used to have something similar to this but it was removed.
-There are still a few references to `ty_bot` in the compiler. Why was this
-taken out? Note that if there any arguments for not having type `!` in the
-language they should apply equally well to `Never`/`Void` so I assume the old
-`ty_bot` was trying to be something crazier than this RFC's `!` (such as a
-subtype of all types, given the name). Could someone who was around back then
-clarify this?
 
 `!` has a unique impl of any trait whose only items are non-static methods. It
 would be nice if there was a way a to automate the creation of these impls.
