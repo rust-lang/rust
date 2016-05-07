@@ -40,7 +40,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.in_scope(extent, block, |this, _| this.into(destination, block, value))
             }
             ExprKind::Block { body: ast_block } => {
-                this.ast_block(destination, block, ast_block)
+                this.ast_block(destination, expr.ty.is_nil(), block, ast_block)
             }
             ExprKind::Match { discriminant, arms } => {
                 this.match_expr(destination, expr_span, block, discriminant, arms)
