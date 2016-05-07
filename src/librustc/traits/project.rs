@@ -40,7 +40,7 @@ use std::rc::Rc;
 pub enum ProjectionMode {
     /// FIXME (#32205)
     /// At coherence-checking time, we're still constructing the
-    /// specialization graph, and thus we only project project
+    /// specialization graph, and thus we only project
     /// non-`default` associated types that are defined directly in
     /// the applicable impl. (This behavior should be improved over
     /// time, to allow for successful projections modulo cycles
