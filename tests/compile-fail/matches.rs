@@ -140,7 +140,7 @@ fn ref_pats() {
         match v {
             //~^ERROR add `&` to all patterns
             //~|HELP instead of
-            //~|SUGGESTION `match *v { .. }`
+            //~|SUGGESTION match *v { .. }
             &Some(v) => println!("{:?}", v),
             &None => println!("none"),
         }
@@ -153,7 +153,7 @@ fn ref_pats() {
     match tup {
         //~^ERROR add `&` to all patterns
         //~|HELP instead of
-        //~|SUGGESTION `match *tup { .. }`
+        //~|SUGGESTION match *tup { .. }
         &(v, 1) => println!("{}", v),
         _ => println!("none"),
     }
@@ -162,7 +162,7 @@ fn ref_pats() {
     match &w {
         //~^ERROR add `&` to both
         //~|HELP try
-        //~|SUGGESTION `match w { .. }`
+        //~|SUGGESTION match w { .. }
         &Some(v) => println!("{:?}", v),
         &None => println!("none"),
     }
@@ -176,7 +176,7 @@ fn ref_pats() {
     if let &None = a {
         //~^ERROR add `&` to all patterns
         //~|HELP instead of
-        //~|SUGGESTION `if let ... = *a { .. }`
+        //~|SUGGESTION if let .. = *a { .. }
         println!("none");
     }
 
@@ -184,7 +184,7 @@ fn ref_pats() {
     if let &None = &b {
         //~^ERROR add `&` to both
         //~|HELP try
-        //~|SUGGESTION `if let ... = b { .. }`
+        //~|SUGGESTION if let .. = b { .. }
         println!("none");
     }
 }

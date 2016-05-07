@@ -16,6 +16,8 @@ fn syntax_error() {
     //~^ERROR: regex syntax error: empty alternate
     let wrong_char_ranice = Regex::new("[z-a]");
     //~^ERROR: regex syntax error: invalid character class range
+    let some_unicode = Regex::new("[é-è]");
+    //~^ERROR: regex syntax error: invalid character class range
 
     let some_regex = Regex::new(OPENING_PAREN);
     //~^ERROR: regex syntax error on position 0: unclosed

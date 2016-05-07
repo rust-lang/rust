@@ -143,14 +143,17 @@ impl LateLintPass for RegexPass {
 
 #[allow(cast_possible_truncation)]
 fn str_span(base: Span, s: &str, c: usize) -> Span {
-    let lo = match s.char_indices().nth(c) {
-        Some((b, _)) => base.lo + BytePos(b as u32),
-        _ => base.hi,
-    };
-    Span {
-        lo: lo,
-        hi: lo,
-        ..base
+    let mut si = s.char_indices().skip(c);
+
+    match (si.next(), si.next())  {
+        (Some((l, _)), Some((h, _))) => {
+            Span {
+                lo: base.lo + BytePos(l as u32),
+                hi: base.lo + BytePos(h as u32),
+                ..base
+            }
+        }
+        _ => base,
     }
 }
 

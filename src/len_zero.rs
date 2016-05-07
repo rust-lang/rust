@@ -113,14 +113,9 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItem]) {
             if is_named_self(i, "len") {
                 let ty = cx.tcx.node_id_to_type(item.id);
 
-                let s = i.span;
                 span_lint(cx,
                           LEN_WITHOUT_IS_EMPTY,
-                          Span {
-                              lo: s.lo,
-                              hi: s.lo,
-                              expn_id: s.expn_id,
-                          },
+                          i.span,
                           &format!("item `{}` has a `.len(_: &Self)` method, but no `.is_empty(_: &Self)` method. \
                                     Consider adding one",
                                    ty));
