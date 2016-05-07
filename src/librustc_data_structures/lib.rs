@@ -28,6 +28,8 @@
 #![feature(nonzero)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
+#![feature(unboxed_closures)]
+#![feature(fn_traits)]
 
 #![cfg_attr(test, feature(test))]
 

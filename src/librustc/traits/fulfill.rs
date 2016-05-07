@@ -314,12 +314,13 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
             }).collect()))
     }
 
-    fn process_backedge(&mut self, cycle: &[Self::Obligation])
+    fn process_backedge<'c, I>(&mut self, cycle: I)
+        where I: Clone + Iterator<Item=*const Self::Obligation>,
     {
-        if coinductive_match(self.selcx, &cycle) {
+        if coinductive_match(self.selcx, cycle.clone()) {
             debug!("process_child_obligations: coinductive match");
         } else {
-            let cycle : Vec<_> = cycle.iter().map(|c| c.obligation.clone()).collect();
+            let cycle : Vec<_> = cycle.map(|c| unsafe { &*c }.obligation.clone()).collect();
             self.selcx.infcx().report_overflow_error_cycle(&cycle);
         }
     }
@@ -535,13 +536,13 @@ fn process_predicate<'a, 'gcx, 'tcx>(
 /// - it also appears in the backtrace at some position `X`; and,
 /// - all the predicates at positions `X..` between `X` an the top are
 ///   also defaulted traits.
-fn coinductive_match<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
-                              cycle: &[PendingPredicateObligation<'tcx>])
-                                     -> bool
+fn coinductive_match<'a,'gcx,'tcx,I>(selcx: &mut SelectionContext<'a,'gcx,'tcx>, cycle: I) -> bool
+    where I: Iterator<Item=*const PendingPredicateObligation<'tcx>>
 {
+    let mut cycle = cycle;
     cycle
-        .iter()
         .all(|bt_obligation| {
+            let bt_obligation = unsafe { &*bt_obligation };
             let result = coinductive_obligation(selcx, &bt_obligation.obligation);
             debug!("coinductive_match: bt_obligation={:?} coinductive={}",
                    bt_obligation, result);
@@ -549,7 +550,7 @@ fn coinductive_match<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tcx
         })
 }
 
-fn coinductive_obligation<'a, 'gcx, 'tcx>(selcx: &SelectionContext<'a, 'gcx, 'tcx>,
+fn coinductive_obligation<'a,'gcx,'tcx>(selcx: &SelectionContext<'a,'gcx,'tcx>,
                                           obligation: &PredicateObligation<'tcx>)
                                           -> bool {
     match obligation.predicate {
