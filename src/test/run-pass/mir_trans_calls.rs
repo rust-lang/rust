@@ -138,6 +138,15 @@ fn test_fn_nil_call<F>(f: &F) -> i32
     f()
 }
 
+#[rustc_mir]
+fn test_fn_transmute_zst(x: ()) -> [(); 1] {
+    fn id<T>(x: T) -> T {x}
+
+    id(unsafe {
+        std::mem::transmute(x)
+    })
+}
+
 fn main() {
     assert_eq!(test1(1, (2, 3), &[4, 5, 6]), (1, (2, 3), &[4, 5, 6][..]));
     assert_eq!(test2(98), 98);
@@ -159,4 +168,5 @@ fn main() {
     assert_eq!(test_fn_direct_call(&closure, 100, 4), 324);
 
     assert_eq!(test_fn_nil_call(&(|| 42)), 42);
+    assert_eq!(test_fn_transmute_zst(()), [()]);
 }
