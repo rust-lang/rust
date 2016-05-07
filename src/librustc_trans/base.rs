@@ -2249,8 +2249,10 @@ pub fn update_linkage(ccx: &CrateContext,
     }
 }
 
-fn set_global_section(ccx: &CrateContext, llval: ValueRef, i: &hir::Item) {
-    if let Some(sect) = attr::first_attr_value_str_by_name(&i.attrs, "link_section") {
+pub fn set_link_section(ccx: &CrateContext,
+                        llval: ValueRef,
+                        attrs: &[ast::Attribute]) {
+    if let Some(sect) = attr::first_attr_value_str_by_name(attrs, "link_section") {
         if contains_null(&sect) {
             ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`", &sect));
         }
@@ -2280,7 +2282,7 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                     let empty_substs = ccx.empty_substs_for_def_id(def_id);
                     let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
                     trans_fn(ccx, &decl, &body, llfn, empty_substs, item.id);
-                    set_global_section(ccx, llfn, item);
+                    set_link_section(ccx, llfn, &item.attrs);
                     update_linkage(ccx,
                                    llfn,
                                    Some(item.id),
@@ -2336,13 +2338,9 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                 enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
             }
         }
-        hir::ItemStatic(_, m, ref expr) => {
-            let g = match consts::trans_static(ccx, m, expr, item.id, &item.attrs) {
-                Ok(g) => g,
-                Err(err) => ccx.tcx().sess.span_fatal(expr.span, &err.description()),
-            };
-            set_global_section(ccx, g, item);
-            update_linkage(ccx, g, Some(item.id), OriginalTranslation);
+        hir::ItemStatic(..) => {
+            // Don't do anything here. Translation of statics has been moved to
+            // being "collector-driven".
         }
         _ => {}
     }
@@ -2700,6 +2698,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let codegen_units = collect_and_partition_translation_items(&shared_ccx);
     let codegen_unit_count = codegen_units.len();
+
     assert!(tcx.sess.opts.cg.codegen_units == codegen_unit_count ||
             tcx.sess.opts.debugging_opts.incremental.is_some());
 
@@ -2721,6 +2720,33 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             no_builtins: no_builtins,
             linker_info: linker_info
         };
+    }
+
+    // Instantiate translation items without filling out definitions yet...
+    for ccx in crate_context_list.iter() {
+        for (&trans_item, &linkage) in &ccx.codegen_unit().items {
+            trans_item.predefine(&ccx, linkage);
+        }
+    }
+
+    // ... and now that we have everything pre-defined, fill out those definitions.
+    for ccx in crate_context_list.iter() {
+        for (&trans_item, _) in &ccx.codegen_unit().items {
+            match trans_item {
+                TransItem::Static(node_id) => {
+                    let item = ccx.tcx().map.expect_item(node_id);
+                    if let hir::ItemStatic(_, m, ref expr) = item.node {
+                        match consts::trans_static(&ccx, m, expr, item.id, &item.attrs) {
+                            Ok(_) => { /* Cool, everything's alright. */ },
+                            Err(err) => ccx.tcx().sess.span_fatal(expr.span, &err.description()),
+                        };
+                    } else {
+                        span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
+                    }
+                }
+                _ => { }
+            }
+        }
     }
 
     {
