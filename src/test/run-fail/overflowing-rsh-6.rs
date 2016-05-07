@@ -16,8 +16,6 @@
 #![warn(exceeding_bitshifts)]
 #![feature(const_indexing)]
 
-#![feature(rustc_attrs)]
-#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     let _n = 1i64 >> [64][0];
 }

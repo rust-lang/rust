@@ -11,7 +11,6 @@
 // these errors are not actually "const_err", they occur in trans/consts
 // and are unconditional warnings that can't be denied or allowed
 
-#![feature(rustc_attrs)]
 #![allow(exceeding_bitshifts)]
 #![allow(const_err)]
 
@@ -19,7 +18,6 @@ fn black_box<T>(_: T) {
     unimplemented!()
 }
 
-#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     let a = -std::i8::MIN;
     //~^ WARN attempted to negate with overflow
