@@ -15,14 +15,21 @@
 
 .PHONY: TAGS.emacs TAGS.vi
 
-CTAGS_LOCATIONS=$(wildcard ${CFG_SRC_DIR}src/lib*)
+CTAGS_RUSTC_LOCATIONS=$(patsubst ${CFG_SRC_DIR}src/lib%test,, \
+				$(wildcard ${CFG_SRC_DIR}src/lib*)) ${CFG_SRC_DIR}src/libtest
 CTAGS_LOCATIONS=$(patsubst ${CFG_SRC_DIR}src/librust%,, \
                 $(patsubst ${CFG_SRC_DIR}src/lib%test,, \
 				$(wildcard ${CFG_SRC_DIR}src/lib*))) ${CFG_SRC_DIR}src/libtest
-CTAGS_OPTS=--options="${CFG_SRC_DIR}src/etc/ctags.rust" --languages=Rust --recurse ${CTAGS_LOCATIONS}
+CTAGS_OPTS=--options="${CFG_SRC_DIR}src/etc/ctags.rust" --languages=Rust --recurse
+
+TAGS.rustc.emacs:
+	ctags -e -f $@ ${CTAGS_OPTS} ${CTAGS_RUSTC_LOCATIONS}
 
 TAGS.emacs:
-	ctags -e -f $@ ${CTAGS_OPTS}
+	ctags -e -f $@ ${CTAGS_OPTS} ${CTAGS_LOCATIONS}
+
+TAGS.rustc.vi:
+	ctags -f $@ ${CTAGS_OPTS} ${CTAGS_RUSTC_LOCATIONS}
 
 TAGS.vi:
-	ctags -f $@ ${CTAGS_OPTS}
+	ctags -f $@ ${CTAGS_OPTS} ${CTAGS_LOCATIONS}
