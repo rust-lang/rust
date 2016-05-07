@@ -89,7 +89,7 @@ impl Ipv4Addr {
 
     /// Returns true if this is a loopback address (127.0.0.0/8).
     ///
-    /// This property is defined by RFC 6890
+    /// This property is defined by RFC 6890.
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_loopback(&self) -> bool {
         self.octets()[0] == 127
@@ -97,7 +97,7 @@ impl Ipv4Addr {
 
     /// Returns true if this is a private address.
     ///
-    /// The private address ranges are defined in RFC1918 and include:
+    /// The private address ranges are defined in RFC 1918 and include:
     ///
     ///  - 10.0.0.0/8
     ///  - 172.16.0.0/12
@@ -114,7 +114,7 @@ impl Ipv4Addr {
 
     /// Returns true if the address is link-local (169.254.0.0/16).
     ///
-    /// This property is defined by RFC 6890
+    /// This property is defined by RFC 6890.
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_link_local(&self) -> bool {
         self.octets()[0] == 169 && self.octets()[1] == 254
@@ -140,7 +140,7 @@ impl Ipv4Addr {
     /// Returns true if this is a multicast address.
     ///
     /// Multicast addresses have a most significant octet between 224 and 239,
-    /// and is defined by RFC 5771
+    /// and is defined by RFC 5771.
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_multicast(&self) -> bool {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
@@ -354,7 +354,7 @@ impl Ipv6Addr {
 
     /// Returns true if this is a unique local address (IPv6).
     ///
-    /// Unique local addresses are defined in RFC4193 and have the form fc00::/7.
+    /// Unique local addresses are defined in RFC 4193 and have the form fc00::/7.
     pub fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
@@ -371,7 +371,7 @@ impl Ipv6Addr {
     }
 
     /// Returns true if this is an address reserved for documentation
-    /// This is defined to be 2001:db8::/32 in RFC RFC 3849
+    /// This is defined to be 2001:db8::/32 in RFC 3849.
     pub fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
     }

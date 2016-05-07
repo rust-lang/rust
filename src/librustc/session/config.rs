@@ -1355,7 +1355,7 @@ pub mod nightly_options {
                     early_error(ErrorOutputType::default(), &msg);
                 }
                 OptionStability::UnstableButNotReally => {
-                    let msg = format!("the option `{}` is is unstable and should \
+                    let msg = format!("the option `{}` is unstable and should \
                                        only be used on the nightly compiler, but \
                                        it is currently accepted for backwards \
                                        compatibility; this will soon change, \

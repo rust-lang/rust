@@ -202,7 +202,7 @@ pub struct TargetOptions {
     pub post_link_args: Vec<String>,
 
     /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
-    /// to "default".
+    /// to "generic".
     pub cpu: String,
     /// Default target features to pass to LLVM. These features will *always* be
     /// passed, and cannot be disabled even via `-C`. Corresponds to `llc

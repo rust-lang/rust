@@ -286,6 +286,70 @@ You can read more about cell types in the API documentation:
 https://doc.rust-lang.org/std/cell/
 "##,
 
+E0389: r##"
+An attempt was made to mutate data using a non-mutable reference. This
+commonly occurs when attempting to assign to a non-mutable reference of a
+mutable reference (`&(&mut T)`).
+
+Example of erroneous code:
+
+```compile_fail
+struct FancyNum {
+    num: u8
+}
+
+fn main() {
+    let mut fancy = FancyNum{ num: 5 };
+    let fancy_ref = &(&mut fancy);
+    fancy_ref.num = 6; // error: cannot assign to data in a `&` reference
+    println!("{}", fancy_ref.num);
+}
+```
+
+Here, `&mut fancy` is mutable, but `&(&mut fancy)` is not. Creating an
+immutable reference to a value borrows it immutably. There can be multiple
+references of type `&(&mut T)` that point to the same value, so they must be
+immutable to prevent multiple mutable references to the same value.
+
+To fix this, either remove the outer reference:
+
+```
+struct FancyNum {
+    num: u8
+}
+
+fn main() {
+    let mut fancy = FancyNum{ num: 5 };
+
+    let fancy_ref = &mut fancy;
+    // `fancy_ref` is now &mut FancyNum, rather than &(&mut FancyNum)
+
+    fancy_ref.num = 6; // No error!
+
+    println!("{}", fancy_ref.num);
+}
+```
+
+Or make the outer reference mutable:
+
+```
+struct FancyNum {
+    num: u8
+}
+
+fn main() {
+    let mut fancy = FancyNum{ num: 5 };
+
+    let fancy_ref = &mut (&mut fancy);
+    // `fancy_ref` is now &mut(&mut FancyNum), rather than &(&mut FancyNum)
+
+    fancy_ref.num = 6; // No error!
+
+    println!("{}", fancy_ref.num);
+}
+```
+"##,
+
 E0499: r##"
 A variable was borrowed as mutable more than once. Erroneous code example:
 
@@ -386,6 +450,90 @@ fn foo(a: &mut i32) {
     let bar = || {
         inside_closure(a)
     };
+}
+```
+"##,
+
+E0506: r##"
+This error occurs when an attempt is made to assign to a borrowed value.
+
+Example of erroneous code:
+
+```compile_fail
+struct FancyNum {
+    num: u8
+}
+
+fn main() {
+    let mut fancy_num = FancyNum { num: 5 };
+    let fancy_ref = &fancy_num;
+    fancy_num = FancyNum { num: 6 };
+    // error: cannot assign to `fancy_num` because it is borrowed
+
+    println!("Num: {}, Ref: {}", fancy_num.num, fancy_ref.num);
+}
+```
+
+Because `fancy_ref` still holds a reference to `fancy_num`, `fancy_num` can't
+be assigned to a new value as it would invalidate the reference.
+
+Alternatively, we can move out of `fancy_num` into a second `fancy_num`:
+
+```
+struct FancyNum {
+    num: u8
+}
+
+fn main() {
+    let mut fancy_num = FancyNum { num: 5 };
+    let moved_num = fancy_num;
+    fancy_num = FancyNum { num: 6 };
+
+    println!("Num: {}, Moved num: {}", fancy_num.num, moved_num.num);
+}
+```
+
+If the value has to be borrowed, try limiting the lifetime of the borrow using
+a scoped block:
+
+```
+struct FancyNum {
+    num: u8
+}
+
+fn main() {
+    let mut fancy_num = FancyNum { num: 5 };
+
+    {
+        let fancy_ref = &fancy_num;
+        println!("Ref: {}", fancy_ref.num);
+    }
+
+    // Works because `fancy_ref` is no longer in scope
+    fancy_num = FancyNum { num: 6 };
+    println!("Num: {}", fancy_num.num);
+}
+```
+
+Or by moving the reference into a function:
+
+```
+struct FancyNum {
+    num: u8
+}
+
+fn main() {
+    let mut fancy_num = FancyNum { num: 5 };
+
+    print_fancy_ref(&fancy_num);
+
+    // Works because function borrow has ended
+    fancy_num = FancyNum { num: 6 };
+    println!("Num: {}", fancy_num.num);
+}
+
+fn print_fancy_ref(fancy_ref: &FancyNum){
+    println!("Ref: {}", fancy_ref.num);
 }
 ```
 "##,
@@ -510,13 +658,11 @@ http://doc.rust-lang.org/stable/book/references-and-borrowing.html
 register_diagnostics! {
     E0385, // {} in an aliasable location
     E0388, // {} in a static location
-    E0389, // {} in a `&` reference
     E0500, // closure requires unique access to `..` but .. is already borrowed
     E0502, // cannot borrow `..`.. as .. because .. is also borrowed as ...
     E0503, // cannot use `..` because it was mutably borrowed
     E0504, // cannot move `..` into closure because it is borrowed
     E0505, // cannot move out of `..` because it is borrowed
-    E0506, // cannot assign to `..` because it is borrowed
     E0508, // cannot move out of type `..`, a non-copy fixed-size array
     E0509, // cannot move out of type `..`, which defines the `Drop` trait
     E0524, // two closures require unique access to `..` at the same time
