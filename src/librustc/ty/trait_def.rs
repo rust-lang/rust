@@ -176,7 +176,7 @@ impl<'tcx> TraitDef<'tcx> {
     /// Records a trait-to-implementation mapping for a non-local impl.
     ///
     /// The `parent_impl` is the immediately-less-specialized impl, or the
-    /// trait's def ID if the impl is is not a specialization -- information that
+    /// trait's def ID if the impl is not a specialization -- information that
     /// should be pulled from the metadata.
     pub fn record_remote_impl(&self,
                               tcx: &TyCtxt<'tcx>,

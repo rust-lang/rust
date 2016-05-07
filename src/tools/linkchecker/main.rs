@@ -110,7 +110,7 @@ fn walk(cache: &mut Cache,
             if let Some(pretty_path) = pretty_path {
                 let entry = cache.get_mut(&pretty_path).unwrap();
                 // we don't need the source anymore,
-                // so drop to to reduce memory-usage
+                // so drop to reduce memory-usage
                 entry.source = String::new();
             }
         }

@@ -54,7 +54,7 @@ pub unsafe fn setup() {
 
     // Indicate that when all handles to the job object are gone that all
     // process in the object should be killed. Note that this includes our
-    // entire process tree by default because we've added ourselves and and our
+    // entire process tree by default because we've added ourselves and our
     // children will reside in the job by default.
     let mut info = mem::zeroed::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>();
     info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
