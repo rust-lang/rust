@@ -311,6 +311,14 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    pub fn level(&self) -> Level {
+        self.level
+    }
+
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
     fn new(emitter: &'a RefCell<Box<Emitter>>,
