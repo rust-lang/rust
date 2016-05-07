@@ -16,6 +16,8 @@ use rustc::hir;
 impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn ast_block(&mut self,
                      destination: &Lvalue<'tcx>,
+                     // FIXME(#32959): temporary measure for the issue
+                     dest_is_unit: bool,
                      mut block: BasicBlock,
                      ast_block: &'tcx hir::Block)
                      -> BlockAnd<()> {
@@ -66,7 +68,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             // of the block.
             if let Some(expr) = expr {
                 unpack!(block = this.into(destination, block, expr));
-            } else {
+            } else if dest_is_unit {
                 // FIXME(#31472)
                 let scope_id = this.innermost_scope_id();
                 this.cfg.push_assign_unit(block, scope_id, span, destination);
