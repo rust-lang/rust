@@ -22,7 +22,7 @@ rustc_unicode = { path = "../librustc_unicode" }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
-gcc = "0.3"
+gcc = "0.3.27"
 
 [features]
 jemalloc = ["alloc_jemalloc"]

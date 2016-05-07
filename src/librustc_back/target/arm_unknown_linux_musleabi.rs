@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,17 +12,21 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::musl_base::opts();
-    base.cpu = "x86-64".to_string();
-    base.pre_link_args.push("-m64".to_string());
 
+    // Most of these settings are copied from the arm_unknown_linux_gnueabi
+    // target.
+    base.features = "+v6".to_string();
     Target {
-        llvm_target: "x86_64-unknown-linux-musl".to_string(),
+        // It's important we use "gnueabi" and not "musleabi" here. LLVM uses it
+        // to determine the calling convention and float ABI, and it doesn't
+        // support the "musleabi" value.
+        llvm_target: "arm-unknown-linux-gnueabi".to_string(),
         target_endian: "little".to_string(),
-        target_pointer_width: "64".to_string(),
-        data_layout: "e-m:e-i64:64-f80:128-n8:16:32:64-S128".to_string(),
-        arch: "x86_64".to_string(),
+        target_pointer_width: "32".to_string(),
+        data_layout: "e-m:e-p:32:32-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
+        arch: "arm".to_string(),
         target_os: "linux".to_string(),
-        target_env: "musl".to_string(),
+        target_env: "musleabi".to_string(),
         target_vendor: "unknown".to_string(),
         options: base,
     }

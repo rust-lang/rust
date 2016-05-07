@@ -103,7 +103,9 @@ pub type _Unwind_Exception_Cleanup_Fn =
         extern "C" fn(unwind_code: _Unwind_Reason_Code,
                       exception: *mut _Unwind_Exception);
 
-#[cfg_attr(any(all(target_os = "linux", not(target_env = "musl")),
+#[cfg_attr(any(all(target_os = "linux", not(any(target_env = "musl",
+                                                target_env = "musleabi",
+                                                target_env = "musleabihf"))),
                target_os = "freebsd",
                target_os = "solaris",
                all(target_os = "linux",
@@ -112,8 +114,9 @@ pub type _Unwind_Exception_Cleanup_Fn =
                    not(target_arch = "x86_64"))),
            link(name = "gcc_s"))]
 #[cfg_attr(all(target_os = "linux",
-               target_env = "musl",
-               any(target_arch = "x86", target_arch = "x86_64"),
+               any(all(target_env = "musl", any(target_arch = "x86", target_arch = "x86_64")),
+                   target_env = "musleabi",
+                   target_env = "musleabihf"),
                not(test)),
            link(name = "unwind", kind = "static"))]
 #[cfg_attr(any(target_os = "android", target_os = "openbsd"),
