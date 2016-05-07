@@ -14,3 +14,5 @@ pub mod erase_regions;
 pub mod no_landing_pads;
 pub mod type_check;
 pub mod break_critical_edges;
+pub mod promote_consts;
+pub mod qualify_consts;
