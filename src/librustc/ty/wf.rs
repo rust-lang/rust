@@ -272,7 +272,7 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
     /// into `self.out`.
     fn compute_projection(&mut self, data: ty::ProjectionTy<'tcx>) {
         // A projection is well-formed if (a) the trait ref itself is
-        // WF WF and (b) the trait-ref holds.  (It may also be
+        // WF and (b) the trait-ref holds.  (It may also be
         // normalizable and be WF that way.)
 
         self.compute_trait_ref(&data.trait_ref);
