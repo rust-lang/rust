@@ -419,8 +419,8 @@ impl<T> [T] {
     ///
     /// ```rust
     /// let v = &[1, 2, 3, 4, 5];
-    /// for win in v.chunks(2) {
-    ///     println!("{:?}", win);
+    /// for chunk in v.chunks(2) {
+    ///     println!("{:?}", chunk);
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

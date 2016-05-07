@@ -176,6 +176,9 @@ pub fn main(swap_in: Receiver<Vec<DepMessage>>,
                 DepMessage::Query => query_out.send(edges.query()).unwrap(),
             }
         }
-        swap_out.send(messages).unwrap();
+        if let Err(_) = swap_out.send(messages) {
+            // the receiver must have been dropped already
+            break;
+        }
     }
 }

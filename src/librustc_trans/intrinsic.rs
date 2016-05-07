@@ -1327,7 +1327,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     //          %ret = call i32 @the_real_filter_function(%ehptrs, %arg)
     //          ret i32 %ret
     //
-    // The recoverfp intrinsic is used to recover the frame frame pointer of the
+    // The recoverfp intrinsic is used to recover the frame pointer of the
     // `rust_try_fn` function, which is then in turn passed to the
     // `localrecover` intrinsic (pairing with the `localescape` intrinsic
     // mentioned above). Putting all this together means that we now have a
