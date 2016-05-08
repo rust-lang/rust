@@ -17,7 +17,9 @@
 //! internally. The `IndependentSample` trait is for generating values
 //! that do not need to record state.
 
+#[cfg(not(test))] // only necessary for no_std
 use core::num::Float;
+
 use core::marker::PhantomData;
 
 use {Rng, Rand};

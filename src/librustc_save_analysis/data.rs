@@ -13,8 +13,6 @@
 //! The `Dump` trait can be used together with `DumpVisitor` in order to
 //! retrieve the data from a crate.
 
-use std::hash::Hasher;
-
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use syntax::ast::{CrateNum, NodeId};

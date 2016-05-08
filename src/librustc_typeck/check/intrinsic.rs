@@ -11,18 +11,15 @@
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
-use astconv::AstConv;
 use intrinsics;
 use rustc::ty::subst::{self, Substs};
 use rustc::ty::FnSig;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::fold::TypeFolder;
 use {CrateCtxt, require_same_types};
 
 use std::collections::{HashMap};
 use syntax::abi::Abi;
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::parse::token;
 

@@ -10,7 +10,7 @@
 
 use self::Destination::*;
 
-use codemap::{self, COMMAND_LINE_SP, DUMMY_SP, Pos, Span, MultiSpan};
+use codemap::{self, COMMAND_LINE_SP, DUMMY_SP, Span, MultiSpan};
 use diagnostics;
 
 use errors::check_old_skool;
