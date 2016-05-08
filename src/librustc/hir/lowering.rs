@@ -775,6 +775,16 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_method_sig(&mut self, sig: &MethodSig) -> hir::MethodSig {
+        // Check for `self: _` and `self: &_`
+        if let SelfKind::Explicit(ref ty, _) = sig.explicit_self.node {
+            match sig.decl.inputs.get(0).and_then(Arg::to_self).map(|eself| eself.node) {
+                Some(SelfKind::Value(..)) | Some(SelfKind::Region(..)) => {
+                    self.id_assigner.diagnostic().span_err(ty.span,
+                        "the type placeholder `_` is not allowed within types on item signatures");
+                }
+                _ => {}
+            }
+        }
         hir::MethodSig {
             generics: self.lower_generics(&sig.generics),
             abi: sig.abi,
