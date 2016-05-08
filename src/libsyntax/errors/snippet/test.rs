@@ -519,3 +519,41 @@ fn span_overlap_label3() {
   |>            ----- bar
 "#[1..]);
 }
+
+#[test]
+fn span_empty() {
+    // In one of the unit tests, we found that the parser sometimes
+    // gives empty spans, and in particular it supplied an EOF span
+    // like this one, which points at the very end. We want to
+    // fallback gracefully in this case.
+
+    let file_text = r#"
+fn main() {
+    struct Foo;
+
+    impl !Sync for Foo {}
+
+    unsafe impl Send for &'static Foo {
+    // error: cross-crate traits with a default impl, like `core::marker::Send`,
+    //        can only be implemented for a struct/enum type, not
+    //        `&'static Foo`
+}"#;
+
+
+    let cm = Rc::new(CodeMap::new());
+    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+
+    let mut rbrace_span = cm.span_substr(&foo, file_text, "}", 1);
+    rbrace_span.lo = rbrace_span.hi;
+
+    let mut snippet = SnippetData::new(cm.clone(), Some(rbrace_span));
+    snippet.push(rbrace_span, false, None);
+    let lines = snippet.render_lines();
+    let text: String = make_string(&lines);
+    println!("r#\"\n{}\"", text);
+    assert_eq!(text, &r#"
+  --> foo.rs:11:2
+11 |> }
+   |>  -
+"#[1..]);
+}
