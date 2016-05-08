@@ -15,7 +15,7 @@
 
 use char::CharExt;
 use cmp::PartialOrd;
-use convert::From;
+use convert::{From, TryFrom};
 use fmt;
 use intrinsics;
 use marker::{Copy, Sized};
@@ -2352,9 +2352,101 @@ macro_rules! from_str_radix_int_impl {
 }
 from_str_radix_int_impl! { isize i8 i16 i32 i64 usize u8 u16 u32 u64 }
 
+/// The error type returned when a checked integral type conversion fails.
+#[unstable(feature = "try_from", issue = "33417")]
+#[derive(Debug, Copy, Clone)]
+pub struct TryFromIntError(());
+
+impl TryFromIntError {
+    #[unstable(feature = "int_error_internals",
+               reason = "available through Error trait and this method should \
+                         not be exposed publicly",
+               issue = "0")]
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
+        "out of range integral type conversion attempted"
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl fmt::Display for TryFromIntError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.__description().fmt(fmt)
+    }
+}
+
+macro_rules! same_sign_from_int_impl {
+    ($storage:ty, $target:ty, $($source:ty),*) => {$(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl TryFrom<$source> for $target {
+            type Err = TryFromIntError;
+
+            fn try_from(u: $source) -> Result<$target, TryFromIntError> {
+                let min = <$target as FromStrRadixHelper>::min_value() as $storage;
+                let max = <$target as FromStrRadixHelper>::max_value() as $storage;
+                if u as $storage < min || u as $storage > max {
+                    Err(TryFromIntError(()))
+                } else {
+                    Ok(u as $target)
+                }
+            }
+        }
+    )*}
+}
+
+same_sign_from_int_impl!(u64, u8, u8, u16, u32, u64, usize);
+same_sign_from_int_impl!(i64, i8, i8, i16, i32, i64, isize);
+same_sign_from_int_impl!(u64, u16, u8, u16, u32, u64, usize);
+same_sign_from_int_impl!(i64, i16, i8, i16, i32, i64, isize);
+same_sign_from_int_impl!(u64, u32, u8, u16, u32, u64, usize);
+same_sign_from_int_impl!(i64, i32, i8, i16, i32, i64, isize);
+same_sign_from_int_impl!(u64, u64, u8, u16, u32, u64, usize);
+same_sign_from_int_impl!(i64, i64, i8, i16, i32, i64, isize);
+same_sign_from_int_impl!(u64, usize, u8, u16, u32, u64, usize);
+same_sign_from_int_impl!(i64, isize, i8, i16, i32, i64, isize);
+
+macro_rules! cross_sign_from_int_impl {
+    ($unsigned:ty, $($signed:ty),*) => {$(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl TryFrom<$unsigned> for $signed {
+            type Err = TryFromIntError;
+
+            fn try_from(u: $unsigned) -> Result<$signed, TryFromIntError> {
+                let max = <$signed as FromStrRadixHelper>::max_value() as u64;
+                if u as u64 > max {
+                    Err(TryFromIntError(()))
+                } else {
+                    Ok(u as $signed)
+                }
+            }
+        }
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl TryFrom<$signed> for $unsigned {
+            type Err = TryFromIntError;
+
+            fn try_from(u: $signed) -> Result<$unsigned, TryFromIntError> {
+                let max = <$unsigned as FromStrRadixHelper>::max_value() as u64;
+                if u < 0 || u as u64 > max {
+                    Err(TryFromIntError(()))
+                } else {
+                    Ok(u as $unsigned)
+                }
+            }
+        }
+    )*}
+}
+
+cross_sign_from_int_impl!(u8, i8, i16, i32, i64, isize);
+cross_sign_from_int_impl!(u16, i8, i16, i32, i64, isize);
+cross_sign_from_int_impl!(u32, i8, i16, i32, i64, isize);
+cross_sign_from_int_impl!(u64, i8, i16, i32, i64, isize);
+cross_sign_from_int_impl!(usize, i8, i16, i32, i64, isize);
+
 #[doc(hidden)]
 trait FromStrRadixHelper: PartialOrd + Copy {
     fn min_value() -> Self;
+    fn max_value() -> Self;
     fn from_u32(u: u32) -> Self;
     fn checked_mul(&self, other: u32) -> Option<Self>;
     fn checked_sub(&self, other: u32) -> Option<Self>;
@@ -2364,6 +2456,7 @@ trait FromStrRadixHelper: PartialOrd + Copy {
 macro_rules! doit {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
         fn min_value() -> Self { Self::min_value() }
+        fn max_value() -> Self { Self::max_value() }
         fn from_u32(u: u32) -> Self { u as Self }
         fn checked_mul(&self, other: u32) -> Option<Self> {
             Self::checked_mul(*self, other as Self)
