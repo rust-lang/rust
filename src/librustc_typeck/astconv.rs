@@ -75,7 +75,7 @@ use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token::{self, keywords};
 
 use rustc::hir::print as pprust;
-use rustc::hir;
+use rustc::hir::{self, SelfKind};
 use rustc_back::slice;
 
 pub trait AstConv<'gcx, 'tcx> {
@@ -164,11 +164,6 @@ struct ConvertedBinding<'tcx> {
     item_name: ast::Name,
     ty: Ty<'tcx>,
     span: Span,
-}
-
-struct SelfInfo<'a, 'tcx> {
-    untransformed_self_ty: Ty<'tcx>,
-    explicit_self: &'a hir::ExplicitSelf,
 }
 
 type TraitAndProjections<'tcx> = (ty::PolyTraitRef<'tcx>, Vec<ty::PolyProjectionPredicate<'tcx>>);
@@ -1719,33 +1714,28 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         sig: &hir::MethodSig,
                         untransformed_self_ty: Ty<'tcx>)
                         -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory) {
-        let self_info = Some(SelfInfo {
-            untransformed_self_ty: untransformed_self_ty,
-            explicit_self: &sig.explicit_self,
-        });
         let (bare_fn_ty, optional_explicit_self_category) =
             self.ty_of_method_or_bare_fn(sig.unsafety,
                                          sig.abi,
-                                         self_info,
+                                         Some(untransformed_self_ty),
                                          &sig.decl);
-        (bare_fn_ty, optional_explicit_self_category.unwrap())
+        (bare_fn_ty, optional_explicit_self_category)
     }
 
     pub fn ty_of_bare_fn(&self,
-                         unsafety: hir::Unsafety, abi: abi::Abi,
+                         unsafety: hir::Unsafety,
+                         abi: abi::Abi,
                          decl: &hir::FnDecl)
                          -> &'tcx ty::BareFnTy<'tcx> {
-        let (bare_fn_ty, _) = self.ty_of_method_or_bare_fn(unsafety, abi, None, decl);
-        bare_fn_ty
+        self.ty_of_method_or_bare_fn(unsafety, abi, None, decl).0
     }
 
     fn ty_of_method_or_bare_fn<'a>(&self,
                                    unsafety: hir::Unsafety,
                                    abi: abi::Abi,
-                                   opt_self_info: Option<SelfInfo<'a, 'tcx>>,
+                                   opt_untransformed_self_ty: Option<Ty<'tcx>>,
                                    decl: &hir::FnDecl)
-                                   -> (&'tcx ty::BareFnTy<'tcx>,
-                                       Option<ty::ExplicitSelfCategory>)
+                                   -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory)
     {
         debug!("ty_of_method_or_bare_fn");
 
@@ -1758,9 +1748,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // lifetime elision, we can determine it in two ways. First (determined
         // here), if self is by-reference, then the implied output region is the
         // region of the self parameter.
-        let (self_ty, explicit_self_category) = match opt_self_info {
-            None => (None, None),
-            Some(self_info) => self.determine_self_type(&rb, self_info)
+        let explicit_self = decl.inputs.get(0).and_then(hir::Arg::to_self);
+        let (self_ty, explicit_self_category) = match (opt_untransformed_self_ty, explicit_self) {
+            (Some(untransformed_self_ty), Some(explicit_self)) => {
+                let self_type = self.determine_self_type(&rb, untransformed_self_ty,
+                                                         &explicit_self);
+                (Some(self_type.0), self_type.1)
+            }
+            _ => (None, ty::ExplicitSelfCategory::Static),
         };
 
         // HACK(eddyb) replace the fake self type in the AST with the actual type.
@@ -1778,7 +1773,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // reference) in the arguments, then any anonymous regions in the output
         // have that lifetime.
         let implied_output_region = match explicit_self_category {
-            Some(ty::ExplicitSelfCategory::ByReference(region, _)) => Ok(region),
+            ty::ExplicitSelfCategory::ByReference(region, _) => Ok(region),
             _ => self.find_implied_output_region(&arg_tys, arg_pats)
         };
 
@@ -1803,29 +1798,29 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     fn determine_self_type<'a>(&self,
                                rscope: &RegionScope,
-                               self_info: SelfInfo<'a, 'tcx>)
-                               -> (Option<Ty<'tcx>>, Option<ty::ExplicitSelfCategory>)
+                               untransformed_self_ty: Ty<'tcx>,
+                               explicit_self: &hir::ExplicitSelf)
+                               -> (Ty<'tcx>, ty::ExplicitSelfCategory)
     {
-        let self_ty = self_info.untransformed_self_ty;
-        return match self_info.explicit_self.node {
-            hir::SelfStatic => (None, Some(ty::ExplicitSelfCategory::Static)),
-            hir::SelfValue(_) => {
-                (Some(self_ty), Some(ty::ExplicitSelfCategory::ByValue))
+        return match explicit_self.node {
+            SelfKind::Value(..) => {
+                (untransformed_self_ty, ty::ExplicitSelfCategory::ByValue)
             }
-            hir::SelfRegion(ref lifetime, mutability, _) => {
+            SelfKind::Region(ref lifetime, mutability) => {
                 let region =
-                    self.opt_ast_region_to_region(rscope,
-                                                  self_info.explicit_self.span,
-                                                  lifetime);
-                (Some(self.tcx().mk_ref(
+                    self.opt_ast_region_to_region(
+                                             rscope,
+                                             explicit_self.span,
+                                             lifetime);
+                (self.tcx().mk_ref(
                     self.tcx().mk_region(region),
                     ty::TypeAndMut {
-                        ty: self_ty,
+                        ty: untransformed_self_ty,
                         mutbl: mutability
-                    })),
-                 Some(ty::ExplicitSelfCategory::ByReference(region, mutability)))
+                    }),
+                 ty::ExplicitSelfCategory::ByReference(region, mutability))
             }
-            hir::SelfExplicit(ref ast_type, _) => {
+            SelfKind::Explicit(ref ast_type, _) => {
                 let explicit_type = self.ast_ty_to_ty(rscope, &ast_type);
 
                 // We wish to (for now) categorize an explicit self
@@ -1857,13 +1852,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // type has two, so we end up with
                 // ExplicitSelfCategory::ByReference.
 
-                let impl_modifiers = count_modifiers(self_info.untransformed_self_ty);
+                let impl_modifiers = count_modifiers(untransformed_self_ty);
                 let method_modifiers = count_modifiers(explicit_type);
 
                 debug!("determine_explicit_self_category(self_info.untransformed_self_ty={:?} \
                        explicit_type={:?} \
                        modifiers=({},{})",
-                       self_info.untransformed_self_ty,
+                       untransformed_self_ty,
                        explicit_type,
                        impl_modifiers,
                        method_modifiers);
@@ -1878,7 +1873,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     }
                 };
 
-                (Some(explicit_type), Some(category))
+                (explicit_type, category)
             }
         };
 

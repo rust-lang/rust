@@ -158,14 +158,6 @@ pub trait Folder : Sized {
         noop_fold_local(l, self)
     }
 
-    fn fold_explicit_self(&mut self, es: ExplicitSelf) -> ExplicitSelf {
-        noop_fold_explicit_self(es, self)
-    }
-
-    fn fold_explicit_self_underscore(&mut self, es: ExplicitSelf_) -> ExplicitSelf_ {
-        noop_fold_explicit_self_underscore(es, self)
-    }
-
     fn fold_lifetime(&mut self, l: Lifetime) -> Lifetime {
         noop_fold_lifetime(l, self)
     }
@@ -493,29 +485,6 @@ pub fn noop_fold_attribute<T: Folder>(at: Attribute, fld: &mut T) -> Option<Attr
         },
         span: fld.new_span(span),
     })
-}
-
-pub fn noop_fold_explicit_self_underscore<T: Folder>(es: ExplicitSelf_,
-                                                     fld: &mut T)
-                                                     -> ExplicitSelf_ {
-    match es {
-        SelfStatic | SelfValue(_) => es,
-        SelfRegion(lifetime, m, name) => {
-            SelfRegion(fld.fold_opt_lifetime(lifetime), m, name)
-        }
-        SelfExplicit(typ, name) => {
-            SelfExplicit(fld.fold_ty(typ), name)
-        }
-    }
-}
-
-pub fn noop_fold_explicit_self<T: Folder>(Spanned { span, node }: ExplicitSelf,
-                                          fld: &mut T)
-                                          -> ExplicitSelf {
-    Spanned {
-        node: fld.fold_explicit_self_underscore(node),
-        span: fld.new_span(span),
-    }
 }
 
 pub fn noop_fold_meta_item<T: Folder>(mi: P<MetaItem>, fld: &mut T) -> P<MetaItem> {
@@ -941,7 +910,6 @@ pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> Method
     MethodSig {
         generics: folder.fold_generics(sig.generics),
         abi: sig.abi,
-        explicit_self: folder.fold_explicit_self(sig.explicit_self),
         unsafety: sig.unsafety,
         constness: sig.constness,
         decl: folder.fold_fn_decl(sig.decl),
