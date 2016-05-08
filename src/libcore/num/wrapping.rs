@@ -275,6 +275,15 @@ macro_rules! wrapping_impl {
                 *self = *self & other;
             }
         }
+
+        #[stable(feature = "wrapping_neg", since = "1.10.0")]
+        impl Neg for Wrapping<$t> {
+            type Output = Self;
+            #[inline(always)]
+            fn neg(self) -> Self {
+                Wrapping(0) - self
+            }
+        }
     )*)
 }
 

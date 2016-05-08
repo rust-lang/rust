@@ -233,7 +233,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             match *source {
                 CandidateSource::ImplSource(impl_did) => {
                     // Provide the best span we can. Use the item, if local to crate, else
-                    // the impl, if local to crate (item may be defaulted), else the call site.
+                    // the impl, if local to crate (item may be defaulted), else nothing.
                     let item = impl_item(fcx.tcx(), impl_did, item_name)
                         .or_else(|| {
                             trait_item(
@@ -242,8 +242,9 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                 item_name
                             )
                         }).unwrap();
-                    let impl_span = fcx.tcx().map.def_id_span(impl_did, span);
-                    let item_span = fcx.tcx().map.def_id_span(item.def_id(), impl_span);
+                    let note_span = fcx.tcx().map.span_if_local(item.def_id()).or_else(|| {
+                        fcx.tcx().map.span_if_local(impl_did)
+                    });
 
                     let impl_ty = check::impl_self_ty(fcx, span, impl_did).ty;
 
@@ -255,11 +256,17 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         }
                     };
 
-                    span_note!(err, item_span,
-                               "candidate #{} is defined in an impl{} for the type `{}`",
-                               idx + 1,
-                               insertion,
-                               impl_ty);
+                    let note_str = format!("candidate #{} is defined in an impl{} \
+                                            for the type `{}`",
+                                           idx + 1,
+                                           insertion,
+                                           impl_ty);
+                    if let Some(note_span) = note_span {
+                        // We have a span pointing to the method. Show note with snippet.
+                        err.span_note(note_span, &note_str);
+                    } else {
+                        err.note(&note_str);
+                    }
                 }
                 CandidateSource::TraitSource(trait_did) => {
                     let item = trait_item(fcx.tcx(), trait_did, item_name).unwrap();
