@@ -62,6 +62,7 @@ use core::mem;
 use core::ops::{self, Add, Index, IndexMut};
 use core::ptr;
 use core::str::pattern::Pattern;
+use core::error::Error;
 use rustc_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use rustc_unicode::str as unicode_str;
 
@@ -1895,5 +1896,58 @@ impl<'a> DoubleEndedIterator for Drain<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
         self.iter.next_back()
+    }
+}
+
+
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<String> for Box<Error + Send + Sync> {
+    fn from(err: String) -> Box<Error + Send + Sync> {
+        #[derive(Debug)]
+        struct StringError(String);
+
+        impl Error for StringError {
+            fn description(&self) -> &str { &self.0 }
+        }
+
+        impl fmt::Display for StringError {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Display::fmt(&self.0, f)
+            }
+        }
+
+        Box::new(StringError(err))
+    }
+}
+
+#[stable(feature = "string_box_error", since = "1.7.0")]
+impl From<String> for Box<Error> {
+    fn from(str_err: String) -> Box<Error> {
+        let err1: Box<Error + Send + Sync> = From::from(str_err);
+        let err2: Box<Error> = err1;
+        err2
+    }
+}
+
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf8Error {
+    fn description(&self) -> &str {
+        "invalid utf-8"
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf16Error {
+    fn description(&self) -> &str {
+        "invalid utf-16"
+    }
+}
+
+#[stable(feature = "str_parse_error2", since = "1.8.0")]
+impl Error for ParseError {
+    fn description(&self) -> &str {
+        match *self {}
     }
 }
