@@ -139,7 +139,7 @@ enum ResolutionError<'a> {
     /// error E0413: declaration shadows an enum variant or unit-like struct in scope
     DeclarationShadowsEnumVariantOrUnitLikeStruct(Name),
     /// error E0414: only irrefutable patterns allowed here
-    OnlyIrrefutablePatternsAllowedHere(Name),
+    ConstantForIrrefutableBinding(Name),
     /// error E0415: identifier is bound more than once in this parameter list
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
     /// error E0416: identifier is bound more than once in the same pattern
@@ -321,11 +321,11 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                               or unit-like struct in scope",
                              name)
         }
-        ResolutionError::OnlyIrrefutablePatternsAllowedHere(name) => {
+        ResolutionError::ConstantForIrrefutableBinding(name) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0414,
-                                           "only irrefutable patterns allowed here");
+                                           "variable bindings cannot shadow constants");
             err.span_note(span,
                           "there already is a constant in scope sharing the same \
                            name as this pattern");
@@ -2248,7 +2248,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             resolve_error(
                                 self,
                                 pattern.span,
-                                ResolutionError::OnlyIrrefutablePatternsAllowedHere(name)
+                                ResolutionError::ConstantForIrrefutableBinding(name)
                             );
                             self.record_def(pattern.id, err_path_resolution());
                         }
