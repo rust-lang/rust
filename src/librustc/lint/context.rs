@@ -889,11 +889,6 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
         run_lints!(self, check_lifetime_def, late_passes, lt);
     }
 
-    fn visit_explicit_self(&mut self, es: &hir::ExplicitSelf) {
-        run_lints!(self, check_explicit_self, late_passes, es);
-        hir_visit::walk_explicit_self(self, es);
-    }
-
     fn visit_path(&mut self, p: &hir::Path, id: ast::NodeId) {
         run_lints!(self, check_path, late_passes, p, id);
         hir_visit::walk_path(self, p);

@@ -180,9 +180,6 @@ pub trait Visitor<'v> : Sized {
     fn visit_lifetime_def(&mut self, lifetime: &'v LifetimeDef) {
         walk_lifetime_def(self, lifetime)
     }
-    fn visit_explicit_self(&mut self, es: &'v ExplicitSelf) {
-        walk_explicit_self(self, es)
-    }
     fn visit_path(&mut self, path: &'v Path, _id: NodeId) {
         walk_path(self, path)
     }
@@ -256,23 +253,6 @@ pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime
 pub fn walk_lifetime_def<'v, V: Visitor<'v>>(visitor: &mut V, lifetime_def: &'v LifetimeDef) {
     visitor.visit_lifetime(&lifetime_def.lifetime);
     walk_list!(visitor, visit_lifetime, &lifetime_def.bounds);
-}
-
-pub fn walk_explicit_self<'v, V: Visitor<'v>>(visitor: &mut V, explicit_self: &'v ExplicitSelf) {
-    match explicit_self.node {
-        SelfStatic => {}
-        SelfValue(name) => {
-            visitor.visit_name(explicit_self.span, name)
-        }
-        SelfRegion(ref opt_lifetime, _, name) => {
-            visitor.visit_name(explicit_self.span, name);
-            walk_list!(visitor, visit_lifetime, opt_lifetime);
-        }
-        SelfExplicit(ref typ, name) => {
-            visitor.visit_name(explicit_self.span, name);
-            visitor.visit_ty(typ)
-        }
-    }
 }
 
 pub fn walk_poly_trait_ref<'v, V>(visitor: &mut V,
@@ -620,7 +600,6 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'
         }
         FnKind::Method(_, sig, _, _) => {
             visitor.visit_generics(&sig.generics);
-            visitor.visit_explicit_self(&sig.explicit_self);
         }
         FnKind::Closure(_) => {}
     }
@@ -645,7 +624,6 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             walk_list!(visitor, visit_expr, default);
         }
         MethodTraitItem(ref sig, None) => {
-            visitor.visit_explicit_self(&sig.explicit_self);
             visitor.visit_generics(&sig.generics);
             walk_fn_decl(visitor, &sig.decl);
         }

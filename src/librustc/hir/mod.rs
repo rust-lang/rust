@@ -15,7 +15,6 @@ pub use self::BinOp_::*;
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
 pub use self::Decl_::*;
-pub use self::ExplicitSelf_::*;
 pub use self::Expr_::*;
 pub use self::FunctionRetTy::*;
 pub use self::ForeignItem_::*;
@@ -37,12 +36,12 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use util::nodemap::{NodeMap, FnvHashSet};
 
-use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
+use syntax::codemap::{self, mk_sp, respan, Span, Spanned, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
-use syntax::parse::token::InternedString;
+use syntax::parse::token::{keywords, InternedString};
 use syntax::ptr::P;
 
 use std::collections::BTreeMap;
@@ -1055,7 +1054,6 @@ pub struct MethodSig {
     pub abi: Abi,
     pub decl: P<FnDecl>,
     pub generics: Generics,
-    pub explicit_self: ExplicitSelf,
 }
 
 /// Represents an item declaration within a trait declaration,
@@ -1196,25 +1194,41 @@ pub struct Arg {
     pub id: NodeId,
 }
 
+/// Alternative representation for `Arg`s describing `self` parameter of methods.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum SelfKind {
+    /// `self`, `mut self`
+    Value(Mutability),
+    /// `&'lt self`, `&'lt mut self`
+    Region(Option<Lifetime>, Mutability),
+    /// `self: TYPE`, `mut self: TYPE`
+    Explicit(P<Ty>, Mutability),
+}
+
+pub type ExplicitSelf = Spanned<SelfKind>;
+
 impl Arg {
-    pub fn new_self(span: Span, mutability: Mutability, self_ident: Ident) -> Arg {
-        let path = Spanned {
-            span: span,
-            node: self_ident,
-        };
-        Arg {
-            // HACK(eddyb) fake type for the self argument.
-            ty: P(Ty {
-                id: DUMMY_NODE_ID,
-                node: TyInfer,
-                span: DUMMY_SP,
-            }),
-            pat: P(Pat {
-                id: DUMMY_NODE_ID,
-                node: PatKind::Ident(BindByValue(mutability), path, None),
-                span: span,
-            }),
-            id: DUMMY_NODE_ID,
+    pub fn to_self(&self) -> Option<ExplicitSelf> {
+        if let PatKind::Ident(BindByValue(mutbl), ident, _) = self.pat.node {
+            if ident.node.unhygienic_name == keywords::SelfValue.name() {
+                return match self.ty.node {
+                    TyInfer => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
+                    TyRptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyInfer => {
+                        Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
+                    }
+                    _ => Some(respan(mk_sp(self.pat.span.lo, self.ty.span.hi),
+                                     SelfKind::Explicit(self.ty.clone(), mutbl)))
+                }
+            }
+        }
+        None
+    }
+
+    pub fn is_self(&self) -> bool {
+        if let PatKind::Ident(_, ident, _) = self.pat.node {
+            ident.node.unhygienic_name == keywords::SelfValue.name()
+        } else {
+            false
         }
     }
 }
@@ -1225,6 +1239,12 @@ pub struct FnDecl {
     pub inputs: HirVec<Arg>,
     pub output: FunctionRetTy,
     pub variadic: bool,
+}
+
+impl FnDecl {
+    pub fn has_self(&self) -> bool {
+        self.inputs.get(0).map(Arg::is_self).unwrap_or(false)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1307,21 +1327,6 @@ impl FunctionRetTy {
         }
     }
 }
-
-/// Represents the kind of 'self' associated with a method
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum ExplicitSelf_ {
-    /// No self
-    SelfStatic,
-    /// `self`
-    SelfValue(Name),
-    /// `&'lt self`, `&'lt mut self`
-    SelfRegion(Option<Lifetime>, Mutability, Name),
-    /// `self: TYPE`
-    SelfExplicit(P<Ty>, Name),
-}
-
-pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Mod {
