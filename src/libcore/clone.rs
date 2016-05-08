@@ -49,6 +49,11 @@ use marker::Sized;
 /// A common trait for cloning an object.
 ///
 /// This trait can be used with `#[derive]`.
+///
+/// Types that are `Copy` should have a trivial implementation of `Clone`. More formally:
+/// if `T: Copy`, `x: T`, and `y: &T`, then `let x = y.clone();` is equivalent to `let x = *y;`.
+/// Manual implementations should be careful to uphold this invariant; however, unsafe code
+/// must not rely on it to ensure memory safety.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Clone : Sized {
     /// Returns a copy of the value.
