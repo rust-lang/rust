@@ -43,7 +43,6 @@ use rustc::mir;
 use rustc::mir::visit::MutVisitor;
 
 use std::cell::Cell;
-use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
 use std::str;

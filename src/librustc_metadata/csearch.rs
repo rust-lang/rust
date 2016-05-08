@@ -536,7 +536,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         let mut visible_parent_map = self.visible_parent_map.borrow_mut();
         if !visible_parent_map.is_empty() { return visible_parent_map; }
 
-        use rustc::middle::cstore::{CrateStore, ChildItem};
+        use rustc::middle::cstore::ChildItem;
         use std::collections::vec_deque::VecDeque;
         use std::collections::hash_map::Entry;
         for cnum in 1 .. self.next_crate_num() {

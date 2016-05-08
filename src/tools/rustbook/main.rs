@@ -19,10 +19,8 @@ extern crate rustdoc;
 extern crate rustc_back;
 
 use std::env;
-use std::error::Error;
 use std::process;
 use std::sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT, Ordering};
-use subcommand::Subcommand;
 use term::Term;
 
 mod term;

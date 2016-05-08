@@ -35,7 +35,7 @@ use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
 
 use rustc_trans::back::link;
-use rustc::middle::cstore::{self, CrateStore};
+use rustc::middle::cstore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};

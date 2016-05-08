@@ -14,10 +14,9 @@ use std::collections::HashSet;
 use std::iter::once;
 
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use rustc::hir;
 
-use rustc::middle::cstore::{self, CrateStore};
+use rustc::middle::cstore;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::print as pprust;

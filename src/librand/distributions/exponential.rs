@@ -10,6 +10,7 @@
 
 //! The exponential distribution.
 
+#[cfg(not(test))] // only necessary for no_std
 use FloatMath;
 
 use {Rng, Rand};

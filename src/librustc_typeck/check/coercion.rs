@@ -71,7 +71,7 @@ use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use rustc::ty::{self, LvaluePreference, TypeAndMut, Ty, TyCtxt};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
-use rustc::ty::relate::{RelateResult, TypeRelation};
+use rustc::ty::relate::RelateResult;
 use util::common::indent;
 
 use std::cell::RefCell;

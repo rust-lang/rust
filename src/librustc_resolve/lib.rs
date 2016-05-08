@@ -47,18 +47,16 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
 use rustc::session::Session;
 use rustc::lint;
-use rustc::middle::cstore::CrateStore;
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util::pat_bindings;
 use rustc::ty;
 use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
-use rustc::hir::{Freevar, FreevarMap, TraitMap, GlobMap};
-use rustc::util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
+use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
+use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, Pos};
 use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::{self, keywords};
@@ -1056,6 +1054,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
 
     used_imports: HashSet<(NodeId, Namespace)>,
     used_crates: HashSet<CrateNum>,
+    maybe_unused_trait_imports: NodeSet,
 
     privacy_errors: Vec<PrivacyError<'a>>,
 
@@ -1151,12 +1150,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             export_map: NodeMap(),
             trait_map: NodeMap(),
             module_map: module_map,
-            used_imports: HashSet::new(),
-            used_crates: HashSet::new(),
 
             emit_errors: true,
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
             glob_map: NodeMap(),
+
+            used_imports: HashSet::new(),
+            used_crates: HashSet::new(),
+            maybe_unused_trait_imports: NodeSet(),
 
             privacy_errors: Vec::new(),
 
@@ -1191,7 +1192,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     #[inline]
-    fn record_use(&mut self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>) {
+    fn record_use(&mut self, name: Name, binding: &'a NameBinding<'a>) {
         // track extern crates for unused_extern_crate lint
         if let Some(DefId { krate, .. }) = binding.module().and_then(ModuleS::def_id) {
             self.used_crates.insert(krate);
@@ -1203,7 +1204,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             _ => return,
         };
 
-        self.used_imports.insert((directive.id, ns));
         if let Some(error) = privacy_error.as_ref() {
             self.privacy_errors.push((**error).clone());
         }
@@ -1506,7 +1506,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             false => module.resolve_name(name, namespace, false),
         }.and_then(|binding| {
             if record_used {
-                self.record_use(name, namespace, binding);
+                if let NameBindingKind::Import { directive, .. } = binding.kind {
+                    self.used_imports.insert((directive.id, namespace));
+                }
+                self.record_use(name, binding);
             }
             Success(binding)
         })
@@ -3110,21 +3113,27 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn get_traits_containing_item(&mut self, name: Name) -> Vec<DefId> {
+    fn get_traits_containing_item(&mut self, name: Name) -> Vec<TraitCandidate> {
         debug!("(getting traits containing item) looking for '{}'", name);
 
-        fn add_trait_info(found_traits: &mut Vec<DefId>, trait_def_id: DefId, name: Name) {
+        fn add_trait_info(found_traits: &mut Vec<TraitCandidate>,
+                          trait_def_id: DefId,
+                          import_id: Option<NodeId>,
+                          name: Name) {
             debug!("(adding trait info) found trait {:?} for method '{}'",
                    trait_def_id,
                    name);
-            found_traits.push(trait_def_id);
+            found_traits.push(TraitCandidate {
+                def_id: trait_def_id,
+                import_id: import_id,
+            });
         }
 
         let mut found_traits = Vec::new();
         // Look for the current trait.
         if let Some((trait_def_id, _)) = self.current_trait_ref {
             if self.trait_item_map.contains_key(&(name, trait_def_id)) {
-                add_trait_info(&mut found_traits, trait_def_id, name);
+                add_trait_info(&mut found_traits, trait_def_id, None, name);
             }
         }
 
@@ -3147,8 +3156,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
                     let trait_def_id = binding.def().unwrap().def_id();
                     if self.trait_item_map.contains_key(&(name, trait_def_id)) {
-                        add_trait_info(&mut found_traits, trait_def_id, name);
-                        self.record_use(trait_name, TypeNS, binding);
+                        let mut import_id = None;
+                        if let NameBindingKind::Import { directive, .. } = binding.kind {
+                            let id = directive.id;
+                            self.maybe_unused_trait_imports.insert(id);
+                            import_id = Some(id);
+                        }
+                        add_trait_info(&mut found_traits, trait_def_id, import_id, name);
+                        self.record_use(trait_name, binding);
                     }
                 }
             };
@@ -3522,6 +3537,7 @@ fn err_path_resolution() -> PathResolution {
 pub struct CrateMap {
     pub def_map: RefCell<DefMap>,
     pub freevars: FreevarMap,
+    pub maybe_unused_trait_imports: NodeSet,
     pub export_map: ExportMap,
     pub trait_map: TraitMap,
     pub glob_map: Option<GlobMap>,
@@ -3559,6 +3575,7 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     CrateMap {
         def_map: resolver.def_map,
         freevars: resolver.freevars,
+        maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
         export_map: resolver.export_map,
         trait_map: resolver.trait_map,
         glob_map: if resolver.make_glob_map {
