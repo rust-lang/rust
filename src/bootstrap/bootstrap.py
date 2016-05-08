@@ -16,20 +16,46 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
+
 
 def get(url, path, verbose=False):
-    print("downloading " + url)
     sha_url = url + ".sha256"
-    sha_path = path + ".sha256"
-    for _url, _path in ((url, path), (sha_url, sha_path)):
-        # see http://serverfault.com/questions/301128/how-to-download
-        if sys.platform == 'win32':
-            run(["PowerShell.exe", "/nologo", "-Command",
-                 "(New-Object System.Net.WebClient)"
-                 ".DownloadFile('{}', '{}')".format(_url, _path)],
-                verbose=verbose)
-        else:
-            run(["curl", "-o", _path, _url], verbose=verbose)
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_path = temp_file.name
+    with tempfile.NamedTemporaryFile(suffix=".sha256", delete=False) as sha_file:
+        sha_path = sha_file.name
+
+    try:
+        download(sha_path, sha_url, verbose)
+        download(temp_path, url, verbose)
+        verify(temp_path, sha_path, verbose)
+        print("moving " + temp_path + " to " + path)
+        shutil.move(temp_path, path)
+    finally:
+        delete_if_present(sha_path)
+        delete_if_present(temp_path)
+
+
+def delete_if_present(path):
+    if os.path.isfile(path):
+        print("removing " + path)
+        os.unlink(path)
+
+
+def download(path, url, verbose):
+    print("downloading " + url + " to " + path)
+    # see http://serverfault.com/questions/301128/how-to-download
+    if sys.platform == 'win32':
+        run(["PowerShell.exe", "/nologo", "-Command",
+             "(New-Object System.Net.WebClient)"
+             ".DownloadFile('{}', '{}')".format(url, path)],
+            verbose=verbose)
+    else:
+        run(["curl", "-o", path, url], verbose=verbose)
+
+
+def verify(path, sha_path, verbose):
     print("verifying " + path)
     with open(path, "rb") as f:
         found = hashlib.sha256(f.read()).hexdigest()
@@ -42,6 +68,7 @@ def get(url, path, verbose=False):
         if verbose:
             raise RuntimeError(err)
         sys.exit(err)
+
 
 def unpack(tarball, dst, verbose=False, match=None):
     print("extracting " + tarball)
