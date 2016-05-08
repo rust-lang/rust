@@ -22,7 +22,7 @@ pub fn target() -> Target {
         data_layout: "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128".to_string(),
         arch: "x86".to_string(),
         target_os: "android".to_string(),
-        target_env: "gnu".to_string(),
+        target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
         options: base,
     }
