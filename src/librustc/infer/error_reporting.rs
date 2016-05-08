@@ -735,7 +735,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             }
             infer::Reborrow(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0312,
-                    "lifetime of reference outlines \
+                    "lifetime of reference outlives \
                      lifetime of borrowed content...");
                 self.tcx.note_and_explain_region(&mut err,
                     "...the reference is valid for ",
