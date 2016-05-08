@@ -147,7 +147,7 @@ enum ResolutionError<'a> {
     /// error E0416: identifier is bound more than once in the same pattern
     IdentifierBoundMoreThanOnceInSamePattern(&'a str),
     /// error E0417: static variables cannot be referenced in a pattern
-    StaticVariableReference,
+    StaticVariableReference(DefId, Option<Name>),
     /// error E0418: is not an enum variant, struct or const
     NotAnEnumVariantStructOrConst(&'a str),
     /// error E0419: unresolved enum variant, struct or const
@@ -352,12 +352,24 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                              "identifier `{}` is bound more than once in the same pattern",
                              identifier)
         }
-        ResolutionError::StaticVariableReference => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0417,
-                             "static variables cannot be referenced in a pattern, use a \
-                              `const` instead")
+        ResolutionError::StaticVariableReference(did, name) => {
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0417,
+                                           "static variables cannot be referenced in a \
+                                            pattern, use a `const` instead");
+            if let Some(sp) = resolver.ast_map.span_if_local(did) {
+                err.span_note(sp, "static variable defined here");
+            }
+            if let Some(name) = name {
+                if let Some(binding) = resolver.current_module
+                                               .resolve_name_in_lexical_scope(name, ValueNS) {
+                    if binding.is_import() {
+                        err.span_note(binding.span, "static variable imported here");
+                    }
+                }
+            }
+            err
         }
         ResolutionError::NotAnEnumVariantStructOrConst(name) => {
             struct_span_err!(resolver.session,
@@ -2313,10 +2325,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             Def::Variant(..) | Def::Const(..) => {
                                 self.record_def(pattern.id, path_res);
                             }
-                            Def::Static(..) => {
+                            Def::Static(did, _) => {
                                 resolve_error(&self,
                                               path.span,
-                                              ResolutionError::StaticVariableReference);
+                                              ResolutionError::StaticVariableReference(
+                                                  did, None));
                                 self.record_def(pattern.id, err_path_resolution());
                             }
                             _ => {
@@ -2456,8 +2469,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Some(def @ Def::Const(..)) | Some(def @ Def::AssociatedConst(..)) => {
                 FoundConst(def, ident.unhygienic_name)
             }
-            Some(Def::Static(..)) => {
-                resolve_error(self, span, ResolutionError::StaticVariableReference);
+            Some(Def::Static(did, _)) => {
+                resolve_error(self, span, ResolutionError::StaticVariableReference(
+                    did, Some(ident.unhygienic_name)));
                 BareIdentifierPatternUnresolved
             }
             _ => BareIdentifierPatternUnresolved,

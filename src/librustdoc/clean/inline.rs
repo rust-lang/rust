@@ -20,6 +20,7 @@ use rustc::hir;
 use rustc::middle::cstore::{self, CrateStore};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
+use rustc::hir::print as pprust;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::subst;
 use rustc::middle::stability;
@@ -30,7 +31,7 @@ use core::{DocContext, DocAccessLevels};
 use doctree;
 use clean::{self, GetDefId};
 
-use super::{Clean, ToSource};
+use super::Clean;
 
 /// Attempt to inline the definition of a local node id into this AST.
 ///
@@ -333,8 +334,8 @@ pub fn build_impl(cx: &DocContext,
                 let did = assoc_const.def_id;
                 let type_scheme = tcx.lookup_item_type(did);
                 let default = if assoc_const.has_value {
-                    Some(lookup_const_by_id(tcx, did, None)
-                         .unwrap().0.span.to_src(cx))
+                    Some(pprust::expr_to_string(
+                        lookup_const_by_id(tcx, did, None).unwrap().0))
                 } else {
                     None
                 };
@@ -479,8 +480,6 @@ fn build_module(cx: &DocContext, tcx: &TyCtxt,
 
 fn build_const(cx: &DocContext, tcx: &TyCtxt,
                did: DefId) -> clean::Constant {
-    use rustc::hir::print as pprust;
-
     let (expr, ty) = lookup_const_by_id(tcx, did, None).unwrap_or_else(|| {
         panic!("expected lookup_const_by_id to succeed for {:?}", did);
     });

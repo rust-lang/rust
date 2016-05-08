@@ -2063,6 +2063,11 @@ fn run_incremental_test(config: &Config, props: &TestProps, testpaths: &TestPath
 }
 
 fn run_rmake_test(config: &Config, _props: &TestProps, testpaths: &TestPaths) {
+    // FIXME(#11094): we should fix these tests
+    if config.host != config.target {
+        return
+    }
+
     let cwd = env::current_dir().unwrap();
     let src_root = config.src_base.parent().unwrap().parent().unwrap()
                                   .parent().unwrap();
