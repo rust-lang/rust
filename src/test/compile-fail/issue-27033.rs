@@ -14,7 +14,7 @@ fn main() {
     };
     const C: u8 = 1;
     match 1 {
-        C @ 2 => { //~ ERROR only irrefutable patterns allowed here
+        C @ 2 => { //~ ERROR variable bindings cannot shadow constants
             println!("{}", C);
         }
         _ => {}
