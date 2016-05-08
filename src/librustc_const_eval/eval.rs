@@ -1117,6 +1117,12 @@ fn cast_const<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult
         Float(f) => cast_const_float(tcx, f, ty),
         Char(c) => cast_const_int(tcx, Infer(c as u64), ty),
         Function(_) => Err(UnimplementedConstVal("casting fn pointers")),
+        ByteStr(_) => match ty.sty {
+            ty::TyRawPtr(_) => {
+                Err(ErrKind::UnimplementedConstVal("casting a bytestr to a raw ptr"))
+            },
+            _ => Err(CannotCast),
+        },
         _ => Err(CannotCast),
     }
 }
