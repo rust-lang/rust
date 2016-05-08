@@ -33,11 +33,14 @@ def get(url, path, verbose=False):
         print("moving " + temp_path + " to " + path)
         shutil.move(temp_path, path)
     finally:
-        print("removing " + sha_path)
-        os.unlink(sha_path)
-        if os.path.isfile(temp_path):
-            print("removing " + temp_path)
-            os.unlink(temp_path)
+        delete_if_present(sha_path)
+        delete_if_present(temp_path)
+
+
+def delete_if_present(path):
+    if os.path.isfile(path):
+        print("removing " + path)
+        os.unlink(path)
 
 
 def download(path, url, verbose):
