@@ -157,30 +157,7 @@ pub fn compile_input(sess: &Session,
 
         let (analysis, resolutions, mut hir_forest) = {
             let defs = &mut *defs.borrow_mut();
-            resolve::with_resolver(sess, defs, control.make_glob_map, |mut resolver| {
-                time(sess.time_passes(), "name resolution", || {
-                    resolve::resolve_crate(&mut resolver, &expanded_crate);
-                });
-
-                // Lower ast -> hir.
-                let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
-                    let lcx = LoweringContext::new(sess, Some(&expanded_crate), &mut resolver);
-                    hir_map::Forest::new(lower_crate(&lcx, &expanded_crate), dep_graph)
-                });
-
-                (ty::CrateAnalysis {
-                    export_map: resolver.export_map,
-                    access_levels: AccessLevels::default(),
-                    reachable: NodeSet(),
-                    name: &id,
-                    glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
-                }, Resolutions {
-                    def_map: RefCell::new(resolver.def_map),
-                    freevars: resolver.freevars,
-                    trait_map: resolver.trait_map,
-                    maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
-                }, hir_forest)
-            })
+            lower_and_resolve(sess, &id, defs, &expanded_crate, dep_graph, control.make_glob_map)
         };
 
         // Discard MTWT tables that aren't required past lowering to HIR.
@@ -794,6 +771,39 @@ pub fn assign_node_ids(sess: &Session, krate: ast::Crate) -> ast::Crate {
     }
 
     krate
+}
+
+pub fn lower_and_resolve<'a>(sess: &Session,
+                             id: &'a str,
+                             defs: &mut hir_map::Definitions,
+                             krate: &ast::Crate,
+                             dep_graph: DepGraph,
+                             make_glob_map: resolve::MakeGlobMap)
+                             -> (ty::CrateAnalysis<'a>, Resolutions, hir_map::Forest) {
+    resolve::with_resolver(sess, defs, make_glob_map, |mut resolver| {
+        time(sess.time_passes(), "name resolution", || {
+            resolve::resolve_crate(&mut resolver, krate);
+        });
+
+        // Lower ast -> hir.
+        let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
+            let lcx = LoweringContext::new(sess, Some(krate), &mut resolver);
+            hir_map::Forest::new(lower_crate(&lcx, krate), dep_graph)
+        });
+
+        (ty::CrateAnalysis {
+            export_map: resolver.export_map,
+            access_levels: AccessLevels::default(),
+            reachable: NodeSet(),
+            name: &id,
+            glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
+        }, Resolutions {
+            def_map: RefCell::new(resolver.def_map),
+            freevars: resolver.freevars,
+            trait_map: resolver.trait_map,
+            maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
+        }, hir_forest)
+    })
 }
 
 /// Run the resolution, typechecking, region checking and other
