@@ -376,11 +376,21 @@ impl FileInfo {
         // Basically, although this loses information, multi-line spans just
         // never look good.
 
-        let (line, start_col, end_col) = if lines.len() == 1 {
+        let (line, start_col, mut end_col) = if lines.len() == 1 {
             (lines[0].line_index, lines[0].start_col, lines[0].end_col)
         } else {
             (lines[0].line_index, lines[0].start_col, CharPos(lines[0].start_col.0 + 1))
         };
+
+        // Watch out for "empty spans". If we get a span like 6..6, we
+        // want to just display a `^` at 6, so convert that to
+        // 6..7. This is degenerate input, but it's best to degrade
+        // gracefully -- and the parser likes to suply a span like
+        // that for EOF, in particular.
+        if start_col == end_col {
+            end_col.0 += 1;
+        }
+
         let index = self.ensure_source_line(line);
         self.lines[index].push_annotation(start_col,
                                           end_col,
