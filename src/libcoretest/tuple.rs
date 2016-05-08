@@ -66,3 +66,13 @@ fn test_show() {
     let s = format!("{:?}", (1, "hi", true));
     assert_eq!(s, "(1, \"hi\", true)");
 }
+
+#[test]
+fn test_convert_unit_from_any() {
+    fn io() -> Result<u32, ::std::io::Error> { Ok(1) }
+    fn fmt() -> Result<u32, ::std::fmt::Error> { Ok(2) }
+    fn sum() -> Result<u32, ()> {
+        Ok(io()? + try!(fmt()))
+    }
+    assert_eq!(sum(), Ok(3))
+}
