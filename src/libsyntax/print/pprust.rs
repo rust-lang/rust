@@ -1522,7 +1522,7 @@ impl<'a> State<'a> {
                       m.abi,
                       Some(ident),
                       &m.generics,
-                      Some(&m.explicit_self.node),
+                      None,
                       vis)
     }
 
@@ -2656,36 +2656,9 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_args(&mut self, decl: &ast::FnDecl,
-                         opt_explicit_self: Option<&ast::SelfKind>,
+                         _: Option<&ast::SelfKind>,
                          is_closure: bool) -> io::Result<()> {
-        // It is unfortunate to duplicate the commasep logic, but we want the
-        // self type and the args all in the same box.
-        self.rbox(0, Inconsistent)?;
-        let mut first = true;
-        if let Some(explicit_self) = opt_explicit_self {
-            let m = match *explicit_self {
-                ast::SelfKind::Static => ast::Mutability::Immutable,
-                _ => match decl.inputs[0].pat.node {
-                    PatKind::Ident(ast::BindingMode::ByValue(m), _, _) => m,
-                    _ => ast::Mutability::Immutable
-                }
-            };
-            first = !self.print_explicit_self(explicit_self, m)?;
-        }
-
-        // HACK(eddyb) ignore the separately printed self argument.
-        let args = if first {
-            &decl.inputs[..]
-        } else {
-            &decl.inputs[1..]
-        };
-
-        for arg in args {
-            if first { first = false; } else { self.word_space(",")?; }
-            self.print_arg(arg, is_closure)?;
-        }
-
-        self.end()
+        self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, is_closure))
     }
 
     pub fn print_fn_args_and_ret(&mut self, decl: &ast::FnDecl,
@@ -2956,18 +2929,24 @@ impl<'a> State<'a> {
         match input.ty.node {
             ast::TyKind::Infer if is_closure => self.print_pat(&input.pat)?,
             _ => {
-                match input.pat.node {
-                    PatKind::Ident(_, ref path1, _)
-                            if path1.node.name == keywords::Invalid.name() => {
-                        // Do nothing.
+                let (mutbl, invalid) = match input.pat.node {
+                    PatKind::Ident(ast::BindingMode::ByValue(mutbl), ident, _) |
+                    PatKind::Ident(ast::BindingMode::ByRef(mutbl), ident, _) => {
+                        (mutbl, ident.node.name == keywords::Invalid.name())
                     }
-                    _ => {
+                    _ => (ast::Mutability::Immutable, false)
+                };
+
+                if let Some(eself) = input.to_self() {
+                    self.print_explicit_self(&eself.node, mutbl)?;
+                } else {
+                    if !invalid {
                         self.print_pat(&input.pat)?;
                         word(&mut self.s, ":")?;
                         space(&mut self.s)?;
                     }
+                    self.print_type(&input.ty)?;
                 }
-                self.print_type(&input.ty)?;
             }
         }
         self.end()

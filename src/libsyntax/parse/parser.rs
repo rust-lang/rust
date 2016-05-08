@@ -2036,7 +2036,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse mutability declaration (mut/const/imm)
+    /// Parse mutability (`mut` or nothing).
     pub fn parse_mutability(&mut self) -> PResult<'a, Mutability> {
         if self.eat_keyword(keywords::Mut) {
             Ok(Mutability::Mutable)
@@ -4616,184 +4616,142 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn expect_self_ident(&mut self) -> PResult<'a, ast::Ident> {
-        match self.token {
-            token::Ident(id) if id.name == keywords::SelfValue.name() => {
-                self.bump();
-                // The hygiene context of `id` needs to be preserved here,
-                // so we can't just return `SelfValue.ident()`.
-                Ok(id)
-            },
-            _ => {
-                let token_str = self.this_token_to_string();
-                return Err(self.fatal(&format!("expected `self`, found `{}`",
-                                   token_str)))
-            }
-        }
-    }
-
-    /// Parse the argument list and result type of a function
-    /// that may have a self type.
+    /// Parse the parameter list and result type of a function that may have a `self` parameter.
     fn parse_fn_decl_with_self<F>(&mut self,
-                                  parse_arg_fn: F) -> PResult<'a, (ExplicitSelf, P<FnDecl>)> where
-        F: FnMut(&mut Parser<'a>) -> PResult<'a,  Arg>,
+                                  parse_arg_fn: F)
+                                  -> PResult<'a, (ExplicitSelf, P<FnDecl>)>
+        where F: FnMut(&mut Parser<'a>) -> PResult<'a,  Arg>,
     {
-        fn maybe_parse_borrowed_explicit_self<'b>(this: &mut Parser<'b>)
-                                                  -> PResult<'b, ast::SelfKind> {
-            // The following things are possible to see here:
-            //
-            //     fn(&mut self)
-            //     fn(&mut self)
-            //     fn(&'lt self)
-            //     fn(&'lt mut self)
-            //
-            // We already know that the current token is `&`.
-
-            if this.look_ahead(1, |t| t.is_keyword(keywords::SelfValue)) {
-                this.bump();
-                Ok(SelfKind::Region(None, Mutability::Immutable, this.expect_self_ident()?))
-            } else if this.look_ahead(1, |t| t.is_mutability()) &&
-                      this.look_ahead(2, |t| t.is_keyword(keywords::SelfValue)) {
-                this.bump();
-                let mutability = this.parse_mutability()?;
-                Ok(SelfKind::Region(None, mutability, this.expect_self_ident()?))
-            } else if this.look_ahead(1, |t| t.is_lifetime()) &&
-                      this.look_ahead(2, |t| t.is_keyword(keywords::SelfValue)) {
-                this.bump();
-                let lifetime = this.parse_lifetime()?;
-                let ident = this.expect_self_ident()?;
-                Ok(SelfKind::Region(Some(lifetime), Mutability::Immutable, ident))
-            } else if this.look_ahead(1, |t| t.is_lifetime()) &&
-                      this.look_ahead(2, |t| t.is_mutability()) &&
-                      this.look_ahead(3, |t| t.is_keyword(keywords::SelfValue)) {
-                this.bump();
-                let lifetime = this.parse_lifetime()?;
-                let mutability = this.parse_mutability()?;
-                Ok(SelfKind::Region(Some(lifetime), mutability, this.expect_self_ident()?))
-            } else {
-                Ok(SelfKind::Static)
-            }
-        }
+        let expect_ident = |this: &mut Self| match this.token {
+            token::Ident(ident) => { this.bump(); ident } // Preserve hygienic context.
+            _ => unreachable!()
+        };
 
         self.expect(&token::OpenDelim(token::Paren))?;
 
-        // A bit of complexity and lookahead is needed here in order to be
-        // backwards compatible.
-        let lo = self.span.lo;
-        let mut self_ident_lo = self.span.lo;
-        let mut self_ident_hi = self.span.hi;
-
-        let mut mutbl_self = Mutability::Immutable;
-        let explicit_self = match self.token {
+        // Parse optional self parameter of a method.
+        // Only a limited set of initial token sequences is considered self parameters, anything
+        // else is parsed as a normal function parameter list, so some lookahead is required.
+        let eself_lo = self.span.lo;
+        let mut eself_mutbl = Mutability::Immutable;
+        let (eself, eself_ident_sp) = match self.token {
             token::BinOp(token::And) => {
-                let eself = maybe_parse_borrowed_explicit_self(self)?;
-                self_ident_lo = self.last_span.lo;
-                self_ident_hi = self.last_span.hi;
-                eself
+                // &self
+                // &mut self
+                // &'lt self
+                // &'lt mut self
+                // &not_self
+                if self.look_ahead(1, |t| t.is_keyword(keywords::SelfValue)) {
+                    self.bump();
+                    (SelfKind::Region(None, Mutability::Immutable, expect_ident(self)),
+                        self.last_span)
+                } else if self.look_ahead(1, |t| t.is_keyword(keywords::Mut)) &&
+                          self.look_ahead(2, |t| t.is_keyword(keywords::SelfValue)) {
+                    self.bump();
+                    self.bump();
+                    (SelfKind::Region(None, Mutability::Mutable, expect_ident(self)),
+                        self.last_span)
+                } else if self.look_ahead(1, |t| t.is_lifetime()) &&
+                          self.look_ahead(2, |t| t.is_keyword(keywords::SelfValue)) {
+                    self.bump();
+                    let lt = self.parse_lifetime()?;
+                    (SelfKind::Region(Some(lt), Mutability::Immutable, expect_ident(self)),
+                        self.last_span)
+                } else if self.look_ahead(1, |t| t.is_lifetime()) &&
+                          self.look_ahead(2, |t| t.is_keyword(keywords::Mut)) &&
+                          self.look_ahead(3, |t| t.is_keyword(keywords::SelfValue)) {
+                    self.bump();
+                    let lt = self.parse_lifetime()?;
+                    self.bump();
+                    (SelfKind::Region(Some(lt), Mutability::Mutable, expect_ident(self)),
+                        self.last_span)
+                } else {
+                    (SelfKind::Static, codemap::DUMMY_SP)
+                }
             }
             token::BinOp(token::Star) => {
-                // Possibly "*self" or "*mut self" -- not supported. Try to avoid
-                // emitting cryptic "unexpected token" errors.
-                self.bump();
-                let _mutability = if self.token.is_mutability() {
-                    self.parse_mutability()?
-                } else {
-                    Mutability::Immutable
-                };
-                if self.token.is_keyword(keywords::SelfValue) {
-                    let span = self.span;
-                    self.span_err(span, "cannot pass self by raw pointer");
+                // *self
+                // *const self
+                // *mut self
+                // *not_self
+                // Emit special error for `self` cases.
+                if self.look_ahead(1, |t| t.is_keyword(keywords::SelfValue)) {
                     self.bump();
+                    self.span_err(self.span, "cannot pass `self` by raw pointer");
+                    (SelfKind::Value(expect_ident(self)), self.last_span)
+                } else if self.look_ahead(1, |t| t.is_mutability()) &&
+                          self.look_ahead(2, |t| t.is_keyword(keywords::SelfValue)) {
+                    self.bump();
+                    self.bump();
+                    self.span_err(self.span, "cannot pass `self` by raw pointer");
+                    (SelfKind::Value(expect_ident(self)), self.last_span)
+                } else {
+                    (SelfKind::Static, codemap::DUMMY_SP)
                 }
-                // error case, making bogus self ident:
-                SelfKind::Value(keywords::SelfValue.ident())
             }
             token::Ident(..) => {
                 if self.token.is_keyword(keywords::SelfValue) {
-                    let self_ident = self.expect_self_ident()?;
-
-                    // Determine whether this is the fully explicit form, `self:
-                    // TYPE`.
+                    // self
+                    // self: TYPE
+                    let eself_ident = expect_ident(self);
+                    let eself_ident_sp = self.last_span;
                     if self.eat(&token::Colon) {
-                        SelfKind::Explicit(self.parse_ty_sum()?, self_ident)
+                        (SelfKind::Explicit(self.parse_ty_sum()?, eself_ident), eself_ident_sp)
                     } else {
-                        SelfKind::Value(self_ident)
+                        (SelfKind::Value(eself_ident), eself_ident_sp)
                     }
-                } else if self.token.is_mutability() &&
+                } else if self.token.is_keyword(keywords::Mut) &&
                         self.look_ahead(1, |t| t.is_keyword(keywords::SelfValue)) {
-                    mutbl_self = self.parse_mutability()?;
-                    let self_ident = self.expect_self_ident()?;
-
-                    // Determine whether this is the fully explicit form,
-                    // `self: TYPE`.
+                    // mut self
+                    // mut self: TYPE
+                    eself_mutbl = Mutability::Mutable;
+                    self.bump();
+                    let eself_ident = expect_ident(self);
+                    let eself_ident_sp = self.last_span;
                     if self.eat(&token::Colon) {
-                        SelfKind::Explicit(self.parse_ty_sum()?, self_ident)
+                        (SelfKind::Explicit(self.parse_ty_sum()?, eself_ident), eself_ident_sp)
                     } else {
-                        SelfKind::Value(self_ident)
+                        (SelfKind::Value(eself_ident), eself_ident_sp)
                     }
                 } else {
-                    SelfKind::Static
+                    (SelfKind::Static, codemap::DUMMY_SP)
                 }
             }
-            _ => SelfKind::Static,
+            _ => (SelfKind::Static, codemap::DUMMY_SP)
         };
+        let mut eself = codemap::respan(mk_sp(eself_lo, self.last_span.hi), eself);
 
-        let explicit_self_sp = mk_sp(self_ident_lo, self_ident_hi);
-
-        // shared fall-through for the three cases below. borrowing prevents simply
-        // writing this as a closure
-        macro_rules! parse_remaining_arguments {
-            ($self_id:ident) =>
-            {
-            // If we parsed a self type, expect a comma before the argument list.
-            match self.token {
-                token::Comma => {
-                    self.bump();
-                    let sep = SeqSep::trailing_allowed(token::Comma);
-                    let mut fn_inputs = self.parse_seq_to_before_end(
-                        &token::CloseDelim(token::Paren),
-                        sep,
-                        parse_arg_fn
-                    );
-                    fn_inputs.insert(0, Arg::new_self(explicit_self_sp, mutbl_self, $self_id));
-                    fn_inputs
-                }
-                token::CloseDelim(token::Paren) => {
-                    vec!(Arg::new_self(explicit_self_sp, mutbl_self, $self_id))
-                }
-                _ => {
-                    let token_str = self.this_token_to_string();
-                    return Err(self.fatal(&format!("expected `,` or `)`, found `{}`",
-                                       token_str)))
-                }
-            }
-            }
-        }
-
-        let fn_inputs = match explicit_self {
-            SelfKind::Static =>  {
-                let sep = SeqSep::trailing_allowed(token::Comma);
+        // Parse the rest of the function parameter list.
+        let sep = SeqSep::trailing_allowed(token::Comma);
+        let fn_inputs = match eself.node {
+            SelfKind::Static => {
+                eself.span = codemap::DUMMY_SP;
                 self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)
             }
-            SelfKind::Value(id) => parse_remaining_arguments!(id),
-            SelfKind::Region(_,_,id) => parse_remaining_arguments!(id),
-            SelfKind::Explicit(_,id) => parse_remaining_arguments!(id),
+            SelfKind::Value(..) | SelfKind::Region(..) | SelfKind::Explicit(..) => {
+                if self.check(&token::CloseDelim(token::Paren)) {
+                    vec![Arg::from_self(eself.clone(), eself_ident_sp, eself_mutbl)]
+                } else if self.check(&token::Comma) {
+                    self.bump();
+                    let mut fn_inputs = vec![Arg::from_self(eself.clone(), eself_ident_sp,
+                                                            eself_mutbl)];
+                    fn_inputs.append(&mut self.parse_seq_to_before_end(
+                        &token::CloseDelim(token::Paren), sep, parse_arg_fn)
+                    );
+                    fn_inputs
+                } else {
+                    return self.unexpected();
+                }
+            }
         };
 
-
+        // Parse closing paren and return type.
         self.expect(&token::CloseDelim(token::Paren))?;
-
-        let hi = self.span.hi;
-
-        let ret_ty = self.parse_ret_ty()?;
-
-        let fn_decl = P(FnDecl {
+        Ok((eself, P(FnDecl {
             inputs: fn_inputs,
-            output: ret_ty,
+            output: self.parse_ret_ty()?,
             variadic: false
-        });
-
-        Ok((spanned(lo, hi, explicit_self), fn_decl))
+        })))
     }
 
     // parse the |arg, arg| header on a lambda
