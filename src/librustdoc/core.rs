@@ -20,7 +20,6 @@ use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
-use rustc::hir::lowering::{lower_crate, LoweringContext};
 use rustc_metadata::cstore::CStore;
 use rustc_metadata::creader::LocalCrateReader;
 
@@ -156,18 +155,22 @@ pub fn run_core(search_paths: SearchPaths,
 
     let defs = &RefCell::new(hir_map::collect_definitions(&krate));
     LocalCrateReader::new(&sess, &cstore, &defs, &krate, &name).read_crates(&dep_graph);
-    let lcx = LoweringContext::new(&sess, Some(&krate), defs);
 
-    // Lower ast -> hir.
-    let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
+    // Lower ast -> hir and resolve.
+    let (analysis, resolutions, mut hir_forest) = {
+        let defs = &mut *defs.borrow_mut();
+        driver::lower_and_resolve(&sess, &name, defs, &krate, dep_graph, resolve::MakeGlobMap::No)
+    };
+
     let arenas = ty::CtxtArenas::new();
     let hir_map = hir_map::map_crate(&mut hir_forest, defs);
 
     abort_on_err(driver::phase_3_run_analysis_passes(&sess,
                                                      hir_map,
+                                                     analysis,
+                                                     resolutions,
                                                      &arenas,
                                                      &name,
-                                                     resolve::MakeGlobMap::No,
                                                      |tcx, _, analysis, result| {
         // Return if the driver hit an err (in `result`)
         if let Err(_) = result {
