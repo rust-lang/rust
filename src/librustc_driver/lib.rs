@@ -461,12 +461,12 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 
         if let Some((ppm, opt_uii)) = parse_pretty(sess, matches) {
             if ppm.needs_ast_map(&opt_uii) {
-                control.after_ast.stop = Compilation::Stop;
+                control.after_hir_lowering.stop = Compilation::Stop;
 
                 control.after_parse.callback = box move |state| {
                     state.krate = Some(pretty::fold_crate(state.krate.take().unwrap(), ppm));
                 };
-                control.after_ast.callback = box move |state| {
+                control.after_hir_lowering.callback = box move |state| {
                     pretty::print_after_ast(state.session,
                                             state.ast_map.unwrap(),
                                             state.analysis.unwrap(),
