@@ -317,6 +317,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             TyParamDefaultMismatch(ref x) => {
                 return tcx.lift(x).map(TyParamDefaultMismatch)
             }
+            UnnormalizedProjectionMismatch(ref x) =>  {
+                return tcx.lift(x).map(UnnormalizedProjectionMismatch)
+            }
         })
     }
 }

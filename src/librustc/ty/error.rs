@@ -11,7 +11,7 @@
 use hir::def_id::DefId;
 use ty::subst;
 use infer::type_variable;
-use ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use ty::{self, BoundRegion, Region, Ty, TyCtxt, TypeFoldable};
 
 use std::fmt;
 use syntax::abi;
@@ -58,7 +58,8 @@ pub enum TypeError<'tcx> {
     ConvergenceMismatch(ExpectedFound<bool>),
     ProjectionNameMismatched(ExpectedFound<Name>),
     ProjectionBoundsLength(ExpectedFound<usize>),
-    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>)
+    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
+    UnnormalizedProjectionMismatch(ExpectedFound<Ty<'tcx>>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -206,6 +207,10 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        values.expected.ty,
                        values.found.ty)
             }
+            UnnormalizedProjectionMismatch(values) => ty::tls::with(|tcx| {
+                report_maybe_different(f, values.expected.sort_string(tcx),
+                                       values.found.sort_string(tcx))
+            }),
         }
     }
 }
@@ -336,6 +341,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
                 db.span_note(found.origin_span,
                              "...that also applies to the same type variable here");
+            }
+            UnnormalizedProjectionMismatch(values) => {
+                let (proj, _) = if let &ty::TyProjection(_) = &values.found.sty {
+                    (values.found, values.expected)
+                } else {
+                    (values.expected, values.found)
+                };
+
+                // a type projection failure with no unsubstituted type parameters
+                // stems from specialization intentionally rejecting type projections for default
+                // implementations.
+                if proj.needs_subst() || proj.needs_infer() {
+                    return;
+                }
+
+                db.note("associated types marked as `default` cannot be projected \
+                             as a specific type.");
             }
             _ => {}
         }

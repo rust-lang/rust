@@ -244,6 +244,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                predicate,
                                                error.err);
                 self.note_obligation_cause(&mut err, obligation);
+                self.tcx.note_and_explain_type_err(&mut err, &error.err, obligation.cause.span);
                 err.emit();
             }
         }
