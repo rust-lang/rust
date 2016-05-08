@@ -340,7 +340,7 @@ fn main() {
     for (_, v) in &m {
         //~^ you seem to want to iterate on a map's values
         //~| HELP use the corresponding method
-        //~| SUGGESTION for v in &m.values()
+        //~| SUGGESTION for v in m.values()
         let _v = v;
     }
 

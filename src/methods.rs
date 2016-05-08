@@ -602,7 +602,7 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &Expr, new: &Expr, unwrap: &Expr)
         span_lint_and_then(cx, TEMPORARY_CSTRING_AS_PTR, expr.span,
                            "you are getting the inner pointer of a temporary `CString`",
                            |db| {
-                               db.fileline_note(expr.span, "that pointer will be invalid outside this expression");
+                               db.note("that pointer will be invalid outside this expression");
                                db.span_help(unwrap.span, "assign the `CString` to a variable to extend its lifetime");
                            });
     }}

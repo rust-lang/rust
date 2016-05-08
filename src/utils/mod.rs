@@ -471,44 +471,44 @@ impl<'a> Deref for DiagnosticWrapper<'a> {
     }
 }
 
-pub fn span_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str) -> DiagnosticWrapper<'a> {
-    let mut db = cx.struct_span_lint(lint, sp, msg);
-    if cx.current_level(lint) != Level::Allow {
-        db.fileline_help(sp,
-                         &format!("for further information visit https://github.com/Manishearth/rust-clippy/wiki#{}",
-                                  lint.name_lower()));
+impl<'a> DiagnosticWrapper<'a> {
+    fn wiki_link(&mut self, lint: &'static Lint) {
+        self.help(&format!("for further information visit https://github.com/Manishearth/rust-clippy/wiki#{}",
+                           lint.name_lower()));
     }
-    DiagnosticWrapper(db)
+}
+
+pub fn span_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str) -> DiagnosticWrapper<'a> {
+    let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
+    if cx.current_level(lint) != Level::Allow {
+        db.wiki_link(lint);
+    }
+    db
 }
 
 pub fn span_help_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str)
                                               -> DiagnosticWrapper<'a> {
-    let mut db = cx.struct_span_lint(lint, span, msg);
+    let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
     if cx.current_level(lint) != Level::Allow {
-        db.fileline_help(span,
-                         &format!("{}\nfor further information visit \
-                                   https://github.com/Manishearth/rust-clippy/wiki#{}",
-                                  help,
-                                  lint.name_lower()));
+        db.help(help);
+        db.wiki_link(lint);
     }
-    DiagnosticWrapper(db)
+    db
 }
 
 pub fn span_note_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, note_span: Span,
                                               note: &str)
                                               -> DiagnosticWrapper<'a> {
-    let mut db = cx.struct_span_lint(lint, span, msg);
+    let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
     if cx.current_level(lint) != Level::Allow {
         if note_span == span {
-            db.fileline_note(note_span, note);
+            db.note(note);
         } else {
             db.span_note(note_span, note);
         }
-        db.fileline_help(span,
-                         &format!("for further information visit https://github.com/Manishearth/rust-clippy/wiki#{}",
-                                  lint.name_lower()));
+        db.wiki_link(lint);
     }
-    DiagnosticWrapper(db)
+    db
 }
 
 pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str, f: F)
@@ -518,9 +518,7 @@ pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint,
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
     if cx.current_level(lint) != Level::Allow {
         f(&mut db);
-        db.fileline_help(sp,
-                         &format!("for further information visit https://github.com/Manishearth/rust-clippy/wiki#{}",
-                                  lint.name_lower()));
+        db.wiki_link(lint);
     }
     db
 }
