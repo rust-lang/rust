@@ -338,6 +338,12 @@ impl Config {
                                      .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));
                 }
+                "CFG_ARMV7_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
+                    let target = "armv7-linux-androideabi".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.ndk = Some(PathBuf::from(value));
+                }
                 "CFG_I686_LINUX_ANDROID_NDK" if value.len() > 0 => {
                     let target = "i686-linux-androideabi".to_string();
                     let target = self.target_config.entry(target)
