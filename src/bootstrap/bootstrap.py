@@ -21,17 +21,23 @@ import tempfile
 
 def get(url, path, verbose=False):
     sha_url = url + ".sha256"
-    temp_file = tempfile.NamedTemporaryFile(delete=False)
-    temp_path = temp_file.name
-    sha_file = tempfile.NamedTemporaryFile(suffix=".sha256", delete=True)
-    sha_path = sha_file.name
-    download(sha_path, sha_url, verbose)
-    download(temp_path, url, verbose)
-    verify(sha_path, temp_path, verbose)
-    sha_file.close()
-    print("moving " + temp_path + " to " + path)
-    shutil.move(temp_path, path)
-    temp_file.close()
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_path = temp_file.name
+    with tempfile.NamedTemporaryFile(suffix=".sha256", delete=False) as sha_file:
+        sha_path = sha_file.name
+
+    try:
+        download(sha_path, sha_url, verbose)
+        download(temp_path, url, verbose)
+        verify(temp_path, sha_path, verbose)
+        print("moving " + temp_path + " to " + path)
+        shutil.move(temp_path, path)
+    finally:
+        print("removing " + sha_path)
+        os.unlink(sha_path)
+        if os.path.isfile(temp_path):
+            print("removing " + temp_path)
+            os.unlink(temp_path)
 
 
 def download(path, url, verbose):
@@ -46,9 +52,9 @@ def download(path, url, verbose):
         run(["curl", "-o", path, url], verbose=verbose)
 
 
-def verify(sha_path, temp_path, verbose):
-    print("verifying " + temp_path)
-    with open(temp_path, "rb") as f:
+def verify(path, sha_path, verbose):
+    print("verifying " + path)
+    with open(path, "rb") as f:
         found = hashlib.sha256(f.read()).hexdigest()
     with open(sha_path, "r") as f:
         expected, _ = f.readline().split()
