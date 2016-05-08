@@ -37,7 +37,6 @@ extern crate rustc_const_math;
 
 pub mod diagnostics;
 
-pub mod const_fn;
 pub mod consts;
 pub mod loops;
 pub mod no_asm;

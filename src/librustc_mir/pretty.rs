@@ -9,7 +9,9 @@
 // except according to those terms.
 
 use build::{Location, ScopeAuxiliaryVec};
+use rustc::hir;
 use rustc::mir::repr::*;
+use rustc::mir::transform::MirSource;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fnv::FnvHashMap;
 use std::fmt::Display;
@@ -37,13 +39,14 @@ const INDENT: &'static str = "    ";
 pub fn dump_mir<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
                           pass_name: &str,
                           disambiguator: &Display,
-                          node_id: NodeId,
+                          src: MirSource,
                           mir: &Mir<'tcx>,
                           auxiliary: Option<&ScopeAuxiliaryVec>) {
     let filters = match tcx.sess.opts.debugging_opts.dump_mir {
         None => return,
         Some(ref filters) => filters,
     };
+    let node_id = src.item_id();
     let node_path = tcx.item_path_str(tcx.map.local_def_id(node_id));
     let is_matched =
         filters.split("&")
@@ -64,7 +67,7 @@ pub fn dump_mir<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
         try!(writeln!(file, "// pass_name = {}", pass_name));
         try!(writeln!(file, "// disambiguator = {}", disambiguator));
         try!(writeln!(file, ""));
-        try!(write_mir_fn(tcx, node_id, mir, &mut file, auxiliary));
+        try!(write_mir_fn(tcx, src, mir, &mut file, auxiliary));
         Ok(())
     });
 }
@@ -76,8 +79,13 @@ pub fn write_mir_pretty<'a, 'tcx, I>(tcx: &TyCtxt<'tcx>,
                                      -> io::Result<()>
     where I: Iterator<Item=(&'a NodeId, &'a Mir<'tcx>)>, 'tcx: 'a
 {
-    for (&node_id, mir) in iter {
-        write_mir_fn(tcx, node_id, mir, w, None)?;
+    for (&id, mir) in iter {
+        let src = MirSource::from_node(tcx, id);
+        write_mir_fn(tcx, src, mir, w, None)?;
+
+        for (i, mir) in mir.promoted.iter().enumerate() {
+            write_mir_fn(tcx, MirSource::Promoted(id, i), mir, w, None)?;
+        }
     }
     Ok(())
 }
@@ -88,7 +96,7 @@ enum Annotation {
 }
 
 pub fn write_mir_fn<'tcx>(tcx: &TyCtxt<'tcx>,
-                          node_id: NodeId,
+                          src: MirSource,
                           mir: &Mir<'tcx>,
                           w: &mut Write,
                           auxiliary: Option<&ScopeAuxiliaryVec>)
@@ -111,7 +119,7 @@ pub fn write_mir_fn<'tcx>(tcx: &TyCtxt<'tcx>,
         }
     }
 
-    write_mir_intro(tcx, node_id, mir, w)?;
+    write_mir_intro(tcx, src, mir, w)?;
     for block in mir.all_basic_blocks() {
         write_basic_block(tcx, block, mir, w, &annotations)?;
     }
@@ -214,24 +222,39 @@ fn write_scope_tree(tcx: &TyCtxt,
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-fn write_mir_intro(tcx: &TyCtxt, nid: NodeId, mir: &Mir, w: &mut Write)
+fn write_mir_intro(tcx: &TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
                    -> io::Result<()> {
-    write!(w, "fn {}(", tcx.node_path_str(nid))?;
-
-    // fn argument types.
-    for (i, arg) in mir.arg_decls.iter().enumerate() {
-        if i > 0 {
-            write!(w, ", ")?;
-        }
-        write!(w, "{:?}: {}", Lvalue::Arg(i as u32), arg.ty)?;
+    match src {
+        MirSource::Fn(_) => write!(w, "fn")?,
+        MirSource::Const(_) => write!(w, "const")?,
+        MirSource::Static(_, hir::MutImmutable) => write!(w, "static")?,
+        MirSource::Static(_, hir::MutMutable) => write!(w, "static mut")?,
+        MirSource::Promoted(_, i) => write!(w, "promoted{} in", i)?
     }
 
-    write!(w, ") -> ")?;
+    write!(w, " {}", tcx.node_path_str(src.item_id()))?;
 
-    // fn return type.
-    match mir.return_ty {
-        ty::FnOutput::FnConverging(ty) => write!(w, "{}", ty)?,
-        ty::FnOutput::FnDiverging => write!(w, "!")?,
+    if let MirSource::Fn(_) = src {
+        write!(w, "(")?;
+
+        // fn argument types.
+        for (i, arg) in mir.arg_decls.iter().enumerate() {
+            if i > 0 {
+                write!(w, ", ")?;
+            }
+            write!(w, "{:?}: {}", Lvalue::Arg(i as u32), arg.ty)?;
+        }
+
+        write!(w, ") -> ")?;
+
+        // fn return type.
+        match mir.return_ty {
+            ty::FnOutput::FnConverging(ty) => write!(w, "{}", ty)?,
+            ty::FnOutput::FnDiverging => write!(w, "!")?,
+        }
+    } else {
+        assert!(mir.arg_decls.is_empty());
+        write!(w, ": {} =", mir.return_ty.unwrap())?;
     }
 
     writeln!(w, " {{")?;

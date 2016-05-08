@@ -37,7 +37,7 @@ use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
 use rustc::hir::lowering::{lower_crate, LoweringContext};
-use rustc_passes::{no_asm, loops, consts, const_fn, rvalues, static_recursion};
+use rustc_passes::{no_asm, loops, consts, rvalues, static_recursion};
 use rustc_const_eval::check_match;
 use super::Compilation;
 
@@ -726,10 +726,6 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         })
     })?;
 
-    time(time_passes,
-         "const fn bodies and arguments",
-         || const_fn::check_crate(sess, &krate))?;
-
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
     }
@@ -903,6 +899,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             let mut passes = sess.mir_passes.borrow_mut();
             // Push all the built-in passes.
             passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
+            passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);
             passes.push_pass(box mir::transform::type_check::TypeckMir);
             passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg);
             passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);

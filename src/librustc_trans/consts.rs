@@ -39,7 +39,7 @@ use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::cast::{CastTy,IntTy};
 use util::nodemap::NodeMap;
-use rustc_const_math::{ConstInt, ConstMathErr, ConstUsize, ConstIsize};
+use rustc_const_math::{ConstInt, ConstUsize, ConstIsize};
 
 use rustc::hir;
 
@@ -48,6 +48,7 @@ use std::borrow::Cow;
 use libc::c_uint;
 use syntax::ast::{self, LitKind};
 use syntax::attr::{self, AttrMetaMethods};
+use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ptr::P;
 
@@ -110,11 +111,11 @@ pub fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {
     }
 }
 
-fn addr_of_mut(ccx: &CrateContext,
-               cv: ValueRef,
-               align: machine::llalign,
-               kind: &str)
-               -> ValueRef {
+pub fn addr_of_mut(ccx: &CrateContext,
+                   cv: ValueRef,
+                   align: machine::llalign,
+                   kind: &str)
+                    -> ValueRef {
     unsafe {
         // FIXME: this totally needs a better name generation scheme, perhaps a simple global
         // counter? Also most other uses of gensym in trans.
@@ -158,13 +159,13 @@ pub fn addr_of(ccx: &CrateContext,
 }
 
 /// Deref a constant pointer
-fn load_const(cx: &CrateContext, v: ValueRef, t: Ty) -> ValueRef {
+pub fn load_const(cx: &CrateContext, v: ValueRef, t: Ty) -> ValueRef {
     let v = match cx.const_unsized().borrow().get(&v) {
         Some(&v) => v,
         None => v
     };
     let d = unsafe { llvm::LLVMGetInitializer(v) };
-    if t.is_bool() {
+    if !d.is_null() && t.is_bool() {
         unsafe { llvm::LLVMConstTrunc(d, Type::i1(cx).to_ref()) }
     } else {
         d
@@ -466,16 +467,12 @@ fn check_unary_expr_validity(cx: &CrateContext, e: &hir::Expr, t: Ty,
             Some(v) => v,
             None => return Ok(()),
         };
-        match -cval {
-            Ok(_) => return Ok(()),
-            Err(err) => const_err(cx, e, Err(err), trueconst),
-        }
-    } else {
-        Ok(())
+        const_err(cx, e.span, (-cval).map_err(ErrKind::Math), trueconst)?;
     }
+    Ok(())
 }
 
-fn to_const_int(value: ValueRef, t: Ty, tcx: &TyCtxt) -> Option<ConstInt> {
+pub fn to_const_int(value: ValueRef, t: Ty, tcx: &TyCtxt) -> Option<ConstInt> {
     match t.sty {
         ty::TyInt(int_type) => const_to_opt_int(value).and_then(|input| match int_type {
             ast::IntTy::I8 => {
@@ -523,24 +520,21 @@ fn to_const_int(value: ValueRef, t: Ty, tcx: &TyCtxt) -> Option<ConstInt> {
     }
 }
 
-fn const_err(cx: &CrateContext,
-             e: &hir::Expr,
-             result: Result<ConstInt, ConstMathErr>,
-             trueconst: TrueConst)
-             -> Result<(), ConstEvalFailure> {
+pub fn const_err<T>(cx: &CrateContext,
+                    span: Span,
+                    result: Result<T, ErrKind>,
+                    trueconst: TrueConst)
+                    -> Result<T, ConstEvalFailure> {
     match (result, trueconst) {
-        (Ok(_), _) => {
-            // We do not actually care about a successful result.
-            Ok(())
-        },
+        (Ok(x), _) => Ok(x),
         (Err(err), TrueConst::Yes) => {
-            let err = ConstEvalErr{ span: e.span, kind: ErrKind::Math(err) };
-            cx.tcx().sess.span_err(e.span, &err.description());
+            let err = ConstEvalErr{ span: span, kind: err };
+            cx.tcx().sess.span_err(span, &err.description());
             Err(Compiletime(err))
         },
         (Err(err), TrueConst::No) => {
-            let err = ConstEvalErr{ span: e.span, kind: ErrKind::Math(err) };
-            cx.tcx().sess.span_warn(e.span, &err.description());
+            let err = ConstEvalErr{ span: span, kind: err };
+            cx.tcx().sess.span_warn(span, &err.description());
             Err(Runtime(err))
         },
     }
@@ -564,7 +558,8 @@ fn check_binary_expr_validity(cx: &CrateContext, e: &hir::Expr, t: Ty,
         hir::BiShr => lhs >> rhs,
         _ => return Ok(()),
     };
-    const_err(cx, e, result, trueconst)
+    const_err(cx, e.span, result.map_err(ErrKind::Math), trueconst)?;
+    Ok(())
 }
 
 fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
@@ -719,8 +714,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             if iv >= len {
                 // FIXME #3170: report this earlier on in the const-eval
                 // pass. Reporting here is a bit late.
-                span_err!(cx.sess(), e.span, E0515,
-                          "const index-expr is out of bounds");
+                const_err(cx, e.span, Err(ErrKind::IndexOutOfBounds), trueconst)?;
                 C_undef(val_ty(arr).element_type())
             } else {
                 const_get_elt(arr, &[iv as c_uint])
@@ -1128,6 +1122,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
     };
 
     ccx.instances().borrow_mut().insert(instance, g);
+    ccx.statics().borrow_mut().insert(g, def_id);
     Datum::new(g, ty, Lvalue::new("static"))
 }
 
@@ -1147,14 +1142,20 @@ pub fn trans_static(ccx: &CrateContext,
         let def_id = ccx.tcx().map.local_def_id(id);
         let datum = get_static(ccx, def_id);
 
-        let empty_substs = ccx.tcx().mk_substs(Substs::empty());
-        let (v, _) = const_expr(
-            ccx,
-            expr,
-            empty_substs,
-            None,
-            TrueConst::Yes,
-        ).map_err(|e| e.into_inner())?;
+        let check_attrs = |attrs: &[ast::Attribute]| {
+            let default_to_mir = ccx.sess().opts.debugging_opts.orbit;
+            let invert = if default_to_mir { "rustc_no_mir" } else { "rustc_mir" };
+            default_to_mir ^ attrs.iter().any(|item| item.check_name(invert))
+        };
+        let use_mir = check_attrs(ccx.tcx().map.attrs(id));
+
+        let v = if use_mir {
+            ::mir::trans_static_initializer(ccx, def_id)
+        } else {
+            let empty_substs = ccx.tcx().mk_substs(Substs::empty());
+            const_expr(ccx, expr, empty_substs, None, TrueConst::Yes)
+                .map(|(v, _)| v)
+        }.map_err(|e| e.into_inner())?;
 
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected

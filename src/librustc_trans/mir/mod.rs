@@ -31,6 +31,8 @@ use basic_block::BasicBlock;
 
 use rustc_data_structures::bitvec::BitVector;
 
+pub use self::constant::trans_static_initializer;
+
 use self::lvalue::{LvalueRef, get_dataptr, get_meta};
 use rustc_mir::traversal;
 

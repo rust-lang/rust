@@ -35,13 +35,12 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         let expr_ty = expr.ty.clone();
         let temp = this.temp(expr_ty.clone());
-        let temp_lifetime = match expr.temp_lifetime {
-            Some(t) => t,
-            None => {
-                span_bug!(expr.span, "no temp_lifetime for expr");
-            }
-        };
-        this.schedule_drop(expr.span, temp_lifetime, &temp, expr_ty);
+        // In constants, temp_lifetime is None. We should not need to drop
+        // anything because no values with a destructor can be created in
+        // a constant at this time, even if the type may need dropping.
+        if let Some(temp_lifetime) = expr.temp_lifetime {
+            this.schedule_drop(expr.span, temp_lifetime, &temp, expr_ty);
+        }
 
         // Careful here not to cause an infinite cycle. If we always
         // called `into`, then for lvalues like `x.f`, it would

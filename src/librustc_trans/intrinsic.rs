@@ -1482,28 +1482,23 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
         let total_len = in_len as u64 * 2;
 
-        let (vector, indirect) = match args {
+        let vector = match args {
             Some(args) => {
                 match consts::const_expr(bcx.ccx(), &args[2], substs, None,
                                          // this should probably help simd error reporting
                                          consts::TrueConst::Yes) {
-                    Ok((vector, _)) => (vector, false),
+                    Ok((vector, _)) => vector,
                     Err(err) => bcx.sess().span_fatal(span, &err.description()),
                 }
             }
-            None => (llargs[2], !type_is_immediate(bcx.ccx(), arg_tys[2]))
+            None => llargs[2]
         };
 
         let indices: Option<Vec<_>> = (0..n)
             .map(|i| {
                 let arg_idx = i;
-                let val = if indirect {
-                    Load(bcx, StructGEP(bcx, vector, i))
-                } else {
-                    const_get_elt(vector, &[i as libc::c_uint])
-                };
-                let c = const_to_opt_uint(val);
-                match c {
+                let val = const_get_elt(vector, &[i as libc::c_uint]);
+                match const_to_opt_uint(val) {
                     None => {
                         emit_error!("shuffle index #{} is not a constant", arg_idx);
                         None

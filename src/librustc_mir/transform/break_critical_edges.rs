@@ -10,8 +10,7 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
-use rustc::mir::transform::{MirPass, Pass};
-use syntax::ast::NodeId;
+use rustc::mir::transform::{MirPass, MirSource, Pass};
 
 use rustc_data_structures::bitvec::BitVector;
 
@@ -43,7 +42,7 @@ pub struct BreakCriticalEdges;
  */
 
 impl<'tcx> MirPass<'tcx> for BreakCriticalEdges {
-    fn run_pass(&mut self, _: &TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
+    fn run_pass(&mut self, _: &TyCtxt<'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
         break_critical_edges(mir);
     }
 }

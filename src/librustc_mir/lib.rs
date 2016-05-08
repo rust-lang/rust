@@ -20,7 +20,9 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![cfg_attr(not(stage0), deny(warnings))]
 #![unstable(feature = "rustc_private", issue = "27812")]
 
+#![feature(associated_consts)]
 #![feature(box_patterns)]
+#![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(question_mark)]
@@ -31,9 +33,15 @@ extern crate graphviz as dot;
 extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_back;
+#[macro_use]
+#[no_link]
+extern crate rustc_bitflags;
+#[macro_use]
 extern crate syntax;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
+
+pub mod diagnostics;
 
 pub mod build;
 pub mod graphviz;

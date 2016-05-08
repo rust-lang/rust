@@ -26,6 +26,7 @@ use glue;
 use type_::Type;
 
 use super::{MirContext, TempRef, drop};
+use super::constant::Const;
 use super::lvalue::{LvalueRef, load_fat_ptr};
 use super::operand::OperandRef;
 use super::operand::OperandValue::{self, FatPtr, Immediate, Ref};
@@ -114,9 +115,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let discr = bcx.with_block(|bcx| base::to_immediate(bcx, discr, switch_ty));
                 let switch = bcx.switch(discr, self.llblock(*otherwise), values.len());
                 for (value, target) in values.iter().zip(targets) {
-                    let llval = self.trans_constval(&bcx, value, switch_ty).immediate();
+                    let val = Const::from_constval(bcx.ccx(), value.clone(), switch_ty);
                     let llbb = self.llblock(*target);
-                    build::AddCase(switch, llval, llbb)
+                    build::AddCase(switch, val.llval, llbb)
                 }
             }
 
@@ -240,8 +241,30 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     (&args[..], None)
                 };
 
+                let is_shuffle = intrinsic.map_or(false, |name| {
+                    name.starts_with("simd_shuffle")
+                });
                 let mut idx = 0;
                 for arg in first_args {
+                    // The indices passed to simd_shuffle* in the
+                    // third argument must be constant. This is
+                    // checked by const-qualification, which also
+                    // promotes any complex rvalues to constants.
+                    if is_shuffle && idx == 2 {
+                        match *arg {
+                            mir::Operand::Consume(_) => {
+                                span_bug!(terminator.span,
+                                          "shuffle indices must be constant");
+                            }
+                            mir::Operand::Constant(ref constant) => {
+                                let val = self.trans_constant(&bcx, constant);
+                                llargs.push(val.llval);
+                                idx += 1;
+                                continue;
+                            }
+                        }
+                    }
+
                     let val = self.trans_operand(&bcx, arg).val;
                     self.trans_argument(&bcx, val, &mut llargs, &fn_ty,
                                         &mut idx, &mut callee.data);

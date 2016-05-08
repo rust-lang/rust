@@ -82,19 +82,4 @@ extern "platform-intrinsic" {
 unsafe { simd_add(i32x1(0), i32x1(1)); } // ok!
 ```
 "##,
-
-E0515: r##"
-A constant index expression was out of bounds. Erroneous code example:
-
-```compile_fail
-let x = &[0, 1, 2][7]; // error: const index-expr is out of bounds
-```
-
-Please specify a valid index (not inferior to 0 or superior to array length).
-Example:
-
-```
-let x = &[0, 1, 2][2]; // ok
-```
-"##,
 }

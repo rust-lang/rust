@@ -261,6 +261,11 @@ pub fn run_tests(config: &Config) {
         _ => { /* proceed */ }
     }
 
+    // FIXME(#33435) Avoid spurious failures in codegen-units/partitioning tests.
+    if let Mode::CodegenUnits = config.mode {
+        let _ = fs::remove_dir_all("tmp/partitioning-tests");
+    }
+
     let opts = test_opts(config);
     let tests = make_tests(config);
     // sadly osx needs some file descriptor limits raised for running tests in
