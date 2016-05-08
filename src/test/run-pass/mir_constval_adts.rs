@@ -14,6 +14,7 @@ struct Point {
     _x: i32,
     _y: i32,
 }
+
 const STRUCT: Point = Point { _x: 42, _y: 42 };
 const TUPLE1: (i32, i32) = (42, 42);
 const TUPLE2: (&'static str, &'static str) = ("hello","world");
@@ -26,7 +27,19 @@ fn mir() -> (Point, (i32, i32), (&'static str, &'static str)){
     (struct1, tuple1, tuple2)
 }
 
+#[derive(PartialEq, Eq, Debug)]
+struct Newtype<T>(T);
+
+const NEWTYPE: Newtype<&'static str> = Newtype("foobar");
+
+#[rustc_mir]
+fn test_promoted_newtype_str_ref() {
+    let x = &NEWTYPE;
+    assert_eq!(x, &Newtype("foobar"));
+}
+
 fn main(){
     assert_eq!(mir(), (STRUCT, TUPLE1, TUPLE2));
+    test_promoted_newtype_str_ref();
 }
 

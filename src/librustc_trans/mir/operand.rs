@@ -140,7 +140,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::Operand::Constant(ref constant) => {
-                self.trans_constant(bcx, constant)
+                let val = self.trans_constant(bcx, constant);
+                let operand = val.to_operand(bcx.ccx());
+                if let OperandValue::Ref(ptr) = operand.val {
+                    // If this is a OperandValue::Ref to an immediate constant, load it.
+                    self.trans_load(bcx, ptr, operand.ty)
+                } else {
+                    operand
+                }
             }
         }
     }

@@ -19,6 +19,11 @@ fn black_box<T>(_: T) {
     unimplemented!()
 }
 
+// Make sure that the two uses get two errors.
+const FOO: u8 = [5u8][1];
+//~^ ERROR array index out of bounds
+//~^^ ERROR array index out of bounds
+
 #[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     let a = -std::i8::MIN;
@@ -31,9 +36,11 @@ fn main() {
     let d = 42u8 - (42u8 + 1);
     //~^ WARN attempted to subtract with overflow
     let _e = [5u8][1];
-    //~^ ERROR const index-expr is out of bounds
+    //~^ WARN array index out of bounds
     black_box(a);
     black_box(b);
     black_box(c);
     black_box(d);
+
+    black_box((FOO, FOO));
 }

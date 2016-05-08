@@ -11,7 +11,8 @@
 struct A;
 struct B;
 
-static S: &'static B = &A; //~ ERROR user-defined dereference operators
+static S: &'static B = &A;
+//~^ ERROR calls in statics are limited to constant functions
 
 use std::ops::Deref;
 

@@ -17,7 +17,8 @@ static C: &'static usize = &(A.a);
 
 static D: [usize; 1] = [1];
 static E: usize = D[0];
-//~^ ERROR: cannot refer to other statics by value
+//~^ ERROR: cannot refer to the interior of another static
+//~^^ ERROR: cannot refer to other statics by value
 static F: &'static usize = &D[0];
 //~^ ERROR: cannot refer to the interior of another static
 

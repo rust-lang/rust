@@ -35,13 +35,12 @@
 use rustc_data_structures::bitvec::BitVector;
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
-use rustc::mir::transform::{Pass, MirPass};
-use syntax::ast::NodeId;
+use rustc::mir::transform::{Pass, MirPass, MirSource};
 
 pub struct RemoveDeadBlocks;
 
 impl<'tcx> MirPass<'tcx> for RemoveDeadBlocks {
-    fn run_pass(&mut self, _: &TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
+    fn run_pass(&mut self, _: &TyCtxt<'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
         let mut seen = BitVector::new(mir.basic_blocks.len());
         // This block is always required.
         seen.insert(START_BLOCK.index());

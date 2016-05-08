@@ -16,7 +16,7 @@ use abi;
 use adt;
 use base;
 use builder::Builder;
-use common::{self, BlockAndBuilder, C_uint};
+use common::{self, BlockAndBuilder, CrateContext, C_uint};
 use consts;
 use machine;
 use mir::drop;
@@ -56,6 +56,18 @@ impl<'tcx> LvalueRef<'tcx> {
         }
         LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty))
     }
+
+    pub fn len<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
+        let ty = self.ty.to_ty(ccx.tcx());
+        match ty.sty {
+            ty::TyArray(_, n) => common::C_uint(ccx, n),
+            ty::TySlice(_) | ty::TyStr => {
+                assert!(self.llextra != ptr::null_mut());
+                self.llextra
+            }
+            _ => bug!("unexpected type `{}` in LvalueRef::len", ty)
+        }
+    }
 }
 
 pub fn get_meta(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
@@ -71,20 +83,6 @@ pub fn load_fat_ptr(b: &Builder, fat_ptr: ValueRef) -> (ValueRef, ValueRef) {
 }
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
-    pub fn lvalue_len(&mut self,
-                      bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                      lvalue: LvalueRef<'tcx>)
-                      -> ValueRef {
-        match lvalue.ty.to_ty(bcx.tcx()).sty {
-            ty::TyArray(_, n) => common::C_uint(bcx.ccx(), n),
-            ty::TySlice(_) | ty::TyStr => {
-                assert!(lvalue.llextra != ptr::null_mut());
-                lvalue.llextra
-            }
-            _ => bug!("unexpected type in lvalue_len"),
-        }
-    }
-
     pub fn trans_lvalue(&mut self,
                         bcx: &BlockAndBuilder<'bcx, 'tcx>,
                         lvalue: &mir::Lvalue<'tcx>)
@@ -190,7 +188,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                          from_end: true,
                                                          min_length: _ } => {
                         let lloffset = C_uint(bcx.ccx(), offset);
-                        let lllen = self.lvalue_len(bcx, tr_base);
+                        let lllen = tr_base.len(bcx.ccx());
                         let llindex = bcx.sub(lllen, lloffset);
                         project_index(self.prepare_index(bcx, llindex))
                     }
