@@ -623,6 +623,69 @@ let Foo = 12i32; // ok!
 The goal here is to avoid a conflict of names.
 "##,
 
+E0414: r##"
+A variable binding in an irrefutable pattern is shadowing the name of a
+constant. Example of erroneous code:
+
+```compile_fail
+const FOO: u8 = 7;
+
+let FOO = 5; // error: variable bindings cannot shadow constants
+
+// or
+
+fn bar(FOO: u8) { // error: variable bindings cannot shadow constants
+
+}
+
+// or
+
+for FOO in bar {
+
+}
+```
+
+Introducing a new variable in Rust is done through a pattern. Thus you can have
+`let` bindings like `let (a, b) = ...`. However, patterns also allow constants
+in them, e.g. if you want to match over a constant:
+
+```ignore
+const FOO: u8 = 1;
+
+match (x,y) {
+ (3, 4) => { .. }, // it is (3,4)
+ (FOO, 1) => { .. }, // it is (1,1)
+ (foo, 1) => { .. }, // it is (anything, 1)
+                     // call the value in the first slot "foo"
+ _ => { .. } // it is anything
+}
+```
+
+Here, the second arm matches the value of `x` against the constant `FOO`,
+whereas the third arm will accept any value of `x` and call it `foo`.
+
+This works for `match`, however in cases where an irrefutable pattern is
+required, constants can't be used. An irrefutable pattern is one which always
+matches, whose purpose is only to bind variable names to values. These are
+required by let, for, and function argument patterns.
+
+Refutable patterns in such a situation do not make sense, for example:
+
+```ignore
+let Some(x) = foo; // what if foo is None, instead?
+
+let (1, x) = foo; // what if foo.0 is not 1?
+
+let (SOME_CONST, x) = foo; // what if foo.0 is not SOME_CONST?
+
+let SOME_CONST = foo; // what if foo is not SOME_CONST?
+```
+
+Thus, an irrefutable variable binding can't contain a constant.
+
+To fix this error, just give the marked variable a different name.
+"##,
+
 E0415: r##"
 More than one function parameter have the same name. Example of erroneous code:
 
@@ -1086,7 +1149,6 @@ register_diagnostics! {
     E0409, // variable is bound with different mode in pattern # than in
            // pattern #1
     E0410, // variable from pattern is not bound in pattern 1
-    E0414, // only irrefutable patterns allowed here
     E0418, // is not an enum variant, struct or const
     E0420, // is not an associated const
     E0421, // unresolved associated const
