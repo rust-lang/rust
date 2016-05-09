@@ -783,7 +783,7 @@ fn write_shared(cx: &Context,
             try_err!(write!(&mut f, "{}", *implementor), &mydst);
         }
 
-        try_err!(write!(&mut f, r"implementors['{}'] = [", krate.name), &mydst);
+        try_err!(write!(&mut f, r#"implementors["{}"] = ["#, krate.name), &mydst);
         for imp in imps {
             // If the trait and implementation are in the same crate, then
             // there's no need to emit information about it (there's inlining
