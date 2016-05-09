@@ -28,10 +28,10 @@ fn main() {
             panic!("hi there");
         });
 
-        panic::propagate(result.err().unwrap());
+        panic::propagate(result.unwrap_err());
     }).join();
 
-    let msg = *result.err().unwrap().downcast::<&'static str>().unwrap();
+    let msg = *result.unwrap_err().downcast::<&'static str>().unwrap();
     assert_eq!("hi there", msg);
     assert_eq!(1, A.load(Ordering::SeqCst));
 }

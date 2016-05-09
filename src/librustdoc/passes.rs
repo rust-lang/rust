@@ -115,9 +115,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             // trait impls for private items should be stripped
             clean::ImplItem(clean::Impl{
-                for_: clean::ResolvedPath{ did, .. }, ..
+                for_: clean::ResolvedPath{ did, is_generic, .. }, ..
             }) => {
-                if did.is_local() && !self.access_levels.is_exported(did) {
+                if did.is_local() && !is_generic && !self.access_levels.is_exported(did) {
                     return None;
                 }
             }
@@ -183,7 +183,9 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = i.inner {
             if let Some(did) = imp.for_.def_id() {
-                if did.is_local() && !self.retained.contains(&did) {
+                if did.is_local() && !imp.for_.is_generic() &&
+                    !self.retained.contains(&did)
+                {
                     return None;
                 }
             }
