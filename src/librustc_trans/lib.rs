@@ -123,6 +123,7 @@ mod mir;
 mod monomorphize;
 mod partitioning;
 mod symbol_names_test;
+mod trans_item;
 mod tvec;
 mod type_;
 mod type_of;

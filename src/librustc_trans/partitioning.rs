@@ -116,14 +116,15 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked #[inline].
 
-use collector::{TransItem, ReferenceMap};
+use collector::ReferenceMap;
+use llvm;
 use monomorphize;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::ty::TyCtxt;
 use rustc::ty::item_path::characteristic_def_id_of_type;
-use llvm;
 use syntax::parse::token::{self, InternedString};
+use trans_item::TransItem;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
