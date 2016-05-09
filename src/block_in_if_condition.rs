@@ -59,7 +59,7 @@ impl<'v> Visitor<'v> for ExVisitor<'v> {
                 }
             };
             if complex {
-                self.found_block = Some(&expr);
+                self.found_block = Some(expr);
                 return;
             }
         }

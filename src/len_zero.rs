@@ -184,7 +184,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
         })
     }
 
-    let ty = &walk_ptrs_ty(&cx.tcx.expr_ty(expr));
+    let ty = &walk_ptrs_ty(cx.tcx.expr_ty(expr));
     match ty.sty {
         ty::TyTrait(_) => {
             cx.tcx

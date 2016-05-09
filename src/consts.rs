@@ -164,14 +164,14 @@ impl PartialOrd for Constant {
                 }
             }
             (&Constant::Bool(ref l), &Constant::Bool(ref r)) => Some(l.cmp(r)),
-            (&Constant::Vec(ref l), &Constant::Vec(ref r)) => l.partial_cmp(&r),
+            (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) |
+            (&Constant::Vec(ref l), &Constant::Vec(ref r)) => l.partial_cmp(r),
             (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => {
                 match lv.partial_cmp(rv) {
                     Some(Equal) => Some(ls.cmp(rs)),
                     x => x,
                 }
             }
-            (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) => l.partial_cmp(r),
             _ => None, //TODO: Are there any useful inter-type orderings?
         }
     }

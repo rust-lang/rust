@@ -142,7 +142,7 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
     };
 
     if let ExprMatch(_, ref arms, MatchSource::Normal) = expr.node {
-        if let Some((i, j)) = search_same(&arms, hash, eq) {
+        if let Some((i, j)) = search_same(arms, hash, eq) {
             span_note_and_lint(cx,
                                MATCH_SAME_ARMS,
                                j.body.span,
@@ -256,8 +256,8 @@ fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Option<(&T, &T)>
         match map.entry(hash(expr)) {
             Entry::Occupied(o) => {
                 for o in o.get() {
-                    if eq(&o, expr) {
-                        return Some((&o, expr));
+                    if eq(o, expr) {
+                        return Some((o, expr));
                     }
                 }
             }

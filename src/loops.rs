@@ -328,7 +328,7 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
 fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
-    if let Some(UnsugaredRange { start: Some(ref start), ref end, .. }) = unsugar_range(&arg) {
+    if let Some(UnsugaredRange { start: Some(ref start), ref end, .. }) = unsugar_range(arg) {
         // the var must be a single name
         if let PatKind::Ident(_, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
@@ -363,7 +363,7 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                 };
 
                 let take: Cow<_> = if let Some(ref end) = *end {
-                    if is_len_call(&end, &indexed) {
+                    if is_len_call(end, &indexed) {
                         "".into()
                     } else {
                         format!(".take({})", snippet(cx, end.span, "..")).into()
@@ -422,10 +422,10 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
 
 fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     // if this for loop is iterating over a two-sided range...
-    if let Some(UnsugaredRange { start: Some(ref start), end: Some(ref end), limits }) = unsugar_range(&arg) {
+    if let Some(UnsugaredRange { start: Some(ref start), end: Some(ref end), limits }) = unsugar_range(arg) {
         // ...and both sides are compile-time constant integers...
-        if let Ok(start_idx) = eval_const_expr_partial(&cx.tcx, start, ExprTypeChecked, None) {
-            if let Ok(end_idx) = eval_const_expr_partial(&cx.tcx, end, ExprTypeChecked, None) {
+        if let Ok(start_idx) = eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None) {
+            if let Ok(end_idx) = eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None) {
                 // ...and the start index is greater than the end index,
                 // this loop will never run. This is often confusing for developers
                 // who think that this will iterate from the larger value to the

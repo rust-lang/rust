@@ -18,6 +18,7 @@ fn main() {
     //~| SUGGESTION let c = Some(1u8).map({1+2; foo});
     let d = Some(1u8).map(|a| foo((|b| foo2(b))(a))); //is adjusted?
     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
+    //~^ WARN needless_borrow
     unsafe {
         Some(1u8).map(|a| unsafe_fn(a)); // unsafe fn
     }

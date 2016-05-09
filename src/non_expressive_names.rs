@@ -249,7 +249,7 @@ impl EarlyLintPass for NonExpressiveNames {
                 let mut visitor = SimilarNamesLocalVisitor {
                     names: Vec::new(),
                     cx: cx,
-                    lint: &self,
+                    lint: self,
                     single_char_names: Vec::new(),
                 };
                 // initialize with function arguments

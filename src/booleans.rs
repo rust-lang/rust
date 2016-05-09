@@ -221,7 +221,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                         s.push('(');
                     }
                 }
-                s.push_str(&snip(&terminals[n as usize]));
+                s.push_str(&snip(terminals[n as usize]));
                 if brackets {
                     if let ExprBinary(..) = terminals[n as usize].node {
                         s.push(')');
@@ -319,7 +319,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
             }
             let mut improvements = Vec::new();
             'simplified: for suggestion in &simplified {
-                let simplified_stats = terminal_stats(&suggestion);
+                let simplified_stats = terminal_stats(suggestion);
                 let mut improvement = false;
                 for i in 0..32 {
                     // ignore any "simplifications" that end up requiring a terminal more often than in the original expression

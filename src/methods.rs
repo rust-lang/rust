@@ -365,7 +365,7 @@ impl LateLintPass for MethodsPass {
                     lint_cstring_as_ptr(cx, expr, &arglists[0][0], &arglists[1][0]);
                 }
 
-                lint_or_fun_call(cx, expr, &name.node.as_str(), &args);
+                lint_or_fun_call(cx, expr, &name.node.as_str(), args);
 
                 let self_ty = cx.tcx.expr_ty_adjusted(&args[0]);
                 if args.len() == 1 && name.node.as_str() == "clone" {
@@ -420,7 +420,7 @@ impl LateLintPass for MethodsPass {
 
                     // check conventions w.r.t. conversion method names and predicates
                     let ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(item.id)).ty;
-                    let is_copy = is_copy(cx, &ty, &item);
+                    let is_copy = is_copy(cx, ty, item);
                     for &(ref conv, self_kinds) in &CONVENTIONS {
                         if conv.check(&name.as_str()) &&
                            !self_kinds.iter().any(|k| k.matches(&sig.explicit_self.node, is_copy)) {
