@@ -337,6 +337,12 @@ impl ExitStatus {
     }
 }
 
+impl From<c::DWORD> for ExitStatus {
+    fn from(u: c::DWORD) -> ExitStatus {
+        ExitStatus(u)
+    }
+}
+
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "exit code: {}", self.0)
