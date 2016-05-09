@@ -8,6 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Implementation of rustbuild, the Rust build system.
+//!
+//! This module, and its descendants, are the implementation of the Rust build
+//! system. Most of this build system is backed by Cargo but the outer layer
+//! here serves as the ability to orchestrate calling Cargo, sequencing Cargo
+//! builds, building artifacts like LLVM, etc.
+//!
+//! More documentation can be found in each respective module below.
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
@@ -21,6 +30,14 @@ use num_cpus;
 
 use build::util::{exe, mtime, libdir, add_lib_path};
 
+/// A helper macro to `unwrap` a result except also print out details like:
+///
+/// * The file/line of the panic
+/// * The expression that failed
+/// * The error itself
+///
+/// This is currently used judiciously throughout the build system rather than
+/// using a `Result` with `try!`, but this may change on day...
 macro_rules! t {
     ($e:expr) => (match $e {
         Ok(e) => e,
@@ -53,12 +70,27 @@ mod job {
 pub use build::config::Config;
 pub use build::flags::Flags;
 
+/// A structure representing a Rust compiler.
+///
+/// Each compiler has a `stage` that it is associated with and a `host` that
+/// corresponds to the platform the compiler runs on. This structure is used as
+/// a parameter to many methods below.
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct Compiler<'a> {
     stage: u32,
     host: &'a str,
 }
 
+/// Global configuration for the build system.
+///
+/// This structure transitively contains all configuration for the build system.
+/// All filesystem-encoded configuration is in `config`, all flags are in
+/// `flags`, and then parsed or probed information is listed in the keys below.
+///
+/// This structure is a parameter of almost all methods in the build system,
+/// although most functions are implemented as free functions rather than
+/// methods specifically on this structure itself (to make it easier to
+/// organize).
 pub struct Build {
     // User-specified configuration via config.toml
     config: Config,
@@ -92,14 +124,33 @@ pub struct Build {
     compiler_rt_built: RefCell<HashMap<String, PathBuf>>,
 }
 
+/// The various "modes" of invoking Cargo.
+///
+/// These entries currently correspond to the various output directories of the
+/// build system, with each mod generating output in a different directory.
 pub enum Mode {
+    /// This cargo is going to build the standard library, placing output in the
+    /// "stageN-std" directory.
     Libstd,
+
+    /// This cargo is going to build libtest, placing output in the
+    /// "stageN-test" directory.
     Libtest,
+
+    /// This cargo is going to build librustc and compiler libraries, placing
+    /// output in the "stageN-rustc" directory.
     Librustc,
+
+    /// This cargo is going to some build tool, placing output in the
+    /// "stageN-tools" directory.
     Tool,
 }
 
 impl Build {
+    /// Creates a new set of build configuration from the `flags` on the command
+    /// line and the filesystem `config`.
+    ///
+    /// By default all build output will be placed in the current directory.
     pub fn new(flags: Flags, config: Config) -> Build {
         let cwd = t!(env::current_dir());
         let src = flags.src.clone().unwrap_or(cwd.clone());
@@ -141,6 +192,7 @@ impl Build {
         }
     }
 
+    /// Executes the entire build, as configured by the flags and configuration.
     pub fn build(&mut self) {
         use build::step::Source::*;
 
@@ -161,6 +213,16 @@ impl Build {
         self.verbose("updating submodules");
         self.update_submodules();
 
+        // The main loop of the build system.
+        //
+        // The `step::all` function returns a topographically sorted list of all
+        // steps that need to be executed as part of this build. Each step has a
+        // corresponding entry in `step.rs` and indicates some unit of work that
+        // needs to be done as part of the build.
+        //
+        // Almost all of these are simple one-liners that shell out to the
+        // corresponding functionality in the extra modules, where more
+        // documentation can be found.
         for target in step::all(self) {
             let doc_out = self.out.join(&target.target).join("doc");
             match target.src {
@@ -338,6 +400,10 @@ impl Build {
         }
     }
 
+    /// Updates all git submodules that we have.
+    ///
+    /// This will detect if any submodules are out of date an run the necessary
+    /// commands to sync them all with upstream.
     fn update_submodules(&self) {
         if !self.config.submodules {
             return
@@ -350,6 +416,11 @@ impl Build {
             cmd.current_dir(&self.src).arg("submodule");
             return cmd
         };
+
+        // FIXME: this takes a seriously long time to execute on Windows and a
+        //        nontrivial amount of time on Unix, we should have a better way
+        //        of detecting whether we need to run all the submodule commands
+        //        below.
         let out = output(git_submodule().arg("status"));
         if !out.lines().any(|l| l.starts_with("+") || l.starts_with("-")) {
             return
@@ -366,8 +437,9 @@ impl Build {
                                 .arg("git").arg("checkout").arg("."));
     }
 
-    /// Clear out `dir` if our build has been flagged as dirty, and also set
-    /// ourselves as dirty if `file` changes when `f` is executed.
+    /// Clear out `dir` if `input` is newer.
+    ///
+    /// After this executes, it will also ensure that `dir` exists.
     fn clear_if_dirty(&self, dir: &Path, input: &Path) {
         let stamp = dir.join(".stamp");
         if mtime(&stamp) < mtime(input) {
@@ -381,8 +453,10 @@ impl Build {
     /// Prepares an invocation of `cargo` to be run.
     ///
     /// This will create a `Command` that represents a pending execution of
-    /// Cargo for the specified stage, whether or not the standard library is
-    /// being built, and using the specified compiler targeting `target`.
+    /// Cargo. This cargo will be configured to use `compiler` as the actual
+    /// rustc compiler, its output will be scoped by `mode`'s output directory,
+    /// it will pass the `--target` flag for the specified `target`, and will be
+    /// executing the Cargo command `cmd`.
     fn cargo(&self,
              compiler: &Compiler,
              mode: Mode,
@@ -398,6 +472,9 @@ impl Build {
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
         // how the actual compiler itself is called.
+        //
+        // These variables are primarily all read by
+        // src/bootstrap/{rustc,rustdoc.rs}
         cargo.env("RUSTC", self.out.join("bootstrap/debug/rustc"))
              .env("RUSTC_REAL", self.compiler_path(compiler))
              .env("RUSTC_STAGE", compiler.stage.to_string())
@@ -414,16 +491,7 @@ impl Build {
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
-        // Set the bootstrap key depending on which stage compiler we're using.
-        // In stage0 we're using a previously released stable compiler, so we
-        // use the stage0 bootstrap key. Otherwise we use our own build's
-        // bootstrap key.
-        let bootstrap_key = if compiler.is_snapshot(self) {
-            &self.bootstrap_key_stage0
-        } else {
-            &self.bootstrap_key
-        };
-        cargo.env("RUSTC_BOOTSTRAP_KEY", bootstrap_key);
+        self.add_bootstrap_key(compiler, &mut cargo);
 
         // Specify some various options for build scripts used throughout
         // the build.
@@ -443,7 +511,7 @@ impl Build {
 
         // Environment variables *required* needed throughout the build
         //
-        // FIXME: should update code to not require this env vars
+        // FIXME: should update code to not require this env var
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
 
         if self.config.verbose || self.flags.verbose {
@@ -522,6 +590,12 @@ impl Build {
         if self.config.rust_optimize {"release"} else {"debug"}
     }
 
+    /// Returns the sysroot for the `compiler` specified that *this build system
+    /// generates*.
+    ///
+    /// That is, the sysroot for the stage0 compiler is not what the compiler
+    /// thinks it is by default, but it's the same as the default for stages
+    /// 1-3.
     fn sysroot(&self, compiler: &Compiler) -> PathBuf {
         if compiler.stage == 0 {
             self.out.join(compiler.host).join("stage0-sysroot")
@@ -530,6 +604,8 @@ impl Build {
         }
     }
 
+    /// Returns the libdir where the standard library and other artifacts are
+    /// found for a compiler's sysroot.
     fn sysroot_libdir(&self, compiler: &Compiler, target: &str) -> PathBuf {
         self.sysroot(compiler).join("lib").join("rustlib")
             .join(target).join("lib")
@@ -561,11 +637,17 @@ impl Build {
     }
 
     /// Root output directory for LLVM compiled for `target`
+    ///
+    /// Note that if LLVM is configured externally then the directory returned
+    /// will likely be empty.
     fn llvm_out(&self, target: &str) -> PathBuf {
         self.out.join(target).join("llvm")
     }
 
-    /// Returns the path to `llvm-config` for the specified target
+    /// Returns the path to `llvm-config` for the specified target.
+    ///
+    /// If a custom `llvm-config` was specified for target then that's returned
+    /// instead.
     fn llvm_config(&self, target: &str) -> PathBuf {
         let target_config = self.config.target_config.get(target);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
@@ -576,7 +658,7 @@ impl Build {
         }
     }
 
-    /// Returns the path to `llvm-config` for the specified target
+    /// Returns the path to `FileCheck` binary for the specified target
     fn llvm_filecheck(&self, target: &str) -> PathBuf {
         let target_config = self.config.target_config.get(target);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
@@ -603,15 +685,37 @@ impl Build {
         self.out.join(target).join("rust-test-helpers")
     }
 
+    /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic
+    /// library lookup path.
     fn add_rustc_lib_path(&self, compiler: &Compiler, cmd: &mut Command) {
         // Windows doesn't need dylib path munging because the dlls for the
         // compiler live next to the compiler and the system will find them
         // automatically.
-        if cfg!(windows) { return }
+        if cfg!(windows) {
+            return
+        }
 
         add_lib_path(vec![self.rustc_libdir(compiler)], cmd);
     }
 
+    /// Adds the compiler's bootstrap key to the environment of `cmd`.
+    fn add_bootstrap_key(&self, compiler: &Compiler, cmd: &mut Command) {
+        // In stage0 we're using a previously released stable compiler, so we
+        // use the stage0 bootstrap key. Otherwise we use our own build's
+        // bootstrap key.
+        let bootstrap_key = if compiler.is_snapshot(self) {
+            &self.bootstrap_key_stage0
+        } else {
+            &self.bootstrap_key
+        };
+        cmd.env("RUSTC_BOOTSTRAP_KEY", bootstrap_key);
+    }
+
+    /// Returns the compiler's libdir where it stores the dynamic libraries that
+    /// it itself links against.
+    ///
+    /// For example this returns `<sysroot>/lib` on Unix and `<sysroot>/bin` on
+    /// Windows.
     fn rustc_libdir(&self, compiler: &Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
             self.rustc_snapshot_libdir()
@@ -620,30 +724,38 @@ impl Build {
         }
     }
 
+    /// Returns the libdir of the snapshot compiler.
     fn rustc_snapshot_libdir(&self) -> PathBuf {
         self.rustc.parent().unwrap().parent().unwrap()
             .join(libdir(&self.config.build))
     }
 
+    /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
         self.verbose(&format!("running: {:?}", cmd));
         run_silent(cmd)
     }
 
+    /// Prints a message if this build is configured in verbose mode.
     fn verbose(&self, msg: &str) {
         if self.flags.verbose || self.config.verbose {
             println!("{}", msg);
         }
     }
 
+    /// Returns the number of parallel jobs that have been configured for this
+    /// build.
     fn jobs(&self) -> u32 {
         self.flags.jobs.unwrap_or(num_cpus::get() as u32)
     }
 
+    /// Returns the path to the C compiler for the target specified.
     fn cc(&self, target: &str) -> &Path {
         self.cc[target].0.path()
     }
 
+    /// Returns a list of flags to pass to the C compiler for the target
+    /// specified.
     fn cflags(&self, target: &str) -> Vec<String> {
         // Filter out -O and /O (the optimization flags) that we picked up from
         // gcc-rs because the build scripts will determine that for themselves.
@@ -663,15 +775,26 @@ impl Build {
         return base
     }
 
+    /// Returns the path to the `ar` archive utility for the target specified.
     fn ar(&self, target: &str) -> &Path {
         &self.cc[target].1
     }
 
+    /// Returns the path to the C++ compiler for the target specified, may panic
+    /// if no C++ compiler was configured for the target.
     fn cxx(&self, target: &str) -> &Path {
         self.cxx[target].path()
     }
 
+    /// Returns flags to pass to the compiler to generate code for `target`.
     fn rustc_flags(&self, target: &str) -> Vec<String> {
+        // New flags should be added here with great caution!
+        //
+        // It's quite unfortunate to **require** flags to generate code for a
+        // target, so it should only be passed here if absolutely necessary!
+        // Most default configuration should be done through target specs rather
+        // than an entry here.
+
         let mut base = Vec::new();
         if target != self.config.build && !target.contains("msvc") {
             base.push(format!("-Clinker={}", self.cc(target).display()));
@@ -681,10 +804,12 @@ impl Build {
 }
 
 impl<'a> Compiler<'a> {
+    /// Creates a new complier for the specified stage/host
     fn new(stage: u32, host: &'a str) -> Compiler<'a> {
         Compiler { stage: stage, host: host }
     }
 
+    /// Returns whether this is a snapshot compiler for `build`'s configuration
     fn is_snapshot(&self, build: &Build) -> bool {
         self.stage == 0 && self.host == build.config.build
     }

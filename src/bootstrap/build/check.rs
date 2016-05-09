@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Implementation of the various `check-*` targets of the build system.
+//!
+//! This file implements the various regression test suites that we execute on
+//! our CI.
+
 use std::fs;
 use std::path::{PathBuf, Path};
 use std::process::Command;
@@ -16,6 +21,10 @@ use build_helper::output;
 
 use build::{Build, Compiler};
 
+/// Runs the `linkchecker` tool as compiled in `stage` by the `host` compiler.
+///
+/// This tool in `src/tools` will verify the validity of all our links in the
+/// documentation to ensure we don't have a bunch of dead ones.
 pub fn linkcheck(build: &Build, stage: u32, host: &str) {
     println!("Linkcheck stage{} ({})", stage, host);
     let compiler = Compiler::new(stage, host);
@@ -23,8 +32,11 @@ pub fn linkcheck(build: &Build, stage: u32, host: &str) {
                    .arg(build.out.join(host).join("doc")));
 }
 
+/// Runs the `cargotest` tool as compiled in `stage` by the `host` compiler.
+///
+/// This tool in `src/tools` will check out a few Rust projects and run `cargo
+/// test` to ensure that we don't regress the test suites there.
 pub fn cargotest(build: &Build, stage: u32, host: &str) {
-
     let ref compiler = Compiler::new(stage, host);
 
     // Configure PATH to find the right rustc. NB. we have to use PATH
@@ -47,6 +59,11 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
                    .arg(&out_dir));
 }
 
+/// Runs the `tidy` tool as compiled in `stage` by the `host` compiler.
+///
+/// This tool in `src/tools` checks up on various bits and pieces of style and
+/// otherwise just implements a few lint-like checks that are specific to the
+/// compiler itself.
 pub fn tidy(build: &Build, stage: u32, host: &str) {
     println!("tidy check stage{} ({})", stage, host);
     let compiler = Compiler::new(stage, host);
@@ -58,12 +75,20 @@ fn testdir(build: &Build, host: &str) -> PathBuf {
     build.out.join(host).join("test")
 }
 
+/// Executes the `compiletest` tool to run a suite of tests.
+///
+/// Compiles all tests with `compiler` for `target` with the specified
+/// compiletest `mode` and `suite` arguments. For example `mode` can be
+/// "run-pass" or `suite` can be something like `debuginfo`.
 pub fn compiletest(build: &Build,
                    compiler: &Compiler,
                    target: &str,
                    mode: &str,
                    suite: &str) {
     let mut cmd = build.tool_cmd(compiler, "compiletest");
+
+    // compiletest currently has... a lot of arguments, so let's just pass all
+    // of them!
 
     cmd.arg("--compile-lib-path").arg(build.rustc_libdir(compiler));
     cmd.arg("--run-lib-path").arg(build.sysroot_libdir(compiler, target));
@@ -113,6 +138,8 @@ pub fn compiletest(build: &Build,
         cmd.arg("--verbose");
     }
 
+    // Only pass correct values for these flags for the `run-make` suite as it
+    // requires that a C++ compiler was configured which isn't always the case.
     if suite == "run-make" {
         let llvm_config = build.llvm_config(target);
         let llvm_components = output(Command::new(&llvm_config).arg("--components"));
@@ -139,11 +166,19 @@ pub fn compiletest(build: &Build,
             }
         }
     }
+    build.add_bootstrap_key(compiler, &mut cmd);
 
     build.run(&mut cmd);
 }
 
+/// Run `rustdoc --test` for all documentation in `src/doc`.
+///
+/// This will run all tests in our markdown documentation (e.g. the book)
+/// located in `src/doc`. The `rustdoc` that's run is the one that sits next to
+/// `compiler`.
 pub fn docs(build: &Build, compiler: &Compiler) {
+    // Do a breadth-first traversal of the `src/doc` directory and just run
+    // tests for all files that end in `*.md`
     let mut stack = vec![build.src.join("src/doc")];
 
     while let Some(p) = stack.pop() {
@@ -161,6 +196,12 @@ pub fn docs(build: &Build, compiler: &Compiler) {
     }
 }
 
+/// Run the error index generator tool to execute the tests located in the error
+/// index.
+///
+/// The `error_index_generator` tool lives in `src/tools` and is used to
+/// generate a markdown file from the error indexes of the code base which is
+/// then passed to `rustdoc --test`.
 pub fn error_index(build: &Build, compiler: &Compiler) {
     println!("Testing error-index stage{}", compiler.stage);
 

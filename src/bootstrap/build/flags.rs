@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Command-line interface of the rustbuild build system.
+//!
+//! This module implements the command-line parsing of the build system which
+//! has various flags to configure how it's run.
+
 use std::fs;
 use std::path::PathBuf;
 use std::process;
@@ -15,6 +20,7 @@ use std::slice;
 
 use getopts::Options;
 
+/// Deserialized version of all flags for this compile.
 pub struct Flags {
     pub verbose: bool,
     pub stage: Option<u32>,

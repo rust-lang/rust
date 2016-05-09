@@ -8,6 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Implementation of compiling various phases of the compiler and standard
+//! library.
+//!
+//! This module contains some of the real meat in the rustbuild build system
+//! which is where Cargo is used to compiler the standard library, libtest, and
+//! compiler. This module is also responsible for assembling the sysroot as it
+//! goes along from the output of the previous stage.
+
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -35,6 +43,8 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     copy(&build.compiler_rt_built.borrow()[target],
          &libdir.join(staticlib("compiler-rt", target)));
 
+    // Some platforms have startup objects that may be required to produce the
+    // libstd dynamic library, for example.
     build_startup_objects(build, target, &libdir);
 
     let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
@@ -153,7 +163,6 @@ pub fn test_link(build: &Build,
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
     add_to_sysroot(&out_dir, &libdir);
 }
-
 
 /// Build the compiler.
 ///

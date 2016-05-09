@@ -8,6 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Documentation generation for rustbuild.
+//!
+//! This module implements generation for all bits and pieces of documentation
+//! for the Rust project. This notably includes suites like the rust book, the
+//! nomicon, standalone documentation, etc.
+//!
+//! Everything here is basically just a shim around calling either `rustbook` or
+//! `rustdoc`.
+
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::Path;
@@ -16,6 +25,11 @@ use std::process::Command;
 use build::{Build, Compiler, Mode};
 use build::util::{up_to_date, cp_r};
 
+/// Invoke `rustbook` as compiled in `stage` for `target` for the doc book
+/// `name` into the `out` path.
+///
+/// This will not actually generate any documentation if the documentation has
+/// already been generated.
 pub fn rustbook(build: &Build, stage: u32, target: &str, name: &str, out: &Path) {
     t!(fs::create_dir_all(out));
 
@@ -35,6 +49,14 @@ pub fn rustbook(build: &Build, stage: u32, target: &str, name: &str, out: &Path)
                    .arg(out));
 }
 
+/// Generates all standalone documentation as compiled by the rustdoc in `stage`
+/// for the `target` into `out`.
+///
+/// This will list all of `src/doc` looking for markdown files and appropriately
+/// perform transformations like substituting `VERSION`, `SHORT_HASH`, and
+/// `STAMP` alongw ith providing the various header/footer HTML we've cutomized.
+///
+/// In the end, this is just a glorified wrapper around rustdoc!
 pub fn standalone(build: &Build, stage: u32, target: &str, out: &Path) {
     println!("Documenting stage{} standalone ({})", stage, target);
     t!(fs::create_dir_all(out));
@@ -105,6 +127,10 @@ pub fn standalone(build: &Build, stage: u32, target: &str, out: &Path) {
     }
 }
 
+/// Compile all standard library documentation.
+///
+/// This will generate all documentation for the standard library and its
+/// dependencies. This is largely just a wrapper around `cargo doc`.
 pub fn std(build: &Build, stage: u32, target: &str, out: &Path) {
     println!("Documenting stage{} std ({})", stage, target);
     t!(fs::create_dir_all(out));
@@ -123,6 +149,10 @@ pub fn std(build: &Build, stage: u32, target: &str, out: &Path) {
     cp_r(&out_dir, out)
 }
 
+/// Compile all libtest documentation.
+///
+/// This will generate all documentation for libtest and its dependencies. This
+/// is largely just a wrapper around `cargo doc`.
 pub fn test(build: &Build, stage: u32, target: &str, out: &Path) {
     println!("Documenting stage{} test ({})", stage, target);
     let compiler = Compiler::new(stage, &build.config.build);
@@ -139,6 +169,10 @@ pub fn test(build: &Build, stage: u32, target: &str, out: &Path) {
     cp_r(&out_dir, out)
 }
 
+/// Generate all compiler documentation.
+///
+/// This will generate all documentation for the compiler libraries and their
+/// dependencies. This is largely just a wrapper around `cargo doc`.
 pub fn rustc(build: &Build, stage: u32, target: &str, out: &Path) {
     println!("Documenting stage{} compiler ({})", stage, target);
     let compiler = Compiler::new(stage, &build.config.build);
@@ -156,6 +190,8 @@ pub fn rustc(build: &Build, stage: u32, target: &str, out: &Path) {
     cp_r(&out_dir, out)
 }
 
+/// Generates the HTML rendered error-index by running the
+/// `error_index_generator` tool.
 pub fn error_index(build: &Build, stage: u32, target: &str, out: &Path) {
     println!("Documenting stage{} error index ({})", stage, target);
     t!(fs::create_dir_all(out));
