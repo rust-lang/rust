@@ -1,0 +1,154 @@
+# Sample TOML configuration file for building Rust.
+#
+# All options are commented out by default in this file, and they're commented
+# out with their default values. The build system by default looks for
+# `config.toml` in the current directory of a build for build configuration, but
+# a custom configuration file can also be specified with `--config` to the build
+# system.
+
+# =============================================================================
+# Tweaking how LLVM is compiled
+# =============================================================================
+[llvm]
+
+# Indicates whether the LLVM build is a Release or Debug build
+#optimize = true
+
+# Indicates whether the LLVM assertions are enabled or not
+#assertions = false
+
+# Indicates whether ccache is used when building LLVM
+#ccache = false
+
+# If an external LLVM root is specified, we automatically check the version by
+# default to make sure it's within the range that we're expecting, but setting
+# this flag will indicate that this version check should not be done.
+#version-check = false
+
+# Link libstdc++ statically into the librustc_llvm instead of relying on a
+# dynamic version to be available.
+#static-libstdcpp = false
+
+# Tell the LLVM build system to use Ninja instead of the platform default for
+# the generated build system. This can sometimes be faster than make, for
+# example.
+#ninja = false
+
+# =============================================================================
+# General build configuration options
+# =============================================================================
+[build]
+
+# Build triple for the original snapshot compiler. This must be a compiler that
+# nightlies are already produced for. The current platform must be able to run
+# binaries of this build triple and the nightly will be used to bootstrap the
+# first compiler.
+#build = "x86_64-unknown-linux-gnu"    # defaults to your host platform
+
+# In addition to the build triple, other triples to produce full compiler
+# toolchains for. Each of these triples will be bootstrapped from the build
+# triple and then will continue to bootstrap themselves. This platform must
+# currently be able to run all of the triples provided here.
+#host = ["x86_64-unknown-linux-gnu"]   # defaults to just the build triple
+
+# In addition to all host triples, other triples to produce the standard library
+# for. Each host triple will be used to produce a copy of the standard library
+# for each target triple.
+#target = ["x86_64-unknown-linux-gnu"] # defaults to just the build triple
+
+# Instead of downloading the src/nightlies.txt version of Cargo specified, use
+# this Cargo binary instead to build all Rust code
+#cargo = "/path/to/bin/cargo"
+
+# Instead of downloading the src/nightlies.txt version of the compiler
+# specified, use this rustc binary instead as the stage0 snapshot compiler.
+#rustc = "/path/to/bin/rustc"
+
+# Flag to specify whether any documentation is built. If false, rustdoc and
+# friends will still be compiled but they will not be used to generate any
+# documentation.
+#docs = true
+
+# Indicate whether the compiler should be documented in addition to the standard
+# library and facade crates.
+#compiler-docs = false
+
+# =============================================================================
+# Options for compiling Rust code itself
+# =============================================================================
+[rust]
+
+# Whether or not to optimize the compiler and standard library
+#optimize = true
+
+# Number of codegen units to use for each compiler invocation. A value of 0
+# means "the number of cores on this machine", and 1+ is passed through to the
+# compiler.
+#codegen-units = 1
+
+# Whether or not debug assertions are enabled for the compiler and standard
+# library
+#debug-assertions = false
+
+# Whether or not debuginfo is emitted
+#debuginfo = false
+
+# Whether or not jemalloc is built and enabled
+#use-jemalloc = true
+
+# Whether or not jemalloc is built with its debug option set
+#debug-jemalloc = false
+
+# The default linker that will be used by the generated compiler. Note that this
+# is not the linker used to link said compiler.
+#default-linker = "cc"
+
+# The default ar utility that will be used by the generated compiler if LLVM
+# cannot be used. Note that this is not used to assemble said compiler.
+#default-ar = "ar"
+
+# The "channel" for the Rust build to produce. The stable/beta channels only
+# allow using stable features, whereas the nightly and dev channels allow using
+# nightly features
+#channel = "dev"
+
+# The root location of the MUSL installation directory. The library directory
+# will also need to contain libunwind.a for an unwinding implementation.
+#musl-root = "..."
+
+# By default the `rustc` executable is built with `-Wl,-rpath` flags on Unix
+# platforms to ensure that the compiler is usable by default from the build
+# directory (as it links to a number of dynamic libraries). This may not be
+# desired in distributions, for example.
+#rpath = true
+
+# =============================================================================
+# Options for specific targets
+#
+# Each of the following options is scoped to the specific target triple in
+# question and is used for determining how to compile each target.
+# =============================================================================
+[target.x86_64-unknown-linux-gnu]
+
+# C compiler to be used to compiler C code and link Rust code. Note that the
+# default value is platform specific, and if not specified it may also depend on
+# what platform is crossing to what platform.
+#cc = "cc"
+
+# C++ compiler to be used to compiler C++ code (e.g. LLVM and our LLVM shims).
+# This is only used for host targets.
+#cxx = "c++"
+
+# Path to the `llvm-config` binary of the installation of a custom LLVM to link
+# against. Note that if this is specifed we don't compile LLVM at all for this
+# target.
+#llvm-config = "../path/to/llvm/root/bin/llvm-config"
+
+# Path to the custom jemalloc static library to link into the standard library
+# by default. This is only used if jemalloc is still enabled above
+#jemalloc = "/path/to/jemalloc/libjemalloc_pic.a"
+
+# If this target is for Android, this option will be required to specify where
+# the NDK for the target lives. This is used to find the C compiler to link and
+# build native code.
+#android-ndk = "/path/to/ndk"
