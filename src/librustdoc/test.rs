@@ -98,8 +98,8 @@ pub fn run(input: &str,
     let defs = &RefCell::new(hir_map::collect_definitions(&krate));
 
     let mut dummy_resolver = DummyResolver;
-    let lcx = LoweringContext::new(&sess, Some(&krate), &mut dummy_resolver);
-    let krate = lower_crate(&lcx, &krate);
+    let mut lcx = LoweringContext::new(&sess, Some(&krate), &mut dummy_resolver);
+    let krate = lower_crate(&mut lcx, &krate);
 
     let opts = scrape_test_config(&krate);
 

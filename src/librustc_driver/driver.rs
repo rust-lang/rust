@@ -787,8 +787,8 @@ pub fn lower_and_resolve<'a>(sess: &Session,
 
         // Lower ast -> hir.
         let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
-            let lcx = LoweringContext::new(sess, Some(krate), &mut resolver);
-            hir_map::Forest::new(lower_crate(&lcx, krate), dep_graph)
+            let mut lcx = LoweringContext::new(sess, Some(krate), &mut resolver);
+            hir_map::Forest::new(lower_crate(&mut lcx, krate), dep_graph)
         });
 
         (ty::CrateAnalysis {
