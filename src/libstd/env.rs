@@ -493,6 +493,21 @@ pub fn temp_dir() -> PathBuf {
 /// that can fail for a good number of reasons. Some errors can include, but not
 /// be limited to, filesystem operations failing or general syscall failures.
 ///
+/// # Security
+///
+/// This function should be used with care, as its incorrect usage can cause
+/// security problems. Specifically, as with many operations invovling files and
+/// paths, you can introduce a race condition. It goes like this:
+///
+/// 1. You get the path to the current executable using `current_exe()`, and
+///    store it in a variable binding.
+/// 2. Time passes. A malicious actor removes the current executable, and
+///    replaces it with a malicious one.
+/// 3. You then use the binding to try to open that file.
+///
+/// You expected to be opening the current executable, but you're now opening
+/// something completely different.
+///
 /// # Examples
 ///
 /// ```
