@@ -97,6 +97,7 @@ h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):no
 h1.fqn {
     border-bottom: 1px dashed;
     margin-top: 0;
+    position: relative;
 }
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
     border-bottom: 1px solid;
@@ -105,6 +106,7 @@ h3.impl, h3.method, h4.method, h3.type, h4.type {
     font-weight: 600;
     margin-top: 10px;
     margin-bottom: 10px;
+    position: relative;
 }
 h3.impl, h3.method, h3.type {
     margin-top: 15px;
@@ -265,18 +267,37 @@ nav.sub {
 
 .content .out-of-band {
     font-size: 23px;
-    width: 40%;
     margin: 0px;
     padding: 0px;
     text-align: right;
     display: inline-block;
+    font-weight: normal;
+    position: absolute;
+    right: 0;
+}
+
+h3.impl > .out-of-band {
+    font-size: 21px;
+}
+
+h4 > code, h3 > code {
+    position: inherit;
+}
+
+.in-band, code {
+    z-index: 5;
 }
 
 .content .in-band {
-    width: 60%;
     margin: 0px;
     padding: 0px;
     display: inline-block;
+}
+
+#main { position: relative; }
+#main > .since {
+    top: inherit;
+    font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 .content table {
@@ -498,11 +519,13 @@ em.stab p {
     opacity: 0.65;
 }
 
-span.since {
-    float: right;
+.since {
     font-weight: normal;
     font-size: initial;
     color: grey;
+    position: absolute;
+    right: 0;
+    top: 0;
 }
 
 .variants_table {
@@ -597,7 +620,19 @@ a.test-arrow {
     color: #999;
 }
 
+.ghost {
+    display: none;
+}
 
+.ghost + .since {
+    position: initial;
+    display: table-cell;
+}
+
+.since + .srclink {
+    display: table-cell;
+    padding-left: 10px;
+}
 
 /* Media Queries */
 
