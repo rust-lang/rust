@@ -497,6 +497,91 @@ impl Bar {
 ```
 "##,
 
+E0408: r##"
+An "or" pattern was used where the variable bindings are not consistently bound
+across patterns.
+
+Example of erroneous code:
+
+```compile_fail
+match x {
+    Some(y) | None => { /* use y */ } // error: variable `y` from pattern #1 is
+                                      //        not bound in pattern #2
+    _ => ()
+}
+```
+
+Here, `y` is bound to the contents of the `Some` and can be used within the
+block corresponding to the match arm. However, in case `x` is `None`, we have
+not specified what `y` is, and the block will use a nonexistent variable.
+
+To fix this error, either split into multiple match arms:
+
+```
+let x = Some(1);
+match x {
+    Some(y) => { /* use y */ }
+    None => { /* ... */ }
+}
+```
+
+or, bind the variable to a field of the same type in all sub-patterns of the
+or pattern:
+
+```
+let x = (0, 2);
+match x {
+    (0, y) | (y, 0) => { /* use y */}
+    _ => {}
+}
+```
+
+In this example, if `x` matches the pattern `(0, _)`, the second field is set
+to `y`. If it matches `(_, 0)`, the first field is set to `y`; so in all
+cases `y` is set to some value.
+"##,
+
+E0409: r##"
+An "or" pattern was used where the variable bindings are not consistently bound
+across patterns.
+
+Example of erroneous code:
+
+```compile_fail
+let x = (0, 2);
+match x {
+    (0, ref y) | (y, 0) => { /* use y */} // error: variable `y` is bound with
+                                          //        different mode in pattern #2
+                                          //        than in pattern #1
+    _ => ()
+}
+```
+
+Here, `y` is bound by-value in one case and by-reference in the other.
+
+To fix this error, just use the same mode in both cases.
+Generally using `ref` or `ref mut` where not already used will fix this:
+
+```ignore
+let x = (0, 2);
+match x {
+    (0, ref y) | (ref y, 0) => { /* use y */}
+    _ => ()
+}
+```
+
+Alternatively, split the pattern:
+
+```
+let x = (0, 2);
+match x {
+    (y, 0) => { /* use y */ }
+    (0, ref y) => { /* use y */}
+    _ => ()
+}
+```
+"##,
+
 E0411: r##"
 The `Self` keyword was used outside an impl or a trait. Erroneous code example:
 
@@ -1145,10 +1230,7 @@ register_diagnostics! {
 //  E0258,
     E0402, // cannot use an outer type parameter in this context
     E0406, // undeclared associated type
-    E0408, // variable from pattern #1 is not bound in pattern #
-    E0409, // variable is bound with different mode in pattern # than in
-           // pattern #1
-    E0410, // variable from pattern is not bound in pattern 1
+//  E0410, merged into 408
     E0418, // is not an enum variant, struct or const
     E0420, // is not an associated const
     E0421, // unresolved associated const
