@@ -80,6 +80,30 @@ fn make_string(lines: &[RenderedLine]) -> String {
 }
 
 #[test]
+fn tab() {
+    let file_text = "
+fn foo() {
+\tbar;
+}
+";
+
+    let cm = Rc::new(CodeMap::new());
+    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let span_bar = cm.span_substr(&foo, file_text, "bar", 0);
+
+    let mut snippet = SnippetData::new(cm, Some(span_bar));
+    snippet.push(span_bar, true, None);
+
+    let lines = snippet.render_lines();
+    let text = make_string(&lines);
+    assert_eq!(&text[..], &"
+ --> foo.rs:3:2
+3 |> \tbar;
+  |> \t^^^
+"[1..]);
+}
+
+#[test]
 fn one_line() {
     let file_text = r#"
 fn foo() {
