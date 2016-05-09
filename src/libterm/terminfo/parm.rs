@@ -594,7 +594,7 @@ mod test {
             assert!(res.is_ok(),
                     "Op {} failed with 1 stack entry: {}",
                     cap,
-                    res.err().unwrap());
+                    res.unwrap_err());
         }
         let caps = ["%+", "%-", "%*", "%/", "%m", "%&", "%|", "%A", "%O"];
         for &cap in caps.iter() {
@@ -610,7 +610,7 @@ mod test {
             assert!(res.is_ok(),
                     "Binop {} failed with 2 stack entries: {}",
                     cap,
-                    res.err().unwrap());
+                    res.unwrap_err());
         }
     }
 
@@ -625,15 +625,15 @@ mod test {
         for &(op, bs) in v.iter() {
             let s = format!("%{{1}}%{{2}}%{}%d", op);
             let res = expand(s.as_bytes(), &[], &mut Variables::new());
-            assert!(res.is_ok(), res.err().unwrap());
+            assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec![b'0' + bs[0]]);
             let s = format!("%{{1}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), &[], &mut Variables::new());
-            assert!(res.is_ok(), res.err().unwrap());
+            assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec![b'0' + bs[1]]);
             let s = format!("%{{2}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), &[], &mut Variables::new());
-            assert!(res.is_ok(), res.err().unwrap());
+            assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec![b'0' + bs[2]]);
         }
     }
@@ -643,13 +643,13 @@ mod test {
         let mut vars = Variables::new();
         let s = b"\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
         let res = expand(s, &[Number(1)], &mut vars);
-        assert!(res.is_ok(), res.err().unwrap());
+        assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(), "\\E[31m".bytes().collect::<Vec<_>>());
         let res = expand(s, &[Number(8)], &mut vars);
-        assert!(res.is_ok(), res.err().unwrap());
+        assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(), "\\E[90m".bytes().collect::<Vec<_>>());
         let res = expand(s, &[Number(42)], &mut vars);
-        assert!(res.is_ok(), res.err().unwrap());
+        assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(), "\\E[38;5;42m".bytes().collect::<Vec<_>>());
     }
 

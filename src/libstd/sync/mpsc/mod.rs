@@ -535,7 +535,7 @@ impl<T> Sender<T> {
     ///
     /// // This send will fail because the receiver is gone
     /// drop(rx);
-    /// assert_eq!(tx.send(1).err().unwrap().0, 1);
+    /// assert_eq!(tx.send(1).unwrap_err().0, 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn send(&self, t: T) -> Result<(), SendError<T>> {

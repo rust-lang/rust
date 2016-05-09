@@ -30,6 +30,6 @@ pub fn main() {
         let _b = Foo;
     }).join();
 
-    let s = x.err().unwrap().downcast::<&'static str>().unwrap();
+    let s = x.unwrap_err().downcast::<&'static str>().unwrap();
     assert_eq!(&**s, "This panic should happen.");
 }
