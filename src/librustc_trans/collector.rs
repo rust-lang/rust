@@ -213,7 +213,6 @@ use meth;
 use monomorphize::{self, Instance};
 use util::nodemap::{FnvHashSet, FnvHashMap, DefIdMap};
 
-use std::hash::{Hash, Hasher};
 use trans_item::{TransItem, type_to_string, def_id_to_string};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
@@ -346,12 +345,12 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
 
             // Scan the MIR in order to find function calls, closures, and
             // drop-glue
-            let mir = errors::expect(ccx.sess().diagnostic(), ccx.get_mir(def_id),
+            let mir = errors::expect(scx.sess().diagnostic(), scx.get_mir(def_id),
                 || format!("Could not find MIR for static: {:?}", def_id));
 
-            let empty_substs = ccx.tcx().mk_substs(Substs::empty());
+            let empty_substs = scx.tcx().mk_substs(Substs::empty());
             let mut visitor = MirNeighborCollector {
-                ccx: ccx,
+                scx: scx,
                 mir: &mir,
                 output: &mut neighbors,
                 param_substs: empty_substs
