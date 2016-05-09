@@ -65,17 +65,17 @@ Multiple `#[repr(align = "..")]` directives are accepted on a struct
 declaration, and the actual alignment of the structure will be the maximum of
 all `align` directives and the natural alignment of the struct itself.
 
-Semantically, it will be guaranteed (modulo `unsafe` code and `#[repr(packed)`)
-that custom alignment will always be respected. If a pointer to a non-aligned
-structure exists and is used then it is considered unsafe behavior. Local
-variables, objects in arrays, statics, etc, will all respect the custom
-alignment specified for a type.
+Semantically, it will be guaranteed (modulo `unsafe` code) that custom alignment
+will always be respected. If a pointer to a non-aligned structure exists and is
+used then it is considered unsafe behavior. Local variables, objects in arrays,
+statics, etc, will all respect the custom alignment specified for a type.
 
-The `#[repr(align)]` attribute will not interact with `#[repr(packed)]` in the
-sense that the `packed` attribute only affects *field alignment* whereas `align`
-affects the *struct alignment*. The `packed` may indirectly lower struct
-alignment by lowering the alignment of fields, and then `align` may raise the
-overal struct alignment.
+For now, it will be illegal to mix `#[repr(align)]` and `#[repr(packed)]` in
+structs. Specifically, both attributes cannot be applied on the same struct, and
+a `#[repr(packed)]` struct cannot transitively contain another struct with
+`#[repr(align)]` or vice versa. The behavior of MSVC and gcc differ in how these
+properties interact, and for now we'll just yield an error while we get
+experience with the two attributes.
 
 Some examples of `#[repr(align)]` are:
 
@@ -113,20 +113,7 @@ struct Align8Many {
 
 assert_eq!(mem::align_of::<Align8Many>(), 8);
 assert_eq!(mem::size_of::<Align8Many>(), 16);
-
-// Raising alignment beyond the packed value
-#[repr(align = "4", packed = "2")]
-struct AlignAndPacked {
-    a: u16,
-    b: i32,
-}
-
-assert_eq!(mem::align_of::<AlignAndPacked>(), 4);
-assert_eq!(mem::size_of::<AlignAndPacked>(), 8);
-assert_eq!(offset_of!(AlignAndPacked, a), 0);
-assert_eq!(offset_of!(AlignAndPacked, b), 2);
 ```
-
 
 # Drawbacks
 [drawbacks]: #drawbacks
