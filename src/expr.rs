@@ -148,6 +148,7 @@ impl Rewrite for ast::Expr {
             ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
                 rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
             }
+            // ast::ExprKind::Try(..) |
             ast::ExprKind::Field(..) |
             ast::ExprKind::TupField(..) |
             ast::ExprKind::MethodCall(..) => rewrite_chain(self, context, width, offset),
@@ -199,21 +200,20 @@ impl Rewrite for ast::Expr {
                         rewrite_unary_prefix(context, delim, &**rhs, width, offset)
                     }
                     (Some(ref lhs), None) => {
-                        Some(format!("{}{}",
-                                     try_opt!(lhs.rewrite(context,
-                                                          try_opt!(width.checked_sub(delim.len())),
-                                                          offset)),
-                                     delim))
+                        rewrite_unary_suffix(context, delim, &**lhs, width, offset)
                     }
                     (None, None) => wrap_str(delim.into(), context.config.max_width, width, offset),
                 }
+            }
+            ast::ExprKind::Try(ref expr) => {
+                rewrite_unary_suffix(context, "?", &**expr, width, offset)
             }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
             ast::ExprKind::InPlace(..) |
             ast::ExprKind::InlineAsm(..) |
-            // TODO(#867): Handle try shorthand
-            ast::ExprKind::Try(_) => {
+            // TODO(#848): Handle type ascription
+            ast::ExprKind::Type(_, _) => {
                 wrap_str(context.snippet(self.span),
                          context.config.max_width,
                          width,
@@ -1760,6 +1760,21 @@ pub fn rewrite_unary_prefix<R: Rewrite>(context: &RewriteContext,
                  try_opt!(width.checked_sub(prefix.len())),
                  offset + prefix.len())
         .map(|r| format!("{}{}", prefix, r))
+}
+
+// FIXME: this is probably not correct for multi-line Rewrites. we should
+// subtract suffix.len() from the last line budget, not the first!
+pub fn rewrite_unary_suffix<R: Rewrite>(context: &RewriteContext,
+                                        suffix: &str,
+                                        rewrite: &R,
+                                        width: usize,
+                                        offset: Indent)
+                                        -> Option<String> {
+    rewrite.rewrite(context, try_opt!(width.checked_sub(suffix.len())), offset)
+           .map(|mut r| {
+               r.push_str(suffix);
+               r
+           })
 }
 
 fn rewrite_unary_op(context: &RewriteContext,

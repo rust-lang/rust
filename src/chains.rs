@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /// Formatting of chained expressions, i.e. expressions which are chained by
-/// dots: struct and enum field access and method calls.
+/// dots: struct and enum field access, method calls, and try shorthand (?).
 ///
 /// Instead of walking these subexpressions one-by-one, as is our usual strategy
 /// for expression formatting, we collect maximal sequences of these expressions
@@ -81,7 +81,6 @@
 /// true, then we allow the last method call to spill over multiple lines without
 /// forcing the rest of the chain to be split.
 
-
 use Indent;
 use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, first_line_width};
@@ -109,8 +108,16 @@ pub fn rewrite_chain(expr: &ast::Expr,
     // put the first non-parent item on the same line as the parent.
     let (indent, extend) = if !parent_rewrite.contains('\n') && is_continuable(parent) ||
                               parent_rewrite.len() <= context.config.tab_spaces {
-        // Try and put at least the first two items on the same line.
-        (chain_indent(context, offset + Indent::new(0, parent_rewrite.len())), true)
+// <<<<<<< HEAD
+//         // Try and put at least the first two items on the same line.
+//         (chain_indent(context, offset + Indent::new(0, parent_rewrite.len())), true)
+// =======
+        let indent = if let ast::ExprKind::Try(..) = subexpr_list.last().unwrap().node {
+            parent_block_indent.block_indent(context.config)
+        } else {
+            offset + Indent::new(0, parent_rewrite.len())
+        };
+        (indent, true)
     } else if is_block_expr(parent, &parent_rewrite) {
         // The parent is a block, so align the rest of the chain with the closing
         // brace.
@@ -184,10 +191,25 @@ pub fn rewrite_chain(expr: &ast::Expr,
     wrap_str(format!("{}{}{}",
                      parent_rewrite,
                      first_connector,
-                     rewrites.join(&connector)),
+                     join_rewrites(&rewrites, &subexpr_list, &connector)),
              context.config.max_width,
              width,
              offset)
+}
+
+fn join_rewrites(rewrites: &[String], subexps: &[&ast::Expr], connector: &str) -> String {
+    let mut rewrite_iter = rewrites.iter();
+    let mut result = rewrite_iter.next().unwrap().clone();
+
+    for (rewrite, expr) in rewrite_iter.zip(subexps.iter()) {
+        match expr.node {
+            ast::ExprKind::Try(_) => (),
+            _ => result.push_str(connector),
+        };
+        result.push_str(&rewrite[..]);
+    }
+
+    result
 }
 
 // States whether an expression's last line exclusively consists of closing
@@ -293,6 +315,16 @@ fn rewrite_method_call_with_overflow(expr_kind: &ast::ExprKind,
     }
 }
 
+fn pop_expr_chain(expr: &ast::Expr) -> Option<&ast::Expr> {
+    match expr.node {
+        ast::ExprKind::MethodCall(_, _, ref expressions) => Some(&expressions[0]),
+        ast::ExprKind::TupField(ref subexpr, _) |
+        ast::ExprKind::Field(ref subexpr, _) |
+        ast::ExprKind::Try(ref subexpr) => Some(subexpr),
+        _ => None,
+    }
+}
+
 // Rewrite the last element in the chain `expr`. E.g., given `a.b.c` we rewrite
 // `.c`.
 fn rewrite_chain_subexpr(expr: &ast::Expr,
@@ -324,6 +356,13 @@ fn rewrite_chain_subexpr(expr: &ast::Expr,
             let s = format!(".{}", field.node);
             if s.len() <= width {
                 Some(s)
+            } else {
+                None
+            }
+        }
+        ast::ExprKind::Try(_) => {
+            if width >= 1 {
+                Some("?".into())
             } else {
                 None
             }
