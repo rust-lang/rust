@@ -605,6 +605,12 @@ impl AsInner<imp::ExitStatus> for ExitStatus {
     fn as_inner(&self) -> &imp::ExitStatus { &self.0 }
 }
 
+impl FromInner<imp::ExitStatus> for ExitStatus {
+    fn from_inner(s: imp::ExitStatus) -> ExitStatus {
+        ExitStatus(s)
+    }
+}
+
 #[stable(feature = "process", since = "1.0.0")]
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
