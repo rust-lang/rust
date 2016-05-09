@@ -805,6 +805,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 match *literal {
                     Value { ref value } => Ok(try!(self.const_to_ptr(value))),
                     Item { .. } => unimplemented!(),
+                    Promoted { .. } => unimplemented!(),
                 }
             }
         }
@@ -1044,7 +1045,6 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                     return CachedMir::Owned(mir.clone());
                 }
 
-                use rustc::middle::cstore::CrateStore;
                 let cs = &self.tcx.sess.cstore;
                 let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
                     panic!("no mir for {:?}", def_id);

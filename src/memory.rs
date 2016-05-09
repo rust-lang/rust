@@ -1,4 +1,4 @@
-use byteorder::{ByteOrder, NativeEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::Bound::{Included, Excluded};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, mem, ptr};

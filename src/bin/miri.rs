@@ -1,6 +1,7 @@
 #![feature(rustc_private, custom_attribute)]
 #![allow(unused_attributes)]
 
+extern crate getopts;
 extern crate miri;
 extern crate rustc;
 extern crate rustc_driver;
@@ -12,7 +13,11 @@ use rustc_driver::{driver, CompilerCalls};
 struct MiriCompilerCalls;
 
 impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
-    fn build_controller(&mut self, _: &Session) -> driver::CompileController<'a> {
+    fn build_controller(
+        &mut self,
+        _: &Session,
+        _: &getopts::Matches
+    ) -> driver::CompileController<'a> {
         let mut control = driver::CompileController::basic();
 
         control.after_analysis.callback = Box::new(|state| {
