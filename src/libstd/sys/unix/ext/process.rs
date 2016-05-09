@@ -132,6 +132,11 @@ impl CommandExt for process::Command {
 /// Unix-specific extensions to `std::process::ExitStatus`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExitStatusExt {
+    /// Creates a new `ExitStatus` from the raw underlying `i32` return value of
+    /// a process.
+    #[unstable(feature = "exit_status_from", issue = "32713")]
+    fn from_raw(raw: i32) -> Self;
+
     /// If the process was terminated by a signal, returns that signal.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn signal(&self) -> Option<i32>;
@@ -139,6 +144,10 @@ pub trait ExitStatusExt {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ExitStatusExt for process::ExitStatus {
+    fn from_raw(raw: i32) -> Self {
+        process::ExitStatus::from_inner(From::from(raw))
+    }
+
     fn signal(&self) -> Option<i32> {
         self.as_inner().signal()
     }
