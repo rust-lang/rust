@@ -32,7 +32,7 @@ include the newline and the leading spaces:
 let s = "foo
     bar";
 
-assert_eq!("foo\n        bar", s);
+assert_eq!("foo\n    bar", s);
 ```
 
 The second, with a `\`, trims the spaces and the newline:
