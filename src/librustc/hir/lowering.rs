@@ -270,6 +270,7 @@ impl<'a> LoweringContext<'a> {
                         decl: self.lower_fn_decl(&f.decl),
                     }))
                 }
+                Empty => hir::TyEmpty,
                 Tup(ref tys) => hir::TyTup(tys.iter().map(|ty| self.lower_ty(ty)).collect()),
                 Paren(ref ty) => {
                     return self.lower_ty(ty);

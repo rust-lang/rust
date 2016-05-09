@@ -1348,6 +1348,7 @@ pub struct BareFnTy {
 /// The different kinds of types recognized by the compiler
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum TyKind {
+    /// A variable-length array (`[T]`)
     Vec(P<Ty>),
     /// A fixed length array (`[T; n]`)
     FixedLengthVec(P<Ty>, P<Expr>),
@@ -1357,6 +1358,8 @@ pub enum TyKind {
     Rptr(Option<Lifetime>, MutTy),
     /// A bare function (e.g. `fn(usize) -> bool`)
     BareFn(P<BareFnTy>),
+    /// The empty type (`!`)
+    Empty,
     /// A tuple (`(A, B, C, D,...)`)
     Tup(Vec<P<Ty>> ),
     /// A path (`module::module::...::Type`), optionally
