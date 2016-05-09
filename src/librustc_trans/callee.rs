@@ -155,6 +155,7 @@ impl<'tcx> Callee<'tcx> {
         let method_item = tcx.impl_or_trait_item(def_id);
         let trait_id = method_item.container().id();
         let trait_ref = ty::Binder(substs.to_trait_ref(tcx, trait_id));
+        let trait_ref = infer::normalize_associated_type(tcx, &trait_ref);
         match common::fulfill_obligation(ccx, DUMMY_SP, trait_ref) {
             traits::VtableImpl(vtable_impl) => {
                 let impl_did = vtable_impl.impl_def_id;
