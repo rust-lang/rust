@@ -28,6 +28,15 @@
 #[macro_use] extern crate syntax;
 extern crate serialize as rustc_serialize;
 
+mod csv_dumper;
+mod json_dumper;
+mod data;
+mod dump;
+mod dump_visitor;
+pub mod external_data;
+#[macro_use]
+pub mod span_utils;
+
 use rustc::hir;
 use rustc::hir::map::NodeItem;
 use rustc::hir::def::Def;
@@ -44,14 +53,6 @@ use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::ty_to_string;
-
-mod csv_dumper;
-mod json_dumper;
-mod data;
-mod dump;
-mod dump_visitor;
-#[macro_use]
-pub mod span_utils;
 
 pub use self::csv_dumper::CsvDumper;
 pub use self::json_dumper::JsonDumper;
@@ -748,7 +749,6 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
     root_path.pop();
     let output = &mut output_file;
 
-    let utils: SpanUtils<'tcx> = SpanUtils::new(&tcx.sess);
     let save_ctxt = SaveContext::new(tcx);
 
     macro_rules! dump {
@@ -762,8 +762,8 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
     }
 
     match format {
-        Format::Csv => dump!(CsvDumper::new(output, utils)),
-        Format::Json => dump!(JsonDumper::new(output, utils.sess.codemap())),
+        Format::Csv => dump!(CsvDumper::new(output)),
+        Format::Json => dump!(JsonDumper::new(output)),
     }
 }
 
