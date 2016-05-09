@@ -50,7 +50,6 @@ use std::collections::BTreeMap;
 use std::iter;
 use syntax::ast::*;
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
-use syntax::errors::Handler;
 use syntax::ext::mtwt;
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned, Span};
@@ -94,7 +93,7 @@ impl Resolver for DummyResolver {
     }
 }
 
-impl<'a, 'hir> LoweringContext<'a> {
+impl<'a> LoweringContext<'a> {
     pub fn new(id_assigner: &'a NodeIdAssigner,
                c: Option<&Crate>,
                resolver: &'a mut Resolver)
@@ -123,11 +122,6 @@ impl<'a, 'hir> LoweringContext<'a> {
 
     fn str_to_ident(&self, s: &'static str) -> hir::Ident {
         hir::Ident::from_name(token::gensym(s))
-    }
-
-    // Panics if this LoweringContext's NodeIdAssigner is not able to emit diagnostics.
-    fn diagnostic(&self) -> &Handler {
-        self.id_assigner.diagnostic()
     }
 
     fn with_parent_def<T, F: FnOnce() -> T>(&self, parent_id: NodeId, f: F) -> T {
@@ -1245,8 +1239,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         make_struct(lctx, e, &["RangeInclusive", "NonEmpty"],
                                              &[("start", e1), ("end", e2)]),
 
-                    _ => panic!(lctx.diagnostic().span_fatal(e.span,
-                                                             "inclusive range with no end"))
+                    _ => panic!(lctx.id_assigner.diagnostic()
+                                                .span_fatal(e.span, "inclusive range with no end")),
                 };
             }
             ExprKind::Path(ref qself, ref path) => {
