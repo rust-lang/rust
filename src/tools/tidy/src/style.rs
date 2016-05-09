@@ -73,7 +73,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             if line.contains("\r") && !skip_cr {
                 err("CR character");
             }
-            if filename != "style.rs" && filename != "tidy.py" {
+            if filename != "style.rs" {
                 if line.contains("TODO") {
                     err("TODO is deprecated; use FIXME")
                 }
