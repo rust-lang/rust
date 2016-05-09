@@ -14,39 +14,8 @@
 //! retrieve the data from a crate.
 
 use rustc::hir::def_id::DefId;
-use rustc::ty;
 use syntax::ast::{CrateNum, NodeId};
-use syntax::codemap::{Span, CodeMap};
-
-#[derive(Debug, Clone, RustcEncodable)]
-pub struct SpanData {
-    file_name: String,
-    byte_start: u32,
-    byte_end: u32,
-    /// 1-based.
-    line_start: usize,
-    line_end: usize,
-    /// 1-based, character offset.
-    column_start: usize,
-    column_end: usize,
-}
-
-impl SpanData {
-    pub fn from_span(span: Span, cm: &CodeMap) -> SpanData {
-        let start = cm.lookup_char_pos(span.lo);
-        let end = cm.lookup_char_pos(span.hi);
-
-        SpanData {
-            file_name: start.file.name.clone(),
-            byte_start: span.lo.0,
-            byte_end: span.hi.0,
-            line_start: start.line,
-            line_end: end.line,
-            column_start: start.col.0 + 1,
-            column_end: end.col.0 + 1,
-        }
-    }
-}
+use syntax::codemap::Span;
 
 pub struct CrateData {
     pub name: String,
@@ -356,59 +325,4 @@ pub struct VariableRefData {
     pub span: Span,
     pub scope: NodeId,
     pub ref_id: DefId,
-}
-
-// Emitted ids are used to cross-reference items across crates. DefIds and
-// NodeIds do not usually correspond in any way. The strategy is to use the
-// index from the DefId as a crate-local id. However, within a crate, DefId
-// indices and NodeIds can overlap. So, we must adjust the NodeIds. If an
-// item can be identified by a DefId as well as a NodeId, then we use the
-// DefId index as the id. If it can't, then we have to use the NodeId, but
-// need to adjust it so it will not clash with any possible DefId index.
-pub fn normalize_node_id<'a>(tcx: &ty::TyCtxt<'a>, id: NodeId) -> usize {
-    match tcx.map.opt_local_def_id(id) {
-        Some(id) => id.index.as_usize(),
-        None => id as usize + tcx.map.num_local_def_ids()
-    }
-}
-
-// Macro to implement a normalize() function (see below for usage)
-macro_rules! impl_normalize {
-    ($($t:ty => $($field:ident),*);*) => {
-        $(
-            impl $t {
-                pub fn normalize<'a>(mut self, tcx: &ty::TyCtxt<'a>) -> $t {
-                    $(
-                        self.$field = normalize_node_id(tcx, self.$field) as u32;
-                    )*
-                    self
-                }
-            }
-        )*
-    }
-}
-
-impl_normalize! {
-    EnumData => id, scope;
-    ExternCrateData => id, scope;
-    FunctionCallData => scope;
-    FunctionData => id, scope;
-    FunctionRefData => scope;
-    ImplData => id, scope;
-    InheritanceData => deriv_id;
-    MacroUseData => scope;
-    MethodCallData => scope;
-    MethodData => id, scope;
-    ModData => id, scope;
-    ModRefData => scope;
-    StructData => ctor_id, id, scope;
-    StructVariantData => id, scope;
-    TupleVariantData => id, scope;
-    TraitData => id, scope;
-    TypedefData => id;
-    TypeRefData => scope;
-    UseData => id, scope;
-    UseGlobData => id, scope;
-    VariableData => id;
-    VariableRefData => scope
 }
