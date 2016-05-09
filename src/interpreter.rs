@@ -688,14 +688,15 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         }
                     }
 
-                    CEnum { discr, signed, min, max } => {
+                    CEnum { discr, signed, .. } => {
                         assert_eq!(operands.len(), 0);
                         if let mir::AggregateKind::Adt(adt_def, variant, _) = *kind {
+                            let val = adt_def.variants[variant].disr_val.to_u64_unchecked();
+                            let size = discr.size().bytes() as usize;
+
                             if signed {
-                                unimplemented!()
+                                try!(self.memory.write_int(dest, val as i64, size));
                             } else {
-                                let val = adt_def.variants[variant].disr_val.to_u64().unwrap();
-                                let size = discr.size().bytes() as usize;
                                 try!(self.memory.write_uint(dest, val, size));
                             }
                         } else {
