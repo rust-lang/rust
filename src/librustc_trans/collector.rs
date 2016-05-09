@@ -188,8 +188,6 @@
 //! this is not implemented however: a translation item will be produced
 //! regardless of whether it is actually needed or not.
 
-use rustc_data_structures::bitvec::BitVector;
-
 use rustc::hir;
 use rustc::hir::intravisit as hir_visit;
 
@@ -226,42 +224,33 @@ pub enum TransItemCollectionMode {
 
 /// Maps every translation item to all translation items it references in its
 /// body.
-pub struct ReferenceMap<'tcx> {
-    // Maps a source translation item to a range of target translation items.
+pub struct InliningMap<'tcx> {
+    // Maps a source translation item to a range of target translation items
+    // that are potentially inlined by LLVM into the source.
     // The two numbers in the tuple are the start (inclusive) and
-    // end index (exclusive) within the `targets` and the `inlined` vecs.
+    // end index (exclusive) within the `targets` vecs.
     index: FnvHashMap<TransItem<'tcx>, (usize, usize)>,
     targets: Vec<TransItem<'tcx>>,
-    inlined: BitVector
 }
 
-impl<'tcx> ReferenceMap<'tcx> {
+impl<'tcx> InliningMap<'tcx> {
 
-    fn new() -> ReferenceMap<'tcx> {
-        ReferenceMap {
+    fn new() -> InliningMap<'tcx> {
+        InliningMap {
             index: FnvHashMap(),
             targets: Vec::new(),
-            inlined: BitVector::new(64 * 256),
         }
     }
 
-    fn record_references<I>(&mut self, source: TransItem<'tcx>, targets: I)
-        where I: Iterator<Item=(TransItem<'tcx>, bool)>
+    fn record_inlining_canditates<I>(&mut self,
+                                     source: TransItem<'tcx>,
+                                     targets: I)
+        where I: Iterator<Item=TransItem<'tcx>>
     {
         assert!(!self.index.contains_key(&source));
 
         let start_index = self.targets.len();
-
-        for (target, inlined) in targets {
-            let index = self.targets.len();
-            self.targets.push(target);
-            self.inlined.grow(index + 1);
-
-            if inlined {
-                self.inlined.insert(index);
-            }
-        }
-
+        self.targets.extend(targets);
         let end_index = self.targets.len();
         self.index.insert(source, (start_index, end_index));
     }
@@ -272,20 +261,9 @@ impl<'tcx> ReferenceMap<'tcx> {
         where F: FnMut(TransItem<'tcx>) {
         if let Some(&(start_index, end_index)) = self.index.get(&source)
         {
-            for index in start_index .. end_index {
-                if self.inlined.contains(index) {
-                    f(self.targets[index])
-                }
+            for candidate in &self.targets[start_index .. end_index] {
+                f(*candidate)
             }
-        }
-    }
-
-    pub fn get_direct_references_from(&self, source: TransItem<'tcx>) -> &[TransItem<'tcx>]
-    {
-        if let Some(&(start_index, end_index)) = self.index.get(&source) {
-            &self.targets[start_index .. end_index]
-        } else {
-            &self.targets[0 .. 0]
         }
     }
 }
@@ -293,7 +271,7 @@ impl<'tcx> ReferenceMap<'tcx> {
 pub fn collect_crate_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                                  mode: TransItemCollectionMode)
                                                  -> (FnvHashSet<TransItem<'tcx>>,
-                                                     ReferenceMap<'tcx>) {
+                                                     InliningMap<'tcx>) {
     // We are not tracking dependencies of this pass as it has to be re-executed
     // every time no matter what.
     scx.tcx().dep_graph.with_ignore(|| {
@@ -302,17 +280,17 @@ pub fn collect_crate_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
         debug!("Building translation item graph, beginning at roots");
         let mut visited = FnvHashSet();
         let mut recursion_depths = DefIdMap();
-        let mut reference_map = ReferenceMap::new();
+        let mut inlining_map = InliningMap::new();
 
         for root in roots {
             collect_items_rec(scx,
                               root,
                               &mut visited,
                               &mut recursion_depths,
-                              &mut reference_map);
+                              &mut inlining_map);
         }
 
-        (visited, reference_map)
+        (visited, inlining_map)
     })
 }
 
@@ -343,7 +321,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
                                    starting_point: TransItem<'tcx>,
                                    visited: &mut FnvHashSet<TransItem<'tcx>>,
                                    recursion_depths: &mut DefIdMap<usize>,
-                                   reference_map: &mut ReferenceMap<'tcx>) {
+                                   inlining_map: &mut InliningMap<'tcx>) {
     if !visited.insert(starting_point.clone()) {
         // We've been here already, no need to search again.
         return;
@@ -390,10 +368,10 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
         }
     }
 
-    record_references(scx.tcx(), starting_point, &neighbors[..], reference_map);
+    record_inlining_canditates(scx.tcx(), starting_point, &neighbors[..], inlining_map);
 
     for neighbour in neighbors {
-        collect_items_rec(scx, neighbour, visited, recursion_depths, reference_map);
+        collect_items_rec(scx, neighbour, visited, recursion_depths, inlining_map);
     }
 
     if let Some((def_id, depth)) = recursion_depth_reset {
@@ -403,17 +381,19 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
     debug!("END collect_items_rec({})", starting_point.to_string(scx.tcx()));
 }
 
-fn record_references<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               caller: TransItem<'tcx>,
-                               callees: &[TransItem<'tcx>],
-                               reference_map: &mut ReferenceMap<'tcx>) {
-    let iter = callees.into_iter()
-                      .map(|callee| {
-                        let is_inlining_candidate = callee.is_from_extern_crate() ||
-                                                    callee.requests_inline(tcx);
-                        (*callee, is_inlining_candidate)
-                      });
-    reference_map.record_references(caller, iter);
+fn record_inlining_canditates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                        caller: TransItem<'tcx>,
+                                        callees: &[TransItem<'tcx>],
+                                        inlining_map: &mut InliningMap<'tcx>) {
+    let is_inlining_candidate = |trans_item: &TransItem<'tcx>| {
+        trans_item.is_from_extern_crate() || trans_item.requests_inline(tcx)
+    };
+
+    let inlining_candidates = callees.into_iter()
+                                     .map(|x| *x)
+                                     .filter(is_inlining_candidate);
+
+    inlining_map.record_inlining_canditates(caller, inlining_candidates);
 }
 
 fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
