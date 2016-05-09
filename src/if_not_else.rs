@@ -1,7 +1,6 @@
 //! lint on if branches that could be swapped so no `!` operation is necessary on the condition
 
 use rustc::lint::*;
-use syntax::attr::*;
 use syntax::ast::*;
 
 use utils::span_help_and_lint;

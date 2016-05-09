@@ -2,7 +2,6 @@
 
 use rustc::lint::*;
 use syntax::ast::*;
-use syntax::attr::*;
 use utils::in_macro;
 
 /// **What it does:** This lints checks for items declared after some statement in a block

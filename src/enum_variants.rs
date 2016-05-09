@@ -2,7 +2,6 @@
 
 use rustc::lint::*;
 use syntax::ast::*;
-use syntax::attr::*;
 use syntax::parse::token::InternedString;
 use utils::span_help_and_lint;
 use utils::{camel_case_from, camel_case_until};
