@@ -756,7 +756,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn statics<'a>(&'a self) -> &'a RefCell<FnvHashMap<ValueRef, DefId>> {
-        &self.local.statics
+        &self.local().statics
     }
 
     pub fn impl_method_cache<'a>(&'a self)
