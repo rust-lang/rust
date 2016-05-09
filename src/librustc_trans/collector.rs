@@ -341,7 +341,26 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
             let ty = scx.tcx().lookup_item_type(def_id).ty;
             let ty = glue::get_drop_glue_type(scx.tcx(), ty);
             neighbors.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
+
             recursion_depth_reset = None;
+
+            // Scan the MIR in order to find function calls, closures, and
+            // drop-glue
+            let mir = errors::expect(ccx.sess().diagnostic(), ccx.get_mir(def_id),
+                || format!("Could not find MIR for static: {:?}", def_id));
+
+            let empty_substs = ccx.tcx().mk_substs(Substs::empty());
+            let mut visitor = MirNeighborCollector {
+                ccx: ccx,
+                mir: &mir,
+                output: &mut neighbors,
+                param_substs: empty_substs
+            };
+
+            visitor.visit_mir(&mir);
+            for promoted in &mir.promoted {
+                visitor.visit_mir(promoted);
+            }
         }
         TransItem::Fn(instance) => {
             // Keep track of the monomorphization recursion depth
