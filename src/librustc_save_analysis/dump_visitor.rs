@@ -45,6 +45,7 @@ use syntax::ptr::P;
 use super::{escape, generated_code, SaveContext, PathCollector};
 use super::data::*;
 use super::dump::Dump;
+use super::external_data::Lower;
 use super::span_utils::SpanUtils;
 use super::recorder;
 
@@ -133,7 +134,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             span: krate.span,
         };
 
-        self.dumper.crate_prelude(data);
+        self.dumper.crate_prelude(data.lower(self.tcx));
     }
 
     // Return all non-empty prefixes of a path.
@@ -203,7 +204,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 qualname: qualname,
                 scope: self.cur_scope,
                 ref_id: None
-            }.normalize(&self.tcx));
+            }.lower(self.tcx));
         }
     }
 
@@ -228,7 +229,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 qualname: qualname,
                 scope: self.cur_scope,
                 ref_id: None
-            }.normalize(&self.tcx));
+            }.lower(self.tcx));
         }
     }
 
@@ -249,7 +250,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             span: *span,
             qualname: qualname.to_owned(),
             scope: 0
-        });
+        }.lower(self.tcx));
 
         // write the other sub-paths
         if len <= 2 {
@@ -262,7 +263,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 qualname: qualname.to_owned(),
                 scope: self.cur_scope,
                 ref_id: None
-            }.normalize(&self.tcx));
+            }.lower(self.tcx));
         }
     }
 
@@ -304,7 +305,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     ref_id: Some(def_id),
                     scope: scope,
                     qualname: String::new()
-                }.normalize(&self.tcx));
+                }.lower(self.tcx));
             }
             Def::Struct(..) |
             Def::Enum(..) |
@@ -316,7 +317,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     ref_id: Some(def_id),
                     scope: scope,
                     qualname: String::new()
-                }.normalize(&self.tcx));
+                }.lower(self.tcx));
             }
             Def::Static(_, _) |
             Def::Const(_) |
@@ -329,14 +330,14 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     ref_id: def_id,
                     scope: scope,
                     name: String::new()
-                }.normalize(&self.tcx));
+                }.lower(self.tcx));
             }
             Def::Fn(..) => {
                 self.dumper.function_ref(FunctionRefData {
                     span: sub_span.expect("No span found for fn ref"),
                     ref_id: def_id,
                     scope: scope
-                }.normalize(&self.tcx));
+                }.lower(self.tcx));
             }
             Def::SelfTy(..) |
             Def::Label(_) |
@@ -371,7 +372,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         type_value: typ,
                         value: String::new(),
                         scope: 0
-                    }.normalize(&self.tcx));
+                    }.lower(self.tcx));
                 }
             }
         }
@@ -389,7 +390,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
             if body.is_some() {
                 if !self.span.filter_generated(Some(method_data.span), span) {
-                    self.dumper.function(method_data.clone().normalize(&self.tcx));
+                    self.dumper.function(method_data.clone().lower(self.tcx));
                 }
                 self.process_formals(&sig.decl.inputs, &method_data.qualname);
             } else {
@@ -399,7 +400,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         span: method_data.span,
                         scope: method_data.scope,
                         qualname: method_data.qualname.clone(),
-                    }.normalize(&self.tcx));
+                    }.lower(self.tcx));
                 }
             }
             self.process_generic_params(&sig.generics, span, &method_data.qualname, id);
@@ -424,7 +425,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         let trait_ref_data = self.save_ctxt.get_trait_ref_data(trait_ref, self.cur_scope);
         if let Some(trait_ref_data) = trait_ref_data {
             if !self.span.filter_generated(Some(trait_ref_data.span), trait_ref.path.span) {
-                self.dumper.type_ref(trait_ref_data.normalize(&self.tcx));
+                self.dumper.type_ref(trait_ref_data.lower(self.tcx));
             }
 
             visit::walk_path(self, &trait_ref.path);
@@ -435,9 +436,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
         if let Some(mut field_data) = field_data {
             if !self.span.filter_generated(Some(field_data.span), field.span) {
-                field_data.scope = normalize_node_id(&self.tcx, field_data.scope) as u32;
                 field_data.value = String::new();
-                self.dumper.variable(field_data.normalize(&self.tcx));
+                self.dumper.variable(field_data.lower(self.tcx));
             }
         }
     }
@@ -466,7 +466,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     id: param.id,
                     qualname: name,
                     value: String::new()
-                }.normalize(&self.tcx));
+                }.lower(self.tcx));
             }
         }
         self.visit_generics(generics);
@@ -480,7 +480,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         if let Some(fn_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(fn_data, FunctionData, item.span);
             if !self.span.filter_generated(Some(fn_data.span), item.span) {
-                self.dumper.function(fn_data.clone().normalize(&self.tcx));
+                self.dumper.function(fn_data.clone().lower(self.tcx));
             }
 
             self.process_formals(&decl.inputs, &fn_data.qualname);
@@ -502,9 +502,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         if let Some(var_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(var_data, VariableData, item.span);
             if !self.span.filter_generated(Some(var_data.span), item.span) {
-                let mut var_data = var_data;
-                var_data.scope = normalize_node_id(&self.tcx, var_data.scope) as u32;
-                self.dumper.variable(var_data.normalize(&self.tcx));
+                self.dumper.variable(var_data.lower(self.tcx));
             }
         }
         self.visit_ty(&typ);
@@ -529,8 +527,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 qualname: qualname,
                 value: self.span.snippet(expr.span),
                 type_value: ty_to_string(&typ),
-                scope: normalize_node_id(&self.tcx, self.cur_scope) as u32
-            }.normalize(&self.tcx));
+                scope: self.cur_scope
+            }.lower(self.tcx));
         }
 
         // walk type and init value
@@ -554,7 +552,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 qualname: qualname.clone(),
                 scope: self.cur_scope,
                 value: val
-            }.normalize(&self.tcx));
+            }.lower(self.tcx));
         }
 
 
@@ -577,9 +575,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             Some(data) => data,
         };
         down_cast_data!(enum_data, EnumData, item.span);
-        let normalized = enum_data.clone().normalize(&self.tcx);
-        if !self.span.filter_generated(Some(normalized.span), item.span) {
-            self.dumper.enum_data(normalized);
+        if !self.span.filter_generated(Some(enum_data.span), item.span) {
+            self.dumper.enum_data(enum_data.clone().lower(self.tcx));
         }
 
         for variant in &enum_definition.variants {
@@ -600,7 +597,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             type_value: enum_data.qualname.clone(),
                             value: val,
                             scope: enum_data.scope
-                        }.normalize(&self.tcx));
+                        }.lower(self.tcx));
                     }
                 }
                 _ => {
@@ -614,7 +611,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             type_value: enum_data.qualname.clone(),
                             value: val,
                             scope: enum_data.scope
-                        }.normalize(&self.tcx));
+                        }.lower(self.tcx));
                     }
                 }
             }
@@ -640,12 +637,12 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             if let Some(ref self_ref) = impl_data.self_ref {
                 has_self_ref = true;
                 if !self.span.filter_generated(Some(self_ref.span), item.span) {
-                    self.dumper.type_ref(self_ref.clone().normalize(&self.tcx));
+                    self.dumper.type_ref(self_ref.clone().lower(self.tcx));
                 }
             }
             if let Some(ref trait_ref_data) = impl_data.trait_ref {
                 if !self.span.filter_generated(Some(trait_ref_data.span), item.span) {
-                    self.dumper.type_ref(trait_ref_data.clone().normalize(&self.tcx));
+                    self.dumper.type_ref(trait_ref_data.clone().lower(self.tcx));
                 }
 
                 visit::walk_path(self, &trait_ref.as_ref().unwrap().path);
@@ -658,7 +655,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     scope: impl_data.scope,
                     trait_ref: impl_data.trait_ref.map(|d| d.ref_id.unwrap()),
                     self_ref: impl_data.self_ref.map(|d| d.ref_id.unwrap())
-                }.normalize(&self.tcx));
+                }.lower(self.tcx));
             }
         }
         if !has_self_ref {
@@ -685,7 +682,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 qualname: qualname.clone(),
                 scope: self.cur_scope,
                 value: val
-            }.normalize(&self.tcx));
+            }.lower(self.tcx));
         }
 
         // super-traits
@@ -708,7 +705,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         ref_id: Some(id),
                         scope: self.cur_scope,
                         qualname: String::new()
-                    }.normalize(&self.tcx));
+                    }.lower(self.tcx));
                 }
 
                 if !self.span.filter_generated(sub_span, trait_ref.path.span) {
@@ -717,7 +714,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         span: sub_span,
                         base_id: id,
                         deriv_id: item.id
-                    }.normalize(&self.tcx));
+                    }.lower(self.tcx));
                 }
             }
         }
@@ -734,7 +731,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         if let Some(mod_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(mod_data, ModData, item.span);
             if !self.span.filter_generated(Some(mod_data.span), item.span) {
-                self.dumper.mod_data(mod_data.normalize(&self.tcx));
+                self.dumper.mod_data(mod_data.lower(self.tcx));
             }
         }
     }
@@ -765,14 +762,14 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                 ref_id: Some(vrd.ref_id),
                                 scope: vrd.scope,
                                 qualname: String::new()
-                            }.normalize(&self.tcx));
+                            }.lower(self.tcx));
                         }
                         Some(recorder::FnRef) => {
                             self.dumper.function_ref(FunctionRefData {
                                 span: vrd.span,
                                 ref_id: vrd.ref_id,
                                 scope: vrd.scope
-                            }.normalize(&self.tcx));
+                            }.lower(self.tcx));
                         }
                         Some(recorder::ModRef) => {
                             self.dumper.mod_ref( ModRefData {
@@ -780,27 +777,27 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                 ref_id: Some(vrd.ref_id),
                                 scope: vrd.scope,
                                 qualname: String::new()
-                            }.normalize(&self.tcx));
+                            }.lower(self.tcx));
                         }
                         Some(recorder::VarRef) | None
-                            => self.dumper.variable_ref(vrd.normalize(&self.tcx))
+                            => self.dumper.variable_ref(vrd.lower(self.tcx))
                     }
                 }
 
             }
             Data::TypeRefData(trd) => {
                 if !self.span.filter_generated(Some(trd.span), path.span) {
-                    self.dumper.type_ref(trd.normalize(&self.tcx));
+                    self.dumper.type_ref(trd.lower(self.tcx));
                 }
             }
             Data::MethodCallData(mcd) => {
                 if !self.span.filter_generated(Some(mcd.span), path.span) {
-                    self.dumper.method_call(mcd.normalize(&self.tcx));
+                    self.dumper.method_call(mcd.lower(self.tcx));
                 }
             }
             Data::FunctionCallData(fcd) => {
                 if !self.span.filter_generated(Some(fcd.span), path.span) {
-                    self.dumper.function_call(fcd.normalize(&self.tcx));
+                    self.dumper.function_call(fcd.lower(self.tcx));
                 }
             }
             _ => {
@@ -842,7 +839,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         if let Some(struct_lit_data) = self.save_ctxt.get_expr_data(ex) {
             down_cast_data!(struct_lit_data, TypeRefData, ex.span);
             if !self.span.filter_generated(Some(struct_lit_data.span), ex.span) {
-                self.dumper.type_ref(struct_lit_data.normalize(&self.tcx));
+                self.dumper.type_ref(struct_lit_data.lower(self.tcx));
             }
 
             let scope = self.save_ctxt.enclosing_scope(ex.id);
@@ -852,7 +849,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                               .get_field_ref_data(field, variant, scope) {
 
                     if !self.span.filter_generated(Some(field_data.span), field.ident.span) {
-                        self.dumper.variable_ref(field_data.normalize(&self.tcx));
+                        self.dumper.variable_ref(field_data.lower(self.tcx));
                     }
                 }
 
@@ -867,7 +864,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         if let Some(mcd) = self.save_ctxt.get_expr_data(ex) {
             down_cast_data!(mcd, MethodCallData, ex.span);
             if !self.span.filter_generated(Some(mcd.span), ex.span) {
-                self.dumper.method_call(mcd.normalize(&self.tcx));
+                self.dumper.method_call(mcd.lower(self.tcx));
             }
         }
 
@@ -892,7 +889,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                 ref_id: f.did,
                                 scope: self.cur_scope,
                                 name: String::new()
-                            }.normalize(&self.tcx));
+                            }.lower(self.tcx));
                         }
                     }
                     self.visit_pat(&field.pat);
@@ -931,7 +928,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     value: value,
                     type_value: typ,
                     scope: 0
-                }.normalize(&self.tcx));
+                }.lower(self.tcx));
             }
         }
     }
@@ -961,7 +958,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     span: sub_span,
                     name: data.name.clone(),
                     qualname: qualname.clone()
-                });
+                }.lower(self.tcx));
             }
         }
         if !self.mac_uses.contains(&data.span) {
@@ -974,7 +971,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     scope: data.scope,
                     callee_span: data.callee_span,
                     imported: data.imported
-                }.normalize(&self.tcx));
+                }.lower(self.tcx));
             }
         }
     }
@@ -1014,7 +1011,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                                 mod_id: mod_id,
                                 name: ident.to_string(),
                                 scope: self.cur_scope
-                            }.normalize(&self.tcx));
+                            }.lower(self.tcx));
                         }
                         self.write_sub_paths_truncated(path, true);
                     }
@@ -1037,7 +1034,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                                 id: item.id,
                                 names: names,
                                 scope: self.cur_scope
-                            }.normalize(&self.tcx));
+                            }.lower(self.tcx));
                         }
                         self.write_sub_paths(path, true);
                     }
@@ -1081,7 +1078,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                         location: location,
                         span: alias_span.expect("No span found for extern crate"),
                         scope: self.cur_scope,
-                    }.normalize(&self.tcx));
+                    }.lower(self.tcx));
                 }
             }
             Fn(ref decl, _, _, _, ref ty_params, ref body) =>
@@ -1115,7 +1112,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                         id: item.id,
                         qualname: qualname.clone(),
                         value: value
-                    }.normalize(&self.tcx));
+                    }.lower(self.tcx));
                 }
 
                 self.visit_ty(&ty);
@@ -1195,7 +1192,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                             ref_id: Some(id),
                             scope: self.cur_scope,
                             qualname: String::new()
-                        }.normalize(&self.tcx));
+                        }.lower(self.tcx));
                     }
                 }
 
@@ -1232,7 +1229,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                 if let Some(field_data) = self.save_ctxt.get_expr_data(ex) {
                     down_cast_data!(field_data, VariableRefData, ex.span);
                     if !self.span.filter_generated(Some(field_data.span), ex.span) {
-                        self.dumper.variable_ref(field_data.normalize(&self.tcx));
+                        self.dumper.variable_ref(field_data.lower(self.tcx));
                     }
                 }
             }
@@ -1250,7 +1247,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                                 ref_id: def.struct_variant().fields[idx.node].did,
                                 scope: self.cur_scope,
                                 name: String::new()
-                            }.normalize(&self.tcx));
+                            }.lower(self.tcx));
                         }
                     }
                     ty::TyTuple(_) => {}
@@ -1343,7 +1340,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                             value: value,
                             type_value: String::new(),
                             scope: 0
-                        }.normalize(&self.tcx));
+                        }.lower(self.tcx));
                     }
                 }
                 Def::Variant(..) | Def::Enum(..) |

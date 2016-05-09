@@ -10,25 +10,20 @@
 
 use std::io::Write;
 
-use rustc::hir::def_id::{DefId, DefIndex};
-use syntax::codemap::Span;
-
-use super::data::*;
+use super::external_data::*;
 use super::dump::Dump;
-use super::span_utils::SpanUtils;
 
-pub struct CsvDumper<'tcx, 'b, W: 'b> {
-    output: &'b mut W,
-    span: SpanUtils<'tcx>
+pub struct CsvDumper<'b, W: 'b> {
+    output: &'b mut W
 }
 
-impl<'a, 'b, W: Write> CsvDumper<'a, 'b, W> {
-    pub fn new(writer: &'b mut W, span: SpanUtils<'a>) -> CsvDumper<'a, 'b, W> {
-        CsvDumper { output: writer, span: span }
+impl<'b, W: Write> CsvDumper<'b, W> {
+    pub fn new(writer: &'b mut W) -> CsvDumper<'b, W> {
+        CsvDumper { output: writer }
     }
 
-    fn record(&mut self, kind: &str, span: Span, values: String) {
-        let span_str = self.span.extent_str(span);
+    fn record(&mut self, kind: &str, span: SpanData, values: String) {
+        let span_str = span_extent_str(span);
         if let Err(_) = write!(self.output, "{},{}{}\n", kind, span_str, values) {
             error!("Error writing output");
         }
@@ -41,7 +36,7 @@ impl<'a, 'b, W: Write> CsvDumper<'a, 'b, W> {
     }
 }
 
-impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
+impl<'b, W: Write + 'b> Dump for CsvDumper<'b, W> {
     fn crate_prelude(&mut self, data: CratePreludeData) {
         let values = make_values_str(&[
             ("name", &data.crate_name),
@@ -65,8 +60,8 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn enum_data(&mut self, data: EnumData) {
-        let id = data.id.to_string();
-        let scope = data.scope.to_string();
+        let id = data.id.index.as_u32().to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("qualname", &data.qualname),
@@ -78,9 +73,9 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn extern_crate(&mut self, data: ExternCrateData) {
-        let id = data.id.to_string();
+        let id = data.id.index.as_u32().to_string();
         let crate_num = data.crate_num.to_string();
-        let scope = data.scope.to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("name", &data.name),
@@ -96,12 +91,12 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         let self_ref = data.self_ref.unwrap_or(null_def_id());
         let trait_ref = data.trait_ref.unwrap_or(null_def_id());
 
-        let id = data.id.to_string();
+        let id = data.id.index.as_u32().to_string();
         let ref_id = self_ref.index.as_usize().to_string();
         let ref_id_crate = self_ref.krate.to_string();
         let trait_id = trait_ref.index.as_usize().to_string();
         let trait_id_crate = trait_ref.krate.to_string();
-        let scope = data.scope.to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("refid", &ref_id),
@@ -117,8 +112,8 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     fn inheritance(&mut self, data: InheritanceData) {
        let base_id = data.base_id.index.as_usize().to_string();
        let base_crate = data.base_id.krate.to_string();
-       let deriv_id = data.deriv_id.to_string();
-       let deriv_crate = 0.to_string();
+       let deriv_id = data.deriv_id.index.as_u32().to_string();
+       let deriv_crate = data.deriv_id.krate.to_string();
        let values = make_values_str(&[
            ("base", &base_id),
            ("basecrate", &base_crate),
@@ -135,8 +130,8 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
             None => (String::new(), String::new())
         };
 
-        let id = data.id.to_string();
-        let scope = data.scope.to_string();
+        let id = data.id.index.as_u32().to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("qualname", &data.qualname),
@@ -151,7 +146,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     fn function_ref(&mut self, data: FunctionRefData) {
         let ref_id = data.ref_id.index.as_usize().to_string();
         let ref_crate = data.ref_id.krate.to_string();
-        let scope = data.scope.to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("refid", &ref_id),
             ("refidcrate", &ref_crate),
@@ -166,7 +161,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         let ref_id = data.ref_id.index.as_usize().to_string();
         let ref_crate = data.ref_id.krate.to_string();
         let qualname = String::new();
-        let scope = data.scope.to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("refid", &ref_id),
             ("refidcrate", &ref_crate),
@@ -178,8 +173,8 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn method(&mut self, data: MethodData) {
-        let id = data.id.to_string();
-        let scope = data.scope.to_string();
+        let id = data.id.index.as_u32().to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("qualname", &data.qualname),
@@ -199,7 +194,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
 
         let def_id = ref_id.index.as_usize().to_string();
         let def_crate = ref_id.krate.to_string();
-        let scope = data.scope.to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("refid", &def_id),
             ("refidcrate", &def_crate),
@@ -221,7 +216,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn macro_use(&mut self, data: MacroUseData) {
-        let scope = data.scope.to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("callee_name", &data.name),
             ("qualname", &data.qualname),
@@ -232,8 +227,8 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn mod_data(&mut self, data: ModData) {
-        let id = data.id.to_string();
-        let scope = data.scope.to_string();
+        let id = data.id.index.as_u32().to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("qualname", &data.qualname),
@@ -250,7 +245,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
             None => (0.to_string(), 0.to_string())
         };
 
-        let scope = data.scope.to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("refid", &ref_id),
             ("refidcrate", &ref_crate),
@@ -262,9 +257,9 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn struct_data(&mut self, data: StructData) {
-        let id = data.id.to_string();
-        let ctor_id = data.ctor_id.to_string();
-        let scope = data.scope.to_string();
+        let id = data.id.index.as_u32().to_string();
+        let ctor_id = data.ctor_id.index.as_u32().to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("ctor_id", &ctor_id),
@@ -277,8 +272,8 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn struct_variant(&mut self, data: StructVariantData) {
-        let id = data.id.to_string();
-        let scope = data.scope.to_string();
+        let id = data.id.index.as_u32().to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("ctor_id", &id),
@@ -292,8 +287,8 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn trait_data(&mut self, data: TraitData) {
-        let id = data.id.to_string();
-        let scope = data.scope.to_string();
+        let id = data.id.index.as_u32().to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("qualname", &data.qualname),
@@ -305,8 +300,8 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn tuple_variant(&mut self, data: TupleVariantData) {
-        let id = data.id.to_string();
-        let scope = data.scope.to_string();
+        let id = data.id.index.as_u32().to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("name", &data.name),
@@ -325,7 +320,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
             None => (0.to_string(), 0.to_string())
         };
 
-        let scope = data.scope.to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("refid", &ref_id),
             ("refidcrate", &ref_crate),
@@ -337,7 +332,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn typedef(&mut self, data: TypedefData) {
-        let id = data.id.to_string();
+        let id = data.id.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("qualname", &data.qualname),
@@ -350,10 +345,10 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     fn use_data(&mut self, data: UseData) {
         let mod_id = data.mod_id.unwrap_or(null_def_id());
 
-        let id = data.id.to_string();
+        let id = data.id.index.as_u32().to_string();
         let ref_id = mod_id.index.as_usize().to_string();
         let ref_crate = mod_id.krate.to_string();
-        let scope = data.scope.to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("refid", &ref_id),
@@ -368,8 +363,8 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     fn use_glob(&mut self, data: UseGlobData) {
         let names = data.names.join(", ");
 
-        let id = data.id.to_string();
-        let scope = data.scope.to_string();
+        let id = data.id.index.as_u32().to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("value", &names),
@@ -380,8 +375,8 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn variable(&mut self, data: VariableData) {
-        let id = data.id.to_string();
-        let scope = data.scope.to_string();
+        let id = data.id.index.as_u32().to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),
             ("name", &data.name),
@@ -397,7 +392,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     fn variable_ref(&mut self, data: VariableRefData) {
         let ref_id = data.ref_id.index.as_usize().to_string();
         let ref_crate = data.ref_id.krate.to_string();
-        let scope = data.scope.to_string();
+        let scope = data.scope.index.as_u32().to_string();
         let values = make_values_str(&[
             ("refid", &ref_id),
             ("refidcrate", &ref_crate),
@@ -431,9 +426,9 @@ fn make_values_str(pairs: &[(&'static str, &str)]) -> String {
     })
 }
 
-fn null_def_id() -> DefId {
-    DefId {
-        krate: 0,
-        index: DefIndex::new(0),
-    }
+fn span_extent_str(span: SpanData) -> String {
+    format!("file_name,\"{}\",file_line,{},file_col,{},byte_start,{}\
+             file_line_end,{},file_col_end,{},byte_end,{}",
+             span.file_name, span.line_start, span.column_start, span.byte_start,
+             span.line_end, span.column_end, span.byte_end)
 }
