@@ -593,12 +593,6 @@ pub fn lower_mt(lctx: &LoweringContext, mt: &MutTy) -> hir::MutTy {
     }
 }
 
-pub fn lower_opt_bounds(lctx: &LoweringContext,
-                        b: &Option<TyParamBounds>)
-                        -> Option<hir::TyParamBounds> {
-    b.as_ref().map(|ref bounds| lower_bounds(lctx, bounds))
-}
-
 fn lower_bounds(lctx: &LoweringContext, bounds: &TyParamBounds) -> hir::TyParamBounds {
     bounds.iter().map(|bound| lower_ty_param_bound(lctx, bound)).collect()
 }
