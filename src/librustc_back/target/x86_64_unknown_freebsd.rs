@@ -13,6 +13,7 @@ use target::Target;
 pub fn target() -> Target {
     let mut base = super::freebsd_base::opts();
     base.cpu = "x86-64".to_string();
+    base.max_atomic_width = 64;
     base.pre_link_args.push("-m64".to_string());
 
     Target {

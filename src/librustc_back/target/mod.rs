@@ -292,6 +292,10 @@ pub struct TargetOptions {
     // If we give emcc .o files that are actually .bc files it
     // will 'just work'.
     pub obj_is_bitcode: bool,
+
+    /// Maximum integer size in bits that this target can perform atomic
+    /// operations on.
+    pub max_atomic_width: u64,
 }
 
 impl Default for TargetOptions {
@@ -340,6 +344,7 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
+            max_atomic_width: 0,
         }
     }
 }
@@ -392,6 +397,9 @@ impl Target {
             options: Default::default(),
         };
 
+        // Default max-atomic-width to target-pointer-width
+        base.options.max_atomic_width = base.target_pointer_width.parse().unwrap();
+
         macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
@@ -402,6 +410,12 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..])
                     .map(|o| o.as_boolean()
+                         .map(|s| base.options.$key_name = s));
+            } );
+            ($key_name:ident, u64) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..])
+                    .map(|o| o.as_u64()
                          .map(|s| base.options.$key_name = s));
             } );
             ($key_name:ident, list) => ( {
@@ -451,6 +465,7 @@ impl Target {
         key!(archive_format);
         key!(allow_asm, bool);
         key!(custom_unwind_resume, bool);
+        key!(max_atomic_width, u64);
 
         base
     }

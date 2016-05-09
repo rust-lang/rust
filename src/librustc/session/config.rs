@@ -695,6 +695,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let os = &sess.target.target.target_os;
     let env = &sess.target.target.target_env;
     let vendor = &sess.target.target.target_vendor;
+    let max_atomic_width = sess.target.target.options.max_atomic_width;
 
     let fam = if let Some(ref fam) = sess.target.target.options.target_family {
         intern(fam)
@@ -720,6 +721,15 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     }
     if sess.target.target.options.has_elf_tls {
         ret.push(attr::mk_word_item(InternedString::new("target_thread_local")));
+    }
+    for &i in &[8, 16, 32, 64, 128] {
+        if i <= max_atomic_width {
+            let s = i.to_string();
+            ret.push(mk(InternedString::new("target_has_atomic"), intern(&s)));
+            if &s == wordsz {
+                ret.push(mk(InternedString::new("target_has_atomic"), intern("ptr")));
+            }
+        }
     }
     if sess.opts.debug_assertions {
         ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));
