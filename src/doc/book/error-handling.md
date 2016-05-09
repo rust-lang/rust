@@ -1573,8 +1573,9 @@ detail on Getopts, but there is [some good documentation][15]
 describing it. The short story is that Getopts generates an argument
 parser and a help message from a vector of options (The fact that it
 is a vector is hidden behind a struct and a set of methods). Once the
-parsing is done, we can decode the program arguments into a Rust
-struct. From there, we can get information about the flags, for
+parsing is done, the parser returns a struct that records matches
+for defined options, and remaining "free" arguments.
+From there, we can get information about the flags, for
 instance, whether they were passed in, and what arguments they
 had. Here's our program with the appropriate `extern crate`
 statements, and the basic argument setup for Getopts:
@@ -1605,8 +1606,8 @@ fn main() {
         print_usage(&program, opts);
         return;
     }
-    let data_path = &args[1];
-    let city = &args[2];
+    let data_path = &matches.free[0];
+    let city: &str = &matches.free[1];
 
     // Do stuff with information
 }
@@ -1680,8 +1681,8 @@ fn main() {
         return;
     }
 
-    let data_path = &args[1];
-    let city: &str = &args[2];
+    let data_path = &matches.free[0];
+    let city: &str = &matches.free[1];
 
     let file = File::open(data_path).unwrap();
     let mut rdr = csv::Reader::from_reader(file);
@@ -1792,13 +1793,15 @@ fn main() {
         Ok(m)  => { m }
         Err(e) => { panic!(e.to_string()) }
     };
+
     if matches.opt_present("h") {
         print_usage(&program, opts);
         return;
     }
 
-    let data_path = &args[1];
-    let city = &args[2];
+    let data_path = &matches.free[0];
+    let city: &str = &matches.free[1];
+
     for pop in search(data_path, city) {
         println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
     }
@@ -1876,14 +1879,14 @@ when calling `search`:
 
 ```rust,ignore
 ...
-match search(&data_file, &city) {
-    Ok(pops) => {
-        for pop in pops {
-            println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
+    match search(data_path, city) {
+        Ok(pops) => {
+            for pop in pops {
+                println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
+            }
         }
+        Err(err) => println!("{}", err)
     }
-    Err(err) => println!("{}", err)
-}
 ...
 ```
 
@@ -1914,43 +1917,37 @@ fn print_usage(program: &str, opts: Options) {
     println!("{}", opts.usage(&format!("Usage: {} [options] <city>", program)));
 }
 ```
-The next part is going to be only a little harder:
+Of course we need to adapt the argument handling code:
 
 ```rust,ignore
 ...
-let mut opts = Options::new();
-opts.optopt("f", "file", "Choose an input file, instead of using STDIN.", "NAME");
-opts.optflag("h", "help", "Show this usage message.");
-...
-let file = matches.opt_str("f");
-let data_file = &file.as_ref().map(Path::new);
+    let mut opts = Options::new();
+    opts.optopt("f", "file", "Choose an input file, instead of using STDIN.", "NAME");
+    opts.optflag("h", "help", "Show this usage message.");
+    ...
+    let data_path = matches.opt_str("f");
 
-let city = if !matches.free.is_empty() {
-    &matches.free[0]
-} else {
-    print_usage(&program, opts);
-    return;
-};
+    let city = if !matches.free.is_empty() {
+        &matches.free[0]
+    } else {
+        print_usage(&program, opts);
+        return;
+    };
 
-match search(data_file, city) {
-    Ok(pops) => {
-        for pop in pops {
-            println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
+    match search(&data_path, city) {
+        Ok(pops) => {
+            for pop in pops {
+                println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
+            }
         }
+        Err(err) => println!("{}", err)
     }
-    Err(err) => println!("{}", err)
-}
 ...
 ```
 
-In this piece of code, we take `file` (which has the type
-`Option<String>`), and convert it to a type that `search` can use, in
-this case, `&Option<AsRef<Path>>`. To do this, we take a reference of
-file, and map `Path::new` onto it. In this case, `as_ref()` converts
-the `Option<String>` into an `Option<&str>`, and from there, we can
-execute `Path::new` to the content of the optional, and return the
-optional of the new value. Once we have that, it is a simple matter of
-getting the `city` argument and executing `search`.
+We've made the user experience a bit nicer by showing the usage message,
+instead of a panic from an out-of-bounds index, when `city`, the
+remaining free argument, is not present.
 
 Modifying `search` is slightly trickier. The `csv` crate can build a
 parser out of
@@ -2000,6 +1997,8 @@ enum CliError {
 And now for impls on `Display` and `Error`:
 
 ```rust,ignore
+use std::fmt;
+
 impl fmt::Display for CliError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -2020,13 +2019,13 @@ impl Error for CliError {
         }
     }
 
-    fn cause(&self) -> Option<&error::Error> {
-        match *self {            
+    fn cause(&self) -> Option<&Error> {
+        match *self {
             CliError::Io(ref err) => Some(err),
-            CliError::Parse(ref err) => Some(err),
-            // Our custom error doesn't have an underlying cause, but we could
-            // modify it so that it does.
-            CliError::NotFound() => None,
+            CliError::Csv(ref err) => Some(err),
+            // Our custom error doesn't have an underlying cause,
+            // but we could modify it so that it does.
+            CliError::NotFound => None,
         }
     }
 }
@@ -2122,10 +2121,10 @@ string and add a flag to the Option variable. Once we've done that, Getopts does
 
 ```rust,ignore
 ...
-let mut opts = Options::new();
-opts.optopt("f", "file", "Choose an input file, instead of using STDIN.", "NAME");
-opts.optflag("h", "help", "Show this usage message.");
-opts.optflag("q", "quiet", "Silences errors and warnings.");
+    let mut opts = Options::new();
+    opts.optopt("f", "file", "Choose an input file, instead of using STDIN.", "NAME");
+    opts.optflag("h", "help", "Show this usage message.");
+    opts.optflag("q", "quiet", "Silences errors and warnings.");
 ...
 ```
 
@@ -2133,13 +2132,16 @@ Now we only need to implement our “quiet” functionality. This requires us to
 tweak the case analysis in `main`:
 
 ```rust,ignore
-match search(&args.arg_data_path, &args.arg_city) {
-    Err(CliError::NotFound) if args.flag_quiet => process::exit(1),
-    Err(err) => panic!("{}", err),
-    Ok(pops) => for pop in pops {
-        println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
+use std::process;
+...
+    match search(&data_path, city) {
+        Err(CliError::NotFound) if matches.opt_present("q") => process::exit(1),
+        Err(err) => panic!("{}", err),
+        Ok(pops) => for pop in pops {
+            println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
+        }
     }
-}
+...
 ```
 
 Certainly, we don't want to be quiet if there was an IO error or if the data
