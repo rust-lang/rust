@@ -24,6 +24,7 @@ use html::escape::Escape;
 
 use std::fmt::Display;
 use std::io;
+use std::panic::catch_unwind;
 use std::io::prelude::*;
 
 use syntax::codemap::{CodeMap, Span};
@@ -34,20 +35,28 @@ use syntax::parse;
 /// Highlights `src`, returning the HTML output.
 pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
-    let sess = parse::ParseSess::new();
-    let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
 
-    let mut out = Vec::new();
-    write_header(class, id, &mut out).unwrap();
-
-    let mut classifier = Classifier::new(lexer::StringReader::new(&sess.span_diagnostic, fm),
-                                         sess.codemap());
-    if let Err(_) = classifier.write_source(&mut out) {
-        return format!("<pre>{}</pre>", src);
+    // As long as the lexer panics...
+    let result = catch_unwind(|| {
+        let sess = parse::ParseSess::new();
+        let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
+        let mut out = Vec::new();
+        write_header(class, id, &mut out).unwrap();
+        let mut classifier = Classifier::new(lexer::StringReader::new(&sess.span_diagnostic, fm),
+                                             sess.codemap());
+        classifier.write_source(&mut out).unwrap();
+        write_footer(&mut out).unwrap();
+        out
+    });
+    match result {
+        // catches both panics from the lexer and the unwrap()s
+        Err(_) => {
+            println!("warning: error during source highlighting (see above), \
+                      passing source through unhighlighted");
+            format!("<pre>{}</pre>", src)
+        },
+        Ok(out) => String::from_utf8_lossy(&out[..]).into_owned(),
     }
-
-    write_footer(&mut out).unwrap();
-    String::from_utf8_lossy(&out[..]).into_owned()
 }
 
 /// Highlights `src`, returning the HTML output. Returns only the inner html to
