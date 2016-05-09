@@ -4,7 +4,6 @@ use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_math::*;
 use rustc::hir::*;
-use syntax::attr::*;
 use utils::span_lint;
 
 /// **What it does:** Lints on C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`.

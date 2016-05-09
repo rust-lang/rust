@@ -5,7 +5,6 @@ use rustc::lint::*;
 use rustc::hir::*;
 use semver::Version;
 use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind};
-use syntax::attr::*;
 use syntax::codemap::Span;
 use utils::{in_macro, match_path, span_lint};
 use utils::paths;

@@ -1,7 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
-use rustc::middle::cstore::CrateStore;
 use rustc::ty::subst::{Subst, TypeSpace};
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
