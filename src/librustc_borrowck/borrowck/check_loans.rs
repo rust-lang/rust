@@ -663,23 +663,39 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             UseOk => { }
             UseWhileBorrowed(loan_path, loan_span) => {
                 let mut err = match move_kind {
-                    move_data::Captured =>
+                    move_data::Captured => {
                         struct_span_err!(self.bccx, span, E0504,
                                          "cannot move `{}` into closure because it is borrowed",
-                                         &self.bccx.loan_path_to_string(move_path)),
+                                         &self.bccx.loan_path_to_string(move_path))
+                        .span_label(
+                            loan_span,
+                            &format!("borrow of `{}` occurs here",
+                                    &self.bccx.loan_path_to_string(&loan_path))
+                            )
+                        .span_label(
+                            span,
+                            &format!("move into closure occurs here")
+                            )
+                    }
                     move_data::Declared |
                     move_data::MoveExpr |
-                    move_data::MovePat =>
+                    move_data::MovePat => {
                         struct_span_err!(self.bccx, span, E0505,
                                          "cannot move out of `{}` because it is borrowed",
                                          &self.bccx.loan_path_to_string(move_path))
+                        .span_label(
+                            loan_span,
+                            &format!("borrow of `{}` occurs here",
+                                    &self.bccx.loan_path_to_string(&loan_path))
+                            )
+                        .span_label(
+                            span,
+                            &format!("move out of `{}` occurs here",
+                                &self.bccx.loan_path_to_string(move_path))
+                            )
+                    }
                 };
 
-                err.span_note(
-                    loan_span,
-                    &format!("borrow of `{}` occurs here",
-                            &self.bccx.loan_path_to_string(&loan_path))
-                    );
                 err.emit();
             }
         }
@@ -845,8 +861,11 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         struct_span_err!(self.bccx, span, E0506,
                          "cannot assign to `{}` because it is borrowed",
                          self.bccx.loan_path_to_string(loan_path))
-            .span_note(loan.span,
+            .span_label(loan.span,
                        &format!("borrow of `{}` occurs here",
+                               self.bccx.loan_path_to_string(loan_path)))
+            .span_label(span,
+                       &format!("assignment to `{}` occurs here",
                                self.bccx.loan_path_to_string(loan_path)))
             .emit();
     }
