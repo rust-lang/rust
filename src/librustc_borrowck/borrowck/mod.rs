@@ -620,11 +620,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
 
         // General fallback.
+        let span = err.span.clone();
         let mut db = self.struct_span_err(
             err.span,
             &self.bckerr_to_string(&err));
         self.note_and_explain_bckerr(&mut db, err);
-        db.emit();
+        db.span_label(span, &format!("cannot borrow"))
+          .emit();
     }
 
     pub fn report_use_of_moved_value(&self,
@@ -647,7 +649,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     self.tcx.sess, use_span, E0381,
                     "{} of possibly uninitialized variable: `{}`",
                     verb,
-                    self.loan_path_to_string(lp)).emit();
+                    self.loan_path_to_string(lp))
+                .span_label(use_span, &format!("use of possibly uninitialized `{}`",
+                    self.loan_path_to_string(lp)))
+                .emit();
                 return;
             }
             _ => {
