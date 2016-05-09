@@ -39,10 +39,17 @@ fn array_repeat() -> [u8; 8] {
 }
 
 #[miri_run]
+fn slice_index() -> u8 {
+    let arr: &[_] = &[101, 102, 103, 104, 105, 106];
+    arr[5]
+}
+
+#[miri_run]
 fn main() {
     //assert_eq!(empty_array(), []);
     assert_eq!(index_unsafe(), 20);
     assert_eq!(index(), 20);
+    assert_eq!(slice_index(), 106);
     /*
     assert_eq!(big_array(), [5, 4, 3, 2, 1]);
     assert_eq!(array_array(), [[5, 4], [3, 2], [1, 0]]);

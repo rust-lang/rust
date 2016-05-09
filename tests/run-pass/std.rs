@@ -1,7 +1,7 @@
 #![feature(custom_attribute, box_syntax)]
 #![allow(dead_code, unused_attributes)]
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -29,16 +29,6 @@ fn arc() -> Arc<i32> {
     a
 }
 
-struct Loop(Rc<RefCell<Option<Loop>>>);
-
-#[miri_run]
-fn rc_reference_cycle() -> Loop {
-    let a = Rc::new(RefCell::new(None));
-    let b = a.clone();
-    *a.borrow_mut() = Some(Loop(b));
-    Loop(a)
-}
-
 #[miri_run]
 fn true_assert() {
     assert_eq!(1, 1);
@@ -46,8 +36,6 @@ fn true_assert() {
 
 #[miri_run]
 fn main() {
-    //let x = rc_reference_cycle().0;
-    //assert!(x.borrow().is_some());
     assert_eq!(*arc(), 42);
     assert_eq!(rc_cell().get(), 84);
 }
