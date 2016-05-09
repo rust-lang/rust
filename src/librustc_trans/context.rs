@@ -27,8 +27,9 @@ use glue::DropGlueKind;
 use mir::CachedMir;
 use monomorphize::Instance;
 
-use collector::{TransItem, TransItemState};
 use partitioning::CodegenUnit;
+use collector::TransItemState;
+use trans_item::TransItem;
 use type_::{Type, TypeNames};
 use rustc::ty::subst::{Substs, VecPerParamSpace};
 use rustc::ty::{self, Ty, TyCtxt};
