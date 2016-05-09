@@ -59,9 +59,8 @@
 #   * check-stage$(stage)-$(crate) - Test a crate in a specific stage
 #   * check-stage$(stage)-{rpass,rfail,cfail,rmake,...} - Run tests in src/test/
 #   * check-stage1-T-$(target)-H-$(host) - Run cross-compiled-tests
-#   * tidy-basic - show file / line stats
-#   * tidy-errors - show the highest rustc error code
-#   * tidy-features - show the status of language and lib features
+#   * tidy - Basic style check, show highest rustc error code and
+#     the status of language and lib features
 #   * rustc-stage$(stage) - Only build up to a specific stage
 #
 # Then mix in some of these environment variables to harness the
