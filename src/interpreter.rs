@@ -258,7 +258,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 let adt_layout = self.type_layout(self.lvalue_ty(discr));
 
                  match *adt_layout {
-                    Layout::General { discr, .. } => {
+                    Layout::General { discr, .. } | Layout::CEnum { discr, .. } => {
                         let discr_size = discr.size().bytes();
                         let discr_val = try!(self.memory.read_uint(adt_ptr, discr_size as usize));
 
@@ -283,7 +283,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         TerminatorTarget::Block(targets[target as usize])
                     }
 
-                    _ => panic!("attmpted to switch on non-aggregate type"),
+                    _ => panic!("attempted to switch on non-aggregate type"),
                 }
             }
 
@@ -639,14 +639,15 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             }
 
             Aggregate(ref kind, ref operands) => {
+                use rustc::ty::layout::Layout::*;
                 match *dest_layout {
-                    Layout::Univariant { ref variant, .. } => {
+                    Univariant { ref variant, .. } => {
                         let offsets = iter::once(0)
                             .chain(variant.offset_after_field.iter().map(|s| s.bytes()));
                         try!(self.assign_fields(dest, offsets, operands));
                     }
 
-                    Layout::Array { .. } => {
+                    Array { .. } => {
                         let elem_size = match dest_ty.sty {
                             ty::TyArray(elem_ty, _) => self.type_size(elem_ty) as u64,
                             _ => panic!("tried to assign {:?} to non-array type {:?}",
@@ -656,7 +657,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         try!(self.assign_fields(dest, offsets, operands));
                     }
 
-                    Layout::General { discr, ref variants, .. } => {
+                    General { discr, ref variants, .. } => {
                         if let mir::AggregateKind::Adt(adt_def, variant, _) = *kind {
                             let discr_val = adt_def.variants[variant].disr_val.to_u64_unchecked();
                             let discr_size = discr.size().bytes() as usize;
@@ -670,7 +671,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         }
                     }
 
-                    Layout::RawNullablePointer { nndiscr, .. } => {
+                    RawNullablePointer { nndiscr, .. } => {
                         if let mir::AggregateKind::Adt(_, variant, _) = *kind {
                             if nndiscr == variant as u64 {
                                 assert_eq!(operands.len(), 1);
@@ -684,6 +685,21 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                             }
                         } else {
                             panic!("tried to assign {:?} to Layout::RawNullablePointer", kind);
+                        }
+                    }
+
+                    CEnum { discr, signed, min, max } => {
+                        assert_eq!(operands.len(), 0);
+                        if let mir::AggregateKind::Adt(adt_def, variant, _) = *kind {
+                            if signed {
+                                unimplemented!()
+                            } else {
+                                let val = adt_def.variants[variant].disr_val.to_u64().unwrap();
+                                let size = discr.size().bytes() as usize;
+                                try!(self.memory.write_uint(dest, val, size));
+                            }
+                        } else {
+                            panic!("tried to assign {:?} to Layout::CEnum", kind);
                         }
                     }
 
