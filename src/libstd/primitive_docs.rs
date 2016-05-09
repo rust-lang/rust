@@ -165,6 +165,27 @@ mod prim_char { }
 ///
 mod prim_unit { }
 
+#[doc(primitive = "ref")]
+//
+/// Borrowed references, `&T`, and `&mut T`.
+///
+/// References fundamental to Rust's system of ownership and borrowing. They
+/// are represented as pointers, but the compiler can statically ensure that no
+/// unsafety results from passing and dereferencing them.
+///
+/// Shared references (`&T`) allow read-only access to the pointee, while
+/// mutable references (`&mut T`) allow full access, which is why mutable
+/// references are enforced to be exclusive.
+///
+/// (Point to the section in the book?)
+///
+/// Reference types have no inherent methods. Any methods called on a reference
+/// will be resolved to methods on the pointee. However, traits can be
+/// implemented for reference types. These implementations will show up in the
+/// documentation for the pointee type.
+///
+mod prim_ref { }
+
 #[doc(primitive = "pointer")]
 //
 /// Raw, unsafe pointers, `*const T`, and `*mut T`.
