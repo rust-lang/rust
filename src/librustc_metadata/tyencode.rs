@@ -74,6 +74,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
     match t.sty {
         ty::TyBool => { write!(w, "b"); }
         ty::TyChar => { write!(w, "c"); }
+        ty::TyEmpty => { write!(w, "!"); }
         ty::TyInt(t) => {
             match t {
                 ast::IntTy::Is => write!(w, "is"),

@@ -14,7 +14,7 @@ use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyStruct, TyEnum};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
-use ty::{TyParam, TyRawPtr, TyRef, TyTuple};
+use ty::{TyParam, TyRawPtr, TyRef, TyEmpty, TyTuple};
 use ty::TyClosure;
 use ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -847,6 +847,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 }
                 write!(f, "{}", tm)
             }
+            TyEmpty => write!(f, "!"),
             TyTuple(ref tys) => {
                 write!(f, "(")?;
                 let mut tys = tys.iter();

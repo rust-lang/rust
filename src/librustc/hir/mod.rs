@@ -1112,6 +1112,7 @@ pub struct BareFnTy {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 /// The different kinds of types recognized by the compiler
 pub enum Ty_ {
+    /// A variable length array (`[T]`)
     TyVec(P<Ty>),
     /// A fixed length array (`[T; n]`)
     TyFixedLengthVec(P<Ty>, P<Expr>),
@@ -1121,6 +1122,8 @@ pub enum Ty_ {
     TyRptr(Option<Lifetime>, MutTy),
     /// A bare function (e.g. `fn(usize) -> bool`)
     TyBareFn(P<BareFnTy>),
+    /// The empty type (`!`)
+    TyEmpty,
     /// A tuple (`(A, B, C, D,...)`)
     TyTup(HirVec<P<Ty>>),
     /// A path (`module::module::...::Type`), optionally

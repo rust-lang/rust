@@ -504,6 +504,9 @@ impl<'a> State<'a> {
                 self.print_opt_lifetime(lifetime)?;
                 self.print_mt(mt)?;
             }
+            hir::TyEmpty => {
+                word(&mut self.s, "!")?;
+            },
             hir::TyTup(ref elts) => {
                 self.popen()?;
                 self.commasep(Inconsistent, &elts[..], |s, ty| s.print_type(&ty))?;

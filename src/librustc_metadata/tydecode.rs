@@ -311,6 +311,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         let tcx = self.tcx;
         match self.next() {
             'b' => return tcx.types.bool,
+            '!' => return tcx.types.empty,
             'i' => { /* eat the s of is */ self.next(); return tcx.types.isize },
             'u' => { /* eat the s of us */ self.next(); return tcx.types.usize },
             'M' => {

@@ -976,6 +976,9 @@ impl<'a> State<'a> {
                 try!(self.print_opt_lifetime(lifetime));
                 try!(self.print_mt(mt));
             }
+            ast::TyKind::Empty => {
+                word(&mut self.s, "!")?;
+            },
             ast::TyKind::Tup(ref elts) => {
                 try!(self.popen());
                 try!(self.commasep(Inconsistent, &elts[..],

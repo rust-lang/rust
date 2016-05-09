@@ -1700,6 +1700,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let t = self.ast_ty_to_ty(rscope1, &mt.ty);
                 tcx.mk_ref(tcx.mk_region(r), ty::TypeAndMut {ty: t, mutbl: mt.mutbl})
             }
+            hir::TyEmpty => {
+                tcx.mk_empty()
+            },
             hir::TyTup(ref fields) => {
                 let flds = fields.iter()
                                  .map(|t| self.ast_ty_to_ty(rscope, &t))

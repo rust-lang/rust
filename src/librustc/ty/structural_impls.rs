@@ -498,7 +498,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyAnon(did, substs) => ty::TyAnon(did, substs.fold_with(folder)),
             ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyError | ty::TyInfer(_) |
-            ty::TyParam(..) => self.sty.clone(),
+            ty::TyParam(..) | ty::TyEmpty => self.sty.clone(),
         };
         folder.tcx().mk_ty(sty)
     }
@@ -527,7 +527,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyAnon(_, ref substs) => substs.visit_with(visitor),
             ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyError | ty::TyInfer(_) |
-            ty::TyParam(..) => false,
+            ty::TyParam(..) | ty::TyEmpty => false,
         }
     }
 
