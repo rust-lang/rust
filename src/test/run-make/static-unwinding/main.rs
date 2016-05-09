@@ -25,7 +25,7 @@ fn main() {
     thread::spawn(move|| {
         let _a = A;
         lib::callback(|| panic!());
-    }).join().err().unwrap();
+    }).join().unwrap_err();
 
     unsafe {
         assert_eq!(lib::statik, 1);

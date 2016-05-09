@@ -1127,7 +1127,7 @@ mod tests {
             let mut writer = BufWriter::new(PanicWriter);
             let _ = writer.write(b"hello world");
             let _ = writer.flush();
-        }).join().err().unwrap();
+        }).join().unwrap_err();
 
         assert_eq!(WRITES.load(Ordering::SeqCst), 1);
     }
