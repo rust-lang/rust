@@ -11,6 +11,8 @@
 use target::Target;
 
 pub fn target() -> Target {
+    let mut base = super::android_base::opts();
+    base.max_atomic_width = 128;
     Target {
         llvm_target: "aarch64-linux-android".to_string(),
         target_endian: "little".to_string(),
@@ -20,6 +22,6 @@ pub fn target() -> Target {
         target_os: "android".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
-        options: super::android_base::opts(),
+        options: base,
     }
 }

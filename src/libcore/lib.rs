@@ -63,6 +63,7 @@
 #![feature(associated_type_defaults)]
 #![feature(concat_idents)]
 #![feature(const_fn)]
+#![feature(cfg_target_has_atomic)]
 #![feature(custom_attribute)]
 #![feature(fundamental)]
 #![feature(inclusive_range_syntax)]

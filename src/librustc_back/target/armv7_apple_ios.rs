@@ -23,6 +23,7 @@ pub fn target() -> Target {
         target_vendor: "apple".to_string(),
         options: TargetOptions {
             features: "+v7,+vfp3,+neon".to_string(),
+            max_atomic_width: 64,
             .. opts(Arch::Armv7)
         }
     }

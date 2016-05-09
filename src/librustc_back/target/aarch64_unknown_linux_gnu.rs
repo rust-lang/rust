@@ -11,7 +11,8 @@
 use target::Target;
 
 pub fn target() -> Target {
-    let base = super::linux_base::opts();
+    let mut base = super::linux_base::opts();
+    base.max_atomic_width = 128;
     Target {
         llvm_target: "aarch64-unknown-linux-gnu".to_string(),
         target_endian: "little".to_string(),

@@ -24,6 +24,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+neon,+fp-armv8,+cyclone".to_string(),
             eliminate_frame_pointer: false,
+            max_atomic_width: 128,
             .. opts(Arch::Arm64)
         },
     }
