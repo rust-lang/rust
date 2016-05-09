@@ -1540,6 +1540,13 @@ impl Type {
             _ => None,
         }
     }
+
+    pub fn is_generic(&self) -> bool {
+        match *self {
+            ResolvedPath { is_generic, .. } => is_generic,
+            _ => false,
+        }
+    }
 }
 
 impl GetDefId for Type {
