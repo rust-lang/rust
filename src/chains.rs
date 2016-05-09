@@ -86,10 +86,10 @@ use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, first_line_width};
 use expr::rewrite_call;
 use config::BlockIndentStyle;
+use macros::convert_try_mac;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{mk_sp, Span};
-
 
 pub fn rewrite_chain(expr: &ast::Expr,
                      context: &RewriteContext,
@@ -97,7 +97,7 @@ pub fn rewrite_chain(expr: &ast::Expr,
                      offset: Indent)
                      -> Option<String> {
     let total_span = expr.span;
-    let (parent, subexpr_list) = make_subexpr_list(expr);
+    let (parent, subexpr_list) = make_subexpr_list(expr, context);
 
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
     let parent_block_indent = chain_base_indent(context, offset);
@@ -106,19 +106,16 @@ pub fn rewrite_chain(expr: &ast::Expr,
 
     // Decide how to layout the rest of the chain. `extend` is true if we can
     // put the first non-parent item on the same line as the parent.
-    let (indent, extend) = if !parent_rewrite.contains('\n') && is_continuable(parent) ||
+    let (indent, extend) = if !parent_rewrite.contains('\n') && is_continuable(&parent) ||
                               parent_rewrite.len() <= context.config.tab_spaces {
-// <<<<<<< HEAD
-//         // Try and put at least the first two items on the same line.
-//         (chain_indent(context, offset + Indent::new(0, parent_rewrite.len())), true)
-// =======
+
         let indent = if let ast::ExprKind::Try(..) = subexpr_list.last().unwrap().node {
             parent_block_indent.block_indent(context.config)
         } else {
-            offset + Indent::new(0, parent_rewrite.len())
+            chain_indent(context, offset + Indent::new(0, parent_rewrite.len()))
         };
         (indent, true)
-    } else if is_block_expr(parent, &parent_rewrite) {
+    } else if is_block_expr(&parent, &parent_rewrite) {
         // The parent is a block, so align the rest of the chain with the closing
         // brace.
         (parent_block_indent, false)
@@ -197,11 +194,13 @@ pub fn rewrite_chain(expr: &ast::Expr,
              offset)
 }
 
-fn join_rewrites(rewrites: &[String], subexps: &[&ast::Expr], connector: &str) -> String {
+fn join_rewrites(rewrites: &[String], subexps: &[ast::Expr], connector: &str) -> String {
     let mut rewrite_iter = rewrites.iter();
     let mut result = rewrite_iter.next().unwrap().clone();
+    let mut subexpr_iter = subexps.iter().rev();
+    subexpr_iter.next();
 
-    for (rewrite, expr) in rewrite_iter.zip(subexps.iter()) {
+    for (rewrite, expr) in rewrite_iter.zip(subexpr_iter) {
         match expr.node {
             ast::ExprKind::Try(_) => (),
             _ => result.push_str(connector),
@@ -235,21 +234,11 @@ fn is_block_expr(expr: &ast::Expr, repr: &str) -> bool {
 
 // Returns the root of the chain and a Vec of the prefixes of the rest of the chain.
 // E.g., for input `a.b.c` we return (`a`, [`a.b.c`, `a.b`])
-fn make_subexpr_list(mut expr: &ast::Expr) -> (&ast::Expr, Vec<&ast::Expr>) {
-    fn pop_expr_chain(expr: &ast::Expr) -> Option<&ast::Expr> {
-        match expr.node {
-            ast::ExprKind::MethodCall(_, _, ref expressions) => Some(&expressions[0]),
-            ast::ExprKind::TupField(ref subexpr, _) |
-            ast::ExprKind::Field(ref subexpr, _) => Some(subexpr),
-            _ => None,
-        }
-    }
+fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext) -> (ast::Expr, Vec<ast::Expr>) {
+    let mut subexpr_list = vec![expr.clone()];
 
-    let mut subexpr_list = vec![expr];
-
-    while let Some(subexpr) = pop_expr_chain(expr) {
-        subexpr_list.push(subexpr);
-        expr = subexpr;
+    while let Some(subexpr) = pop_expr_chain(subexpr_list.last().unwrap(), context) {
+        subexpr_list.push(subexpr.clone());
     }
 
     let parent = subexpr_list.pop().unwrap();
@@ -315,13 +304,30 @@ fn rewrite_method_call_with_overflow(expr_kind: &ast::ExprKind,
     }
 }
 
-fn pop_expr_chain(expr: &ast::Expr) -> Option<&ast::Expr> {
+// Returns the expression's subexpression, if it exists. When the subexpr
+// is a try! macro, we'll convert it to shorthand when the option is set.
+fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext) -> Option<ast::Expr> {
     match expr.node {
-        ast::ExprKind::MethodCall(_, _, ref expressions) => Some(&expressions[0]),
+        ast::ExprKind::MethodCall(_, _, ref expressions) => {
+            Some(convert_try(&expressions[0], context))
+        }
         ast::ExprKind::TupField(ref subexpr, _) |
         ast::ExprKind::Field(ref subexpr, _) |
-        ast::ExprKind::Try(ref subexpr) => Some(subexpr),
+        ast::ExprKind::Try(ref subexpr) => Some(convert_try(subexpr, context)),
         _ => None,
+    }
+}
+
+fn convert_try(expr: &ast::Expr, context: &RewriteContext) -> ast::Expr {
+    match expr.node {
+        ast::ExprKind::Mac(ref mac) if context.config.use_try_shorthand => {
+            if let Some(subexpr) = convert_try_mac(mac, context) {
+                subexpr
+            } else {
+                expr.clone()
+            }
+        }
+        _ => expr.clone(),
     }
 }
 
