@@ -3948,7 +3948,7 @@ mod tests {
         let mut mem_buf = string::String::new();
         let mut encoder = Encoder::new(&mut mem_buf);
         let result = hm.encode(&mut encoder);
-        match result.err().unwrap() {
+        match result.unwrap_err() {
             EncoderError::BadHashmapKey => (),
             _ => panic!("expected bad hash map key")
         }
