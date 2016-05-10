@@ -154,7 +154,7 @@ pub fn run_core(search_paths: SearchPaths,
     let dep_graph = DepGraph::new(false);
 
     let defs = &RefCell::new(hir_map::collect_definitions(&krate));
-    LocalCrateReader::new(&sess, &cstore, &defs, &krate, &name).read_crates(&dep_graph);
+    LocalCrateReader::new(&sess, &cstore, &defs.borrow(), &krate, &name).read_crates(&dep_graph);
 
     // Lower ast -> hir and resolve.
     let (analysis, resolutions, mut hir_forest) = {
