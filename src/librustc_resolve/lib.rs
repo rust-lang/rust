@@ -57,7 +57,7 @@ use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 use syntax::ext::mtwt;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
-use syntax::codemap::{self, Span, Pos};
+use syntax::codemap::{self, Span};
 use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -1260,10 +1260,7 @@ impl<'a> Resolver<'a> {
                 Failed(None) => {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
-                    let mut span = span;
                     let msg = if "???" == &module_name {
-                        span.hi = span.lo + Pos::from_usize(segment_name.len());
-
                         match search_parent_externals(name, &self.current_module) {
                             Some(module) => {
                                 let path_str = names_to_string(module_path);
