@@ -634,6 +634,12 @@ a.test-arrow {
     padding-left: 10px;
 }
 
+span.since {
+    position: initial;
+    font-size: 20px;
+    margin-right: 5px;
+}
+
 /* Media Queries */
 
 @media (max-width: 700px) {
