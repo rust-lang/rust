@@ -46,7 +46,7 @@ pub struct LocalCrateReader<'a> {
     cstore: &'a CStore,
     creader: CrateReader<'a>,
     krate: &'a ast::Crate,
-    defintions: &'a hir_map::Definitions,
+    definitions: &'a hir_map::Definitions,
 }
 
 pub struct CrateReader<'a> {
@@ -852,7 +852,7 @@ impl<'a> LocalCrateReader<'a> {
             cstore: cstore,
             creader: CrateReader::new(sess, cstore, local_crate_name),
             krate: krate,
-            defintions: defs,
+            definitions: defs,
         }
     }
 
@@ -902,8 +902,8 @@ impl<'a> LocalCrateReader<'a> {
                                                                       PathKind::Crate,
                                                                       true);
 
-                        let def_id = self.defintions.opt_local_def_id(i.id).unwrap();
-                        let len = self.defintions.def_path(def_id.index).data.len();
+                        let def_id = self.definitions.opt_local_def_id(i.id).unwrap();
+                        let len = self.definitions.def_path(def_id.index).data.len();
 
                         self.creader.update_extern_crate(cnum,
                                                          ExternCrate {
