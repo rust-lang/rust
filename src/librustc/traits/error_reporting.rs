@@ -82,45 +82,60 @@ fn impl_substs<'a, 'tcx>(fcx: &InferCtxt<'a, 'tcx>,
     substs
 }
 
+// Enum used to differentiate the "big" and "little" weights.
+enum Weight {
+    Coarse,
+    Precise,
+}
+
 trait AssociatedWeight {
-    fn get_weight(&self) -> usize;
+    fn get_weight(&self) -> (u32, u32);
 }
 
 impl<'a> AssociatedWeight for TypeVariants<'a> {
-    // First number is for "global" weight and second number is for bigger precision
-    fn get_weight(&self) -> usize {
+    // Left number is for "global"/"big" weight and right number is for better precision.
+    fn get_weight(&self) -> (u32, u32) {
         match *self {
-            TypeVariants::TyBool => 11,
-            TypeVariants::TyChar => 12,
-            TypeVariants::TyStr => 13,
-            TypeVariants::TyInt(_) => 21,
-            TypeVariants::TyUint(_) => 22,
-            TypeVariants::TyFloat(_) => 23,
-            TypeVariants::TyRawPtr(_) => 24,
-            TypeVariants::TyEnum(_, _) => 31,
-            TypeVariants::TyStruct(_, _) => 32,
-            TypeVariants::TyBox(_) => 33,
-            TypeVariants::TyTuple(_) => 34,
-            TypeVariants::TyArray(_, _) => 41,
-            TypeVariants::TySlice(_) => 42,
-            TypeVariants::TyRef(_, _) => 51,
-            TypeVariants::TyFnDef(_, _, _) => 52,
-            TypeVariants::TyFnPtr(_) => 53,
-            TypeVariants::TyTrait(_) => 61,
-            TypeVariants::TyClosure(_, _) => 71,
-            TypeVariants::TyProjection(_) => 81,
-            TypeVariants::TyParam(_) => 82,
-            TypeVariants::TyInfer(_) => 83,
-            TypeVariants::TyError => 91,
+            TypeVariants::TyBool => (1, 1),
+            TypeVariants::TyChar => (1, 2),
+            TypeVariants::TyStr => (1, 3),
+
+            TypeVariants::TyInt(_) => (2, 1),
+            TypeVariants::TyUint(_) => (2, 2),
+            TypeVariants::TyFloat(_) => (2, 3),
+            TypeVariants::TyRawPtr(_) => (2, 4),
+
+            TypeVariants::TyEnum(_, _) => (3, 1),
+            TypeVariants::TyStruct(_, _) => (3, 2),
+            TypeVariants::TyBox(_) => (3, 3),
+            TypeVariants::TyTuple(_) => (3, 4),
+
+            TypeVariants::TyArray(_, _) => (4, 1),
+            TypeVariants::TySlice(_) => (4, 2),
+
+            TypeVariants::TyRef(_, _) => (5, 1),
+            TypeVariants::TyFnDef(_, _, _) => (5, 2),
+            TypeVariants::TyFnPtr(_) => (5, 3),
+
+            TypeVariants::TyTrait(_) => (6, 1),
+
+            TypeVariants::TyClosure(_, _) => (7, 1),
+
+            TypeVariants::TyProjection(_) => (8, 1),
+            TypeVariants::TyParam(_) => (8, 2),
+            TypeVariants::TyInfer(_) => (8, 3),
+
+            TypeVariants::TyError => (9, 1),
         }
     }
 }
 
-// The "closer" the types are, the lesser the weight
-fn get_weight_diff(a: &ty::TypeVariants, b: &TypeVariants, big_weight: bool) -> usize {
-    let w1 = if big_weight { a.get_weight() / 10 } else { a.get_weight() % 10 };
-    let w2 = if big_weight { b.get_weight() / 10 } else { b.get_weight() % 10 };
-
+// The "closer" the types are, the lesser the weight.
+fn get_weight_diff(a: &ty::TypeVariants, b: &TypeVariants, weight: Weight) -> u32 {
+    let (w1, w2) = match weight {
+        Weight::Coarse => (a.get_weight().0, b.get_weight().0),
+        Weight::Precise => (a.get_weight().1, b.get_weight().1),
+    };
     if w1 < w2 {
         w2 - w1
     } else {
@@ -128,8 +143,15 @@ fn get_weight_diff(a: &ty::TypeVariants, b: &TypeVariants, big_weight: bool) -> 
     }
 }
 
-// Once we have "globally matching" types, we need to run another filter on them
-fn filter_matching_types<'tcx>(weights: &[(usize, usize)],
+// Once we have "globally matching" types, we need to run another filter on them.
+//
+// In the function `get_best_matching_type`, we got the types which might fit the
+// most to the type we're looking for. This second filter now intends to get (if
+// possible) the type which fits the most.
+//
+// For example, the trait expects an `usize` and here you have `u32` and `i32`.
+// Obviously, the "correct" one is `u32`.
+fn filter_matching_types<'tcx>(weights: &[(usize, u32)],
                                imps: &[(DefId, subst::Substs<'tcx>)],
                                trait_types: &[ty::Ty<'tcx>])
                                -> usize {
@@ -144,7 +166,7 @@ fn filter_matching_types<'tcx>(weights: &[(usize, usize)],
                                                          .get_slice(ParamSpace::TypeSpace)
                                                          .iter()
                                                          .zip(trait_types.iter()) {
-            weight += get_weight_diff(&type_to_compare.sty, &original_type.sty, false);
+            weight += get_weight_diff(&type_to_compare.sty, &original_type.sty, Weight::Precise);
         }
         filtered_weights.push((pos, weight));
     }
@@ -152,6 +174,14 @@ fn filter_matching_types<'tcx>(weights: &[(usize, usize)],
     filtered_weights[0].0
 }
 
+// Here, we run the "big" filter. Little example:
+//
+// We receive a `String`, an `u32` and an `i32`.
+// The trait expected an `usize`.
+// From human point of view, it's easy to determine that `String` doesn't correspond to
+// the expected type at all whereas `u32` and `i32` could.
+//
+// This first filter intends to only keep the types which match the most.
 fn get_best_matching_type<'tcx>(imps: &[(DefId, subst::Substs<'tcx>)],
                                 trait_types: &[ty::Ty<'tcx>]) -> usize {
     let mut weights = vec!();
@@ -162,7 +192,7 @@ fn get_best_matching_type<'tcx>(imps: &[(DefId, subst::Substs<'tcx>)],
                                                    .get_slice(ParamSpace::TypeSpace)
                                                    .iter()
                                                    .zip(trait_types.iter()) {
-            weight += get_weight_diff(&type_to_compare.sty, &original_type.sty, true);
+            weight += get_weight_diff(&type_to_compare.sty, &original_type.sty, Weight::Coarse);
         }
         weights.push((pos, weight));
     }
