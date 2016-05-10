@@ -162,7 +162,6 @@ pub fn run_core(search_paths: SearchPaths,
                                   resolve::MakeGlobMap::No)
     };
 
-    let defs = &RefCell::new(defs);
     let arenas = ty::CtxtArenas::new();
     let hir_map = hir_map::map_crate(&mut hir_forest, defs);
 

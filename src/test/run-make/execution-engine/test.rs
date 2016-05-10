@@ -20,7 +20,6 @@ extern crate rustc_metadata;
 extern crate rustc_resolve;
 #[macro_use] extern crate syntax;
 
-use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::mem::transmute;
 use std::path::PathBuf;
@@ -246,7 +245,6 @@ fn compile_program(input: &str, sysroot: PathBuf)
             driver::lower_and_resolve(&sess, &id, &mut defs, &krate, dep_graph, MakeGlobMap::No)
         };
 
-        let defs = &RefCell::new(defs);
         let arenas = ty::CtxtArenas::new();
         let ast_map = ast_map::map_crate(&mut hir_forest, defs);
 

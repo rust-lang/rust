@@ -29,7 +29,6 @@ use rustc_metadata::cstore::CStore;
 use rustc_metadata::creader::LocalCrateReader;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
-use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -129,7 +128,6 @@ fn test_env<F>(source_string: &str,
                                   MakeGlobMap::No)
     };
 
-    let defs = &RefCell::new(defs);
     let arenas = ty::CtxtArenas::new();
     let ast_map = hir_map::map_crate(&mut hir_forest, defs);
 

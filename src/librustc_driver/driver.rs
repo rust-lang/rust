@@ -165,7 +165,6 @@ pub fn compile_input(sess: &Session,
             syntax::ext::mtwt::clear_tables();
         }
 
-        let defs = &RefCell::new(defs);
         let arenas = ty::CtxtArenas::new();
 
         // Construct the HIR map

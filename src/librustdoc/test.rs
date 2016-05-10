@@ -95,7 +95,7 @@ pub fn run(input: &str,
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
     let krate = driver::assign_node_ids(&sess, krate);
     let dep_graph = DepGraph::new(false);
-    let defs = &RefCell::new(hir_map::collect_definitions(&krate));
+    let defs = hir_map::collect_definitions(&krate);
 
     let mut dummy_resolver = DummyResolver;
     let lcx = LoweringContext::new(&sess, Some(&krate), &mut dummy_resolver);

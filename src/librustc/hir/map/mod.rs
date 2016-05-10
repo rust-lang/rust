@@ -196,7 +196,7 @@ pub struct Map<'ast> {
     /// plain old integers.
     map: RefCell<Vec<MapEntry<'ast>>>,
 
-    definitions: &'ast RefCell<Definitions>,
+    definitions: RefCell<Definitions>,
 }
 
 impl<'ast> Map<'ast> {
@@ -790,7 +790,7 @@ pub fn collect_definitions<'ast>(krate: &'ast ast::Crate) -> Definitions {
 }
 
 pub fn map_crate<'ast>(forest: &'ast mut Forest,
-                       definitions: &'ast RefCell<Definitions>)
+                       definitions: Definitions)
                        -> Map<'ast> {
     let mut collector = NodeCollector::root(&forest.krate);
     intravisit::walk_crate(&mut collector, &forest.krate);
@@ -816,7 +816,7 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest,
         forest: forest,
         dep_graph: forest.dep_graph.clone(),
         map: RefCell::new(map),
-        definitions: definitions,
+        definitions: RefCell::new(definitions),
     }
 }
 
