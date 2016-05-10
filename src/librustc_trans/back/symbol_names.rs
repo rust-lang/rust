@@ -116,7 +116,7 @@ pub fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) ->
     def_path_to_string(tcx, &def_path)
 }
 
-pub fn def_path_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_path: &DefPath) -> String {
+fn def_path_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_path: &DefPath) -> String {
     let mut s = String::with_capacity(def_path.data.len() * 16);
 
     s.push_str(&tcx.crate_name(def_path.krate));
@@ -187,14 +187,13 @@ fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn exported_name_with_opt_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                           instance: &Instance<'tcx>,
-                                           suffix: Option<&str>)
-                                           -> String {
+pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                               instance: &Instance<'tcx>)
+                               -> String {
     let &Instance { def: mut def_id, ref substs } = instance;
 
-    debug!("exported_name_with_opt_suffix(def_id={:?}, substs={:?}, suffix={:?})",
-           def_id, substs, suffix);
+    debug!("exported_name(def_id={:?}, substs={:?})",
+           def_id, substs);
 
     if let Some(node_id) = ccx.tcx().map.as_local_node_id(def_id) {
         if let Some(&src_def_id) = ccx.external_srcs().borrow().get(&node_id) {
@@ -242,10 +241,6 @@ fn exported_name_with_opt_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
     ccx.tcx().push_item_path(&mut buffer, def_id);
 
-    if let Some(suffix) = suffix {
-        buffer.push(suffix);
-    }
-
     mangle(buffer.names.into_iter(), Some(&hash[..]))
 }
 
@@ -262,19 +257,6 @@ impl ItemPathBuffer for SymbolPathBuffer {
     fn push(&mut self, text: &str) {
         self.names.push(token::intern(text).as_str());
     }
-}
-
-pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               instance: &Instance<'tcx>)
-                               -> String {
-    exported_name_with_opt_suffix(ccx, instance, None)
-}
-
-pub fn exported_name_with_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                           instance: &Instance<'tcx>,
-                                           suffix: &str)
-                                           -> String {
-   exported_name_with_opt_suffix(ccx, instance, Some(suffix))
 }
 
 /// Only symbols that are invisible outside their compilation unit should use a
