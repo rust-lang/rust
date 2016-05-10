@@ -215,22 +215,63 @@ match Some("hi".to_string()) {
 The variable `s` has type `String`, and its use in the guard is as a variable of
 type `String`. The guard code effectively executes in a separate scope to the
 body of the arm, so the value would be moved into this anonymous scope and
-therefore become unavailable in the body of the arm. Although this example seems
-innocuous, the problem is most clear when considering functions that take their
-argument by value.
+therefore becomes unavailable in the body of the arm.
 
-```compile_fail
+The problem above can be solved by using the `ref` keyword.
+
+```
 match Some("hi".to_string()) {
-    Some(s) if { drop(s); false } => (),
-    Some(s) => {}, // use s.
+    Some(ref s) if s.len() == 0 => {},
     _ => {},
 }
 ```
 
-The value would be dropped in the guard then become unavailable not only in the
-body of that arm but also in all subsequent arms! The solution is to bind by
-reference when using guards or refactor the entire expression, perhaps by
-putting the condition inside the body of the arm.
+Though this example seems innocuous and easy to solve, the problem becomes clear
+when it encounters functions which consume the value:
+
+```compile_fail
+struct A{}
+
+impl A {
+    fn consume(self) -> usize {
+        0
+    }
+}
+
+fn main() {
+    let a = Some(A{});
+    match a {
+        Some(y) if y.consume() > 0 => {}
+        _ => {}
+    }
+}
+```
+
+In this situation, even the `ref` keyword cannot solve it, since borrowed
+content cannot be moved. This problem cannot be solved generally. If the value
+can be cloned, here is a not-so-specific solution:
+
+```
+#[derive(Clone)]
+struct A{}
+
+impl A {
+    fn consume(self) -> usize {
+        0
+    }
+}
+
+fn main() {
+    let a = Some(A{});
+    match a{
+        Some(ref y) if y.clone().consume() > 0 => {}
+        _ => {}
+    }
+}
+```
+
+If the value will be consumed in the pattern guard, using its clone will not
+move its ownership, so the code works.
 "##,
 
 E0009: r##"
