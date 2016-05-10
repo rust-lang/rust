@@ -1133,7 +1133,7 @@ pub fn trans_static(ccx: &CrateContext,
                     attrs: &[ast::Attribute])
                     -> Result<ValueRef, ConstEvalErr> {
 
-    if collector::collecting_debug_information(ccx) {
+    if collector::collecting_debug_information(ccx.shared()) {
         ccx.record_translation_item_as_generated(TransItem::Static(id));
     }
 

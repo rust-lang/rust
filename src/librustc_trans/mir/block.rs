@@ -136,7 +136,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     return;
                 }
                 let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
-                let drop_ty = glue::get_drop_glue_type(bcx.ccx(), ty);
+                let drop_ty = glue::get_drop_glue_type(bcx.tcx(), ty);
                 let llvalue = if drop_ty != ty {
                     bcx.pointercast(lvalue.llval, type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
                 } else {

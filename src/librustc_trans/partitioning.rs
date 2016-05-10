@@ -256,10 +256,6 @@ fn place_root_translation_items<'tcx, I>(tcx: &TyCtxt<'tcx>,
 fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<'tcx>,
                              target_cgu_count: usize,
                              crate_name: &str) {
-    if target_cgu_count >= initial_partitioning.codegen_units.len() {
-        return;
-    }
-
     assert!(target_cgu_count >= 1);
     let codegen_units = &mut initial_partitioning.codegen_units;
 
@@ -278,7 +274,22 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
     }
 
     for (index, cgu) in codegen_units.iter_mut().enumerate() {
-        cgu.name = token::intern_and_get_ident(&format!("{}.{}", crate_name, index)[..]);
+        cgu.name = numbered_codegen_unit_name(crate_name, index);
+    }
+
+    // If the initial partitioning contained less than target_cgu_count to begin
+    // with, we won't have enough codegen units here, so add a empty units until
+    // we reach the target count
+    while codegen_units.len() < target_cgu_count {
+        let index = codegen_units.len();
+        codegen_units.push(CodegenUnit {
+            name: numbered_codegen_unit_name(crate_name, index),
+            items: FnvHashMap()
+        });
+    }
+
+    fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
+        token::intern_and_get_ident(&format!("{}.{}", crate_name, index)[..])
     }
 }
 

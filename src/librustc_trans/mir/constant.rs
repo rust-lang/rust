@@ -233,7 +233,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             let trait_id = trait_item.container().id();
             let substs = instance.substs;
             let trait_ref = ty::Binder(substs.to_trait_ref(ccx.tcx(), trait_id));
-            let vtable = common::fulfill_obligation(ccx, DUMMY_SP, trait_ref);
+            let vtable = common::fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref);
             if let traits::VtableImpl(vtable_impl) = vtable {
                 let name = ccx.tcx().item_name(instance.def);
                 for ac in ccx.tcx().associated_consts(vtable_impl.impl_def_id) {
