@@ -36,13 +36,15 @@ use already-built artifacts if available.
 Cargo will grow the concept of a **workspace** for managing repositories of
 multiple crates. Workspaces will then have the properties:
 
-* A workspace can contain multiple local crates.
-* Each workspace will have a root.
+* A workspace can contain multiple local crates: one 'root crate', and any
+  number of 'member crate'.
+* The root crate of a workspace has a `Cargo.toml` file containing `[workspace]`
+  key, which we call it as 'root `Cargo.toml`'.
 * Whenever any crate in the workspace is compiled, output will be placed in the
-  `target` directory next to the root.
-* One `Cargo.lock` for the entire workspace will reside next to the workspace
-  root and encompass the dependencies (and dev-dependencies) for all packages
-  in the workspace.
+  `target` directory next to the root `Cargo.toml`.
+* One `Cargo.lock` file for the entire workspace will reside next to the root
+  `Cargo.toml` and encompass the dependencies (and dev-dependencies) for all
+  crates in the workspace.
 
 With workspaces, Cargo can now solve the problems set forth in the motivation
 section. Next, however, workspaces need to be defined. In the spirit of much of
@@ -63,19 +65,19 @@ members = ["relative/path/to/child1", "../child2"]
 workspace = "../foo"
 ```
 
-The root of a workspace, indicated by the presence of `[workspace]`, is
-responsible for defining the entire workspace (listing all members).
+The root `Cargo.toml` of a workspace, indicated by the presence of `[workspace]`,
+is responsible for defining the entire workspace (listing all members).
 This example here means that two extra crates will be members of the workspace
 (which also includes the root).
 
-The `package.workspace` key is used to point at a workspace root. For
-example this Cargo.toml indicates that the Cargo.toml in `../foo` is the
-workspace root that this package is a member of.
+The `package.workspace` key is used to point at a workspace's root crate. For
+example this Cargo.toml indicates that the Cargo.toml in `../foo` is the root
+Cargo.toml of root crate, that this package is a member of.
 
 These keys are mutually exclusive when applied in `Cargo.toml`. A crate may
 *either* specify `package.workspace` or specify `[workspace]`. That is, a
-crate cannot both be a root in a workspace (contain `[workspace]`) and also be
-a member of another workspace (contain `package.workspace`).
+crate cannot both be a root crate in a workspace (contain `[workspace]`) and
+also be a member crate of another workspace (contain `package.workspace`).
 
 ### "Virtual" `Cargo.toml`
 
@@ -141,8 +143,8 @@ mentioned above for all of the explicit configuration as well.
 ### Workspaces in practice
 
 Many Rust projects today already have `Cargo.toml` at the root of a repository,
-and with the small addition of `[workspace]` in the root a workspace will be
-ready for all crates in that repository. For example:
+and with the small addition of `[workspace]` in the root `Cargo.toml`, a
+workspace will be ready for all crates in that repository. For example:
 
 * An FFI crate with a sub-crate for FFI bindings
 
