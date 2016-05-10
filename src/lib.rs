@@ -104,9 +104,14 @@ pub fn main() {
     }
 
     let dep_path = env::current_dir().expect("current dir is not readable").join("target").join("debug").join("deps");
-    let sys_root = match (option_env!("MULTIRUST_HOME"), option_env!("MULTIRUST_TOOLCHAIN")) {
+
+    let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
+    let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
+    let sys_root = match (home, toolchain) {
         (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
-        _ => option_env!("SYSROOT").expect("need to specify SYSROOT env var during clippy compilation or use multirust").to_owned(),
+        _ => option_env!("SYSROOT")
+                .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust")
+                .to_owned(),
     };
 
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
