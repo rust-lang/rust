@@ -142,13 +142,13 @@ pub fn compile_input(sess: &Session,
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
 
         // Collect defintions for def ids.
-        let defs = &RefCell::new(time(sess.time_passes(),
-                                 "collecting defs",
-                                 || hir_map::collect_definitions(&expanded_crate)));
+        let mut defs = time(sess.time_passes(),
+                            "collecting defs",
+                            || hir_map::collect_definitions(&expanded_crate));
 
         time(sess.time_passes(),
              "external crate/lib resolution",
-             || LocalCrateReader::new(sess, &cstore, &defs.borrow(), &expanded_crate, &id)
+             || LocalCrateReader::new(sess, &cstore, &defs, &expanded_crate, &id)
                     .read_crates(&dep_graph));
 
         time(sess.time_passes(),
@@ -156,8 +156,8 @@ pub fn compile_input(sess: &Session,
              || lint::check_ast_crate(sess, &expanded_crate));
 
         let (analysis, resolutions, mut hir_forest) = {
-            let defs = &mut *defs.borrow_mut();
-            lower_and_resolve(sess, &id, defs, &expanded_crate, dep_graph, control.make_glob_map)
+            lower_and_resolve(sess, &id, &mut defs, &expanded_crate, dep_graph,
+                              control.make_glob_map)
         };
 
         // Discard MTWT tables that aren't required past lowering to HIR.
@@ -165,6 +165,7 @@ pub fn compile_input(sess: &Session,
             syntax::ext::mtwt::clear_tables();
         }
 
+        let defs = &RefCell::new(defs);
         let arenas = ty::CtxtArenas::new();
 
         // Construct the HIR map

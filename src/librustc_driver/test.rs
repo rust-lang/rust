@@ -120,15 +120,16 @@ fn test_env<F>(source_string: &str,
 
     let dep_graph = DepGraph::new(false);
     let krate = driver::assign_node_ids(&sess, krate);
-    let defs = &RefCell::new(hir_map::collect_definitions(&krate));
-    LocalCrateReader::new(&sess, &cstore, &defs.borrow(), &krate, "test_crate").read_crates(&dep_graph);
+    let mut defs = hir_map::collect_definitions(&krate);
+    LocalCrateReader::new(&sess, &cstore, &defs, &krate, "test_crate").read_crates(&dep_graph);
     let _ignore = dep_graph.in_ignore();
 
     let (_, resolutions, mut hir_forest) = {
-        let (defs, dep_graph) = (&mut *defs.borrow_mut(), dep_graph.clone());
-        driver::lower_and_resolve(&sess, "test-crate", defs, &krate, dep_graph, MakeGlobMap::No)
+        driver::lower_and_resolve(&sess, "test-crate", &mut defs, &krate, dep_graph.clone(),
+                                  MakeGlobMap::No)
     };
 
+    let defs = &RefCell::new(defs);
     let arenas = ty::CtxtArenas::new();
     let ast_map = hir_map::map_crate(&mut hir_forest, defs);
 

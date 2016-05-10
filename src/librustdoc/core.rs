@@ -153,15 +153,16 @@ pub fn run_core(search_paths: SearchPaths,
     let krate = driver::assign_node_ids(&sess, krate);
     let dep_graph = DepGraph::new(false);
 
-    let defs = &RefCell::new(hir_map::collect_definitions(&krate));
-    LocalCrateReader::new(&sess, &cstore, &defs.borrow(), &krate, &name).read_crates(&dep_graph);
+    let mut defs = hir_map::collect_definitions(&krate);
+    LocalCrateReader::new(&sess, &cstore, &defs, &krate, &name).read_crates(&dep_graph);
 
     // Lower ast -> hir and resolve.
     let (analysis, resolutions, mut hir_forest) = {
-        let defs = &mut *defs.borrow_mut();
-        driver::lower_and_resolve(&sess, &name, defs, &krate, dep_graph, resolve::MakeGlobMap::No)
+        driver::lower_and_resolve(&sess, &name, &mut defs, &krate, dep_graph,
+                                  resolve::MakeGlobMap::No)
     };
 
+    let defs = &RefCell::new(defs);
     let arenas = ty::CtxtArenas::new();
     let hir_map = hir_map::map_crate(&mut hir_forest, defs);
 
