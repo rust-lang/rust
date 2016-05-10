@@ -74,13 +74,12 @@ pub fn init() {
     // errors are ignored while printing since there's nothing we can do about
     // them and we are about to exit anyways.
     fn oom_handler() -> ! {
-        use intrinsics;
         let msg = "fatal runtime error: out of memory\n";
         unsafe {
             libc::write(libc::STDERR_FILENO,
                         msg.as_ptr() as *const libc::c_void,
                         msg.len() as libc::size_t);
-            intrinsics::abort();
+            rtabort!();
         }
     }
 

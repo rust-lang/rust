@@ -149,5 +149,5 @@ mod imp {
 #[lang = "eh_personality"]
 #[cfg(not(test))]
 fn rust_eh_personality() {
-    unsafe { ::intrinsics::abort() }
+    rtabort!()
 }

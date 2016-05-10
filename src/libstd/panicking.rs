@@ -14,7 +14,6 @@ use io::prelude::*;
 use any::Any;
 use cell::Cell;
 use cell::RefCell;
-use intrinsics;
 use sync::StaticRwLock;
 use sync::atomic::{AtomicBool, Ordering};
 use sys::stdio::Stderr;
@@ -208,9 +207,8 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
     // abort immediately to avoid infinite recursion, so that attaching a
     // debugger provides a useable stacktrace.
     if panics >= 3 {
-        util::dumb_print(format_args!("thread panicked while processing \
-                                       panic. aborting.\n"));
-        unsafe { intrinsics::abort() }
+        rtabort!("thread panicked while processing \
+                  panic. aborting.");
     }
 
     let info = PanicInfo {
@@ -234,8 +232,7 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the thread cleanly.
-        util::dumb_print(format_args!("thread panicked while panicking. \
-                                       aborting.\n"));
-        unsafe { intrinsics::abort() }
+        rtabort!("thread panicked while panicking. \
+                  aborting.");
     }
 }
