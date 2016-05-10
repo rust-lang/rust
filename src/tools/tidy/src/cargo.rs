@@ -85,6 +85,9 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
         if krate == "alloc_jemalloc" && toml.contains("name = \"std\"") {
             continue
         }
+        if krate == "panic_abort" && toml.contains("name = \"std\"") {
+            continue
+        }
 
         if !librs.contains(&format!("extern crate {}", krate)) {
             println!("{} doesn't have `extern crate {}`, but Cargo.toml \

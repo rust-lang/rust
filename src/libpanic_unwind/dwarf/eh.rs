@@ -21,8 +21,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused)]
 
-use prelude::v1::*;
-use sys_common::dwarf::DwarfReader;
+use dwarf::DwarfReader;
 use core::mem;
 
 pub const DW_EH_PE_omit     : u8 = 0xFF;

@@ -277,21 +277,6 @@ pub const CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
 pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
 pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
 pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
-#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
-pub const EXCEPTION_NONCONTINUABLE: DWORD = 0x1;   // Noncontinuable exception
-#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
-pub const EXCEPTION_UNWINDING: DWORD = 0x2;        // Unwind is in progress
-#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
-pub const EXCEPTION_EXIT_UNWIND: DWORD = 0x4;      // Exit unwind is in progress
-#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
-pub const EXCEPTION_TARGET_UNWIND: DWORD = 0x20;   // Target unwind in progress
-#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
-pub const EXCEPTION_COLLIDED_UNWIND: DWORD = 0x40; // Collided exception handler call
-#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
-pub const EXCEPTION_UNWIND: DWORD = EXCEPTION_UNWINDING |
-                                    EXCEPTION_EXIT_UNWIND |
-                                    EXCEPTION_TARGET_UNWIND |
-                                    EXCEPTION_COLLIDED_UNWIND;
 
 pub const PIPE_ACCESS_INBOUND: DWORD = 0x00000001;
 pub const FILE_FLAG_FIRST_PIPE_INSTANCE: DWORD = 0x00080000;
@@ -813,31 +798,6 @@ pub struct in6_addr {
     pub s6_addr: [u8; 16],
 }
 
-#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
-pub enum UNWIND_HISTORY_TABLE {}
-
-#[repr(C)]
-#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
-pub struct RUNTIME_FUNCTION {
-    pub BeginAddress: DWORD,
-    pub EndAddress: DWORD,
-    pub UnwindData: DWORD,
-}
-
-#[repr(C)]
-#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
-pub struct DISPATCHER_CONTEXT {
-    pub ControlPc: LPVOID,
-    pub ImageBase: LPVOID,
-    pub FunctionEntry: *const RUNTIME_FUNCTION,
-    pub EstablisherFrame: LPVOID,
-    pub TargetIp: LPVOID,
-    pub ContextRecord: *const CONTEXT,
-    pub LanguageHandler: LPVOID,
-    pub HandlerData: *const u8,
-    pub HistoryTable: *const UNWIND_HISTORY_TABLE,
-}
-
 #[repr(C)]
 #[derive(Copy, Clone)]
 #[allow(dead_code)] // we only use some variants
@@ -1113,19 +1073,6 @@ extern "system" {
                           pbBuffer: *mut BYTE) -> BOOL;
     pub fn CryptReleaseContext(hProv: HCRYPTPROV, dwFlags: DWORD) -> BOOL;
 
-    #[unwind]
-    #[cfg(any(target_arch = "x86_64", target_env = "msvc"))]
-    pub fn RaiseException(dwExceptionCode: DWORD,
-                          dwExceptionFlags: DWORD,
-                          nNumberOfArguments: DWORD,
-                          lpArguments: *const ULONG_PTR);
-    #[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
-    pub fn RtlUnwindEx(TargetFrame: LPVOID,
-                       TargetIp: LPVOID,
-                       ExceptionRecord: *const EXCEPTION_RECORD,
-                       ReturnValue: LPVOID,
-                       OriginalContext: *const CONTEXT,
-                       HistoryTable: *const UNWIND_HISTORY_TABLE);
     pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);
 
     pub fn CreateEventW(lpEventAttributes: LPSECURITY_ATTRIBUTES,

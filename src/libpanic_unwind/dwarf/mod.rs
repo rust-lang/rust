@@ -18,7 +18,6 @@
 
 pub mod eh;
 
-use prelude::v1::*;
 use core::mem;
 
 pub struct DwarfReader {

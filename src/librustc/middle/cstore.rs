@@ -31,6 +31,7 @@ use hir::def_id::{DefId, DefIndex};
 use mir::repr::Mir;
 use mir::mir_map::MirMap;
 use session::Session;
+use session::config::PanicStrategy;
 use session::search_paths::PathKind;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
 use std::any::Any;
@@ -222,6 +223,8 @@ pub trait CrateStore<'tcx> : Any {
     fn is_staged_api(&self, cnum: ast::CrateNum) -> bool;
     fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool;
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool;
+    fn is_panic_runtime(&self, cnum: ast::CrateNum) -> bool;
+    fn panic_strategy(&self, cnum: ast::CrateNum) -> PanicStrategy;
     fn extern_crate(&self, cnum: ast::CrateNum) -> Option<ExternCrate>;
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>;
     /// The name of the crate as it is referred to in source code of the current
@@ -408,6 +411,10 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_staged_api(&self, cnum: ast::CrateNum) -> bool { bug!("is_staged_api") }
     fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool { bug!("is_explicitly_linked") }
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool { bug!("is_allocator") }
+    fn is_panic_runtime(&self, cnum: ast::CrateNum) -> bool { bug!("is_panic_runtime") }
+    fn panic_strategy(&self, cnum: ast::CrateNum) -> PanicStrategy {
+        bug!("panic_strategy")
+    }
     fn extern_crate(&self, cnum: ast::CrateNum) -> Option<ExternCrate> { bug!("extern_crate") }
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>
         { bug!("crate_attrs") }

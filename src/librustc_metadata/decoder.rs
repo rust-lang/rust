@@ -27,6 +27,7 @@ use rustc::hir::svh::Svh;
 use rustc::hir::map as hir_map;
 use rustc::util::nodemap::FnvHashMap;
 use rustc::hir;
+use rustc::session::config::PanicStrategy;
 
 use middle::cstore::{LOCAL_CRATE, FoundAst, InlinedItem, LinkagePreference};
 use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
@@ -1759,4 +1760,14 @@ pub fn def_key(cdata: Cmd, id: DefIndex) -> hir_map::DefKey {
 pub fn def_path(cdata: Cmd, id: DefIndex) -> hir_map::DefPath {
     debug!("def_path(id={:?})", id);
     hir_map::DefPath::make(cdata.cnum, id, |parent| def_key(cdata, parent))
+}
+
+pub fn get_panic_strategy(data: &[u8]) -> PanicStrategy {
+    let crate_doc = rbml::Doc::new(data);
+    let strat_doc = reader::get_doc(crate_doc, tag_panic_strategy);
+    match reader::doc_as_u8(strat_doc) {
+        b'U' => PanicStrategy::Unwind,
+        b'A' => PanicStrategy::Abort,
+        b => panic!("unknown panic strategy in metadata: {}", b),
+    }
 }
