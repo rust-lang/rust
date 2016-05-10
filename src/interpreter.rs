@@ -574,6 +574,16 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 self.memory.write_uint(dest, size, dest_size)?;
             }
 
+            "size_of_val" => {
+                let ty = *substs.types.get(subst::FnSpace, 0);
+                if self.type_is_sized(ty) {
+                    let size = self.type_size(ty) as u64;
+                    self.memory.write_uint(dest, size, dest_size)?;
+                } else {
+                    panic!("unimplemented: size_of_val::<{:?}>", ty);
+                }
+            }
+
             "transmute" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 self.move_(args[0], dest, ty)?;
