@@ -970,11 +970,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         if let Categorization::Local(local_id) = err.cmt.cat {
                             let span = self.tcx.map.span(local_id);
                             if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
-                                db.span_suggestion(
-                                    span,
-                                    &format!("to make the {} mutable, use `mut` as shown:",
-                                             self.cmt_to_string(&err.cmt)),
-                                    format!("mut {}", snippet));
+                                if snippet != "self" {
+                                    db.span_suggestion(
+                                        span,
+                                        &format!("to make the {} mutable, use `mut` as shown:",
+                                                 self.cmt_to_string(&err.cmt)),
+                                        format!("mut {}", snippet));
+                                }
                             }
                         }
                     }
