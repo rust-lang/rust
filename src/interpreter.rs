@@ -580,7 +580,17 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     let size = self.type_size(ty) as u64;
                     self.memory.write_uint(dest, size, dest_size)?;
                 } else {
-                    panic!("unimplemented: size_of_val::<{:?}>", ty);
+                    match ty.sty {
+                        ty::TySlice(_) | ty::TyStr => {
+                            let elem_ty = ty.sequence_element_type(self.tcx);
+                            let elem_size = self.type_size(elem_ty) as u64;
+                            let ptr_size = self.memory.pointer_size as isize;
+                            let n = self.memory.read_usize(args[0].offset(ptr_size))?;
+                            self.memory.write_uint(dest, n * elem_size, dest_size)?;
+                        }
+
+                        _ => panic!("unimplemented: size_of_val::<{:?}>", ty),
+                    }
                 }
             }
 

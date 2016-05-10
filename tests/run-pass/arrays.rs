@@ -46,7 +46,7 @@ fn slice_index() -> u8 {
 
 #[miri_run]
 fn main() {
-    //assert_eq!(empty_array(), []);
+    // assert_eq!(empty_array(), []);
     assert_eq!(index_unsafe(), 20);
     assert_eq!(index(), 20);
     assert_eq!(slice_index(), 106);
