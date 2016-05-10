@@ -36,7 +36,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
 use session::Session;
 use util::sha2::Sha256;
-use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
+use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -46,6 +46,7 @@ use std::rc::Rc;
 use std::str;
 use syntax::ast;
 use syntax::parse::token::InternedString;
+use abi::FnType;
 
 pub struct Stats {
     pub n_glues_created: Cell<usize>,
@@ -80,8 +81,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     mir_map: &'a MirMap<'tcx>,
     mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
 
-    available_monomorphizations: RefCell<FnvHashSet<String>>,
-    available_drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, String>>,
     use_dll_storage_attrs: bool,
 
     translation_items: RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>>,
@@ -99,7 +98,7 @@ pub struct LocalCrateContext<'tcx> {
     codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
-    drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, ValueRef>>,
+    drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>>,
     /// Track mapping of external ids to local items imported for inlining
     external: RefCell<DefIdMap<Option<ast::NodeId>>>,
     /// Backwards version of the `external` map (inlined items to where they
@@ -413,8 +412,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             },
             check_overflow: check_overflow,
             check_drop_flag_for_sanity: check_drop_flag_for_sanity,
-            available_monomorphizations: RefCell::new(FnvHashSet()),
-            available_drop_glues: RefCell::new(FnvHashMap()),
             use_dll_storage_attrs: use_dll_storage_attrs,
             translation_items: RefCell::new(FnvHashMap()),
             trait_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
@@ -730,7 +727,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().fn_pointer_shims
     }
 
-    pub fn drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<DropGlueKind<'tcx>, ValueRef>> {
+    pub fn drop_glues<'a>(&'a self)
+                          -> &'a RefCell<FnvHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>> {
         &self.local().drop_glues
     }
 
@@ -814,14 +812,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn stats<'a>(&'a self) -> &'a Stats {
         &self.shared.stats
-    }
-
-    pub fn available_monomorphizations<'a>(&'a self) -> &'a RefCell<FnvHashSet<String>> {
-        &self.shared.available_monomorphizations
-    }
-
-    pub fn available_drop_glues(&self) -> &RefCell<FnvHashMap<DropGlueKind<'tcx>, String>> {
-        &self.shared.available_drop_glues
     }
 
     pub fn int_type(&self) -> Type {
