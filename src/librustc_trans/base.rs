@@ -2812,18 +2812,21 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         reachable_symbols.push("main".to_string());
     }
 
-    // For the purposes of LTO, we add to the reachable set all of the upstream
-    // reachable extern fns. These functions are all part of the public ABI of
-    // the final product, so LTO needs to preserve them.
-    if sess.lto() {
-        for cnum in sess.cstore.crates() {
-            let syms = sess.cstore.reachable_ids(cnum);
-            reachable_symbols.extend(syms.into_iter().filter(|did| {
-                sess.cstore.is_extern_item(shared_ccx.tcx(), *did)
-            }).map(|did| {
-                sess.cstore.item_symbol(did)
-            }));
-        }
+    // For the purposes of LTO or when creating a cdylib, we add to the
+    // reachable set all of the upstream reachable extern fns. These functions
+    // are all part of the public ABI of the final product, so we need to
+    // preserve them.
+    //
+    // Note that this happens even if LTO isn't requested or we're not creating
+    // a cdylib. In those cases, though, we're not even reading the
+    // `reachable_symbols` list later on so it should be ok.
+    for cnum in sess.cstore.crates() {
+        let syms = sess.cstore.reachable_ids(cnum);
+        reachable_symbols.extend(syms.into_iter().filter(|did| {
+            sess.cstore.is_extern_item(shared_ccx.tcx(), *did)
+        }).map(|did| {
+            sess.cstore.item_symbol(did)
+        }));
     }
 
     if codegen_unit_count > 1 {

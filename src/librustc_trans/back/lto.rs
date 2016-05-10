@@ -30,7 +30,8 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
            output_names: &config::OutputFilenames) {
     if sess.opts.cg.prefer_dynamic {
         sess.struct_err("cannot prefer dynamic linking when performing LTO")
-            .note("only 'staticlib' and 'bin' outputs are supported with LTO")
+            .note("only 'staticlib', 'bin', and 'cdylib' outputs are \
+                   supported with LTO")
             .emit();
         sess.abort_if_errors();
     }
@@ -38,7 +39,9 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     // Make sure we actually can run LTO
     for crate_type in sess.crate_types.borrow().iter() {
         match *crate_type {
-            config::CrateTypeExecutable | config::CrateTypeStaticlib => {}
+            config::CrateTypeExecutable |
+            config::CrateTypeCdylib |
+            config::CrateTypeStaticlib => {}
             _ => {
                 sess.fatal("lto can only be run for executables and \
                             static library outputs");
