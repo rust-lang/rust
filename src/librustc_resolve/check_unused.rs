@@ -25,33 +25,31 @@ use Resolver;
 use Namespace::{TypeNS, ValueNS};
 
 use rustc::lint;
-use syntax::ast;
+use syntax::ast::{self, ViewPathGlob, ViewPathList, ViewPathSimple};
+use syntax::visit::{self, Visitor};
 use syntax::codemap::{Span, DUMMY_SP};
 
-use rustc::hir;
-use rustc::hir::{ViewPathGlob, ViewPathList, ViewPathSimple};
-use rustc::hir::intravisit::Visitor;
 
-struct UnusedImportCheckVisitor<'a, 'b: 'a, 'tcx: 'b> {
-    resolver: &'a mut Resolver<'b, 'tcx>,
+struct UnusedImportCheckVisitor<'a, 'b: 'a> {
+    resolver: &'a mut Resolver<'b>,
 }
 
 // Deref and DerefMut impls allow treating UnusedImportCheckVisitor as Resolver.
-impl<'a, 'b, 'tcx:'b> Deref for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
-    type Target = Resolver<'b, 'tcx>;
+impl<'a, 'b> Deref for UnusedImportCheckVisitor<'a, 'b> {
+    type Target = Resolver<'b>;
 
-    fn deref<'c>(&'c self) -> &'c Resolver<'b, 'tcx> {
+    fn deref<'c>(&'c self) -> &'c Resolver<'b> {
         &*self.resolver
     }
 }
 
-impl<'a, 'b, 'tcx:'b> DerefMut for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
-    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b, 'tcx> {
+impl<'a, 'b> DerefMut for UnusedImportCheckVisitor<'a, 'b> {
+    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b> {
         &mut *self.resolver
     }
 }
 
-impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
+impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     // We have information about whether `use` (import) directives are actually
     // used now. If an import is not used at all, we signal a lint error.
     fn check_import(&mut self, id: ast::NodeId, span: Span) {
@@ -73,18 +71,19 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+impl<'a, 'b, 'v> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b> {
+    fn visit_item(&mut self, item: &ast::Item) {
+        visit::walk_item(self, item);
         // Ignore is_public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
-        if item.vis == hir::Public || item.span.source_equal(&DUMMY_SP) {
+        if item.vis == ast::Visibility::Public || item.span.source_equal(&DUMMY_SP) {
             return;
         }
 
         match item.node {
-            hir::ItemExternCrate(_) => {
+            ast::ItemKind::ExternCrate(_) => {
                 if let Some(crate_num) = self.session.cstore.extern_mod_stmt_cnum(item.id) {
                     if !self.used_crates.contains(&crate_num) {
                         self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
@@ -94,7 +93,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                     }
                 }
             }
-            hir::ItemUse(ref p) => {
+            ast::ItemKind::Use(ref p) => {
                 match p.node {
                     ViewPathSimple(_, _) => {
                         self.check_import(item.id, p.span)
@@ -115,7 +114,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     }
 }
 
-pub fn check_crate(resolver: &mut Resolver, krate: &hir::Crate) {
+pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
     let mut visitor = UnusedImportCheckVisitor { resolver: resolver };
-    krate.visit_all_items(&mut visitor);
+    visit::walk_crate(&mut visitor, krate);
 }

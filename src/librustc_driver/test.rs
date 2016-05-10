@@ -13,7 +13,7 @@
 use driver;
 use rustc::dep_graph::DepGraph;
 use rustc_lint;
-use rustc_resolve as resolve;
+use rustc_resolve::MakeGlobMap;
 use rustc::middle::lang_items;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region::{self, CodeExtent};
@@ -40,7 +40,6 @@ use syntax::errors::{Level, RenderSpan};
 use syntax::parse::token;
 use syntax::feature_gate::UnstableFeatures;
 
-use rustc::hir::lowering::{lower_crate, LoweringContext};
 use rustc::hir;
 
 struct Env<'a, 'tcx: 'a> {
@@ -123,26 +122,28 @@ fn test_env<F>(source_string: &str,
     let krate = driver::assign_node_ids(&sess, krate);
     let defs = &RefCell::new(hir_map::collect_definitions(&krate));
     LocalCrateReader::new(&sess, &cstore, defs, &krate, "test_crate").read_crates(&dep_graph);
-    let lcx = LoweringContext::new(&sess, Some(&krate), defs);
     let _ignore = dep_graph.in_ignore();
-    let mut hir_forest = &mut hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph.clone());
+
+    let (_, resolutions, mut hir_forest) = {
+        let (defs, dep_graph) = (&mut *defs.borrow_mut(), dep_graph.clone());
+        driver::lower_and_resolve(&sess, "test-crate", defs, &krate, dep_graph, MakeGlobMap::No)
+    };
+
     let arenas = ty::CtxtArenas::new();
-    let ast_map = hir_map::map_crate(hir_forest, defs);
+    let ast_map = hir_map::map_crate(&mut hir_forest, defs);
 
     // run just enough stuff to build a tcx:
     let lang_items = lang_items::collect_language_items(&sess, &ast_map);
-    let resolve::CrateMap { def_map, freevars, maybe_unused_trait_imports, .. } =
-        resolve::resolve_crate(&sess, &ast_map, resolve::MakeGlobMap::No);
-    let named_region_map = resolve_lifetime::krate(&sess, &ast_map, &def_map.borrow());
+    let named_region_map = resolve_lifetime::krate(&sess, &ast_map, &resolutions.def_map.borrow());
     let region_map = region::resolve_crate(&sess, &ast_map);
     let index = stability::Index::new(&ast_map);
     TyCtxt::create_and_enter(&sess,
                                &arenas,
-                               def_map,
+                               resolutions.def_map,
                                named_region_map.unwrap(),
                                ast_map,
-                               freevars,
-                               maybe_unused_trait_imports,
+                               resolutions.freevars,
+                               resolutions.maybe_unused_trait_imports,
                                region_map,
                                lang_items,
                                index,

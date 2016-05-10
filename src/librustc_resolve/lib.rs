@@ -43,18 +43,18 @@ use self::AssocItemResolveResult::*;
 use self::BareIdentifierPatternResolution::*;
 use self::ParentLink::*;
 
-use rustc::dep_graph::DepNode;
-use rustc::hir::map as hir_map;
+use rustc::hir::map::Definitions;
+use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
-use rustc::hir::pat_util::pat_bindings;
 use rustc::ty;
 use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
+use syntax::ext::mtwt;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
 use syntax::codemap::{self, Span, Pos};
@@ -62,23 +62,12 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
-use rustc::hir::intravisit::{self, FnKind, Visitor};
-use rustc::hir;
-use rustc::hir::{Arm, BindByRef, BindByValue, BindingMode, Block};
-use rustc::hir::Crate;
-use rustc::hir::{Expr, ExprAgain, ExprBreak, ExprField};
-use rustc::hir::{ExprLoop, ExprWhile, ExprMethodCall};
-use rustc::hir::{ExprPath, ExprStruct, FnDecl};
-use rustc::hir::{ForeignItemFn, ForeignItemStatic, Generics};
-use rustc::hir::{ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
-use rustc::hir::{ItemFn, ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaultImpl};
-use rustc::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
-use rustc::hir::Local;
-use rustc::hir::{Pat, PatKind, Path, PrimTy};
-use rustc::hir::{PathSegment, PathParameters};
-use rustc::hir::HirVec;
-use rustc::hir::{TraitRef, Ty, TyBool, TyChar, TyFloat, TyInt};
-use rustc::hir::{TyRptr, TyStr, TyUint, TyPath};
+use syntax::visit::{self, FnKind, Visitor};
+use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
+use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
+use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
+use syntax::ast::{Local, Pat, PatKind, Path};
+use syntax::ast::{PathSegment, PathParameters, TraitItemKind, TraitRef, Ty, TyKind};
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
@@ -143,7 +132,7 @@ enum ResolutionError<'a> {
     /// error E0416: identifier is bound more than once in the same pattern
     IdentifierBoundMoreThanOnceInSamePattern(&'a str),
     /// error E0417: static variables cannot be referenced in a pattern
-    StaticVariableReference(DefId, Option<Name>),
+    StaticVariableReference(&'a NameBinding<'a>),
     /// error E0418: is not an enum variant, struct or const
     NotAnEnumVariantStructOrConst(&'a str),
     /// error E0419: unresolved enum variant, struct or const
@@ -195,16 +184,16 @@ enum UnresolvedNameContext<'a> {
     Other,
 }
 
-fn resolve_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
-                                       span: syntax::codemap::Span,
-                                       resolution_error: ResolutionError<'b>) {
+fn resolve_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
+                                 span: syntax::codemap::Span,
+                                 resolution_error: ResolutionError<'c>) {
     resolve_struct_error(resolver, span, resolution_error).emit();
 }
 
-fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
-                                              span: syntax::codemap::Span,
-                                              resolution_error: ResolutionError<'b>)
-                                              -> DiagnosticBuilder<'a> {
+fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
+                                        span: syntax::codemap::Span,
+                                        resolution_error: ResolutionError<'c>)
+                                        -> DiagnosticBuilder<'a> {
     if !resolver.emit_errors {
         return resolver.session.diagnostic().struct_dummy();
     }
@@ -341,22 +330,15 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                              "identifier `{}` is bound more than once in the same pattern",
                              identifier)
         }
-        ResolutionError::StaticVariableReference(did, name) => {
+        ResolutionError::StaticVariableReference(binding) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0417,
                                            "static variables cannot be referenced in a \
                                             pattern, use a `const` instead");
-            if let Some(sp) = resolver.ast_map.span_if_local(did) {
-                err.span_note(sp, "static variable defined here");
-            }
-            if let Some(name) = name {
-                if let Some(binding) = resolver.current_module
-                                               .resolve_name_in_lexical_scope(name, ValueNS) {
-                    if binding.is_import() {
-                        err.span_note(binding.span, "static variable imported here");
-                    }
-                }
+            if binding.span != codemap::DUMMY_SP {
+                let participle = if binding.is_import() { "imported" } else { "defined" };
+                err.span_note(binding.span, &format!("static variable {} here", participle));
             }
             err
         }
@@ -422,13 +404,13 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                 UnresolvedNameContext::Other => { } // no help available
                 UnresolvedNameContext::PathIsMod(parent) => {
                     err.help(&match parent.map(|parent| &parent.node) {
-                        Some(&ExprField(_, ident)) => {
+                        Some(&ExprKind::Field(_, ident)) => {
                             format!("To reference an item from the `{module}` module, \
                                      use `{module}::{ident}`",
                                     module = path,
                                     ident = ident.node)
                         }
-                        Some(&ExprMethodCall(ident, _, _)) => {
+                        Some(&ExprKind::MethodCall(ident, _, _)) => {
                             format!("To call a function from the `{module}` module, \
                                      use `{module}::{ident}(..)`",
                                     module = path,
@@ -526,10 +508,7 @@ pub enum Namespace {
     ValueNS,
 }
 
-impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
-    fn visit_nested_item(&mut self, item: hir::ItemId) {
-        self.visit_item(self.ast_map.expect_item(item.id))
-    }
+impl<'a, 'v> Visitor<'v> for Resolver<'a> {
     fn visit_item(&mut self, item: &Item) {
         self.resolve_item(item);
     }
@@ -551,7 +530,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
     fn visit_generics(&mut self, generics: &Generics) {
         self.resolve_generics(generics);
     }
-    fn visit_poly_trait_ref(&mut self, tref: &hir::PolyTraitRef, m: &hir::TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, tref: &ast::PolyTraitRef, m: &ast::TraitBoundModifier) {
         match self.resolve_trait_reference(tref.trait_ref.ref_id, &tref.trait_ref.path, 0) {
             Ok(def) => self.record_def(tref.trait_ref.ref_id, def),
             Err(_) => {
@@ -559,10 +538,10 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                 self.record_def(tref.trait_ref.ref_id, err_path_resolution())
             }
         }
-        intravisit::walk_poly_trait_ref(self, tref, m);
+        visit::walk_poly_trait_ref(self, tref, m);
     }
     fn visit_variant(&mut self,
-                     variant: &hir::Variant,
+                     variant: &ast::Variant,
                      generics: &Generics,
                      item_id: ast::NodeId) {
         if let Some(ref dis_expr) = variant.node.disr_expr {
@@ -572,22 +551,22 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
             });
         }
 
-        // `intravisit::walk_variant` without the discriminant expression.
+        // `visit::walk_variant` without the discriminant expression.
         self.visit_variant_data(&variant.node.data,
                                 variant.node.name,
                                 generics,
                                 item_id,
                                 variant.span);
     }
-    fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
         let type_parameters = match foreign_item.node {
-            ForeignItemFn(_, ref generics) => {
+            ForeignItemKind::Fn(_, ref generics) => {
                 HasTypeParameters(generics, FnSpace, ItemRibKind)
             }
-            ForeignItemStatic(..) => NoTypeParameters,
+            ForeignItemKind::Static(..) => NoTypeParameters,
         };
         self.with_type_parameter_rib(type_parameters, |this| {
-            intravisit::walk_foreign_item(this, foreign_item);
+            visit::walk_foreign_item(this, foreign_item);
         });
     }
     fn visit_fn(&mut self,
@@ -597,16 +576,16 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                 _: Span,
                 node_id: NodeId) {
         let rib_kind = match function_kind {
-            FnKind::ItemFn(_, generics, _, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, _, _, _, _) => {
                 self.visit_generics(generics);
                 ItemRibKind
             }
-            FnKind::Method(_, sig, _, _) => {
+            FnKind::Method(_, sig, _) => {
                 self.visit_generics(&sig.generics);
                 self.visit_explicit_self(&sig.explicit_self);
                 MethodRibKind
             }
-            FnKind::Closure(_) => ClosureRibKind(node_id),
+            FnKind::Closure => ClosureRibKind(node_id),
         };
         self.resolve_function(rib_kind, declaration, block);
     }
@@ -646,17 +625,17 @@ enum FallbackSuggestion {
 }
 
 #[derive(Copy, Clone)]
-enum TypeParameters<'tcx, 'a> {
+enum TypeParameters<'a, 'b> {
     NoTypeParameters,
     HasTypeParameters(// Type parameters.
-                      &'a Generics,
+                      &'b Generics,
 
                       // Identifies the things that these parameters
                       // were declared on (type, fn, etc)
                       ParamSpace,
 
                       // The kind of the rib used for type parameters.
-                      RibKind<'tcx>),
+                      RibKind<'a>),
 }
 
 // The rib kind controls the translation of local
@@ -755,10 +734,6 @@ impl<'a> LexicalScopeBinding<'a> {
             LexicalScopeBinding::LocalDef(local_def) => local_def,
             LexicalScopeBinding::Item(binding) => LocalDef::from_def(binding.def().unwrap()),
         }
-    }
-
-    fn def(self) -> Def {
-        self.local_def().def
     }
 
     fn module(self) -> Option<Module<'a>> {
@@ -975,10 +950,10 @@ impl PrimitiveTypeTable {
 }
 
 /// The main resolver class.
-pub struct Resolver<'a, 'tcx: 'a> {
+pub struct Resolver<'a> {
     session: &'a Session,
 
-    ast_map: &'a hir_map::Map<'tcx>,
+    definitions: &'a mut Definitions,
 
     graph_root: Module<'a>,
 
@@ -1011,11 +986,11 @@ pub struct Resolver<'a, 'tcx: 'a> {
     // The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
 
-    def_map: RefCell<DefMap>,
-    freevars: FreevarMap,
+    pub def_map: DefMap,
+    pub freevars: FreevarMap,
     freevars_seen: NodeMap<NodeMap<usize>>,
-    export_map: ExportMap,
-    trait_map: TraitMap,
+    pub export_map: ExportMap,
+    pub trait_map: TraitMap,
 
     // A map from nodes to modules, both normal (`mod`) modules and anonymous modules.
     // Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1038,14 +1013,14 @@ pub struct Resolver<'a, 'tcx: 'a> {
     // so as to avoid printing duplicate errors
     emit_errors: bool,
 
-    make_glob_map: bool,
+    pub make_glob_map: bool,
     // Maps imports to the names of items actually imported (this actually maps
     // all imports, but only glob imports are actually interesting).
-    glob_map: GlobMap,
+    pub glob_map: GlobMap,
 
     used_imports: HashSet<(NodeId, Namespace)>,
     used_crates: HashSet<CrateNum>,
-    maybe_unused_trait_imports: NodeSet,
+    pub maybe_unused_trait_imports: NodeSet,
 
     privacy_errors: Vec<PrivacyError<'a>>,
 
@@ -1083,9 +1058,9 @@ impl<'a> ResolverArenas<'a> {
     }
 }
 
-impl<'a, 'tcx> ty::NodeIdTree for Resolver<'a, 'tcx> {
+impl<'a> ty::NodeIdTree for Resolver<'a> {
     fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> bool {
-        let ancestor = self.ast_map.local_def_id(ancestor);
+        let ancestor = self.definitions.local_def_id(ancestor);
         let mut module = *self.module_map.get(&node).unwrap();
         while module.def_id() != Some(ancestor) {
             let module_parent = match self.get_nearest_normal_module_parent(module) {
@@ -1098,13 +1073,54 @@ impl<'a, 'tcx> ty::NodeIdTree for Resolver<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Resolver<'a, 'tcx> {
+impl<'a> hir::lowering::Resolver for Resolver<'a> {
+    fn resolve_generated_global_path(&mut self, path: &hir::Path, is_value: bool) -> Def {
+        let namespace = if is_value { ValueNS } else { TypeNS };
+        match self.resolve_crate_relative_path(path.span, &path.segments, namespace) {
+            Ok(binding) => binding.def().unwrap(),
+            Err(true) => Def::Err,
+            Err(false) => {
+                let path_name = &format!("{}", path);
+                let error =
+                    ResolutionError::UnresolvedName(path_name, "", UnresolvedNameContext::Other);
+                resolve_error(self, path.span, error);
+                Def::Err
+            }
+        }
+    }
+
+    fn record_resolution(&mut self, id: NodeId, def: Def) {
+        self.def_map.insert(id, PathResolution { base_def: def, depth: 0 });
+    }
+
+    fn definitions(&mut self) -> Option<&mut Definitions> {
+        Some(self.definitions)
+    }
+}
+
+trait Named {
+    fn name(&self) -> Name;
+}
+
+impl Named for ast::PathSegment {
+    fn name(&self) -> Name {
+        self.identifier.name
+    }
+}
+
+impl Named for hir::PathSegment {
+    fn name(&self) -> Name {
+        self.identifier.name
+    }
+}
+
+impl<'a> Resolver<'a> {
     fn new(session: &'a Session,
-           ast_map: &'a hir_map::Map<'tcx>,
+           definitions: &'a mut Definitions,
            make_glob_map: MakeGlobMap,
            arenas: &'a ResolverArenas<'a>)
-           -> Resolver<'a, 'tcx> {
-        let root_def_id = ast_map.local_def_id(CRATE_NODE_ID);
+           -> Resolver<'a> {
+        let root_def_id = definitions.local_def_id(CRATE_NODE_ID);
         let graph_root =
             ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, arenas);
         let graph_root = arenas.alloc_module(graph_root);
@@ -1114,7 +1130,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         Resolver {
             session: session,
 
-            ast_map: ast_map,
+            definitions: definitions,
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
@@ -1135,7 +1151,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
-            def_map: RefCell::new(NodeMap()),
+            def_map: NodeMap(),
             freevars: NodeMap(),
             freevars_seen: NodeMap(),
             export_map: NodeMap(),
@@ -1337,7 +1353,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // This is not a crate-relative path. We resolve the
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
-                        let ident = hir::Ident::from_name(module_path[0]);
+                        let ident = ast::Ident::with_empty_ctxt(module_path[0]);
                         match self.resolve_ident_in_lexical_scope(ident, TypeNS, true)
                                   .and_then(LexicalScopeBinding::module) {
                             None => return Failed(None),
@@ -1379,11 +1395,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
     fn resolve_ident_in_lexical_scope(&mut self,
-                                      ident: hir::Ident,
+                                      ident: ast::Ident,
                                       ns: Namespace,
                                       record_used: bool)
                                       -> Option<LexicalScopeBinding<'a>> {
-        let name = match ns { ValueNS => ident.name, TypeNS => ident.unhygienic_name };
+        let name = match ns { ValueNS => mtwt::resolve(ident), TypeNS => ident.name };
 
         // Walk backwards up the ribs in scope.
         for i in (0 .. self.get_ribs(ns).len()).rev() {
@@ -1396,7 +1412,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             if let ModuleRibKind(module) = self.get_ribs(ns)[i].kind {
-                let name = ident.unhygienic_name;
+                let name = ident.name;
                 let item = self.resolve_name_in_module(module, name, ns, true, record_used);
                 if let Success(binding) = item {
                     // The ident resolves to an item.
@@ -1565,77 +1581,76 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         None
     }
 
-    fn resolve_crate(&mut self, krate: &hir::Crate) {
+    fn resolve_crate(&mut self, krate: &Crate) {
         debug!("(resolving crate) starting");
         self.current_module = self.graph_root;
-        intravisit::walk_crate(self, krate);
+        visit::walk_crate(self, krate);
     }
 
     fn resolve_item(&mut self, item: &Item) {
-        let name = item.name;
+        let name = item.ident.name;
 
         debug!("(resolving item) resolving {}", name);
 
         match item.node {
-            ItemEnum(_, ref generics) |
-            ItemTy(_, ref generics) |
-            ItemStruct(_, ref generics) => {
+            ItemKind::Enum(_, ref generics) |
+            ItemKind::Ty(_, ref generics) |
+            ItemKind::Struct(_, ref generics) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics, TypeSpace, ItemRibKind),
-                                             |this| intravisit::walk_item(this, item));
+                                             |this| visit::walk_item(this, item));
             }
-            ItemFn(_, _, _, _, ref generics, _) => {
+            ItemKind::Fn(_, _, _, _, ref generics, _) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics, FnSpace, ItemRibKind),
-                                             |this| intravisit::walk_item(this, item));
+                                             |this| visit::walk_item(this, item));
             }
 
-            ItemDefaultImpl(_, ref trait_ref) => {
+            ItemKind::DefaultImpl(_, ref trait_ref) => {
                 self.with_optional_trait_ref(Some(trait_ref), |_, _| {});
             }
-            ItemImpl(_, _, ref generics, ref opt_trait_ref, ref self_type, ref impl_items) => {
+            ItemKind::Impl(_, _, ref generics, ref opt_trait_ref, ref self_type, ref impl_items) =>
                 self.resolve_implementation(generics,
                                             opt_trait_ref,
                                             &self_type,
                                             item.id,
-                                            impl_items);
-            }
+                                            impl_items),
 
-            ItemTrait(_, ref generics, ref bounds, ref trait_items) => {
+            ItemKind::Trait(_, ref generics, ref bounds, ref trait_items) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_type_parameter_rib(HasTypeParameters(generics,
                                                                TypeSpace,
                                                                ItemRibKind),
                                              |this| {
-                    let local_def_id = this.ast_map.local_def_id(item.id);
+                    let local_def_id = this.definitions.local_def_id(item.id);
                     this.with_self_rib(Def::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_ty_param_bound, bounds);
 
                         for trait_item in trait_items {
                             match trait_item.node {
-                                hir::ConstTraitItem(_, ref default) => {
+                                TraitItemKind::Const(_, ref default) => {
                                     // Only impose the restrictions of
                                     // ConstRibKind if there's an actual constant
                                     // expression in a provided default.
                                     if default.is_some() {
                                         this.with_constant_rib(|this| {
-                                            intravisit::walk_trait_item(this, trait_item)
+                                            visit::walk_trait_item(this, trait_item)
                                         });
                                     } else {
-                                        intravisit::walk_trait_item(this, trait_item)
+                                        visit::walk_trait_item(this, trait_item)
                                     }
                                 }
-                                hir::MethodTraitItem(ref sig, _) => {
+                                TraitItemKind::Method(ref sig, _) => {
                                     let type_parameters =
                                         HasTypeParameters(&sig.generics,
                                                           FnSpace,
                                                           MethodRibKind);
                                     this.with_type_parameter_rib(type_parameters, |this| {
-                                        intravisit::walk_trait_item(this, trait_item)
+                                        visit::walk_trait_item(this, trait_item)
                                     });
                                 }
-                                hir::TypeTraitItem(..) => {
+                                TraitItemKind::Type(..) => {
                                     this.with_type_parameter_rib(NoTypeParameters, |this| {
-                                        intravisit::walk_trait_item(this, trait_item)
+                                        visit::walk_trait_item(this, trait_item)
                                     });
                                 }
                             };
@@ -1644,21 +1659,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 });
             }
 
-            ItemMod(_) | ItemForeignMod(_) => {
+            ItemKind::Mod(_) | ItemKind::ForeignMod(_) => {
                 self.with_scope(item.id, |this| {
-                    intravisit::walk_item(this, item);
+                    visit::walk_item(this, item);
                 });
             }
 
-            ItemConst(..) | ItemStatic(..) => {
+            ItemKind::Const(..) | ItemKind::Static(..) => {
                 self.with_constant_rib(|this| {
-                    intravisit::walk_item(this, item);
+                    visit::walk_item(this, item);
                 });
             }
 
-            ItemUse(ref view_path) => {
+            ItemKind::Use(ref view_path) => {
                 match view_path.node {
-                    hir::ViewPathList(ref prefix, ref items) => {
+                    ast::ViewPathList(ref prefix, ref items) => {
                         // Resolve prefix of an import with empty braces (issue #28388)
                         if items.is_empty() && !prefix.segments.is_empty() {
                             match self.resolve_crate_relative_path(prefix.span,
@@ -1683,9 +1698,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
 
-            ItemExternCrate(_) => {
+            ItemKind::ExternCrate(_) => {
                 // do nothing, these are just around to be encoded
             }
+
+            ItemKind::Mac(_) => panic!("unexpanded macro in resolve!"),
         }
     }
 
@@ -1697,7 +1714,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = HashSet::new();
                 for (index, type_parameter) in generics.ty_params.iter().enumerate() {
-                    let name = type_parameter.name;
+                    let name = type_parameter.ident.name;
                     debug!("with_type_parameter_rib: {}", type_parameter.id);
 
                     if seen_bindings.contains(&name) {
@@ -1708,7 +1725,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     seen_bindings.insert(name);
 
                     // plain insert (no renaming)
-                    let def_id = self.ast_map.local_def_id(type_parameter.id);
+                    let def_id = self.definitions.local_def_id(type_parameter.id);
                     let def = Def::TyParam(space, index as u32, def_id, name);
                     function_type_rib.bindings.insert(name, def);
                 }
@@ -1761,7 +1778,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             debug!("(resolving function) recorded argument");
         }
-        intravisit::walk_fn_ret_ty(self, &declaration.output);
+        visit::walk_fn_ret_ty(self, &declaration.output);
 
         // Resolve the function body.
         self.visit_block(block);
@@ -1838,9 +1855,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_generics(&mut self, generics: &Generics) {
         for predicate in &generics.where_clause.predicates {
             match predicate {
-                &hir::WherePredicate::BoundPredicate(_) |
-                &hir::WherePredicate::RegionPredicate(_) => {}
-                &hir::WherePredicate::EqPredicate(ref eq_pred) => {
+                &ast::WherePredicate::BoundPredicate(_) |
+                &ast::WherePredicate::RegionPredicate(_) => {}
+                &ast::WherePredicate::EqPredicate(ref eq_pred) => {
                     self.resolve_path(eq_pred.id, &eq_pred.path, 0, TypeNS).and_then(|path_res| {
                         if let PathResolution { base_def: Def::TyParam(..), .. } = path_res {
                             Ok(self.record_def(eq_pred.id, path_res))
@@ -1856,7 +1873,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
         }
-        intravisit::walk_generics(self, generics);
+        visit::walk_generics(self, generics);
     }
 
     fn with_current_self_type<T, F>(&mut self, self_type: &Ty, f: F) -> T
@@ -1885,7 +1902,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             } else {
                 self.record_def(trait_ref.ref_id, err_path_resolution());
             }
-            intravisit::walk_trait_ref(self, trait_ref);
+            visit::walk_trait_ref(self, trait_ref);
         }
         let original_trait_ref = replace(&mut self.current_trait_ref, new_val);
         let result = f(self, new_id);
@@ -1929,20 +1946,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         for impl_item in impl_items {
                             this.resolve_visibility(&impl_item.vis);
                             match impl_item.node {
-                                hir::ImplItemKind::Const(..) => {
+                                ImplItemKind::Const(..) => {
                                     // If this is a trait impl, ensure the const
                                     // exists in trait
-                                    this.check_trait_item(impl_item.name,
+                                    this.check_trait_item(impl_item.ident.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
                                     this.with_constant_rib(|this| {
-                                        intravisit::walk_impl_item(this, impl_item);
+                                        visit::walk_impl_item(this, impl_item);
                                     });
                                 }
-                                hir::ImplItemKind::Method(ref sig, _) => {
+                                ImplItemKind::Method(ref sig, _) => {
                                     // If this is a trait impl, ensure the method
                                     // exists in trait
-                                    this.check_trait_item(impl_item.name,
+                                    this.check_trait_item(impl_item.ident.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::MethodNotMemberOfTrait(n, s));
 
@@ -1953,18 +1970,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                           FnSpace,
                                                           MethodRibKind);
                                     this.with_type_parameter_rib(type_parameters, |this| {
-                                        intravisit::walk_impl_item(this, impl_item);
+                                        visit::walk_impl_item(this, impl_item);
                                     });
                                 }
-                                hir::ImplItemKind::Type(ref ty) => {
+                                ImplItemKind::Type(ref ty) => {
                                     // If this is a trait impl, ensure the type
                                     // exists in trait
-                                    this.check_trait_item(impl_item.name,
+                                    this.check_trait_item(impl_item.ident.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::TypeNotMemberOfTrait(n, s));
 
                                     this.visit_ty(ty);
                                 }
+                                ImplItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
                             }
                         }
                     });
@@ -2002,16 +2020,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // that expands into an or-pattern where one 'x' was from the
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
-        let mut result = HashMap::new();
-        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
-            let name = path1.node;
-            result.insert(name,
-                          BindingInfo {
-                              span: sp,
-                              binding_mode: binding_mode,
-                          });
+        let mut binding_map = HashMap::new();
+
+        pat.walk(&mut |pat| {
+            if let PatKind::Ident(binding_mode, ident, ref sub_pat) = pat.node {
+                if sub_pat.is_some() || match self.def_map.get(&pat.id) {
+                    Some(&PathResolution { base_def: Def::Local(..), .. }) => true,
+                    _ => false,
+                } {
+                    let binding_info = BindingInfo { span: ident.span, binding_mode: binding_mode };
+                    binding_map.insert(mtwt::resolve(ident.node), binding_info);
+                }
+            }
+            true
         });
-        return result;
+
+        binding_map
     }
 
     // check that all of the arms in an or-pattern have exactly the
@@ -2086,7 +2110,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // Descend into the block.
-        intravisit::walk_block(self, block);
+        visit::walk_block(self, block);
 
         // Move back up.
         self.current_module = orig_module;
@@ -2099,7 +2123,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_type(&mut self, ty: &Ty) {
         match ty.node {
-            TyPath(ref maybe_qself, ref path) => {
+            TyKind::Path(ref maybe_qself, ref path) => {
                 let resolution = match self.resolve_possibly_assoc_item(ty.id,
                                                                         maybe_qself.as_ref(),
                                                                         path,
@@ -2107,7 +2131,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // `<T>::a::b::c` is resolved by typeck alone.
                     TypecheckRequired => {
                         // Resolve embedded types.
-                        intravisit::walk_ty(self, ty);
+                        visit::walk_ty(self, ty);
                         return;
                     }
                     ResolveAttempt(resolution) => resolution,
@@ -2176,7 +2200,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             _ => {}
         }
         // Resolve embedded types.
-        intravisit::walk_ty(self, ty);
+        visit::walk_ty(self, ty);
     }
 
     fn resolve_pattern(&mut self,
@@ -2186,7 +2210,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                        // pattern that binds them
                        bindings_list: &mut HashMap<Name, NodeId>) {
         let pat_id = pattern.id;
-        pattern.walk(|pattern| {
+        pattern.walk(&mut |pattern| {
             match pattern.node {
                 PatKind::Ident(binding_mode, ref path1, ref at_rhs) => {
                     // The meaning of PatKind::Ident with no type parameters
@@ -2200,7 +2224,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let const_ok = mode == RefutableMode && at_rhs.is_none();
 
                     let ident = path1.node;
-                    let renamed = ident.name;
+                    let renamed = mtwt::resolve(ident);
 
                     match self.resolve_bare_identifier_pattern(ident, pattern.span) {
                         FoundStructOrEnumVariant(def) if const_ok => {
@@ -2246,7 +2270,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         BareIdentifierPatternUnresolved => {
                             debug!("(resolving pattern) binding `{}`", renamed);
 
-                            let def_id = self.ast_map.local_def_id(pattern.id);
+                            let def_id = self.definitions.local_def_id(pattern.id);
                             let def = Def::Local(def_id, pattern.id);
 
                             // Record the definition so that later passes
@@ -2319,11 +2343,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             Def::Variant(..) | Def::Const(..) => {
                                 self.record_def(pattern.id, path_res);
                             }
-                            Def::Static(did, _) => {
-                                resolve_error(&self,
-                                              path.span,
-                                              ResolutionError::StaticVariableReference(
-                                                  did, None));
+                            Def::Static(..) => {
+                                let segments = &path.segments;
+                                let binding = if path.global {
+                                    self.resolve_crate_relative_path(path.span, segments, ValueNS)
+                                } else {
+                                    self.resolve_module_relative_path(path.span, segments, ValueNS)
+                                }.unwrap();
+
+                                let error = ResolutionError::StaticVariableReference(binding);
+                                resolve_error(self, path.span, error);
                                 self.record_def(pattern.id, err_path_resolution());
                             }
                             _ => {
@@ -2365,7 +2394,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         );
                         self.record_def(pattern.id, err_path_resolution());
                     }
-                    intravisit::walk_path(self, path);
+                    visit::walk_path(self, path);
                 }
 
                 PatKind::QPath(ref qself, ref path) => {
@@ -2385,7 +2414,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                  .name;
                             let traits = self.get_traits_containing_item(const_name);
                             self.trait_map.insert(pattern.id, traits);
-                            intravisit::walk_pat(self, pattern);
+                            visit::walk_pat(self, pattern);
                             return true;
                         }
                         ResolveAttempt(resolution) => resolution,
@@ -2419,7 +2448,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                                       .as_str()));
                         self.record_def(pattern.id, err_path_resolution());
                     }
-                    intravisit::walk_pat(self, pattern);
+                    visit::walk_pat(self, pattern);
                 }
 
                 PatKind::Struct(ref path, _, _) => {
@@ -2438,11 +2467,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             self.record_def(pattern.id, err_path_resolution());
                         }
                     }
-                    intravisit::walk_path(self, path);
+                    visit::walk_path(self, path);
                 }
 
                 PatKind::Lit(_) | PatKind::Range(..) => {
-                    intravisit::walk_pat(self, pattern);
+                    visit::walk_pat(self, pattern);
                 }
 
                 _ => {
@@ -2453,19 +2482,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         });
     }
 
-    fn resolve_bare_identifier_pattern(&mut self, ident: hir::Ident, span: Span)
+    fn resolve_bare_identifier_pattern(&mut self, ident: ast::Ident, span: Span)
                                        -> BareIdentifierPatternResolution {
-        match self.resolve_ident_in_lexical_scope(ident, ValueNS, true)
-                  .map(LexicalScopeBinding::def) {
-            Some(def @ Def::Variant(..)) | Some(def @ Def::Struct(..)) => {
-                FoundStructOrEnumVariant(def)
-            }
-            Some(def @ Def::Const(..)) | Some(def @ Def::AssociatedConst(..)) => {
-                FoundConst(def, ident.unhygienic_name)
-            }
-            Some(Def::Static(did, _)) => {
-                resolve_error(self, span, ResolutionError::StaticVariableReference(
-                    did, Some(ident.unhygienic_name)));
+        let binding = match self.resolve_ident_in_lexical_scope(ident, ValueNS, true) {
+            Some(LexicalScopeBinding::Item(binding)) => binding,
+            _ => return BareIdentifierPatternUnresolved,
+        };
+        let def = binding.def().unwrap();
+
+        match def {
+            Def::Variant(..) | Def::Struct(..) => FoundStructOrEnumVariant(def),
+            Def::Const(..) | Def::AssociatedConst(..) => FoundConst(def, ident.name),
+            Def::Static(..) => {
+                let error = ResolutionError::StaticVariableReference(binding);
+                resolve_error(self, span, error);
                 BareIdentifierPatternUnresolved
             }
             _ => BareIdentifierPatternUnresolved,
@@ -2475,7 +2505,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Handles paths that may refer to associated items
     fn resolve_possibly_assoc_item(&mut self,
                                    id: NodeId,
-                                   maybe_qself: Option<&hir::QSelf>,
+                                   maybe_qself: Option<&ast::QSelf>,
                                    path: &Path,
                                    namespace: Namespace)
                                    -> AssocItemResolveResult {
@@ -2536,7 +2566,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 None | Some(LocalDef{def: Def::Mod(..), ..}) if namespace == TypeNS =>
                     this.primitive_type_table
                         .primitive_types
-                        .get(&last_ident.unhygienic_name)
+                        .get(&last_ident.name)
                         .map_or(def, |prim_ty| Some(LocalDef::from_def(Def::PrimTy(*prim_ty)))),
                 _ => def
             }
@@ -2577,11 +2607,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     // Resolve a single identifier
     fn resolve_identifier(&mut self,
-                          identifier: hir::Ident,
+                          identifier: ast::Ident,
                           namespace: Namespace,
                           record_used: bool)
                           -> Option<LocalDef> {
-        if identifier.unhygienic_name == keywords::Invalid.name() {
+        if identifier.name == keywords::Invalid.name() {
             return Some(LocalDef::from_def(Def::Err));
         }
 
@@ -2609,7 +2639,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         ClosureRibKind(function_id) => {
                             let prev_def = def;
-                            let node_def_id = self.ast_map.local_def_id(node_id);
+                            let node_def_id = self.definitions.local_def_id(node_id);
 
                             let seen = self.freevars_seen
                                            .entry(function_id)
@@ -2681,7 +2711,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // resolve a "module-relative" path, e.g. a::b::c
     fn resolve_module_relative_path(&mut self,
                                     span: Span,
-                                    segments: &[hir::PathSegment],
+                                    segments: &[ast::PathSegment],
                                     namespace: Namespace)
                                     -> Result<&'a NameBinding<'a>,
                                               bool /* true if an error was reported */> {
@@ -2723,19 +2753,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Invariant: This must be called only during main resolution, not during
     /// import resolution.
-    fn resolve_crate_relative_path(&mut self,
-                                   span: Span,
-                                   segments: &[hir::PathSegment],
-                                   namespace: Namespace)
-                                   -> Result<&'a NameBinding<'a>,
-                                             bool /* true if an error was reported */> {
-        let module_path = segments.split_last()
-                                  .unwrap()
-                                  .1
-                                  .iter()
-                                  .map(|ps| ps.identifier.name)
-                                  .collect::<Vec<_>>();
-
+    fn resolve_crate_relative_path<T>(&mut self, span: Span, segments: &[T], namespace: Namespace)
+                                      -> Result<&'a NameBinding<'a>,
+                                                bool /* true if an error was reported */>
+        where T: Named,
+    {
+        let module_path = segments.split_last().unwrap().1.iter().map(T::name).collect::<Vec<_>>();
         let root_module = self.graph_root;
 
         let containing_module;
@@ -2764,7 +2787,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        let name = segments.last().unwrap().identifier.name;
+        let name = segments.last().unwrap().name();
         let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
         result.success().map(|binding| {
             self.check_privacy(name, binding, span);
@@ -2784,8 +2807,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn find_fallback_in_self_type(&mut self, name: Name) -> FallbackSuggestion {
         fn extract_node_id(t: &Ty) -> Option<NodeId> {
             match t.node {
-                TyPath(None, _) => Some(t.id),
-                TyRptr(_, ref mut_ty) => extract_node_id(&mut_ty.ty),
+                TyKind::Path(None, _) => Some(t.id),
+                TyKind::Rptr(_, ref mut_ty) => extract_node_id(&mut_ty.ty),
                 // This doesn't handle the remaining `Ty` variants as they are not
                 // that commonly the self_type, it might be interesting to provide
                 // support for those in future.
@@ -2795,7 +2818,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
             // Look for a field with the same name in the current self_type.
-            match self.def_map.borrow().get(&node_id).map(|d| d.full_def()) {
+            match self.def_map.get(&node_id).map(|d| d.full_def()) {
                 Some(Def::Enum(did)) |
                 Some(Def::TyAlias(did)) |
                 Some(Def::Struct(did)) |
@@ -2843,6 +2866,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         } SuggestionType::NotFound
     }
 
+    fn resolve_labeled_block(&mut self, label: Option<ast::Ident>, id: NodeId, block: &Block) {
+        if let Some(label) = label {
+            let (label, def) = (mtwt::resolve(label), Def::Label(id));
+            self.with_label_rib(|this| {
+                this.label_ribs.last_mut().unwrap().bindings.insert(label, def);
+                this.visit_block(block);
+            });
+        } else {
+            self.visit_block(block);
+        }
+    }
+
     fn resolve_expr(&mut self, expr: &Expr, parent: Option<&Expr>) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
@@ -2851,7 +2886,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Next, resolve the node.
         match expr.node {
-            ExprPath(ref maybe_qself, ref path) => {
+            ExprKind::Path(ref maybe_qself, ref path) => {
                 let resolution = match self.resolve_possibly_assoc_item(expr.id,
                                                                         maybe_qself.as_ref(),
                                                                         path,
@@ -2861,7 +2896,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let method_name = path.segments.last().unwrap().identifier.name;
                         let traits = self.get_traits_containing_item(method_name);
                         self.trait_map.insert(expr.id, traits);
-                        intravisit::walk_expr(self, expr);
+                        visit::walk_expr(self, expr);
                         return;
                     }
                     ResolveAttempt(resolution) => resolution,
@@ -3003,10 +3038,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
 
-                intravisit::walk_expr(self, expr);
+                visit::walk_expr(self, expr);
             }
 
-            ExprStruct(ref path, _, _) => {
+            ExprKind::Struct(ref path, _, _) => {
                 // Resolve the path to the structure it goes to. We don't
                 // check to ensure that the path is actually a structure; that
                 // is checked later during typeck.
@@ -3025,24 +3060,24 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
 
-                intravisit::walk_expr(self, expr);
+                visit::walk_expr(self, expr);
             }
 
-            ExprLoop(_, Some(label)) | ExprWhile(_, _, Some(label)) => {
+            ExprKind::Loop(_, Some(label)) | ExprKind::While(_, _, Some(label)) => {
                 self.with_label_rib(|this| {
                     let def = Def::Label(expr.id);
 
                     {
                         let rib = this.label_ribs.last_mut().unwrap();
-                        rib.bindings.insert(label.name, def);
+                        rib.bindings.insert(mtwt::resolve(label), def);
                     }
 
-                    intravisit::walk_expr(this, expr);
+                    visit::walk_expr(this, expr);
                 })
             }
 
-            ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
-                match self.search_label(label.node.name) {
+            ExprKind::Break(Some(label)) | ExprKind::Again(Some(label)) => {
+                match self.search_label(mtwt::resolve(label.node)) {
                     None => {
                         self.record_def(expr.id, err_path_resolution());
                         resolve_error(self,
@@ -3062,10 +3097,42 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
             }
-            ExprField(ref subexpression, _) => {
+
+            ExprKind::IfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {
+                self.visit_expr(subexpression);
+
+                self.value_ribs.push(Rib::new(NormalRibKind));
+                self.resolve_pattern(pattern, RefutableMode, &mut HashMap::new());
+                self.visit_block(if_block);
+                self.value_ribs.pop();
+
+                optional_else.as_ref().map(|expr| self.visit_expr(expr));
+            }
+
+            ExprKind::WhileLet(ref pattern, ref subexpression, ref block, label) => {
+                self.visit_expr(subexpression);
+                self.value_ribs.push(Rib::new(NormalRibKind));
+                self.resolve_pattern(pattern, RefutableMode, &mut HashMap::new());
+
+                self.resolve_labeled_block(label, expr.id, block);
+
+                self.value_ribs.pop();
+            }
+
+            ExprKind::ForLoop(ref pattern, ref subexpression, ref block, label) => {
+                self.visit_expr(subexpression);
+                self.value_ribs.push(Rib::new(NormalRibKind));
+                self.resolve_pattern(pattern, LocalIrrefutableMode, &mut HashMap::new());
+
+                self.resolve_labeled_block(label, expr.id, block);
+
+                self.value_ribs.pop();
+            }
+
+            ExprKind::Field(ref subexpression, _) => {
                 self.resolve_expr(subexpression, Some(expr));
             }
-            ExprMethodCall(_, ref types, ref arguments) => {
+            ExprKind::MethodCall(_, ref types, ref arguments) => {
                 let mut arguments = arguments.iter();
                 self.resolve_expr(arguments.next().unwrap(), Some(expr));
                 for argument in arguments {
@@ -3077,25 +3144,25 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             _ => {
-                intravisit::walk_expr(self, expr);
+                visit::walk_expr(self, expr);
             }
         }
     }
 
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &Expr) {
         match expr.node {
-            ExprField(_, name) => {
+            ExprKind::Field(_, name) => {
                 // FIXME(#6890): Even though you can't treat a method like a
                 // field, we need to add any trait methods we find that match
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
-                let traits = self.get_traits_containing_item(name.node);
+                let traits = self.get_traits_containing_item(name.node.name);
                 self.trait_map.insert(expr.id, traits);
             }
-            ExprMethodCall(name, _, _) => {
+            ExprKind::MethodCall(name, _, _) => {
                 debug!("(recording candidate traits for expr) recording traits for {}",
                        expr.id);
-                let traits = self.get_traits_containing_item(name.node);
+                let traits = self.get_traits_containing_item(name.node.name);
                 self.trait_map.insert(expr.id, traits);
             }
             _ => {
@@ -3205,7 +3272,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if let Some(def) = name_binding.def() {
                     if name == lookup_name && ns == namespace && filter_fn(def) {
                         // create the path
-                        let ident = hir::Ident::from_name(name);
+                        let ident = ast::Ident::with_empty_ctxt(name);
                         let params = PathParameters::none();
                         let segment = PathSegment {
                             identifier: ident,
@@ -3214,7 +3281,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let span = name_binding.span;
                         let mut segms = path_segments.clone();
                         segms.push(segment);
-                        let segms = HirVec::from_vec(segms);
                         let path = Path {
                             span: span,
                             global: true,
@@ -3240,7 +3306,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         NoParentLink => path_segments.clone(),
                         ModuleParentLink(_, name) => {
                             let mut paths = path_segments.clone();
-                            let ident = hir::Ident::from_name(name);
+                            let ident = ast::Ident::with_empty_ctxt(name);
                             let params = PathParameters::none();
                             let segm = PathSegment {
                                 identifier: ident,
@@ -3269,12 +3335,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn record_def(&mut self, node_id: NodeId, resolution: PathResolution) {
         debug!("(recording def) recording {:?} for {}", resolution, node_id);
-        if let Some(prev_res) = self.def_map.borrow_mut().insert(node_id, resolution) {
-            let span = self.ast_map.opt_span(node_id).unwrap_or(codemap::DUMMY_SP);
-            span_bug!(span,
-                      "path resolved multiple times ({:?} before, {:?} now)",
-                      prev_res,
-                      resolution);
+        if let Some(prev_res) = self.def_map.insert(node_id, resolution) {
+            panic!("path resolved multiple times ({:?} before, {:?} now)", prev_res, resolution);
         }
     }
 
@@ -3283,8 +3345,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     pat_binding_mode: BindingMode,
                                     descr: &str) {
         match pat_binding_mode {
-            BindByValue(_) => {}
-            BindByRef(..) => {
+            BindingMode::ByValue(_) => {}
+            BindingMode::ByRef(..) => {
                 resolve_error(self,
                               pat.span,
                               ResolutionError::CannotUseRefBindingModeWith(descr));
@@ -3292,15 +3354,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn resolve_visibility(&mut self, vis: &hir::Visibility) -> ty::Visibility {
+    fn resolve_visibility(&mut self, vis: &ast::Visibility) -> ty::Visibility {
         let (path, id) = match *vis {
-            hir::Public => return ty::Visibility::Public,
-            hir::Visibility::Crate => return ty::Visibility::Restricted(ast::CRATE_NODE_ID),
-            hir::Visibility::Restricted { ref path, id } => (path, id),
-            hir::Inherited => {
+            ast::Visibility::Public => return ty::Visibility::Public,
+            ast::Visibility::Crate(_) => return ty::Visibility::Restricted(ast::CRATE_NODE_ID),
+            ast::Visibility::Restricted { ref path, id } => (path, id),
+            ast::Visibility::Inherited => {
                 let current_module =
                     self.get_nearest_normal_module_parent_or_self(self.current_module);
-                let id = self.ast_map.as_local_node_id(current_module.def_id().unwrap()).unwrap();
+                let id =
+                    self.definitions.as_local_node_id(current_module.def_id().unwrap()).unwrap();
                 return ty::Visibility::Restricted(id);
             }
         };
@@ -3310,8 +3373,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Success(module) => {
                 let def = module.def.unwrap();
                 let path_resolution = PathResolution { base_def: def, depth: 0 };
-                self.def_map.borrow_mut().insert(id, path_resolution);
-                ty::Visibility::Restricted(self.ast_map.as_local_node_id(def.def_id()).unwrap())
+                self.def_map.insert(id, path_resolution);
+                ty::Visibility::Restricted(self.definitions.as_local_node_id(def.def_id()).unwrap())
             }
             Failed(Some((span, msg))) => {
                 self.session.span_err(span, &format!("failed to resolve module path. {}", msg));
@@ -3331,7 +3394,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn is_accessible(&self, vis: ty::Visibility) -> bool {
         let current_module = self.get_nearest_normal_module_parent_or_self(self.current_module);
-        let node_id = self.ast_map.as_local_node_id(current_module.def_id().unwrap()).unwrap();
+        let node_id = self.definitions.as_local_node_id(current_module.def_id().unwrap()).unwrap();
         vis.is_accessible_from(node_id, self)
     }
 
@@ -3525,15 +3588,6 @@ fn err_path_resolution() -> PathResolution {
 }
 
 
-pub struct CrateMap {
-    pub def_map: RefCell<DefMap>,
-    pub freevars: FreevarMap,
-    pub maybe_unused_trait_imports: NodeSet,
-    pub export_map: ExportMap,
-    pub trait_map: TraitMap,
-    pub glob_map: Option<GlobMap>,
-}
-
 #[derive(PartialEq,Copy, Clone)]
 pub enum MakeGlobMap {
     Yes,
@@ -3541,10 +3595,7 @@ pub enum MakeGlobMap {
 }
 
 /// Entry point to crate resolution.
-pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
-                               ast_map: &'a hir_map::Map<'tcx>,
-                               make_glob_map: MakeGlobMap)
-                               -> CrateMap {
+pub fn resolve_crate<'a, 'b>(resolver: &'b mut Resolver<'a>, krate: &'b Crate) {
     // Currently, we ignore the name resolution data structures for
     // the purposes of dependency tracking. Instead we will run name
     // resolution and include its output in the hash of each item,
@@ -3552,45 +3603,24 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     // reflects not just its contents but the results of name
     // resolution on those contents. Hopefully we'll push this back at
     // some point.
-    let _task = ast_map.dep_graph.in_task(DepNode::Resolve);
-
-    let krate = ast_map.krate();
-    let arenas = Resolver::arenas();
-    let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, &arenas);
-
-    resolver.resolve_crate(krate);
-
-    check_unused::check_crate(&mut resolver, krate);
-    resolver.report_privacy_errors();
-
-    CrateMap {
-        def_map: resolver.def_map,
-        freevars: resolver.freevars,
-        maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
-        export_map: resolver.export_map,
-        trait_map: resolver.trait_map,
-        glob_map: if resolver.make_glob_map {
-            Some(resolver.glob_map)
-        } else {
-            None
-        },
-    }
-}
-
-/// Builds a name resolution walker.
-fn create_resolver<'a, 'tcx>(session: &'a Session,
-                             ast_map: &'a hir_map::Map<'tcx>,
-                             krate: &'a Crate,
-                             make_glob_map: MakeGlobMap,
-                             arenas: &'a ResolverArenas<'a>)
-                             -> Resolver<'a, 'tcx> {
-    let mut resolver = Resolver::new(session, ast_map, make_glob_map, arenas);
 
     resolver.build_reduced_graph(krate);
+    resolve_imports::resolve_imports(resolver);
+    resolver.resolve_crate(krate);
 
-    resolve_imports::resolve_imports(&mut resolver);
+    check_unused::check_crate(resolver, krate);
+    resolver.report_privacy_errors();
+}
 
-    resolver
+pub fn with_resolver<'a, T, F>(session: &'a Session,
+                               definitions: &'a mut Definitions,
+                               make_glob_map: MakeGlobMap,
+                               f: F) -> T
+    where F: for<'b> FnOnce(Resolver<'b>) -> T,
+{
+    let arenas = Resolver::arenas();
+    let resolver = Resolver::new(session, definitions, make_glob_map, &arenas);
+    f(resolver)
 }
 
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }

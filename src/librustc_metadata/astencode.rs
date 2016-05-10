@@ -57,7 +57,7 @@ use rustc_serialize::{Encodable, EncoderHelpers};
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::ast::NodeId;
 #[cfg(test)] use rustc::hir::print as pprust;
-#[cfg(test)] use rustc::hir::lowering::{lower_item, LoweringContext};
+#[cfg(test)] use rustc::hir::lowering::{lower_item, LoweringContext, DummyResolver};
 
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
@@ -1326,6 +1326,14 @@ fn mk_ctxt() -> parse::ParseSess {
 }
 
 #[cfg(test)]
+fn with_testing_context<T, F: FnOnce(LoweringContext) -> T>(f: F) -> T {
+    let assigner = FakeNodeIdAssigner;
+    let mut resolver = DummyResolver;
+    let lcx = LoweringContext::new(&assigner, None, &mut resolver);
+    f(lcx)
+}
+
+#[cfg(test)]
 fn roundtrip(in_item: hir::Item) {
     let mut wr = Cursor::new(Vec::new());
     encode_item_ast(&mut Encoder::new(&mut wr), &in_item);
@@ -1338,34 +1346,34 @@ fn roundtrip(in_item: hir::Item) {
 #[test]
 fn test_basic() {
     let cx = mk_ctxt();
-    let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::testing_context(&fnia);
-    roundtrip(lower_item(&lcx, &quote_item!(&cx,
-        fn foo() {}
-    ).unwrap()));
+    with_testing_context(|lcx| {
+        roundtrip(lower_item(&lcx, &quote_item!(&cx,
+            fn foo() {}
+        ).unwrap()));
+    });
 }
 
 #[test]
 fn test_smalltalk() {
     let cx = mk_ctxt();
-    let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::testing_context(&fnia);
-    roundtrip(lower_item(&lcx, &quote_item!(&cx,
-        fn foo() -> isize { 3 + 4 } // first smalltalk program ever executed.
-    ).unwrap()));
+    with_testing_context(|lcx| {
+        roundtrip(lower_item(&lcx, &quote_item!(&cx,
+            fn foo() -> isize { 3 + 4 } // first smalltalk program ever executed.
+        ).unwrap()));
+    });
 }
 
 #[test]
 fn test_more() {
     let cx = mk_ctxt();
-    let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::testing_context(&fnia);
-    roundtrip(lower_item(&lcx, &quote_item!(&cx,
-        fn foo(x: usize, y: usize) -> usize {
-            let z = x + y;
-            return z;
-        }
-    ).unwrap()));
+    with_testing_context(|lcx| {
+        roundtrip(lower_item(&lcx, &quote_item!(&cx,
+            fn foo(x: usize, y: usize) -> usize {
+                let z = x + y;
+                return z;
+            }
+        ).unwrap()));
+    });
 }
 
 #[test]
@@ -1377,21 +1385,22 @@ fn test_simplification() {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
     ).unwrap();
-    let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::testing_context(&fnia);
-    let hir_item = lower_item(&lcx, &item);
-    let item_in = InlinedItemRef::Item(&hir_item);
-    let item_out = simplify_ast(item_in);
-    let item_exp = InlinedItem::Item(P(lower_item(&lcx, &quote_item!(&cx,
-        fn new_int_alist<B>() -> alist<isize, B> {
-            return alist {eq_fn: eq_int, data: Vec::new()};
+    let cx = mk_ctxt();
+    with_testing_context(|lcx| {
+        let hir_item = lower_item(&lcx, &item);
+        let item_in = InlinedItemRef::Item(&hir_item);
+        let item_out = simplify_ast(item_in);
+        let item_exp = InlinedItem::Item(P(lower_item(&lcx, &quote_item!(&cx,
+            fn new_int_alist<B>() -> alist<isize, B> {
+                return alist {eq_fn: eq_int, data: Vec::new()};
+            }
+        ).unwrap())));
+        match (item_out, item_exp) {
+            (InlinedItem::Item(item_out), InlinedItem::Item(item_exp)) => {
+                 assert!(pprust::item_to_string(&item_out) ==
+                         pprust::item_to_string(&item_exp));
+            }
+            _ => bug!()
         }
-    ).unwrap())));
-    match (item_out, item_exp) {
-      (InlinedItem::Item(item_out), InlinedItem::Item(item_exp)) => {
-        assert!(pprust::item_to_string(&item_out) ==
-                pprust::item_to_string(&item_exp));
-      }
-      _ => bug!()
-    }
+    });
 }
