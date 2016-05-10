@@ -1009,7 +1009,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
         passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
         passes.push_pass(box mir::transform::erase_regions::EraseRegions);
-        passes.push_pass(box mir::transform::break_critical_edges::BreakCriticalEdges);
+        passes.push_pass(box mir::transform::break_cleanup_edges::BreakCleanupEdges);
         passes.run_passes(tcx, &mut mir_map);
     });
 
