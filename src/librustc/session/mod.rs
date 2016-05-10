@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir::def_id::DefIndex;
+use hir::svh::Svh;
 use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
@@ -310,6 +312,14 @@ impl Session {
     pub fn nonzeroing_move_hints(&self) -> bool {
         self.opts.debugging_opts.enable_nonzeroing_move_hints
     }
+
+    /// Returns the symbol name for the registrar function,
+    /// given the crate Svh and the function DefIndex.
+    pub fn generate_plugin_registrar_symbol(&self, svh: &Svh, index: DefIndex)
+                                            -> String {
+        format!("__rustc_plugin_registrar__{}_{}", svh, index.as_usize())
+    }
+
     pub fn sysroot<'a>(&'a self) -> &'a Path {
         match self.opts.maybe_sysroot {
             Some (ref sysroot) => sysroot,
