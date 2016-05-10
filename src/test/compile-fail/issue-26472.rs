@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,24 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(unused)]
+mod sub {
+    pub struct S { len: usize }
+    impl S {
+        pub fn new() -> S { S { len: 0 } }
+        pub fn len(&self) -> usize { self.len }
+    }
+}
+
 fn main() {
-    || {
-        'label: loop {
-        }
-    };
-
-    // More cases added from issue 31754
-
-    'label2: loop {
-        break;
-    }
-
-    let closure = || {
-        'label2: loop {}
-    };
-
-    fn inner_fn() {
-        'label2: loop {}
-    }
+    let s = sub::S::new();
+    let v = s.len;
+    //~^ ERROR field `len` of struct `sub::S` is private
+    //~| NOTE a method `len` also exists, perhaps you wish to call it
 }
