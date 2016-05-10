@@ -297,35 +297,14 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
             Switch { ref discr, ref targets, adt_def } => {
                 let adt_ptr = self.eval_lvalue(discr)?.to_ptr();
-                let adt_layout = self.type_layout(self.lvalue_ty(discr));
+                let adt_ty = self.lvalue_ty(discr);
+                let discr_val = self.read_discriminant_value(adt_ptr, adt_ty)?;
+                let matching = adt_def.variants.iter()
+                    .position(|v| discr_val == v.disr_val.to_u64_unchecked());
 
-                 match *adt_layout {
-                    Layout::General { discr, .. } | Layout::CEnum { discr, .. } => {
-                        let discr_size = discr.size().bytes();
-                        let discr_val = self.memory.read_uint(adt_ptr, discr_size as usize)?;
-
-                        let matching = adt_def.variants.iter()
-                            .position(|v| discr_val == v.disr_val.to_u64_unchecked());
-
-                        match matching {
-                            Some(i) => TerminatorTarget::Block(targets[i]),
-                            None => return Err(EvalError::InvalidDiscriminant),
-                        }
-                    }
-
-                    Layout::RawNullablePointer { nndiscr, .. } => {
-                        let is_null = match self.memory.read_usize(adt_ptr) {
-                            Ok(0) => true,
-                            Ok(_) | Err(EvalError::ReadPointerAsBytes) => false,
-                            Err(e) => return Err(e),
-                        };
-
-                        assert!(nndiscr == 0 || nndiscr == 1);
-                        let target = if is_null { 1 - nndiscr } else { nndiscr };
-                        TerminatorTarget::Block(targets[target as usize])
-                    }
-
-                    _ => panic!("attempted to switch on non-aggregate type"),
+                match matching {
+                    Some(i) => TerminatorTarget::Block(targets[i]),
+                    None => return Err(EvalError::InvalidDiscriminant),
                 }
             }
 
@@ -477,6 +456,36 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(())
     }
 
+    fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: ty::Ty<'tcx>) -> EvalResult<u64> {
+        use rustc::ty::layout::Layout::*;
+        let adt_layout = self.type_layout(adt_ty);
+
+        let discr_val = match *adt_layout {
+            General { discr, .. } | CEnum { discr, .. } => {
+                let discr_size = discr.size().bytes();
+                self.memory.read_uint(adt_ptr, discr_size as usize)?
+            }
+
+            RawNullablePointer { nndiscr, .. } => {
+                let not_null = match self.memory.read_usize(adt_ptr) {
+                    Ok(0) => false,
+                    Ok(_) | Err(EvalError::ReadPointerAsBytes) => true,
+                    Err(e) => return Err(e),
+                };
+                assert!(nndiscr == 0 || nndiscr == 1);
+                if not_null { nndiscr } else { 1 - nndiscr }
+            }
+
+            StructWrappedNullablePointer { .. } => unimplemented!(),
+
+            // The discriminant_value intrinsic returns 0 for non-sum types.
+            Array { .. } | FatPointer { .. } | Scalar { .. } | Univariant { .. } |
+            Vector { .. } => 0,
+        };
+
+        Ok(discr_val)
+    }
+
     fn call_intrinsic(
         &mut self,
         name: &str,
@@ -491,6 +500,19 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         let args = args_res?;
 
         match name {
+            // FIXME(solson): Handle different integer types correctly.
+            "add_with_overflow" => {
+                let ty = *substs.types.get(subst::FnSpace, 0);
+                let size = self.type_size(ty);
+                let left = self.memory.read_int(args[0], size)?;
+                let right = self.memory.read_int(args[1], size)?;
+                let (n, overflowed) = unsafe {
+                    ::std::intrinsics::add_with_overflow::<i64>(left, right)
+                };
+                self.memory.write_int(dest, n, size)?;
+                self.memory.write_bool(dest.offset(size as isize), overflowed)?;
+            }
+
             "assume" => {}
 
             "copy_nonoverlapping" => {
@@ -500,6 +522,13 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 let dest = self.memory.read_ptr(args[1])?;
                 let count = self.memory.read_isize(args[2])?;
                 self.memory.copy(src, dest, count as usize * elem_size)?;
+            }
+
+            "discriminant_value" => {
+                let ty = *substs.types.get(subst::FnSpace, 0);
+                let adt_ptr = self.memory.read_ptr(args[0])?;
+                let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
+                self.memory.write_uint(dest, discr_val, dest_size)?;
             }
 
             "forget" => {
@@ -518,19 +547,6 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let ptr = self.memory.read_ptr(args[0])?;
                 self.move_(args[1], ptr, ty)?;
-            }
-
-            // FIXME(solson): Handle different integer types correctly.
-            "add_with_overflow" => {
-                let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty);
-                let left = self.memory.read_int(args[0], size)?;
-                let right = self.memory.read_int(args[1], size)?;
-                let (n, overflowed) = unsafe {
-                    ::std::intrinsics::add_with_overflow::<i64>(left, right)
-                };
-                self.memory.write_int(dest, n, size)?;
-                self.memory.write_bool(dest.offset(size as isize), overflowed)?;
             }
 
             // FIXME(solson): Handle different integer types correctly.

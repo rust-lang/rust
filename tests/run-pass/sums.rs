@@ -57,12 +57,12 @@ fn two_nones() -> (Option<i16>, Option<i16>) {
 
 #[miri_run]
 fn main() {
-    //assert_eq!(two_nones(), (None, None));
+    assert_eq!(two_nones(), (None, None));
     assert_eq!(match_opt_some(), 13);
     assert_eq!(match_opt_none(), 42);
-    //assert_eq!(return_some(), Some(42));
-    //assert_eq!(return_none(), None);
-    //assert_eq!(return_false(), MyBool::False);
-    //assert_eq!(return_true(), MyBool::True);
-    //assert_eq!(return_unit(), Unit::Unit);
+    assert_eq!(return_some(), Some(42));
+    assert_eq!(return_none(), None);
+    assert_eq!(return_false(), MyBool::False(()));
+    assert_eq!(return_true(), MyBool::True(()));
+    assert_eq!(return_unit(), Unit::Unit(()));
 }
