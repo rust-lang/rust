@@ -3,7 +3,7 @@ authors = ["Scott Olson <scott@solson.me>"]
 description = "An experimental interpreter for Rust MIR."
 license = "ISC"
 name = "miri"
-repository = "https://github.com/tsion/miri"
+repository = "https://github.com/solson/miri"
 version = "0.1.0"
 
 [[bin]]

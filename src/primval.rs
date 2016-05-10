@@ -29,7 +29,7 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResul
                 BitAnd => $v($l & $r),
                 BitOr  => $v($l | $r),
 
-                // TODO(tsion): Can have differently-typed RHS.
+                // TODO(solson): Can have differently-typed RHS.
                 Shl => $v($l << $r),
                 Shr => $v($l >> $r),
 

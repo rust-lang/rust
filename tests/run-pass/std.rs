@@ -1,7 +1,7 @@
 #![feature(custom_attribute, box_syntax)]
 #![allow(dead_code, unused_attributes)]
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -13,8 +13,8 @@ fn rc_cell() -> Rc<Cell<i32>> {
     r
 }
 
-// TODO(tsion): borrow code needs to evaluate string statics via Lvalue::Static
-// TODO(tsion): also requires destructors to run for the second borrow to work
+// TODO(solson): also requires destructors to run for the second borrow to work
+// TODO(solson): needs StructWrappedNullablePointer support
 // #[miri_run]
 // fn rc_refcell() -> i32 {
 //     let r = Rc::new(RefCell::new(42));

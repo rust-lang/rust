@@ -54,7 +54,7 @@ impl Memory {
             alloc_map: HashMap::new(),
             next_id: AllocId(0),
 
-            // FIXME(tsion): This should work for both 4 and 8, but it currently breaks some things
+            // FIXME(solson): This should work for both 4 and 8, but it currently breaks some things
             // when set to 4.
             pointer_size: 8,
         }
@@ -75,11 +75,11 @@ impl Memory {
         }
     }
 
-    // TODO(tsion): Track which allocations were returned from __rust_allocate and report an error
+    // TODO(solson): Track which allocations were returned from __rust_allocate and report an error
     // when reallocating/deallocating any others.
     pub fn reallocate(&mut self, ptr: Pointer, new_size: usize) -> EvalResult<()> {
         if ptr.offset != 0 {
-            // TODO(tsion): Report error about non-__rust_allocate'd pointer.
+            // TODO(solson): Report error about non-__rust_allocate'd pointer.
             panic!()
         }
 
@@ -99,15 +99,15 @@ impl Memory {
         Ok(())
     }
 
-    // TODO(tsion): See comment on `reallocate`.
+    // TODO(solson): See comment on `reallocate`.
     pub fn deallocate(&mut self, ptr: Pointer) -> EvalResult<()> {
         if ptr.offset != 0 {
-            // TODO(tsion): Report error about non-__rust_allocate'd pointer.
+            // TODO(solson): Report error about non-__rust_allocate'd pointer.
             panic!()
         }
 
         if self.alloc_map.remove(&ptr.alloc_id).is_none() {
-            // TODO(tsion): Report error about erroneous free. This is blocked on properly tracking
+            // TODO(solson): Report error about erroneous free. This is blocked on properly tracking
             // already-dropped state since this if-statement is entered even in safe code without
             // it.
         }
@@ -403,7 +403,7 @@ impl Memory {
     // Undefined bytes
     ////////////////////////////////////////////////////////////////////////////////
 
-    // FIXME(tsion): This is a very naive, slow version.
+    // FIXME(solson): This is a very naive, slow version.
     fn copy_undef_mask(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         let mut v = Vec::with_capacity(size);

@@ -7,7 +7,7 @@ An experimental interpreter for [Rust][rust]'s [mid-level intermediate
 representation][mir] (MIR). This project began as part of my work for the
 undergraduate research course at the [University of Saskatchewan][usask].
 
-[![Build Status](https://travis-ci.org/tsion/miri.svg?branch=master)](https://travis-ci.org/tsion/miri)
+[![Build Status](https://travis-ci.org/solson/miri.svg?branch=master)](https://travis-ci.org/solson/miri)
 
 ## Download Rust nightly
 

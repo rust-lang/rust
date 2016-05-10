@@ -21,7 +21,7 @@ use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer};
 use primval::{self, PrimVal};
 
-const TRACE_EXECUTION: bool = false;
+const TRACE_EXECUTION: bool = true;
 
 struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
@@ -41,7 +41,7 @@ struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// *creating* the `Frame` for that same function.
     substs_stack: Vec<&'tcx Substs<'tcx>>,
 
-    // TODO(tsion): Merge with `substs_stack`. Also try restructuring `Frame` to accomodate.
+    // TODO(solson): Merge with `substs_stack`. Also try restructuring `Frame` to accomodate.
     /// A stack of the things necessary to print good strack traces:
     ///   * Function DefIds and Substs to print proper substituted function names.
     ///   * Spans pointing to specific function calls in the source.
@@ -101,7 +101,7 @@ struct Lvalue {
 enum LvalueExtra {
     None,
     Length(u64),
-    // TODO(tsion): Vtable(memory::AllocId),
+    // TODO(solson): Vtable(memory::AllocId),
     DowncastVariant(usize),
 }
 
@@ -148,7 +148,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         if let Err(ref e) = r {
             let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
             for &(def_id, substs, span) in self.name_stack.iter().rev() {
-                // FIXME(tsion): Find a way to do this without this Display impl hack.
+                // FIXME(solson): Find a way to do this without this Display impl hack.
                 use rustc::util::ppaux;
                 use std::fmt;
                 struct Instance<'tcx>(DefId, &'tcx Substs<'tcx>);
@@ -254,7 +254,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     fn pop_stack_frame(&mut self) {
         let _frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
-        // TODO(tsion): Deallocate local variables.
+        // TODO(solson): Deallocate local variables.
         self.substs_stack.pop();
     }
 
@@ -356,7 +356,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                             Abi::C => self.call_c_abi(def_id, args, return_ptr.unwrap())?,
 
                             Abi::Rust | Abi::RustCall => {
-                                // TODO(tsion): Adjust the first argument when calling a Fn or
+                                // TODO(solson): Adjust the first argument when calling a Fn or
                                 // FnMut closure via FnOnce::call_once.
 
                                 // Only trait methods can have a Self parameter.
@@ -434,7 +434,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         }
         self.log(1, || print!("need to drop {:?}", ty));
 
-        // TODO(tsion): Call user-defined Drop::drop impls.
+        // TODO(solson): Call user-defined Drop::drop impls.
 
         match ty.sty {
             ty::TyBox(contents_ty) => {
@@ -457,12 +457,12 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 }
             }
 
-            // TODO(tsion): Implement drop for other relevant types (e.g. aggregates).
+            // TODO(solson): Implement drop for other relevant types (e.g. aggregates).
             _ => {}
         }
 
         // Filling drop.
-        // FIXME(tsion): Trait objects (with no static size) probably get filled, too.
+        // FIXME(solson): Trait objects (with no static size) probably get filled, too.
         let size = self.type_size(ty);
         self.memory.drop_fill(ptr, size)?;
 
@@ -512,7 +512,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 self.move_(args[1], ptr, ty)?;
             }
 
-            // FIXME(tsion): Handle different integer types correctly.
+            // FIXME(solson): Handle different integer types correctly.
             "add_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty);
@@ -525,7 +525,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 self.memory.write_bool(dest.offset(size as isize), overflowed)?;
             }
 
-            // FIXME(tsion): Handle different integer types correctly.
+            // FIXME(solson): Handle different integer types correctly.
             "mul_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty);
@@ -558,7 +558,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 }
             }
 
-            // FIXME(tsion): Handle different integer types correctly. Use primvals?
+            // FIXME(solson): Handle different integer types correctly. Use primvals?
             "overflowing_sub" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty);
@@ -820,7 +820,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     }
 
                     Misc => {
-                        // FIXME(tsion): Wrong for almost everything.
+                        // FIXME(solson): Wrong for almost everything.
                         let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
                         self.memory.copy(src, dest, size)?;
                     }
@@ -846,7 +846,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     Value { ref value } => Ok(self.const_to_ptr(value)?),
                     Item { .. } => unimplemented!(),
                     Promoted { index } => {
-                        // TODO(tsion): Mark constants and statics as read-only and cache their
+                        // TODO(solson): Mark constants and statics as read-only and cache their
                         // values.
                         let current_mir = self.mir();
                         let mir = &current_mir.promoted[index];
@@ -867,7 +867,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             Temp(i) => self.frame().locals[self.frame().temp_offset + i as usize],
 
             Static(def_id) => {
-                // TODO(tsion): Mark constants and statics as read-only and cache their values.
+                // TODO(solson): Mark constants and statics as read-only and cache their values.
                 let mir = self.load_mir(def_id);
                 self.call_nested(&mir)?.unwrap()
             }
@@ -945,13 +945,13 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(Lvalue { ptr: ptr, extra: LvalueExtra::None })
     }
 
-    // TODO(tsion): Try making const_to_primval instead.
+    // TODO(solson): Try making const_to_primval instead.
     fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<Pointer> {
         use rustc::middle::const_val::ConstVal::*;
         match *const_val {
             Float(_f) => unimplemented!(),
             Integral(int) => {
-                // TODO(tsion): Check int constant type.
+                // TODO(solson): Check int constant type.
                 let ptr = self.memory.allocate(8);
                 self.memory.write_uint(ptr, int.to_u64_unchecked(), 8)?;
                 Ok(ptr)
@@ -1023,12 +1023,12 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     }
 
     fn type_layout(&self, ty: ty::Ty<'tcx>) -> &'tcx Layout {
-        // TODO(tsion): Is this inefficient? Needs investigation.
+        // TODO(solson): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty);
 
         let infcx = infer::normalizing_infer_ctxt(self.tcx, &self.tcx.tables, ProjectionMode::Any);
 
-        // TODO(tsion): Report this error properly.
+        // TODO(solson): Report this error properly.
         ty.layout(&infcx).unwrap()
     }
 
@@ -1045,7 +1045,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             ty::TyUint(UintTy::U32) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
             ty::TyUint(UintTy::U64) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
 
-            // TODO(tsion): Pick the PrimVal dynamically.
+            // TODO(solson): Pick the PrimVal dynamically.
             ty::TyInt(IntTy::Is)   => PrimVal::I64(self.memory.read_isize(ptr)?),
             ty::TyUint(UintTy::Us) => PrimVal::U64(self.memory.read_usize(ptr)?),
 
@@ -1255,7 +1255,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                     Ok(Some(return_ptr)) => fecx.memory.dump(return_ptr.alloc_id),
                     Ok(None) => println!("(diverging function returned)"),
                     Err(_e) => {
-                        // TODO(tsion): Detect whether the error was already reported or not.
+                        // TODO(solson): Detect whether the error was already reported or not.
                         // tcx.sess.err(&e.to_string());
                     }
                 }
@@ -1266,7 +1266,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
     }
 }
 
-// TODO(tsion): Upstream these methods into rustc::ty::layout.
+// TODO(solson): Upstream these methods into rustc::ty::layout.
 
 trait IntegerExt {
     fn size(self) -> Size;

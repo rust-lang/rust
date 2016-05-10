@@ -97,7 +97,7 @@ boolean or integer.
 \subsection{Basic operation}
 
 To investigate the possibility of executing Rust at compile-time I wrote an interpreter for MIR
-called Miri\footnote{\url{https://github.com/tsion/miri}}. The structure of the interpreter closely
+called Miri\footnote{\url{https://github.com/solson/miri}}. The structure of the interpreter closely
 mirrors the structure of MIR itself. It starts executing a function by iterating the statement list
 in the starting basic block, translating the lvalue into a pointer and using the rvalue to decide
 what to write into that pointer. Evaluating the rvalue may involve reads (such as for the two sides
@@ -271,7 +271,7 @@ doesn't exist at the MIR level.}, it is specifically designed to remain safe whi
 potentially unsafe code. When Miri encounters an unrecoverable error, it reports it via the Rust
 compiler's usual error reporting mechanism, pointing to the part of the original code where the
 error occurred. Below is an example from Miri's
-repository.\footnote{\href{https://github.com/tsion/miri/blob/master/test/errors.rs}{miri/test/errors.rs}}
+repository.\footnote{\href{https://github.com/solson/miri/blob/master/test/errors.rs}{miri/test/errors.rs}}
 
 \begin{minted}[autogobble]{rust}
   let b = Box::new(42);
