@@ -34,7 +34,7 @@ use rustc::session::config::{self, basic_options, build_configuration, Input, Op
 use rustc::session::build_session;
 use rustc_driver::{driver, abort_on_err};
 use rustc_resolve::MakeGlobMap;
-use rustc_metadata::creader::LocalCrateReader;
+use rustc_metadata::creader::read_local_crates;
 use rustc_metadata::cstore::CStore;
 use libc::c_void;
 
@@ -240,7 +240,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
         let krate = driver::assign_node_ids(&sess, krate);
         let mut defs = ast_map::collect_definitions(&krate);
-        LocalCrateReader::new(&sess, &cstore, &defs, &krate, &id).read_crates(&dep_graph);
+        read_local_crates(&sess, &cstore, &defs, &krate, &id, &dep_graph);
         let (analysis, resolutions, mut hir_forest) = {
             driver::lower_and_resolve(&sess, &id, &mut defs, &krate, dep_graph, MakeGlobMap::No)
         };

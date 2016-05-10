@@ -41,7 +41,7 @@ use syntax::parse::token::InternedString;
 use syntax::visit;
 use log;
 
-pub struct LocalCrateReader<'a> {
+struct LocalCrateReader<'a> {
     sess: &'a Session,
     cstore: &'a CStore,
     creader: CrateReader<'a>,
@@ -841,12 +841,12 @@ impl<'a> CrateReader<'a> {
 }
 
 impl<'a> LocalCrateReader<'a> {
-    pub fn new(sess: &'a Session,
-               cstore: &'a CStore,
-               defs: &'a hir_map::Definitions,
-               krate: &'a ast::Crate,
-               local_crate_name: &str)
-               -> LocalCrateReader<'a> {
+    fn new(sess: &'a Session,
+           cstore: &'a CStore,
+           defs: &'a hir_map::Definitions,
+           krate: &'a ast::Crate,
+           local_crate_name: &str)
+           -> LocalCrateReader<'a> {
         LocalCrateReader {
             sess: sess,
             cstore: cstore,
@@ -859,7 +859,7 @@ impl<'a> LocalCrateReader<'a> {
     // Traverses an AST, reading all the information about use'd crates and
     // extern libraries necessary for later resolving, typechecking, linking,
     // etc.
-    pub fn read_crates(&mut self, dep_graph: &DepGraph) {
+    fn read_crates(&mut self, dep_graph: &DepGraph) {
         let _task = dep_graph.in_task(DepNode::CrateReader);
 
         self.process_crate(self.krate);
@@ -979,6 +979,17 @@ impl<'a> LocalCrateReader<'a> {
             list.extend(fm.items.iter().map(|it| it.id));
         }
     }
+}
+
+/// Traverses an AST, reading all the information about use'd crates and extern
+/// libraries necessary for later resolving, typechecking, linking, etc.
+pub fn read_local_crates(sess: & Session,
+                         cstore: & CStore,
+                         defs: & hir_map::Definitions,
+                         krate: & ast::Crate,
+                         local_crate_name: &str,
+                         dep_graph: &DepGraph) {
+    LocalCrateReader::new(sess, cstore, defs, krate, local_crate_name).read_crates(dep_graph)
 }
 
 /// Imports the codemap from an external crate into the codemap of the crate

@@ -28,7 +28,7 @@ use rustc_borrowck as borrowck;
 use rustc_incremental;
 use rustc_resolve as resolve;
 use rustc_metadata::macro_import;
-use rustc_metadata::creader::LocalCrateReader;
+use rustc_metadata::creader::read_local_crates;
 use rustc_metadata::cstore::CStore;
 use rustc_trans::back::link;
 use rustc_trans::back::write;
@@ -148,8 +148,7 @@ pub fn compile_input(sess: &Session,
 
         time(sess.time_passes(),
              "external crate/lib resolution",
-             || LocalCrateReader::new(sess, &cstore, &defs, &expanded_crate, &id)
-                    .read_crates(&dep_graph));
+             || read_local_crates(sess, &cstore, &defs, &expanded_crate, &id, &dep_graph));
 
         time(sess.time_passes(),
              "early lint checks",

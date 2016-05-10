@@ -21,7 +21,7 @@ use rustc::lint;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
-use rustc_metadata::creader::LocalCrateReader;
+use rustc_metadata::creader::read_local_crates;
 
 use syntax::{ast, codemap, errors};
 use syntax::errors::emitter::ColorConfig;
@@ -154,7 +154,7 @@ pub fn run_core(search_paths: SearchPaths,
     let dep_graph = DepGraph::new(false);
 
     let mut defs = hir_map::collect_definitions(&krate);
-    LocalCrateReader::new(&sess, &cstore, &defs, &krate, &name).read_crates(&dep_graph);
+    read_local_crates(&sess, &cstore, &defs, &krate, &name, &dep_graph);
 
     // Lower ast -> hir and resolve.
     let (analysis, resolutions, mut hir_forest) = {
