@@ -165,10 +165,14 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                                 trans_items,
                                                                 reachable);
 
+    debug_dump(tcx, "INITIAL PARTITONING:", initial_partitioning.codegen_units.iter());
+
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
     if let PartitioningStrategy::FixedUnitCount(count) = strategy {
         merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name[..]);
+
+        debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
 
     // In the next step, we use the inlining map to determine which addtional
@@ -177,6 +181,9 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // local functions the definition of which is marked with #[inline].
     let post_inlining = place_inlined_translation_items(initial_partitioning,
                                                         inlining_map);
+
+    debug_dump(tcx, "POST INLINING:", post_inlining.0.iter());
+
     post_inlining.0
 }
 
@@ -483,4 +490,24 @@ fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString 
         crate_name,
         NUMBERED_CODEGEN_UNIT_MARKER,
         index)[..])
+}
+
+fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                               label: &str,
+                               cgus: I)
+    where I: Iterator<Item=&'b CodegenUnit<'tcx>>,
+          'tcx: 'a + 'b
+{
+    if cfg!(debug_assertions) {
+        debug!("{}", label);
+        for cgu in cgus {
+            debug!("CodegenUnit {}:", cgu.name);
+
+            for (trans_item, linkage) in &cgu.items {
+                debug!(" - {} [{:?}]", trans_item.to_string(tcx), linkage);
+            }
+
+            debug!("");
+        }
+    }
 }

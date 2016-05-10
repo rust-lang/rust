@@ -2182,52 +2182,6 @@ pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
     }
 }
 
-/// Set the appropriate linkage for an LLVM `ValueRef` (function or global).
-/// If the `llval` is the direct translation of a specific Rust item, `id`
-/// should be set to the `NodeId` of that item.  (This mapping should be
-/// 1-to-1, so monomorphizations and drop/visit glue should have `id` set to
-/// `None`.)
-pub fn update_linkage(ccx: &CrateContext,
-                      llval: ValueRef,
-                      id: Option<ast::NodeId>) {
-    if let Some(id) = id {
-        let item = ccx.tcx().map.get(id);
-        if let hir_map::NodeItem(i) = item {
-            if let Some(name) = attr::first_attr_value_str_by_name(&i.attrs, "linkage") {
-                if let Some(linkage) = llvm_linkage_by_name(&name) {
-                    llvm::SetLinkage(llval, linkage);
-                } else {
-                    ccx.sess().span_fatal(i.span, "invalid linkage specified");
-                }
-                return;
-            }
-        }
-    }
-
-    let (is_reachable, is_generic) = if let Some(id) = id {
-        (ccx.reachable().contains(&id), false)
-    } else {
-        (false, true)
-    };
-
-    // We need external linkage for items reachable from other translation units, this include
-    // other codegen units in case of parallel compilations.
-    if is_reachable || ccx.sess().opts.cg.codegen_units > 1 {
-        if is_generic {
-            // This only happens with multiple codegen units, in which case we need to use weak_odr
-            // linkage because other crates might expose the same symbol. We cannot use
-            // linkonce_odr here because the symbol might then get dropped before the other codegen
-            // units get to link it.
-            llvm::SetUniqueComdat(ccx.llmod(), llval);
-            llvm::SetLinkage(llval, llvm::WeakODRLinkage);
-        } else {
-            llvm::SetLinkage(llval, llvm::ExternalLinkage);
-        }
-    } else {
-        llvm::SetLinkage(llval, llvm::InternalLinkage);
-    }
-}
-
 pub fn set_link_section(ccx: &CrateContext,
                         llval: ValueRef,
                         attrs: &[ast::Attribute]) {
@@ -2673,24 +2627,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // ... and now that we have everything pre-defined, fill out those definitions.
     for ccx in crate_context_list.iter() {
-        for (&trans_item, _) in &ccx.codegen_unit().items {
-            match trans_item {
-                TransItem::Static(node_id) => {
-                    let item = ccx.tcx().map.expect_item(node_id);
-                    if let hir::ItemStatic(_, m, ref expr) = item.node {
-                        match consts::trans_static(&ccx, m, expr, item.id, &item.attrs) {
-                            Ok(_) => { /* Cool, everything's alright. */ },
-                            Err(err) => ccx.tcx().sess.span_fatal(expr.span, &err.description()),
-                        };
-                    } else {
-                        span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
-                    }
-                }
-                TransItem::Fn(instance) => {
-                    trans_instance(&ccx, instance);
-                }
-                _ => { }
-            }
+        for (trans_item, _) in &ccx.codegen_unit().items {
+           trans_item.define(&ccx);
         }
     }
 
@@ -2927,7 +2865,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         let mut item_keys: Vec<_> = items
             .iter()
             .map(|i| {
-                let mut output = i.to_string(scx);
+                let mut output = i.to_string(scx.tcx());
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let mut cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);

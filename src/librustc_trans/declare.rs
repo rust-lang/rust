@@ -138,6 +138,20 @@ pub fn define_global(ccx: &CrateContext, name: &str, ty: Type) -> Option<ValueRe
     }
 }
 
+/// Declare a Rust function with an intention to define it.
+///
+/// Use this function when you intend to define a function. This function will
+/// return panic if the name already has a definition associated with it. This
+/// can happen with #[no_mangle] or #[export_name], for example.
+pub fn define_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                           name: &str,
+                           fn_type: ty::Ty<'tcx>) -> ValueRef {
+    if get_defined_value(ccx, name).is_some() {
+        ccx.sess().fatal(&format!("symbol `{}` already defined", name))
+    } else {
+        declare_fn(ccx, name, fn_type)
+    }
+}
 
 /// Declare a Rust function with an intention to define it.
 ///
@@ -147,13 +161,9 @@ pub fn define_global(ccx: &CrateContext, name: &str, ty: Type) -> Option<ValueRe
 pub fn define_internal_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     name: &str,
                                     fn_type: ty::Ty<'tcx>) -> ValueRef {
-    if get_defined_value(ccx, name).is_some() {
-        ccx.sess().fatal(&format!("symbol `{}` already defined", name))
-    } else {
-        let llfn = declare_fn(ccx, name, fn_type);
-        llvm::SetLinkage(llfn, llvm::InternalLinkage);
-        llfn
-    }
+    let llfn = define_fn(ccx, name, fn_type);
+    llvm::SetLinkage(llfn, llvm::InternalLinkage);
+    llfn
 }
 
 
