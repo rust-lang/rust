@@ -10,7 +10,7 @@ use rustc::ty::subst::{self, Subst, Substs};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::DefIdMap;
 use std::cell::RefCell;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::{iter, mem};
 use syntax::ast;
@@ -23,7 +23,7 @@ use primval::{self, PrimVal};
 
 const TRACE_EXECUTION: bool = false;
 
-struct Interpreter<'a, 'tcx: 'a> {
+struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
     tcx: &'a TyCtxt<'tcx>,
 
@@ -36,9 +36,6 @@ struct Interpreter<'a, 'tcx: 'a> {
     /// The virtual memory system.
     memory: Memory,
 
-    /// The virtual call stack.
-    stack: Vec<Frame<'a, 'tcx>>,
-
     /// Another stack containing the type substitutions for the current function invocation. It
     /// exists separately from `stack` because it must contain the `Substs` for a function while
     /// *creating* the `Frame` for that same function.
@@ -49,6 +46,26 @@ struct Interpreter<'a, 'tcx: 'a> {
     ///   * Function DefIds and Substs to print proper substituted function names.
     ///   * Spans pointing to specific function calls in the source.
     name_stack: Vec<(DefId, &'tcx Substs<'tcx>, codemap::Span)>,
+}
+
+struct FnEvalContext<'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> {
+    gecx: &'a mut GlobalEvalContext<'b, 'tcx>,
+
+    /// The virtual call stack.
+    stack: Vec<Frame<'mir, 'tcx>>,
+}
+
+impl<'a, 'b, 'mir, 'tcx> Deref for FnEvalContext<'a, 'b, 'mir, 'tcx> {
+    type Target = GlobalEvalContext<'b, 'tcx>;
+    fn deref(&self) -> &Self::Target {
+        self.gecx
+    }
+}
+
+impl<'a, 'b, 'mir, 'tcx> DerefMut for FnEvalContext<'a, 'b, 'mir, 'tcx> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.gecx
+    }
 }
 
 /// A stack frame.
@@ -106,16 +123,24 @@ enum TerminatorTarget {
     Return,
 }
 
-impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
+impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
     fn new(tcx: &'a TyCtxt<'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
-        Interpreter {
+        GlobalEvalContext {
             tcx: tcx,
             mir_map: mir_map,
             mir_cache: RefCell::new(DefIdMap()),
             memory: Memory::new(),
-            stack: Vec::new(),
             substs_stack: Vec::new(),
             name_stack: Vec::new(),
+        }
+    }
+}
+
+impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
+    fn new(gecx: &'a mut GlobalEvalContext<'b, 'tcx>) -> Self {
+        FnEvalContext {
+            gecx: gecx,
+            stack: Vec::new(),
         }
     }
 
@@ -183,7 +208,24 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         Ok(())
     }
 
-    fn push_stack_frame(&mut self, mir: CachedMir<'a, 'tcx>, substs: &'tcx Substs<'tcx>,
+    fn call_nested(&mut self, mir: &mir::Mir<'tcx>) -> EvalResult<Option<Pointer>> {
+        let mut nested_fecx = FnEvalContext::new(self.gecx);
+
+        let return_ptr = match mir.return_ty {
+            ty::FnConverging(ty) => {
+                let size = nested_fecx.type_size(ty);
+                Some(nested_fecx.memory.allocate(size))
+            }
+            ty::FnDiverging => None,
+        };
+
+        let substs = nested_fecx.substs();
+        nested_fecx.push_stack_frame(CachedMir::Ref(mir), substs, return_ptr);
+        try!(nested_fecx.run());
+        Ok(return_ptr)
+    }
+
+    fn push_stack_frame(&mut self, mir: CachedMir<'mir, 'tcx>, substs: &'tcx Substs<'tcx>,
         return_ptr: Option<Pointer>)
     {
         self.substs_stack.push(substs);
@@ -805,7 +847,11 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 match *literal {
                     Value { ref value } => Ok(try!(self.const_to_ptr(value))),
                     Item { .. } => unimplemented!(),
-                    Promoted { .. } => unimplemented!(),
+                    Promoted { index } => {
+                        let current_mir = self.mir();
+                        let mir = &current_mir.promoted[index];
+                        self.call_nested(mir).map(Option::unwrap)
+                    }
                 }
             }
         }
@@ -1020,23 +1066,23 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         Ok(val)
     }
 
-    fn frame(&self) -> &Frame<'a, 'tcx> {
+    fn frame(&self) -> &Frame<'mir, 'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
-    fn frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
+    fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
 
-    fn mir(&self) -> &mir::Mir<'tcx> {
-        &self.frame().mir
+    fn mir(&self) -> CachedMir<'mir, 'tcx> {
+        self.frame().mir.clone()
     }
 
     fn substs(&self) -> &'tcx Substs<'tcx> {
         self.substs_stack.last().cloned().unwrap_or_else(|| self.tcx.mk_substs(Substs::empty()))
     }
 
-    fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
+    fn load_mir(&self, def_id: DefId) -> CachedMir<'mir, 'tcx> {
         match self.tcx.map.as_local_node_id(def_id) {
             Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
             None => {
@@ -1200,22 +1246,17 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
 
                 println!("Interpreting: {}", item.name);
 
-                let mut miri = Interpreter::new(tcx, mir_map);
-                let return_ptr = match mir.return_ty {
-                    ty::FnConverging(ty) => {
-                        let size = miri.type_size(ty);
-                        Some(miri.memory.allocate(size))
+                let mut gecx = GlobalEvalContext::new(tcx, mir_map);
+                let mut fecx = FnEvalContext::new(&mut gecx);
+                match fecx.call_nested(mir) {
+                    Ok(Some(return_ptr)) => fecx.memory.dump(return_ptr.alloc_id),
+                    Ok(None) => println!("(diverging function returned)"),
+                    Err(_e) => {
+                        // TODO(tsion): Detect whether the error was already reported or not.
+                        // tcx.sess.err(&e.to_string());
                     }
-                    ty::FnDiverging => None,
-                };
-                let substs = miri.tcx.mk_substs(Substs::empty());
-                miri.push_stack_frame(CachedMir::Ref(mir), substs, return_ptr);
-                if let Err(_e) = miri.run() {
-                    // TODO(tsion): Detect whether the error was already reported or not.
-                    // tcx.sess.err(&e.to_string());
-                } else if let Some(ret) = return_ptr {
-                    miri.memory.dump(ret.alloc_id);
                 }
+
                 println!("");
             }
         }
