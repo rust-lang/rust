@@ -26,7 +26,7 @@ use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc_metadata::cstore::CStore;
-use rustc_metadata::creader::LocalCrateReader;
+use rustc_metadata::creader::read_local_crates;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
 use std::rc::Rc;
@@ -120,7 +120,7 @@ fn test_env<F>(source_string: &str,
     let dep_graph = DepGraph::new(false);
     let krate = driver::assign_node_ids(&sess, krate);
     let mut defs = hir_map::collect_definitions(&krate);
-    LocalCrateReader::new(&sess, &cstore, &defs, &krate, "test_crate").read_crates(&dep_graph);
+    read_local_crates(&sess, &cstore, &defs, &krate, "test_crate", &dep_graph);
     let _ignore = dep_graph.in_ignore();
 
     let (_, resolutions, mut hir_forest) = {
