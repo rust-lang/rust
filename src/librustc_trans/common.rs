@@ -20,6 +20,7 @@ use rustc::cfg;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::infer;
+use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
 use rustc::ty::subst::Substs;
 use abi::{Abi, FnType};
@@ -54,7 +55,7 @@ use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 
-pub use context::CrateContext;
+pub use context::{CrateContext, SharedCrateContext};
 
 /// Is the type's representation size known at compile time?
 pub fn type_is_sized<'tcx>(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -1049,92 +1050,86 @@ pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &hir::Expr) ->
 /// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
 /// do not (necessarily) resolve all nested obligations on the impl. Note that type check should
 /// guarantee to us that all nested obligations *could be* resolved if we wanted to.
-pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                     span: Span,
                                     trait_ref: ty::PolyTraitRef<'tcx>)
                                     -> traits::Vtable<'tcx, ()>
 {
-    let tcx = ccx.tcx();
+    let tcx = scx.tcx();
 
     // Remove any references to regions; this helps improve caching.
     let trait_ref = tcx.erase_regions(&trait_ref);
 
-    // First check the cache.
-    match ccx.trait_cache().borrow().get(&trait_ref) {
-        Some(vtable) => {
-            info!("Cache hit: {:?}", trait_ref);
-            return (*vtable).clone();
-        }
-        None => { }
-    }
+    scx.trait_cache().memoize(trait_ref, || {
+        debug!("trans fulfill_obligation: trait_ref={:?} def_id={:?}",
+               trait_ref, trait_ref.def_id());
 
-    debug!("trans fulfill_obligation: trait_ref={:?} def_id={:?}",
-           trait_ref, trait_ref.def_id());
+        // Do the initial selection for the obligation. This yields the
+        // shallow result we are looking for -- that is, what specific impl.
+        let infcx = infer::normalizing_infer_ctxt(tcx,
+                                                  &tcx.tables,
+                                                  ProjectionMode::Any);
+        let mut selcx = SelectionContext::new(&infcx);
 
+        let obligation_cause = traits::ObligationCause::misc(span,
+                                                             ast::DUMMY_NODE_ID);
+        let obligation = traits::Obligation::new(obligation_cause,
+                                                 trait_ref.to_poly_trait_predicate());
 
-    // Do the initial selection for the obligation. This yields the
-    // shallow result we are looking for -- that is, what specific impl.
-    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
-    let mut selcx = SelectionContext::new(&infcx);
+        let selection = match selcx.select(&obligation) {
+            Ok(Some(selection)) => selection,
+            Ok(None) => {
+                // Ambiguity can happen when monomorphizing during trans
+                // expands to some humongo type that never occurred
+                // statically -- this humongo type can then overflow,
+                // leading to an ambiguous result. So report this as an
+                // overflow bug, since I believe this is the only case
+                // where ambiguity can result.
+                debug!("Encountered ambiguity selecting `{:?}` during trans, \
+                        presuming due to overflow",
+                       trait_ref);
+                tcx.sess.span_fatal(
+                    span,
+                    "reached the recursion limit during monomorphization \
+                     (selection ambiguity)");
+            }
+            Err(e) => {
+                span_bug!(
+                    span,
+                    "Encountered error `{:?}` selecting `{:?}` during trans",
+                    e,
+                    trait_ref)
+            }
+        };
 
-    let obligation =
-        traits::Obligation::new(traits::ObligationCause::misc(span, ast::DUMMY_NODE_ID),
-                                trait_ref.to_poly_trait_predicate());
-    let selection = match selcx.select(&obligation) {
-        Ok(Some(selection)) => selection,
-        Ok(None) => {
-            // Ambiguity can happen when monomorphizing during trans
-            // expands to some humongo type that never occurred
-            // statically -- this humongo type can then overflow,
-            // leading to an ambiguous result. So report this as an
-            // overflow bug, since I believe this is the only case
-            // where ambiguity can result.
-            debug!("Encountered ambiguity selecting `{:?}` during trans, \
-                    presuming due to overflow",
-                   trait_ref);
-            ccx.sess().span_fatal(
-                span,
-                "reached the recursion limit during monomorphization (selection ambiguity)");
-        }
-        Err(e) => {
-            span_bug!(
-                span,
-                "Encountered error `{:?}` selecting `{:?}` during trans",
-                e,
-                trait_ref)
-        }
-    };
+        // Currently, we use a fulfillment context to completely resolve
+        // all nested obligations. This is because they can inform the
+        // inference of the impl's type parameters.
+        let mut fulfill_cx = traits::FulfillmentContext::new();
+        let vtable = selection.map(|predicate| {
+            fulfill_cx.register_predicate_obligation(&infcx, predicate);
+        });
+        let vtable = infer::drain_fulfillment_cx_or_panic(
+            span, &infcx, &mut fulfill_cx, &vtable
+        );
 
-    // Currently, we use a fulfillment context to completely resolve
-    // all nested obligations. This is because they can inform the
-    // inference of the impl's type parameters.
-    let mut fulfill_cx = traits::FulfillmentContext::new();
-    let vtable = selection.map(|predicate| {
-        fulfill_cx.register_predicate_obligation(&infcx, predicate);
-    });
-    let vtable = infer::drain_fulfillment_cx_or_panic(
-        span, &infcx, &mut fulfill_cx, &vtable
-    );
+        info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
 
-    info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
-
-    ccx.trait_cache().borrow_mut().insert(trait_ref, vtable.clone());
-
-    vtable
+        vtable
+    })
 }
 
 /// Normalizes the predicates and checks whether they hold.  If this
 /// returns false, then either normalize encountered an error or one
 /// of the predicates did not hold. Used when creating vtables to
 /// check for unsatisfiable methods.
-pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                               predicates: Vec<ty::Predicate<'tcx>>)
-                                               -> bool
+pub fn normalize_and_test_predicates<'tcx>(tcx: &TyCtxt<'tcx>,
+                                           predicates: Vec<ty::Predicate<'tcx>>)
+                                           -> bool
 {
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    let tcx = ccx.tcx();
     let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
     let mut selcx = SelectionContext::new(&infcx);
     let mut fulfill_cx = traits::FulfillmentContext::new();

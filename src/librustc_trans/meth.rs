@@ -144,7 +144,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Not in the cache. Build it.
     let methods = traits::supertraits(tcx, trait_ref.clone()).flat_map(|trait_ref| {
-        let vtable = fulfill_obligation(ccx, DUMMY_SP, trait_ref.clone());
+        let vtable = fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref.clone());
         match vtable {
             // Should default trait error here?
             traits::VtableDefaultImpl(_) |
@@ -157,7 +157,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     substs,
                     nested: _ }) => {
                 let nullptr = C_null(Type::nil(ccx).ptr_to());
-                get_vtable_methods(ccx, id, substs)
+                get_vtable_methods(tcx, id, substs)
                     .into_iter()
                     .map(|opt_mth| opt_mth.map_or(nullptr, |mth| {
                         Callee::def(ccx, mth.method.def_id, &mth.substs).reify(ccx).val
@@ -215,13 +215,11 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     vtable
 }
 
-pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                    impl_id: DefId,
-                                    substs: &'tcx subst::Substs<'tcx>)
-                                    -> Vec<Option<ImplMethod<'tcx>>>
+pub fn get_vtable_methods<'tcx>(tcx: &TyCtxt<'tcx>,
+                                impl_id: DefId,
+                                substs: &'tcx subst::Substs<'tcx>)
+                                -> Vec<Option<ImplMethod<'tcx>>>
 {
-    let tcx = ccx.tcx();
-
     debug!("get_vtable_methods(impl_id={:?}, substs={:?}", impl_id, substs);
 
     let trt_id = match tcx.impl_trait_ref(impl_id) {
@@ -287,7 +285,7 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // try and trans it, in that case. Issue #23435.
             if mth.is_provided {
                 let predicates = mth.method.predicates.predicates.subst(tcx, &mth.substs);
-                if !normalize_and_test_predicates(ccx, predicates.into_vec()) {
+                if !normalize_and_test_predicates(tcx, predicates.into_vec()) {
                     debug!("get_vtable_methods: predicates do not hold");
                     return None;
                 }
