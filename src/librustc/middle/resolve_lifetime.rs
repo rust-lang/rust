@@ -193,7 +193,12 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                 })
             }
             FnKind::Closure(_) => {
-                self.add_scope_and_walk_fn(fk, fd, b, s, fn_id)
+                // Closures have their own set of labels, save labels just
+                // like for foreign items above.
+                let saved = replace(&mut self.labels_in_fn, vec![]);
+                let result = self.add_scope_and_walk_fn(fk, fd, b, s, fn_id);
+                replace(&mut self.labels_in_fn, saved);
+                result
             }
         }
     }
