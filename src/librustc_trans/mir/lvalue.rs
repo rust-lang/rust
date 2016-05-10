@@ -16,11 +16,11 @@ use abi;
 use adt;
 use base;
 use builder::Builder;
-use common::{self, BlockAndBuilder, CrateContext, C_uint};
+use common::{self, BlockAndBuilder, CrateContext, C_uint, C_undef};
 use consts;
 use machine;
+use type_of::type_of;
 use mir::drop;
-use llvm;
 use Disr;
 
 use std::ptr;
@@ -116,10 +116,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     // Ergo, we return an undef ValueRef, so we do not have to special-case every
                     // place using lvalues, and could use it the same way you use a regular
                     // ReturnPointer LValue (i.e. store into it, load from it etc).
-                    let llty = fcx.fn_ty.ret.original_ty.ptr_to();
-                    unsafe {
-                        llvm::LLVMGetUndef(llty.to_ref())
-                    }
+                    C_undef(fcx.fn_ty.ret.original_ty.ptr_to())
                 };
                 let fn_return_ty = bcx.monomorphize(&self.mir.return_ty);
                 let return_ty = fn_return_ty.unwrap();
@@ -228,7 +225,19 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         ret
                     }
                     TempRef::Operand(Some(_)) => {
-                        bug!("Lvalue temp already set");
+                        let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), lvalue);
+                        let lvalue_ty = bcx.monomorphize(&lvalue_ty);
+
+                        // See comments in TempRef::new_operand as to why
+                        // we always have Some in a ZST TempRef::Operand.
+                        let ty = lvalue_ty.to_ty(bcx.tcx());
+                        if common::type_is_zero_size(bcx.ccx(), ty) {
+                            // Pass an undef pointer as no stores can actually occur.
+                            let llptr = C_undef(type_of(bcx.ccx(), ty).ptr_to());
+                            f(self, LvalueRef::new_sized(llptr, lvalue_ty))
+                        } else {
+                            bug!("Lvalue temp already set");
+                        }
                     }
                 }
             }
