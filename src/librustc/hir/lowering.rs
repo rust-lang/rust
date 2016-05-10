@@ -138,18 +138,18 @@ impl<'a> LoweringContext<'a> {
     }
 }
 
-pub fn lower_ident(_lctx: &mut LoweringContext, ident: Ident) -> hir::Ident {
+fn lower_ident(_lctx: &mut LoweringContext, ident: Ident) -> hir::Ident {
     hir::Ident {
         name: mtwt::resolve(ident),
         unhygienic_name: ident.name,
     }
 }
 
-pub fn lower_attrs(_lctx: &mut LoweringContext, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
+fn lower_attrs(_lctx: &mut LoweringContext, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
     attrs.clone().into()
 }
 
-pub fn lower_view_path(lctx: &mut LoweringContext, view_path: &ViewPath) -> P<hir::ViewPath> {
+fn lower_view_path(lctx: &mut LoweringContext, view_path: &ViewPath) -> P<hir::ViewPath> {
     P(Spanned {
         node: match view_path.node {
             ViewPathSimple(ident, ref path) => {
@@ -186,7 +186,7 @@ fn lower_path_list_item(path_list_ident: &PathListItem) -> hir::PathListItem {
     }
 }
 
-pub fn lower_arm(lctx: &mut LoweringContext, arm: &Arm) -> hir::Arm {
+fn lower_arm(lctx: &mut LoweringContext, arm: &Arm) -> hir::Arm {
     hir::Arm {
         attrs: lower_attrs(lctx, &arm.attrs),
         pats: arm.pats.iter().map(|x| lower_pat(lctx, x)).collect(),
@@ -195,7 +195,7 @@ pub fn lower_arm(lctx: &mut LoweringContext, arm: &Arm) -> hir::Arm {
     }
 }
 
-pub fn lower_decl(lctx: &mut LoweringContext, d: &Decl) -> P<hir::Decl> {
+fn lower_decl(lctx: &mut LoweringContext, d: &Decl) -> P<hir::Decl> {
     match d.node {
         DeclKind::Local(ref l) => P(Spanned {
             node: hir::DeclLocal(lower_local(lctx, l)),
@@ -208,7 +208,7 @@ pub fn lower_decl(lctx: &mut LoweringContext, d: &Decl) -> P<hir::Decl> {
     }
 }
 
-pub fn lower_ty_binding(lctx: &mut LoweringContext, b: &TypeBinding) -> hir::TypeBinding {
+fn lower_ty_binding(lctx: &mut LoweringContext, b: &TypeBinding) -> hir::TypeBinding {
     hir::TypeBinding {
         id: b.id,
         name: b.ident.name,
@@ -217,7 +217,7 @@ pub fn lower_ty_binding(lctx: &mut LoweringContext, b: &TypeBinding) -> hir::Typ
     }
 }
 
-pub fn lower_ty(lctx: &mut LoweringContext, t: &Ty) -> P<hir::Ty> {
+fn lower_ty(lctx: &mut LoweringContext, t: &Ty) -> P<hir::Ty> {
     use syntax::ast::TyKind::*;
     P(hir::Ty {
         id: t.id,
@@ -267,14 +267,14 @@ pub fn lower_ty(lctx: &mut LoweringContext, t: &Ty) -> P<hir::Ty> {
     })
 }
 
-pub fn lower_foreign_mod(lctx: &mut LoweringContext, fm: &ForeignMod) -> hir::ForeignMod {
+fn lower_foreign_mod(lctx: &mut LoweringContext, fm: &ForeignMod) -> hir::ForeignMod {
     hir::ForeignMod {
         abi: fm.abi,
         items: fm.items.iter().map(|x| lower_foreign_item(lctx, x)).collect(),
     }
 }
 
-pub fn lower_variant(lctx: &mut LoweringContext, v: &Variant) -> hir::Variant {
+fn lower_variant(lctx: &mut LoweringContext, v: &Variant) -> hir::Variant {
     Spanned {
         node: hir::Variant_ {
             name: v.node.name.name,
@@ -289,7 +289,7 @@ pub fn lower_variant(lctx: &mut LoweringContext, v: &Variant) -> hir::Variant {
 // Path segments are usually unhygienic, hygienic path segments can occur only in
 // identifier-like paths originating from `ExprPath`.
 // Make life simpler for rustc_resolve by renaming only such segments.
-pub fn lower_path_full(lctx: &mut LoweringContext, p: &Path, maybe_hygienic: bool) -> hir::Path {
+fn lower_path_full(lctx: &mut LoweringContext, p: &Path, maybe_hygienic: bool) -> hir::Path {
     let maybe_hygienic = maybe_hygienic && !p.global && p.segments.len() == 1;
     hir::Path {
         global: p.global,
@@ -310,13 +310,13 @@ pub fn lower_path_full(lctx: &mut LoweringContext, p: &Path, maybe_hygienic: boo
     }
 }
 
-pub fn lower_path(lctx: &mut LoweringContext, p: &Path) -> hir::Path {
+fn lower_path(lctx: &mut LoweringContext, p: &Path) -> hir::Path {
     lower_path_full(lctx, p, false)
 }
 
-pub fn lower_path_parameters(lctx: &mut LoweringContext,
-                             path_parameters: &PathParameters)
-                             -> hir::PathParameters {
+fn lower_path_parameters(lctx: &mut LoweringContext,
+                         path_parameters: &PathParameters)
+                         -> hir::PathParameters {
     match *path_parameters {
         PathParameters::AngleBracketed(ref data) =>
             hir::AngleBracketedParameters(lower_angle_bracketed_parameter_data(lctx, data)),
@@ -325,9 +325,9 @@ pub fn lower_path_parameters(lctx: &mut LoweringContext,
     }
 }
 
-pub fn lower_angle_bracketed_parameter_data(lctx: &mut LoweringContext,
-                                            data: &AngleBracketedParameterData)
-                                            -> hir::AngleBracketedParameterData {
+fn lower_angle_bracketed_parameter_data(lctx: &mut LoweringContext,
+                                        data: &AngleBracketedParameterData)
+                                        -> hir::AngleBracketedParameterData {
     let &AngleBracketedParameterData { ref lifetimes, ref types, ref bindings } = data;
     hir::AngleBracketedParameterData {
         lifetimes: lower_lifetimes(lctx, lifetimes),
@@ -336,9 +336,9 @@ pub fn lower_angle_bracketed_parameter_data(lctx: &mut LoweringContext,
     }
 }
 
-pub fn lower_parenthesized_parameter_data(lctx: &mut LoweringContext,
-                                          data: &ParenthesizedParameterData)
-                                          -> hir::ParenthesizedParameterData {
+fn lower_parenthesized_parameter_data(lctx: &mut LoweringContext,
+                                      data: &ParenthesizedParameterData)
+                                      -> hir::ParenthesizedParameterData {
     let &ParenthesizedParameterData { ref inputs, ref output, span } = data;
     hir::ParenthesizedParameterData {
         inputs: inputs.iter().map(|ty| lower_ty(lctx, ty)).collect(),
@@ -347,7 +347,7 @@ pub fn lower_parenthesized_parameter_data(lctx: &mut LoweringContext,
     }
 }
 
-pub fn lower_local(lctx: &mut LoweringContext, l: &Local) -> P<hir::Local> {
+fn lower_local(lctx: &mut LoweringContext, l: &Local) -> P<hir::Local> {
     P(hir::Local {
         id: l.id,
         ty: l.ty.as_ref().map(|t| lower_ty(lctx, t)),
@@ -358,9 +358,9 @@ pub fn lower_local(lctx: &mut LoweringContext, l: &Local) -> P<hir::Local> {
     })
 }
 
-pub fn lower_explicit_self_underscore(lctx: &mut LoweringContext,
-                                      es: &SelfKind)
-                                      -> hir::ExplicitSelf_ {
+fn lower_explicit_self_underscore(lctx: &mut LoweringContext,
+                                  es: &SelfKind)
+                                  -> hir::ExplicitSelf_ {
     match *es {
         SelfKind::Static => hir::SelfStatic,
         SelfKind::Value(v) => hir::SelfValue(v.name),
@@ -375,21 +375,21 @@ pub fn lower_explicit_self_underscore(lctx: &mut LoweringContext,
     }
 }
 
-pub fn lower_mutability(_lctx: &mut LoweringContext, m: Mutability) -> hir::Mutability {
+fn lower_mutability(_lctx: &mut LoweringContext, m: Mutability) -> hir::Mutability {
     match m {
         Mutability::Mutable => hir::MutMutable,
         Mutability::Immutable => hir::MutImmutable,
     }
 }
 
-pub fn lower_explicit_self(lctx: &mut LoweringContext, s: &ExplicitSelf) -> hir::ExplicitSelf {
+fn lower_explicit_self(lctx: &mut LoweringContext, s: &ExplicitSelf) -> hir::ExplicitSelf {
     Spanned {
         node: lower_explicit_self_underscore(lctx, &s.node),
         span: s.span,
     }
 }
 
-pub fn lower_arg(lctx: &mut LoweringContext, arg: &Arg) -> hir::Arg {
+fn lower_arg(lctx: &mut LoweringContext, arg: &Arg) -> hir::Arg {
     hir::Arg {
         id: arg.id,
         pat: lower_pat(lctx, &arg.pat),
@@ -397,7 +397,7 @@ pub fn lower_arg(lctx: &mut LoweringContext, arg: &Arg) -> hir::Arg {
     }
 }
 
-pub fn lower_fn_decl(lctx: &mut LoweringContext, decl: &FnDecl) -> P<hir::FnDecl> {
+fn lower_fn_decl(lctx: &mut LoweringContext, decl: &FnDecl) -> P<hir::FnDecl> {
     P(hir::FnDecl {
         inputs: decl.inputs.iter().map(|x| lower_arg(lctx, x)).collect(),
         output: match decl.output {
@@ -409,7 +409,7 @@ pub fn lower_fn_decl(lctx: &mut LoweringContext, decl: &FnDecl) -> P<hir::FnDecl
     })
 }
 
-pub fn lower_ty_param_bound(lctx: &mut LoweringContext, tpb: &TyParamBound) -> hir::TyParamBound {
+fn lower_ty_param_bound(lctx: &mut LoweringContext, tpb: &TyParamBound) -> hir::TyParamBound {
     match *tpb {
         TraitTyParamBound(ref ty, modifier) => {
             hir::TraitTyParamBound(lower_poly_trait_ref(lctx, ty),
@@ -421,7 +421,7 @@ pub fn lower_ty_param_bound(lctx: &mut LoweringContext, tpb: &TyParamBound) -> h
     }
 }
 
-pub fn lower_ty_param(lctx: &mut LoweringContext, tp: &TyParam) -> hir::TyParam {
+fn lower_ty_param(lctx: &mut LoweringContext, tp: &TyParam) -> hir::TyParam {
     hir::TyParam {
         id: tp.id,
         name: tp.ident.name,
@@ -431,13 +431,13 @@ pub fn lower_ty_param(lctx: &mut LoweringContext, tp: &TyParam) -> hir::TyParam 
     }
 }
 
-pub fn lower_ty_params(lctx: &mut LoweringContext,
-                       tps: &P<[TyParam]>)
-                       -> hir::HirVec<hir::TyParam> {
+fn lower_ty_params(lctx: &mut LoweringContext,
+                   tps: &P<[TyParam]>)
+                   -> hir::HirVec<hir::TyParam> {
     tps.iter().map(|tp| lower_ty_param(lctx, tp)).collect()
 }
 
-pub fn lower_lifetime(_lctx: &mut LoweringContext, l: &Lifetime) -> hir::Lifetime {
+fn lower_lifetime(_lctx: &mut LoweringContext, l: &Lifetime) -> hir::Lifetime {
     hir::Lifetime {
         id: l.id,
         name: l.name,
@@ -445,31 +445,31 @@ pub fn lower_lifetime(_lctx: &mut LoweringContext, l: &Lifetime) -> hir::Lifetim
     }
 }
 
-pub fn lower_lifetime_def(lctx: &mut LoweringContext, l: &LifetimeDef) -> hir::LifetimeDef {
+fn lower_lifetime_def(lctx: &mut LoweringContext, l: &LifetimeDef) -> hir::LifetimeDef {
     hir::LifetimeDef {
         lifetime: lower_lifetime(lctx, &l.lifetime),
         bounds: lower_lifetimes(lctx, &l.bounds),
     }
 }
 
-pub fn lower_lifetimes(lctx: &mut LoweringContext, lts: &Vec<Lifetime>)
+fn lower_lifetimes(lctx: &mut LoweringContext, lts: &Vec<Lifetime>)
                        -> hir::HirVec<hir::Lifetime> {
     lts.iter().map(|l| lower_lifetime(lctx, l)).collect()
 }
 
-pub fn lower_lifetime_defs(lctx: &mut LoweringContext,
-                           lts: &Vec<LifetimeDef>)
-                           -> hir::HirVec<hir::LifetimeDef> {
+fn lower_lifetime_defs(lctx: &mut LoweringContext,
+                       lts: &Vec<LifetimeDef>)
+                       -> hir::HirVec<hir::LifetimeDef> {
     lts.iter().map(|l| lower_lifetime_def(lctx, l)).collect()
 }
 
-pub fn lower_opt_lifetime(lctx: &mut LoweringContext,
-                          o_lt: &Option<Lifetime>)
-                          -> Option<hir::Lifetime> {
+fn lower_opt_lifetime(lctx: &mut LoweringContext,
+                      o_lt: &Option<Lifetime>)
+                      -> Option<hir::Lifetime> {
     o_lt.as_ref().map(|lt| lower_lifetime(lctx, lt))
 }
 
-pub fn lower_generics(lctx: &mut LoweringContext, g: &Generics) -> hir::Generics {
+fn lower_generics(lctx: &mut LoweringContext, g: &Generics) -> hir::Generics {
     hir::Generics {
         ty_params: lower_ty_params(lctx, &g.ty_params),
         lifetimes: lower_lifetime_defs(lctx, &g.lifetimes),
@@ -477,7 +477,7 @@ pub fn lower_generics(lctx: &mut LoweringContext, g: &Generics) -> hir::Generics
     }
 }
 
-pub fn lower_where_clause(lctx: &mut LoweringContext, wc: &WhereClause) -> hir::WhereClause {
+fn lower_where_clause(lctx: &mut LoweringContext, wc: &WhereClause) -> hir::WhereClause {
     hir::WhereClause {
         id: wc.id,
         predicates: wc.predicates
@@ -487,9 +487,9 @@ pub fn lower_where_clause(lctx: &mut LoweringContext, wc: &WhereClause) -> hir::
     }
 }
 
-pub fn lower_where_predicate(lctx: &mut LoweringContext,
-                             pred: &WherePredicate)
-                             -> hir::WherePredicate {
+fn lower_where_predicate(lctx: &mut LoweringContext,
+                         pred: &WherePredicate)
+                         -> hir::WherePredicate {
     match *pred {
         WherePredicate::BoundPredicate(WhereBoundPredicate{ ref bound_lifetimes,
                                                             ref bounded_ty,
@@ -525,7 +525,7 @@ pub fn lower_where_predicate(lctx: &mut LoweringContext,
     }
 }
 
-pub fn lower_variant_data(lctx: &mut LoweringContext, vdata: &VariantData) -> hir::VariantData {
+fn lower_variant_data(lctx: &mut LoweringContext, vdata: &VariantData) -> hir::VariantData {
     match *vdata {
         VariantData::Struct(ref fields, id) => {
             hir::VariantData::Struct(fields.iter()
@@ -545,14 +545,14 @@ pub fn lower_variant_data(lctx: &mut LoweringContext, vdata: &VariantData) -> hi
     }
 }
 
-pub fn lower_trait_ref(lctx: &mut LoweringContext, p: &TraitRef) -> hir::TraitRef {
+fn lower_trait_ref(lctx: &mut LoweringContext, p: &TraitRef) -> hir::TraitRef {
     hir::TraitRef {
         path: lower_path(lctx, &p.path),
         ref_id: p.ref_id,
     }
 }
 
-pub fn lower_poly_trait_ref(lctx: &mut LoweringContext, p: &PolyTraitRef) -> hir::PolyTraitRef {
+fn lower_poly_trait_ref(lctx: &mut LoweringContext, p: &PolyTraitRef) -> hir::PolyTraitRef {
     hir::PolyTraitRef {
         bound_lifetimes: lower_lifetime_defs(lctx, &p.bound_lifetimes),
         trait_ref: lower_trait_ref(lctx, &p.trait_ref),
@@ -560,9 +560,9 @@ pub fn lower_poly_trait_ref(lctx: &mut LoweringContext, p: &PolyTraitRef) -> hir
     }
 }
 
-pub fn lower_struct_field(lctx: &mut LoweringContext,
-                          (index, f): (usize, &StructField))
-                          -> hir::StructField {
+fn lower_struct_field(lctx: &mut LoweringContext,
+                      (index, f): (usize, &StructField))
+                      -> hir::StructField {
     hir::StructField {
         span: f.span,
         id: f.id,
@@ -573,7 +573,7 @@ pub fn lower_struct_field(lctx: &mut LoweringContext,
     }
 }
 
-pub fn lower_field(lctx: &mut LoweringContext, f: &Field) -> hir::Field {
+fn lower_field(lctx: &mut LoweringContext, f: &Field) -> hir::Field {
     hir::Field {
         name: respan(f.ident.span, f.ident.node.name),
         expr: lower_expr(lctx, &f.expr),
@@ -581,7 +581,7 @@ pub fn lower_field(lctx: &mut LoweringContext, f: &Field) -> hir::Field {
     }
 }
 
-pub fn lower_mt(lctx: &mut LoweringContext, mt: &MutTy) -> hir::MutTy {
+fn lower_mt(lctx: &mut LoweringContext, mt: &MutTy) -> hir::MutTy {
     hir::MutTy {
         ty: lower_ty(lctx, &mt.ty),
         mutbl: lower_mutability(lctx, mt.mutbl),
@@ -592,7 +592,7 @@ fn lower_bounds(lctx: &mut LoweringContext, bounds: &TyParamBounds) -> hir::TyPa
     bounds.iter().map(|bound| lower_ty_param_bound(lctx, bound)).collect()
 }
 
-pub fn lower_block(lctx: &mut LoweringContext, b: &Block) -> P<hir::Block> {
+fn lower_block(lctx: &mut LoweringContext, b: &Block) -> P<hir::Block> {
     P(hir::Block {
         id: b.id,
         stmts: b.stmts.iter().map(|s| lower_stmt(lctx, s)).collect(),
@@ -602,7 +602,7 @@ pub fn lower_block(lctx: &mut LoweringContext, b: &Block) -> P<hir::Block> {
     })
 }
 
-pub fn lower_item_kind(lctx: &mut LoweringContext, i: &ItemKind) -> hir::Item_ {
+fn lower_item_kind(lctx: &mut LoweringContext, i: &ItemKind) -> hir::Item_ {
     match *i {
         ItemKind::ExternCrate(string) => hir::ItemExternCrate(string),
         ItemKind::Use(ref view_path) => {
@@ -670,7 +670,7 @@ pub fn lower_item_kind(lctx: &mut LoweringContext, i: &ItemKind) -> hir::Item_ {
     }
 }
 
-pub fn lower_trait_item(lctx: &mut LoweringContext, i: &TraitItem) -> hir::TraitItem {
+fn lower_trait_item(lctx: &mut LoweringContext, i: &TraitItem) -> hir::TraitItem {
     lctx.with_parent_def(i.id, |lctx| {
         hir::TraitItem {
             id: i.id,
@@ -695,7 +695,7 @@ pub fn lower_trait_item(lctx: &mut LoweringContext, i: &TraitItem) -> hir::Trait
     })
 }
 
-pub fn lower_impl_item(lctx: &mut LoweringContext, i: &ImplItem) -> hir::ImplItem {
+fn lower_impl_item(lctx: &mut LoweringContext, i: &ImplItem) -> hir::ImplItem {
     lctx.with_parent_def(i.id, |lctx| {
         hir::ImplItem {
             id: i.id,
@@ -718,7 +718,7 @@ pub fn lower_impl_item(lctx: &mut LoweringContext, i: &ImplItem) -> hir::ImplIte
     })
 }
 
-pub fn lower_mod(lctx: &mut LoweringContext, m: &Mod) -> hir::Mod {
+fn lower_mod(lctx: &mut LoweringContext, m: &Mod) -> hir::Mod {
     hir::Mod {
         inner: m.inner,
         item_ids: m.items.iter().map(|x| lower_item_id(lctx, x)).collect(),
@@ -754,7 +754,7 @@ pub fn lower_crate(lctx: &mut LoweringContext, c: &Crate) -> hir::Crate {
     }
 }
 
-pub fn lower_macro_def(lctx: &mut LoweringContext, m: &MacroDef) -> hir::MacroDef {
+fn lower_macro_def(lctx: &mut LoweringContext, m: &MacroDef) -> hir::MacroDef {
     hir::MacroDef {
         name: m.ident.name,
         attrs: lower_attrs(lctx, &m.attrs),
@@ -768,7 +768,7 @@ pub fn lower_macro_def(lctx: &mut LoweringContext, m: &MacroDef) -> hir::MacroDe
     }
 }
 
-pub fn lower_item_id(_lctx: &mut LoweringContext, i: &Item) -> hir::ItemId {
+fn lower_item_id(_lctx: &mut LoweringContext, i: &Item) -> hir::ItemId {
     hir::ItemId { id: i.id }
 }
 
@@ -787,7 +787,7 @@ pub fn lower_item(lctx: &mut LoweringContext, i: &Item) -> hir::Item {
     }
 }
 
-pub fn lower_foreign_item(lctx: &mut LoweringContext, i: &ForeignItem) -> hir::ForeignItem {
+fn lower_foreign_item(lctx: &mut LoweringContext, i: &ForeignItem) -> hir::ForeignItem {
     lctx.with_parent_def(i.id, |lctx| {
         hir::ForeignItem {
             id: i.id,
@@ -807,7 +807,7 @@ pub fn lower_foreign_item(lctx: &mut LoweringContext, i: &ForeignItem) -> hir::F
     })
 }
 
-pub fn lower_method_sig(lctx: &mut LoweringContext, sig: &MethodSig) -> hir::MethodSig {
+fn lower_method_sig(lctx: &mut LoweringContext, sig: &MethodSig) -> hir::MethodSig {
     hir::MethodSig {
         generics: lower_generics(lctx, &sig.generics),
         abi: sig.abi,
@@ -818,21 +818,21 @@ pub fn lower_method_sig(lctx: &mut LoweringContext, sig: &MethodSig) -> hir::Met
     }
 }
 
-pub fn lower_unsafety(_lctx: &mut LoweringContext, u: Unsafety) -> hir::Unsafety {
+fn lower_unsafety(_lctx: &mut LoweringContext, u: Unsafety) -> hir::Unsafety {
     match u {
         Unsafety::Unsafe => hir::Unsafety::Unsafe,
         Unsafety::Normal => hir::Unsafety::Normal,
     }
 }
 
-pub fn lower_constness(_lctx: &mut LoweringContext, c: Constness) -> hir::Constness {
+fn lower_constness(_lctx: &mut LoweringContext, c: Constness) -> hir::Constness {
     match c {
         Constness::Const => hir::Constness::Const,
         Constness::NotConst => hir::Constness::NotConst,
     }
 }
 
-pub fn lower_unop(_lctx: &mut LoweringContext, u: UnOp) -> hir::UnOp {
+fn lower_unop(_lctx: &mut LoweringContext, u: UnOp) -> hir::UnOp {
     match u {
         UnOp::Deref => hir::UnDeref,
         UnOp::Not => hir::UnNot,
@@ -840,7 +840,7 @@ pub fn lower_unop(_lctx: &mut LoweringContext, u: UnOp) -> hir::UnOp {
     }
 }
 
-pub fn lower_binop(_lctx: &mut LoweringContext, b: BinOp) -> hir::BinOp {
+fn lower_binop(_lctx: &mut LoweringContext, b: BinOp) -> hir::BinOp {
     Spanned {
         node: match b.node {
             BinOpKind::Add => hir::BiAdd,
@@ -866,7 +866,7 @@ pub fn lower_binop(_lctx: &mut LoweringContext, b: BinOp) -> hir::BinOp {
     }
 }
 
-pub fn lower_pat(lctx: &mut LoweringContext, p: &Pat) -> P<hir::Pat> {
+fn lower_pat(lctx: &mut LoweringContext, p: &Pat) -> P<hir::Pat> {
     P(hir::Pat {
         id: p.id,
         node: match p.node {
@@ -931,7 +931,7 @@ pub fn lower_pat(lctx: &mut LoweringContext, p: &Pat) -> P<hir::Pat> {
     })
 }
 
-pub fn lower_expr(lctx: &mut LoweringContext, e: &Expr) -> P<hir::Expr> {
+fn lower_expr(lctx: &mut LoweringContext, e: &Expr) -> P<hir::Expr> {
     P(hir::Expr {
         id: e.id,
         node: match e.node {
@@ -1612,7 +1612,7 @@ pub fn lower_expr(lctx: &mut LoweringContext, e: &Expr) -> P<hir::Expr> {
     })
 }
 
-pub fn lower_stmt(lctx: &mut LoweringContext, s: &Stmt) -> hir::Stmt {
+fn lower_stmt(lctx: &mut LoweringContext, s: &Stmt) -> hir::Stmt {
     match s.node {
         StmtKind::Decl(ref d, id) => {
             Spanned {
@@ -1636,14 +1636,14 @@ pub fn lower_stmt(lctx: &mut LoweringContext, s: &Stmt) -> hir::Stmt {
     }
 }
 
-pub fn lower_capture_clause(_lctx: &mut LoweringContext, c: CaptureBy) -> hir::CaptureClause {
+fn lower_capture_clause(_lctx: &mut LoweringContext, c: CaptureBy) -> hir::CaptureClause {
     match c {
         CaptureBy::Value => hir::CaptureByValue,
         CaptureBy::Ref => hir::CaptureByRef,
     }
 }
 
-pub fn lower_visibility(lctx: &mut LoweringContext, v: &Visibility) -> hir::Visibility {
+fn lower_visibility(lctx: &mut LoweringContext, v: &Visibility) -> hir::Visibility {
     match *v {
         Visibility::Public => hir::Public,
         Visibility::Crate(_) => hir::Visibility::Crate,
@@ -1653,44 +1653,44 @@ pub fn lower_visibility(lctx: &mut LoweringContext, v: &Visibility) -> hir::Visi
     }
 }
 
-pub fn lower_defaultness(_lctx: &mut LoweringContext, d: Defaultness) -> hir::Defaultness {
+fn lower_defaultness(_lctx: &mut LoweringContext, d: Defaultness) -> hir::Defaultness {
     match d {
         Defaultness::Default => hir::Defaultness::Default,
         Defaultness::Final => hir::Defaultness::Final,
     }
 }
 
-pub fn lower_block_check_mode(lctx: &mut LoweringContext, b: &BlockCheckMode) -> hir::BlockCheckMode {
+fn lower_block_check_mode(lctx: &mut LoweringContext, b: &BlockCheckMode) -> hir::BlockCheckMode {
     match *b {
         BlockCheckMode::Default => hir::DefaultBlock,
         BlockCheckMode::Unsafe(u) => hir::UnsafeBlock(lower_unsafe_source(lctx, u)),
     }
 }
 
-pub fn lower_binding_mode(lctx: &mut LoweringContext, b: &BindingMode) -> hir::BindingMode {
+fn lower_binding_mode(lctx: &mut LoweringContext, b: &BindingMode) -> hir::BindingMode {
     match *b {
         BindingMode::ByRef(m) => hir::BindByRef(lower_mutability(lctx, m)),
         BindingMode::ByValue(m) => hir::BindByValue(lower_mutability(lctx, m)),
     }
 }
 
-pub fn lower_unsafe_source(_lctx: &mut LoweringContext, u: UnsafeSource) -> hir::UnsafeSource {
+fn lower_unsafe_source(_lctx: &mut LoweringContext, u: UnsafeSource) -> hir::UnsafeSource {
     match u {
         CompilerGenerated => hir::CompilerGenerated,
         UserProvided => hir::UserProvided,
     }
 }
 
-pub fn lower_impl_polarity(_lctx: &mut LoweringContext, i: ImplPolarity) -> hir::ImplPolarity {
+fn lower_impl_polarity(_lctx: &mut LoweringContext, i: ImplPolarity) -> hir::ImplPolarity {
     match i {
         ImplPolarity::Positive => hir::ImplPolarity::Positive,
         ImplPolarity::Negative => hir::ImplPolarity::Negative,
     }
 }
 
-pub fn lower_trait_bound_modifier(_lctx: &mut LoweringContext,
-                                  f: TraitBoundModifier)
-                                  -> hir::TraitBoundModifier {
+fn lower_trait_bound_modifier(_lctx: &mut LoweringContext,
+                              f: TraitBoundModifier)
+                              -> hir::TraitBoundModifier {
     match f {
         TraitBoundModifier::None => hir::TraitBoundModifier::None,
         TraitBoundModifier::Maybe => hir::TraitBoundModifier::Maybe,
