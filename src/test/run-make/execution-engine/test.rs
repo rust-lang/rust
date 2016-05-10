@@ -241,7 +241,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
         let krate = driver::assign_node_ids(&sess, krate);
         let defs = RefCell::new(ast_map::collect_definitions(&krate));
-        LocalCrateReader::new(&sess, &cstore, &defs, &krate, &id).read_crates(&dep_graph);
+        LocalCrateReader::new(&sess, &cstore, &defs.borrow(), &krate, &id).read_crates(&dep_graph);
         let (analysis, resolutions, mut hir_forest) = {
             let defs = &mut *defs.borrow_mut();
             driver::lower_and_resolve(&sess, &id, defs, &krate, dep_graph, MakeGlobMap::No)

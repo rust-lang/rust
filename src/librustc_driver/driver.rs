@@ -148,7 +148,7 @@ pub fn compile_input(sess: &Session,
 
         time(sess.time_passes(),
              "external crate/lib resolution",
-             || LocalCrateReader::new(sess, &cstore, defs, &expanded_crate, &id)
+             || LocalCrateReader::new(sess, &cstore, &defs.borrow(), &expanded_crate, &id)
                     .read_crates(&dep_graph));
 
         time(sess.time_passes(),
