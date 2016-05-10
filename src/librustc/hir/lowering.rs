@@ -91,30 +91,33 @@ impl Resolver for DummyResolver {
     }
 }
 
-impl<'a> LoweringContext<'a> {
-    pub fn new(id_assigner: &'a NodeIdAssigner,
-               c: Option<&Crate>,
-               resolver: &'a mut Resolver)
-               -> LoweringContext<'a> {
-        let crate_root = c.and_then(|c| {
-            if std_inject::no_core(c) {
-                None
-            } else if std_inject::no_std(c) {
-                Some("core")
-            } else {
-                Some("std")
-            }
-        });
+pub fn lower_crate(krate: &Crate, id_assigner: &NodeIdAssigner, resolver: &mut Resolver)
+                   -> hir::Crate {
+    LoweringContext {
+        crate_root: if std_inject::no_core(krate) {
+            None
+        } else if std_inject::no_std(krate) {
+            Some("core")
+        } else {
+            Some("std")
+        },
+        id_assigner: id_assigner,
+        parent_def: None,
+        resolver: resolver,
+    }.lower_crate(krate)
+}
 
+impl<'a> LoweringContext<'a> {
+    pub fn testing_context(id_assigner: &'a NodeIdAssigner, resolver: &'a mut Resolver) -> Self {
         LoweringContext {
-            crate_root: crate_root,
+            crate_root: None,
             id_assigner: id_assigner,
             parent_def: None,
             resolver: resolver,
         }
     }
 
-    pub fn lower_crate(&mut self, c: &Crate) -> hir::Crate {
+    fn lower_crate(&mut self, c: &Crate) -> hir::Crate {
         struct ItemLowerer<'lcx, 'interner: 'lcx> {
             items: BTreeMap<NodeId, hir::Item>,
             lctx: &'lcx mut LoweringContext<'interner>,

@@ -1329,7 +1329,7 @@ fn mk_ctxt() -> parse::ParseSess {
 fn with_testing_context<T, F: FnOnce(&mut LoweringContext) -> T>(f: F) -> T {
     let assigner = FakeNodeIdAssigner;
     let mut resolver = DummyResolver;
-    let mut lcx = LoweringContext::new(&assigner, None, &mut resolver);
+    let mut lcx = LoweringContext::testing_context(&assigner, &mut resolver);
     f(&mut lcx)
 }
 
