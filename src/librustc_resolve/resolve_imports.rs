@@ -344,11 +344,11 @@ struct ImportResolvingError<'a> {
     help: String,
 }
 
-struct ImportResolver<'a, 'b: 'a, 'tcx: 'b> {
-    resolver: &'a mut Resolver<'b, 'tcx>,
+struct ImportResolver<'a, 'b: 'a> {
+    resolver: &'a mut Resolver<'b>,
 }
 
-impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
+impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     // Import resolution
     //
     // This is a fixed-point algorithm. We resolve imports until our efforts
@@ -608,7 +608,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             None => value_result.success().and_then(NameBinding::def).unwrap(),
         };
         let path_resolution = PathResolution { base_def: def, depth: 0 };
-        self.resolver.def_map.borrow_mut().insert(directive.id, path_resolution);
+        self.resolver.def_map.insert(directive.id, path_resolution);
 
         debug!("(resolving single import) successfully resolved import");
         return Success(());
@@ -653,11 +653,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         // Record the destination of this import
         if let Some(did) = target_module.def_id() {
-            self.resolver.def_map.borrow_mut().insert(directive.id,
-                                                      PathResolution {
-                                                          base_def: Def::Mod(did),
-                                                          depth: 0,
-                                                      });
+            let resolution = PathResolution { base_def: Def::Mod(did), depth: 0 };
+            self.resolver.def_map.insert(directive.id, resolution);
         }
 
         debug!("(resolving glob import) successfully resolved import");
@@ -703,7 +700,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         if reexports.len() > 0 {
             if let Some(def_id) = module.def_id() {
-                let node_id = self.resolver.ast_map.as_local_node_id(def_id).unwrap();
+                let node_id = self.resolver.definitions.as_local_node_id(def_id).unwrap();
                 self.resolver.export_map.insert(node_id, reexports);
             }
         }

@@ -10,7 +10,8 @@
 
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
-use rustc::hir::map as hir_map;
+use rustc::hir::{map as hir_map, FreevarMap, TraitMap};
+use rustc::hir::def::DefMap;
 use rustc_mir as mir;
 use rustc::mir::mir_map::MirMap;
 use rustc::session::{Session, CompileResult, compile_result_from_err_count};
@@ -59,6 +60,14 @@ use syntax::util::node_count::NodeCounter;
 use syntax::visit;
 use syntax;
 use syntax_ext;
+
+#[derive(Clone)]
+pub struct Resolutions {
+    pub def_map: RefCell<DefMap>,
+    pub freevars: FreevarMap,
+    pub trait_map: TraitMap,
+    pub maybe_unused_trait_imports: NodeSet,
+}
 
 pub fn compile_input(sess: &Session,
                      cstore: &CStore,
@@ -139,15 +148,17 @@ pub fn compile_input(sess: &Session,
 
         time(sess.time_passes(),
              "external crate/lib resolution",
-             || LocalCrateReader::new(sess, &cstore, &defs, &expanded_crate, &id)
+             || LocalCrateReader::new(sess, &cstore, defs, &expanded_crate, &id)
                     .read_crates(&dep_graph));
 
-        // Lower ast -> hir.
-        let lcx = LoweringContext::new(sess, Some(&expanded_crate), defs);
-        let hir_forest = &mut time(sess.time_passes(),
-                                   "lowering ast -> hir",
-                                   || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate),
-                                                           dep_graph));
+        time(sess.time_passes(),
+             "early lint checks",
+             || lint::check_ast_crate(sess, &expanded_crate));
+
+        let (analysis, resolutions, mut hir_forest) = {
+            let defs = &mut *defs.borrow_mut();
+            lower_and_resolve(sess, &id, defs, &expanded_crate, dep_graph, control.make_glob_map)
+        };
 
         // Discard MTWT tables that aren't required past lowering to HIR.
         if !keep_mtwt_tables(sess) {
@@ -157,6 +168,7 @@ pub fn compile_input(sess: &Session,
         let arenas = ty::CtxtArenas::new();
 
         // Construct the HIR map
+        let hir_forest = &mut hir_forest;
         let hir_map = time(sess.time_passes(),
                            "indexing hir",
                            move || hir_map::map_crate(hir_forest, defs));
@@ -175,6 +187,8 @@ pub fn compile_input(sess: &Session,
                                                                          &arenas,
                                                                          &cstore,
                                                                          &hir_map,
+                                                                         &analysis,
+                                                                         &resolutions,
                                                                          &expanded_crate,
                                                                          &hir_map.krate(),
                                                                          &id),
@@ -185,10 +199,6 @@ pub fn compile_input(sess: &Session,
             hir::check_attr::check_crate(sess, &expanded_crate);
         });
 
-        time(sess.time_passes(),
-             "early lint checks",
-             || lint::check_ast_crate(sess, &expanded_crate));
-
         let opt_crate = if keep_ast(sess) {
             Some(&expanded_crate)
         } else {
@@ -198,9 +208,10 @@ pub fn compile_input(sess: &Session,
 
         phase_3_run_analysis_passes(sess,
                                     hir_map,
+                                    analysis,
+                                    resolutions,
                                     &arenas,
                                     &id,
-                                    control.make_glob_map,
                                     |tcx, mir_map, analysis, result| {
             {
                 // Eventually, we will want to track plugins.
@@ -353,6 +364,7 @@ pub struct CompileState<'a, 'b, 'ast: 'a, 'tcx: 'b> where 'ast: 'tcx {
     pub expanded_crate: Option<&'a ast::Crate>,
     pub hir_crate: Option<&'a hir::Crate>,
     pub ast_map: Option<&'a hir_map::Map<'ast>>,
+    pub resolutions: Option<&'a Resolutions>,
     pub mir_map: Option<&'b MirMap<'tcx>>,
     pub analysis: Option<&'a ty::CrateAnalysis<'a>>,
     pub tcx: Option<&'b TyCtxt<'tcx>>,
@@ -377,6 +389,7 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
             expanded_crate: None,
             hir_crate: None,
             ast_map: None,
+            resolutions: None,
             analysis: None,
             mir_map: None,
             tcx: None,
@@ -423,6 +436,8 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
                               arenas: &'ast ty::CtxtArenas<'ast>,
                               cstore: &'a CStore,
                               hir_map: &'a hir_map::Map<'ast>,
+                              analysis: &'a ty::CrateAnalysis,
+                              resolutions: &'a Resolutions,
                               krate: &'a ast::Crate,
                               hir_crate: &'a hir::Crate,
                               crate_name: &'a str)
@@ -432,6 +447,8 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
             arenas: Some(arenas),
             cstore: Some(cstore),
             ast_map: Some(hir_map),
+            analysis: Some(analysis),
+            resolutions: Some(resolutions),
             expanded_crate: Some(krate),
             hir_crate: Some(hir_crate),
             out_file: out_file.as_ref().map(|s| &**s),
@@ -756,14 +773,48 @@ pub fn assign_node_ids(sess: &Session, krate: ast::Crate) -> ast::Crate {
     krate
 }
 
+pub fn lower_and_resolve<'a>(sess: &Session,
+                             id: &'a str,
+                             defs: &mut hir_map::Definitions,
+                             krate: &ast::Crate,
+                             dep_graph: DepGraph,
+                             make_glob_map: resolve::MakeGlobMap)
+                             -> (ty::CrateAnalysis<'a>, Resolutions, hir_map::Forest) {
+    resolve::with_resolver(sess, defs, make_glob_map, |mut resolver| {
+        time(sess.time_passes(), "name resolution", || {
+            resolve::resolve_crate(&mut resolver, krate);
+        });
+
+        // Lower ast -> hir.
+        let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
+            let lcx = LoweringContext::new(sess, Some(krate), &mut resolver);
+            hir_map::Forest::new(lower_crate(&lcx, krate), dep_graph)
+        });
+
+        (ty::CrateAnalysis {
+            export_map: resolver.export_map,
+            access_levels: AccessLevels::default(),
+            reachable: NodeSet(),
+            name: &id,
+            glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
+        }, Resolutions {
+            def_map: RefCell::new(resolver.def_map),
+            freevars: resolver.freevars,
+            trait_map: resolver.trait_map,
+            maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
+        }, hir_forest)
+    })
+}
+
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                hir_map: hir_map::Map<'tcx>,
+                                               mut analysis: ty::CrateAnalysis,
+                                               resolutions: Resolutions,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: &str,
-                                               make_glob_map: resolve::MakeGlobMap,
                                                f: F)
                                                -> Result<R, usize>
     where F: FnOnce(&TyCtxt<'tcx>, Option<MirMap<'tcx>>, ty::CrateAnalysis, CompileResult) -> R
@@ -788,30 +839,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         })
     })?;
 
-    let resolve::CrateMap {
-        def_map,
-        freevars,
-        maybe_unused_trait_imports,
-        export_map,
-        trait_map,
-        glob_map,
-    } = time(sess.time_passes(),
-             "name resolution",
-             || resolve::resolve_crate(sess, &hir_map, make_glob_map));
-
-    let mut analysis = ty::CrateAnalysis {
-        export_map: export_map,
-        access_levels: AccessLevels::default(),
-        reachable: NodeSet(),
-        name: name,
-        glob_map: glob_map,
-    };
-
     let named_region_map = time(time_passes,
                                 "lifetime resolution",
                                 || middle::resolve_lifetime::krate(sess,
                                                                    &hir_map,
-                                                                   &def_map.borrow()))?;
+                                                                   &resolutions.def_map.borrow()))?;
 
     time(time_passes,
          "looking for entry point",
@@ -831,17 +863,18 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     time(time_passes,
               "static item recursion checking",
-              || static_recursion::check_crate(sess, &def_map.borrow(), &hir_map))?;
+              || static_recursion::check_crate(sess, &resolutions.def_map.borrow(), &hir_map))?;
 
     let index = stability::Index::new(&hir_map);
 
+    let trait_map = resolutions.trait_map;
     TyCtxt::create_and_enter(sess,
                              arenas,
-                             def_map,
+                             resolutions.def_map,
                              named_region_map,
                              hir_map,
-                             freevars,
-                             maybe_unused_trait_imports,
+                             resolutions.freevars,
+                             resolutions.maybe_unused_trait_imports,
                              region_map,
                              lang_items,
                              index,

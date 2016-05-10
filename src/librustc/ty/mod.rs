@@ -108,6 +108,7 @@ pub type Disr = ConstInt;
 
 /// The complete set of all analyses described in this module. This is
 /// produced by the driver and fed to trans and later passes.
+#[derive(Clone)]
 pub struct CrateAnalysis<'a> {
     pub export_map: ExportMap,
     pub access_levels: middle::privacy::AccessLevels,
