@@ -240,14 +240,15 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
         let krate = driver::assign_node_ids(&sess, krate);
-        let defs = RefCell::new(ast_map::collect_definitions(&krate));
-        LocalCrateReader::new(&sess, &cstore, &defs.borrow(), &krate, &id).read_crates(&dep_graph);
+        let mut defs = ast_map::collect_definitions(&krate);
+        LocalCrateReader::new(&sess, &cstore, &defs, &krate, &id).read_crates(&dep_graph);
         let (analysis, resolutions, mut hir_forest) = {
-            let defs = &mut *defs.borrow_mut();
-            driver::lower_and_resolve(&sess, &id, defs, &krate, dep_graph, MakeGlobMap::No)
+            driver::lower_and_resolve(&sess, &id, &mut defs, &krate, dep_graph, MakeGlobMap::No)
         };
+
+        let defs = &RefCell::new(defs);
         let arenas = ty::CtxtArenas::new();
-        let ast_map = ast_map::map_crate(&mut hir_forest, &defs);
+        let ast_map = ast_map::map_crate(&mut hir_forest, defs);
 
         abort_on_err(driver::phase_3_run_analysis_passes(
             &sess, ast_map, analysis, resolutions, &arenas, &id,
