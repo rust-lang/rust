@@ -3691,7 +3691,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                   }
                   None => {
                       check_expr_has_type(fcx, &idx, fcx.tcx().types.err);
-                      fcx.type_error_message(
+                      let mut err = fcx.type_error_struct(
                           expr.span,
                           |actual| {
                               format!("cannot index a value of type `{}`",
@@ -3699,6 +3699,29 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                           },
                           base_t,
                           None);
+                      // Try to give some advice about indexing tuples.
+                      if let ty::TyTuple(_) = base_t.sty {
+                          let mut needs_note = true;
+                          // If the index is an integer, we can show the actual
+                          // fixed expression:
+                          if let hir::ExprLit(ref lit) = idx.node {
+                              if let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node {
+                                  let snip = fcx.tcx().sess.codemap().span_to_snippet(base.span);
+                                  if let Ok(snip) = snip {
+                                      err.span_suggestion(expr.span,
+                                                          "to access tuple elements, use tuple \
+                                                           indexing syntax as shown",
+                                                          format!("{}.{}", snip, i));
+                                      needs_note = false;
+                                  }
+                              }
+                          }
+                          if needs_note {
+                              err.help("to access tuple elements, use tuple indexing \
+                                        syntax (e.g. `tuple.0`)");
+                          }
+                      }
+                      err.emit();
                       fcx.write_ty(id, fcx.tcx().types.err);
                   }
               }
