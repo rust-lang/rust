@@ -742,7 +742,7 @@ fn f(a: u16, b: &str) {}
 
 Must always be called with exactly two arguments, e.g. `f(2, "test")`.
 
-Note, that Rust does not have a notion of optional function arguments or
+Note that Rust does not have a notion of optional function arguments or
 variadic functions (except for its C-FFI).
 "##,
 
