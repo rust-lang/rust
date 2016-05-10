@@ -473,7 +473,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 /// impl ExactSizeIterator for Counter {
 ///     // We already have the number of iterations, so we can use it directly.
 ///     fn len(&self) -> usize {
-///         self.count
+///         5 - self.count
 ///     }
 /// }
 ///
@@ -481,7 +481,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 ///
 /// let counter = Counter::new();
 ///
-/// assert_eq!(0, counter.len());
+/// assert_eq!(5, counter.len());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExactSizeIterator: Iterator {
