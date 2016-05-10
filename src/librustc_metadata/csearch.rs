@@ -24,6 +24,7 @@ use rustc::hir::map as hir_map;
 use rustc::mir::repr::Mir;
 use rustc::mir::mir_map::MirMap;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
+use rustc::session::config::PanicStrategy;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -304,6 +305,15 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool
     {
         self.get_crate_data(cnum).is_allocator()
+    }
+
+    fn is_panic_runtime(&self, cnum: ast::CrateNum) -> bool
+    {
+        self.get_crate_data(cnum).is_panic_runtime()
+    }
+
+    fn panic_strategy(&self, cnum: ast::CrateNum) -> PanicStrategy {
+        self.get_crate_data(cnum).panic_strategy()
     }
 
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>

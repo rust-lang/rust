@@ -141,6 +141,8 @@ declare_features! (
     (active, simd_ffi, "1.0.0", Some(27731)),
     (active, start, "1.0.0", Some(29633)),
     (active, structural_match, "1.8.0", Some(31434)),
+    (active, panic_runtime, "1.10.0", Some(32837)),
+    (active, needs_panic_runtime, "1.10.0", Some(32837)),
 
     // OIBIT specific features
     (active, optin_builtin_traits, "1.0.0", Some(13231)),
@@ -438,6 +440,15 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                        attribute is an experimental \
                                        feature",
                                       cfg_fn!(needs_allocator))),
+    ("panic_runtime", Whitelisted, Gated("panic_runtime",
+                                         "the `#[panic_runtime]` attribute is \
+                                          an experimental feature",
+                                         cfg_fn!(panic_runtime))),
+    ("needs_panic_runtime", Whitelisted, Gated("needs_panic_runtime",
+                                               "the `#[needs_panic_runtime]` \
+                                                attribute is an experimental \
+                                                feature",
+                                               cfg_fn!(needs_panic_runtime))),
     ("rustc_variance", Normal, Gated("rustc_attrs",
                                      "the `#[rustc_variance]` attribute \
                                       is just used for rustc unit tests \

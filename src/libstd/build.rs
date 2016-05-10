@@ -28,9 +28,7 @@ fn main() {
     }
 
     if target.contains("linux") {
-        if target.contains("musl") && (target.contains("x86_64") || target.contains("i686")) {
-            println!("cargo:rustc-link-lib=static=unwind");
-        } else if target.contains("android") {
+        if target.contains("android") {
             println!("cargo:rustc-link-lib=dl");
             println!("cargo:rustc-link-lib=log");
             println!("cargo:rustc-link-lib=gcc");
@@ -38,27 +36,13 @@ fn main() {
             println!("cargo:rustc-link-lib=dl");
             println!("cargo:rustc-link-lib=rt");
             println!("cargo:rustc-link-lib=pthread");
-            println!("cargo:rustc-link-lib=gcc_s");
         }
     } else if target.contains("freebsd") {
         println!("cargo:rustc-link-lib=execinfo");
         println!("cargo:rustc-link-lib=pthread");
-        println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("dragonfly") || target.contains("bitrig") ||
               target.contains("netbsd") || target.contains("openbsd") {
         println!("cargo:rustc-link-lib=pthread");
-
-        if target.contains("rumprun") {
-            println!("cargo:rustc-link-lib=unwind");
-        } else if target.contains("netbsd") {
-            println!("cargo:rustc-link-lib=gcc_s");
-        } else if target.contains("openbsd") {
-            println!("cargo:rustc-link-lib=gcc");
-        } else if target.contains("bitrig") {
-            println!("cargo:rustc-link-lib=c++abi");
-        } else if target.contains("dragonfly") {
-            println!("cargo:rustc-link-lib=gcc_pic");
-        }
     } else if target.contains("apple-darwin") {
         println!("cargo:rustc-link-lib=System");
     } else if target.contains("apple-ios") {
@@ -67,9 +51,6 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=Security");
         println!("cargo:rustc-link-lib=framework=Foundation");
     } else if target.contains("windows") {
-        if target.contains("windows-gnu") {
-            println!("cargo:rustc-link-lib=gcc_eh");
-        }
         println!("cargo:rustc-link-lib=advapi32");
         println!("cargo:rustc-link-lib=ws2_32");
         println!("cargo:rustc-link-lib=userenv");

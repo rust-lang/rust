@@ -250,3 +250,5 @@ pub fn rustc_version() -> String {
         option_env!("CFG_VERSION").unwrap_or("unknown version")
     )
 }
+
+pub const tag_panic_strategy: usize = 0x114;

@@ -23,6 +23,7 @@ use loader;
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{ExternCrate};
+use rustc::session::config::PanicStrategy;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
 
 use std::cell::{RefCell, Ref, Cell};
@@ -280,6 +281,20 @@ impl crate_metadata {
     pub fn needs_allocator(&self) -> bool {
         let attrs = decoder::get_crate_attributes(self.data());
         attr::contains_name(&attrs, "needs_allocator")
+    }
+
+    pub fn is_panic_runtime(&self) -> bool {
+        let attrs = decoder::get_crate_attributes(self.data());
+        attr::contains_name(&attrs, "panic_runtime")
+    }
+
+    pub fn needs_panic_runtime(&self) -> bool {
+        let attrs = decoder::get_crate_attributes(self.data());
+        attr::contains_name(&attrs, "needs_panic_runtime")
+    }
+
+    pub fn panic_strategy(&self) -> PanicStrategy {
+        decoder::get_panic_strategy(self.data())
     }
 }
 

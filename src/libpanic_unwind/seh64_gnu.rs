@@ -14,13 +14,12 @@
 #![allow(bad_style)]
 #![allow(private_no_mangle_fns)]
 
-use prelude::v1::*;
+use alloc::boxed::Box;
 
-use any::Any;
-use sys_common::dwarf::eh;
-use core::mem;
-use core::ptr;
-use sys::c;
+use core::any::Any;
+use core::intrinsics;
+use dwarf::eh;
+use windows as c;
 
 // Define our exception codes:
 // according to http://msdn.microsoft.com/en-us/library/het71c37(v=VS.80).aspx,
@@ -37,24 +36,24 @@ const RUST_PANIC: c::DWORD  = ETYPE | (1 << 24) | MAGIC;
 
 #[repr(C)]
 struct PanicData {
-    data: Box<Any + Send + 'static>
+    data: Box<Any + Send>
 }
 
-pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
+pub unsafe fn panic(data: Box<Any + Send>) -> u32 {
     let panic_ctx = Box::new(PanicData { data: data });
     let params = [Box::into_raw(panic_ctx) as c::ULONG_PTR];
     c::RaiseException(RUST_PANIC,
                       c::EXCEPTION_NONCONTINUABLE,
                       params.len() as c::DWORD,
                       &params as *const c::ULONG_PTR);
-    rtabort!("could not unwind stack");
+    u32::max_value()
 }
 
 pub fn payload() -> *mut u8 {
     0 as *mut u8
 }
 
-pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send + 'static> {
+pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send> {
     let panic_ctx = Box::from_raw(ptr as *mut PanicData);
     return panic_ctx.data;
 }
@@ -115,14 +114,12 @@ unsafe extern fn rust_eh_personality(
                                er.ExceptionInformation[0] as c::LPVOID, // pointer to PanicData
                                contextRecord,
                                dc.HistoryTable);
-                rtabort!("could not unwind");
             }
         }
     }
     c::ExceptionContinueSearch
 }
 
-#[cfg(not(test))]
 #[lang = "eh_unwind_resume"]
 #[unwind]
 unsafe extern fn rust_eh_unwind_resume(panic_ctx: c::LPVOID) -> ! {
@@ -131,7 +128,7 @@ unsafe extern fn rust_eh_unwind_resume(panic_ctx: c::LPVOID) -> ! {
                       c::EXCEPTION_NONCONTINUABLE,
                       params.len() as c::DWORD,
                       &params as *const c::ULONG_PTR);
-    rtabort!("could not resume unwind");
+    intrinsics::abort();
 }
 
 unsafe fn find_landing_pad(dc: &c::DISPATCHER_CONTEXT) -> Option<usize> {

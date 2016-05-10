@@ -64,7 +64,7 @@
 use syntax::ast;
 
 use session;
-use session::config;
+use session::config::{self, PanicStrategy};
 use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use util::nodemap::FnvHashMap;
 
@@ -193,10 +193,15 @@ fn calculate_type(sess: &session::Session,
     }
 
     // We've gotten this far because we're emitting some form of a final
-    // artifact which means that we're going to need an allocator of some form.
-    // No allocator may have been required or linked so far, so activate one
-    // here if one isn't set.
-    activate_allocator(sess, &mut ret);
+    // artifact which means that we may need to inject dependencies of some
+    // form.
+    //
+    // Things like allocators and panic runtimes may not have been activated
+    // quite yet, so do so here.
+    activate_injected_dep(sess.injected_allocator.get(), &mut ret,
+                          &|cnum| sess.cstore.is_allocator(cnum));
+    activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
+                          &|cnum| sess.cstore.is_panic_runtime(cnum));
 
     // When dylib B links to dylib A, then when using B we must also link to A.
     // It could be the case, however, that the rlib for A is present (hence we
@@ -270,40 +275,42 @@ fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
         }
     }).collect::<Vec<_>>();
 
-    // Our allocator may not have been activated as it's not flagged with
-    // explicitly_linked, so flag it here if necessary.
-    activate_allocator(sess, &mut ret);
+    // Our allocator/panic runtime may not have been linked above if it wasn't
+    // explicitly linked, which is the case for any injected dependency. Handle
+    // that here and activate them.
+    activate_injected_dep(sess.injected_allocator.get(), &mut ret,
+                          &|cnum| sess.cstore.is_allocator(cnum));
+    activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
+                          &|cnum| sess.cstore.is_panic_runtime(cnum));
 
     Some(ret)
 }
 
 // Given a list of how to link upstream dependencies so far, ensure that an
-// allocator is activated. This will not do anything if one was transitively
-// included already (e.g. via a dylib or explicitly so).
+// injected dependency is activated. This will not do anything if one was
+// transitively included already (e.g. via a dylib or explicitly so).
 //
-// If an allocator was not found then we're guaranteed the metadata::creader
-// module has injected an allocator dependency (not listed as a required
-// dependency) in the session's `injected_allocator` field. If this field is not
-// set then this compilation doesn't actually need an allocator and we can also
-// skip this step entirely.
-fn activate_allocator(sess: &session::Session, list: &mut DependencyList) {
-    let mut allocator_found = false;
+// If an injected dependency was not found then we're guaranteed the
+// metadata::creader module has injected that dependency (not listed as
+// a required dependency) in one of the session's field. If this field is not
+// set then this compilation doesn't actually need the dependency and we can
+// also skip this step entirely.
+fn activate_injected_dep(injected: Option<ast::CrateNum>,
+                         list: &mut DependencyList,
+                         replaces_injected: &Fn(ast::CrateNum) -> bool) {
     for (i, slot) in list.iter().enumerate() {
         let cnum = (i + 1) as ast::CrateNum;
-        if !sess.cstore.is_allocator(cnum) {
+        if !replaces_injected(cnum) {
             continue
         }
-        if let Linkage::NotLinked = *slot {
-            continue
+        if *slot != Linkage::NotLinked {
+            return
         }
-        allocator_found = true;
     }
-    if !allocator_found {
-        if let Some(injected_allocator) = sess.injected_allocator.get() {
-            let idx = injected_allocator as usize - 1;
-            assert_eq!(list[idx], Linkage::NotLinked);
-            list[idx] = Linkage::Static;
-        }
+    if let Some(injected) = injected {
+        let idx = injected as usize - 1;
+        assert_eq!(list[idx], Linkage::NotLinked);
+        list[idx] = Linkage::Static;
     }
 }
 
@@ -314,21 +321,75 @@ fn verify_ok(sess: &session::Session, list: &[Linkage]) {
         return
     }
     let mut allocator = None;
+    let mut panic_runtime = None;
     for (i, linkage) in list.iter().enumerate() {
-        let cnum = (i + 1) as ast::CrateNum;
-        if !sess.cstore.is_allocator(cnum) {
-            continue
-        }
         if let Linkage::NotLinked = *linkage {
             continue
         }
-        if let Some(prev_alloc) = allocator {
-            let prev_name = sess.cstore.crate_name(prev_alloc);
-            let cur_name = sess.cstore.crate_name(cnum);
-            sess.err(&format!("cannot link together two \
-                               allocators: {} and {}",
-                              prev_name, cur_name));
+        let cnum = (i + 1) as ast::CrateNum;
+        if sess.cstore.is_allocator(cnum) {
+            if let Some(prev) = allocator {
+                let prev_name = sess.cstore.crate_name(prev);
+                let cur_name = sess.cstore.crate_name(cnum);
+                sess.err(&format!("cannot link together two \
+                                   allocators: {} and {}",
+                                  prev_name, cur_name));
+            }
+            allocator = Some(cnum);
         }
-        allocator = Some(cnum);
+
+        if sess.cstore.is_panic_runtime(cnum) {
+            if let Some((prev, _)) = panic_runtime {
+                let prev_name = sess.cstore.crate_name(prev);
+                let cur_name = sess.cstore.crate_name(cnum);
+                sess.err(&format!("cannot link together two \
+                                   panic runtimes: {} and {}",
+                                  prev_name, cur_name));
+            }
+            panic_runtime = Some((cnum, sess.cstore.panic_strategy(cnum)));
+        }
+    }
+
+    // If we found a panic runtime, then we know by this point that it's the
+    // only one, but we perform validation here that all the panic strategy
+    // compilation modes for the whole DAG are valid.
+    if let Some((cnum, found_strategy)) = panic_runtime {
+        let desired_strategy = sess.opts.cg.panic.clone();
+
+        // First up, validate that our selected panic runtime is indeed exactly
+        // our same strategy.
+        if found_strategy != desired_strategy {
+            sess.err(&format!("the linked panic runtime `{}` is \
+                               not compiled with this crate's \
+                               panic strategy `{}`",
+                              sess.cstore.crate_name(cnum),
+                              desired_strategy.desc()));
+        }
+
+        // Next up, verify that all other crates are compatible with this panic
+        // strategy. If the dep isn't linked, we ignore it, and if our strategy
+        // is abort then it's compatible with everything. Otherwise all crates'
+        // panic strategy must match our own.
+        for (i, linkage) in list.iter().enumerate() {
+            if let Linkage::NotLinked = *linkage {
+                continue
+            }
+            if desired_strategy == PanicStrategy::Abort {
+                continue
+            }
+            let cnum = (i + 1) as ast::CrateNum;
+            let found_strategy = sess.cstore.panic_strategy(cnum);
+            if desired_strategy == found_strategy {
+                continue
+            }
+
+            sess.err(&format!("the crate `{}` is compiled with the \
+                               panic strategy `{}` which is \
+                               incompatible with this crate's \
+                               strategy of `{}`",
+                              sess.cstore.crate_name(cnum),
+                              found_strategy.desc(),
+                              desired_strategy.desc()));
+        }
     }
 }

@@ -16,10 +16,10 @@ use any::Any;
 use boxed::Box;
 use cell::UnsafeCell;
 use ops::{Deref, DerefMut};
+use panicking;
 use ptr::{Unique, Shared};
 use rc::Rc;
 use sync::{Arc, Mutex, RwLock};
-use sys_common::unwind;
 use thread::Result;
 
 #[unstable(feature = "panic_handler", issue = "30449")]
@@ -383,12 +383,9 @@ impl<R, F: FnOnce() -> R> FnOnce<()> for AssertRecoverSafe<F> {
 /// ```
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
-    let mut result = None;
     unsafe {
-        let result = &mut result;
-        unwind::try(move || *result = Some(f()))?
+        panicking::try(f)
     }
-    Ok(result.unwrap())
 }
 
 /// Deprecated, renamed to `catch_unwind`
@@ -425,7 +422,7 @@ pub fn recover<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 /// ```
 #[stable(feature = "resume_unwind", since = "1.9.0")]
 pub fn resume_unwind(payload: Box<Any + Send>) -> ! {
-    unwind::rust_panic(payload)
+    panicking::rust_panic(payload)
 }
 
 /// Deprecated, use resume_unwind instead

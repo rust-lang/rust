@@ -20,6 +20,7 @@ use loader::{self, CratePaths};
 use rustc::hir::svh::Svh;
 use rustc::dep_graph::{DepGraph, DepNode};
 use rustc::session::{config, Session};
+use rustc::session::config::PanicStrategy;
 use rustc::session::search_paths::PathKind;
 use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
 use rustc::util::nodemap::FnvHashMap;
@@ -630,6 +631,85 @@ impl<'a> CrateReader<'a> {
         }
     }
 
+    fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
+        // If we're only compiling an rlib, then there's no need to select a
+        // panic runtime, so we just skip this section entirely.
+        let any_non_rlib = self.sess.crate_types.borrow().iter().any(|ct| {
+            *ct != config::CrateTypeRlib
+        });
+        if !any_non_rlib {
+            info!("panic runtime injection skipped, only generating rlib");
+            return
+        }
+
+        // If we need a panic runtime, we try to find an existing one here. At
+        // the same time we perform some general validation of the DAG we've got
+        // going such as ensuring everything has a compatible panic strategy.
+        //
+        // The logic for finding the panic runtime here is pretty much the same
+        // as the allocator case with the only addition that the panic strategy
+        // compilation mode also comes into play.
+        let desired_strategy = self.sess.opts.cg.panic.clone();
+        let mut runtime_found = false;
+        let mut needs_panic_runtime = attr::contains_name(&krate.attrs,
+                                                          "needs_panic_runtime");
+        self.cstore.iter_crate_data(|cnum, data| {
+            needs_panic_runtime = needs_panic_runtime || data.needs_panic_runtime();
+            if data.is_panic_runtime() {
+                // Inject a dependency from all #![needs_panic_runtime] to this
+                // #![panic_runtime] crate.
+                self.inject_dependency_if(cnum, "a panic runtime",
+                                          &|data| data.needs_panic_runtime());
+                runtime_found = runtime_found || data.explicitly_linked.get();
+            }
+        });
+
+        // If an explicitly linked and matching panic runtime was found, or if
+        // we just don't need one at all, then we're done here and there's
+        // nothing else to do.
+        if !needs_panic_runtime || runtime_found {
+            return
+        }
+
+        // By this point we know that we (a) need a panic runtime and (b) no
+        // panic runtime was explicitly linked. Here we just load an appropriate
+        // default runtime for our panic strategy and then inject the
+        // dependencies.
+        //
+        // We may resolve to an already loaded crate (as the crate may not have
+        // been explicitly linked prior to this) and we may re-inject
+        // dependencies again, but both of those situations are fine.
+        //
+        // Also note that we have yet to perform validation of the crate graph
+        // in terms of everyone has a compatible panic runtime format, that's
+        // performed later as part of the `dependency_format` module.
+        let name = match desired_strategy {
+            PanicStrategy::Unwind => "panic_unwind",
+            PanicStrategy::Abort => "panic_abort",
+        };
+        info!("panic runtime not found -- loading {}", name);
+
+        let (cnum, data, _) = self.resolve_crate(&None, name, name, None,
+                                                 codemap::DUMMY_SP,
+                                                 PathKind::Crate, false);
+
+        // Sanity check the loaded crate to ensure it is indeed a panic runtime
+        // and the panic strategy is indeed what we thought it was.
+        if !data.is_panic_runtime() {
+            self.sess.err(&format!("the crate `{}` is not a panic runtime",
+                                   name));
+        }
+        if data.panic_strategy() != desired_strategy {
+            self.sess.err(&format!("the crate `{}` does not have the panic \
+                                    strategy `{}`",
+                                   name, desired_strategy.desc()));
+        }
+
+        self.sess.injected_panic_runtime.set(Some(cnum));
+        self.inject_dependency_if(cnum, "a panic runtime",
+                                  &|data| data.needs_panic_runtime());
+    }
+
     fn inject_allocator_crate(&mut self) {
         // Make sure that we actually need an allocator, if none of our
         // dependencies need one then we definitely don't!
@@ -641,8 +721,9 @@ impl<'a> CrateReader<'a> {
         self.cstore.iter_crate_data(|cnum, data| {
             needs_allocator = needs_allocator || data.needs_allocator();
             if data.is_allocator() {
-                debug!("{} required by rlib and is an allocator", data.name());
-                self.inject_allocator_dependency(cnum);
+                info!("{} required by rlib and is an allocator", data.name());
+                self.inject_dependency_if(cnum, "an allocator",
+                                          &|data| data.needs_allocator());
                 found_required_allocator = found_required_allocator ||
                     data.explicitly_linked.get();
             }
@@ -692,58 +773,68 @@ impl<'a> CrateReader<'a> {
                                                  codemap::DUMMY_SP,
                                                  PathKind::Crate, false);
 
-        // To ensure that the `-Z allocation-crate=foo` option isn't abused, and
-        // to ensure that the allocator is indeed an allocator, we verify that
-        // the crate loaded here is indeed tagged #![allocator].
+        // Sanity check the crate we loaded to ensure that it is indeed an
+        // allocator.
         if !data.is_allocator() {
             self.sess.err(&format!("the allocator crate `{}` is not tagged \
                                     with #![allocator]", data.name()));
         }
 
         self.sess.injected_allocator.set(Some(cnum));
-        self.inject_allocator_dependency(cnum);
+        self.inject_dependency_if(cnum, "an allocator",
+                                  &|data| data.needs_allocator());
     }
 
-    fn inject_allocator_dependency(&self, allocator: ast::CrateNum) {
-        // Before we inject any dependencies, make sure we don't inject a
-        // circular dependency by validating that this allocator crate doesn't
-        // transitively depend on any `#![needs_allocator]` crates.
-        validate(self, allocator, allocator);
+    fn inject_dependency_if(&self,
+                            krate: ast::CrateNum,
+                            what: &str,
+                            needs_dep: &Fn(&cstore::crate_metadata) -> bool) {
+        // don't perform this validation if the session has errors, as one of
+        // those errors may indicate a circular dependency which could cause
+        // this to stack overflow.
+        if self.sess.has_errors() {
+            return
+        }
 
-        // All crates tagged with `needs_allocator` do not explicitly depend on
-        // the allocator selected for this compile, but in order for this
-        // compilation to be successfully linked we need to inject a dependency
-        // (to order the crates on the command line correctly).
-        //
-        // Here we inject a dependency from all crates with #![needs_allocator]
-        // to the crate tagged with #![allocator] for this compilation unit.
+        // Before we inject any dependencies, make sure we don't inject a
+        // circular dependency by validating that this crate doesn't
+        // transitively depend on any crates satisfying `needs_dep`.
+        validate(self, krate, krate, what, needs_dep);
+
+        // All crates satisfying `needs_dep` do not explicitly depend on the
+        // crate provided for this compile, but in order for this compilation to
+        // be successfully linked we need to inject a dependency (to order the
+        // crates on the command line correctly).
         self.cstore.iter_crate_data(|cnum, data| {
-            if !data.needs_allocator() {
+            if !needs_dep(data) {
                 return
             }
 
-            info!("injecting a dep from {} to {}", cnum, allocator);
+            info!("injecting a dep from {} to {}", cnum, krate);
             let mut cnum_map = data.cnum_map.borrow_mut();
             let remote_cnum = cnum_map.len() + 1;
-            let prev = cnum_map.insert(remote_cnum as ast::CrateNum, allocator);
+            let prev = cnum_map.insert(remote_cnum as ast::CrateNum, krate);
             assert!(prev.is_none());
         });
 
-        fn validate(me: &CrateReader, krate: ast::CrateNum,
-                    allocator: ast::CrateNum) {
+        fn validate(me: &CrateReader,
+                    krate: ast::CrateNum,
+                    root: ast::CrateNum,
+                    what: &str,
+                    needs_dep: &Fn(&cstore::crate_metadata) -> bool) {
             let data = me.cstore.get_crate_data(krate);
-            if data.needs_allocator() {
+            if needs_dep(&data) {
                 let krate_name = data.name();
-                let data = me.cstore.get_crate_data(allocator);
-                let alloc_name = data.name();
-                me.sess.err(&format!("the allocator crate `{}` cannot depend \
-                                      on a crate that needs an allocator, but \
-                                      it depends on `{}`", alloc_name,
+                let data = me.cstore.get_crate_data(root);
+                let root_name = data.name();
+                me.sess.err(&format!("the crate `{}` cannot depend \
+                                      on a crate that needs {}, but \
+                                      it depends on `{}`", root_name, what,
                                       krate_name));
             }
 
             for (_, &dep) in data.cnum_map.borrow().iter() {
-                validate(me, dep, allocator);
+                validate(me, dep, root, what, needs_dep);
             }
         }
     }
@@ -774,6 +865,7 @@ impl<'a> LocalCrateReader<'a> {
         self.process_crate(self.krate);
         visit::walk_crate(self, self.krate);
         self.creader.inject_allocator_crate();
+        self.creader.inject_panic_runtime(self.krate);
 
         if log_enabled!(log::INFO) {
             dump_crates(&self.cstore);

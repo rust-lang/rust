@@ -33,7 +33,7 @@ use rustc::ty::util::IntTypeExt;
 
 use rustc::hir::svh::Svh;
 use rustc::mir::mir_map::MirMap;
-use rustc::session::config;
+use rustc::session::config::{self, PanicStrategy};
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use rustc_serialize::Encodable;
@@ -1828,6 +1828,17 @@ fn encode_dylib_dependency_formats(rbml_w: &mut Encoder, ecx: &EncodeContext) {
     }
 }
 
+fn encode_panic_strategy(rbml_w: &mut Encoder, ecx: &EncodeContext) {
+    match ecx.tcx.sess.opts.cg.panic {
+        PanicStrategy::Unwind => {
+            rbml_w.wr_tagged_u8(tag_panic_strategy, b'U');
+        }
+        PanicStrategy::Abort => {
+            rbml_w.wr_tagged_u8(tag_panic_strategy, b'A');
+        }
+    }
+}
+
 // NB: Increment this as you change the metadata encoding version.
 #[allow(non_upper_case_globals)]
 pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 2 ];
@@ -1915,6 +1926,7 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
     encode_hash(rbml_w, &ecx.link_meta.crate_hash);
     encode_crate_disambiguator(rbml_w, &ecx.tcx.sess.crate_disambiguator.get().as_str());
     encode_dylib_dependency_formats(rbml_w, &ecx);
+    encode_panic_strategy(rbml_w, &ecx);
 
     let mut i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_attributes(rbml_w, &krate.attrs);

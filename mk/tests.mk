@@ -23,7 +23,8 @@ DEPS_collectionstest :=
 $(eval $(call RUST_CRATE,collectionstest))
 
 TEST_TARGET_CRATES = $(filter-out core rustc_unicode alloc_system libc \
-		     		  alloc_jemalloc,$(TARGET_CRATES)) \
+		     		  alloc_jemalloc panic_unwind \
+				  panic_abort,$(TARGET_CRATES)) \
 			collectionstest coretest
 TEST_DOC_CRATES = $(DOC_CRATES) arena flate fmt_macros getopts graphviz \
                 log rand rbml serialize syntax term test

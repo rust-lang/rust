@@ -17,9 +17,9 @@
 /// The entry point for panic of Rust threads.
 ///
 /// This macro is used to inject panic into a Rust thread, causing the thread to
-/// unwind and panic entirely. Each thread's panic can be reaped as the
-/// `Box<Any>` type, and the single-argument form of the `panic!` macro will be
-/// the value which is transmitted.
+/// panic entirely. Each thread's panic can be reaped as the `Box<Any>` type,
+/// and the single-argument form of the `panic!` macro will be the value which
+/// is transmitted.
 ///
 /// The multi-argument form of this macro panics with a string and has the
 /// `format!` syntax for building a string.
@@ -41,14 +41,14 @@ macro_rules! panic {
         panic!("explicit panic")
     });
     ($msg:expr) => ({
-        $crate::rt::begin_unwind($msg, {
+        $crate::rt::begin_panic($msg, {
             // static requires less code at runtime, more constant data
             static _FILE_LINE: (&'static str, u32) = (file!(), line!());
             &_FILE_LINE
         })
     });
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::begin_unwind_fmt(format_args!($fmt, $($arg)+), {
+        $crate::rt::begin_panic_fmt(&format_args!($fmt, $($arg)+), {
             // The leading _'s are to avoid dead code warnings if this is
             // used inside a dead function. Just `#[allow(dead_code)]` is
             // insufficient, since the user may have

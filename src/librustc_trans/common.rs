@@ -463,20 +463,18 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         // landing pads as "landing pads for SEH".
         let ccx = self.ccx;
         let tcx = ccx.tcx();
-        let target = &ccx.sess().target.target;
         match tcx.lang_items.eh_personality() {
             Some(def_id) if !base::wants_msvc_seh(ccx.sess()) => {
                 Callee::def(ccx, def_id, tcx.mk_substs(Substs::empty())).reify(ccx).val
             }
-            _ => if let Some(llpersonality) = ccx.eh_personality().get() {
-                llpersonality
-            } else {
-                let name = if !base::wants_msvc_seh(ccx.sess()) {
-                    "rust_eh_personality"
-                } else if target.arch == "x86" {
-                    "_except_handler3"
+            _ => {
+                if let Some(llpersonality) = ccx.eh_personality().get() {
+                    return llpersonality
+                }
+                let name = if base::wants_msvc_seh(ccx.sess()) {
+                    "__CxxFrameHandler3"
                 } else {
-                    "__C_specific_handler"
+                    "rust_eh_personality"
                 };
                 let fty = Type::variadic_func(&[], &Type::i32(ccx));
                 let f = declare::declare_cfn(ccx, name, fty);
