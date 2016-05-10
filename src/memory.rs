@@ -83,7 +83,7 @@ impl Memory {
             panic!()
         }
 
-        let alloc = try!(self.get_mut(ptr.alloc_id));
+        let alloc = self.get_mut(ptr.alloc_id)?;
         let size = alloc.bytes.len();
         if new_size > size {
             let amount = new_size - size;
@@ -181,7 +181,7 @@ impl Memory {
     ////////////////////////////////////////////////////////////////////////////////
 
     fn get_bytes_unchecked(&self, ptr: Pointer, size: usize) -> EvalResult<&[u8]> {
-        let alloc = try!(self.get(ptr.alloc_id));
+        let alloc = self.get(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
             return Err(EvalError::PointerOutOfBounds);
         }
@@ -189,7 +189,7 @@ impl Memory {
     }
 
     fn get_bytes_unchecked_mut(&mut self, ptr: Pointer, size: usize) -> EvalResult<&mut [u8]> {
-        let alloc = try!(self.get_mut(ptr.alloc_id));
+        let alloc = self.get_mut(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
             return Err(EvalError::PointerOutOfBounds);
         }
@@ -197,16 +197,16 @@ impl Memory {
     }
 
     fn get_bytes(&self, ptr: Pointer, size: usize) -> EvalResult<&[u8]> {
-        if try!(self.relocations(ptr, size)).count() != 0 {
+        if self.relocations(ptr, size)?.count() != 0 {
             return Err(EvalError::ReadPointerAsBytes);
         }
-        try!(self.check_defined(ptr, size));
+        self.check_defined(ptr, size)?;
         self.get_bytes_unchecked(ptr, size)
     }
 
     fn get_bytes_mut(&mut self, ptr: Pointer, size: usize) -> EvalResult<&mut [u8]> {
-        try!(self.clear_relocations(ptr, size));
-        try!(self.mark_definedness(ptr, size, true));
+        self.clear_relocations(ptr, size)?;
+        self.mark_definedness(ptr, size, true)?;
         self.get_bytes_unchecked_mut(ptr, size)
     }
 
@@ -215,10 +215,10 @@ impl Memory {
     ////////////////////////////////////////////////////////////////////////////////
 
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
-        try!(self.check_relocation_edges(src, size));
+        self.check_relocation_edges(src, size)?;
 
-        let src_bytes = try!(self.get_bytes_unchecked_mut(src, size)).as_mut_ptr();
-        let dest_bytes = try!(self.get_bytes_mut(dest, size)).as_mut_ptr();
+        let src_bytes = self.get_bytes_unchecked_mut(src, size)?.as_mut_ptr();
+        let dest_bytes = self.get_bytes_mut(dest, size)?.as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
         // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
@@ -231,8 +231,8 @@ impl Memory {
             }
         }
 
-        try!(self.copy_undef_mask(src, dest, size));
-        try!(self.copy_relocations(src, dest, size));
+        self.copy_undef_mask(src, dest, size)?;
+        self.copy_relocations(src, dest, size)?;
 
         Ok(())
     }
@@ -242,13 +242,13 @@ impl Memory {
     }
 
     pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<()> {
-        let bytes = try!(self.get_bytes_mut(ptr, src.len()));
+        let bytes = self.get_bytes_mut(ptr, src.len())?;
         bytes.clone_from_slice(src);
         Ok(())
     }
 
     pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: usize) -> EvalResult<()> {
-        let bytes = try!(self.get_bytes_mut(ptr, count));
+        let bytes = self.get_bytes_mut(ptr, count)?;
         for b in bytes { *b = val; }
         Ok(())
     }
@@ -259,10 +259,10 @@ impl Memory {
 
     pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<Pointer> {
         let size = self.pointer_size;
-        try!(self.check_defined(ptr, size));
-        let offset = try!(self.get_bytes_unchecked(ptr, size))
+        self.check_defined(ptr, size)?;
+        let offset = self.get_bytes_unchecked(ptr, size)?
             .read_uint::<NativeEndian>(size).unwrap() as usize;
-        let alloc = try!(self.get(ptr.alloc_id));
+        let alloc = self.get(ptr.alloc_id)?;
         match alloc.relocations.get(&ptr.offset) {
             Some(&alloc_id) => Ok(Pointer { alloc_id: alloc_id, offset: offset }),
             None => Err(EvalError::ReadBytesAsPointer),
@@ -272,10 +272,10 @@ impl Memory {
     pub fn write_ptr(&mut self, dest: Pointer, ptr: Pointer) -> EvalResult<()> {
         {
             let size = self.pointer_size;
-            let mut bytes = try!(self.get_bytes_mut(dest, size));
+            let mut bytes = self.get_bytes_mut(dest, size)?;
             bytes.write_uint::<NativeEndian>(ptr.offset as u64, size).unwrap();
         }
-        try!(self.get_mut(dest.alloc_id)).relocations.insert(dest.offset, ptr.alloc_id);
+        self.get_mut(dest.alloc_id)?.relocations.insert(dest.offset, ptr.alloc_id);
         Ok(())
     }
 
@@ -297,7 +297,7 @@ impl Memory {
     }
 
     pub fn read_bool(&self, ptr: Pointer) -> EvalResult<bool> {
-        let bytes = try!(self.get_bytes(ptr, 1));
+        let bytes = self.get_bytes(ptr, 1)?;
         match bytes[0] {
             0 => Ok(false),
             1 => Ok(true),
@@ -352,12 +352,12 @@ impl Memory {
     {
         let start = ptr.offset.saturating_sub(self.pointer_size - 1);
         let end = start + size;
-        Ok(try!(self.get(ptr.alloc_id)).relocations.range(Included(&start), Excluded(&end)))
+        Ok(self.get(ptr.alloc_id)?.relocations.range(Included(&start), Excluded(&end)))
     }
 
     fn clear_relocations(&mut self, ptr: Pointer, size: usize) -> EvalResult<()> {
         // Find all relocations overlapping the given range.
-        let keys: Vec<_> = try!(self.relocations(ptr, size)).map(|(&k, _)| k).collect();
+        let keys: Vec<_> = self.relocations(ptr, size)?.map(|(&k, _)| k).collect();
         if keys.is_empty() { return Ok(()); }
 
         // Find the start and end of the given range and its outermost relocations.
@@ -366,7 +366,7 @@ impl Memory {
         let first = *keys.first().unwrap();
         let last = *keys.last().unwrap() + self.pointer_size;
 
-        let alloc = try!(self.get_mut(ptr.alloc_id));
+        let alloc = self.get_mut(ptr.alloc_id)?;
 
         // Mark parts of the outermost relocations as undefined if they partially fall outside the
         // given range.
@@ -380,8 +380,8 @@ impl Memory {
     }
 
     fn check_relocation_edges(&self, ptr: Pointer, size: usize) -> EvalResult<()> {
-        let overlapping_start = try!(self.relocations(ptr, 0)).count();
-        let overlapping_end = try!(self.relocations(ptr.offset(size as isize), 0)).count();
+        let overlapping_start = self.relocations(ptr, 0)?.count();
+        let overlapping_end = self.relocations(ptr.offset(size as isize), 0)?.count();
         if overlapping_start + overlapping_end != 0 {
             return Err(EvalError::ReadPointerAsBytes);
         }
@@ -389,13 +389,13 @@ impl Memory {
     }
 
     fn copy_relocations(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
-        let relocations: Vec<_> = try!(self.relocations(src, size))
+        let relocations: Vec<_> = self.relocations(src, size)?
             .map(|(&offset, &alloc_id)| {
                 // Update relocation offsets for the new positions in the destination allocation.
                 (offset + dest.offset - src.offset, alloc_id)
             })
             .collect();
-        try!(self.get_mut(dest.alloc_id)).relocations.extend(relocations);
+        self.get_mut(dest.alloc_id)?.relocations.extend(relocations);
         Ok(())
     }
 
@@ -408,17 +408,17 @@ impl Memory {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         let mut v = Vec::with_capacity(size);
         for i in 0..size {
-            let defined = try!(self.get(src.alloc_id)).undef_mask.get(src.offset + i);
+            let defined = self.get(src.alloc_id)?.undef_mask.get(src.offset + i);
             v.push(defined);
         }
         for (i, defined) in v.into_iter().enumerate() {
-            try!(self.get_mut(dest.alloc_id)).undef_mask.set(dest.offset + i, defined);
+            self.get_mut(dest.alloc_id)?.undef_mask.set(dest.offset + i, defined);
         }
         Ok(())
     }
 
     fn check_defined(&self, ptr: Pointer, size: usize) -> EvalResult<()> {
-        let alloc = try!(self.get(ptr.alloc_id));
+        let alloc = self.get(ptr.alloc_id)?;
         if !alloc.undef_mask.is_range_defined(ptr.offset, ptr.offset + size) {
             return Err(EvalError::ReadUndefBytes);
         }
@@ -428,7 +428,7 @@ impl Memory {
     pub fn mark_definedness(&mut self, ptr: Pointer, size: usize, new_state: bool)
         -> EvalResult<()>
     {
-        let mut alloc = try!(self.get_mut(ptr.alloc_id));
+        let mut alloc = self.get_mut(ptr.alloc_id)?;
         alloc.undef_mask.set_range(ptr.offset, ptr.offset + size, new_state);
         Ok(())
     }

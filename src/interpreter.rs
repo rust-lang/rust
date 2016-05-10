@@ -186,14 +186,14 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     self.log(0, || print!("{:?}", stmt));
                     let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
                     let result = self.eval_assignment(lvalue, rvalue);
-                    try!(self.maybe_report(stmt.span, result));
+                    self.maybe_report(stmt.span, result)?;
                 }
 
                 let terminator = block_data.terminator();
                 self.log(0, || print!("{:?}", terminator.kind));
 
                 let result = self.eval_terminator(terminator);
-                match try!(self.maybe_report(terminator.span, result)) {
+                match self.maybe_report(terminator.span, result)? {
                     TerminatorTarget::Block(block) => current_block = block,
                     TerminatorTarget::Return => {
                         self.pop_stack_frame();
@@ -221,7 +221,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
         let substs = nested_fecx.substs();
         nested_fecx.push_stack_frame(CachedMir::Ref(mir), substs, return_ptr);
-        try!(nested_fecx.run());
+        nested_fecx.run()?;
         Ok(return_ptr)
     }
 
@@ -267,25 +267,25 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             Goto { target } => TerminatorTarget::Block(target),
 
             If { ref cond, targets: (then_target, else_target) } => {
-                let cond_ptr = try!(self.eval_operand(cond));
-                let cond_val = try!(self.memory.read_bool(cond_ptr));
+                let cond_ptr = self.eval_operand(cond)?;
+                let cond_val = self.memory.read_bool(cond_ptr)?;
                 TerminatorTarget::Block(if cond_val { then_target } else { else_target })
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
-                let discr_ptr = try!(self.eval_lvalue(discr)).to_ptr();
+                let discr_ptr = self.eval_lvalue(discr)?.to_ptr();
                 let discr_size = self
                     .type_layout(self.lvalue_ty(discr))
                     .size(&self.tcx.data_layout)
                     .bytes() as usize;
-                let discr_val = try!(self.memory.read_uint(discr_ptr, discr_size));
+                let discr_val = self.memory.read_uint(discr_ptr, discr_size)?;
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, val_const) in values.iter().enumerate() {
-                    let ptr = try!(self.const_to_ptr(val_const));
-                    let val = try!(self.memory.read_uint(ptr, discr_size));
+                    let ptr = self.const_to_ptr(val_const)?;
+                    let val = self.memory.read_uint(ptr, discr_size)?;
                     if discr_val == val {
                         target_block = targets[index];
                         break;
@@ -296,13 +296,13 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             }
 
             Switch { ref discr, ref targets, adt_def } => {
-                let adt_ptr = try!(self.eval_lvalue(discr)).to_ptr();
+                let adt_ptr = self.eval_lvalue(discr)?.to_ptr();
                 let adt_layout = self.type_layout(self.lvalue_ty(discr));
 
                  match *adt_layout {
                     Layout::General { discr, .. } | Layout::CEnum { discr, .. } => {
                         let discr_size = discr.size().bytes();
-                        let discr_val = try!(self.memory.read_uint(adt_ptr, discr_size as usize));
+                        let discr_val = self.memory.read_uint(adt_ptr, discr_size as usize)?;
 
                         let matching = adt_def.variants.iter()
                             .position(|v| discr_val == v.disr_val.to_u64_unchecked());
@@ -333,7 +333,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 let mut return_ptr = None;
                 if let Some((ref lv, target)) = *destination {
                     self.frame_mut().next_block = target;
-                    return_ptr = Some(try!(self.eval_lvalue(lv)).to_ptr());
+                    return_ptr = Some(self.eval_lvalue(lv)?.to_ptr());
                 }
 
                 let func_ty = self.operand_ty(func);
@@ -346,15 +346,14 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                 match fn_ty.sig.0.output {
                                     ty::FnConverging(ty) => {
                                         let size = self.type_size(ty);
-                                        try!(self.call_intrinsic(&name, substs, args,
-                                            return_ptr.unwrap(), size))
+                                        self.call_intrinsic(&name, substs, args,
+                                            return_ptr.unwrap(), size)?
                                     }
                                     ty::FnDiverging => unimplemented!(),
                                 }
                             }
 
-                            Abi::C =>
-                                try!(self.call_c_abi(def_id, args, return_ptr.unwrap())),
+                            Abi::C => self.call_c_abi(def_id, args, return_ptr.unwrap())?,
 
                             Abi::Rust | Abi::RustCall => {
                                 // TODO(tsion): Adjust the first argument when calling a Fn or
@@ -369,7 +368,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
                                 let mut arg_srcs = Vec::new();
                                 for arg in args {
-                                    let src = try!(self.eval_operand(arg));
+                                    let src = self.eval_operand(arg)?;
                                     let src_ty = self.operand_ty(arg);
                                     arg_srcs.push((src, src_ty));
                                 }
@@ -377,7 +376,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                 if fn_ty.abi == Abi::RustCall && !args.is_empty() {
                                     arg_srcs.pop();
                                     let last_arg = args.last().unwrap();
-                                    let last = try!(self.eval_operand(last_arg));
+                                    let last = self.eval_operand(last_arg)?;
                                     let last_ty = self.operand_ty(last_arg);
                                     let last_layout = self.type_layout(last_ty);
                                     match (&last_ty.sty, last_layout) {
@@ -401,7 +400,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
                                 for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
                                     let dest = self.frame().locals[i];
-                                    try!(self.move_(src, dest, src_ty));
+                                    self.move_(src, dest, src_ty)?;
                                 }
 
                                 TerminatorTarget::Call
@@ -416,9 +415,9 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             }
 
             Drop { ref value, target, .. } => {
-                let ptr = try!(self.eval_lvalue(value)).to_ptr();
+                let ptr = self.eval_lvalue(value)?.to_ptr();
                 let ty = self.lvalue_ty(value);
-                try!(self.drop(ptr, ty));
+                self.drop(ptr, ty)?;
                 TerminatorTarget::Block(target)
             }
 
@@ -441,13 +440,13 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             ty::TyBox(contents_ty) => {
                 match self.memory.read_ptr(ptr) {
                     Ok(contents_ptr) => {
-                        try!(self.drop(contents_ptr, contents_ty));
+                        self.drop(contents_ptr, contents_ty)?;
                         self.log(1, || print!("deallocating box"));
-                        try!(self.memory.deallocate(contents_ptr));
+                        self.memory.deallocate(contents_ptr)?;
                     }
                     Err(EvalError::ReadBytesAsPointer) => {
                         let size = self.memory.pointer_size;
-                        let possible_drop_fill = try!(self.memory.read_bytes(ptr, size));
+                        let possible_drop_fill = self.memory.read_bytes(ptr, size)?;
                         if possible_drop_fill.iter().all(|&b| b == mem::POST_DROP_U8) {
                             return Ok(());
                         } else {
@@ -465,7 +464,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         // Filling drop.
         // FIXME(tsion): Trait objects (with no static size) probably get filled, too.
         let size = self.type_size(ty);
-        try!(self.memory.drop_fill(ptr, size));
+        self.memory.drop_fill(ptr, size)?;
 
         Ok(())
     }
@@ -481,7 +480,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         let args_res: EvalResult<Vec<Pointer>> = args.iter()
             .map(|arg| self.eval_operand(arg))
             .collect();
-        let args = try!(args_res);
+        let args = args_res?;
 
         match name {
             "assume" => {}
@@ -489,71 +488,71 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             "copy_nonoverlapping" => {
                 let elem_ty = *substs.types.get(subst::FnSpace, 0);
                 let elem_size = self.type_size(elem_ty);
-                let src = try!(self.memory.read_ptr(args[0]));
-                let dest = try!(self.memory.read_ptr(args[1]));
-                let count = try!(self.memory.read_isize(args[2]));
-                try!(self.memory.copy(src, dest, count as usize * elem_size));
+                let src = self.memory.read_ptr(args[0])?;
+                let dest = self.memory.read_ptr(args[1])?;
+                let count = self.memory.read_isize(args[2])?;
+                self.memory.copy(src, dest, count as usize * elem_size)?;
             }
 
             "forget" => {
                 let arg_ty = *substs.types.get(subst::FnSpace, 0);
                 let arg_size = self.type_size(arg_ty);
-                try!(self.memory.drop_fill(args[0], arg_size));
+                self.memory.drop_fill(args[0], arg_size)?;
             }
 
-            "init" => try!(self.memory.write_repeat(dest, 0, dest_size)),
+            "init" => self.memory.write_repeat(dest, 0, dest_size)?,
 
             "min_align_of" => {
-                try!(self.memory.write_int(dest, 1, dest_size));
+                self.memory.write_int(dest, 1, dest_size)?;
             }
 
             "move_val_init" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let ptr = try!(self.memory.read_ptr(args[0]));
-                try!(self.move_(args[1], ptr, ty));
+                let ptr = self.memory.read_ptr(args[0])?;
+                self.move_(args[1], ptr, ty)?;
             }
 
             // FIXME(tsion): Handle different integer types correctly.
             "add_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty);
-                let left = try!(self.memory.read_int(args[0], size));
-                let right = try!(self.memory.read_int(args[1], size));
+                let left = self.memory.read_int(args[0], size)?;
+                let right = self.memory.read_int(args[1], size)?;
                 let (n, overflowed) = unsafe {
                     ::std::intrinsics::add_with_overflow::<i64>(left, right)
                 };
-                try!(self.memory.write_int(dest, n, size));
-                try!(self.memory.write_bool(dest.offset(size as isize), overflowed));
+                self.memory.write_int(dest, n, size)?;
+                self.memory.write_bool(dest.offset(size as isize), overflowed)?;
             }
 
             // FIXME(tsion): Handle different integer types correctly.
             "mul_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty);
-                let left = try!(self.memory.read_int(args[0], size));
-                let right = try!(self.memory.read_int(args[1], size));
+                let left = self.memory.read_int(args[0], size)?;
+                let right = self.memory.read_int(args[1], size)?;
                 let (n, overflowed) = unsafe {
                     ::std::intrinsics::mul_with_overflow::<i64>(left, right)
                 };
-                try!(self.memory.write_int(dest, n, size));
-                try!(self.memory.write_bool(dest.offset(size as isize), overflowed));
+                self.memory.write_int(dest, n, size)?;
+                self.memory.write_bool(dest.offset(size as isize), overflowed)?;
             }
 
             "offset" => {
                 let pointee_ty = *substs.types.get(subst::FnSpace, 0);
                 let pointee_size = self.type_size(pointee_ty) as isize;
                 let ptr_arg = args[0];
-                let offset = try!(self.memory.read_isize(args[1]));
+                let offset = self.memory.read_isize(args[1])?;
 
                 match self.memory.read_ptr(ptr_arg) {
                     Ok(ptr) => {
                         let result_ptr = ptr.offset(offset as isize * pointee_size);
-                        try!(self.memory.write_ptr(dest, result_ptr));
+                        self.memory.write_ptr(dest, result_ptr)?;
                     }
                     Err(EvalError::ReadBytesAsPointer) => {
-                        let addr = try!(self.memory.read_isize(ptr_arg));
+                        let addr = self.memory.read_isize(ptr_arg)?;
                         let result_addr = addr + offset * pointee_size as i64;
-                        try!(self.memory.write_isize(dest, result_addr));
+                        self.memory.write_isize(dest, result_addr)?;
                     }
                     Err(e) => return Err(e),
                 }
@@ -563,23 +562,23 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             "overflowing_sub" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty);
-                let left = try!(self.memory.read_int(args[0], size));
-                let right = try!(self.memory.read_int(args[1], size));
+                let left = self.memory.read_int(args[0], size)?;
+                let right = self.memory.read_int(args[1], size)?;
                 let n = left.wrapping_sub(right);
-                try!(self.memory.write_int(dest, n, size));
+                self.memory.write_int(dest, n, size)?;
             }
 
             "size_of" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty) as u64;
-                try!(self.memory.write_uint(dest, size, dest_size));
+                self.memory.write_uint(dest, size, dest_size)?;
             }
 
             "transmute" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                try!(self.move_(args[0], dest, ty));
+                self.move_(args[0], dest, ty)?;
             }
-            "uninit" => try!(self.memory.mark_definedness(dest, dest_size, false)),
+            "uninit" => self.memory.mark_definedness(dest, dest_size, false)?,
 
             name => panic!("can't handle intrinsic: {}", name),
         }
@@ -606,20 +605,20 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         let args_res: EvalResult<Vec<Pointer>> = args.iter()
             .map(|arg| self.eval_operand(arg))
             .collect();
-        let args = try!(args_res);
+        let args = args_res?;
 
         match &link_name[..] {
             "__rust_allocate" => {
-                let size = try!(self.memory.read_usize(args[0]));
+                let size = self.memory.read_usize(args[0])?;
                 let ptr = self.memory.allocate(size as usize);
-                try!(self.memory.write_ptr(dest, ptr));
+                self.memory.write_ptr(dest, ptr)?;
             }
 
             "__rust_reallocate" => {
-                let ptr = try!(self.memory.read_ptr(args[0]));
-                let size = try!(self.memory.read_usize(args[2]));
-                try!(self.memory.reallocate(ptr, size as usize));
-                try!(self.memory.write_ptr(dest, ptr));
+                let ptr = self.memory.read_ptr(args[0])?;
+                let size = self.memory.read_usize(args[2])?;
+                self.memory.reallocate(ptr, size as usize)?;
+                self.memory.write_ptr(dest, ptr)?;
             }
 
             _ => panic!("can't call C ABI function: {}", link_name),
@@ -638,10 +637,10 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         operands: &[mir::Operand<'tcx>],
     ) -> EvalResult<()> {
         for (offset, operand) in offsets.into_iter().zip(operands) {
-            let src = try!(self.eval_operand(operand));
+            let src = self.eval_operand(operand)?;
             let src_ty = self.operand_ty(operand);
             let field_dest = dest.offset(offset as isize);
-            try!(self.move_(src, field_dest, src_ty));
+            self.move_(src, field_dest, src_ty)?;
         }
         Ok(())
     }
@@ -649,35 +648,35 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     fn eval_assignment(&mut self, lvalue: &mir::Lvalue<'tcx>, rvalue: &mir::Rvalue<'tcx>)
         -> EvalResult<()>
     {
-        let dest = try!(self.eval_lvalue(lvalue)).to_ptr();
+        let dest = self.eval_lvalue(lvalue)?.to_ptr();
         let dest_ty = self.lvalue_ty(lvalue);
         let dest_layout = self.type_layout(dest_ty);
 
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
-                let src = try!(self.eval_operand(operand));
-                try!(self.move_(src, dest, dest_ty));
+                let src = self.eval_operand(operand)?;
+                self.move_(src, dest, dest_ty)?;
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
-                let left_ptr = try!(self.eval_operand(left));
+                let left_ptr = self.eval_operand(left)?;
                 let left_ty = self.operand_ty(left);
-                let left_val = try!(self.read_primval(left_ptr, left_ty));
+                let left_val = self.read_primval(left_ptr, left_ty)?;
 
-                let right_ptr = try!(self.eval_operand(right));
+                let right_ptr = self.eval_operand(right)?;
                 let right_ty = self.operand_ty(right);
-                let right_val = try!(self.read_primval(right_ptr, right_ty));
+                let right_val = self.read_primval(right_ptr, right_ty)?;
 
-                let val = try!(primval::binary_op(bin_op, left_val, right_val));
-                try!(self.memory.write_primval(dest, val));
+                let val = primval::binary_op(bin_op, left_val, right_val)?;
+                self.memory.write_primval(dest, val)?;
             }
 
             UnaryOp(un_op, ref operand) => {
-                let ptr = try!(self.eval_operand(operand));
+                let ptr = self.eval_operand(operand)?;
                 let ty = self.operand_ty(operand);
-                let val = try!(self.read_primval(ptr, ty));
-                try!(self.memory.write_primval(dest, primval::unary_op(un_op, val)));
+                let val = self.read_primval(ptr, ty)?;
+                self.memory.write_primval(dest, primval::unary_op(un_op, val))?;
             }
 
             Aggregate(ref kind, ref operands) => {
@@ -686,7 +685,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     Univariant { ref variant, .. } => {
                         let offsets = iter::once(0)
                             .chain(variant.offset_after_field.iter().map(|s| s.bytes()));
-                        try!(self.assign_fields(dest, offsets, operands));
+                        self.assign_fields(dest, offsets, operands)?;
                     }
 
                     Array { .. } => {
@@ -696,18 +695,18 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                         kind, dest_ty),
                         };
                         let offsets = (0..).map(|i| i * elem_size);
-                        try!(self.assign_fields(dest, offsets, operands));
+                        self.assign_fields(dest, offsets, operands)?;
                     }
 
                     General { discr, ref variants, .. } => {
                         if let mir::AggregateKind::Adt(adt_def, variant, _) = *kind {
                             let discr_val = adt_def.variants[variant].disr_val.to_u64_unchecked();
                             let discr_size = discr.size().bytes() as usize;
-                            try!(self.memory.write_uint(dest, discr_val, discr_size));
+                            self.memory.write_uint(dest, discr_val, discr_size)?;
 
                             let offsets = variants[variant].offset_after_field.iter()
                                 .map(|s| s.bytes());
-                            try!(self.assign_fields(dest, offsets, operands));
+                            self.assign_fields(dest, offsets, operands)?;
                         } else {
                             panic!("tried to assign {:?} to Layout::General", kind);
                         }
@@ -718,12 +717,12 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                             if nndiscr == variant as u64 {
                                 assert_eq!(operands.len(), 1);
                                 let operand = &operands[0];
-                                let src = try!(self.eval_operand(operand));
+                                let src = self.eval_operand(operand)?;
                                 let src_ty = self.operand_ty(operand);
-                                try!(self.move_(src, dest, src_ty));
+                                self.move_(src, dest, src_ty)?;
                             } else {
                                 assert_eq!(operands.len(), 0);
-                                try!(self.memory.write_isize(dest, 0));
+                                self.memory.write_isize(dest, 0)?;
                             }
                         } else {
                             panic!("tried to assign {:?} to Layout::RawNullablePointer", kind);
@@ -737,9 +736,9 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                             let size = discr.size().bytes() as usize;
 
                             if signed {
-                                try!(self.memory.write_int(dest, val as i64, size));
+                                self.memory.write_int(dest, val as i64, size)?;
                             } else {
-                                try!(self.memory.write_uint(dest, val, size));
+                                self.memory.write_uint(dest, val, size)?;
                             }
                         } else {
                             panic!("tried to assign {:?} to Layout::CEnum", kind);
@@ -757,15 +756,15 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     _ => panic!("tried to assign array-repeat to non-array type {:?}", dest_ty),
                 };
 
-                let src = try!(self.eval_operand(operand));
+                let src = self.eval_operand(operand)?;
                 for i in 0..length {
                     let elem_dest = dest.offset((i * elem_size) as isize);
-                    try!(self.memory.copy(src, elem_dest, elem_size));
+                    self.memory.copy(src, elem_dest, elem_size)?;
                 }
             }
 
             Len(ref lvalue) => {
-                let src = try!(self.eval_lvalue(lvalue));
+                let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
                 let len = match ty.sty {
                     ty::TyArray(_, n) => n as u64,
@@ -776,17 +775,17 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     },
                     _ => panic!("Rvalue::Len expected array or slice, got {:?}", ty),
                 };
-                try!(self.memory.write_usize(dest, len));
+                self.memory.write_usize(dest, len)?;
             }
 
             Ref(_, _, ref lvalue) => {
-                let lv = try!(self.eval_lvalue(lvalue));
-                try!(self.memory.write_ptr(dest, lv.ptr));
+                let lv = self.eval_lvalue(lvalue)?;
+                self.memory.write_ptr(dest, lv.ptr)?;
                 match lv.extra {
                     LvalueExtra::None => {},
                     LvalueExtra::Length(len) => {
                         let len_ptr = dest.offset(self.memory.pointer_size as isize);
-                        try!(self.memory.write_usize(len_ptr, len));
+                        self.memory.write_usize(len_ptr, len)?;
                     }
                     LvalueExtra::DowncastVariant(..) =>
                         panic!("attempted to take a reference to an enum downcast lvalue"),
@@ -796,24 +795,24 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             Box(ty) => {
                 let size = self.type_size(ty);
                 let ptr = self.memory.allocate(size);
-                try!(self.memory.write_ptr(dest, ptr));
+                self.memory.write_ptr(dest, ptr)?;
             }
 
             Cast(kind, ref operand, dest_ty) => {
-                let src = try!(self.eval_operand(operand));
+                let src = self.eval_operand(operand)?;
                 let src_ty = self.operand_ty(operand);
 
                 use rustc::mir::repr::CastKind::*;
                 match kind {
                     Unsize => {
-                        try!(self.move_(src, dest, src_ty));
+                        self.move_(src, dest, src_ty)?;
                         let src_pointee_ty = pointee_type(src_ty).unwrap();
                         let dest_pointee_ty = pointee_type(dest_ty).unwrap();
 
                         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                                 let len_ptr = dest.offset(self.memory.pointer_size as isize);
-                                try!(self.memory.write_usize(len_ptr, length as u64));
+                                self.memory.write_usize(len_ptr, length as u64)?;
                             }
 
                             _ => panic!("can't handle cast: {:?}", rvalue),
@@ -823,7 +822,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     Misc => {
                         // FIXME(tsion): Wrong for almost everything.
                         let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
-                        try!(self.memory.copy(src, dest, size));
+                        self.memory.copy(src, dest, size)?;
                     }
 
                     _ => panic!("can't handle cast: {:?}", rvalue),
@@ -840,12 +839,11 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
         use rustc::mir::repr::Operand::*;
         match *op {
-            Consume(ref lvalue) =>
-                Ok(try!(self.eval_lvalue(lvalue)).to_ptr()),
+            Consume(ref lvalue) => Ok(self.eval_lvalue(lvalue)?.to_ptr()),
             Constant(mir::Constant { ref literal, .. }) => {
                 use rustc::mir::repr::Literal::*;
                 match *literal {
-                    Value { ref value } => Ok(try!(self.const_to_ptr(value))),
+                    Value { ref value } => Ok(self.const_to_ptr(value)?),
                     Item { .. } => unimplemented!(),
                     Promoted { index } => {
                         let current_mir = self.mir();
@@ -869,7 +867,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             Static(_def_id) => unimplemented!(),
 
             Projection(ref proj) => {
-                let base = try!(self.eval_lvalue(&proj.base));
+                let base = self.eval_lvalue(&proj.base)?;
                 let base_ty = self.lvalue_ty(&proj.base);
                 let base_layout = self.type_layout(base_ty);
 
@@ -909,11 +907,11 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
                     Deref => {
                         let pointee_ty = pointee_type(base_ty).expect("Deref of non-pointer");
-                        let ptr = try!(self.memory.read_ptr(base.ptr));
+                        let ptr = self.memory.read_ptr(base.ptr)?;
                         let extra = match pointee_ty.sty {
                             ty::TySlice(_) | ty::TyStr => {
                                 let len_ptr = base.ptr.offset(self.memory.pointer_size as isize);
-                                let len = try!(self.memory.read_usize(len_ptr));
+                                let len = self.memory.read_usize(len_ptr)?;
                                 LvalueExtra::Length(len)
                             }
                             ty::TyTrait(_) => unimplemented!(),
@@ -928,8 +926,8 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                             ty::TySlice(elem_ty) => self.type_size(elem_ty),
                             _ => panic!("indexing expected an array or slice, got {:?}", base_ty),
                         };
-                        let n_ptr = try!(self.eval_operand(operand));
-                        let n = try!(self.memory.read_usize(n_ptr));
+                        let n_ptr = self.eval_operand(operand)?;
+                        let n = self.memory.read_usize(n_ptr)?;
                         base.ptr.offset(n as isize * elem_size as isize)
                     }
 
@@ -949,29 +947,29 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             Integral(int) => {
                 // TODO(tsion): Check int constant type.
                 let ptr = self.memory.allocate(8);
-                try!(self.memory.write_uint(ptr, int.to_u64_unchecked(), 8));
+                self.memory.write_uint(ptr, int.to_u64_unchecked(), 8)?;
                 Ok(ptr)
             }
             Str(ref s) => {
                 let psize = self.memory.pointer_size;
                 let static_ptr = self.memory.allocate(s.len());
                 let ptr = self.memory.allocate(psize * 2);
-                try!(self.memory.write_bytes(static_ptr, s.as_bytes()));
-                try!(self.memory.write_ptr(ptr, static_ptr));
-                try!(self.memory.write_usize(ptr.offset(psize as isize), s.len() as u64));
+                self.memory.write_bytes(static_ptr, s.as_bytes())?;
+                self.memory.write_ptr(ptr, static_ptr)?;
+                self.memory.write_usize(ptr.offset(psize as isize), s.len() as u64)?;
                 Ok(ptr)
             }
             ByteStr(ref bs) => {
                 let psize = self.memory.pointer_size;
                 let static_ptr = self.memory.allocate(bs.len());
                 let ptr = self.memory.allocate(psize);
-                try!(self.memory.write_bytes(static_ptr, bs));
-                try!(self.memory.write_ptr(ptr, static_ptr));
+                self.memory.write_bytes(static_ptr, bs)?;
+                self.memory.write_ptr(ptr, static_ptr)?;
                 Ok(ptr)
             }
             Bool(b) => {
                 let ptr = self.memory.allocate(1);
-                try!(self.memory.write_bool(ptr, b));
+                self.memory.write_bool(ptr, b)?;
                 Ok(ptr)
             }
             Char(_c)          => unimplemented!(),
@@ -1003,9 +1001,9 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     fn move_(&mut self, src: Pointer, dest: Pointer, ty: ty::Ty<'tcx>) -> EvalResult<()> {
         let size = self.type_size(ty);
-        try!(self.memory.copy(src, dest, size));
+        self.memory.copy(src, dest, size)?;
         if self.type_needs_drop(ty) {
-            try!(self.memory.drop_fill(src, size));
+            self.memory.drop_fill(src, size)?;
         }
         Ok(())
     }
@@ -1031,19 +1029,19 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     pub fn read_primval(&mut self, ptr: Pointer, ty: ty::Ty<'tcx>) -> EvalResult<PrimVal> {
         use syntax::ast::{IntTy, UintTy};
         let val = match ty.sty {
-            ty::TyBool              => PrimVal::Bool(try!(self.memory.read_bool(ptr))),
-            ty::TyInt(IntTy::I8)    => PrimVal::I8(try!(self.memory.read_int(ptr, 1)) as i8),
-            ty::TyInt(IntTy::I16)   => PrimVal::I16(try!(self.memory.read_int(ptr, 2)) as i16),
-            ty::TyInt(IntTy::I32)   => PrimVal::I32(try!(self.memory.read_int(ptr, 4)) as i32),
-            ty::TyInt(IntTy::I64)   => PrimVal::I64(try!(self.memory.read_int(ptr, 8)) as i64),
-            ty::TyUint(UintTy::U8)  => PrimVal::U8(try!(self.memory.read_uint(ptr, 1)) as u8),
-            ty::TyUint(UintTy::U16) => PrimVal::U16(try!(self.memory.read_uint(ptr, 2)) as u16),
-            ty::TyUint(UintTy::U32) => PrimVal::U32(try!(self.memory.read_uint(ptr, 4)) as u32),
-            ty::TyUint(UintTy::U64) => PrimVal::U64(try!(self.memory.read_uint(ptr, 8)) as u64),
+            ty::TyBool              => PrimVal::Bool(self.memory.read_bool(ptr)?),
+            ty::TyInt(IntTy::I8)    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
+            ty::TyInt(IntTy::I16)   => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
+            ty::TyInt(IntTy::I32)   => PrimVal::I32(self.memory.read_int(ptr, 4)? as i32),
+            ty::TyInt(IntTy::I64)   => PrimVal::I64(self.memory.read_int(ptr, 8)? as i64),
+            ty::TyUint(UintTy::U8)  => PrimVal::U8(self.memory.read_uint(ptr, 1)? as u8),
+            ty::TyUint(UintTy::U16) => PrimVal::U16(self.memory.read_uint(ptr, 2)? as u16),
+            ty::TyUint(UintTy::U32) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
+            ty::TyUint(UintTy::U64) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
 
             // TODO(tsion): Pick the PrimVal dynamically.
-            ty::TyInt(IntTy::Is)   => PrimVal::I64(try!(self.memory.read_isize(ptr))),
-            ty::TyUint(UintTy::Us) => PrimVal::U64(try!(self.memory.read_usize(ptr))),
+            ty::TyInt(IntTy::Is)   => PrimVal::I64(self.memory.read_isize(ptr)?),
+            ty::TyUint(UintTy::Us) => PrimVal::U64(self.memory.read_usize(ptr)?),
 
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
@@ -1051,8 +1049,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     match self.memory.read_ptr(ptr) {
                         Ok(p) => PrimVal::AbstractPtr(p),
                         Err(EvalError::ReadBytesAsPointer) => {
-                            let n = try!(self.memory.read_usize(ptr));
-                            PrimVal::IntegerPtr(n)
+                            PrimVal::IntegerPtr(self.memory.read_usize(ptr)?)
                         }
                         Err(e) => return Err(e),
                     }
