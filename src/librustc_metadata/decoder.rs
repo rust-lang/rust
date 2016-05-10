@@ -613,14 +613,6 @@ pub fn get_symbol(cdata: Cmd, id: DefIndex) -> String {
     return item_symbol(cdata.lookup_item(id));
 }
 
-/// If you have a crate_metadata, call get_symbol instead
-pub fn get_symbol_from_buf(data: &[u8], id: DefIndex) -> String {
-    let index = load_index(data);
-    let pos = index.lookup_item(data, id).unwrap();
-    let doc = reader::doc_at(data, pos as usize).unwrap().doc;
-    item_symbol(doc)
-}
-
 /// Iterates over the language items in the given crate.
 pub fn each_lang_item<F>(cdata: Cmd, mut f: F) -> bool where
     F: FnMut(DefIndex, usize) -> bool,
