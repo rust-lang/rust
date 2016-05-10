@@ -37,7 +37,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc::hir::lowering::{lower_crate, LoweringContext};
+use rustc::hir::lowering::LoweringContext;
 use rustc_passes::{no_asm, loops, consts, rvalues, static_recursion};
 use rustc_const_eval::check_match;
 use super::Compilation;
@@ -787,8 +787,8 @@ pub fn lower_and_resolve<'a>(sess: &Session,
 
         // Lower ast -> hir.
         let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
-            let mut lcx = LoweringContext::new(sess, Some(krate), &mut resolver);
-            hir_map::Forest::new(lower_crate(&mut lcx, krate), dep_graph)
+            let krate = LoweringContext::new(sess, Some(krate), &mut resolver).lower_crate(krate);
+            hir_map::Forest::new(krate, dep_graph)
         });
 
         (ty::CrateAnalysis {
