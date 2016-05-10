@@ -16,6 +16,12 @@ keywords = ["clippy", "lint", "plugin"]
 [lib]
 name = "clippy"
 plugin = true
+test = false
+
+[[bin]]
+name = "cargo-clippy"
+path = "src/lib.rs"
+test = false
 
 [dependencies]
 regex-syntax = "0.3.0"

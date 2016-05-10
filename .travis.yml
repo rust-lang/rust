@@ -18,8 +18,9 @@ script:
  - remark -f README.md > /dev/null
  - python util/update_lints.py -c
  - cargo build --features debugging
- - rm -rf target/ Cargo.lock
  - cargo test --features debugging
+ - SYSROOT=~/rust cargo install
+ - cargo clippy --lib -- -D clippy
 
 after_success:
 # only test regex_macros if it compiles
