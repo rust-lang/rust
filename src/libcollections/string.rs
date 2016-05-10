@@ -1559,6 +1559,18 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
+#[unstable(feature = "collections",
+           reason = "recent addition, needs more experience")]
+impl<'a> Add<char> for String {
+    type Output = String;
+
+    #[inline]
+    fn add(mut self, other: char) -> String {
+        self.push(other);
+        self
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::Range<usize>> for String {
     type Output = str;
