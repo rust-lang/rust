@@ -346,14 +346,22 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                 match fn_ty.sig.0.output {
                                     ty::FnConverging(ty) => {
                                         let size = self.type_size(ty);
-                                        self.call_intrinsic(&name, substs, args,
-                                            return_ptr.unwrap(), size)?
+                                        let ret = return_ptr.unwrap();
+                                        self.call_intrinsic(&name, substs, args, ret, size)?
                                     }
                                     ty::FnDiverging => unimplemented!(),
                                 }
                             }
 
-                            Abi::C => self.call_c_abi(def_id, args, return_ptr.unwrap())?,
+                            Abi::C => {
+                                match fn_ty.sig.0.output {
+                                    ty::FnConverging(ty) => {
+                                        let size = self.type_size(ty);
+                                        self.call_c_abi(def_id, args, return_ptr.unwrap(), size)?
+                                    }
+                                    ty::FnDiverging => unimplemented!(),
+                                }
+                            }
 
                             Abi::Rust | Abi::RustCall => {
                                 // TODO(solson): Adjust the first argument when calling a Fn or
@@ -613,7 +621,8 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         &mut self,
         def_id: DefId,
         args: &[mir::Operand<'tcx>],
-        dest: Pointer
+        dest: Pointer,
+        dest_size: usize,
     ) -> EvalResult<TerminatorTarget> {
         let name = self.tcx.item_name(def_id);
         let attrs = self.tcx.get_attrs(def_id);
@@ -639,6 +648,26 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 let size = self.memory.read_usize(args[2])?;
                 self.memory.reallocate(ptr, size as usize)?;
                 self.memory.write_ptr(dest, ptr)?;
+            }
+
+            "memcmp" => {
+                let left = self.memory.read_ptr(args[0])?;
+                let right = self.memory.read_ptr(args[1])?;
+                let n = self.memory.read_usize(args[2])? as usize;
+
+                let result = {
+                    let left_bytes = self.memory.read_bytes(left, n)?;
+                    let right_bytes = self.memory.read_bytes(right, n)?;
+
+                    use std::cmp::Ordering::*;
+                    match left_bytes.cmp(right_bytes) {
+                        Less => -1,
+                        Equal => 0,
+                        Greater => 1,
+                    }
+                };
+
+                self.memory.write_int(dest, result, dest_size)?;
             }
 
             _ => panic!("can't call C ABI function: {}", link_name),

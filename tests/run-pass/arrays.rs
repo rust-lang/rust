@@ -46,13 +46,11 @@ fn slice_index() -> u8 {
 
 #[miri_run]
 fn main() {
-    // assert_eq!(empty_array(), []);
+    assert_eq!(empty_array(), []);
     assert_eq!(index_unsafe(), 20);
     assert_eq!(index(), 20);
     assert_eq!(slice_index(), 106);
-    /*
     assert_eq!(big_array(), [5, 4, 3, 2, 1]);
     assert_eq!(array_array(), [[5, 4], [3, 2], [1, 0]]);
     assert_eq!(array_repeat(), [42; 8]);
-    */
 }

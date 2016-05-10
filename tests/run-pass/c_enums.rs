@@ -33,7 +33,7 @@ fn unsafe_match() -> bool {
 
 #[miri_run]
 fn main() {
-    // assert_eq!(foo(), [42, 43, 100]);
-    // assert_eq!(signed(), [-42, -41, 100]);
+    assert_eq!(foo(), [42, 43, 100]);
+    assert_eq!(signed(), [-42, -41, 100]);
     assert!(unsafe_match());
 }
