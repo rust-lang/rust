@@ -153,6 +153,7 @@ pub struct EmitterWriter {
     dst: Destination,
     registry: Option<diagnostics::registry::Registry>,
     cm: Rc<codemap::CodeMap>,
+    errors_are_bugs: bool,
 
     /// Is this the first error emitted thus far? If not, we emit a
     /// `\n` before the top-level errors.
@@ -171,7 +172,14 @@ impl CoreEmitter for EmitterWriter {
                     is_header: bool,
                     show_snippet: bool) {
         match self.emit_message_(rsp, msg, code, lvl, is_header, show_snippet) {
-            Ok(()) => { }
+            Ok(()) => {
+                match lvl {
+                    Level::Fatal | Level::PhaseFatal | Level::Error if self.errors_are_bugs => {
+                        panic!("error with a -Z treat-errors-as-bugs occured")
+                    }
+                    _ => {}
+                }
+            }
             Err(e) => panic!("failed to emit error: {}", e)
         }
     }
@@ -193,6 +201,7 @@ macro_rules! println_maybe_styled {
 
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
+                  errors_are_bugs: bool,
                   registry: Option<diagnostics::registry::Registry>,
                   code_map: Rc<codemap::CodeMap>)
                   -> EmitterWriter {
@@ -201,12 +210,14 @@ impl EmitterWriter {
             let dst = Destination::from_stderr();
             EmitterWriter { dst: dst,
                             registry: registry,
+                            errors_are_bugs: errors_are_bugs,
                             cm: code_map,
                             first: true,
                             old_school: old_school }
         } else {
             EmitterWriter { dst: Raw(Box::new(io::stderr())),
                             registry: registry,
+                            errors_are_bugs: errors_are_bugs,
                             cm: code_map,
                             first: true,
                             old_school: old_school }
@@ -214,12 +225,14 @@ impl EmitterWriter {
     }
 
     pub fn new(dst: Box<Write + Send>,
+               errors_are_bugs: bool,
                registry: Option<diagnostics::registry::Registry>,
                code_map: Rc<codemap::CodeMap>)
                -> EmitterWriter {
         let old_school = check_old_skool();
         EmitterWriter { dst: Raw(dst),
                         registry: registry,
+                        errors_are_bugs: errors_are_bugs,
                         cm: code_map,
                         first: true,
                         old_school: old_school }
@@ -645,7 +658,7 @@ mod test {
     fn test_hilight_suggestion_issue_11715() {
         let data = Arc::new(Mutex::new(Vec::new()));
         let cm = Rc::new(CodeMap::new());
-        let mut ew = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
+        let mut ew = EmitterWriter::new(Box::new(Sink(data.clone())), false, None, cm.clone());
         let content = "abcdefg
         koksi
         line3
@@ -727,7 +740,7 @@ mod test {
     fn test_multispan_highlight() {
         let data = Arc::new(Mutex::new(Vec::new()));
         let cm = Rc::new(CodeMap::new());
-        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
+        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())), false, None, cm.clone());
 
         let inp =       "_____aaaaaa____bbbbbb__cccccdd_";
         let sp1 =       "     ~~~~~~                    ";
@@ -779,7 +792,7 @@ mod test {
     fn test_huge_multispan_highlight() {
         let data = Arc::new(Mutex::new(Vec::new()));
         let cm = Rc::new(CodeMap::new());
-        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
+        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())), false, None, cm.clone());
 
         let inp = "aaaaa\n\
                    aaaaa\n\
