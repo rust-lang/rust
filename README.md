@@ -12,31 +12,37 @@ undergraduate research course at the [University of Saskatchewan][usask].
 ## Download Rust nightly
 
 I currently recommend that you install [multirust][multirust] and then use it to
-install the current rustc nightly version that works with Miri:
+install the current rustc nightly version:
 
 ```sh
-multirust update nightly-2016-05-08
+multirust update nightly
 ```
 
 ## Build
 
 ```sh
-multirust run nightly-2016-05-08 cargo build
+multirust run nightly cargo build
 ```
+
+If Miri fails to build, it's likely because a change in the latest nightly
+compiler broke it. You could try an older nightly with `multirust update
+nightly-<date>` where `<date>` is a few days or weeks ago, e.g. `2016-05-20` for
+May 20th. Otherwise, you could notify me in an issue or on IRC. Or, if you know
+how to fix it, you could send a PR. :simple_smile:
 
 ## Run a test
 
 ```sh
-multirust run nightly-2016-05-08 cargo run -- \
-  --sysroot $HOME/.multirust/toolchains/nightly-2016-05-08 \
+multirust run nightly cargo run -- \
+  --sysroot $HOME/.multirust/toolchains/nightly \
   test/filename.rs
 ```
 
 If you are using [rustup][rustup] (the name of the multirust rewrite in Rust),
 the `sysroot` path will also include your build target (e.g.
-`$HOME/.multirust/toolchains/nightly-2016-05-08-x86_64-apple-darwin`). You can
-see the current toolchain's directory by running `rustup which cargo` (ignoring
-the trailing `/bin/cargo`).
+`$HOME/.multirust/toolchains/nightly-x86_64-apple-darwin`). You can see the
+current toolchain's directory by running `rustup which cargo` (ignoring the
+trailing `/bin/cargo`).
 
 If you installed without using multirust or rustup, you'll need to adjust the
 command to run your cargo and set the `sysroot` to the directory where your
