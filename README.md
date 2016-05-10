@@ -28,7 +28,7 @@ If Miri fails to build, it's likely because a change in the latest nightly
 compiler broke it. You could try an older nightly with `multirust update
 nightly-<date>` where `<date>` is a few days or weeks ago, e.g. `2016-05-20` for
 May 20th. Otherwise, you could notify me in an issue or on IRC. Or, if you know
-how to fix it, you could send a PR. :simple_smile:
+how to fix it, you could send a PR. :smile:
 
 ## Run a test
 
