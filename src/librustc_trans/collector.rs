@@ -202,9 +202,9 @@ use rustc::mir::repr as mir;
 use rustc::mir::visit as mir_visit;
 use rustc::mir::visit::Visitor as MirVisitor;
 
+use syntax::abi::Abi;
 use syntax::codemap::DUMMY_SP;
 use syntax::errors;
-
 use base::custom_coerce_unsize_info;
 use context::SharedCrateContext;
 use common::{fulfill_obligation, normalize_and_test_predicates, type_is_sized};
@@ -602,6 +602,49 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             can_have_local_instance(tcx, def_id)
         }
     }
+
+    // This takes care of the "drop_in_place" intrinsic for which we otherwise
+    // we would not register drop-glues.
+    fn visit_terminator_kind(&mut self,
+                             block: mir::BasicBlock,
+                             kind: &mir::TerminatorKind<'tcx>) {
+        let tcx = self.scx.tcx();
+        match *kind {
+            mir::TerminatorKind::Call {
+                func: mir::Operand::Constant(ref constant),
+                ref args,
+                ..
+            } => {
+                match constant.ty.sty {
+                    ty::TyFnDef(def_id, _, bare_fn_ty)
+                        if is_drop_in_place_intrinsic(tcx, def_id, bare_fn_ty) => {
+                        let operand_ty = self.mir.operand_ty(tcx, &args[0]);
+                        if let ty::TyRawPtr(mt) = operand_ty.sty {
+                            let operand_ty = monomorphize::apply_param_substs(tcx,
+                                                                              self.param_substs,
+                                                                              &mt.ty);
+                            self.output.push(TransItem::DropGlue(DropGlueKind::Ty(operand_ty)));
+                        } else {
+                            bug!("Has the drop_in_place() intrinsic's signature changed?")
+                        }
+                    }
+                    _ => { /* Nothing to do. */ }
+                }
+            }
+            _ => { /* Nothing to do. */ }
+        }
+
+        self.super_terminator_kind(block, kind);
+
+        fn is_drop_in_place_intrinsic<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                def_id: DefId,
+                                                bare_fn_ty: &ty::BareFnTy<'tcx>)
+                                                -> bool {
+            (bare_fn_ty.abi == Abi::RustIntrinsic ||
+             bare_fn_ty.abi == Abi::PlatformIntrinsic) &&
+            tcx.item_name(def_id).as_str() == "drop_in_place"
+        }
+    }
 }
 
 fn can_have_local_instance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -699,7 +742,6 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         ty::TyRef(..)   |
         ty::TyFnDef(..) |
         ty::TyFnPtr(_)  |
-        ty::TySlice(_)  |
         ty::TyTrait(_)  => {
             /* nothing to do */
         }
@@ -725,6 +767,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             }
         }
         ty::TyBox(inner_type)      |
+        ty::TySlice(inner_type)    |
         ty::TyArray(inner_type, _) => {
             let inner_type = glue::get_drop_glue_type(scx.tcx(), inner_type);
             if glue::type_needs_drop(scx.tcx(), inner_type) {
@@ -746,6 +789,8 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             bug!("encountered unexpected type");
         }
     }
+
+
 }
 
 fn do_static_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
@@ -1187,7 +1232,7 @@ pub enum TransItemState {
 }
 
 pub fn collecting_debug_information(scx: &SharedCrateContext) -> bool {
-    return cfg!(debug_assertions) &&
+    return scx.sess().opts.cg.debug_assertions == Some(true) &&
            scx.sess().opts.debugging_opts.print_trans_items.is_some();
 }
 
