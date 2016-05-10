@@ -846,6 +846,8 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     Value { ref value } => Ok(self.const_to_ptr(value)?),
                     Item { .. } => unimplemented!(),
                     Promoted { index } => {
+                        // TODO(tsion): Mark constants and statics as read-only and cache their
+                        // values.
                         let current_mir = self.mir();
                         let mir = &current_mir.promoted[index];
                         self.call_nested(mir).map(Option::unwrap)
@@ -864,7 +866,11 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             Var(i) => self.frame().locals[self.frame().var_offset + i as usize],
             Temp(i) => self.frame().locals[self.frame().temp_offset + i as usize],
 
-            Static(_def_id) => unimplemented!(),
+            Static(def_id) => {
+                // TODO(tsion): Mark constants and statics as read-only and cache their values.
+                let mir = self.load_mir(def_id);
+                self.call_nested(&mir)?.unwrap()
+            }
 
             Projection(ref proj) => {
                 let base = self.eval_lvalue(&proj.base)?;
