@@ -588,14 +588,57 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
     ab.update_symbols();
     ab.build();
 
-    if !all_native_libs.is_empty() {
-        sess.note_without_error("link against the following native artifacts when linking against \
-                                 this static library");
-        sess.note_without_error("the order and any duplication can be significant on some \
-                                 platforms, and so may need to be preserved");
+    report_link_line(sess, all_native_libs);
+}
+
+fn report_link_line(sess: &Session, native_libs: Vec<(NativeLibraryKind, String)>) {
+    if native_libs.is_empty() {
+        return;
     }
 
-    for &(kind, ref lib) in &all_native_libs {
+    // Write out link flags to a file if requested.
+    match sess.opts.output_types.get(&OutputType::LinkFlagsLd) {
+        Some(path) => {
+            let mut ldflags = String::new();
+            for &(kind, ref lib) in &native_libs {
+                let prefix = match kind {
+                    NativeLibraryKind::NativeStatic => "-l",
+                    NativeLibraryKind::NativeUnknown => "-l",
+                    NativeLibraryKind::NativeFramework => "-f ",
+                };
+                ldflags.push_str(&format!(" {}{}", prefix, *lib));
+            }
+            ldflags.push('\n');
+            match *path {
+                Some(ref path) => {
+                    match fs::File::create(&path).and_then(|mut f| {
+                        f.write_all(ldflags.trim_left().as_bytes())
+                    }) {
+                        Ok(..) => {}
+                        Err(e) => sess.fatal(
+                            &format!("failed to write {}: {}",
+                                     path.display(), e))
+                    }
+                },
+                None => sess.note_without_error(
+                    &format!("ldflags: {}", ldflags.trim()))
+            };
+            return;
+        },
+        None => {
+            // Link flag output not requested, continue.
+        },
+    };
+
+    // Otherwise, warn about needed link lines in the build output.
+    sess.note_without_error(
+        "link against the following native artifacts when linking against \
+                             this static library");
+    sess.note_without_error(
+        "the order and any duplication can be significant on some \
+                             platforms, and so may need to be preserved");
+
+    for &(kind, ref lib) in &native_libs {
         let name = match kind {
             NativeLibraryKind::NativeStatic => "static library",
             NativeLibraryKind::NativeUnknown => "library",

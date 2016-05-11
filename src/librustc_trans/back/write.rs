@@ -690,6 +690,7 @@ pub fn run_passes(sess: &Session,
                 modules_config.emit_obj = true;
                 metadata_config.emit_obj = true;
             },
+            OutputType::LinkFlagsLd |
             OutputType::DepInfo => {}
         }
     }
@@ -794,6 +795,7 @@ pub fn run_passes(sess: &Session,
                 copy_if_one_unit("0.o", OutputType::Object, true);
             }
             OutputType::Exe |
+            OutputType::LinkFlagsLd |
             OutputType::DepInfo => {}
         }
     }
