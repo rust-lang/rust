@@ -18,7 +18,6 @@ use back::symbol_names;
 use llvm;
 use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
-use rustc::infer::InferCtxt;
 use rustc::ty::subst::{Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -117,16 +116,15 @@ pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match t.sty {
         ty::TyBox(typ) if !type_needs_drop(tcx, typ)
                          && type_is_sized(tcx, typ) => {
-            let infcx = InferCtxt::normalizing(tcx,
-                                               &tcx.tables,
-                                               traits::ProjectionMode::Any);
-            let layout = t.layout(&infcx).unwrap();
-            if layout.size(&tcx.data_layout).bytes() == 0 {
-                // `Box<ZeroSizeType>` does not allocate.
-                tcx.types.i8
-            } else {
-                tcx.erase_regions(&t)
-            }
+            tcx.normalizing_infer_ctxt(traits::ProjectionMode::Any).enter(|infcx| {
+                let layout = t.layout(&infcx).unwrap();
+                if layout.size(&tcx.data_layout).bytes() == 0 {
+                    // `Box<ZeroSizeType>` does not allocate.
+                    tcx.types.i8
+                } else {
+                    tcx.erase_regions(&t)
+                }
+            })
         }
         _ => tcx.erase_regions(&t)
     }

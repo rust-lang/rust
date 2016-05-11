@@ -153,7 +153,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let symbol = symbol_names::exported_name(ccx, &instance);
 
     // Compute the rust-call form of the closure call method.
-    let sig = &ty::Tables::closure_type(&tcx.tables, tcx, closure_id, substs).sig;
+    let sig = &tcx.closure_type(closure_id, substs).sig;
     let sig = tcx.erase_late_bound_regions(sig);
     let sig = tcx.normalize_associated_type(&sig);
     let closure_type = tcx.mk_closure_from_closure_substs(closure_id, substs);
@@ -217,9 +217,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     // this function (`trans_closure`) is invoked at the point
     // of the closure expression.
 
-    let sig = &ty::Tables::closure_type(&tcx.tables, tcx,
-                                        closure_def_id,
-                                        closure_substs).sig;
+    let sig = &tcx.closure_type(closure_def_id, closure_substs).sig;
     let sig = tcx.erase_late_bound_regions(sig);
     let sig = tcx.normalize_associated_type(&sig);
 
@@ -349,7 +347,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Make a version with the type of by-ref closure.
     let ty::ClosureTy { unsafety, abi, mut sig } =
-        ty::Tables::closure_type(&tcx.tables, tcx, closure_def_id, substs);
+        tcx.closure_type(closure_def_id, substs);
     sig.0.inputs.insert(0, ref_closure_ty); // sig has no self type as of yet
     let llref_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: unsafety,

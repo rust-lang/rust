@@ -19,12 +19,10 @@
 use borrowck::*;
 use borrowck::move_data::MoveData;
 use rustc::middle::expr_use_visitor as euv;
-use rustc::infer::InferCtxt;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
-use rustc::traits::ProjectionMode;
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -56,10 +54,8 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     };
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
-    InferCtxt::enter(bccx.tcx, None, Some(param_env), ProjectionMode::AnyFinal, |infcx| {
-        let mut euv = euv::ExprUseVisitor::new(&mut glcx, &infcx);
-        euv.walk_fn(decl, body);
-    });
+    let infcx = bccx.tcx.borrowck_fake_infer_ctxt(param_env);
+    euv::ExprUseVisitor::new(&mut glcx, &infcx).walk_fn(decl, body);
 
     glcx.report_potential_errors();
     let GatherLoanCtxt { all_loans, move_data, .. } = glcx;
@@ -520,21 +516,22 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 /// sure the loans being taken are sound.
 struct StaticInitializerCtxt<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
+    item_id: ast::NodeId
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         if let hir::ExprAddrOf(mutbl, ref base) = ex.node {
-            let err = InferCtxt::enter(self.bccx.tcx, None, None,
-                                       ProjectionMode::AnyFinal, |infcx| {
-                let mc = mc::MemCategorizationContext::new(&infcx);
-                let base_cmt = mc.cat_expr(&base).unwrap();
-                let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
-                // Check that we don't allow borrows of unsafe static items.
-                check_aliasability(self.bccx, ex.span,
-                                   BorrowViolation(euv::AddrOf),
-                                   base_cmt, borrow_kind).is_err()
-            });
+            let param_env = ty::ParameterEnvironment::for_item(self.bccx.tcx,
+                                                               self.item_id);
+            let infcx = self.bccx.tcx.borrowck_fake_infer_ctxt(param_env);
+            let mc = mc::MemCategorizationContext::new(&infcx);
+            let base_cmt = mc.cat_expr(&base).unwrap();
+            let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
+            // Check that we don't allow borrows of unsafe static items.
+            let err = check_aliasability(self.bccx, ex.span,
+                                         BorrowViolation(euv::AddrOf),
+                                         base_cmt, borrow_kind).is_err();
             if err {
                 return; // reported an error, no sense in reporting more.
             }
@@ -544,12 +541,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     }
 }
 
-pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt, expr: &hir::Expr) {
+pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt,
+                                          item_id: ast::NodeId,
+                                          expr: &hir::Expr) {
 
     debug!("gather_loans_in_static_initializer(expr={:?})", expr);
 
     let mut sicx = StaticInitializerCtxt {
-        bccx: bccx
+        bccx: bccx,
+        item_id: item_id
     };
 
     sicx.visit_expr(expr);

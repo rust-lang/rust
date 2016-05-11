@@ -22,12 +22,10 @@ use borrowck::*;
 use borrowck::InteriorKind::{InteriorElement, InteriorField};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::expr_use_visitor::MutateMode;
-use rustc::infer::InferCtxt;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
-use rustc::traits::ProjectionMode;
 use syntax::ast;
 use syntax::codemap::Span;
 use rustc::hir;
@@ -203,17 +201,15 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     debug!("check_loans(body id={})", body.id);
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
-    InferCtxt::enter(bccx.tcx, None, Some(param_env), ProjectionMode::AnyFinal, |infcx| {
-        let mut clcx = CheckLoanCtxt {
-            bccx: bccx,
-            dfcx_loans: dfcx_loans,
-            move_data: move_data,
-            all_loans: all_loans,
-            param_env: &infcx.parameter_environment
-        };
-        let mut euv = euv::ExprUseVisitor::new(&mut clcx, &infcx);
-        euv.walk_fn(decl, body);
-    });
+    let infcx = bccx.tcx.borrowck_fake_infer_ctxt(param_env);
+    let mut clcx = CheckLoanCtxt {
+        bccx: bccx,
+        dfcx_loans: dfcx_loans,
+        move_data: move_data,
+        all_loans: all_loans,
+        param_env: &infcx.parameter_environment
+    };
+    euv::ExprUseVisitor::new(&mut clcx, &infcx).walk_fn(decl, body);
 }
 
 #[derive(PartialEq)]

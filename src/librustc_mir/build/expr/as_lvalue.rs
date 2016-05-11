@@ -15,7 +15,7 @@ use build::expr::category::Category;
 use hair::*;
 use rustc::mir::repr::*;
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, yielding an lvalue that we can move from etc.
     pub fn as_lvalue<M>(&mut self,
                         block: BasicBlock,

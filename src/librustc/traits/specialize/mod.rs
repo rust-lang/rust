@@ -146,14 +146,21 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              .unwrap()
                              .subst(tcx, &penv.free_substs);
 
-    InferCtxt::enter_normalizing(tcx, ProjectionMode::Topmost, |mut infcx| {
+    tcx.normalizing_infer_ctxt(ProjectionMode::Topmost).enter(|mut infcx| {
         // Normalize the trait reference, adding any obligations
         // that arise into the impl1 assumptions.
         let Normalized { value: impl1_trait_ref, obligations: normalization_obligations } = {
             let selcx = &mut SelectionContext::new(&infcx);
             traits::normalize(selcx, ObligationCause::dummy(), &impl1_trait_ref)
         };
-        penv.caller_bounds.extend(normalization_obligations.into_iter().map(|o| o.predicate));
+        penv.caller_bounds.extend(normalization_obligations.into_iter().map(|o| {
+            match tcx.lift_to_global(&o.predicate) {
+                Some(predicate) => predicate,
+                None => {
+                    bug!("specializes: obligation `{:?}` has inference types/regions", o);
+                }
+            }
+        }));
 
         // Install the parameter environment, taking the predicates of impl1 as assumptions:
         infcx.parameter_environment = penv;

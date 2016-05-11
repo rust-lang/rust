@@ -466,7 +466,7 @@ pub struct Struct {
     pub offset_after_field: Vec<Size>
 }
 
-impl<'a, 'tcx> Struct {
+impl<'a, 'gcx, 'tcx> Struct {
     pub fn new(dl: &TargetDataLayout, packed: bool) -> Struct {
         Struct {
             align: if packed { dl.i8_align } else { dl.aggregate_align },
@@ -479,9 +479,9 @@ impl<'a, 'tcx> Struct {
     /// Extend the Struct with more fields.
     pub fn extend<I>(&mut self, dl: &TargetDataLayout,
                      fields: I,
-                     scapegoat: Ty<'tcx>)
-                     -> Result<(), LayoutError<'tcx>>
-    where I: Iterator<Item=Result<&'a Layout, LayoutError<'tcx>>> {
+                     scapegoat: Ty<'gcx>)
+                     -> Result<(), LayoutError<'gcx>>
+    where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>> {
         self.offset_after_field.reserve(fields.size_hint().0);
 
         for field in fields {
@@ -528,8 +528,8 @@ impl<'a, 'tcx> Struct {
 
     /// Determine whether a structure would be zero-sized, given its fields.
     pub fn would_be_zero_sized<I>(dl: &TargetDataLayout, fields: I)
-                                  -> Result<bool, LayoutError<'tcx>>
-    where I: Iterator<Item=Result<&'a Layout, LayoutError<'tcx>>> {
+                                  -> Result<bool, LayoutError<'gcx>>
+    where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>> {
         for field in fields {
             let field = field?;
             if field.is_unsized() || field.size(dl).bytes() > 0 {
@@ -542,10 +542,10 @@ impl<'a, 'tcx> Struct {
     /// Find the path leading to a non-zero leaf field, starting from
     /// the given type and recursing through aggregates.
     // FIXME(eddyb) track value ranges and traverse already optimized enums.
-    pub fn non_zero_field_in_type(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
-                                  ty: Ty<'tcx>)
-                                  -> Result<Option<FieldPath>, LayoutError<'tcx>> {
-        let tcx = infcx.tcx;
+    pub fn non_zero_field_in_type(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                  ty: Ty<'gcx>)
+                                  -> Result<Option<FieldPath>, LayoutError<'gcx>> {
+        let tcx = infcx.tcx.global_tcx();
         match (ty.layout(infcx)?, &ty.sty) {
             (&Scalar { non_zero: true, .. }, _) => Ok(Some(vec![])),
             (&FatPointer { non_zero: true, .. }, _) => {
@@ -600,10 +600,10 @@ impl<'a, 'tcx> Struct {
 
     /// Find the path leading to a non-zero leaf field, starting from
     /// the given set of fields and recursing through aggregates.
-    pub fn non_zero_field_path<I>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
+    pub fn non_zero_field_path<I>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                   fields: I)
-                                  -> Result<Option<FieldPath>, LayoutError<'tcx>>
-    where I: Iterator<Item=Ty<'tcx>> {
+                                  -> Result<Option<FieldPath>, LayoutError<'gcx>>
+    where I: Iterator<Item=Ty<'gcx>> {
         for (i, ty) in fields.enumerate() {
             if let Some(mut path) = Struct::non_zero_field_in_type(infcx, ty)? {
                 path.push(i as u32);
@@ -736,9 +736,9 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
 }
 
 /// Helper function for normalizing associated types in an inference context.
-fn normalize_associated_type<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
-                                       ty: Ty<'tcx>)
-                                       -> Ty<'tcx> {
+fn normalize_associated_type<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                             ty: Ty<'gcx>)
+                                             -> Ty<'gcx> {
     if !ty.has_projection_types() {
         return ty;
     }
@@ -757,11 +757,11 @@ fn normalize_associated_type<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
     infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
 }
 
-impl<'a, 'tcx> Layout {
-    pub fn compute_uncached(ty: Ty<'tcx>,
-                            infcx: &InferCtxt<'a, 'tcx, 'tcx>)
-                            -> Result<Layout, LayoutError<'tcx>> {
-        let tcx = infcx.tcx;
+impl<'a, 'gcx, 'tcx> Layout {
+    pub fn compute_uncached(ty: Ty<'gcx>,
+                            infcx: &InferCtxt<'a, 'gcx, 'tcx>)
+                            -> Result<Layout, LayoutError<'gcx>> {
+        let tcx = infcx.tcx.global_tcx();
         let dl = &tcx.data_layout;
         assert!(!ty.has_infer_types());
 
@@ -1220,10 +1220,10 @@ pub enum SizeSkeleton<'tcx> {
     }
 }
 
-impl<'a, 'tcx> SizeSkeleton<'tcx> {
-    pub fn compute(ty: Ty<'tcx>, infcx: &InferCtxt<'a, 'tcx, 'tcx>)
-                   -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
-        let tcx = infcx.tcx;
+impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
+    pub fn compute(ty: Ty<'gcx>, infcx: &InferCtxt<'a, 'gcx, 'tcx>)
+                   -> Result<SizeSkeleton<'gcx>, LayoutError<'gcx>> {
+        let tcx = infcx.tcx.global_tcx();
         assert!(!ty.has_infer_types());
 
         // First try computing a static layout.

@@ -422,7 +422,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
-    InferCtxt::enter(tcx, None, Some(elaborated_env), ProjectionMode::AnyFinal, |infcx| {
+    tcx.infer_ctxt(None, Some(elaborated_env), ProjectionMode::AnyFinal).enter(|infcx| {
         let predicates = match fully_normalize(&infcx, cause,
                                                &infcx.parameter_environment.caller_bounds) {
             Ok(predicates) => predicates,
@@ -454,6 +454,11 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         };
 
+        let predicates = match tcx.lift_to_global(&predicates) {
+            Some(predicates) => predicates,
+            None => return infcx.parameter_environment
+        };
+
         debug!("normalize_param_env_or_error: resolved predicates={:?}",
             predicates);
 
@@ -461,10 +466,10 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
-pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx, 'tcx>,
-                                  cause: ObligationCause<'tcx>,
-                                  value: &T)
-                                  -> Result<T, Vec<FulfillmentError<'tcx>>>
+pub fn fully_normalize<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                          cause: ObligationCause<'tcx>,
+                                          value: &T)
+                                          -> Result<T, Vec<FulfillmentError<'tcx>>>
     where T : TypeFoldable<'tcx>
 {
     debug!("fully_normalize(value={:?})", value);

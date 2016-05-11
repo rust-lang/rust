@@ -104,7 +104,7 @@ pub use rustc::util;
 use dep_graph::DepNode;
 use hir::map as hir_map;
 use hir::def::Def;
-use rustc::infer::{InferCtxt, TypeOrigin};
+use rustc::infer::TypeOrigin;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::traits::ProjectionMode;
@@ -211,7 +211,7 @@ fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 t2: Ty<'tcx>,
                                 msg: &str)
                                 -> bool {
-    InferCtxt::enter(ccx.tcx, None, None, ProjectionMode::AnyFinal, |infcx| {
+    ccx.tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
         if let Err(err) = infcx.eq_types(false, TypeOrigin::Misc(span), t1, t2) {
             emit_type_err(infcx.tcx, span, t1, t2, &err, msg);
             false

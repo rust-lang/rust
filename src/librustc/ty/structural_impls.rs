@@ -131,6 +131,41 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionPredicate<'a> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for ty::Predicate<'a> {
+    type Lifted = ty::Predicate<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match *self {
+            ty::Predicate::Trait(ref binder) => {
+                tcx.lift(binder).map(ty::Predicate::Trait)
+            }
+            ty::Predicate::Equate(ref binder) => {
+                tcx.lift(binder).map(ty::Predicate::Equate)
+            }
+            ty::Predicate::RegionOutlives(ref binder) => {
+                tcx.lift(binder).map(ty::Predicate::RegionOutlives)
+            }
+            ty::Predicate::TypeOutlives(ref binder) => {
+                tcx.lift(binder).map(ty::Predicate::TypeOutlives)
+            }
+            ty::Predicate::Projection(ref binder) => {
+                tcx.lift(binder).map(ty::Predicate::Projection)
+            }
+            ty::Predicate::WellFormed(ty) => {
+                tcx.lift(&ty).map(ty::Predicate::WellFormed)
+            }
+            ty::Predicate::Rfc1592(box ref a) => {
+                tcx.lift(a).map(|a| ty::Predicate::Rfc1592(Box::new(a)))
+            }
+            ty::Predicate::ClosureKind(closure_def_id, kind) => {
+                Some(ty::Predicate::ClosureKind(closure_def_id, kind))
+            }
+            ty::Predicate::ObjectSafe(trait_def_id) => {
+                Some(ty::Predicate::ObjectSafe(trait_def_id))
+            }
+        }
+    }
+}
+
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::Binder<T> {
     type Lifted = ty::Binder<T::Lifted>;
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {

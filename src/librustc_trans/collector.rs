@@ -530,7 +530,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let exchange_malloc_fn_trans_item =
                     create_fn_trans_item(self.scx.tcx(),
                                          exchange_malloc_fn_def_id,
-                                         self.ccx.tcx().mk_substs(Substs::empty()),
+                                         self.scx.tcx().mk_substs(Substs::empty()),
                                          self.param_substs);
 
                 self.output.push(exchange_malloc_fn_trans_item);
@@ -670,8 +670,8 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         let exchange_free_fn_trans_item =
             create_fn_trans_item(scx.tcx(),
                                  exchange_free_fn_def_id,
-                                 ccx.tcx().mk_substs(Substs::empty()),
-                                 ccx.tcx().mk_substs(Substs::empty()));
+                                 scx.tcx().mk_substs(Substs::empty()),
+                                 scx.tcx().mk_substs(Substs::empty()));
 
         output.push(exchange_free_fn_trans_item);
     }
@@ -709,7 +709,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             let trans_item = create_fn_trans_item(scx.tcx(),
                                                   destructor_did,
                                                   substs,
-                                                  ccx.tcx().mk_substs(Substs::empty()));
+                                                  scx.tcx().mk_substs(Substs::empty()));
             output.push(trans_item);
         }
 
@@ -1014,7 +1014,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
                                 Some(create_fn_trans_item(scx.tcx(),
                                     impl_method.method.def_id,
                                     impl_method.substs,
-                                    ccx.tcx().mk_substs(Substs::empty())))
+                                    scx.tcx().mk_substs(Substs::empty())))
                             } else {
                                 None
                             }

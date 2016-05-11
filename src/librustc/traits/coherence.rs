@@ -24,10 +24,10 @@ struct InferIsLocal(bool);
 
 /// If there are types that satisfy both impls, returns a suitably-freshened
 /// `ImplHeader` with those types substituted
-pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx, 'tcx>,
-                                    impl1_def_id: DefId,
-                                    impl2_def_id: DefId)
-                                    -> Option<ty::ImplHeader<'tcx>>
+pub fn overlapping_impls<'cx, 'gcx, 'tcx>(infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
+                                          impl1_def_id: DefId,
+                                          impl2_def_id: DefId)
+                                          -> Option<ty::ImplHeader<'tcx>>
 {
     debug!("impl_can_satisfy(\
            impl1_def_id={:?}, \
@@ -41,10 +41,10 @@ pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx, 'tcx>,
 
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// `where` clauses)? If so, returns an `ImplHeader` that unifies the two impls.
-fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx, 'tcx>,
-                      a_def_id: DefId,
-                      b_def_id: DefId)
-                      -> Option<ty::ImplHeader<'tcx>>
+fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+                            a_def_id: DefId,
+                            b_def_id: DefId)
+                            -> Option<ty::ImplHeader<'tcx>>
 {
     debug!("overlap(a_def_id={:?}, b_def_id={:?})",
            a_def_id,

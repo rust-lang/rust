@@ -13,6 +13,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc_const_eval::ErrKind;
 use rustc_const_math::ConstInt::*;
 use rustc::hir::def_id::DefId;
+use rustc::infer::TransNormalize;
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc::traits;
@@ -252,7 +253,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     }
 
     fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx>
+        where T: TransNormalize<'tcx>
     {
         monomorphize::apply_param_substs(self.ccx.tcx(),
                                          self.substs,

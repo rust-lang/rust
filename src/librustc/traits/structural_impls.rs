@@ -153,6 +153,58 @@ impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
     }
 }
 
+// For trans only.
+impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
+    type Lifted = traits::Vtable<'tcx, ()>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match self.clone() {
+            traits::VtableImpl(traits::VtableImplData {
+                impl_def_id,
+                substs,
+                nested
+            }) => {
+                tcx.lift(&substs).map(|substs| {
+                    traits::VtableImpl(traits::VtableImplData {
+                        impl_def_id: impl_def_id,
+                        substs: substs,
+                        nested: nested
+                    })
+                })
+            }
+            traits::VtableDefaultImpl(t) => Some(traits::VtableDefaultImpl(t)),
+            traits::VtableClosure(traits::VtableClosureData {
+                closure_def_id,
+                substs,
+                nested
+            }) => {
+                tcx.lift(&substs).map(|substs| {
+                    traits::VtableClosure(traits::VtableClosureData {
+                        closure_def_id: closure_def_id,
+                        substs: substs,
+                        nested: nested
+                    })
+                })
+            }
+            traits::VtableFnPointer(ty) => {
+                tcx.lift(&ty).map(traits::VtableFnPointer)
+            }
+            traits::VtableParam(n) => Some(traits::VtableParam(n)),
+            traits::VtableBuiltin(d) => Some(traits::VtableBuiltin(d)),
+            traits::VtableObject(traits::VtableObjectData {
+                upcast_trait_ref,
+                vtable_base
+            }) => {
+                tcx.lift(&upcast_trait_ref).map(|trait_ref| {
+                    traits::VtableObject(traits::VtableObjectData {
+                        upcast_trait_ref: trait_ref,
+                        vtable_base: vtable_base
+                    })
+                })
+            }
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // TypeFoldable implementations.
 

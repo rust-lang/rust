@@ -61,7 +61,7 @@ struct TypeVerifier<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
     errors_reported: bool
 }
 
-impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx, 'tcx> {
+impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn visit_span(&mut self, span: &Span) {
         if *span != DUMMY_SP {
             self.last_span = *span;
@@ -104,8 +104,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx, 'tcx> {
-    fn new(cx: &'a mut TypeChecker<'b, 'tcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
+    fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         TypeVerifier {
             cx: cx,
             mir: mir,
@@ -114,11 +114,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.cx.infcx.tcx
     }
 
-    fn infcx(&self) -> &'a InferCtxt<'a, 'tcx, 'tcx> {
+    fn infcx(&self) -> &'a InferCtxt<'a, 'gcx, 'tcx> {
         self.cx.infcx
     }
 
@@ -324,8 +324,8 @@ pub struct TypeChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     last_span: Span
 }
 
-impl<'a, 'tcx> TypeChecker<'a, 'tcx, 'tcx> {
-    fn new(infcx: &'a InferCtxt<'a, 'tcx, 'tcx>) -> Self {
+impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
+    fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
         TypeChecker {
             infcx: infcx,
             fulfillment_cx: traits::FulfillmentContext::new(),
@@ -349,7 +349,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx, 'tcx> {
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -584,7 +584,7 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
             return;
         }
         let param_env = ty::ParameterEnvironment::for_item(tcx, src.item_id());
-        InferCtxt::enter(tcx, None, Some(param_env), ProjectionMode::AnyFinal, |infcx| {
+        tcx.infer_ctxt(None, Some(param_env), ProjectionMode::AnyFinal).enter(|infcx| {
             let mut checker = TypeChecker::new(&infcx);
             {
                 let mut verifier = TypeVerifier::new(&mut checker, mir);

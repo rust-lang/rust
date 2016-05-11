@@ -42,8 +42,8 @@ use syntax::feature_gate::UnstableFeatures;
 
 use rustc::hir;
 
-struct Env<'a, 'tcx: 'a> {
-    infcx: &'a infer::InferCtxt<'a, 'tcx, 'tcx>,
+struct Env<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    infcx: &'a infer::InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 struct RH<'a> {
@@ -149,7 +149,7 @@ fn test_env<F>(source_string: &str,
                              index,
                              "test_crate",
                              |tcx| {
-        InferCtxt::enter(tcx, None, None, ProjectionMode::AnyFinal, |infcx| {
+        tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
 
             body(Env { infcx: &infcx });
             let free_regions = FreeRegionMap::new();
@@ -159,8 +159,8 @@ fn test_env<F>(source_string: &str,
     });
 }
 
-impl<'a, 'tcx> Env<'a, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 

@@ -134,9 +134,9 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                        self_type: Ty<'tcx>, span: Span)
                                        -> Result<(),CopyImplementationError> {
         // FIXME: (@jroesch) float this code up
-        let adt = InferCtxt::enter(tcx, None, Some(self.clone()),
-                                   ProjectionMode::Topmost, |infcx| {
-            match self_type.sty {
+        tcx.infer_ctxt(None, Some(self.clone()),
+                       ProjectionMode::Topmost).enter(|infcx| {
+            let adt = match self_type.sty {
                 ty::TyStruct(struct_def, substs) => {
                     for field in struct_def.all_fields() {
                         let field_ty = field.ty(tcx, substs);
@@ -145,7 +145,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                 field.name))
                         }
                     }
-                    Ok(struct_def)
+                    struct_def
                 }
                 ty::TyEnum(enum_def, substs) => {
                     for variant in &enum_def.variants {
@@ -157,17 +157,17 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                             }
                         }
                     }
-                    Ok(enum_def)
+                    enum_def
                 }
-                _ => Err(CopyImplementationError::NotAnAdt)
+                _ => return Err(CopyImplementationError::NotAnAdt)
+            };
+
+            if adt.has_dtor() {
+                return Err(CopyImplementationError::HasDestructor);
             }
-        })?;
 
-        if adt.has_dtor() {
-            return Err(CopyImplementationError::HasDestructor)
-        }
-
-        Ok(())
+            Ok(())
+        })
     }
 }
 
@@ -513,7 +513,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                    param_env: &ParameterEnvironment<'tcx>,
                    bound: ty::BuiltinBound, span: Span) -> bool
     {
-        InferCtxt::enter(tcx, None, Some(param_env.clone()), ProjectionMode::Topmost, |infcx| {
+        tcx.infer_ctxt(None, Some(param_env.clone()), ProjectionMode::Topmost).enter(|infcx| {
             traits::type_known_to_meet_builtin_bound(&infcx, self, bound, span)
         })
     }
@@ -596,19 +596,20 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     }
 
     #[inline]
-    pub fn layout(&'tcx self, infcx: &InferCtxt<'a, 'tcx, 'tcx>)
-                  -> Result<&'tcx Layout, LayoutError<'tcx>> {
+    pub fn layout<'lcx>(&'tcx self, infcx: &InferCtxt<'a, 'tcx, 'lcx>)
+                        -> Result<&'tcx Layout, LayoutError<'tcx>> {
+        let tcx = infcx.tcx.global_tcx();
         let can_cache = !self.has_param_types() && !self.has_self_ty();
         if can_cache {
-            if let Some(&cached) = infcx.tcx.layout_cache.borrow().get(&self) {
+            if let Some(&cached) = tcx.layout_cache.borrow().get(&self) {
                 return Ok(cached);
             }
         }
 
         let layout = Layout::compute_uncached(self, infcx)?;
-        let layout = infcx.tcx.intern_layout(layout);
+        let layout = tcx.intern_layout(layout);
         if can_cache {
-            infcx.tcx.layout_cache.borrow_mut().insert(self, layout);
+            tcx.layout_cache.borrow_mut().insert(self, layout);
         }
         Ok(layout)
     }

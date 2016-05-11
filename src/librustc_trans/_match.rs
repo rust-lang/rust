@@ -194,7 +194,6 @@ use rustc_const_eval::{compare_lit_exprs, eval_const_expr};
 use rustc::hir::def::{Def, DefMap};
 use rustc::hir::def_id::DefId;
 use middle::expr_use_visitor as euv;
-use rustc::infer::InferCtxt;
 use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
@@ -1466,7 +1465,7 @@ fn is_discr_reassigned(bcx: Block, discr: &hir::Expr, body: &hir::Expr) -> bool 
         field: field,
         reassigned: false
     };
-    InferCtxt::enter_normalizing(bcx.tcx(), ProjectionMode::Any, |infcx| {
+    bcx.tcx().normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
         let mut visitor = euv::ExprUseVisitor::new(&mut rc, &infcx);
         visitor.walk_expr(body);
     });
