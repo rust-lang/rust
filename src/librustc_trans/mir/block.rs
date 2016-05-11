@@ -24,6 +24,7 @@ use meth;
 use type_of;
 use glue;
 use type_::Type;
+use rustc_data_structures::fnv::FnvHashMap;
 
 use super::{MirContext, TempRef, drop};
 use super::constant::Const;
@@ -95,17 +96,32 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     adt::trans_get_discr(bcx, &repr, discr_lvalue.llval, None, true)
                 );
 
-                // The else branch of the Switch can't be hit, so branch to an unreachable
-                // instruction so LLVM knows that
-                let unreachable_blk = self.unreachable_block();
-                let switch = bcx.switch(discr, unreachable_blk.llbb, targets.len());
+                let mut bb_hist = FnvHashMap();
+                for target in targets {
+                    *bb_hist.entry(target).or_insert(0) += 1;
+                }
+                let (default_bb, default_blk) = match bb_hist.iter().max_by_key(|&(_, c)| c) {
+                    // If a single target basic blocks is predominant, promote that to be the
+                    // default case for the switch instruction to reduce the size of the generated
+                    // code. This is especially helpful in cases like an if-let on a huge enum.
+                    // Note: This optimization is only valid for exhaustive matches.
+                    Some((&&bb, &c)) if c > targets.len() / 2 => {
+                        (Some(bb), self.blocks[bb.index()])
+                    }
+                    // We're generating an exhaustive switch, so the else branch
+                    // can't be hit.  Branching to an unreachable instruction
+                    // lets LLVM know this
+                    _ => (None, self.unreachable_block())
+                };
+                let switch = bcx.switch(discr, default_blk.llbb, targets.len());
                 assert_eq!(adt_def.variants.len(), targets.len());
-                for (adt_variant, target) in adt_def.variants.iter().zip(targets) {
-                    let llval = bcx.with_block(|bcx|
-                        adt::trans_case(bcx, &repr, Disr::from(adt_variant.disr_val))
-                    );
-                    let llbb = self.llblock(*target);
-                    build::AddCase(switch, llval, llbb)
+                for (adt_variant, &target) in adt_def.variants.iter().zip(targets) {
+                    if default_bb != Some(target) {
+                        let llbb = self.llblock(target);
+                        let llval = bcx.with_block(|bcx| adt::trans_case(
+                                bcx, &repr, Disr::from(adt_variant.disr_val)));
+                        build::AddCase(switch, llval, llbb)
+                    }
                 }
             }
 
