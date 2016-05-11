@@ -1240,9 +1240,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                    orig_node_idx,
                    node_idx);
 
-            // figure out the direction from which this node takes its
-            // values, and search for concrete regions etc in that direction
-            let dir = graph::INCOMING;
             process_edges(self, &mut state, graph, node_idx, dir);
         }
 
