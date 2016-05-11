@@ -482,8 +482,8 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
     }
 }
 
-impl<'tcx> MoveData<'tcx> {
-    pub fn gather_moves(mir: &Mir<'tcx>, tcx: &TyCtxt<'tcx>) -> Self {
+impl<'a, 'tcx> MoveData<'tcx> {
+    pub fn gather_moves(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         gather_moves(mir, tcx)
     }
 }
@@ -494,7 +494,7 @@ enum StmtKind {
     Aggregate, Drop, CallFn, CallArg, Return,
 }
 
-fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &TyCtxt<'tcx>) -> MoveData<'tcx> {
+fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveData<'tcx> {
     use self::StmtKind as SK;
 
     let bbs = mir.all_basic_blocks();
@@ -667,7 +667,7 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &TyCtxt<'tcx>) -> MoveData<'tcx> {
 }
 
 struct BlockContext<'b, 'a: 'b, 'tcx: 'a> {
-    tcx: &'b TyCtxt<'tcx>,
+    tcx: TyCtxt<'b, 'tcx, 'tcx>,
     moves: &'b mut Vec<MoveOut>,
     builder: MovePathDataBuilder<'a, 'tcx>,
     path_map: &'b mut Vec<Vec<MoveOutIndex>>,

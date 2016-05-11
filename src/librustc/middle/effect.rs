@@ -51,7 +51,7 @@ fn type_is_unsafe_function(ty: Ty) -> bool {
 }
 
 struct EffectCheckVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     /// Whether we're in an unsafe context.
     unsafe_context: UnsafeContext,
@@ -183,7 +183,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::EffectCheck);
 
     let mut visitor = EffectCheckVisitor {

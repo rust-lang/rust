@@ -15,13 +15,13 @@ use rustc::ty::TyCtxt;
 use rustc::hir::intravisit;
 use rustc::hir;
 
-pub fn check(tcx: &TyCtxt) {
+pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut orphan = UnsafetyChecker { tcx: tcx };
     tcx.map.krate().visit_all_items(&mut orphan);
 }
 
 struct UnsafetyChecker<'cx, 'tcx:'cx> {
-    tcx: &'cx TyCtxt<'tcx>
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>
 }
 
 impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {

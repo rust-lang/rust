@@ -11,7 +11,7 @@
 use calculate_svh::SvhCalculate;
 use rbml::opaque::Encoder;
 use rustc::dep_graph::DepNode;
-use rustc::ty;
+use rustc::ty::TyCtxt;
 use rustc_serialize::{Encodable as RustcEncodable};
 use std::io::{self, Cursor, Write};
 use std::fs::{self, File};
@@ -20,7 +20,7 @@ use super::data::*;
 use super::directory::*;
 use super::util::*;
 
-pub fn save_dep_graph<'tcx>(tcx: &ty::TyCtxt<'tcx>) {
+pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     if let Some(dep_graph) = dep_graph_path(tcx) {
@@ -68,10 +68,9 @@ pub fn save_dep_graph<'tcx>(tcx: &ty::TyCtxt<'tcx>) {
     }
 }
 
-pub fn encode_dep_graph<'tcx>(tcx: &ty::TyCtxt<'tcx>,
-                              encoder: &mut Encoder)
-                              -> io::Result<()>
-{
+pub fn encode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  encoder: &mut Encoder)
+                                  -> io::Result<()> {
     // Here we take advantage of how RBML allows us to skip around
     // and encode the depgraph as a two-part structure:
     //

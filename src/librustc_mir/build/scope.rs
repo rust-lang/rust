@@ -206,7 +206,7 @@ impl<'tcx> Scope<'tcx> {
     }
 }
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // Adding and removing scopes
     // ==========================
     /// Start a loop scope, which tracks where `continue` and `break`
@@ -218,7 +218,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                break_block: BasicBlock,
                                f: F)
                                -> bool
-        where F: FnOnce(&mut Builder<'a, 'tcx>)
+        where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>)
     {
         let extent = self.extent_of_innermost_scope();
         let loop_scope = LoopScope {
@@ -237,7 +237,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
     pub fn in_scope<F, R>(&mut self, extent: CodeExtent, mut block: BasicBlock, f: F) -> BlockAnd<R>
-        where F: FnOnce(&mut Builder<'a, 'tcx>, ScopeId) -> BlockAnd<R>
+        where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>, ScopeId) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
         let id = self.push_scope(extent, block);
@@ -662,12 +662,12 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
     block.unit()
 }
 
-fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
-                             cfg: &mut CFG<'tcx>,
-                             unit_temp: &Lvalue<'tcx>,
-                             scope: &mut Scope<'tcx>,
-                             mut target: BasicBlock)
-                             -> BasicBlock
+fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                       cfg: &mut CFG<'tcx>,
+                                       unit_temp: &Lvalue<'tcx>,
+                                       scope: &mut Scope<'tcx>,
+                                       mut target: BasicBlock)
+                                       -> BasicBlock
 {
     // Build up the drops in **reverse** order. The end result will
     // look like:
@@ -721,11 +721,11 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
     target
 }
 
-fn build_free<'tcx>(tcx: &TyCtxt<'tcx>,
-                    unit_temp: &Lvalue<'tcx>,
-                    data: &FreeData<'tcx>,
-                    target: BasicBlock)
-                    -> TerminatorKind<'tcx> {
+fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                              unit_temp: &Lvalue<'tcx>,
+                              data: &FreeData<'tcx>,
+                              target: BasicBlock)
+                              -> TerminatorKind<'tcx> {
     let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
                        .unwrap_or_else(|e| tcx.sess.fatal(&e));
     let substs = tcx.mk_substs(Substs::new(

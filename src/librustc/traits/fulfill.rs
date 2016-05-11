@@ -21,16 +21,13 @@ use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
-use super::is_object_safe;
 use super::FulfillmentError;
 use super::FulfillmentErrorCode;
 use super::ObligationCause;
 use super::PredicateObligation;
 use super::project;
-use super::report_overflow_error_cycle;
 use super::select::SelectionContext;
 use super::Unimplemented;
-use super::util::predicate_for_builtin_bound;
 
 pub struct GlobalFulfilledPredicates<'tcx> {
     set: FnvHashSet<ty::PolyTraitPredicate<'tcx>>,
@@ -114,7 +111,7 @@ pub struct PendingPredicateObligation<'tcx> {
     pub stalled_on: Vec<Ty<'tcx>>,
 }
 
-impl<'tcx> FulfillmentContext<'tcx> {
+impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
     pub fn new() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
@@ -132,11 +129,11 @@ impl<'tcx> FulfillmentContext<'tcx> {
     /// `SomeTrait` or a where clause that lets us unify `$0` with
     /// something concrete. If this fails, we'll unify `$0` with
     /// `projection_ty` again.
-    pub fn normalize_projection_type<'a>(&mut self,
-                                         infcx: &InferCtxt<'a,'tcx>,
-                                         projection_ty: ty::ProjectionTy<'tcx>,
-                                         cause: ObligationCause<'tcx>)
-                                         -> Ty<'tcx>
+    pub fn normalize_projection_type(&mut self,
+                                     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                     projection_ty: ty::ProjectionTy<'tcx>,
+                                     cause: ObligationCause<'tcx>)
+                                     -> Ty<'tcx>
     {
         debug!("normalize_projection_type(projection_ty={:?})",
                projection_ty);
@@ -157,13 +154,13 @@ impl<'tcx> FulfillmentContext<'tcx> {
         normalized.value
     }
 
-    pub fn register_builtin_bound<'a>(&mut self,
-                                      infcx: &InferCtxt<'a,'tcx>,
-                                      ty: Ty<'tcx>,
-                                      builtin_bound: ty::BuiltinBound,
-                                      cause: ObligationCause<'tcx>)
+    pub fn register_builtin_bound(&mut self,
+                                  infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                  ty: Ty<'tcx>,
+                                  builtin_bound: ty::BuiltinBound,
+                                  cause: ObligationCause<'tcx>)
     {
-        match predicate_for_builtin_bound(infcx.tcx, cause, builtin_bound, 0, ty) {
+        match infcx.tcx.predicate_for_builtin_bound(cause, builtin_bound, 0, ty) {
             Ok(predicate) => {
                 self.register_predicate_obligation(infcx, predicate);
             }
@@ -171,17 +168,17 @@ impl<'tcx> FulfillmentContext<'tcx> {
         }
     }
 
-    pub fn register_region_obligation<'a>(&mut self,
-                                          t_a: Ty<'tcx>,
-                                          r_b: ty::Region,
-                                          cause: ObligationCause<'tcx>)
+    pub fn register_region_obligation(&mut self,
+                                      t_a: Ty<'tcx>,
+                                      r_b: ty::Region,
+                                      cause: ObligationCause<'tcx>)
     {
         register_region_obligation(t_a, r_b, cause, &mut self.region_obligations);
     }
 
-    pub fn register_predicate_obligation<'a>(&mut self,
-                                             infcx: &InferCtxt<'a,'tcx>,
-                                             obligation: PredicateObligation<'tcx>)
+    pub fn register_predicate_obligation(&mut self,
+                                         infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                         obligation: PredicateObligation<'tcx>)
     {
         // this helps to reduce duplicate errors, as well as making
         // debug output much nicer to read and so on.
@@ -202,9 +199,9 @@ impl<'tcx> FulfillmentContext<'tcx> {
         self.predicates.push_tree(obligation, LocalFulfilledPredicates::new());
     }
 
-    pub fn register_rfc1592_obligation<'a>(&mut self,
-                                           _infcx: &InferCtxt<'a,'tcx>,
-                                           obligation: PredicateObligation<'tcx>)
+    pub fn register_rfc1592_obligation(&mut self,
+                                       _infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                       obligation: PredicateObligation<'tcx>)
     {
         self.rfc1592_obligations.push(obligation);
     }
@@ -219,8 +216,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
         }
     }
 
-    pub fn select_rfc1592_obligations<'a>(&mut self,
-                                      infcx: &InferCtxt<'a,'tcx>)
+    pub fn select_rfc1592_obligations(&mut self,
+                                      infcx: &InferCtxt<'a, 'gcx, 'tcx>)
                                       -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         while !self.rfc1592_obligations.is_empty() {
@@ -233,9 +230,10 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
         Ok(())
     }
-    pub fn select_all_or_error<'a>(&mut self,
-                                   infcx: &InferCtxt<'a,'tcx>)
-                                   -> Result<(),Vec<FulfillmentError<'tcx>>>
+
+    pub fn select_all_or_error(&mut self,
+                               infcx: &InferCtxt<'a, 'gcx, 'tcx>)
+                               -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         self.select_where_possible(infcx)?;
 
@@ -251,9 +249,9 @@ impl<'tcx> FulfillmentContext<'tcx> {
         }
     }
 
-    pub fn select_where_possible<'a>(&mut self,
-                                     infcx: &InferCtxt<'a,'tcx>)
-                                     -> Result<(),Vec<FulfillmentError<'tcx>>>
+    pub fn select_where_possible(&mut self,
+                                 infcx: &InferCtxt<'a, 'gcx, 'tcx>)
+                                 -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         let mut selcx = SelectionContext::new(infcx);
         self.select(&mut selcx)
@@ -263,8 +261,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
         self.predicates.pending_obligations()
     }
 
-    fn is_duplicate_or_add(&mut self,
-                           tcx: &TyCtxt<'tcx>,
+    fn is_duplicate_or_add(&mut self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                            predicate: &ty::Predicate<'tcx>)
                            -> bool {
         // For "global" predicates -- that is, predicates that don't
@@ -292,10 +289,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
     /// Attempts to select obligations using `selcx`. If `only_new_obligations` is true, then it
     /// only attempts to select obligations that haven't been seen before.
-    fn select<'a>(&mut self,
-                  selcx: &mut SelectionContext<'a, 'tcx>)
-                  -> Result<(),Vec<FulfillmentError<'tcx>>>
-    {
+    fn select(&mut self, selcx: &mut SelectionContext<'a, 'gcx, 'tcx>)
+              -> Result<(),Vec<FulfillmentError<'tcx>>> {
         debug!("select(obligation-forest-size={})", self.predicates.len());
 
         let mut errors = Vec::new();
@@ -321,7 +316,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
             // these are obligations that were proven to be true.
             for pending_obligation in outcome.completed {
                 let predicate = &pending_obligation.obligation.predicate;
-                selcx.tcx().fulfilled_predicates.borrow_mut().add_if_global(predicate);
+                selcx.tcx().fulfilled_predicates.borrow_mut()
+                           .add_if_global(selcx.tcx(), predicate);
             }
 
             errors.extend(
@@ -346,14 +342,15 @@ impl<'tcx> FulfillmentContext<'tcx> {
 }
 
 /// Like `process_predicate1`, but wrap result into a pending predicate.
-fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
-                              tree_cache: &mut LocalFulfilledPredicates<'tcx>,
-                              pending_obligation: &mut PendingPredicateObligation<'tcx>,
-                              backtrace: Backtrace<PendingPredicateObligation<'tcx>>,
-                              region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>,
-                              rfc1592_obligations: &mut Vec<PredicateObligation<'tcx>>)
-                              -> Result<Option<Vec<PendingPredicateObligation<'tcx>>>,
-                                        FulfillmentErrorCode<'tcx>>
+fn process_predicate<'a, 'gcx, 'tcx>(
+    selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
+    tree_cache: &mut LocalFulfilledPredicates<'tcx>,
+    pending_obligation: &mut PendingPredicateObligation<'tcx>,
+    backtrace: Backtrace<PendingPredicateObligation<'tcx>>,
+    region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>,
+    rfc1592_obligations: &mut Vec<PredicateObligation<'tcx>>)
+    -> Result<Option<Vec<PendingPredicateObligation<'tcx>>>,
+              FulfillmentErrorCode<'tcx>>
 {
     match process_predicate1(selcx, pending_obligation, region_obligations,
                              rfc1592_obligations) {
@@ -367,8 +364,8 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     }
 }
 
-fn process_child_obligations<'a,'tcx>(
-    selcx: &mut SelectionContext<'a,'tcx>,
+fn process_child_obligations<'a, 'gcx, 'tcx>(
+    selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
     tree_cache: &mut LocalFulfilledPredicates<'tcx>,
     pending_obligation: &PredicateObligation<'tcx>,
     backtrace: Backtrace<PendingPredicateObligation<'tcx>>,
@@ -449,7 +446,7 @@ fn process_child_obligations<'a,'tcx>(
                     debug!("process_child_obligations: coinductive match");
                     None
                 } else {
-                    report_overflow_error_cycle(selcx.infcx(), &cycle);
+                    selcx.infcx().report_overflow_error_cycle(&cycle);
                 }
             } else {
                 // Not a cycle. Just ignore this obligation then,
@@ -469,7 +466,7 @@ struct AncestorSet<'b, 'tcx: 'b> {
     backtrace: Backtrace<'b, PendingPredicateObligation<'tcx>>,
 }
 
-impl<'b, 'tcx> AncestorSet<'b, 'tcx> {
+impl<'a, 'b, 'gcx, 'tcx> AncestorSet<'b, 'tcx> {
     fn new(backtrace: &Backtrace<'b, PendingPredicateObligation<'tcx>>) -> Self {
         AncestorSet {
             populated: false,
@@ -482,10 +479,10 @@ impl<'b, 'tcx> AncestorSet<'b, 'tcx> {
     /// to `predicate` (`predicate` is assumed to be fully
     /// type-resolved).  Returns `None` if not; otherwise, returns
     /// `Some` with the index within the backtrace.
-    fn has<'a>(&mut self,
-               infcx: &InferCtxt<'a, 'tcx>,
-               predicate: &ty::Predicate<'tcx>)
-               -> Option<usize> {
+    fn has(&mut self,
+           infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+           predicate: &ty::Predicate<'tcx>)
+           -> Option<usize> {
         // the first time, we have to populate the cache
         if !self.populated {
             let backtrace = self.backtrace.clone();
@@ -519,8 +516,8 @@ impl<'b, 'tcx> AncestorSet<'b, 'tcx> {
 }
 
 /// Return the set of type variables contained in a trait ref
-fn trait_ref_type_vars<'a, 'tcx>(selcx: &mut SelectionContext<'a, 'tcx>,
-                                 t: ty::PolyTraitRef<'tcx>) -> Vec<Ty<'tcx>>
+fn trait_ref_type_vars<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
+                                       t: ty::PolyTraitRef<'tcx>) -> Vec<Ty<'tcx>>
 {
     t.skip_binder() // ok b/c this check doesn't care about regions
      .input_types()
@@ -536,12 +533,13 @@ fn trait_ref_type_vars<'a, 'tcx>(selcx: &mut SelectionContext<'a, 'tcx>,
 /// - `Ok(Some(v))` if the predicate is true, presuming that `v` are also true
 /// - `Ok(None)` if we don't have enough info to be sure
 /// - `Err` if the predicate does not hold
-fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
-                               pending_obligation: &mut PendingPredicateObligation<'tcx>,
-                               region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>,
-                               rfc1592_obligations: &mut Vec<PredicateObligation<'tcx>>)
-                               -> Result<Option<Vec<PredicateObligation<'tcx>>>,
-                                         FulfillmentErrorCode<'tcx>>
+fn process_predicate1<'a, 'gcx, 'tcx>(
+    selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
+    pending_obligation: &mut PendingPredicateObligation<'tcx>,
+    region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>,
+    rfc1592_obligations: &mut Vec<PredicateObligation<'tcx>>)
+    -> Result<Option<Vec<PredicateObligation<'tcx>>>,
+              FulfillmentErrorCode<'tcx>>
 {
     // if we were stalled on some unresolved variables, first check
     // whether any of them have been resolved; if not, don't bother
@@ -677,7 +675,7 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         }
 
         ty::Predicate::ObjectSafe(trait_def_id) => {
-            if !is_object_safe(selcx.tcx(), trait_def_id) {
+            if !selcx.tcx().is_object_safe(trait_def_id) {
                 Err(CodeSelectionError(Unimplemented))
             } else {
                 Ok(Some(Vec::new()))
@@ -727,9 +725,9 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
 /// - it also appears in the backtrace at some position `X`; and,
 /// - all the predicates at positions `X..` between `X` an the top are
 ///   also defaulted traits.
-fn coinductive_match<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
-                              cycle: &[PredicateObligation<'tcx>])
-                              -> bool
+fn coinductive_match<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
+                                     cycle: &[PredicateObligation<'tcx>])
+                                     -> bool
 {
     let len = cycle.len();
 
@@ -745,9 +743,9 @@ fn coinductive_match<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         })
 }
 
-fn coinductive_obligation<'a, 'tcx>(selcx: &SelectionContext<'a, 'tcx>,
-                                    obligation: &PredicateObligation<'tcx>)
-                                    -> bool {
+fn coinductive_obligation<'a, 'gcx, 'tcx>(selcx: &SelectionContext<'a, 'gcx, 'tcx>,
+                                          obligation: &PredicateObligation<'tcx>)
+                                          -> bool {
     match obligation.predicate {
         ty::Predicate::Trait(ref data) => {
             selcx.tcx().trait_has_default_impl(data.def_id())
@@ -795,8 +793,8 @@ impl<'tcx> LocalFulfilledPredicates<'tcx> {
     }
 }
 
-impl<'tcx> GlobalFulfilledPredicates<'tcx> {
-    pub fn new(dep_graph: DepGraph) -> GlobalFulfilledPredicates<'tcx> {
+impl<'a, 'gcx, 'tcx> GlobalFulfilledPredicates<'gcx> {
+    pub fn new(dep_graph: DepGraph) -> GlobalFulfilledPredicates<'gcx> {
         GlobalFulfilledPredicates {
             set: FnvHashSet(),
             dep_graph: dep_graph,
@@ -827,15 +825,17 @@ impl<'tcx> GlobalFulfilledPredicates<'tcx> {
         }
     }
 
-    fn add_if_global(&mut self, key: &ty::Predicate<'tcx>) {
+    fn add_if_global(&mut self, tcx: TyCtxt<'a, 'gcx, 'tcx>, key: &ty::Predicate<'tcx>) {
         if let ty::Predicate::Trait(ref data) = *key {
             // We only add things to the global predicate registry
             // after the current task has proved them, and hence
             // already has the required read edges, so we don't need
             // to add any more edges here.
             if data.is_global() {
-                if self.set.insert(data.clone()) {
-                    debug!("add_if_global: global predicate `{:?}` added", data);
+                if let Some(data) = tcx.lift_to_global(data) {
+                    if self.set.insert(data.clone()) {
+                        debug!("add_if_global: global predicate `{:?}` added", data);
+                    }
                 }
             }
         }

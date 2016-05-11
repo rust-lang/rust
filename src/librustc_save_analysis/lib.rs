@@ -75,7 +75,7 @@ pub mod recorder {
 }
 
 pub struct SaveContext<'l, 'tcx: 'l> {
-    tcx: &'l TyCtxt<'tcx>,
+    tcx: TyCtxt<'l, 'tcx, 'tcx>,
     span_utils: SpanUtils<'tcx>,
 }
 
@@ -84,12 +84,12 @@ macro_rules! option_try(
 );
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
-    pub fn new(tcx: &'l TyCtxt<'tcx>) -> SaveContext<'l, 'tcx> {
+    pub fn new(tcx: TyCtxt<'l, 'tcx, 'tcx>) -> SaveContext<'l, 'tcx> {
         let span_utils = SpanUtils::new(&tcx.sess);
         SaveContext::from_span_utils(tcx, span_utils)
     }
 
-    pub fn from_span_utils(tcx: &'l TyCtxt<'tcx>,
+    pub fn from_span_utils(tcx: TyCtxt<'l, 'tcx, 'tcx>,
                            span_utils: SpanUtils<'tcx>)
                            -> SaveContext<'l, 'tcx> {
         SaveContext {
@@ -699,7 +699,7 @@ impl Format {
     }
 }
 
-pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
+pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
                                krate: &ast::Crate,
                                analysis: &'l ty::CrateAnalysis<'l>,
                                cratename: &str,

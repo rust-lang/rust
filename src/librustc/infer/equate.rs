@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::combine::{self, CombineFields};
-use super::higher_ranked::HigherRankedRelations;
+use super::combine::CombineFields;
 use super::{Subtype};
 use super::type_variable::{EqTo};
 
@@ -19,12 +18,12 @@ use ty::relate::{Relate, RelateResult, TypeRelation};
 use traits::PredicateObligations;
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
-pub struct Equate<'a, 'tcx: 'a> {
-    fields: CombineFields<'a, 'tcx>
+pub struct Equate<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fields: CombineFields<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx> Equate<'a, 'tcx> {
-    pub fn new(fields: CombineFields<'a, 'tcx>) -> Equate<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> Equate<'a, 'gcx, 'tcx> {
+    pub fn new(fields: CombineFields<'a, 'gcx, 'tcx>) -> Equate<'a, 'gcx, 'tcx> {
         Equate { fields: fields }
     }
 
@@ -33,18 +32,18 @@ impl<'a, 'tcx> Equate<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Equate<'a, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Equate" }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
-    fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
-                                               _: ty::Variance,
-                                               a: &T,
-                                               b: &T)
-                                               -> RelateResult<'tcx, T>
+    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
+                                             _: ty::Variance,
+                                             a: &T,
+                                             b: &T)
+                                             -> RelateResult<'tcx, T>
     {
         self.relate(a, b)
     }
@@ -74,7 +73,7 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
             }
 
             _ => {
-                combine::super_combine_tys(self.fields.infcx, self, a, b)?;
+                self.fields.infcx.super_combine_tys(self, a, b)?;
                 Ok(a)
             }
         }
@@ -92,7 +91,7 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
                   -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'a, 'tcx>
+        where T: Relate<'tcx>
     {
         self.fields.higher_ranked_sub(a, b)?;
         self.fields.higher_ranked_sub(b, a)

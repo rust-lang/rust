@@ -28,26 +28,26 @@ use ty::relate::{self, Relate, TypeRelation, RelateResult};
 /// Like subtyping, matching is really a binary relation, so the only
 /// important thing about the result is Ok/Err. Also, matching never
 /// affects any type variables or unification state.
-pub struct Match<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>
+pub struct Match<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx> Match<'a, 'tcx> {
-    pub fn new(tcx: &'a TyCtxt<'tcx>) -> Match<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> Match<'a, 'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Match<'a, 'gcx, 'tcx> {
         Match { tcx: tcx }
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Match<'a, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Match" }
-    fn tcx(&self) -> &'a TyCtxt<'tcx> { self.tcx }
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.tcx }
     fn a_is_expected(&self) -> bool { true } // irrelevant
 
-    fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
-                                               _: ty::Variance,
-                                               a: &T,
-                                               b: &T)
-                                               -> RelateResult<'tcx, T>
+    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
+                                             _: ty::Variance,
+                                             a: &T,
+                                             b: &T)
+                                             -> RelateResult<'tcx, T>
     {
         self.relate(a, b)
     }
@@ -89,7 +89,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
                   -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'a,'tcx>
+        where T: Relate<'tcx>
     {
         Ok(ty::Binder(self.relate(a.skip_binder(), b.skip_binder())?))
     }

@@ -103,7 +103,7 @@ use util::sha2::{Digest, Sha256};
 
 use rustc::middle::cstore;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, TypeFoldable};
+use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::item_path::{ItemPathBuffer, RootMode};
 use rustc::hir::map::definitions::{DefPath, DefPathData};
 
@@ -111,12 +111,12 @@ use std::fmt::Write;
 use syntax::parse::token::{self, InternedString};
 use serialize::hex::ToHex;
 
-pub fn def_id_to_string<'tcx>(tcx: &ty::TyCtxt<'tcx>, def_id: DefId) -> String {
+pub fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> String {
     let def_path = tcx.def_path(def_id);
     def_path_to_string(tcx, &def_path)
 }
 
-pub fn def_path_to_string<'tcx>(tcx: &ty::TyCtxt<'tcx>, def_path: &DefPath) -> String {
+pub fn def_path_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_path: &DefPath) -> String {
     let mut s = String::with_capacity(def_path.data.len() * 16);
 
     s.push_str(&tcx.crate_name(def_path.krate));

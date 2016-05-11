@@ -209,7 +209,7 @@ pub fn simple_name<'a>(pat: &'a hir::Pat) -> Option<ast::Name> {
     }
 }
 
-pub fn def_to_path(tcx: &TyCtxt, id: DefId) -> hir::Path {
+pub fn def_to_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> hir::Path {
     let name = tcx.item_name(id);
     hir::Path::from_ident(DUMMY_SP, hir::Ident::from_name(name))
 }

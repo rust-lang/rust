@@ -72,7 +72,7 @@ pub struct Index<'tcx> {
 
 // A private tree-walker for producing an Index.
 struct Annotator<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     index: &'a mut Index<'tcx>,
     parent_stab: Option<&'tcx Stability>,
     parent_depr: Option<Deprecation>,
@@ -203,7 +203,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
     fn visit_nested_item(&mut self, item: hir::ItemId) {
-        self.visit_item(self.tcx.map.expect_item(item.id))
+        let tcx = self.tcx;
+        self.visit_item(tcx.map.expect_item(item.id))
     }
 
     fn visit_item(&mut self, i: &Item) {
@@ -277,9 +278,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
     }
 }
 
-impl<'tcx> Index<'tcx> {
+impl<'a, 'tcx> Index<'tcx> {
     /// Construct the stability index for a crate being compiled.
-    pub fn build(&mut self, tcx: &TyCtxt<'tcx>, access_levels: &AccessLevels) {
+    pub fn build(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, access_levels: &AccessLevels) {
         let _task = tcx.dep_graph.in_task(DepNode::StabilityIndex);
         let krate = tcx.map.krate();
         let mut annotator = Annotator {
@@ -319,8 +320,8 @@ impl<'tcx> Index<'tcx> {
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors. Returns a list of all
 /// features used.
-pub fn check_unstable_api_usage(tcx: &TyCtxt)
-                                -> FnvHashMap<InternedString, StabilityLevel> {
+pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                          -> FnvHashMap<InternedString, StabilityLevel> {
     let _task = tcx.dep_graph.in_task(DepNode::StabilityCheck);
     let ref active_lib_features = tcx.sess.features.borrow().declared_lib_features;
 
@@ -339,7 +340,7 @@ pub fn check_unstable_api_usage(tcx: &TyCtxt)
 }
 
 struct Checker<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     active_features: FnvHashSet<InternedString>,
     used_features: FnvHashMap<InternedString, StabilityLevel>,
     // Within a block where feature gate checking can be skipped.
@@ -411,7 +412,8 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
     fn visit_nested_item(&mut self, item: hir::ItemId) {
-        self.visit_item(self.tcx.map.expect_item(item.id))
+        let tcx = self.tcx;
+        self.visit_item(tcx.map.expect_item(item.id))
     }
 
     fn visit_item(&mut self, item: &hir::Item) {
@@ -466,8 +468,12 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
 }
 
 /// Helper for discovering nodes to check for stability
-pub fn check_item(tcx: &TyCtxt, item: &hir::Item, warn_about_defns: bool,
-                  cb: &mut FnMut(DefId, Span, &Option<&Stability>, &Option<Deprecation>)) {
+pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            item: &hir::Item,
+                            warn_about_defns: bool,
+                            cb: &mut FnMut(DefId, Span,
+                                           &Option<&Stability>,
+                                           &Option<Deprecation>)) {
     match item.node {
         hir::ItemExternCrate(_) => {
             // compiler-generated `extern crate` items have a dummy span.
@@ -503,8 +509,10 @@ pub fn check_item(tcx: &TyCtxt, item: &hir::Item, warn_about_defns: bool,
 }
 
 /// Helper for discovering nodes to check for stability
-pub fn check_expr(tcx: &TyCtxt, e: &hir::Expr,
-                  cb: &mut FnMut(DefId, Span, &Option<&Stability>, &Option<Deprecation>)) {
+pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
+                            cb: &mut FnMut(DefId, Span,
+                                           &Option<&Stability>,
+                                           &Option<Deprecation>)) {
     let span;
     let id = match e.node {
         hir::ExprMethodCall(i, _, _) => {
@@ -564,8 +572,11 @@ pub fn check_expr(tcx: &TyCtxt, e: &hir::Expr,
     maybe_do_stability_check(tcx, id, span, cb);
 }
 
-pub fn check_path(tcx: &TyCtxt, path: &hir::Path, id: ast::NodeId,
-                  cb: &mut FnMut(DefId, Span, &Option<&Stability>, &Option<Deprecation>)) {
+pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            path: &hir::Path, id: ast::NodeId,
+                            cb: &mut FnMut(DefId, Span,
+                                           &Option<&Stability>,
+                                           &Option<Deprecation>)) {
     match tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
         Some(Def::PrimTy(..)) => {}
         Some(Def::SelfTy(..)) => {}
@@ -576,8 +587,11 @@ pub fn check_path(tcx: &TyCtxt, path: &hir::Path, id: ast::NodeId,
     }
 }
 
-pub fn check_path_list_item(tcx: &TyCtxt, item: &hir::PathListItem,
-                  cb: &mut FnMut(DefId, Span, &Option<&Stability>, &Option<Deprecation>)) {
+pub fn check_path_list_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                      item: &hir::PathListItem,
+                                      cb: &mut FnMut(DefId, Span,
+                                                     &Option<&Stability>,
+                                                     &Option<Deprecation>)) {
     match tcx.def_map.borrow().get(&item.node.id()).map(|d| d.full_def()) {
         Some(Def::PrimTy(..)) => {}
         Some(def) => {
@@ -587,8 +601,10 @@ pub fn check_path_list_item(tcx: &TyCtxt, item: &hir::PathListItem,
     }
 }
 
-pub fn check_pat(tcx: &TyCtxt, pat: &hir::Pat,
-                 cb: &mut FnMut(DefId, Span, &Option<&Stability>, &Option<Deprecation>)) {
+pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
+                           cb: &mut FnMut(DefId, Span,
+                                          &Option<&Stability>,
+                                          &Option<Deprecation>)) {
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
@@ -616,29 +632,31 @@ pub fn check_pat(tcx: &TyCtxt, pat: &hir::Pat,
     }
 }
 
-fn maybe_do_stability_check(tcx: &TyCtxt, id: DefId, span: Span,
-                            cb: &mut FnMut(DefId, Span,
-                                           &Option<&Stability>, &Option<Deprecation>)) {
+fn maybe_do_stability_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                      id: DefId, span: Span,
+                                      cb: &mut FnMut(DefId, Span,
+                                                     &Option<&Stability>,
+                                                     &Option<Deprecation>)) {
     if is_internal(tcx, span) {
         debug!("maybe_do_stability_check: \
                 skipping span={:?} since it is internal", span);
         return;
     }
     let (stability, deprecation) = if is_staged_api(tcx, id) {
-        (lookup_stability(tcx, id), None)
+        (tcx.lookup_stability(id), None)
     } else {
-        (None, lookup_deprecation(tcx, id))
+        (None, tcx.lookup_deprecation(id))
     };
     debug!("maybe_do_stability_check: \
             inspecting id={:?} span={:?} of stability={:?}", id, span, stability);
     cb(id, span, &stability, &deprecation);
 }
 
-fn is_internal(tcx: &TyCtxt, span: Span) -> bool {
+fn is_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span) -> bool {
     tcx.sess.codemap().span_allows_unstable(span)
 }
 
-fn is_staged_api(tcx: &TyCtxt, id: DefId) -> bool {
+fn is_staged_api<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> bool {
     match tcx.trait_item_of_item(id) {
         Some(ty::MethodTraitItemId(trait_method_id))
             if trait_method_id != id => {
@@ -651,43 +669,45 @@ fn is_staged_api(tcx: &TyCtxt, id: DefId) -> bool {
     }
 }
 
-/// Lookup the stability for a node, loading external crate
-/// metadata as necessary.
-pub fn lookup_stability<'tcx>(tcx: &TyCtxt<'tcx>, id: DefId) -> Option<&'tcx Stability> {
-    if let Some(st) = tcx.stability.borrow().stab_map.get(&id) {
-        return *st;
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+    /// Lookup the stability for a node, loading external crate
+    /// metadata as necessary.
+    pub fn lookup_stability(self, id: DefId) -> Option<&'tcx Stability> {
+        if let Some(st) = self.stability.borrow().stab_map.get(&id) {
+            return *st;
+        }
+
+        let st = self.lookup_stability_uncached(id);
+        self.stability.borrow_mut().stab_map.insert(id, st);
+        st
     }
 
-    let st = lookup_stability_uncached(tcx, id);
-    tcx.stability.borrow_mut().stab_map.insert(id, st);
-    st
-}
+    pub fn lookup_deprecation(self, id: DefId) -> Option<Deprecation> {
+        if let Some(depr) = self.stability.borrow().depr_map.get(&id) {
+            return depr.clone();
+        }
 
-pub fn lookup_deprecation<'tcx>(tcx: &TyCtxt<'tcx>, id: DefId) -> Option<Deprecation> {
-    if let Some(depr) = tcx.stability.borrow().depr_map.get(&id) {
-        return depr.clone();
+        let depr = self.lookup_deprecation_uncached(id);
+        self.stability.borrow_mut().depr_map.insert(id, depr.clone());
+        depr
     }
 
-    let depr = lookup_deprecation_uncached(tcx, id);
-    tcx.stability.borrow_mut().depr_map.insert(id, depr.clone());
-    depr
-}
-
-fn lookup_stability_uncached<'tcx>(tcx: &TyCtxt<'tcx>, id: DefId) -> Option<&'tcx Stability> {
-    debug!("lookup(id={:?})", id);
-    if id.is_local() {
-        None // The stability cache is filled partially lazily
-    } else {
-        tcx.sess.cstore.stability(id).map(|st| tcx.intern_stability(st))
+    fn lookup_stability_uncached(self, id: DefId) -> Option<&'tcx Stability> {
+        debug!("lookup(id={:?})", id);
+        if id.is_local() {
+            None // The stability cache is filled partially lazily
+        } else {
+            self.sess.cstore.stability(id).map(|st| self.intern_stability(st))
+        }
     }
-}
 
-fn lookup_deprecation_uncached<'tcx>(tcx: &TyCtxt<'tcx>, id: DefId) -> Option<Deprecation> {
-    debug!("lookup(id={:?})", id);
-    if id.is_local() {
-        None // The stability cache is filled partially lazily
-    } else {
-        tcx.sess.cstore.deprecation(id)
+    fn lookup_deprecation_uncached(self, id: DefId) -> Option<Deprecation> {
+        debug!("lookup(id={:?})", id);
+        if id.is_local() {
+            None // The stability cache is filled partially lazily
+        } else {
+            self.sess.cstore.deprecation(id)
+        }
     }
 }
 

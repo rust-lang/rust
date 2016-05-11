@@ -18,6 +18,7 @@ use ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use ty::TyClosure;
 use ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::fold::{TypeFolder, TypeVisitor};
 
 use std::cell::Cell;
 use std::fmt;
@@ -68,12 +69,12 @@ pub enum Ns {
     Value
 }
 
-fn number_of_supplied_defaults<'tcx, GG>(tcx: &ty::TyCtxt<'tcx>,
-                                         substs: &subst::Substs,
-                                         space: subst::ParamSpace,
-                                         get_generics: GG)
-                                         -> usize
-    where GG: FnOnce(&TyCtxt<'tcx>) -> ty::Generics<'tcx>
+fn number_of_supplied_defaults<'a, 'gcx, 'tcx, GG>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                   substs: &subst::Substs,
+                                                   space: subst::ParamSpace,
+                                                   get_generics: GG)
+                                                   -> usize
+    where GG: FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> ty::Generics<'tcx>
 {
     let generics = get_generics(tcx);
 
@@ -114,7 +115,7 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
                          projections: &[ty::ProjectionPredicate],
                          get_generics: GG)
                          -> fmt::Result
-    where GG: for<'tcx> FnOnce(&TyCtxt<'tcx>) -> ty::Generics<'tcx>
+    where GG: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> ty::Generics<'tcx>
 {
     if let (Ns::Value, Some(self_ty)) = (ns, substs.self_ty()) {
         write!(f, "<{} as ", self_ty)?;
@@ -230,10 +231,10 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
     Ok(())
 }
 
-fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
-                         tcx: &TyCtxt<'tcx>,
-                         original: &ty::Binder<T>,
-                         lifted: Option<ty::Binder<U>>) -> fmt::Result
+fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
+                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                   original: &ty::Binder<T>,
+                                   lifted: Option<ty::Binder<U>>) -> fmt::Result
     where T: fmt::Display, U: fmt::Display + TypeFoldable<'tcx>
 {
     // Replace any anonymous late-bound regions with named
@@ -293,11 +294,11 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
 struct TraitAndProjections<'tcx>(ty::TraitRef<'tcx>, Vec<ty::ProjectionPredicate<'tcx>>);
 
 impl<'tcx> TypeFoldable<'tcx> for TraitAndProjections<'tcx> {
-    fn super_fold_with<F:ty::fold::TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         TraitAndProjections(self.0.fold_with(folder), self.1.fold_with(folder))
     }
 
-    fn super_visit_with<V: ty::fold::TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.0.visit_with(visitor) || self.1.visit_with(visitor)
     }
 }
@@ -557,7 +558,7 @@ impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
     }
 }
 
-impl<'a, 'tcx> fmt::Debug for ty::ParameterEnvironment<'a, 'tcx> {
+impl<'tcx> fmt::Debug for ty::ParameterEnvironment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ParameterEnvironment(\
             free_substs={:?}, \
@@ -894,14 +895,14 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyTrait(ref data) => write!(f, "{}", data),
             ty::TyProjection(ref data) => write!(f, "{}", data),
             TyStr => write!(f, "str"),
-            TyClosure(did, ref substs) => ty::tls::with(|tcx| {
+            TyClosure(did, substs) => ty::tls::with(|tcx| {
                 write!(f, "[closure")?;
 
                 if let Some(node_id) = tcx.map.as_local_node_id(did) {
                     write!(f, "@{:?}", tcx.map.span(node_id))?;
                     let mut sep = " ";
                     tcx.with_freevars(node_id, |freevars| {
-                        for (freevar, upvar_ty) in freevars.iter().zip(&substs.upvar_tys) {
+                        for (freevar, upvar_ty) in freevars.iter().zip(substs.upvar_tys) {
                             let node_id = freevar.def.var_id();
                             write!(f,
                                         "{}{}:{}",

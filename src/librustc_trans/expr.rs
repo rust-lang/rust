@@ -722,7 +722,7 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                               base: &hir::Expr,
                               get_idx: F)
                               -> DatumBlock<'blk, 'tcx, Expr> where
-    F: FnOnce(&'blk TyCtxt<'tcx>, &VariantInfo<'tcx>) -> usize,
+    F: FnOnce(TyCtxt<'blk, 'tcx, 'tcx>, &VariantInfo<'tcx>) -> usize,
 {
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_rec_field");
@@ -1134,7 +1134,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // the key we need to find the closure-kind and
             // closure-type etc.
             let (def_id, substs) = match expr_ty(bcx, expr).sty {
-                ty::TyClosure(def_id, ref substs) => (def_id, substs),
+                ty::TyClosure(def_id, substs) => (def_id, substs),
                 ref t =>
                     span_bug!(
                         expr.span,
@@ -1826,11 +1826,11 @@ fn trans_binary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn cast_is_noop<'tcx>(tcx: &TyCtxt<'tcx>,
-                          expr: &hir::Expr,
-                          t_in: Ty<'tcx>,
-                          t_out: Ty<'tcx>)
-                          -> bool {
+pub fn cast_is_noop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              expr: &hir::Expr,
+                              t_in: Ty<'tcx>,
+                              t_out: Ty<'tcx>)
+                              -> bool {
     if let Some(&CastKind::CoercionCast) = tcx.cast_kinds.borrow().get(&expr.id) {
         return true;
     }
@@ -2185,7 +2185,7 @@ impl OverflowOpViaIntrinsic {
         let name = self.to_intrinsic_name(bcx.tcx(), lhs_ty);
         bcx.ccx().get_intrinsic(&name)
     }
-    fn to_intrinsic_name(&self, tcx: &TyCtxt, ty: Ty) -> &'static str {
+    fn to_intrinsic_name(&self, tcx: TyCtxt, ty: Ty) -> &'static str {
         use syntax::ast::IntTy::*;
         use syntax::ast::UintTy::*;
         use rustc::ty::{TyInt, TyUint};
@@ -2377,7 +2377,7 @@ enum ExprKind {
     RvalueStmt
 }
 
-fn expr_kind(tcx: &TyCtxt, expr: &hir::Expr) -> ExprKind {
+fn expr_kind<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, expr: &hir::Expr) -> ExprKind {
     if tcx.is_method_call(expr.id) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are a few exceptions:

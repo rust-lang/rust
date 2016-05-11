@@ -62,7 +62,7 @@ macro_rules! down_cast_data {
 pub struct DumpVisitor<'l, 'tcx: 'l, 'll, D: 'll> {
     save_ctxt: SaveContext<'l, 'tcx>,
     sess: &'l Session,
-    tcx: &'l TyCtxt<'tcx>,
+    tcx: TyCtxt<'l, 'tcx, 'tcx>,
     analysis: &'l ty::CrateAnalysis<'l>,
     dumper: &'ll mut D,
 
@@ -79,7 +79,7 @@ pub struct DumpVisitor<'l, 'tcx: 'l, 'll, D: 'll> {
 }
 
 impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
-    pub fn new(tcx: &'l TyCtxt<'tcx>,
+    pub fn new(tcx: TyCtxt<'l, 'tcx, 'tcx>,
                save_ctxt: SaveContext<'l, 'tcx>,
                analysis: &'l ty::CrateAnalysis<'l>,
                dumper: &'ll mut D)

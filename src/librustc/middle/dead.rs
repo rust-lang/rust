@@ -31,7 +31,8 @@ use syntax::attr;
 // explored. For example, if it's a live NodeItem that is a
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
-fn should_explore(tcx: &TyCtxt, node_id: ast::NodeId) -> bool {
+fn should_explore<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            node_id: ast::NodeId) -> bool {
     match tcx.map.find(node_id) {
         Some(ast_map::NodeItem(..)) |
         Some(ast_map::NodeImplItem(..)) |
@@ -45,7 +46,7 @@ fn should_explore(tcx: &TyCtxt, node_id: ast::NodeId) -> bool {
 
 struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     worklist: Vec<ast::NodeId>,
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     live_symbols: Box<HashSet<ast::NodeId>>,
     struct_has_extern_repr: bool,
     ignore_non_const_paths: bool,
@@ -54,7 +55,7 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
-    fn new(tcx: &'a TyCtxt<'tcx>,
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            worklist: Vec<ast::NodeId>) -> MarkSymbolVisitor<'a, 'tcx> {
         MarkSymbolVisitor {
             worklist: worklist,
@@ -362,9 +363,10 @@ impl<'v> Visitor<'v> for LifeSeeder {
     }
 }
 
-fn create_and_seed_worklist(tcx: &TyCtxt,
-                            access_levels: &privacy::AccessLevels,
-                            krate: &hir::Crate) -> Vec<ast::NodeId> {
+fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                      access_levels: &privacy::AccessLevels,
+                                      krate: &hir::Crate)
+                                      -> Vec<ast::NodeId> {
     let mut worklist = Vec::new();
     for (id, _) in &access_levels.map {
         worklist.push(*id);
@@ -385,10 +387,10 @@ fn create_and_seed_worklist(tcx: &TyCtxt,
     return life_seeder.worklist;
 }
 
-fn find_live(tcx: &TyCtxt,
-             access_levels: &privacy::AccessLevels,
-             krate: &hir::Crate)
-             -> Box<HashSet<ast::NodeId>> {
+fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                       access_levels: &privacy::AccessLevels,
+                       krate: &hir::Crate)
+                       -> Box<HashSet<ast::NodeId>> {
     let worklist = create_and_seed_worklist(tcx, access_levels, krate);
     let mut symbol_visitor = MarkSymbolVisitor::new(tcx, worklist);
     symbol_visitor.mark_live_symbols();
@@ -405,7 +407,7 @@ fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
 }
 
 struct DeadVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     live_symbols: Box<HashSet<ast::NodeId>>,
 }
 
@@ -504,7 +506,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
     fn visit_nested_item(&mut self, item: hir::ItemId) {
-        self.visit_item(self.tcx.map.expect_item(item.id))
+        let tcx = self.tcx;
+        self.visit_item(tcx.map.expect_item(item.id))
     }
 
     fn visit_item(&mut self, item: &hir::Item) {
@@ -582,7 +585,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt, access_levels: &privacy::AccessLevels) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             access_levels: &privacy::AccessLevels) {
     let _task = tcx.dep_graph.in_task(DepNode::DeadCheck);
     let krate = tcx.map.krate();
     let live_symbols = find_live(tcx, access_levels, krate);

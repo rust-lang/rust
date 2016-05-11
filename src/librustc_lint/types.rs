@@ -11,7 +11,6 @@
 #![allow(non_snake_case)]
 
 use rustc::hir::def_id::DefId;
-use rustc::infer;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use middle::const_val::ConstVal;
@@ -295,8 +294,10 @@ impl LateLintPass for TypeLimits {
             }
         }
 
-        fn check_limits(tcx: &TyCtxt, binop: hir::BinOp,
-                        l: &hir::Expr, r: &hir::Expr) -> bool {
+        fn check_limits<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  binop: hir::BinOp,
+                                  l: &hir::Expr,
+                                  r: &hir::Expr) -> bool {
             let (lit, expr, swap) = match (&l.node, &r.node) {
                 (&hir::ExprLit(_), _) => (l, r, true),
                 (_, &hir::ExprLit(_)) => (r, l, false),
@@ -376,10 +377,10 @@ enum FfiResult {
 /// to function pointers and references, but could be
 /// expanded to cover NonZero raw pointers and newtypes.
 /// FIXME: This duplicates code in trans.
-fn is_repr_nullable_ptr<'tcx>(tcx: &TyCtxt<'tcx>,
-                              def: ty::AdtDef<'tcx>,
-                              substs: &Substs<'tcx>)
-                              -> bool {
+fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  def: ty::AdtDef<'tcx>,
+                                  substs: &Substs<'tcx>)
+                                  -> bool {
     if def.variants.len() == 2 {
         let data_idx;
 
@@ -410,7 +411,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                           ty: Ty<'tcx>)
                           -> FfiResult {
         use self::FfiResult::*;
-        let cx = &self.cx.tcx;
+        let cx = self.cx.tcx;
 
         // Protect against infinite recursion, for example
         // `struct S(*mut S);`.
@@ -439,7 +440,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
 
                 for field in &def.struct_variant().fields {
-                    let field_ty = infer::normalize_associated_type(cx, &field.ty(cx, substs));
+                    let field_ty = cx.normalize_associated_type(&field.ty(cx, substs));
                     let r = self.check_type_for_ffi(cache, field_ty);
                     match r {
                         FfiSafe => {}
@@ -494,7 +495,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 // Check the contained variants.
                 for variant in &def.variants {
                     for field in &variant.fields {
-                        let arg = infer::normalize_associated_type(cx, &field.ty(cx, substs));
+                        let arg = cx.normalize_associated_type(&field.ty(cx, substs));
                         let r = self.check_type_for_ffi(cache, arg);
                         match r {
                             FfiSafe => {}
@@ -596,7 +597,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>) {
         // it is only OK to use this function because extern fns cannot have
         // any generic types right now:
-        let ty = infer::normalize_associated_type(self.cx.tcx, &ty);
+        let ty = self.cx.tcx.normalize_associated_type(&ty);
 
         match self.check_type_for_ffi(&mut FnvHashSet(), ty) {
             FfiResult::FfiSafe => {}

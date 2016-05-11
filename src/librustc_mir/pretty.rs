@@ -36,7 +36,7 @@ const INDENT: &'static str = "    ";
 /// - `substring1&substring2,...` -- `&`-separated list of substrings
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
-pub fn dump_mir<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
+pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           pass_name: &str,
                           disambiguator: &Display,
                           src: MirSource,
@@ -73,10 +73,10 @@ pub fn dump_mir<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
 }
 
 /// Write out a human-readable textual representation for the given MIR.
-pub fn write_mir_pretty<'a, 'tcx, I>(tcx: &TyCtxt<'tcx>,
-                                     iter: I,
-                                     w: &mut Write)
-                                     -> io::Result<()>
+pub fn write_mir_pretty<'a, 'b, 'tcx, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
+                                         iter: I,
+                                         w: &mut Write)
+                                         -> io::Result<()>
     where I: Iterator<Item=(&'a NodeId, &'a Mir<'tcx>)>, 'tcx: 'a
 {
     for (&id, mir) in iter {
@@ -95,12 +95,12 @@ enum Annotation {
     ExitScope(ScopeId),
 }
 
-pub fn write_mir_fn<'tcx>(tcx: &TyCtxt<'tcx>,
-                          src: MirSource,
-                          mir: &Mir<'tcx>,
-                          w: &mut Write,
-                          auxiliary: Option<&ScopeAuxiliaryVec>)
-                          -> io::Result<()> {
+pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              src: MirSource,
+                              mir: &Mir<'tcx>,
+                              w: &mut Write,
+                              auxiliary: Option<&ScopeAuxiliaryVec>)
+                              -> io::Result<()> {
     // compute scope/entry exit annotations
     let mut annotations = FnvHashMap();
     if let Some(auxiliary) = auxiliary {
@@ -138,7 +138,7 @@ pub fn write_mir_fn<'tcx>(tcx: &TyCtxt<'tcx>,
 }
 
 /// Write out a human-readable textual representation for the given basic block.
-fn write_basic_block(tcx: &TyCtxt,
+fn write_basic_block(tcx: TyCtxt,
                      block: BasicBlock,
                      mir: &Mir,
                      w: &mut Write,
@@ -182,14 +182,11 @@ fn write_basic_block(tcx: &TyCtxt,
     writeln!(w, "{}}}", INDENT)
 }
 
-fn comment(tcx: &TyCtxt,
-           scope: ScopeId,
-           span: Span)
-           -> String {
+fn comment(tcx: TyCtxt, scope: ScopeId, span: Span) -> String {
     format!("Scope({}) at {}", scope.index(), tcx.sess.codemap().span_to_string(span))
 }
 
-fn write_scope_tree(tcx: &TyCtxt,
+fn write_scope_tree(tcx: TyCtxt,
                     mir: &Mir,
                     auxiliary: Option<&ScopeAuxiliaryVec>,
                     scope_tree: &FnvHashMap<Option<ScopeId>, Vec<ScopeId>>,
@@ -222,8 +219,11 @@ fn write_scope_tree(tcx: &TyCtxt,
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-fn write_mir_intro(tcx: &TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
-                   -> io::Result<()> {
+fn write_mir_intro<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             src: MirSource,
+                             mir: &Mir,
+                             w: &mut Write)
+                             -> io::Result<()> {
     match src {
         MirSource::Fn(_) => write!(w, "fn")?,
         MirSource::Const(_) => write!(w, "const")?,

@@ -13,7 +13,7 @@
 
 use CrateCtxt;
 
-use check::{self, FnCtxt, UnresolvedTypeAction, autoderef};
+use check::{self, FnCtxt, UnresolvedTypeAction};
 use rustc::hir::map as hir_map;
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use middle::cstore;
@@ -36,366 +36,358 @@ use rustc::hir::Expr_;
 use std::cell;
 use std::cmp::Ordering;
 
-use super::{MethodError, NoMatchData, CandidateSource, impl_item, trait_item};
+use super::{MethodError, NoMatchData, CandidateSource};
 use super::probe::Mode;
 
-fn is_fn_ty<'a, 'tcx>(ty: &Ty<'tcx>, fcx: &FnCtxt<'a, 'tcx>, span: Span) -> bool {
-    let cx = fcx.tcx();
-    match ty.sty {
-        // Not all of these (e.g. unsafe fns) implement FnOnce
-        // so we look for these beforehand
-        ty::TyClosure(..) | ty::TyFnDef(..) | ty::TyFnPtr(_) => true,
-        // If it's not a simple function, look for things which implement FnOnce
-        _ => {
-            if let Ok(fn_once_trait_did) =
-                    cx.lang_items.require(FnOnceTraitLangItem) {
-                let infcx = fcx.infcx();
-                let (_, _, opt_is_fn) = autoderef(fcx,
-                                                  span,
-                                                  ty,
-                                                  || None,
-                                                  UnresolvedTypeAction::Ignore,
-                                                  LvaluePreference::NoPreference,
-                                                  |ty, _| {
-                    infcx.probe(|_| {
-                        let fn_once_substs =
-                            Substs::new_trait(vec![infcx.next_ty_var()],
-                                              Vec::new(),
-                                              ty);
-                        let trait_ref =
-                          ty::TraitRef::new(fn_once_trait_did,
-                                            cx.mk_substs(fn_once_substs));
-                        let poly_trait_ref = trait_ref.to_poly_trait_ref();
-                        let obligation = Obligation::misc(span,
-                                                          fcx.body_id,
-                                                          poly_trait_ref
-                                                             .to_predicate());
-                        let mut selcx = SelectionContext::new(infcx);
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+    fn is_fn_ty(&self, ty: &Ty<'tcx>, span: Span) -> bool {
+        let tcx = self.tcx;
+        match ty.sty {
+            // Not all of these (e.g. unsafe fns) implement FnOnce
+            // so we look for these beforehand
+            ty::TyClosure(..) | ty::TyFnDef(..) | ty::TyFnPtr(_) => true,
+            // If it's not a simple function, look for things which implement FnOnce
+            _ => {
+                if let Ok(fn_once_trait_did) =
+                        tcx.lang_items.require(FnOnceTraitLangItem) {
+                    let (_, _, opt_is_fn) = self.autoderef(span,
+                                                           ty,
+                                                           || None,
+                                                           UnresolvedTypeAction::Ignore,
+                                                           LvaluePreference::NoPreference,
+                                                           |ty, _| {
+                        self.probe(|_| {
+                            let fn_once_substs =
+                                Substs::new_trait(vec![self.next_ty_var()], vec![], ty);
+                            let trait_ref =
+                                ty::TraitRef::new(fn_once_trait_did,
+                                                  tcx.mk_substs(fn_once_substs));
+                            let poly_trait_ref = trait_ref.to_poly_trait_ref();
+                            let obligation = Obligation::misc(span,
+                                                              self.body_id,
+                                                              poly_trait_ref
+                                                                 .to_predicate());
+                            let mut selcx = SelectionContext::new(self);
 
-                        if selcx.evaluate_obligation(&obligation) {
-                            Some(())
-                        } else {
-                            None
-                        }
-                    })
-                });
-
-                opt_is_fn.is_some()
-            } else {
-                false
-            }
-        }
-    }
-}
-
-pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                              span: Span,
-                              rcvr_ty: Ty<'tcx>,
-                              item_name: ast::Name,
-                              rcvr_expr: Option<&hir::Expr>,
-                              error: MethodError<'tcx>)
-{
-    // avoid suggestions when we don't know what's going on.
-    if rcvr_ty.references_error() {
-        return
-    }
-
-    match error {
-        MethodError::NoMatch(NoMatchData { static_candidates: static_sources,
-                                           unsatisfied_predicates,
-                                           out_of_scope_traits,
-                                           mode, .. }) => {
-            let cx = fcx.tcx();
-
-            let mut err = fcx.type_error_struct(
-                span,
-                |actual| {
-                    format!("no {} named `{}` found for type `{}` \
-                             in the current scope",
-                            if mode == Mode::MethodCall { "method" }
-                            else { "associated item" },
-                            item_name,
-                            actual)
-                },
-                rcvr_ty,
-                None);
-
-            // If the item has the name of a field, give a help note
-            if let (&ty::TyStruct(def, substs), Some(expr)) = (&rcvr_ty.sty, rcvr_expr) {
-                if let Some(field) = def.struct_variant().find_field_named(item_name) {
-                    let expr_string = match cx.sess.codemap().span_to_snippet(expr.span) {
-                        Ok(expr_string) => expr_string,
-                        _ => "s".into() // Default to a generic placeholder for the
-                                        // expression when we can't generate a string
-                                        // snippet
-                    };
-
-                    let field_ty = field.ty(cx, substs);
-
-                    if is_fn_ty(&field_ty, &fcx, span) {
-                        err.span_note(span,
-                                      &format!("use `({0}.{1})(...)` if you meant to call \
-                                               the function stored in the `{1}` field",
-                                               expr_string, item_name));
-                    } else {
-                        err.span_note(span, &format!("did you mean to write `{0}.{1}`?",
-                                                     expr_string, item_name));
-                    }
-                }
-            }
-
-            if is_fn_ty(&rcvr_ty, &fcx, span) {
-                macro_rules! report_function {
-                    ($span:expr, $name:expr) => {
-                        err.note(&format!("{} is a function, perhaps you wish to call it",
-                                     $name));
-                    }
-                }
-
-                if let Some(expr) = rcvr_expr {
-                    if let Ok (expr_string) = cx.sess.codemap().span_to_snippet(expr.span) {
-                        report_function!(expr.span, expr_string);
-                    }
-                    else if let Expr_::ExprPath(_, path) = expr.node.clone() {
-                        if let Some(segment) = path.segments.last() {
-                            report_function!(expr.span, segment.identifier.name);
-                        }
-                    }
-                }
-            }
-
-            if !static_sources.is_empty() {
-                err.note(
-                    "found the following associated functions; to be used as \
-                     methods, functions must have a `self` parameter");
-
-                report_candidates(fcx, &mut err, span, item_name, static_sources);
-            }
-
-            if !unsatisfied_predicates.is_empty() {
-                let bound_list = unsatisfied_predicates.iter()
-                    .map(|p| format!("`{} : {}`",
-                                     p.self_ty(),
-                                     p))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                err.note(
-                    &format!("the method `{}` exists but the \
-                             following trait bounds were not satisfied: {}",
-                             item_name,
-                             bound_list));
-            }
-
-            suggest_traits_to_import(fcx, &mut err, span, rcvr_ty, item_name,
-                                     rcvr_expr, out_of_scope_traits);
-            err.emit();
-        }
-
-        MethodError::Ambiguity(sources) => {
-            let mut err = struct_span_err!(fcx.sess(), span, E0034,
-                                           "multiple applicable items in scope");
-
-            report_candidates(fcx, &mut err, span, item_name, sources);
-            err.emit();
-        }
-
-        MethodError::ClosureAmbiguity(trait_def_id) => {
-            let msg = format!("the `{}` method from the `{}` trait cannot be explicitly \
-                               invoked on this closure as we have not yet inferred what \
-                               kind of closure it is",
-                               item_name,
-                               fcx.tcx().item_path_str(trait_def_id));
-            let msg = if let Some(callee) = rcvr_expr {
-                format!("{}; use overloaded call notation instead (e.g., `{}()`)",
-                        msg, pprust::expr_to_string(callee))
-            } else {
-                msg
-            };
-            fcx.sess().span_err(span, &msg);
-        }
-
-        MethodError::PrivateMatch(def) => {
-            let msg = format!("{} `{}` is private", def.kind_name(), item_name);
-            fcx.tcx().sess.span_err(span, &msg);
-        }
-    }
-
-    fn report_candidates(fcx: &FnCtxt,
-                         err: &mut DiagnosticBuilder,
-                         span: Span,
-                         item_name: ast::Name,
-                         mut sources: Vec<CandidateSource>) {
-        sources.sort();
-        sources.dedup();
-
-        for (idx, source) in sources.iter().enumerate() {
-            match *source {
-                CandidateSource::ImplSource(impl_did) => {
-                    // Provide the best span we can. Use the item, if local to crate, else
-                    // the impl, if local to crate (item may be defaulted), else nothing.
-                    let item = impl_item(fcx.tcx(), impl_did, item_name)
-                        .or_else(|| {
-                            trait_item(
-                                fcx.tcx(),
-                                fcx.tcx().impl_trait_ref(impl_did).unwrap().def_id,
-                                item_name
-                            )
-                        }).unwrap();
-                    let note_span = fcx.tcx().map.span_if_local(item.def_id()).or_else(|| {
-                        fcx.tcx().map.span_if_local(impl_did)
+                            if selcx.evaluate_obligation(&obligation) {
+                                Some(())
+                            } else {
+                                None
+                            }
+                        })
                     });
 
-                    let impl_ty = check::impl_self_ty(fcx, span, impl_did).ty;
-
-                    let insertion = match fcx.tcx().impl_trait_ref(impl_did) {
-                        None => format!(""),
-                        Some(trait_ref) => {
-                            format!(" of the trait `{}`",
-                                    fcx.tcx().item_path_str(trait_ref.def_id))
-                        }
-                    };
-
-                    let note_str = format!("candidate #{} is defined in an impl{} \
-                                            for the type `{}`",
-                                           idx + 1,
-                                           insertion,
-                                           impl_ty);
-                    if let Some(note_span) = note_span {
-                        // We have a span pointing to the method. Show note with snippet.
-                        err.span_note(note_span, &note_str);
-                    } else {
-                        err.note(&note_str);
-                    }
-                }
-                CandidateSource::TraitSource(trait_did) => {
-                    let item = trait_item(fcx.tcx(), trait_did, item_name).unwrap();
-                    let item_span = fcx.tcx().map.def_id_span(item.def_id(), span);
-                    span_note!(err, item_span,
-                               "candidate #{} is defined in the trait `{}`",
-                               idx + 1,
-                               fcx.tcx().item_path_str(trait_did));
+                    opt_is_fn.is_some()
+                } else {
+                    false
                 }
             }
         }
     }
-}
+    pub fn report_method_error(&self,
+                               span: Span,
+                               rcvr_ty: Ty<'tcx>,
+                               item_name: ast::Name,
+                               rcvr_expr: Option<&hir::Expr>,
+                               error: MethodError<'tcx>)
+    {
+        // avoid suggestions when we don't know what's going on.
+        if rcvr_ty.references_error() {
+            return
+        }
 
+        let report_candidates = |err: &mut DiagnosticBuilder,
+                                 mut sources: Vec<CandidateSource>| {
+
+            sources.sort();
+            sources.dedup();
+
+            for (idx, source) in sources.iter().enumerate() {
+                match *source {
+                    CandidateSource::ImplSource(impl_did) => {
+                        // Provide the best span we can. Use the item, if local to crate, else
+                        // the impl, if local to crate (item may be defaulted), else nothing.
+                        let item = self.impl_item(impl_did, item_name)
+                            .or_else(|| {
+                                self.trait_item(
+                                    self.tcx.impl_trait_ref(impl_did).unwrap().def_id,
+
+                                    item_name
+                                )
+                            }).unwrap();
+                        let note_span = self.tcx.map.span_if_local(item.def_id()).or_else(|| {
+                            self.tcx.map.span_if_local(impl_did)
+                        });
+
+                        let impl_ty = self.impl_self_ty(span, impl_did).ty;
+
+                        let insertion = match self.tcx.impl_trait_ref(impl_did) {
+                            None => format!(""),
+                            Some(trait_ref) => {
+                                format!(" of the trait `{}`",
+                                        self.tcx.item_path_str(trait_ref.def_id))
+                            }
+                        };
+
+                        let note_str = format!("candidate #{} is defined in an impl{} \
+                                                for the type `{}`",
+                                               idx + 1,
+                                               insertion,
+                                               impl_ty);
+                        if let Some(note_span) = note_span {
+                            // We have a span pointing to the method. Show note with snippet.
+                            err.span_note(note_span, &note_str);
+                        } else {
+                            err.note(&note_str);
+                        }
+                    }
+                    CandidateSource::TraitSource(trait_did) => {
+                        let item = self.trait_item(trait_did, item_name).unwrap();
+                        let item_span = self.tcx.map.def_id_span(item.def_id(), span);
+                        span_note!(err, item_span,
+                                   "candidate #{} is defined in the trait `{}`",
+                                   idx + 1,
+                                   self.tcx.item_path_str(trait_did));
+                    }
+                }
+            }
+        };
+
+        match error {
+            MethodError::NoMatch(NoMatchData { static_candidates: static_sources,
+                                               unsatisfied_predicates,
+                                               out_of_scope_traits,
+                                               mode, .. }) => {
+                let tcx = self.tcx;
+
+                let mut err = self.type_error_struct(
+                    span,
+                    |actual| {
+                        format!("no {} named `{}` found for type `{}` \
+                                 in the current scope",
+                                if mode == Mode::MethodCall { "method" }
+                                else { "associated item" },
+                                item_name,
+                                actual)
+                    },
+                    rcvr_ty,
+                    None);
+
+                // If the item has the name of a field, give a help note
+                if let (&ty::TyStruct(def, substs), Some(expr)) = (&rcvr_ty.sty, rcvr_expr) {
+                    if let Some(field) = def.struct_variant().find_field_named(item_name) {
+                        let expr_string = match tcx.sess.codemap().span_to_snippet(expr.span) {
+                            Ok(expr_string) => expr_string,
+                            _ => "s".into() // Default to a generic placeholder for the
+                                            // expression when we can't generate a string
+                                            // snippet
+                        };
+
+                        let field_ty = field.ty(tcx, substs);
+
+                        if self.is_fn_ty(&field_ty, span) {
+                            err.span_note(span,
+                                          &format!("use `({0}.{1})(...)` if you meant to call \
+                                                   the function stored in the `{1}` field",
+                                                   expr_string, item_name));
+                        } else {
+                            err.span_note(span, &format!("did you mean to write `{0}.{1}`?",
+                                                         expr_string, item_name));
+                        }
+                    }
+                }
+
+                if self.is_fn_ty(&rcvr_ty, span) {
+                    macro_rules! report_function {
+                        ($span:expr, $name:expr) => {
+                            err.note(&format!("{} is a function, perhaps you wish to call it",
+                                         $name));
+                        }
+                    }
+
+                    if let Some(expr) = rcvr_expr {
+                        if let Ok (expr_string) = tcx.sess.codemap().span_to_snippet(expr.span) {
+                            report_function!(expr.span, expr_string);
+                        }
+                        else if let Expr_::ExprPath(_, path) = expr.node.clone() {
+                            if let Some(segment) = path.segments.last() {
+                                report_function!(expr.span, segment.identifier.name);
+                            }
+                        }
+                    }
+                }
+
+                if !static_sources.is_empty() {
+                    err.note(
+                        "found the following associated functions; to be used as \
+                         methods, functions must have a `self` parameter");
+
+                    report_candidates(&mut err, static_sources);
+                }
+
+                if !unsatisfied_predicates.is_empty() {
+                    let bound_list = unsatisfied_predicates.iter()
+                        .map(|p| format!("`{} : {}`",
+                                         p.self_ty(),
+                                         p))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    err.note(
+                        &format!("the method `{}` exists but the \
+                                 following trait bounds were not satisfied: {}",
+                                 item_name,
+                                 bound_list));
+                }
+
+                self.suggest_traits_to_import(&mut err, span, rcvr_ty, item_name,
+                                              rcvr_expr, out_of_scope_traits);
+                err.emit();
+            }
+
+            MethodError::Ambiguity(sources) => {
+                let mut err = struct_span_err!(self.sess(), span, E0034,
+                                               "multiple applicable items in scope");
+
+                report_candidates(&mut err, sources);
+                err.emit();
+            }
+
+            MethodError::ClosureAmbiguity(trait_def_id) => {
+                let msg = format!("the `{}` method from the `{}` trait cannot be explicitly \
+                                   invoked on this closure as we have not yet inferred what \
+                                   kind of closure it is",
+                                   item_name,
+                                   self.tcx.item_path_str(trait_def_id));
+                let msg = if let Some(callee) = rcvr_expr {
+                    format!("{}; use overloaded call notation instead (e.g., `{}()`)",
+                            msg, pprust::expr_to_string(callee))
+                } else {
+                    msg
+                };
+                self.sess().span_err(span, &msg);
+            }
+
+            MethodError::PrivateMatch(def) => {
+                let msg = format!("{} `{}` is private", def.kind_name(), item_name);
+                self.tcx.sess.span_err(span, &msg);
+            }
+        }
+    }
+
+    fn suggest_traits_to_import(&self,
+                                err: &mut DiagnosticBuilder,
+                                span: Span,
+                                rcvr_ty: Ty<'tcx>,
+                                item_name: ast::Name,
+                                rcvr_expr: Option<&hir::Expr>,
+                                valid_out_of_scope_traits: Vec<DefId>)
+    {
+        if !valid_out_of_scope_traits.is_empty() {
+            let mut candidates = valid_out_of_scope_traits;
+            candidates.sort();
+            candidates.dedup();
+            let msg = format!(
+                "items from traits can only be used if the trait is in scope; \
+                 the following {traits_are} implemented but not in scope, \
+                 perhaps add a `use` for {one_of_them}:",
+                traits_are = if candidates.len() == 1 {"trait is"} else {"traits are"},
+                one_of_them = if candidates.len() == 1 {"it"} else {"one of them"});
+
+            err.help(&msg[..]);
+
+            for (i, trait_did) in candidates.iter().enumerate() {
+                err.help(&format!("candidate #{}: `use {}`",
+                                  i + 1,
+                                  self.tcx.item_path_str(*trait_did)));
+            }
+            return
+        }
+
+        let type_is_local = self.type_derefs_to_local(span, rcvr_ty, rcvr_expr);
+
+        // there's no implemented traits, so lets suggest some traits to
+        // implement, by finding ones that have the item name, and are
+        // legal to implement.
+        let mut candidates = all_traits(self.ccx)
+            .filter(|info| {
+                // we approximate the coherence rules to only suggest
+                // traits that are legal to implement by requiring that
+                // either the type or trait is local. Multidispatch means
+                // this isn't perfect (that is, there are cases when
+                // implementing a trait would be legal but is rejected
+                // here).
+                (type_is_local || info.def_id.is_local())
+                    && self.trait_item(info.def_id, item_name).is_some()
+            })
+            .collect::<Vec<_>>();
+
+        if !candidates.is_empty() {
+            // sort from most relevant to least relevant
+            candidates.sort_by(|a, b| a.cmp(b).reverse());
+            candidates.dedup();
+
+            // FIXME #21673 this help message could be tuned to the case
+            // of a type parameter: suggest adding a trait bound rather
+            // than implementing.
+            let msg = format!(
+                "items from traits can only be used if the trait is implemented and in scope; \
+                 the following {traits_define} an item `{name}`, \
+                 perhaps you need to implement {one_of_them}:",
+                traits_define = if candidates.len() == 1 {"trait defines"} else {"traits define"},
+                one_of_them = if candidates.len() == 1 {"it"} else {"one of them"},
+                name = item_name);
+
+            err.help(&msg[..]);
+
+            for (i, trait_info) in candidates.iter().enumerate() {
+                err.help(&format!("candidate #{}: `{}`",
+                                  i + 1,
+                                  self.tcx.item_path_str(trait_info.def_id)));
+            }
+        }
+    }
+
+    /// Checks whether there is a local type somewhere in the chain of
+    /// autoderefs of `rcvr_ty`.
+    fn type_derefs_to_local(&self,
+                            span: Span,
+                            rcvr_ty: Ty<'tcx>,
+                            rcvr_expr: Option<&hir::Expr>) -> bool {
+        fn is_local(ty: Ty) -> bool {
+            match ty.sty {
+                ty::TyEnum(def, _) | ty::TyStruct(def, _) => def.did.is_local(),
+
+                ty::TyTrait(ref tr) => tr.principal_def_id().is_local(),
+
+                ty::TyParam(_) => true,
+
+                // everything else (primitive types etc.) is effectively
+                // non-local (there are "edge" cases, e.g. (LocalType,), but
+                // the noise from these sort of types is usually just really
+                // annoying, rather than any sort of help).
+                _ => false
+            }
+        }
+
+        // This occurs for UFCS desugaring of `T::method`, where there is no
+        // receiver expression for the method call, and thus no autoderef.
+        if rcvr_expr.is_none() {
+            return is_local(self.resolve_type_vars_with_obligations(rcvr_ty));
+        }
+
+        self.autoderef(span, rcvr_ty, || None,
+                       check::UnresolvedTypeAction::Ignore, ty::NoPreference,
+                       |ty, _| {
+            if is_local(ty) {
+                Some(())
+            } else {
+                None
+            }
+        }).2.is_some()
+    }
+}
 
 pub type AllTraitsVec = Vec<TraitInfo>;
-
-fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                      err: &mut DiagnosticBuilder,
-                                      span: Span,
-                                      rcvr_ty: Ty<'tcx>,
-                                      item_name: ast::Name,
-                                      rcvr_expr: Option<&hir::Expr>,
-                                      valid_out_of_scope_traits: Vec<DefId>)
-{
-    let tcx = fcx.tcx();
-
-    if !valid_out_of_scope_traits.is_empty() {
-        let mut candidates = valid_out_of_scope_traits;
-        candidates.sort();
-        candidates.dedup();
-        let msg = format!(
-            "items from traits can only be used if the trait is in scope; \
-             the following {traits_are} implemented but not in scope, \
-             perhaps add a `use` for {one_of_them}:",
-            traits_are = if candidates.len() == 1 {"trait is"} else {"traits are"},
-            one_of_them = if candidates.len() == 1 {"it"} else {"one of them"});
-
-        err.help(&msg[..]);
-
-        for (i, trait_did) in candidates.iter().enumerate() {
-            err.help(&format!("candidate #{}: `use {}`",
-                              i + 1,
-                              fcx.tcx().item_path_str(*trait_did)));
-        }
-        return
-    }
-
-    let type_is_local = type_derefs_to_local(fcx, span, rcvr_ty, rcvr_expr);
-
-    // there's no implemented traits, so lets suggest some traits to
-    // implement, by finding ones that have the item name, and are
-    // legal to implement.
-    let mut candidates = all_traits(fcx.ccx)
-        .filter(|info| {
-            // we approximate the coherence rules to only suggest
-            // traits that are legal to implement by requiring that
-            // either the type or trait is local. Multidispatch means
-            // this isn't perfect (that is, there are cases when
-            // implementing a trait would be legal but is rejected
-            // here).
-            (type_is_local || info.def_id.is_local())
-                && trait_item(tcx, info.def_id, item_name).is_some()
-        })
-        .collect::<Vec<_>>();
-
-    if !candidates.is_empty() {
-        // sort from most relevant to least relevant
-        candidates.sort_by(|a, b| a.cmp(b).reverse());
-        candidates.dedup();
-
-        // FIXME #21673 this help message could be tuned to the case
-        // of a type parameter: suggest adding a trait bound rather
-        // than implementing.
-        let msg = format!(
-            "items from traits can only be used if the trait is implemented and in scope; \
-             the following {traits_define} an item `{name}`, \
-             perhaps you need to implement {one_of_them}:",
-            traits_define = if candidates.len() == 1 {"trait defines"} else {"traits define"},
-            one_of_them = if candidates.len() == 1 {"it"} else {"one of them"},
-            name = item_name);
-
-        err.help(&msg[..]);
-
-        for (i, trait_info) in candidates.iter().enumerate() {
-            err.help(&format!("candidate #{}: `{}`",
-                              i + 1,
-                              fcx.tcx().item_path_str(trait_info.def_id)));
-        }
-    }
-}
-
-/// Checks whether there is a local type somewhere in the chain of
-/// autoderefs of `rcvr_ty`.
-fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                  span: Span,
-                                  rcvr_ty: Ty<'tcx>,
-                                  rcvr_expr: Option<&hir::Expr>) -> bool {
-    fn is_local(ty: Ty) -> bool {
-        match ty.sty {
-            ty::TyEnum(def, _) | ty::TyStruct(def, _) => def.did.is_local(),
-
-            ty::TyTrait(ref tr) => tr.principal_def_id().is_local(),
-
-            ty::TyParam(_) => true,
-
-            // everything else (primitive types etc.) is effectively
-            // non-local (there are "edge" cases, e.g. (LocalType,), but
-            // the noise from these sort of types is usually just really
-            // annoying, rather than any sort of help).
-            _ => false
-        }
-    }
-
-    // This occurs for UFCS desugaring of `T::method`, where there is no
-    // receiver expression for the method call, and thus no autoderef.
-    if rcvr_expr.is_none() {
-        return is_local(fcx.resolve_type_vars_if_possible(rcvr_ty));
-    }
-
-    check::autoderef(fcx, span, rcvr_ty, || None,
-                     check::UnresolvedTypeAction::Ignore, ty::NoPreference,
-                     |ty, _| {
-        if is_local(ty) {
-            Some(())
-        } else {
-            None
-        }
-    }).2.is_some()
-}
 
 #[derive(Copy, Clone)]
 pub struct TraitInfo {

@@ -111,7 +111,8 @@ impl SimplifyCfg {
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    src: MirSource, mir: &mut Mir<'tcx>) {
         let mut counter = 0;
         let mut changed = true;
         while changed {

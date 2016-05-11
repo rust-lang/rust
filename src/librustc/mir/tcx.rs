@@ -30,12 +30,12 @@ pub enum LvalueTy<'tcx> {
                variant_index: usize },
 }
 
-impl<'tcx> LvalueTy<'tcx> {
+impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> LvalueTy<'tcx> {
         LvalueTy::Ty { ty: ty }
     }
 
-    pub fn to_ty(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             LvalueTy::Ty { ty } =>
                 ty,
@@ -44,8 +44,7 @@ impl<'tcx> LvalueTy<'tcx> {
         }
     }
 
-    pub fn projection_ty(self,
-                         tcx: &TyCtxt<'tcx>,
+    pub fn projection_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                          elem: &LvalueElem<'tcx>)
                          -> LvalueTy<'tcx>
     {
@@ -79,14 +78,13 @@ impl<'tcx> LvalueTy<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.fold_with(folder) },
             LvalueTy::Downcast { adt_def, substs, variant_index } => {
-                let substs = substs.fold_with(folder);
                 LvalueTy::Downcast {
                     adt_def: adt_def,
-                    substs: folder.tcx().mk_substs(substs),
+                    substs: substs.fold_with(folder),
                     variant_index: variant_index
                 }
             }
@@ -101,9 +99,8 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
     }
 }
 
-impl<'tcx> Mir<'tcx> {
-    pub fn operand_ty(&self,
-                      tcx: &TyCtxt<'tcx>,
+impl<'a, 'gcx, 'tcx> Mir<'tcx> {
+    pub fn operand_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                       operand: &Operand<'tcx>)
                       -> Ty<'tcx>
     {
@@ -113,8 +110,7 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
-    pub fn binop_ty(&self,
-                    tcx: &TyCtxt<'tcx>,
+    pub fn binop_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     op: BinOp,
                     lhs_ty: Ty<'tcx>,
                     rhs_ty: Ty<'tcx>)
@@ -138,8 +134,7 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
-    pub fn lvalue_ty(&self,
-                     tcx: &TyCtxt<'tcx>,
+    pub fn lvalue_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      lvalue: &Lvalue<'tcx>)
                      -> LvalueTy<'tcx>
     {
@@ -159,8 +154,7 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
-    pub fn rvalue_ty(&self,
-                     tcx: &TyCtxt<'tcx>,
+    pub fn rvalue_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      rvalue: &Rvalue<'tcx>)
                      -> Option<Ty<'tcx>>
     {
@@ -211,11 +205,10 @@ impl<'tcx> Mir<'tcx> {
                         ))
                     }
                     AggregateKind::Adt(def, _, substs) => {
-                        Some(def.type_scheme(tcx).ty.subst(tcx, substs))
+                        Some(tcx.lookup_item_type(def.did).ty.subst(tcx, substs))
                     }
                     AggregateKind::Closure(did, substs) => {
-                        Some(tcx.mk_closure_from_closure_substs(
-                            did, Box::new(substs.clone())))
+                        Some(tcx.mk_closure_from_closure_substs(did, substs))
                     }
                 }
             }

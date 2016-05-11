@@ -114,7 +114,6 @@ use hir::def::*;
 use hir::pat_util;
 use ty::{self, TyCtxt, ParameterEnvironment};
 use traits::{self, ProjectionMode};
-use infer;
 use ty::subst::Subst;
 use lint;
 use util::nodemap::NodeMap;
@@ -169,8 +168,8 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &TyCtxt) -> String {
-    let cm = cx.sess.codemap();
+fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt) -> String {
+    let cm = tcx.sess.codemap();
     match lnk {
         FreeVarNode(s) => {
             format!("Free var node [{}]", cm.span_to_string(s))
@@ -195,7 +194,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
     fn visit_arm(&mut self, a: &hir::Arm) { visit_arm(self, a); }
 }
 
-pub fn check_crate(tcx: &TyCtxt) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::Liveness);
     tcx.map.krate().visit_all_items(&mut IrMaps::new(tcx));
     tcx.sess.abort_if_errors();
@@ -263,7 +262,7 @@ enum VarKind {
 }
 
 struct IrMaps<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     num_live_nodes: usize,
     num_vars: usize,
@@ -275,7 +274,7 @@ struct IrMaps<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> IrMaps<'a, 'tcx> {
-    fn new(tcx: &'a TyCtxt<'tcx>) -> IrMaps<'a, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> IrMaps<'a, 'tcx> {
         IrMaps {
             tcx: tcx,
             num_live_nodes: 0,
@@ -1462,7 +1461,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn fn_ret(&self, id: NodeId) -> ty::PolyFnOutput<'tcx> {
         let fn_ty = self.ir.tcx.node_id_to_type(id);
         match fn_ty.sty {
-            ty::TyClosure(closure_def_id, ref substs) =>
+            ty::TyClosure(closure_def_id, substs) =>
                 self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
             _ => fn_ty.fn_ret()
         }
@@ -1486,20 +1485,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             ty::FnConverging(t_ret)
                     if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
 
-                let param_env = ParameterEnvironment::for_item(&self.ir.tcx, id);
-                let t_ret_subst = t_ret.subst(&self.ir.tcx, &param_env.free_substs);
-                let infcx = infer::new_infer_ctxt(&self.ir.tcx,
-                                                  &self.ir.tcx.tables,
-                                                  Some(param_env),
-                                                  ProjectionMode::Any);
-                let cause = traits::ObligationCause::dummy();
-                let norm = traits::fully_normalize(&infcx,
-                                                   cause,
-                                                   &t_ret_subst);
+                let param_env = ParameterEnvironment::for_item(self.ir.tcx, id);
+                let t_ret_subst = t_ret.subst(self.ir.tcx, &param_env.free_substs);
+                let is_nil = self.ir.tcx.infer_ctxt(None, Some(param_env),
+                                                    ProjectionMode::Any).enter(|infcx| {
+                    let cause = traits::ObligationCause::dummy();
+                    traits::fully_normalize(&infcx, cause, &t_ret_subst).unwrap().is_nil()
+                });
 
-                if norm.unwrap().is_nil() {
-                    // for nil return types, it is ok to not return a value expl.
-                } else {
+                // for nil return types, it is ok to not return a value expl.
+                if !is_nil {
                     let ends_with_stmt = match body.expr {
                         None if !body.stmts.is_empty() =>
                             match body.stmts.last().unwrap().node {

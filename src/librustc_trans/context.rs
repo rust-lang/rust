@@ -73,7 +73,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     item_symbols: RefCell<NodeMap<String>>,
     link_meta: LinkMeta,
     symbol_hasher: RefCell<Sha256>,
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     stats: Stats,
     check_overflow: bool,
     check_drop_flag_for_sanity: bool,
@@ -331,7 +331,7 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
 }
 
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
-    pub fn new(tcx: &'b TyCtxt<'tcx>,
+    pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                mir_map: &'b MirMap<'tcx>,
                export_map: ExportMap,
                symbol_hasher: Sha256,
@@ -450,7 +450,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         &self.link_meta
     }
 
-    pub fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx> {
+    pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
     }
 
@@ -640,7 +640,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         }
     }
 
-    pub fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx> {
+    pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.shared.tcx
     }
 

@@ -31,14 +31,14 @@ use rustc::hir::intravisit::Visitor;
 use syntax::ast::{self, Attribute, MetaItem};
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;
-use rustc::ty;
+use rustc::ty::TyCtxt;
 
 const DIRTY: &'static str = "rustc_dirty";
 const CLEAN: &'static str = "rustc_clean";
 const LABEL: &'static str = "label";
 const CFG: &'static str = "cfg";
 
-pub fn check_dirty_clean_annotations(tcx: &ty::TyCtxt) {
+pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
     let query = tcx.dep_graph.query();
     let krate = tcx.map.krate();
@@ -49,7 +49,7 @@ pub fn check_dirty_clean_annotations(tcx: &ty::TyCtxt) {
 }
 
 pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
-    tcx: &'a ty::TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     query: &'a DepGraphQuery<DefId>,
 }
 

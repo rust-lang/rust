@@ -12,7 +12,6 @@
 
 use common::CrateContext;
 use rustc::hir::def_id::DefId;
-use rustc::infer;
 use rustc::ty::subst;
 use rustc::ty::{self, Ty};
 
@@ -49,7 +48,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             push_item_name(cx, def.did, qualified, output);
             push_type_params(cx, substs, output);
         },
-        ty::TyTuple(ref component_types) => {
+        ty::TyTuple(component_types) => {
             output.push('(');
             for &component_type in component_types {
                 push_debuginfo_type_name(cx, component_type, true, output);
@@ -114,7 +113,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push_str("fn(");
 
             let sig = cx.tcx().erase_late_bound_regions(sig);
-            let sig = infer::normalize_associated_type(cx.tcx(), &sig);
+            let sig = cx.tcx().normalize_associated_type(&sig);
             if !sig.inputs.is_empty() {
                 for &parameter_type in &sig.inputs {
                     push_debuginfo_type_name(cx, parameter_type, true, output);

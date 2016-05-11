@@ -63,7 +63,7 @@ const IF_THIS_CHANGED: &'static str = "rustc_if_this_changed";
 const THEN_THIS_WOULD_NEED: &'static str = "rustc_then_this_would_need";
 const ID: &'static str = "id";
 
-pub fn assert_dep_graph(tcx: &TyCtxt) {
+pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     if tcx.sess.opts.debugging_opts.dump_dep_graph {
@@ -98,7 +98,7 @@ type TargetHashMap =
                FnvHashSet<(Span, InternedString, ast::NodeId, DepNode<DefId>)>>;
 
 struct IfThisChanged<'a, 'tcx:'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if_this_changed: SourceHashMap,
     then_this_would_need: TargetHashMap,
 }
@@ -172,9 +172,9 @@ impl<'a, 'tcx> Visitor<'tcx> for IfThisChanged<'a, 'tcx> {
     }
 }
 
-fn check_paths(tcx: &TyCtxt,
-               if_this_changed: &SourceHashMap,
-               then_this_would_need: &TargetHashMap)
+fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         if_this_changed: &SourceHashMap,
+                         then_this_would_need: &TargetHashMap)
 {
     // Return early here so as not to construct the query, which is not cheap.
     if if_this_changed.is_empty() {
@@ -213,7 +213,7 @@ fn check_paths(tcx: &TyCtxt,
     }
 }
 
-fn dump_graph(tcx: &TyCtxt) {
+fn dump_graph(tcx: TyCtxt) {
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| format!("dep_graph"));
     let query = tcx.dep_graph.query();
 

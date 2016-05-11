@@ -14,7 +14,6 @@
 
 use hir::def_id::DefId;
 use rustc::traits::{self, ProjectionMode};
-use rustc::infer;
 use rustc::ty::{self, TyCtxt};
 use syntax::ast;
 use rustc::dep_graph::DepNode;
@@ -23,7 +22,7 @@ use rustc::hir::intravisit;
 use util::nodemap::DefIdMap;
 use lint;
 
-pub fn check(tcx: &TyCtxt) {
+pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut overlap = OverlapChecker { tcx: tcx,
                                        default_impls: DefIdMap() };
 
@@ -33,7 +32,7 @@ pub fn check(tcx: &TyCtxt) {
 }
 
 struct OverlapChecker<'cx, 'tcx:'cx> {
-    tcx: &'cx TyCtxt<'tcx>,
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
 
     // maps from a trait def-id to an impl id
     default_impls: DefIdMap<ast::NodeId>,
@@ -44,8 +43,9 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         #[derive(Copy, Clone, PartialEq)]
         enum Namespace { Type, Value }
 
-        fn name_and_namespace(tcx: &TyCtxt, item: &ty::ImplOrTraitItemId)
-                              -> (ast::Name, Namespace)
+        fn name_and_namespace<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                        item: &ty::ImplOrTraitItemId)
+                                        -> (ast::Name, Namespace)
         {
             let name = tcx.impl_or_trait_item(item.def_id()).name();
             (name, match *item {
@@ -58,10 +58,10 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         let impl_items = self.tcx.impl_items.borrow();
 
         for item1 in &impl_items[&impl1] {
-            let (name, namespace) = name_and_namespace(&self.tcx, item1);
+            let (name, namespace) = name_and_namespace(self.tcx, item1);
 
             for item2 in &impl_items[&impl2] {
-                if (name, namespace) == name_and_namespace(&self.tcx, item2) {
+                if (name, namespace) == name_and_namespace(self.tcx, item2) {
                     let msg = format!("duplicate definitions with name `{}`", name);
                     let node_id = self.tcx.map.as_local_node_id(item1.def_id()).unwrap();
                     self.tcx.sess.add_lint(lint::builtin::OVERLAPPING_INHERENT_IMPLS,
@@ -84,13 +84,11 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
 
         for (i, &impl1_def_id) in impls.iter().enumerate() {
             for &impl2_def_id in &impls[(i+1)..] {
-                let infcx = infer::new_infer_ctxt(self.tcx,
-                                                  &self.tcx.tables,
-                                                  None,
-                                                  ProjectionMode::Topmost);
-                if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
-                    self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
-                }
+                self.tcx.infer_ctxt(None, None, ProjectionMode::Topmost).enter(|infcx| {
+                    if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
+                        self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
+                    }
+                });
             }
         }
     }
@@ -139,24 +137,12 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
 
                 // insertion failed due to overlap
                 if let Err(overlap) = insert_result {
-                    // only print the Self type if it has at least some outer
-                    // concrete shell; otherwise, it's not adding much
-                    // information.
-                    let self_type = {
-                        overlap.on_trait_ref.substs.self_ty().and_then(|ty| {
-                            if ty.has_concrete_skeleton() {
-                                Some(format!(" for type `{}`", ty))
-                            } else {
-                                None
-                            }
-                        }).unwrap_or(String::new())
-                    };
-
                     let mut err = struct_span_err!(
                         self.tcx.sess, self.tcx.span_of_impl(impl_def_id).unwrap(), E0119,
                         "conflicting implementations of trait `{}`{}:",
-                        overlap.on_trait_ref,
-                        self_type);
+                        overlap.trait_desc,
+                        overlap.self_desc.map_or(String::new(),
+                                                 |ty| format!(" for type `{}`", ty)));
 
                     match self.tcx.span_of_impl(overlap.with_impl) {
                         Ok(span) => {
@@ -176,7 +162,7 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                     // This is something like impl Trait1 for Trait2. Illegal
                     // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
 
-                    if !traits::is_object_safe(self.tcx, data.principal_def_id()) {
+                    if !self.tcx.is_object_safe(data.principal_def_id()) {
                         // This is an error, but it will be
                         // reported by wfcheck.  Ignore it
                         // here. This is tested by

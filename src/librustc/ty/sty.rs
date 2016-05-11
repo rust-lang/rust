@@ -14,7 +14,6 @@ use middle::cstore;
 use hir::def_id::DefId;
 use middle::region;
 use ty::subst::{self, Substs};
-use traits;
 use ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TyS, TypeFoldable};
 use util::common::ErrorReported;
 
@@ -26,7 +25,7 @@ use syntax::abi;
 use syntax::ast::{self, Name};
 use syntax::parse::token::keywords;
 
-use serialize::{Decodable, Decoder};
+use serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use hir;
 
@@ -94,10 +93,8 @@ pub enum TypeVariants<'tcx> {
     /// Substs here, possibly against intuition, *may* contain `TyParam`s.
     /// That is, even after substitution it is possible that there are type
     /// variables. This happens when the `TyEnum` corresponds to an enum
-    /// definition and not a concrete use of it. To get the correct `TyEnum`
-    /// from the tcx, use the `NodeId` from the `ast::Ty` and look it up in
-    /// the `ast_ty_to_ty_cache`. This is probably true for `TyStruct` as
-    /// well.
+    /// definition and not a concrete use of it. This is true for `TyStruct`
+    /// as well.
     TyEnum(AdtDef<'tcx>, &'tcx Substs<'tcx>),
 
     /// A structure type, defined with `struct`.
@@ -141,10 +138,10 @@ pub enum TypeVariants<'tcx> {
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
-    TyClosure(DefId, Box<ClosureSubsts<'tcx>>),
+    TyClosure(DefId, ClosureSubsts<'tcx>),
 
     /// A tuple type.  For example, `(i32, bool)`.
-    TyTuple(Vec<Ty<'tcx>>),
+    TyTuple(&'tcx [Ty<'tcx>]),
 
     /// The projection of an associated type.  For example,
     /// `<T as Trait<..>>::N`.
@@ -235,7 +232,7 @@ pub enum TypeVariants<'tcx> {
 /// closure C wind up influencing the decisions we ought to make for
 /// closure C (which would then require fixed point iteration to
 /// handle). Plus it fixes an ICE. :P
-#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function.
     /// These are separated out because trans wants to pass them around
@@ -245,22 +242,23 @@ pub struct ClosureSubsts<'tcx> {
     /// The types of the upvars. The list parallels the freevars and
     /// `upvar_borrows` lists. These are kept distinct so that we can
     /// easily index into them.
-    pub upvar_tys: Vec<Ty<'tcx>>
+    pub upvar_tys: &'tcx [Ty<'tcx>]
 }
 
-impl<'tcx> Decodable for &'tcx ClosureSubsts<'tcx> {
-    fn decode<S: Decoder>(s: &mut S) -> Result<&'tcx ClosureSubsts<'tcx>, S::Error> {
-        let closure_substs = Decodable::decode(s)?;
-        let dummy_def_id: DefId = unsafe { mem::zeroed() };
+impl<'tcx> Encodable for ClosureSubsts<'tcx> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        (self.func_substs, self.upvar_tys).encode(s)
+    }
+}
 
-        cstore::tls::with_decoding_context(s, |dcx, _| {
-            // Intern the value
-            let ty = dcx.tcx().mk_closure_from_closure_substs(dummy_def_id,
-                                                              Box::new(closure_substs));
-            match ty.sty {
-                TyClosure(_, ref closure_substs) => Ok(&**closure_substs),
-                _ => bug!()
-            }
+impl<'tcx> Decodable for ClosureSubsts<'tcx> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<ClosureSubsts<'tcx>, D::Error> {
+        let (func_substs, upvar_tys) = Decodable::decode(d)?;
+        cstore::tls::with_decoding_context(d, |dcx, _| {
+            Ok(ClosureSubsts {
+                func_substs: func_substs,
+                upvar_tys: dcx.tcx().mk_type_list(upvar_tys)
+            })
         })
     }
 }
@@ -271,7 +269,7 @@ pub struct TraitTy<'tcx> {
     pub bounds: ExistentialBounds<'tcx>,
 }
 
-impl<'tcx> TraitTy<'tcx> {
+impl<'a, 'gcx, 'tcx> TraitTy<'tcx> {
     pub fn principal_def_id(&self) -> DefId {
         self.principal.0.def_id
     }
@@ -280,8 +278,7 @@ impl<'tcx> TraitTy<'tcx> {
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self-type. A common choice is `mk_err()`
     /// or some skolemized type.
-    pub fn principal_trait_ref_with_self_ty(&self,
-                                            tcx: &TyCtxt<'tcx>,
+    pub fn principal_trait_ref_with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                             self_ty: Ty<'tcx>)
                                             -> ty::PolyTraitRef<'tcx>
     {
@@ -294,8 +291,7 @@ impl<'tcx> TraitTy<'tcx> {
         })
     }
 
-    pub fn projection_bounds_with_self_ty(&self,
-                                          tcx: &TyCtxt<'tcx>,
+    pub fn projection_bounds_with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                           self_ty: Ty<'tcx>)
                                           -> Vec<ty::PolyProjectionPredicate<'tcx>>
     {
@@ -524,7 +520,7 @@ pub struct ParamTy {
     pub name: Name,
 }
 
-impl ParamTy {
+impl<'a, 'gcx, 'tcx> ParamTy {
     pub fn new(space: subst::ParamSpace,
                index: u32,
                name: Name)
@@ -540,7 +536,7 @@ impl ParamTy {
         ParamTy::new(def.space, def.index, def.name)
     }
 
-    pub fn to_ty<'tcx>(self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         tcx.mk_param(self.space, self.idx, self.name)
     }
 
@@ -633,7 +629,7 @@ pub struct DebruijnIndex {
 /// to be used. These also support explicit bounds: both the internally-stored
 /// *scope*, which the region is assumed to outlive, as well as other
 /// relations stored in the `FreeRegionMap`. Note that these relations
-/// aren't checked when you `make_subregion` (or `mk_eqty`), only by
+/// aren't checked when you `make_subregion` (or `eq_types`), only by
 /// `resolve_regions_and_report_errors`.
 ///
 /// When working with higher-ranked types, some region relations aren't
@@ -765,7 +761,7 @@ impl<'tcx> ExistentialBounds<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct BuiltinBounds(EnumSet<BuiltinBound>);
 
-impl BuiltinBounds {
+impl<'a, 'gcx, 'tcx> BuiltinBounds {
     pub fn empty() -> BuiltinBounds {
         BuiltinBounds(EnumSet::new())
     }
@@ -774,11 +770,11 @@ impl BuiltinBounds {
         self.into_iter()
     }
 
-    pub fn to_predicates<'tcx>(&self,
-                               tcx: &TyCtxt<'tcx>,
-                               self_ty: Ty<'tcx>) -> Vec<ty::Predicate<'tcx>> {
+    pub fn to_predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                         self_ty: Ty<'tcx>)
+                         -> Vec<ty::Predicate<'tcx>> {
         self.iter().filter_map(|builtin_bound|
-            match traits::trait_ref_for_builtin_bound(tcx, builtin_bound, self_ty) {
+            match tcx.trait_ref_for_builtin_bound(builtin_bound, self_ty) {
                 Ok(trait_ref) => Some(trait_ref.to_predicate()),
                 Err(ErrorReported) => { None }
             }
@@ -822,8 +818,8 @@ impl CLike for BuiltinBound {
     }
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn try_add_builtin_trait(&self,
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    pub fn try_add_builtin_trait(self,
                                  trait_def_id: DefId,
                                  builtin_bounds: &mut EnumSet<BuiltinBound>)
                                  -> bool
@@ -887,7 +883,7 @@ impl Region {
 }
 
 // Type utilities
-impl<'tcx> TyS<'tcx> {
+impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn as_opt_param_ty(&self) -> Option<ty::ParamTy> {
         match self.sty {
             ty::TyParam(ref d) => Some(d.clone()),
@@ -902,7 +898,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_empty(&self, _cx: &TyCtxt) -> bool {
+    pub fn is_empty(&self, _cx: TyCtxt) -> bool {
         // FIXME(#24885): be smarter here
         match self.sty {
             TyEnum(def, _) | TyStruct(def, _) => def.is_empty(),
@@ -974,24 +970,24 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn sequence_element_type(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn sequence_element_type(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => ty,
-            TyStr => cx.mk_mach_uint(ast::UintTy::U8),
+            TyStr => tcx.mk_mach_uint(ast::UintTy::U8),
             _ => bug!("sequence_element_type called on non-sequence value: {}", self),
         }
     }
 
-    pub fn simd_type(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn simd_type(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyStruct(def, substs) => {
-                def.struct_variant().fields[0].ty(cx, substs)
+                def.struct_variant().fields[0].ty(tcx, substs)
             }
             _ => bug!("simd_type called on invalid type")
         }
     }
 
-    pub fn simd_size(&self, _cx: &TyCtxt) -> usize {
+    pub fn simd_size(&self, _cx: TyCtxt) -> usize {
         match self.sty {
             TyStruct(def, _) => def.struct_variant().fields.len(),
             _ => bug!("simd_size called on invalid type")

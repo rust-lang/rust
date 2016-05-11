@@ -54,14 +54,14 @@ enum FieldAccessError {
 /// The sanitize_XYZ methods here take an MIR object and compute its
 /// type, calling `span_mirbug` and returning an error type if there
 /// is a problem.
-struct TypeVerifier<'a, 'b: 'a, 'tcx: 'b> {
-    cx: &'a mut TypeChecker<'b, 'tcx>,
+struct TypeVerifier<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
+    cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     last_span: Span,
     errors_reported: bool
 }
 
-impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
+impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn visit_span(&mut self, span: &Span) {
         if *span != DUMMY_SP {
             self.last_span = *span;
@@ -104,8 +104,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
-    fn new(cx: &'a mut TypeChecker<'b, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
+    fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         TypeVerifier {
             cx: cx,
             mir: mir,
@@ -114,11 +114,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.cx.infcx.tcx
     }
 
-    fn infcx(&self) -> &'a InferCtxt<'a, 'tcx> {
+    fn infcx(&self) -> &'a InferCtxt<'a, 'gcx, 'tcx> {
         self.cx.infcx
     }
 
@@ -237,7 +237,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 let fty = self.sanitize_type(lvalue, fty);
                 match self.field_ty(lvalue, base, field) {
                     Ok(ty) => {
-                        if let Err(terr) = self.cx.mk_eqty(span, ty, fty) {
+                        if let Err(terr) = self.cx.eq_types(span, ty, fty) {
                             span_mirbug!(
                                 self, lvalue, "bad field access ({:?}: {:?}): {:?}",
                                 ty, fty, terr);
@@ -276,8 +276,8 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     if adt_def.is_univariant() => {
                         (&adt_def.variants[0], substs)
                     }
-                ty::TyTuple(ref tys) | ty::TyClosure(_, box ty::ClosureSubsts {
-                    upvar_tys: ref tys, ..
+                ty::TyTuple(tys) | ty::TyClosure(_, ty::ClosureSubsts {
+                    upvar_tys: tys, ..
                 }) => {
                     return match tys.get(field.index()) {
                         Some(&ty) => Ok(ty),
@@ -318,14 +318,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     }
 }
 
-pub struct TypeChecker<'a, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+pub struct TypeChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     fulfillment_cx: traits::FulfillmentContext<'tcx>,
     last_span: Span
 }
 
-impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
-    fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
+impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
+    fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
         TypeChecker {
             infcx: infcx,
             fulfillment_cx: traits::FulfillmentContext::new(),
@@ -333,25 +333,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn mk_subty(&self, span: Span, sup: Ty<'tcx>, sub: Ty<'tcx>)
-                -> infer::UnitResult<'tcx>
+    fn sub_types(&self, span: Span, sup: Ty<'tcx>, sub: Ty<'tcx>)
+                 -> infer::UnitResult<'tcx>
     {
-        infer::mk_subty(self.infcx, false, infer::TypeOrigin::Misc(span),
-                        sup, sub)
+        self.infcx.sub_types(false, infer::TypeOrigin::Misc(span), sup, sub)
             // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
 
-    fn mk_eqty(&self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
+    fn eq_types(&self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
                 -> infer::UnitResult<'tcx>
     {
-        infer::mk_eqty(self.infcx, false, infer::TypeOrigin::Misc(span),
-                       a, b)
+        self.infcx.eq_types(false, infer::TypeOrigin::Misc(span), a, b)
             // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -363,7 +361,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let lv_ty = mir.lvalue_ty(tcx, lv).to_ty(tcx);
                 let rv_ty = mir.rvalue_ty(tcx, rv);
                 if let Some(rv_ty) = rv_ty {
-                    if let Err(terr) = self.mk_subty(self.last_span, rv_ty, lv_ty) {
+                    if let Err(terr) = self.sub_types(self.last_span, rv_ty, lv_ty) {
                         span_mirbug!(self, stmt, "bad assignment ({:?} = {:?}): {:?}",
                                      lv_ty, rv_ty, terr);
                     }
@@ -399,7 +397,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
                 let discr_ty = mir.lvalue_ty(tcx, discr).to_ty(tcx);
-                if let Err(terr) = self.mk_subty(self.last_span, discr_ty, switch_ty) {
+                if let Err(terr) = self.sub_types(self.last_span, discr_ty, switch_ty) {
                     span_mirbug!(self, term, "bad SwitchInt ({:?} on {:?}): {:?}",
                                  switch_ty, discr_ty, terr);
                 }
@@ -456,7 +454,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             (&Some((ref dest, _)), ty::FnConverging(ty)) => {
                 let dest_ty = mir.lvalue_ty(tcx, dest).to_ty(tcx);
-                if let Err(terr) = self.mk_subty(self.last_span, ty, dest_ty) {
+                if let Err(terr) = self.sub_types(self.last_span, ty, dest_ty) {
                     span_mirbug!(self, term,
                                  "call dest mismatch ({:?} <- {:?}): {:?}",
                                  dest_ty, ty, terr);
@@ -482,7 +480,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
         for (n, (fn_arg, op_arg)) in sig.inputs.iter().zip(args).enumerate() {
             let op_arg_ty = mir.operand_ty(self.tcx(), op_arg);
-            if let Err(terr) = self.mk_subty(self.last_span, op_arg_ty, fn_arg) {
+            if let Err(terr) = self.sub_types(self.last_span, op_arg_ty, fn_arg) {
                 span_mirbug!(self, term, "bad arg #{:?} ({:?} <- {:?}): {:?}",
                              n, fn_arg, op_arg_ty, terr);
             }
@@ -537,7 +535,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         };
 
-        if let Err(terr) = self.mk_subty(self.last_span, arg_ty, pointee_ty) {
+        if let Err(terr) = self.sub_types(self.last_span, arg_ty, pointee_ty) {
             span_mirbug!(self, term, "bad box_free arg ({:?} <- {:?}): {:?}",
                          pointee_ty, arg_ty, terr);
         }
@@ -578,28 +576,27 @@ impl TypeckMir {
 }
 
 impl<'tcx> MirPass<'tcx> for TypeckMir {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    src: MirSource, mir: &mut Mir<'tcx>) {
         if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.
             return;
         }
         let param_env = ty::ParameterEnvironment::for_item(tcx, src.item_id());
-        let infcx = infer::new_infer_ctxt(tcx,
-                                          &tcx.tables,
-                                          Some(param_env),
-                                          ProjectionMode::AnyFinal);
-        let mut checker = TypeChecker::new(&infcx);
-        {
-            let mut verifier = TypeVerifier::new(&mut checker, mir);
-            verifier.visit_mir(mir);
-            if verifier.errors_reported {
-                // don't do further checks to avoid ICEs
-                return;
+        tcx.infer_ctxt(None, Some(param_env), ProjectionMode::AnyFinal).enter(|infcx| {
+            let mut checker = TypeChecker::new(&infcx);
+            {
+                let mut verifier = TypeVerifier::new(&mut checker, mir);
+                verifier.visit_mir(mir);
+                if verifier.errors_reported {
+                    // don't do further checks to avoid ICEs
+                    return;
+                }
             }
-        }
-        checker.typeck_mir(mir);
-        checker.verify_obligations(mir);
+            checker.typeck_mir(mir);
+            checker.verify_obligations(mir);
+        });
     }
 }
 

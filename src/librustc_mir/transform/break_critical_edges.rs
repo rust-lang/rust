@@ -42,7 +42,8 @@ pub struct BreakCriticalEdges;
  */
 
 impl<'tcx> MirPass<'tcx> for BreakCriticalEdges {
-    fn run_pass(&mut self, _: &TyCtxt<'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>,
+                    _: MirSource, mir: &mut Mir<'tcx>) {
         break_critical_edges(mir);
     }
 }

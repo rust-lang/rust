@@ -16,7 +16,7 @@
 use rustc::dep_graph::DepNode;
 use rustc::hir::map::DefPath;
 use rustc::hir::def_id::DefId;
-use rustc::ty;
+use rustc::ty::TyCtxt;
 use rustc::util::nodemap::DefIdMap;
 use std::fmt::{self, Debug};
 
@@ -39,7 +39,7 @@ impl DefIdDirectory {
         DefIdDirectory { paths: vec![] }
     }
 
-    pub fn retrace(&self, tcx: &ty::TyCtxt) -> RetracedDefIdDirectory {
+    pub fn retrace(&self, tcx: TyCtxt) -> RetracedDefIdDirectory {
         let ids = self.paths.iter()
                             .map(|path| tcx.map.retrace_path(path))
                             .collect();
@@ -63,13 +63,13 @@ impl RetracedDefIdDirectory {
 }
 
 pub struct DefIdDirectoryBuilder<'a,'tcx:'a> {
-    tcx: &'a ty::TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     hash: DefIdMap<Option<DefPathIndex>>,
     directory: DefIdDirectory,
 }
 
 impl<'a,'tcx> DefIdDirectoryBuilder<'a,'tcx> {
-    pub fn new(tcx: &'a ty::TyCtxt<'tcx>) -> DefIdDirectoryBuilder<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> DefIdDirectoryBuilder<'a, 'tcx> {
         DefIdDirectoryBuilder {
             tcx: tcx,
             hash: DefIdMap(),

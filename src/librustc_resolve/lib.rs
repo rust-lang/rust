@@ -1938,7 +1938,7 @@ impl<'a> Resolver<'a> {
                 // Resolve the self type.
                 this.visit_ty(self_type);
 
-                this.with_self_rib(Def::SelfTy(trait_id, Some((item_id, self_type.id))), |this| {
+                this.with_self_rib(Def::SelfTy(trait_id, Some(item_id)), |this| {
                     this.with_current_self_type(self_type, |this| {
                         for impl_item in impl_items {
                             this.resolve_visibility(&impl_item.vis);

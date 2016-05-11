@@ -14,24 +14,24 @@ use hir::def_id::{DefId, CRATE_DEF_INDEX};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 
-impl<'tcx> TyCtxt<'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns a string identifying this def-id. This string is
     /// suitable for user output. It is relative to the current crate
     /// root.
-    pub fn item_path_str(&self, def_id: DefId) -> String {
+    pub fn item_path_str(self, def_id: DefId) -> String {
         let mut buffer = LocalPathBuffer::new(RootMode::Local);
         self.push_item_path(&mut buffer, def_id);
         buffer.into_string()
     }
 
     /// Returns a string identifying this local node-id.
-    pub fn node_path_str(&self, id: ast::NodeId) -> String {
+    pub fn node_path_str(self, id: ast::NodeId) -> String {
         self.item_path_str(self.map.local_def_id(id))
     }
 
     /// Returns a string identifying this def-id. This string is
     /// suitable for user output. It always begins with a crate identifier.
-    pub fn absolute_item_path_str(&self, def_id: DefId) -> String {
+    pub fn absolute_item_path_str(self, def_id: DefId) -> String {
         let mut buffer = LocalPathBuffer::new(RootMode::Absolute);
         self.push_item_path(&mut buffer, def_id);
         buffer.into_string()
@@ -40,7 +40,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the "path" to a particular crate. This can proceed in
     /// various ways, depending on the `root_mode` of the `buffer`.
     /// (See `RootMode` enum for more details.)
-    pub fn push_krate_path<T>(&self, buffer: &mut T, cnum: ast::CrateNum)
+    pub fn push_krate_path<T>(self, buffer: &mut T, cnum: ast::CrateNum)
         where T: ItemPathBuffer
     {
         match *buffer.root_mode() {
@@ -83,7 +83,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If possible, this pushes a global path resolving to `external_def_id` that is visible
     /// from at least one local module and returns true. If the crate defining `external_def_id` is
     /// declared with an `extern crate`, the path is guarenteed to use the `extern crate`.
-    pub fn try_push_visible_item_path<T>(&self, buffer: &mut T, external_def_id: DefId) -> bool
+    pub fn try_push_visible_item_path<T>(self, buffer: &mut T, external_def_id: DefId) -> bool
         where T: ItemPathBuffer
     {
         let visible_parent_map = self.sess.cstore.visible_parent_map();
@@ -116,7 +116,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn push_item_path<T>(&self, buffer: &mut T, def_id: DefId)
+    pub fn push_item_path<T>(self, buffer: &mut T, def_id: DefId)
         where T: ItemPathBuffer
     {
         match *buffer.root_mode() {
@@ -164,7 +164,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    fn push_impl_path<T>(&self,
+    fn push_impl_path<T>(self,
                          buffer: &mut T,
                          impl_def_id: DefId)
         where T: ItemPathBuffer
@@ -253,7 +253,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    fn push_impl_path_fallback<T>(&self,
+    fn push_impl_path_fallback<T>(self,
                                   buffer: &mut T,
                                   impl_def_id: DefId)
         where T: ItemPathBuffer
@@ -284,7 +284,7 @@ impl<'tcx> TyCtxt<'tcx> {
 /// function tries to find a "characteristic def-id" for a
 /// type. It's just a heuristic so it makes some questionable
 /// decisions and we may want to adjust it later.
-pub fn characteristic_def_id_of_type<'tcx>(ty: Ty<'tcx>) -> Option<DefId> {
+pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
     match ty.sty {
         ty::TyStruct(adt_def, _) |
         ty::TyEnum(adt_def, _) => Some(adt_def.did),

@@ -1176,7 +1176,7 @@ impl<'tcx> Cleanup<'tcx> for LifetimeEnd {
     }
 }
 
-pub fn temporary_scope(tcx: &TyCtxt,
+pub fn temporary_scope(tcx: TyCtxt,
                        id: ast::NodeId)
                        -> ScopeId {
     match tcx.region_maps.temporary_scope(id) {
@@ -1191,7 +1191,7 @@ pub fn temporary_scope(tcx: &TyCtxt,
     }
 }
 
-pub fn var_scope(tcx: &TyCtxt,
+pub fn var_scope(tcx: TyCtxt,
                  id: ast::NodeId)
                  -> ScopeId {
     let r = AstScope(tcx.region_maps.var_scope(id).node_id(&tcx.region_maps));

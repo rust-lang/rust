@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use super::combine::CombineFields;
-use super::higher_ranked::HigherRankedRelations;
 use super::InferCtxt;
 use super::lattice::{self, LatticeDir};
 use super::Subtype;
@@ -19,12 +18,12 @@ use ty::relate::{Relate, RelateResult, TypeRelation};
 use traits::PredicateObligations;
 
 /// "Least upper bound" (common supertype)
-pub struct Lub<'a, 'tcx: 'a> {
-    fields: CombineFields<'a, 'tcx>
+pub struct Lub<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fields: CombineFields<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx> Lub<'a, 'tcx> {
-    pub fn new(fields: CombineFields<'a, 'tcx>) -> Lub<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> Lub<'a, 'gcx, 'tcx> {
+    pub fn new(fields: CombineFields<'a, 'gcx, 'tcx>) -> Lub<'a, 'gcx, 'tcx> {
         Lub { fields: fields }
     }
 
@@ -33,18 +32,18 @@ impl<'a, 'tcx> Lub<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Lub<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Lub<'a, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Lub" }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
-    fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
-                                               variance: ty::Variance,
-                                               a: &T,
-                                               b: &T)
-                                               -> RelateResult<'tcx, T>
+    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
+                                             variance: ty::Variance,
+                                             a: &T,
+                                             b: &T)
+                                             -> RelateResult<'tcx, T>
     {
         match variance {
             ty::Invariant => self.fields.equate().relate(a, b),
@@ -70,14 +69,14 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Lub<'a, 'tcx> {
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
                   -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'a, 'tcx>
+        where T: Relate<'tcx>
     {
         self.fields.higher_ranked_lub(a, b)
     }
 }
 
-impl<'a, 'tcx> LatticeDir<'a,'tcx> for Lub<'a, 'tcx> {
-    fn infcx(&self) -> &'a InferCtxt<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> LatticeDir<'a, 'gcx, 'tcx> for Lub<'a, 'gcx, 'tcx> {
+    fn infcx(&self) -> &'a InferCtxt<'a, 'gcx, 'tcx> {
         self.fields.infcx
     }
 

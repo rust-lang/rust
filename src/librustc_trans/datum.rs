@@ -769,8 +769,8 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
          * affine values (since they must never be duplicated).
          */
 
-        assert!(!self.ty
-                     .moves_by_default(&bcx.tcx().empty_parameter_environment(), DUMMY_SP));
+        assert!(!self.ty.moves_by_default(bcx.tcx(),
+            &bcx.tcx().empty_parameter_environment(), DUMMY_SP));
         self.shallow_copy_raw(bcx, dst)
     }
 

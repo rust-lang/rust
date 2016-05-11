@@ -127,7 +127,7 @@ fn is_lifetime(map: &hir_map::Map, param_id: ast::NodeId) -> bool {
 }
 
 impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
-    fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.terms_cx.tcx
     }
 
@@ -345,7 +345,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_mt(generics, mt, variance);
             }
 
-            ty::TyTuple(ref subtys) => {
+            ty::TyTuple(subtys) => {
                 for &subty in subtys {
                     self.add_constraints_from_ty(generics, subty, variance);
                 }

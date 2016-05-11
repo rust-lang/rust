@@ -21,7 +21,7 @@ extern crate syntax;
 use rustc::mir::transform::{self, MirPass, MirSource};
 use rustc::mir::repr::{Mir, Literal};
 use rustc::mir::visit::MutVisitor;
-use rustc::ty;
+use rustc::ty::TyCtxt;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_math::ConstInt;
 use rustc_plugin::Registry;
@@ -30,7 +30,8 @@ struct Pass;
 
 impl transform::Pass for Pass {}
 impl<'tcx> MirPass<'tcx> for Pass {
-    fn run_pass(&mut self, _: &ty::TyCtxt<'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>,
+                    _: MirSource, mir: &mut Mir<'tcx>) {
         Visitor.visit_mir(mir)
     }
 }

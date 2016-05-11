@@ -11,7 +11,6 @@
 #![allow(non_camel_case_types)]
 
 use rustc::hir::def_id::DefId;
-use rustc::infer;
 use rustc::ty::subst;
 use abi::FnType;
 use adt;
@@ -124,8 +123,10 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
 
     // FIXME(eddyb) Temporary sanity check for ty::layout.
-    let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables, ProjectionMode::Any);
-    match t.layout(&infcx) {
+    let layout = cx.tcx().normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+        t.layout(&infcx)
+    });
+    match layout {
         Ok(layout) => {
             if !type_is_sized(cx.tcx(), t) {
                 if !layout.is_unsized() {
@@ -296,7 +297,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyFnDef(..) => Type::nil(cx),
       ty::TyFnPtr(f) => {
         let sig = cx.tcx().erase_late_bound_regions(&f.sig);
-        let sig = infer::normalize_associated_type(cx.tcx(), &sig);
+        let sig = cx.tcx().normalize_associated_type(&sig);
         FnType::new(cx, f.abi, &sig, &[]).llvm_type(cx).ptr_to()
       }
       ty::TyTuple(ref tys) if tys.is_empty() => Type::nil(cx),

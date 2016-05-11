@@ -194,7 +194,6 @@ use rustc_const_eval::{compare_lit_exprs, eval_const_expr};
 use rustc::hir::def::{Def, DefMap};
 use rustc::hir::def_id::DefId;
 use middle::expr_use_visitor as euv;
-use rustc::infer;
 use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
@@ -239,7 +238,7 @@ use syntax::ptr::P;
 struct ConstantExpr<'a>(&'a hir::Expr);
 
 impl<'a> ConstantExpr<'a> {
-    fn eq(self, other: ConstantExpr<'a>, tcx: &TyCtxt) -> bool {
+    fn eq<'b, 'tcx>(self, other: ConstantExpr<'a>, tcx: TyCtxt<'b, 'tcx, 'tcx>) -> bool {
         match compare_lit_exprs(tcx, self.0, other.0) {
             Some(result) => result == Ordering::Equal,
             None => bug!("compare_list_exprs: type mismatch"),
@@ -259,8 +258,8 @@ enum Opt<'a, 'tcx> {
                               DebugLoc),
 }
 
-impl<'a, 'tcx> Opt<'a, 'tcx> {
-    fn eq(&self, other: &Opt<'a, 'tcx>, tcx: &TyCtxt<'tcx>) -> bool {
+impl<'a, 'b, 'tcx> Opt<'a, 'tcx> {
+    fn eq(&self, other: &Opt<'a, 'tcx>, tcx: TyCtxt<'b, 'tcx, 'tcx>) -> bool {
         match (self, other) {
             (&ConstantValue(a, _), &ConstantValue(b, _)) => a.eq(b, tcx),
             (&ConstantRange(a1, a2, _), &ConstantRange(b1, b2, _)) => {
@@ -789,7 +788,7 @@ fn any_region_pat(m: &[Match], col: usize) -> bool {
     any_pat!(m, col, PatKind::Ref(..))
 }
 
-fn any_irrefutable_adt_pat(tcx: &TyCtxt, m: &[Match], col: usize) -> bool {
+fn any_irrefutable_adt_pat(tcx: TyCtxt, m: &[Match], col: usize) -> bool {
     m.iter().any(|br| {
         let pat = br.pats[col];
         match pat.node {
@@ -1466,13 +1465,10 @@ fn is_discr_reassigned(bcx: Block, discr: &hir::Expr, body: &hir::Expr) -> bool 
         field: field,
         reassigned: false
     };
-    {
-        let infcx = infer::normalizing_infer_ctxt(bcx.tcx(),
-                                                  &bcx.tcx().tables,
-                                                  ProjectionMode::Any);
+    bcx.tcx().normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
         let mut visitor = euv::ExprUseVisitor::new(&mut rc, &infcx);
         visitor.walk_expr(body);
-    }
+    });
     rc.reassigned
 }
 
@@ -1533,7 +1529,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &hir::Pat,
 
         let llmatch;
         let trmode;
-        let moves_by_default = variable_ty.moves_by_default(&param_env, span);
+        let moves_by_default = variable_ty.moves_by_default(tcx, &param_env, span);
         match bm {
             hir::BindByValue(_) if !moves_by_default || reassigned =>
             {

@@ -22,7 +22,6 @@ use rustc::hir::def_id::{DefId};
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
-use rustc::infer;
 use rustc::middle::mem_categorization::{cmt};
 use rustc::hir::pat_util::*;
 use rustc::traits::ProjectionMode;
@@ -106,8 +105,8 @@ impl<'a> FromIterator<Vec<&'a Pat>> for Matrix<'a> {
 
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
-    pub tcx: &'a TyCtxt<'tcx>,
-    pub param_env: ParameterEnvironment<'a, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub param_env: ParameterEnvironment<'tcx>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -153,7 +152,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.visit_all_items_in_krate(DepNode::MatchCheck, &mut MatchCheckCtxt {
         tcx: tcx,
         param_env: tcx.empty_parameter_environment(),
@@ -455,13 +454,13 @@ fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
 }
 
 pub struct StaticInliner<'a, 'tcx: 'a> {
-    pub tcx: &'a TyCtxt<'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub failed: bool,
     pub renaming_map: Option<&'a mut FnvHashMap<(NodeId, Span), NodeId>>,
 }
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    pub fn new<'b>(tcx: &'b TyCtxt<'tcx>,
+    pub fn new<'b>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                    renaming_map: Option<&'b mut FnvHashMap<(NodeId, Span), NodeId>>)
                    -> StaticInliner<'b, 'tcx> {
         StaticInliner {
@@ -1123,13 +1122,12 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     PatKind::Ident(hir::BindByValue(_), _, ref sub) => {
                         let pat_ty = tcx.node_id_to_type(p.id);
                         //FIXME: (@jroesch) this code should be floated up as well
-                        let infcx = infer::new_infer_ctxt(cx.tcx,
-                                                          &cx.tcx.tables,
-                                                          Some(cx.param_env.clone()),
-                                                          ProjectionMode::AnyFinal);
-                        if infcx.type_moves_by_default(pat_ty, pat.span) {
-                            check_move(p, sub.as_ref().map(|p| &**p));
-                        }
+                        cx.tcx.infer_ctxt(None, Some(cx.param_env.clone()),
+                                          ProjectionMode::AnyFinal).enter(|infcx| {
+                            if infcx.type_moves_by_default(pat_ty, pat.span) {
+                                check_move(p, sub.as_ref().map(|p| &**p));
+                            }
+                        });
                     }
                     PatKind::Ident(hir::BindByRef(_), _, _) => {
                     }
@@ -1151,24 +1149,21 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 /// assign.
 fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
                                          guard: &hir::Expr) {
-    let mut checker = MutationChecker {
-        cx: cx,
-    };
-
-    let infcx = infer::new_infer_ctxt(cx.tcx,
-                                      &cx.tcx.tables,
-                                      Some(checker.cx.param_env.clone()),
-                                      ProjectionMode::AnyFinal);
-
-    let mut visitor = ExprUseVisitor::new(&mut checker, &infcx);
-    visitor.walk_expr(guard);
+    cx.tcx.infer_ctxt(None, Some(cx.param_env.clone()),
+                      ProjectionMode::AnyFinal).enter(|infcx| {
+        let mut checker = MutationChecker {
+            cx: cx,
+        };
+        let mut visitor = ExprUseVisitor::new(&mut checker, &infcx);
+        visitor.walk_expr(guard);
+    });
 }
 
-struct MutationChecker<'a, 'tcx: 'a> {
-    cx: &'a MatchCheckCtxt<'a, 'tcx>,
+struct MutationChecker<'a, 'gcx: 'a> {
+    cx: &'a MatchCheckCtxt<'a, 'gcx>,
 }
 
-impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
     fn matched_pat(&mut self, _: &Pat, _: cmt, _: euv::MatchMode) {}
     fn consume(&mut self, _: NodeId, _: Span, _: cmt, _: ConsumeMode) {}
     fn consume_pat(&mut self, _: &Pat, _: cmt, _: ConsumeMode) {}

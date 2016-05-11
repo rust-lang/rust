@@ -58,7 +58,7 @@ type CheckResult = Option<(Span, String, Option<(Span, String)>)>;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct EmbargoVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     export_map: &'a def::ExportMap,
 
     // Accessibility levels for reachable nodes
@@ -128,7 +128,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
     fn visit_nested_item(&mut self, item: hir::ItemId) {
-        self.visit_item(self.tcx.map.expect_item(item.id))
+        let tcx = self.tcx;
+        self.visit_item(tcx.map.expect_item(item.id))
     }
 
     fn visit_item(&mut self, item: &hir::Item) {
@@ -375,7 +376,7 @@ impl<'b, 'a, 'tcx: 'a, 'v> Visitor<'v> for ReachEverythingInTheInterfaceVisitor<
 ////////////////////////////////////////////////////////////////////////////////
 
 struct PrivacyVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     curitem: ast::NodeId,
     in_foreign: bool,
 }
@@ -417,7 +418,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
     fn visit_nested_item(&mut self, item: hir::ItemId) {
-        self.visit_item(self.tcx.map.expect_item(item.id))
+        let tcx = self.tcx;
+        self.visit_item(tcx.map.expect_item(item.id))
     }
 
     fn visit_item(&mut self, item: &hir::Item) {
@@ -524,7 +526,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct SanePrivacyVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for SanePrivacyVisitor<'a, 'tcx> {
@@ -595,7 +597,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////////
 
 struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     access_levels: &'a AccessLevels,
     in_variant: bool,
     // set of errors produced by this obsolete visitor
@@ -679,7 +681,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
     fn visit_nested_item(&mut self, item: hir::ItemId) {
-        self.visit_item(self.tcx.map.expect_item(item.id))
+        let tcx = self.tcx;
+        self.visit_item(tcx.map.expect_item(item.id))
     }
 
     fn visit_item(&mut self, item: &hir::Item) {
@@ -934,7 +937,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
 ///////////////////////////////////////////////////////////////////////////////
 
 struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     /// The visitor checks that each component type is at least this visible
     required_visibility: ty::Visibility,
     /// The visibility of the least visible component that has been visited
@@ -943,7 +946,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
-    fn new(tcx: &'a TyCtxt<'tcx>, old_error_set: &'a NodeSet) -> Self {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, old_error_set: &'a NodeSet) -> Self {
         SearchInterfaceForPrivateItemsVisitor {
             tcx: tcx,
             min_visibility: ty::Visibility::Public,
@@ -1015,7 +1018,7 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                         let item = self.tcx.map.expect_item(node_id);
                         let vis = match self.substituted_alias_visibility(item, path) {
                             Some(vis) => vis,
-                            None => ty::Visibility::from_hir(&item.vis, node_id, &self.tcx),
+                            None => ty::Visibility::from_hir(&item.vis, node_id, self.tcx),
                         };
 
                         if !vis.is_at_least(self.min_visibility, &self.tcx.map) {
@@ -1047,7 +1050,7 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
         let def_id = self.tcx.trait_ref_to_def_id(trait_ref);
         if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
             let item = self.tcx.map.expect_item(node_id);
-            let vis = ty::Visibility::from_hir(&item.vis, node_id, &self.tcx);
+            let vis = ty::Visibility::from_hir(&item.vis, node_id, self.tcx);
 
             if !vis.is_at_least(self.min_visibility, &self.tcx.map) {
                 self.min_visibility = vis;
@@ -1079,7 +1082,7 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
 }
 
 struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     old_error_set: &'a NodeSet,
 }
 
@@ -1106,7 +1109,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
         };
 
         let mut check = SearchInterfaceForPrivateItemsVisitor::new(self.tcx, self.old_error_set);
-        let item_visibility = ty::Visibility::from_hir(&item.vis, item.id, &self.tcx);
+        let item_visibility = ty::Visibility::from_hir(&item.vis, item.id, self.tcx);
 
         match item.node {
             // Crates are always public
@@ -1125,7 +1128,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
             hir::ItemForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
                     check.required_visibility =
-                        ty::Visibility::from_hir(&foreign_item.vis, item.id, &self.tcx);
+                        ty::Visibility::from_hir(&foreign_item.vis, item.id, self.tcx);
                     check.visit_foreign_item(foreign_item);
                 }
             }
@@ -1135,7 +1138,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
                 check.visit_generics(generics);
 
                 for field in struct_def.fields() {
-                    let field_visibility = ty::Visibility::from_hir(&field.vis, item.id, &self.tcx);
+                    let field_visibility = ty::Visibility::from_hir(&field.vis, item.id, self.tcx);
                     check.required_visibility = min(item_visibility, field_visibility);
                     check.visit_struct_field(field);
                 }
@@ -1151,7 +1154,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
 
                 for impl_item in impl_items {
                     let impl_item_vis =
-                        ty::Visibility::from_hir(&impl_item.vis, item.id, &self.tcx);
+                        ty::Visibility::from_hir(&impl_item.vis, item.id, self.tcx);
                     check.required_visibility = min(impl_item_vis, ty_vis);
                     check.visit_impl_item(impl_item);
                 }
@@ -1170,7 +1173,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt, export_map: &def::ExportMap) -> AccessLevels {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             export_map: &def::ExportMap)
+                             -> AccessLevels {
     let _task = tcx.dep_graph.in_task(DepNode::Privacy);
 
     let krate = tcx.map.krate();

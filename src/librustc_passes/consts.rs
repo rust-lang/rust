@@ -36,7 +36,6 @@ use rustc_const_math::{ConstMathErr, Op};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
-use rustc::infer;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -68,15 +67,15 @@ enum Mode {
 }
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mode: Mode,
     qualif: ConstQualif,
     rvalue_borrows: NodeMap<hir::Mutability>
 }
 
-impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
+impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     fn with_mode<F, R>(&mut self, mode: Mode, f: F) -> R where
-        F: FnOnce(&mut CheckCrateVisitor<'a, 'tcx>) -> R,
+        F: FnOnce(&mut CheckCrateVisitor<'a, 'gcx>) -> R,
     {
         let (old_mode, old_qualif) = (self.mode, self.qualif);
         self.mode = mode;
@@ -87,20 +86,17 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         r
     }
 
-    fn with_euv<'b, F, R>(&'b mut self, item_id: Option<ast::NodeId>, f: F) -> R where
-        F: for<'t> FnOnce(&mut euv::ExprUseVisitor<'b, 't, 'b, 'tcx>) -> R,
+    fn with_euv<F, R>(&mut self, item_id: Option<ast::NodeId>, f: F) -> R where
+        F: for<'b, 'tcx> FnOnce(&mut euv::ExprUseVisitor<'b, 'gcx, 'tcx>) -> R,
     {
         let param_env = match item_id {
             Some(item_id) => ty::ParameterEnvironment::for_item(self.tcx, item_id),
             None => self.tcx.empty_parameter_environment()
         };
 
-        let infcx = infer::new_infer_ctxt(self.tcx,
-                                          &self.tcx.tables,
-                                          Some(param_env),
-                                          ProjectionMode::AnyFinal);
-
-        f(&mut euv::ExprUseVisitor::new(self, &infcx))
+        self.tcx.infer_ctxt(None, Some(param_env), ProjectionMode::AnyFinal).enter(|infcx| {
+            f(&mut euv::ExprUseVisitor::new(self, &infcx))
+        })
     }
 
     fn global_expr(&mut self, mode: Mode, expr: &hir::Expr) -> ConstQualif {
@@ -181,7 +177,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn handle_const_fn_call(&mut self,
                             _expr: &hir::Expr,
                             def_id: DefId,
-                            ret_ty: Ty<'tcx>)
+                            ret_ty: Ty<'gcx>)
                             -> bool {
         if let Some(fn_like) = lookup_const_fn_by_id(self.tcx, def_id) {
             let qualif = self.fn_like(fn_like.kind(),
@@ -665,7 +661,7 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.visit_all_items_in_krate(DepNode::CheckConst, &mut CheckCrateVisitor {
         tcx: tcx,
         mode: Mode::Var,
@@ -675,7 +671,7 @@ pub fn check_crate(tcx: &TyCtxt) {
     tcx.sess.abort_if_errors();
 }
 
-impl<'a, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
     fn consume(&mut self,
                _consume_id: ast::NodeId,
                _consume_span: Span,

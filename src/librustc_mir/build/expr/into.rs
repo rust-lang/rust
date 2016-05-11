@@ -16,7 +16,7 @@ use hair::*;
 use rustc::ty;
 use rustc::mir::repr::*;
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
     pub fn into_expr(&mut self,

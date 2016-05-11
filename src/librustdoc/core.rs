@@ -42,7 +42,7 @@ pub use rustc::session::search_paths::SearchPaths;
 
 /// Are we generating documentation (`Typed`) or tests (`NotTyped`)?
 pub enum MaybeTyped<'a, 'tcx: 'a> {
-    Typed(&'a TyCtxt<'tcx>),
+    Typed(TyCtxt<'a, 'tcx, 'tcx>),
     NotTyped(&'a session::Session)
 }
 
@@ -74,14 +74,14 @@ impl<'b, 'tcx> DocContext<'b, 'tcx> {
         }
     }
 
-    pub fn tcx_opt<'a>(&'a self) -> Option<&'a TyCtxt<'tcx>> {
+    pub fn tcx_opt<'a>(&'a self) -> Option<TyCtxt<'a, 'tcx, 'tcx>> {
         match self.maybe_typed {
             Typed(tcx) => Some(tcx),
             NotTyped(_) => None
         }
     }
 
-    pub fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx> {
+    pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         let tcx_opt = self.tcx_opt();
         tcx_opt.expect("tcx not present")
     }

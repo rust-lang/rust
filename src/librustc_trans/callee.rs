@@ -22,7 +22,6 @@ use back::symbol_names;
 use llvm::{self, ValueRef, get_params};
 use middle::cstore::LOCAL_CRATE;
 use rustc::hir::def_id::DefId;
-use rustc::infer;
 use rustc::ty::subst;
 use rustc::traits;
 use rustc::hir::map as hir_map;
@@ -101,7 +100,7 @@ impl<'tcx> Callee<'tcx> {
     /// Trait or impl method.
     pub fn method<'blk>(bcx: Block<'blk, 'tcx>,
                         method: ty::MethodCallee<'tcx>) -> Callee<'tcx> {
-        let substs = bcx.tcx().mk_substs(bcx.fcx.monomorphize(&method.substs));
+        let substs = bcx.fcx.monomorphize(&method.substs);
         Callee::def(bcx.ccx(), method.def_id, substs)
     }
 
@@ -155,7 +154,7 @@ impl<'tcx> Callee<'tcx> {
         let method_item = tcx.impl_or_trait_item(def_id);
         let trait_id = method_item.container().id();
         let trait_ref = ty::Binder(substs.to_trait_ref(tcx, trait_id));
-        let trait_ref = infer::normalize_associated_type(tcx, &trait_ref);
+        let trait_ref = tcx.normalize_associated_type(&trait_ref);
         match common::fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref) {
             traits::VtableImpl(vtable_impl) => {
                 let impl_did = vtable_impl.impl_def_id;
@@ -183,7 +182,7 @@ impl<'tcx> Callee<'tcx> {
 
                 let method_ty = def_ty(tcx, def_id, substs);
                 let fn_ptr_ty = match method_ty.sty {
-                    ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
+                    ty::TyFnDef(_, _, fty) => tcx.mk_fn_ptr(fty),
                     _ => bug!("expected fn item type, found {}",
                               method_ty)
                 };
@@ -195,7 +194,7 @@ impl<'tcx> Callee<'tcx> {
 
                 let method_ty = def_ty(tcx, def_id, substs);
                 let fn_ptr_ty = match method_ty.sty {
-                    ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
+                    ty::TyFnDef(_, _, fty) => tcx.mk_fn_ptr(fty),
                     _ => bug!("expected fn item type, found {}",
                               method_ty)
                 };
@@ -203,8 +202,7 @@ impl<'tcx> Callee<'tcx> {
             }
             traits::VtableObject(ref data) => {
                 Callee {
-                    data: Virtual(traits::get_vtable_index_of_object_method(
-                        tcx, data, def_id)),
+                    data: Virtual(tcx.get_vtable_index_of_object_method(data, def_id)),
                     ty: def_ty(tcx, def_id, substs)
                 }
             }
@@ -221,7 +219,7 @@ impl<'tcx> Callee<'tcx> {
                               extra_args: &[Ty<'tcx>]) -> FnType {
         let abi = self.ty.fn_abi();
         let sig = ccx.tcx().erase_late_bound_regions(self.ty.fn_sig());
-        let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+        let sig = ccx.tcx().normalize_associated_type(&sig);
         let mut fn_ty = FnType::unadjusted(ccx, abi, &sig, extra_args);
         if let Virtual(_) = self.data {
             // Don't pass the vtable, it's not an argument of the virtual fn.
@@ -254,7 +252,7 @@ impl<'tcx> Callee<'tcx> {
     pub fn reify<'a>(self, ccx: &CrateContext<'a, 'tcx>)
                      -> Datum<'tcx, Rvalue> {
         let fn_ptr_ty = match self.ty.sty {
-            ty::TyFnDef(_, _, f) => ccx.tcx().mk_ty(ty::TyFnPtr(f)),
+            ty::TyFnDef(_, _, f) => ccx.tcx().mk_fn_ptr(f),
             _ => self.ty
         };
         match self.data {
@@ -277,10 +275,10 @@ impl<'tcx> Callee<'tcx> {
 }
 
 /// Given a DefId and some Substs, produces the monomorphic item type.
-fn def_ty<'tcx>(tcx: &TyCtxt<'tcx>,
-                def_id: DefId,
-                substs: &'tcx subst::Substs<'tcx>)
-                -> Ty<'tcx> {
+fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    def_id: DefId,
+                    substs: &'tcx subst::Substs<'tcx>)
+                    -> Ty<'tcx> {
     let ty = tcx.lookup_item_type(def_id).ty;
     monomorphize::apply_param_substs(tcx, substs, &ty)
 }
@@ -361,7 +359,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         }
     };
     let sig = tcx.erase_late_bound_regions(sig);
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = ccx.tcx().normalize_associated_type(&sig);
     let tuple_input_ty = tcx.mk_tup(sig.inputs.to_vec());
     let sig = ty::FnSig {
         inputs: vec![bare_fn_ty_maybe_ref,
@@ -370,11 +368,11 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         variadic: false
     };
     let fn_ty = FnType::new(ccx, Abi::RustCall, &sig, &[]);
-    let tuple_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
+    let tuple_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Normal,
         abi: Abi::RustCall,
         sig: ty::Binder(sig)
-    });
+    }));
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
 
     //
@@ -444,7 +442,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // def_id to the local id of the inlined copy.
     let def_id = inline::maybe_instantiate_inline(ccx, def_id);
 
-    fn is_named_tuple_constructor(tcx: &TyCtxt, def_id: DefId) -> bool {
+    fn is_named_tuple_constructor(tcx: TyCtxt, def_id: DefId) -> bool {
         let node_id = match tcx.map.as_local_node_id(def_id) {
             Some(n) => n,
             None => { return false; }
@@ -478,7 +476,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let fn_ptr_ty = match fn_ty.sty {
             ty::TyFnDef(_, _, fty) => {
                 // Create a fn pointer with the substituted signature.
-                tcx.mk_ty(ty::TyFnPtr(fty))
+                tcx.mk_fn_ptr(fty)
             }
             _ => bug!("expected fn item type, found {}", fn_ty)
         };
@@ -489,9 +487,9 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Find the actual function pointer.
     let ty = ccx.tcx().lookup_item_type(def_id).ty;
     let fn_ptr_ty = match ty.sty {
-        ty::TyFnDef(_, _, fty) => {
+        ty::TyFnDef(_, _, ref fty) => {
             // Create a fn pointer with the normalized signature.
-            tcx.mk_fn_ptr(infer::normalize_associated_type(tcx, fty))
+            tcx.mk_fn_ptr(tcx.normalize_associated_type(fty))
         }
         _ => bug!("expected fn item type, found {}", ty)
     };
@@ -623,7 +621,7 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let abi = callee.ty.fn_abi();
     let sig = callee.ty.fn_sig();
     let output = bcx.tcx().erase_late_bound_regions(&sig.output());
-    let output = infer::normalize_associated_type(bcx.tcx(), &output);
+    let output = bcx.tcx().normalize_associated_type(&output);
 
     let extra_args = match args {
         ArgExprs(args) if abi != Abi::RustCall => {

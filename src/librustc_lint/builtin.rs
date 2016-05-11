@@ -31,7 +31,7 @@
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use middle::stability;
-use rustc::{cfg, infer};
+use rustc::cfg;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::adjustment;
@@ -496,10 +496,10 @@ impl LateLintPass for MissingCopyImplementations {
         let parameter_environment = cx.tcx.empty_parameter_environment();
         // FIXME (@jroesch) should probably inver this so that the parameter env still impls this
         // method
-        if !ty.moves_by_default(&parameter_environment, item.span) {
+        if !ty.moves_by_default(cx.tcx, &parameter_environment, item.span) {
             return;
         }
-        if parameter_environment.can_type_implement_copy(ty, item.span).is_ok() {
+        if parameter_environment.can_type_implement_copy(cx.tcx, ty, item.span).is_ok() {
             cx.span_lint(MISSING_COPY_IMPLEMENTATIONS,
                          item.span,
                          "type could implement `Copy`; consider adding `impl \
@@ -775,7 +775,7 @@ impl LateLintPass for UnconditionalRecursion {
         // Functions for identifying if the given Expr NodeId `id`
         // represents a call to the function `fn_id`/method `method`.
 
-        fn expr_refers_to_this_fn(tcx: &TyCtxt,
+        fn expr_refers_to_this_fn(tcx: TyCtxt,
                                   fn_id: ast::NodeId,
                                   id: ast::NodeId) -> bool {
             match tcx.map.get(id) {
@@ -791,9 +791,9 @@ impl LateLintPass for UnconditionalRecursion {
         }
 
         // Check if the expression `id` performs a call to `method`.
-        fn expr_refers_to_this_method(tcx: &TyCtxt,
-                                      method: &ty::Method,
-                                      id: ast::NodeId) -> bool {
+        fn expr_refers_to_this_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                method: &ty::Method,
+                                                id: ast::NodeId) -> bool {
             // Check for method calls and overloaded operators.
             let opt_m = tcx.tables.borrow().method_map.get(&ty::MethodCall::expr(id)).cloned();
             if let Some(m) = opt_m {
@@ -822,11 +822,7 @@ impl LateLintPass for UnconditionalRecursion {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     match tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def()) {
                         Some(Def::Method(def_id)) => {
-                            let item_substs =
-                                tcx.tables.borrow().item_substs
-                                                   .get(&callee.id)
-                                                   .cloned()
-                                                   .unwrap_or_else(|| ty::ItemSubsts::empty());
+                            let item_substs = tcx.node_id_item_substs(callee.id);
                             method_call_refers_to_method(
                                 tcx, method, def_id, &item_substs.substs, id)
                         }
@@ -839,11 +835,11 @@ impl LateLintPass for UnconditionalRecursion {
 
         // Check if the method call to the method with the ID `callee_id`
         // and instantiated with `callee_substs` refers to method `method`.
-        fn method_call_refers_to_method<'tcx>(tcx: &TyCtxt<'tcx>,
-                                              method: &ty::Method,
-                                              callee_id: DefId,
-                                              callee_substs: &Substs<'tcx>,
-                                              expr_id: ast::NodeId) -> bool {
+        fn method_call_refers_to_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                  method: &ty::Method,
+                                                  callee_id: DefId,
+                                                  callee_substs: &Substs<'tcx>,
+                                                  expr_id: ast::NodeId) -> bool {
             let callee_item = tcx.impl_or_trait_item(callee_id);
 
             match callee_item.container() {
@@ -868,39 +864,37 @@ impl LateLintPass for UnconditionalRecursion {
                     // checking, so it's always local
                     let node_id = tcx.map.as_local_node_id(method.def_id).unwrap();
 
-                    let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
-                    let infcx = infer::new_infer_ctxt(tcx,
-                                                      &tcx.tables,
-                                                      Some(param_env),
-                                                      ProjectionMode::AnyFinal);
-                    let mut selcx = traits::SelectionContext::new(&infcx);
-                    match selcx.select(&obligation) {
-                        // The method comes from a `T: Trait` bound.
-                        // If `T` is `Self`, then this call is inside
-                        // a default method definition.
-                        Ok(Some(traits::VtableParam(_))) => {
-                            let self_ty = callee_substs.self_ty();
-                            let on_self = self_ty.map_or(false, |t| t.is_self());
-                            // We can only be recurring in a default
-                            // method if we're being called literally
-                            // on the `Self` type.
-                            on_self && callee_id == method.def_id
-                        }
+                    let param_env = Some(ty::ParameterEnvironment::for_item(tcx, node_id));
+                    tcx.infer_ctxt(None, param_env, ProjectionMode::AnyFinal).enter(|infcx| {
+                        let mut selcx = traits::SelectionContext::new(&infcx);
+                        match selcx.select(&obligation) {
+                            // The method comes from a `T: Trait` bound.
+                            // If `T` is `Self`, then this call is inside
+                            // a default method definition.
+                            Ok(Some(traits::VtableParam(_))) => {
+                                let self_ty = callee_substs.self_ty();
+                                let on_self = self_ty.map_or(false, |t| t.is_self());
+                                // We can only be recurring in a default
+                                // method if we're being called literally
+                                // on the `Self` type.
+                                on_self && callee_id == method.def_id
+                            }
 
-                        // The `impl` is known, so we check that with a
-                        // special case:
-                        Ok(Some(traits::VtableImpl(vtable_impl))) => {
-                            let container = ty::ImplContainer(vtable_impl.impl_def_id);
-                            // It matches if it comes from the same impl,
-                            // and has the same method name.
-                            container == method.container
-                                && callee_item.name() == method.name
-                        }
+                            // The `impl` is known, so we check that with a
+                            // special case:
+                            Ok(Some(traits::VtableImpl(vtable_impl))) => {
+                                let container = ty::ImplContainer(vtable_impl.impl_def_id);
+                                // It matches if it comes from the same impl,
+                                // and has the same method name.
+                                container == method.container
+                                    && callee_item.name() == method.name
+                            }
 
-                        // There's no way to know if this call is
-                        // recursive, so we assume it's not.
-                        _ => return false
-                    }
+                            // There's no way to know if this call is
+                            // recursive, so we assume it's not.
+                            _ => false
+                        }
+                    })
                 }
             }
         }
