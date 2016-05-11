@@ -3,7 +3,7 @@ use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ast::*;
 use syntax::attr;
-use syntax::visit;
+use syntax::visit::{Visitor, walk_block, walk_pat, walk_expr};
 use utils::{span_lint_and_then, in_macro, span_lint};
 
 /// **What it does:** This lint warns about names that are very similar and thus confusing
@@ -68,12 +68,17 @@ const WHITELIST: &'static [&'static [&'static str]] = &[
 
 struct SimilarNamesNameVisitor<'a, 'b: 'a, 'c: 'b>(&'a mut SimilarNamesLocalVisitor<'b, 'c>);
 
-impl<'v, 'a, 'b, 'c> visit::Visitor<'v> for SimilarNamesNameVisitor<'a, 'b, 'c> {
+impl<'v, 'a, 'b, 'c> Visitor<'v> for SimilarNamesNameVisitor<'a, 'b, 'c> {
     fn visit_pat(&mut self, pat: &'v Pat) {
-        if let PatKind::Ident(_, id, _) = pat.node {
-            self.check_name(id.span, id.node.name);
+        match pat.node {
+            PatKind::Ident(_, id, _) => self.check_name(id.span, id.node.name),
+            PatKind::Struct(_, ref fields, _) => for field in fields {
+                if !field.node.is_shorthand {
+                    self.visit_pat(&field.node.pat);
+                }
+            },
+            _ => walk_pat(self, pat),
         }
-        visit::walk_pat(self, pat);
     }
 }
 
@@ -219,22 +224,22 @@ impl<'a, 'b> SimilarNamesLocalVisitor<'a, 'b> {
     }
 }
 
-impl<'v, 'a, 'b> visit::Visitor<'v> for SimilarNamesLocalVisitor<'a, 'b> {
+impl<'v, 'a, 'b> Visitor<'v> for SimilarNamesLocalVisitor<'a, 'b> {
     fn visit_local(&mut self, local: &'v Local) {
         if let Some(ref init) = local.init {
-            self.apply(|this| visit::walk_expr(this, &**init));
+            self.apply(|this| walk_expr(this, &**init));
         }
         // add the pattern after the expression because the bindings aren't available yet in the init expression
         SimilarNamesNameVisitor(self).visit_pat(&*local.pat);
     }
     fn visit_block(&mut self, blk: &'v Block) {
-        self.apply(|this| visit::walk_block(this, blk));
+        self.apply(|this| walk_block(this, blk));
     }
     fn visit_arm(&mut self, arm: &'v Arm) {
         self.apply(|this| {
             // just go through the first pattern, as either all patterns bind the same bindings or rustc would have errored much earlier
             SimilarNamesNameVisitor(this).visit_pat(&arm.pats[0]);
-            this.apply(|this| visit::walk_expr(this, &arm.body));
+            this.apply(|this| walk_expr(this, &arm.body));
         });
     }
     fn visit_item(&mut self, _: &'v Item) {
@@ -257,7 +262,7 @@ impl EarlyLintPass for NonExpressiveNames {
                     visit::walk_pat(&mut SimilarNamesNameVisitor(&mut visitor), &arg.pat);
                 }
                 // walk all other bindings
-                visit::walk_block(&mut visitor, blk);
+                walk_block(&mut visitor, blk);
             }
         }
     }
