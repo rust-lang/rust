@@ -348,7 +348,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
             let mir = errors::expect(scx.sess().diagnostic(), scx.get_mir(def_id),
                 || format!("Could not find MIR for static: {:?}", def_id));
 
-            let empty_substs = scx.tcx().mk_substs(Substs::empty());
+            let empty_substs = scx.empty_substs_for_def_id(def_id);
             let mut visitor = MirNeighborCollector {
                 scx: scx,
                 mir: &mir,
@@ -496,10 +496,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                         .unwrap_or_else(|e| self.scx.sess().fatal(&e));
 
                 assert!(can_have_local_instance(self.scx.tcx(), exchange_malloc_fn_def_id));
+                let empty_substs = self.scx.empty_substs_for_def_id(exchange_malloc_fn_def_id);
                 let exchange_malloc_fn_trans_item =
                     create_fn_trans_item(self.scx.tcx(),
                                          exchange_malloc_fn_def_id,
-                                         self.scx.tcx().mk_substs(Substs::empty()),
+                                         empty_substs,
                                          self.param_substs);
 
                 self.output.push(exchange_malloc_fn_trans_item);
@@ -679,10 +680,11 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                          .unwrap_or_else(|e| scx.sess().fatal(&e));
 
         assert!(can_have_local_instance(scx.tcx(), exchange_free_fn_def_id));
+        let fn_substs = scx.empty_substs_for_def_id(exchange_free_fn_def_id);
         let exchange_free_fn_trans_item =
             create_fn_trans_item(scx.tcx(),
                                  exchange_free_fn_def_id,
-                                 scx.tcx().mk_substs(Substs::empty()),
+                                 fn_substs,
                                  scx.tcx().mk_substs(Substs::empty()));
 
         output.push(exchange_free_fn_trans_item);
@@ -1111,7 +1113,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                     debug!("RootCollector: ItemFn({})",
                            def_id_to_string(self.scx.tcx(), def_id));
 
-                    let instance = Instance::mono(self.scx.tcx(), def_id);
+                    let instance = Instance::mono(self.scx, def_id);
                     self.output.push(TransItem::Fn(instance));
                 }
             }
@@ -1148,7 +1150,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                     debug!("RootCollector: MethodImplItem({})",
                            def_id_to_string(self.scx.tcx(), def_id));
 
-                    let instance = Instance::mono(self.scx.tcx(), def_id);
+                    let instance = Instance::mono(self.scx, def_id);
                     self.output.push(TransItem::Fn(instance));
                 }
             }

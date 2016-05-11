@@ -1,3 +1,19 @@
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! Walks the crate looking for items/impl-items/trait-items that have
+//! either a `rustc_symbol_name` or `rustc_item_path` attribute and
+//! generates an error giving, respectively, the symbol name or
+//! item-path. This is used for unit testing the code that generates
+//! paths etc in all kinds of annoying scenarios.
+
 use base::llvm_linkage_by_name;
 use glue::DropGlueKind;
 use llvm;
@@ -333,7 +349,8 @@ impl<'tcx> TransItem<'tcx> {
             },
             TransItem::Static(node_id) => {
                 let def_id = hir_map.local_def_id(node_id);
-                let instance = Instance::mono(tcx, def_id);
+                let empty_substs = tcx.mk_substs(subst::Substs::empty());
+                let instance = Instance::new(def_id, empty_substs);
                 to_string_internal(tcx, "static ", instance)
             },
         };
