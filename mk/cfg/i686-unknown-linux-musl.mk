@@ -25,4 +25,5 @@ CFG_THIRD_PARTY_OBJECTS_i686-unknown-linux-musl := crt1.o crti.o crtn.o
 CFG_INSTALLED_OBJECTS_i686-unknown-linux-musl := crt1.o crti.o crtn.o
 
 NATIVE_DEPS_libc_T_i686-unknown-linux-musl += libc.a
-NATIVE_DEPS_std_T_i686-unknown-linux-musl += libunwind.a crt1.o crti.o crtn.o
+NATIVE_DEPS_std_T_i686-unknown-linux-musl += crt1.o crti.o crtn.o
+NATIVE_DEPS_unwind_T_i686-unknown-linux-musl += libunwind.a
