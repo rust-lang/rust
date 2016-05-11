@@ -28,6 +28,7 @@ pub enum Mode {
     CodegenUnits,
     Incremental,
     RunMake,
+    Ui,
 }
 
 impl FromStr for Mode {
@@ -47,6 +48,7 @@ impl FromStr for Mode {
           "codegen-units" => Ok(CodegenUnits),
           "incremental" => Ok(Incremental),
           "run-make" => Ok(RunMake),
+          "ui" => Ok(Ui),
           _ => Err(()),
         }
     }
@@ -68,6 +70,7 @@ impl fmt::Display for Mode {
             CodegenUnits => "codegen-units",
             Incremental => "incremental",
             RunMake => "run-make",
+            Ui => "ui",
         }, f)
     }
 }
