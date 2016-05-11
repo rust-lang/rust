@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![cfg_attr(target_os = "emscripten", allow(unused_imports))]
+
 use cell::UnsafeCell;
 use libc;
 use mem;
 
+#[cfg(not(target_os = "emscripten"))]
 pub struct Mutex { inner: UnsafeCell<libc::pthread_mutex_t> }
 
+#[cfg(not(target_os = "emscripten"))]
 #[inline]
 pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
     m.inner.get()
@@ -22,6 +26,7 @@ pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
 
+#[cfg(not(target_os = "emscripten"))]
 #[allow(dead_code)] // sys isn't exported yet
 impl Mutex {
     pub const fn new() -> Mutex {
@@ -62,11 +67,13 @@ impl Mutex {
     }
 }
 
+#[cfg(not(target_os = "emscripten"))]
 pub struct ReentrantMutex { inner: UnsafeCell<libc::pthread_mutex_t> }
 
 unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}
 
+#[cfg(not(target_os = "emscripten"))]
 impl ReentrantMutex {
     pub unsafe fn uninitialized() -> ReentrantMutex {
         ReentrantMutex { inner: mem::uninitialized() }
@@ -104,4 +111,33 @@ impl ReentrantMutex {
         let result = libc::pthread_mutex_destroy(self.inner.get());
         debug_assert_eq!(result, 0);
     }
+}
+
+
+#[cfg(target_os = "emscripten")]
+pub struct Mutex;
+#[cfg(target_os = "emscripten")]
+impl Mutex {
+    pub const fn new() -> Mutex { Mutex }
+    #[inline]
+    pub unsafe fn lock(&self) {}
+    #[inline]
+    pub unsafe fn unlock(&self) {}
+    #[inline]
+    pub unsafe fn try_lock(&self) -> bool { true }
+    #[inline]
+    pub unsafe fn destroy(&self) {}
+}
+
+#[cfg(target_os = "emscripten")]
+pub struct ReentrantMutex;
+#[cfg(target_os = "emscripten")]
+impl ReentrantMutex {
+    pub unsafe fn uninitialized() -> ReentrantMutex { ReentrantMutex }
+    pub unsafe fn init(&mut self) {}
+    pub unsafe fn lock(&self) {}
+    #[inline]
+    pub unsafe fn try_lock(&self) -> bool { true }
+    pub unsafe fn unlock(&self) {}
+    pub unsafe fn destroy(&self) {}
 }

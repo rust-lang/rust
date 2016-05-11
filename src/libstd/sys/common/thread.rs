@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![cfg(not(target_os = "emscripten"))]
+
 use prelude::v1::*;
 
 use alloc::boxed::FnBox;

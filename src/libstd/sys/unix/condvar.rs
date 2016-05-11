@@ -8,17 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![cfg_attr(target_os = "emscripten", allow(unused_imports))]
+
 use cell::UnsafeCell;
 use libc;
 use ptr;
 use sys::mutex::{self, Mutex};
 use time::{Instant, Duration};
 
+#[cfg(not(target_os = "emscripten"))]
 pub struct Condvar { inner: UnsafeCell<libc::pthread_cond_t> }
 
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
+#[cfg(not(target_os = "emscripten"))]
 impl Condvar {
     pub const fn new() -> Condvar {
         // Might be moved and address is changing it is better to avoid
@@ -100,4 +104,21 @@ impl Condvar {
         // pthread_cond_init() is called, this behaviour no longer occurs.
         debug_assert!(r == 0 || r == libc::EINVAL);
     }
+}
+
+#[cfg(target_os = "emscripten")]
+pub struct Condvar;
+#[cfg(target_os = "emscripten")]
+impl Condvar {
+    pub const fn new() -> Condvar { Condvar }
+    #[inline]
+    pub unsafe fn notify_one(&self) {}
+    #[inline]
+    pub unsafe fn notify_all(&self) {}
+    #[inline]
+    pub unsafe fn wait(&self, _mutex: &Mutex) { loop {} }
+    #[inline]
+    pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool { false }
+    #[inline]
+    pub unsafe fn destroy(&self) {}
 }
