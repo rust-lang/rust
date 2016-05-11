@@ -65,3 +65,31 @@ To keep the cost of abstraction low, favor widely-known traits. Whenever
 possible, implement and use traits provided as part of the standard library.  Do
 not introduce new traits for generics lightly; wait until there are a wide range
 of types that can implement the type.
+
+### Trait bound styles
+
+For generics that has only **1-3** types with less than or equal to **1** trait bounds, trait
+bounds could stay with the types.
+
+```rust
+fn test<A, B>(p1: A, p2: B) { ... }
+
+fn test<A: Trait, B>(p1: A, p2: B) { ... }
+```
+
+You could always use the `where` clause for trait bounds.
+
+```rust
+fn test<A, B, C, D>(p1: A, p2: B, p3: C, p4: D) -> RetVal
+    where A: Trait1 + Trait2 + Send + 'static,
+          B: Trait2 + Send + Sync,
+          C: Trait3,
+          D: Trait4
+{
+    // ...
+}
+```
+
+In this situation, the left brace `{` should be on the different line, and the `where`
+keyword should be in a new line and indented. The type parameters in the `where` clause
+should align.
