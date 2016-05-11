@@ -7,7 +7,6 @@
 #![feature(question_mark)]
 #![feature(stmt_expr_attributes)]
 #![allow(indexing_slicing, shadow_reuse, unknown_lints)]
-#![allow(float_arithmetic, integer_arithmetic)]
 
 extern crate rustc_driver;
 extern crate getopts;
@@ -192,6 +191,7 @@ pub mod utils;
 pub mod approx_const;
 pub mod arithmetic;
 pub mod array_indexing;
+pub mod assign_ops;
 pub mod attrs;
 pub mod bit_mask;
 pub mod blacklisted_name;
@@ -383,10 +383,12 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
     reg.register_late_lint_pass(box mem_forget::MemForget);
     reg.register_late_lint_pass(box arithmetic::Arithmetic::default());
+    reg.register_late_lint_pass(box assign_ops::AssignOps);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
         arithmetic::INTEGER_ARITHMETIC,
+        assign_ops::ASSIGN_OPS,
     ]);
 
     reg.register_lint_group("clippy_pedantic", vec![
@@ -421,6 +423,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_group("clippy", vec![
         approx_const::APPROX_CONSTANT,
         array_indexing::OUT_OF_BOUNDS_INDEXING,
+        assign_ops::ASSIGN_OP_PATTERN,
         attrs::DEPRECATED_SEMVER,
         attrs::INLINE_ALWAYS,
         bit_mask::BAD_BIT_MASK,

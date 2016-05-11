@@ -65,6 +65,6 @@ fn main() {
 
     // the add is only caught for String
     let mut x = 1;
-    x = x + 1;
+    x = x + 1; //~ WARN assign_op_pattern
     assert_eq!(2, x);
 }

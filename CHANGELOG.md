@@ -76,6 +76,8 @@ All notable changes to this project will be documented in this file.
 [`absurd_extreme_comparisons`]: https://github.com/Manishearth/rust-clippy/wiki#absurd_extreme_comparisons
 [`almost_swapped`]: https://github.com/Manishearth/rust-clippy/wiki#almost_swapped
 [`approx_constant`]: https://github.com/Manishearth/rust-clippy/wiki#approx_constant
+[`assign_op_pattern`]: https://github.com/Manishearth/rust-clippy/wiki#assign_op_pattern
+[`assign_ops`]: https://github.com/Manishearth/rust-clippy/wiki#assign_ops
 [`bad_bit_mask`]: https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask
 [`blacklisted_name`]: https://github.com/Manishearth/rust-clippy/wiki#blacklisted_name
 [`block_in_if_condition_expr`]: https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr
