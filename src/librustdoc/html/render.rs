@@ -1537,7 +1537,6 @@ impl<'a> Item<'a> {
     }
 }
 
-
 impl<'a> fmt::Display for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         debug_assert!(!self.item.is_stripped());
@@ -1575,6 +1574,9 @@ impl<'a> fmt::Display for Item<'a> {
 
         write!(fmt, "</span>")?; // in-band
         write!(fmt, "<span class='out-of-band'>")?;
+        if let Some(version) = self.item.stable_since() {
+            write!(fmt, "<span class='since'>{}</span>", version)?;
+        }
         write!(fmt,
                r##"<span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
@@ -1922,7 +1924,6 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            generics = f.generics,
            where_clause = WhereClause(&f.generics),
            decl = f.decl)?;
-    render_stability_since_raw(w, it.stable_since(), None)?;
     document(w, cx, it)
 }
 
@@ -2236,7 +2237,6 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                   "",
                   true)?;
     write!(w, "</pre>")?;
-    render_stability_since_raw(w, it.stable_since(), None)?;
 
     document(w, cx, it)?;
     let mut fields = s.fields.iter().filter(|f| {
