@@ -7,7 +7,7 @@ use utils::{span_lint_and_then, span_lint, snippet_opt, SpanlessEq, get_trait_de
 /// **Why is this bad?** Projects with many developers from languages without those operations
 ///                      may find them unreadable and not worth their weight
 ///
-/// **Known problems:** None
+/// **Known problems:** Types implementing `OpAssign` don't necessarily implement `Op`
 ///
 /// **Example:**
 /// ```
@@ -22,7 +22,7 @@ declare_restriction_lint! {
 ///
 /// **Why is this bad?** These can be written as the shorter `a op= b`
 ///
-/// **Known problems:** Hopefully none.
+/// **Known problems:** While forbidden by the spec, `OpAssign` traits may have implementations that differ from the regular `Op` impl
 ///
 /// **Example:**
 ///
