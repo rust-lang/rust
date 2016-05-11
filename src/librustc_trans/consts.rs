@@ -1012,7 +1012,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                             -> Datum<'tcx, Lvalue> {
     let ty = ccx.tcx().lookup_item_type(def_id).ty;
 
-    let instance = Instance::mono(ccx.tcx(), def_id);
+    let instance = Instance::mono(ccx.shared(), def_id);
     if let Some(&g) = ccx.instances().borrow().get(&instance) {
         return Datum::new(g, ty, Lvalue::new("static"));
     }

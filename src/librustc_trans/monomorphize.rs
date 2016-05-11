@@ -183,8 +183,8 @@ impl<'tcx> Instance<'tcx> {
         assert!(substs.regions.iter().all(|&r| r == ty::ReStatic));
         Instance { def: def_id, substs: substs }
     }
-    pub fn mono<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Instance<'tcx> {
-        Instance::new(def_id, tcx.mk_substs(Substs::empty()))
+    pub fn mono<'a>(scx: &SharedCrateContext<'a, 'tcx>, def_id: DefId) -> Instance<'tcx> {
+        Instance::new(def_id, scx.empty_substs_for_def_id(def_id))
     }
 }
 
