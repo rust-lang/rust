@@ -195,7 +195,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
     }
 }
 
-fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, lspan: Span, init: &Option<T>, prev_span: Span)
+fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, pattern_span: Span, init: &Option<T>, prev_span: Span)
     where T: Deref<Target = Expr>
 {
     fn note_orig(cx: &LateContext, mut db: DiagnosticWrapper, lint: &'static Lint, span: Span) {
@@ -209,15 +209,15 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, lspan: Span, init: &
                                SHADOW_SAME,
                                span,
                                &format!("{} is shadowed by itself in {}",
-                                        snippet(cx, lspan, "_"),
+                                        snippet(cx, pattern_span, "_"),
                                         snippet(cx, expr.span, "..")));
             note_orig(cx, db, SHADOW_SAME, prev_span);
         } else if contains_self(name, expr) {
             let db = span_note_and_lint(cx,
                                         SHADOW_REUSE,
-                                        lspan,
+                                        pattern_span,
                                         &format!("{} is shadowed by {} which reuses the original value",
-                                                 snippet(cx, lspan, "_"),
+                                                 snippet(cx, pattern_span, "_"),
                                                  snippet(cx, expr.span, "..")),
                                         expr.span,
                                         "initialization happens here");
@@ -225,9 +225,9 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, lspan: Span, init: &
         } else {
             let db = span_note_and_lint(cx,
                                         SHADOW_UNRELATED,
-                                        lspan,
+                                        pattern_span,
                                         &format!("{} is shadowed by {}",
-                                                 snippet(cx, lspan, "_"),
+                                                 snippet(cx, pattern_span, "_"),
                                                  snippet(cx, expr.span, "..")),
                                         expr.span,
                                         "initialization happens here");
@@ -238,7 +238,7 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, lspan: Span, init: &
         let db = span_lint(cx,
                            SHADOW_UNRELATED,
                            span,
-                           &format!("{} shadows a previous declaration", snippet(cx, lspan, "_")));
+                           &format!("{} shadows a previous declaration", snippet(cx, pattern_span, "_")));
         note_orig(cx, db, SHADOW_UNRELATED, prev_span);
     }
 }

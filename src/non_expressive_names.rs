@@ -259,7 +259,7 @@ impl EarlyLintPass for NonExpressiveNames {
                 };
                 // initialize with function arguments
                 for arg in &decl.inputs {
-                    visit::walk_pat(&mut SimilarNamesNameVisitor(&mut visitor), &arg.pat);
+                    SimilarNamesNameVisitor(&mut visitor).visit_pat(&arg.pat);
                 }
                 // walk all other bindings
                 walk_block(&mut visitor, blk);
