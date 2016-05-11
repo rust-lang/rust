@@ -188,9 +188,9 @@ impl<'tcx> Callee<'tcx> {
                 };
                 Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
             }
-            traits::VtableFnPointer(fn_ty) => {
+            traits::VtableFnPointer(vtable_fn_pointer) => {
                 let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
-                let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, fn_ty);
+                let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, vtable_fn_pointer.fn_ty);
 
                 let method_ty = def_ty(tcx, def_id, substs);
                 let fn_ptr_ty = match method_ty.sty {

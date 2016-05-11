@@ -30,7 +30,7 @@ use super::SelectionResult;
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
             VtableFnPointer, VtableObject, VtableDefaultImpl};
 use super::{VtableImplData, VtableObjectData, VtableBuiltinData,
-            VtableClosureData, VtableDefaultImplData};
+            VtableClosureData, VtableDefaultImplData, VtableFnPointerData};
 use super::util;
 
 use hir::def_id::DefId;
@@ -42,12 +42,23 @@ use traits;
 use ty::fast_reject;
 use ty::relate::TypeRelation;
 
+use rustc_data_structures::snapshot_vec::{SnapshotVecDelegate, SnapshotVec};
 use std::cell::RefCell;
 use std::fmt;
+use std::marker::PhantomData;
 use std::rc::Rc;
 use syntax::abi::Abi;
 use hir;
 use util::nodemap::FnvHashMap;
+
+struct InferredObligationsSnapshotVecDelegate<'tcx> {
+    phantom: PhantomData<&'tcx i32>,
+}
+impl<'tcx> SnapshotVecDelegate for InferredObligationsSnapshotVecDelegate<'tcx> {
+    type Value = PredicateObligation<'tcx>;
+    type Undo = ();
+    fn reverse(_: &mut Vec<Self::Value>, _: Self::Undo) {}
+}
 
 pub struct SelectionContext<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
@@ -74,6 +85,8 @@ pub struct SelectionContext<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     /// there is no type that the user could *actually name* that
     /// would satisfy it. This avoids crippling inference, basically.
     intercrate: bool,
+
+    inferred_obligations: SnapshotVec<InferredObligationsSnapshotVecDelegate<'tcx>>,
 }
 
 // A stack that walks back up the stack frame.
@@ -300,6 +313,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             infcx: infcx,
             freshener: infcx.freshener(),
             intercrate: false,
+            inferred_obligations: SnapshotVec::new(),
         }
     }
 
@@ -308,6 +322,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             infcx: infcx,
             freshener: infcx.freshener(),
             intercrate: true,
+            inferred_obligations: SnapshotVec::new(),
         }
     }
 
@@ -1977,9 +1992,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             FnPointerCandidate => {
-                let fn_type =
+                let data =
                     self.confirm_fn_pointer_candidate(obligation)?;
-                Ok(VtableFnPointer(fn_type))
+                Ok(VtableFnPointer(data))
             }
 
             ProjectionCandidate => {
@@ -2227,7 +2242,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
     fn confirm_object_candidate(&mut self,
                                 obligation: &TraitObligation<'tcx>)
-                                -> VtableObjectData<'tcx>
+                                -> VtableObjectData<'tcx, PredicateObligation<'tcx>>
     {
         debug!("confirm_object_candidate({:?})",
                obligation);
@@ -2279,15 +2294,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         }
 
+        // FIXME(#32730) propagate obligations
         VtableObjectData {
             upcast_trait_ref: upcast_trait_ref.unwrap(),
             vtable_base: vtable_base,
+            nested: vec![]
         }
     }
 
-    fn confirm_fn_pointer_candidate(&mut self,
-                                    obligation: &TraitObligation<'tcx>)
-                                    -> Result<ty::Ty<'tcx>,SelectionError<'tcx>>
+    fn confirm_fn_pointer_candidate(&mut self, obligation: &TraitObligation<'tcx>)
+        -> Result<VtableFnPointerData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
     {
         debug!("confirm_fn_pointer_candidate({:?})",
                obligation);
@@ -2305,7 +2321,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.confirm_poly_trait_refs(obligation.cause.clone(),
                                      obligation.predicate.to_poly_trait_ref(),
                                      trait_ref)?;
-        Ok(self_ty)
+        // FIXME(#32730) propagate obligations
+        Ok(VtableFnPointerData { fn_ty: self_ty, nested: vec![] })
     }
 
     fn confirm_closure_candidate(&mut self,
