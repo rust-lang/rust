@@ -86,6 +86,9 @@ installing from pacman should be just fine.
    $ pacman -S git
 
    $ pacman -S base-devel
+   
+   # If `gcc` isn't already installed
+   $ pacman -S gcc
    ```
 
 3. Run `mingw32_shell.bat` or `mingw64_shell.bat` from wherever you installed
