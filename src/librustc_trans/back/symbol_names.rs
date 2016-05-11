@@ -120,7 +120,11 @@ pub fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) ->
 fn def_path_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_path: &DefPath) -> String {
     let mut s = String::with_capacity(def_path.data.len() * 16);
 
-    s.push_str(&tcx.crate_name(def_path.krate));
+    if def_path.krate == cstore::LOCAL_CRATE {
+        s.push_str(&tcx.crate_name(def_path.krate));
+    } else {
+        s.push_str(&tcx.sess.cstore.original_crate_name(def_path.krate));
+    }
     s.push_str("/");
     s.push_str(&tcx.crate_disambiguator(def_path.krate));
 
@@ -265,7 +269,10 @@ pub fn exported_name<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     let mut buffer = SymbolPathBuffer {
         names: Vec::with_capacity(def_path.data.len())
     };
-    ccx.tcx().push_item_path(&mut buffer, def_id);
+
+    item_path::with_forced_absolute_paths(|| {
+        scx.tcx().push_item_path(&mut buffer, def_id);
+    });
 
     mangle(buffer.names.into_iter(), Some(&hash[..]))
 }
