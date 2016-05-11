@@ -84,8 +84,8 @@ fn it_works() {
 ```
 
 `assert!` is a macro provided by Rust which takes one argument: if the argument
-is `true`, nothing happens. If the argument is `false`, it `panic!`s. Let's run
-our tests again:
+is `true`, nothing happens. If the argument is `false`, it will `panic!`. Let's
+run our tests again:
 
 ```bash
 $ cargo test
