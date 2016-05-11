@@ -147,6 +147,13 @@ macro_rules! array_impls {
                 }
             }
 
+            #[stable(since = "1.3.0")]
+            impl<T: Default> Default for [T; $N] {
+                fn default() -> [T; $N] {
+                    [T::default(); $N]
+                }
+            }
+
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<'a, T> IntoIterator for &'a [T; $N] {
                 type Item = &'a T;
