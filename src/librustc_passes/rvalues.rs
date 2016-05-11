@@ -13,7 +13,6 @@
 
 use rustc::dep_graph::DepNode;
 use rustc::middle::expr_use_visitor as euv;
-use rustc::infer::InferCtxt;
 use rustc::middle::mem_categorization as mc;
 use rustc::ty::{self, TyCtxt, ParameterEnvironment};
 use rustc::traits::ProjectionMode;
@@ -41,10 +40,10 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for RvalueContext<'a, 'tcx> {
                 fn_id: ast::NodeId) {
         // FIXME (@jroesch) change this to be an inference context
         let param_env = ParameterEnvironment::for_item(self.tcx, fn_id);
-        InferCtxt::enter(self.tcx, None, Some(param_env.clone()),
-                         ProjectionMode::AnyFinal, |infcx| {
+        self.tcx.infer_ctxt(None, Some(param_env.clone()),
+                            ProjectionMode::AnyFinal).enter(|infcx| {
             let mut delegate = RvalueContextDelegate {
-                tcx: self.tcx,
+                tcx: infcx.tcx,
                 param_env: &param_env
             };
             let mut euv = euv::ExprUseVisitor::new(&mut delegate, &infcx);
@@ -54,22 +53,23 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for RvalueContext<'a, 'tcx> {
     }
 }
 
-struct RvalueContextDelegate<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: &'a ty::ParameterEnvironment<'tcx>,
+struct RvalueContextDelegate<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    param_env: &'a ty::ParameterEnvironment<'gcx>,
 }
 
-impl<'a, 'tcx> euv::Delegate<'tcx> for RvalueContextDelegate<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for RvalueContextDelegate<'a, 'gcx, 'tcx> {
     fn consume(&mut self,
                _: ast::NodeId,
                span: Span,
                cmt: mc::cmt<'tcx>,
                _: euv::ConsumeMode) {
         debug!("consume; cmt: {:?}; type: {:?}", *cmt, cmt.ty);
-        if !cmt.ty.is_sized(self.tcx, self.param_env, span) {
+        let ty = self.tcx.lift_to_global(&cmt.ty).unwrap();
+        if !ty.is_sized(self.tcx.global_tcx(), self.param_env, span) {
             span_err!(self.tcx.sess, span, E0161,
                 "cannot move a value of type {0}: the size of {0} cannot be statically determined",
-                cmt.ty);
+                ty);
         }
     }
 

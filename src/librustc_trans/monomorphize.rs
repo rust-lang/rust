@@ -12,6 +12,7 @@ use back::symbol_names;
 use llvm::ValueRef;
 use llvm;
 use rustc::hir::def_id::DefId;
+use rustc::infer::TransNormalize;
 use rustc::ty::subst;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TypeFoldable, TyCtxt};
@@ -193,7 +194,7 @@ pub fn apply_param_substs<'a, 'tcx, T>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        param_substs: &Substs<'tcx>,
                                        value: &T)
                                        -> T
-    where T : TypeFoldable<'tcx>
+    where T: TransNormalize<'tcx>
 {
     let substituted = value.subst(tcx, param_substs);
     tcx.normalize_associated_type(&substituted)

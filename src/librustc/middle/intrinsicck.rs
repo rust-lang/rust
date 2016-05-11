@@ -36,7 +36,7 @@ struct ItemVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ItemVisitor<'a, 'tcx> {
     fn visit_const(&mut self, item_id: ast::NodeId, expr: &hir::Expr) {
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, item_id);
-        InferCtxt::enter(self.tcx, None, Some(param_env), ProjectionMode::Any, |infcx| {
+        self.tcx.infer_ctxt(None, Some(param_env), ProjectionMode::Any).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx
             };
@@ -49,7 +49,7 @@ struct ExprVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx> ExprVisitor<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
         let intrinsic = match self.infcx.tcx.lookup_item_type(def_id).ty.sty {
             ty::TyFnDef(_, _, ref bfty) => bfty.abi == RustIntrinsic,
@@ -58,7 +58,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx, 'tcx> {
         intrinsic && self.infcx.tcx.item_name(def_id).as_str() == "transmute"
     }
 
-    fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>, id: ast::NodeId) {
+    fn check_transmute(&self, span: Span, from: Ty<'gcx>, to: Ty<'gcx>, id: ast::NodeId) {
         let sk_from = SizeSkeleton::compute(from, self.infcx);
         let sk_to = SizeSkeleton::compute(to, self.infcx);
 
@@ -84,7 +84,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx, 'tcx> {
         }
 
         // Try to display a sensible error with as much information as possible.
-        let skeleton_string = |ty: Ty<'tcx>, sk| {
+        let skeleton_string = |ty: Ty<'gcx>, sk| {
             match sk {
                 Ok(SizeSkeleton::Known(size)) => {
                     format!("{} bits", size.bits())
@@ -114,7 +114,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
     // const, static and N in [T; N].
     fn visit_expr(&mut self, expr: &hir::Expr) {
-        InferCtxt::enter(self.tcx, None, None, ProjectionMode::Any, |infcx| {
+        self.tcx.infer_ctxt(None, None, ProjectionMode::Any).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx
             };
@@ -144,7 +144,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
             span_bug!(s, "intrinsicck: closure outside of function")
         }
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
-        InferCtxt::enter(self.tcx, None, Some(param_env), ProjectionMode::Any, |infcx| {
+        self.tcx.infer_ctxt(None, Some(param_env), ProjectionMode::Any).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx
             };
@@ -153,7 +153,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for ExprVisitor<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for ExprVisitor<'a, 'gcx, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         if let hir::ExprPath(..) = expr.node {
             match self.infcx.tcx.resolve_expr(expr) {

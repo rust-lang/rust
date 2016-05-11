@@ -165,8 +165,8 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-impl<'a, 'tcx> ImplHeader<'tcx> {
-    pub fn with_fresh_ty_vars(selcx: &mut traits::SelectionContext<'a, 'tcx, 'tcx>,
+impl<'a, 'gcx, 'tcx> ImplHeader<'tcx> {
+    pub fn with_fresh_ty_vars(selcx: &mut traits::SelectionContext<'a, 'gcx, 'tcx>,
                               impl_def_id: DefId)
                               -> ImplHeader<'tcx>
     {
@@ -524,6 +524,10 @@ bitflags! {
         // that are local to a particular fn
         const HAS_LOCAL_NAMES   = 1 << 9,
 
+        // Present if the type belongs in a local type context.
+        // Only set for TyInfer other than Fresh.
+        const KEEP_IN_LOCAL_TCX = 1 << 10,
+
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits,
@@ -540,7 +544,8 @@ bitflags! {
                                   TypeFlags::HAS_TY_ERR.bits |
                                   TypeFlags::HAS_PROJECTION.bits |
                                   TypeFlags::HAS_TY_CLOSURE.bits |
-                                  TypeFlags::HAS_LOCAL_NAMES.bits,
+                                  TypeFlags::HAS_LOCAL_NAMES.bits |
+                                  TypeFlags::KEEP_IN_LOCAL_TCX.bits,
 
         // Caches for type_is_sized, type_moves_by_default
         const SIZEDNESS_CACHED  = 1 << 16,
@@ -2715,15 +2720,33 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn closure_kind(self, def_id: DefId) -> ty::ClosureKind {
-        Tables::closure_kind(&self.tables, self.global_tcx(), def_id)
+        // If this is a local def-id, it should be inserted into the
+        // tables by typeck; else, it will be retreived from
+        // the external crate metadata.
+        if let Some(&kind) = self.tables.borrow().closure_kinds.get(&def_id) {
+            return kind;
+        }
+
+        let kind = self.sess.cstore.closure_kind(def_id);
+        self.tables.borrow_mut().closure_kinds.insert(def_id, kind);
+        kind
     }
 
     pub fn closure_type(self,
                         def_id: DefId,
-                        substs: ClosureSubsts<'gcx>)
-                        -> ty::ClosureTy<'gcx>
+                        substs: ClosureSubsts<'tcx>)
+                        -> ty::ClosureTy<'tcx>
     {
-        Tables::closure_type(&self.tables, self.global_tcx(), def_id, substs)
+        // If this is a local def-id, it should be inserted into the
+        // tables by typeck; else, it will be retreived from
+        // the external crate metadata.
+        if let Some(ty) = self.tables.borrow().closure_tys.get(&def_id) {
+            return ty.subst(self, substs.func_substs);
+        }
+
+        let ty = self.sess.cstore.closure_ty(self.global_tcx(), def_id);
+        self.tables.borrow_mut().closure_tys.insert(def_id, ty.clone());
+        ty.subst(self, substs.func_substs)
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.

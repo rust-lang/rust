@@ -87,14 +87,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
         if let hir::ConstTraitItem(_, Some(ref expr)) = ti.node {
-            gather_loans::gather_loans_in_static_initializer(self, &expr);
+            gather_loans::gather_loans_in_static_initializer(self, ti.id, &expr);
         }
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
         if let hir::ImplItemKind::Const(_, ref expr) = ii.node {
-            gather_loans::gather_loans_in_static_initializer(self, &expr);
+            gather_loans::gather_loans_in_static_initializer(self, ii.id, &expr);
         }
         intravisit::walk_impl_item(self, ii);
     }
@@ -142,7 +142,7 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &hir::Item) {
     match item.node {
         hir::ItemStatic(_, _, ref ex) |
         hir::ItemConst(_, ref ex) => {
-            gather_loans::gather_loans_in_static_initializer(this, &ex);
+            gather_loans::gather_loans_in_static_initializer(this, item.id, &ex);
         }
         _ => { }
     }

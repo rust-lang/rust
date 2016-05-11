@@ -90,9 +90,15 @@ impl FlagComputation {
                 self.add_tys(&substs.upvar_tys);
             }
 
-            &ty::TyInfer(_) => {
+            &ty::TyInfer(infer) => {
                 self.add_flags(TypeFlags::HAS_LOCAL_NAMES); // it might, right?
-                self.add_flags(TypeFlags::HAS_TY_INFER)
+                self.add_flags(TypeFlags::HAS_TY_INFER);
+                match infer {
+                    ty::FreshTy(_) |
+                    ty::FreshIntTy(_) |
+                    ty::FreshFloatTy(_) => {}
+                    _ => self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX)
+                }
             }
 
             &ty::TyEnum(_, substs) | &ty::TyStruct(_, substs) => {
@@ -171,7 +177,10 @@ impl FlagComputation {
     fn add_region(&mut self, r: ty::Region) {
         match r {
             ty::ReVar(..) |
-            ty::ReSkolemized(..) => { self.add_flags(TypeFlags::HAS_RE_INFER); }
+            ty::ReSkolemized(..) => {
+                self.add_flags(TypeFlags::HAS_RE_INFER);
+                self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX);
+            }
             ty::ReLateBound(debruijn, _) => { self.add_depth(debruijn.depth); }
             ty::ReEarlyBound(..) => { self.add_flags(TypeFlags::HAS_RE_EARLY_BOUND); }
             ty::ReStatic => {}

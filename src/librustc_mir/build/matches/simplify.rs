@@ -29,7 +29,7 @@ use rustc::mir::repr::*;
 
 use std::mem;
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn simplify_candidate<'pat>(&mut self,
                                     mut block: BasicBlock,
                                     candidate: &mut Candidate<'pat, 'tcx>)

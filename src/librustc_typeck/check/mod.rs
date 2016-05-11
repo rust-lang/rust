@@ -372,17 +372,32 @@ impl<'a, 'gcx, 'tcx> Deref for FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
-    fn enter<F, R>(ccx: &'a CrateCtxt<'a, 'tcx>,
-                   param_env: ty::ParameterEnvironment<'tcx>,
-                   f: F) -> R
-        where F: for<'b> FnOnce(Inherited<'b, 'tcx, 'tcx>) -> R
+/// Helper type of a temporary returned by ccx.inherited(...).
+/// Necessary because we can't write the following bound:
+/// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(Inherited<'b, 'gcx, 'tcx>).
+pub struct InheritedBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    ccx: &'a CrateCtxt<'a, 'gcx>,
+    infcx: infer::InferCtxtBuilder<'a, 'gcx, 'tcx>
+}
+
+impl<'a, 'gcx, 'tcx> CrateCtxt<'a, 'gcx> {
+    pub fn inherited(&'a self, param_env: Option<ty::ParameterEnvironment<'gcx>>)
+                     -> InheritedBuilder<'a, 'gcx, 'tcx> {
+        InheritedBuilder {
+            ccx: self,
+            infcx: self.tcx.infer_ctxt(Some(ty::Tables::empty()),
+                                       param_env,
+                                       ProjectionMode::AnyFinal)
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> InheritedBuilder<'a, 'gcx, 'tcx> {
+    fn enter<F, R>(&'tcx mut self, f: F) -> R
+        where F: for<'b> FnOnce(Inherited<'b, 'gcx, 'tcx>) -> R
     {
-        InferCtxt::enter(ccx.tcx,
-                         Some(ty::Tables::empty()),
-                         Some(param_env),
-                         ProjectionMode::AnyFinal,
-                         |infcx| {
+        let ccx = self.ccx;
+        self.infcx.enter(|infcx| {
             f(Inherited {
                 ccx: ccx,
                 infcx: infcx,
@@ -393,7 +408,9 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             })
         })
     }
+}
 
+impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     fn normalize_associated_types_in<T>(&self,
                                         span: Span,
                                         body_id: ast::NodeId,
@@ -491,7 +508,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         _ => span_bug!(body.span, "check_bare_fn: function type expected")
     };
 
-    Inherited::enter(ccx, param_env, |inh| {
+    ccx.inherited(Some(param_env)).enter(|inh| {
         // Compute the fty from point of view of inside fn.
         let fn_scope = inh.tcx.region_maps.call_site_extent(fn_id, body.id);
         let fn_sig =
@@ -1124,7 +1141,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 fn check_const_in_type<'a,'tcx>(ccx: &'a CrateCtxt<'a,'tcx>,
                                 expr: &'tcx hir::Expr,
                                 expected_type: Ty<'tcx>) {
-    Inherited::enter(ccx, ccx.tcx.empty_parameter_environment(), |inh| {
+    ccx.inherited(None).enter(|inh| {
         let fcx = FnCtxt::new(&inh, ty::FnConverging(expected_type), expr.id);
         fcx.check_const_with_ty(expr.span, expr, expected_type);
     });
@@ -1134,7 +1151,7 @@ fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         sp: Span,
                         e: &'tcx hir::Expr,
                         id: ast::NodeId) {
-    Inherited::enter(ccx, ccx.tcx.empty_parameter_environment(), |inh| {
+    ccx.inherited(None).enter(|inh| {
         let rty = ccx.tcx.node_id_to_type(id);
         let fcx = FnCtxt::new(&inh, ty::FnConverging(rty), e.id);
         let declty = fcx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(id)).ty;
@@ -1208,7 +1225,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             "unsupported representation for zero-variant enum");
     }
 
-    Inherited::enter(ccx, ccx.tcx.empty_parameter_environment(), |inh| {
+    ccx.inherited(None).enter(|inh| {
         let rty = ccx.tcx.node_id_to_type(id);
         let fcx = FnCtxt::new(&inh, ty::FnConverging(rty), id);
 

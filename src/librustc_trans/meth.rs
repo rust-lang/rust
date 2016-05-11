@@ -14,7 +14,6 @@ use arena::TypedArena;
 use back::symbol_names;
 use llvm::{ValueRef, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::infer::InferCtxt;
 use rustc::ty::subst::{FnSpace, Subst, Substs};
 use rustc::ty::subst;
 use rustc::traits::{self, ProjectionMode};
@@ -317,8 +316,14 @@ pub fn get_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
         Some(node_item) => {
-            let substs = InferCtxt::enter_normalizing(tcx, ProjectionMode::Any, |infcx| {
-                traits::translate_substs(&infcx, impl_def_id, substs, node_item.node)
+            let substs = tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+                let substs = traits::translate_substs(&infcx, impl_def_id,
+                                                      substs, node_item.node);
+                tcx.lift(&substs).unwrap_or_else(|| {
+                    bug!("trans::meth::get_impl_method: translate_substs \
+                          returned {:?} which contains inference types/regions",
+                         substs);
+                })
             });
             ImplMethod {
                 method: node_item.item,

@@ -22,7 +22,6 @@ use rustc::hir::def_id::{DefId};
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
-use rustc::infer::InferCtxt;
 use rustc::middle::mem_categorization::{cmt};
 use rustc::hir::pat_util::*;
 use rustc::traits::ProjectionMode;
@@ -1123,8 +1122,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     PatKind::Ident(hir::BindByValue(_), _, ref sub) => {
                         let pat_ty = tcx.node_id_to_type(p.id);
                         //FIXME: (@jroesch) this code should be floated up as well
-                        InferCtxt::enter(cx.tcx, None, Some(cx.param_env.clone()),
-                                         ProjectionMode::AnyFinal, |infcx| {
+                        cx.tcx.infer_ctxt(None, Some(cx.param_env.clone()),
+                                          ProjectionMode::AnyFinal).enter(|infcx| {
                             if infcx.type_moves_by_default(pat_ty, pat.span) {
                                 check_move(p, sub.as_ref().map(|p| &**p));
                             }
@@ -1150,8 +1149,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 /// assign.
 fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
                                          guard: &hir::Expr) {
-    InferCtxt::enter(cx.tcx, None, Some(cx.param_env.clone()),
-                     ProjectionMode::AnyFinal, |infcx| {
+    cx.tcx.infer_ctxt(None, Some(cx.param_env.clone()),
+                      ProjectionMode::AnyFinal).enter(|infcx| {
         let mut checker = MutationChecker {
             cx: cx,
         };
@@ -1160,11 +1159,11 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
     });
 }
 
-struct MutationChecker<'a, 'tcx: 'a> {
-    cx: &'a MatchCheckCtxt<'a, 'tcx>,
+struct MutationChecker<'a, 'gcx: 'a> {
+    cx: &'a MatchCheckCtxt<'a, 'gcx>,
 }
 
-impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
     fn matched_pat(&mut self, _: &Pat, _: cmt, _: euv::MatchMode) {}
     fn consume(&mut self, _: NodeId, _: Span, _: cmt, _: ConsumeMode) {}
     fn consume_pat(&mut self, _: &Pat, _: cmt, _: ConsumeMode) {}

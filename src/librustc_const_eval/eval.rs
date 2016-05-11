@@ -19,7 +19,6 @@ use rustc::hir::map as ast_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::cstore::{self, InlinedItem};
 use rustc::traits;
-use rustc::infer::InferCtxt;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util::def_to_path;
@@ -1014,7 +1013,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            trait_ref);
 
     tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
-    InferCtxt::enter(tcx, None, None, ProjectionMode::AnyFinal, |infcx| {
+    tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
         let mut selcx = traits::SelectionContext::new(&infcx);
         let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
                                                  trait_ref.to_poly_trait_predicate());

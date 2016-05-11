@@ -114,7 +114,6 @@ use hir::def::*;
 use hir::pat_util;
 use ty::{self, TyCtxt, ParameterEnvironment};
 use traits::{self, ProjectionMode};
-use infer::InferCtxt;
 use ty::subst::Subst;
 use lint;
 use util::nodemap::NodeMap;
@@ -1488,8 +1487,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 let param_env = ParameterEnvironment::for_item(self.ir.tcx, id);
                 let t_ret_subst = t_ret.subst(self.ir.tcx, &param_env.free_substs);
-                let is_nil = InferCtxt::enter(self.ir.tcx, None, Some(param_env),
-                                              ProjectionMode::Any, |infcx| {
+                let is_nil = self.ir.tcx.infer_ctxt(None, Some(param_env),
+                                                    ProjectionMode::Any).enter(|infcx| {
                     let cause = traits::ObligationCause::dummy();
                     traits::fully_normalize(&infcx, cause, &t_ret_subst).unwrap().is_nil()
                 });

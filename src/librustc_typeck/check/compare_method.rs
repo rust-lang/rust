@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::free_region::FreeRegionMap;
-use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin};
+use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::ty;
 use rustc::traits::{self, ProjectionMode};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace};
@@ -196,26 +196,21 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return;
     }
 
-    // Create obligations for each predicate declared by the impl
-    // definition in the context of the trait's parameter
-    // environment. We can't just use `impl_env.caller_bounds`,
-    // however, because we want to replace all late-bound regions with
-    // region variables.
-    let impl_bounds =
-        impl_m.predicates.instantiate(tcx, impl_to_skol_substs);
-
-    InferCtxt::enter(tcx, None, None, ProjectionMode::AnyFinal, |mut infcx| {
+    tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|mut infcx| {
         let mut fulfillment_cx = traits::FulfillmentContext::new();
-        let (impl_bounds, _) =
-            infcx.replace_late_bound_regions_with_fresh_var(
-                impl_m_span,
-                infer::HigherRankedType,
-                &ty::Binder(impl_bounds));
-        debug!("compare_impl_method: impl_bounds={:?}",
-               impl_bounds);
 
         // Normalize the associated types in the trait_bounds.
         let trait_bounds = trait_m.predicates.instantiate(tcx, &trait_to_skol_substs);
+
+        // Create obligations for each predicate declared by the impl
+        // definition in the context of the trait's parameter
+        // environment. We can't just use `impl_env.caller_bounds`,
+        // however, because we want to replace all late-bound regions with
+        // region variables.
+        let impl_bounds =
+            impl_m.predicates.instantiate(tcx, impl_to_skol_substs);
+
+        debug!("compare_impl_method: impl_bounds={:?}", impl_bounds);
 
         // Obtain the predicate split predicate sets for each.
         let trait_pred = trait_bounds.predicates.split();
@@ -250,7 +245,12 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
-        for predicate in impl_pred.fns {
+        let (impl_pred_fns, _) =
+            infcx.replace_late_bound_regions_with_fresh_var(
+                impl_m_span,
+                infer::HigherRankedType,
+                &ty::Binder(impl_pred.fns));
+        for predicate in impl_pred_fns {
             let traits::Normalized { value: predicate, .. } =
                 traits::normalize(&mut selcx, normalize_cause.clone(), &predicate);
 
@@ -285,6 +285,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
         let err = infcx.commit_if_ok(|snapshot| {
+            let tcx = infcx.tcx;
             let origin = TypeOrigin::MethodCompatCheck(impl_m_span);
 
             let (impl_sig, _) =
@@ -421,7 +422,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
            impl_trait_ref);
 
     let tcx = ccx.tcx;
-    InferCtxt::enter(tcx, None, None, ProjectionMode::AnyFinal, |infcx| {
+    tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
         // The below is for the most part highly similar to the procedure

@@ -56,7 +56,7 @@ struct CoherenceCheckVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     cc: &'a CoherenceChecker<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, 'gcx, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         if let ItemImpl(..) = item.node {
             self.cc.check_implementation(item)
@@ -64,7 +64,7 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx, '
     }
 }
 
-impl<'a, 'tcx> CoherenceChecker<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
 
 // Returns the def ID of the base type, if there is one.
 fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
@@ -187,7 +187,7 @@ fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
             Rc::new(RefCell::new(vec!(impl_def_id))));
     }
 
-    fn add_trait_impl(&self, impl_trait_ref: ty::TraitRef<'tcx>, impl_def_id: DefId) {
+    fn add_trait_impl(&self, impl_trait_ref: ty::TraitRef<'gcx>, impl_def_id: DefId) {
         debug!("add_trait_impl: impl_trait_ref={:?} impl_def_id={:?}",
                impl_trait_ref, impl_def_id);
         let trait_def = self.crate_context.tcx.lookup_trait_def(impl_trait_ref.def_id);
@@ -376,10 +376,10 @@ fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (free)",
                    source, target);
 
-            InferCtxt::enter(tcx, None, Some(param_env), ProjectionMode::Topmost, |infcx| {
+            tcx.infer_ctxt(None, Some(param_env), ProjectionMode::Topmost).enter(|infcx| {
                 let origin = TypeOrigin::Misc(span);
-                let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>, mt_b: ty::TypeAndMut<'tcx>,
-                                   mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
+                let check_mutbl = |mt_a: ty::TypeAndMut<'gcx>, mt_b: ty::TypeAndMut<'gcx>,
+                                   mk_ptr: &Fn(Ty<'gcx>) -> Ty<'gcx>| {
                     if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
                         infcx.report_mismatched_types(origin, mk_ptr(mt_b.ty),
                                                       target, ty::error::TypeError::Mutability);
@@ -513,7 +513,7 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, sp: Span, trait_def_id: Def
 
 pub fn check_coherence(ccx: &CrateCtxt) {
     let _task = ccx.tcx.dep_graph.in_task(DepNode::Coherence);
-    InferCtxt::enter(ccx.tcx, None, None, ProjectionMode::Topmost, |infcx| {
+    ccx.tcx.infer_ctxt(None, None, ProjectionMode::Topmost).enter(|infcx| {
         CoherenceChecker {
             crate_context: ccx,
             inference_context: infcx,

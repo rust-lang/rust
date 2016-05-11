@@ -24,6 +24,7 @@ use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::region::CodeExtent;
+use mir::tcx::LvalueTy;
 use ty::subst;
 use ty::subst::Substs;
 use ty::subst::Subst;
@@ -35,7 +36,7 @@ use ty::fold::TypeFoldable;
 use ty::relate::{Relate, RelateResult, TypeRelation};
 use traits::{self, PredicateObligations, ProjectionMode};
 use rustc_data_structures::unify::{self, UnificationTable};
-use std::cell::{Cell, RefCell, Ref};
+use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::fmt;
 use syntax::ast;
 use syntax::codemap;
@@ -72,10 +73,36 @@ pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
+/// A version of &ty::Tables which can be global or local.
+/// Only the local version supports borrow_mut.
+#[derive(Copy, Clone)]
+pub enum InferTables<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    Global(&'a RefCell<ty::Tables<'gcx>>),
+    Local(&'a RefCell<ty::Tables<'tcx>>)
+}
+
+impl<'a, 'gcx, 'tcx> InferTables<'a, 'gcx, 'tcx> {
+    pub fn borrow(self) -> Ref<'a, ty::Tables<'tcx>> {
+        match self {
+            InferTables::Global(tables) => tables.borrow(),
+            InferTables::Local(tables) => tables.borrow()
+        }
+    }
+
+    pub fn borrow_mut(self) -> RefMut<'a, ty::Tables<'tcx>> {
+        match self {
+            InferTables::Global(_) => {
+                bug!("InferTables: infcx.tables.borrow_mut() outside of type-checking");
+            }
+            InferTables::Local(tables) => tables.borrow_mut()
+        }
+    }
+}
+
 pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
-    pub tables: &'a RefCell<ty::Tables<'tcx>>,
+    pub tables: InferTables<'a, 'gcx, 'tcx>,
 
     // We instantiate UnificationTable with bounds<Ty> because the
     // types that might instantiate a general type variable have an
@@ -390,48 +417,106 @@ impl fmt::Display for FixupError {
     }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
-    pub fn enter<F, R>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       tables: Option<ty::Tables<'tcx>>,
-                       param_env: Option<ty::ParameterEnvironment<'tcx>>,
-                       projection_mode: ProjectionMode,
-                       f: F) -> R
-        where F: for<'b> FnOnce(InferCtxt<'b, 'tcx, 'tcx>) -> R
+/// Helper type of a temporary returned by tcx.infer_ctxt(...).
+/// Necessary because we can't write the following bound:
+/// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>).
+pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
+    arenas: ty::CtxtArenas<'tcx>,
+    tables: Option<RefCell<ty::Tables<'tcx>>>,
+    param_env: Option<ty::ParameterEnvironment<'gcx>>,
+    projection_mode: ProjectionMode,
+    normalize: bool
+}
+
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
+    pub fn infer_ctxt(self,
+                      tables: Option<ty::Tables<'tcx>>,
+                      param_env: Option<ty::ParameterEnvironment<'gcx>>,
+                      projection_mode: ProjectionMode)
+                      -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+        InferCtxtBuilder {
+            global_tcx: self,
+            arenas: ty::CtxtArenas::new(),
+            tables: tables.map(RefCell::new),
+            param_env: param_env,
+            projection_mode: projection_mode,
+            normalize: false
+        }
+    }
+
+    pub fn normalizing_infer_ctxt(self, projection_mode: ProjectionMode)
+                                  -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+        InferCtxtBuilder {
+            global_tcx: self,
+            arenas: ty::CtxtArenas::new(),
+            tables: None,
+            param_env: None,
+            projection_mode: projection_mode,
+            normalize: false
+        }
+    }
+
+    /// Fake InferCtxt with the global tcx. Used by pre-MIR borrowck
+    /// for MemCategorizationContext/ExprUseVisitor.
+    /// If any inference functionality is used, ICEs will occur.
+    pub fn borrowck_fake_infer_ctxt(self, param_env: ty::ParameterEnvironment<'gcx>)
+                                    -> InferCtxt<'a, 'gcx, 'gcx> {
+        InferCtxt {
+            tcx: self,
+            tables: InferTables::Global(&self.tables),
+            type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
+            int_unification_table: RefCell::new(UnificationTable::new()),
+            float_unification_table: RefCell::new(UnificationTable::new()),
+            region_vars: RegionVarBindings::new(self),
+            parameter_environment: param_env,
+            selection_cache: traits::SelectionCache::new(),
+            evaluation_cache: traits::EvaluationCache::new(),
+            reported_trait_errors: RefCell::new(FnvHashSet()),
+            normalize: false,
+            projection_mode: ProjectionMode::AnyFinal,
+            tainted_by_errors_flag: Cell::new(false),
+            err_count_on_creation: self.sess.err_count()
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+    pub fn enter<F, R>(&'tcx mut self, f: F) -> R
+        where F: for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R
     {
-        let new_tables;
-        let tables = if let Some(tables) = tables {
-            new_tables = RefCell::new(tables);
-            &new_tables
+        let InferCtxtBuilder {
+            global_tcx,
+            ref arenas,
+            ref tables,
+            ref mut param_env,
+            projection_mode,
+            normalize
+        } = *self;
+        let tables = if let Some(ref tables) = *tables {
+            InferTables::Local(tables)
         } else {
-            &tcx.tables
+            InferTables::Global(&global_tcx.tables)
         };
-        f(InferCtxt {
+        let param_env = param_env.take().unwrap_or_else(|| {
+            global_tcx.empty_parameter_environment()
+        });
+        global_tcx.enter_local(arenas, |tcx| f(InferCtxt {
             tcx: tcx,
             tables: tables,
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(tcx),
-            parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
+            parameter_environment: param_env,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             reported_trait_errors: RefCell::new(FnvHashSet()),
-            normalize: false,
+            normalize: normalize,
             projection_mode: projection_mode,
-        tainted_by_errors_flag: Cell::new(false),
+            tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count()
-        })
-    }
-
-    pub fn enter_normalizing<F, R>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   projection_mode: ProjectionMode,
-                                   f: F) -> R
-        where F: for<'b> FnOnce(InferCtxt<'b, 'tcx, 'tcx>) -> R
-    {
-        InferCtxt::enter(tcx, None, None, projection_mode, |mut infcx| {
-            infcx.normalize = true;
-            f(infcx)
-        })
+        }))
     }
 }
 
@@ -459,10 +544,54 @@ pub struct CombinedSnapshot {
     region_vars_snapshot: RegionSnapshot,
 }
 
+/// Helper trait for shortening the lifetimes inside a
+/// value for post-type-checking normalization.
+pub trait TransNormalize<'gcx>: TypeFoldable<'gcx> {
+    fn trans_normalize<'a, 'tcx>(&self, infcx: &InferCtxt<'a, 'gcx, 'tcx>) -> Self;
+}
+
+macro_rules! items { ($($item:item)+) => ($($item)+) }
+macro_rules! impl_trans_normalize {
+    ($lt_gcx:tt, $($ty:ty),+) => {
+        items!($(impl<$lt_gcx> TransNormalize<$lt_gcx> for $ty {
+            fn trans_normalize<'a, 'tcx>(&self,
+                                         infcx: &InferCtxt<'a, $lt_gcx, 'tcx>)
+                                         -> Self {
+                infcx.normalize_projections_in(self)
+            }
+        })+);
+    }
+}
+
+impl_trans_normalize!('gcx,
+    Ty<'gcx>,
+    &'gcx Substs<'gcx>,
+    ty::FnSig<'gcx>,
+    ty::FnOutput<'gcx>,
+    &'gcx ty::BareFnTy<'gcx>,
+    ty::ClosureSubsts<'gcx>,
+    ty::PolyTraitRef<'gcx>
+);
+
+impl<'gcx> TransNormalize<'gcx> for LvalueTy<'gcx> {
+    fn trans_normalize<'a, 'tcx>(&self, infcx: &InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+        match *self {
+            LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.trans_normalize(infcx) },
+            LvalueTy::Downcast { adt_def, substs, variant_index } => {
+                LvalueTy::Downcast {
+                    adt_def: adt_def,
+                    substs: substs.trans_normalize(infcx),
+                    variant_index: variant_index
+                }
+            }
+        }
+    }
+}
+
 // NOTE: Callable from trans only!
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn normalize_associated_type<T>(self, value: &T) -> T
-        where T : TypeFoldable<'tcx>
+        where T: TransNormalize<'tcx>
     {
         debug!("normalize_associated_type(t={:?})", value);
 
@@ -472,15 +601,15 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        InferCtxt::enter(self, None, None, ProjectionMode::Any, |infcx| {
-            infcx.normalize_projections_in(&value)
+        self.infer_ctxt(None, None, ProjectionMode::Any).enter(|infcx| {
+            value.trans_normalize(&infcx)
         })
     }
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    fn normalize_projections_in<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx>
+    fn normalize_projections_in<T>(&self, value: &T) -> T::Lifted
+        where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
     {
         let mut selcx = traits::SelectionContext::new(self);
         let cause = traits::ObligationCause::dummy();
@@ -503,16 +632,21 @@ pub fn drain_fulfillment_cx_or_panic<T>(&self,
                                         span: Span,
                                         fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
                                         result: &T)
-                                        -> T
-    where T : TypeFoldable<'tcx>
+                                        -> T::Lifted
+    where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
 {
-    match self.drain_fulfillment_cx(fulfill_cx, result) {
+    let when = "resolving bounds after type-checking";
+    let v = match self.drain_fulfillment_cx(fulfill_cx, result) {
         Ok(v) => v,
         Err(errors) => {
-            span_bug!(
-                span,
-                "Encountered errors `{:?}` fulfilling during trans",
-                errors);
+            span_bug!(span, "Encountered errors `{:?}` {}", errors, when);
+        }
+    };
+
+    match self.tcx.lift_to_global(&v) {
+        Some(v) => v,
+        None => {
+            span_bug!(span, "Uninferred types/regions in `{:?}` {}", v, when);
         }
     }
 }
@@ -1449,18 +1583,16 @@ pub fn drain_fulfillment_cx<T>(&self,
         self.resolve_type_vars_or_error(&ty)
     }
 
-    pub fn tables_are_tcx_tables(&self) -> bool {
-        let tables: &RefCell<ty::Tables> = &self.tables;
-        let tcx_tables: &RefCell<ty::Tables> = &self.tcx.tables;
-        tables as *const _ as usize == tcx_tables as *const _ as usize
-    }
-
     pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let ty = self.resolve_type_vars_if_possible(&ty);
         if let Some(ty) = self.tcx.lift_to_global(&ty) {
-            // HACK(eddyb) Temporarily handle infer type in the global tcx.
-            if !ty.needs_infer() &&
-               !(ty.has_closure_types() && !self.tables_are_tcx_tables()) {
+            // Even if the type may have no inference variables, during
+            // type-checking closure types are in local tables only.
+            let local_closures = match self.tables {
+                InferTables::Local(_) => ty.has_closure_types(),
+                InferTables::Global(_) => false
+            };
+            if !local_closures {
                 return ty.moves_by_default(self.tcx.global_tcx(), self.param_env(), span);
             }
         }
@@ -1527,7 +1659,7 @@ pub fn drain_fulfillment_cx<T>(&self,
             // during trans, we see closure ids from other traits.
             // That may require loading the closure data out of the
             // cstore.
-            Some(ty::Tables::closure_kind(&self.tables, self.tcx, def_id))
+            Some(self.tcx.closure_kind(def_id))
         }
     }
 
@@ -1536,12 +1668,13 @@ pub fn drain_fulfillment_cx<T>(&self,
                         substs: ty::ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
-        let closure_ty =
-            ty::Tables::closure_type(self.tables,
-                                     self.tcx,
-                                     def_id,
-                                     substs);
+        if let InferTables::Local(tables) = self.tables {
+            if let Some(ty) = tables.borrow().closure_tys.get(&def_id) {
+                return ty.subst(self.tcx, substs.func_substs);
+            }
+        }
 
+        let closure_ty = self.tcx.closure_type(def_id, substs);
         if self.normalize {
             let closure_ty = self.tcx.erase_regions(&closure_ty);
 

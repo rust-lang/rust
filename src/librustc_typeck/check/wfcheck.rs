@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use check::{FnCtxt, Inherited};
+use check::FnCtxt;
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
 use hir::def_id::DefId;
@@ -30,16 +30,46 @@ pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
     code: traits::ObligationCauseCode<'tcx>,
 }
 
-impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
-    pub fn new(ccx: &'ccx CrateCtxt<'ccx, 'tcx>)
-               -> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
+/// Helper type of a temporary returned by .for_item(...).
+/// Necessary because we can't write the following bound:
+/// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(FnCtxt<'b, 'gcx, 'tcx>).
+struct CheckWfFcxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    inherited: super::InheritedBuilder<'a, 'gcx, 'tcx>,
+    code: traits::ObligationCauseCode<'gcx>,
+    id: ast::NodeId,
+    span: Span
+}
+
+impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
+    fn with_fcx<F>(&'tcx mut self, f: F) where
+        F: for<'b> FnOnce(&FnCtxt<'b, 'gcx, 'tcx>,
+                          &mut CheckTypeWellFormedVisitor<'b, 'gcx>) -> Vec<Ty<'tcx>>
+    {
+        let code = self.code.clone();
+        let id = self.id;
+        let span = self.span;
+        self.inherited.enter(|inh| {
+            let fcx = FnCtxt::new(&inh, ty::FnDiverging, id);
+            let wf_tys = f(&fcx, &mut CheckTypeWellFormedVisitor {
+                ccx: fcx.ccx,
+                code: code
+            });
+            fcx.select_all_obligations_or_error();
+            fcx.regionck_item(id, span, &wf_tys);
+        });
+    }
+}
+
+impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
+    pub fn new(ccx: &'ccx CrateCtxt<'ccx, 'gcx>)
+               -> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         CheckTypeWellFormedVisitor {
             ccx: ccx,
             code: traits::ObligationCauseCode::MiscObligation
         }
     }
 
-    fn tcx(&self) -> TyCtxt<'ccx, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'ccx, 'gcx, 'gcx> {
         self.ccx.tcx
     }
 
@@ -128,7 +158,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
     fn check_trait_or_impl_item(&mut self, item_id: ast::NodeId, span: Span) {
         let code = self.code.clone();
-        self.with_fcx(item_id, span, |fcx, this| {
+        self.for_id(item_id, span).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
             let free_id_outlive = fcx.parameter_environment.free_id_outlive;
 
@@ -166,32 +196,28 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         })
     }
 
-    fn with_item_fcx<F>(&mut self, item: &hir::Item, f: F) where
-        F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx, 'tcx>,
-                           &mut CheckTypeWellFormedVisitor<'ccx,'tcx>) -> Vec<Ty<'tcx>>,
-    {
-        self.with_fcx(item.id, item.span, f)
+    fn for_item<'tcx>(&self, item: &hir::Item)
+                      -> CheckWfFcxBuilder<'ccx, 'gcx, 'tcx> {
+        self.for_id(item.id, item.span)
     }
 
-    fn with_fcx<F>(&mut self, id: ast::NodeId, span: Span, mut f: F) where
-        F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx, 'tcx>,
-                           &mut CheckTypeWellFormedVisitor<'ccx,'tcx>) -> Vec<Ty<'tcx>>,
-    {
-        let ccx = self.ccx;
-        let param_env = ty::ParameterEnvironment::for_item(ccx.tcx, id);
-        Inherited::enter(ccx, param_env, |inh| {
-            let fcx = FnCtxt::new(&inh, ty::FnDiverging, id);
-            let wf_tys = f(&fcx, self);
-            fcx.select_all_obligations_or_error();
-            fcx.regionck_item(id, span, &wf_tys);
-        });
+    fn for_id<'tcx>(&self, id: ast::NodeId, span: Span)
+                    -> CheckWfFcxBuilder<'ccx, 'gcx, 'tcx> {
+        let param_env = ty::ParameterEnvironment::for_item(self.ccx.tcx, id);
+        CheckWfFcxBuilder {
+            inherited: self.ccx.inherited(Some(param_env)),
+            code: self.code.clone(),
+            id: id,
+            span: span
+        }
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
     fn check_type_defn<F>(&mut self, item: &hir::Item, mut lookup_fields: F) where
-        F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx, 'tcx>) -> Vec<AdtVariant<'tcx>>,
+        F: for<'fcx, 'tcx> FnMut(&FnCtxt<'fcx, 'gcx, 'tcx>)
+                                 -> Vec<AdtVariant<'tcx>>
     {
-        self.with_item_fcx(item, |fcx, this| {
+        self.for_item(item).with_fcx(|fcx, this| {
             let variants = lookup_fields(fcx);
 
             for variant in &variants {
@@ -234,7 +260,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             }
         }
 
-        self.with_item_fcx(item, |fcx, this| {
+        self.for_item(item).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
             let predicates = fcx.tcx.lookup_predicates(trait_def_id);
             let predicates = fcx.instantiate_bounds(item.span, free_substs, &predicates);
@@ -247,7 +273,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                      item: &hir::Item,
                      body: &hir::Block)
     {
-        self.with_item_fcx(item, |fcx, this| {
+        self.for_item(item).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
             let type_scheme = fcx.tcx.lookup_item_type(fcx.tcx.map.local_def_id(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span, free_substs, &type_scheme.ty);
@@ -274,7 +300,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     {
         debug!("check_item_type: {:?}", item);
 
-        self.with_item_fcx(item, |fcx, this| {
+        self.for_item(item).with_fcx(|fcx, this| {
             let type_scheme = fcx.tcx.lookup_item_type(fcx.tcx.map.local_def_id(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span,
                                                       &fcx.parameter_environment
@@ -294,7 +320,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     {
         debug!("check_impl: {:?}", item);
 
-        self.with_item_fcx(item, |fcx, this| {
+        self.for_item(item).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
             let item_def_id = fcx.tcx.map.local_def_id(item.id);
 
@@ -328,10 +354,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         });
     }
 
-    fn check_where_clauses<'fcx>(&mut self,
-                                 fcx: &FnCtxt<'fcx,'tcx, 'tcx>,
-                                 span: Span,
-                                 predicates: &ty::InstantiatedPredicates<'tcx>)
+    fn check_where_clauses<'fcx, 'tcx>(&mut self,
+                                       fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
+                                       span: Span,
+                                       predicates: &ty::InstantiatedPredicates<'tcx>)
     {
         let obligations =
             predicates.predicates
@@ -346,13 +372,13 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         }
     }
 
-    fn check_fn_or_method<'fcx>(&mut self,
-                                fcx: &FnCtxt<'fcx,'tcx, 'tcx>,
-                                span: Span,
-                                fty: &'tcx ty::BareFnTy<'tcx>,
-                                predicates: &ty::InstantiatedPredicates<'tcx>,
-                                free_id_outlive: CodeExtent,
-                                implied_bounds: &mut Vec<Ty<'tcx>>)
+    fn check_fn_or_method<'fcx, 'tcx>(&mut self,
+                                      fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
+                                      span: Span,
+                                      fty: &'tcx ty::BareFnTy<'tcx>,
+                                      predicates: &ty::InstantiatedPredicates<'tcx>,
+                                      free_id_outlive: CodeExtent,
+                                      implied_bounds: &mut Vec<Ty<'tcx>>)
     {
         let free_substs = &fcx.parameter_environment.free_substs;
         let fty = fcx.instantiate_type_scheme(span, free_substs, &fty);
@@ -376,12 +402,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         self.check_where_clauses(fcx, span, predicates);
     }
 
-    fn check_method_receiver<'fcx>(&mut self,
-                                   fcx: &FnCtxt<'fcx,'tcx, 'tcx>,
-                                   span: Span,
-                                   method: &ty::Method<'tcx>,
-                                   free_id_outlive: CodeExtent,
-                                   self_ty: ty::Ty<'tcx>)
+    fn check_method_receiver<'fcx, 'tcx>(&mut self,
+                                         fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
+                                         span: Span,
+                                         method: &ty::Method<'tcx>,
+                                         free_id_outlive: CodeExtent,
+                                         self_ty: ty::Ty<'tcx>)
     {
         // check that the type of the method's receiver matches the
         // method's first parameter.
@@ -549,7 +575,7 @@ struct AdtField<'tcx> {
     span: Span,
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 fn struct_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
     let fields =
         struct_def.fields().iter()

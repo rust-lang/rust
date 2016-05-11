@@ -19,7 +19,7 @@ use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::cfg;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
-use rustc::infer::InferCtxt;
+use rustc::infer::TransNormalize;
 use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
 use rustc::ty::subst::Substs;
@@ -428,7 +428,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx>
+        where T: TransNormalize<'tcx>
     {
         monomorphize::apply_param_substs(self.ccx.tcx(),
                                          self.param_substs,
@@ -603,7 +603,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx>
+        where T: TransNormalize<'tcx>
     {
         monomorphize::apply_param_substs(self.tcx(),
                                          self.fcx.param_substs,
@@ -710,7 +710,7 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T: TypeFoldable<'tcx>
+        where T: TransNormalize<'tcx>
     {
         self.bcx.monomorphize(value)
     }
@@ -1066,7 +1066,7 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
-        let vtable = InferCtxt::enter_normalizing(tcx, ProjectionMode::Any, |infcx| {
+        tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
             let mut selcx = SelectionContext::new(&infcx);
 
             let obligation_cause = traits::ObligationCause::misc(span,
@@ -1108,7 +1108,7 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
             vtable
         })
-    });
+    })
 }
 
 /// Normalizes the predicates and checks whether they hold.  If this
@@ -1122,7 +1122,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    InferCtxt::enter_normalizing(tcx, ProjectionMode::Any, |infcx| {
+    tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = traits::FulfillmentContext::new();
         let cause = traits::ObligationCause::dummy();

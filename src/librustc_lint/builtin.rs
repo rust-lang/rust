@@ -32,7 +32,6 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use middle::stability;
 use rustc::cfg;
-use rustc::infer::InferCtxt;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::adjustment;
@@ -866,7 +865,7 @@ impl LateLintPass for UnconditionalRecursion {
                     let node_id = tcx.map.as_local_node_id(method.def_id).unwrap();
 
                     let param_env = Some(ty::ParameterEnvironment::for_item(tcx, node_id));
-                    InferCtxt::enter(tcx, None, param_env, ProjectionMode::AnyFinal, |infcx| {
+                    tcx.infer_ctxt(None, param_env, ProjectionMode::AnyFinal).enter(|infcx| {
                         let mut selcx = traits::SelectionContext::new(&infcx);
                         match selcx.select(&obligation) {
                             // The method comes from a `T: Trait` bound.
