@@ -1463,7 +1463,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return;
         }
 
-        self.infcx.in_snapshot(|snapshot| {
+        self.infcx.probe(|snapshot| {
             let (self_ty, _) =
                 self.infcx().skolemize_late_bound_regions(&obligation.self_ty(), snapshot);
             let poly_trait_ref = match self_ty.sty {
