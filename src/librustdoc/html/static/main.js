@@ -931,6 +931,22 @@
         return "\u2212"; // "\u2212" is '−' minus sign
     }
 
+    $(".search-input").on("keyup",function() {
+        if ($(this).val().length === 0) {
+            window.history.pushState("", "std - Rust", "?search=");
+            $('#main.content').removeClass('hidden');
+            $('#search.content').addClass('hidden');
+        }
+    });
+
+    $('.search-input').on('search', function () {
+        if ($(this).val().length === 0) {
+            window.history.pushState("", "std - Rust", "?search=");
+            $('#main.content').removeClass('hidden');
+            $('#search.content').addClass('hidden');
+        }
+    });
+
     $("#toggle-all-docs").on("click", function() {
         var toggle = $("#toggle-all-docs");
         if (toggle.hasClass("will-expand")) {
