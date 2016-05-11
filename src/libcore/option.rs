@@ -143,6 +143,7 @@ use self::Option::*;
 
 use clone::Clone;
 use default::Default;
+use intrinsics::unreachable;
 use iter::ExactSizeIterator;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, IntoIterator};
 use mem;
@@ -359,6 +360,24 @@ impl<T> Option<T> {
             Some(x) => x,
             None => f(),
         }
+    }
+
+    /// Moves the value `v` out of the `Option<T>` without checking for None.
+    ///
+    /// # Safety note
+    ///
+    /// Because it is undefined behavior to call this on a None, this function
+    /// is unsafe.
+    #[inline]
+    #[unstable(feature = "core")]
+    pub unsafe fn unwrap_unchecked(self) -> T {
+        if self.is_none() {
+            if cfg!(debug) {
+                panic!("called `Option::unwrap_unchecked()` on a `None` value");
+            }
+            unreachable();
+        }
+        unwrap(self)
     }
 
     /////////////////////////////////////////////////////////////////////////
