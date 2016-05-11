@@ -32,6 +32,7 @@ use super::Hasher;
 /// cryptographic uses of this implementation are _strongly discouraged_.
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(PartialEq, Eq, Hash)]
 pub struct SipHasher {
     k0: u64,
     k1: u64,
