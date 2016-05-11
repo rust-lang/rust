@@ -581,6 +581,11 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             Ok(tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name))
         }
 
+        (&ty::TyProjection(_), _) | (_, &ty::TyProjection(_)) =>
+        {
+            Err(TypeError::UnnormalizedProjectionMismatch(expected_found(relation, &a, &b)))
+        }
+
         _ =>
         {
             Err(TypeError::Sorts(expected_found(relation, &a, &b)))

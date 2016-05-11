@@ -62,14 +62,14 @@ impl<'tcx> TraitErrorKey<'tcx> {
 }
 
 pub fn report_fulfillment_errors<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                           errors: &Vec<FulfillmentError<'tcx>>) {
+                                           errors: &[FulfillmentError<'tcx>]) {
     for error in errors {
         report_fulfillment_error(infcx, error, None);
     }
 }
 
 pub fn report_fulfillment_errors_as_warnings<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                                       errors: &Vec<FulfillmentError<'tcx>>,
+                                                       errors: &[FulfillmentError<'tcx>],
                                                        node_id: ast::NodeId)
 {
     for error in errors {
@@ -123,6 +123,7 @@ pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                            predicate,
                                            error.err);
             note_obligation_cause(infcx, &mut err, obligation);
+            infcx.tcx.note_and_explain_type_err(&mut err, &error.err, obligation.cause.span);
             err.emit();
         }
     }
