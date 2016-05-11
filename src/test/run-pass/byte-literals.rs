@@ -23,6 +23,7 @@ pub fn main() {
     assert_eq!(b'\n', 10u8);
     assert_eq!(b'\r', 13u8);
     assert_eq!(b'\t', 9u8);
+    assert_eq!(b'\e', 0x1B);
     assert_eq!(b'\\', 92u8);
     assert_eq!(b'\'', 39u8);
     assert_eq!(b'\"', 34u8);
@@ -40,8 +41,8 @@ pub fn main() {
         _ => panic!()
     }
 
-    let expected: &[_] = &[97u8, 10u8, 13u8, 9u8, 92u8, 39u8, 34u8, 0u8, 240u8];
-    assert_eq!(b"a\n\r\t\\\'\"\0\xF0", expected);
+    let expected: &[_] = &[97u8, 10u8, 13u8, 9u8, 92u8, 39u8, 34u8, 0u8, 240u8, 0x1B];
+    assert_eq!(b"a\n\r\t\\\'\"\0\xF0\e", expected);
     let expected: &[_] = &[97u8, 98u8];
     assert_eq!(b"a\
                  b", expected);

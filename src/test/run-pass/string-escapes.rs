@@ -13,4 +13,6 @@ fn main() {
     let x = "\\\\\
     ";
     assert_eq!(x, r"\\"); // extraneous whitespace stripped
+    assert_eq!("\e".as_bytes()[0], 0x1B);
+    assert_eq!("\t".as_bytes()[0], b'\t');
 }
