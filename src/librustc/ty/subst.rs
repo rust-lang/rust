@@ -136,7 +136,6 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
 }
 
 impl<'tcx> Encodable for Substs<'tcx> {
-
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         cstore::tls::with_encoding_context(s, |ecx, rbml_w| {
             ecx.encode_substs(rbml_w, self);

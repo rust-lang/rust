@@ -26,16 +26,17 @@ use super::{
 
 use fmt_macros::{Parser, Piece, Position};
 use hir::def_id::DefId;
-use infer::InferCtxt;
-use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
+use infer::{InferCtxt, TypeOrigin};
+use ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable, TypeVariants};
 use ty::fast_reject;
-use ty::fold::{TypeFoldable, TypeFolder};
+use ty::fold::TypeFolder;
+use ty::subst::{self, ParamSpace, Subst};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
 use std::fmt;
-use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::ast;
+use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 
@@ -57,6 +58,128 @@ impl<'a, 'gcx, 'tcx> TraitErrorKey<'tcx> {
             predicate: infcx.tcx.erase_regions(&predicate),
             warning_node_id: warning_node_id
         }
+    }
+}
+
+// Enum used to differentiate the "big" and "little" weights.
+enum Weight {
+    Coarse,
+    Precise,
+}
+
+trait AssociatedWeight {
+    fn get_weight(&self) -> (u32, u32);
+}
+
+impl<'a> AssociatedWeight for TypeVariants<'a> {
+    // Left number is for "global"/"big" weight and right number is for better precision.
+    fn get_weight(&self) -> (u32, u32) {
+        match *self {
+            TypeVariants::TyBool => (1, 1),
+            TypeVariants::TyChar => (1, 2),
+            TypeVariants::TyStr => (1, 3),
+
+            TypeVariants::TyInt(_) => (2, 1),
+            TypeVariants::TyUint(_) => (2, 2),
+            TypeVariants::TyFloat(_) => (2, 3),
+            TypeVariants::TyRawPtr(_) => (2, 4),
+
+            TypeVariants::TyEnum(_, _) => (3, 1),
+            TypeVariants::TyStruct(_, _) => (3, 2),
+            TypeVariants::TyBox(_) => (3, 3),
+            TypeVariants::TyTuple(_) => (3, 4),
+
+            TypeVariants::TyArray(_, _) => (4, 1),
+            TypeVariants::TySlice(_) => (4, 2),
+
+            TypeVariants::TyRef(_, _) => (5, 1),
+            TypeVariants::TyFnDef(_, _, _) => (5, 2),
+            TypeVariants::TyFnPtr(_) => (5, 3),
+
+            TypeVariants::TyTrait(_) => (6, 1),
+
+            TypeVariants::TyClosure(_, _) => (7, 1),
+
+            TypeVariants::TyProjection(_) => (8, 1),
+            TypeVariants::TyParam(_) => (8, 2),
+            TypeVariants::TyInfer(_) => (8, 3),
+
+            TypeVariants::TyError => (9, 1),
+        }
+    }
+}
+
+// The "closer" the types are, the lesser the weight.
+fn get_weight_diff(a: &ty::TypeVariants, b: &TypeVariants, weight: Weight) -> u32 {
+    let (w1, w2) = match weight {
+        Weight::Coarse => (a.get_weight().0, b.get_weight().0),
+        Weight::Precise => (a.get_weight().1, b.get_weight().1),
+    };
+    if w1 < w2 {
+        w2 - w1
+    } else {
+        w1 - w2
+    }
+}
+
+// Once we have "globally matching" types, we need to run another filter on them.
+//
+// In the function `get_best_matching_type`, we got the types which might fit the
+// most to the type we're looking for. This second filter now intends to get (if
+// possible) the type which fits the most.
+//
+// For example, the trait expects an `usize` and here you have `u32` and `i32`.
+// Obviously, the "correct" one is `u32`.
+fn filter_matching_types<'tcx>(weights: &[(usize, u32)],
+                               imps: &[(DefId, subst::Substs<'tcx>)],
+                               trait_types: &[ty::Ty<'tcx>])
+                               -> usize {
+    let matching_weight = weights[0].1;
+    let iter = weights.iter().filter(|&&(_, weight)| weight == matching_weight);
+    let mut filtered_weights = vec!();
+
+    for &(pos, _) in iter {
+        let mut weight = 0;
+        for (type_to_compare, original_type) in imps[pos].1
+                                                         .types
+                                                         .get_slice(ParamSpace::TypeSpace)
+                                                         .iter()
+                                                         .zip(trait_types.iter()) {
+            weight += get_weight_diff(&type_to_compare.sty, &original_type.sty, Weight::Precise);
+        }
+        filtered_weights.push((pos, weight));
+    }
+    filtered_weights.sort_by(|a, b| a.1.cmp(&b.1));
+    filtered_weights[0].0
+}
+
+// Here, we run the "big" filter. Little example:
+//
+// We receive a `String`, an `u32` and an `i32`.
+// The trait expected an `usize`.
+// From human point of view, it's easy to determine that `String` doesn't correspond to
+// the expected type at all whereas `u32` and `i32` could.
+//
+// This first filter intends to only keep the types which match the most.
+fn get_best_matching_type<'tcx>(imps: &[(DefId, subst::Substs<'tcx>)],
+                                trait_types: &[ty::Ty<'tcx>]) -> usize {
+    let mut weights = vec!();
+    for (pos, imp) in imps.iter().enumerate() {
+        let mut weight = 0;
+        for (type_to_compare, original_type) in imp.1
+                                                   .types
+                                                   .get_slice(ParamSpace::TypeSpace)
+                                                   .iter()
+                                                   .zip(trait_types.iter()) {
+            weight += get_weight_diff(&type_to_compare.sty, &original_type.sty, Weight::Coarse);
+        }
+        weights.push((pos, weight));
+    }
+    weights.sort_by(|a, b| a.1.cmp(&b.1));
+    if weights[0].1 == weights[1].1 {
+        filter_matching_types(&weights, &imps, trait_types)
+    } else {
+        weights[0].0
     }
 }
 
@@ -126,16 +249,101 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn impl_substs(&self,
+                   did: DefId,
+                   obligation: PredicateObligation<'tcx>)
+                   -> subst::Substs<'tcx> {
+        let tcx = self.tcx;
+
+        let ity = tcx.lookup_item_type(did);
+        let (tps, rps, _) =
+            (ity.generics.types.get_slice(subst::TypeSpace),
+             ity.generics.regions.get_slice(subst::TypeSpace),
+             ity.ty);
+
+        let rps = self.region_vars_for_defs(obligation.cause.span, rps);
+        let mut substs = subst::Substs::new(
+            subst::VecPerParamSpace::empty(),
+            subst::VecPerParamSpace::new(rps, Vec::new(), Vec::new()));
+        self.type_vars_for_defs(obligation.cause.span,
+                                subst::ParamSpace::TypeSpace,
+                                &mut substs,
+                                tps);
+        substs
+    }
+
+    fn get_current_failing_impl(&self,
+                                trait_ref: &TraitRef<'tcx>,
+                                obligation: &PredicateObligation<'tcx>)
+                                -> Option<(DefId, subst::Substs<'tcx>)> {
+        let simp = fast_reject::simplify_type(self.tcx,
+                                              trait_ref.self_ty(),
+                                              true);
+        let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id);
+
+        match simp {
+            Some(_) => {
+                let mut matching_impls = Vec::new();
+                trait_def.for_each_impl(self.tcx, |def_id| {
+                    let imp = self.tcx.impl_trait_ref(def_id).unwrap();
+                    let substs = self.impl_substs(def_id, obligation.clone());
+                    let imp = imp.subst(self.tcx, &substs);
+
+                    if self.eq_types(true,
+                                      TypeOrigin::Misc(obligation.cause.span),
+                                      trait_ref.self_ty(),
+                                      imp.self_ty()).is_ok() {
+                        matching_impls.push((def_id, imp.substs.clone()));
+                    }
+                });
+                if matching_impls.len() == 0 {
+                    None
+                } else if matching_impls.len() == 1 {
+                    Some(matching_impls[0].clone())
+                } else {
+                    let end = trait_ref.input_types().len() - 1;
+                    // we need to determine which type is the good one!
+                    Some(matching_impls[get_best_matching_type(&matching_impls,
+                                                               &trait_ref.input_types()[0..end])]
+                                                              .clone())
+                }
+            },
+            None => None,
+        }
+    }
+
+    fn find_attr(&self,
+                 def_id: DefId,
+                 attr_name: &str)
+                 -> Option<ast::Attribute> {
+        for item in self.tcx.get_attrs(def_id).iter() {
+            if item.check_name(attr_name) {
+                return Some(item.clone());
+            }
+        }
+        None
+    }
+
     fn on_unimplemented_note(&self,
                              trait_ref: ty::PolyTraitRef<'tcx>,
-                             span: Span) -> Option<String> {
+                             obligation: &PredicateObligation<'tcx>) -> Option<String> {
         let trait_ref = trait_ref.skip_binder();
-        let def_id = trait_ref.def_id;
+        let def_id = match self.get_current_failing_impl(trait_ref, obligation) {
+            Some((def_id, _)) => {
+                if let Some(_) = self.find_attr(def_id, "rustc_on_unimplemented") {
+                    def_id
+                } else {
+                    trait_ref.def_id
+                }
+            },
+            None => trait_ref.def_id,
+        };
+        let span = obligation.cause.span;
         let mut report = None;
         for item in self.tcx.get_attrs(def_id).iter() {
             if item.check_name("rustc_on_unimplemented") {
                 let err_sp = item.meta().span.substitute_dummy(span);
-                let def = self.tcx.lookup_trait_def(def_id);
+                let def = self.tcx.lookup_trait_def(trait_ref.def_id);
                 let trait_str = def.trait_ref.to_string();
                 if let Some(ref istring) = item.value_str() {
                     let mut generic_map = def.generics.types.iter_enumerated()
@@ -193,6 +401,37 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
         report
+    }
+
+    fn find_similar_impl_candidates(&self,
+                                    trait_ref: ty::PolyTraitRef<'tcx>)
+                                    -> Vec<ty::TraitRef<'tcx>>
+    {
+        let simp = fast_reject::simplify_type(self.tcx,
+                                              trait_ref.skip_binder().self_ty(),
+                                              true);
+        let mut impl_candidates = Vec::new();
+        let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id());
+
+        match simp {
+            Some(simp) => trait_def.for_each_impl(self.tcx, |def_id| {
+                let imp = self.tcx.impl_trait_ref(def_id).unwrap();
+                let imp_simp = fast_reject::simplify_type(self.tcx,
+                                                          imp.self_ty(),
+                                                          true);
+                if let Some(imp_simp) = imp_simp {
+                    if simp != imp_simp {
+                        return;
+                    }
+                }
+                impl_candidates.push(imp);
+            }),
+            None => trait_def.for_each_impl(self.tcx, |def_id| {
+                impl_candidates.push(
+                    self.tcx.impl_trait_ref(def_id).unwrap());
+            })
+        };
+        impl_candidates
     }
 
     fn report_similar_impl_candidates(&self,
@@ -425,8 +664,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 // Try to report a help message
 
                                 if !trait_ref.has_infer_types() &&
-                                    self.predicate_can_apply(trait_ref)
-                                {
+                                    self.predicate_can_apply(trait_ref) {
                                     // If a where-clause may be useful, remind the
                                     // user that they can add it.
                                     //
@@ -435,22 +673,25 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                     //     "the type `T` can't be frobnicated"
                                     // which is somewhat confusing.
                                     err.help(&format!("consider adding a `where {}` bound",
-                                        trait_ref.to_predicate()
-                                        ));
-                                } else if let Some(s) =
-                                        self.on_unimplemented_note(trait_ref, span) {
-                                    // Otherwise, if there is an on-unimplemented note,
-                                    // display it.
+                                                      trait_ref.to_predicate()));
+                                } else if let Some(s) = self.on_unimplemented_note(trait_ref,
+                                                                                   obligation) {
+                                    // If it has a custom "#[rustc_on_unimplemented]"
+                                    // error message, let's display it!
                                     err.note(&s);
                                 } else {
                                     // If we can't show anything useful, try to find
                                     // similar impls.
-
-                                    self.report_similar_impl_candidates(trait_ref, &mut err);
+                                    let impl_candidates =
+                                        self.find_similar_impl_candidates(trait_ref);
+                                    if impl_candidates.len() > 0 {
+                                        self.report_similar_impl_candidates(trait_ref, &mut err);
+                                    }
                                 }
                                 err
                             }
-                        },
+                        }
+
                         ty::Predicate::Equate(ref predicate) => {
                             let predicate = self.resolve_type_vars_if_possible(predicate);
                             let err = self.equality_predicate(span,

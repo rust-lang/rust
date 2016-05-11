@@ -523,6 +523,8 @@ impl<T> SliceExt for [T] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_attributes)]
+#[rustc_on_unimplemented = "a usize is required to index into a slice"]
 impl<T> ops::Index<usize> for [T] {
     type Output = T;
 
@@ -533,6 +535,8 @@ impl<T> ops::Index<usize> for [T] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unused_attributes)]
+#[rustc_on_unimplemented = "a usize is required to index into a slice"]
 impl<T> ops::IndexMut<usize> for [T] {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut T {
