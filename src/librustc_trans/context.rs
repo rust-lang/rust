@@ -503,6 +503,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             Substs::new(VecPerParamSpace::empty(),
                         scheme.generics.regions.map(|_| ty::ReStatic)))
     }
+
+    pub fn symbol_hasher(&self) -> &RefCell<Sha256> {
+        &self.symbol_hasher
+    }
 }
 
 impl<'tcx> LocalCrateContext<'tcx> {

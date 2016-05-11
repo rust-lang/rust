@@ -512,7 +512,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         Some(hir_map::NodeImplItem(&hir::ImplItem {
             ref attrs, id, span, node: hir::ImplItemKind::Method(..), ..
         })) => {
-            let sym = exported_name(ccx, instance, attrs);
+            let sym = symbol_names::exported_name(ccx.shared(), instance);
 
             if declare::get_defined_value(ccx, &sym).is_some() {
                 ccx.sess().span_fatal(span,
@@ -530,7 +530,8 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         None => {
             attrs = ccx.sess().cstore.item_attrs(def_id);
-            (ccx.sess().cstore.item_symbol(def_id), &attrs[..], None)
+            let sym = symbol_names::exported_name(ccx.shared(), instance);
+            (sym, &attrs[..], None)
         }
 
         ref variant => {
