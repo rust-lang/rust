@@ -147,6 +147,7 @@ impl<T> RawVec<T> {
     /// Gets the capacity of the allocation.
     ///
     /// This will always be `usize::MAX` if `T` is zero-sized.
+    #[inline(always)]
     pub fn cap(&self) -> usize {
         if mem::size_of::<T>() == 0 {
             !0
