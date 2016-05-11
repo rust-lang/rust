@@ -218,10 +218,7 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
                                             obligation.cause.clone(),
                                             obligation.recursion_depth) {
             Some(n) => n,
-            None => {
-                consider_unification_despite_ambiguity(selcx, obligation);
-                return Ok(None);
-            }
+            None => return Ok(None),
         };
 
     debug!("project_and_unify_type: normalized_ty={:?} obligations={:?}",
@@ -237,59 +234,6 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
             Ok(Some(obligations))
         },
         Err(err) => Err(MismatchedProjectionTypes { err: err }),
-    }
-}
-
-fn consider_unification_despite_ambiguity<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
-    obligation: &ProjectionObligation<'tcx>)
-{
-    debug!("consider_unification_despite_ambiguity(obligation={:?})",
-           obligation);
-
-    let def_id = obligation.predicate.projection_ty.trait_ref.def_id;
-    match selcx.tcx().lang_items.fn_trait_kind(def_id) {
-        Some(_) => { }
-        None => { return; }
-    }
-
-    let infcx = selcx.infcx();
-    let self_ty = obligation.predicate.projection_ty.trait_ref.self_ty();
-    let self_ty = infcx.shallow_resolve(self_ty);
-    debug!("consider_unification_despite_ambiguity: self_ty.sty={:?}",
-           self_ty.sty);
-    match self_ty.sty {
-        ty::TyClosure(closure_def_id, substs) => {
-            let closure_typer = selcx.closure_typer();
-            let closure_type = closure_typer.closure_type(closure_def_id, substs);
-            let ty::Binder((_, ret_type)) =
-                infcx.tcx.closure_trait_ref_and_return_type(def_id,
-                                                            self_ty,
-                                                            &closure_type.sig,
-                                                            util::TupleArgumentsFlag::No);
-            // We don't have to normalize the return type here - this is only
-            // reached for TyClosure: Fn inputs where the closure kind is
-            // still unknown, which should only occur in typeck where the
-            // closure type is already normalized.
-            let (ret_type, _) =
-                infcx.replace_late_bound_regions_with_fresh_var(
-                    obligation.cause.span,
-                    infer::AssocTypeProjection(obligation.predicate.projection_ty.item_name),
-                    &ty::Binder(ret_type));
-
-            debug!("consider_unification_despite_ambiguity: ret_type={:?}",
-                   ret_type);
-            let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
-            let obligation_ty = obligation.predicate.ty;
-            match infcx.eq_types(true, origin, obligation_ty, ret_type) {
-                Ok(InferOk { obligations, .. }) => {
-                    // FIXME(#32730) propagate obligations
-                    assert!(obligations.is_empty());
-                }
-                Err(_) => { /* ignore errors */ }
-            }
-        }
-        _ => { }
     }
 }
 
