@@ -12,6 +12,9 @@ import lldb
 import re
 import debugger_pretty_printers_common as rustpp
 
+# Maximal amount of array/vec/slice items to print before trimming
+MAX_CHILDREN = 100
+
 #===============================================================================
 # LLDB Pretty Printing Module for Rust
 #===============================================================================
@@ -311,7 +314,18 @@ def print_array_of_values(array_name, data_ptr_val, length, internal_dict):
                                                        element_type)
         return print_val(element_val, internal_dict)
 
-    return ', '.join([render_element(i) for i in range(length)])
+    overflow = length > MAX_CHILDREN
+    if overflow:
+        length = MAX_CHILDREN
+
+    def render_all():
+        for i in range(length):
+            yield render_element(i)
+
+        if overflow:
+            yield ".."
+
+    return ', '.join(render_all())
 
 
 def read_utf8_string(ptr_val, byte_count):

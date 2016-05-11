@@ -209,15 +209,12 @@ class RustSlicePrinter:
                 ("(len: %i)" % length))
 
     def children(self):
-        cs = []
         (length, data_ptr) = rustpp.extract_length_and_ptr_from_slice(self.__val)
+
         assert data_ptr.type.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_PTR
         raw_ptr = data_ptr.get_wrapped_value()
 
-        for index in range(0, length):
-            cs.append((str(index), (raw_ptr + index).dereference()))
-
-        return cs
+        return iter_children_pointer(raw_ptr, length)
 
 
 class RustStringSlicePrinter:
@@ -243,12 +240,9 @@ class RustStdVecPrinter:
                 ("(len: %i, cap: %i)" % (length, cap)))
 
     def children(self):
-        cs = []
         (length, data_ptr, cap) = rustpp.extract_length_ptr_and_cap_from_std_vec(self.__val)
-        gdb_ptr = data_ptr.get_wrapped_value()
-        for index in range(0, length):
-            cs.append((str(index), (gdb_ptr + index).dereference()))
-        return cs
+        raw_ptr = data_ptr.get_wrapped_value()
+        return iter_children_pointer(raw_ptr, length)
 
 
 class RustStdStringPrinter:
@@ -286,3 +280,7 @@ def get_field_at_index(gdb_val, index):
             return field
         i += 1
     return None
+
+def iter_children_pointer(raw_ptr, length):
+    for index in range(0, length):
+        yield str(index), (raw_ptr + index).dereference()
