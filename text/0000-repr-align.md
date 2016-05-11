@@ -70,12 +70,13 @@ will always be respected. If a pointer to a non-aligned structure exists and is
 used then it is considered unsafe behavior. Local variables, objects in arrays,
 statics, etc, will all respect the custom alignment specified for a type.
 
-For now, it will be illegal to mix `#[repr(align)]` and `#[repr(packed)]` in
-structs. Specifically, both attributes cannot be applied on the same struct, and
-a `#[repr(packed)]` struct cannot transitively contain another struct with
-`#[repr(align)]` or vice versa. The behavior of MSVC and gcc differ in how these
-properties interact, and for now we'll just yield an error while we get
-experience with the two attributes.
+For now, it will be illegal for any `#[repr(packed)]` struct to transitively
+contain a struct with `#[repr(align)]`. Specifically, both attributes cannot be
+applied on the same struct, and a `#[repr(packed)]` struct cannot transitively
+contain another struct with `#[repr(align)]`. The flip side, including a
+`#[repr(packed)]` structure inside of a `#[repr(align)]` one will be allowed.
+The behavior of MSVC and gcc differ in how these properties interact, and for
+now we'll just yield an error while we get experience with the two attributes.
 
 Some examples of `#[repr(align)]` are:
 
