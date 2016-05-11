@@ -218,7 +218,6 @@ impl Once {
     /// The closure `f` is yielded a structure which can be used to query the
     /// state of this `Once` (whether initialization has previously panicked or
     /// not).
-    /// poisoned or not.
     #[unstable(feature = "once_poison", issue = "31688")]
     pub fn call_once_force<F>(&'static self, f: F) where F: FnOnce(&OnceState) {
         // same as above, just with a different parameter to `call_inner`.
