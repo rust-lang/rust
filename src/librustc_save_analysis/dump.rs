@@ -30,7 +30,7 @@ pub trait Dump {
     fn trait_data(&mut self, TraitData) {}
     fn tuple_variant(&mut self, TupleVariantData) {}
     fn type_ref(&mut self, TypeRefData) {}
-    fn typedef(&mut self, TypedefData) {}
+    fn typedef(&mut self, TypeDefData) {}
     fn use_data(&mut self, UseData) {}
     fn use_glob(&mut self, UseGlobData) {}
     fn variable(&mut self, VariableData) {}
