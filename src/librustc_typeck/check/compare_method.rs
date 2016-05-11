@@ -10,13 +10,14 @@
 
 use middle::free_region::FreeRegionMap;
 use rustc::infer::{self, InferOk, TypeOrigin};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty;
 use rustc::traits::{self, ProjectionMode};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace};
 
 use syntax::ast;
 use syntax::codemap::Span;
 
+use CrateCtxt;
 use super::assoc;
 
 /// Checks that a method from an impl conforms to the signature of
@@ -30,20 +31,19 @@ use super::assoc;
 /// - trait_m: the method in the trait
 /// - impl_trait_ref: the TraitRef corresponding to the trait implementation
 
-pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
-                                 impl_m: &ty::Method<'tcx>,
-                                 impl_m_span: Span,
-                                 impl_m_body_id: ast::NodeId,
-                                 trait_m: &ty::Method<'tcx>,
-                                 impl_trait_ref: &ty::TraitRef<'tcx>) {
+pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                     impl_m: &ty::Method<'tcx>,
+                                     impl_m_span: Span,
+                                     impl_m_body_id: ast::NodeId,
+                                     trait_m: &ty::Method<'tcx>,
+                                     impl_trait_ref: &ty::TraitRef<'tcx>) {
     debug!("compare_impl_method(impl_trait_ref={:?})",
            impl_trait_ref);
 
     debug!("compare_impl_method: impl_trait_ref (liberated) = {:?}",
            impl_trait_ref);
 
-    let mut infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
-    let mut fulfillment_cx = traits::FulfillmentContext::new();
+    let tcx = ccx.tcx;
 
     let trait_to_impl_substs = &impl_trait_ref.substs;
 
@@ -178,7 +178,7 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
     // Create mapping from trait to skolemized.
     let trait_to_skol_substs =
         trait_to_impl_substs
-        .subst(tcx, impl_to_skol_substs)
+        .subst(tcx, impl_to_skol_substs).clone()
         .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
                      impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
     debug!("compare_impl_method: trait_to_skol_substs={:?}",
@@ -186,7 +186,7 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
 
     // Check region bounds. FIXME(@jroesch) refactor this away when removing
     // ParamBounds.
-    if !check_region_bounds_on_impl_method(tcx,
+    if !check_region_bounds_on_impl_method(ccx,
                                            impl_m_span,
                                            impl_m,
                                            &trait_m.generics,
@@ -196,182 +196,187 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
         return;
     }
 
-    // Create obligations for each predicate declared by the impl
-    // definition in the context of the trait's parameter
-    // environment. We can't just use `impl_env.caller_bounds`,
-    // however, because we want to replace all late-bound regions with
-    // region variables.
-    let impl_bounds =
-        impl_m.predicates.instantiate(tcx, impl_to_skol_substs);
+    tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|mut infcx| {
+        let mut fulfillment_cx = traits::FulfillmentContext::new();
 
-    let (impl_bounds, _) =
-        infcx.replace_late_bound_regions_with_fresh_var(
-            impl_m_span,
-            infer::HigherRankedType,
-            &ty::Binder(impl_bounds));
-    debug!("compare_impl_method: impl_bounds={:?}",
-           impl_bounds);
+        // Normalize the associated types in the trait_bounds.
+        let trait_bounds = trait_m.predicates.instantiate(tcx, &trait_to_skol_substs);
 
-    // Normalize the associated types in the trait_bounds.
-    let trait_bounds = trait_m.predicates.instantiate(tcx, &trait_to_skol_substs);
+        // Create obligations for each predicate declared by the impl
+        // definition in the context of the trait's parameter
+        // environment. We can't just use `impl_env.caller_bounds`,
+        // however, because we want to replace all late-bound regions with
+        // region variables.
+        let impl_bounds =
+            impl_m.predicates.instantiate(tcx, impl_to_skol_substs);
 
-    // Obtain the predicate split predicate sets for each.
-    let trait_pred = trait_bounds.predicates.split();
-    let impl_pred = impl_bounds.predicates.split();
+        debug!("compare_impl_method: impl_bounds={:?}", impl_bounds);
 
-    // This is the only tricky bit of the new way we check implementation methods
-    // We need to build a set of predicates where only the FnSpace bounds
-    // are from the trait and we assume all other bounds from the implementation
-    // to be previously satisfied.
-    //
-    // We then register the obligations from the impl_m and check to see
-    // if all constraints hold.
-    let hybrid_preds = VecPerParamSpace::new(
-        impl_pred.types,
-        impl_pred.selfs,
-        trait_pred.fns
-    );
+        // Obtain the predicate split predicate sets for each.
+        let trait_pred = trait_bounds.predicates.split();
+        let impl_pred = impl_bounds.predicates.split();
 
-    // Construct trait parameter environment and then shift it into the skolemized viewpoint.
-    // The key step here is to update the caller_bounds's predicates to be
-    // the new hybrid bounds we computed.
-    let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_body_id);
-    let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.into_vec());
-    let trait_param_env = traits::normalize_param_env_or_error(trait_param_env,
-                                                               normalize_cause.clone());
-    // FIXME(@jroesch) this seems ugly, but is a temporary change
-    infcx.parameter_environment = trait_param_env;
+        // This is the only tricky bit of the new way we check implementation methods
+        // We need to build a set of predicates where only the FnSpace bounds
+        // are from the trait and we assume all other bounds from the implementation
+        // to be previously satisfied.
+        //
+        // We then register the obligations from the impl_m and check to see
+        // if all constraints hold.
+        let hybrid_preds = VecPerParamSpace::new(
+            impl_pred.types,
+            impl_pred.selfs,
+            trait_pred.fns
+        );
 
-    debug!("compare_impl_method: trait_bounds={:?}",
-        infcx.parameter_environment.caller_bounds);
+        // Construct trait parameter environment and then shift it into the skolemized viewpoint.
+        // The key step here is to update the caller_bounds's predicates to be
+        // the new hybrid bounds we computed.
+        let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_body_id);
+        let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.into_vec());
+        let trait_param_env = traits::normalize_param_env_or_error(tcx,
+                                                                   trait_param_env,
+                                                                   normalize_cause.clone());
+        // FIXME(@jroesch) this seems ugly, but is a temporary change
+        infcx.parameter_environment = trait_param_env;
 
-    let mut selcx = traits::SelectionContext::new(&infcx);
+        debug!("compare_impl_method: trait_bounds={:?}",
+            infcx.parameter_environment.caller_bounds);
 
-    for predicate in impl_pred.fns {
-        let traits::Normalized { value: predicate, .. } =
-            traits::normalize(&mut selcx, normalize_cause.clone(), &predicate);
+        let mut selcx = traits::SelectionContext::new(&infcx);
 
-        let cause = traits::ObligationCause {
-            span: impl_m_span,
-            body_id: impl_m_body_id,
-            code: traits::ObligationCauseCode::CompareImplMethodObligation
-        };
+        let (impl_pred_fns, _) =
+            infcx.replace_late_bound_regions_with_fresh_var(
+                impl_m_span,
+                infer::HigherRankedType,
+                &ty::Binder(impl_pred.fns));
+        for predicate in impl_pred_fns {
+            let traits::Normalized { value: predicate, .. } =
+                traits::normalize(&mut selcx, normalize_cause.clone(), &predicate);
 
-        fulfillment_cx.register_predicate_obligation(
-            &infcx,
-            traits::Obligation::new(cause, predicate));
-    }
+            let cause = traits::ObligationCause {
+                span: impl_m_span,
+                body_id: impl_m_body_id,
+                code: traits::ObligationCauseCode::CompareImplMethodObligation
+            };
 
-    // We now need to check that the signature of the impl method is
-    // compatible with that of the trait method. We do this by
-    // checking that `impl_fty <: trait_fty`.
-    //
-    // FIXME. Unfortunately, this doesn't quite work right now because
-    // associated type normalization is not integrated into subtype
-    // checks. For the comparison to be valid, we need to
-    // normalize the associated types in the impl/trait methods
-    // first. However, because function types bind regions, just
-    // calling `normalize_associated_types_in` would have no effect on
-    // any associated types appearing in the fn arguments or return
-    // type.
+            fulfillment_cx.register_predicate_obligation(
+                &infcx,
+                traits::Obligation::new(cause, predicate));
+        }
 
-    // Compute skolemized form of impl and trait method tys.
-    let impl_fty = tcx.mk_fn_ptr(impl_m.fty.clone());
-    let impl_fty = impl_fty.subst(tcx, impl_to_skol_substs);
-    let trait_fty = tcx.mk_fn_ptr(trait_m.fty.clone());
-    let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
+        // We now need to check that the signature of the impl method is
+        // compatible with that of the trait method. We do this by
+        // checking that `impl_fty <: trait_fty`.
+        //
+        // FIXME. Unfortunately, this doesn't quite work right now because
+        // associated type normalization is not integrated into subtype
+        // checks. For the comparison to be valid, we need to
+        // normalize the associated types in the impl/trait methods
+        // first. However, because function types bind regions, just
+        // calling `normalize_associated_types_in` would have no effect on
+        // any associated types appearing in the fn arguments or return
+        // type.
 
-    let err = infcx.commit_if_ok(|snapshot| {
-        let origin = TypeOrigin::MethodCompatCheck(impl_m_span);
+        // Compute skolemized form of impl and trait method tys.
+        let impl_fty = tcx.mk_fn_ptr(impl_m.fty);
+        let impl_fty = impl_fty.subst(tcx, impl_to_skol_substs);
+        let trait_fty = tcx.mk_fn_ptr(trait_m.fty);
+        let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
-        let (impl_sig, _) =
-            infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
-                                                            infer::HigherRankedType,
-                                                            &impl_m.fty.sig);
-        let impl_sig =
-            impl_sig.subst(tcx, impl_to_skol_substs);
-        let impl_sig =
-            assoc::normalize_associated_types_in(&infcx,
-                                                 &mut fulfillment_cx,
-                                                 impl_m_span,
-                                                 impl_m_body_id,
-                                                 &impl_sig);
-        let impl_fty = tcx.mk_fn_ptr(ty::BareFnTy {
-            unsafety: impl_m.fty.unsafety,
-            abi: impl_m.fty.abi,
-            sig: ty::Binder(impl_sig)
+        let err = infcx.commit_if_ok(|snapshot| {
+            let tcx = infcx.tcx;
+            let origin = TypeOrigin::MethodCompatCheck(impl_m_span);
+
+            let (impl_sig, _) =
+                infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
+                                                                infer::HigherRankedType,
+                                                                &impl_m.fty.sig);
+            let impl_sig =
+                impl_sig.subst(tcx, impl_to_skol_substs);
+            let impl_sig =
+                assoc::normalize_associated_types_in(&infcx,
+                                                     &mut fulfillment_cx,
+                                                     impl_m_span,
+                                                     impl_m_body_id,
+                                                     &impl_sig);
+            let impl_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
+                unsafety: impl_m.fty.unsafety,
+                abi: impl_m.fty.abi,
+                sig: ty::Binder(impl_sig)
+            }));
+            debug!("compare_impl_method: impl_fty={:?}",
+                   impl_fty);
+
+            let (trait_sig, skol_map) =
+                infcx.skolemize_late_bound_regions(&trait_m.fty.sig, snapshot);
+            let trait_sig =
+                trait_sig.subst(tcx, &trait_to_skol_substs);
+            let trait_sig =
+                assoc::normalize_associated_types_in(&infcx,
+                                                     &mut fulfillment_cx,
+                                                     impl_m_span,
+                                                     impl_m_body_id,
+                                                     &trait_sig);
+            let trait_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
+                unsafety: trait_m.fty.unsafety,
+                abi: trait_m.fty.abi,
+                sig: ty::Binder(trait_sig)
+            }));
+
+            debug!("compare_impl_method: trait_fty={:?}",
+                   trait_fty);
+
+            infcx.sub_types(false, origin, impl_fty, trait_fty)?;
+
+            infcx.leak_check(false, &skol_map, snapshot)
         });
-        debug!("compare_impl_method: impl_fty={:?}",
-               impl_fty);
 
-        let (trait_sig, skol_map) =
-            infcx.skolemize_late_bound_regions(&trait_m.fty.sig, snapshot);
-        let trait_sig =
-            trait_sig.subst(tcx, &trait_to_skol_substs);
-        let trait_sig =
-            assoc::normalize_associated_types_in(&infcx,
-                                                 &mut fulfillment_cx,
-                                                 impl_m_span,
-                                                 impl_m_body_id,
-                                                 &trait_sig);
-        let trait_fty = tcx.mk_fn_ptr(ty::BareFnTy {
-            unsafety: trait_m.fty.unsafety,
-            abi: trait_m.fty.abi,
-            sig: ty::Binder(trait_sig)
-        });
+        match err {
+            Ok(()) => { }
+            Err(terr) => {
+                debug!("checking trait method for compatibility: impl ty {:?}, trait ty {:?}",
+                       impl_fty,
+                       trait_fty);
+                span_err!(tcx.sess, impl_m_span, E0053,
+                          "method `{}` has an incompatible type for trait: {}",
+                          trait_m.name,
+                          terr);
+                return;
+            }
+        }
 
-        debug!("compare_impl_method: trait_fty={:?}",
-               trait_fty);
+        // Check that all obligations are satisfied by the implementation's
+        // version.
+        match fulfillment_cx.select_all_or_error(&infcx) {
+            Err(ref errors) => { infcx.report_fulfillment_errors(errors) }
+            Ok(_) => {}
+        }
 
-        infer::mk_subty(&infcx, false, origin, impl_fty, trait_fty)?;
+        // Finally, resolve all regions. This catches wily misuses of
+        // lifetime parameters. We have to build up a plausible lifetime
+        // environment based on what we find in the trait. We could also
+        // include the obligations derived from the method argument types,
+        // but I don't think it's necessary -- after all, those are still
+        // in effect when type-checking the body, and all the
+        // where-clauses in the header etc should be implied by the trait
+        // anyway, so it shouldn't be needed there either. Anyway, we can
+        // always add more relations later (it's backwards compat).
+        let mut free_regions = FreeRegionMap::new();
+        free_regions.relate_free_regions_from_predicates(
+            &infcx.parameter_environment.caller_bounds);
 
-        infcx.leak_check(&skol_map, snapshot)
+        infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
     });
 
-    match err {
-        Ok(()) => { }
-        Err(terr) => {
-            debug!("checking trait method for compatibility: impl ty {:?}, trait ty {:?}",
-                   impl_fty,
-                   trait_fty);
-            span_err!(tcx.sess, impl_m_span, E0053,
-                      "method `{}` has an incompatible type for trait: {}",
-                      trait_m.name,
-                      terr);
-            return;
-        }
-    }
-
-    // Check that all obligations are satisfied by the implementation's
-    // version.
-    match fulfillment_cx.select_all_or_error(&infcx) {
-        Err(ref errors) => { traits::report_fulfillment_errors(&infcx, errors) }
-        Ok(_) => {}
-    }
-
-    // Finally, resolve all regions. This catches wily misuses of
-    // lifetime parameters. We have to build up a plausible lifetime
-    // environment based on what we find in the trait. We could also
-    // include the obligations derived from the method argument types,
-    // but I don't think it's necessary -- after all, those are still
-    // in effect when type-checking the body, and all the
-    // where-clauses in the header etc should be implied by the trait
-    // anyway, so it shouldn't be needed there either. Anyway, we can
-    // always add more relations later (it's backwards compat).
-    let mut free_regions = FreeRegionMap::new();
-    free_regions.relate_free_regions_from_predicates(tcx,
-                                                     &infcx.parameter_environment.caller_bounds);
-
-    infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
-
-    fn check_region_bounds_on_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
-                                                span: Span,
-                                                impl_m: &ty::Method<'tcx>,
-                                                trait_generics: &ty::Generics<'tcx>,
-                                                impl_generics: &ty::Generics<'tcx>,
-                                                trait_to_skol_substs: &Substs<'tcx>,
-                                                impl_to_skol_substs: &Substs<'tcx>)
-                                                -> bool
+    fn check_region_bounds_on_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                                    span: Span,
+                                                    impl_m: &ty::Method<'tcx>,
+                                                    trait_generics: &ty::Generics<'tcx>,
+                                                    impl_generics: &ty::Generics<'tcx>,
+                                                    trait_to_skol_substs: &Substs<'tcx>,
+                                                    impl_to_skol_substs: &Substs<'tcx>)
+                                                    -> bool
     {
 
         let trait_params = trait_generics.regions.get_slice(subst::FnSpace);
@@ -397,7 +402,7 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
         // are zero. Since I don't quite know how to phrase things at
         // the moment, give a kind of vague error message.
         if trait_params.len() != impl_params.len() {
-            span_err!(tcx.sess, span, E0195,
+            span_err!(ccx.tcx.sess, span, E0195,
                 "lifetime parameters or bounds on method `{}` do \
                          not match the trait declaration",
                          impl_m.name);
@@ -408,78 +413,78 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
     }
 }
 
-pub fn compare_const_impl<'tcx>(tcx: &TyCtxt<'tcx>,
-                                impl_c: &ty::AssociatedConst<'tcx>,
-                                impl_c_span: Span,
-                                trait_c: &ty::AssociatedConst<'tcx>,
-                                impl_trait_ref: &ty::TraitRef<'tcx>) {
+pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                    impl_c: &ty::AssociatedConst<'tcx>,
+                                    impl_c_span: Span,
+                                    trait_c: &ty::AssociatedConst<'tcx>,
+                                    impl_trait_ref: &ty::TraitRef<'tcx>) {
     debug!("compare_const_impl(impl_trait_ref={:?})",
            impl_trait_ref);
 
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
-    let mut fulfillment_cx = traits::FulfillmentContext::new();
+    let tcx = ccx.tcx;
+    tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
+        let mut fulfillment_cx = traits::FulfillmentContext::new();
 
-    // The below is for the most part highly similar to the procedure
-    // for methods above. It is simpler in many respects, especially
-    // because we shouldn't really have to deal with lifetimes or
-    // predicates. In fact some of this should probably be put into
-    // shared functions because of DRY violations...
-    let trait_to_impl_substs = &impl_trait_ref.substs;
+        // The below is for the most part highly similar to the procedure
+        // for methods above. It is simpler in many respects, especially
+        // because we shouldn't really have to deal with lifetimes or
+        // predicates. In fact some of this should probably be put into
+        // shared functions because of DRY violations...
+        let trait_to_impl_substs = &impl_trait_ref.substs;
 
-    // Create a parameter environment that represents the implementation's
-    // method.
-    let impl_c_node_id = tcx.map.as_local_node_id(impl_c.def_id).unwrap();
-    let impl_param_env = ty::ParameterEnvironment::for_item(tcx, impl_c_node_id);
+        // Create a parameter environment that represents the implementation's
+        // method.
+        let impl_c_node_id = tcx.map.as_local_node_id(impl_c.def_id).unwrap();
+        let impl_param_env = ty::ParameterEnvironment::for_item(tcx, impl_c_node_id);
 
-    // Create mapping from impl to skolemized.
-    let impl_to_skol_substs = &impl_param_env.free_substs;
+        // Create mapping from impl to skolemized.
+        let impl_to_skol_substs = &impl_param_env.free_substs;
 
-    // Create mapping from trait to skolemized.
-    let trait_to_skol_substs =
-        trait_to_impl_substs
-        .subst(tcx, impl_to_skol_substs)
-        .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
-                     impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
-    debug!("compare_const_impl: trait_to_skol_substs={:?}",
-           trait_to_skol_substs);
+        // Create mapping from trait to skolemized.
+        let trait_to_skol_substs =
+            trait_to_impl_substs
+            .subst(tcx, impl_to_skol_substs).clone()
+            .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
+                         impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
+        debug!("compare_const_impl: trait_to_skol_substs={:?}",
+            trait_to_skol_substs);
 
-    // Compute skolemized form of impl and trait const tys.
-    let impl_ty = impl_c.ty.subst(tcx, impl_to_skol_substs);
-    let trait_ty = trait_c.ty.subst(tcx, &trait_to_skol_substs);
+        // Compute skolemized form of impl and trait const tys.
+        let impl_ty = impl_c.ty.subst(tcx, impl_to_skol_substs);
+        let trait_ty = trait_c.ty.subst(tcx, &trait_to_skol_substs);
 
-    let err = infcx.commit_if_ok(|_| {
-        let origin = TypeOrigin::Misc(impl_c_span);
+        let err = infcx.commit_if_ok(|_| {
+            let origin = TypeOrigin::Misc(impl_c_span);
 
-        // There is no "body" here, so just pass dummy id.
-        let impl_ty =
-            assoc::normalize_associated_types_in(&infcx,
-                                                 &mut fulfillment_cx,
-                                                 impl_c_span,
-                                                 0,
-                                                 &impl_ty);
+            // There is no "body" here, so just pass dummy id.
+            let impl_ty =
+                assoc::normalize_associated_types_in(&infcx,
+                                                     &mut fulfillment_cx,
+                                                     impl_c_span,
+                                                     0,
+                                                     &impl_ty);
 
-        debug!("compare_const_impl: impl_ty={:?}",
-               impl_ty);
+            debug!("compare_const_impl: impl_ty={:?}",
+                impl_ty);
 
-        let trait_ty =
-            assoc::normalize_associated_types_in(&infcx,
-                                                 &mut fulfillment_cx,
-                                                 impl_c_span,
-                                                 0,
-                                                 &trait_ty);
+            let trait_ty =
+                assoc::normalize_associated_types_in(&infcx,
+                                                     &mut fulfillment_cx,
+                                                     impl_c_span,
+                                                     0,
+                                                     &trait_ty);
 
-        debug!("compare_const_impl: trait_ty={:?}",
-               trait_ty);
+            debug!("compare_const_impl: trait_ty={:?}",
+                trait_ty);
 
-        infer::mk_subty(&infcx, false, origin, impl_ty, trait_ty)
-    });
+            infcx.sub_types(false, origin, impl_ty, trait_ty)
+                 .map(|InferOk { obligations, .. }| {
+                // FIXME(#32730) propagate obligations
+                assert!(obligations.is_empty())
+            })
+        });
 
-    match err {
-        Ok(InferOk { obligations, .. }) => {
-            // FIXME(#32730) propagate obligations
-            assert!(obligations.is_empty())
-        }
-        Err(terr) => {
+        if let Err(terr) = err {
             debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
                    impl_ty,
                    trait_ty);
@@ -488,7 +493,6 @@ pub fn compare_const_impl<'tcx>(tcx: &TyCtxt<'tcx>,
                       trait: {}",
                       trait_c.name,
                       terr);
-            return;
         }
-    }
+    });
 }

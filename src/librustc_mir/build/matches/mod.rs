@@ -27,7 +27,7 @@ mod simplify;
 mod test;
 mod util;
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn match_expr(&mut self,
                       destination: &Lvalue<'tcx>,
                       span: Span,
@@ -304,7 +304,7 @@ pub struct Test<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Main matching algorithm
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// The main match algorithm. It begins with a set of candidates
     /// `candidates` and has the job of generating code to determine
     /// which of these candidates, if any, is the correct one. The

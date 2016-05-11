@@ -22,12 +22,10 @@ use borrowck::*;
 use borrowck::InteriorKind::{InteriorElement, InteriorField};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::expr_use_visitor::MutateMode;
-use rustc::infer;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
-use rustc::traits::ProjectionMode;
 use syntax::ast;
 use syntax::codemap::Span;
 use rustc::hir;
@@ -92,7 +90,7 @@ struct CheckLoanCtxt<'a, 'tcx: 'a> {
     dfcx_loans: &'a LoanDataFlow<'a, 'tcx>,
     move_data: &'a move_data::FlowedMoveData<'a, 'tcx>,
     all_loans: &'a [Loan<'tcx>],
-    param_env: &'a ty::ParameterEnvironment<'a, 'tcx>,
+    param_env: &'a ty::ParameterEnvironment<'tcx>,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
@@ -203,11 +201,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     debug!("check_loans(body id={})", body.id);
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
-    let infcx = infer::new_infer_ctxt(bccx.tcx,
-                                      &bccx.tcx.tables,
-                                      Some(param_env),
-                                      ProjectionMode::AnyFinal);
-
+    let infcx = bccx.tcx.borrowck_fake_infer_ctxt(param_env);
     let mut clcx = CheckLoanCtxt {
         bccx: bccx,
         dfcx_loans: dfcx_loans,
@@ -215,11 +209,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         all_loans: all_loans,
         param_env: &infcx.parameter_environment
     };
-
-    {
-        let mut euv = euv::ExprUseVisitor::new(&mut clcx, &infcx);
-        euv.walk_fn(decl, body);
-    }
+    euv::ExprUseVisitor::new(&mut clcx, &infcx).walk_fn(decl, body);
 }
 
 #[derive(PartialEq)]
@@ -235,7 +225,7 @@ fn compatible_borrow_kinds(borrow_kind1: ty::BorrowKind,
 }
 
 impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
-    pub fn tcx(&self) -> &'a TyCtxt<'tcx> { self.bccx.tcx }
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.bccx.tcx }
 
     pub fn each_issued_loan<F>(&self, node: ast::NodeId, mut op: F) -> bool where
         F: FnMut(&Loan<'tcx>) -> bool,

@@ -12,8 +12,6 @@ use arena::TypedArena;
 use back::symbol_names;
 use llvm::{ValueRef, get_param, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::infer;
-use rustc::traits::ProjectionMode;
 use abi::{Abi, FnType};
 use adt;
 use attributes;
@@ -119,10 +117,10 @@ impl ClosureEnv {
     }
 }
 
-fn get_self_type<'tcx>(tcx: &TyCtxt<'tcx>,
-                       closure_id: DefId,
-                       fn_ty: Ty<'tcx>)
-                       -> Ty<'tcx> {
+fn get_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           closure_id: DefId,
+                           fn_ty: Ty<'tcx>)
+                           -> Ty<'tcx> {
     match tcx.closure_kind(closure_id) {
         ty::ClosureKind::Fn => {
             tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), fn_ty)
@@ -138,13 +136,13 @@ fn get_self_type<'tcx>(tcx: &TyCtxt<'tcx>,
 /// necessary. If the ID does not correspond to a closure ID, returns None.
 fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                closure_id: DefId,
-                                               substs: &ty::ClosureSubsts<'tcx>)
+                                               substs: ty::ClosureSubsts<'tcx>)
                                                -> ValueRef {
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
     let tcx = ccx.tcx();
-    let substs = tcx.erase_regions(substs);
-    let instance = Instance::new(closure_id, &substs.func_substs);
+    let substs = tcx.erase_regions(&substs);
+    let instance = Instance::new(closure_id, substs.func_substs);
 
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
         debug!("get_or_create_closure_declaration(): found closure {:?}: {:?}",
@@ -155,12 +153,11 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let symbol = symbol_names::exported_name(ccx, &instance);
 
     // Compute the rust-call form of the closure call method.
-    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
-    let sig = &infcx.closure_type(closure_id, &substs).sig;
+    let sig = &tcx.closure_type(closure_id, substs).sig;
     let sig = tcx.erase_late_bound_regions(sig);
-    let sig = infer::normalize_associated_type(tcx, &sig);
-    let closure_type = tcx.mk_closure_from_closure_substs(closure_id, Box::new(substs));
-    let function_type = tcx.mk_fn_ptr(ty::BareFnTy {
+    let sig = tcx.normalize_associated_type(&sig);
+    let closure_type = tcx.mk_closure_from_closure_substs(closure_id, substs);
+    let function_type = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Normal,
         abi: Abi::RustCall,
         sig: ty::Binder(ty::FnSig {
@@ -169,7 +166,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             output: sig.output,
             variadic: false
         })
-    });
+    }));
     let llfn = declare::define_internal_fn(ccx, &symbol, function_type);
 
     // set an inline hint for all closures
@@ -193,7 +190,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                                     body: &hir::Block,
                                     id: ast::NodeId,
                                     closure_def_id: DefId, // (*)
-                                    closure_substs: &ty::ClosureSubsts<'tcx>)
+                                    closure_substs: ty::ClosureSubsts<'tcx>)
                                     -> Option<Block<'a, 'tcx>>
 {
     // (*) Note that in the case of inlined functions, the `closure_def_id` will be the
@@ -220,14 +217,12 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     // this function (`trans_closure`) is invoked at the point
     // of the closure expression.
 
-    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
-    let function_type = infcx.closure_type(closure_def_id, closure_substs);
-
-    let sig = tcx.erase_late_bound_regions(&function_type.sig);
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = &tcx.closure_type(closure_def_id, closure_substs).sig;
+    let sig = tcx.erase_late_bound_regions(sig);
+    let sig = tcx.normalize_associated_type(&sig);
 
     let closure_type = tcx.mk_closure_from_closure_substs(closure_def_id,
-        Box::new(closure_substs.clone()));
+                                                          closure_substs);
     let sig = ty::FnSig {
         inputs: Some(get_self_type(tcx, closure_def_id, closure_type))
                     .into_iter().chain(sig.inputs).collect(),
@@ -288,7 +283,7 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                       -> ValueRef
 {
     // If this is a closure, redirect to it.
-    let llfn = get_or_create_closure_declaration(ccx, closure_def_id, &substs);
+    let llfn = get_or_create_closure_declaration(ccx, closure_def_id, substs);
 
     // If the closure is a Fn closure, but a FnOnce is needed (etc),
     // then adapt the self type
@@ -344,21 +339,21 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
            closure_def_id, substs, Value(llreffn));
 
     let tcx = ccx.tcx();
-    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
 
     // Find a version of the closure type. Substitute static for the
     // region since it doesn't really matter.
-    let closure_ty = tcx.mk_closure_from_closure_substs(closure_def_id, Box::new(substs.clone()));
+    let closure_ty = tcx.mk_closure_from_closure_substs(closure_def_id, substs);
     let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), closure_ty);
 
     // Make a version with the type of by-ref closure.
-    let ty::ClosureTy { unsafety, abi, mut sig } = infcx.closure_type(closure_def_id, &substs);
+    let ty::ClosureTy { unsafety, abi, mut sig } =
+        tcx.closure_type(closure_def_id, substs);
     sig.0.inputs.insert(0, ref_closure_ty); // sig has no self type as of yet
-    let llref_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
+    let llref_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: unsafety,
         abi: abi,
         sig: sig.clone()
-    });
+    }));
     debug!("trans_fn_once_adapter_shim: llref_fn_ty={:?}",
            llref_fn_ty);
 
@@ -369,14 +364,14 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     sig.0.inputs[0] = closure_ty;
 
     let sig = tcx.erase_late_bound_regions(&sig);
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = tcx.normalize_associated_type(&sig);
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
-    let llonce_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
+    let llonce_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: unsafety,
         abi: abi,
         sig: ty::Binder(sig)
-    });
+    }));
 
     // Create the by-value helper.
     let function_name =

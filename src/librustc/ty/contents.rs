@@ -89,7 +89,7 @@ impl TypeContents {
         self.intersects(TC::InteriorUnsafe)
     }
 
-    pub fn needs_drop(&self, _: &TyCtxt) -> bool {
+    pub fn needs_drop(&self, _: TyCtxt) -> bool {
         self.intersects(TC::NeedsDrop)
     }
 
@@ -139,15 +139,15 @@ impl fmt::Debug for TypeContents {
     }
 }
 
-impl<'tcx> ty::TyS<'tcx> {
-    pub fn type_contents(&'tcx self, cx: &TyCtxt<'tcx>) -> TypeContents {
-        return cx.tc_cache.memoize(self, || tc_ty(cx, self, &mut FnvHashMap()));
+impl<'a, 'tcx> ty::TyS<'tcx> {
+    pub fn type_contents(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> TypeContents {
+        return tcx.tc_cache.memoize(self, || tc_ty(tcx, self, &mut FnvHashMap()));
 
-        fn tc_ty<'tcx>(cx: &TyCtxt<'tcx>,
-                       ty: Ty<'tcx>,
-                       cache: &mut FnvHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
+        fn tc_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           ty: Ty<'tcx>,
+                           cache: &mut FnvHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
         {
-            // Subtle: Note that we are *not* using cx.tc_cache here but rather a
+            // Subtle: Note that we are *not* using tcx.tc_cache here but rather a
             // private cache for this walk.  This is needed in the case of cyclic
             // types like:
             //
@@ -163,7 +163,7 @@ impl<'tcx> ty::TyS<'tcx> {
             // The problem is, as we are doing the computation, we will also
             // compute an *intermediate* contents for, e.g., Option<List> of
             // TC::None.  This is ok during the computation of List itself, but if
-            // we stored this intermediate value into cx.tc_cache, then later
+            // we stored this intermediate value into tcx.tc_cache, then later
             // requests for the contents of Option<List> would also yield TC::None
             // which is incorrect.  This value was computed based on the crutch
             // value for the type contents of list.  The correct value is
@@ -172,7 +172,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 Some(tc) => { return *tc; }
                 None => {}
             }
-            match cx.tc_cache.borrow().get(&ty) {    // Must check both caches!
+            match tcx.tc_cache.borrow().get(&ty) {    // Must check both caches!
                 Some(tc) => { return *tc; }
                 None => {}
             }
@@ -192,7 +192,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 }
 
                 ty::TyBox(typ) => {
-                    tc_ty(cx, typ, cache).owned_pointer()
+                    tc_ty(tcx, typ, cache).owned_pointer()
                 }
 
                 ty::TyTrait(_) => {
@@ -208,28 +208,28 @@ impl<'tcx> ty::TyS<'tcx> {
                 }
 
                 ty::TyArray(ty, _) => {
-                    tc_ty(cx, ty, cache)
+                    tc_ty(tcx, ty, cache)
                 }
 
                 ty::TySlice(ty) => {
-                    tc_ty(cx, ty, cache)
+                    tc_ty(tcx, ty, cache)
                 }
                 ty::TyStr => TC::None,
 
                 ty::TyClosure(_, ref substs) => {
-                    TypeContents::union(&substs.upvar_tys, |ty| tc_ty(cx, &ty, cache))
+                    TypeContents::union(&substs.upvar_tys, |ty| tc_ty(tcx, &ty, cache))
                 }
 
                 ty::TyTuple(ref tys) => {
                     TypeContents::union(&tys[..],
-                                        |ty| tc_ty(cx, *ty, cache))
+                                        |ty| tc_ty(tcx, *ty, cache))
                 }
 
                 ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
                     let mut res =
                         TypeContents::union(&def.variants, |v| {
                             TypeContents::union(&v.fields, |f| {
-                                tc_ty(cx, f.ty(cx, substs), cache)
+                                tc_ty(tcx, f.ty(tcx, substs), cache)
                             })
                         });
 
@@ -237,7 +237,7 @@ impl<'tcx> ty::TyS<'tcx> {
                         res = res | TC::OwnsDtor;
                     }
 
-                    apply_lang_items(cx, def.did, res)
+                    apply_lang_items(tcx, def.did, res)
                 }
 
                 ty::TyProjection(..) |
@@ -255,9 +255,10 @@ impl<'tcx> ty::TyS<'tcx> {
             result
         }
 
-        fn apply_lang_items(cx: &TyCtxt, did: DefId, tc: TypeContents)
-                            -> TypeContents {
-            if Some(did) == cx.lang_items.unsafe_cell_type() {
+        fn apply_lang_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                      did: DefId, tc: TypeContents)
+                                      -> TypeContents {
+            if Some(did) == tcx.lang_items.unsafe_cell_type() {
                 tc | TC::InteriorUnsafe
             } else {
                 tc

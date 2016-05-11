@@ -29,16 +29,16 @@ use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
 
 #[derive(Copy, Clone)]
-pub struct Cx<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
-    infcx: &'a InferCtxt<'a, 'tcx>,
+pub struct Cx<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     constness: hir::Constness
 }
 
-impl<'a,'tcx> Cx<'a,'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>,
+impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                constness: hir::Constness)
-               -> Cx<'a, 'tcx> {
+               -> Cx<'a, 'gcx, 'tcx> {
         Cx {
             tcx: infcx.tcx,
             infcx: infcx,
@@ -47,7 +47,7 @@ impl<'a,'tcx> Cx<'a,'tcx> {
     }
 }
 
-impl<'a,'tcx:'a> Cx<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     /// Normalizes `ast` into the appropriate `mirror` type.
     pub fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
         ast.make_mirror(self)
@@ -85,12 +85,15 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
     }
 
     pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
-        Literal::Value { value: const_eval::eval_const_expr(self.tcx, e) }
+        Literal::Value {
+            value: const_eval::eval_const_expr(self.tcx.global_tcx(), e)
+        }
     }
 
     pub fn try_const_eval_literal(&mut self, e: &hir::Expr) -> Option<Literal<'tcx>> {
         let hint = const_eval::EvalHint::ExprTypeChecked;
-        const_eval::eval_const_expr_partial(self.tcx, e, hint, None).ok().and_then(|v| {
+        let tcx = self.tcx.global_tcx();
+        const_eval::eval_const_expr_partial(tcx, e, hint, None).ok().and_then(|v| {
             match v {
                 // All of these contain local IDs, unsuitable for storing in MIR.
                 ConstVal::Struct(_) | ConstVal::Tuple(_) |
@@ -130,21 +133,25 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
         bug!("found no method `{}` in `{:?}`", method_name, trait_def_id);
     }
 
-    pub fn num_variants(&mut self, adt_def: ty::AdtDef<'tcx>) -> usize {
+    pub fn num_variants(&mut self, adt_def: ty::AdtDef) -> usize {
         adt_def.variants.len()
     }
 
-    pub fn all_fields(&mut self, adt_def: ty::AdtDef<'tcx>, variant_index: usize) -> Vec<Field> {
+    pub fn all_fields(&mut self, adt_def: ty::AdtDef, variant_index: usize) -> Vec<Field> {
         (0..adt_def.variants[variant_index].fields.len())
             .map(Field::new)
             .collect()
     }
 
     pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
+        let ty = self.tcx.lift_to_global(&ty).unwrap_or_else(|| {
+            bug!("MIR: Cx::needs_drop({}) got \
+                  type with inference types/regions", ty);
+        });
         self.tcx.type_needs_drop_given_env(ty, &self.infcx.parameter_environment)
     }
 
-    pub fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
     }
 }

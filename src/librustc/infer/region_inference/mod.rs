@@ -190,8 +190,8 @@ impl SameRegions {
 
 pub type CombineMap = FnvHashMap<TwoRegions, RegionVid>;
 
-pub struct RegionVarBindings<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     var_origins: RefCell<Vec<RegionVariableOrigin>>,
 
     // Constraints of the form `A <= B` introduced by the region
@@ -253,8 +253,8 @@ pub struct RegionSnapshot {
     skolemization_count: u32,
 }
 
-impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
-    pub fn new(tcx: &'a TyCtxt<'tcx>) -> RegionVarBindings<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> RegionVarBindings<'a, 'gcx, 'tcx> {
         RegionVarBindings {
             tcx: tcx,
             var_origins: RefCell::new(Vec::new()),
@@ -600,7 +600,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                            origin: SubregionOrigin<'tcx>,
                            mut relate: F)
                            -> Region
-        where F: FnMut(&RegionVarBindings<'a, 'tcx>, Region, Region)
+        where F: FnMut(&RegionVarBindings<'a, 'gcx, 'tcx>, Region, Region)
     {
         let vars = TwoRegions { a: a, b: b };
         match self.combine_map(t).borrow().get(&vars) {
@@ -816,7 +816,7 @@ struct RegionAndOrigin<'tcx> {
 
 type RegionGraph = graph::Graph<(), Constraint>;
 
-impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     fn infer_variable_values(&self,
                              free_regions: &FreeRegionMap,
                              errors: &mut Vec<RegionResolutionError<'tcx>>,
@@ -1249,11 +1249,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         let WalkState {result, dup_found, ..} = state;
         return (result, dup_found);
 
-        fn process_edges<'a, 'tcx>(this: &RegionVarBindings<'a, 'tcx>,
-                                   state: &mut WalkState<'tcx>,
-                                   graph: &RegionGraph,
-                                   source_vid: RegionVid,
-                                   dir: Direction) {
+        fn process_edges<'a, 'gcx, 'tcx>(this: &RegionVarBindings<'a, 'gcx, 'tcx>,
+                                         state: &mut WalkState<'tcx>,
+                                         graph: &RegionGraph,
+                                         source_vid: RegionVid,
+                                         dir: Direction) {
             debug!("process_edges(source_vid={:?}, dir={:?})", source_vid, dir);
 
             let source_node_index = NodeIndex(source_vid.index as usize);
@@ -1362,8 +1362,8 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
     }
 }
 
-impl<'tcx> GenericKind<'tcx> {
-    pub fn to_ty(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
+impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
+    pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
             GenericKind::Projection(ref p) => tcx.mk_projection(p.trait_ref.clone(), p.item_name),
@@ -1371,7 +1371,7 @@ impl<'tcx> GenericKind<'tcx> {
     }
 }
 
-impl VerifyBound {
+impl<'a, 'gcx, 'tcx> VerifyBound {
     fn for_each_region(&self, f: &mut FnMut(ty::Region)) {
         match self {
             &VerifyBound::AnyRegion(ref rs) |
@@ -1424,12 +1424,11 @@ impl VerifyBound {
         }
     }
 
-    fn is_met<'tcx>(&self,
-                    tcx: &TyCtxt<'tcx>,
-                    free_regions: &FreeRegionMap,
-                    var_values: &Vec<VarValue>,
-                    min: ty::Region)
-                    -> bool {
+    fn is_met(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+              free_regions: &FreeRegionMap,
+              var_values: &Vec<VarValue>,
+              min: ty::Region)
+              -> bool {
         match self {
             &VerifyBound::AnyRegion(ref rs) =>
                 rs.iter()

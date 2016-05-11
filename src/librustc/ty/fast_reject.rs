@@ -43,10 +43,10 @@ pub enum SimplifiedType {
 /// then we can't say much about whether two types would unify. Put another way,
 /// `can_simplify_params` should be true if type parameters appear free in `ty` and `false` if they
 /// are to be considered bound.
-pub fn simplify_type(tcx: &TyCtxt,
-                     ty: Ty,
-                     can_simplify_params: bool)
-                     -> Option<SimplifiedType>
+pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                     ty: Ty,
+                                     can_simplify_params: bool)
+                                     -> Option<SimplifiedType>
 {
     match ty.sty {
         ty::TyBool => Some(BoolSimplifiedType),

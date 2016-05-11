@@ -21,8 +21,8 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token::keywords;
 
-pub struct Builder<'a, 'tcx: 'a> {
-    hir: Cx<'a, 'tcx>,
+pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    hir: Cx<'a, 'gcx, 'tcx>,
     cfg: CFG<'tcx>,
 
     fn_span: Span,
@@ -160,13 +160,13 @@ macro_rules! unpack {
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-pub fn construct_fn<'a, 'tcx, A>(hir: Cx<'a,'tcx>,
-                                 fn_id: ast::NodeId,
-                                 arguments: A,
-                                 return_ty: ty::FnOutput<'tcx>,
-                                 ast_block: &'tcx hir::Block)
-                                 -> (Mir<'tcx>, ScopeAuxiliaryVec)
-    where A: Iterator<Item=(Ty<'tcx>, Option<&'tcx hir::Pat>)>
+pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
+                                       fn_id: ast::NodeId,
+                                       arguments: A,
+                                       return_ty: ty::FnOutput<'gcx>,
+                                       ast_block: &'gcx hir::Block)
+                                       -> (Mir<'tcx>, ScopeAuxiliaryVec)
+    where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
 {
     let tcx = hir.tcx();
     let span = tcx.map.span(fn_id);
@@ -232,10 +232,10 @@ pub fn construct_fn<'a, 'tcx, A>(hir: Cx<'a,'tcx>,
     builder.finish(upvar_decls, arg_decls, return_ty)
 }
 
-pub fn construct_const<'a, 'tcx>(hir: Cx<'a,'tcx>,
-                                 item_id: ast::NodeId,
-                                 ast_expr: &'tcx hir::Expr)
-                                 -> (Mir<'tcx>, ScopeAuxiliaryVec) {
+pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
+                                       item_id: ast::NodeId,
+                                       ast_expr: &'tcx hir::Expr)
+                                       -> (Mir<'tcx>, ScopeAuxiliaryVec) {
     let tcx = hir.tcx();
     let span = tcx.map.span(item_id);
     let mut builder = Builder::new(hir, span);
@@ -259,8 +259,8 @@ pub fn construct_const<'a, 'tcx>(hir: Cx<'a,'tcx>,
     builder.finish(vec![], vec![], ty::FnConverging(ty))
 }
 
-impl<'a,'tcx> Builder<'a,'tcx> {
-    fn new(hir: Cx<'a, 'tcx>, span: Span) -> Builder<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+    fn new(hir: Cx<'a, 'gcx, 'tcx>, span: Span) -> Builder<'a, 'gcx, 'tcx> {
         let mut builder = Builder {
             hir: hir,
             cfg: CFG { basic_blocks: vec![] },
@@ -311,9 +311,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         return_ty: ty::FnOutput<'tcx>,
                         arguments: A,
                         argument_scope_id: ScopeId,
-                        ast_block: &'tcx hir::Block)
+                        ast_block: &'gcx hir::Block)
                         -> BlockAnd<Vec<ArgDecl<'tcx>>>
-        where A: Iterator<Item=(Ty<'tcx>, Option<&'tcx hir::Pat>)>
+        where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
     {
         // to start, translate the argument patterns and collect the argument types.
         let arg_decls = arguments.enumerate().map(|(index, (ty, pattern))| {

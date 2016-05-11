@@ -24,7 +24,7 @@ use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
 use syntax::codemap::Span;
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a simplifyable pattern.

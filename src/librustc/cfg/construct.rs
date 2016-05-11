@@ -19,7 +19,7 @@ use syntax::ptr::P;
 use hir::{self, PatKind};
 
 struct CFGBuilder<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     graph: CFGGraph,
     fn_exit: CFGIndex,
     loop_scopes: Vec<LoopScope>,
@@ -32,8 +32,8 @@ struct LoopScope {
     break_index: CFGIndex,    // where to go on a `break
 }
 
-pub fn construct(tcx: &TyCtxt,
-                 blk: &hir::Block) -> CFG {
+pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           blk: &hir::Block) -> CFG {
     let mut graph = graph::Graph::new();
     let entry = graph.add_node(CFGNodeData::Entry);
 

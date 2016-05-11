@@ -25,7 +25,6 @@ use middle::cstore::{LOCAL_CRATE, InlinedItemRef, LinkMeta, tls};
 use rustc::hir::def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
-use middle::stability;
 use rustc::ty::subst;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -57,7 +56,7 @@ use rustc::hir::map::DefKey;
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
-    pub tcx: &'a TyCtxt<'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub reexports: &'a def::ExportMap,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub link_meta: &'a LinkMeta,
@@ -140,7 +139,7 @@ pub fn def_to_u64(did: DefId) -> u64 {
     (did.krate as u64) << 32 | (did.index.as_usize() as u64)
 }
 
-pub fn def_to_string(_tcx: &TyCtxt, did: DefId) -> String {
+pub fn def_to_string(_tcx: TyCtxt, did: DefId) -> String {
     format!("{}:{}", did.krate, did.index.as_usize())
 }
 
@@ -253,7 +252,7 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     debug!("encode_enum_variant_info(did={:?})", did);
     let repr_hints = ecx.tcx.lookup_repr_hints(did);
     let repr_type = ecx.tcx.enum_repr_type(repr_hints.get(0));
-    let mut disr_val = repr_type.initial_discriminant(&ecx.tcx);
+    let mut disr_val = repr_type.initial_discriminant(ecx.tcx);
     let def = ecx.tcx.lookup_adt_def(did);
     for variant in &def.variants {
         let vid = variant.did;
@@ -283,8 +282,8 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_attributes(rbml_w, &attrs);
         encode_repr_attrs(rbml_w, ecx, &attrs);
 
-        let stab = stability::lookup_stability(ecx.tcx, vid);
-        let depr = stability::lookup_deprecation(ecx.tcx, vid);
+        let stab = ecx.tcx.lookup_stability(vid);
+        let depr = ecx.tcx.lookup_deprecation(vid);
         encode_stability(rbml_w, stab);
         encode_deprecation(rbml_w, depr);
 
@@ -376,8 +375,8 @@ fn encode_info_for_mod(ecx: &EncodeContext,
 
     encode_visibility(rbml_w, vis);
 
-    let stab = stability::lookup_stability(ecx.tcx, ecx.tcx.map.local_def_id(id));
-    let depr = stability::lookup_deprecation(ecx.tcx, ecx.tcx.map.local_def_id(id));
+    let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(id));
+    let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(id));
     encode_stability(rbml_w, stab);
     encode_deprecation(rbml_w, depr);
 
@@ -484,8 +483,8 @@ fn encode_field<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_bounds_and_type_for_item(rbml_w, ecx, index, id);
     encode_def_id_and_key(ecx, rbml_w, field.did);
 
-    let stab = stability::lookup_stability(ecx.tcx, field.did);
-    let depr = stability::lookup_deprecation(ecx.tcx, field.did);
+    let stab = ecx.tcx.lookup_stability(field.did);
+    let depr = ecx.tcx.lookup_deprecation(field.did);
     encode_stability(rbml_w, stab);
     encode_deprecation(rbml_w, depr);
 
@@ -517,8 +516,8 @@ fn encode_info_for_struct_ctor<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_symbol(ecx, rbml_w, ctor_id);
     }
 
-    let stab = stability::lookup_stability(ecx.tcx, ecx.tcx.map.local_def_id(ctor_id));
-    let depr= stability::lookup_deprecation(ecx.tcx, ecx.tcx.map.local_def_id(ctor_id));
+    let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(ctor_id));
+    let depr= ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(ctor_id));
     encode_stability(rbml_w, stab);
     encode_deprecation(rbml_w, depr);
 
@@ -646,8 +645,8 @@ fn encode_info_for_associated_const<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_bounds_and_type_for_item(rbml_w, ecx, index,
                                     ecx.local_id(associated_const.def_id));
 
-    let stab = stability::lookup_stability(ecx.tcx, associated_const.def_id);
-    let depr = stability::lookup_deprecation(ecx.tcx, associated_const.def_id);
+    let stab = ecx.tcx.lookup_stability(associated_const.def_id);
+    let depr = ecx.tcx.lookup_deprecation(associated_const.def_id);
     encode_stability(rbml_w, stab);
     encode_deprecation(rbml_w, depr);
 
@@ -681,8 +680,8 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
     encode_item_sort(rbml_w, 'r');
 
-    let stab = stability::lookup_stability(ecx.tcx, m.def_id);
-    let depr = stability::lookup_deprecation(ecx.tcx, m.def_id);
+    let stab = ecx.tcx.lookup_stability(m.def_id);
+    let depr = ecx.tcx.lookup_deprecation(m.def_id);
     encode_stability(rbml_w, stab);
     encode_deprecation(rbml_w, depr);
 
@@ -736,8 +735,8 @@ fn encode_info_for_associated_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
     encode_item_sort(rbml_w, 't');
 
-    let stab = stability::lookup_stability(ecx.tcx, associated_type.def_id);
-    let depr = stability::lookup_deprecation(ecx.tcx, associated_type.def_id);
+    let stab = ecx.tcx.lookup_stability(associated_type.def_id);
+    let depr = ecx.tcx.lookup_deprecation(associated_type.def_id);
     encode_stability(rbml_w, stab);
     encode_deprecation(rbml_w, depr);
 
@@ -872,8 +871,8 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
     let vis = &item.vis;
     let def_id = ecx.tcx.map.local_def_id(item.id);
-    let stab = stability::lookup_stability(tcx, ecx.tcx.map.local_def_id(item.id));
-    let depr = stability::lookup_deprecation(tcx, ecx.tcx.map.local_def_id(item.id));
+    let stab = tcx.lookup_stability(ecx.tcx.map.local_def_id(item.id));
+    let depr = tcx.lookup_deprecation(ecx.tcx.map.local_def_id(item.id));
 
     match item.node {
       hir::ItemStatic(_, m, _) => {
@@ -1231,8 +1230,8 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
             encode_parent_item(rbml_w, def_id);
 
-            let stab = stability::lookup_stability(tcx, item_def_id.def_id());
-            let depr = stability::lookup_deprecation(tcx, item_def_id.def_id());
+            let stab = tcx.lookup_stability(item_def_id.def_id());
+            let depr = tcx.lookup_deprecation(item_def_id.def_id());
             encode_stability(rbml_w, stab);
             encode_deprecation(rbml_w, depr);
 
@@ -1358,8 +1357,8 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             encode_symbol(ecx, rbml_w, nitem.id);
         }
         encode_attributes(rbml_w, &nitem.attrs);
-        let stab = stability::lookup_stability(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
-        let depr = stability::lookup_deprecation(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
+        let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
+        let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));
         encode_stability(rbml_w, stab);
         encode_deprecation(rbml_w, depr);
         encode_method_argument_names(rbml_w, &fndecl);
@@ -1372,8 +1371,8 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         }
         encode_bounds_and_type_for_item(rbml_w, ecx, index, nitem.id);
         encode_attributes(rbml_w, &nitem.attrs);
-        let stab = stability::lookup_stability(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
-        let depr = stability::lookup_deprecation(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
+        let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
+        let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));
         encode_stability(rbml_w, stab);
         encode_deprecation(rbml_w, depr);
         encode_symbol(ecx, rbml_w, nitem.id);
@@ -1698,7 +1697,7 @@ fn encode_struct_field_attrs(ecx: &EncodeContext,
 
 
 struct ImplVisitor<'a, 'tcx:'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     impls: FnvHashMap<DefId, Vec<DefId>>
 }
 
@@ -2017,10 +2016,10 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
 }
 
 // Get the encoded string for a type
-pub fn encoded_ty<'tcx>(tcx: &TyCtxt<'tcx>,
-                        t: Ty<'tcx>,
-                        def_id_to_string: fn(&TyCtxt<'tcx>, DefId) -> String)
-                        -> Vec<u8> {
+pub fn encoded_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            t: Ty<'tcx>,
+                            def_id_to_string: for<'b> fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String)
+                            -> Vec<u8> {
     let mut wr = Cursor::new(Vec::new());
     tyencode::enc_ty(&mut wr, &tyencode::ctxt {
         diag: tcx.sess.diagnostic(),

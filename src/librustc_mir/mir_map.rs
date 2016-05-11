@@ -20,13 +20,15 @@ use build;
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
 use rustc::mir::transform::MirSource;
+use rustc::mir::visit::MutVisitor;
 use pretty;
 use hair::cx::Cx;
 
 use rustc::mir::mir_map::MirMap;
-use rustc::infer;
+use rustc::infer::InferCtxtBuilder;
 use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
 use rustc::hir;
 use rustc::hir::intravisit::{self, FnKind, Visitor};
@@ -34,7 +36,9 @@ use rustc::hir::map::blocks::FnLikeNode;
 use syntax::ast;
 use syntax::codemap::Span;
 
-pub fn build_mir_for_crate<'tcx>(tcx: &TyCtxt<'tcx>) -> MirMap<'tcx> {
+use std::mem;
+
+pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MirMap<'tcx> {
     let mut map = MirMap {
         map: NodeMap(),
     };
@@ -48,46 +52,107 @@ pub fn build_mir_for_crate<'tcx>(tcx: &TyCtxt<'tcx>) -> MirMap<'tcx> {
     map
 }
 
+/// A pass to lift all the types and substitutions in a Mir
+/// to the global tcx. Sadly, we don't have a "folder" that
+/// can change 'tcx so we have to transmute afterwards.
+struct GlobalizeMir<'a, 'gcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'gcx>,
+    span: Span
+}
+
+impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
+    fn visit_ty(&mut self, ty: &mut Ty<'tcx>) {
+        if let Some(lifted) = self.tcx.lift(ty) {
+            *ty = lifted;
+        } else {
+            span_bug!(self.span,
+                      "found type `{:?}` with inference types/regions in MIR",
+                      ty);
+        }
+    }
+
+    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>) {
+        if let Some(lifted) = self.tcx.lift(substs) {
+            *substs = lifted;
+        } else {
+            span_bug!(self.span,
+                      "found substs `{:?}` with inference types/regions in MIR",
+                      substs);
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
 struct BuildMir<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     map: &'a mut MirMap<'tcx>,
 }
 
-impl<'a, 'tcx> BuildMir<'a, 'tcx> {
-    fn build<F>(&mut self, src: MirSource, f: F)
-        where F: for<'b> FnOnce(Cx<'b, 'tcx>) -> (Mir<'tcx>, build::ScopeAuxiliaryVec)
-    {
-        let constness = match src {
-            MirSource::Const(_) |
-            MirSource::Static(..) => hir::Constness::Const,
-            MirSource::Fn(id) => {
-                let fn_like = FnLikeNode::from_node(self.tcx.map.get(id));
-                match fn_like.map(|f| f.kind()) {
-                    Some(FnKind::ItemFn(_, _, _, c, _, _, _)) => c,
-                    Some(FnKind::Method(_, m, _, _)) => m.constness,
-                    _ => hir::Constness::NotConst
-                }
-            }
-            MirSource::Promoted(..) => bug!()
-        };
+/// Helper type of a temporary returned by BuildMir::cx(...).
+/// Necessary because we can't write the following bound:
+/// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(Cx<'b, 'gcx, 'tcx>).
+struct CxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    src: MirSource,
+    infcx: InferCtxtBuilder<'a, 'gcx, 'tcx>,
+    map: &'a mut MirMap<'gcx>,
+}
 
+impl<'a, 'gcx, 'tcx> BuildMir<'a, 'gcx> {
+    fn cx<'b>(&'b mut self, src: MirSource) -> CxBuilder<'b, 'gcx, 'tcx> {
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, src.item_id());
-        let infcx = infer::new_infer_ctxt(self.tcx,
-                                          &self.tcx.tables,
-                                          Some(param_env),
-                                          ProjectionMode::AnyFinal);
+        CxBuilder {
+            src: src,
+            infcx: self.tcx.infer_ctxt(None, Some(param_env), ProjectionMode::AnyFinal),
+            map: self.map
+        }
+    }
+}
 
-        let (mir, scope_auxiliary) = f(Cx::new(&infcx, constness));
+impl<'a, 'gcx, 'tcx> CxBuilder<'a, 'gcx, 'tcx> {
+    fn build<F>(&'tcx mut self, f: F)
+        where F: for<'b> FnOnce(Cx<'b, 'gcx, 'tcx>) -> (Mir<'tcx>, build::ScopeAuxiliaryVec)
+    {
+        let src = self.src;
+        let mir = self.infcx.enter(|infcx| {
+            let constness = match src {
+                MirSource::Const(_) |
+                MirSource::Static(..) => hir::Constness::Const,
+                MirSource::Fn(id) => {
+                    let fn_like = FnLikeNode::from_node(infcx.tcx.map.get(id));
+                    match fn_like.map(|f| f.kind()) {
+                        Some(FnKind::ItemFn(_, _, _, c, _, _, _)) => c,
+                        Some(FnKind::Method(_, m, _, _)) => m.constness,
+                        _ => hir::Constness::NotConst
+                    }
+                }
+                MirSource::Promoted(..) => bug!()
+            };
+            let (mut mir, scope_auxiliary) = f(Cx::new(&infcx, constness));
 
-        pretty::dump_mir(self.tcx, "mir_map", &0, src, &mir, Some(&scope_auxiliary));
+            // Convert the Mir to global types.
+            let mut globalizer = GlobalizeMir {
+                tcx: infcx.tcx.global_tcx(),
+                span: mir.span
+            };
+            globalizer.visit_mir(&mut mir);
+            let mir = unsafe {
+                mem::transmute::<Mir, Mir<'gcx>>(mir)
+            };
+
+            pretty::dump_mir(infcx.tcx.global_tcx(), "mir_map", &0,
+                             src, &mir, Some(&scope_auxiliary));
+
+            mir
+        });
 
         assert!(self.map.map.insert(src.item_id(), mir).is_none())
     }
+}
 
-    fn build_const_integer(&mut self, expr: &'tcx hir::Expr) {
+impl<'a, 'gcx> BuildMir<'a, 'gcx> {
+    fn build_const_integer(&mut self, expr: &'gcx hir::Expr) {
         // FIXME(eddyb) Closures should have separate
         // function definition IDs and expression IDs.
         // Type-checking should not let closures get
@@ -95,7 +160,7 @@ impl<'a, 'tcx> BuildMir<'a, 'tcx> {
         if let hir::ExprClosure(..) = expr.node {
             return;
         }
-        self.build(MirSource::Const(expr.id), |cx| {
+        self.cx(MirSource::Const(expr.id)).build(|cx| {
             build::construct_const(cx, expr.id, expr)
         });
     }
@@ -106,12 +171,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
             hir::ItemConst(_, ref expr) => {
-                self.build(MirSource::Const(item.id), |cx| {
+                self.cx(MirSource::Const(item.id)).build(|cx| {
                     build::construct_const(cx, item.id, expr)
                 });
             }
             hir::ItemStatic(_, m, ref expr) => {
-                self.build(MirSource::Static(item.id, m), |cx| {
+                self.cx(MirSource::Static(item.id, m)).build(|cx| {
                     build::construct_const(cx, item.id, expr)
                 });
             }
@@ -123,7 +188,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     // Trait associated const defaults.
     fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
         if let hir::ConstTraitItem(_, Some(ref expr)) = item.node {
-            self.build(MirSource::Const(item.id), |cx| {
+            self.cx(MirSource::Const(item.id)).build(|cx| {
                 build::construct_const(cx, item.id, expr)
             });
         }
@@ -133,7 +198,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     // Impl associated const.
     fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
         if let hir::ImplItemKind::Const(_, ref expr) = item.node {
-            self.build(MirSource::Const(item.id), |cx| {
+            self.cx(MirSource::Const(item.id)).build(|cx| {
                 build::construct_const(cx, item.id, expr)
             });
         }
@@ -181,7 +246,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
         };
 
         let implicit_argument = if let FnKind::Closure(..) = fk {
-            Some((closure_self_ty(&self.tcx, id, body.id), None))
+            Some((closure_self_ty(self.tcx, id, body.id), None))
         } else {
             None
         };
@@ -194,8 +259,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
                     (fn_sig.inputs[index], Some(&*arg.pat))
                 });
 
-        self.build(MirSource::Fn(id), |cx| {
-            let arguments = implicit_argument.into_iter().chain(explicit_arguments);
+        let arguments = implicit_argument.into_iter().chain(explicit_arguments);
+        self.cx(MirSource::Fn(id)).build(|cx| {
             build::construct_fn(cx, id, arguments, fn_sig.output, body)
         });
 
@@ -203,7 +268,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     }
 }
 
-fn closure_self_ty<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
+fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              closure_expr_id: ast::NodeId,
                              body_id: ast::NodeId)
                              -> Ty<'tcx> {

@@ -73,7 +73,7 @@ pub struct TraitDef<'tcx> {
     pub flags: Cell<TraitFlags>
 }
 
-impl<'tcx> TraitDef<'tcx> {
+impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
     pub fn new(unsafety: hir::Unsafety,
                paren_sugar: bool,
                generics: ty::Generics<'tcx>,
@@ -117,19 +117,18 @@ impl<'tcx> TraitDef<'tcx> {
         );
     }
 
-    fn write_trait_impls(&self, tcx: &TyCtxt<'tcx>) {
+    fn write_trait_impls(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) {
         tcx.dep_graph.write(DepNode::TraitImpls(self.trait_ref.def_id));
     }
 
-    fn read_trait_impls(&self, tcx: &TyCtxt<'tcx>) {
+    fn read_trait_impls(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) {
         tcx.dep_graph.read(DepNode::TraitImpls(self.trait_ref.def_id));
     }
 
     /// Records a basic trait-to-implementation mapping.
     ///
     /// Returns `true` iff the impl has not previously been recorded.
-    fn record_impl(&self,
-                   tcx: &TyCtxt<'tcx>,
+    fn record_impl(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                    impl_def_id: DefId,
                    impl_trait_ref: TraitRef<'tcx>)
                    -> bool {
@@ -164,8 +163,7 @@ impl<'tcx> TraitDef<'tcx> {
     }
 
     /// Records a trait-to-implementation mapping for a crate-local impl.
-    pub fn record_local_impl(&self,
-                             tcx: &TyCtxt<'tcx>,
+    pub fn record_local_impl(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                              impl_def_id: DefId,
                              impl_trait_ref: TraitRef<'tcx>) {
         assert!(impl_def_id.is_local());
@@ -178,8 +176,7 @@ impl<'tcx> TraitDef<'tcx> {
     /// The `parent_impl` is the immediately-less-specialized impl, or the
     /// trait's def ID if the impl is not a specialization -- information that
     /// should be pulled from the metadata.
-    pub fn record_remote_impl(&self,
-                              tcx: &TyCtxt<'tcx>,
+    pub fn record_remote_impl(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                               impl_def_id: DefId,
                               impl_trait_ref: TraitRef<'tcx>,
                               parent_impl: DefId) {
@@ -197,22 +194,22 @@ impl<'tcx> TraitDef<'tcx> {
     /// Adds a local impl into the specialization graph, returning an error with
     /// overlap information if the impl overlaps but does not specialize an
     /// existing impl.
-    pub fn add_impl_for_specialization<'a>(&self,
-                                           tcx: &'a TyCtxt<'tcx>,
-                                           impl_def_id: DefId)
-                                           -> Result<(), traits::Overlap<'a, 'tcx>> {
+    pub fn add_impl_for_specialization(&self,
+                                       tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                       impl_def_id: DefId)
+                                       -> Result<(), traits::OverlapError> {
         assert!(impl_def_id.is_local());
 
         self.specialization_graph.borrow_mut()
             .insert(tcx, impl_def_id)
     }
 
-    pub fn ancestors<'a>(&'a self, of_impl: DefId) -> specialization_graph::Ancestors<'a, 'tcx> {
+    pub fn ancestors(&'a self, of_impl: DefId) -> specialization_graph::Ancestors<'a, 'tcx> {
         specialization_graph::ancestors(self, of_impl)
     }
 
-        pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: &TyCtxt<'tcx>, mut f: F)  {
-            self.read_trait_impls(tcx);
+    pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, mut f: F) {
+        self.read_trait_impls(tcx);
         tcx.populate_implementations_for_trait_if_necessary(self.trait_ref.def_id);
 
         for &impl_def_id in self.blanket_impls.borrow().iter() {
@@ -229,7 +226,7 @@ impl<'tcx> TraitDef<'tcx> {
     /// Iterate over every impl that could possibly match the
     /// self-type `self_ty`.
     pub fn for_each_relevant_impl<F: FnMut(DefId)>(&self,
-                                                   tcx: &TyCtxt<'tcx>,
+                                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                    self_ty: Ty<'tcx>,
                                                    mut f: F)
     {

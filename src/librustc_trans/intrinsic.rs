@@ -15,7 +15,6 @@ use intrinsics::{self, Intrinsic};
 use libc;
 use llvm;
 use llvm::{ValueRef, TypeKind};
-use rustc::infer;
 use rustc::ty::subst;
 use rustc::ty::subst::FnSpace;
 use abi::{Abi, FnType};
@@ -114,7 +113,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let (def_id, substs, sig) = match callee_ty.sty {
         ty::TyFnDef(def_id, substs, fty) => {
             let sig = tcx.erase_late_bound_regions(&fty.sig);
-            (def_id, substs, infer::normalize_associated_type(tcx, &sig))
+            (def_id, substs, tcx.normalize_associated_type(&sig))
         }
         _ => bug!("expected fn item type, found {}", callee_ty)
     };
@@ -1260,11 +1259,11 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     };
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
-    let rust_fn_ty = ccx.tcx().mk_fn_ptr(ty::BareFnTy {
+    let rust_fn_ty = ccx.tcx().mk_fn_ptr(ccx.tcx().mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: Abi::Rust,
         sig: ty::Binder(sig)
-    });
+    }));
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
     let (fcx, block_arena);
     block_arena = TypedArena::new();
@@ -1290,7 +1289,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     // Define the type up front for the signature of the rust_try function.
     let tcx = ccx.tcx();
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
-    let fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
+    let fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: Abi::Rust,
         sig: ty::Binder(ty::FnSig {
@@ -1298,7 +1297,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
             output: ty::FnOutput::FnConverging(tcx.mk_nil()),
             variadic: false,
         }),
-    });
+    }));
     let output = ty::FnOutput::FnConverging(tcx.types.i32);
     let rust_try = gen_fn(fcx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
     ccx.rust_try_fn().set(Some(rust_try));
@@ -1352,7 +1351,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
     let tcx = bcx.tcx();
     let sig = tcx.erase_late_bound_regions(callee_ty.fn_sig());
-    let sig = infer::normalize_associated_type(tcx, &sig);
+    let sig = tcx.normalize_associated_type(&sig);
     let arg_tys = sig.inputs;
 
     // every intrinsic takes a SIMD vector as its first argument

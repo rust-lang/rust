@@ -18,47 +18,32 @@ pub use self::ObligationCauseCode::*;
 use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use ty::subst;
-use ty::{self, Ty, TypeFoldable};
-use infer::{self, fixup_err_to_string, InferCtxt};
+use ty::{self, Ty, TyCtxt, TypeFoldable};
+use infer::InferCtxt;
 
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 
 pub use self::error_reporting::TraitErrorKey;
-pub use self::error_reporting::recursive_type_with_infinite_size_error;
-pub use self::error_reporting::report_fulfillment_errors;
-pub use self::error_reporting::report_fulfillment_errors_as_warnings;
-pub use self::error_reporting::report_overflow_error;
-pub use self::error_reporting::report_overflow_error_cycle;
-pub use self::error_reporting::report_selection_error;
-pub use self::error_reporting::report_object_safety_error;
 pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
 pub use self::fulfill::{FulfillmentContext, GlobalFulfilledPredicates, RegionObligation};
 pub use self::project::{MismatchedProjectionTypes, ProjectionMode};
 pub use self::project::{normalize, Normalized};
-pub use self::object_safety::is_object_safe;
-pub use self::object_safety::astconv_object_safety_violations;
-pub use self::object_safety::object_safety_violations;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
-pub use self::object_safety::is_vtable_safe_method;
 pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
 pub use self::select::{MethodMatchedData}; // intentionally don't export variants
-pub use self::specialize::{Overlap, specialization_graph, specializes, translate_substs};
+pub use self::specialize::{OverlapError, specialization_graph, specializes, translate_substs};
 pub use self::util::elaborate_predicates;
-pub use self::util::get_vtable_index_of_object_method;
-pub use self::util::trait_ref_for_builtin_bound;
-pub use self::util::predicate_for_trait_def;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
 pub use self::util::supertrait_def_ids;
 pub use self::util::SupertraitDefIds;
 pub use self::util::transitive_bounds;
-pub use self::util::upcast;
 
 mod coherence;
 mod error_reporting;
@@ -331,11 +316,11 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
-pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                                                 ty: Ty<'tcx>,
-                                                 bound: ty::BuiltinBound,
-                                                 span: Span)
-                                                 -> bool
+pub fn type_known_to_meet_builtin_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                                        ty: Ty<'tcx>,
+                                                        bound: ty::BuiltinBound,
+                                                        span: Span)
+                                                        -> bool
 {
     debug!("type_known_to_meet_builtin_bound(ty={:?}, bound={:?})",
            ty,
@@ -343,7 +328,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
 
     let cause = ObligationCause::misc(span, ast::DUMMY_NODE_ID);
     let obligation =
-        util::predicate_for_builtin_bound(infcx.tcx, cause, bound, 0, ty);
+        infcx.tcx.predicate_for_builtin_bound(cause, bound, 0, ty);
     let obligation = match obligation {
         Ok(o) => o,
         Err(..) => return false
@@ -393,9 +378,10 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
 
 // FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
-pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvironment<'a,'tcx>,
-                                             cause: ObligationCause<'tcx>)
-                                             -> ty::ParameterEnvironment<'a,'tcx>
+pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    unnormalized_env: ty::ParameterEnvironment<'tcx>,
+    cause: ObligationCause<'tcx>)
+    -> ty::ParameterEnvironment<'tcx>
 {
     // I'm not wild about reporting errors here; I'd prefer to
     // have the errors get reported at a defined place (e.g.,
@@ -412,7 +398,6 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
     // and errors will get reported then; so after typeck we
     // can be sure that no errors should occur.
 
-    let tcx = unnormalized_env.tcx;
     let span = cause.span;
     let body_id = cause.body_id;
 
@@ -437,51 +422,54 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
-    let infcx = infer::new_infer_ctxt(tcx,
-                                      &tcx.tables,
-                                      Some(elaborated_env),
-                                      ProjectionMode::AnyFinal);
-    let predicates = match fully_normalize(&infcx,
-                                           cause,
-                                           &infcx.parameter_environment.caller_bounds) {
-        Ok(predicates) => predicates,
-        Err(errors) => {
-            report_fulfillment_errors(&infcx, &errors);
-            return infcx.parameter_environment; // an unnormalized env is better than nothing
-        }
-    };
+    tcx.infer_ctxt(None, Some(elaborated_env), ProjectionMode::AnyFinal).enter(|infcx| {
+        let predicates = match fully_normalize(&infcx, cause,
+                                               &infcx.parameter_environment.caller_bounds) {
+            Ok(predicates) => predicates,
+            Err(errors) => {
+                infcx.report_fulfillment_errors(&errors);
+                // An unnormalized env is better than nothing.
+                return infcx.parameter_environment;
+            }
+        };
 
-    debug!("normalize_param_env_or_error: normalized predicates={:?}",
-           predicates);
+        debug!("normalize_param_env_or_error: normalized predicates={:?}",
+            predicates);
 
-    let free_regions = FreeRegionMap::new();
-    infcx.resolve_regions_and_report_errors(&free_regions, body_id);
-    let predicates = match infcx.fully_resolve(&predicates) {
-        Ok(predicates) => predicates,
-        Err(fixup_err) => {
-            // If we encounter a fixup error, it means that some type
-            // variable wound up unconstrained. I actually don't know
-            // if this can happen, and I certainly don't expect it to
-            // happen often, but if it did happen it probably
-            // represents a legitimate failure due to some kind of
-            // unconstrained variable, and it seems better not to ICE,
-            // all things considered.
-            let err_msg = fixup_err_to_string(fixup_err);
-            tcx.sess.span_err(span, &err_msg);
-            return infcx.parameter_environment; // an unnormalized env is better than nothing
-        }
-    };
+        let free_regions = FreeRegionMap::new();
+        infcx.resolve_regions_and_report_errors(&free_regions, body_id);
+        let predicates = match infcx.fully_resolve(&predicates) {
+            Ok(predicates) => predicates,
+            Err(fixup_err) => {
+                // If we encounter a fixup error, it means that some type
+                // variable wound up unconstrained. I actually don't know
+                // if this can happen, and I certainly don't expect it to
+                // happen often, but if it did happen it probably
+                // represents a legitimate failure due to some kind of
+                // unconstrained variable, and it seems better not to ICE,
+                // all things considered.
+                tcx.sess.span_err(span, &fixup_err.to_string());
+                // An unnormalized env is better than nothing.
+                return infcx.parameter_environment;
+            }
+        };
 
-    debug!("normalize_param_env_or_error: resolved predicates={:?}",
-           predicates);
+        let predicates = match tcx.lift_to_global(&predicates) {
+            Some(predicates) => predicates,
+            None => return infcx.parameter_environment
+        };
 
-    infcx.parameter_environment.with_caller_bounds(predicates)
+        debug!("normalize_param_env_or_error: resolved predicates={:?}",
+            predicates);
+
+        infcx.parameter_environment.with_caller_bounds(predicates)
+    })
 }
 
-pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
-                                  cause: ObligationCause<'tcx>,
-                                  value: &T)
-                                  -> Result<T, Vec<FulfillmentError<'tcx>>>
+pub fn fully_normalize<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                          cause: ObligationCause<'tcx>,
+                                          value: &T)
+                                          -> Result<T, Vec<FulfillmentError<'tcx>>>
     where T : TypeFoldable<'tcx>
 {
     debug!("fully_normalize(value={:?})", value);

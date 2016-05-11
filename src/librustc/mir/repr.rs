@@ -816,7 +816,7 @@ pub enum AggregateKind<'tcx> {
     Vec,
     Tuple,
     Adt(AdtDef<'tcx>, usize, &'tcx Substs<'tcx>),
-    Closure(DefId, &'tcx ClosureSubsts<'tcx>),
+    Closure(DefId, ClosureSubsts<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]

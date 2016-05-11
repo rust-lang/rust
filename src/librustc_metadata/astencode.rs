@@ -60,7 +60,7 @@ use rustc_serialize::{Encodable, EncoderHelpers};
 #[cfg(test)] use rustc::hir::lowering::{lower_item, LoweringContext, DummyResolver};
 
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cdata: &'b cstore::crate_metadata,
     from_id_range: IdRange,
     to_id_range: IdRange,
@@ -122,13 +122,13 @@ impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
 
 /// Decodes an item from its AST in the cdata's metadata and adds it to the
 /// ast-map.
-pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
-                                 tcx: &TyCtxt<'tcx>,
-                                 parent_def_path: ast_map::DefPath,
-                                 parent_did: DefId,
-                                 ast_doc: rbml::Doc,
-                                 orig_did: DefId)
-                                 -> &'tcx InlinedItem {
+pub fn decode_inlined_item<'a, 'tcx>(cdata: &cstore::crate_metadata,
+                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     parent_def_path: ast_map::DefPath,
+                                     parent_did: DefId,
+                                     ast_doc: rbml::Doc,
+                                     orig_did: DefId)
+                                     -> &'tcx InlinedItem {
     debug!("> Decoding inlined fn: {:?}", tcx.item_path_str(orig_did));
     let mut ast_dsr = reader::Decoder::new(ast_doc);
     let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
@@ -362,11 +362,8 @@ impl tr for Def {
         match *self {
           Def::Fn(did) => Def::Fn(did.tr(dcx)),
           Def::Method(did) => Def::Method(did.tr(dcx)),
-          Def::SelfTy(opt_did, impl_ids) => { Def::SelfTy(opt_did.map(|did| did.tr(dcx)),
-                                                                impl_ids.map(|(nid1, nid2)| {
-                                                                    (dcx.tr_id(nid1),
-                                                                     dcx.tr_id(nid2))
-                                                                })) }
+          Def::SelfTy(opt_did, impl_id) => { Def::SelfTy(opt_did.map(|did| did.tr(dcx)),
+                                                         impl_id.map(|id| dcx.tr_id(id))) }
           Def::Mod(did) => { Def::Mod(did.tr(dcx)) }
           Def::ForeignMod(did) => { Def::ForeignMod(did.tr(dcx)) }
           Def::Static(did, m) => { Def::Static(did.tr(dcx), m) }
@@ -861,21 +858,19 @@ trait rbml_decoder_decoder_helpers<'tcx> {
 
     // Versions of the type reading functions that don't need the full
     // DecodeContext.
-    fn read_ty_nodcx(&mut self,
-                     tcx: &TyCtxt<'tcx>, cdata: &cstore::crate_metadata) -> Ty<'tcx>;
-    fn read_tys_nodcx(&mut self,
-                      tcx: &TyCtxt<'tcx>,
-                      cdata: &cstore::crate_metadata) -> Vec<Ty<'tcx>>;
-    fn read_substs_nodcx(&mut self, tcx: &TyCtxt<'tcx>,
-                         cdata: &cstore::crate_metadata)
-                         -> subst::Substs<'tcx>;
+    fn read_ty_nodcx<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         cdata: &cstore::crate_metadata) -> Ty<'tcx>;
+    fn read_tys_nodcx<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          cdata: &cstore::crate_metadata) -> Vec<Ty<'tcx>>;
+    fn read_substs_nodcx<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             cdata: &cstore::crate_metadata)
+                             -> subst::Substs<'tcx>;
 }
 
 impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
-    fn read_ty_nodcx(&mut self,
-                     tcx: &TyCtxt<'tcx>,
-                     cdata: &cstore::crate_metadata)
-                     -> Ty<'tcx> {
+    fn read_ty_nodcx<'b>(&mut self, tcx: TyCtxt<'b, 'tcx, 'tcx>,
+                         cdata: &cstore::crate_metadata)
+                         -> Ty<'tcx> {
         self.read_opaque(|_, doc| {
             Ok(
                 tydecode::TyDecoder::with_doc(tcx, cdata.cnum, doc,
@@ -884,19 +879,17 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_tys_nodcx(&mut self,
-                      tcx: &TyCtxt<'tcx>,
-                      cdata: &cstore::crate_metadata) -> Vec<Ty<'tcx>> {
+    fn read_tys_nodcx<'b>(&mut self, tcx: TyCtxt<'b, 'tcx, 'tcx>,
+                          cdata: &cstore::crate_metadata) -> Vec<Ty<'tcx>> {
         self.read_to_vec(|this| Ok(this.read_ty_nodcx(tcx, cdata)) )
             .unwrap()
             .into_iter()
             .collect()
     }
 
-    fn read_substs_nodcx(&mut self,
-                         tcx: &TyCtxt<'tcx>,
-                         cdata: &cstore::crate_metadata)
-                         -> subst::Substs<'tcx>
+    fn read_substs_nodcx<'b>(&mut self, tcx: TyCtxt<'b, 'tcx, 'tcx>,
+                             cdata: &cstore::crate_metadata)
+                             -> subst::Substs<'tcx>
     {
         self.read_opaque(|_, doc| {
             Ok(
@@ -1153,7 +1146,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     }
                     c::tag_table_item_subst => {
                         let item_substs = ty::ItemSubsts {
-                            substs: val_dsr.read_substs(dcx)
+                            substs: dcx.tcx.mk_substs(val_dsr.read_substs(dcx))
                         };
                         dcx.tcx.tables.borrow_mut().item_substs.insert(
                             id, item_substs);

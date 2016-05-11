@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::combine::{self, CombineFields};
-use super::higher_ranked::HigherRankedRelations;
+use super::combine::CombineFields;
 use super::SubregionOrigin;
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
@@ -20,12 +19,12 @@ use traits::PredicateObligations;
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
-pub struct Sub<'a, 'tcx: 'a> {
-    fields: CombineFields<'a, 'tcx>,
+pub struct Sub<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fields: CombineFields<'a, 'gcx, 'tcx>,
 }
 
-impl<'a, 'tcx> Sub<'a, 'tcx> {
-    pub fn new(f: CombineFields<'a, 'tcx>) -> Sub<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> Sub<'a, 'gcx, 'tcx> {
+    pub fn new(f: CombineFields<'a, 'gcx, 'tcx>) -> Sub<'a, 'gcx, 'tcx> {
         Sub { fields: f }
     }
 
@@ -34,9 +33,9 @@ impl<'a, 'tcx> Sub<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Sub<'a, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Sub" }
-    fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.infcx.tcx }
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.fields.infcx.tcx }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
     fn with_cause<F,R>(&mut self, cause: Cause, f: F) -> R
@@ -50,11 +49,11 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
         r
     }
 
-    fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
-                                               variance: ty::Variance,
-                                               a: &T,
-                                               b: &T)
-                                               -> RelateResult<'tcx, T>
+    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
+                                             variance: ty::Variance,
+                                             a: &T,
+                                             b: &T)
+                                             -> RelateResult<'tcx, T>
     {
         match variance {
             ty::Invariant => self.fields.equate().relate(a, b),
@@ -96,7 +95,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
             }
 
             _ => {
-                combine::super_combine_tys(self.fields.infcx, self, a, b)?;
+                self.fields.infcx.super_combine_tys(self, a, b)?;
                 Ok(a)
             }
         }
@@ -115,7 +114,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
                   -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'a,'tcx>
+        where T: Relate<'tcx>
     {
         self.fields.higher_ranked_sub(a, b)
     }

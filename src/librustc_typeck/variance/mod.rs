@@ -27,7 +27,7 @@ mod solve;
 /// Code for transforming variances.
 mod xform;
 
-pub fn infer_variance(tcx: &TyCtxt) {
+pub fn infer_variance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut arena = arena::TypedArena::new();
     let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &mut arena);
     let constraints_cx = constraints::add_constraints_from_crate(terms_cx);

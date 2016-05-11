@@ -19,11 +19,11 @@ use rustc::mir::visit::MutVisitor;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
-    pub fn new(tcx: &'a TyCtxt<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         EraseRegionsVisitor {
             tcx: tcx
         }
@@ -37,7 +37,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     }
 
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>) {
-        *substs = self.tcx.mk_substs(self.tcx.erase_regions(*substs));
+        *substs = self.tcx.erase_regions(&{*substs});
     }
 }
 
@@ -46,7 +46,8 @@ pub struct EraseRegions;
 impl Pass for EraseRegions {}
 
 impl<'tcx> MirPass<'tcx> for EraseRegions {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    _: MirSource, mir: &mut Mir<'tcx>) {
         EraseRegionsVisitor::new(tcx).visit_mir(mir);
     }
 }

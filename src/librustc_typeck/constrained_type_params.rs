@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::ty::subst;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, subst, Ty};
 
 use std::collections::HashSet;
 
@@ -94,13 +93,12 @@ fn parameters_for_region(region: &ty::Region) -> Option<Parameter> {
     }
 }
 
-pub fn identify_constrained_type_params<'tcx>(_tcx: &TyCtxt<'tcx>,
-                                              predicates: &[ty::Predicate<'tcx>],
+pub fn identify_constrained_type_params<'tcx>(predicates: &[ty::Predicate<'tcx>],
                                               impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                               input_parameters: &mut HashSet<Parameter>)
 {
     let mut predicates = predicates.to_owned();
-    setup_constraining_predicates(_tcx, &mut predicates, impl_trait_ref, input_parameters);
+    setup_constraining_predicates(&mut predicates, impl_trait_ref, input_parameters);
 }
 
 
@@ -144,8 +142,7 @@ pub fn identify_constrained_type_params<'tcx>(_tcx: &TyCtxt<'tcx>,
 /// which is determined by 1, which requires `U`, that is determined
 /// by 0. I should probably pick a less tangled example, but I can't
 /// think of any.
-pub fn setup_constraining_predicates<'tcx>(_tcx: &TyCtxt<'tcx>,
-                                           predicates: &mut [ty::Predicate<'tcx>],
+pub fn setup_constraining_predicates<'tcx>(predicates: &mut [ty::Predicate<'tcx>],
                                            impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                            input_parameters: &mut HashSet<Parameter>)
 {

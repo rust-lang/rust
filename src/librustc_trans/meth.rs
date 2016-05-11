@@ -14,7 +14,6 @@ use arena::TypedArena;
 use back::symbol_names;
 use llvm::{ValueRef, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::infer;
 use rustc::ty::subst::{FnSpace, Subst, Substs};
 use rustc::ty::subst;
 use rustc::traits::{self, ProjectionMode};
@@ -86,7 +85,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
            method_ty);
 
     let sig = tcx.erase_late_bound_regions(&method_ty.fn_sig());
-    let sig = infer::normalize_associated_type(tcx, &sig);
+    let sig = tcx.normalize_associated_type(&sig);
     let fn_ty = FnType::new(ccx, method_ty.fn_abi(), &sig, &[]);
 
     let function_name =
@@ -215,10 +214,10 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     vtable
 }
 
-pub fn get_vtable_methods<'tcx>(tcx: &TyCtxt<'tcx>,
-                                impl_id: DefId,
-                                substs: &'tcx subst::Substs<'tcx>)
-                                -> Vec<Option<ImplMethod<'tcx>>>
+pub fn get_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                    impl_id: DefId,
+                                    substs: &'tcx subst::Substs<'tcx>)
+                                    -> Vec<Option<ImplMethod<'tcx>>>
 {
     debug!("get_vtable_methods(impl_id={:?}, substs={:?}", impl_id, substs);
 
@@ -256,7 +255,7 @@ pub fn get_vtable_methods<'tcx>(tcx: &TyCtxt<'tcx>,
             let name = trait_method_type.name;
 
             // Some methods cannot be called on an object; skip those.
-            if !traits::is_vtable_safe_method(tcx, trt_id, &trait_method_type) {
+            if !tcx.is_vtable_safe_method(trt_id, &trait_method_type) {
                 debug!("get_vtable_methods: not vtable safe");
                 return None;
             }
@@ -304,23 +303,31 @@ pub struct ImplMethod<'tcx> {
 }
 
 /// Locates the applicable definition of a method, given its name.
-pub fn get_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
-                             impl_def_id: DefId,
-                             substs: &'tcx Substs<'tcx>,
-                             name: Name)
-                             -> ImplMethod<'tcx>
+pub fn get_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 impl_def_id: DefId,
+                                 substs: &'tcx Substs<'tcx>,
+                                 name: Name)
+                                 -> ImplMethod<'tcx>
 {
     assert!(!substs.types.needs_infer());
 
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
-    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
 
     match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
         Some(node_item) => {
+            let substs = tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+                let substs = traits::translate_substs(&infcx, impl_def_id,
+                                                      substs, node_item.node);
+                tcx.lift(&substs).unwrap_or_else(|| {
+                    bug!("trans::meth::get_impl_method: translate_substs \
+                          returned {:?} which contains inference types/regions",
+                         substs);
+                })
+            });
             ImplMethod {
                 method: node_item.item,
-                substs: traits::translate_substs(&infcx, impl_def_id, substs, node_item.node),
+                substs: substs,
                 is_provided: node_item.node.is_from_trait(),
             }
         }

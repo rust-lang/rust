@@ -199,10 +199,10 @@ impl FragmentSets {
     }
 }
 
-pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
-                                       tcx: &TyCtxt<'tcx>,
-                                       sp: Span,
-                                       id: ast::NodeId) {
+pub fn instrument_move_fragments<'a, 'tcx>(this: &MoveData<'tcx>,
+                                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                           sp: Span,
+                                           id: ast::NodeId) {
     let span_err = tcx.map.attrs(id).iter()
                           .any(|a| a.check_name("rustc_move_fragments"));
     let print = tcx.sess.opts.debugging_opts.print_move_fragments;
@@ -245,7 +245,7 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
 ///
 /// Note: "left-over fragments" means paths that were not directly referenced in moves nor
 /// assignments, but must nonetheless be tracked as potential drop obligations.
-pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &TyCtxt<'tcx>) {
+pub fn fixup_fragment_sets<'a, 'tcx>(this: &MoveData<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     let mut fragments = this.fragments.borrow_mut();
 
@@ -346,11 +346,11 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &TyCtxt<'tcx>) {
 /// Adds all of the precisely-tracked siblings of `lp` as potential move paths of interest. For
 /// example, if `lp` represents `s.x.j`, then adds moves paths for `s.x.i` and `s.x.k`, the
 /// siblings of `s.x.j`.
-fn add_fragment_siblings<'tcx>(this: &MoveData<'tcx>,
-                               tcx: &TyCtxt<'tcx>,
-                               gathered_fragments: &mut Vec<Fragment>,
-                               lp: Rc<LoanPath<'tcx>>,
-                               origin_id: Option<ast::NodeId>) {
+fn add_fragment_siblings<'a, 'tcx>(this: &MoveData<'tcx>,
+                                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   gathered_fragments: &mut Vec<Fragment>,
+                                   lp: Rc<LoanPath<'tcx>>,
+                                   origin_id: Option<ast::NodeId>) {
     match lp.kind {
         LpVar(_) | LpUpvar(..) => {} // Local variables have no siblings.
 
@@ -405,16 +405,16 @@ fn add_fragment_siblings<'tcx>(this: &MoveData<'tcx>,
 
 /// We have determined that `origin_lp` destructures to LpExtend(parent, original_field_name).
 /// Based on this, add move paths for all of the siblings of `origin_lp`.
-fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
-                                             tcx: &TyCtxt<'tcx>,
-                                             gathered_fragments: &mut Vec<Fragment>,
-                                             parent_lp: &Rc<LoanPath<'tcx>>,
-                                             mc: mc::MutabilityCategory,
-                                             origin_field_name: &mc::FieldName,
-                                             origin_lp: &Rc<LoanPath<'tcx>>,
-                                             origin_id: Option<ast::NodeId>,
-                                             enum_variant_info: Option<(DefId,
-                                                                        Rc<LoanPath<'tcx>>)>) {
+fn add_fragment_siblings_for_extension<'a, 'tcx>(this: &MoveData<'tcx>,
+                                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                 gathered_fragments: &mut Vec<Fragment>,
+                                                 parent_lp: &Rc<LoanPath<'tcx>>,
+                                                 mc: mc::MutabilityCategory,
+                                                 origin_field_name: &mc::FieldName,
+                                                 origin_lp: &Rc<LoanPath<'tcx>>,
+                                                 origin_id: Option<ast::NodeId>,
+                                                 enum_variant_info: Option<(DefId,
+                                                    Rc<LoanPath<'tcx>>)>) {
     let parent_ty = parent_lp.to_type();
 
     let mut add_fragment_sibling_local = |field_name, variant_did| {
@@ -504,14 +504,15 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
 
 /// Adds the single sibling `LpExtend(parent, new_field_name)` of `origin_lp` (the original
 /// loan-path).
-fn add_fragment_sibling_core<'tcx>(this: &MoveData<'tcx>,
-                                   tcx: &TyCtxt<'tcx>,
-                                   gathered_fragments: &mut Vec<Fragment>,
-                                   parent: Rc<LoanPath<'tcx>>,
-                                   mc: mc::MutabilityCategory,
-                                   new_field_name: mc::FieldName,
-                                   origin_lp: &Rc<LoanPath<'tcx>>,
-                                   enum_variant_did: Option<DefId>) -> MovePathIndex {
+fn add_fragment_sibling_core<'a, 'tcx>(this: &MoveData<'tcx>,
+                                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                       gathered_fragments: &mut Vec<Fragment>,
+                                       parent: Rc<LoanPath<'tcx>>,
+                                       mc: mc::MutabilityCategory,
+                                       new_field_name: mc::FieldName,
+                                       origin_lp: &Rc<LoanPath<'tcx>>,
+                                       enum_variant_did: Option<DefId>)
+                                       -> MovePathIndex {
     let opt_variant_did = match parent.kind {
         LpDowncast(_, variant_did) => Some(variant_did),
         LpVar(..) | LpUpvar(..) | LpExtend(..) => enum_variant_did,

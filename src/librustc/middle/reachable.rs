@@ -55,9 +55,10 @@ fn item_might_be_inlined(item: &hir::Item) -> bool {
     }
 }
 
-fn method_might_be_inlined(tcx: &TyCtxt, sig: &hir::MethodSig,
-                           impl_item: &hir::ImplItem,
-                           impl_src: DefId) -> bool {
+fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     sig: &hir::MethodSig,
+                                     impl_item: &hir::ImplItem,
+                                     impl_src: DefId) -> bool {
     if attr::requests_inline(&impl_item.attrs) ||
         generics_require_inlining(&sig.generics) {
         return true
@@ -77,7 +78,7 @@ fn method_might_be_inlined(tcx: &TyCtxt, sig: &hir::MethodSig,
 // Information needed while computing reachability.
 struct ReachableContext<'a, 'tcx: 'a> {
     // The type context.
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: NodeSet,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
@@ -142,7 +143,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
 
 impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // Creates a new reachability computation context.
-    fn new(tcx: &'a TyCtxt<'tcx>) -> ReachableContext<'a, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ReachableContext<'a, 'tcx> {
         let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
             *ty != config::CrateTypeExecutable
         });
@@ -344,9 +345,9 @@ impl<'a, 'v> Visitor<'v> for CollectPrivateImplItemsVisitor<'a> {
     }
 }
 
-pub fn find_reachable(tcx: &TyCtxt,
-                      access_levels: &privacy::AccessLevels)
-                      -> NodeSet {
+pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                access_levels: &privacy::AccessLevels)
+                                -> NodeSet {
     let _task = tcx.dep_graph.in_task(DepNode::Reachability);
 
     let mut reachable_context = ReachableContext::new(tcx);

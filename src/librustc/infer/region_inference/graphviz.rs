@@ -53,8 +53,10 @@ graphs will be printed.                                                     \n\
 ");
 }
 
-pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a, 'tcx>,
-                                             subject_node: ast::NodeId) {
+pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
+    region_vars: &RegionVarBindings<'a, 'gcx, 'tcx>,
+    subject_node: ast::NodeId)
+{
     let tcx = region_vars.tcx;
 
     if !region_vars.tcx.sess.opts.debugging_opts.print_region_graph {
@@ -118,8 +120,8 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
     }
 }
 
-struct ConstraintGraph<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+struct ConstraintGraph<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     graph_name: String,
     map: &'a FnvHashMap<Constraint, SubregionOrigin<'tcx>>,
     node_ids: FnvHashMap<Node, usize>,
@@ -138,11 +140,11 @@ enum Edge {
     EnclScope(CodeExtent, CodeExtent),
 }
 
-impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
-    fn new(tcx: &'a TyCtxt<'tcx>,
+impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
            name: String,
            map: &'a ConstraintMap<'tcx>)
-           -> ConstraintGraph<'a, 'tcx> {
+           -> ConstraintGraph<'a, 'gcx, 'tcx> {
         let mut i = 0;
         let mut node_ids = FnvHashMap();
         {
@@ -173,7 +175,7 @@ impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     type Node = Node;
     type Edge = Edge;
     fn graph_id(&self) -> dot::Id {
@@ -226,7 +228,7 @@ fn edge_to_nodes(e: &Edge) -> (Node, Node) {
     }
 }
 
-impl<'a, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     type Node = Node;
     type Edge = Edge;
     fn nodes(&self) -> dot::Nodes<Node> {
@@ -258,10 +260,10 @@ impl<'a, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'tcx> {
 
 pub type ConstraintMap<'tcx> = FnvHashMap<Constraint, SubregionOrigin<'tcx>>;
 
-fn dump_region_constraints_to<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
-                                            map: &ConstraintMap<'tcx>,
-                                            path: &str)
-                                            -> io::Result<()> {
+fn dump_region_constraints_to<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                              map: &ConstraintMap<'tcx>,
+                                              path: &str)
+                                              -> io::Result<()> {
     debug!("dump_region_constraints map (len: {}) path: {}",
            map.len(),
            path);

@@ -55,160 +55,157 @@ pub enum Component<'tcx> {
     EscapingProjection(Vec<Component<'tcx>>),
 }
 
-/// Returns all the things that must outlive `'a` for the condition
-/// `ty0: 'a` to hold.
-pub fn components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                           ty0: Ty<'tcx>)
-                           -> Vec<Component<'tcx>> {
-    let mut components = vec![];
-    compute_components(infcx, ty0, &mut components);
-    debug!("components({:?}) = {:?}", ty0, components);
-    components
-}
-
-fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                               ty: Ty<'tcx>,
-                               out: &mut Vec<Component<'tcx>>) {
-    // Descend through the types, looking for the various "base"
-    // components and collecting them into `out`. This is not written
-    // with `collect()` because of the need to sometimes skip subtrees
-    // in the `subtys` iterator (e.g., when encountering a
-    // projection).
-    match ty.sty {
-        ty::TyClosure(_, ref substs) => {
-            // FIXME(#27086). We do not accumulate from substs, since they
-            // don't represent reachable data. This means that, in
-            // practice, some of the lifetime parameters might not
-            // be in scope when the body runs, so long as there is
-            // no reachable data with that lifetime. For better or
-            // worse, this is consistent with fn types, however,
-            // which can also encapsulate data in this fashion
-            // (though it's somewhat harder, and typically
-            // requires virtual dispatch).
-            //
-            // Note that changing this (in a naive way, at least)
-            // causes regressions for what appears to be perfectly
-            // reasonable code like this:
-            //
-            // ```
-            // fn foo<'a>(p: &Data<'a>) {
-            //    bar(|q: &mut Parser| q.read_addr())
-            // }
-            // fn bar(p: Box<FnMut(&mut Parser)+'static>) {
-            // }
-            // ```
-            //
-            // Note that `p` (and `'a`) are not used in the
-            // closure at all, but to meet the requirement that
-            // the closure type `C: 'static` (so it can be coerced
-            // to the object type), we get the requirement that
-            // `'a: 'static` since `'a` appears in the closure
-            // type `C`.
-            //
-            // A smarter fix might "prune" unused `func_substs` --
-            // this would avoid breaking simple examples like
-            // this, but would still break others (which might
-            // indeed be invalid, depending on your POV). Pruning
-            // would be a subtle process, since we have to see
-            // what func/type parameters are used and unused,
-            // taking into consideration UFCS and so forth.
-
-            for &upvar_ty in &substs.upvar_tys {
-                compute_components(infcx, upvar_ty, out);
-            }
-        }
-
-        // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
-        // is implied by the environment is done in regionck.
-        ty::TyParam(p) => {
-            out.push(Component::Param(p));
-        }
-
-        // For projections, we prefer to generate an obligation like
-        // `<P0 as Trait<P1...Pn>>::Foo: 'a`, because this gives the
-        // regionck more ways to prove that it holds. However,
-        // regionck is not (at least currently) prepared to deal with
-        // higher-ranked regions that may appear in the
-        // trait-ref. Therefore, if we see any higher-ranke regions,
-        // we simply fallback to the most restrictive rule, which
-        // requires that `Pi: 'a` for all `i`.
-        ty::TyProjection(ref data) => {
-            if !data.has_escaping_regions() {
-                // best case: no escaping regions, so push the
-                // projection and skip the subtree (thus generating no
-                // constraints for Pi). This defers the choice between
-                // the rules OutlivesProjectionEnv,
-                // OutlivesProjectionTraitDef, and
-                // OutlivesProjectionComponents to regionck.
-                out.push(Component::Projection(*data));
-            } else {
-                // fallback case: hard code
-                // OutlivesProjectionComponents.  Continue walking
-                // through and constrain Pi.
-                let subcomponents = capture_components(infcx, ty);
-                out.push(Component::EscapingProjection(subcomponents));
-            }
-        }
-
-        // If we encounter an inference variable, try to resolve it
-        // and proceed with resolved version. If we cannot resolve it,
-        // then record the unresolved variable as a component.
-        ty::TyInfer(_) => {
-            let ty = infcx.resolve_type_vars_if_possible(&ty);
-            if let ty::TyInfer(infer_ty) = ty.sty {
-                out.push(Component::UnresolvedInferenceVariable(infer_ty));
-            } else {
-                compute_components(infcx, ty, out);
-            }
-        }
-
-        // Most types do not introduce any region binders, nor
-        // involve any other subtle cases, and so the WF relation
-        // simply constraints any regions referenced directly by
-        // the type and then visits the types that are lexically
-        // contained within. (The comments refer to relevant rules
-        // from RFC1214.)
-        ty::TyBool |            // OutlivesScalar
-        ty::TyChar |            // OutlivesScalar
-        ty::TyInt(..) |         // OutlivesScalar
-        ty::TyUint(..) |        // OutlivesScalar
-        ty::TyFloat(..) |       // OutlivesScalar
-        ty::TyEnum(..) |        // OutlivesNominalType
-        ty::TyStruct(..) |      // OutlivesNominalType
-        ty::TyBox(..) |         // OutlivesNominalType (ish)
-        ty::TyStr |             // OutlivesScalar (ish)
-        ty::TyArray(..) |       // ...
-        ty::TySlice(..) |       // ...
-        ty::TyRawPtr(..) |      // ...
-        ty::TyRef(..) |         // OutlivesReference
-        ty::TyTuple(..) |       // ...
-        ty::TyFnDef(..) |       // OutlivesFunction (*)
-        ty::TyFnPtr(_) |        // OutlivesFunction (*)
-        ty::TyTrait(..) |       // OutlivesObject, OutlivesFragment (*)
-        ty::TyError => {
-            // (*) Bare functions and traits are both binders. In the
-            // RFC, this means we would add the bound regions to the
-            // "bound regions list".  In our representation, no such
-            // list is maintained explicitly, because bound regions
-            // themselves can be readily identified.
-
-            push_region_constraints(out, ty.regions());
-            for subty in ty.walk_shallow() {
-                compute_components(infcx, subty, out);
-            }
-        }
-    }
-}
-
-fn capture_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                               ty: Ty<'tcx>)
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+    /// Returns all the things that must outlive `'a` for the condition
+    /// `ty0: 'a` to hold.
+    pub fn outlives_components(&self, ty0: Ty<'tcx>)
                                -> Vec<Component<'tcx>> {
-    let mut temp = vec![];
-    push_region_constraints(&mut temp, ty.regions());
-    for subty in ty.walk_shallow() {
-        compute_components(infcx, subty, &mut temp);
+        let mut components = vec![];
+        self.compute_components(ty0, &mut components);
+        debug!("components({:?}) = {:?}", ty0, components);
+        components
     }
-    temp
+
+    fn compute_components(&self, ty: Ty<'tcx>, out: &mut Vec<Component<'tcx>>) {
+        // Descend through the types, looking for the various "base"
+        // components and collecting them into `out`. This is not written
+        // with `collect()` because of the need to sometimes skip subtrees
+        // in the `subtys` iterator (e.g., when encountering a
+        // projection).
+        match ty.sty {
+            ty::TyClosure(_, ref substs) => {
+                // FIXME(#27086). We do not accumulate from substs, since they
+                // don't represent reachable data. This means that, in
+                // practice, some of the lifetime parameters might not
+                // be in scope when the body runs, so long as there is
+                // no reachable data with that lifetime. For better or
+                // worse, this is consistent with fn types, however,
+                // which can also encapsulate data in this fashion
+                // (though it's somewhat harder, and typically
+                // requires virtual dispatch).
+                //
+                // Note that changing this (in a naive way, at least)
+                // causes regressions for what appears to be perfectly
+                // reasonable code like this:
+                //
+                // ```
+                // fn foo<'a>(p: &Data<'a>) {
+                //    bar(|q: &mut Parser| q.read_addr())
+                // }
+                // fn bar(p: Box<FnMut(&mut Parser)+'static>) {
+                // }
+                // ```
+                //
+                // Note that `p` (and `'a`) are not used in the
+                // closure at all, but to meet the requirement that
+                // the closure type `C: 'static` (so it can be coerced
+                // to the object type), we get the requirement that
+                // `'a: 'static` since `'a` appears in the closure
+                // type `C`.
+                //
+                // A smarter fix might "prune" unused `func_substs` --
+                // this would avoid breaking simple examples like
+                // this, but would still break others (which might
+                // indeed be invalid, depending on your POV). Pruning
+                // would be a subtle process, since we have to see
+                // what func/type parameters are used and unused,
+                // taking into consideration UFCS and so forth.
+
+                for &upvar_ty in substs.upvar_tys {
+                    self.compute_components(upvar_ty, out);
+                }
+            }
+
+            // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
+            // is implied by the environment is done in regionck.
+            ty::TyParam(p) => {
+                out.push(Component::Param(p));
+            }
+
+            // For projections, we prefer to generate an obligation like
+            // `<P0 as Trait<P1...Pn>>::Foo: 'a`, because this gives the
+            // regionck more ways to prove that it holds. However,
+            // regionck is not (at least currently) prepared to deal with
+            // higher-ranked regions that may appear in the
+            // trait-ref. Therefore, if we see any higher-ranke regions,
+            // we simply fallback to the most restrictive rule, which
+            // requires that `Pi: 'a` for all `i`.
+            ty::TyProjection(ref data) => {
+                if !data.has_escaping_regions() {
+                    // best case: no escaping regions, so push the
+                    // projection and skip the subtree (thus generating no
+                    // constraints for Pi). This defers the choice between
+                    // the rules OutlivesProjectionEnv,
+                    // OutlivesProjectionTraitDef, and
+                    // OutlivesProjectionComponents to regionck.
+                    out.push(Component::Projection(*data));
+                } else {
+                    // fallback case: hard code
+                    // OutlivesProjectionComponents.  Continue walking
+                    // through and constrain Pi.
+                    let subcomponents = self.capture_components(ty);
+                    out.push(Component::EscapingProjection(subcomponents));
+                }
+            }
+
+            // If we encounter an inference variable, try to resolve it
+            // and proceed with resolved version. If we cannot resolve it,
+            // then record the unresolved variable as a component.
+            ty::TyInfer(_) => {
+                let ty = self.resolve_type_vars_if_possible(&ty);
+                if let ty::TyInfer(infer_ty) = ty.sty {
+                    out.push(Component::UnresolvedInferenceVariable(infer_ty));
+                } else {
+                    self.compute_components(ty, out);
+                }
+            }
+
+            // Most types do not introduce any region binders, nor
+            // involve any other subtle cases, and so the WF relation
+            // simply constraints any regions referenced directly by
+            // the type and then visits the types that are lexically
+            // contained within. (The comments refer to relevant rules
+            // from RFC1214.)
+            ty::TyBool |            // OutlivesScalar
+            ty::TyChar |            // OutlivesScalar
+            ty::TyInt(..) |         // OutlivesScalar
+            ty::TyUint(..) |        // OutlivesScalar
+            ty::TyFloat(..) |       // OutlivesScalar
+            ty::TyEnum(..) |        // OutlivesNominalType
+            ty::TyStruct(..) |      // OutlivesNominalType
+            ty::TyBox(..) |         // OutlivesNominalType (ish)
+            ty::TyStr |             // OutlivesScalar (ish)
+            ty::TyArray(..) |       // ...
+            ty::TySlice(..) |       // ...
+            ty::TyRawPtr(..) |      // ...
+            ty::TyRef(..) |         // OutlivesReference
+            ty::TyTuple(..) |       // ...
+            ty::TyFnDef(..) |       // OutlivesFunction (*)
+            ty::TyFnPtr(_) |        // OutlivesFunction (*)
+            ty::TyTrait(..) |       // OutlivesObject, OutlivesFragment (*)
+            ty::TyError => {
+                // (*) Bare functions and traits are both binders. In the
+                // RFC, this means we would add the bound regions to the
+                // "bound regions list".  In our representation, no such
+                // list is maintained explicitly, because bound regions
+                // themselves can be readily identified.
+
+                push_region_constraints(out, ty.regions());
+                for subty in ty.walk_shallow() {
+                    self.compute_components(subty, out);
+                }
+            }
+        }
+    }
+
+    fn capture_components(&self, ty: Ty<'tcx>) -> Vec<Component<'tcx>> {
+        let mut temp = vec![];
+        push_region_constraints(&mut temp, ty.regions());
+        for subty in ty.walk_shallow() {
+            self.compute_components(subty, &mut temp);
+        }
+        temp
+    }
 }
 
 fn push_region_constraints<'tcx>(out: &mut Vec<Component<'tcx>>, regions: Vec<ty::Region>) {

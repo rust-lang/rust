@@ -34,12 +34,12 @@ use syntax::ptr::P;
 ///    _ => { ... }
 /// }
 /// ```
-struct PatCx<'patcx, 'cx: 'patcx, 'tcx: 'cx> {
-    cx: &'patcx mut Cx<'cx, 'tcx>,
+struct PatCx<'patcx, 'cx: 'patcx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
+    cx: &'patcx mut Cx<'cx, 'gcx, 'tcx>,
     binding_map: Option<&'patcx FnvHashMap<ast::Name, ast::NodeId>>,
 }
 
-impl<'cx, 'tcx> Cx<'cx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> Cx<'cx, 'gcx, 'tcx> {
     pub fn irrefutable_pat(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
         PatCx::new(self, None).to_pattern(pat)
     }
@@ -52,10 +52,10 @@ impl<'cx, 'tcx> Cx<'cx, 'tcx> {
     }
 }
 
-impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
-    fn new(cx: &'patcx mut Cx<'cx, 'tcx>,
+impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
+    fn new(cx: &'patcx mut Cx<'cx, 'gcx, 'tcx>,
                binding_map: Option<&'patcx FnvHashMap<ast::Name, ast::NodeId>>)
-               -> PatCx<'patcx, 'cx, 'tcx> {
+               -> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
         PatCx {
             cx: cx,
             binding_map: binding_map,
@@ -69,14 +69,14 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
             PatKind::Wild => PatternKind::Wild,
 
             PatKind::Lit(ref value) => {
-                let value = const_eval::eval_const_expr(self.cx.tcx, value);
+                let value = const_eval::eval_const_expr(self.cx.tcx.global_tcx(), value);
                 PatternKind::Constant { value: value }
             }
 
             PatKind::Range(ref lo, ref hi) => {
-                let lo = const_eval::eval_const_expr(self.cx.tcx, lo);
+                let lo = const_eval::eval_const_expr(self.cx.tcx.global_tcx(), lo);
                 let lo = Literal::Value { value: lo };
-                let hi = const_eval::eval_const_expr(self.cx.tcx, hi);
+                let hi = const_eval::eval_const_expr(self.cx.tcx.global_tcx(), hi);
                 let hi = Literal::Value { value: hi };
                 PatternKind::Range { lo: lo, hi: hi }
             },
@@ -87,10 +87,11 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                 let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
                 match def {
                     Def::Const(def_id) | Def::AssociatedConst(def_id) => {
+                        let tcx = self.cx.tcx.global_tcx();
                         let substs = Some(self.cx.tcx.node_id_item_substs(pat.id).substs);
-                        match const_eval::lookup_const_by_id(self.cx.tcx, def_id, substs) {
+                        match const_eval::lookup_const_by_id(tcx, def_id, substs) {
                             Some((const_expr, _const_ty)) => {
-                                match const_eval::const_expr_to_pat(self.cx.tcx,
+                                match const_eval::const_expr_to_pat(tcx,
                                                                     const_expr,
                                                                     pat.id,
                                                                     pat.span) {

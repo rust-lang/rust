@@ -236,9 +236,9 @@ fn dtor_to_init_u8(dtor: bool) -> u8 {
     if dtor { DTOR_NEEDED } else { 0 }
 }
 
-pub trait GetDtorType<'tcx> { fn dtor_type(&self) -> Ty<'tcx>; }
-impl<'tcx> GetDtorType<'tcx> for TyCtxt<'tcx> {
-    fn dtor_type(&self) -> Ty<'tcx> { self.types.u8 }
+pub trait GetDtorType<'tcx> { fn dtor_type(self) -> Ty<'tcx>; }
+impl<'a, 'tcx> GetDtorType<'tcx> for TyCtxt<'a, 'tcx, 'tcx> {
+    fn dtor_type(self) -> Ty<'tcx> { self.types.u8 }
 }
 
 fn dtor_active(flag: u8) -> bool {
@@ -442,9 +442,10 @@ struct Case<'tcx> {
 /// This represents the (GEP) indices to follow to get to the discriminant field
 pub type DiscrField = Vec<usize>;
 
-fn find_discr_field_candidate<'tcx>(tcx: &TyCtxt<'tcx>,
-                                    ty: Ty<'tcx>,
-                                    mut path: DiscrField) -> Option<DiscrField> {
+fn find_discr_field_candidate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                        ty: Ty<'tcx>,
+                                        mut path: DiscrField)
+                                        -> Option<DiscrField> {
     match ty.sty {
         // Fat &T/&mut T/Box<T> i.e. T is [T], str, or Trait
         ty::TyRef(_, ty::TypeAndMut { ty, .. }) | ty::TyBox(ty) if !type_is_sized(tcx, ty) => {
@@ -544,10 +545,10 @@ impl<'tcx> Case<'tcx> {
     }
 }
 
-fn get_cases<'tcx>(tcx: &TyCtxt<'tcx>,
-                   adt: ty::AdtDef<'tcx>,
-                   substs: &subst::Substs<'tcx>)
-                   -> Vec<Case<'tcx>> {
+fn get_cases<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                       adt: ty::AdtDef<'tcx>,
+                       substs: &subst::Substs<'tcx>)
+                       -> Vec<Case<'tcx>> {
     adt.variants.iter().map(|vi| {
         let field_tys = vi.fields.iter().map(|field| {
             monomorphize::field_ty(tcx, substs, field)
@@ -668,7 +669,7 @@ fn bounds_usable(cx: &CrateContext, ity: IntType, bounds: &IntBounds) -> bool {
     }
 }
 
-pub fn ty_of_inttype<'tcx>(tcx: &TyCtxt<'tcx>, ity: IntType) -> Ty<'tcx> {
+pub fn ty_of_inttype<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ity: IntType) -> Ty<'tcx> {
     match ity {
         attr::SignedInt(t) => tcx.mk_mach_int(t),
         attr::UnsignedInt(t) => tcx.mk_mach_uint(t)

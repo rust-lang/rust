@@ -24,6 +24,7 @@ use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::region::CodeExtent;
+use mir::tcx::LvalueTy;
 use ty::subst;
 use ty::subst::Substs;
 use ty::subst::Subst;
@@ -35,7 +36,7 @@ use ty::fold::TypeFoldable;
 use ty::relate::{Relate, RelateResult, TypeRelation};
 use traits::{self, PredicateObligations, ProjectionMode};
 use rustc_data_structures::unify::{self, UnificationTable};
-use std::cell::{Cell, RefCell, Ref};
+use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::fmt;
 use syntax::ast;
 use syntax::codemap;
@@ -45,7 +46,6 @@ use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 
 use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
-use self::error_reporting::ErrorReporting;
 use self::unify_key::ToType;
 
 pub mod bivariate;
@@ -73,10 +73,36 @@ pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
-pub struct InferCtxt<'a, 'tcx: 'a> {
-    pub tcx: &'a TyCtxt<'tcx>,
+/// A version of &ty::Tables which can be global or local.
+/// Only the local version supports borrow_mut.
+#[derive(Copy, Clone)]
+pub enum InferTables<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    Global(&'a RefCell<ty::Tables<'gcx>>),
+    Local(&'a RefCell<ty::Tables<'tcx>>)
+}
 
-    pub tables: &'a RefCell<ty::Tables<'tcx>>,
+impl<'a, 'gcx, 'tcx> InferTables<'a, 'gcx, 'tcx> {
+    pub fn borrow(self) -> Ref<'a, ty::Tables<'tcx>> {
+        match self {
+            InferTables::Global(tables) => tables.borrow(),
+            InferTables::Local(tables) => tables.borrow()
+        }
+    }
+
+    pub fn borrow_mut(self) -> RefMut<'a, ty::Tables<'tcx>> {
+        match self {
+            InferTables::Global(_) => {
+                bug!("InferTables: infcx.tables.borrow_mut() outside of type-checking");
+            }
+            InferTables::Local(tables) => tables.borrow_mut()
+        }
+    }
+}
+
+pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+
+    pub tables: InferTables<'a, 'gcx, 'tcx>,
 
     // We instantiate UnificationTable with bounds<Ty> because the
     // types that might instantiate a general type variable have an
@@ -90,9 +116,16 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     float_unification_table: RefCell<UnificationTable<ty::FloatVid>>,
 
     // For region variables.
-    region_vars: RegionVarBindings<'a, 'tcx>,
+    region_vars: RegionVarBindings<'a, 'gcx, 'tcx>,
 
-    pub parameter_environment: ty::ParameterEnvironment<'a, 'tcx>,
+    pub parameter_environment: ty::ParameterEnvironment<'gcx>,
+
+    /// Caches the results of trait selection. This cache is used
+    /// for things that have to do with the parameters in scope.
+    pub selection_cache: traits::SelectionCache<'tcx>,
+
+    /// Caches the results of trait evaluation.
+    pub evaluation_cache: traits::EvaluationCache<'tcx>,
 
     // the set of predicates on which errors have been reported, to
     // avoid reporting the same error twice.
@@ -366,149 +399,140 @@ pub enum FixupError {
     UnresolvedTy(TyVid)
 }
 
-pub fn fixup_err_to_string(f: FixupError) -> String {
-    use self::FixupError::*;
+impl fmt::Display for FixupError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::FixupError::*;
 
-    match f {
-      UnresolvedIntTy(_) => {
-          "cannot determine the type of this integer; add a suffix to \
-           specify the type explicitly".to_string()
-      }
-      UnresolvedFloatTy(_) => {
-          "cannot determine the type of this number; add a suffix to specify \
-           the type explicitly".to_string()
-      }
-      UnresolvedTy(_) => "unconstrained type".to_string(),
+        match *self {
+            UnresolvedIntTy(_) => {
+                write!(f, "cannot determine the type of this integer; \
+                           add a suffix to specify the type explicitly")
+            }
+            UnresolvedFloatTy(_) => {
+                write!(f, "cannot determine the type of this number; \
+                           add a suffix to specify the type explicitly")
+            }
+            UnresolvedTy(_) => write!(f, "unconstrained type")
+        }
     }
 }
 
-pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
-                                tables: &'a RefCell<ty::Tables<'tcx>>,
-                                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>,
-                                projection_mode: ProjectionMode)
-                                -> InferCtxt<'a, 'tcx> {
-    InferCtxt {
-        tcx: tcx,
-        tables: tables,
-        type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
-        int_unification_table: RefCell::new(UnificationTable::new()),
-        float_unification_table: RefCell::new(UnificationTable::new()),
-        region_vars: RegionVarBindings::new(tcx),
-        parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
-        reported_trait_errors: RefCell::new(FnvHashSet()),
-        normalize: false,
-        projection_mode: projection_mode,
-        tainted_by_errors_flag: Cell::new(false),
-        err_count_on_creation: tcx.sess.err_count()
+/// Helper type of a temporary returned by tcx.infer_ctxt(...).
+/// Necessary because we can't write the following bound:
+/// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>).
+pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
+    arenas: ty::CtxtArenas<'tcx>,
+    tables: Option<RefCell<ty::Tables<'tcx>>>,
+    param_env: Option<ty::ParameterEnvironment<'gcx>>,
+    projection_mode: ProjectionMode,
+    normalize: bool
+}
+
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
+    pub fn infer_ctxt(self,
+                      tables: Option<ty::Tables<'tcx>>,
+                      param_env: Option<ty::ParameterEnvironment<'gcx>>,
+                      projection_mode: ProjectionMode)
+                      -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+        InferCtxtBuilder {
+            global_tcx: self,
+            arenas: ty::CtxtArenas::new(),
+            tables: tables.map(RefCell::new),
+            param_env: param_env,
+            projection_mode: projection_mode,
+            normalize: false
+        }
+    }
+
+    pub fn normalizing_infer_ctxt(self, projection_mode: ProjectionMode)
+                                  -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+        InferCtxtBuilder {
+            global_tcx: self,
+            arenas: ty::CtxtArenas::new(),
+            tables: None,
+            param_env: None,
+            projection_mode: projection_mode,
+            normalize: false
+        }
+    }
+
+    /// Fake InferCtxt with the global tcx. Used by pre-MIR borrowck
+    /// for MemCategorizationContext/ExprUseVisitor.
+    /// If any inference functionality is used, ICEs will occur.
+    pub fn borrowck_fake_infer_ctxt(self, param_env: ty::ParameterEnvironment<'gcx>)
+                                    -> InferCtxt<'a, 'gcx, 'gcx> {
+        InferCtxt {
+            tcx: self,
+            tables: InferTables::Global(&self.tables),
+            type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
+            int_unification_table: RefCell::new(UnificationTable::new()),
+            float_unification_table: RefCell::new(UnificationTable::new()),
+            region_vars: RegionVarBindings::new(self),
+            parameter_environment: param_env,
+            selection_cache: traits::SelectionCache::new(),
+            evaluation_cache: traits::EvaluationCache::new(),
+            reported_trait_errors: RefCell::new(FnvHashSet()),
+            normalize: false,
+            projection_mode: ProjectionMode::AnyFinal,
+            tainted_by_errors_flag: Cell::new(false),
+            err_count_on_creation: self.sess.err_count()
+        }
     }
 }
 
-pub fn normalizing_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
-                                        tables: &'a RefCell<ty::Tables<'tcx>>,
-                                        projection_mode: ProjectionMode)
-                                        -> InferCtxt<'a, 'tcx> {
-    let mut infcx = new_infer_ctxt(tcx, tables, None, projection_mode);
-    infcx.normalize = true;
-    infcx
-}
-
-pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                          a_is_expected: bool,
-                          origin: TypeOrigin,
-                          a: Ty<'tcx>,
-                          b: Ty<'tcx>)
-    -> InferResult<'tcx, ()>
-{
-    debug!("mk_subty({:?} <: {:?})", a, b);
-    cx.sub_types(a_is_expected, origin, a, b)
-}
-
-pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>)
-    -> UnitResult<'tcx>
-{
-    debug!("can_mk_subty({:?} <: {:?})", a, b);
-    cx.probe(|_| {
-        let trace = TypeTrace {
-            origin: TypeOrigin::Misc(codemap::DUMMY_SP),
-            values: Types(expected_found(true, a, b))
+impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+    pub fn enter<F, R>(&'tcx mut self, f: F) -> R
+        where F: for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R
+    {
+        let InferCtxtBuilder {
+            global_tcx,
+            ref arenas,
+            ref tables,
+            ref mut param_env,
+            projection_mode,
+            normalize
+        } = *self;
+        let tables = if let Some(ref tables) = *tables {
+            InferTables::Local(tables)
+        } else {
+            InferTables::Global(&global_tcx.tables)
         };
-        cx.sub(true, trace, &a, &b).map(|_| ())
-    })
-}
-
-pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>)
-    -> UnitResult<'tcx>
-{
-    cx.can_equate(&a, &b)
-}
-
-pub fn mk_subr<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                         origin: SubregionOrigin<'tcx>,
-                         a: ty::Region,
-                         b: ty::Region) {
-    debug!("mk_subr({:?} <: {:?})", a, b);
-    let snapshot = cx.region_vars.start_snapshot();
-    cx.region_vars.make_subregion(origin, a, b);
-    cx.region_vars.commit(snapshot);
-}
-
-pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                         a_is_expected: bool,
-                         origin: TypeOrigin,
-                         a: Ty<'tcx>,
-                         b: Ty<'tcx>)
-    -> InferResult<'tcx, ()>
-{
-    debug!("mk_eqty({:?} <: {:?})", a, b);
-    cx.eq_types(a_is_expected, origin, a, b)
-}
-
-pub fn mk_eq_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                  a_is_expected: bool,
-                                  origin: TypeOrigin,
-                                  a: ty::TraitRef<'tcx>,
-                                  b: ty::TraitRef<'tcx>)
-    -> InferResult<'tcx, ()>
-{
-    debug!("mk_eq_trait_refs({:?} = {:?})", a, b);
-    cx.eq_trait_refs(a_is_expected, origin, a, b)
-}
-
-pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                        a_is_expected: bool,
-                                        origin: TypeOrigin,
-                                        a: ty::PolyTraitRef<'tcx>,
-                                        b: ty::PolyTraitRef<'tcx>)
-    -> InferResult<'tcx, ()>
-{
-    debug!("mk_sub_poly_trait_refs({:?} <: {:?})", a, b);
-    cx.sub_poly_trait_refs(a_is_expected, origin, a, b)
-}
-
-pub fn mk_eq_impl_headers<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                    a_is_expected: bool,
-                                    origin: TypeOrigin,
-                                    a: &ty::ImplHeader<'tcx>,
-                                    b: &ty::ImplHeader<'tcx>)
-    -> InferResult<'tcx, ()>
-{
-    debug!("mk_eq_impl_header({:?} = {:?})", a, b);
-    match (a.trait_ref, b.trait_ref) {
-        (Some(a_ref), Some(b_ref)) => mk_eq_trait_refs(cx, a_is_expected, origin, a_ref, b_ref),
-        (None, None) => mk_eqty(cx, a_is_expected, origin, a.self_ty, b.self_ty),
-        _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
+        let param_env = param_env.take().unwrap_or_else(|| {
+            global_tcx.empty_parameter_environment()
+        });
+        global_tcx.enter_local(arenas, |tcx| f(InferCtxt {
+            tcx: tcx,
+            tables: tables,
+            type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
+            int_unification_table: RefCell::new(UnificationTable::new()),
+            float_unification_table: RefCell::new(UnificationTable::new()),
+            region_vars: RegionVarBindings::new(tcx),
+            parameter_environment: param_env,
+            selection_cache: traits::SelectionCache::new(),
+            evaluation_cache: traits::EvaluationCache::new(),
+            reported_trait_errors: RefCell::new(FnvHashSet()),
+            normalize: normalize,
+            projection_mode: projection_mode,
+            tainted_by_errors_flag: Cell::new(false),
+            err_count_on_creation: tcx.sess.err_count()
+        }))
     }
 }
 
-fn expected_found<T>(a_is_expected: bool,
-                     a: T,
-                     b: T)
-                     -> ExpectedFound<T>
-{
-    if a_is_expected {
-        ExpectedFound {expected: a, found: b}
-    } else {
-        ExpectedFound {expected: b, found: a}
+impl<T> ExpectedFound<T> {
+    fn new(a_is_expected: bool, a: T, b: T) -> Self {
+        if a_is_expected {
+            ExpectedFound {expected: a, found: b}
+        } else {
+            ExpectedFound {expected: b, found: a}
+        }
+    }
+}
+
+impl<'tcx, T> InferOk<'tcx, T> {
+    fn unit(self) -> InferOk<'tcx, ()> {
+        InferOk { value: (), obligations: self.obligations }
     }
 }
 
@@ -520,92 +544,138 @@ pub struct CombinedSnapshot {
     region_vars_snapshot: RegionSnapshot,
 }
 
+/// Helper trait for shortening the lifetimes inside a
+/// value for post-type-checking normalization.
+pub trait TransNormalize<'gcx>: TypeFoldable<'gcx> {
+    fn trans_normalize<'a, 'tcx>(&self, infcx: &InferCtxt<'a, 'gcx, 'tcx>) -> Self;
+}
+
+macro_rules! items { ($($item:item)+) => ($($item)+) }
+macro_rules! impl_trans_normalize {
+    ($lt_gcx:tt, $($ty:ty),+) => {
+        items!($(impl<$lt_gcx> TransNormalize<$lt_gcx> for $ty {
+            fn trans_normalize<'a, 'tcx>(&self,
+                                         infcx: &InferCtxt<'a, $lt_gcx, 'tcx>)
+                                         -> Self {
+                infcx.normalize_projections_in(self)
+            }
+        })+);
+    }
+}
+
+impl_trans_normalize!('gcx,
+    Ty<'gcx>,
+    &'gcx Substs<'gcx>,
+    ty::FnSig<'gcx>,
+    ty::FnOutput<'gcx>,
+    &'gcx ty::BareFnTy<'gcx>,
+    ty::ClosureSubsts<'gcx>,
+    ty::PolyTraitRef<'gcx>
+);
+
+impl<'gcx> TransNormalize<'gcx> for LvalueTy<'gcx> {
+    fn trans_normalize<'a, 'tcx>(&self, infcx: &InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+        match *self {
+            LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.trans_normalize(infcx) },
+            LvalueTy::Downcast { adt_def, substs, variant_index } => {
+                LvalueTy::Downcast {
+                    adt_def: adt_def,
+                    substs: substs.trans_normalize(infcx),
+                    variant_index: variant_index
+                }
+            }
+        }
+    }
+}
+
 // NOTE: Callable from trans only!
-pub fn normalize_associated_type<'tcx,T>(tcx: &TyCtxt<'tcx>, value: &T) -> T
-    where T : TypeFoldable<'tcx>
-{
-    debug!("normalize_associated_type(t={:?})", value);
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+    pub fn normalize_associated_type<T>(self, value: &T) -> T
+        where T: TransNormalize<'tcx>
+    {
+        debug!("normalize_associated_type(t={:?})", value);
 
-    let value = tcx.erase_regions(value);
+        let value = self.erase_regions(value);
 
-    if !value.has_projection_types() {
-        return value;
-    }
-
-    let infcx = new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::Any);
-    let mut selcx = traits::SelectionContext::new(&infcx);
-    let cause = traits::ObligationCause::dummy();
-    let traits::Normalized { value: result, obligations } =
-        traits::normalize(&mut selcx, cause, &value);
-
-    debug!("normalize_associated_type: result={:?} obligations={:?}",
-           result,
-           obligations);
-
-    let mut fulfill_cx = traits::FulfillmentContext::new();
-
-    for obligation in obligations {
-        fulfill_cx.register_predicate_obligation(&infcx, obligation);
-    }
-
-    drain_fulfillment_cx_or_panic(DUMMY_SP, &infcx, &mut fulfill_cx, &result)
-}
-
-pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
-                                                infcx: &InferCtxt<'a,'tcx>,
-                                                fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
-                                                result: &T)
-                                                -> T
-    where T : TypeFoldable<'tcx>
-{
-    match drain_fulfillment_cx(infcx, fulfill_cx, result) {
-        Ok(v) => v,
-        Err(errors) => {
-            span_bug!(
-                span,
-                "Encountered errors `{:?}` fulfilling during trans",
-                errors);
+        if !value.has_projection_types() {
+            return value;
         }
+
+        self.infer_ctxt(None, None, ProjectionMode::Any).enter(|infcx| {
+            value.trans_normalize(&infcx)
+        })
     }
 }
 
-/// Finishes processes any obligations that remain in the fulfillment
-/// context, and then "freshens" and returns `result`. This is
-/// primarily used during normalization and other cases where
-/// processing the obligations in `fulfill_cx` may cause type
-/// inference variables that appear in `result` to be unified, and
-/// hence we need to process those obligations to get the complete
-/// picture of the type.
-pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
-                                       fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
-                                       result: &T)
-                                       -> Result<T,Vec<traits::FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx>
-{
-    debug!("drain_fulfillment_cx(result={:?})",
-           result);
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+    fn normalize_projections_in<T>(&self, value: &T) -> T::Lifted
+        where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
+    {
+        let mut selcx = traits::SelectionContext::new(self);
+        let cause = traits::ObligationCause::dummy();
+        let traits::Normalized { value: result, obligations } =
+            traits::normalize(&mut selcx, cause, value);
 
-    // In principle, we only need to do this so long as `result`
-    // contains unbound type parameters. It could be a slight
-    // optimization to stop iterating early.
-    match fulfill_cx.select_all_or_error(infcx) {
-        Ok(()) => { }
-        Err(errors) => {
-            return Err(errors);
+        debug!("normalize_projections_in: result={:?} obligations={:?}",
+                result, obligations);
+
+        let mut fulfill_cx = traits::FulfillmentContext::new();
+
+        for obligation in obligations {
+            fulfill_cx.register_predicate_obligation(self, obligation);
+        }
+
+        self.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
+    }
+
+    pub fn drain_fulfillment_cx_or_panic<T>(&self,
+                                            span: Span,
+                                            fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                                            result: &T)
+                                            -> T::Lifted
+        where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
+    {
+        let when = "resolving bounds after type-checking";
+        let v = match self.drain_fulfillment_cx(fulfill_cx, result) {
+            Ok(v) => v,
+            Err(errors) => {
+                span_bug!(span, "Encountered errors `{:?}` {}", errors, when);
+            }
+        };
+
+        match self.tcx.lift_to_global(&v) {
+            Some(v) => v,
+            None => {
+                span_bug!(span, "Uninferred types/regions in `{:?}` {}", v, when);
+            }
         }
     }
 
-    let result = infcx.resolve_type_vars_if_possible(result);
-    Ok(infcx.tcx.erase_regions(&result))
-}
+    /// Finishes processes any obligations that remain in the fulfillment
+    /// context, and then "freshens" and returns `result`. This is
+    /// primarily used during normalization and other cases where
+    /// processing the obligations in `fulfill_cx` may cause type
+    /// inference variables that appear in `result` to be unified, and
+    /// hence we need to process those obligations to get the complete
+    /// picture of the type.
+    pub fn drain_fulfillment_cx<T>(&self,
+                                   fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                                   result: &T)
+                                   -> Result<T,Vec<traits::FulfillmentError<'tcx>>>
+        where T : TypeFoldable<'tcx>
+    {
+        debug!("drain_fulfillment_cx(result={:?})",
+               result);
 
-impl<'tcx, T> InferOk<'tcx, T> {
-    fn unit(self) -> InferOk<'tcx, ()> {
-        InferOk { value: (), obligations: self.obligations }
+        // In principle, we only need to do this so long as `result`
+        // contains unbound type parameters. It could be a slight
+        // optimization to stop iterating early.
+        fulfill_cx.select_all_or_error(self)?;
+
+        let result = self.resolve_type_vars_if_possible(result);
+        Ok(self.tcx.erase_regions(&result))
     }
-}
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn projection_mode(&self) -> ProjectionMode {
         self.projection_mode
     }
@@ -621,7 +691,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
+    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'gcx, 'tcx> {
         freshen::TypeFreshener::new(self)
     }
 
@@ -692,8 +762,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     fn combine_fields(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-        -> CombineFields<'a, 'tcx>
-    {
+                      -> CombineFields<'a, 'gcx, 'tcx> {
         CombineFields {
             infcx: self,
             a_is_expected: a_is_expected,
@@ -705,7 +774,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn equate<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
-        where T: Relate<'a, 'tcx>
+        where T: Relate<'tcx>
     {
         let mut equate = self.combine_fields(a_is_expected, trace).equate();
         let result = equate.relate(a, b);
@@ -714,7 +783,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn sub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
-        where T: Relate<'a, 'tcx>
+        where T: Relate<'tcx>
     {
         let mut sub = self.combine_fields(a_is_expected, trace).sub();
         let result = sub.relate(a, b);
@@ -723,7 +792,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn lub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
-        where T: Relate<'a, 'tcx>
+        where T: Relate<'tcx>
     {
         let mut lub = self.combine_fields(a_is_expected, trace).lub();
         let result = lub.relate(a, b);
@@ -732,7 +801,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn glb<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
-        where T: Relate<'a, 'tcx>
+        where T: Relate<'tcx>
     {
         let mut glb = self.combine_fields(a_is_expected, trace).glb();
         let result = glb.relate(a, b);
@@ -892,6 +961,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         })
     }
 
+    pub fn can_sub_types(&self,
+                         a: Ty<'tcx>,
+                         b: Ty<'tcx>)
+                         -> UnitResult<'tcx>
+    {
+        self.probe(|_| {
+            let origin = TypeOrigin::Misc(codemap::DUMMY_SP);
+            let trace = TypeTrace::types(origin, true, a, b);
+            self.sub(true, trace, &a, &b).map(|_| ())
+        })
+    }
+
     pub fn eq_types(&self,
                     a_is_expected: bool,
                     origin: TypeOrigin,
@@ -912,16 +993,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                           b: ty::TraitRef<'tcx>)
         -> InferResult<'tcx, ()>
     {
-        debug!("eq_trait_refs({:?} <: {:?})",
-               a,
-               b);
+        debug!("eq_trait_refs({:?} = {:?})", a, b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace {
                 origin: origin,
-                values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
+                values: TraitRefs(ExpectedFound::new(a_is_expected, a, b))
             };
             self.equate(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
         })
+    }
+
+    pub fn eq_impl_headers(&self,
+                           a_is_expected: bool,
+                           origin: TypeOrigin,
+                           a: &ty::ImplHeader<'tcx>,
+                           b: &ty::ImplHeader<'tcx>)
+                           -> InferResult<'tcx, ()>
+    {
+        debug!("eq_impl_header({:?} = {:?})", a, b);
+        match (a.trait_ref, b.trait_ref) {
+            (Some(a_ref), Some(b_ref)) => self.eq_trait_refs(a_is_expected, origin, a_ref, b_ref),
+            (None, None) => self.eq_types(a_is_expected, origin, a.self_ty, b.self_ty),
+            _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
+        }
     }
 
     pub fn sub_poly_trait_refs(&self,
@@ -931,52 +1025,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                b: ty::PolyTraitRef<'tcx>)
         -> InferResult<'tcx, ()>
     {
-        debug!("sub_poly_trait_refs({:?} <: {:?})",
-               a,
-               b);
+        debug!("sub_poly_trait_refs({:?} <: {:?})", a, b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace {
                 origin: origin,
-                values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
+                values: PolyTraitRefs(ExpectedFound::new(a_is_expected, a, b))
             };
             self.sub(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
         })
     }
 
-    pub fn skolemize_late_bound_regions<T>(&self,
-                                           value: &ty::Binder<T>,
-                                           snapshot: &CombinedSnapshot)
-                                           -> (T, SkolemizationMap)
-        where T : TypeFoldable<'tcx>
-    {
-        /*! See `higher_ranked::skolemize_late_bound_regions` */
-
-        higher_ranked::skolemize_late_bound_regions(self, value, snapshot)
-    }
-
-    pub fn leak_check(&self,
-                      skol_map: &SkolemizationMap,
-                      snapshot: &CombinedSnapshot)
-                      -> UnitResult<'tcx>
-    {
-        /*! See `higher_ranked::leak_check` */
-
-        match higher_ranked::leak_check(self, skol_map, snapshot) {
-            Ok(()) => Ok(()),
-            Err((br, r)) => Err(TypeError::RegionsInsufficientlyPolymorphic(br, r))
-        }
-    }
-
-    pub fn plug_leaks<T>(&self,
-                         skol_map: SkolemizationMap,
-                         snapshot: &CombinedSnapshot,
-                         value: &T)
-                         -> T
-        where T : TypeFoldable<'tcx>
-    {
-        /*! See `higher_ranked::plug_leaks` */
-
-        higher_ranked::plug_leaks(self, skol_map, snapshot, value)
+    pub fn sub_regions(&self,
+                       origin: SubregionOrigin<'tcx>,
+                       a: ty::Region,
+                       b: ty::Region) {
+        debug!("sub_regions({:?} <: {:?})", a, b);
+        self.region_vars.make_subregion(origin, a, b);
     }
 
     pub fn equality_predicate(&self,
@@ -988,8 +1052,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let (ty::EquatePredicate(a, b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = TypeOrigin::EquatePredicate(span);
-            let eqty_ok = mk_eqty(self, false, origin, a, b)?;
-            self.leak_check(&skol_map, snapshot).map(|_| eqty_ok.unit())
+            let eqty_ok = self.eq_types(false, origin, a, b)?;
+            self.leak_check(false, &skol_map, snapshot).map(|_| eqty_ok.unit())
         })
     }
 
@@ -1002,8 +1066,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = RelateRegionParamBound(span);
-            let () = mk_subr(self, origin, r_b, r_a); // `b : a` ==> `a <= b`
-            self.leak_check(&skol_map, snapshot)
+            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
+            self.leak_check(false, &skol_map, snapshot)
         })
     }
 
@@ -1086,7 +1150,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn fresh_substs_for_generics(&self,
                                      span: Span,
                                      generics: &ty::Generics<'tcx>)
-                                     -> subst::Substs<'tcx>
+                                     -> &'tcx subst::Substs<'tcx>
     {
         let type_params = subst::VecPerParamSpace::empty();
 
@@ -1104,7 +1168,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 generics.types.get_slice(*space));
         }
 
-        return substs;
+        self.tcx.mk_substs(substs)
     }
 
     /// Given a set of generics defined on a trait, returns a substitution mapping each output
@@ -1496,8 +1560,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.region_vars.verify_generic_bound(origin, kind, a, bound);
     }
 
-    pub fn can_equate<'b,T>(&'b self, a: &T, b: &T) -> UnitResult<'tcx>
-        where T: Relate<'b,'tcx> + fmt::Debug
+    pub fn can_equate<T>(&self, a: &T, b: &T) -> UnitResult<'tcx>
+        where T: Relate<'tcx> + fmt::Debug
     {
         debug!("can_equate({:?}, {:?})", a, b);
         self.probe(|_| {
@@ -1505,12 +1569,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // anyhow. We should make this typetrace stuff more
             // generic so we don't have to do anything quite this
             // terrible.
-            let e = self.tcx.types.err;
-            let trace = TypeTrace {
-                origin: TypeOrigin::Misc(codemap::DUMMY_SP),
-                values: Types(expected_found(true, e, e))
-            };
-            self.equate(true, trace, a, b)
+            self.equate(true, TypeTrace::dummy(self.tcx), a, b)
         }).map(|_| ())
     }
 
@@ -1524,24 +1583,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.resolve_type_vars_or_error(&ty)
     }
 
-    pub fn tables_are_tcx_tables(&self) -> bool {
-        let tables: &RefCell<ty::Tables> = &self.tables;
-        let tcx_tables: &RefCell<ty::Tables> = &self.tcx.tables;
-        tables as *const _ == tcx_tables as *const _
-    }
-
     pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let ty = self.resolve_type_vars_if_possible(&ty);
-        if ty.needs_infer() ||
-            (ty.has_closure_types() && !self.tables_are_tcx_tables()) {
-            // this can get called from typeck (by euv), and moves_by_default
-            // rightly refuses to work with inference variables, but
-            // moves_by_default has a cache, which we want to use in other
-            // cases.
-            !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
-        } else {
-            ty.moves_by_default(&self.parameter_environment, span)
+        if let Some(ty) = self.tcx.lift_to_global(&ty) {
+            // Even if the type may have no inference variables, during
+            // type-checking closure types are in local tables only.
+            let local_closures = match self.tables {
+                InferTables::Local(_) => ty.has_closure_types(),
+                InferTables::Global(_) => false
+            };
+            if !local_closures {
+                return ty.moves_by_default(self.tcx.global_tcx(), self.param_env(), span);
+            }
         }
+
+        // this can get called from typeck (by euv), and moves_by_default
+        // rightly refuses to work with inference variables, but
+        // moves_by_default has a cache, which we want to use in other
+        // cases.
+        !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
     }
 
     pub fn node_method_ty(&self, method_call: ty::MethodCall)
@@ -1584,7 +1644,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
     }
 
-    pub fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
+    pub fn param_env(&self) -> &ty::ParameterEnvironment<'gcx> {
         &self.parameter_environment
     }
 
@@ -1599,30 +1659,37 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // during trans, we see closure ids from other traits.
             // That may require loading the closure data out of the
             // cstore.
-            Some(ty::Tables::closure_kind(&self.tables, self.tcx, def_id))
+            Some(self.tcx.closure_kind(def_id))
         }
     }
 
     pub fn closure_type(&self,
                         def_id: DefId,
-                        substs: &ty::ClosureSubsts<'tcx>)
+                        substs: ty::ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
-        let closure_ty =
-            ty::Tables::closure_type(self.tables,
-                                     self.tcx,
-                                     def_id,
-                                     substs);
+        if let InferTables::Local(tables) = self.tables {
+            if let Some(ty) = tables.borrow().closure_tys.get(&def_id) {
+                return ty.subst(self.tcx, substs.func_substs);
+            }
+        }
 
+        let closure_ty = self.tcx.closure_type(def_id, substs);
         if self.normalize {
-            normalize_associated_type(&self.tcx, &closure_ty)
+            let closure_ty = self.tcx.erase_regions(&closure_ty);
+
+            if !closure_ty.has_projection_types() {
+                return closure_ty;
+            }
+
+            self.normalize_projections_in(&closure_ty)
         } else {
             closure_ty
         }
     }
 }
 
-impl<'tcx> TypeTrace<'tcx> {
+impl<'a, 'gcx, 'tcx> TypeTrace<'tcx> {
     pub fn span(&self) -> Span {
         self.origin.span()
     }
@@ -1634,11 +1701,11 @@ impl<'tcx> TypeTrace<'tcx> {
                  -> TypeTrace<'tcx> {
         TypeTrace {
             origin: origin,
-            values: Types(expected_found(a_is_expected, a, b))
+            values: Types(ExpectedFound::new(a_is_expected, a, b))
         }
     }
 
-    pub fn dummy(tcx: &TyCtxt<'tcx>) -> TypeTrace<'tcx> {
+    pub fn dummy(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             origin: TypeOrigin::Misc(codemap::DUMMY_SP),
             values: Types(ExpectedFound {

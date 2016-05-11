@@ -160,57 +160,56 @@ pub trait CrateStore<'tcx> : Any {
     fn stability(&self, def: DefId) -> Option<attr::Stability>;
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
     fn visibility(&self, def: DefId) -> ty::Visibility;
-    fn closure_kind(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
-                    -> ty::ClosureKind;
-    fn closure_ty(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
-                  -> ty::ClosureTy<'tcx>;
+    fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind;
+    fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
+                      -> ty::ClosureTy<'tcx>;
     fn item_variances(&self, def: DefId) -> ty::ItemVariances;
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr>;
-    fn item_type(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                 -> ty::TypeScheme<'tcx>;
+    fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                     -> ty::TypeScheme<'tcx>;
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>>;
     fn item_name(&self, def: DefId) -> ast::Name;
-    fn item_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                       -> ty::GenericPredicates<'tcx>;
-    fn item_super_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                             -> ty::GenericPredicates<'tcx>;
+    fn item_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                           -> ty::GenericPredicates<'tcx>;
+    fn item_super_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                                 -> ty::GenericPredicates<'tcx>;
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
     fn item_symbol(&self, def: DefId) -> String;
-    fn trait_def(&self, tcx: &TyCtxt<'tcx>, def: DefId)-> ty::TraitDef<'tcx>;
-    fn adt_def(&self, tcx: &TyCtxt<'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>;
+    fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef<'tcx>;
+    fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>;
     fn method_arg_names(&self, did: DefId) -> Vec<String>;
     fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>;
 
     // trait info
     fn implementations_of_trait(&self, def_id: DefId) -> Vec<DefId>;
-    fn provided_trait_methods(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                              -> Vec<Rc<ty::Method<'tcx>>>;
+    fn provided_trait_methods<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                                  -> Vec<Rc<ty::Method<'tcx>>>;
     fn trait_item_def_ids(&self, def: DefId)
                           -> Vec<ty::ImplOrTraitItemId>;
 
     // impl info
     fn impl_items(&self, impl_def_id: DefId) -> Vec<ty::ImplOrTraitItemId>;
-    fn impl_trait_ref(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                      -> Option<ty::TraitRef<'tcx>>;
+    fn impl_trait_ref<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                          -> Option<ty::TraitRef<'tcx>>;
     fn impl_polarity(&self, def: DefId) -> Option<hir::ImplPolarity>;
     fn custom_coerce_unsized_kind(&self, def: DefId)
                                   -> Option<ty::adjustment::CustomCoerceUnsized>;
-    fn associated_consts(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                         -> Vec<Rc<ty::AssociatedConst<'tcx>>>;
+    fn associated_consts<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                             -> Vec<Rc<ty::AssociatedConst<'tcx>>>;
     fn impl_parent(&self, impl_def_id: DefId) -> Option<DefId>;
 
     // trait/impl-item info
-    fn trait_of_item(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
-                     -> Option<DefId>;
-    fn impl_or_trait_item(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                          -> Option<ty::ImplOrTraitItem<'tcx>>;
+    fn trait_of_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
+                         -> Option<DefId>;
+    fn impl_or_trait_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                              -> Option<ty::ImplOrTraitItem<'tcx>>;
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool;
     fn is_defaulted_trait(&self, did: DefId) -> bool;
     fn is_impl(&self, did: DefId) -> bool;
     fn is_default_impl(&self, impl_did: DefId) -> bool;
-    fn is_extern_item(&self, tcx: &TyCtxt<'tcx>, did: DefId) -> bool;
+    fn is_extern_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId) -> bool;
     fn is_static_method(&self, did: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool;
     fn is_typedef(&self, did: DefId) -> bool;
@@ -251,10 +250,10 @@ pub trait CrateStore<'tcx> : Any {
     fn crate_top_level_items(&self, cnum: ast::CrateNum) -> Vec<ChildItem>;
 
     // misc. metadata
-    fn maybe_get_item_ast(&'tcx self, tcx: &TyCtxt<'tcx>, def: DefId)
-                          -> FoundAst<'tcx>;
-    fn maybe_get_item_mir(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                          -> Option<Mir<'tcx>>;
+    fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                              -> FoundAst<'tcx>;
+    fn maybe_get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                              -> Option<Mir<'tcx>>;
     fn is_item_mir_available(&self, def: DefId) -> bool;
 
     // This is basically a 1-based range of ints, which is a little
@@ -266,22 +265,21 @@ pub trait CrateStore<'tcx> : Any {
     // utility functions
     fn metadata_filename(&self) -> &str;
     fn metadata_section_name(&self, target: &Target) -> &str;
-    fn encode_type(&self,
-                   tcx: &TyCtxt<'tcx>,
-                   ty: Ty<'tcx>,
-                   def_id_to_string: fn(&TyCtxt<'tcx>, DefId) -> String)
-                   -> Vec<u8>;
+    fn encode_type<'a>(&self,
+                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                       ty: Ty<'tcx>,
+                       def_id_to_string: for<'b> fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String)
+                       -> Vec<u8>;
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>;
     fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource;
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>;
-    fn encode_metadata(&self,
-                       tcx: &TyCtxt<'tcx>,
-                       reexports: &def::ExportMap,
-                       item_symbols: &RefCell<NodeMap<String>>,
-                       link_meta: &LinkMeta,
-                       reachable: &NodeSet,
-                       mir_map: &MirMap<'tcx>,
-                       krate: &hir::Crate) -> Vec<u8>;
+    fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           reexports: &def::ExportMap,
+                           item_symbols: &RefCell<NodeMap<String>>,
+                           link_meta: &LinkMeta,
+                           reachable: &NodeSet,
+                           mir_map: &MirMap<'tcx>,
+                           krate: &hir::Crate) -> Vec<u8>;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -339,63 +337,63 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn stability(&self, def: DefId) -> Option<attr::Stability> { bug!("stability") }
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { bug!("deprecation") }
     fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn closure_kind(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
-                    -> ty::ClosureKind  { bug!("closure_kind") }
-    fn closure_ty(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
-                  -> ty::ClosureTy<'tcx>  { bug!("closure_ty") }
+    fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind  { bug!("closure_kind") }
+    fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
+                      -> ty::ClosureTy<'tcx>  { bug!("closure_ty") }
     fn item_variances(&self, def: DefId) -> ty::ItemVariances { bug!("item_variances") }
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr> { bug!("repr_attrs") }
-    fn item_type(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                 -> ty::TypeScheme<'tcx> { bug!("item_type") }
+    fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                     -> ty::TypeScheme<'tcx> { bug!("item_type") }
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
         bug!("visible_parent_map")
     }
     fn item_name(&self, def: DefId) -> ast::Name { bug!("item_name") }
-    fn item_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                       -> ty::GenericPredicates<'tcx> { bug!("item_predicates") }
-    fn item_super_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                             -> ty::GenericPredicates<'tcx> { bug!("item_super_predicates") }
+    fn item_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                           -> ty::GenericPredicates<'tcx> { bug!("item_predicates") }
+    fn item_super_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                                 -> ty::GenericPredicates<'tcx> { bug!("item_super_predicates") }
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> { bug!("item_attrs") }
     fn item_symbol(&self, def: DefId) -> String { bug!("item_symbol") }
-    fn trait_def(&self, tcx: &TyCtxt<'tcx>, def: DefId)-> ty::TraitDef<'tcx>
+    fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef<'tcx>
         { bug!("trait_def") }
-    fn adt_def(&self, tcx: &TyCtxt<'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>
+    fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>
         { bug!("adt_def") }
     fn method_arg_names(&self, did: DefId) -> Vec<String> { bug!("method_arg_names") }
     fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId> { vec![] }
 
     // trait info
     fn implementations_of_trait(&self, def_id: DefId) -> Vec<DefId> { vec![] }
-    fn provided_trait_methods(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                              -> Vec<Rc<ty::Method<'tcx>>> { bug!("provided_trait_methods") }
+    fn provided_trait_methods<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                                  -> Vec<Rc<ty::Method<'tcx>>> { bug!("provided_trait_methods") }
     fn trait_item_def_ids(&self, def: DefId)
                           -> Vec<ty::ImplOrTraitItemId> { bug!("trait_item_def_ids") }
 
     // impl info
     fn impl_items(&self, impl_def_id: DefId) -> Vec<ty::ImplOrTraitItemId>
         { bug!("impl_items") }
-    fn impl_trait_ref(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                      -> Option<ty::TraitRef<'tcx>> { bug!("impl_trait_ref") }
+    fn impl_trait_ref<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                          -> Option<ty::TraitRef<'tcx>> { bug!("impl_trait_ref") }
     fn impl_polarity(&self, def: DefId) -> Option<hir::ImplPolarity> { bug!("impl_polarity") }
     fn custom_coerce_unsized_kind(&self, def: DefId)
                                   -> Option<ty::adjustment::CustomCoerceUnsized>
         { bug!("custom_coerce_unsized_kind") }
-    fn associated_consts(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                         -> Vec<Rc<ty::AssociatedConst<'tcx>>> { bug!("associated_consts") }
+    fn associated_consts<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                             -> Vec<Rc<ty::AssociatedConst<'tcx>>> { bug!("associated_consts") }
     fn impl_parent(&self, def: DefId) -> Option<DefId> { bug!("impl_parent") }
 
     // trait/impl-item info
-    fn trait_of_item(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
-                     -> Option<DefId> { bug!("trait_of_item") }
-    fn impl_or_trait_item(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                          -> Option<ty::ImplOrTraitItem<'tcx>> { bug!("impl_or_trait_item") }
+    fn trait_of_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
+                         -> Option<DefId> { bug!("trait_of_item") }
+    fn impl_or_trait_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                              -> Option<ty::ImplOrTraitItem<'tcx>> { bug!("impl_or_trait_item") }
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool { bug!("is_const_fn") }
     fn is_defaulted_trait(&self, did: DefId) -> bool { bug!("is_defaulted_trait") }
     fn is_impl(&self, did: DefId) -> bool { bug!("is_impl") }
     fn is_default_impl(&self, impl_did: DefId) -> bool { bug!("is_default_impl") }
-    fn is_extern_item(&self, tcx: &TyCtxt<'tcx>, did: DefId) -> bool { bug!("is_extern_item") }
+    fn is_extern_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId) -> bool
+        { bug!("is_extern_item") }
     fn is_static_method(&self, did: DefId) -> bool { bug!("is_static_method") }
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool { false }
     fn is_typedef(&self, did: DefId) -> bool { bug!("is_typedef") }
@@ -448,10 +446,10 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         { bug!("crate_top_level_items") }
 
     // misc. metadata
-    fn maybe_get_item_ast(&'tcx self, tcx: &TyCtxt<'tcx>, def: DefId)
-                          -> FoundAst<'tcx> { bug!("maybe_get_item_ast") }
-    fn maybe_get_item_mir(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                          -> Option<Mir<'tcx>> { bug!("maybe_get_item_mir") }
+    fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                              -> FoundAst<'tcx> { bug!("maybe_get_item_ast") }
+    fn maybe_get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                              -> Option<Mir<'tcx>> { bug!("maybe_get_item_mir") }
     fn is_item_mir_available(&self, def: DefId) -> bool {
         bug!("is_item_mir_available")
     }
@@ -465,25 +463,24 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // utility functions
     fn metadata_filename(&self) -> &str { bug!("metadata_filename") }
     fn metadata_section_name(&self, target: &Target) -> &str { bug!("metadata_section_name") }
-    fn encode_type(&self,
-                   tcx: &TyCtxt<'tcx>,
-                   ty: Ty<'tcx>,
-                   def_id_to_string: fn(&TyCtxt<'tcx>, DefId) -> String)
-                   -> Vec<u8> {
+    fn encode_type<'a>(&self,
+                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                       ty: Ty<'tcx>,
+                       def_id_to_string: for<'b> fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String)
+                       -> Vec<u8> {
         bug!("encode_type")
     }
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>
         { vec![] }
     fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource { bug!("used_crate_source") }
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum> { None }
-    fn encode_metadata(&self,
-                       tcx: &TyCtxt<'tcx>,
-                       reexports: &def::ExportMap,
-                       item_symbols: &RefCell<NodeMap<String>>,
-                       link_meta: &LinkMeta,
-                       reachable: &NodeSet,
-                       mir_map: &MirMap<'tcx>,
-                       krate: &hir::Crate) -> Vec<u8> { vec![] }
+    fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           reexports: &def::ExportMap,
+                           item_symbols: &RefCell<NodeMap<String>>,
+                           link_meta: &LinkMeta,
+                           reachable: &NodeSet,
+                           mir_map: &MirMap<'tcx>,
+                           krate: &hir::Crate) -> Vec<u8> { vec![] }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 
@@ -510,7 +507,7 @@ pub mod tls {
     use hir::def_id::DefId;
 
     pub trait EncodingContext<'tcx> {
-        fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx>;
+        fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx>;
         fn encode_ty(&self, encoder: &mut OpaqueEncoder, t: Ty<'tcx>);
         fn encode_substs(&self, encoder: &mut OpaqueEncoder, substs: &Substs<'tcx>);
     }
@@ -577,7 +574,7 @@ pub mod tls {
     }
 
     pub trait DecodingContext<'tcx> {
-        fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx>;
+        fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx>;
         fn decode_ty(&self, decoder: &mut OpaqueDecoder) -> ty::Ty<'tcx>;
         fn decode_substs(&self, decoder: &mut OpaqueDecoder) -> Substs<'tcx>;
         fn translate_def_id(&self, def_id: DefId) -> DefId;

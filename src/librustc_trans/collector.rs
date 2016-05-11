@@ -432,10 +432,10 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
     debug!("END collect_items_rec({})", starting_point.to_string(scx.tcx()));
 }
 
-fn record_references<'tcx>(tcx: &TyCtxt<'tcx>,
-                           caller: TransItem<'tcx>,
-                           callees: &[TransItem<'tcx>],
-                           reference_map: &mut ReferenceMap<'tcx>) {
+fn record_references<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                               caller: TransItem<'tcx>,
+                               callees: &[TransItem<'tcx>],
+                               reference_map: &mut ReferenceMap<'tcx>) {
     let iter = callees.into_iter()
                       .map(|callee| {
                         let is_inlining_candidate = callee.is_from_extern_crate() ||
@@ -445,10 +445,10 @@ fn record_references<'tcx>(tcx: &TyCtxt<'tcx>,
     reference_map.record_references(caller, iter);
 }
 
-fn check_recursion_limit<'tcx>(tcx: &TyCtxt<'tcx>,
-                               instance: Instance<'tcx>,
-                               recursion_depths: &mut DefIdMap<usize>)
-                               -> (DefId, usize) {
+fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   instance: Instance<'tcx>,
+                                   recursion_depths: &mut DefIdMap<usize>)
+                                   -> (DefId, usize) {
     let recursion_depth = recursion_depths.get(&instance.def)
                                           .map(|x| *x)
                                           .unwrap_or(0);
@@ -530,7 +530,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let exchange_malloc_fn_trans_item =
                     create_fn_trans_item(self.scx.tcx(),
                                          exchange_malloc_fn_def_id,
-                                         &Substs::empty(),
+                                         self.scx.tcx().mk_substs(Substs::empty()),
                                          self.param_substs);
 
                 self.output.push(exchange_malloc_fn_trans_item);
@@ -606,9 +606,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
         self.super_operand(operand);
 
-        fn can_result_in_trans_item<'tcx>(tcx: &TyCtxt<'tcx>,
-                                          def_id: DefId)
-                                          -> bool {
+        fn can_result_in_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                              def_id: DefId)
+                                              -> bool {
             if !match tcx.lookup_item_type(def_id).ty.sty {
                 ty::TyFnDef(def_id, _, _) => {
                     // Some constructors also have type TyFnDef but they are
@@ -635,9 +635,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     }
 }
 
-fn can_have_local_instance<'tcx>(tcx: &TyCtxt<'tcx>,
-                                 def_id: DefId)
-                                 -> bool {
+fn can_have_local_instance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     def_id: DefId)
+                                     -> bool {
     // Take a look if we have the definition available. If not, we
     // will not emit code for this item in the local crate, and thus
     // don't create a translation item for it.
@@ -670,8 +670,8 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         let exchange_free_fn_trans_item =
             create_fn_trans_item(scx.tcx(),
                                  exchange_free_fn_def_id,
-                                 &Substs::empty(),
-                                 &Substs::empty());
+                                 scx.tcx().mk_substs(Substs::empty()),
+                                 scx.tcx().mk_substs(Substs::empty()));
 
         output.push(exchange_free_fn_trans_item);
     }
@@ -709,7 +709,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             let trans_item = create_fn_trans_item(scx.tcx(),
                                                   destructor_did,
                                                   substs,
-                                                  &Substs::empty());
+                                                  scx.tcx().mk_substs(Substs::empty()));
             output.push(trans_item);
         }
 
@@ -747,8 +747,8 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                 }
             }
         }
-        ty::TyClosure(_, ref substs) => {
-            for upvar_ty in &substs.upvar_tys {
+        ty::TyClosure(_, substs) => {
+            for upvar_ty in substs.upvar_tys {
                 let upvar_ty = glue::get_drop_glue_type(scx.tcx(), upvar_ty);
                 if glue::type_needs_drop(scx.tcx(), upvar_ty) {
                     output.push(TransItem::DropGlue(DropGlueKind::Ty(upvar_ty)));
@@ -762,7 +762,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                 output.push(TransItem::DropGlue(DropGlueKind::Ty(inner_type)));
             }
         }
-        ty::TyTuple(ref args) => {
+        ty::TyTuple(args) => {
             for arg in args {
                 let arg = glue::get_drop_glue_type(scx.tcx(), arg);
                 if glue::type_needs_drop(scx.tcx(), arg) {
@@ -840,7 +840,7 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
     let rcvr_substs = monomorphize::apply_param_substs(tcx,
                                                        param_substs,
-                                                       callee_substs);
+                                                       &callee_substs);
 
     let trait_ref = ty::Binder(rcvr_substs.to_trait_ref(tcx, trait_id));
     let vtbl = fulfill_obligation(scx, DUMMY_SP, trait_ref);
@@ -960,11 +960,11 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     }
 }
 
-fn create_fn_trans_item<'tcx>(tcx: &TyCtxt<'tcx>,
-                              def_id: DefId,
-                              fn_substs: &Substs<'tcx>,
-                              param_substs: &Substs<'tcx>)
-                              -> TransItem<'tcx> {
+fn create_fn_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  def_id: DefId,
+                                  fn_substs: &'tcx Substs<'tcx>,
+                                  param_substs: &'tcx Substs<'tcx>)
+                                  -> TransItem<'tcx> {
     debug!("create_fn_trans_item(def_id={}, fn_substs={:?}, param_substs={:?})",
             def_id_to_string(tcx, def_id),
             fn_substs,
@@ -975,12 +975,11 @@ fn create_fn_trans_item<'tcx>(tcx: &TyCtxt<'tcx>,
     // ignored because we don't want to generate any code for them.
     let concrete_substs = monomorphize::apply_param_substs(tcx,
                                                            param_substs,
-                                                           fn_substs);
+                                                           &fn_substs);
     let concrete_substs = tcx.erase_regions(&concrete_substs);
 
     let trans_item =
-        TransItem::Fn(Instance::new(def_id,
-                                    &tcx.mk_substs(concrete_substs)));
+        TransItem::Fn(Instance::new(def_id, concrete_substs));
     return trans_item;
 }
 
@@ -1013,9 +1012,9 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
                         .filter_map(|impl_method| {
                             if can_have_local_instance(scx.tcx(), impl_method.method.def_id) {
                                 Some(create_fn_trans_item(scx.tcx(),
-                                                          impl_method.method.def_id,
-                                                          &impl_method.substs,
-                                                          &Substs::empty()))
+                                    impl_method.method.def_id,
+                                    impl_method.substs,
+                                    scx.tcx().mk_substs(Substs::empty())))
                             } else {
                                 None
                             }
@@ -1146,9 +1145,9 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
     }
 }
 
-fn create_trans_items_for_default_impls<'tcx>(tcx: &TyCtxt<'tcx>,
-                                              item: &'tcx hir::Item,
-                                              output: &mut Vec<TransItem<'tcx>>) {
+fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                  item: &'tcx hir::Item,
+                                                  output: &mut Vec<TransItem<'tcx>>) {
     match item.node {
         hir::ItemImpl(_,
                       _,
@@ -1167,7 +1166,7 @@ fn create_trans_items_for_default_impls<'tcx>(tcx: &TyCtxt<'tcx>,
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
                 let default_impls = tcx.provided_trait_methods(trait_ref.def_id);
-                let callee_substs = tcx.mk_substs(tcx.erase_regions(trait_ref.substs));
+                let callee_substs = tcx.erase_regions(&trait_ref.substs);
                 let overridden_methods: FnvHashSet<_> = items.iter()
                                                              .map(|item| item.name)
                                                              .collect();
@@ -1195,7 +1194,7 @@ fn create_trans_items_for_default_impls<'tcx>(tcx: &TyCtxt<'tcx>,
                     }
 
                     if can_have_local_instance(tcx, default_impl.def_id) {
-                        let empty_substs = tcx.mk_substs(tcx.erase_regions(mth.substs));
+                        let empty_substs = tcx.erase_regions(&mth.substs);
                         let item = create_fn_trans_item(tcx,
                                                         default_impl.def_id,
                                                         callee_substs,
@@ -1225,9 +1224,9 @@ fn create_trans_items_for_default_impls<'tcx>(tcx: &TyCtxt<'tcx>,
 
 /// Same as `unique_type_name()` but with the result pushed onto the given
 /// `output` parameter.
-pub fn push_unique_type_name<'tcx>(tcx: &TyCtxt<'tcx>,
-                                   t: ty::Ty<'tcx>,
-                                   output: &mut String) {
+pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                       t: ty::Ty<'tcx>,
+                                       output: &mut String) {
     match t.sty {
         ty::TyBool              => output.push_str("bool"),
         ty::TyChar              => output.push_str("char"),
@@ -1249,7 +1248,7 @@ pub fn push_unique_type_name<'tcx>(tcx: &TyCtxt<'tcx>,
             push_item_name(tcx, adt_def.did, output);
             push_type_params(tcx, &substs.types, &[], output);
         },
-        ty::TyTuple(ref component_types) => {
+        ty::TyTuple(component_types) => {
             output.push('(');
             for &component_type in component_types {
                 push_unique_type_name(tcx, component_type, output);
@@ -1363,9 +1362,9 @@ pub fn push_unique_type_name<'tcx>(tcx: &TyCtxt<'tcx>,
     }
 }
 
-fn push_item_name(tcx: &TyCtxt,
-                  def_id: DefId,
-                  output: &mut String) {
+fn push_item_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            def_id: DefId,
+                            output: &mut String) {
     let def_path = tcx.def_path(def_id);
 
     // some_crate::
@@ -1384,10 +1383,10 @@ fn push_item_name(tcx: &TyCtxt,
     output.pop();
 }
 
-fn push_type_params<'tcx>(tcx: &TyCtxt<'tcx>,
-                          types: &'tcx subst::VecPerParamSpace<Ty<'tcx>>,
-                          projections: &[ty::PolyProjectionPredicate<'tcx>],
-                          output: &mut String) {
+fn push_type_params<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              types: &'tcx subst::VecPerParamSpace<Ty<'tcx>>,
+                              projections: &[ty::PolyProjectionPredicate<'tcx>],
+                              output: &mut String) {
     if types.is_empty() && projections.is_empty() {
         return;
     }
@@ -1414,30 +1413,30 @@ fn push_type_params<'tcx>(tcx: &TyCtxt<'tcx>,
     output.push('>');
 }
 
-fn push_instance_as_string<'tcx>(tcx: &TyCtxt<'tcx>,
-                                 instance: Instance<'tcx>,
-                                 output: &mut String) {
+fn push_instance_as_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     instance: Instance<'tcx>,
+                                     output: &mut String) {
     push_item_name(tcx, instance.def, output);
     push_type_params(tcx, &instance.substs.types, &[], output);
 }
 
-pub fn def_id_to_string(tcx: &TyCtxt, def_id: DefId) -> String {
+pub fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  def_id: DefId) -> String {
     let mut output = String::new();
     push_item_name(tcx, def_id, &mut output);
     output
 }
 
-fn type_to_string<'tcx>(tcx: &TyCtxt<'tcx>,
-                        ty: ty::Ty<'tcx>)
-                        -> String {
+fn type_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            ty: ty::Ty<'tcx>)
+                            -> String {
     let mut output = String::new();
     push_unique_type_name(tcx, ty, &mut output);
     output
 }
 
-impl<'tcx> TransItem<'tcx> {
-
-    pub fn requests_inline(&self, tcx: &TyCtxt<'tcx>) -> bool {
+impl<'a, 'tcx> TransItem<'tcx> {
+    pub fn requests_inline(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         match *self {
             TransItem::Fn(ref instance) => {
                 let attributes = tcx.get_attrs(instance.def);
@@ -1464,7 +1463,7 @@ impl<'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn explicit_linkage(&self, tcx: &TyCtxt<'tcx>) -> Option<llvm::Linkage> {
+    pub fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
         let def_id = match *self {
             TransItem::Fn(ref instance) => instance.def,
             TransItem::Static(node_id) => tcx.map.local_def_id(node_id),
@@ -1488,7 +1487,7 @@ impl<'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn to_string(&self, tcx: &TyCtxt<'tcx>) -> String {
+    pub fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         let hir_map = &tcx.map;
 
         return match *self {
@@ -1511,10 +1510,10 @@ impl<'tcx> TransItem<'tcx> {
             },
         };
 
-        fn to_string_internal<'tcx>(tcx: &TyCtxt<'tcx>,
-                                    prefix: &str,
-                                    instance: Instance<'tcx>)
-                                    -> String {
+        fn to_string_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                        prefix: &str,
+                                        instance: Instance<'tcx>)
+                                        -> String {
             let mut result = String::with_capacity(32);
             result.push_str(prefix);
             push_instance_as_string(tcx, instance, &mut result);

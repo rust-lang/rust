@@ -10,341 +10,340 @@
 
 //! Code related to processing overloaded binary and unary operators.
 
-use super::{
-    check_expr,
-    check_expr_coercable_to_type,
-    check_expr_with_lvalue_pref,
-    demand,
-    method,
-    FnCtxt,
-};
+use super::FnCtxt;
 use hir::def_id::DefId;
 use rustc::ty::{Ty, TypeFoldable, PreferMutLvalue};
 use syntax::ast;
 use syntax::parse::token;
 use rustc::hir;
 
-/// Check a `a <op>= b`
-pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                   expr: &'tcx hir::Expr,
-                                   op: hir::BinOp,
-                                   lhs_expr: &'tcx hir::Expr,
-                                   rhs_expr: &'tcx hir::Expr)
-{
-    check_expr_with_lvalue_pref(fcx, lhs_expr, PreferMutLvalue);
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+    /// Check a `a <op>= b`
+    pub fn check_binop_assign(&self,
+                              expr: &'gcx hir::Expr,
+                              op: hir::BinOp,
+                              lhs_expr: &'gcx hir::Expr,
+                              rhs_expr: &'gcx hir::Expr)
+    {
+        self.check_expr_with_lvalue_pref(lhs_expr, PreferMutLvalue);
 
-    let lhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
-    let (rhs_ty, return_ty) =
-        check_overloaded_binop(fcx, expr, lhs_expr, lhs_ty, rhs_expr, op, IsAssign::Yes);
-    let rhs_ty = fcx.resolve_type_vars_if_possible(rhs_ty);
+        let lhs_ty = self.resolve_type_vars_with_obligations(self.expr_ty(lhs_expr));
+        let (rhs_ty, return_ty) =
+            self.check_overloaded_binop(expr, lhs_expr, lhs_ty, rhs_expr, op, IsAssign::Yes);
+        let rhs_ty = self.resolve_type_vars_with_obligations(rhs_ty);
 
-    if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
-        enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
-        fcx.write_nil(expr.id);
-    } else {
-        fcx.write_ty(expr.id, return_ty);
-    }
-
-    let tcx = fcx.tcx();
-    if !tcx.expr_is_lval(lhs_expr) {
-        span_err!(tcx.sess, lhs_expr.span, E0067, "invalid left-hand side expression");
-    }
-}
-
-/// Check a potentially overloaded binary operator.
-pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                             expr: &'tcx hir::Expr,
-                             op: hir::BinOp,
-                             lhs_expr: &'tcx hir::Expr,
-                             rhs_expr: &'tcx hir::Expr)
-{
-    let tcx = fcx.ccx.tcx;
-
-    debug!("check_binop(expr.id={}, expr={:?}, op={:?}, lhs_expr={:?}, rhs_expr={:?})",
-           expr.id,
-           expr,
-           op,
-           lhs_expr,
-           rhs_expr);
-
-    check_expr(fcx, lhs_expr);
-    let lhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
-
-    match BinOpCategory::from(op) {
-        BinOpCategory::Shortcircuit => {
-            // && and || are a simple case.
-            demand::suptype(fcx, lhs_expr.span, tcx.mk_bool(), lhs_ty);
-            check_expr_coercable_to_type(fcx, rhs_expr, tcx.mk_bool());
-            fcx.write_ty(expr.id, tcx.mk_bool());
+        if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
+            self.enforce_builtin_binop_types(lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
+            self.write_nil(expr.id);
+        } else {
+            self.write_ty(expr.id, return_ty);
         }
-        _ => {
-            // Otherwise, we always treat operators as if they are
-            // overloaded. This is the way to be most flexible w/r/t
-            // types that get inferred.
-            let (rhs_ty, return_ty) =
-                check_overloaded_binop(fcx, expr, lhs_expr, lhs_ty, rhs_expr, op, IsAssign::No);
 
-            // Supply type inference hints if relevant. Probably these
-            // hints should be enforced during select as part of the
-            // `consider_unification_despite_ambiguity` routine, but this
-            // more convenient for now.
-            //
-            // The basic idea is to help type inference by taking
-            // advantage of things we know about how the impls for
-            // scalar types are arranged. This is important in a
-            // scenario like `1_u32 << 2`, because it lets us quickly
-            // deduce that the result type should be `u32`, even
-            // though we don't know yet what type 2 has and hence
-            // can't pin this down to a specific impl.
-            let rhs_ty = fcx.resolve_type_vars_if_possible(rhs_ty);
-            if
-                !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() &&
-                is_builtin_binop(lhs_ty, rhs_ty, op)
-            {
-                let builtin_return_ty =
-                    enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
-                demand::suptype(fcx, expr.span, builtin_return_ty, return_ty);
+        let tcx = self.tcx;
+        if !tcx.expr_is_lval(lhs_expr) {
+            span_err!(tcx.sess, lhs_expr.span, E0067, "invalid left-hand side expression");
+        }
+    }
+
+    /// Check a potentially overloaded binary operator.
+    pub fn check_binop(&self,
+                       expr: &'gcx hir::Expr,
+                       op: hir::BinOp,
+                       lhs_expr: &'gcx hir::Expr,
+                       rhs_expr: &'gcx hir::Expr)
+    {
+        let tcx = self.tcx;
+
+        debug!("check_binop(expr.id={}, expr={:?}, op={:?}, lhs_expr={:?}, rhs_expr={:?})",
+               expr.id,
+               expr,
+               op,
+               lhs_expr,
+               rhs_expr);
+
+        self.check_expr(lhs_expr);
+        let lhs_ty = self.resolve_type_vars_with_obligations(self.expr_ty(lhs_expr));
+
+        match BinOpCategory::from(op) {
+            BinOpCategory::Shortcircuit => {
+                // && and || are a simple case.
+                self.demand_suptype(lhs_expr.span, tcx.mk_bool(), lhs_ty);
+                self.check_expr_coercable_to_type(rhs_expr, tcx.mk_bool());
+                self.write_ty(expr.id, tcx.mk_bool());
+            }
+            _ => {
+                // Otherwise, we always treat operators as if they are
+                // overloaded. This is the way to be most flexible w/r/t
+                // types that get inferred.
+                let (rhs_ty, return_ty) =
+                    self.check_overloaded_binop(expr, lhs_expr, lhs_ty,
+                                                rhs_expr, op, IsAssign::No);
+
+                // Supply type inference hints if relevant. Probably these
+                // hints should be enforced during select as part of the
+                // `consider_unification_despite_ambiguity` routine, but this
+                // more convenient for now.
+                //
+                // The basic idea is to help type inference by taking
+                // advantage of things we know about how the impls for
+                // scalar types are arranged. This is important in a
+                // scenario like `1_u32 << 2`, because it lets us quickly
+                // deduce that the result type should be `u32`, even
+                // though we don't know yet what type 2 has and hence
+                // can't pin this down to a specific impl.
+                let rhs_ty = self.resolve_type_vars_with_obligations(rhs_ty);
+                if
+                    !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() &&
+                    is_builtin_binop(lhs_ty, rhs_ty, op)
+                {
+                    let builtin_return_ty =
+                        self.enforce_builtin_binop_types(lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
+                    self.demand_suptype(expr.span, builtin_return_ty, return_ty);
+                }
+
+                self.write_ty(expr.id, return_ty);
+            }
+        }
+    }
+
+    fn enforce_builtin_binop_types(&self,
+                                   lhs_expr: &'gcx hir::Expr,
+                                   lhs_ty: Ty<'tcx>,
+                                   rhs_expr: &'gcx hir::Expr,
+                                   rhs_ty: Ty<'tcx>,
+                                   op: hir::BinOp)
+                                   -> Ty<'tcx>
+    {
+        debug_assert!(is_builtin_binop(lhs_ty, rhs_ty, op));
+
+        let tcx = self.tcx;
+        match BinOpCategory::from(op) {
+            BinOpCategory::Shortcircuit => {
+                self.demand_suptype(lhs_expr.span, tcx.mk_bool(), lhs_ty);
+                self.demand_suptype(rhs_expr.span, tcx.mk_bool(), rhs_ty);
+                tcx.mk_bool()
             }
 
-            fcx.write_ty(expr.id, return_ty);
+            BinOpCategory::Shift => {
+                // result type is same as LHS always
+                lhs_ty
+            }
+
+            BinOpCategory::Math |
+            BinOpCategory::Bitwise => {
+                // both LHS and RHS and result will have the same type
+                self.demand_suptype(rhs_expr.span, lhs_ty, rhs_ty);
+                lhs_ty
+            }
+
+            BinOpCategory::Comparison => {
+                // both LHS and RHS and result will have the same type
+                self.demand_suptype(rhs_expr.span, lhs_ty, rhs_ty);
+                tcx.mk_bool()
+            }
         }
     }
-}
 
-fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                         lhs_expr: &'tcx hir::Expr,
-                                         lhs_ty: Ty<'tcx>,
-                                         rhs_expr: &'tcx hir::Expr,
-                                         rhs_ty: Ty<'tcx>,
-                                         op: hir::BinOp)
-                                         -> Ty<'tcx>
-{
-    debug_assert!(is_builtin_binop(lhs_ty, rhs_ty, op));
+    fn check_overloaded_binop(&self,
+                              expr: &'gcx hir::Expr,
+                              lhs_expr: &'gcx hir::Expr,
+                              lhs_ty: Ty<'tcx>,
+                              rhs_expr: &'gcx hir::Expr,
+                              op: hir::BinOp,
+                              is_assign: IsAssign)
+                              -> (Ty<'tcx>, Ty<'tcx>)
+    {
+        debug!("check_overloaded_binop(expr.id={}, lhs_ty={:?}, is_assign={:?})",
+               expr.id,
+               lhs_ty,
+               is_assign);
 
-    let tcx = fcx.tcx();
-    match BinOpCategory::from(op) {
-        BinOpCategory::Shortcircuit => {
-            demand::suptype(fcx, lhs_expr.span, tcx.mk_bool(), lhs_ty);
-            demand::suptype(fcx, rhs_expr.span, tcx.mk_bool(), rhs_ty);
-            tcx.mk_bool()
-        }
+        let (name, trait_def_id) = self.name_and_trait_def_id(op, is_assign);
 
-        BinOpCategory::Shift => {
-            // result type is same as LHS always
-            lhs_ty
-        }
+        // NB: As we have not yet type-checked the RHS, we don't have the
+        // type at hand. Make a variable to represent it. The whole reason
+        // for this indirection is so that, below, we can check the expr
+        // using this variable as the expected type, which sometimes lets
+        // us do better coercions than we would be able to do otherwise,
+        // particularly for things like `String + &String`.
+        let rhs_ty_var = self.next_ty_var();
 
-        BinOpCategory::Math |
-        BinOpCategory::Bitwise => {
-            // both LHS and RHS and result will have the same type
-            demand::suptype(fcx, rhs_expr.span, lhs_ty, rhs_ty);
-            lhs_ty
-        }
+        let return_ty = match self.lookup_op_method(expr, lhs_ty, vec![rhs_ty_var],
+                                                    token::intern(name), trait_def_id,
+                                                    lhs_expr) {
+            Ok(return_ty) => return_ty,
+            Err(()) => {
+                // error types are considered "builtin"
+                if !lhs_ty.references_error() {
+                    if let IsAssign::Yes = is_assign {
+                        span_err!(self.tcx.sess, lhs_expr.span, E0368,
+                                  "binary assignment operation `{}=` \
+                                   cannot be applied to type `{}`",
+                                  op.node.as_str(),
+                                  lhs_ty);
+                    } else {
+                        let mut err = struct_span_err!(self.tcx.sess, lhs_expr.span, E0369,
+                            "binary operation `{}` cannot be applied to type `{}`",
+                            op.node.as_str(),
+                            lhs_ty);
+                        let missing_trait = match op.node {
+                            hir::BiAdd    => Some("std::ops::Add"),
+                            hir::BiSub    => Some("std::ops::Sub"),
+                            hir::BiMul    => Some("std::ops::Mul"),
+                            hir::BiDiv    => Some("std::ops::Div"),
+                            hir::BiRem    => Some("std::ops::Rem"),
+                            hir::BiBitAnd => Some("std::ops::BitAnd"),
+                            hir::BiBitOr  => Some("std::ops::BitOr"),
+                            hir::BiShl    => Some("std::ops::Shl"),
+                            hir::BiShr    => Some("std::ops::Shr"),
+                            hir::BiEq | hir::BiNe => Some("std::cmp::PartialEq"),
+                            hir::BiLt | hir::BiLe | hir::BiGt | hir::BiGe =>
+                                Some("std::cmp::PartialOrd"),
+                            _             => None
+                        };
 
-        BinOpCategory::Comparison => {
-            // both LHS and RHS and result will have the same type
-            demand::suptype(fcx, rhs_expr.span, lhs_ty, rhs_ty);
-            tcx.mk_bool()
-        }
-    }
-}
-
-fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                    expr: &'tcx hir::Expr,
-                                    lhs_expr: &'tcx hir::Expr,
-                                    lhs_ty: Ty<'tcx>,
-                                    rhs_expr: &'tcx hir::Expr,
-                                    op: hir::BinOp,
-                                    is_assign: IsAssign)
-                                    -> (Ty<'tcx>, Ty<'tcx>)
-{
-    debug!("check_overloaded_binop(expr.id={}, lhs_ty={:?}, is_assign={:?})",
-           expr.id,
-           lhs_ty,
-           is_assign);
-
-    let (name, trait_def_id) = name_and_trait_def_id(fcx, op, is_assign);
-
-    // NB: As we have not yet type-checked the RHS, we don't have the
-    // type at hand. Make a variable to represent it. The whole reason
-    // for this indirection is so that, below, we can check the expr
-    // using this variable as the expected type, which sometimes lets
-    // us do better coercions than we would be able to do otherwise,
-    // particularly for things like `String + &String`.
-    let rhs_ty_var = fcx.infcx().next_ty_var();
-
-    let return_ty = match lookup_op_method(fcx, expr, lhs_ty, vec![rhs_ty_var],
-                                           token::intern(name), trait_def_id,
-                                           lhs_expr) {
-        Ok(return_ty) => return_ty,
-        Err(()) => {
-            // error types are considered "builtin"
-            if !lhs_ty.references_error() {
-                if let IsAssign::Yes = is_assign {
-                    span_err!(fcx.tcx().sess, lhs_expr.span, E0368,
-                              "binary assignment operation `{}=` cannot be applied to type `{}`",
-                              op.node.as_str(),
-                              lhs_ty);
-                } else {
-                    let mut err = struct_span_err!(fcx.tcx().sess, lhs_expr.span, E0369,
-                        "binary operation `{}` cannot be applied to type `{}`",
-                        op.node.as_str(),
-                        lhs_ty);
-                    let missing_trait = match op.node {
-                        hir::BiAdd    => Some("std::ops::Add"),
-                        hir::BiSub    => Some("std::ops::Sub"),
-                        hir::BiMul    => Some("std::ops::Mul"),
-                        hir::BiDiv    => Some("std::ops::Div"),
-                        hir::BiRem    => Some("std::ops::Rem"),
-                        hir::BiBitAnd => Some("std::ops::BitAnd"),
-                        hir::BiBitOr  => Some("std::ops::BitOr"),
-                        hir::BiShl    => Some("std::ops::Shl"),
-                        hir::BiShr    => Some("std::ops::Shr"),
-                        hir::BiEq | hir::BiNe => Some("std::cmp::PartialEq"),
-                        hir::BiLt | hir::BiLe | hir::BiGt | hir::BiGe =>
-                            Some("std::cmp::PartialOrd"),
-                        _             => None
-                    };
-
-                    if let Some(missing_trait) = missing_trait {
-                        span_note!(&mut err, lhs_expr.span,
-                                   "an implementation of `{}` might be missing for `{}`",
-                                    missing_trait, lhs_ty);
+                        if let Some(missing_trait) = missing_trait {
+                            span_note!(&mut err, lhs_expr.span,
+                                       "an implementation of `{}` might be missing for `{}`",
+                                        missing_trait, lhs_ty);
+                        }
+                        err.emit();
                     }
-                    err.emit();
+                }
+                self.tcx.types.err
+            }
+        };
+
+        // see `NB` above
+        self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var);
+
+        (rhs_ty_var, return_ty)
+    }
+
+    pub fn check_user_unop(&self,
+                           op_str: &str,
+                           mname: &str,
+                           trait_did: Option<DefId>,
+                           ex: &'gcx hir::Expr,
+                           operand_expr: &'gcx hir::Expr,
+                           operand_ty: Ty<'tcx>,
+                           op: hir::UnOp)
+                           -> Ty<'tcx>
+    {
+        assert!(op.is_by_value());
+        match self.lookup_op_method(ex, operand_ty, vec![],
+                                    token::intern(mname), trait_did,
+                                    operand_expr) {
+            Ok(t) => t,
+            Err(()) => {
+                self.type_error_message(ex.span, |actual| {
+                    format!("cannot apply unary operator `{}` to type `{}`",
+                            op_str, actual)
+                }, operand_ty, None);
+                self.tcx.types.err
+            }
+        }
+    }
+
+    fn name_and_trait_def_id(&self,
+                             op: hir::BinOp,
+                             is_assign: IsAssign)
+                             -> (&'static str, Option<DefId>) {
+        let lang = &self.tcx.lang_items;
+
+        if let IsAssign::Yes = is_assign {
+            match op.node {
+                hir::BiAdd => ("add_assign", lang.add_assign_trait()),
+                hir::BiSub => ("sub_assign", lang.sub_assign_trait()),
+                hir::BiMul => ("mul_assign", lang.mul_assign_trait()),
+                hir::BiDiv => ("div_assign", lang.div_assign_trait()),
+                hir::BiRem => ("rem_assign", lang.rem_assign_trait()),
+                hir::BiBitXor => ("bitxor_assign", lang.bitxor_assign_trait()),
+                hir::BiBitAnd => ("bitand_assign", lang.bitand_assign_trait()),
+                hir::BiBitOr => ("bitor_assign", lang.bitor_assign_trait()),
+                hir::BiShl => ("shl_assign", lang.shl_assign_trait()),
+                hir::BiShr => ("shr_assign", lang.shr_assign_trait()),
+                hir::BiLt | hir::BiLe |
+                hir::BiGe | hir::BiGt |
+                hir::BiEq | hir::BiNe |
+                hir::BiAnd | hir::BiOr => {
+                    span_bug!(op.span,
+                              "impossible assignment operation: {}=",
+                              op.node.as_str())
                 }
             }
-            fcx.tcx().types.err
-        }
-    };
-
-    // see `NB` above
-    check_expr_coercable_to_type(fcx, rhs_expr, rhs_ty_var);
-
-    (rhs_ty_var, return_ty)
-}
-
-pub fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                 op_str: &str,
-                                 mname: &str,
-                                 trait_did: Option<DefId>,
-                                 ex: &'tcx hir::Expr,
-                                 operand_expr: &'tcx hir::Expr,
-                                 operand_ty: Ty<'tcx>,
-                                 op: hir::UnOp)
-                                 -> Ty<'tcx>
-{
-    assert!(op.is_by_value());
-    match lookup_op_method(fcx, ex, operand_ty, vec![],
-                           token::intern(mname), trait_did,
-                           operand_expr) {
-        Ok(t) => t,
-        Err(()) => {
-            fcx.type_error_message(ex.span, |actual| {
-                format!("cannot apply unary operator `{}` to type `{}`",
-                        op_str, actual)
-            }, operand_ty, None);
-            fcx.tcx().types.err
-        }
-    }
-}
-
-fn name_and_trait_def_id(fcx: &FnCtxt,
-                         op: hir::BinOp,
-                         is_assign: IsAssign)
-                         -> (&'static str, Option<DefId>) {
-    let lang = &fcx.tcx().lang_items;
-
-    if let IsAssign::Yes = is_assign {
-        match op.node {
-            hir::BiAdd => ("add_assign", lang.add_assign_trait()),
-            hir::BiSub => ("sub_assign", lang.sub_assign_trait()),
-            hir::BiMul => ("mul_assign", lang.mul_assign_trait()),
-            hir::BiDiv => ("div_assign", lang.div_assign_trait()),
-            hir::BiRem => ("rem_assign", lang.rem_assign_trait()),
-            hir::BiBitXor => ("bitxor_assign", lang.bitxor_assign_trait()),
-            hir::BiBitAnd => ("bitand_assign", lang.bitand_assign_trait()),
-            hir::BiBitOr => ("bitor_assign", lang.bitor_assign_trait()),
-            hir::BiShl => ("shl_assign", lang.shl_assign_trait()),
-            hir::BiShr => ("shr_assign", lang.shr_assign_trait()),
-            hir::BiLt | hir::BiLe | hir::BiGe | hir::BiGt | hir::BiEq | hir::BiNe | hir::BiAnd |
-            hir::BiOr => {
-                span_bug!(op.span,
-                          "impossible assignment operation: {}=",
-                          op.node.as_str())
-            }
-        }
-    } else {
-        match op.node {
-            hir::BiAdd => ("add", lang.add_trait()),
-            hir::BiSub => ("sub", lang.sub_trait()),
-            hir::BiMul => ("mul", lang.mul_trait()),
-            hir::BiDiv => ("div", lang.div_trait()),
-            hir::BiRem => ("rem", lang.rem_trait()),
-            hir::BiBitXor => ("bitxor", lang.bitxor_trait()),
-            hir::BiBitAnd => ("bitand", lang.bitand_trait()),
-            hir::BiBitOr => ("bitor", lang.bitor_trait()),
-            hir::BiShl => ("shl", lang.shl_trait()),
-            hir::BiShr => ("shr", lang.shr_trait()),
-            hir::BiLt => ("lt", lang.ord_trait()),
-            hir::BiLe => ("le", lang.ord_trait()),
-            hir::BiGe => ("ge", lang.ord_trait()),
-            hir::BiGt => ("gt", lang.ord_trait()),
-            hir::BiEq => ("eq", lang.eq_trait()),
-            hir::BiNe => ("ne", lang.eq_trait()),
-            hir::BiAnd | hir::BiOr => {
-                span_bug!(op.span, "&& and || are not overloadable")
+        } else {
+            match op.node {
+                hir::BiAdd => ("add", lang.add_trait()),
+                hir::BiSub => ("sub", lang.sub_trait()),
+                hir::BiMul => ("mul", lang.mul_trait()),
+                hir::BiDiv => ("div", lang.div_trait()),
+                hir::BiRem => ("rem", lang.rem_trait()),
+                hir::BiBitXor => ("bitxor", lang.bitxor_trait()),
+                hir::BiBitAnd => ("bitand", lang.bitand_trait()),
+                hir::BiBitOr => ("bitor", lang.bitor_trait()),
+                hir::BiShl => ("shl", lang.shl_trait()),
+                hir::BiShr => ("shr", lang.shr_trait()),
+                hir::BiLt => ("lt", lang.ord_trait()),
+                hir::BiLe => ("le", lang.ord_trait()),
+                hir::BiGe => ("ge", lang.ord_trait()),
+                hir::BiGt => ("gt", lang.ord_trait()),
+                hir::BiEq => ("eq", lang.eq_trait()),
+                hir::BiNe => ("ne", lang.eq_trait()),
+                hir::BiAnd | hir::BiOr => {
+                    span_bug!(op.span, "&& and || are not overloadable")
+                }
             }
         }
     }
-}
 
-fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
-                              expr: &'tcx hir::Expr,
-                              lhs_ty: Ty<'tcx>,
-                              other_tys: Vec<Ty<'tcx>>,
-                              opname: ast::Name,
-                              trait_did: Option<DefId>,
-                              lhs_expr: &'a hir::Expr)
-                              -> Result<Ty<'tcx>,()>
-{
-    debug!("lookup_op_method(expr={:?}, lhs_ty={:?}, opname={:?}, trait_did={:?}, lhs_expr={:?})",
-           expr,
-           lhs_ty,
-           opname,
-           trait_did,
-           lhs_expr);
+    fn lookup_op_method(&self,
+                        expr: &'gcx hir::Expr,
+                        lhs_ty: Ty<'tcx>,
+                        other_tys: Vec<Ty<'tcx>>,
+                        opname: ast::Name,
+                        trait_did: Option<DefId>,
+                        lhs_expr: &'a hir::Expr)
+                        -> Result<Ty<'tcx>,()>
+    {
+        debug!("lookup_op_method(expr={:?}, lhs_ty={:?}, opname={:?}, \
+                                 trait_did={:?}, lhs_expr={:?})",
+               expr,
+               lhs_ty,
+               opname,
+               trait_did,
+               lhs_expr);
 
-    let method = match trait_did {
-        Some(trait_did) => {
-            method::lookup_in_trait_adjusted(fcx,
-                                             expr.span,
-                                             Some(lhs_expr),
-                                             opname,
-                                             trait_did,
-                                             0,
-                                             false,
-                                             lhs_ty,
-                                             Some(other_tys))
-        }
-        None => None
-    };
+        let method = match trait_did {
+            Some(trait_did) => {
+                self.lookup_method_in_trait_adjusted(expr.span,
+                                                     Some(lhs_expr),
+                                                     opname,
+                                                     trait_did,
+                                                     0,
+                                                     false,
+                                                     lhs_ty,
+                                                     Some(other_tys))
+            }
+            None => None
+        };
 
-    match method {
-        Some(method) => {
-            let method_ty = method.ty;
+        match method {
+            Some(method) => {
+                let method_ty = method.ty;
 
-            // HACK(eddyb) Fully qualified path to work around a resolve bug.
-            let method_call = ::rustc::ty::MethodCall::expr(expr.id);
-            fcx.inh.tables.borrow_mut().method_map.insert(method_call, method);
+                // HACK(eddyb) Fully qualified path to work around a resolve bug.
+                let method_call = ::rustc::ty::MethodCall::expr(expr.id);
+                self.tables.borrow_mut().method_map.insert(method_call, method);
 
-            // extract return type for method; all late bound regions
-            // should have been instantiated by now
-            let ret_ty = method_ty.fn_ret();
-            Ok(fcx.tcx().no_late_bound_regions(&ret_ty).unwrap().unwrap())
-        }
-        None => {
-            Err(())
+                // extract return type for method; all late bound regions
+                // should have been instantiated by now
+                let ret_ty = method_ty.fn_ret();
+                Ok(self.tcx.no_late_bound_regions(&ret_ty).unwrap().unwrap())
+            }
+            None => {
+                Err(())
+            }
         }
     }
 }
@@ -428,11 +427,7 @@ enum IsAssign {
 /// Reason #2 is the killer. I tried for a while to always use
 /// overloaded logic and just check the types in constants/trans after
 /// the fact, and it worked fine, except for SIMD types. -nmatsakis
-fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>,
-                          rhs: Ty<'tcx>,
-                          op: hir::BinOp)
-                          -> bool
-{
+fn is_builtin_binop(lhs: Ty, rhs: Ty, op: hir::BinOp) -> bool {
     match BinOpCategory::from(op) {
         BinOpCategory::Shortcircuit => {
             true

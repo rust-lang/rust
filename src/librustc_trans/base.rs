@@ -36,7 +36,6 @@ use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use rustc::cfg;
 use rustc::hir::def_id::DefId;
-use rustc::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use rustc::hir::pat_util::simple_name;
@@ -1309,7 +1308,9 @@ impl<'v> Visitor<'v> for FindNestedReturn {
     }
 }
 
-fn build_cfg(tcx: &TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
+fn build_cfg<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                       id: ast::NodeId)
+                       -> (ast::NodeId, Option<cfg::CFG>) {
     let blk = match tcx.map.find(id) {
         Some(hir_map::NodeItem(i)) => {
             match i.node {
@@ -1365,7 +1366,7 @@ fn build_cfg(tcx: &TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
 // part of a larger expression that may have already partially-filled the
 // return slot alloca. This can cause errors related to clean-up due to
 // the clobbering of the existing value in the return slot.
-fn has_nested_returns(tcx: &TyCtxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bool {
+fn has_nested_returns(tcx: TyCtxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bool {
     for index in cfg.graph.depth_traverse(cfg.entry) {
         let n = cfg.graph.node_data(index);
         match tcx.map.find(n.id()) {
@@ -1923,7 +1924,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let fn_ty = ccx.tcx().lookup_item_type(def_id).ty;
     let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &fn_ty);
     let sig = ccx.tcx().erase_late_bound_regions(fn_ty.fn_sig());
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = ccx.tcx().normalize_associated_type(&sig);
     let abi = fn_ty.fn_abi();
     trans_closure(ccx,
                   decl,
@@ -1947,7 +1948,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let ccx = bcx.fcx.ccx;
 
     let sig = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_sig());
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = ccx.tcx().normalize_associated_type(&sig);
     let result_ty = sig.output.unwrap();
 
     // Get location to store the result. If the user does not care about
@@ -2017,7 +2018,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &ctor_ty);
 
     let sig = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_sig());
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = ccx.tcx().normalize_associated_type(&sig);
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);
@@ -2689,10 +2690,10 @@ pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
     }).collect()
 }
 
-pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
-                         mir_map: &MirMap<'tcx>,
-                         analysis: ty::CrateAnalysis)
-                         -> CrateTranslation {
+pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             mir_map: &MirMap<'tcx>,
+                             analysis: ty::CrateAnalysis)
+                             -> CrateTranslation {
     let _task = tcx.dep_graph.in_task(DepNode::TransCrate);
 
     // Be careful with this krate: obviously it gives access to the
@@ -2715,7 +2716,7 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         tcx.sess.opts.debug_assertions
     };
 
-    let link_meta = link::build_link_meta(&tcx, name);
+    let link_meta = link::build_link_meta(tcx, name);
 
     let shared_ccx = SharedCrateContext::new(tcx,
                                              &mir_map,

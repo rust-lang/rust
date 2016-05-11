@@ -95,8 +95,8 @@ use syntax::codemap::{self, Pos, Span};
 use syntax::parse::token;
 use syntax::ptr::P;
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn note_and_explain_region(&self,
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    pub fn note_and_explain_region(self,
                                    err: &mut DiagnosticBuilder,
                                    prefix: &str,
                                    region: ty::Region,
@@ -112,8 +112,9 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
 
-        fn explain_span(tcx: &TyCtxt, heading: &str, span: Span)
-                        -> (String, Option<Span>) {
+        fn explain_span<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                        heading: &str, span: Span)
+                                        -> (String, Option<Span>) {
             let lo = tcx.sess.codemap().lookup_char_pos_adj(span.lo);
             (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize()),
              Some(span))
@@ -227,83 +228,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-pub trait ErrorReporting<'tcx> {
-    fn report_region_errors(&self,
-                            errors: &Vec<RegionResolutionError<'tcx>>);
-
-    fn process_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>)
-                      -> Option<Vec<RegionResolutionError<'tcx>>>;
-
-    fn report_type_error(&self,
-                         trace: TypeTrace<'tcx>,
-                         terr: &TypeError<'tcx>)
-                         -> DiagnosticBuilder<'tcx>;
-
-    fn check_and_note_conflicting_crates(&self,
-                                         err: &mut DiagnosticBuilder,
-                                         terr: &TypeError<'tcx>,
-                                         sp: Span);
-
-    fn report_and_explain_type_error(&self,
-                                     trace: TypeTrace<'tcx>,
-                                     terr: &TypeError<'tcx>)
-                                     -> DiagnosticBuilder<'tcx>;
-
-    fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<(String, String)>;
-
-    fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + TypeFoldable<'tcx>>(
-        &self,
-        exp_found: &ty::error::ExpectedFound<T>)
-        -> Option<(String, String)>;
-
-    fn report_concrete_failure(&self,
-                               origin: SubregionOrigin<'tcx>,
-                               sub: Region,
-                               sup: Region)
-                                -> DiagnosticBuilder<'tcx>;
-
-    fn report_generic_bound_failure(&self,
-                                    origin: SubregionOrigin<'tcx>,
-                                    kind: GenericKind<'tcx>,
-                                    sub: Region);
-
-    fn report_sub_sup_conflict(&self,
-                               var_origin: RegionVariableOrigin,
-                               sub_origin: SubregionOrigin<'tcx>,
-                               sub_region: Region,
-                               sup_origin: SubregionOrigin<'tcx>,
-                               sup_region: Region);
-
-    fn report_processed_errors(&self,
-                               origins: &[ProcessedErrorOrigin<'tcx>],
-                               same_regions: &[SameRegions]);
-
-    fn give_suggestion(&self, err: &mut DiagnosticBuilder, same_regions: &[SameRegions]);
-}
-
-trait ErrorReportingHelpers<'tcx> {
-    fn report_inference_failure(&self,
-                                var_origin: RegionVariableOrigin)
-                                -> DiagnosticBuilder<'tcx>;
-
-    fn note_region_origin(&self,
-                          err: &mut DiagnosticBuilder,
-                          origin: &SubregionOrigin<'tcx>);
-
-    fn give_expl_lifetime_param(&self,
-                                err: &mut DiagnosticBuilder,
-                                decl: &hir::FnDecl,
-                                unsafety: hir::Unsafety,
-                                constness: hir::Constness,
-                                name: ast::Name,
-                                opt_explicit_self: Option<&hir::ExplicitSelf_>,
-                                generics: &hir::Generics,
-                                span: Span);
-}
-
-impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
-    fn report_region_errors(&self,
-                            errors: &Vec<RegionResolutionError<'tcx>>) {
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+    pub fn report_region_errors(&self,
+                                errors: &Vec<RegionResolutionError<'tcx>>) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
         // try to pre-process the errors, which will group some of them
@@ -474,10 +401,10 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
 
-        fn free_regions_from_same_fn(tcx: &TyCtxt,
-                                     sub: Region,
-                                     sup: Region)
-                                     -> Option<FreeRegionsFromSameFn> {
+        fn free_regions_from_same_fn<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                     sub: Region,
+                                                     sup: Region)
+                                                     -> Option<FreeRegionsFromSameFn> {
             debug!("free_regions_from_same_fn(sub={:?}, sup={:?})", sub, sup);
             let (scope_id, fr1, fr2) = match (sub, sup) {
                 (ReFree(fr1), ReFree(fr2)) => {
@@ -619,10 +546,10 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn report_and_explain_type_error(&self,
-                                     trace: TypeTrace<'tcx>,
-                                     terr: &TypeError<'tcx>)
-                                     -> DiagnosticBuilder<'tcx> {
+    pub fn report_and_explain_type_error(&self,
+                                         trace: TypeTrace<'tcx>,
+                                         terr: &TypeError<'tcx>)
+                                         -> DiagnosticBuilder<'tcx> {
         let span = trace.origin.span();
         let mut err = self.report_type_error(trace, terr);
         self.tcx.note_and_explain_type_err(&mut err, terr, span);
@@ -1108,8 +1035,8 @@ struct RebuildPathInfo<'a> {
     region_names: &'a HashSet<ast::Name>
 }
 
-struct Rebuilder<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+struct Rebuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     fn_decl: &'a hir::FnDecl,
     expl_self_opt: Option<&'a hir::ExplicitSelf_>,
     generics: &'a hir::Generics,
@@ -1124,14 +1051,14 @@ enum FreshOrKept {
     Kept
 }
 
-impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
-    fn new(tcx: &'a TyCtxt<'tcx>,
+impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
            fn_decl: &'a hir::FnDecl,
            expl_self_opt: Option<&'a hir::ExplicitSelf_>,
            generics: &'a hir::Generics,
            same_regions: &'a [SameRegions],
            life_giver: &'a LifeGiver)
-           -> Rebuilder<'a, 'tcx> {
+           -> Rebuilder<'a, 'gcx, 'tcx> {
         Rebuilder {
             tcx: tcx,
             fn_decl: fn_decl,
@@ -1641,7 +1568,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn give_expl_lifetime_param(&self,
                                 err: &mut DiagnosticBuilder,
                                 decl: &hir::FnDecl,
@@ -1904,34 +1831,34 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
 }
 
 pub trait Resolvable<'tcx> {
-    fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>) -> Self;
+    fn resolve<'a, 'gcx>(&self, infcx: &InferCtxt<'a, 'gcx, 'tcx>) -> Self;
 }
 
 impl<'tcx> Resolvable<'tcx> for Ty<'tcx> {
-    fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>) -> Ty<'tcx> {
+    fn resolve<'a, 'gcx>(&self, infcx: &InferCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         infcx.resolve_type_vars_if_possible(self)
     }
 }
 
 impl<'tcx> Resolvable<'tcx> for ty::TraitRef<'tcx> {
-    fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>)
-                   -> ty::TraitRef<'tcx> {
+    fn resolve<'a, 'gcx>(&self, infcx: &InferCtxt<'a, 'gcx, 'tcx>)
+                         -> ty::TraitRef<'tcx> {
         infcx.resolve_type_vars_if_possible(self)
     }
 }
 
 impl<'tcx> Resolvable<'tcx> for ty::PolyTraitRef<'tcx> {
-    fn resolve<'a>(&self,
-                   infcx: &InferCtxt<'a, 'tcx>)
-                   -> ty::PolyTraitRef<'tcx>
+    fn resolve<'a, 'gcx>(&self,
+                         infcx: &InferCtxt<'a, 'gcx, 'tcx>)
+                         -> ty::PolyTraitRef<'tcx>
     {
         infcx.resolve_type_vars_if_possible(self)
     }
 }
 
-fn lifetimes_in_scope(tcx: &TyCtxt,
-                      scope_id: ast::NodeId)
-                      -> Vec<hir::LifetimeDef> {
+fn lifetimes_in_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                      scope_id: ast::NodeId)
+                                      -> Vec<hir::LifetimeDef> {
     let mut taken = Vec::new();
     let parent = tcx.map.get_parent(scope_id);
     let method_id_opt = match tcx.map.find(parent) {

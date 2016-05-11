@@ -59,7 +59,7 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
 // The first pass over the crate simply builds up the set of inferreds.
 
 pub struct TermsContext<'a, 'tcx: 'a> {
-    pub tcx: &'a TyCtxt<'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub arena: &'a TypedArena<VarianceTerm<'a>>,
 
     pub empty_variances: Rc<ty::ItemVariances>,
@@ -98,7 +98,7 @@ pub struct InferredInfo<'a> {
 }
 
 pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     arena: &'a mut TypedArena<VarianceTerm<'a>>)
     -> TermsContext<'a, 'tcx>
 {
@@ -125,7 +125,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
     terms_cx
 }
 
-fn lang_items(tcx: &TyCtxt) -> Vec<(ast::NodeId,Vec<ty::Variance>)> {
+fn lang_items(tcx: TyCtxt) -> Vec<(ast::NodeId,Vec<ty::Variance>)> {
     let all = vec![
         (tcx.lang_items.phantom_data(), vec![ty::Covariant]),
         (tcx.lang_items.unsafe_cell_type(), vec![ty::Invariant]),

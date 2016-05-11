@@ -330,10 +330,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     }
 }
 
-pub fn promote_candidates<'tcx>(mir: &mut Mir<'tcx>,
-                                tcx: &TyCtxt<'tcx>,
-                                mut temps: Vec<TempState>,
-                                candidates: Vec<Candidate>) {
+pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
+                                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                    mut temps: Vec<TempState>,
+                                    candidates: Vec<Candidate>) {
     // Visit candidates in reverse, in case they're nested.
     for candidate in candidates.into_iter().rev() {
         let (span, ty) = match candidate {

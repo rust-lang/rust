@@ -19,7 +19,7 @@ use llvm;
 use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
 use rustc::ty::subst::{Substs};
-use rustc::{infer, traits};
+use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 use abi::{Abi, FnType};
 use adt;
@@ -88,12 +88,13 @@ pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn type_needs_drop<'tcx>(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 ty: Ty<'tcx>) -> bool {
     tcx.type_needs_drop_given_env(ty, &tcx.empty_parameter_environment())
 }
 
-pub fn get_drop_glue_type<'tcx>(tcx: &TyCtxt<'tcx>,
-                                t: Ty<'tcx>) -> Ty<'tcx> {
+pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                    t: Ty<'tcx>) -> Ty<'tcx> {
     // Even if there is no dtor for t, there might be one deeper down and we
     // might need to pass in the vtable ptr.
     if !type_is_sized(tcx, t) {
@@ -109,22 +110,21 @@ pub fn get_drop_glue_type<'tcx>(tcx: &TyCtxt<'tcx>,
     // returned `tcx.types.i8` does not appear unsound. The impact on
     // code quality is unknown at this time.)
 
-    if !type_needs_drop(&tcx, t) {
+    if !type_needs_drop(tcx, t) {
         return tcx.types.i8;
     }
     match t.sty {
-        ty::TyBox(typ) if !type_needs_drop(&tcx, typ)
+        ty::TyBox(typ) if !type_needs_drop(tcx, typ)
                          && type_is_sized(tcx, typ) => {
-            let infcx = infer::normalizing_infer_ctxt(tcx,
-                                                      &tcx.tables,
-                                                      traits::ProjectionMode::Any);
-            let layout = t.layout(&infcx).unwrap();
-            if layout.size(&tcx.data_layout).bytes() == 0 {
-                // `Box<ZeroSizeType>` does not allocate.
-                tcx.types.i8
-            } else {
-                tcx.erase_regions(&t)
-            }
+            tcx.normalizing_infer_ctxt(traits::ProjectionMode::Any).enter(|infcx| {
+                let layout = t.layout(&infcx).unwrap();
+                if layout.size(&tcx.data_layout).bytes() == 0 {
+                    // `Box<ZeroSizeType>` does not allocate.
+                    tcx.types.i8
+                } else {
+                    tcx.erase_regions(&t)
+                }
+            })
         }
         _ => tcx.erase_regions(&t)
     }

@@ -165,10 +165,10 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-impl<'tcx> ImplHeader<'tcx> {
-    pub fn with_fresh_ty_vars<'a>(selcx: &mut traits::SelectionContext<'a, 'tcx>,
-                                  impl_def_id: DefId)
-                                  -> ImplHeader<'tcx>
+impl<'a, 'gcx, 'tcx> ImplHeader<'tcx> {
+    pub fn with_fresh_ty_vars(selcx: &mut traits::SelectionContext<'a, 'gcx, 'tcx>,
+                              impl_def_id: DefId)
+                              -> ImplHeader<'tcx>
     {
         let tcx = selcx.tcx();
         let impl_generics = tcx.lookup_item_type(impl_def_id).generics;
@@ -303,7 +303,7 @@ impl<'a> NodeIdTree for ast_map::Map<'a> {
 }
 
 impl Visibility {
-    pub fn from_hir(visibility: &hir::Visibility, id: NodeId, tcx: &TyCtxt) -> Self {
+    pub fn from_hir(visibility: &hir::Visibility, id: NodeId, tcx: TyCtxt) -> Self {
         match *visibility {
             hir::Public => Visibility::Public,
             hir::Visibility::Crate => Visibility::Restricted(ast::CRATE_NODE_ID),
@@ -350,7 +350,7 @@ pub struct Method<'tcx> {
     pub name: Name,
     pub generics: Generics<'tcx>,
     pub predicates: GenericPredicates<'tcx>,
-    pub fty: BareFnTy<'tcx>,
+    pub fty: &'tcx BareFnTy<'tcx>,
     pub explicit_self: ExplicitSelfCategory,
     pub vis: Visibility,
     pub defaultness: hir::Defaultness,
@@ -362,7 +362,7 @@ impl<'tcx> Method<'tcx> {
     pub fn new(name: Name,
                generics: ty::Generics<'tcx>,
                predicates: GenericPredicates<'tcx>,
-               fty: BareFnTy<'tcx>,
+               fty: &'tcx BareFnTy<'tcx>,
                explicit_self: ExplicitSelfCategory,
                vis: Visibility,
                defaultness: hir::Defaultness,
@@ -524,6 +524,10 @@ bitflags! {
         // that are local to a particular fn
         const HAS_LOCAL_NAMES   = 1 << 9,
 
+        // Present if the type belongs in a local type context.
+        // Only set for TyInfer other than Fresh.
+        const KEEP_IN_LOCAL_TCX = 1 << 10,
+
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits,
@@ -540,7 +544,8 @@ bitflags! {
                                   TypeFlags::HAS_TY_ERR.bits |
                                   TypeFlags::HAS_PROJECTION.bits |
                                   TypeFlags::HAS_TY_CLOSURE.bits |
-                                  TypeFlags::HAS_LOCAL_NAMES.bits,
+                                  TypeFlags::HAS_LOCAL_NAMES.bits |
+                                  TypeFlags::KEEP_IN_LOCAL_TCX.bits,
 
         // Caches for type_is_sized, type_moves_by_default
         const SIZEDNESS_CACHED  = 1 << 16,
@@ -773,27 +778,28 @@ pub struct GenericPredicates<'tcx> {
     pub predicates: VecPerParamSpace<Predicate<'tcx>>,
 }
 
-impl<'tcx> GenericPredicates<'tcx> {
+impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
     pub fn empty() -> GenericPredicates<'tcx> {
         GenericPredicates {
             predicates: VecPerParamSpace::empty(),
         }
     }
 
-    pub fn instantiate(&self, tcx: &TyCtxt<'tcx>, substs: &Substs<'tcx>)
+    pub fn instantiate(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
                        -> InstantiatedPredicates<'tcx> {
         InstantiatedPredicates {
             predicates: self.predicates.subst(tcx, substs),
         }
     }
 
-    pub fn instantiate_supertrait(&self,
-                                  tcx: &TyCtxt<'tcx>,
+    pub fn instantiate_supertrait(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                   poly_trait_ref: &ty::PolyTraitRef<'tcx>)
                                   -> InstantiatedPredicates<'tcx>
     {
         InstantiatedPredicates {
-            predicates: self.predicates.map(|pred| pred.subst_supertrait(tcx, poly_trait_ref))
+            predicates: self.predicates.map(|pred| {
+                pred.subst_supertrait(tcx, poly_trait_ref)
+            })
         }
     }
 }
@@ -833,14 +839,13 @@ pub enum Predicate<'tcx> {
     ClosureKind(DefId, ClosureKind),
 }
 
-impl<'tcx> Predicate<'tcx> {
+impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
     /// Performs a substitution suitable for going from a
     /// poly-trait-ref to supertraits that must hold if that
     /// poly-trait-ref holds. This is slightly different from a normal
     /// substitution in terms of what happens with bound regions.  See
     /// lengthy comment below for details.
-    pub fn subst_supertrait(&self,
-                            tcx: &TyCtxt<'tcx>,
+    pub fn subst_supertrait(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                             trait_ref: &ty::PolyTraitRef<'tcx>)
                             -> ty::Predicate<'tcx>
     {
@@ -1211,11 +1216,9 @@ impl<'tcx> TraitRef<'tcx> {
 /// future I hope to refine the representation of types so as to make
 /// more distinctions clearer.
 #[derive(Clone)]
-pub struct ParameterEnvironment<'a, 'tcx:'a> {
-    pub tcx: &'a TyCtxt<'tcx>,
-
+pub struct ParameterEnvironment<'tcx> {
     /// See `construct_free_substs` for details.
-    pub free_substs: Substs<'tcx>,
+    pub free_substs: &'tcx Substs<'tcx>,
 
     /// Each type parameter has an implicit region bound that
     /// indicates it must outlive at least the function body (the user
@@ -1228,13 +1231,6 @@ pub struct ParameterEnvironment<'a, 'tcx:'a> {
     /// into Obligations, and elaborated and normalized.
     pub caller_bounds: Vec<ty::Predicate<'tcx>>,
 
-    /// Caches the results of trait selection. This cache is used
-    /// for things that have to do with the parameters in scope.
-    pub selection_cache: traits::SelectionCache<'tcx>,
-
-    /// Caches the results of trait evaluation.
-    pub evaluation_cache: traits::EvaluationCache<'tcx>,
-
     /// Scope that is attached to free regions for this scope. This
     /// is usually the id of the fn body, but for more abstract scopes
     /// like structs we often use the node-id of the struct.
@@ -1245,59 +1241,57 @@ pub struct ParameterEnvironment<'a, 'tcx:'a> {
     pub free_id_outlive: CodeExtent,
 }
 
-impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
+impl<'a, 'tcx> ParameterEnvironment<'tcx> {
     pub fn with_caller_bounds(&self,
                               caller_bounds: Vec<ty::Predicate<'tcx>>)
-                              -> ParameterEnvironment<'a,'tcx>
+                              -> ParameterEnvironment<'tcx>
     {
         ParameterEnvironment {
-            tcx: self.tcx,
-            free_substs: self.free_substs.clone(),
+            free_substs: self.free_substs,
             implicit_region_bound: self.implicit_region_bound,
             caller_bounds: caller_bounds,
-            selection_cache: traits::SelectionCache::new(),
-            evaluation_cache: traits::EvaluationCache::new(),
             free_id_outlive: self.free_id_outlive,
         }
     }
 
     /// Construct a parameter environment given an item, impl item, or trait item
-    pub fn for_item(cx: &'a TyCtxt<'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
-        match cx.map.find(id) {
+    pub fn for_item(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId)
+                    -> ParameterEnvironment<'tcx> {
+        match tcx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
                     hir::ImplItemKind::Type(_) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the impl
-                        let impl_id = cx.map.get_parent(id);
-                        let impl_def_id = cx.map.local_def_id(impl_id);
-                        let scheme = cx.lookup_item_type(impl_def_id);
-                        let predicates = cx.lookup_predicates(impl_def_id);
-                        cx.construct_parameter_environment(impl_item.span,
-                                                           &scheme.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let impl_id = tcx.map.get_parent(id);
+                        let impl_def_id = tcx.map.local_def_id(impl_id);
+                        let scheme = tcx.lookup_item_type(impl_def_id);
+                        let predicates = tcx.lookup_predicates(impl_def_id);
+                        tcx.construct_parameter_environment(impl_item.span,
+                                                            &scheme.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     hir::ImplItemKind::Const(_, _) => {
-                        let def_id = cx.map.local_def_id(id);
-                        let scheme = cx.lookup_item_type(def_id);
-                        let predicates = cx.lookup_predicates(def_id);
-                        cx.construct_parameter_environment(impl_item.span,
-                                                           &scheme.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let def_id = tcx.map.local_def_id(id);
+                        let scheme = tcx.lookup_item_type(def_id);
+                        let predicates = tcx.lookup_predicates(def_id);
+                        tcx.construct_parameter_environment(impl_item.span,
+                                                            &scheme.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     hir::ImplItemKind::Method(_, ref body) => {
-                        let method_def_id = cx.map.local_def_id(id);
-                        match cx.impl_or_trait_item(method_def_id) {
+                        let method_def_id = tcx.map.local_def_id(id);
+                        match tcx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
                                 let method_generics = &method_ty.generics;
                                 let method_bounds = &method_ty.predicates;
-                                cx.construct_parameter_environment(
+                                tcx.construct_parameter_environment(
                                     impl_item.span,
                                     method_generics,
                                     method_bounds,
-                                    cx.region_maps.call_site_extent(id, body.id))
+                                    tcx.region_maps.call_site_extent(id, body.id))
                             }
                             _ => {
                                 bug!("ParameterEnvironment::for_item(): \
@@ -1312,41 +1306,41 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     hir::TypeTraitItem(..) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the trait
-                        let trait_id = cx.map.get_parent(id);
-                        let trait_def_id = cx.map.local_def_id(trait_id);
-                        let trait_def = cx.lookup_trait_def(trait_def_id);
-                        let predicates = cx.lookup_predicates(trait_def_id);
-                        cx.construct_parameter_environment(trait_item.span,
-                                                           &trait_def.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let trait_id = tcx.map.get_parent(id);
+                        let trait_def_id = tcx.map.local_def_id(trait_id);
+                        let trait_def = tcx.lookup_trait_def(trait_def_id);
+                        let predicates = tcx.lookup_predicates(trait_def_id);
+                        tcx.construct_parameter_environment(trait_item.span,
+                                                            &trait_def.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     hir::ConstTraitItem(..) => {
-                        let def_id = cx.map.local_def_id(id);
-                        let scheme = cx.lookup_item_type(def_id);
-                        let predicates = cx.lookup_predicates(def_id);
-                        cx.construct_parameter_environment(trait_item.span,
-                                                           &scheme.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let def_id = tcx.map.local_def_id(id);
+                        let scheme = tcx.lookup_item_type(def_id);
+                        let predicates = tcx.lookup_predicates(def_id);
+                        tcx.construct_parameter_environment(trait_item.span,
+                                                            &scheme.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     hir::MethodTraitItem(_, ref body) => {
                         // Use call-site for extent (unless this is a
                         // trait method with no default; then fallback
                         // to the method id).
-                        let method_def_id = cx.map.local_def_id(id);
-                        match cx.impl_or_trait_item(method_def_id) {
+                        let method_def_id = tcx.map.local_def_id(id);
+                        match tcx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
                                 let method_generics = &method_ty.generics;
                                 let method_bounds = &method_ty.predicates;
                                 let extent = if let Some(ref body) = *body {
                                     // default impl: use call_site extent as free_id_outlive bound.
-                                    cx.region_maps.call_site_extent(id, body.id)
+                                    tcx.region_maps.call_site_extent(id, body.id)
                                 } else {
                                     // no default impl: use item extent as free_id_outlive bound.
-                                    cx.region_maps.item_extent(id)
+                                    tcx.region_maps.item_extent(id)
                                 };
-                                cx.construct_parameter_environment(
+                                tcx.construct_parameter_environment(
                                     trait_item.span,
                                     method_generics,
                                     method_bounds,
@@ -1365,15 +1359,15 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                 match item.node {
                     hir::ItemFn(_, _, _, _, _, ref body) => {
                         // We assume this is a function.
-                        let fn_def_id = cx.map.local_def_id(id);
-                        let fn_scheme = cx.lookup_item_type(fn_def_id);
-                        let fn_predicates = cx.lookup_predicates(fn_def_id);
+                        let fn_def_id = tcx.map.local_def_id(id);
+                        let fn_scheme = tcx.lookup_item_type(fn_def_id);
+                        let fn_predicates = tcx.lookup_predicates(fn_def_id);
 
-                        cx.construct_parameter_environment(item.span,
-                                                           &fn_scheme.generics,
-                                                           &fn_predicates,
-                                                           cx.region_maps.call_site_extent(id,
-                                                                                           body.id))
+                        tcx.construct_parameter_environment(
+                            item.span,
+                            &fn_scheme.generics,
+                            &fn_predicates,
+                            tcx.region_maps.call_site_extent(id, body.id))
                     }
                     hir::ItemEnum(..) |
                     hir::ItemStruct(..) |
@@ -1381,22 +1375,22 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     hir::ItemImpl(..) |
                     hir::ItemConst(..) |
                     hir::ItemStatic(..) => {
-                        let def_id = cx.map.local_def_id(id);
-                        let scheme = cx.lookup_item_type(def_id);
-                        let predicates = cx.lookup_predicates(def_id);
-                        cx.construct_parameter_environment(item.span,
-                                                           &scheme.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let def_id = tcx.map.local_def_id(id);
+                        let scheme = tcx.lookup_item_type(def_id);
+                        let predicates = tcx.lookup_predicates(def_id);
+                        tcx.construct_parameter_environment(item.span,
+                                                            &scheme.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     hir::ItemTrait(..) => {
-                        let def_id = cx.map.local_def_id(id);
-                        let trait_def = cx.lookup_trait_def(def_id);
-                        let predicates = cx.lookup_predicates(def_id);
-                        cx.construct_parameter_environment(item.span,
-                                                           &trait_def.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let def_id = tcx.map.local_def_id(id);
+                        let trait_def = tcx.lookup_trait_def(def_id);
+                        let predicates = tcx.lookup_predicates(def_id);
+                        tcx.construct_parameter_environment(item.span,
+                                                            &trait_def.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     _ => {
                         span_bug!(item.span,
@@ -1408,21 +1402,21 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             }
             Some(ast_map::NodeExpr(..)) => {
                 // This is a convenience to allow closures to work.
-                ParameterEnvironment::for_item(cx, cx.map.get_parent(id))
+                ParameterEnvironment::for_item(tcx, tcx.map.get_parent(id))
             }
             Some(ast_map::NodeForeignItem(item)) => {
-                let def_id = cx.map.local_def_id(id);
-                let scheme = cx.lookup_item_type(def_id);
-                let predicates = cx.lookup_predicates(def_id);
-                cx.construct_parameter_environment(item.span,
-                                                   &scheme.generics,
-                                                   &predicates,
-                                                   ROOT_CODE_EXTENT)
+                let def_id = tcx.map.local_def_id(id);
+                let scheme = tcx.lookup_item_type(def_id);
+                let predicates = tcx.lookup_predicates(def_id);
+                tcx.construct_parameter_environment(item.span,
+                                                    &scheme.generics,
+                                                    &predicates,
+                                                    ROOT_CODE_EXTENT)
             }
             _ => {
                 bug!("ParameterEnvironment::from_item(): \
                       `{}` is not an item",
-                     cx.map.node_to_string(id))
+                     tcx.map.node_to_string(id))
             }
         }
     }
@@ -1570,11 +1564,11 @@ impl VariantKind {
     }
 }
 
-impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
-    fn new(tcx: &TyCtxt<'tcx>,
+impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
+    fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
            did: DefId,
            kind: AdtKind,
-           variants: Vec<VariantDefData<'tcx, 'container>>) -> Self {
+           variants: Vec<VariantDefData<'gcx, 'container>>) -> Self {
         let mut flags = AdtFlags::NO_ADT_FLAGS;
         let attrs = tcx.get_attrs(did);
         if attr::contains_name(&attrs, "fundamental") {
@@ -1601,7 +1595,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
         }
     }
 
-    fn calculate_dtorck(&'tcx self, tcx: &TyCtxt<'tcx>) {
+    fn calculate_dtorck(&'gcx self, tcx: TyCtxt) {
         if tcx.is_adt_dtorck(self) {
             self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK);
         }
@@ -1622,7 +1616,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     /// true, this type being safe for destruction requires it to be
     /// alive; Otherwise, only the contents are required to be.
     #[inline]
-    pub fn is_dtorck(&'tcx self, tcx: &TyCtxt<'tcx>) -> bool {
+    pub fn is_dtorck(&'gcx self, tcx: TyCtxt) -> bool {
         if !self.flags.get().intersects(AdtFlags::IS_DTORCK_VALID) {
             self.calculate_dtorck(tcx)
         }
@@ -1657,18 +1651,18 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
 
     /// Asserts this is a struct and returns the struct's unique
     /// variant.
-    pub fn struct_variant(&self) -> &VariantDefData<'tcx, 'container> {
+    pub fn struct_variant(&self) -> &VariantDefData<'gcx, 'container> {
         assert_eq!(self.adt_kind(), AdtKind::Struct);
         &self.variants[0]
     }
 
     #[inline]
-    pub fn type_scheme(&self, tcx: &TyCtxt<'tcx>) -> TypeScheme<'tcx> {
+    pub fn type_scheme(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> TypeScheme<'gcx> {
         tcx.lookup_item_type(self.did)
     }
 
     #[inline]
-    pub fn predicates(&self, tcx: &TyCtxt<'tcx>) -> GenericPredicates<'tcx> {
+    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> GenericPredicates<'gcx> {
         tcx.lookup_predicates(self.did)
     }
 
@@ -1677,10 +1671,10 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     #[inline]
     pub fn all_fields(&self) ->
             iter::FlatMap<
-                slice::Iter<VariantDefData<'tcx, 'container>>,
-                slice::Iter<FieldDefData<'tcx, 'container>>,
-                for<'s> fn(&'s VariantDefData<'tcx, 'container>)
-                    -> slice::Iter<'s, FieldDefData<'tcx, 'container>>
+                slice::Iter<VariantDefData<'gcx, 'container>>,
+                slice::Iter<FieldDefData<'gcx, 'container>>,
+                for<'s> fn(&'s VariantDefData<'gcx, 'container>)
+                    -> slice::Iter<'s, FieldDefData<'gcx, 'container>>
             > {
         self.variants.iter().flat_map(VariantDefData::fields_iter)
     }
@@ -1700,7 +1694,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
             self.variants.iter().all(|v| v.fields.is_empty())
     }
 
-    pub fn variant_with_id(&self, vid: DefId) -> &VariantDefData<'tcx, 'container> {
+    pub fn variant_with_id(&self, vid: DefId) -> &VariantDefData<'gcx, 'container> {
         self.variants
             .iter()
             .find(|v| v.did == vid)
@@ -1714,7 +1708,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
             .expect("variant_index_with_id: unknown variant")
     }
 
-    pub fn variant_of_def(&self, def: Def) -> &VariantDefData<'tcx, 'container> {
+    pub fn variant_of_def(&self, def: Def) -> &VariantDefData<'gcx, 'container> {
         match def {
             Def::Variant(_, vid) => self.variant_with_id(vid),
             Def::Struct(..) | Def::TyAlias(..) => self.struct_variant(),
@@ -1738,7 +1732,9 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
             None => NoDtor,
         }
     }
+}
 
+impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'tcx, 'container> {
     /// Returns a simpler type such that `Self: Sized` if and only
     /// if that type is Sized, or `TyErr` if this type is recursive.
     ///
@@ -1756,12 +1752,13 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     ///
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer, e.g. issue #31299.
-    pub fn sized_constraint(&self, tcx: &ty::TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         let dep_node = DepNode::SizedConstraint(self.did);
         match self.sized_constraint.get(dep_node) {
             None => {
-                let this = tcx.lookup_adt_def_master(self.did);
-                this.calculate_sized_constraint_inner(tcx, &mut Vec::new());
+                let global_tcx = tcx.global_tcx();
+                let this = global_tcx.lookup_adt_def_master(self.did);
+                this.calculate_sized_constraint_inner(global_tcx, &mut Vec::new());
                 self.sized_constraint(tcx)
             }
             Some(ty) => ty
@@ -1769,7 +1766,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     }
 }
 
-impl<'tcx> AdtDefData<'tcx, 'tcx> {
+impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
     /// Calculates the Sized-constraint.
     ///
     /// As the Sized-constraint of enums can be a *set* of types,
@@ -1785,7 +1782,7 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
     ///       such.
     ///     - a TyError, if a type contained itself. The representability
     ///       check should catch this case.
-    fn calculate_sized_constraint_inner(&'tcx self, tcx: &ty::TyCtxt<'tcx>,
+    fn calculate_sized_constraint_inner(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         stack: &mut Vec<AdtDefMaster<'tcx>>)
     {
 
@@ -1838,7 +1835,7 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
 
     fn sized_constraint_for_ty(
         &'tcx self,
-        tcx: &ty::TyCtxt<'tcx>,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
         stack: &mut Vec<AdtDefMaster<'tcx>>,
         ty: Ty<'tcx>
     ) -> Vec<Ty<'tcx>> {
@@ -1953,7 +1950,7 @@ impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
     }
 }
 
-impl<'tcx, 'container> FieldDefData<'tcx, 'container> {
+impl<'a, 'gcx, 'tcx, 'container> FieldDefData<'tcx, 'container> {
     pub fn new(did: DefId,
                name: Name,
                vis: Visibility) -> Self {
@@ -1965,7 +1962,7 @@ impl<'tcx, 'container> FieldDefData<'tcx, 'container> {
         }
     }
 
-    pub fn ty(&self, tcx: &TyCtxt<'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
+    pub fn ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
         self.unsubst_ty().subst(tcx, subst)
     }
 
@@ -1982,7 +1979,7 @@ impl<'tcx, 'container> FieldDefData<'tcx, 'container> {
 /// item into the monotype of an item reference.
 #[derive(Clone)]
 pub struct ItemSubsts<'tcx> {
-    pub substs: Substs<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
 }
 
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -1995,20 +1992,20 @@ pub enum ClosureKind {
     FnOnce,
 }
 
-impl ClosureKind {
-    pub fn trait_did(&self, cx: &TyCtxt) -> DefId {
+impl<'a, 'tcx> ClosureKind {
+    pub fn trait_did(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> DefId {
         let result = match *self {
-            ClosureKind::Fn => cx.lang_items.require(FnTraitLangItem),
+            ClosureKind::Fn => tcx.lang_items.require(FnTraitLangItem),
             ClosureKind::FnMut => {
-                cx.lang_items.require(FnMutTraitLangItem)
+                tcx.lang_items.require(FnMutTraitLangItem)
             }
             ClosureKind::FnOnce => {
-                cx.lang_items.require(FnOnceTraitLangItem)
+                tcx.lang_items.require(FnOnceTraitLangItem)
             }
         };
         match result {
             Ok(trait_did) => trait_did,
-            Err(err) => cx.sess.fatal(&err[..]),
+            Err(err) => tcx.sess.fatal(&err[..]),
         }
     }
 
@@ -2067,10 +2064,6 @@ impl<'tcx> TyS<'tcx> {
 }
 
 impl<'tcx> ItemSubsts<'tcx> {
-    pub fn empty() -> ItemSubsts<'tcx> {
-        ItemSubsts { substs: Substs::empty() }
-    }
-
     pub fn is_noop(&self) -> bool {
         self.substs.is_noop()
     }
@@ -2092,7 +2085,7 @@ impl LvaluePreference {
 }
 
 /// Helper for looking things up in the various maps that are populated during
-/// typeck::collect (e.g., `cx.impl_or_trait_items`, `cx.tcache`, etc).  All of
+/// typeck::collect (e.g., `tcx.impl_or_trait_items`, `tcx.tcache`, etc).  All of
 /// these share the pattern that if the id is local, it should have been loaded
 /// into the map by the `typeck::collect` phase.  If the def-id is external,
 /// then we have to go consult the crate loading code (and cache the result for
@@ -2146,8 +2139,8 @@ impl BorrowKind {
     }
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn node_id_to_type(&self, id: NodeId) -> Ty<'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    pub fn node_id_to_type(self, id: NodeId) -> Ty<'gcx> {
         match self.node_id_to_type_opt(id) {
            Some(ty) => ty,
            None => bug!("node_id_to_type: no type for node `{}`",
@@ -2155,23 +2148,25 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn node_id_to_type_opt(&self, id: NodeId) -> Option<Ty<'tcx>> {
+    pub fn node_id_to_type_opt(self, id: NodeId) -> Option<Ty<'gcx>> {
         self.tables.borrow().node_types.get(&id).cloned()
     }
 
-    pub fn node_id_item_substs(&self, id: NodeId) -> ItemSubsts<'tcx> {
+    pub fn node_id_item_substs(self, id: NodeId) -> ItemSubsts<'gcx> {
         match self.tables.borrow().item_substs.get(&id) {
-            None => ItemSubsts::empty(),
+            None => ItemSubsts {
+                substs: self.global_tcx().mk_substs(Substs::empty())
+            },
             Some(ts) => ts.clone(),
         }
     }
 
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function
     // doesn't provide type parameter substitutions.
-    pub fn pat_ty(&self, pat: &hir::Pat) -> Ty<'tcx> {
+    pub fn pat_ty(self, pat: &hir::Pat) -> Ty<'gcx> {
         self.node_id_to_type(pat.id)
     }
-    pub fn pat_ty_opt(&self, pat: &hir::Pat) -> Option<Ty<'tcx>> {
+    pub fn pat_ty_opt(self, pat: &hir::Pat) -> Option<Ty<'gcx>> {
         self.node_id_to_type_opt(pat.id)
     }
 
@@ -2185,11 +2180,11 @@ impl<'tcx> TyCtxt<'tcx> {
     // NB (2): This type doesn't provide type parameter substitutions; e.g. if you
     // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
     // instead of "fn(ty) -> T with T = isize".
-    pub fn expr_ty(&self, expr: &hir::Expr) -> Ty<'tcx> {
+    pub fn expr_ty(self, expr: &hir::Expr) -> Ty<'gcx> {
         self.node_id_to_type(expr.id)
     }
 
-    pub fn expr_ty_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
+    pub fn expr_ty_opt(self, expr: &hir::Expr) -> Option<Ty<'gcx>> {
         self.node_id_to_type_opt(expr.id)
     }
 
@@ -2202,17 +2197,17 @@ impl<'tcx> TyCtxt<'tcx> {
     /// hard to do, I just hate that code so much I didn't want to touch it
     /// unless it was to fix it properly, which seemed a distraction from the
     /// thread at hand! -nmatsakis
-    pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> Ty<'tcx> {
+    pub fn expr_ty_adjusted(self, expr: &hir::Expr) -> Ty<'gcx> {
         self.expr_ty(expr)
-            .adjust(self, expr.span, expr.id,
+            .adjust(self.global_tcx(), expr.span, expr.id,
                     self.tables.borrow().adjustments.get(&expr.id),
                     |method_call| {
             self.tables.borrow().method_map.get(&method_call).map(|method| method.ty)
         })
     }
 
-    pub fn expr_ty_adjusted_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
-        self.expr_ty_opt(expr).map(|t| t.adjust(self,
+    pub fn expr_ty_adjusted_opt(self, expr: &hir::Expr) -> Option<Ty<'gcx>> {
+        self.expr_ty_opt(expr).map(|t| t.adjust(self.global_tcx(),
                                                 expr.span,
                                                 expr.id,
                                                 self.tables.borrow().adjustments.get(&expr.id),
@@ -2221,7 +2216,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }))
     }
 
-    pub fn expr_span(&self, id: NodeId) -> Span {
+    pub fn expr_span(self, id: NodeId) -> Span {
         match self.map.find(id) {
             Some(ast_map::NodeExpr(e)) => {
                 e.span
@@ -2235,7 +2230,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn local_var_name_str(&self, id: NodeId) -> InternedString {
+    pub fn local_var_name_str(self, id: NodeId) -> InternedString {
         match self.map.find(id) {
             Some(ast_map::NodeLocal(pat)) => {
                 match pat.node {
@@ -2249,7 +2244,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn resolve_expr(&self, expr: &hir::Expr) -> Def {
+    pub fn resolve_expr(self, expr: &hir::Expr) -> Def {
         match self.def_map.borrow().get(&expr.id) {
             Some(def) => def.full_def(),
             None => {
@@ -2258,7 +2253,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn expr_is_lval(&self, expr: &hir::Expr) -> bool {
+    pub fn expr_is_lval(self, expr: &hir::Expr) -> bool {
          match expr.node {
             hir::ExprPath(..) => {
                 // We can't use resolve_expr here, as this needs to run on broken
@@ -2320,7 +2315,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn provided_trait_methods(&self, id: DefId) -> Vec<Rc<Method<'tcx>>> {
+    pub fn provided_trait_methods(self, id: DefId) -> Vec<Rc<Method<'gcx>>> {
         if let Some(id) = self.map.as_local_node_id(id) {
             if let ItemTrait(_, _, _, ref ms) = self.map.expect_item(id).node {
                 ms.iter().filter_map(|ti| {
@@ -2341,11 +2336,11 @@ impl<'tcx> TyCtxt<'tcx> {
                 bug!("provided_trait_methods: `{:?}` is not a trait", id)
             }
         } else {
-            self.sess.cstore.provided_trait_methods(self, id)
+            self.sess.cstore.provided_trait_methods(self.global_tcx(), id)
         }
     }
 
-    pub fn associated_consts(&self, id: DefId) -> Vec<Rc<AssociatedConst<'tcx>>> {
+    pub fn associated_consts(self, id: DefId) -> Vec<Rc<AssociatedConst<'gcx>>> {
         if let Some(id) = self.map.as_local_node_id(id) {
             match self.map.expect_item(id).node {
                 ItemTrait(_, _, _, ref tis) => {
@@ -2385,11 +2380,11 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
             }
         } else {
-            self.sess.cstore.associated_consts(self, id)
+            self.sess.cstore.associated_consts(self.global_tcx(), id)
         }
     }
 
-    pub fn trait_impl_polarity(&self, id: DefId) -> Option<hir::ImplPolarity> {
+    pub fn trait_impl_polarity(self, id: DefId) -> Option<hir::ImplPolarity> {
         if let Some(id) = self.map.as_local_node_id(id) {
             match self.map.find(id) {
                 Some(ast_map::NodeItem(item)) => {
@@ -2405,7 +2400,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn custom_coerce_unsized_kind(&self, did: DefId) -> adjustment::CustomCoerceUnsized {
+    pub fn custom_coerce_unsized_kind(self, did: DefId) -> adjustment::CustomCoerceUnsized {
         self.custom_coerce_unsized_kinds.memoize(did, || {
             let (kind, src) = if did.krate != LOCAL_CRATE {
                 (self.sess.cstore.custom_coerce_unsized_kind(did), "external")
@@ -2424,14 +2419,14 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn impl_or_trait_item(&self, id: DefId) -> ImplOrTraitItem<'tcx> {
+    pub fn impl_or_trait_item(self, id: DefId) -> ImplOrTraitItem<'gcx> {
         lookup_locally_or_in_crate_store(
             "impl_or_trait_items", id, &self.impl_or_trait_items,
-            || self.sess.cstore.impl_or_trait_item(self, id)
+            || self.sess.cstore.impl_or_trait_item(self.global_tcx(), id)
                    .expect("missing ImplOrTraitItem in metadata"))
     }
 
-    pub fn trait_item_def_ids(&self, id: DefId) -> Rc<Vec<ImplOrTraitItemId>> {
+    pub fn trait_item_def_ids(self, id: DefId) -> Rc<Vec<ImplOrTraitItemId>> {
         lookup_locally_or_in_crate_store(
             "trait_item_def_ids", id, &self.trait_item_def_ids,
             || Rc::new(self.sess.cstore.trait_item_def_ids(id)))
@@ -2439,14 +2434,14 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns the trait-ref corresponding to a given impl, or None if it is
     /// an inherent impl.
-    pub fn impl_trait_ref(&self, id: DefId) -> Option<TraitRef<'tcx>> {
+    pub fn impl_trait_ref(self, id: DefId) -> Option<TraitRef<'gcx>> {
         lookup_locally_or_in_crate_store(
             "impl_trait_refs", id, &self.impl_trait_refs,
-            || self.sess.cstore.impl_trait_ref(self, id))
+            || self.sess.cstore.impl_trait_ref(self.global_tcx(), id))
     }
 
     /// Returns whether this DefId refers to an impl
-    pub fn is_impl(&self, id: DefId) -> bool {
+    pub fn is_impl(self, id: DefId) -> bool {
         if let Some(id) = self.map.as_local_node_id(id) {
             if let Some(ast_map::NodeItem(
                 &hir::Item { node: hir::ItemImpl(..), .. })) = self.map.find(id) {
@@ -2459,11 +2454,11 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn trait_ref_to_def_id(&self, tr: &hir::TraitRef) -> DefId {
+    pub fn trait_ref_to_def_id(self, tr: &hir::TraitRef) -> DefId {
         self.def_map.borrow().get(&tr.ref_id).expect("no def-map entry for trait").def_id()
     }
 
-    pub fn def_key(&self, id: DefId) -> ast_map::DefKey {
+    pub fn def_key(self, id: DefId) -> ast_map::DefKey {
         if id.is_local() {
             self.map.def_key(id)
         } else {
@@ -2474,7 +2469,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the `DefPath` of an item. Note that if `id` is not
     /// local to this crate -- or is inlined into this crate -- the
     /// result will be a non-local `DefPath`.
-    pub fn def_path(&self, id: DefId) -> ast_map::DefPath {
+    pub fn def_path(self, id: DefId) -> ast_map::DefPath {
         if id.is_local() {
             self.map.def_path(id)
         } else {
@@ -2482,7 +2477,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn item_name(&self, id: DefId) -> ast::Name {
+    pub fn item_name(self, id: DefId) -> ast::Name {
         if let Some(id) = self.map.as_local_node_id(id) {
             self.map.name(id)
         } else {
@@ -2491,55 +2486,55 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     // Register a given item type
-    pub fn register_item_type(&self, did: DefId, ty: TypeScheme<'tcx>) {
+    pub fn register_item_type(self, did: DefId, ty: TypeScheme<'gcx>) {
         self.tcache.borrow_mut().insert(did, ty);
     }
 
     // If the given item is in an external crate, looks up its type and adds it to
     // the type cache. Returns the type parameters and type.
-    pub fn lookup_item_type(&self, did: DefId) -> TypeScheme<'tcx> {
+    pub fn lookup_item_type(self, did: DefId) -> TypeScheme<'gcx> {
         lookup_locally_or_in_crate_store(
             "tcache", did, &self.tcache,
-            || self.sess.cstore.item_type(self, did))
+            || self.sess.cstore.item_type(self.global_tcx(), did))
     }
 
     /// Given the did of a trait, returns its canonical trait ref.
-    pub fn lookup_trait_def(&self, did: DefId) -> &'tcx TraitDef<'tcx> {
+    pub fn lookup_trait_def(self, did: DefId) -> &'gcx TraitDef<'gcx> {
         lookup_locally_or_in_crate_store(
             "trait_defs", did, &self.trait_defs,
-            || self.alloc_trait_def(self.sess.cstore.trait_def(self, did))
+            || self.alloc_trait_def(self.sess.cstore.trait_def(self.global_tcx(), did))
         )
     }
 
     /// Given the did of an ADT, return a master reference to its
     /// definition. Unless you are planning on fulfilling the ADT's fields,
     /// use lookup_adt_def instead.
-    pub fn lookup_adt_def_master(&self, did: DefId) -> AdtDefMaster<'tcx> {
+    pub fn lookup_adt_def_master(self, did: DefId) -> AdtDefMaster<'gcx> {
         lookup_locally_or_in_crate_store(
             "adt_defs", did, &self.adt_defs,
-            || self.sess.cstore.adt_def(self, did)
+            || self.sess.cstore.adt_def(self.global_tcx(), did)
         )
     }
 
     /// Given the did of an ADT, return a reference to its definition.
-    pub fn lookup_adt_def(&self, did: DefId) -> AdtDef<'tcx> {
+    pub fn lookup_adt_def(self, did: DefId) -> AdtDef<'gcx> {
         // when reverse-variance goes away, a transmute::<AdtDefMaster,AdtDef>
         // would be needed here.
         self.lookup_adt_def_master(did)
     }
 
     /// Given the did of an item, returns its full set of predicates.
-    pub fn lookup_predicates(&self, did: DefId) -> GenericPredicates<'tcx> {
+    pub fn lookup_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
         lookup_locally_or_in_crate_store(
             "predicates", did, &self.predicates,
-            || self.sess.cstore.item_predicates(self, did))
+            || self.sess.cstore.item_predicates(self.global_tcx(), did))
     }
 
     /// Given the did of a trait, returns its superpredicates.
-    pub fn lookup_super_predicates(&self, did: DefId) -> GenericPredicates<'tcx> {
+    pub fn lookup_super_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
         lookup_locally_or_in_crate_store(
             "super_predicates", did, &self.super_predicates,
-            || self.sess.cstore.item_super_predicates(self, did))
+            || self.sess.cstore.item_super_predicates(self.global_tcx(), did))
     }
 
     /// If `type_needs_drop` returns true, then `ty` is definitely
@@ -2548,14 +2543,15 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// (Note that this implies that if `ty` has a destructor attached,
     /// then `type_needs_drop` will definitely return `true` for `ty`.)
-    pub fn type_needs_drop_given_env<'a>(&self,
-                                         ty: Ty<'tcx>,
-                                         param_env: &ty::ParameterEnvironment<'a,'tcx>) -> bool {
+    pub fn type_needs_drop_given_env(self,
+                                     ty: Ty<'gcx>,
+                                     param_env: &ty::ParameterEnvironment<'gcx>) -> bool {
         // Issue #22536: We first query type_moves_by_default.  It sees a
         // normalized version of the type, and therefore will definitely
         // know whether the type implements Copy (and thus needs no
         // cleanup/drop/zeroing) ...
-        let implements_copy = !ty.moves_by_default(param_env, DUMMY_SP);
+        let tcx = self.global_tcx();
+        let implements_copy = !ty.moves_by_default(tcx, param_env, DUMMY_SP);
 
         if implements_copy { return false; }
 
@@ -2570,13 +2566,13 @@ impl<'tcx> TyCtxt<'tcx> {
         // bound attached (see above), it is sound to treat it as having a
         // destructor (e.g. zero its memory on move).
 
-        let contents = ty.type_contents(self);
+        let contents = ty.type_contents(tcx);
         debug!("type_needs_drop ty={:?} contents={:?}", ty, contents);
-        contents.needs_drop(self)
+        contents.needs_drop(tcx)
     }
 
     /// Get the attributes of a definition.
-    pub fn get_attrs(&self, did: DefId) -> Cow<'tcx, [ast::Attribute]> {
+    pub fn get_attrs(self, did: DefId) -> Cow<'gcx, [ast::Attribute]> {
         if let Some(id) = self.map.as_local_node_id(did) {
             Cow::Borrowed(self.map.attrs(id))
         } else {
@@ -2585,28 +2581,28 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Determine whether an item is annotated with an attribute
-    pub fn has_attr(&self, did: DefId, attr: &str) -> bool {
+    pub fn has_attr(self, did: DefId, attr: &str) -> bool {
         self.get_attrs(did).iter().any(|item| item.check_name(attr))
     }
 
     /// Determine whether an item is annotated with `#[repr(packed)]`
-    pub fn lookup_packed(&self, did: DefId) -> bool {
+    pub fn lookup_packed(self, did: DefId) -> bool {
         self.lookup_repr_hints(did).contains(&attr::ReprPacked)
     }
 
     /// Determine whether an item is annotated with `#[simd]`
-    pub fn lookup_simd(&self, did: DefId) -> bool {
+    pub fn lookup_simd(self, did: DefId) -> bool {
         self.has_attr(did, "simd")
             || self.lookup_repr_hints(did).contains(&attr::ReprSimd)
     }
 
-    pub fn item_variances(&self, item_id: DefId) -> Rc<ItemVariances> {
+    pub fn item_variances(self, item_id: DefId) -> Rc<ItemVariances> {
         lookup_locally_or_in_crate_store(
             "item_variance_map", item_id, &self.item_variance_map,
             || Rc::new(self.sess.cstore.item_variances(item_id)))
     }
 
-    pub fn trait_has_default_impl(&self, trait_def_id: DefId) -> bool {
+    pub fn trait_has_default_impl(self, trait_def_id: DefId) -> bool {
         self.populate_implementations_for_trait_if_necessary(trait_def_id);
 
         let def = self.lookup_trait_def(trait_def_id);
@@ -2614,13 +2610,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Records a trait-to-implementation mapping.
-    pub fn record_trait_has_default_impl(&self, trait_def_id: DefId) {
+    pub fn record_trait_has_default_impl(self, trait_def_id: DefId) {
         let def = self.lookup_trait_def(trait_def_id);
         def.flags.set(def.flags.get() | TraitFlags::HAS_DEFAULT_IMPL)
     }
 
     /// Load primitive inherent implementations if necessary
-    pub fn populate_implementations_for_primitive_if_necessary(&self,
+    pub fn populate_implementations_for_primitive_if_necessary(self,
                                                                primitive_def_id: DefId) {
         if primitive_def_id.is_local() {
             return
@@ -2646,7 +2642,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Populates the type context with all the inherent implementations for
     /// the given type if necessary.
-    pub fn populate_inherent_implementations_for_type_if_necessary(&self,
+    pub fn populate_inherent_implementations_for_type_if_necessary(self,
                                                                    type_id: DefId) {
         if type_id.is_local() {
             return
@@ -2676,7 +2672,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Populates the type context with all the implementations for the given
     /// trait if necessary.
-    pub fn populate_implementations_for_trait_if_necessary(&self, trait_id: DefId) {
+    pub fn populate_implementations_for_trait_if_necessary(self, trait_id: DefId) {
         if trait_id.is_local() {
             return
         }
@@ -2723,29 +2719,48 @@ impl<'tcx> TyCtxt<'tcx> {
         def.flags.set(def.flags.get() | TraitFlags::IMPLS_VALID);
     }
 
-    pub fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind {
-        Tables::closure_kind(&self.tables, self, def_id)
+    pub fn closure_kind(self, def_id: DefId) -> ty::ClosureKind {
+        // If this is a local def-id, it should be inserted into the
+        // tables by typeck; else, it will be retreived from
+        // the external crate metadata.
+        if let Some(&kind) = self.tables.borrow().closure_kinds.get(&def_id) {
+            return kind;
+        }
+
+        let kind = self.sess.cstore.closure_kind(def_id);
+        self.tables.borrow_mut().closure_kinds.insert(def_id, kind);
+        kind
     }
 
-    pub fn closure_type(&self,
+    pub fn closure_type(self,
                         def_id: DefId,
-                        substs: &ClosureSubsts<'tcx>)
+                        substs: ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
-        Tables::closure_type(&self.tables, self, def_id, substs)
+        // If this is a local def-id, it should be inserted into the
+        // tables by typeck; else, it will be retreived from
+        // the external crate metadata.
+        if let Some(ty) = self.tables.borrow().closure_tys.get(&def_id) {
+            return ty.subst(self, substs.func_substs);
+        }
+
+        let ty = self.sess.cstore.closure_ty(self.global_tcx(), def_id);
+        self.tables.borrow_mut().closure_tys.insert(def_id, ty.clone());
+        ty.subst(self, substs.func_substs)
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.
     /// If it implements no trait, return `None`.
-    pub fn trait_id_of_impl(&self, def_id: DefId) -> Option<DefId> {
+    pub fn trait_id_of_impl(self, def_id: DefId) -> Option<DefId> {
         self.impl_trait_ref(def_id).map(|tr| tr.def_id)
     }
 
     /// If the given def ID describes a method belonging to an impl, return the
     /// ID of the impl that the method belongs to. Otherwise, return `None`.
-    pub fn impl_of_method(&self, def_id: DefId) -> Option<DefId> {
+    pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         if def_id.krate != LOCAL_CRATE {
-            return self.sess.cstore.impl_or_trait_item(self, def_id).and_then(|item| {
+            return self.sess.cstore.impl_or_trait_item(self.global_tcx(), def_id)
+                       .and_then(|item| {
                 match item.container() {
                     TraitContainer(_) => None,
                     ImplContainer(def_id) => Some(def_id),
@@ -2766,9 +2781,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If the given def ID describes an item belonging to a trait (either a
     /// default method or an implementation of a trait method), return the ID of
     /// the trait that the method belongs to. Otherwise, return `None`.
-    pub fn trait_of_item(&self, def_id: DefId) -> Option<DefId> {
+    pub fn trait_of_item(self, def_id: DefId) -> Option<DefId> {
         if def_id.krate != LOCAL_CRATE {
-            return self.sess.cstore.trait_of_item(self, def_id);
+            return self.sess.cstore.trait_of_item(self.global_tcx(), def_id);
         }
         match self.impl_or_trait_items.borrow().get(&def_id).cloned() {
             Some(impl_or_trait_item) => {
@@ -2787,7 +2802,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// is already that of the original trait method, then the return value is
     /// the same).
     /// Otherwise, return `None`.
-    pub fn trait_item_of_item(&self, def_id: DefId) -> Option<ImplOrTraitItemId> {
+    pub fn trait_item_of_item(self, def_id: DefId) -> Option<ImplOrTraitItemId> {
         let impl_item = match self.impl_or_trait_items.borrow().get(&def_id) {
             Some(m) => m.clone(),
             None => return None,
@@ -2805,19 +2820,17 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Construct a parameter environment suitable for static contexts or other contexts where there
     /// are no free type/lifetime parameters in scope.
-    pub fn empty_parameter_environment<'a>(&'a self)
-                                           -> ParameterEnvironment<'a,'tcx> {
+    pub fn empty_parameter_environment(self) -> ParameterEnvironment<'tcx> {
 
         // for an empty parameter environment, there ARE no free
         // regions, so it shouldn't matter what we use for the free id
         let free_id_outlive = self.region_maps.node_extent(ast::DUMMY_NODE_ID);
-        ty::ParameterEnvironment { tcx: self,
-                                   free_substs: Substs::empty(),
-                                   caller_bounds: Vec::new(),
-                                   implicit_region_bound: ty::ReEmpty,
-                                   selection_cache: traits::SelectionCache::new(),
-                                   evaluation_cache: traits::EvaluationCache::new(),
-                                   free_id_outlive: free_id_outlive }
+        ty::ParameterEnvironment {
+            free_substs: self.mk_substs(Substs::empty()),
+            caller_bounds: Vec::new(),
+            implicit_region_bound: ty::ReEmpty,
+            free_id_outlive: free_id_outlive
+        }
     }
 
     /// Constructs and returns a substitution that can be applied to move from
@@ -2825,14 +2838,14 @@ impl<'tcx> TyCtxt<'tcx> {
     /// In general, this means converting from bound parameters to
     /// free parameters. Since we currently represent bound/free type
     /// parameters in the same way, this only has an effect on regions.
-    pub fn construct_free_substs(&self, generics: &Generics<'tcx>,
-                                 free_id_outlive: CodeExtent) -> Substs<'tcx> {
+    pub fn construct_free_substs(self, generics: &Generics<'gcx>,
+                                 free_id_outlive: CodeExtent) -> Substs<'gcx> {
         // map T => T
         let mut types = VecPerParamSpace::empty();
         for def in generics.types.as_slice() {
             debug!("construct_parameter_environment(): push_types_from_defs: def={:?}",
                     def);
-            types.push(def.space, self.mk_param_from_def(def));
+            types.push(def.space, self.global_tcx().mk_param_from_def(def));
         }
 
         // map bound 'a => free 'a
@@ -2854,12 +2867,12 @@ impl<'tcx> TyCtxt<'tcx> {
     /// See `ParameterEnvironment` struct def'n for details.
     /// If you were using `free_id: NodeId`, you might try `self.region_maps.item_extent(free_id)`
     /// for the `free_id_outlive` parameter. (But note that that is not always quite right.)
-    pub fn construct_parameter_environment<'a>(&'a self,
-                                               span: Span,
-                                               generics: &ty::Generics<'tcx>,
-                                               generic_predicates: &ty::GenericPredicates<'tcx>,
-                                               free_id_outlive: CodeExtent)
-                                               -> ParameterEnvironment<'a, 'tcx>
+    pub fn construct_parameter_environment(self,
+                                           span: Span,
+                                           generics: &ty::Generics<'gcx>,
+                                           generic_predicates: &ty::GenericPredicates<'gcx>,
+                                           free_id_outlive: CodeExtent)
+                                           -> ParameterEnvironment<'gcx>
     {
         //
         // Construct the free substs.
@@ -2871,8 +2884,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // Compute the bounds on Self and the type parameters.
         //
 
-        let bounds = generic_predicates.instantiate(self, &free_substs);
-        let bounds = self.liberate_late_bound_regions(free_id_outlive, &ty::Binder(bounds));
+        let tcx = self.global_tcx();
+        let bounds = generic_predicates.instantiate(tcx, &free_substs);
+        let bounds = tcx.liberate_late_bound_regions(free_id_outlive, &ty::Binder(bounds));
         let predicates = bounds.predicates.into_vec();
 
         // Finally, we have to normalize the bounds in the environment, in
@@ -2889,43 +2903,40 @@ impl<'tcx> TyCtxt<'tcx> {
         //
 
         let unnormalized_env = ty::ParameterEnvironment {
-            tcx: self,
-            free_substs: free_substs,
+            free_substs: tcx.mk_substs(free_substs),
             implicit_region_bound: ty::ReScope(free_id_outlive),
             caller_bounds: predicates,
-            selection_cache: traits::SelectionCache::new(),
-            evaluation_cache: traits::EvaluationCache::new(),
             free_id_outlive: free_id_outlive,
         };
 
         let cause = traits::ObligationCause::misc(span, free_id_outlive.node_id(&self.region_maps));
-        traits::normalize_param_env_or_error(unnormalized_env, cause)
+        traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
     }
 
-    pub fn is_method_call(&self, expr_id: NodeId) -> bool {
+    pub fn is_method_call(self, expr_id: NodeId) -> bool {
         self.tables.borrow().method_map.contains_key(&MethodCall::expr(expr_id))
     }
 
-    pub fn is_overloaded_autoderef(&self, expr_id: NodeId, autoderefs: u32) -> bool {
+    pub fn is_overloaded_autoderef(self, expr_id: NodeId, autoderefs: u32) -> bool {
         self.tables.borrow().method_map.contains_key(&MethodCall::autoderef(expr_id,
                                                                             autoderefs))
     }
 
-    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
+    pub fn upvar_capture(self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
         Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
 
-    pub fn visit_all_items_in_krate<V,F>(&self,
+    pub fn visit_all_items_in_krate<V,F>(self,
                                          dep_node_fn: F,
                                          visitor: &mut V)
-        where F: FnMut(DefId) -> DepNode<DefId>, V: Visitor<'tcx>
+        where F: FnMut(DefId) -> DepNode<DefId>, V: Visitor<'gcx>
     {
-        dep_graph::visit_all_items_in_krate(self, dep_node_fn, visitor);
+        dep_graph::visit_all_items_in_krate(self.global_tcx(), dep_node_fn, visitor);
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`
     /// with the name of the crate containing the impl.
-    pub fn span_of_impl(&self, impl_did: DefId) -> Result<Span, InternedString> {
+    pub fn span_of_impl(self, impl_did: DefId) -> Result<Span, InternedString> {
         if impl_did.is_local() {
             let node_id = self.map.as_local_node_id(impl_did).unwrap();
             Ok(self.map.span(node_id))
@@ -2944,8 +2955,8 @@ pub enum ExplicitSelfCategory {
     ByBox,
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn with_freevars<T, F>(&self, fid: NodeId, f: F) -> T where
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    pub fn with_freevars<T, F>(self, fid: NodeId, f: F) -> T where
         F: FnOnce(&[hir::Freevar]) -> T,
     {
         match self.freevars.borrow().get(&fid) {

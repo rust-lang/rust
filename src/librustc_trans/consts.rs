@@ -194,7 +194,7 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                            def_id: DefId,
-                           substs: Substs<'tcx>,
+                           substs: &'tcx Substs<'tcx>,
                            arg_vals: &[ValueRef],
                            param_substs: &'tcx Substs<'tcx>,
                            trueconst: TrueConst) -> Result<ValueRef, ConstEvalFailure> {
@@ -212,10 +212,10 @@ fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let arg_ids = args.iter().map(|arg| arg.pat.id);
     let fn_args = arg_ids.zip(arg_vals.iter().cloned()).collect();
 
+    let substs = ccx.tcx().mk_substs(substs.clone().erase_regions());
     let substs = monomorphize::apply_param_substs(ccx.tcx(),
                                                   param_substs,
-                                                  &substs.erase_regions());
-    let substs = ccx.tcx().mk_substs(substs);
+                                                  &substs);
 
     const_expr(ccx, body, substs, Some(&fn_args), trueconst).map(|(res, _)| res)
 }
@@ -226,9 +226,10 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 param_substs: &'tcx Substs<'tcx>)
                                 -> &'tcx hir::Expr {
     let substs = ccx.tcx().node_id_item_substs(ref_expr.id).substs;
+    let substs = ccx.tcx().mk_substs(substs.clone().erase_regions());
     let substs = monomorphize::apply_param_substs(ccx.tcx(),
                                                   param_substs,
-                                                  &substs.erase_regions());
+                                                  &substs);
     match lookup_const_by_id(ccx.tcx(), def_id, Some(substs)) {
         Some((ref expr, _ty)) => expr,
         None => {
@@ -472,7 +473,7 @@ fn check_unary_expr_validity(cx: &CrateContext, e: &hir::Expr, t: Ty,
     Ok(())
 }
 
-pub fn to_const_int(value: ValueRef, t: Ty, tcx: &TyCtxt) -> Option<ConstInt> {
+pub fn to_const_int(value: ValueRef, t: Ty, tcx: TyCtxt) -> Option<ConstInt> {
     match t.sty {
         ty::TyInt(int_type) => const_to_opt_int(value).and_then(|input| match int_type {
             ast::IntTy::I8 => {
@@ -968,7 +969,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let arg_vals = map_list(args)?;
             let method_call = ty::MethodCall::expr(e.id);
             let method = cx.tcx().tables.borrow().method_map[&method_call];
-            const_fn_call(cx, method.def_id, method.substs.clone(),
+            const_fn_call(cx, method.def_id, method.substs,
                           &arg_vals, param_substs, trueconst)?
         },
         hir::ExprType(ref e, _) => const_expr(cx, &e, param_substs, fn_args, trueconst)?.0,
@@ -986,7 +987,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         },
         hir::ExprClosure(_, ref decl, ref body, _) => {
             match ety.sty {
-                ty::TyClosure(def_id, ref substs) => {
+                ty::TyClosure(def_id, substs) => {
                     closure::trans_closure_expr(closure::Dest::Ignore(cx),
                                                 decl,
                                                 body,

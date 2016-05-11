@@ -21,13 +21,13 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::intravisit;
 use rustc::hir;
 
-pub fn check(tcx: &TyCtxt) {
+pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut orphan = OrphanChecker { tcx: tcx };
     tcx.visit_all_items_in_krate(DepNode::CoherenceOrphanCheck, &mut orphan);
 }
 
 struct OrphanChecker<'cx, 'tcx:'cx> {
-    tcx: &'cx TyCtxt<'tcx>
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>
 }
 
 impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {

@@ -136,9 +136,10 @@ pub enum CustomCoerceUnsized {
     Struct(usize)
 }
 
-impl<'tcx> ty::TyS<'tcx> {
+impl<'a, 'gcx, 'tcx> ty::TyS<'tcx> {
     /// See `expr_ty_adjusted`
-    pub fn adjust<F>(&'tcx self, cx: &TyCtxt<'tcx>,
+    pub fn adjust<F>(&'tcx self,
+                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      span: Span,
                      expr_id: ast::NodeId,
                      adjustment: Option<&AutoAdjustment<'tcx>>,
@@ -155,9 +156,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 match *adjustment {
                     AdjustReifyFnPointer => {
                         match self.sty {
-                            ty::TyFnDef(_, _, b) => {
-                                cx.mk_ty(ty::TyFnPtr(b))
-                            }
+                            ty::TyFnDef(_, _, f) => tcx.mk_fn_ptr(f),
                             _ => {
                                 bug!("AdjustReifyFnPointer adjustment on non-fn-item: {:?}",
                                      self);
@@ -167,7 +166,7 @@ impl<'tcx> ty::TyS<'tcx> {
 
                     AdjustUnsafeFnPointer => {
                         match self.sty {
-                            ty::TyFnPtr(b) => cx.safe_to_unsafe_fn_ty(b),
+                            ty::TyFnPtr(b) => tcx.safe_to_unsafe_fn_ty(b),
                             ref b => {
                                 bug!("AdjustUnsafeFnPointer adjustment on non-fn-ptr: {:?}",
                                      b);
@@ -177,7 +176,7 @@ impl<'tcx> ty::TyS<'tcx> {
 
                     AdjustMutToConstPointer => {
                         match self.sty {
-                            ty::TyRawPtr(mt) => cx.mk_ptr(ty::TypeAndMut {
+                            ty::TyRawPtr(mt) => tcx.mk_ptr(ty::TypeAndMut {
                                 ty: mt.ty,
                                 mutbl: hir::MutImmutable
                             }),
@@ -194,7 +193,7 @@ impl<'tcx> ty::TyS<'tcx> {
                         if !adjusted_ty.references_error() {
                             for i in 0..adj.autoderefs {
                                 adjusted_ty =
-                                    adjusted_ty.adjust_for_autoderef(cx,
+                                    adjusted_ty.adjust_for_autoderef(tcx,
                                                                      expr_id,
                                                                      span,
                                                                      i as u32,
@@ -205,7 +204,7 @@ impl<'tcx> ty::TyS<'tcx> {
                         if let Some(target) = adj.unsize {
                             target
                         } else {
-                            adjusted_ty.adjust_for_autoref(cx, adj.autoref)
+                            adjusted_ty.adjust_for_autoref(tcx, adj.autoref)
                         }
                     }
                 }
@@ -215,7 +214,7 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 
     pub fn adjust_for_autoderef<F>(&'tcx self,
-                                   cx: &TyCtxt<'tcx>,
+                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                    expr_id: ast::NodeId,
                                    expr_span: Span,
                                    autoderef: u32, // how many autoderefs so far?
@@ -228,7 +227,7 @@ impl<'tcx> ty::TyS<'tcx> {
         if let Some(method_ty) = method_type(method_call) {
             // Method calls always have all late-bound regions
             // fully instantiated.
-            let fn_ret = cx.no_late_bound_regions(&method_ty.fn_ret()).unwrap();
+            let fn_ret = tcx.no_late_bound_regions(&method_ty.fn_ret()).unwrap();
             adjusted_ty = fn_ret.unwrap();
         }
         match adjusted_ty.builtin_deref(true, NoPreference) {
@@ -243,16 +242,16 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
-    pub fn adjust_for_autoref(&'tcx self, cx: &TyCtxt<'tcx>,
+    pub fn adjust_for_autoref(&'tcx self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                               autoref: Option<AutoRef<'tcx>>)
                               -> Ty<'tcx> {
         match autoref {
             None => self,
             Some(AutoPtr(r, m)) => {
-                cx.mk_ref(r, TypeAndMut { ty: self, mutbl: m })
+                tcx.mk_ref(r, TypeAndMut { ty: self, mutbl: m })
             }
             Some(AutoUnsafe(m)) => {
-                cx.mk_ptr(TypeAndMut { ty: self, mutbl: m })
+                tcx.mk_ptr(TypeAndMut { ty: self, mutbl: m })
             }
         }
     }

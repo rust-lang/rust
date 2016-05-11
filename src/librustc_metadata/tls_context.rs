@@ -25,8 +25,8 @@ use tyencode;
 
 impl<'a, 'tcx: 'a> tls::EncodingContext<'tcx> for encoder::EncodeContext<'a, 'tcx> {
 
-    fn tcx<'s>(&'s self) -> &'s TyCtxt<'tcx> {
-        &self.tcx
+    fn tcx<'s>(&'s self) -> TyCtxt<'s, 'tcx, 'tcx> {
+        self.tcx
     }
 
     fn encode_ty(&self, encoder: &mut OpaqueEncoder, t: ty::Ty<'tcx>) {
@@ -40,13 +40,13 @@ impl<'a, 'tcx: 'a> tls::EncodingContext<'tcx> for encoder::EncodeContext<'a, 'tc
 
 pub struct DecodingContext<'a, 'tcx: 'a> {
     pub crate_metadata: Cmd<'a>,
-    pub tcx: &'a TyCtxt<'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx: 'a> tls::DecodingContext<'tcx> for DecodingContext<'a, 'tcx> {
 
-    fn tcx<'s>(&'s self) -> &'s TyCtxt<'tcx> {
-        &self.tcx
+    fn tcx<'s>(&'s self) -> TyCtxt<'s, 'tcx, 'tcx> {
+        self.tcx
     }
 
     fn decode_ty(&self, decoder: &mut OpaqueDecoder) -> ty::Ty<'tcx> {

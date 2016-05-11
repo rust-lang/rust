@@ -19,7 +19,6 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::map::blocks::FnLikeNode;
-use rustc::infer;
 use rustc::traits::{self, ProjectionMode};
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::ty::cast::CastTy;
@@ -75,14 +74,15 @@ bitflags! {
     }
 }
 
-impl Qualif {
+impl<'a, 'tcx> Qualif {
     /// Remove flags which are impossible for the given type.
-    fn restrict<'a, 'tcx>(&mut self, ty: Ty<'tcx>,
-                          param_env: &ty::ParameterEnvironment<'a, 'tcx>) {
-        if !ty.type_contents(param_env.tcx).interior_unsafe() {
+    fn restrict(&mut self, ty: Ty<'tcx>,
+                tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                param_env: &ty::ParameterEnvironment<'tcx>) {
+        if !ty.type_contents(tcx).interior_unsafe() {
             *self = *self - Qualif::MUTABLE_INTERIOR;
         }
-        if !param_env.tcx.type_needs_drop_given_env(ty, param_env) {
+        if !tcx.type_needs_drop_given_env(ty, param_env) {
             *self = *self - Qualif::NEEDS_DROP;
         }
     }
@@ -109,7 +109,7 @@ impl fmt::Display for Mode {
     }
 }
 
-fn is_const_fn(tcx: &TyCtxt, def_id: DefId) -> bool {
+fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         let fn_like = FnLikeNode::from_node(tcx.map.get(node_id));
         match fn_like.map(|f| f.kind()) {
@@ -126,14 +126,14 @@ fn is_const_fn(tcx: &TyCtxt, def_id: DefId) -> bool {
     }
 }
 
-struct Qualifier<'a, 'tcx: 'a> {
+struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     mode: Mode,
     span: Span,
     def_id: DefId,
     mir: &'a Mir<'tcx>,
     rpo: ReversePostorder<'a, 'tcx>,
-    tcx: &'a TyCtxt<'tcx>,
-    param_env: ty::ParameterEnvironment<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    param_env: ty::ParameterEnvironment<'tcx>,
     qualif_map: &'a mut DefIdMap<Qualif>,
     mir_map: Option<&'a MirMap<'tcx>>,
     temp_qualif: Vec<Option<Qualif>>,
@@ -145,14 +145,15 @@ struct Qualifier<'a, 'tcx: 'a> {
     promotion_candidates: Vec<Candidate>
 }
 
-impl<'a, 'tcx> Qualifier<'a, 'tcx> {
-    fn new(param_env: ty::ParameterEnvironment<'a, 'tcx>,
+impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+           param_env: ty::ParameterEnvironment<'tcx>,
            qualif_map: &'a mut DefIdMap<Qualif>,
            mir_map: Option<&'a MirMap<'tcx>>,
            def_id: DefId,
            mir: &'a Mir<'tcx>,
            mode: Mode)
-           -> Qualifier<'a, 'tcx> {
+           -> Qualifier<'a, 'tcx, 'tcx> {
         let mut rpo = traversal::reverse_postorder(mir);
         let temps = promote_consts::collect_temps(mir, &mut rpo);
         rpo.reset();
@@ -162,7 +163,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
             def_id: def_id,
             mir: mir,
             rpo: rpo,
-            tcx: param_env.tcx,
+            tcx: tcx,
             param_env: param_env,
             qualif_map: qualif_map,
             mir_map: mir_map,
@@ -208,7 +209,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
     /// Add the given type's qualification to self.qualif.
     fn add_type(&mut self, ty: Ty<'tcx>) {
         self.add(Qualif::MUTABLE_INTERIOR | Qualif::NEEDS_DROP);
-        self.qualif.restrict(ty, &self.param_env);
+        self.qualif.restrict(ty, self.tcx, &self.param_env);
     }
 
     /// Within the provided closure, self.qualif will start
@@ -492,7 +493,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
 /// Accumulates an Rvalue or Call's effects in self.qualif.
 /// For functions (constant or not), it also records
 /// candidates for promotion in promotion_candidates.
-impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, context: LvalueContext) {
         match *lvalue {
             Lvalue::Arg(_) => {
@@ -555,7 +556,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx> {
                             }
                             let ty = this.mir.lvalue_ty(this.tcx, lvalue)
                                          .to_ty(this.tcx);
-                            this.qualif.restrict(ty, &this.param_env);
+                            this.qualif.restrict(ty, this.tcx, &this.param_env);
                         }
 
                         ProjectionElem::ConstantIndex {..} |
@@ -908,11 +909,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx> {
     }
 }
 
-fn qualify_const_item_cached<'tcx>(tcx: &TyCtxt<'tcx>,
-                                   qualif_map: &mut DefIdMap<Qualif>,
-                                   mir_map: Option<&MirMap<'tcx>>,
-                                   def_id: DefId)
-                                   -> Qualif {
+fn qualify_const_item_cached<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                       qualif_map: &mut DefIdMap<Qualif>,
+                                       mir_map: Option<&MirMap<'tcx>>,
+                                       def_id: DefId)
+                                       -> Qualif {
     match qualif_map.entry(def_id) {
         Entry::Occupied(entry) => return *entry.get(),
         Entry::Vacant(entry) => {
@@ -939,7 +940,7 @@ fn qualify_const_item_cached<'tcx>(tcx: &TyCtxt<'tcx>,
         bug!("missing constant MIR for {}", tcx.item_path_str(def_id))
     });
 
-    let mut qualifier = Qualifier::new(param_env, qualif_map, mir_map,
+    let mut qualifier = Qualifier::new(tcx, param_env, qualif_map, mir_map,
                                        def_id, mir, Mode::Const);
     let qualif = qualifier.qualify_const();
     qualifier.qualif_map.insert(def_id, qualif);
@@ -951,7 +952,7 @@ pub struct QualifyAndPromoteConstants;
 impl Pass for QualifyAndPromoteConstants {}
 
 impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, map: &mut MirMap<'tcx>) {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, map: &mut MirMap<'tcx>) {
         let mut qualif_map = DefIdMap();
 
         // First, visit `const` items, potentially recursing, to get
@@ -991,7 +992,7 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
                 // This is ugly because Qualifier holds onto mir,
                 // which can't be mutated until its scope ends.
                 let (temps, candidates) = {
-                    let mut qualifier = Qualifier::new(param_env, &mut qualif_map,
+                    let mut qualifier = Qualifier::new(tcx, param_env, &mut qualif_map,
                                                        None, def_id, mir, mode);
                     if mode == Mode::ConstFn {
                         // Enforce a constant-like CFG for `const fn`.
@@ -1009,7 +1010,7 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
                 // Do the actual promotion, now that we know what's viable.
                 promote_consts::promote_candidates(mir, tcx, temps, candidates);
             } else {
-                let mut qualifier = Qualifier::new(param_env, &mut qualif_map,
+                let mut qualifier = Qualifier::new(tcx, param_env, &mut qualif_map,
                                                    None, def_id, mir, mode);
                 qualifier.qualify_const();
             }
@@ -1017,20 +1018,18 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
             // Statics must be Sync.
             if mode == Mode::Static {
                 let ty = mir.return_ty.unwrap();
-                let infcx = infer::new_infer_ctxt(tcx,
-                                                  &tcx.tables,
-                                                  None,
-                                                  ProjectionMode::AnyFinal);
-                let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
-                let mut fulfillment_cx = traits::FulfillmentContext::new();
-                fulfillment_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
-                if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
-                    traits::report_fulfillment_errors(&infcx, &err);
-                }
+                tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
+                    let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
+                    let mut fulfillment_cx = traits::FulfillmentContext::new();
+                    fulfillment_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
+                    if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
+                        infcx.report_fulfillment_errors(&err);
+                    }
 
-                if let Err(ref errors) = fulfillment_cx.select_rfc1592_obligations(&infcx) {
-                   traits::report_fulfillment_errors_as_warnings(&infcx, errors, id);
-                }
+                    if let Err(errors) = fulfillment_cx.select_rfc1592_obligations(&infcx) {
+                        infcx.report_fulfillment_errors_as_warnings(&errors, id);
+                    }
+                });
             }
         }
     }

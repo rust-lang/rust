@@ -14,7 +14,7 @@ use hair::*;
 use rustc::mir::repr::*;
 use std::u32;
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn field_match_pairs<'pat>(&mut self,
                                    lvalue: Lvalue<'tcx>,
                                    subpatterns: &'pat [FieldPattern<'tcx>])

@@ -36,7 +36,7 @@ pub struct Substs<'tcx> {
     pub regions: VecPerParamSpace<ty::Region>,
 }
 
-impl<'tcx> Substs<'tcx> {
+impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     pub fn new(t: VecPerParamSpace<Ty<'tcx>>,
                r: VecPerParamSpace<ty::Region>)
                -> Substs<'tcx>
@@ -114,15 +114,15 @@ impl<'tcx> Substs<'tcx> {
         Substs { types: types, regions: regions }
     }
 
-    pub fn with_method_from_subst(self, other: &Substs<'tcx>) -> Substs<'tcx> {
-        let Substs { types, regions } = self;
+    pub fn with_method_from_subst(&self, other: &Substs<'tcx>) -> Substs<'tcx> {
+        let Substs { types, regions } = self.clone();
         let types = types.with_slice(FnSpace, other.types.get_slice(FnSpace));
         let regions = regions.with_slice(FnSpace, other.regions.get_slice(FnSpace));
         Substs { types: types, regions: regions }
     }
 
     /// Creates a trait-ref out of this substs, ignoring the FnSpace substs
-    pub fn to_trait_ref(&self, tcx: &TyCtxt<'tcx>, trait_id: DefId)
+    pub fn to_trait_ref(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, trait_id: DefId)
                         -> ty::TraitRef<'tcx> {
         let Substs { mut types, mut regions } = self.clone();
         types.truncate(FnSpace, 0);
@@ -532,22 +532,22 @@ impl<'a,T> IntoIterator for &'a VecPerParamSpace<T> {
 // there is more information available (for better errors).
 
 pub trait Subst<'tcx> : Sized {
-    fn subst(&self, tcx: &TyCtxt<'tcx>, substs: &Substs<'tcx>) -> Self {
+    fn subst<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                      substs: &Substs<'tcx>) -> Self {
         self.subst_spanned(tcx, substs, None)
     }
 
-    fn subst_spanned(&self, tcx: &TyCtxt<'tcx>,
-                     substs: &Substs<'tcx>,
-                     span: Option<Span>)
-                     -> Self;
+    fn subst_spanned<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                               substs: &Substs<'tcx>,
+                               span: Option<Span>)
+                               -> Self;
 }
 
 impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
-    fn subst_spanned(&self,
-                     tcx: &TyCtxt<'tcx>,
-                     substs: &Substs<'tcx>,
-                     span: Option<Span>)
-                     -> T
+    fn subst_spanned<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                               substs: &Substs<'tcx>,
+                               span: Option<Span>)
+                               -> T
     {
         let mut folder = SubstFolder { tcx: tcx,
                                        substs: substs,
@@ -562,8 +562,8 @@ impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
 ///////////////////////////////////////////////////////////////////////////
 // The actual substitution engine itself is a type folder.
 
-struct SubstFolder<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+struct SubstFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     substs: &'a Substs<'tcx>,
 
     // The location for which the substitution is performed, if available.
@@ -579,8 +579,8 @@ struct SubstFolder<'a, 'tcx: 'a> {
     region_binders_passed: u32,
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
-    fn tcx(&self) -> &TyCtxt<'tcx> { self.tcx }
+impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
     fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
         self.region_binders_passed += 1;
@@ -650,7 +650,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     }
 }
 
-impl<'a,'tcx> SubstFolder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     fn ty_for_param(&self, p: ty::ParamTy, source_ty: Ty<'tcx>) -> Ty<'tcx> {
         // Look up the type in the substitutions. It really should be in there.
         let opt_ty = self.substs.types.opt_get(p.space, p.idx as usize);

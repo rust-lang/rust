@@ -41,7 +41,8 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
 }
 
 impl<'tcx> MirPass<'tcx> for NoLandingPads {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    _: MirSource, mir: &mut Mir<'tcx>) {
         if tcx.sess.no_landing_pads() {
             self.visit_mir(mir);
         }

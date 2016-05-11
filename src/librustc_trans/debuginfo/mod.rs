@@ -34,7 +34,6 @@ use rustc::hir;
 use abi::Abi;
 use common::{NodeIdAndSpan, CrateContext, FunctionContext, Block, BlockAndBuilder};
 use monomorphize::Instance;
-use rustc::infer::normalize_associated_type;
 use rustc::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
@@ -344,7 +343,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
 
         if abi == Abi::RustCall && !sig.inputs.is_empty() {
-            if let ty::TyTuple(ref args) = sig.inputs[sig.inputs.len() - 1].sty {
+            if let ty::TyTuple(args) = sig.inputs[sig.inputs.len() - 1].sty {
                 for &argument_type in args {
                     signature.push(type_metadata(cx, argument_type, codemap::DUMMY_SP));
                 }
@@ -369,7 +368,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         name_to_append_suffix_to.push('<');
         for (i, &actual_type) in actual_types.iter().enumerate() {
-            let actual_type = normalize_associated_type(cx.tcx(), &actual_type);
+            let actual_type = cx.tcx().normalize_associated_type(&actual_type);
             // Add actual type name to <...> clause of function name
             let actual_type_name = compute_debuginfo_type_name(cx,
                                                                actual_type,
@@ -385,7 +384,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         // Again, only create type information if full debuginfo is enabled
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
             generics.types.as_slice().iter().enumerate().map(|(i, param)| {
-                let actual_type = normalize_associated_type(cx.tcx(), &actual_types[i]);
+                let actual_type = cx.tcx().normalize_associated_type(&actual_types[i]);
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
                 let name = CString::new(param.name.as_str().as_bytes()).unwrap();
                 unsafe {

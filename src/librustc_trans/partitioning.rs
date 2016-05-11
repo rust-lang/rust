@@ -153,11 +153,11 @@ pub enum PartitioningStrategy {
 // Anything we can't find a proper codegen unit for goes into this.
 const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 
-pub fn partition<'tcx, I>(tcx: &TyCtxt<'tcx>,
-                          trans_items: I,
-                          strategy: PartitioningStrategy,
-                          reference_map: &ReferenceMap<'tcx>)
-                          -> Vec<CodegenUnit<'tcx>>
+pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              trans_items: I,
+                              strategy: PartitioningStrategy,
+                              reference_map: &ReferenceMap<'tcx>)
+                              -> Vec<CodegenUnit<'tcx>>
     where I: Iterator<Item = TransItem<'tcx>>
 {
     // In the first step, we place all regular translation items into their
@@ -193,9 +193,9 @@ struct PreInliningPartitioning<'tcx> {
 struct PostInliningPartitioning<'tcx>(Vec<CodegenUnit<'tcx>>);
 struct PostDeclarationsPartitioning<'tcx>(Vec<CodegenUnit<'tcx>>);
 
-fn place_root_translation_items<'tcx, I>(tcx: &TyCtxt<'tcx>,
-                                         trans_items: I)
-                                         -> PreInliningPartitioning<'tcx>
+fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                             trans_items: I)
+                                             -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = TransItem<'tcx>>
 {
     let mut roots = FnvHashSet();
@@ -375,9 +375,9 @@ fn place_declarations<'tcx>(codegen_units: PostInliningPartitioning<'tcx>,
     PostDeclarationsPartitioning(codegen_units)
 }
 
-fn characteristic_def_id_of_trans_item<'tcx>(tcx: &TyCtxt<'tcx>,
-                                             trans_item: TransItem<'tcx>)
-                                             -> Option<DefId> {
+fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                 trans_item: TransItem<'tcx>)
+                                                 -> Option<DefId> {
     match trans_item {
         TransItem::Fn(instance) => {
             // If this is a method, we want to put it into the same module as
@@ -410,10 +410,10 @@ fn characteristic_def_id_of_trans_item<'tcx>(tcx: &TyCtxt<'tcx>,
     }
 }
 
-fn compute_codegen_unit_name<'tcx>(tcx: &TyCtxt<'tcx>,
-                                   def_id: DefId,
-                                   volatile: bool)
-                                   -> InternedString {
+fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                       def_id: DefId,
+                                       volatile: bool)
+                                       -> InternedString {
     // Unfortunately we cannot just use the `ty::item_path` infrastructure here
     // because we need paths to modules and the DefIds of those are not
     // available anymore for external items.

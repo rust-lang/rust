@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use infer::InferCtxt;
-use ty::outlives::{self, Component};
+use ty::outlives::Component;
 use ty::subst::Substs;
 use traits;
 use ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
@@ -25,11 +25,11 @@ use util::common::ErrorReported;
 /// inference variable, returns `None`, because we are not able to
 /// make any progress at all. This is to prevent "livelock" where we
 /// say "$0 is WF if $0 is WF".
-pub fn obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                            body_id: ast::NodeId,
-                            ty: Ty<'tcx>,
-                            span: Span)
-                            -> Option<Vec<traits::PredicateObligation<'tcx>>>
+pub fn obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                   body_id: ast::NodeId,
+                                   ty: Ty<'tcx>,
+                                   span: Span)
+                                   -> Option<Vec<traits::PredicateObligation<'tcx>>>
 {
     let mut wf = WfPredicates { infcx: infcx,
                                 body_id: body_id,
@@ -49,22 +49,22 @@ pub fn obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 /// well-formed.  For example, if there is a trait `Set` defined like
 /// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
 /// if `Bar: Eq`.
-pub fn trait_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                  body_id: ast::NodeId,
-                                  trait_ref: &ty::TraitRef<'tcx>,
-                                  span: Span)
-                                  -> Vec<traits::PredicateObligation<'tcx>>
+pub fn trait_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                         body_id: ast::NodeId,
+                                         trait_ref: &ty::TraitRef<'tcx>,
+                                         span: Span)
+                                         -> Vec<traits::PredicateObligation<'tcx>>
 {
     let mut wf = WfPredicates { infcx: infcx, body_id: body_id, span: span, out: vec![] };
     wf.compute_trait_ref(trait_ref);
     wf.normalize()
 }
 
-pub fn predicate_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                      body_id: ast::NodeId,
-                                      predicate: &ty::Predicate<'tcx>,
-                                      span: Span)
-                                      -> Vec<traits::PredicateObligation<'tcx>>
+pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                             body_id: ast::NodeId,
+                                             predicate: &ty::Predicate<'tcx>,
+                                             span: Span)
+                                             -> Vec<traits::PredicateObligation<'tcx>>
 {
     let mut wf = WfPredicates { infcx: infcx, body_id: body_id, span: span, out: vec![] };
 
@@ -123,8 +123,8 @@ pub enum ImpliedBound<'tcx> {
 /// Compute the implied bounds that a callee/impl can assume based on
 /// the fact that caller/projector has ensured that `ty` is WF.  See
 /// the `ImpliedBound` type for more details.
-pub fn implied_bounds<'a,'tcx>(
-    infcx: &'a InferCtxt<'a,'tcx>,
+pub fn implied_bounds<'a, 'gcx, 'tcx>(
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     body_id: ast::NodeId,
     ty: Ty<'tcx>,
     span: Span)
@@ -182,7 +182,7 @@ pub fn implied_bounds<'a,'tcx>(
                         match infcx.tcx.no_late_bound_regions(data) {
                             None => vec![],
                             Some(ty::OutlivesPredicate(ty_a, r_b)) => {
-                                let components = outlives::components(infcx, ty_a);
+                                let components = infcx.outlives_components(ty_a);
                                 implied_bounds_from_components(r_b, components)
                             }
                         },
@@ -227,14 +227,14 @@ fn implied_bounds_from_components<'tcx>(sub_region: ty::Region,
         .collect()
 }
 
-struct WfPredicates<'a,'tcx:'a> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+struct WfPredicates<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     body_id: ast::NodeId,
     span: Span,
     out: Vec<traits::PredicateObligation<'tcx>>,
 }
 
-impl<'a,'tcx> WfPredicates<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     fn cause(&mut self, code: traits::ObligationCauseCode<'tcx>) -> traits::ObligationCause<'tcx> {
         traits::ObligationCause::new(self.span, self.body_id, code)
     }
@@ -288,9 +288,7 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
                      rfc1592: bool) {
         if !subty.has_escaping_regions() {
             let cause = self.cause(cause);
-            match traits::trait_ref_for_builtin_bound(self.infcx.tcx,
-                                                      ty::BoundSized,
-                                                      subty) {
+            match self.infcx.tcx.trait_ref_for_builtin_bound(ty::BoundSized, subty) {
                 Ok(trait_ref) => {
                     let predicate = trait_ref.to_predicate();
                     let predicate = if rfc1592 {
@@ -527,8 +525,8 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
 /// they declare `trait SomeTrait : 'static`, for example, then
 /// `'static` would appear in the list. The hard work is done by
 /// `ty::required_region_bounds`, see that for more information.
-pub fn object_region_bounds<'tcx>(
-    tcx: &TyCtxt<'tcx>,
+pub fn object_region_bounds<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     principal: &ty::PolyTraitRef<'tcx>,
     others: ty::BuiltinBounds)
     -> Vec<ty::Region>
