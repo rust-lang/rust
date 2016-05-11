@@ -197,6 +197,15 @@ impl<T> Mutex<T> {
     }
 }
 
+#[unstable(feature = "defaults",
+           reason = "has not yet been decided",
+           issue = "31865")]
+impl<T: Default> Default for Mutex<T> {
+    fn default() -> Mutex<T> {
+        Mutex::new(Default::default())
+    }
+}
+
 impl<T: ?Sized> Mutex<T> {
     /// Acquires a mutex, blocking the current thread until it is able to do so.
     ///

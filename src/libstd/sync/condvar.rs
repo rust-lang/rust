@@ -234,6 +234,15 @@ impl Drop for Condvar {
     }
 }
 
+#[unstable(feature = "defaults",
+           reason = "has not yet been decided",
+           issue = "31865")]
+impl Default for Condvar {
+    fn default() -> Condvar {
+        Condvar::new()
+    }
+}
+
 impl StaticCondvar {
     /// Creates a new condition variable
     #[unstable(feature = "static_condvar",
