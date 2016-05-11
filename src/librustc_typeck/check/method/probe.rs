@@ -137,108 +137,108 @@ pub enum Mode {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-pub fn probe_method(&self,
-                    span: Span,
-                    mode: Mode,
-                    item_name: ast::Name,
-                    self_ty: Ty<'tcx>,
-                    scope_expr_id: ast::NodeId)
-                    -> PickResult<'tcx>
-{
-    debug!("probe(self_ty={:?}, item_name={}, scope_expr_id={})",
-           self_ty,
-           item_name,
-           scope_expr_id);
+    pub fn probe_method(&self,
+                        span: Span,
+                        mode: Mode,
+                        item_name: ast::Name,
+                        self_ty: Ty<'tcx>,
+                        scope_expr_id: ast::NodeId)
+                        -> PickResult<'tcx>
+    {
+        debug!("probe(self_ty={:?}, item_name={}, scope_expr_id={})",
+               self_ty,
+               item_name,
+               scope_expr_id);
 
-    // FIXME(#18741) -- right now, creating the steps involves evaluating the
-    // `*` operator, which registers obligations that then escape into
-    // the global fulfillment context and thus has global
-    // side-effects. This is a bit of a pain to refactor. So just let
-    // it ride, although it's really not great, and in fact could I
-    // think cause spurious errors. Really though this part should
-    // take place in the `self.probe` below.
-    let steps = if mode == Mode::MethodCall {
-        match self.create_steps(span, self_ty) {
-            Some(steps) => steps,
-            None =>return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(), Vec::new(),
-                                                                    Vec::new(), mode))),
-        }
-    } else {
-        vec![CandidateStep {
-            self_ty: self_ty,
-            autoderefs: 0,
-            unsize: false
-        }]
-    };
-
-    // Create a list of simplified self types, if we can.
-    let mut simplified_steps = Vec::new();
-    for step in &steps {
-        match ty::fast_reject::simplify_type(self.tcx, step.self_ty, true) {
-            None => { break; }
-            Some(simplified_type) => { simplified_steps.push(simplified_type); }
-        }
-    }
-    let opt_simplified_steps =
-        if simplified_steps.len() < steps.len() {
-            None // failed to convert at least one of the steps
+        // FIXME(#18741) -- right now, creating the steps involves evaluating the
+        // `*` operator, which registers obligations that then escape into
+        // the global fulfillment context and thus has global
+        // side-effects. This is a bit of a pain to refactor. So just let
+        // it ride, although it's really not great, and in fact could I
+        // think cause spurious errors. Really though this part should
+        // take place in the `self.probe` below.
+        let steps = if mode == Mode::MethodCall {
+            match self.create_steps(span, self_ty) {
+                Some(steps) => steps,
+                None =>return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(), Vec::new(),
+                                                                        Vec::new(), mode))),
+            }
         } else {
-            Some(simplified_steps)
+            vec![CandidateStep {
+                self_ty: self_ty,
+                autoderefs: 0,
+                unsize: false
+            }]
         };
 
-    debug!("ProbeContext: steps for self_ty={:?} are {:?}",
-           self_ty,
-           steps);
-
-    // this creates one big transaction so that all type variables etc
-    // that we create during the probe process are removed later
-    self.probe(|_| {
-        let mut probe_cx = ProbeContext::new(self,
-                                             span,
-                                             mode,
-                                             item_name,
-                                             steps,
-                                             opt_simplified_steps);
-        probe_cx.assemble_inherent_candidates();
-        probe_cx.assemble_extension_candidates_for_traits_in_scope(scope_expr_id)?;
-        probe_cx.pick()
-    })
-}
-
-fn create_steps(&self,
-                span: Span,
-                self_ty: Ty<'tcx>)
-                -> Option<Vec<CandidateStep<'tcx>>> {
-    let mut steps = Vec::new();
-
-    let (final_ty, dereferences, _) = self.autoderef(span,
-                                                     self_ty,
-                                                     || None,
-                                                     UnresolvedTypeAction::Error,
-                                                     NoPreference,
-                                                     |t, d| {
-        steps.push(CandidateStep {
-            self_ty: t,
-            autoderefs: d,
-            unsize: false
-        });
-        None::<()> // keep iterating until we can't anymore
-    });
-
-    match final_ty.sty {
-        ty::TyArray(elem_ty, _) => {
-            steps.push(CandidateStep {
-                self_ty: self.tcx.mk_slice(elem_ty),
-                autoderefs: dereferences,
-                unsize: true
-            });
+        // Create a list of simplified self types, if we can.
+        let mut simplified_steps = Vec::new();
+        for step in &steps {
+            match ty::fast_reject::simplify_type(self.tcx, step.self_ty, true) {
+                None => { break; }
+                Some(simplified_type) => { simplified_steps.push(simplified_type); }
+            }
         }
-        ty::TyError => return None,
-        _ => (),
+        let opt_simplified_steps =
+            if simplified_steps.len() < steps.len() {
+                None // failed to convert at least one of the steps
+            } else {
+                Some(simplified_steps)
+            };
+
+        debug!("ProbeContext: steps for self_ty={:?} are {:?}",
+               self_ty,
+               steps);
+
+        // this creates one big transaction so that all type variables etc
+        // that we create during the probe process are removed later
+        self.probe(|_| {
+            let mut probe_cx = ProbeContext::new(self,
+                                                 span,
+                                                 mode,
+                                                 item_name,
+                                                 steps,
+                                                 opt_simplified_steps);
+            probe_cx.assemble_inherent_candidates();
+            probe_cx.assemble_extension_candidates_for_traits_in_scope(scope_expr_id)?;
+            probe_cx.pick()
+        })
     }
 
-    Some(steps)
-}
+    fn create_steps(&self,
+                    span: Span,
+                    self_ty: Ty<'tcx>)
+                    -> Option<Vec<CandidateStep<'tcx>>> {
+        let mut steps = Vec::new();
+
+        let (final_ty, dereferences, _) = self.autoderef(span,
+                                                         self_ty,
+                                                         || None,
+                                                         UnresolvedTypeAction::Error,
+                                                         NoPreference,
+                                                         |t, d| {
+            steps.push(CandidateStep {
+                self_ty: t,
+                autoderefs: d,
+                unsize: false
+            });
+            None::<()> // keep iterating until we can't anymore
+        });
+
+        match final_ty.sty {
+            ty::TyArray(elem_ty, _) => {
+                steps.push(CandidateStep {
+                    self_ty: self.tcx.mk_slice(elem_ty),
+                    autoderefs: dereferences,
+                    unsize: true
+                });
+            }
+            ty::TyError => return None,
+            _ => (),
+        }
+
+        Some(steps)
+    }
 }
 
 impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {

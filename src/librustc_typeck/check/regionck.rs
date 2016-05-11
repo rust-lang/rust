@@ -114,54 +114,54 @@ macro_rules! ignore_err {
 // PUBLIC ENTRY POINTS
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-pub fn regionck_expr(&self, e: &hir::Expr) {
-    let mut rcx = RegionCtxt::new(self, RepeatingScope(e.id), e.id, Subject(e.id));
-    if self.err_count_since_creation() == 0 {
-        // regionck assumes typeck succeeded
-        rcx.visit_expr(e);
-        rcx.visit_region_obligations(e.id);
-    }
-    rcx.resolve_regions_and_report_errors();
-}
-
-/// Region checking during the WF phase for items. `wf_tys` are the
-/// types from which we should derive implied bounds, if any.
-pub fn regionck_item(&self,
-                     item_id: ast::NodeId,
-                     span: Span,
-                     wf_tys: &[Ty<'tcx>]) {
-    debug!("regionck_item(item.id={:?}, wf_tys={:?}", item_id, wf_tys);
-    let mut rcx = RegionCtxt::new(self, RepeatingScope(item_id), item_id, Subject(item_id));
-    rcx.free_region_map.relate_free_regions_from_predicates(
-        &self.parameter_environment.caller_bounds);
-    rcx.relate_free_regions(wf_tys, item_id, span);
-    rcx.visit_region_obligations(item_id);
-    rcx.resolve_regions_and_report_errors();
-}
-
-pub fn regionck_fn(&self,
-                   fn_id: ast::NodeId,
-                   fn_span: Span,
-                   decl: &hir::FnDecl,
-                   blk: &hir::Block) {
-    debug!("regionck_fn(id={})", fn_id);
-    let mut rcx = RegionCtxt::new(self, RepeatingScope(blk.id), blk.id, Subject(fn_id));
-
-    if self.err_count_since_creation() == 0 {
-        // regionck assumes typeck succeeded
-        rcx.visit_fn_body(fn_id, decl, blk, fn_span);
+    pub fn regionck_expr(&self, e: &hir::Expr) {
+        let mut rcx = RegionCtxt::new(self, RepeatingScope(e.id), e.id, Subject(e.id));
+        if self.err_count_since_creation() == 0 {
+            // regionck assumes typeck succeeded
+            rcx.visit_expr(e);
+            rcx.visit_region_obligations(e.id);
+        }
+        rcx.resolve_regions_and_report_errors();
     }
 
-    rcx.free_region_map.relate_free_regions_from_predicates(
-        &self.parameter_environment.caller_bounds);
+    /// Region checking during the WF phase for items. `wf_tys` are the
+    /// types from which we should derive implied bounds, if any.
+    pub fn regionck_item(&self,
+                         item_id: ast::NodeId,
+                         span: Span,
+                         wf_tys: &[Ty<'tcx>]) {
+        debug!("regionck_item(item.id={:?}, wf_tys={:?}", item_id, wf_tys);
+        let mut rcx = RegionCtxt::new(self, RepeatingScope(item_id), item_id, Subject(item_id));
+        rcx.free_region_map.relate_free_regions_from_predicates(
+            &self.parameter_environment.caller_bounds);
+        rcx.relate_free_regions(wf_tys, item_id, span);
+        rcx.visit_region_obligations(item_id);
+        rcx.resolve_regions_and_report_errors();
+    }
 
-    rcx.resolve_regions_and_report_errors();
+    pub fn regionck_fn(&self,
+                       fn_id: ast::NodeId,
+                       fn_span: Span,
+                       decl: &hir::FnDecl,
+                       blk: &hir::Block) {
+        debug!("regionck_fn(id={})", fn_id);
+        let mut rcx = RegionCtxt::new(self, RepeatingScope(blk.id), blk.id, Subject(fn_id));
 
-    // For the top-level fn, store the free-region-map. We don't store
-    // any map for closures; they just share the same map as the
-    // function that created them.
-    self.tcx.store_free_region_map(fn_id, rcx.free_region_map);
-}
+        if self.err_count_since_creation() == 0 {
+            // regionck assumes typeck succeeded
+            rcx.visit_fn_body(fn_id, decl, blk, fn_span);
+        }
+
+        rcx.free_region_map.relate_free_regions_from_predicates(
+            &self.parameter_environment.caller_bounds);
+
+        rcx.resolve_regions_and_report_errors();
+
+        // For the top-level fn, store the free-region-map. We don't store
+        // any map for closures; they just share the same map as the
+        // function that created them.
+        self.tcx.store_free_region_map(fn_id, rcx.free_region_map);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -449,42 +449,42 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                                                    subject_node_id);
     }
 
-fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat) {
-    let tcx = self.tcx;
-    debug!("regionck::visit_pat(pat={:?})", pat);
-    pat_util::pat_bindings(&tcx.def_map, pat, |_, id, span, _| {
-        // If we have a variable that contains region'd data, that
-        // data will be accessible from anywhere that the variable is
-        // accessed. We must be wary of loops like this:
-        //
-        //     // from src/test/compile-fail/borrowck-lend-flow.rs
-        //     let mut v = box 3, w = box 4;
-        //     let mut x = &mut w;
-        //     loop {
-        //         **x += 1;   // (2)
-        //         borrow(v);  //~ ERROR cannot borrow
-        //         x = &mut v; // (1)
-        //     }
-        //
-        // Typically, we try to determine the region of a borrow from
-        // those points where it is dereferenced. In this case, one
-        // might imagine that the lifetime of `x` need only be the
-        // body of the loop. But of course this is incorrect because
-        // the pointer that is created at point (1) is consumed at
-        // point (2), meaning that it must be live across the loop
-        // iteration. The easiest way to guarantee this is to require
-        // that the lifetime of any regions that appear in a
-        // variable's type enclose at least the variable's scope.
+    fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat) {
+        let tcx = self.tcx;
+        debug!("regionck::visit_pat(pat={:?})", pat);
+        pat_util::pat_bindings(&tcx.def_map, pat, |_, id, span, _| {
+            // If we have a variable that contains region'd data, that
+            // data will be accessible from anywhere that the variable is
+            // accessed. We must be wary of loops like this:
+            //
+            //     // from src/test/compile-fail/borrowck-lend-flow.rs
+            //     let mut v = box 3, w = box 4;
+            //     let mut x = &mut w;
+            //     loop {
+            //         **x += 1;   // (2)
+            //         borrow(v);  //~ ERROR cannot borrow
+            //         x = &mut v; // (1)
+            //     }
+            //
+            // Typically, we try to determine the region of a borrow from
+            // those points where it is dereferenced. In this case, one
+            // might imagine that the lifetime of `x` need only be the
+            // body of the loop. But of course this is incorrect because
+            // the pointer that is created at point (1) is consumed at
+            // point (2), meaning that it must be live across the loop
+            // iteration. The easiest way to guarantee this is to require
+            // that the lifetime of any regions that appear in a
+            // variable's type enclose at least the variable's scope.
 
-        let var_scope = tcx.region_maps.var_scope(id);
+            let var_scope = tcx.region_maps.var_scope(id);
 
-        let origin = infer::BindingTypeIsNotValidAtDecl(span);
-        self.type_of_node_must_outlive(origin, id, ty::ReScope(var_scope));
+            let origin = infer::BindingTypeIsNotValidAtDecl(span);
+            self.type_of_node_must_outlive(origin, id, ty::ReScope(var_scope));
 
-        let typ = self.resolve_node_type(id);
-        dropck::check_safety_of_destructor_if_necessary(self, typ, span, var_scope);
-    })
-}
+            let typ = self.resolve_node_type(id);
+            dropck::check_safety_of_destructor_if_necessary(self, typ, span, var_scope);
+        })
+    }
 }
 
 impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
@@ -518,296 +518,296 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
         intravisit::walk_local(self, l);
     }
 
-fn visit_expr(&mut self, expr: &hir::Expr) {
-    debug!("regionck::visit_expr(e={:?}, repeating_scope={})",
-           expr, self.repeating_scope);
+    fn visit_expr(&mut self, expr: &hir::Expr) {
+        debug!("regionck::visit_expr(e={:?}, repeating_scope={})",
+               expr, self.repeating_scope);
 
-    // No matter what, the type of each expression must outlive the
-    // scope of that expression. This also guarantees basic WF.
-    let expr_ty = self.resolve_node_type(expr.id);
-    // the region corresponding to this expression
-    let expr_region = ty::ReScope(self.tcx.region_maps.node_extent(expr.id));
-    self.type_must_outlive(infer::ExprTypeIsNotInScope(expr_ty, expr.span),
-                           expr_ty, expr_region);
+        // No matter what, the type of each expression must outlive the
+        // scope of that expression. This also guarantees basic WF.
+        let expr_ty = self.resolve_node_type(expr.id);
+        // the region corresponding to this expression
+        let expr_region = ty::ReScope(self.tcx.region_maps.node_extent(expr.id));
+        self.type_must_outlive(infer::ExprTypeIsNotInScope(expr_ty, expr.span),
+                               expr_ty, expr_region);
 
-    let method_call = MethodCall::expr(expr.id);
-    let opt_method_callee = self.tables.borrow().method_map.get(&method_call).cloned();
-    let has_method_map = opt_method_callee.is_some();
+        let method_call = MethodCall::expr(expr.id);
+        let opt_method_callee = self.tables.borrow().method_map.get(&method_call).cloned();
+        let has_method_map = opt_method_callee.is_some();
 
-    // If we are calling a method (either explicitly or via an
-    // overloaded operator), check that all of the types provided as
-    // arguments for its type parameters are well-formed, and all the regions
-    // provided as arguments outlive the call.
-    if let Some(callee) = opt_method_callee {
-        let origin = match expr.node {
-            hir::ExprMethodCall(..) =>
-                infer::ParameterOrigin::MethodCall,
-            hir::ExprUnary(op, _) if op == hir::UnDeref =>
-                infer::ParameterOrigin::OverloadedDeref,
-            _ =>
-                infer::ParameterOrigin::OverloadedOperator
-        };
+        // If we are calling a method (either explicitly or via an
+        // overloaded operator), check that all of the types provided as
+        // arguments for its type parameters are well-formed, and all the regions
+        // provided as arguments outlive the call.
+        if let Some(callee) = opt_method_callee {
+            let origin = match expr.node {
+                hir::ExprMethodCall(..) =>
+                    infer::ParameterOrigin::MethodCall,
+                hir::ExprUnary(op, _) if op == hir::UnDeref =>
+                    infer::ParameterOrigin::OverloadedDeref,
+                _ =>
+                    infer::ParameterOrigin::OverloadedOperator
+            };
 
-        self.substs_wf_in_scope(origin, &callee.substs, expr.span, expr_region);
-        self.type_must_outlive(infer::ExprTypeIsNotInScope(callee.ty, expr.span),
-                               callee.ty, expr_region);
-    }
-
-    // Check any autoderefs or autorefs that appear.
-    let adjustment = self.tables.borrow().adjustments.get(&expr.id).map(|a| a.clone());
-    if let Some(adjustment) = adjustment {
-        debug!("adjustment={:?}", adjustment);
-        match adjustment {
-            adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
-                autoderefs, ref autoref, ..
-            }) => {
-                let expr_ty = self.resolve_node_type(expr.id);
-                self.constrain_autoderefs(expr, autoderefs, expr_ty);
-                if let Some(ref autoref) = *autoref {
-                    self.link_autoref(expr, autoderefs, autoref);
-
-                    // Require that the resulting region encompasses
-                    // the current node.
-                    //
-                    // FIXME(#6268) remove to support nested method calls
-                    self.type_of_node_must_outlive(infer::AutoBorrow(expr.span),
-                                                   expr.id, expr_region);
-                }
-            }
-            /*
-            adjustment::AutoObject(_, ref bounds, _, _) => {
-                // Determine if we are casting `expr` to a trait
-                // instance. If so, we have to be sure that the type
-                // of the source obeys the new region bound.
-                let source_ty = self.resolve_node_type(expr.id);
-                self.type_must_outlive(infer::RelateObjectBound(expr.span),
-                                       source_ty, bounds.region_bound);
-            }
-            */
-            _ => {}
+            self.substs_wf_in_scope(origin, &callee.substs, expr.span, expr_region);
+            self.type_must_outlive(infer::ExprTypeIsNotInScope(callee.ty, expr.span),
+                                   callee.ty, expr_region);
         }
 
-        // If necessary, constrain destructors in the unadjusted form of this
-        // expression.
+        // Check any autoderefs or autorefs that appear.
+        let adjustment = self.tables.borrow().adjustments.get(&expr.id).map(|a| a.clone());
+        if let Some(adjustment) = adjustment {
+            debug!("adjustment={:?}", adjustment);
+            match adjustment {
+                adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
+                    autoderefs, ref autoref, ..
+                }) => {
+                    let expr_ty = self.resolve_node_type(expr.id);
+                    self.constrain_autoderefs(expr, autoderefs, expr_ty);
+                    if let Some(ref autoref) = *autoref {
+                        self.link_autoref(expr, autoderefs, autoref);
+
+                        // Require that the resulting region encompasses
+                        // the current node.
+                        //
+                        // FIXME(#6268) remove to support nested method calls
+                        self.type_of_node_must_outlive(infer::AutoBorrow(expr.span),
+                                                       expr.id, expr_region);
+                    }
+                }
+                /*
+                adjustment::AutoObject(_, ref bounds, _, _) => {
+                    // Determine if we are casting `expr` to a trait
+                    // instance. If so, we have to be sure that the type
+                    // of the source obeys the new region bound.
+                    let source_ty = self.resolve_node_type(expr.id);
+                    self.type_must_outlive(infer::RelateObjectBound(expr.span),
+                                           source_ty, bounds.region_bound);
+                }
+                */
+                _ => {}
+            }
+
+            // If necessary, constrain destructors in the unadjusted form of this
+            // expression.
+            let cmt_result = {
+                let mc = mc::MemCategorizationContext::new(self);
+                mc.cat_expr_unadjusted(expr)
+            };
+            match cmt_result {
+                Ok(head_cmt) => {
+                    self.check_safety_of_rvalue_destructor_if_necessary(head_cmt,
+                                                                        expr.span);
+                }
+                Err(..) => {
+                    self.tcx.sess.delay_span_bug(expr.span, "cat_expr_unadjusted Errd");
+                }
+            }
+        }
+
+        // If necessary, constrain destructors in this expression. This will be
+        // the adjusted form if there is an adjustment.
         let cmt_result = {
             let mc = mc::MemCategorizationContext::new(self);
-            mc.cat_expr_unadjusted(expr)
+            mc.cat_expr(expr)
         };
         match cmt_result {
             Ok(head_cmt) => {
-                self.check_safety_of_rvalue_destructor_if_necessary(head_cmt,
-                                                                    expr.span);
+                self.check_safety_of_rvalue_destructor_if_necessary(head_cmt, expr.span);
             }
             Err(..) => {
-                self.tcx.sess.delay_span_bug(expr.span, "cat_expr_unadjusted Errd");
+                self.tcx.sess.delay_span_bug(expr.span, "cat_expr Errd");
             }
         }
-    }
 
-    // If necessary, constrain destructors in this expression. This will be
-    // the adjusted form if there is an adjustment.
-    let cmt_result = {
-        let mc = mc::MemCategorizationContext::new(self);
-        mc.cat_expr(expr)
-    };
-    match cmt_result {
-        Ok(head_cmt) => {
-            self.check_safety_of_rvalue_destructor_if_necessary(head_cmt, expr.span);
-        }
-        Err(..) => {
-            self.tcx.sess.delay_span_bug(expr.span, "cat_expr Errd");
-        }
-    }
-
-    debug!("regionck::visit_expr(e={:?}, repeating_scope={}) - visiting subexprs",
-           expr, self.repeating_scope);
-    match expr.node {
-        hir::ExprPath(..) => {
-            self.fcx.opt_node_ty_substs(expr.id, |item_substs| {
-                let origin = infer::ParameterOrigin::Path;
-                self.substs_wf_in_scope(origin, &item_substs.substs, expr.span, expr_region);
-            });
-        }
-
-        hir::ExprCall(ref callee, ref args) => {
-            if has_method_map {
-                self.constrain_call(expr, Some(&callee),
-                                    args.iter().map(|e| &**e), false);
-            } else {
-                self.constrain_callee(callee.id, expr, &callee);
-                self.constrain_call(expr, None,
-                                    args.iter().map(|e| &**e), false);
+        debug!("regionck::visit_expr(e={:?}, repeating_scope={}) - visiting subexprs",
+               expr, self.repeating_scope);
+        match expr.node {
+            hir::ExprPath(..) => {
+                self.fcx.opt_node_ty_substs(expr.id, |item_substs| {
+                    let origin = infer::ParameterOrigin::Path;
+                    self.substs_wf_in_scope(origin, &item_substs.substs, expr.span, expr_region);
+                });
             }
 
-            intravisit::walk_expr(self, expr);
-        }
-
-        hir::ExprMethodCall(_, _, ref args) => {
-            self.constrain_call(expr, Some(&args[0]),
-                                args[1..].iter().map(|e| &**e), false);
-
-            intravisit::walk_expr(self, expr);
-        }
-
-        hir::ExprAssignOp(_, ref lhs, ref rhs) => {
-            if has_method_map {
-                self.constrain_call(expr, Some(&lhs),
-                                    Some(&**rhs).into_iter(), false);
-            }
-
-            intravisit::walk_expr(self, expr);
-        }
-
-        hir::ExprIndex(ref lhs, ref rhs) if has_method_map => {
-            self.constrain_call(expr, Some(&lhs),
-                                Some(&**rhs).into_iter(), true);
-
-            intravisit::walk_expr(self, expr);
-        },
-
-        hir::ExprBinary(op, ref lhs, ref rhs) if has_method_map => {
-            let implicitly_ref_args = !op.node.is_by_value();
-
-            // As `expr_method_call`, but the call is via an
-            // overloaded op.  Note that we (sadly) currently use an
-            // implicit "by ref" sort of passing style here.  This
-            // should be converted to an adjustment!
-            self.constrain_call(expr, Some(&lhs),
-                                Some(&**rhs).into_iter(), implicitly_ref_args);
-
-            intravisit::walk_expr(self, expr);
-        }
-
-        hir::ExprBinary(_, ref lhs, ref rhs) => {
-            // If you do `x OP y`, then the types of `x` and `y` must
-            // outlive the operation you are performing.
-            let lhs_ty = self.resolve_expr_type_adjusted(&lhs);
-            let rhs_ty = self.resolve_expr_type_adjusted(&rhs);
-            for &ty in &[lhs_ty, rhs_ty] {
-                self.type_must_outlive(infer::Operand(expr.span),
-                                       ty, expr_region);
-            }
-            intravisit::walk_expr(self, expr);
-        }
-
-        hir::ExprUnary(op, ref lhs) if has_method_map => {
-            let implicitly_ref_args = !op.is_by_value();
-
-            // As above.
-            self.constrain_call(expr, Some(&lhs),
-                                None::<hir::Expr>.iter(), implicitly_ref_args);
-
-            intravisit::walk_expr(self, expr);
-        }
-
-        hir::ExprUnary(hir::UnDeref, ref base) => {
-            // For *a, the lifetime of a must enclose the deref
-            let method_call = MethodCall::expr(expr.id);
-            let base_ty = match self.tables.borrow().method_map.get(&method_call) {
-                Some(method) => {
-                    self.constrain_call(expr, Some(&base),
-                                        None::<hir::Expr>.iter(), true);
-                    let fn_ret = // late-bound regions in overloaded method calls are instantiated
-                        self.tcx.no_late_bound_regions(&method.ty.fn_ret()).unwrap();
-                    fn_ret.unwrap()
+            hir::ExprCall(ref callee, ref args) => {
+                if has_method_map {
+                    self.constrain_call(expr, Some(&callee),
+                                        args.iter().map(|e| &**e), false);
+                } else {
+                    self.constrain_callee(callee.id, expr, &callee);
+                    self.constrain_call(expr, None,
+                                        args.iter().map(|e| &**e), false);
                 }
-                None => self.resolve_node_type(base.id)
-            };
-            if let ty::TyRef(r_ptr, _) = base_ty.sty {
-                self.mk_subregion_due_to_dereference(expr.span, expr_region, *r_ptr);
+
+                intravisit::walk_expr(self, expr);
             }
 
-            intravisit::walk_expr(self, expr);
-        }
+            hir::ExprMethodCall(_, _, ref args) => {
+                self.constrain_call(expr, Some(&args[0]),
+                                    args[1..].iter().map(|e| &**e), false);
 
-        hir::ExprIndex(ref vec_expr, _) => {
-            // For a[b], the lifetime of a must enclose the deref
-            let vec_type = self.resolve_expr_type_adjusted(&vec_expr);
-            self.constrain_index(expr, vec_type);
+                intravisit::walk_expr(self, expr);
+            }
 
-            intravisit::walk_expr(self, expr);
-        }
+            hir::ExprAssignOp(_, ref lhs, ref rhs) => {
+                if has_method_map {
+                    self.constrain_call(expr, Some(&lhs),
+                                        Some(&**rhs).into_iter(), false);
+                }
 
-        hir::ExprCast(ref source, _) => {
-            // Determine if we are casting `source` to a trait
-            // instance.  If so, we have to be sure that the type of
-            // the source obeys the trait's region bound.
-            self.constrain_cast(expr, &source);
-            intravisit::walk_expr(self, expr);
-        }
+                intravisit::walk_expr(self, expr);
+            }
 
-        hir::ExprAddrOf(m, ref base) => {
-            self.link_addr_of(expr, m, &base);
+            hir::ExprIndex(ref lhs, ref rhs) if has_method_map => {
+                self.constrain_call(expr, Some(&lhs),
+                                    Some(&**rhs).into_iter(), true);
 
-            // Require that when you write a `&expr` expression, the
-            // resulting pointer has a lifetime that encompasses the
-            // `&expr` expression itself. Note that we constraining
-            // the type of the node expr.id here *before applying
-            // adjustments*.
-            //
-            // FIXME(#6268) nested method calls requires that this rule change
-            let ty0 = self.resolve_node_type(expr.id);
-            self.type_must_outlive(infer::AddrOf(expr.span), ty0, expr_region);
-            intravisit::walk_expr(self, expr);
-        }
+                intravisit::walk_expr(self, expr);
+            },
 
-        hir::ExprMatch(ref discr, ref arms, _) => {
-            self.link_match(&discr, &arms[..]);
+            hir::ExprBinary(op, ref lhs, ref rhs) if has_method_map => {
+                let implicitly_ref_args = !op.node.is_by_value();
 
-            intravisit::walk_expr(self, expr);
-        }
+                // As `expr_method_call`, but the call is via an
+                // overloaded op.  Note that we (sadly) currently use an
+                // implicit "by ref" sort of passing style here.  This
+                // should be converted to an adjustment!
+                self.constrain_call(expr, Some(&lhs),
+                                    Some(&**rhs).into_iter(), implicitly_ref_args);
 
-        hir::ExprClosure(_, _, ref body, _) => {
-            self.check_expr_fn_block(expr, &body);
-        }
+                intravisit::walk_expr(self, expr);
+            }
 
-        hir::ExprLoop(ref body, _) => {
-            let repeating_scope = self.set_repeating_scope(body.id);
-            intravisit::walk_expr(self, expr);
-            self.set_repeating_scope(repeating_scope);
-        }
+            hir::ExprBinary(_, ref lhs, ref rhs) => {
+                // If you do `x OP y`, then the types of `x` and `y` must
+                // outlive the operation you are performing.
+                let lhs_ty = self.resolve_expr_type_adjusted(&lhs);
+                let rhs_ty = self.resolve_expr_type_adjusted(&rhs);
+                for &ty in &[lhs_ty, rhs_ty] {
+                    self.type_must_outlive(infer::Operand(expr.span),
+                                           ty, expr_region);
+                }
+                intravisit::walk_expr(self, expr);
+            }
 
-        hir::ExprWhile(ref cond, ref body, _) => {
-            let repeating_scope = self.set_repeating_scope(cond.id);
-            self.visit_expr(&cond);
+            hir::ExprUnary(op, ref lhs) if has_method_map => {
+                let implicitly_ref_args = !op.is_by_value();
 
-            self.set_repeating_scope(body.id);
-            self.visit_block(&body);
+                // As above.
+                self.constrain_call(expr, Some(&lhs),
+                                    None::<hir::Expr>.iter(), implicitly_ref_args);
 
-            self.set_repeating_scope(repeating_scope);
-        }
+                intravisit::walk_expr(self, expr);
+            }
 
-        hir::ExprRet(Some(ref ret_expr)) => {
-            let call_site_scope = self.call_site_scope;
-            debug!("visit_expr ExprRet ret_expr.id {} call_site_scope: {:?}",
-                   ret_expr.id, call_site_scope);
-            self.type_of_node_must_outlive(infer::CallReturn(ret_expr.span),
-                                           ret_expr.id,
-                                           ty::ReScope(call_site_scope.unwrap()));
-            intravisit::walk_expr(self, expr);
-        }
+            hir::ExprUnary(hir::UnDeref, ref base) => {
+                // For *a, the lifetime of a must enclose the deref
+                let method_call = MethodCall::expr(expr.id);
+                let base_ty = match self.tables.borrow().method_map.get(&method_call) {
+                    Some(method) => {
+                        self.constrain_call(expr, Some(&base),
+                                            None::<hir::Expr>.iter(), true);
+                        // late-bound regions in overloaded method calls are instantiated
+                        let fn_ret = self.tcx.no_late_bound_regions(&method.ty.fn_ret());
+                        fn_ret.unwrap().unwrap()
+                    }
+                    None => self.resolve_node_type(base.id)
+                };
+                if let ty::TyRef(r_ptr, _) = base_ty.sty {
+                    self.mk_subregion_due_to_dereference(expr.span, expr_region, *r_ptr);
+                }
 
-        _ => {
-            intravisit::walk_expr(self, expr);
+                intravisit::walk_expr(self, expr);
+            }
+
+            hir::ExprIndex(ref vec_expr, _) => {
+                // For a[b], the lifetime of a must enclose the deref
+                let vec_type = self.resolve_expr_type_adjusted(&vec_expr);
+                self.constrain_index(expr, vec_type);
+
+                intravisit::walk_expr(self, expr);
+            }
+
+            hir::ExprCast(ref source, _) => {
+                // Determine if we are casting `source` to a trait
+                // instance.  If so, we have to be sure that the type of
+                // the source obeys the trait's region bound.
+                self.constrain_cast(expr, &source);
+                intravisit::walk_expr(self, expr);
+            }
+
+            hir::ExprAddrOf(m, ref base) => {
+                self.link_addr_of(expr, m, &base);
+
+                // Require that when you write a `&expr` expression, the
+                // resulting pointer has a lifetime that encompasses the
+                // `&expr` expression itself. Note that we constraining
+                // the type of the node expr.id here *before applying
+                // adjustments*.
+                //
+                // FIXME(#6268) nested method calls requires that this rule change
+                let ty0 = self.resolve_node_type(expr.id);
+                self.type_must_outlive(infer::AddrOf(expr.span), ty0, expr_region);
+                intravisit::walk_expr(self, expr);
+            }
+
+            hir::ExprMatch(ref discr, ref arms, _) => {
+                self.link_match(&discr, &arms[..]);
+
+                intravisit::walk_expr(self, expr);
+            }
+
+            hir::ExprClosure(_, _, ref body, _) => {
+                self.check_expr_fn_block(expr, &body);
+            }
+
+            hir::ExprLoop(ref body, _) => {
+                let repeating_scope = self.set_repeating_scope(body.id);
+                intravisit::walk_expr(self, expr);
+                self.set_repeating_scope(repeating_scope);
+            }
+
+            hir::ExprWhile(ref cond, ref body, _) => {
+                let repeating_scope = self.set_repeating_scope(cond.id);
+                self.visit_expr(&cond);
+
+                self.set_repeating_scope(body.id);
+                self.visit_block(&body);
+
+                self.set_repeating_scope(repeating_scope);
+            }
+
+            hir::ExprRet(Some(ref ret_expr)) => {
+                let call_site_scope = self.call_site_scope;
+                debug!("visit_expr ExprRet ret_expr.id {} call_site_scope: {:?}",
+                       ret_expr.id, call_site_scope);
+                self.type_of_node_must_outlive(infer::CallReturn(ret_expr.span),
+                                               ret_expr.id,
+                                               ty::ReScope(call_site_scope.unwrap()));
+                intravisit::walk_expr(self, expr);
+            }
+
+            _ => {
+                intravisit::walk_expr(self, expr);
+            }
         }
     }
-}
 }
 
 impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
-fn constrain_cast(&mut self,
-                  cast_expr: &hir::Expr,
-                  source_expr: &hir::Expr)
-{
-    debug!("constrain_cast(cast_expr={:?}, source_expr={:?})",
-           cast_expr,
-           source_expr);
+    fn constrain_cast(&mut self,
+                      cast_expr: &hir::Expr,
+                      source_expr: &hir::Expr)
+    {
+        debug!("constrain_cast(cast_expr={:?}, source_expr={:?})",
+               cast_expr,
+               source_expr);
 
-    let source_ty = self.resolve_node_type(source_expr.id);
-    let target_ty = self.resolve_node_type(cast_expr.id);
+        let source_ty = self.resolve_node_type(source_expr.id);
+        let target_ty = self.resolve_node_type(cast_expr.id);
 
-    self.walk_cast(cast_expr, source_ty, target_ty);
-}
+        self.walk_cast(cast_expr, source_ty, target_ty);
+    }
 
     fn walk_cast(&mut self,
                  cast_expr: &hir::Expr,
@@ -841,984 +841,986 @@ fn constrain_cast(&mut self,
         }
     }
 
-fn check_expr_fn_block(&mut self,
-                       expr: &hir::Expr,
-                       body: &hir::Block) {
-    let repeating_scope = self.set_repeating_scope(body.id);
-    intravisit::walk_expr(self, expr);
-    self.set_repeating_scope(repeating_scope);
-}
-
-fn constrain_callee(&mut self,
-                    callee_id: ast::NodeId,
-                    _call_expr: &hir::Expr,
-                    _callee_expr: &hir::Expr) {
-    let callee_ty = self.resolve_node_type(callee_id);
-    match callee_ty.sty {
-        ty::TyFnDef(..) | ty::TyFnPtr(_) => { }
-        _ => {
-            // this should not happen, but it does if the program is
-            // erroneous
-            //
-            // bug!(
-            //     callee_expr.span,
-            //     "Calling non-function: {}",
-            //     callee_ty);
-        }
-    }
-}
-
-fn constrain_call<'b, I: Iterator<Item=&'b hir::Expr>>(&mut self,
-                                                       call_expr: &hir::Expr,
-                                                       receiver: Option<&hir::Expr>,
-                                                       arg_exprs: I,
-                                                       implicitly_ref_args: bool) {
-    //! Invoked on every call site (i.e., normal calls, method calls,
-    //! and overloaded operators). Constrains the regions which appear
-    //! in the type of the function. Also constrains the regions that
-    //! appear in the arguments appropriately.
-
-    debug!("constrain_call(call_expr={:?}, \
-            receiver={:?}, \
-            implicitly_ref_args={})",
-            call_expr,
-            receiver,
-            implicitly_ref_args);
-
-    // `callee_region` is the scope representing the time in which the
-    // call occurs.
-    //
-    // FIXME(#6268) to support nested method calls, should be callee_id
-    let callee_scope = self.tcx.region_maps.node_extent(call_expr.id);
-    let callee_region = ty::ReScope(callee_scope);
-
-    debug!("callee_region={:?}", callee_region);
-
-    for arg_expr in arg_exprs {
-        debug!("Argument: {:?}", arg_expr);
-
-        // ensure that any regions appearing in the argument type are
-        // valid for at least the lifetime of the function:
-        self.type_of_node_must_outlive(infer::CallArg(arg_expr.span),
-                                       arg_expr.id, callee_region);
-
-        // unfortunately, there are two means of taking implicit
-        // references, and we need to propagate constraints as a
-        // result. modes are going away and the "DerefArgs" code
-        // should be ported to use adjustments
-        if implicitly_ref_args {
-            self.link_by_ref(arg_expr, callee_scope);
-        }
+    fn check_expr_fn_block(&mut self,
+                           expr: &hir::Expr,
+                           body: &hir::Block) {
+        let repeating_scope = self.set_repeating_scope(body.id);
+        intravisit::walk_expr(self, expr);
+        self.set_repeating_scope(repeating_scope);
     }
 
-    // as loop above, but for receiver
-    if let Some(r) = receiver {
-        debug!("receiver: {:?}", r);
-        self.type_of_node_must_outlive(infer::CallRcvr(r.span),
-                                       r.id, callee_region);
-        if implicitly_ref_args {
-            self.link_by_ref(&r, callee_scope);
-        }
-    }
-}
-
-/// Invoked on any auto-dereference that occurs. Checks that if this is a region pointer being
-/// dereferenced, the lifetime of the pointer includes the deref expr.
-fn constrain_autoderefs(&mut self,
-                        deref_expr: &hir::Expr,
-                        derefs: usize,
-                        mut derefd_ty: Ty<'tcx>)
-{
-    debug!("constrain_autoderefs(deref_expr={:?}, derefs={}, derefd_ty={:?})",
-           deref_expr,
-           derefs,
-           derefd_ty);
-
-    let s_deref_expr = self.tcx.region_maps.node_extent(deref_expr.id);
-    let r_deref_expr = ty::ReScope(s_deref_expr);
-    for i in 0..derefs {
-        let method_call = MethodCall::autoderef(deref_expr.id, i as u32);
-        debug!("constrain_autoderefs: method_call={:?} (of {:?} total)", method_call, derefs);
-
-        let method = self.tables.borrow().method_map.get(&method_call).map(|m| m.clone());
-
-        derefd_ty = match method {
-            Some(method) => {
-                debug!("constrain_autoderefs: #{} is overloaded, method={:?}",
-                       i, method);
-
-                let origin = infer::ParameterOrigin::OverloadedDeref;
-                self.substs_wf_in_scope(origin, method.substs, deref_expr.span, r_deref_expr);
-
-                // Treat overloaded autoderefs as if an AutoRef adjustment
-                // was applied on the base type, as that is always the case.
-                let fn_sig = method.ty.fn_sig();
-                let fn_sig = // late-bound regions should have been instantiated
-                    self.tcx.no_late_bound_regions(fn_sig).unwrap();
-                let self_ty = fn_sig.inputs[0];
-                let (m, r) = match self_ty.sty {
-                    ty::TyRef(r, ref m) => (m.mutbl, r),
-                    _ => {
-                        span_bug!(
-                            deref_expr.span,
-                            "bad overloaded deref type {:?}",
-                            method.ty)
-                    }
-                };
-
-                debug!("constrain_autoderefs: receiver r={:?} m={:?}",
-                       r, m);
-
-                {
-                    let mc = mc::MemCategorizationContext::new(self);
-                    let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
-                    debug!("constrain_autoderefs: self_cmt={:?}",
-                           self_cmt);
-                    self.link_region(deref_expr.span, r,
-                                     ty::BorrowKind::from_mutbl(m), self_cmt);
-                }
-
-                // Specialized version of constrain_call.
-                self.type_must_outlive(infer::CallRcvr(deref_expr.span),
-                                       self_ty, r_deref_expr);
-                match fn_sig.output {
-                    ty::FnConverging(return_type) => {
-                        self.type_must_outlive(infer::CallReturn(deref_expr.span),
-                                               return_type, r_deref_expr);
-                        return_type
-                    }
-                    ty::FnDiverging => bug!()
-                }
-            }
-            None => derefd_ty
-        };
-
-        if let ty::TyRef(r_ptr, _) =  derefd_ty.sty {
-            self.mk_subregion_due_to_dereference(deref_expr.span,
-                                                 r_deref_expr, *r_ptr);
-        }
-
-        match derefd_ty.builtin_deref(true, ty::NoPreference) {
-            Some(mt) => derefd_ty = mt.ty,
-            /* if this type can't be dereferenced, then there's already an error
-               in the session saying so. Just bail out for now */
-            None => break
-        }
-    }
-}
-
-pub fn mk_subregion_due_to_dereference(&mut self,
-                                       deref_span: Span,
-                                       minimum_lifetime: ty::Region,
-                                       maximum_lifetime: ty::Region) {
-    self.sub_regions(infer::DerefPointer(deref_span),
-                     minimum_lifetime, maximum_lifetime)
-}
-
-fn check_safety_of_rvalue_destructor_if_necessary(&mut self,
-                                                 cmt: mc::cmt<'tcx>,
-                                                 span: Span) {
-    match cmt.cat {
-        Categorization::Rvalue(region) => {
-            match region {
-                ty::ReScope(rvalue_scope) => {
-                    let typ = self.resolve_type(cmt.ty);
-                    dropck::check_safety_of_destructor_if_necessary(self,
-                                                                    typ,
-                                                                    span,
-                                                                    rvalue_scope);
-                }
-                ty::ReStatic => {}
-                region => {
-                    span_bug!(span,
-                              "unexpected rvalue region in rvalue \
-                               destructor safety checking: `{:?}`",
-                              region);
-                }
+    fn constrain_callee(&mut self,
+                        callee_id: ast::NodeId,
+                        _call_expr: &hir::Expr,
+                        _callee_expr: &hir::Expr) {
+        let callee_ty = self.resolve_node_type(callee_id);
+        match callee_ty.sty {
+            ty::TyFnDef(..) | ty::TyFnPtr(_) => { }
+            _ => {
+                // this should not happen, but it does if the program is
+                // erroneous
+                //
+                // bug!(
+                //     callee_expr.span,
+                //     "Calling non-function: {}",
+                //     callee_ty);
             }
         }
-        _ => {}
     }
-}
 
-/// Invoked on any index expression that occurs. Checks that if this is a slice being indexed, the
-/// lifetime of the pointer includes the deref expr.
-fn constrain_index(&mut self,
-                   index_expr: &hir::Expr,
-                   indexed_ty: Ty<'tcx>)
-{
-    debug!("constrain_index(index_expr=?, indexed_ty={}",
-           self.ty_to_string(indexed_ty));
+    fn constrain_call<'b, I: Iterator<Item=&'b hir::Expr>>(&mut self,
+                                                           call_expr: &hir::Expr,
+                                                           receiver: Option<&hir::Expr>,
+                                                           arg_exprs: I,
+                                                           implicitly_ref_args: bool) {
+        //! Invoked on every call site (i.e., normal calls, method calls,
+        //! and overloaded operators). Constrains the regions which appear
+        //! in the type of the function. Also constrains the regions that
+        //! appear in the arguments appropriately.
 
-    let r_index_expr = ty::ReScope(self.tcx.region_maps.node_extent(index_expr.id));
-    if let ty::TyRef(r_ptr, mt) = indexed_ty.sty {
-        match mt.ty.sty {
-            ty::TySlice(_) | ty::TyStr => {
-                self.sub_regions(infer::IndexSlice(index_expr.span),
-                                 r_index_expr, *r_ptr);
+        debug!("constrain_call(call_expr={:?}, \
+                receiver={:?}, \
+                implicitly_ref_args={})",
+                call_expr,
+                receiver,
+                implicitly_ref_args);
+
+        // `callee_region` is the scope representing the time in which the
+        // call occurs.
+        //
+        // FIXME(#6268) to support nested method calls, should be callee_id
+        let callee_scope = self.tcx.region_maps.node_extent(call_expr.id);
+        let callee_region = ty::ReScope(callee_scope);
+
+        debug!("callee_region={:?}", callee_region);
+
+        for arg_expr in arg_exprs {
+            debug!("Argument: {:?}", arg_expr);
+
+            // ensure that any regions appearing in the argument type are
+            // valid for at least the lifetime of the function:
+            self.type_of_node_must_outlive(infer::CallArg(arg_expr.span),
+                                           arg_expr.id, callee_region);
+
+            // unfortunately, there are two means of taking implicit
+            // references, and we need to propagate constraints as a
+            // result. modes are going away and the "DerefArgs" code
+            // should be ported to use adjustments
+            if implicitly_ref_args {
+                self.link_by_ref(arg_expr, callee_scope);
+            }
+        }
+
+        // as loop above, but for receiver
+        if let Some(r) = receiver {
+            debug!("receiver: {:?}", r);
+            self.type_of_node_must_outlive(infer::CallRcvr(r.span),
+                                           r.id, callee_region);
+            if implicitly_ref_args {
+                self.link_by_ref(&r, callee_scope);
+            }
+        }
+    }
+
+    /// Invoked on any auto-dereference that occurs. Checks that if this is a region pointer being
+    /// dereferenced, the lifetime of the pointer includes the deref expr.
+    fn constrain_autoderefs(&mut self,
+                            deref_expr: &hir::Expr,
+                            derefs: usize,
+                            mut derefd_ty: Ty<'tcx>)
+    {
+        debug!("constrain_autoderefs(deref_expr={:?}, derefs={}, derefd_ty={:?})",
+               deref_expr,
+               derefs,
+               derefd_ty);
+
+        let s_deref_expr = self.tcx.region_maps.node_extent(deref_expr.id);
+        let r_deref_expr = ty::ReScope(s_deref_expr);
+        for i in 0..derefs {
+            let method_call = MethodCall::autoderef(deref_expr.id, i as u32);
+            debug!("constrain_autoderefs: method_call={:?} (of {:?} total)", method_call, derefs);
+
+            let method = self.tables.borrow().method_map.get(&method_call).map(|m| m.clone());
+
+            derefd_ty = match method {
+                Some(method) => {
+                    debug!("constrain_autoderefs: #{} is overloaded, method={:?}",
+                           i, method);
+
+                    let origin = infer::ParameterOrigin::OverloadedDeref;
+                    self.substs_wf_in_scope(origin, method.substs, deref_expr.span, r_deref_expr);
+
+                    // Treat overloaded autoderefs as if an AutoRef adjustment
+                    // was applied on the base type, as that is always the case.
+                    let fn_sig = method.ty.fn_sig();
+                    let fn_sig = // late-bound regions should have been instantiated
+                        self.tcx.no_late_bound_regions(fn_sig).unwrap();
+                    let self_ty = fn_sig.inputs[0];
+                    let (m, r) = match self_ty.sty {
+                        ty::TyRef(r, ref m) => (m.mutbl, r),
+                        _ => {
+                            span_bug!(
+                                deref_expr.span,
+                                "bad overloaded deref type {:?}",
+                                method.ty)
+                        }
+                    };
+
+                    debug!("constrain_autoderefs: receiver r={:?} m={:?}",
+                           r, m);
+
+                    {
+                        let mc = mc::MemCategorizationContext::new(self);
+                        let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
+                        debug!("constrain_autoderefs: self_cmt={:?}",
+                               self_cmt);
+                        self.link_region(deref_expr.span, r,
+                                         ty::BorrowKind::from_mutbl(m), self_cmt);
+                    }
+
+                    // Specialized version of constrain_call.
+                    self.type_must_outlive(infer::CallRcvr(deref_expr.span),
+                                           self_ty, r_deref_expr);
+                    match fn_sig.output {
+                        ty::FnConverging(return_type) => {
+                            self.type_must_outlive(infer::CallReturn(deref_expr.span),
+                                                   return_type, r_deref_expr);
+                            return_type
+                        }
+                        ty::FnDiverging => bug!()
+                    }
+                }
+                None => derefd_ty
+            };
+
+            if let ty::TyRef(r_ptr, _) =  derefd_ty.sty {
+                self.mk_subregion_due_to_dereference(deref_expr.span,
+                                                     r_deref_expr, *r_ptr);
+            }
+
+            match derefd_ty.builtin_deref(true, ty::NoPreference) {
+                Some(mt) => derefd_ty = mt.ty,
+                /* if this type can't be dereferenced, then there's already an error
+                   in the session saying so. Just bail out for now */
+                None => break
+            }
+        }
+    }
+
+    pub fn mk_subregion_due_to_dereference(&mut self,
+                                           deref_span: Span,
+                                           minimum_lifetime: ty::Region,
+                                           maximum_lifetime: ty::Region) {
+        self.sub_regions(infer::DerefPointer(deref_span),
+                         minimum_lifetime, maximum_lifetime)
+    }
+
+    fn check_safety_of_rvalue_destructor_if_necessary(&mut self,
+                                                     cmt: mc::cmt<'tcx>,
+                                                     span: Span) {
+        match cmt.cat {
+            Categorization::Rvalue(region) => {
+                match region {
+                    ty::ReScope(rvalue_scope) => {
+                        let typ = self.resolve_type(cmt.ty);
+                        dropck::check_safety_of_destructor_if_necessary(self,
+                                                                        typ,
+                                                                        span,
+                                                                        rvalue_scope);
+                    }
+                    ty::ReStatic => {}
+                    region => {
+                        span_bug!(span,
+                                  "unexpected rvalue region in rvalue \
+                                   destructor safety checking: `{:?}`",
+                                  region);
+                    }
+                }
             }
             _ => {}
         }
     }
-}
 
-/// Guarantees that any lifetimes which appear in the type of the node `id` (after applying
-/// adjustments) are valid for at least `minimum_lifetime`
-fn type_of_node_must_outlive(&mut self,
-    origin: infer::SubregionOrigin<'tcx>,
-    id: ast::NodeId,
-    minimum_lifetime: ty::Region)
-{
-    let tcx = self.tcx;
+    /// Invoked on any index expression that occurs. Checks that if this is a slice
+    /// being indexed, the lifetime of the pointer includes the deref expr.
+    fn constrain_index(&mut self,
+                       index_expr: &hir::Expr,
+                       indexed_ty: Ty<'tcx>)
+    {
+        debug!("constrain_index(index_expr=?, indexed_ty={}",
+               self.ty_to_string(indexed_ty));
 
-    // Try to resolve the type.  If we encounter an error, then typeck
-    // is going to fail anyway, so just stop here and let typeck
-    // report errors later on in the writeback phase.
-    let ty0 = self.resolve_node_type(id);
-    let ty = ty0.adjust(tcx, origin.span(), id,
-                        self.tables.borrow().adjustments.get(&id),
-                        |method_call| self.resolve_method_type(method_call));
-    debug!("constrain_regions_in_type_of_node(\
-            ty={}, ty0={}, id={}, minimum_lifetime={:?})",
-            ty,  ty0,
-           id, minimum_lifetime);
-    self.type_must_outlive(origin, ty, minimum_lifetime);
-}
-
-/// Computes the guarantor for an expression `&base` and then ensures that the lifetime of the
-/// resulting pointer is linked to the lifetime of its guarantor (if any).
-fn link_addr_of(&mut self, expr: &hir::Expr,
-                mutability: hir::Mutability, base: &hir::Expr) {
-    debug!("link_addr_of(expr={:?}, base={:?})", expr, base);
-
-    let cmt = {
-        let mc = mc::MemCategorizationContext::new(self);
-        ignore_err!(mc.cat_expr(base))
-    };
-
-    debug!("link_addr_of: cmt={:?}", cmt);
-
-    self.link_region_from_node_type(expr.span, expr.id, mutability, cmt);
-}
-
-/// Computes the guarantors for any ref bindings in a `let` and
-/// then ensures that the lifetime of the resulting pointer is
-/// linked to the lifetime of the initialization expression.
-fn link_local(&self, local: &hir::Local) {
-    debug!("regionck::for_local()");
-    let init_expr = match local.init {
-        None => { return; }
-        Some(ref expr) => &**expr,
-    };
-    let mc = mc::MemCategorizationContext::new(self);
-    let discr_cmt = ignore_err!(mc.cat_expr(init_expr));
-    self.link_pattern(mc, discr_cmt, &local.pat);
-}
-
-/// Computes the guarantors for any ref bindings in a match and
-/// then ensures that the lifetime of the resulting pointer is
-/// linked to the lifetime of its guarantor (if any).
-fn link_match(&self, discr: &hir::Expr, arms: &[hir::Arm]) {
-    debug!("regionck::for_match()");
-    let mc = mc::MemCategorizationContext::new(self);
-    let discr_cmt = ignore_err!(mc.cat_expr(discr));
-    debug!("discr_cmt={:?}", discr_cmt);
-    for arm in arms {
-        for root_pat in &arm.pats {
-            self.link_pattern(mc, discr_cmt.clone(), &root_pat);
-        }
-    }
-}
-
-/// Computes the guarantors for any ref bindings in a match and
-/// then ensures that the lifetime of the resulting pointer is
-/// linked to the lifetime of its guarantor (if any).
-fn link_fn_args(&self, body_scope: CodeExtent, args: &[hir::Arg]) {
-    debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
-    let mc = mc::MemCategorizationContext::new(self);
-    for arg in args {
-        let arg_ty = self.node_ty(arg.id);
-        let re_scope = ty::ReScope(body_scope);
-        let arg_cmt = mc.cat_rvalue(arg.id, arg.ty.span, re_scope, arg_ty);
-        debug!("arg_ty={:?} arg_cmt={:?} arg={:?}",
-               arg_ty,
-               arg_cmt,
-               arg);
-        self.link_pattern(mc, arg_cmt, &arg.pat);
-    }
-}
-
-/// Link lifetimes of any ref bindings in `root_pat` to the pointers found in the discriminant, if
-/// needed.
-fn link_pattern<'t>(&self,
-                    mc: mc::MemCategorizationContext<'a, 'gcx, 'tcx>,
-                    discr_cmt: mc::cmt<'tcx>,
-                    root_pat: &hir::Pat) {
-    debug!("link_pattern(discr_cmt={:?}, root_pat={:?})",
-           discr_cmt,
-           root_pat);
-    let _ = mc.cat_pattern(discr_cmt, root_pat, |mc, sub_cmt, sub_pat| {
-            match sub_pat.node {
-                // `ref x` pattern
-                PatKind::Ident(hir::BindByRef(mutbl), _, _) => {
-                    self.link_region_from_node_type(sub_pat.span, sub_pat.id,
-                                                    mutbl, sub_cmt);
-                }
-
-                // `[_, ..slice, _]` pattern
-                PatKind::Vec(_, Some(ref slice_pat), _) => {
-                    match mc.cat_slice_pattern(sub_cmt, &slice_pat) {
-                        Ok((slice_cmt, slice_mutbl, slice_r)) => {
-                            self.link_region(sub_pat.span, &slice_r,
-                                             ty::BorrowKind::from_mutbl(slice_mutbl),
-                                             slice_cmt);
-                        }
-                        Err(()) => {}
-                    }
+        let r_index_expr = ty::ReScope(self.tcx.region_maps.node_extent(index_expr.id));
+        if let ty::TyRef(r_ptr, mt) = indexed_ty.sty {
+            match mt.ty.sty {
+                ty::TySlice(_) | ty::TyStr => {
+                    self.sub_regions(infer::IndexSlice(index_expr.span),
+                                     r_index_expr, *r_ptr);
                 }
                 _ => {}
             }
-        });
-}
-
-/// Link lifetime of borrowed pointer resulting from autoref to lifetimes in the value being
-/// autoref'd.
-fn link_autoref(&self,
-                expr: &hir::Expr,
-                autoderefs: usize,
-                autoref: &adjustment::AutoRef)
-{
-    debug!("link_autoref(autoref={:?})", autoref);
-    let mc = mc::MemCategorizationContext::new(self);
-    let expr_cmt = ignore_err!(mc.cat_expr_autoderefd(expr, autoderefs));
-    debug!("expr_cmt={:?}", expr_cmt);
-
-    match *autoref {
-        adjustment::AutoPtr(r, m) => {
-            self.link_region(expr.span, r,
-                             ty::BorrowKind::from_mutbl(m), expr_cmt);
-        }
-
-        adjustment::AutoUnsafe(m) => {
-            let r = ty::ReScope(self.tcx.region_maps.node_extent(expr.id));
-            self.link_region(expr.span, &r, ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
     }
-}
 
-/// Computes the guarantor for cases where the `expr` is being passed by implicit reference and
-/// must outlive `callee_scope`.
-fn link_by_ref(&self,
-               expr: &hir::Expr,
-               callee_scope: CodeExtent) {
-    debug!("link_by_ref(expr={:?}, callee_scope={:?})",
-           expr, callee_scope);
-    let mc = mc::MemCategorizationContext::new(self);
-    let expr_cmt = ignore_err!(mc.cat_expr(expr));
-    let borrow_region = ty::ReScope(callee_scope);
-    self.link_region(expr.span, &borrow_region, ty::ImmBorrow, expr_cmt);
-}
+    /// Guarantees that any lifetimes which appear in the type of the node `id` (after applying
+    /// adjustments) are valid for at least `minimum_lifetime`
+    fn type_of_node_must_outlive(&mut self,
+        origin: infer::SubregionOrigin<'tcx>,
+        id: ast::NodeId,
+        minimum_lifetime: ty::Region)
+    {
+        let tcx = self.tcx;
 
-/// Like `link_region()`, except that the region is extracted from the type of `id`, which must be
-/// some reference (`&T`, `&str`, etc).
-fn link_region_from_node_type(&self,
-                              span: Span,
-                              id: ast::NodeId,
-                              mutbl: hir::Mutability,
-                              cmt_borrowed: mc::cmt<'tcx>) {
-    debug!("link_region_from_node_type(id={:?}, mutbl={:?}, cmt_borrowed={:?})",
-           id, mutbl, cmt_borrowed);
-
-    let rptr_ty = self.resolve_node_type(id);
-    if let ty::TyRef(&r, _) = rptr_ty.sty {
-        debug!("rptr_ty={}",  rptr_ty);
-        self.link_region(span, &r, ty::BorrowKind::from_mutbl(mutbl),
-                         cmt_borrowed);
+        // Try to resolve the type.  If we encounter an error, then typeck
+        // is going to fail anyway, so just stop here and let typeck
+        // report errors later on in the writeback phase.
+        let ty0 = self.resolve_node_type(id);
+        let ty = ty0.adjust(tcx, origin.span(), id,
+                            self.tables.borrow().adjustments.get(&id),
+                            |method_call| self.resolve_method_type(method_call));
+        debug!("constrain_regions_in_type_of_node(\
+                ty={}, ty0={}, id={}, minimum_lifetime={:?})",
+                ty,  ty0,
+               id, minimum_lifetime);
+        self.type_must_outlive(origin, ty, minimum_lifetime);
     }
-}
 
-/// Informs the inference engine that `borrow_cmt` is being borrowed with kind `borrow_kind` and
-/// lifetime `borrow_region`. In order to ensure borrowck is satisfied, this may create constraints
-/// between regions, as explained in `link_reborrowed_region()`.
-fn link_region(&self,
-               span: Span,
-               borrow_region: &ty::Region,
-               borrow_kind: ty::BorrowKind,
-               borrow_cmt: mc::cmt<'tcx>) {
-    let mut borrow_cmt = borrow_cmt;
-    let mut borrow_kind = borrow_kind;
+    /// Computes the guarantor for an expression `&base` and then ensures that the lifetime of the
+    /// resulting pointer is linked to the lifetime of its guarantor (if any).
+    fn link_addr_of(&mut self, expr: &hir::Expr,
+                    mutability: hir::Mutability, base: &hir::Expr) {
+        debug!("link_addr_of(expr={:?}, base={:?})", expr, base);
 
-    let origin = infer::DataBorrowed(borrow_cmt.ty, span);
-    self.type_must_outlive(origin, borrow_cmt.ty, *borrow_region);
+        let cmt = {
+            let mc = mc::MemCategorizationContext::new(self);
+            ignore_err!(mc.cat_expr(base))
+        };
 
-    loop {
-        debug!("link_region(borrow_region={:?}, borrow_kind={:?}, borrow_cmt={:?})",
-               borrow_region,
-               borrow_kind,
-               borrow_cmt);
-        match borrow_cmt.cat.clone() {
-            Categorization::Deref(ref_cmt, _,
-                                  mc::Implicit(ref_kind, ref_region)) |
-            Categorization::Deref(ref_cmt, _,
-                                  mc::BorrowedPtr(ref_kind, ref_region)) => {
-                match self.link_reborrowed_region(span,
-                                                  borrow_region, borrow_kind,
-                                                  ref_cmt, ref_region, ref_kind,
-                                                  borrow_cmt.note) {
-                    Some((c, k)) => {
-                        borrow_cmt = c;
-                        borrow_kind = k;
+        debug!("link_addr_of: cmt={:?}", cmt);
+
+        self.link_region_from_node_type(expr.span, expr.id, mutability, cmt);
+    }
+
+    /// Computes the guarantors for any ref bindings in a `let` and
+    /// then ensures that the lifetime of the resulting pointer is
+    /// linked to the lifetime of the initialization expression.
+    fn link_local(&self, local: &hir::Local) {
+        debug!("regionck::for_local()");
+        let init_expr = match local.init {
+            None => { return; }
+            Some(ref expr) => &**expr,
+        };
+        let mc = mc::MemCategorizationContext::new(self);
+        let discr_cmt = ignore_err!(mc.cat_expr(init_expr));
+        self.link_pattern(mc, discr_cmt, &local.pat);
+    }
+
+    /// Computes the guarantors for any ref bindings in a match and
+    /// then ensures that the lifetime of the resulting pointer is
+    /// linked to the lifetime of its guarantor (if any).
+    fn link_match(&self, discr: &hir::Expr, arms: &[hir::Arm]) {
+        debug!("regionck::for_match()");
+        let mc = mc::MemCategorizationContext::new(self);
+        let discr_cmt = ignore_err!(mc.cat_expr(discr));
+        debug!("discr_cmt={:?}", discr_cmt);
+        for arm in arms {
+            for root_pat in &arm.pats {
+                self.link_pattern(mc, discr_cmt.clone(), &root_pat);
+            }
+        }
+    }
+
+    /// Computes the guarantors for any ref bindings in a match and
+    /// then ensures that the lifetime of the resulting pointer is
+    /// linked to the lifetime of its guarantor (if any).
+    fn link_fn_args(&self, body_scope: CodeExtent, args: &[hir::Arg]) {
+        debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
+        let mc = mc::MemCategorizationContext::new(self);
+        for arg in args {
+            let arg_ty = self.node_ty(arg.id);
+            let re_scope = ty::ReScope(body_scope);
+            let arg_cmt = mc.cat_rvalue(arg.id, arg.ty.span, re_scope, arg_ty);
+            debug!("arg_ty={:?} arg_cmt={:?} arg={:?}",
+                   arg_ty,
+                   arg_cmt,
+                   arg);
+            self.link_pattern(mc, arg_cmt, &arg.pat);
+        }
+    }
+
+    /// Link lifetimes of any ref bindings in `root_pat` to the pointers found
+    /// in the discriminant, if needed.
+    fn link_pattern<'t>(&self,
+                        mc: mc::MemCategorizationContext<'a, 'gcx, 'tcx>,
+                        discr_cmt: mc::cmt<'tcx>,
+                        root_pat: &hir::Pat) {
+        debug!("link_pattern(discr_cmt={:?}, root_pat={:?})",
+               discr_cmt,
+               root_pat);
+        let _ = mc.cat_pattern(discr_cmt, root_pat, |mc, sub_cmt, sub_pat| {
+                match sub_pat.node {
+                    // `ref x` pattern
+                    PatKind::Ident(hir::BindByRef(mutbl), _, _) => {
+                        self.link_region_from_node_type(sub_pat.span, sub_pat.id,
+                                                        mutbl, sub_cmt);
                     }
-                    None => {
-                        return;
+
+                    // `[_, ..slice, _]` pattern
+                    PatKind::Vec(_, Some(ref slice_pat), _) => {
+                        match mc.cat_slice_pattern(sub_cmt, &slice_pat) {
+                            Ok((slice_cmt, slice_mutbl, slice_r)) => {
+                                self.link_region(sub_pat.span, &slice_r,
+                                                 ty::BorrowKind::from_mutbl(slice_mutbl),
+                                                 slice_cmt);
+                            }
+                            Err(()) => {}
+                        }
+                    }
+                    _ => {}
+                }
+            });
+    }
+
+    /// Link lifetime of borrowed pointer resulting from autoref to lifetimes in the value being
+    /// autoref'd.
+    fn link_autoref(&self,
+                    expr: &hir::Expr,
+                    autoderefs: usize,
+                    autoref: &adjustment::AutoRef)
+    {
+        debug!("link_autoref(autoref={:?})", autoref);
+        let mc = mc::MemCategorizationContext::new(self);
+        let expr_cmt = ignore_err!(mc.cat_expr_autoderefd(expr, autoderefs));
+        debug!("expr_cmt={:?}", expr_cmt);
+
+        match *autoref {
+            adjustment::AutoPtr(r, m) => {
+                self.link_region(expr.span, r,
+                                 ty::BorrowKind::from_mutbl(m), expr_cmt);
+            }
+
+            adjustment::AutoUnsafe(m) => {
+                let r = ty::ReScope(self.tcx.region_maps.node_extent(expr.id));
+                self.link_region(expr.span, &r, ty::BorrowKind::from_mutbl(m), expr_cmt);
+            }
+        }
+    }
+
+    /// Computes the guarantor for cases where the `expr` is being passed by implicit reference and
+    /// must outlive `callee_scope`.
+    fn link_by_ref(&self,
+                   expr: &hir::Expr,
+                   callee_scope: CodeExtent) {
+        debug!("link_by_ref(expr={:?}, callee_scope={:?})",
+               expr, callee_scope);
+        let mc = mc::MemCategorizationContext::new(self);
+        let expr_cmt = ignore_err!(mc.cat_expr(expr));
+        let borrow_region = ty::ReScope(callee_scope);
+        self.link_region(expr.span, &borrow_region, ty::ImmBorrow, expr_cmt);
+    }
+
+    /// Like `link_region()`, except that the region is extracted from the type of `id`,
+    /// which must be some reference (`&T`, `&str`, etc).
+    fn link_region_from_node_type(&self,
+                                  span: Span,
+                                  id: ast::NodeId,
+                                  mutbl: hir::Mutability,
+                                  cmt_borrowed: mc::cmt<'tcx>) {
+        debug!("link_region_from_node_type(id={:?}, mutbl={:?}, cmt_borrowed={:?})",
+               id, mutbl, cmt_borrowed);
+
+        let rptr_ty = self.resolve_node_type(id);
+        if let ty::TyRef(&r, _) = rptr_ty.sty {
+            debug!("rptr_ty={}",  rptr_ty);
+            self.link_region(span, &r, ty::BorrowKind::from_mutbl(mutbl),
+                             cmt_borrowed);
+        }
+    }
+
+    /// Informs the inference engine that `borrow_cmt` is being borrowed with
+    /// kind `borrow_kind` and lifetime `borrow_region`.
+    /// In order to ensure borrowck is satisfied, this may create constraints
+    /// between regions, as explained in `link_reborrowed_region()`.
+    fn link_region(&self,
+                   span: Span,
+                   borrow_region: &ty::Region,
+                   borrow_kind: ty::BorrowKind,
+                   borrow_cmt: mc::cmt<'tcx>) {
+        let mut borrow_cmt = borrow_cmt;
+        let mut borrow_kind = borrow_kind;
+
+        let origin = infer::DataBorrowed(borrow_cmt.ty, span);
+        self.type_must_outlive(origin, borrow_cmt.ty, *borrow_region);
+
+        loop {
+            debug!("link_region(borrow_region={:?}, borrow_kind={:?}, borrow_cmt={:?})",
+                   borrow_region,
+                   borrow_kind,
+                   borrow_cmt);
+            match borrow_cmt.cat.clone() {
+                Categorization::Deref(ref_cmt, _,
+                                      mc::Implicit(ref_kind, ref_region)) |
+                Categorization::Deref(ref_cmt, _,
+                                      mc::BorrowedPtr(ref_kind, ref_region)) => {
+                    match self.link_reborrowed_region(span,
+                                                      borrow_region, borrow_kind,
+                                                      ref_cmt, ref_region, ref_kind,
+                                                      borrow_cmt.note) {
+                        Some((c, k)) => {
+                            borrow_cmt = c;
+                            borrow_kind = k;
+                        }
+                        None => {
+                            return;
+                        }
+                    }
+                }
+
+                Categorization::Downcast(cmt_base, _) |
+                Categorization::Deref(cmt_base, _, mc::Unique) |
+                Categorization::Interior(cmt_base, _) => {
+                    // Borrowing interior or owned data requires the base
+                    // to be valid and borrowable in the same fashion.
+                    borrow_cmt = cmt_base;
+                    borrow_kind = borrow_kind;
+                }
+
+                Categorization::Deref(_, _, mc::UnsafePtr(..)) |
+                Categorization::StaticItem |
+                Categorization::Upvar(..) |
+                Categorization::Local(..) |
+                Categorization::Rvalue(..) => {
+                    // These are all "base cases" with independent lifetimes
+                    // that are not subject to inference
+                    return;
+                }
+            }
+        }
+    }
+
+    /// This is the most complicated case: the path being borrowed is
+    /// itself the referent of a borrowed pointer. Let me give an
+    /// example fragment of code to make clear(er) the situation:
+    ///
+    ///    let r: &'a mut T = ...;  // the original reference "r" has lifetime 'a
+    ///    ...
+    ///    &'z *r                   // the reborrow has lifetime 'z
+    ///
+    /// Now, in this case, our primary job is to add the inference
+    /// constraint that `'z <= 'a`. Given this setup, let's clarify the
+    /// parameters in (roughly) terms of the example:
+    ///
+    ///     A borrow of: `& 'z bk * r` where `r` has type `& 'a bk T`
+    ///     borrow_region   ^~                 ref_region    ^~
+    ///     borrow_kind        ^~               ref_kind        ^~
+    ///     ref_cmt                 ^
+    ///
+    /// Here `bk` stands for some borrow-kind (e.g., `mut`, `uniq`, etc).
+    ///
+    /// Unfortunately, there are some complications beyond the simple
+    /// scenario I just painted:
+    ///
+    /// 1. The reference `r` might in fact be a "by-ref" upvar. In that
+    ///    case, we have two jobs. First, we are inferring whether this reference
+    ///    should be an `&T`, `&mut T`, or `&uniq T` reference, and we must
+    ///    adjust that based on this borrow (e.g., if this is an `&mut` borrow,
+    ///    then `r` must be an `&mut` reference). Second, whenever we link
+    ///    two regions (here, `'z <= 'a`), we supply a *cause*, and in this
+    ///    case we adjust the cause to indicate that the reference being
+    ///    "reborrowed" is itself an upvar. This provides a nicer error message
+    ///    should something go wrong.
+    ///
+    /// 2. There may in fact be more levels of reborrowing. In the
+    ///    example, I said the borrow was like `&'z *r`, but it might
+    ///    in fact be a borrow like `&'z **q` where `q` has type `&'a
+    ///    &'b mut T`. In that case, we want to ensure that `'z <= 'a`
+    ///    and `'z <= 'b`. This is explained more below.
+    ///
+    /// The return value of this function indicates whether we need to
+    /// recurse and process `ref_cmt` (see case 2 above).
+    fn link_reborrowed_region(&self,
+                              span: Span,
+                              borrow_region: &ty::Region,
+                              borrow_kind: ty::BorrowKind,
+                              ref_cmt: mc::cmt<'tcx>,
+                              ref_region: ty::Region,
+                              mut ref_kind: ty::BorrowKind,
+                              note: mc::Note)
+                              -> Option<(mc::cmt<'tcx>, ty::BorrowKind)>
+    {
+        // Possible upvar ID we may need later to create an entry in the
+        // maybe link map.
+
+        // Detect by-ref upvar `x`:
+        let cause = match note {
+            mc::NoteUpvarRef(ref upvar_id) => {
+                let upvar_capture_map = &self.tables.borrow_mut().upvar_capture_map;
+                match upvar_capture_map.get(upvar_id) {
+                    Some(&ty::UpvarCapture::ByRef(ref upvar_borrow)) => {
+                        // The mutability of the upvar may have been modified
+                        // by the above adjustment, so update our local variable.
+                        ref_kind = upvar_borrow.kind;
+
+                        infer::ReborrowUpvar(span, *upvar_id)
+                    }
+                    _ => {
+                        span_bug!( span, "Illegal upvar id: {:?}", upvar_id);
                     }
                 }
             }
+            mc::NoteClosureEnv(ref upvar_id) => {
+                // We don't have any mutability changes to propagate, but
+                // we do want to note that an upvar reborrow caused this
+                // link
+                infer::ReborrowUpvar(span, *upvar_id)
+            }
+            _ => {
+                infer::Reborrow(span)
+            }
+        };
 
-            Categorization::Downcast(cmt_base, _) |
-            Categorization::Deref(cmt_base, _, mc::Unique) |
-            Categorization::Interior(cmt_base, _) => {
-                // Borrowing interior or owned data requires the base
-                // to be valid and borrowable in the same fashion.
-                borrow_cmt = cmt_base;
-                borrow_kind = borrow_kind;
+        debug!("link_reborrowed_region: {:?} <= {:?}",
+               borrow_region,
+               ref_region);
+        self.sub_regions(cause, *borrow_region, ref_region);
+
+        // If we end up needing to recurse and establish a region link
+        // with `ref_cmt`, calculate what borrow kind we will end up
+        // needing. This will be used below.
+        //
+        // One interesting twist is that we can weaken the borrow kind
+        // when we recurse: to reborrow an `&mut` referent as mutable,
+        // borrowck requires a unique path to the `&mut` reference but not
+        // necessarily a *mutable* path.
+        let new_borrow_kind = match borrow_kind {
+            ty::ImmBorrow =>
+                ty::ImmBorrow,
+            ty::MutBorrow | ty::UniqueImmBorrow =>
+                ty::UniqueImmBorrow
+        };
+
+        // Decide whether we need to recurse and link any regions within
+        // the `ref_cmt`. This is concerned for the case where the value
+        // being reborrowed is in fact a borrowed pointer found within
+        // another borrowed pointer. For example:
+        //
+        //    let p: &'b &'a mut T = ...;
+        //    ...
+        //    &'z **p
+        //
+        // What makes this case particularly tricky is that, if the data
+        // being borrowed is a `&mut` or `&uniq` borrow, borrowck requires
+        // not only that `'z <= 'a`, (as before) but also `'z <= 'b`
+        // (otherwise the user might mutate through the `&mut T` reference
+        // after `'b` expires and invalidate the borrow we are looking at
+        // now).
+        //
+        // So let's re-examine our parameters in light of this more
+        // complicated (possible) scenario:
+        //
+        //     A borrow of: `& 'z bk * * p` where `p` has type `&'b bk & 'a bk T`
+        //     borrow_region   ^~                 ref_region             ^~
+        //     borrow_kind        ^~               ref_kind                 ^~
+        //     ref_cmt                 ^~~
+        //
+        // (Note that since we have not examined `ref_cmt.cat`, we don't
+        // know whether this scenario has occurred; but I wanted to show
+        // how all the types get adjusted.)
+        match ref_kind {
+            ty::ImmBorrow => {
+                // The reference being reborrowed is a sharable ref of
+                // type `&'a T`. In this case, it doesn't matter where we
+                // *found* the `&T` pointer, the memory it references will
+                // be valid and immutable for `'a`. So we can stop here.
+                //
+                // (Note that the `borrow_kind` must also be ImmBorrow or
+                // else the user is borrowed imm memory as mut memory,
+                // which means they'll get an error downstream in borrowck
+                // anyhow.)
+                return None;
             }
 
-            Categorization::Deref(_, _, mc::UnsafePtr(..)) |
-            Categorization::StaticItem |
-            Categorization::Upvar(..) |
-            Categorization::Local(..) |
-            Categorization::Rvalue(..) => {
-                // These are all "base cases" with independent lifetimes
-                // that are not subject to inference
+            ty::MutBorrow | ty::UniqueImmBorrow => {
+                // The reference being reborrowed is either an `&mut T` or
+                // `&uniq T`. This is the case where recursion is needed.
+                return Some((ref_cmt, new_borrow_kind));
+            }
+        }
+    }
+
+    /// Checks that the values provided for type/region arguments in a given
+    /// expression are well-formed and in-scope.
+    fn substs_wf_in_scope(&mut self,
+                          origin: infer::ParameterOrigin,
+                          substs: &Substs<'tcx>,
+                          expr_span: Span,
+                          expr_region: ty::Region) {
+        debug!("substs_wf_in_scope(substs={:?}, \
+                expr_region={:?}, \
+                origin={:?}, \
+                expr_span={:?})",
+               substs, expr_region, origin, expr_span);
+
+        let origin = infer::ParameterInScope(origin, expr_span);
+
+        for &region in &substs.regions {
+            self.sub_regions(origin.clone(), expr_region, region);
+        }
+
+        for &ty in &substs.types {
+            let ty = self.resolve_type(ty);
+            self.type_must_outlive(origin.clone(), ty, expr_region);
+        }
+    }
+
+    /// Ensures that type is well-formed in `region`, which implies (among
+    /// other things) that all borrowed data reachable via `ty` outlives
+    /// `region`.
+    pub fn type_must_outlive(&self,
+                             origin: infer::SubregionOrigin<'tcx>,
+                             ty: Ty<'tcx>,
+                             region: ty::Region)
+    {
+        let ty = self.resolve_type(ty);
+
+        debug!("type_must_outlive(ty={:?}, region={:?}, origin={:?})",
+               ty,
+               region,
+               origin);
+
+        assert!(!ty.has_escaping_regions());
+
+        let components = self.outlives_components(ty);
+        self.components_must_outlive(origin, components, region);
+    }
+
+    fn components_must_outlive(&self,
+                               origin: infer::SubregionOrigin<'tcx>,
+                               components: Vec<ty::outlives::Component<'tcx>>,
+                               region: ty::Region)
+    {
+        for component in components {
+            let origin = origin.clone();
+            match component {
+                ty::outlives::Component::Region(region1) => {
+                    self.sub_regions(origin, region, region1);
+                }
+                ty::outlives::Component::Param(param_ty) => {
+                    self.param_ty_must_outlive(origin, region, param_ty);
+                }
+                ty::outlives::Component::Projection(projection_ty) => {
+                    self.projection_must_outlive(origin, region, projection_ty);
+                }
+                ty::outlives::Component::EscapingProjection(subcomponents) => {
+                    self.components_must_outlive(origin, subcomponents, region);
+                }
+                ty::outlives::Component::UnresolvedInferenceVariable(v) => {
+                    // ignore this, we presume it will yield an error
+                    // later, since if a type variable is not resolved by
+                    // this point it never will be
+                    self.tcx.sess.delay_span_bug(
+                        origin.span(),
+                        &format!("unresolved inference variable in outlives: {:?}", v));
+                }
+            }
+        }
+    }
+
+    fn param_ty_must_outlive(&self,
+                             origin: infer::SubregionOrigin<'tcx>,
+                             region: ty::Region,
+                             param_ty: ty::ParamTy) {
+        debug!("param_ty_must_outlive(region={:?}, param_ty={:?}, origin={:?})",
+               region, param_ty, origin);
+
+        let verify_bound = self.param_bound(param_ty);
+        let generic = GenericKind::Param(param_ty);
+        self.verify_generic_bound(origin, generic, region, verify_bound);
+    }
+
+    fn projection_must_outlive(&self,
+                               origin: infer::SubregionOrigin<'tcx>,
+                               region: ty::Region,
+                               projection_ty: ty::ProjectionTy<'tcx>)
+    {
+        debug!("projection_must_outlive(region={:?}, projection_ty={:?}, origin={:?})",
+               region, projection_ty, origin);
+
+        // This case is thorny for inference. The fundamental problem is
+        // that there are many cases where we have choice, and inference
+        // doesn't like choice (the current region inference in
+        // particular). :) First off, we have to choose between using the
+        // OutlivesProjectionEnv, OutlivesProjectionTraitDef, and
+        // OutlivesProjectionComponent rules, any one of which is
+        // sufficient.  If there are no inference variables involved, it's
+        // not hard to pick the right rule, but if there are, we're in a
+        // bit of a catch 22: if we picked which rule we were going to
+        // use, we could add constraints to the region inference graph
+        // that make it apply, but if we don't add those constraints, the
+        // rule might not apply (but another rule might). For now, we err
+        // on the side of adding too few edges into the graph.
+
+        // Compute the bounds we can derive from the environment or trait
+        // definition.  We know that the projection outlives all the
+        // regions in this list.
+        let env_bounds = self.projection_declared_bounds(origin.span(), projection_ty);
+
+        debug!("projection_must_outlive: env_bounds={:?}",
+               env_bounds);
+
+        // If we know that the projection outlives 'static, then we're
+        // done here.
+        if env_bounds.contains(&ty::ReStatic) {
+            debug!("projection_must_outlive: 'static as declared bound");
+            return;
+        }
+
+        // If declared bounds list is empty, the only applicable rule is
+        // OutlivesProjectionComponent. If there are inference variables,
+        // then, we can break down the outlives into more primitive
+        // components without adding unnecessary edges.
+        //
+        // If there are *no* inference variables, however, we COULD do
+        // this, but we choose not to, because the error messages are less
+        // good. For example, a requirement like `T::Item: 'r` would be
+        // translated to a requirement that `T: 'r`; when this is reported
+        // to the user, it will thus say "T: 'r must hold so that T::Item:
+        // 'r holds". But that makes it sound like the only way to fix
+        // the problem is to add `T: 'r`, which isn't true. So, if there are no
+        // inference variables, we use a verify constraint instead of adding
+        // edges, which winds up enforcing the same condition.
+        let needs_infer = {
+            projection_ty.trait_ref.substs.types.iter().any(|t| t.needs_infer()) ||
+                projection_ty.trait_ref.substs.regions.iter().any(|r| r.needs_infer())
+        };
+        if env_bounds.is_empty() && needs_infer {
+            debug!("projection_must_outlive: no declared bounds");
+
+            for &component_ty in &projection_ty.trait_ref.substs.types {
+                self.type_must_outlive(origin.clone(), component_ty, region);
+            }
+
+            for &r in &projection_ty.trait_ref.substs.regions {
+                self.sub_regions(origin.clone(), region, r);
+            }
+
+            return;
+        }
+
+        // If we find that there is a unique declared bound `'b`, and this bound
+        // appears in the trait reference, then the best action is to require that `'b:'r`,
+        // so do that. This is best no matter what rule we use:
+        //
+        // - OutlivesProjectionEnv or OutlivesProjectionTraitDef: these would translate to
+        // the requirement that `'b:'r`
+        // - OutlivesProjectionComponent: this would require `'b:'r` in addition to
+        // other conditions
+        if !env_bounds.is_empty() && env_bounds[1..].iter().all(|b| *b == env_bounds[0]) {
+            let unique_bound = env_bounds[0];
+            debug!("projection_must_outlive: unique declared bound = {:?}", unique_bound);
+            if projection_ty.trait_ref.substs.regions
+                                             .iter()
+                                             .any(|r| env_bounds.contains(r))
+            {
+                debug!("projection_must_outlive: unique declared bound appears in trait ref");
+                self.sub_regions(origin.clone(), region, unique_bound);
                 return;
             }
         }
-    }
-}
 
-/// This is the most complicated case: the path being borrowed is
-/// itself the referent of a borrowed pointer. Let me give an
-/// example fragment of code to make clear(er) the situation:
-///
-///    let r: &'a mut T = ...;  // the original reference "r" has lifetime 'a
-///    ...
-///    &'z *r                   // the reborrow has lifetime 'z
-///
-/// Now, in this case, our primary job is to add the inference
-/// constraint that `'z <= 'a`. Given this setup, let's clarify the
-/// parameters in (roughly) terms of the example:
-///
-///     A borrow of: `& 'z bk * r` where `r` has type `& 'a bk T`
-///     borrow_region   ^~                 ref_region    ^~
-///     borrow_kind        ^~               ref_kind        ^~
-///     ref_cmt                 ^
-///
-/// Here `bk` stands for some borrow-kind (e.g., `mut`, `uniq`, etc).
-///
-/// Unfortunately, there are some complications beyond the simple
-/// scenario I just painted:
-///
-/// 1. The reference `r` might in fact be a "by-ref" upvar. In that
-///    case, we have two jobs. First, we are inferring whether this reference
-///    should be an `&T`, `&mut T`, or `&uniq T` reference, and we must
-///    adjust that based on this borrow (e.g., if this is an `&mut` borrow,
-///    then `r` must be an `&mut` reference). Second, whenever we link
-///    two regions (here, `'z <= 'a`), we supply a *cause*, and in this
-///    case we adjust the cause to indicate that the reference being
-///    "reborrowed" is itself an upvar. This provides a nicer error message
-///    should something go wrong.
-///
-/// 2. There may in fact be more levels of reborrowing. In the
-///    example, I said the borrow was like `&'z *r`, but it might
-///    in fact be a borrow like `&'z **q` where `q` has type `&'a
-///    &'b mut T`. In that case, we want to ensure that `'z <= 'a`
-///    and `'z <= 'b`. This is explained more below.
-///
-/// The return value of this function indicates whether we need to
-/// recurse and process `ref_cmt` (see case 2 above).
-fn link_reborrowed_region(&self,
-                          span: Span,
-                          borrow_region: &ty::Region,
-                          borrow_kind: ty::BorrowKind,
-                          ref_cmt: mc::cmt<'tcx>,
-                          ref_region: ty::Region,
-                          mut ref_kind: ty::BorrowKind,
-                          note: mc::Note)
-                          -> Option<(mc::cmt<'tcx>, ty::BorrowKind)>
-{
-    // Possible upvar ID we may need later to create an entry in the
-    // maybe link map.
-
-    // Detect by-ref upvar `x`:
-    let cause = match note {
-        mc::NoteUpvarRef(ref upvar_id) => {
-            let upvar_capture_map = &self.tables.borrow_mut().upvar_capture_map;
-            match upvar_capture_map.get(upvar_id) {
-                Some(&ty::UpvarCapture::ByRef(ref upvar_borrow)) => {
-                    // The mutability of the upvar may have been modified
-                    // by the above adjustment, so update our local variable.
-                    ref_kind = upvar_borrow.kind;
-
-                    infer::ReborrowUpvar(span, *upvar_id)
-                }
-                _ => {
-                    span_bug!( span, "Illegal upvar id: {:?}", upvar_id);
-                }
-            }
-        }
-        mc::NoteClosureEnv(ref upvar_id) => {
-            // We don't have any mutability changes to propagate, but
-            // we do want to note that an upvar reborrow caused this
-            // link
-            infer::ReborrowUpvar(span, *upvar_id)
-        }
-        _ => {
-            infer::Reborrow(span)
-        }
-    };
-
-    debug!("link_reborrowed_region: {:?} <= {:?}",
-           borrow_region,
-           ref_region);
-    self.sub_regions(cause, *borrow_region, ref_region);
-
-    // If we end up needing to recurse and establish a region link
-    // with `ref_cmt`, calculate what borrow kind we will end up
-    // needing. This will be used below.
-    //
-    // One interesting twist is that we can weaken the borrow kind
-    // when we recurse: to reborrow an `&mut` referent as mutable,
-    // borrowck requires a unique path to the `&mut` reference but not
-    // necessarily a *mutable* path.
-    let new_borrow_kind = match borrow_kind {
-        ty::ImmBorrow =>
-            ty::ImmBorrow,
-        ty::MutBorrow | ty::UniqueImmBorrow =>
-            ty::UniqueImmBorrow
-    };
-
-    // Decide whether we need to recurse and link any regions within
-    // the `ref_cmt`. This is concerned for the case where the value
-    // being reborrowed is in fact a borrowed pointer found within
-    // another borrowed pointer. For example:
-    //
-    //    let p: &'b &'a mut T = ...;
-    //    ...
-    //    &'z **p
-    //
-    // What makes this case particularly tricky is that, if the data
-    // being borrowed is a `&mut` or `&uniq` borrow, borrowck requires
-    // not only that `'z <= 'a`, (as before) but also `'z <= 'b`
-    // (otherwise the user might mutate through the `&mut T` reference
-    // after `'b` expires and invalidate the borrow we are looking at
-    // now).
-    //
-    // So let's re-examine our parameters in light of this more
-    // complicated (possible) scenario:
-    //
-    //     A borrow of: `& 'z bk * * p` where `p` has type `&'b bk & 'a bk T`
-    //     borrow_region   ^~                 ref_region             ^~
-    //     borrow_kind        ^~               ref_kind                 ^~
-    //     ref_cmt                 ^~~
-    //
-    // (Note that since we have not examined `ref_cmt.cat`, we don't
-    // know whether this scenario has occurred; but I wanted to show
-    // how all the types get adjusted.)
-    match ref_kind {
-        ty::ImmBorrow => {
-            // The reference being reborrowed is a sharable ref of
-            // type `&'a T`. In this case, it doesn't matter where we
-            // *found* the `&T` pointer, the memory it references will
-            // be valid and immutable for `'a`. So we can stop here.
-            //
-            // (Note that the `borrow_kind` must also be ImmBorrow or
-            // else the user is borrowed imm memory as mut memory,
-            // which means they'll get an error downstream in borrowck
-            // anyhow.)
-            return None;
-        }
-
-        ty::MutBorrow | ty::UniqueImmBorrow => {
-            // The reference being reborrowed is either an `&mut T` or
-            // `&uniq T`. This is the case where recursion is needed.
-            return Some((ref_cmt, new_borrow_kind));
-        }
-    }
-}
-
-/// Checks that the values provided for type/region arguments in a given
-/// expression are well-formed and in-scope.
-fn substs_wf_in_scope(&mut self,
-                      origin: infer::ParameterOrigin,
-                      substs: &Substs<'tcx>,
-                      expr_span: Span,
-                      expr_region: ty::Region) {
-    debug!("substs_wf_in_scope(substs={:?}, \
-            expr_region={:?}, \
-            origin={:?}, \
-            expr_span={:?})",
-           substs, expr_region, origin, expr_span);
-
-    let origin = infer::ParameterInScope(origin, expr_span);
-
-    for &region in &substs.regions {
-        self.sub_regions(origin.clone(), expr_region, region);
+        // Fallback to verifying after the fact that there exists a
+        // declared bound, or that all the components appearing in the
+        // projection outlive; in some cases, this may add insufficient
+        // edges into the inference graph, leading to inference failures
+        // even though a satisfactory solution exists.
+        let verify_bound = self.projection_bound(origin.span(), env_bounds, projection_ty);
+        let generic = GenericKind::Projection(projection_ty);
+        self.verify_generic_bound(origin, generic.clone(), region, verify_bound);
     }
 
-    for &ty in &substs.types {
-        let ty = self.resolve_type(ty);
-        self.type_must_outlive(origin.clone(), ty, expr_region);
-    }
-}
-
-/// Ensures that type is well-formed in `region`, which implies (among
-/// other things) that all borrowed data reachable via `ty` outlives
-/// `region`.
-pub fn type_must_outlive(&self,
-                         origin: infer::SubregionOrigin<'tcx>,
-                         ty: Ty<'tcx>,
-                         region: ty::Region)
-{
-    let ty = self.resolve_type(ty);
-
-    debug!("type_must_outlive(ty={:?}, region={:?}, origin={:?})",
-           ty,
-           region,
-           origin);
-
-    assert!(!ty.has_escaping_regions());
-
-    let components = self.outlives_components(ty);
-    self.components_must_outlive(origin, components, region);
-}
-
-fn components_must_outlive(&self,
-                           origin: infer::SubregionOrigin<'tcx>,
-                           components: Vec<ty::outlives::Component<'tcx>>,
-                           region: ty::Region)
-{
-    for component in components {
-        let origin = origin.clone();
-        match component {
-            ty::outlives::Component::Region(region1) => {
-                self.sub_regions(origin, region, region1);
+    fn type_bound(&self, span: Span, ty: Ty<'tcx>) -> VerifyBound {
+        match ty.sty {
+            ty::TyParam(p) => {
+                self.param_bound(p)
             }
-            ty::outlives::Component::Param(param_ty) => {
-                self.param_ty_must_outlive(origin, region, param_ty);
+            ty::TyProjection(data) => {
+                let declared_bounds = self.projection_declared_bounds(span, data);
+                self.projection_bound(span, declared_bounds, data)
             }
-            ty::outlives::Component::Projection(projection_ty) => {
-                self.projection_must_outlive(origin, region, projection_ty);
-            }
-            ty::outlives::Component::EscapingProjection(subcomponents) => {
-                self.components_must_outlive(origin, subcomponents, region);
-            }
-            ty::outlives::Component::UnresolvedInferenceVariable(v) => {
-                // ignore this, we presume it will yield an error
-                // later, since if a type variable is not resolved by
-                // this point it never will be
-                self.tcx.sess.delay_span_bug(
-                    origin.span(),
-                    &format!("unresolved inference variable in outlives: {:?}", v));
+            _ => {
+                self.recursive_type_bound(span, ty)
             }
         }
     }
-}
 
-fn param_ty_must_outlive(&self,
-                         origin: infer::SubregionOrigin<'tcx>,
-                         region: ty::Region,
-                         param_ty: ty::ParamTy) {
-    debug!("param_ty_must_outlive(region={:?}, param_ty={:?}, origin={:?})",
-           region, param_ty, origin);
+    fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound {
+        let param_env = &self.parameter_environment;
 
-    let verify_bound = self.param_bound(param_ty);
-    let generic = GenericKind::Param(param_ty);
-    self.verify_generic_bound(origin, generic, region, verify_bound);
-}
+        debug!("param_bound(param_ty={:?})",
+               param_ty);
 
-fn projection_must_outlive(&self,
-                           origin: infer::SubregionOrigin<'tcx>,
-                           region: ty::Region,
-                           projection_ty: ty::ProjectionTy<'tcx>)
-{
-    debug!("projection_must_outlive(region={:?}, projection_ty={:?}, origin={:?})",
-           region, projection_ty, origin);
+        let mut param_bounds = self.declared_generic_bounds_from_env(GenericKind::Param(param_ty));
 
-    // This case is thorny for inference. The fundamental problem is
-    // that there are many cases where we have choice, and inference
-    // doesn't like choice (the current region inference in
-    // particular). :) First off, we have to choose between using the
-    // OutlivesProjectionEnv, OutlivesProjectionTraitDef, and
-    // OutlivesProjectionComponent rules, any one of which is
-    // sufficient.  If there are no inference variables involved, it's
-    // not hard to pick the right rule, but if there are, we're in a
-    // bit of a catch 22: if we picked which rule we were going to
-    // use, we could add constraints to the region inference graph
-    // that make it apply, but if we don't add those constraints, the
-    // rule might not apply (but another rule might). For now, we err
-    // on the side of adding too few edges into the graph.
+        // Add in the default bound of fn body that applies to all in
+        // scope type parameters:
+        param_bounds.push(param_env.implicit_region_bound);
 
-    // Compute the bounds we can derive from the environment or trait
-    // definition.  We know that the projection outlives all the
-    // regions in this list.
-    let env_bounds = self.projection_declared_bounds(origin.span(), projection_ty);
-
-    debug!("projection_must_outlive: env_bounds={:?}",
-           env_bounds);
-
-    // If we know that the projection outlives 'static, then we're
-    // done here.
-    if env_bounds.contains(&ty::ReStatic) {
-        debug!("projection_must_outlive: 'static as declared bound");
-        return;
+        VerifyBound::AnyRegion(param_bounds)
     }
 
-    // If declared bounds list is empty, the only applicable rule is
-    // OutlivesProjectionComponent. If there are inference variables,
-    // then, we can break down the outlives into more primitive
-    // components without adding unnecessary edges.
-    //
-    // If there are *no* inference variables, however, we COULD do
-    // this, but we choose not to, because the error messages are less
-    // good. For example, a requirement like `T::Item: 'r` would be
-    // translated to a requirement that `T: 'r`; when this is reported
-    // to the user, it will thus say "T: 'r must hold so that T::Item:
-    // 'r holds". But that makes it sound like the only way to fix
-    // the problem is to add `T: 'r`, which isn't true. So, if there are no
-    // inference variables, we use a verify constraint instead of adding
-    // edges, which winds up enforcing the same condition.
-    let needs_infer = {
-        projection_ty.trait_ref.substs.types.iter().any(|t| t.needs_infer()) ||
-            projection_ty.trait_ref.substs.regions.iter().any(|r| r.needs_infer())
-    };
-    if env_bounds.is_empty() && needs_infer {
-        debug!("projection_must_outlive: no declared bounds");
+    fn projection_declared_bounds(&self,
+                                  span: Span,
+                                  projection_ty: ty::ProjectionTy<'tcx>)
+                                  -> Vec<ty::Region>
+    {
+        // First assemble bounds from where clauses and traits.
 
-        for &component_ty in &projection_ty.trait_ref.substs.types {
-            self.type_must_outlive(origin.clone(), component_ty, region);
-        }
+        let mut declared_bounds =
+            self.declared_generic_bounds_from_env(GenericKind::Projection(projection_ty));
 
-        for &r in &projection_ty.trait_ref.substs.regions {
-            self.sub_regions(origin.clone(), region, r);
-        }
+        declared_bounds.extend_from_slice(
+            &self.declared_projection_bounds_from_trait(span, projection_ty));
 
-        return;
+        declared_bounds
     }
 
-    // If we find that there is a unique declared bound `'b`, and this bound
-    // appears in the trait reference, then the best action is to require that `'b:'r`,
-    // so do that. This is best no matter what rule we use:
-    //
-    // - OutlivesProjectionEnv or OutlivesProjectionTraitDef: these would translate to
-    // the requirement that `'b:'r`
-    // - OutlivesProjectionComponent: this would require `'b:'r` in addition to other conditions
-    if !env_bounds.is_empty() && env_bounds[1..].iter().all(|b| *b == env_bounds[0]) {
-        let unique_bound = env_bounds[0];
-        debug!("projection_must_outlive: unique declared bound = {:?}", unique_bound);
-        if projection_ty.trait_ref.substs.regions
-                                         .iter()
-                                         .any(|r| env_bounds.contains(r))
-        {
-            debug!("projection_must_outlive: unique declared bound appears in trait ref");
-            self.sub_regions(origin.clone(), region, unique_bound);
-            return;
+    fn projection_bound(&self,
+                        span: Span,
+                        declared_bounds: Vec<ty::Region>,
+                        projection_ty: ty::ProjectionTy<'tcx>)
+                        -> VerifyBound {
+        debug!("projection_bound(declared_bounds={:?}, projection_ty={:?})",
+               declared_bounds, projection_ty);
+
+        // see the extensive comment in projection_must_outlive
+
+        let ty = self.tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name);
+        let recursive_bound = self.recursive_type_bound(span, ty);
+
+        VerifyBound::AnyRegion(declared_bounds).or(recursive_bound)
+    }
+
+    fn recursive_type_bound(&self, span: Span, ty: Ty<'tcx>) -> VerifyBound {
+        let mut bounds = vec![];
+
+        for subty in ty.walk_shallow() {
+            bounds.push(self.type_bound(span, subty));
+        }
+
+        let mut regions = ty.regions();
+        regions.retain(|r| !r.is_bound()); // ignore late-bound regions
+        bounds.push(VerifyBound::AllRegions(regions));
+
+        // remove bounds that must hold, since they are not interesting
+        bounds.retain(|b| !b.must_hold());
+
+        if bounds.len() == 1 {
+            bounds.pop().unwrap()
+        } else {
+            VerifyBound::AllBounds(bounds)
         }
     }
 
-    // Fallback to verifying after the fact that there exists a
-    // declared bound, or that all the components appearing in the
-    // projection outlive; in some cases, this may add insufficient
-    // edges into the inference graph, leading to inference failures
-    // even though a satisfactory solution exists.
-    let verify_bound = self.projection_bound(origin.span(), env_bounds, projection_ty);
-    let generic = GenericKind::Projection(projection_ty);
-    self.verify_generic_bound(origin, generic.clone(), region, verify_bound);
-}
+    fn declared_generic_bounds_from_env(&self, generic: GenericKind<'tcx>)
+                                        -> Vec<ty::Region>
+    {
+        let param_env = &self.parameter_environment;
 
-fn type_bound(&self, span: Span, ty: Ty<'tcx>) -> VerifyBound {
-    match ty.sty {
-        ty::TyParam(p) => {
-            self.param_bound(p)
+        // To start, collect bounds from user:
+        let mut param_bounds = self.tcx.required_region_bounds(generic.to_ty(self.tcx),
+                                                               param_env.caller_bounds.clone());
+
+        // Next, collect regions we scraped from the well-formedness
+        // constraints in the fn signature. To do that, we walk the list
+        // of known relations from the fn ctxt.
+        //
+        // This is crucial because otherwise code like this fails:
+        //
+        //     fn foo<'a, A>(x: &'a A) { x.bar() }
+        //
+        // The problem is that the type of `x` is `&'a A`. To be
+        // well-formed, then, A must be lower-generic by `'a`, but we
+        // don't know that this holds from first principles.
+        for &(r, p) in &self.region_bound_pairs {
+            debug!("generic={:?} p={:?}",
+                   generic,
+                   p);
+            if generic == p {
+                param_bounds.push(r);
+            }
         }
-        ty::TyProjection(data) => {
-            let declared_bounds = self.projection_declared_bounds(span, data);
-            self.projection_bound(span, declared_bounds, data)
-        }
-        _ => {
-            self.recursive_type_bound(span, ty)
-        }
-    }
-}
 
-fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound {
-    let param_env = &self.parameter_environment;
-
-    debug!("param_bound(param_ty={:?})",
-           param_ty);
-
-    let mut param_bounds = self.declared_generic_bounds_from_env(GenericKind::Param(param_ty));
-
-    // Add in the default bound of fn body that applies to all in
-    // scope type parameters:
-    param_bounds.push(param_env.implicit_region_bound);
-
-    VerifyBound::AnyRegion(param_bounds)
-}
-
-fn projection_declared_bounds(&self,
-                              span: Span,
-                              projection_ty: ty::ProjectionTy<'tcx>)
-                              -> Vec<ty::Region>
-{
-    // First assemble bounds from where clauses and traits.
-
-    let mut declared_bounds =
-        self.declared_generic_bounds_from_env(GenericKind::Projection(projection_ty));
-
-    declared_bounds.extend_from_slice(
-        &self.declared_projection_bounds_from_trait(span, projection_ty));
-
-    declared_bounds
-}
-
-fn projection_bound(&self,
-                    span: Span,
-                    declared_bounds: Vec<ty::Region>,
-                    projection_ty: ty::ProjectionTy<'tcx>)
-                    -> VerifyBound {
-    debug!("projection_bound(declared_bounds={:?}, projection_ty={:?})",
-           declared_bounds, projection_ty);
-
-    // see the extensive comment in projection_must_outlive
-
-    let ty = self.tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name);
-    let recursive_bound = self.recursive_type_bound(span, ty);
-
-    VerifyBound::AnyRegion(declared_bounds).or(recursive_bound)
-}
-
-fn recursive_type_bound(&self, span: Span, ty: Ty<'tcx>) -> VerifyBound {
-    let mut bounds = vec![];
-
-    for subty in ty.walk_shallow() {
-        bounds.push(self.type_bound(span, subty));
+        param_bounds
     }
 
-    let mut regions = ty.regions();
-    regions.retain(|r| !r.is_bound()); // ignore late-bound regions
-    bounds.push(VerifyBound::AllRegions(regions));
+    fn declared_projection_bounds_from_trait(&self,
+                                             span: Span,
+                                             projection_ty: ty::ProjectionTy<'tcx>)
+                                             -> Vec<ty::Region>
+    {
+        debug!("projection_bounds(projection_ty={:?})",
+               projection_ty);
 
-    // remove bounds that must hold, since they are not interesting
-    bounds.retain(|b| !b.must_hold());
+        let ty = self.tcx.mk_projection(projection_ty.trait_ref.clone(),
+                                        projection_ty.item_name);
 
-    if bounds.len() == 1 {
-        bounds.pop().unwrap()
-    } else {
-        VerifyBound::AllBounds(bounds)
-    }
-}
+        // Say we have a projection `<T as SomeTrait<'a>>::SomeType`. We are interested
+        // in looking for a trait definition like:
+        //
+        // ```
+        // trait SomeTrait<'a> {
+        //     type SomeType : 'a;
+        // }
+        // ```
+        //
+        // we can thus deduce that `<T as SomeTrait<'a>>::SomeType : 'a`.
+        let trait_predicates = self.tcx.lookup_predicates(projection_ty.trait_ref.def_id);
+        let predicates = trait_predicates.predicates.as_slice().to_vec();
+        traits::elaborate_predicates(self.tcx, predicates)
+            .filter_map(|predicate| {
+                // we're only interesting in `T : 'a` style predicates:
+                let outlives = match predicate {
+                    ty::Predicate::TypeOutlives(data) => data,
+                    _ => { return None; }
+                };
 
-fn declared_generic_bounds_from_env(&self, generic: GenericKind<'tcx>)
-                                    -> Vec<ty::Region>
-{
-    let param_env = &self.parameter_environment;
-
-    // To start, collect bounds from user:
-    let mut param_bounds = self.tcx.required_region_bounds(generic.to_ty(self.tcx),
-                                                           param_env.caller_bounds.clone());
-
-    // Next, collect regions we scraped from the well-formedness
-    // constraints in the fn signature. To do that, we walk the list
-    // of known relations from the fn ctxt.
-    //
-    // This is crucial because otherwise code like this fails:
-    //
-    //     fn foo<'a, A>(x: &'a A) { x.bar() }
-    //
-    // The problem is that the type of `x` is `&'a A`. To be
-    // well-formed, then, A must be lower-generic by `'a`, but we
-    // don't know that this holds from first principles.
-    for &(r, p) in &self.region_bound_pairs {
-        debug!("generic={:?} p={:?}",
-               generic,
-               p);
-        if generic == p {
-            param_bounds.push(r);
-        }
-    }
-
-    param_bounds
-}
-
-fn declared_projection_bounds_from_trait(&self,
-                                         span: Span,
-                                         projection_ty: ty::ProjectionTy<'tcx>)
-                                         -> Vec<ty::Region>
-{
-    debug!("projection_bounds(projection_ty={:?})",
-           projection_ty);
-
-    let ty = self.tcx.mk_projection(projection_ty.trait_ref.clone(),
-                                    projection_ty.item_name);
-
-    // Say we have a projection `<T as SomeTrait<'a>>::SomeType`. We are interested
-    // in looking for a trait definition like:
-    //
-    // ```
-    // trait SomeTrait<'a> {
-    //     type SomeType : 'a;
-    // }
-    // ```
-    //
-    // we can thus deduce that `<T as SomeTrait<'a>>::SomeType : 'a`.
-    let trait_predicates = self.tcx.lookup_predicates(projection_ty.trait_ref.def_id);
-    let predicates = trait_predicates.predicates.as_slice().to_vec();
-    traits::elaborate_predicates(self.tcx, predicates)
-        .filter_map(|predicate| {
-            // we're only interesting in `T : 'a` style predicates:
-            let outlives = match predicate {
-                ty::Predicate::TypeOutlives(data) => data,
-                _ => { return None; }
-            };
-
-            debug!("projection_bounds: outlives={:?} (1)",
-                   outlives);
-
-            // apply the substitutions (and normalize any projected types)
-            let outlives = self.instantiate_type_scheme(span,
-                                                        projection_ty.trait_ref.substs,
-                                                        &outlives);
-
-            debug!("projection_bounds: outlives={:?} (2)",
-                   outlives);
-
-            let region_result = self.commit_if_ok(|_| {
-                let (outlives, _) =
-                    self.replace_late_bound_regions_with_fresh_var(
-                        span,
-                        infer::AssocTypeProjection(projection_ty.item_name),
-                        &outlives);
-
-                debug!("projection_bounds: outlives={:?} (3)",
+                debug!("projection_bounds: outlives={:?} (1)",
                        outlives);
 
-                // check whether this predicate applies to our current projection
-                match self.eq_types(false, TypeOrigin::Misc(span), ty, outlives.0) {
-                    Ok(InferOk { obligations, .. }) => {
-                        // FIXME(#32730) propagate obligations
-                        assert!(obligations.is_empty());
-                        Ok(outlives.1)
+                // apply the substitutions (and normalize any projected types)
+                let outlives = self.instantiate_type_scheme(span,
+                                                            projection_ty.trait_ref.substs,
+                                                            &outlives);
+
+                debug!("projection_bounds: outlives={:?} (2)",
+                       outlives);
+
+                let region_result = self.commit_if_ok(|_| {
+                    let (outlives, _) =
+                        self.replace_late_bound_regions_with_fresh_var(
+                            span,
+                            infer::AssocTypeProjection(projection_ty.item_name),
+                            &outlives);
+
+                    debug!("projection_bounds: outlives={:?} (3)",
+                           outlives);
+
+                    // check whether this predicate applies to our current projection
+                    match self.eq_types(false, TypeOrigin::Misc(span), ty, outlives.0) {
+                        Ok(InferOk { obligations, .. }) => {
+                            // FIXME(#32730) propagate obligations
+                            assert!(obligations.is_empty());
+                            Ok(outlives.1)
+                        }
+                        Err(_) => { Err(()) }
                     }
-                    Err(_) => { Err(()) }
-                }
-            });
+                });
 
-            debug!("projection_bounds: region_result={:?}",
-                   region_result);
+                debug!("projection_bounds: region_result={:?}",
+                       region_result);
 
-            region_result.ok()
-        })
-        .collect()
-}
+                region_result.ok()
+            })
+            .collect()
+    }
 }

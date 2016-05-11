@@ -35,35 +35,35 @@ use rustc::hir;
 // Entry point functions
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-pub fn resolve_type_vars_in_expr(&self, e: &hir::Expr) {
-    assert_eq!(self.writeback_errors.get(), false);
-    let mut wbcx = WritebackCx::new(self);
-    wbcx.visit_expr(e);
-    wbcx.visit_upvar_borrow_map();
-    wbcx.visit_closures();
-    wbcx.visit_liberated_fn_sigs();
-    wbcx.visit_fru_field_types();
-}
-
-pub fn resolve_type_vars_in_fn(&self, decl: &hir::FnDecl, blk: &hir::Block) {
-    assert_eq!(self.writeback_errors.get(), false);
-    let mut wbcx = WritebackCx::new(self);
-    wbcx.visit_block(blk);
-    for arg in &decl.inputs {
-        wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.id);
-        wbcx.visit_pat(&arg.pat);
-
-        // Privacy needs the type for the whole pattern, not just each binding
-        if !pat_util::pat_is_binding(&self.tcx.def_map.borrow(), &arg.pat) {
-            wbcx.visit_node_id(ResolvingPattern(arg.pat.span),
-                               arg.pat.id);
-        }
+    pub fn resolve_type_vars_in_expr(&self, e: &hir::Expr) {
+        assert_eq!(self.writeback_errors.get(), false);
+        let mut wbcx = WritebackCx::new(self);
+        wbcx.visit_expr(e);
+        wbcx.visit_upvar_borrow_map();
+        wbcx.visit_closures();
+        wbcx.visit_liberated_fn_sigs();
+        wbcx.visit_fru_field_types();
     }
-    wbcx.visit_upvar_borrow_map();
-    wbcx.visit_closures();
-    wbcx.visit_liberated_fn_sigs();
-    wbcx.visit_fru_field_types();
-}
+
+    pub fn resolve_type_vars_in_fn(&self, decl: &hir::FnDecl, blk: &hir::Block) {
+        assert_eq!(self.writeback_errors.get(), false);
+        let mut wbcx = WritebackCx::new(self);
+        wbcx.visit_block(blk);
+        for arg in &decl.inputs {
+            wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.id);
+            wbcx.visit_pat(&arg.pat);
+
+            // Privacy needs the type for the whole pattern, not just each binding
+            if !pat_util::pat_is_binding(&self.tcx.def_map.borrow(), &arg.pat) {
+                wbcx.visit_node_id(ResolvingPattern(arg.pat.span),
+                                   arg.pat.id);
+            }
+        }
+        wbcx.visit_upvar_borrow_map();
+        wbcx.visit_closures();
+        wbcx.visit_liberated_fn_sigs();
+        wbcx.visit_fru_field_types();
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

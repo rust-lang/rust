@@ -422,169 +422,169 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         region_vars
     }
 
-pub fn skolemize_late_bound_regions<T>(&self,
-                                       binder: &ty::Binder<T>,
-                                       snapshot: &CombinedSnapshot)
-                                       -> (T, SkolemizationMap)
-    where T : TypeFoldable<'tcx>
-{
-    /*!
-     * Replace all regions bound by `binder` with skolemized regions and
-     * return a map indicating which bound-region was replaced with what
-     * skolemized region. This is the first step of checking subtyping
-     * when higher-ranked things are involved. See `README.md` for more
-     * details.
-     */
+    pub fn skolemize_late_bound_regions<T>(&self,
+                                           binder: &ty::Binder<T>,
+                                           snapshot: &CombinedSnapshot)
+                                           -> (T, SkolemizationMap)
+        where T : TypeFoldable<'tcx>
+    {
+        /*!
+         * Replace all regions bound by `binder` with skolemized regions and
+         * return a map indicating which bound-region was replaced with what
+         * skolemized region. This is the first step of checking subtyping
+         * when higher-ranked things are involved. See `README.md` for more
+         * details.
+         */
 
-    let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
-        self.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot)
-    });
+        let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
+            self.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot)
+        });
 
-    debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
-           binder,
-           result,
-           map);
+        debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
+               binder,
+               result,
+               map);
 
-    (result, map)
-}
-
-pub fn leak_check(&self,
-                  overly_polymorphic: bool,
-                  skol_map: &SkolemizationMap,
-                  snapshot: &CombinedSnapshot)
-                  -> RelateResult<'tcx, ()>
-{
-    /*!
-     * Searches the region constriants created since `snapshot` was started
-     * and checks to determine whether any of the skolemized regions created
-     * in `skol_map` would "escape" -- meaning that they are related to
-     * other regions in some way. If so, the higher-ranked subtyping doesn't
-     * hold. See `README.md` for more details.
-     */
-
-    debug!("leak_check: skol_map={:?}",
-           skol_map);
-
-    let new_vars = self.region_vars_confined_to_snapshot(snapshot);
-    for (&skol_br, &skol) in skol_map {
-        let tainted = self.tainted_regions(snapshot, skol);
-        for &tainted_region in &tainted {
-            // Each skolemized should only be relatable to itself
-            // or new variables:
-            match tainted_region {
-                ty::ReVar(vid) => {
-                    if new_vars.iter().any(|&x| x == vid) { continue; }
-                }
-                _ => {
-                    if tainted_region == skol { continue; }
-                }
-            };
-
-            debug!("{:?} (which replaced {:?}) is tainted by {:?}",
-                   skol,
-                   skol_br,
-                   tainted_region);
-
-            if overly_polymorphic {
-                debug!("Overly polymorphic!");
-                return Err(TypeError::RegionsOverlyPolymorphic(skol_br,
-                                                               tainted_region));
-            } else {
-                debug!("Not as polymorphic!");
-                return Err(TypeError::RegionsInsufficientlyPolymorphic(skol_br,
-                                                                       tainted_region));
-            }
-        }
+        (result, map)
     }
-    Ok(())
-}
 
-/// This code converts from skolemized regions back to late-bound
-/// regions. It works by replacing each region in the taint set of a
-/// skolemized region with a bound-region. The bound region will be bound
-/// by the outer-most binder in `value`; the caller must ensure that there is
-/// such a binder and it is the right place.
-///
-/// This routine is only intended to be used when the leak-check has
-/// passed; currently, it's used in the trait matching code to create
-/// a set of nested obligations frmo an impl that matches against
-/// something higher-ranked.  More details can be found in
-/// `librustc/middle/traits/README.md`.
-///
-/// As a brief example, consider the obligation `for<'a> Fn(&'a int)
-/// -> &'a int`, and the impl:
-///
-///     impl<A,R> Fn<A,R> for SomethingOrOther
-///         where A : Clone
-///     { ... }
-///
-/// Here we will have replaced `'a` with a skolemized region
-/// `'0`. This means that our substitution will be `{A=>&'0
-/// int, R=>&'0 int}`.
-///
-/// When we apply the substitution to the bounds, we will wind up with
-/// `&'0 int : Clone` as a predicate. As a last step, we then go and
-/// replace `'0` with a late-bound region `'a`.  The depth is matched
-/// to the depth of the predicate, in this case 1, so that the final
-/// predicate is `for<'a> &'a int : Clone`.
-pub fn plug_leaks<T>(&self,
-                     skol_map: SkolemizationMap,
-                     snapshot: &CombinedSnapshot,
-                     value: &T) -> T
-    where T : TypeFoldable<'tcx>
-{
-    debug_assert!(self.leak_check(false, &skol_map, snapshot).is_ok());
+    pub fn leak_check(&self,
+                      overly_polymorphic: bool,
+                      skol_map: &SkolemizationMap,
+                      snapshot: &CombinedSnapshot)
+                      -> RelateResult<'tcx, ()>
+    {
+        /*!
+         * Searches the region constriants created since `snapshot` was started
+         * and checks to determine whether any of the skolemized regions created
+         * in `skol_map` would "escape" -- meaning that they are related to
+         * other regions in some way. If so, the higher-ranked subtyping doesn't
+         * hold. See `README.md` for more details.
+         */
 
-    debug!("plug_leaks(skol_map={:?}, value={:?})",
-           skol_map,
-           value);
+        debug!("leak_check: skol_map={:?}",
+               skol_map);
 
-    // Compute a mapping from the "taint set" of each skolemized
-    // region back to the `ty::BoundRegion` that it originally
-    // represented. Because `leak_check` passed, we know that
-    // these taint sets are mutually disjoint.
-    let inv_skol_map: FnvHashMap<ty::Region, ty::BoundRegion> =
-        skol_map
-        .into_iter()
-        .flat_map(|(skol_br, skol)| {
-            self.tainted_regions(snapshot, skol)
-                .into_iter()
-                .map(move |tainted_region| (tainted_region, skol_br))
-        })
-        .collect();
+        let new_vars = self.region_vars_confined_to_snapshot(snapshot);
+        for (&skol_br, &skol) in skol_map {
+            let tainted = self.tainted_regions(snapshot, skol);
+            for &tainted_region in &tainted {
+                // Each skolemized should only be relatable to itself
+                // or new variables:
+                match tainted_region {
+                    ty::ReVar(vid) => {
+                        if new_vars.iter().any(|&x| x == vid) { continue; }
+                    }
+                    _ => {
+                        if tainted_region == skol { continue; }
+                    }
+                };
 
-    debug!("plug_leaks: inv_skol_map={:?}",
-           inv_skol_map);
+                debug!("{:?} (which replaced {:?}) is tainted by {:?}",
+                       skol,
+                       skol_br,
+                       tainted_region);
 
-    // Remove any instantiated type variables from `value`; those can hide
-    // references to regions from the `fold_regions` code below.
-    let value = self.resolve_type_vars_if_possible(value);
-
-    // Map any skolemization byproducts back to a late-bound
-    // region. Put that late-bound region at whatever the outermost
-    // binder is that we encountered in `value`. The caller is
-    // responsible for ensuring that (a) `value` contains at least one
-    // binder and (b) that binder is the one we want to use.
-    let result = self.tcx.fold_regions(&value, &mut false, |r, current_depth| {
-        match inv_skol_map.get(&r) {
-            None => r,
-            Some(br) => {
-                // It is the responsibility of the caller to ensure
-                // that each skolemized region appears within a
-                // binder. In practice, this routine is only used by
-                // trait checking, and all of the skolemized regions
-                // appear inside predicates, which always have
-                // binders, so this assert is satisfied.
-                assert!(current_depth > 1);
-
-                ty::ReLateBound(ty::DebruijnIndex::new(current_depth - 1), br.clone())
+                if overly_polymorphic {
+                    debug!("Overly polymorphic!");
+                    return Err(TypeError::RegionsOverlyPolymorphic(skol_br,
+                                                                   tainted_region));
+                } else {
+                    debug!("Not as polymorphic!");
+                    return Err(TypeError::RegionsInsufficientlyPolymorphic(skol_br,
+                                                                           tainted_region));
+                }
             }
         }
-    });
+        Ok(())
+    }
 
-    debug!("plug_leaks: result={:?}",
-           result);
+    /// This code converts from skolemized regions back to late-bound
+    /// regions. It works by replacing each region in the taint set of a
+    /// skolemized region with a bound-region. The bound region will be bound
+    /// by the outer-most binder in `value`; the caller must ensure that there is
+    /// such a binder and it is the right place.
+    ///
+    /// This routine is only intended to be used when the leak-check has
+    /// passed; currently, it's used in the trait matching code to create
+    /// a set of nested obligations frmo an impl that matches against
+    /// something higher-ranked.  More details can be found in
+    /// `librustc/middle/traits/README.md`.
+    ///
+    /// As a brief example, consider the obligation `for<'a> Fn(&'a int)
+    /// -> &'a int`, and the impl:
+    ///
+    ///     impl<A,R> Fn<A,R> for SomethingOrOther
+    ///         where A : Clone
+    ///     { ... }
+    ///
+    /// Here we will have replaced `'a` with a skolemized region
+    /// `'0`. This means that our substitution will be `{A=>&'0
+    /// int, R=>&'0 int}`.
+    ///
+    /// When we apply the substitution to the bounds, we will wind up with
+    /// `&'0 int : Clone` as a predicate. As a last step, we then go and
+    /// replace `'0` with a late-bound region `'a`.  The depth is matched
+    /// to the depth of the predicate, in this case 1, so that the final
+    /// predicate is `for<'a> &'a int : Clone`.
+    pub fn plug_leaks<T>(&self,
+                         skol_map: SkolemizationMap,
+                         snapshot: &CombinedSnapshot,
+                         value: &T) -> T
+        where T : TypeFoldable<'tcx>
+    {
+        debug_assert!(self.leak_check(false, &skol_map, snapshot).is_ok());
 
-    result
-}
+        debug!("plug_leaks(skol_map={:?}, value={:?})",
+               skol_map,
+               value);
+
+        // Compute a mapping from the "taint set" of each skolemized
+        // region back to the `ty::BoundRegion` that it originally
+        // represented. Because `leak_check` passed, we know that
+        // these taint sets are mutually disjoint.
+        let inv_skol_map: FnvHashMap<ty::Region, ty::BoundRegion> =
+            skol_map
+            .into_iter()
+            .flat_map(|(skol_br, skol)| {
+                self.tainted_regions(snapshot, skol)
+                    .into_iter()
+                    .map(move |tainted_region| (tainted_region, skol_br))
+            })
+            .collect();
+
+        debug!("plug_leaks: inv_skol_map={:?}",
+               inv_skol_map);
+
+        // Remove any instantiated type variables from `value`; those can hide
+        // references to regions from the `fold_regions` code below.
+        let value = self.resolve_type_vars_if_possible(value);
+
+        // Map any skolemization byproducts back to a late-bound
+        // region. Put that late-bound region at whatever the outermost
+        // binder is that we encountered in `value`. The caller is
+        // responsible for ensuring that (a) `value` contains at least one
+        // binder and (b) that binder is the one we want to use.
+        let result = self.tcx.fold_regions(&value, &mut false, |r, current_depth| {
+            match inv_skol_map.get(&r) {
+                None => r,
+                Some(br) => {
+                    // It is the responsibility of the caller to ensure
+                    // that each skolemized region appears within a
+                    // binder. In practice, this routine is only used by
+                    // trait checking, and all of the skolemized regions
+                    // appear inside predicates, which always have
+                    // binders, so this assert is satisfied.
+                    assert!(current_depth > 1);
+
+                    ty::ReLateBound(ty::DebruijnIndex::new(current_depth - 1), br.clone())
+                }
+            }
+        });
+
+        debug!("plug_leaks: result={:?}",
+               result);
+
+        result
+    }
 }
