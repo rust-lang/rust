@@ -11,7 +11,14 @@
 //~| NOTE: lint level defined here
 //~| NOTE: lint level defined here
 //~| NOTE: lint level defined here
+//~| NOTE: lint level defined here
 #![allow(unused)]
+
+
+struct Foo {
+    apple: i32,
+    bpple: i32,
+}
 
 fn main() {
     let specter: i32;
@@ -88,6 +95,13 @@ fn main() {
     let rx1: i32;
     let tx_cake: i32;
     let rx_cake: i32;
+}
+
+fn foo() {
+    let Foo { apple, bpple } = unimplemented!();
+    let Foo { apple: spring, //~NOTE existing binding defined here
+        bpple: sprang } = unimplemented!(); //~ ERROR: name is too similar
+    //~^HELP for further information
 }
 
 #[derive(Clone, Debug)]
