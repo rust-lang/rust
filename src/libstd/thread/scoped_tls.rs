@@ -215,7 +215,7 @@ mod imp {
 
     pub struct KeyInner<T> { inner: Cell<*mut T> }
 
-    unsafe impl<T> ::marker::Sync for KeyInner<T> { }
+    unsafe impl<T: ::marker::Sync> ::marker::Sync for KeyInner<T> { }
 
     impl<T> KeyInner<T> {
         pub const fn new() -> KeyInner<T> {
@@ -238,7 +238,7 @@ mod imp {
         pub marker: marker::PhantomData<Cell<T>>,
     }
 
-    unsafe impl<T> marker::Sync for KeyInner<T> { }
+    unsafe impl<T: marker::Sync> marker::Sync for KeyInner<T> { }
 
     impl<T> KeyInner<T> {
         pub const fn new() -> KeyInner<T> {
