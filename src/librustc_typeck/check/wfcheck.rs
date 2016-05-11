@@ -576,45 +576,45 @@ struct AdtField<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-fn struct_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
-    let fields =
-        struct_def.fields().iter()
-        .map(|field| {
-            let field_ty = self.tcx.node_id_to_type(field.id);
-            let field_ty = self.instantiate_type_scheme(field.span,
-                                                        &self.parameter_environment
-                                                             .free_substs,
-                                                        &field_ty);
-            AdtField { ty: field_ty, span: field.span }
-        })
-        .collect();
-    AdtVariant { fields: fields }
-}
+    fn struct_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
+        let fields =
+            struct_def.fields().iter()
+            .map(|field| {
+                let field_ty = self.tcx.node_id_to_type(field.id);
+                let field_ty = self.instantiate_type_scheme(field.span,
+                                                            &self.parameter_environment
+                                                                 .free_substs,
+                                                            &field_ty);
+                AdtField { ty: field_ty, span: field.span }
+            })
+            .collect();
+        AdtVariant { fields: fields }
+    }
 
-fn enum_variants(&self, enum_def: &hir::EnumDef) -> Vec<AdtVariant<'tcx>> {
-    enum_def.variants.iter()
-        .map(|variant| self.struct_variant(&variant.node.data))
-        .collect()
-}
+    fn enum_variants(&self, enum_def: &hir::EnumDef) -> Vec<AdtVariant<'tcx>> {
+        enum_def.variants.iter()
+            .map(|variant| self.struct_variant(&variant.node.data))
+            .collect()
+    }
 
-fn impl_implied_bounds(&self, impl_def_id: DefId, span: Span) -> Vec<Ty<'tcx>> {
-    let free_substs = &self.parameter_environment.free_substs;
-    match self.tcx.impl_trait_ref(impl_def_id) {
-        Some(ref trait_ref) => {
-            // Trait impl: take implied bounds from all types that
-            // appear in the trait reference.
-            let trait_ref = self.instantiate_type_scheme(span, free_substs, trait_ref);
-            trait_ref.substs.types.as_slice().to_vec()
-        }
+    fn impl_implied_bounds(&self, impl_def_id: DefId, span: Span) -> Vec<Ty<'tcx>> {
+        let free_substs = &self.parameter_environment.free_substs;
+        match self.tcx.impl_trait_ref(impl_def_id) {
+            Some(ref trait_ref) => {
+                // Trait impl: take implied bounds from all types that
+                // appear in the trait reference.
+                let trait_ref = self.instantiate_type_scheme(span, free_substs, trait_ref);
+                trait_ref.substs.types.as_slice().to_vec()
+            }
 
-        None => {
-            // Inherent impl: take implied bounds from the self type.
-            let self_ty = self.tcx.lookup_item_type(impl_def_id).ty;
-            let self_ty = self.instantiate_type_scheme(span, free_substs, &self_ty);
-            vec![self_ty]
+            None => {
+                // Inherent impl: take implied bounds from the self type.
+                let self_ty = self.tcx.lookup_item_type(impl_def_id).ty;
+                let self_ty = self.instantiate_type_scheme(span, free_substs, &self_ty);
+                vec![self_ty]
+            }
         }
     }
-}
 }
 
 fn error_192(ccx: &CrateCtxt, span: Span) {

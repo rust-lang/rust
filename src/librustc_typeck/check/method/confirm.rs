@@ -53,23 +53,23 @@ struct InstantiatedMethodSig<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-pub fn confirm_method(&self,
-                      span: Span,
-                      self_expr: &'gcx hir::Expr,
-                      call_expr: &'gcx hir::Expr,
-                      unadjusted_self_ty: Ty<'tcx>,
-                      pick: probe::Pick<'tcx>,
-                      supplied_method_types: Vec<Ty<'tcx>>)
-                      -> ty::MethodCallee<'tcx>
-{
-    debug!("confirm(unadjusted_self_ty={:?}, pick={:?}, supplied_method_types={:?})",
-           unadjusted_self_ty,
-           pick,
-           supplied_method_types);
+    pub fn confirm_method(&self,
+                          span: Span,
+                          self_expr: &'gcx hir::Expr,
+                          call_expr: &'gcx hir::Expr,
+                          unadjusted_self_ty: Ty<'tcx>,
+                          pick: probe::Pick<'tcx>,
+                          supplied_method_types: Vec<Ty<'tcx>>)
+                          -> ty::MethodCallee<'tcx>
+    {
+        debug!("confirm(unadjusted_self_ty={:?}, pick={:?}, supplied_method_types={:?})",
+               unadjusted_self_ty,
+               pick,
+               supplied_method_types);
 
-    let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
-    confirm_cx.confirm(unadjusted_self_ty, pick, supplied_method_types)
-}
+        let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
+        confirm_cx.confirm(unadjusted_self_ty, pick, supplied_method_types)
+    }
 }
 
 impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {

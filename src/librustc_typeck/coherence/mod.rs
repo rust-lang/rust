@@ -66,39 +66,39 @@ impl<'a, 'gcx, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, '
 
 impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
 
-// Returns the def ID of the base type, if there is one.
-fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
-    match ty.sty {
-        TyEnum(def, _) |
-        TyStruct(def, _) => {
-            Some(def.did)
-        }
+    // Returns the def ID of the base type, if there is one.
+    fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
+        match ty.sty {
+            TyEnum(def, _) |
+            TyStruct(def, _) => {
+                Some(def.did)
+            }
 
-        TyTrait(ref t) => {
-            Some(t.principal_def_id())
-        }
+            TyTrait(ref t) => {
+                Some(t.principal_def_id())
+            }
 
-        TyBox(_) => {
-            self.inference_context.tcx.lang_items.owned_box()
-        }
+            TyBox(_) => {
+                self.inference_context.tcx.lang_items.owned_box()
+            }
 
-        TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-        TyStr | TyArray(..) | TySlice(..) | TyFnDef(..) | TyFnPtr(_) |
-        TyTuple(..) | TyParam(..) | TyError |
-        TyRawPtr(_) | TyRef(_, _) | TyProjection(..) => {
-            None
-        }
+            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
+            TyStr | TyArray(..) | TySlice(..) | TyFnDef(..) | TyFnPtr(_) |
+            TyTuple(..) | TyParam(..) | TyError |
+            TyRawPtr(_) | TyRef(_, _) | TyProjection(..) => {
+                None
+            }
 
-        TyInfer(..) | TyClosure(..) => {
-            // `ty` comes from a user declaration so we should only expect types
-            // that the user can type
-            span_bug!(
-                span,
-                "coherence encountered unexpected type searching for base type: {}",
-                ty);
+            TyInfer(..) | TyClosure(..) => {
+                // `ty` comes from a user declaration so we should only expect types
+                // that the user can type
+                span_bug!(
+                    span,
+                    "coherence encountered unexpected type searching for base type: {}",
+                    ty);
+            }
         }
     }
-}
 
     fn check(&self) {
         // Check implementations and traits. This populates the tables

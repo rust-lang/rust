@@ -57,29 +57,29 @@ use rustc::hir::intravisit::{self, Visitor};
 // PUBLIC ENTRY POINTS
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-pub fn closure_analyze_fn(&self, body: &hir::Block) {
-    let mut seed = SeedBorrowKind::new(self);
-    seed.visit_block(body);
-    let closures_with_inferred_kinds = seed.closures_with_inferred_kinds;
+    pub fn closure_analyze_fn(&self, body: &hir::Block) {
+        let mut seed = SeedBorrowKind::new(self);
+        seed.visit_block(body);
+        let closures_with_inferred_kinds = seed.closures_with_inferred_kinds;
 
-    let mut adjust = AdjustBorrowKind::new(self, &closures_with_inferred_kinds);
-    adjust.visit_block(body);
+        let mut adjust = AdjustBorrowKind::new(self, &closures_with_inferred_kinds);
+        adjust.visit_block(body);
 
-    // it's our job to process these.
-    assert!(self.deferred_call_resolutions.borrow().is_empty());
-}
+        // it's our job to process these.
+        assert!(self.deferred_call_resolutions.borrow().is_empty());
+    }
 
-pub fn closure_analyze_const(&self, body: &hir::Expr) {
-    let mut seed = SeedBorrowKind::new(self);
-    seed.visit_expr(body);
-    let closures_with_inferred_kinds = seed.closures_with_inferred_kinds;
+    pub fn closure_analyze_const(&self, body: &hir::Expr) {
+        let mut seed = SeedBorrowKind::new(self);
+        seed.visit_expr(body);
+        let closures_with_inferred_kinds = seed.closures_with_inferred_kinds;
 
-    let mut adjust = AdjustBorrowKind::new(self, &closures_with_inferred_kinds);
-    adjust.visit_expr(body);
+        let mut adjust = AdjustBorrowKind::new(self, &closures_with_inferred_kinds);
+        adjust.visit_expr(body);
 
-    // it's our job to process these.
-    assert!(self.deferred_call_resolutions.borrow().is_empty());
-}
+        // it's our job to process these.
+        assert!(self.deferred_call_resolutions.borrow().is_empty());
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -288,7 +288,8 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                                upvar_id);
 
                         // to move out of an upvar, this must be a FnOnce closure
-                        self.adjust_closure_kind(upvar_id.closure_expr_id, ty::ClosureKind::FnOnce);
+                        self.adjust_closure_kind(upvar_id.closure_expr_id,
+                                                 ty::ClosureKind::FnOnce);
 
                         let upvar_capture_map =
                             &mut self.fcx.tables.borrow_mut().upvar_capture_map;
@@ -301,7 +302,8 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                         // must still adjust the kind of the closure
                         // to be a FnOnce closure to permit moves out
                         // of the environment.
-                        self.adjust_closure_kind(upvar_id.closure_expr_id, ty::ClosureKind::FnOnce);
+                        self.adjust_closure_kind(upvar_id.closure_expr_id,
+                                                 ty::ClosureKind::FnOnce);
                     }
                     mc::NoteNone => {
                     }
@@ -423,9 +425,10 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// We infer the borrow_kind with which to borrow upvars in a stack closure. The borrow_kind
-    /// basically follows a lattice of `imm < unique-imm < mut`, moving from left to right as needed
-    /// (but never right to left). Here the argument `mutbl` is the borrow_kind that is required by
+    /// We infer the borrow_kind with which to borrow upvars in a stack closure.
+    /// The borrow_kind basically follows a lattice of `imm < unique-imm < mut`,
+    /// moving from left to right as needed (but never right to left).
+    /// Here the argument `mutbl` is the borrow_kind that is required by
     /// some particular use.
     fn adjust_upvar_borrow_kind(&self,
                                 upvar_id: ty::UpvarId,

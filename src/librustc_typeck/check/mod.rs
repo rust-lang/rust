@@ -2015,7 +2015,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let Some(_default) = default_map.get(ty) {
                     let resolved = self.resolve_type_vars_if_possible(ty);
 
-                    debug!("select_all_obligations_and_apply_defaults: ty: {:?} with default: {:?}",
+                    debug!("select_all_obligations_and_apply_defaults: \
+                            ty: {:?} with default: {:?}",
                              ty, _default);
 
                     match resolved.sty {
@@ -2209,676 +2210,679 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-/// Executes an autoderef loop for the type `t`. At each step, invokes `should_stop` to decide
-/// whether to terminate the loop. Returns the final type and number of derefs that it performed.
-///
-/// Note: this method does not modify the adjustments table. The caller is responsible for
-/// inserting an AutoAdjustment record into the `self` using one of the suitable methods.
-pub fn autoderef<'b, E, I, T, F>(&self,
-                                 sp: Span,
-                                 base_ty: Ty<'tcx>,
-                                 maybe_exprs: E,
-                                 unresolved_type_action: UnresolvedTypeAction,
-                                 mut lvalue_pref: LvaluePreference,
-                                 mut should_stop: F)
-                                 -> (Ty<'tcx>, usize, Option<T>)
-    // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
-    where E: Fn() -> I,
-          I: IntoIterator<Item=&'b hir::Expr>,
-          F: FnMut(Ty<'tcx>, usize) -> Option<T>,
-{
-    debug!("autoderef(base_ty={:?}, lvalue_pref={:?})",
-           base_ty, lvalue_pref);
+    /// Executes an autoderef loop for the type `t`. At each step, invokes `should_stop`
+    /// to decide whether to terminate the loop. Returns the final type and number of
+    /// derefs that it performed.
+    ///
+    /// Note: this method does not modify the adjustments table. The caller is responsible for
+    /// inserting an AutoAdjustment record into the `self` using one of the suitable methods.
+    pub fn autoderef<'b, E, I, T, F>(&self,
+                                     sp: Span,
+                                     base_ty: Ty<'tcx>,
+                                     maybe_exprs: E,
+                                     unresolved_type_action: UnresolvedTypeAction,
+                                     mut lvalue_pref: LvaluePreference,
+                                     mut should_stop: F)
+                                     -> (Ty<'tcx>, usize, Option<T>)
+        // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
+        where E: Fn() -> I,
+              I: IntoIterator<Item=&'b hir::Expr>,
+              F: FnMut(Ty<'tcx>, usize) -> Option<T>,
+    {
+        debug!("autoderef(base_ty={:?}, lvalue_pref={:?})",
+               base_ty, lvalue_pref);
 
-    let mut t = base_ty;
-    for autoderefs in 0..self.tcx.sess.recursion_limit.get() {
-        let resolved_t = match unresolved_type_action {
-            UnresolvedTypeAction::Error => {
-                self.structurally_resolved_type(sp, t)
+        let mut t = base_ty;
+        for autoderefs in 0..self.tcx.sess.recursion_limit.get() {
+            let resolved_t = match unresolved_type_action {
+                UnresolvedTypeAction::Error => {
+                    self.structurally_resolved_type(sp, t)
+                }
+                UnresolvedTypeAction::Ignore => {
+                    // We can continue even when the type cannot be resolved
+                    // (i.e. it is an inference variable) because `Ty::builtin_deref`
+                    // and `try_overloaded_deref` both simply return `None`
+                    // in such a case without producing spurious errors.
+                    self.resolve_type_vars_if_possible(&t)
+                }
+            };
+            if resolved_t.references_error() {
+                return (resolved_t, autoderefs, None);
             }
-            UnresolvedTypeAction::Ignore => {
-                // We can continue even when the type cannot be resolved
-                // (i.e. it is an inference variable) because `Ty::builtin_deref`
-                // and `try_overloaded_deref` both simply return `None`
-                // in such a case without producing spurious errors.
-                self.resolve_type_vars_if_possible(&t)
+
+            match should_stop(resolved_t, autoderefs) {
+                Some(x) => return (resolved_t, autoderefs, Some(x)),
+                None => {}
             }
+
+            // Otherwise, deref if type is derefable:
+
+            // Super subtle: it might seem as though we should
+            // pass `opt_expr` to `try_overloaded_deref`, so that
+            // the (implicit) autoref of using an overloaded deref
+            // would get added to the adjustment table. However we
+            // do not do that, because it's kind of a
+            // "meta-adjustment" -- instead, we just leave it
+            // unrecorded and know that there "will be" an
+            // autoref. regionck and other bits of the code base,
+            // when they encounter an overloaded autoderef, have
+            // to do some reconstructive surgery. This is a pretty
+            // complex mess that is begging for a proper MIR.
+            let mt = if let Some(mt) = resolved_t.builtin_deref(false, lvalue_pref) {
+                mt
+            } else if let Some(method) = self.try_overloaded_deref(sp, None,
+                                                                   resolved_t, lvalue_pref) {
+                for expr in maybe_exprs() {
+                    let method_call = MethodCall::autoderef(expr.id, autoderefs as u32);
+                    self.tables.borrow_mut().method_map.insert(method_call, method);
+                }
+                self.make_overloaded_lvalue_return_type(method)
+            } else {
+                return (resolved_t, autoderefs, None);
+            };
+
+            t = mt.ty;
+            if mt.mutbl == hir::MutImmutable {
+                lvalue_pref = NoPreference;
+            }
+        }
+
+        // We've reached the recursion limit, error gracefully.
+        span_err!(self.tcx.sess, sp, E0055,
+            "reached the recursion limit while auto-dereferencing {:?}",
+            base_ty);
+        (self.tcx.types.err, 0, None)
+    }
+
+    fn try_overloaded_deref(&self,
+                            span: Span,
+                            base_expr: Option<&hir::Expr>,
+                            base_ty: Ty<'tcx>,
+                            lvalue_pref: LvaluePreference)
+                            -> Option<MethodCallee<'tcx>>
+    {
+        // Try DerefMut first, if preferred.
+        let method = match (lvalue_pref, self.tcx.lang_items.deref_mut_trait()) {
+            (PreferMutLvalue, Some(trait_did)) => {
+                self.lookup_method_in_trait(span, base_expr,
+                                            token::intern("deref_mut"), trait_did,
+                                            base_ty, None)
+            }
+            _ => None
         };
-        if resolved_t.references_error() {
-            return (resolved_t, autoderefs, None);
-        }
 
-        match should_stop(resolved_t, autoderefs) {
-            Some(x) => return (resolved_t, autoderefs, Some(x)),
-            None => {}
-        }
-
-        // Otherwise, deref if type is derefable:
-
-        // Super subtle: it might seem as though we should
-        // pass `opt_expr` to `try_overloaded_deref`, so that
-        // the (implicit) autoref of using an overloaded deref
-        // would get added to the adjustment table. However we
-        // do not do that, because it's kind of a
-        // "meta-adjustment" -- instead, we just leave it
-        // unrecorded and know that there "will be" an
-        // autoref. regionck and other bits of the code base,
-        // when they encounter an overloaded autoderef, have
-        // to do some reconstructive surgery. This is a pretty
-        // complex mess that is begging for a proper MIR.
-        let mt = if let Some(mt) = resolved_t.builtin_deref(false, lvalue_pref) {
-            mt
-        } else if let Some(method) = self.try_overloaded_deref(sp, None,
-                                                               resolved_t, lvalue_pref) {
-            for expr in maybe_exprs() {
-                let method_call = MethodCall::autoderef(expr.id, autoderefs as u32);
-                self.tables.borrow_mut().method_map.insert(method_call, method);
+        // Otherwise, fall back to Deref.
+        let method = match (method, self.tcx.lang_items.deref_trait()) {
+            (None, Some(trait_did)) => {
+                self.lookup_method_in_trait(span, base_expr,
+                                            token::intern("deref"), trait_did,
+                                            base_ty, None)
             }
-            self.make_overloaded_lvalue_return_type(method)
+            (method, _) => method
+        };
+
+        method
+    }
+
+    /// For the overloaded lvalue expressions (`*x`, `x[3]`), the trait
+    /// returns a type of `&T`, but the actual type we assign to the
+    /// *expression* is `T`. So this function just peels off the return
+    /// type by one layer to yield `T`.
+    fn make_overloaded_lvalue_return_type(&self,
+                                          method: MethodCallee<'tcx>)
+                                          -> ty::TypeAndMut<'tcx>
+    {
+        // extract method return type, which will be &T;
+        // all LB regions should have been instantiated during method lookup
+        let ret_ty = method.ty.fn_ret();
+        let ret_ty = self.tcx.no_late_bound_regions(&ret_ty).unwrap().unwrap();
+
+        // method returns &T, but the type as visible to user is T, so deref
+        ret_ty.builtin_deref(true, NoPreference).unwrap()
+    }
+
+    fn lookup_indexing(&self,
+                       expr: &hir::Expr,
+                       base_expr: &'gcx hir::Expr,
+                       base_ty: Ty<'tcx>,
+                       idx_ty: Ty<'tcx>,
+                       lvalue_pref: LvaluePreference)
+                       -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
+    {
+        // FIXME(#18741) -- this is almost but not quite the same as the
+        // autoderef that normal method probing does. They could likely be
+        // consolidated.
+
+        let (ty, autoderefs, final_mt) = self.autoderef(base_expr.span,
+                                                        base_ty,
+                                                        || Some(base_expr),
+                                                        UnresolvedTypeAction::Error,
+                                                        lvalue_pref,
+                                                        |adj_ty, idx| {
+            self.try_index_step(MethodCall::expr(expr.id), expr, base_expr,
+                                adj_ty, idx, false, lvalue_pref, idx_ty)
+        });
+
+        if final_mt.is_some() {
+            return final_mt;
+        }
+
+        // After we have fully autoderef'd, if the resulting type is [T; n], then
+        // do a final unsized coercion to yield [T].
+        if let ty::TyArray(element_ty, _) = ty.sty {
+            let adjusted_ty = self.tcx.mk_slice(element_ty);
+            self.try_index_step(MethodCall::expr(expr.id), expr, base_expr,
+                                adjusted_ty, autoderefs, true, lvalue_pref, idx_ty)
         } else {
-            return (resolved_t, autoderefs, None);
+            None
+        }
+    }
+
+    /// To type-check `base_expr[index_expr]`, we progressively autoderef
+    /// (and otherwise adjust) `base_expr`, looking for a type which either
+    /// supports builtin indexing or overloaded indexing.
+    /// This loop implements one step in that search; the autoderef loop
+    /// is implemented by `lookup_indexing`.
+    fn try_index_step(&self,
+                      method_call: MethodCall,
+                      expr: &hir::Expr,
+                      base_expr: &'gcx hir::Expr,
+                      adjusted_ty: Ty<'tcx>,
+                      autoderefs: usize,
+                      unsize: bool,
+                      lvalue_pref: LvaluePreference,
+                      index_ty: Ty<'tcx>)
+                      -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
+    {
+        let tcx = self.tcx;
+        debug!("try_index_step(expr={:?}, base_expr.id={:?}, adjusted_ty={:?}, \
+                               autoderefs={}, unsize={}, index_ty={:?})",
+               expr,
+               base_expr,
+               adjusted_ty,
+               autoderefs,
+               unsize,
+               index_ty);
+
+        let input_ty = self.next_ty_var();
+
+        // First, try built-in indexing.
+        match (adjusted_ty.builtin_index(), &index_ty.sty) {
+            (Some(ty), &ty::TyUint(ast::UintTy::Us)) | (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
+                debug!("try_index_step: success, using built-in indexing");
+                // If we had `[T; N]`, we should've caught it before unsizing to `[T]`.
+                assert!(!unsize);
+                self.write_autoderef_adjustment(base_expr.id, autoderefs);
+                return Some((tcx.types.usize, ty));
+            }
+            _ => {}
+        }
+
+        // Try `IndexMut` first, if preferred.
+        let method = match (lvalue_pref, tcx.lang_items.index_mut_trait()) {
+            (PreferMutLvalue, Some(trait_did)) => {
+                self.lookup_method_in_trait_adjusted(expr.span,
+                                                     Some(&base_expr),
+                                                     token::intern("index_mut"),
+                                                     trait_did,
+                                                     autoderefs,
+                                                     unsize,
+                                                     adjusted_ty,
+                                                     Some(vec![input_ty]))
+            }
+            _ => None,
         };
 
-        t = mt.ty;
-        if mt.mutbl == hir::MutImmutable {
-            lvalue_pref = NoPreference;
-        }
-    }
-
-    // We've reached the recursion limit, error gracefully.
-    span_err!(self.tcx.sess, sp, E0055,
-        "reached the recursion limit while auto-dereferencing {:?}",
-        base_ty);
-    (self.tcx.types.err, 0, None)
-}
-
-fn try_overloaded_deref(&self,
-                        span: Span,
-                        base_expr: Option<&hir::Expr>,
-                        base_ty: Ty<'tcx>,
-                        lvalue_pref: LvaluePreference)
-                        -> Option<MethodCallee<'tcx>>
-{
-    // Try DerefMut first, if preferred.
-    let method = match (lvalue_pref, self.tcx.lang_items.deref_mut_trait()) {
-        (PreferMutLvalue, Some(trait_did)) => {
-            self.lookup_method_in_trait(span, base_expr,
-                                        token::intern("deref_mut"), trait_did,
-                                        base_ty, None)
-        }
-        _ => None
-    };
-
-    // Otherwise, fall back to Deref.
-    let method = match (method, self.tcx.lang_items.deref_trait()) {
-        (None, Some(trait_did)) => {
-            self.lookup_method_in_trait(span, base_expr,
-                                        token::intern("deref"), trait_did,
-                                        base_ty, None)
-        }
-        (method, _) => method
-    };
-
-    method
-}
-
-/// For the overloaded lvalue expressions (`*x`, `x[3]`), the trait returns a type of `&T`, but the
-/// actual type we assign to the *expression* is `T`. So this function just peels off the return
-/// type by one layer to yield `T`.
-fn make_overloaded_lvalue_return_type(&self,
-                                      method: MethodCallee<'tcx>)
-                                      -> ty::TypeAndMut<'tcx>
-{
-    // extract method return type, which will be &T;
-    // all LB regions should have been instantiated during method lookup
-    let ret_ty = method.ty.fn_ret();
-    let ret_ty = self.tcx.no_late_bound_regions(&ret_ty).unwrap().unwrap();
-
-    // method returns &T, but the type as visible to user is T, so deref
-    ret_ty.builtin_deref(true, NoPreference).unwrap()
-}
-
-fn lookup_indexing(&self,
-                   expr: &hir::Expr,
-                   base_expr: &'gcx hir::Expr,
-                   base_ty: Ty<'tcx>,
-                   idx_ty: Ty<'tcx>,
-                   lvalue_pref: LvaluePreference)
-                   -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
-{
-    // FIXME(#18741) -- this is almost but not quite the same as the
-    // autoderef that normal method probing does. They could likely be
-    // consolidated.
-
-    let (ty, autoderefs, final_mt) = self.autoderef(base_expr.span,
-                                                    base_ty,
-                                                    || Some(base_expr),
-                                                    UnresolvedTypeAction::Error,
-                                                    lvalue_pref,
-                                                    |adj_ty, idx| {
-        self.try_index_step(MethodCall::expr(expr.id), expr, base_expr,
-                            adj_ty, idx, false, lvalue_pref, idx_ty)
-    });
-
-    if final_mt.is_some() {
-        return final_mt;
-    }
-
-    // After we have fully autoderef'd, if the resulting type is [T; n], then
-    // do a final unsized coercion to yield [T].
-    if let ty::TyArray(element_ty, _) = ty.sty {
-        let adjusted_ty = self.tcx.mk_slice(element_ty);
-        self.try_index_step(MethodCall::expr(expr.id), expr, base_expr,
-                            adjusted_ty, autoderefs, true, lvalue_pref, idx_ty)
-    } else {
-        None
-    }
-}
-
-/// To type-check `base_expr[index_expr]`, we progressively autoderef (and otherwise adjust)
-/// `base_expr`, looking for a type which either supports builtin indexing or overloaded indexing.
-/// This loop implements one step in that search; the autoderef loop is implemented by
-/// `lookup_indexing`.
-fn try_index_step(&self,
-                  method_call: MethodCall,
-                  expr: &hir::Expr,
-                  base_expr: &'gcx hir::Expr,
-                  adjusted_ty: Ty<'tcx>,
-                  autoderefs: usize,
-                  unsize: bool,
-                  lvalue_pref: LvaluePreference,
-                  index_ty: Ty<'tcx>)
-                  -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
-{
-    let tcx = self.tcx;
-    debug!("try_index_step(expr={:?}, base_expr.id={:?}, adjusted_ty={:?}, \
-                           autoderefs={}, unsize={}, index_ty={:?})",
-           expr,
-           base_expr,
-           adjusted_ty,
-           autoderefs,
-           unsize,
-           index_ty);
-
-    let input_ty = self.next_ty_var();
-
-    // First, try built-in indexing.
-    match (adjusted_ty.builtin_index(), &index_ty.sty) {
-        (Some(ty), &ty::TyUint(ast::UintTy::Us)) | (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
-            debug!("try_index_step: success, using built-in indexing");
-            // If we had `[T; N]`, we should've caught it before unsizing to `[T]`.
-            assert!(!unsize);
-            self.write_autoderef_adjustment(base_expr.id, autoderefs);
-            return Some((tcx.types.usize, ty));
-        }
-        _ => {}
-    }
-
-    // Try `IndexMut` first, if preferred.
-    let method = match (lvalue_pref, tcx.lang_items.index_mut_trait()) {
-        (PreferMutLvalue, Some(trait_did)) => {
-            self.lookup_method_in_trait_adjusted(expr.span,
-                                                 Some(&base_expr),
-                                                 token::intern("index_mut"),
-                                                 trait_did,
-                                                 autoderefs,
-                                                 unsize,
-                                                 adjusted_ty,
-                                                 Some(vec![input_ty]))
-        }
-        _ => None,
-    };
-
-    // Otherwise, fall back to `Index`.
-    let method = match (method, tcx.lang_items.index_trait()) {
-        (None, Some(trait_did)) => {
-            self.lookup_method_in_trait_adjusted(expr.span,
-                                                 Some(&base_expr),
-                                                 token::intern("index"),
-                                                 trait_did,
-                                                 autoderefs,
-                                                 unsize,
-                                                 adjusted_ty,
-                                                 Some(vec![input_ty]))
-        }
-        (method, _) => method,
-    };
-
-    // If some lookup succeeds, write callee into table and extract index/element
-    // type from the method signature.
-    // If some lookup succeeded, install method in table
-    method.map(|method| {
-        debug!("try_index_step: success, using overloaded indexing");
-        self.tables.borrow_mut().method_map.insert(method_call, method);
-        (input_ty, self.make_overloaded_lvalue_return_type(method).ty)
-    })
-}
-
-fn check_method_argument_types(&self,
-                               sp: Span,
-                               method_fn_ty: Ty<'tcx>,
-                               callee_expr: &'gcx hir::Expr,
-                               args_no_rcvr: &'gcx [P<hir::Expr>],
-                               tuple_arguments: TupleArgumentsFlag,
-                               expected: Expectation<'tcx>)
-                               -> ty::FnOutput<'tcx> {
-    if method_fn_ty.references_error() {
-        let err_inputs = self.err_args(args_no_rcvr.len());
-
-        let err_inputs = match tuple_arguments {
-            DontTupleArguments => err_inputs,
-            TupleArguments => vec![self.tcx.mk_tup(err_inputs)],
+        // Otherwise, fall back to `Index`.
+        let method = match (method, tcx.lang_items.index_trait()) {
+            (None, Some(trait_did)) => {
+                self.lookup_method_in_trait_adjusted(expr.span,
+                                                     Some(&base_expr),
+                                                     token::intern("index"),
+                                                     trait_did,
+                                                     autoderefs,
+                                                     unsize,
+                                                     adjusted_ty,
+                                                     Some(vec![input_ty]))
+            }
+            (method, _) => method,
         };
 
-        self.check_argument_types(sp, &err_inputs[..], &[], args_no_rcvr,
-                                  false, tuple_arguments);
-        ty::FnConverging(self.tcx.types.err)
-    } else {
-        match method_fn_ty.sty {
-            ty::TyFnDef(_, _, ref fty) => {
-                // HACK(eddyb) ignore self in the definition (see above).
-                let expected_arg_tys = self.expected_types_for_fn_args(sp, expected,
-                                                                       fty.sig.0.output,
-                                                                       &fty.sig.0.inputs[1..]);
-                self.check_argument_types(sp, &fty.sig.0.inputs[1..], &expected_arg_tys[..],
-                                          args_no_rcvr, fty.sig.0.variadic, tuple_arguments);
-                fty.sig.0.output
-            }
-            _ => {
-                span_bug!(callee_expr.span, "method without bare fn type");
-            }
-        }
-    }
-}
-
-/// Generic function that factors out common logic from function calls, method calls and overloaded
-/// operators.
-fn check_argument_types(&self,
-                        sp: Span,
-                        fn_inputs: &[Ty<'tcx>],
-                        expected_arg_tys: &[Ty<'tcx>],
-                        args: &'gcx [P<hir::Expr>],
-                        variadic: bool,
-                        tuple_arguments: TupleArgumentsFlag) {
-    let tcx = self.tcx;
-
-    // Grab the argument types, supplying fresh type variables
-    // if the wrong number of arguments were supplied
-    let supplied_arg_count = if tuple_arguments == DontTupleArguments {
-        args.len()
-    } else {
-        1
-    };
-
-    // All the input types from the fn signature must outlive the call
-    // so as to validate implied bounds.
-    for &fn_input_ty in fn_inputs {
-        self.register_wf_obligation(fn_input_ty, sp, traits::MiscObligation);
+        // If some lookup succeeds, write callee into table and extract index/element
+        // type from the method signature.
+        // If some lookup succeeded, install method in table
+        method.map(|method| {
+            debug!("try_index_step: success, using overloaded indexing");
+            self.tables.borrow_mut().method_map.insert(method_call, method);
+            (input_ty, self.make_overloaded_lvalue_return_type(method).ty)
+        })
     }
 
-    let mut expected_arg_tys = expected_arg_tys;
-    let expected_arg_count = fn_inputs.len();
-    let formal_tys = if tuple_arguments == TupleArguments {
-        let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
-        match tuple_type.sty {
-            ty::TyTuple(arg_types) => {
-                if arg_types.len() != args.len() {
-                    span_err!(tcx.sess, sp, E0057,
-                        "this function takes {} parameter{} but {} parameter{} supplied",
-                        arg_types.len(),
-                        if arg_types.len() == 1 {""} else {"s"},
-                        args.len(),
-                        if args.len() == 1 {" was"} else {"s were"});
-                    expected_arg_tys = &[];
-                    self.err_args(args.len())
-                } else {
-                    expected_arg_tys = match expected_arg_tys.get(0) {
-                        Some(&ty) => match ty.sty {
-                            ty::TyTuple(ref tys) => &tys,
-                            _ => &[]
-                        },
-                        None => &[]
-                    };
-                    arg_types.to_vec()
+    fn check_method_argument_types(&self,
+                                   sp: Span,
+                                   method_fn_ty: Ty<'tcx>,
+                                   callee_expr: &'gcx hir::Expr,
+                                   args_no_rcvr: &'gcx [P<hir::Expr>],
+                                   tuple_arguments: TupleArgumentsFlag,
+                                   expected: Expectation<'tcx>)
+                                   -> ty::FnOutput<'tcx> {
+        if method_fn_ty.references_error() {
+            let err_inputs = self.err_args(args_no_rcvr.len());
+
+            let err_inputs = match tuple_arguments {
+                DontTupleArguments => err_inputs,
+                TupleArguments => vec![self.tcx.mk_tup(err_inputs)],
+            };
+
+            self.check_argument_types(sp, &err_inputs[..], &[], args_no_rcvr,
+                                      false, tuple_arguments);
+            ty::FnConverging(self.tcx.types.err)
+        } else {
+            match method_fn_ty.sty {
+                ty::TyFnDef(_, _, ref fty) => {
+                    // HACK(eddyb) ignore self in the definition (see above).
+                    let expected_arg_tys = self.expected_types_for_fn_args(sp, expected,
+                                                                           fty.sig.0.output,
+                                                                           &fty.sig.0.inputs[1..]);
+                    self.check_argument_types(sp, &fty.sig.0.inputs[1..], &expected_arg_tys[..],
+                                              args_no_rcvr, fty.sig.0.variadic, tuple_arguments);
+                    fty.sig.0.output
+                }
+                _ => {
+                    span_bug!(callee_expr.span, "method without bare fn type");
                 }
             }
-            _ => {
-                span_err!(tcx.sess, sp, E0059,
-                    "cannot use call notation; the first type parameter \
-                     for the function trait is neither a tuple nor unit");
-                expected_arg_tys = &[];
-                self.err_args(args.len())
-            }
         }
-    } else if expected_arg_count == supplied_arg_count {
-        fn_inputs.to_vec()
-    } else if variadic {
-        if supplied_arg_count >= expected_arg_count {
-            fn_inputs.to_vec()
+    }
+
+    /// Generic function that factors out common logic from function calls,
+    /// method calls and overloaded operators.
+    fn check_argument_types(&self,
+                            sp: Span,
+                            fn_inputs: &[Ty<'tcx>],
+                            expected_arg_tys: &[Ty<'tcx>],
+                            args: &'gcx [P<hir::Expr>],
+                            variadic: bool,
+                            tuple_arguments: TupleArgumentsFlag) {
+        let tcx = self.tcx;
+
+        // Grab the argument types, supplying fresh type variables
+        // if the wrong number of arguments were supplied
+        let supplied_arg_count = if tuple_arguments == DontTupleArguments {
+            args.len()
         } else {
-            span_err!(tcx.sess, sp, E0060,
-                "this function takes at least {} parameter{} \
-                 but {} parameter{} supplied",
+            1
+        };
+
+        // All the input types from the fn signature must outlive the call
+        // so as to validate implied bounds.
+        for &fn_input_ty in fn_inputs {
+            self.register_wf_obligation(fn_input_ty, sp, traits::MiscObligation);
+        }
+
+        let mut expected_arg_tys = expected_arg_tys;
+        let expected_arg_count = fn_inputs.len();
+        let formal_tys = if tuple_arguments == TupleArguments {
+            let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
+            match tuple_type.sty {
+                ty::TyTuple(arg_types) => {
+                    if arg_types.len() != args.len() {
+                        span_err!(tcx.sess, sp, E0057,
+                            "this function takes {} parameter{} but {} parameter{} supplied",
+                            arg_types.len(),
+                            if arg_types.len() == 1 {""} else {"s"},
+                            args.len(),
+                            if args.len() == 1 {" was"} else {"s were"});
+                        expected_arg_tys = &[];
+                        self.err_args(args.len())
+                    } else {
+                        expected_arg_tys = match expected_arg_tys.get(0) {
+                            Some(&ty) => match ty.sty {
+                                ty::TyTuple(ref tys) => &tys,
+                                _ => &[]
+                            },
+                            None => &[]
+                        };
+                        arg_types.to_vec()
+                    }
+                }
+                _ => {
+                    span_err!(tcx.sess, sp, E0059,
+                        "cannot use call notation; the first type parameter \
+                         for the function trait is neither a tuple nor unit");
+                    expected_arg_tys = &[];
+                    self.err_args(args.len())
+                }
+            }
+        } else if expected_arg_count == supplied_arg_count {
+            fn_inputs.to_vec()
+        } else if variadic {
+            if supplied_arg_count >= expected_arg_count {
+                fn_inputs.to_vec()
+            } else {
+                span_err!(tcx.sess, sp, E0060,
+                    "this function takes at least {} parameter{} \
+                     but {} parameter{} supplied",
+                    expected_arg_count,
+                    if expected_arg_count == 1 {""} else {"s"},
+                    supplied_arg_count,
+                    if supplied_arg_count == 1 {" was"} else {"s were"});
+                expected_arg_tys = &[];
+                self.err_args(supplied_arg_count)
+            }
+        } else {
+            span_err!(tcx.sess, sp, E0061,
+                "this function takes {} parameter{} but {} parameter{} supplied",
                 expected_arg_count,
                 if expected_arg_count == 1 {""} else {"s"},
                 supplied_arg_count,
                 if supplied_arg_count == 1 {" was"} else {"s were"});
             expected_arg_tys = &[];
             self.err_args(supplied_arg_count)
-        }
-    } else {
-        span_err!(tcx.sess, sp, E0061,
-            "this function takes {} parameter{} but {} parameter{} supplied",
-            expected_arg_count,
-            if expected_arg_count == 1 {""} else {"s"},
-            supplied_arg_count,
-            if supplied_arg_count == 1 {" was"} else {"s were"});
-        expected_arg_tys = &[];
-        self.err_args(supplied_arg_count)
-    };
-
-    debug!("check_argument_types: formal_tys={:?}",
-           formal_tys.iter().map(|t| self.ty_to_string(*t)).collect::<Vec<String>>());
-
-    // Check the arguments.
-    // We do this in a pretty awful way: first we typecheck any arguments
-    // that are not anonymous functions, then we typecheck the anonymous
-    // functions. This is so that we have more information about the types
-    // of arguments when we typecheck the functions. This isn't really the
-    // right way to do this.
-    let xs = [false, true];
-    let mut any_diverges = false; // has any of the arguments diverged?
-    let mut warned = false; // have we already warned about unreachable code?
-    for check_blocks in &xs {
-        let check_blocks = *check_blocks;
-        debug!("check_blocks={}", check_blocks);
-
-        // More awful hacks: before we check argument types, try to do
-        // an "opportunistic" vtable resolution of any trait bounds on
-        // the call. This helps coercions.
-        if check_blocks {
-            self.select_obligations_where_possible();
-        }
-
-        // For variadic functions, we don't have a declared type for all of
-        // the arguments hence we only do our usual type checking with
-        // the arguments who's types we do know.
-        let t = if variadic {
-            expected_arg_count
-        } else if tuple_arguments == TupleArguments {
-            args.len()
-        } else {
-            supplied_arg_count
         };
-        for (i, arg) in args.iter().take(t).enumerate() {
+
+        debug!("check_argument_types: formal_tys={:?}",
+               formal_tys.iter().map(|t| self.ty_to_string(*t)).collect::<Vec<String>>());
+
+        // Check the arguments.
+        // We do this in a pretty awful way: first we typecheck any arguments
+        // that are not anonymous functions, then we typecheck the anonymous
+        // functions. This is so that we have more information about the types
+        // of arguments when we typecheck the functions. This isn't really the
+        // right way to do this.
+        let xs = [false, true];
+        let mut any_diverges = false; // has any of the arguments diverged?
+        let mut warned = false; // have we already warned about unreachable code?
+        for check_blocks in &xs {
+            let check_blocks = *check_blocks;
+            debug!("check_blocks={}", check_blocks);
+
+            // More awful hacks: before we check argument types, try to do
+            // an "opportunistic" vtable resolution of any trait bounds on
+            // the call. This helps coercions.
+            if check_blocks {
+                self.select_obligations_where_possible();
+            }
+
+            // For variadic functions, we don't have a declared type for all of
+            // the arguments hence we only do our usual type checking with
+            // the arguments who's types we do know.
+            let t = if variadic {
+                expected_arg_count
+            } else if tuple_arguments == TupleArguments {
+                args.len()
+            } else {
+                supplied_arg_count
+            };
+            for (i, arg) in args.iter().take(t).enumerate() {
+                if any_diverges && !warned {
+                    self.tcx
+                        .sess
+                        .add_lint(lint::builtin::UNREACHABLE_CODE,
+                                  arg.id,
+                                  arg.span,
+                                  "unreachable expression".to_string());
+                    warned = true;
+                }
+                let is_block = match arg.node {
+                    hir::ExprClosure(..) => true,
+                    _ => false
+                };
+
+                if is_block == check_blocks {
+                    debug!("checking the argument");
+                    let formal_ty = formal_tys[i];
+
+                    // The special-cased logic below has three functions:
+                    // 1. Provide as good of an expected type as possible.
+                    let expected = expected_arg_tys.get(i).map(|&ty| {
+                        Expectation::rvalue_hint(self, ty)
+                    });
+
+                    self.check_expr_with_expectation(&arg,
+                        expected.unwrap_or(ExpectHasType(formal_ty)));
+                    // 2. Coerce to the most detailed type that could be coerced
+                    //    to, which is `expected_ty` if `rvalue_hint` returns an
+                    //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
+                    let coerce_ty = expected.and_then(|e| e.only_has_type(self));
+                    self.demand_coerce(&arg, coerce_ty.unwrap_or(formal_ty));
+
+                    // 3. Relate the expected type and the formal one,
+                    //    if the expected type was used for the coercion.
+                    coerce_ty.map(|ty| self.demand_suptype(arg.span, formal_ty, ty));
+                }
+
+                if let Some(&arg_ty) = self.tables.borrow().node_types.get(&arg.id) {
+                    any_diverges = any_diverges || self.type_var_diverges(arg_ty);
+                }
+            }
             if any_diverges && !warned {
+                let parent = self.tcx.map.get_parent_node(args[0].id);
                 self.tcx
                     .sess
                     .add_lint(lint::builtin::UNREACHABLE_CODE,
-                              arg.id,
-                              arg.span,
-                              "unreachable expression".to_string());
+                              parent,
+                              sp,
+                              "unreachable call".to_string());
                 warned = true;
             }
-            let is_block = match arg.node {
-                hir::ExprClosure(..) => true,
-                _ => false
-            };
 
-            if is_block == check_blocks {
-                debug!("checking the argument");
-                let formal_ty = formal_tys[i];
+        }
 
-                // The special-cased logic below has three functions:
-                // 1. Provide as good of an expected type as possible.
-                let expected = expected_arg_tys.get(i).map(|&ty| {
-                    Expectation::rvalue_hint(self, ty)
+        // We also need to make sure we at least write the ty of the other
+        // arguments which we skipped above.
+        if variadic {
+            for arg in args.iter().skip(expected_arg_count) {
+                self.check_expr(&arg);
+
+                // There are a few types which get autopromoted when passed via varargs
+                // in C but we just error out instead and require explicit casts.
+                let arg_ty = self.structurally_resolved_type(arg.span,
+                                                             self.expr_ty(&arg));
+                match arg_ty.sty {
+                    ty::TyFloat(ast::FloatTy::F32) => {
+                        self.type_error_message(arg.span, |t| {
+                            format!("can't pass an `{}` to variadic \
+                                     function, cast to `c_double`", t)
+                        }, arg_ty, None);
+                    }
+                    ty::TyInt(ast::IntTy::I8) | ty::TyInt(ast::IntTy::I16) | ty::TyBool => {
+                        self.type_error_message(arg.span, |t| {
+                            format!("can't pass `{}` to variadic \
+                                     function, cast to `c_int`",
+                                           t)
+                        }, arg_ty, None);
+                    }
+                    ty::TyUint(ast::UintTy::U8) | ty::TyUint(ast::UintTy::U16) => {
+                        self.type_error_message(arg.span, |t| {
+                            format!("can't pass `{}` to variadic \
+                                     function, cast to `c_uint`",
+                                           t)
+                        }, arg_ty, None);
+                    }
+                    ty::TyFnDef(_, _, f) => {
+                        let ptr_ty = self.tcx.mk_fn_ptr(f);
+                        let ptr_ty = self.resolve_type_vars_if_possible(&ptr_ty);
+                        self.type_error_message(arg.span,
+                                                |t| {
+                            format!("can't pass `{}` to variadic \
+                                     function, cast to `{}`", t, ptr_ty)
+                        }, arg_ty, None);
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
+        (0..len).map(|_| self.tcx.types.err).collect()
+    }
+
+    fn write_call(&self,
+                  call_expr: &hir::Expr,
+                  output: ty::FnOutput<'tcx>) {
+        self.write_ty(call_expr.id, match output {
+            ty::FnConverging(output_ty) => output_ty,
+            ty::FnDiverging => self.next_diverging_ty_var()
+        });
+    }
+
+    // AST fragment checking
+    fn check_lit(&self,
+                 lit: &ast::Lit,
+                 expected: Expectation<'tcx>)
+                 -> Ty<'tcx>
+    {
+        let tcx = self.tcx;
+
+        match lit.node {
+            ast::LitKind::Str(..) => tcx.mk_static_str(),
+            ast::LitKind::ByteStr(ref v) => {
+                tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic),
+                                tcx.mk_array(tcx.types.u8, v.len()))
+            }
+            ast::LitKind::Byte(_) => tcx.types.u8,
+            ast::LitKind::Char(_) => tcx.types.char,
+            ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(t),
+            ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(t),
+            ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
+                let opt_ty = expected.to_option(self).and_then(|ty| {
+                    match ty.sty {
+                        ty::TyInt(_) | ty::TyUint(_) => Some(ty),
+                        ty::TyChar => Some(tcx.types.u8),
+                        ty::TyRawPtr(..) => Some(tcx.types.usize),
+                        ty::TyFnDef(..) | ty::TyFnPtr(_) => Some(tcx.types.usize),
+                        _ => None
+                    }
                 });
-
-                self.check_expr_with_expectation(&arg,
-                    expected.unwrap_or(ExpectHasType(formal_ty)));
-                // 2. Coerce to the most detailed type that could be coerced
-                //    to, which is `expected_ty` if `rvalue_hint` returns an
-                //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
-                let coerce_ty = expected.and_then(|e| e.only_has_type(self));
-                self.demand_coerce(&arg, coerce_ty.unwrap_or(formal_ty));
-
-                // 3. Relate the expected type and the formal one,
-                //    if the expected type was used for the coercion.
-                coerce_ty.map(|ty| self.demand_suptype(arg.span, formal_ty, ty));
+                opt_ty.unwrap_or_else(
+                    || tcx.mk_int_var(self.next_int_var_id()))
             }
-
-            if let Some(&arg_ty) = self.tables.borrow().node_types.get(&arg.id) {
-                any_diverges = any_diverges || self.type_var_diverges(arg_ty);
+            ast::LitKind::Float(_, t) => tcx.mk_mach_float(t),
+            ast::LitKind::FloatUnsuffixed(_) => {
+                let opt_ty = expected.to_option(self).and_then(|ty| {
+                    match ty.sty {
+                        ty::TyFloat(_) => Some(ty),
+                        _ => None
+                    }
+                });
+                opt_ty.unwrap_or_else(
+                    || tcx.mk_float_var(self.next_float_var_id()))
             }
+            ast::LitKind::Bool(_) => tcx.types.bool
         }
-        if any_diverges && !warned {
-            let parent = self.tcx.map.get_parent_node(args[0].id);
-            self.tcx
-                .sess
-                .add_lint(lint::builtin::UNREACHABLE_CODE,
-                          parent,
-                          sp,
-                          "unreachable call".to_string());
-            warned = true;
-        }
-
     }
 
-    // We also need to make sure we at least write the ty of the other
-    // arguments which we skipped above.
-    if variadic {
-        for arg in args.iter().skip(expected_arg_count) {
-            self.check_expr(&arg);
-
-            // There are a few types which get autopromoted when passed via varargs
-            // in C but we just error out instead and require explicit casts.
-            let arg_ty = self.structurally_resolved_type(arg.span,
-                                                         self.expr_ty(&arg));
-            match arg_ty.sty {
-                ty::TyFloat(ast::FloatTy::F32) => {
-                    self.type_error_message(arg.span, |t| {
-                        format!("can't pass an `{}` to variadic \
-                                 function, cast to `c_double`", t)
-                    }, arg_ty, None);
-                }
-                ty::TyInt(ast::IntTy::I8) | ty::TyInt(ast::IntTy::I16) | ty::TyBool => {
-                    self.type_error_message(arg.span, |t| {
-                        format!("can't pass `{}` to variadic \
-                                 function, cast to `c_int`",
-                                       t)
-                    }, arg_ty, None);
-                }
-                ty::TyUint(ast::UintTy::U8) | ty::TyUint(ast::UintTy::U16) => {
-                    self.type_error_message(arg.span, |t| {
-                        format!("can't pass `{}` to variadic \
-                                 function, cast to `c_uint`",
-                                       t)
-                    }, arg_ty, None);
-                }
-                ty::TyFnDef(_, _, f) => {
-                    let ptr_ty = self.tcx.mk_fn_ptr(f);
-                    let ptr_ty = self.resolve_type_vars_if_possible(&ptr_ty);
-                    self.type_error_message(arg.span,
-                                            |t| {
-                        format!("can't pass `{}` to variadic \
-                                 function, cast to `{}`", t, ptr_ty)
-                    }, arg_ty, None);
-                }
-                _ => {}
-            }
-        }
+    fn check_expr_eq_type(&self,
+                          expr: &'gcx hir::Expr,
+                          expected: Ty<'tcx>) {
+        self.check_expr_with_hint(expr, expected);
+        self.demand_eqtype(expr.span, expected, self.expr_ty(expr));
     }
-}
 
-fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
-    (0..len).map(|_| self.tcx.types.err).collect()
-}
-
-fn write_call(&self,
-              call_expr: &hir::Expr,
-              output: ty::FnOutput<'tcx>) {
-    self.write_ty(call_expr.id, match output {
-        ty::FnConverging(output_ty) => output_ty,
-        ty::FnDiverging => self.next_diverging_ty_var()
-    });
-}
-
-// AST fragment checking
-fn check_lit(&self,
-             lit: &ast::Lit,
-             expected: Expectation<'tcx>)
-             -> Ty<'tcx>
-{
-    let tcx = self.tcx;
-
-    match lit.node {
-        ast::LitKind::Str(..) => tcx.mk_static_str(),
-        ast::LitKind::ByteStr(ref v) => {
-            tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic),
-                            tcx.mk_array(tcx.types.u8, v.len()))
-        }
-        ast::LitKind::Byte(_) => tcx.types.u8,
-        ast::LitKind::Char(_) => tcx.types.char,
-        ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(t),
-        ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(t),
-        ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
-            let opt_ty = expected.to_option(self).and_then(|ty| {
-                match ty.sty {
-                    ty::TyInt(_) | ty::TyUint(_) => Some(ty),
-                    ty::TyChar => Some(tcx.types.u8),
-                    ty::TyRawPtr(..) => Some(tcx.types.usize),
-                    ty::TyFnDef(..) | ty::TyFnPtr(_) => Some(tcx.types.usize),
-                    _ => None
-                }
-            });
-            opt_ty.unwrap_or_else(
-                || tcx.mk_int_var(self.next_int_var_id()))
-        }
-        ast::LitKind::Float(_, t) => tcx.mk_mach_float(t),
-        ast::LitKind::FloatUnsuffixed(_) => {
-            let opt_ty = expected.to_option(self).and_then(|ty| {
-                match ty.sty {
-                    ty::TyFloat(_) => Some(ty),
-                    _ => None
-                }
-            });
-            opt_ty.unwrap_or_else(
-                || tcx.mk_float_var(self.next_float_var_id()))
-        }
-        ast::LitKind::Bool(_) => tcx.types.bool
-    }
-}
-
-fn check_expr_eq_type(&self,
-                      expr: &'gcx hir::Expr,
-                      expected: Ty<'tcx>) {
-    self.check_expr_with_hint(expr, expected);
-    self.demand_eqtype(expr.span, expected, self.expr_ty(expr));
-}
-
-pub fn check_expr_has_type(&self,
-                           expr: &'gcx hir::Expr,
-                           expected: Ty<'tcx>) {
-    self.check_expr_with_hint(expr, expected);
-    self.demand_suptype(expr.span, expected, self.expr_ty(expr));
-}
-
-fn check_expr_coercable_to_type(&self,
-                                expr: &'gcx hir::Expr,
-                                expected: Ty<'tcx>) {
-    self.check_expr_with_hint(expr, expected);
-    self.demand_coerce(expr, expected);
-}
-
-fn check_expr_with_hint(&self, expr: &'gcx hir::Expr,
-                        expected: Ty<'tcx>) {
-    self.check_expr_with_expectation(expr, ExpectHasType(expected))
-}
-
-fn check_expr_with_expectation(&self,
+    pub fn check_expr_has_type(&self,
                                expr: &'gcx hir::Expr,
-                               expected: Expectation<'tcx>) {
-    self.check_expr_with_expectation_and_lvalue_pref(expr, expected, NoPreference)
-}
+                               expected: Ty<'tcx>) {
+        self.check_expr_with_hint(expr, expected);
+        self.demand_suptype(expr.span, expected, self.expr_ty(expr));
+    }
 
-fn check_expr(&self, expr: &'gcx hir::Expr)  {
-    self.check_expr_with_expectation(expr, NoExpectation)
-}
+    fn check_expr_coercable_to_type(&self,
+                                    expr: &'gcx hir::Expr,
+                                    expected: Ty<'tcx>) {
+        self.check_expr_with_hint(expr, expected);
+        self.demand_coerce(expr, expected);
+    }
 
-fn check_expr_with_lvalue_pref(&self, expr: &'gcx hir::Expr,
-                               lvalue_pref: LvaluePreference)  {
-    self.check_expr_with_expectation_and_lvalue_pref(expr, NoExpectation, lvalue_pref)
-}
+    fn check_expr_with_hint(&self, expr: &'gcx hir::Expr,
+                            expected: Ty<'tcx>) {
+        self.check_expr_with_expectation(expr, ExpectHasType(expected))
+    }
 
-// determine the `self` type, using fresh variables for all variables
-// declared on the impl declaration e.g., `impl<A,B> for Vec<(A,B)>`
-// would return ($0, $1) where $0 and $1 are freshly instantiated type
-// variables.
-pub fn impl_self_ty(&self,
-                    span: Span, // (potential) receiver for this impl
-                    did: DefId)
-                    -> TypeAndSubsts<'tcx> {
-    let tcx = self.tcx;
+    fn check_expr_with_expectation(&self,
+                                   expr: &'gcx hir::Expr,
+                                   expected: Expectation<'tcx>) {
+        self.check_expr_with_expectation_and_lvalue_pref(expr, expected, NoPreference)
+    }
 
-    let ity = tcx.lookup_item_type(did);
-    let (tps, rps, raw_ty) =
-        (ity.generics.types.get_slice(subst::TypeSpace),
-         ity.generics.regions.get_slice(subst::TypeSpace),
-         ity.ty);
+    fn check_expr(&self, expr: &'gcx hir::Expr)  {
+        self.check_expr_with_expectation(expr, NoExpectation)
+    }
 
-    debug!("impl_self_ty: tps={:?} rps={:?} raw_ty={:?}", tps, rps, raw_ty);
+    fn check_expr_with_lvalue_pref(&self, expr: &'gcx hir::Expr,
+                                   lvalue_pref: LvaluePreference)  {
+        self.check_expr_with_expectation_and_lvalue_pref(expr, NoExpectation, lvalue_pref)
+    }
 
-    let rps = self.region_vars_for_defs(span, rps);
-    let mut substs = subst::Substs::new(
-        VecPerParamSpace::empty(),
-        VecPerParamSpace::new(rps, Vec::new(), Vec::new()));
-    self.type_vars_for_defs(span, ParamSpace::TypeSpace, &mut substs, tps);
-    let substd_ty = self.instantiate_type_scheme(span, &substs, &raw_ty);
+    // determine the `self` type, using fresh variables for all variables
+    // declared on the impl declaration e.g., `impl<A,B> for Vec<(A,B)>`
+    // would return ($0, $1) where $0 and $1 are freshly instantiated type
+    // variables.
+    pub fn impl_self_ty(&self,
+                        span: Span, // (potential) receiver for this impl
+                        did: DefId)
+                        -> TypeAndSubsts<'tcx> {
+        let tcx = self.tcx;
 
-    TypeAndSubsts { substs: substs, ty: substd_ty }
-}
+        let ity = tcx.lookup_item_type(did);
+        let (tps, rps, raw_ty) =
+            (ity.generics.types.get_slice(subst::TypeSpace),
+             ity.generics.regions.get_slice(subst::TypeSpace),
+             ity.ty);
 
-/// Unifies the return type with the expected type early, for more coercions
-/// and forward type information on the argument expressions.
-fn expected_types_for_fn_args(&self,
-                              call_span: Span,
-                              expected_ret: Expectation<'tcx>,
-                              formal_ret: ty::FnOutput<'tcx>,
-                              formal_args: &[Ty<'tcx>])
-                              -> Vec<Ty<'tcx>> {
-    let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {
-        if let ty::FnConverging(formal_ret_ty) = formal_ret {
-            self.commit_regions_if_ok(|| {
-                // Attempt to apply a subtyping relationship between the formal
-                // return type (likely containing type variables if the function
-                // is polymorphic) and the expected return type.
-                // No argument expectations are produced if unification fails.
-                let origin = TypeOrigin::Misc(call_span);
-                let ures = self.sub_types(false, origin, formal_ret_ty, ret_ty);
-                // FIXME(#15760) can't use try! here, FromError doesn't default
-                // to identity so the resulting type is not constrained.
-                match ures {
-                    // FIXME(#32730) propagate obligations
-                    Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
-                    Err(e) => return Err(e),
-                }
+        debug!("impl_self_ty: tps={:?} rps={:?} raw_ty={:?}", tps, rps, raw_ty);
 
-                // Record all the argument types, with the substitutions
-                // produced from the above subtyping unification.
-                Ok(formal_args.iter().map(|ty| {
-                    self.resolve_type_vars_if_possible(ty)
-                }).collect())
-            }).ok()
-        } else {
-            None
-        }
-    }).unwrap_or(vec![]);
-    debug!("expected_types_for_fn_args(formal={:?} -> {:?}, expected={:?} -> {:?})",
-           formal_args, formal_ret,
-           expected_args, expected_ret);
-    expected_args
-}
+        let rps = self.region_vars_for_defs(span, rps);
+        let mut substs = subst::Substs::new(
+            VecPerParamSpace::empty(),
+            VecPerParamSpace::new(rps, Vec::new(), Vec::new()));
+        self.type_vars_for_defs(span, ParamSpace::TypeSpace, &mut substs, tps);
+        let substd_ty = self.instantiate_type_scheme(span, &substs, &raw_ty);
+
+        TypeAndSubsts { substs: substs, ty: substd_ty }
+    }
+
+    /// Unifies the return type with the expected type early, for more coercions
+    /// and forward type information on the argument expressions.
+    fn expected_types_for_fn_args(&self,
+                                  call_span: Span,
+                                  expected_ret: Expectation<'tcx>,
+                                  formal_ret: ty::FnOutput<'tcx>,
+                                  formal_args: &[Ty<'tcx>])
+                                  -> Vec<Ty<'tcx>> {
+        let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {
+            if let ty::FnConverging(formal_ret_ty) = formal_ret {
+                self.commit_regions_if_ok(|| {
+                    // Attempt to apply a subtyping relationship between the formal
+                    // return type (likely containing type variables if the function
+                    // is polymorphic) and the expected return type.
+                    // No argument expectations are produced if unification fails.
+                    let origin = TypeOrigin::Misc(call_span);
+                    let ures = self.sub_types(false, origin, formal_ret_ty, ret_ty);
+                    // FIXME(#15760) can't use try! here, FromError doesn't default
+                    // to identity so the resulting type is not constrained.
+                    match ures {
+                        // FIXME(#32730) propagate obligations
+                        Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
+                        Err(e) => return Err(e),
+                    }
+
+                    // Record all the argument types, with the substitutions
+                    // produced from the above subtyping unification.
+                    Ok(formal_args.iter().map(|ty| {
+                        self.resolve_type_vars_if_possible(ty)
+                    }).collect())
+                }).ok()
+            } else {
+                None
+            }
+        }).unwrap_or(vec![]);
+        debug!("expected_types_for_fn_args(formal={:?} -> {:?}, expected={:?} -> {:?})",
+               formal_args, formal_ret,
+               expected_args, expected_ret);
+        expected_args
+    }
 
     // Checks a method call.
     fn check_method_call(&self,
@@ -3319,1078 +3323,1080 @@ fn expected_types_for_fn_args(&self,
     }
 
 
-/// Invariant:
-/// If an expression has any sub-expressions that result in a type error,
-/// inspecting that expression's type with `ty.references_error()` will return
-/// true. Likewise, if an expression is known to diverge, inspecting its
-/// type with `ty::type_is_bot` will return true (n.b.: since Rust is
-/// strict, _|_ can appear in the type of an expression that does not,
-/// itself, diverge: for example, fn() -> _|_.)
-/// Note that inspecting a type's structure *directly* may expose the fact
-/// that there are actually multiple representations for `TyError`, so avoid
-/// that when err needs to be handled differently.
-fn check_expr_with_expectation_and_lvalue_pref(&self,
-                                               expr: &'gcx hir::Expr,
-                                               expected: Expectation<'tcx>,
-                                               lvalue_pref: LvaluePreference) {
-    debug!(">> typechecking: expr={:?} expected={:?}",
-           expr, expected);
-
-    let tcx = self.tcx;
-    let id = expr.id;
-    match expr.node {
-      hir::ExprBox(ref subexpr) => {
-        let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
-            match ty.sty {
-                ty::TyBox(ty) => Expectation::rvalue_hint(self, ty),
-                _ => NoExpectation
-            }
-        });
-        self.check_expr_with_expectation(subexpr, expected_inner);
-        let referent_ty = self.expr_ty(&subexpr);
-        self.write_ty(id, tcx.mk_box(referent_ty));
-      }
-
-      hir::ExprLit(ref lit) => {
-        let typ = self.check_lit(&lit, expected);
-        self.write_ty(id, typ);
-      }
-      hir::ExprBinary(op, ref lhs, ref rhs) => {
-        self.check_binop(expr, op, lhs, rhs);
-      }
-      hir::ExprAssignOp(op, ref lhs, ref rhs) => {
-        self.check_binop_assign(expr, op, lhs, rhs);
-      }
-      hir::ExprUnary(unop, ref oprnd) => {
-        let expected_inner = match unop {
-            hir::UnNot | hir::UnNeg => {
-                expected
-            }
-            hir::UnDeref => {
-                NoExpectation
-            }
-        };
-        let lvalue_pref = match unop {
-            hir::UnDeref => lvalue_pref,
-            _ => NoPreference
-        };
-        self.check_expr_with_expectation_and_lvalue_pref(&oprnd,
-                                                         expected_inner,
-                                                         lvalue_pref);
-        let mut oprnd_t = self.expr_ty(&oprnd);
-
-        if !oprnd_t.references_error() {
-            match unop {
-                hir::UnDeref => {
-                    oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
-
-                    if let Some(mt) = oprnd_t.builtin_deref(true, NoPreference) {
-                        oprnd_t = mt.ty;
-                    } else if let Some(method) = self.try_overloaded_deref(
-                            expr.span, Some(&oprnd), oprnd_t, lvalue_pref) {
-                        oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
-                        self.tables.borrow_mut().method_map.insert(MethodCall::expr(expr.id),
-                                                                       method);
-                    } else {
-                        self.type_error_message(expr.span, |actual| {
-                            format!("type `{}` cannot be \
-                                    dereferenced", actual)
-                        }, oprnd_t, None);
-                        oprnd_t = tcx.types.err;
-                    }
-                }
-                hir::UnNot => {
-                    oprnd_t = self.structurally_resolved_type(oprnd.span,
-                                                              oprnd_t);
-                    if !(oprnd_t.is_integral() || oprnd_t.sty == ty::TyBool) {
-                        oprnd_t = self.check_user_unop("!", "not",
-                                                       tcx.lang_items.not_trait(),
-                                                       expr, &oprnd, oprnd_t, unop);
-                    }
-                }
-                hir::UnNeg => {
-                    oprnd_t = self.structurally_resolved_type(oprnd.span,
-                                                              oprnd_t);
-                    if !(oprnd_t.is_integral() || oprnd_t.is_fp()) {
-                        oprnd_t = self.check_user_unop("-", "neg",
-                                                       tcx.lang_items.neg_trait(),
-                                                       expr, &oprnd, oprnd_t, unop);
-                    }
-                }
-            }
-        }
-        self.write_ty(id, oprnd_t);
-      }
-      hir::ExprAddrOf(mutbl, ref oprnd) => {
-        let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
-            match ty.sty {
-                ty::TyRef(_, ref mt) | ty::TyRawPtr(ref mt) => {
-                    if self.tcx.expr_is_lval(&oprnd) {
-                        // Lvalues may legitimately have unsized types.
-                        // For example, dereferences of a fat pointer and
-                        // the last field of a struct can be unsized.
-                        ExpectHasType(mt.ty)
-                    } else {
-                        Expectation::rvalue_hint(self, mt.ty)
-                    }
-                }
-                _ => NoExpectation
-            }
-        });
-        let lvalue_pref = LvaluePreference::from_mutbl(mutbl);
-        self.check_expr_with_expectation_and_lvalue_pref(&oprnd, hint, lvalue_pref);
-
-        let tm = ty::TypeAndMut { ty: self.expr_ty(&oprnd), mutbl: mutbl };
-        let oprnd_t = if tm.ty.references_error() {
-            tcx.types.err
-        } else {
-            // Note: at this point, we cannot say what the best lifetime
-            // is to use for resulting pointer.  We want to use the
-            // shortest lifetime possible so as to avoid spurious borrowck
-            // errors.  Moreover, the longest lifetime will depend on the
-            // precise details of the value whose address is being taken
-            // (and how long it is valid), which we don't know yet until type
-            // inference is complete.
-            //
-            // Therefore, here we simply generate a region variable.  The
-            // region inferencer will then select the ultimate value.
-            // Finally, borrowck is charged with guaranteeing that the
-            // value whose address was taken can actually be made to live
-            // as long as it needs to live.
-            let region = self.next_region_var(infer::AddrOfRegion(expr.span));
-            tcx.mk_ref(tcx.mk_region(region), tm)
-        };
-        self.write_ty(id, oprnd_t);
-      }
-      hir::ExprPath(ref maybe_qself, ref path) => {
-          let opt_self_ty = maybe_qself.as_ref().map(|qself| {
-              self.to_ty(&qself.ty)
-          });
-
-          let path_res = if let Some(&d) = tcx.def_map.borrow().get(&id) {
-              d
-          } else if let Some(hir::QSelf { position: 0, .. }) = *maybe_qself {
-                // Create some fake resolution that can't possibly be a type.
-                def::PathResolution {
-                    base_def: Def::Mod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
-                    depth: path.segments.len()
-                }
-            } else {
-              span_bug!(expr.span, "unbound path {:?}", expr)
-          };
-
-          if let Some((opt_ty, segments, def)) =
-                  self.resolve_ty_and_def_ufcs(path_res, opt_self_ty, path,
-                                               expr.span, expr.id) {
-              if def != Def::Err {
-                  let (scheme, predicates) = self.type_scheme_and_predicates_for_def(expr.span,
-                                                                                     def);
-                  self.instantiate_path(segments, scheme, &predicates,
-                                        opt_ty, def, expr.span, id);
-              } else {
-                  self.set_tainted_by_errors();
-                  self.write_ty(id, self.tcx.types.err);
-              }
-          }
-
-          // We always require that the type provided as the value for
-          // a type parameter outlives the moment of instantiation.
-          self.opt_node_ty_substs(expr.id, |item_substs| {
-              self.add_wf_bounds(&item_substs.substs, expr);
-          });
-      }
-      hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
-          for output in outputs {
-              self.check_expr(output);
-          }
-          for input in inputs {
-              self.check_expr(input);
-          }
-          self.write_nil(id);
-      }
-      hir::ExprBreak(_) => { self.write_ty(id, self.next_diverging_ty_var()); }
-      hir::ExprAgain(_) => { self.write_ty(id, self.next_diverging_ty_var()); }
-      hir::ExprRet(ref expr_opt) => {
-        match self.ret_ty {
-            ty::FnConverging(result_type) => {
-                if let Some(ref e) = *expr_opt {
-                    self.check_expr_coercable_to_type(&e, result_type);
-                } else {
-                    let eq_result = self.eq_types(false,
-                                                  TypeOrigin::Misc(expr.span),
-                                                  result_type,
-                                                  tcx.mk_nil())
-                        // FIXME(#32730) propagate obligations
-                        .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()));
-                    if eq_result.is_err() {
-                        span_err!(tcx.sess, expr.span, E0069,
-                                  "`return;` in a function whose return type is not `()`");
-                    }
-                }
-            }
-            ty::FnDiverging => {
-                if let Some(ref e) = *expr_opt {
-                    self.check_expr(&e);
-                }
-                span_err!(tcx.sess, expr.span, E0166,
-                    "`return` in a function declared as diverging");
-            }
-        }
-        self.write_ty(id, self.next_diverging_ty_var());
-      }
-      hir::ExprAssign(ref lhs, ref rhs) => {
-        self.check_expr_with_lvalue_pref(&lhs, PreferMutLvalue);
+    /// Invariant:
+    /// If an expression has any sub-expressions that result in a type error,
+    /// inspecting that expression's type with `ty.references_error()` will return
+    /// true. Likewise, if an expression is known to diverge, inspecting its
+    /// type with `ty::type_is_bot` will return true (n.b.: since Rust is
+    /// strict, _|_ can appear in the type of an expression that does not,
+    /// itself, diverge: for example, fn() -> _|_.)
+    /// Note that inspecting a type's structure *directly* may expose the fact
+    /// that there are actually multiple representations for `TyError`, so avoid
+    /// that when err needs to be handled differently.
+    fn check_expr_with_expectation_and_lvalue_pref(&self,
+                                                   expr: &'gcx hir::Expr,
+                                                   expected: Expectation<'tcx>,
+                                                   lvalue_pref: LvaluePreference) {
+        debug!(">> typechecking: expr={:?} expected={:?}",
+               expr, expected);
 
         let tcx = self.tcx;
-        if !tcx.expr_is_lval(&lhs) {
-            span_err!(tcx.sess, expr.span, E0070,
-                "invalid left-hand side expression");
-        }
-
-        let lhs_ty = self.expr_ty(&lhs);
-        self.check_expr_coercable_to_type(&rhs, lhs_ty);
-        let rhs_ty = self.expr_ty(&rhs);
-
-        self.require_expr_have_sized_type(&lhs, traits::AssignmentLhsSized);
-
-        if lhs_ty.references_error() || rhs_ty.references_error() {
-            self.write_error(id);
-        } else {
-            self.write_nil(id);
-        }
-      }
-      hir::ExprIf(ref cond, ref then_blk, ref opt_else_expr) => {
-        self.check_then_else(&cond, &then_blk, opt_else_expr.as_ref().map(|e| &**e),
-                             id, expr.span, expected);
-      }
-      hir::ExprWhile(ref cond, ref body, _) => {
-        self.check_expr_has_type(&cond, tcx.types.bool);
-        self.check_block_no_value(&body);
-        let cond_ty = self.expr_ty(&cond);
-        let body_ty = self.node_ty(body.id);
-        if cond_ty.references_error() || body_ty.references_error() {
-            self.write_error(id);
-        }
-        else {
-            self.write_nil(id);
-        }
-      }
-      hir::ExprLoop(ref body, _) => {
-        self.check_block_no_value(&body);
-        if !may_break(tcx, expr.id, &body) {
-            self.write_ty(id, self.next_diverging_ty_var());
-        } else {
-            self.write_nil(id);
-        }
-      }
-      hir::ExprMatch(ref discrim, ref arms, match_src) => {
-        self.check_match(expr, &discrim, arms, expected, match_src);
-      }
-      hir::ExprClosure(capture, ref decl, ref body, _) => {
-          self.check_expr_closure(expr, capture, &decl, &body, expected);
-      }
-      hir::ExprBlock(ref b) => {
-        self.check_block_with_expected(&b, expected);
-        self.write_ty(id, self.node_ty(b.id));
-      }
-      hir::ExprCall(ref callee, ref args) => {
-          self.check_call(expr, &callee, &args[..], expected);
-
-          // we must check that return type of called functions is WF:
-          let ret_ty = self.expr_ty(expr);
-          self.register_wf_obligation(ret_ty, expr.span, traits::MiscObligation);
-      }
-      hir::ExprMethodCall(name, ref tps, ref args) => {
-          self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref);
-          let arg_tys = args.iter().map(|a| self.expr_ty(&a));
-          let args_err = arg_tys.fold(false, |rest_err, a| rest_err || a.references_error());
-          if args_err {
-              self.write_error(id);
+        let id = expr.id;
+        match expr.node {
+          hir::ExprBox(ref subexpr) => {
+            let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
+                match ty.sty {
+                    ty::TyBox(ty) => Expectation::rvalue_hint(self, ty),
+                    _ => NoExpectation
+                }
+            });
+            self.check_expr_with_expectation(subexpr, expected_inner);
+            let referent_ty = self.expr_ty(&subexpr);
+            self.write_ty(id, tcx.mk_box(referent_ty));
           }
-      }
-      hir::ExprCast(ref e, ref t) => {
-        if let hir::TyFixedLengthVec(_, ref count_expr) = t.node {
-            self.check_expr_with_hint(&count_expr, tcx.types.usize);
-        }
 
-        // Find the type of `e`. Supply hints based on the type we are casting to,
-        // if appropriate.
-        let t_cast = self.to_ty(t);
-        let t_cast = self.resolve_type_vars_if_possible(&t_cast);
-        self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
-        let t_expr = self.expr_ty(e);
-        let t_cast = self.resolve_type_vars_if_possible(&t_cast);
-
-        // Eagerly check for some obvious errors.
-        if t_expr.references_error() || t_cast.references_error() {
-            self.write_error(id);
-        } else {
-            // Write a type for the whole expression, assuming everything is going
-            // to work out Ok.
-            self.write_ty(id, t_cast);
-
-            // Defer other checks until we're done type checking.
-            let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
-            match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
-                Ok(cast_check) => {
-                    deferred_cast_checks.push(cast_check);
+          hir::ExprLit(ref lit) => {
+            let typ = self.check_lit(&lit, expected);
+            self.write_ty(id, typ);
+          }
+          hir::ExprBinary(op, ref lhs, ref rhs) => {
+            self.check_binop(expr, op, lhs, rhs);
+          }
+          hir::ExprAssignOp(op, ref lhs, ref rhs) => {
+            self.check_binop_assign(expr, op, lhs, rhs);
+          }
+          hir::ExprUnary(unop, ref oprnd) => {
+            let expected_inner = match unop {
+                hir::UnNot | hir::UnNeg => {
+                    expected
                 }
-                Err(ErrorReported) => {
-                    self.write_error(id);
+                hir::UnDeref => {
+                    NoExpectation
                 }
-            }
-        }
-      }
-      hir::ExprType(ref e, ref t) => {
-        let typ = self.to_ty(&t);
-        self.check_expr_eq_type(&e, typ);
-        self.write_ty(id, typ);
-      }
-      hir::ExprVec(ref args) => {
-        let uty = expected.to_option(self).and_then(|uty| {
-            match uty.sty {
-                ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
-                _ => None
-            }
-        });
-
-        let mut unified = self.next_ty_var();
-        let coerce_to = uty.unwrap_or(unified);
-
-        for (i, e) in args.iter().enumerate() {
-            self.check_expr_with_hint(e, coerce_to);
-            let e_ty = self.expr_ty(e);
-            let origin = TypeOrigin::Misc(e.span);
-
-            // Special-case the first element, as it has no "previous expressions".
-            let result = if i == 0 {
-                self.try_coerce(e, coerce_to)
-            } else {
-                let prev_elems = || args[..i].iter().map(|e| &**e);
-                self.try_find_coercion_lub(origin, prev_elems, unified, e)
             };
+            let lvalue_pref = match unop {
+                hir::UnDeref => lvalue_pref,
+                _ => NoPreference
+            };
+            self.check_expr_with_expectation_and_lvalue_pref(&oprnd,
+                                                             expected_inner,
+                                                             lvalue_pref);
+            let mut oprnd_t = self.expr_ty(&oprnd);
 
-            match result {
-                Ok(ty) => unified = ty,
-                Err(e) => {
-                    self.report_mismatched_types(origin, unified, e_ty, e);
+            if !oprnd_t.references_error() {
+                match unop {
+                    hir::UnDeref => {
+                        oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
+
+                        if let Some(mt) = oprnd_t.builtin_deref(true, NoPreference) {
+                            oprnd_t = mt.ty;
+                        } else if let Some(method) = self.try_overloaded_deref(
+                                expr.span, Some(&oprnd), oprnd_t, lvalue_pref) {
+                            oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
+                            self.tables.borrow_mut().method_map.insert(MethodCall::expr(expr.id),
+                                                                           method);
+                        } else {
+                            self.type_error_message(expr.span, |actual| {
+                                format!("type `{}` cannot be \
+                                        dereferenced", actual)
+                            }, oprnd_t, None);
+                            oprnd_t = tcx.types.err;
+                        }
+                    }
+                    hir::UnNot => {
+                        oprnd_t = self.structurally_resolved_type(oprnd.span,
+                                                                  oprnd_t);
+                        if !(oprnd_t.is_integral() || oprnd_t.sty == ty::TyBool) {
+                            oprnd_t = self.check_user_unop("!", "not",
+                                                           tcx.lang_items.not_trait(),
+                                                           expr, &oprnd, oprnd_t, unop);
+                        }
+                    }
+                    hir::UnNeg => {
+                        oprnd_t = self.structurally_resolved_type(oprnd.span,
+                                                                  oprnd_t);
+                        if !(oprnd_t.is_integral() || oprnd_t.is_fp()) {
+                            oprnd_t = self.check_user_unop("-", "neg",
+                                                           tcx.lang_items.neg_trait(),
+                                                           expr, &oprnd, oprnd_t, unop);
+                        }
+                    }
                 }
             }
-        }
-        self.write_ty(id, tcx.mk_array(unified, args.len()));
-      }
-      hir::ExprRepeat(ref element, ref count_expr) => {
-        self.check_expr_has_type(&count_expr, tcx.types.usize);
-        let count = eval_repeat_count(self.tcx.global_tcx(), &count_expr);
+            self.write_ty(id, oprnd_t);
+          }
+          hir::ExprAddrOf(mutbl, ref oprnd) => {
+            let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
+                match ty.sty {
+                    ty::TyRef(_, ref mt) | ty::TyRawPtr(ref mt) => {
+                        if self.tcx.expr_is_lval(&oprnd) {
+                            // Lvalues may legitimately have unsized types.
+                            // For example, dereferences of a fat pointer and
+                            // the last field of a struct can be unsized.
+                            ExpectHasType(mt.ty)
+                        } else {
+                            Expectation::rvalue_hint(self, mt.ty)
+                        }
+                    }
+                    _ => NoExpectation
+                }
+            });
+            let lvalue_pref = LvaluePreference::from_mutbl(mutbl);
+            self.check_expr_with_expectation_and_lvalue_pref(&oprnd, hint, lvalue_pref);
 
-        let uty = match expected {
-            ExpectHasType(uty) => {
+            let tm = ty::TypeAndMut { ty: self.expr_ty(&oprnd), mutbl: mutbl };
+            let oprnd_t = if tm.ty.references_error() {
+                tcx.types.err
+            } else {
+                // Note: at this point, we cannot say what the best lifetime
+                // is to use for resulting pointer.  We want to use the
+                // shortest lifetime possible so as to avoid spurious borrowck
+                // errors.  Moreover, the longest lifetime will depend on the
+                // precise details of the value whose address is being taken
+                // (and how long it is valid), which we don't know yet until type
+                // inference is complete.
+                //
+                // Therefore, here we simply generate a region variable.  The
+                // region inferencer will then select the ultimate value.
+                // Finally, borrowck is charged with guaranteeing that the
+                // value whose address was taken can actually be made to live
+                // as long as it needs to live.
+                let region = self.next_region_var(infer::AddrOfRegion(expr.span));
+                tcx.mk_ref(tcx.mk_region(region), tm)
+            };
+            self.write_ty(id, oprnd_t);
+          }
+          hir::ExprPath(ref maybe_qself, ref path) => {
+              let opt_self_ty = maybe_qself.as_ref().map(|qself| {
+                  self.to_ty(&qself.ty)
+              });
+
+              let path_res = if let Some(&d) = tcx.def_map.borrow().get(&id) {
+                  d
+              } else if let Some(hir::QSelf { position: 0, .. }) = *maybe_qself {
+                    // Create some fake resolution that can't possibly be a type.
+                    def::PathResolution {
+                        base_def: Def::Mod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
+                        depth: path.segments.len()
+                    }
+                } else {
+                  span_bug!(expr.span, "unbound path {:?}", expr)
+              };
+
+              if let Some((opt_ty, segments, def)) =
+                      self.resolve_ty_and_def_ufcs(path_res, opt_self_ty, path,
+                                                   expr.span, expr.id) {
+                  if def != Def::Err {
+                      let (scheme, predicates) = self.type_scheme_and_predicates_for_def(expr.span,
+                                                                                         def);
+                      self.instantiate_path(segments, scheme, &predicates,
+                                            opt_ty, def, expr.span, id);
+                  } else {
+                      self.set_tainted_by_errors();
+                      self.write_ty(id, self.tcx.types.err);
+                  }
+              }
+
+              // We always require that the type provided as the value for
+              // a type parameter outlives the moment of instantiation.
+              self.opt_node_ty_substs(expr.id, |item_substs| {
+                  self.add_wf_bounds(&item_substs.substs, expr);
+              });
+          }
+          hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
+              for output in outputs {
+                  self.check_expr(output);
+              }
+              for input in inputs {
+                  self.check_expr(input);
+              }
+              self.write_nil(id);
+          }
+          hir::ExprBreak(_) => { self.write_ty(id, self.next_diverging_ty_var()); }
+          hir::ExprAgain(_) => { self.write_ty(id, self.next_diverging_ty_var()); }
+          hir::ExprRet(ref expr_opt) => {
+            match self.ret_ty {
+                ty::FnConverging(result_type) => {
+                    if let Some(ref e) = *expr_opt {
+                        self.check_expr_coercable_to_type(&e, result_type);
+                    } else {
+                        let eq_result = self.eq_types(false,
+                                                      TypeOrigin::Misc(expr.span),
+                                                      result_type,
+                                                      tcx.mk_nil())
+                            // FIXME(#32730) propagate obligations
+                            .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()));
+                        if eq_result.is_err() {
+                            span_err!(tcx.sess, expr.span, E0069,
+                                      "`return;` in a function whose return type is not `()`");
+                        }
+                    }
+                }
+                ty::FnDiverging => {
+                    if let Some(ref e) = *expr_opt {
+                        self.check_expr(&e);
+                    }
+                    span_err!(tcx.sess, expr.span, E0166,
+                        "`return` in a function declared as diverging");
+                }
+            }
+            self.write_ty(id, self.next_diverging_ty_var());
+          }
+          hir::ExprAssign(ref lhs, ref rhs) => {
+            self.check_expr_with_lvalue_pref(&lhs, PreferMutLvalue);
+
+            let tcx = self.tcx;
+            if !tcx.expr_is_lval(&lhs) {
+                span_err!(tcx.sess, expr.span, E0070,
+                    "invalid left-hand side expression");
+            }
+
+            let lhs_ty = self.expr_ty(&lhs);
+            self.check_expr_coercable_to_type(&rhs, lhs_ty);
+            let rhs_ty = self.expr_ty(&rhs);
+
+            self.require_expr_have_sized_type(&lhs, traits::AssignmentLhsSized);
+
+            if lhs_ty.references_error() || rhs_ty.references_error() {
+                self.write_error(id);
+            } else {
+                self.write_nil(id);
+            }
+          }
+          hir::ExprIf(ref cond, ref then_blk, ref opt_else_expr) => {
+            self.check_then_else(&cond, &then_blk, opt_else_expr.as_ref().map(|e| &**e),
+                                 id, expr.span, expected);
+          }
+          hir::ExprWhile(ref cond, ref body, _) => {
+            self.check_expr_has_type(&cond, tcx.types.bool);
+            self.check_block_no_value(&body);
+            let cond_ty = self.expr_ty(&cond);
+            let body_ty = self.node_ty(body.id);
+            if cond_ty.references_error() || body_ty.references_error() {
+                self.write_error(id);
+            }
+            else {
+                self.write_nil(id);
+            }
+          }
+          hir::ExprLoop(ref body, _) => {
+            self.check_block_no_value(&body);
+            if !may_break(tcx, expr.id, &body) {
+                self.write_ty(id, self.next_diverging_ty_var());
+            } else {
+                self.write_nil(id);
+            }
+          }
+          hir::ExprMatch(ref discrim, ref arms, match_src) => {
+            self.check_match(expr, &discrim, arms, expected, match_src);
+          }
+          hir::ExprClosure(capture, ref decl, ref body, _) => {
+              self.check_expr_closure(expr, capture, &decl, &body, expected);
+          }
+          hir::ExprBlock(ref b) => {
+            self.check_block_with_expected(&b, expected);
+            self.write_ty(id, self.node_ty(b.id));
+          }
+          hir::ExprCall(ref callee, ref args) => {
+              self.check_call(expr, &callee, &args[..], expected);
+
+              // we must check that return type of called functions is WF:
+              let ret_ty = self.expr_ty(expr);
+              self.register_wf_obligation(ret_ty, expr.span, traits::MiscObligation);
+          }
+          hir::ExprMethodCall(name, ref tps, ref args) => {
+              self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref);
+              let arg_tys = args.iter().map(|a| self.expr_ty(&a));
+              let args_err = arg_tys.fold(false, |rest_err, a| rest_err || a.references_error());
+              if args_err {
+                  self.write_error(id);
+              }
+          }
+          hir::ExprCast(ref e, ref t) => {
+            if let hir::TyFixedLengthVec(_, ref count_expr) = t.node {
+                self.check_expr_with_hint(&count_expr, tcx.types.usize);
+            }
+
+            // Find the type of `e`. Supply hints based on the type we are casting to,
+            // if appropriate.
+            let t_cast = self.to_ty(t);
+            let t_cast = self.resolve_type_vars_if_possible(&t_cast);
+            self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
+            let t_expr = self.expr_ty(e);
+            let t_cast = self.resolve_type_vars_if_possible(&t_cast);
+
+            // Eagerly check for some obvious errors.
+            if t_expr.references_error() || t_cast.references_error() {
+                self.write_error(id);
+            } else {
+                // Write a type for the whole expression, assuming everything is going
+                // to work out Ok.
+                self.write_ty(id, t_cast);
+
+                // Defer other checks until we're done type checking.
+                let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
+                match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
+                    Ok(cast_check) => {
+                        deferred_cast_checks.push(cast_check);
+                    }
+                    Err(ErrorReported) => {
+                        self.write_error(id);
+                    }
+                }
+            }
+          }
+          hir::ExprType(ref e, ref t) => {
+            let typ = self.to_ty(&t);
+            self.check_expr_eq_type(&e, typ);
+            self.write_ty(id, typ);
+          }
+          hir::ExprVec(ref args) => {
+            let uty = expected.to_option(self).and_then(|uty| {
                 match uty.sty {
                     ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
                     _ => None
                 }
-            }
-            _ => None
-        };
+            });
 
-        let (element_ty, t) = match uty {
-            Some(uty) => {
-                self.check_expr_coercable_to_type(&element, uty);
-                (uty, uty)
-            }
-            None => {
-                let t: Ty = self.next_ty_var();
-                self.check_expr_has_type(&element, t);
-                (self.expr_ty(&element), t)
-            }
-        };
+            let mut unified = self.next_ty_var();
+            let coerce_to = uty.unwrap_or(unified);
 
-        if count > 1 {
-            // For [foo, ..n] where n > 1, `foo` must have
-            // Copy type:
-            self.require_type_meets(t, expr.span, traits::RepeatVec, ty::BoundCopy);
-        }
+            for (i, e) in args.iter().enumerate() {
+                self.check_expr_with_hint(e, coerce_to);
+                let e_ty = self.expr_ty(e);
+                let origin = TypeOrigin::Misc(e.span);
 
-        if element_ty.references_error() {
-            self.write_error(id);
-        } else {
-            let t = tcx.mk_array(t, count);
-            self.write_ty(id, t);
-        }
-      }
-      hir::ExprTup(ref elts) => {
-        let flds = expected.only_has_type(self).and_then(|ty| {
-            match ty.sty {
-                ty::TyTuple(ref flds) => Some(&flds[..]),
-                _ => None
-            }
-        });
-        let mut err_field = false;
+                // Special-case the first element, as it has no "previous expressions".
+                let result = if i == 0 {
+                    self.try_coerce(e, coerce_to)
+                } else {
+                    let prev_elems = || args[..i].iter().map(|e| &**e);
+                    self.try_find_coercion_lub(origin, prev_elems, unified, e)
+                };
 
-        let elt_ts = elts.iter().enumerate().map(|(i, e)| {
-            let t = match flds {
-                Some(ref fs) if i < fs.len() => {
-                    let ety = fs[i];
-                    self.check_expr_coercable_to_type(&e, ety);
-                    ety
+                match result {
+                    Ok(ty) => unified = ty,
+                    Err(e) => {
+                        self.report_mismatched_types(origin, unified, e_ty, e);
+                    }
                 }
-                _ => {
-                    self.check_expr_with_expectation(&e, NoExpectation);
-                    self.expr_ty(&e)
+            }
+            self.write_ty(id, tcx.mk_array(unified, args.len()));
+          }
+          hir::ExprRepeat(ref element, ref count_expr) => {
+            self.check_expr_has_type(&count_expr, tcx.types.usize);
+            let count = eval_repeat_count(self.tcx.global_tcx(), &count_expr);
+
+            let uty = match expected {
+                ExpectHasType(uty) => {
+                    match uty.sty {
+                        ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
+                        _ => None
+                    }
+                }
+                _ => None
+            };
+
+            let (element_ty, t) = match uty {
+                Some(uty) => {
+                    self.check_expr_coercable_to_type(&element, uty);
+                    (uty, uty)
+                }
+                None => {
+                    let t: Ty = self.next_ty_var();
+                    self.check_expr_has_type(&element, t);
+                    (self.expr_ty(&element), t)
                 }
             };
-            err_field = err_field || t.references_error();
-            t
-        }).collect();
-        if err_field {
-            self.write_error(id);
-        } else {
-            let typ = tcx.mk_tup(elt_ts);
-            self.write_ty(id, typ);
-        }
-      }
-      hir::ExprStruct(ref path, ref fields, ref base_expr) => {
-        self.check_expr_struct(expr, path, fields, base_expr);
 
-        self.require_expr_have_sized_type(expr, traits::StructInitializerSized);
-      }
-      hir::ExprField(ref base, ref field) => {
-        self.check_field(expr, lvalue_pref, &base, field);
-      }
-      hir::ExprTupField(ref base, idx) => {
-        self.check_tup_field(expr, lvalue_pref, &base, idx);
-      }
-      hir::ExprIndex(ref base, ref idx) => {
-          self.check_expr_with_lvalue_pref(&base, lvalue_pref);
-          self.check_expr(&idx);
+            if count > 1 {
+                // For [foo, ..n] where n > 1, `foo` must have
+                // Copy type:
+                self.require_type_meets(t, expr.span, traits::RepeatVec, ty::BoundCopy);
+            }
 
-          let base_t = self.expr_ty(&base);
-          let idx_t = self.expr_ty(&idx);
+            if element_ty.references_error() {
+                self.write_error(id);
+            } else {
+                let t = tcx.mk_array(t, count);
+                self.write_ty(id, t);
+            }
+          }
+          hir::ExprTup(ref elts) => {
+            let flds = expected.only_has_type(self).and_then(|ty| {
+                match ty.sty {
+                    ty::TyTuple(ref flds) => Some(&flds[..]),
+                    _ => None
+                }
+            });
+            let mut err_field = false;
 
-          if base_t.references_error() {
-              self.write_ty(id, base_t);
-          } else if idx_t.references_error() {
-              self.write_ty(id, idx_t);
-          } else {
-              let base_t = self.structurally_resolved_type(expr.span, base_t);
-              match self.lookup_indexing(expr, base, base_t, idx_t, lvalue_pref) {
-                  Some((index_ty, element_ty)) => {
-                      let idx_expr_ty = self.expr_ty(idx);
-                      self.demand_eqtype(expr.span, index_ty, idx_expr_ty);
-                      self.write_ty(id, element_ty);
-                  }
-                  None => {
-                      self.check_expr_has_type(&idx, self.tcx.types.err);
-                      let mut err = self.type_error_struct(
-                          expr.span,
-                          |actual| {
-                              format!("cannot index a value of type `{}`",
-                                      actual)
-                          },
-                          base_t,
-                          None);
-                      // Try to give some advice about indexing tuples.
-                      if let ty::TyTuple(_) = base_t.sty {
-                          let mut needs_note = true;
-                          // If the index is an integer, we can show the actual
-                          // fixed expression:
-                          if let hir::ExprLit(ref lit) = idx.node {
-                              if let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node {
-                                  let snip = tcx.sess.codemap().span_to_snippet(base.span);
-                                  if let Ok(snip) = snip {
-                                      err.span_suggestion(expr.span,
-                                                          "to access tuple elements, use tuple \
-                                                           indexing syntax as shown",
-                                                          format!("{}.{}", snip, i));
-                                      needs_note = false;
+            let elt_ts = elts.iter().enumerate().map(|(i, e)| {
+                let t = match flds {
+                    Some(ref fs) if i < fs.len() => {
+                        let ety = fs[i];
+                        self.check_expr_coercable_to_type(&e, ety);
+                        ety
+                    }
+                    _ => {
+                        self.check_expr_with_expectation(&e, NoExpectation);
+                        self.expr_ty(&e)
+                    }
+                };
+                err_field = err_field || t.references_error();
+                t
+            }).collect();
+            if err_field {
+                self.write_error(id);
+            } else {
+                let typ = tcx.mk_tup(elt_ts);
+                self.write_ty(id, typ);
+            }
+          }
+          hir::ExprStruct(ref path, ref fields, ref base_expr) => {
+            self.check_expr_struct(expr, path, fields, base_expr);
+
+            self.require_expr_have_sized_type(expr, traits::StructInitializerSized);
+          }
+          hir::ExprField(ref base, ref field) => {
+            self.check_field(expr, lvalue_pref, &base, field);
+          }
+          hir::ExprTupField(ref base, idx) => {
+            self.check_tup_field(expr, lvalue_pref, &base, idx);
+          }
+          hir::ExprIndex(ref base, ref idx) => {
+              self.check_expr_with_lvalue_pref(&base, lvalue_pref);
+              self.check_expr(&idx);
+
+              let base_t = self.expr_ty(&base);
+              let idx_t = self.expr_ty(&idx);
+
+              if base_t.references_error() {
+                  self.write_ty(id, base_t);
+              } else if idx_t.references_error() {
+                  self.write_ty(id, idx_t);
+              } else {
+                  let base_t = self.structurally_resolved_type(expr.span, base_t);
+                  match self.lookup_indexing(expr, base, base_t, idx_t, lvalue_pref) {
+                      Some((index_ty, element_ty)) => {
+                          let idx_expr_ty = self.expr_ty(idx);
+                          self.demand_eqtype(expr.span, index_ty, idx_expr_ty);
+                          self.write_ty(id, element_ty);
+                      }
+                      None => {
+                          self.check_expr_has_type(&idx, self.tcx.types.err);
+                          let mut err = self.type_error_struct(
+                              expr.span,
+                              |actual| {
+                                  format!("cannot index a value of type `{}`",
+                                          actual)
+                              },
+                              base_t,
+                              None);
+                          // Try to give some advice about indexing tuples.
+                          if let ty::TyTuple(_) = base_t.sty {
+                              let mut needs_note = true;
+                              // If the index is an integer, we can show the actual
+                              // fixed expression:
+                              if let hir::ExprLit(ref lit) = idx.node {
+                                  if let ast::LitKind::Int(i,
+                                            ast::LitIntType::Unsuffixed) = lit.node {
+                                      let snip = tcx.sess.codemap().span_to_snippet(base.span);
+                                      if let Ok(snip) = snip {
+                                          err.span_suggestion(expr.span,
+                                                              "to access tuple elements, \
+                                                               use tuple indexing syntax \
+                                                               as shown",
+                                                              format!("{}.{}", snip, i));
+                                          needs_note = false;
+                                      }
                                   }
                               }
+                              if needs_note {
+                                  err.help("to access tuple elements, use tuple indexing \
+                                            syntax (e.g. `tuple.0`)");
+                              }
                           }
-                          if needs_note {
-                              err.help("to access tuple elements, use tuple indexing \
-                                        syntax (e.g. `tuple.0`)");
-                          }
+                          err.emit();
+                          self.write_ty(id, self.tcx().types.err);
                       }
-                      err.emit();
-                      self.write_ty(id, self.tcx().types.err);
                   }
               }
-          }
-       }
+           }
+        }
+
+        debug!("type of expr({}) {} is...", expr.id,
+               pprust::expr_to_string(expr));
+        debug!("... {:?}, expected is {:?}",
+               self.expr_ty(expr),
+               expected);
     }
 
-    debug!("type of expr({}) {} is...", expr.id,
-           pprust::expr_to_string(expr));
-    debug!("... {:?}, expected is {:?}",
-           self.expr_ty(expr),
-           expected);
-}
+    pub fn resolve_ty_and_def_ufcs<'b>(&self,
+                                       path_res: def::PathResolution,
+                                       opt_self_ty: Option<Ty<'tcx>>,
+                                       path: &'b hir::Path,
+                                       span: Span,
+                                       node_id: ast::NodeId)
+                                       -> Option<(Option<Ty<'tcx>>, &'b [hir::PathSegment], Def)>
+    {
 
-pub fn resolve_ty_and_def_ufcs<'b>(&self,
-                                   path_res: def::PathResolution,
-                                   opt_self_ty: Option<Ty<'tcx>>,
-                                   path: &'b hir::Path,
-                                   span: Span,
-                                   node_id: ast::NodeId)
-                                   -> Option<(Option<Ty<'tcx>>, &'b [hir::PathSegment], Def)>
-{
-
-    // If fully resolved already, we don't have to do anything.
-    if path_res.depth == 0 {
-        Some((opt_self_ty, &path.segments, path_res.base_def))
-    } else {
-        let mut def = path_res.base_def;
-        let ty_segments = path.segments.split_last().unwrap().1;
-        let base_ty_end = path.segments.len() - path_res.depth;
-        let ty = AstConv::finish_resolving_def_to_ty(self, self, span,
-                                                     PathParamMode::Optional,
-                                                     &mut def,
-                                                     opt_self_ty,
-                                                     &ty_segments[..base_ty_end],
-                                                     &ty_segments[base_ty_end..]);
-        let item_segment = path.segments.last().unwrap();
-        let item_name = item_segment.identifier.name;
-        let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
-            Ok(def) => Some(def),
-            Err(error) => {
-                let def = match error {
-                    method::MethodError::PrivateMatch(def) => Some(def),
-                    _ => None,
-                };
-                if item_name != keywords::Invalid.name() {
-                    self.report_method_error(span, ty, item_name, None, error);
+        // If fully resolved already, we don't have to do anything.
+        if path_res.depth == 0 {
+            Some((opt_self_ty, &path.segments, path_res.base_def))
+        } else {
+            let mut def = path_res.base_def;
+            let ty_segments = path.segments.split_last().unwrap().1;
+            let base_ty_end = path.segments.len() - path_res.depth;
+            let ty = AstConv::finish_resolving_def_to_ty(self, self, span,
+                                                         PathParamMode::Optional,
+                                                         &mut def,
+                                                         opt_self_ty,
+                                                         &ty_segments[..base_ty_end],
+                                                         &ty_segments[base_ty_end..]);
+            let item_segment = path.segments.last().unwrap();
+            let item_name = item_segment.identifier.name;
+            let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
+                Ok(def) => Some(def),
+                Err(error) => {
+                    let def = match error {
+                        method::MethodError::PrivateMatch(def) => Some(def),
+                        _ => None,
+                    };
+                    if item_name != keywords::Invalid.name() {
+                        self.report_method_error(span, ty, item_name, None, error);
+                    }
+                    def
                 }
-                def
+            };
+
+            if let Some(def) = def {
+                // Write back the new resolution.
+                self.tcx().def_map.borrow_mut().insert(node_id, def::PathResolution {
+                    base_def: def,
+                    depth: 0,
+                });
+                Some((Some(ty), slice::ref_slice(item_segment), def))
+            } else {
+                self.write_error(node_id);
+                None
             }
+        }
+    }
+
+    pub fn check_decl_initializer(&self,
+                                  local: &'gcx hir::Local,
+                                  init: &'gcx hir::Expr)
+    {
+        let ref_bindings = self.tcx.pat_contains_ref_binding(&local.pat);
+
+        let local_ty = self.local_ty(init.span, local.id);
+        if let Some(m) = ref_bindings {
+            // Somewhat subtle: if we have a `ref` binding in the pattern,
+            // we want to avoid introducing coercions for the RHS. This is
+            // both because it helps preserve sanity and, in the case of
+            // ref mut, for soundness (issue #23116). In particular, in
+            // the latter case, we need to be clear that the type of the
+            // referent for the reference that results is *equal to* the
+            // type of the lvalue it is referencing, and not some
+            // supertype thereof.
+            self.check_expr_with_lvalue_pref(init, LvaluePreference::from_mutbl(m));
+            let init_ty = self.expr_ty(init);
+            self.demand_eqtype(init.span, init_ty, local_ty);
+        } else {
+            self.check_expr_coercable_to_type(init, local_ty)
+        };
+    }
+
+    pub fn check_decl_local(&self, local: &'gcx hir::Local)  {
+        let tcx = self.tcx;
+
+        let t = self.local_ty(local.span, local.id);
+        self.write_ty(local.id, t);
+
+        if let Some(ref init) = local.init {
+            self.check_decl_initializer(local, &init);
+            let init_ty = self.expr_ty(&init);
+            if init_ty.references_error() {
+                self.write_ty(local.id, init_ty);
+            }
+        }
+
+        let pcx = PatCtxt {
+            fcx: self,
+            map: pat_id_map(&tcx.def_map, &local.pat),
+        };
+        pcx.check_pat(&local.pat, t);
+        let pat_ty = self.node_ty(local.pat.id);
+        if pat_ty.references_error() {
+            self.write_ty(local.id, pat_ty);
+        }
+    }
+
+    pub fn check_stmt(&self, stmt: &'gcx hir::Stmt)  {
+        let node_id;
+        let mut saw_bot = false;
+        let mut saw_err = false;
+        match stmt.node {
+          hir::StmtDecl(ref decl, id) => {
+            node_id = id;
+            match decl.node {
+              hir::DeclLocal(ref l) => {
+                  self.check_decl_local(&l);
+                  let l_t = self.node_ty(l.id);
+                  saw_bot = saw_bot || self.type_var_diverges(l_t);
+                  saw_err = saw_err || l_t.references_error();
+              }
+              hir::DeclItem(_) => {/* ignore for now */ }
+            }
+          }
+          hir::StmtExpr(ref expr, id) => {
+            node_id = id;
+            // Check with expected type of ()
+            self.check_expr_has_type(&expr, self.tcx.mk_nil());
+            let expr_ty = self.expr_ty(&expr);
+            saw_bot = saw_bot || self.type_var_diverges(expr_ty);
+            saw_err = saw_err || expr_ty.references_error();
+          }
+          hir::StmtSemi(ref expr, id) => {
+            node_id = id;
+            self.check_expr(&expr);
+            let expr_ty = self.expr_ty(&expr);
+            saw_bot |= self.type_var_diverges(expr_ty);
+            saw_err |= expr_ty.references_error();
+          }
+        }
+        if saw_bot {
+            self.write_ty(node_id, self.next_diverging_ty_var());
+        }
+        else if saw_err {
+            self.write_error(node_id);
+        }
+        else {
+            self.write_nil(node_id)
+        }
+    }
+
+    pub fn check_block_no_value(&self, blk: &'gcx hir::Block)  {
+        self.check_block_with_expected(blk, ExpectHasType(self.tcx.mk_nil()));
+        let blkty = self.node_ty(blk.id);
+        if blkty.references_error() {
+            self.write_error(blk.id);
+        } else {
+            let nilty = self.tcx.mk_nil();
+            self.demand_suptype(blk.span, nilty, blkty);
+        }
+    }
+
+    fn check_block_with_expected(&self,
+                                 blk: &'gcx hir::Block,
+                                 expected: Expectation<'tcx>) {
+        let prev = {
+            let mut fcx_ps = self.ps.borrow_mut();
+            let unsafety_state = fcx_ps.recurse(blk);
+            replace(&mut *fcx_ps, unsafety_state)
         };
 
-        if let Some(def) = def {
-            // Write back the new resolution.
-            self.tcx().def_map.borrow_mut().insert(node_id, def::PathResolution {
-                base_def: def,
-                depth: 0,
-            });
-            Some((Some(ty), slice::ref_slice(item_segment), def))
-        } else {
-            self.write_error(node_id);
-            None
-        }
-    }
-}
-
-pub fn check_decl_initializer(&self,
-                              local: &'gcx hir::Local,
-                              init: &'gcx hir::Expr)
-{
-    let ref_bindings = self.tcx.pat_contains_ref_binding(&local.pat);
-
-    let local_ty = self.local_ty(init.span, local.id);
-    if let Some(m) = ref_bindings {
-        // Somewhat subtle: if we have a `ref` binding in the pattern,
-        // we want to avoid introducing coercions for the RHS. This is
-        // both because it helps preserve sanity and, in the case of
-        // ref mut, for soundness (issue #23116). In particular, in
-        // the latter case, we need to be clear that the type of the
-        // referent for the reference that results is *equal to* the
-        // type of the lvalue it is referencing, and not some
-        // supertype thereof.
-        self.check_expr_with_lvalue_pref(init, LvaluePreference::from_mutbl(m));
-        let init_ty = self.expr_ty(init);
-        self.demand_eqtype(init.span, init_ty, local_ty);
-    } else {
-        self.check_expr_coercable_to_type(init, local_ty)
-    };
-}
-
-pub fn check_decl_local(&self, local: &'gcx hir::Local)  {
-    let tcx = self.tcx;
-
-    let t = self.local_ty(local.span, local.id);
-    self.write_ty(local.id, t);
-
-    if let Some(ref init) = local.init {
-        self.check_decl_initializer(local, &init);
-        let init_ty = self.expr_ty(&init);
-        if init_ty.references_error() {
-            self.write_ty(local.id, init_ty);
-        }
-    }
-
-    let pcx = PatCtxt {
-        fcx: self,
-        map: pat_id_map(&tcx.def_map, &local.pat),
-    };
-    pcx.check_pat(&local.pat, t);
-    let pat_ty = self.node_ty(local.pat.id);
-    if pat_ty.references_error() {
-        self.write_ty(local.id, pat_ty);
-    }
-}
-
-pub fn check_stmt(&self, stmt: &'gcx hir::Stmt)  {
-    let node_id;
-    let mut saw_bot = false;
-    let mut saw_err = false;
-    match stmt.node {
-      hir::StmtDecl(ref decl, id) => {
-        node_id = id;
-        match decl.node {
-          hir::DeclLocal(ref l) => {
-              self.check_decl_local(&l);
-              let l_t = self.node_ty(l.id);
-              saw_bot = saw_bot || self.type_var_diverges(l_t);
-              saw_err = saw_err || l_t.references_error();
-          }
-          hir::DeclItem(_) => {/* ignore for now */ }
-        }
-      }
-      hir::StmtExpr(ref expr, id) => {
-        node_id = id;
-        // Check with expected type of ()
-        self.check_expr_has_type(&expr, self.tcx.mk_nil());
-        let expr_ty = self.expr_ty(&expr);
-        saw_bot = saw_bot || self.type_var_diverges(expr_ty);
-        saw_err = saw_err || expr_ty.references_error();
-      }
-      hir::StmtSemi(ref expr, id) => {
-        node_id = id;
-        self.check_expr(&expr);
-        let expr_ty = self.expr_ty(&expr);
-        saw_bot |= self.type_var_diverges(expr_ty);
-        saw_err |= expr_ty.references_error();
-      }
-    }
-    if saw_bot {
-        self.write_ty(node_id, self.next_diverging_ty_var());
-    }
-    else if saw_err {
-        self.write_error(node_id);
-    }
-    else {
-        self.write_nil(node_id)
-    }
-}
-
-pub fn check_block_no_value(&self, blk: &'gcx hir::Block)  {
-    self.check_block_with_expected(blk, ExpectHasType(self.tcx.mk_nil()));
-    let blkty = self.node_ty(blk.id);
-    if blkty.references_error() {
-        self.write_error(blk.id);
-    } else {
-        let nilty = self.tcx.mk_nil();
-        self.demand_suptype(blk.span, nilty, blkty);
-    }
-}
-
-fn check_block_with_expected(&self,
-                             blk: &'gcx hir::Block,
-                             expected: Expectation<'tcx>) {
-    let prev = {
-        let mut fcx_ps = self.ps.borrow_mut();
-        let unsafety_state = fcx_ps.recurse(blk);
-        replace(&mut *fcx_ps, unsafety_state)
-    };
-
-    let mut warned = false;
-    let mut any_diverges = false;
-    let mut any_err = false;
-    for s in &blk.stmts {
-        self.check_stmt(s);
-        let s_id = s.node.id();
-        let s_ty = self.node_ty(s_id);
-        if any_diverges && !warned && match s.node {
-            hir::StmtDecl(ref decl, _) => {
-                match decl.node {
-                    hir::DeclLocal(_) => true,
-                    _ => false,
+        let mut warned = false;
+        let mut any_diverges = false;
+        let mut any_err = false;
+        for s in &blk.stmts {
+            self.check_stmt(s);
+            let s_id = s.node.id();
+            let s_ty = self.node_ty(s_id);
+            if any_diverges && !warned && match s.node {
+                hir::StmtDecl(ref decl, _) => {
+                    match decl.node {
+                        hir::DeclLocal(_) => true,
+                        _ => false,
+                    }
                 }
-            }
-            hir::StmtExpr(_, _) | hir::StmtSemi(_, _) => true,
-        } {
-            self.tcx
-                .sess
-                .add_lint(lint::builtin::UNREACHABLE_CODE,
-                          s_id,
-                          s.span,
-                          "unreachable statement".to_string());
-            warned = true;
-        }
-        any_diverges = any_diverges || self.type_var_diverges(s_ty);
-        any_err = any_err || s_ty.references_error();
-    }
-    match blk.expr {
-        None => if any_err {
-            self.write_error(blk.id);
-        } else if any_diverges {
-            self.write_ty(blk.id, self.next_diverging_ty_var());
-        } else {
-            self.write_nil(blk.id);
-        },
-        Some(ref e) => {
-            if any_diverges && !warned {
+                hir::StmtExpr(_, _) | hir::StmtSemi(_, _) => true,
+            } {
                 self.tcx
                     .sess
                     .add_lint(lint::builtin::UNREACHABLE_CODE,
-                              e.id,
-                              e.span,
-                              "unreachable expression".to_string());
+                              s_id,
+                              s.span,
+                              "unreachable statement".to_string());
+                warned = true;
             }
-            let ety = match expected {
-                ExpectHasType(ety) => {
-                    self.check_expr_coercable_to_type(&e, ety);
-                    ety
-                }
-                _ => {
-                    self.check_expr_with_expectation(&e, expected);
-                    self.expr_ty(&e)
-                }
-            };
-
-            if any_err {
+            any_diverges = any_diverges || self.type_var_diverges(s_ty);
+            any_err = any_err || s_ty.references_error();
+        }
+        match blk.expr {
+            None => if any_err {
                 self.write_error(blk.id);
             } else if any_diverges {
                 self.write_ty(blk.id, self.next_diverging_ty_var());
             } else {
-                self.write_ty(blk.id, ety);
+                self.write_nil(blk.id);
+            },
+            Some(ref e) => {
+                if any_diverges && !warned {
+                    self.tcx
+                        .sess
+                        .add_lint(lint::builtin::UNREACHABLE_CODE,
+                                  e.id,
+                                  e.span,
+                                  "unreachable expression".to_string());
+                }
+                let ety = match expected {
+                    ExpectHasType(ety) => {
+                        self.check_expr_coercable_to_type(&e, ety);
+                        ety
+                    }
+                    _ => {
+                        self.check_expr_with_expectation(&e, expected);
+                        self.expr_ty(&e)
+                    }
+                };
+
+                if any_err {
+                    self.write_error(blk.id);
+                } else if any_diverges {
+                    self.write_ty(blk.id, self.next_diverging_ty_var());
+                } else {
+                    self.write_ty(blk.id, ety);
+                }
             }
-        }
-    };
+        };
 
-    *self.ps.borrow_mut() = prev;
-}
+        *self.ps.borrow_mut() = prev;
+    }
 
 
-fn check_const_with_ty(&self,
-                       _: Span,
-                       e: &'gcx hir::Expr,
-                       declty: Ty<'tcx>) {
-    // Gather locals in statics (because of block expressions).
-    // This is technically unnecessary because locals in static items are forbidden,
-    // but prevents type checking from blowing up before const checking can properly
-    // emit an error.
-    GatherLocalsVisitor { fcx: self }.visit_expr(e);
+    fn check_const_with_ty(&self,
+                           _: Span,
+                           e: &'gcx hir::Expr,
+                           declty: Ty<'tcx>) {
+        // Gather locals in statics (because of block expressions).
+        // This is technically unnecessary because locals in static items are forbidden,
+        // but prevents type checking from blowing up before const checking can properly
+        // emit an error.
+        GatherLocalsVisitor { fcx: self }.visit_expr(e);
 
-    self.check_expr_coercable_to_type(e, declty);
+        self.check_expr_coercable_to_type(e, declty);
 
-    self.select_all_obligations_and_apply_defaults();
-    self.closure_analyze_const(e);
-    self.select_obligations_where_possible();
-    self.check_casts();
-    self.select_all_obligations_or_error();
+        self.select_all_obligations_and_apply_defaults();
+        self.closure_analyze_const(e);
+        self.select_obligations_where_possible();
+        self.check_casts();
+        self.select_all_obligations_or_error();
 
-    self.regionck_expr(e);
-    self.resolve_type_vars_in_expr(e);
-}
+        self.regionck_expr(e);
+        self.resolve_type_vars_in_expr(e);
+    }
 
-// Returns the type parameter count and the type for the given definition.
-fn type_scheme_and_predicates_for_def(&self,
-                                      sp: Span,
-                                      defn: Def)
-                                      -> (TypeScheme<'tcx>, GenericPredicates<'tcx>) {
-    match defn {
-        Def::Local(_, nid) | Def::Upvar(_, nid, _, _) => {
-            let typ = self.local_ty(sp, nid);
-            (ty::TypeScheme { generics: ty::Generics::empty(), ty: typ },
-             ty::GenericPredicates::empty())
-        }
-        Def::Fn(id) | Def::Method(id) |
-        Def::Static(id, _) | Def::Variant(_, id) |
-        Def::Struct(id) | Def::Const(id) | Def::AssociatedConst(id) => {
-            (self.tcx.lookup_item_type(id), self.tcx.lookup_predicates(id))
-        }
-        Def::Trait(_) |
-        Def::Enum(..) |
-        Def::TyAlias(..) |
-        Def::AssociatedTy(..) |
-        Def::PrimTy(_) |
-        Def::TyParam(..) |
-        Def::Mod(..) |
-        Def::ForeignMod(..) |
-        Def::Label(..) |
-        Def::SelfTy(..) |
-        Def::Err => {
-            span_bug!(sp, "expected value, found {:?}", defn);
+    // Returns the type parameter count and the type for the given definition.
+    fn type_scheme_and_predicates_for_def(&self,
+                                          sp: Span,
+                                          defn: Def)
+                                          -> (TypeScheme<'tcx>, GenericPredicates<'tcx>) {
+        match defn {
+            Def::Local(_, nid) | Def::Upvar(_, nid, _, _) => {
+                let typ = self.local_ty(sp, nid);
+                (ty::TypeScheme { generics: ty::Generics::empty(), ty: typ },
+                 ty::GenericPredicates::empty())
+            }
+            Def::Fn(id) | Def::Method(id) |
+            Def::Static(id, _) | Def::Variant(_, id) |
+            Def::Struct(id) | Def::Const(id) | Def::AssociatedConst(id) => {
+                (self.tcx.lookup_item_type(id), self.tcx.lookup_predicates(id))
+            }
+            Def::Trait(_) |
+            Def::Enum(..) |
+            Def::TyAlias(..) |
+            Def::AssociatedTy(..) |
+            Def::PrimTy(_) |
+            Def::TyParam(..) |
+            Def::Mod(..) |
+            Def::ForeignMod(..) |
+            Def::Label(..) |
+            Def::SelfTy(..) |
+            Def::Err => {
+                span_bug!(sp, "expected value, found {:?}", defn);
+            }
         }
     }
-}
 
-// Instantiates the given path, which must refer to an item with the given
-// number of type parameters and type.
-pub fn instantiate_path(&self,
-                        segments: &[hir::PathSegment],
-                        type_scheme: TypeScheme<'tcx>,
-                        type_predicates: &ty::GenericPredicates<'tcx>,
-                        opt_self_ty: Option<Ty<'tcx>>,
-                        def: Def,
-                        span: Span,
-                        node_id: ast::NodeId) {
-    debug!("instantiate_path(path={:?}, def={:?}, node_id={}, type_scheme={:?})",
-           segments,
-           def,
-           node_id,
-           type_scheme);
+    // Instantiates the given path, which must refer to an item with the given
+    // number of type parameters and type.
+    pub fn instantiate_path(&self,
+                            segments: &[hir::PathSegment],
+                            type_scheme: TypeScheme<'tcx>,
+                            type_predicates: &ty::GenericPredicates<'tcx>,
+                            opt_self_ty: Option<Ty<'tcx>>,
+                            def: Def,
+                            span: Span,
+                            node_id: ast::NodeId) {
+        debug!("instantiate_path(path={:?}, def={:?}, node_id={}, type_scheme={:?})",
+               segments,
+               def,
+               node_id,
+               type_scheme);
 
-    // We need to extract the type parameters supplied by the user in
-    // the path `path`. Due to the current setup, this is a bit of a
-    // tricky-process; the problem is that resolve only tells us the
-    // end-point of the path resolution, and not the intermediate steps.
-    // Luckily, we can (at least for now) deduce the intermediate steps
-    // just from the end-point.
-    //
-    // There are basically four cases to consider:
-    //
-    // 1. Reference to a *type*, such as a struct or enum:
-    //
-    //        mod a { struct Foo<T> { ... } }
-    //
-    //    Because we don't allow types to be declared within one
-    //    another, a path that leads to a type will always look like
-    //    `a::b::Foo<T>` where `a` and `b` are modules. This implies
-    //    that only the final segment can have type parameters, and
-    //    they are located in the TypeSpace.
-    //
-    //    *Note:* Generally speaking, references to types don't
-    //    actually pass through this function, but rather the
-    //    `ast_ty_to_ty` function in `astconv`. However, in the case
-    //    of struct patterns (and maybe literals) we do invoke
-    //    `instantiate_path` to get the general type of an instance of
-    //    a struct. (In these cases, there are actually no type
-    //    parameters permitted at present, but perhaps we will allow
-    //    them in the future.)
-    //
-    // 1b. Reference to an enum variant or tuple-like struct:
-    //
-    //        struct foo<T>(...)
-    //        enum E<T> { foo(...) }
-    //
-    //    In these cases, the parameters are declared in the type
-    //    space.
-    //
-    // 2. Reference to a *fn item*:
-    //
-    //        fn foo<T>() { }
-    //
-    //    In this case, the path will again always have the form
-    //    `a::b::foo::<T>` where only the final segment should have
-    //    type parameters. However, in this case, those parameters are
-    //    declared on a value, and hence are in the `FnSpace`.
-    //
-    // 3. Reference to a *method*:
-    //
-    //        impl<A> SomeStruct<A> {
-    //            fn foo<B>(...)
-    //        }
-    //
-    //    Here we can have a path like
-    //    `a::b::SomeStruct::<A>::foo::<B>`, in which case parameters
-    //    may appear in two places. The penultimate segment,
-    //    `SomeStruct::<A>`, contains parameters in TypeSpace, and the
-    //    final segment, `foo::<B>` contains parameters in fn space.
-    //
-    // 4. Reference to an *associated const*:
-    //
-    // impl<A> AnotherStruct<A> {
-    // const FOO: B = BAR;
-    // }
-    //
-    // The path in this case will look like
-    // `a::b::AnotherStruct::<A>::FOO`, so the penultimate segment
-    // only will have parameters in TypeSpace.
-    //
-    // The first step then is to categorize the segments appropriately.
+        // We need to extract the type parameters supplied by the user in
+        // the path `path`. Due to the current setup, this is a bit of a
+        // tricky-process; the problem is that resolve only tells us the
+        // end-point of the path resolution, and not the intermediate steps.
+        // Luckily, we can (at least for now) deduce the intermediate steps
+        // just from the end-point.
+        //
+        // There are basically four cases to consider:
+        //
+        // 1. Reference to a *type*, such as a struct or enum:
+        //
+        //        mod a { struct Foo<T> { ... } }
+        //
+        //    Because we don't allow types to be declared within one
+        //    another, a path that leads to a type will always look like
+        //    `a::b::Foo<T>` where `a` and `b` are modules. This implies
+        //    that only the final segment can have type parameters, and
+        //    they are located in the TypeSpace.
+        //
+        //    *Note:* Generally speaking, references to types don't
+        //    actually pass through this function, but rather the
+        //    `ast_ty_to_ty` function in `astconv`. However, in the case
+        //    of struct patterns (and maybe literals) we do invoke
+        //    `instantiate_path` to get the general type of an instance of
+        //    a struct. (In these cases, there are actually no type
+        //    parameters permitted at present, but perhaps we will allow
+        //    them in the future.)
+        //
+        // 1b. Reference to an enum variant or tuple-like struct:
+        //
+        //        struct foo<T>(...)
+        //        enum E<T> { foo(...) }
+        //
+        //    In these cases, the parameters are declared in the type
+        //    space.
+        //
+        // 2. Reference to a *fn item*:
+        //
+        //        fn foo<T>() { }
+        //
+        //    In this case, the path will again always have the form
+        //    `a::b::foo::<T>` where only the final segment should have
+        //    type parameters. However, in this case, those parameters are
+        //    declared on a value, and hence are in the `FnSpace`.
+        //
+        // 3. Reference to a *method*:
+        //
+        //        impl<A> SomeStruct<A> {
+        //            fn foo<B>(...)
+        //        }
+        //
+        //    Here we can have a path like
+        //    `a::b::SomeStruct::<A>::foo::<B>`, in which case parameters
+        //    may appear in two places. The penultimate segment,
+        //    `SomeStruct::<A>`, contains parameters in TypeSpace, and the
+        //    final segment, `foo::<B>` contains parameters in fn space.
+        //
+        // 4. Reference to an *associated const*:
+        //
+        // impl<A> AnotherStruct<A> {
+        // const FOO: B = BAR;
+        // }
+        //
+        // The path in this case will look like
+        // `a::b::AnotherStruct::<A>::FOO`, so the penultimate segment
+        // only will have parameters in TypeSpace.
+        //
+        // The first step then is to categorize the segments appropriately.
 
-    assert!(!segments.is_empty());
+        assert!(!segments.is_empty());
 
-    let mut ufcs_associated = None;
-    let mut segment_spaces: Vec<_>;
-    match def {
-        // Case 1 and 1b. Reference to a *type* or *enum variant*.
-        Def::SelfTy(..) |
-        Def::Struct(..) |
-        Def::Variant(..) |
-        Def::Enum(..) |
-        Def::TyAlias(..) |
-        Def::AssociatedTy(..) |
-        Def::Trait(..) |
-        Def::PrimTy(..) |
-        Def::TyParam(..) => {
-            // Everything but the final segment should have no
-            // parameters at all.
-            segment_spaces = vec![None; segments.len() - 1];
-            segment_spaces.push(Some(subst::TypeSpace));
-        }
-
-        // Case 2. Reference to a top-level value.
-        Def::Fn(..) |
-        Def::Const(..) |
-        Def::Static(..) => {
-            segment_spaces = vec![None; segments.len() - 1];
-            segment_spaces.push(Some(subst::FnSpace));
-        }
-
-        // Case 3. Reference to a method.
-        Def::Method(def_id) => {
-            let container = self.tcx.impl_or_trait_item(def_id).container();
-            match container {
-                ty::TraitContainer(trait_did) => {
-                    callee::check_legal_trait_for_method_call(self.ccx, span, trait_did)
-                }
-                ty::ImplContainer(_) => {}
+        let mut ufcs_associated = None;
+        let mut segment_spaces: Vec<_>;
+        match def {
+            // Case 1 and 1b. Reference to a *type* or *enum variant*.
+            Def::SelfTy(..) |
+            Def::Struct(..) |
+            Def::Variant(..) |
+            Def::Enum(..) |
+            Def::TyAlias(..) |
+            Def::AssociatedTy(..) |
+            Def::Trait(..) |
+            Def::PrimTy(..) |
+            Def::TyParam(..) => {
+                // Everything but the final segment should have no
+                // parameters at all.
+                segment_spaces = vec![None; segments.len() - 1];
+                segment_spaces.push(Some(subst::TypeSpace));
             }
 
-            if segments.len() >= 2 {
-                segment_spaces = vec![None; segments.len() - 2];
-                segment_spaces.push(Some(subst::TypeSpace));
+            // Case 2. Reference to a top-level value.
+            Def::Fn(..) |
+            Def::Const(..) |
+            Def::Static(..) => {
+                segment_spaces = vec![None; segments.len() - 1];
                 segment_spaces.push(Some(subst::FnSpace));
-            } else {
-                // `<T>::method` will end up here, and so can `T::method`.
-                let self_ty = opt_self_ty.expect("UFCS sugared method missing Self");
-                segment_spaces = vec![Some(subst::FnSpace)];
-                ufcs_associated = Some((container, self_ty));
             }
-        }
 
-        Def::AssociatedConst(def_id) => {
-            let container = self.tcx.impl_or_trait_item(def_id).container();
-            match container {
-                ty::TraitContainer(trait_did) => {
-                    callee::check_legal_trait_for_method_call(self.ccx, span, trait_did)
+            // Case 3. Reference to a method.
+            Def::Method(def_id) => {
+                let container = self.tcx.impl_or_trait_item(def_id).container();
+                match container {
+                    ty::TraitContainer(trait_did) => {
+                        callee::check_legal_trait_for_method_call(self.ccx, span, trait_did)
+                    }
+                    ty::ImplContainer(_) => {}
                 }
-                ty::ImplContainer(_) => {}
+
+                if segments.len() >= 2 {
+                    segment_spaces = vec![None; segments.len() - 2];
+                    segment_spaces.push(Some(subst::TypeSpace));
+                    segment_spaces.push(Some(subst::FnSpace));
+                } else {
+                    // `<T>::method` will end up here, and so can `T::method`.
+                    let self_ty = opt_self_ty.expect("UFCS sugared method missing Self");
+                    segment_spaces = vec![Some(subst::FnSpace)];
+                    ufcs_associated = Some((container, self_ty));
+                }
             }
 
-            if segments.len() >= 2 {
-                segment_spaces = vec![None; segments.len() - 2];
-                segment_spaces.push(Some(subst::TypeSpace));
-                segment_spaces.push(None);
+            Def::AssociatedConst(def_id) => {
+                let container = self.tcx.impl_or_trait_item(def_id).container();
+                match container {
+                    ty::TraitContainer(trait_did) => {
+                        callee::check_legal_trait_for_method_call(self.ccx, span, trait_did)
+                    }
+                    ty::ImplContainer(_) => {}
+                }
+
+                if segments.len() >= 2 {
+                    segment_spaces = vec![None; segments.len() - 2];
+                    segment_spaces.push(Some(subst::TypeSpace));
+                    segment_spaces.push(None);
+                } else {
+                    // `<T>::CONST` will end up here, and so can `T::CONST`.
+                    let self_ty = opt_self_ty.expect("UFCS sugared const missing Self");
+                    segment_spaces = vec![None];
+                    ufcs_associated = Some((container, self_ty));
+                }
+            }
+
+            // Other cases. Various nonsense that really shouldn't show up
+            // here. If they do, an error will have been reported
+            // elsewhere. (I hope)
+            Def::Mod(..) |
+            Def::ForeignMod(..) |
+            Def::Local(..) |
+            Def::Label(..) |
+            Def::Upvar(..) => {
+                segment_spaces = vec![None; segments.len()];
+            }
+
+            Def::Err => {
+                self.set_tainted_by_errors();
+                segment_spaces = vec![None; segments.len()];
+            }
+        }
+        assert_eq!(segment_spaces.len(), segments.len());
+
+        // In `<T as Trait<A, B>>::method`, `A` and `B` are mandatory, but
+        // `opt_self_ty` can also be Some for `Foo::method`, where Foo's
+        // type parameters are not mandatory.
+        let require_type_space = opt_self_ty.is_some() && ufcs_associated.is_none();
+
+        debug!("segment_spaces={:?}", segment_spaces);
+
+        // Next, examine the definition, and determine how many type
+        // parameters we expect from each space.
+        let type_defs = &type_scheme.generics.types;
+        let region_defs = &type_scheme.generics.regions;
+
+        // Now that we have categorized what space the parameters for each
+        // segment belong to, let's sort out the parameters that the user
+        // provided (if any) into their appropriate spaces. We'll also report
+        // errors if type parameters are provided in an inappropriate place.
+        let mut substs = Substs::empty();
+        for (&opt_space, segment) in segment_spaces.iter().zip(segments) {
+            if let Some(space) = opt_space {
+                self.push_explicit_parameters_from_segment_to_substs(space,
+                                                                     span,
+                                                                     type_defs,
+                                                                     region_defs,
+                                                                     segment,
+                                                                     &mut substs);
             } else {
-                // `<T>::CONST` will end up here, and so can `T::CONST`.
-                let self_ty = opt_self_ty.expect("UFCS sugared const missing Self");
-                segment_spaces = vec![None];
-                ufcs_associated = Some((container, self_ty));
+                self.tcx.prohibit_type_params(slice::ref_slice(segment));
+            }
+        }
+        if let Some(self_ty) = opt_self_ty {
+            if type_defs.len(subst::SelfSpace) == 1 {
+                substs.types.push(subst::SelfSpace, self_ty);
             }
         }
 
-        // Other cases. Various nonsense that really shouldn't show up
-        // here. If they do, an error will have been reported
-        // elsewhere. (I hope)
-        Def::Mod(..) |
-        Def::ForeignMod(..) |
-        Def::Local(..) |
-        Def::Label(..) |
-        Def::Upvar(..) => {
-            segment_spaces = vec![None; segments.len()];
+        // Now we have to compare the types that the user *actually*
+        // provided against the types that were *expected*. If the user
+        // did not provide any types, then we want to substitute inference
+        // variables. If the user provided some types, we may still need
+        // to add defaults. If the user provided *too many* types, that's
+        // a problem.
+        for &space in &[subst::SelfSpace, subst::TypeSpace, subst::FnSpace] {
+            self.adjust_type_parameters(span, space, type_defs,
+                                        require_type_space, &mut substs);
+            assert_eq!(substs.types.len(space), type_defs.len(space));
+
+            self.adjust_region_parameters(span, space, region_defs, &mut substs);
+            assert_eq!(substs.regions.len(space), region_defs.len(space));
         }
 
-        Def::Err => {
-            self.set_tainted_by_errors();
-            segment_spaces = vec![None; segments.len()];
-        }
-    }
-    assert_eq!(segment_spaces.len(), segments.len());
+        // The things we are substituting into the type should not contain
+        // escaping late-bound regions, and nor should the base type scheme.
+        let substs = self.tcx.mk_substs(substs);
+        assert!(!substs.has_regions_escaping_depth(0));
+        assert!(!type_scheme.has_escaping_regions());
 
-    // In `<T as Trait<A, B>>::method`, `A` and `B` are mandatory, but
-    // `opt_self_ty` can also be Some for `Foo::method`, where Foo's
-    // type parameters are not mandatory.
-    let require_type_space = opt_self_ty.is_some() && ufcs_associated.is_none();
+        // Add all the obligations that are required, substituting and
+        // normalized appropriately.
+        let bounds = self.instantiate_bounds(span, &substs, &type_predicates);
+        self.add_obligations_for_parameters(
+            traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def.def_id())),
+            &bounds);
 
-    debug!("segment_spaces={:?}", segment_spaces);
-
-    // Next, examine the definition, and determine how many type
-    // parameters we expect from each space.
-    let type_defs = &type_scheme.generics.types;
-    let region_defs = &type_scheme.generics.regions;
-
-    // Now that we have categorized what space the parameters for each
-    // segment belong to, let's sort out the parameters that the user
-    // provided (if any) into their appropriate spaces. We'll also report
-    // errors if type parameters are provided in an inappropriate place.
-    let mut substs = Substs::empty();
-    for (&opt_space, segment) in segment_spaces.iter().zip(segments) {
-        if let Some(space) = opt_space {
-            self.push_explicit_parameters_from_segment_to_substs(space,
-                                                                 span,
-                                                                 type_defs,
-                                                                 region_defs,
-                                                                 segment,
-                                                                 &mut substs);
-        } else {
-            self.tcx.prohibit_type_params(slice::ref_slice(segment));
-        }
-    }
-    if let Some(self_ty) = opt_self_ty {
-        if type_defs.len(subst::SelfSpace) == 1 {
-            substs.types.push(subst::SelfSpace, self_ty);
-        }
-    }
-
-    // Now we have to compare the types that the user *actually*
-    // provided against the types that were *expected*. If the user
-    // did not provide any types, then we want to substitute inference
-    // variables. If the user provided some types, we may still need
-    // to add defaults. If the user provided *too many* types, that's
-    // a problem.
-    for &space in &[subst::SelfSpace, subst::TypeSpace, subst::FnSpace] {
-        self.adjust_type_parameters(span, space, type_defs,
-                                    require_type_space, &mut substs);
-        assert_eq!(substs.types.len(space), type_defs.len(space));
-
-        self.adjust_region_parameters(span, space, region_defs, &mut substs);
-        assert_eq!(substs.regions.len(space), region_defs.len(space));
-    }
-
-    // The things we are substituting into the type should not contain
-    // escaping late-bound regions, and nor should the base type scheme.
-    let substs = self.tcx.mk_substs(substs);
-    assert!(!substs.has_regions_escaping_depth(0));
-    assert!(!type_scheme.has_escaping_regions());
-
-    // Add all the obligations that are required, substituting and
-    // normalized appropriately.
-    let bounds = self.instantiate_bounds(span, &substs, &type_predicates);
-    self.add_obligations_for_parameters(
-        traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def.def_id())),
-        &bounds);
-
-    // Substitute the values for the type parameters into the type of
-    // the referenced item.
-    let ty_substituted = self.instantiate_type_scheme(span, &substs, &type_scheme.ty);
+        // Substitute the values for the type parameters into the type of
+        // the referenced item.
+        let ty_substituted = self.instantiate_type_scheme(span, &substs, &type_scheme.ty);
 
 
-    if let Some((ty::ImplContainer(impl_def_id), self_ty)) = ufcs_associated {
-        // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
-        // is inherent, there is no `Self` parameter, instead, the impl needs
-        // type parameters, which we can infer by unifying the provided `Self`
-        // with the substituted impl type.
-        let impl_scheme = self.tcx.lookup_item_type(impl_def_id);
-        assert_eq!(substs.types.len(subst::TypeSpace),
-                   impl_scheme.generics.types.len(subst::TypeSpace));
-        assert_eq!(substs.regions.len(subst::TypeSpace),
-                   impl_scheme.generics.regions.len(subst::TypeSpace));
+        if let Some((ty::ImplContainer(impl_def_id), self_ty)) = ufcs_associated {
+            // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
+            // is inherent, there is no `Self` parameter, instead, the impl needs
+            // type parameters, which we can infer by unifying the provided `Self`
+            // with the substituted impl type.
+            let impl_scheme = self.tcx.lookup_item_type(impl_def_id);
+            assert_eq!(substs.types.len(subst::TypeSpace),
+                       impl_scheme.generics.types.len(subst::TypeSpace));
+            assert_eq!(substs.regions.len(subst::TypeSpace),
+                       impl_scheme.generics.regions.len(subst::TypeSpace));
 
-        let impl_ty = self.instantiate_type_scheme(span, &substs, &impl_scheme.ty);
-        match self.sub_types(false, TypeOrigin::Misc(span), self_ty, impl_ty) {
-            Ok(InferOk { obligations, .. }) => {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
-            }
-            Err(_) => {
-                span_bug!(span,
-                    "instantiate_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
-                    self_ty,
-                    impl_ty);
+            let impl_ty = self.instantiate_type_scheme(span, &substs, &impl_scheme.ty);
+            match self.sub_types(false, TypeOrigin::Misc(span), self_ty, impl_ty) {
+                Ok(InferOk { obligations, .. }) => {
+                    // FIXME(#32730) propagate obligations
+                    assert!(obligations.is_empty());
+                }
+                Err(_) => {
+                    span_bug!(span,
+                        "instantiate_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
+                        self_ty,
+                        impl_ty);
+                }
             }
         }
-    }
 
-    debug!("instantiate_path: type of {:?} is {:?}",
-           node_id,
-           ty_substituted);
-    self.write_ty(node_id, ty_substituted);
-    self.write_substs(node_id, ty::ItemSubsts {
-        substs: substs
-    });
-}
+        debug!("instantiate_path: type of {:?} is {:?}",
+               node_id,
+               ty_substituted);
+        self.write_ty(node_id, ty_substituted);
+        self.write_substs(node_id, ty::ItemSubsts {
+            substs: substs
+        });
+    }
 
     /// Finds the parameters that the user provided and adds them to `substs`. If too many
     /// parameters are provided, then reports an error and clears the output vector.
@@ -4628,40 +4634,40 @@ pub fn instantiate_path(&self,
             self.region_vars_for_defs(span, desired));
     }
 
-fn structurally_resolve_type_or_else<F>(&self, sp: Span, ty: Ty<'tcx>, f: F)
-                                        -> Ty<'tcx>
-    where F: Fn() -> Ty<'tcx>
-{
-    let mut ty = self.resolve_type_vars_with_obligations(ty);
+    fn structurally_resolve_type_or_else<F>(&self, sp: Span, ty: Ty<'tcx>, f: F)
+                                            -> Ty<'tcx>
+        where F: Fn() -> Ty<'tcx>
+    {
+        let mut ty = self.resolve_type_vars_with_obligations(ty);
 
-    if ty.is_ty_var() {
-        let alternative = f();
+        if ty.is_ty_var() {
+            let alternative = f();
 
-        // If not, error.
-        if alternative.is_ty_var() || alternative.references_error() {
-            if !self.is_tainted_by_errors() {
-                self.type_error_message(sp, |_actual| {
-                    "the type of this value must be known in this context".to_string()
-                }, ty, None);
+            // If not, error.
+            if alternative.is_ty_var() || alternative.references_error() {
+                if !self.is_tainted_by_errors() {
+                    self.type_error_message(sp, |_actual| {
+                        "the type of this value must be known in this context".to_string()
+                    }, ty, None);
+                }
+                self.demand_suptype(sp, self.tcx.types.err, ty);
+                ty = self.tcx.types.err;
+            } else {
+                self.demand_suptype(sp, alternative, ty);
+                ty = alternative;
             }
-            self.demand_suptype(sp, self.tcx.types.err, ty);
-            ty = self.tcx.types.err;
-        } else {
-            self.demand_suptype(sp, alternative, ty);
-            ty = alternative;
         }
+
+        ty
     }
 
-    ty
-}
-
-// Resolves `typ` by a single level if `typ` is a type variable.  If no
-// resolution is possible, then an error is reported.
-pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-    self.structurally_resolve_type_or_else(sp, ty, || {
-        self.tcx.types.err
-    })
-}
+    // Resolves `typ` by a single level if `typ` is a type variable.  If no
+    // resolution is possible, then an error is reported.
+    pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.structurally_resolve_type_or_else(sp, ty, || {
+            self.tcx.types.err
+        })
+    }
 }
 
 // Returns true if b contains a break that can exit from b

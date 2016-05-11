@@ -73,25 +73,25 @@ enum UnsizeKind<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-/// Returns the kind of unsize information of t, or None
-/// if t is sized or it is unknown.
-fn unsize_kind(&self, t: Ty<'tcx>) -> Option<UnsizeKind<'tcx>> {
-    match t.sty {
-        ty::TySlice(_) | ty::TyStr => Some(UnsizeKind::Length),
-        ty::TyTrait(ref tty) => Some(UnsizeKind::Vtable(tty.principal_def_id())),
-        ty::TyStruct(def, substs) => {
-            // FIXME(arielb1): do some kind of normalization
-            match def.struct_variant().fields.last() {
-                None => None,
-                Some(f) => self.unsize_kind(f.ty(self.tcx, substs))
+    /// Returns the kind of unsize information of t, or None
+    /// if t is sized or it is unknown.
+    fn unsize_kind(&self, t: Ty<'tcx>) -> Option<UnsizeKind<'tcx>> {
+        match t.sty {
+            ty::TySlice(_) | ty::TyStr => Some(UnsizeKind::Length),
+            ty::TyTrait(ref tty) => Some(UnsizeKind::Vtable(tty.principal_def_id())),
+            ty::TyStruct(def, substs) => {
+                // FIXME(arielb1): do some kind of normalization
+                match def.struct_variant().fields.last() {
+                    None => None,
+                    Some(f) => self.unsize_kind(f.ty(self.tcx, substs))
+                }
             }
+            // We should really try to normalize here.
+            ty::TyProjection(ref pi) => Some(UnsizeKind::OfProjection(pi)),
+            ty::TyParam(ref p) => Some(UnsizeKind::OfParam(p)),
+            _ => None
         }
-        // We should really try to normalize here.
-        ty::TyProjection(ref pi) => Some(UnsizeKind::OfProjection(pi)),
-        ty::TyParam(ref p) => Some(UnsizeKind::OfParam(p)),
-        _ => None
     }
-}
 }
 
 #[derive(Copy, Clone)]
