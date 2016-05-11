@@ -35,12 +35,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let expr_ty = expr.ty.clone();
         let temp = this.temp(expr_ty.clone());
-        // In constants, temp_lifetime is None. We should not need to drop
-        // anything because no values with a destructor can be created in
-        // a constant at this time, even if the type may need dropping.
-        if let Some(temp_lifetime) = expr.temp_lifetime {
-            this.schedule_drop(expr.span, temp_lifetime, &temp, expr_ty);
-        }
+        let temp_lifetime = expr.temp_lifetime;
+        let expr_span = expr.span;
 
         // Careful here not to cause an infinite cycle. If we always
         // called `into`, then for lvalues like `x.f`, it would
@@ -51,7 +47,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // course) `as_temp`.
         match Category::of(&expr.kind).unwrap() {
             Category::Lvalue => {
-                let expr_span = expr.span;
                 let lvalue = unpack!(block = this.as_lvalue(block, expr));
                 let rvalue = Rvalue::Use(Operand::Consume(lvalue));
                 let scope_id = this.innermost_scope_id();
@@ -60,6 +55,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             _ => {
                 unpack!(block = this.into(&temp, block, expr));
             }
+        }
+
+        // In constants, temp_lifetime is None. We should not need to drop
+        // anything because no values with a destructor can be created in
+        // a constant at this time, even if the type may need dropping.
+        if let Some(temp_lifetime) = temp_lifetime {
+            this.schedule_drop(expr_span, temp_lifetime, &temp, expr_ty);
         }
 
         block.and(temp)
