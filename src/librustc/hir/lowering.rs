@@ -45,6 +45,7 @@ use hir::map::Definitions;
 use hir::map::definitions::DefPathData;
 use hir::def_id::{DefIndex, DefId};
 use hir::def::{Def, PathResolution};
+use session::Session;
 
 use std::collections::BTreeMap;
 use std::iter;
@@ -97,8 +98,16 @@ impl Resolver for DummyResolver {
     }
 }
 
-pub fn lower_crate(krate: &Crate, id_assigner: &NodeIdAssigner, resolver: &mut Resolver)
+pub fn lower_crate(sess: &Session,
+                   krate: &Crate,
+                   id_assigner: &NodeIdAssigner,
+                   resolver: &mut Resolver)
                    -> hir::Crate {
+    // We're constructing the HIR here; we don't care what we will
+    // read, since we haven't even constructed the *input* to
+    // incr. comp. yet.
+    let _ignore = sess.dep_graph.in_ignore();
+
     LoweringContext {
         crate_root: if std_inject::no_core(krate) {
             None

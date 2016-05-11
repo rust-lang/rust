@@ -814,7 +814,7 @@ pub fn lower_and_resolve<'a>(sess: &Session,
 
         // Lower ast -> hir.
         let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
-            hir_map::Forest::new(lower_crate(krate, sess, &mut resolver), dep_graph)
+            hir_map::Forest::new(lower_crate(sess, krate, sess, &mut resolver), dep_graph)
         });
 
         (ty::CrateAnalysis {

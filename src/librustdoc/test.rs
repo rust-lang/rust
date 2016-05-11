@@ -101,7 +101,7 @@ pub fn run(input: &str,
     let defs = hir_map::collect_definitions(&krate);
 
     let mut dummy_resolver = DummyResolver;
-    let krate = lower_crate(&krate, &sess, &mut dummy_resolver);
+    let krate = lower_crate(&sess, &krate, &sess, &mut dummy_resolver);
 
     let opts = scrape_test_config(&krate);
 
