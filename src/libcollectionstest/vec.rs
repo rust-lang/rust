@@ -442,6 +442,25 @@ fn test_drain_range() {
 }
 
 #[test]
+fn test_drain_range_inclusive() {
+    let mut vec = vec![1, 2, 3, 4, 5];
+    let mut vec2 = vec![];
+    for i in vec.drain(1...3) {
+        vec2.push(i);
+    }
+    assert_eq!(vec, [1, 5]);
+    assert_eq!(vec2, [2, 3, 4]);
+
+    let mut vec = vec![1, 2, 3, 4, 5];
+    let mut vec2 = vec![];
+    for i in vec.drain(...3) {
+        vec2.push(i);
+    }
+    assert_eq!(vec, [5]);
+    assert_eq!(vec2, [1, 2, 3, 4]);
+}
+
+#[test]
 fn test_into_boxed_slice() {
     let xs = vec![1, 2, 3];
     let ys = xs.into_boxed_slice();

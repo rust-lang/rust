@@ -553,8 +553,6 @@ fn slice_index_order_fail(index: usize, end: usize) -> ! {
     panic!("slice index starts at {} but ends at {}", index, end);
 }
 
-// FIXME implement indexing with inclusive ranges
-
 /// Implements slicing with syntax `&self[begin .. end]`.
 ///
 /// Returns a slice of self for the index range [`begin`..`end`).

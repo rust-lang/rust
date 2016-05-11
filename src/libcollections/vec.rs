@@ -806,8 +806,8 @@ impl<T> Vec<T> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let start = *range.start().unwrap_or(&0);
-        let end = *range.end().unwrap_or(&len);
+        let start = range.start().unwrap_or(0);
+        let end = range.end().unwrap_or(len);
         assert!(start <= end);
         assert!(end <= len);
 

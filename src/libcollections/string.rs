@@ -1274,8 +1274,8 @@ impl String {
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
         let len = self.len();
-        let start = *range.start().unwrap_or(&0);
-        let end = *range.end().unwrap_or(&len);
+        let start = range.start().unwrap_or(0);
+        let end = range.end().unwrap_or(len);
 
         // Take out two simultaneous borrows. The &mut String won't be accessed
         // until iteration is over, in Drop.
