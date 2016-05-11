@@ -62,7 +62,7 @@ pub enum Data {
     /// Data for a tuple variant.
     TupleVariantData(TupleVariantData),
     /// Data for a typedef.
-    TypeDefData(TypedefData),
+    TypeDefData(TypeDefData),
     /// Data for a reference to a type or trait.
     TypeRefData(TypeRefData),
     /// Data for a use statement.
@@ -97,6 +97,7 @@ pub struct ExternalCrateData {
 #[derive(Clone, Debug, RustcEncodable)]
 pub struct EnumData {
     pub id: NodeId,
+    pub name: String,
     pub value: String,
     pub qualname: String,
     pub span: Span,
@@ -131,6 +132,7 @@ pub struct FunctionData {
     pub declaration: Option<DefId>,
     pub span: Span,
     pub scope: NodeId,
+    pub value: String,
 }
 
 /// Data about a function call.
@@ -205,9 +207,11 @@ pub struct MethodCallData {
 #[derive(Clone, Debug, RustcEncodable)]
 pub struct MethodData {
     pub id: NodeId,
+    pub name: String,
     pub qualname: String,
     pub span: Span,
     pub scope: NodeId,
+    pub value: String,
 }
 
 /// Data for modules.
@@ -233,6 +237,7 @@ pub struct ModRefData {
 #[derive(Debug, RustcEncodable)]
 pub struct StructData {
     pub span: Span,
+    pub name: String,
     pub id: NodeId,
     pub ctor_id: NodeId,
     pub qualname: String,
@@ -243,6 +248,7 @@ pub struct StructData {
 #[derive(Debug, RustcEncodable)]
 pub struct StructVariantData {
     pub span: Span,
+    pub name: String,
     pub id: NodeId,
     pub qualname: String,
     pub type_value: String,
@@ -254,6 +260,7 @@ pub struct StructVariantData {
 pub struct TraitData {
     pub span: Span,
     pub id: NodeId,
+    pub name: String,
     pub qualname: String,
     pub scope: NodeId,
     pub value: String
@@ -272,8 +279,9 @@ pub struct TupleVariantData {
 
 /// Data for a typedef.
 #[derive(Debug, RustcEncodable)]
-pub struct TypedefData {
+pub struct TypeDefData {
     pub id: NodeId,
+    pub name: String,
     pub span: Span,
     pub qualname: String,
     pub value: String,

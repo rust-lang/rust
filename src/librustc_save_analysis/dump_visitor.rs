@@ -397,9 +397,11 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 if !self.span.filter_generated(Some(method_data.span), span) {
                     self.dumper.method(MethodData {
                         id: method_data.id,
+                        name: method_data.name,
                         span: method_data.span,
                         scope: method_data.scope,
                         qualname: method_data.qualname.clone(),
+                        value: String::new(), // TODO
                     }.lower(self.tcx));
                 }
             }
@@ -455,16 +457,18 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         let param_sub_spans = self.span.spans_for_ty_params(full_span,
                                                             (generics.ty_params.len() as isize));
         for (param, param_ss) in generics.ty_params.iter().zip(param_sub_spans) {
+            let name = escape(self.span.snippet(param_ss));
             // Append $id to name to make sure each one is unique
-            let name = format!("{}::{}${}",
-                               prefix,
-                               escape(self.span.snippet(param_ss)),
-                               id);
+            let qualname = format!("{}::{}${}",
+                                   prefix,
+                                   name,
+                                   id);
             if !self.span.filter_generated(Some(param_ss), full_span) {
-                self.dumper.typedef(TypedefData {
+                self.dumper.typedef(TypeDefData {
                     span: param_ss,
+                    name: name,
                     id: param.id,
-                    qualname: name,
+                    qualname: qualname,
                     value: String::new()
                 }.lower(self.tcx));
             }
@@ -548,6 +552,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             self.dumper.struct_data(StructData {
                 span: sub_span.expect("No span found for struct"),
                 id: item.id,
+                name: item.ident.to_string(),
                 ctor_id: def.id(),
                 qualname: qualname.clone(),
                 scope: self.cur_scope,
@@ -580,10 +585,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
 
         for variant in &enum_definition.variants {
-            let name = &variant.node.name.name.as_str();
+            let name = variant.node.name.name.to_string();
             let mut qualname = enum_data.qualname.clone();
             qualname.push_str("::");
-            qualname.push_str(name);
+            qualname.push_str(&name);
             let val = self.span.snippet(variant.span);
 
             match variant.node.data {
@@ -593,6 +598,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         self.dumper.struct_variant(StructVariantData {
                             span: sub_span.expect("No span found for struct variant"),
                             id: variant.node.data.id(),
+                            name: name,
                             qualname: qualname,
                             type_value: enum_data.qualname.clone(),
                             value: val,
@@ -679,6 +685,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             self.dumper.trait_data(TraitData {
                 span: sub_span.expect("No span found for trait"),
                 id: item.id,
+                name: item.ident.to_string(),
                 qualname: qualname.clone(),
                 scope: self.cur_scope,
                 value: val
@@ -1107,8 +1114,9 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                 let value = ty_to_string(&ty);
                 let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Type);
                 if !self.span.filter_generated(sub_span, item.span) {
-                    self.dumper.typedef(TypedefData {
+                    self.dumper.typedef(TypeDefData {
                         span: sub_span.expect("No span found for typedef"),
+                        name: item.ident.to_string(),
                         id: item.id,
                         qualname: qualname.clone(),
                         value: value

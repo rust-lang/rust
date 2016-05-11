@@ -134,6 +134,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     declaration: None,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
+                    value: String::new(), // TODO
                 }))
             }
             ast::ItemKind::Static(ref typ, mt, ref expr) => {
@@ -197,6 +198,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 filter!(self.span_utils, sub_span, item.span, None);
                 Some(Data::EnumData(EnumData {
                     id: item.id,
+                    name: item.ident.to_string(),
                     value: val,
                     span: sub_span.unwrap(),
                     qualname: enum_name,
@@ -353,6 +355,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             declaration: decl_id,
             span: sub_span.unwrap(),
             scope: self.enclosing_scope(id),
+            value: String::new(), // TODO
         })
     }
 
