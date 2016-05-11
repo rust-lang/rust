@@ -117,6 +117,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                                     param(ccx, 0))
                  ], ccx.tcx.types.usize)
             }
+            "rustc_peek" => (1, vec![param(ccx, 0)], param(ccx, 0)),
             "init" | "init_dropped" => (1, Vec::new(), param(ccx, 0)),
             "uninit" => (1, Vec::new(), param(ccx, 0)),
             "forget" => (1, vec!( param(ccx, 0) ), tcx.mk_nil()),

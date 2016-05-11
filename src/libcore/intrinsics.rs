@@ -168,6 +168,16 @@ extern "rust-intrinsic" {
     pub fn atomic_singlethreadfence_rel();
     pub fn atomic_singlethreadfence_acqrel();
 
+    /// Magic intrinsic that derives its meaning from attributes
+    /// attached to the function.
+    ///
+    /// For example, dataflow uses this to inject static assertions so
+    /// that `rustc_oeek(potentially_uninitialized)` would actually
+    /// double-check that dataflow did indeed compute that it is
+    /// uninitialized at that point in the control flow.
+    #[cfg(not(stage0))]
+    pub fn rustc_peek<T>(_: T) -> T;
+
     /// Aborts the execution of the process.
     pub fn abort() -> !;
 
