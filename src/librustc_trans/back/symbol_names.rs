@@ -265,7 +265,10 @@ pub fn exported_name<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     let mut buffer = SymbolPathBuffer {
         names: Vec::with_capacity(def_path.data.len())
     };
-    ccx.tcx().push_item_path(&mut buffer, def_id);
+
+    item_path::with_forced_absolute_paths(|| {
+        scx.tcx().push_item_path(&mut buffer, def_id);
+    });
 
     mangle(buffer.names.into_iter(), Some(&hash[..]))
 }
