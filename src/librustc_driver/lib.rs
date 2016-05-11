@@ -467,17 +467,17 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     state.krate = Some(pretty::fold_crate(state.krate.take().unwrap(), ppm));
                 };
                 control.after_hir_lowering.callback = box move |state| {
-                    pretty::print_after_ast(state.session,
-                                            state.ast_map.unwrap(),
-                                            state.analysis.unwrap(),
-                                            state.resolutions.unwrap(),
-                                            state.input,
-                                            &state.expanded_crate.take().unwrap(),
-                                            state.crate_name.unwrap(),
-                                            ppm,
-                                            state.arenas.unwrap(),
-                                            opt_uii.clone(),
-                                            state.out_file);
+                    pretty::print_after_hir_lowering(state.session,
+                                                     state.ast_map.unwrap(),
+                                                     state.analysis.unwrap(),
+                                                     state.resolutions.unwrap(),
+                                                     state.input,
+                                                     &state.expanded_crate.take().unwrap(),
+                                                     state.crate_name.unwrap(),
+                                                     ppm,
+                                                     state.arenas.unwrap(),
+                                                     opt_uii.clone(),
+                                                     state.out_file);
                 };
             } else {
                 control.after_parse.stop = Compilation::Stop;
