@@ -139,7 +139,7 @@ class Type(object):
             return TYPE_KIND_STR_SLICE
 
         # REGULAR SLICE
-        if (unqualified_type_name.startswith("&[") and
+        if (unqualified_type_name.startswith(("&[", "&mut [")) and
             unqualified_type_name.endswith("]") and
             self.__conforms_to_field_layout(SLICE_FIELD_NAMES)):
             return TYPE_KIND_SLICE

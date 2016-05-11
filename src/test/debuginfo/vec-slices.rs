@@ -76,6 +76,9 @@
 // lldb-command:print padded_struct
 // lldb-check:[...]$5 = &[AStruct { x: 10, y: 11, z: 12 }, AStruct { x: 13, y: 14, z: 15 }]
 
+// lldb-command:print 'vec_slices::MUT_VECT_SLICE'
+// lldb-check:[...]$6 = &mut [64, 65]
+
 #![allow(dead_code, unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]

@@ -12,7 +12,7 @@ before_install:
   - echo 'deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.7 main' | sudo tee -a /etc/apt/sources.list
   - echo 'deb-src http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.7 main' | sudo tee -a /etc/apt/sources.list
   - sudo apt-get update
-  - sudo apt-get --force-yes install curl make g++ python2.7 git zlib1g-dev libedit-dev llvm-3.7-tools
+  - sudo apt-get --force-yes install curl make g++ python2.7 git zlib1g-dev libedit-dev llvm-3.7-tools gdb lldb-3.7
 
 script:
   - ./configure --llvm-root=/usr/lib/llvm-3.7
