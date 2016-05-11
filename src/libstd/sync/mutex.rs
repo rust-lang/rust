@@ -179,6 +179,9 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> !marker::Send for MutexGuard<'a, T> {}
 
+#[stable(feature = "sync_lock_guards", since = "1.10.0")]
+unsafe impl<'a, T: ?Sized + Sync> Sync for MutexGuard<'a, T> {}
+
 /// Static initialization of a mutex. This constant can be used to initialize
 /// other mutex constants.
 #[unstable(feature = "static_mutex",
