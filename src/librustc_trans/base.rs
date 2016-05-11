@@ -2429,47 +2429,6 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
     }
 }
 
-pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               instance: Instance<'tcx>,
-                               attrs: &[ast::Attribute])
-                               -> String {
-    let id = ccx.tcx().map.as_local_node_id(instance.def).unwrap();
-
-    if ccx.sess().plugin_registrar_fn.get() == Some(id) {
-        let svh = &ccx.link_meta().crate_hash;
-        let idx = instance.def.index;
-        return ccx.sess().generate_plugin_registrar_symbol(svh, idx);
-    }
-
-    match ccx.external_srcs().borrow().get(&id) {
-        Some(&did) => {
-            let sym = ccx.sess().cstore.item_symbol(did);
-            debug!("found item {} in other crate...", sym);
-            return sym;
-        }
-        None => {}
-    }
-
-    match attr::find_export_name_attr(ccx.sess().diagnostic(), attrs) {
-        // Use provided name
-        Some(name) => name.to_string(),
-        _ => {
-            if attr::contains_name(attrs, "no_mangle") {
-                // Don't mangle
-                ccx.tcx().map.name(id).as_str().to_string()
-            } else {
-                match weak_lang_items::link_name(attrs) {
-                    Some(name) => name.to_string(),
-                    None => {
-                        // Usual name mangling
-                        symbol_names::exported_name(ccx, &instance)
-                    }
-                }
-            }
-        }
-    }
-}
-
 pub fn imported_name(name: ast::Name, attrs: &[ast::Attribute]) -> InternedString {
     match attr::first_attr_value_str_by_name(attrs, "link_name") {
         Some(ln) => ln.clone(),
@@ -2826,7 +2785,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             reachable_symbols.extend(syms.into_iter().filter(|did| {
                 sess.cstore.is_extern_item(shared_ccx.tcx(), *did)
             }).map(|did| {
-                sess.cstore.item_symbol(did)
+                let instance = Instance::mono(shared_ccx.tcx(), did);
+                symbol_names::exported_name(&shared_ccx, instance)
             }));
         }
     }

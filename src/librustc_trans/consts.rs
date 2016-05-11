@@ -19,7 +19,8 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use {abi, adt, closure, debuginfo, expr, machine};
-use base::{self, exported_name, imported_name, push_ctxt};
+use base::{self, imported_name, push_ctxt};
+use back::symbol_names;
 use callee::Callee;
 use collector::{self, TransItem};
 use common::{type_is_sized, C_nil, const_get_elt};
@@ -1020,13 +1021,13 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
         let llty = type_of::type_of(ccx, ty);
         match ccx.tcx().map.get(id) {
             hir_map::NodeItem(&hir::Item {
-                ref attrs, span, node: hir::ItemStatic(..), ..
+                span, node: hir::ItemStatic(..), ..
             }) => {
                 // If this static came from an external crate, then
                 // we need to get the symbol from metadata instead of
                 // using the current crate's name/version
                 // information in the hash of the symbol
-                let sym = exported_name(ccx, instance, attrs);
+                let sym = symbol_names::exported_name(ccx.shared(), instance);
                 debug!("making {}", sym);
 
                 // Create the global before evaluating the initializer;
@@ -1103,7 +1104,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
     } else {
         // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
         // FIXME(nagisa): investigate whether it can be changed into define_global
-        let name = ccx.sess().cstore.item_symbol(def_id);
+        let name = symbol_names::exported_name(ccx.shared(), instance);
         let g = declare::declare_global(ccx, &name, type_of::type_of(ccx, ty));
         // Thread-local statics in some other crate need to *always* be linked
         // against in a thread-local fashion, so we need to be sure to apply the

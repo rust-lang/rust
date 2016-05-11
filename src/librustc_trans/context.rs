@@ -487,6 +487,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn translation_items(&self) -> &RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>> {
         &self.translation_items
     }
+
+    pub fn symbol_hasher(&self) -> &RefCell<Sha256> {
+        &self.symbol_hasher
+    }
 }
 
 impl<'tcx> LocalCrateContext<'tcx> {
