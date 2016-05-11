@@ -107,6 +107,20 @@
 #
 #     run `make nitty-gritty`
 #
+# # Make command examples
+#
+# ## Docs linked commands
+#
+# * make check-stage1-rustdocck: Builds rustdoc. It has the advantage to compile
+#                                quite quickly since we're only using stage1
+#                                executables.
+# * make doc/error-index.md: Gets all doc blocks from doc comments and error
+#                            explanations to put them in a markdown file. You
+#                            can then test them by running
+#                            "rustdoc --test error-index.md".
+#
+# And of course, the wonderfully useful 'make tidy'! Always run it before opening a pull request to rust!
+#
 # </tips>
 #
 # <nitty-gritty>
@@ -256,3 +270,9 @@ ifneq ($(strip $(findstring TAGS.emacs,$(MAKECMDGOALS)) \
   CFG_INFO := $(info cfg: including ctags rules)
   include $(CFG_SRC_DIR)mk/ctags.mk
 endif
+
+.DEFAULT:
+	@echo "\n======================================================"
+	@echo "== If you need help, run 'make help' or 'make tips' =="
+	@echo "======================================================\n"
+	exit 1
