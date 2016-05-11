@@ -31,8 +31,14 @@ impl<'a> IntoCow<'a, str> for &'a str {
 
 #[test]
 fn test_from_str() {
-  let owned: Option<::std::string::String> = "string".parse().ok();
-  assert_eq!(owned.as_ref().map(|s| &**s), Some("string"));
+    let owned: Option<::std::string::String> = "string".parse().ok();
+    assert_eq!(owned.as_ref().map(|s| &**s), Some("string"));
+}
+
+#[test]
+fn test_from_vec() {
+    let chars = vec!['a', 'b', 'c'];
+    assert_eq!(String::from(chars), "abc");
 }
 
 #[test]
