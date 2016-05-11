@@ -29,6 +29,7 @@ pub const LINKED_LIST: [&'static str; 3] = ["collections", "linked_list", "Linke
 pub const MEM_FORGET: [&'static str; 3] = ["core", "mem", "forget"];
 pub const MUTEX: [&'static str; 4] = ["std", "sync", "mutex", "Mutex"];
 pub const OPEN_OPTIONS: [&'static str; 3] = ["std", "fs", "OpenOptions"];
+pub const OPS_MODULE: [&'static str; 2] = ["core", "ops"];
 pub const OPTION: [&'static str; 3] = ["core", "option", "Option"];
 pub const RANGE: [&'static str; 3] = ["core", "ops", "Range"];
 pub const RANGE_FROM: [&'static str; 3] = ["core", "ops", "RangeFrom"];
