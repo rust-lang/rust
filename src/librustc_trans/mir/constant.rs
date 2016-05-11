@@ -113,7 +113,7 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Tuple(None, field_values) => {
                 let repr = adt::represent_type(ccx, ty);
                 let field_types = match ty.sty {
-                    TyTuple(ref types) => types,
+                    TyTuple(types) => types,
                     _ => bug!(),
                 };
                 let mut trans_fields = Vec::with_capacity(field_values.len());
