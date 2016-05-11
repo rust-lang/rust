@@ -167,17 +167,17 @@ struct Def {
 
 #[derive(Debug, RustcEncodable)]
 enum DefKind {
-    // value = type + generics
+    // value = variant names
     Enum,
-    // value = type + generics
+    // value = enum name + variant name + types
     Tuple,
-    // value = type + generics + types
+    // value = [enum name +] name + fields
     Struct,
-    // value = type + generics
+    // value = signature
     Trait,
     // value = type + generics
     Function,
-    // No id
+    // No id, no value.
     Macro,
     // value = file_name
     Mod,
@@ -186,8 +186,6 @@ enum DefKind {
     // value = type and init expression
     Variable,
 }
-// TODO value for function and method
-// TODO none of the values are right.
 
 impl From<EnumData> for Def {
     fn from(data: EnumData) -> Def {
