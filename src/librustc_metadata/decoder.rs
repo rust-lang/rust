@@ -1603,6 +1603,16 @@ pub fn is_extern_item<'a, 'tcx>(cdata: Cmd,
     }
 }
 
+pub fn is_foreign_item(cdata: Cmd, id: DefIndex) -> bool {
+    let item_doc = cdata.lookup_item(id);
+    let parent_item_id = match item_parent_item(cdata, item_doc) {
+        None => return false,
+        Some(item_id) => item_id,
+    };
+    let parent_item_doc = cdata.lookup_item(parent_item_id.index);
+    item_family(parent_item_doc) == ForeignMod
+}
+
 pub fn is_impl(cdata: Cmd, id: DefIndex) -> bool {
     let item_doc = cdata.lookup_item(id);
     match item_family(item_doc) {

@@ -103,6 +103,7 @@ use util::sha2::{Digest, Sha256};
 
 use rustc::middle::{cstore, weak_lang_items};
 use rustc::hir::def_id::DefId;
+use rustc::hir::map as hir_map;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::hir::map::definitions::{DefPath, DefPathData};
@@ -188,89 +189,100 @@ fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     }
 }
 
-pub fn exported_name<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                               instance: Instance<'tcx>)
-                               -> String {
-    let Instance { def: def_id, ref substs } = instance;
+impl<'a, 'tcx> Instance<'tcx> {
+    pub fn symbol_name(self, scx: &SharedCrateContext<'a, 'tcx>) -> String {
+        let Instance { def: def_id, ref substs } = self;
 
-    debug!("exported_name(def_id={:?}, substs={:?})",
-           def_id, substs);
+        debug!("symbol_name(def_id={:?}, substs={:?})",
+               def_id, substs);
 
-    let node_id = scx.tcx().map.as_local_node_id(instance.def);
+        let node_id = scx.tcx().map.as_local_node_id(def_id);
 
-    if let Some(id) = node_id {
-        if scx.sess().plugin_registrar_fn.get() == Some(id) {
-            let svh = &scx.link_meta().crate_hash;
-            let idx = instance.def.index;
-            return scx.sess().generate_plugin_registrar_symbol(svh, idx);
-        }
-    }
-
-    // FIXME(eddyb) Precompute a custom symbol name based on attributes.
-    let attrs;
-    let attrs = if let Some(id) = node_id {
-        scx.tcx().map.attrs(id)
-    } else {
-        attrs = scx.sess().cstore.item_attrs(def_id);
-        &attrs[..]
-    };
-
-    if let Some(name) = attr::find_export_name_attr(scx.sess().diagnostic(), attrs) {
-        // Use provided name
-        return name.to_string();
-    }
-
-    if attr::contains_name(attrs, "no_mangle") {
-        // Don't mangle
-        return scx.tcx().item_name(instance.def).as_str().to_string()
-    }
-    if let Some(name) = weak_lang_items::link_name(attrs) {
-        return name.to_string();
-    }
-
-    let def_path = scx.tcx().def_path(def_id);
-
-    // We want to compute the "type" of this item. Unfortunately, some
-    // kinds of items (e.g., closures) don't have an entry in the
-    // item-type array. So walk back up the find the closest parent
-    // that DOES have an entry.
-    let mut ty_def_id = def_id;
-    let instance_ty;
-    loop {
-        let key = scx.tcx().def_key(ty_def_id);
-        match key.disambiguated_data.data {
-            DefPathData::TypeNs(_) |
-            DefPathData::ValueNs(_) => {
-                instance_ty = scx.tcx().lookup_item_type(ty_def_id);
-                break;
-            }
-            _ => {
-                // if we're making a symbol for something, there ought
-                // to be a value or type-def or something in there
-                // *somewhere*
-                ty_def_id.index = key.parent.unwrap_or_else(|| {
-                    bug!("finding type for {:?}, encountered def-id {:?} with no \
-                         parent", def_id, ty_def_id);
-                });
+        if let Some(id) = node_id {
+            if scx.sess().plugin_registrar_fn.get() == Some(id) {
+                let svh = &scx.link_meta().crate_hash;
+                let idx = def_id.index;
+                return scx.sess().generate_plugin_registrar_symbol(svh, idx);
             }
         }
+
+        // FIXME(eddyb) Precompute a custom symbol name based on attributes.
+        let attrs = scx.tcx().get_attrs(def_id);
+        let is_foreign = if let Some(id) = node_id {
+            match scx.tcx().map.get(id) {
+                hir_map::NodeForeignItem(_) => true,
+                _ => false
+            }
+        } else {
+            scx.sess().cstore.is_foreign_item(def_id)
+        };
+
+        if let Some(name) = weak_lang_items::link_name(&attrs) {
+            return name.to_string();
+        }
+
+        if is_foreign {
+            if let Some(name) = attr::first_attr_value_str_by_name(&attrs, "link_name") {
+                return name.to_string();
+            }
+            // Don't mangle foreign items.
+            return scx.tcx().item_name(def_id).as_str().to_string();
+        }
+
+        if let Some(name) = attr::find_export_name_attr(scx.sess().diagnostic(), &attrs) {
+            // Use provided name
+            return name.to_string();
+        }
+
+        if attr::contains_name(&attrs, "no_mangle") {
+            // Don't mangle
+            return scx.tcx().item_name(def_id).as_str().to_string();
+        }
+
+        let def_path = scx.tcx().def_path(def_id);
+
+        // We want to compute the "type" of this item. Unfortunately, some
+        // kinds of items (e.g., closures) don't have an entry in the
+        // item-type array. So walk back up the find the closest parent
+        // that DOES have an entry.
+        let mut ty_def_id = def_id;
+        let instance_ty;
+        loop {
+            let key = scx.tcx().def_key(ty_def_id);
+            match key.disambiguated_data.data {
+                DefPathData::TypeNs(_) |
+                DefPathData::ValueNs(_) => {
+                    instance_ty = scx.tcx().lookup_item_type(ty_def_id);
+                    break;
+                }
+                _ => {
+                    // if we're making a symbol for something, there ought
+                    // to be a value or type-def or something in there
+                    // *somewhere*
+                    ty_def_id.index = key.parent.unwrap_or_else(|| {
+                        bug!("finding type for {:?}, encountered def-id {:?} with no \
+                             parent", def_id, ty_def_id);
+                    });
+                }
+            }
+        }
+
+        // Erase regions because they may not be deterministic when hashed
+        // and should not matter anyhow.
+        let instance_ty = scx.tcx().erase_regions(&instance_ty.ty);
+
+        let hash = get_symbol_hash(scx, &def_path, instance_ty, substs.types.as_slice());
+
+        let mut buffer = SymbolPathBuffer {
+            names: Vec::with_capacity(def_path.data.len())
+        };
+
+        item_path::with_forced_absolute_paths(|| {
+            scx.tcx().push_item_path(&mut buffer, def_id);
+        });
+
+        mangle(buffer.names.into_iter(), Some(&hash[..]))
     }
-
-    // Erase regions because they may not be deterministic when hashed
-    // and should not matter anyhow.
-    let instance_ty = scx.tcx().erase_regions(&instance_ty.ty);
-
-    let hash = get_symbol_hash(scx, &def_path, instance_ty, substs.types.as_slice());
-
-    let mut buffer = SymbolPathBuffer {
-        names: Vec::with_capacity(def_path.data.len())
-    };
-
-    item_path::with_forced_absolute_paths(|| {
-        scx.tcx().push_item_path(&mut buffer, def_id);
-    });
-
-    mangle(buffer.names.into_iter(), Some(&hash[..]))
 }
 
 struct SymbolPathBuffer {
