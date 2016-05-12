@@ -2,5 +2,5 @@
 
 all:
 	$(RUSTC) -o $(TMPDIR)/input.dd -Z no-analysis --emit dep-info input.rs
-	sed -i "s/^.*input.dd/input.dd/g" $(TMPDIR)/input.dd
+	sed -i'.bak' 's/^.*input.dd/input.dd/g' $(TMPDIR)/input.dd
 	diff -u $(TMPDIR)/input.dd input.dd
