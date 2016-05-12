@@ -19,6 +19,7 @@ fn a() {
         [box ref _a, _, _] => {
         //~^ borrow of `vec[..]` occurs here
             vec[0] = box 4; //~ ERROR cannot assign
+            //~^ assignment to `vec[..]` occurs here
         }
     }
 }
@@ -30,6 +31,7 @@ fn b() {
         [_b..] => {
         //~^ borrow of `vec[..]` occurs here
             vec[0] = box 4; //~ ERROR cannot assign
+            //~^ assignment to `vec[..]` occurs here
         }
     }
 }
@@ -39,8 +41,9 @@ fn c() {
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
         [_a,         //~ ERROR cannot move out
-         _b..] => {  //~^ NOTE attempting to move value to here
-
+        //~| move occurs here
+        //~| attempting to move value to here
+         _b..] => {
             // Note: `_a` is *moved* here, but `b` is borrowing,
             // hence illegal.
             //
@@ -51,6 +54,7 @@ fn c() {
     }
     let a = vec[0]; //~ ERROR cannot move out
     //~^ NOTE attempting to move value to here
+    //~| can not move out of here
 }
 
 fn d() {
@@ -58,11 +62,13 @@ fn d() {
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
         [_a..,     //~ ERROR cannot move out
+        //~^ move occurs here
          _b] => {} //~ NOTE attempting to move value to here
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
     //~^ NOTE attempting to move value to here
+    //~| can not move out of here
 }
 
 fn e() {
@@ -70,13 +76,15 @@ fn e() {
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
         [_a, _b, _c] => {}  //~ ERROR cannot move out
-        //~^ NOTE attempting to move value to here
-        //~^^ NOTE and here
-        //~^^^ NOTE and here
+        //~| move occurs here
+        //~| NOTE attempting to move value to here
+        //~| NOTE and here
+        //~| NOTE and here
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
     //~^ NOTE attempting to move value to here
+    //~| can not move out of here
 }
 
 fn main() {}

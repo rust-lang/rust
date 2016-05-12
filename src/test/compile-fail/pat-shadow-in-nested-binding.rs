@@ -11,5 +11,5 @@
 struct foo(usize);
 
 fn main() {
-    let (foo, _) = (2, 3); //~ ERROR declaration of `foo` shadows
+    let (foo, _) = (2, 3); //~ ERROR `foo` cannot be named the same as
 }
