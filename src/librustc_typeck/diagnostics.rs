@@ -45,8 +45,8 @@ Matching with the wrong number of fields has no sensible interpretation:
 
 ```compile_fail
 enum Fruit {
-    Apple(String, String),
-    Pear(u32),
+    Fruit::Apple(String, String),
+    Fruit::Pear(u32),
 }
 
 let x = Fruit::Apple(String::new(), String::new());
@@ -77,8 +77,8 @@ enum Number {
 
 // Assuming x is a Number we can pattern match on its contents.
 match x {
-    Zero(inside) => {},
-    One(inside) => {},
+    Number::Zero(inside) => {},
+    Number::One(inside) => {},
 }
 ```
 
