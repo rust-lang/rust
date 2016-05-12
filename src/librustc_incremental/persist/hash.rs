@@ -86,6 +86,11 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             // krate; in that case, we just use the krate's overall hash
             if let Some(&hash) = self.crate_hashes.get(&def_id.krate) {
                 debug!("metadata_hash: def_id={:?} crate_hash={:?}", def_id, hash);
+
+                // micro-"optimization": avoid a cache miss if we ask
+                // for metadata from this particular def-id again.
+                self.item_metadata_hashes.insert(def_id, hash.as_u64());
+
                 return hash.as_u64();
             }
 
