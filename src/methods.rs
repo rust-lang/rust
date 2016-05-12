@@ -1,6 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
+use rustc::middle::const_qualif::ConstQualif;
 use rustc::ty::subst::{Subst, TypeSpace};
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
@@ -502,6 +503,13 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
     /// Check for `*or(foo())`.
     fn check_general_case(cx: &LateContext, name: &str, fun: &Expr, self_expr: &Expr, arg: &Expr, or_has_args: bool,
                           span: Span) {
+        // don't lint for constant values
+        // FIXME: can we `expect` here instead of match?
+        if let Some(qualif) = cx.tcx.const_qualif_map.borrow().get(&arg.id) {
+            if !qualif.contains(ConstQualif::NOT_CONST) {
+                return;
+            }
+        }
         // (path, fn_has_argument, methods)
         let know_types: &[(&[_], _, &[_], _)] = &[(&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
                                                   (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),

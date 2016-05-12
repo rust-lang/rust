@@ -1,4 +1,5 @@
 #![feature(plugin)]
+#![feature(const_fn)]
 #![plugin(clippy)]
 
 #![deny(clippy, clippy_pedantic)]
@@ -227,7 +228,19 @@ fn or_fun_call() {
         fn new() -> Foo { Foo }
     }
 
+    enum Enum {
+        A(i32),
+    }
+
+    const fn make_const(i: i32) -> i32 { i }
+
     fn make<T>() -> T { unimplemented!(); }
+
+    let with_enum = Some(Enum::A(1));
+    with_enum.unwrap_or(Enum::A(5));
+
+    let with_const_fn = Some(1);
+    with_const_fn.unwrap_or(make_const(5));
 
     let with_constructor = Some(vec![1]);
     with_constructor.unwrap_or(make());
