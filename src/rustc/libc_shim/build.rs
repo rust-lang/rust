@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(warnings)]
+
 // See comments in Cargo.toml for why this exists
 
 fn main() {
     println!("cargo:rustc-cfg=stdbuild");
+    println!("cargo:rerun-if-changed=build.rs");
 }

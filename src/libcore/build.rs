@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(warnings)]
+
 fn main() {
     // Remove this whenever snapshots and rustbuild nightlies are synced.
     println!("cargo:rustc-cfg=cargobuild");
+    println!("cargo:rerun-if-changed=build.rs")
 }

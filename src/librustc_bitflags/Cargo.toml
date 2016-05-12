@@ -7,3 +7,4 @@ version = "0.0.0"
 name = "rustc_bitflags"
 path = "lib.rs"
 test = false
+doctest = false
