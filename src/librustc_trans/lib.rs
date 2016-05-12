@@ -144,6 +144,7 @@ pub struct CrateTranslation {
     pub metadata: Vec<u8>,
     pub reachable: Vec<String>,
     pub no_builtins: bool,
+    pub linker_info: back::linker::LinkerInfo
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
