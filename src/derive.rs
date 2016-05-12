@@ -86,7 +86,7 @@ impl LateLintPass for Derive {
 }
 
 /// Implementation of the `DERIVE_HASH_XOR_EQ` lint.
-fn check_hash_peq<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref: &TraitRef, ty: ty::Ty<'tcx>, hash_is_automatically_derived: bool) {
+fn check_hash_peq<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref: &TraitRef, ty: ty::Ty<'tcx>, hash_is_automatically_derived: bool) {
     if_let_chain! {[
         match_path(&trait_ref.path, &paths::HASH),
         let Some(peq_trait_def_id) = cx.tcx.lang_items.eq_trait()
@@ -94,7 +94,7 @@ fn check_hash_peq<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref: &
         let peq_trait_def = cx.tcx.lookup_trait_def(peq_trait_def_id);
 
         // Look for the PartialEq implementations for `ty`
-        peq_trait_def.for_each_relevant_impl(&cx.tcx, ty, |impl_id| {
+        peq_trait_def.for_each_relevant_impl(cx.tcx, ty, |impl_id| {
             let peq_is_automatically_derived = cx.tcx.get_attrs(impl_id).iter().any(is_automatically_derived);
 
             if peq_is_automatically_derived == hash_is_automatically_derived {
@@ -131,9 +131,9 @@ fn check_hash_peq<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref: &
 fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref: &TraitRef, ty: ty::Ty<'tcx>) {
     if match_path(&trait_ref.path, &paths::CLONE_TRAIT) {
         let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
-        let subst_ty = ty.subst(cx.tcx, &parameter_environment.free_substs);
+        let subst_ty = ty.subst(cx.tcx, parameter_environment.free_substs);
 
-        if subst_ty.moves_by_default(&parameter_environment, item.span) {
+        if subst_ty.moves_by_default(cx.tcx.global_tcx(), &parameter_environment, item.span) {
             return; // ty is not Copy
         }
 

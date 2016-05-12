@@ -2,7 +2,6 @@ use reexport::*;
 use rustc::hir::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::Node;
-use rustc::infer;
 use rustc::lint::{LintContext, LateContext, Level, Lint};
 use rustc::middle::cstore;
 use rustc::session::Session;
@@ -274,15 +273,15 @@ pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, 
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
     let ty = cx.tcx.erase_regions(&ty);
-    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, None, ProjectionMode::Any);
-    let obligation = traits::predicate_for_trait_def(cx.tcx,
-                                                     traits::ObligationCause::dummy(),
-                                                     trait_id,
-                                                     0,
-                                                     ty,
-                                                     ty_params);
+    cx.tcx.infer_ctxt(None, None, ProjectionMode::Any).enter(|infcx| {
+        let obligation = cx.tcx.predicate_for_trait_def(traits::ObligationCause::dummy(),
+                                                        trait_id,
+                                                        0,
+                                                        ty,
+                                                        ty_params);
 
-    traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
+        traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
+    })
 }
 
 /// Match an `Expr` against a chain of methods, and return the matched `Expr`s.
@@ -795,7 +794,7 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
 /// Convenience function to get the return type of a function or `None` if the function diverges.
 pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Option<ty::Ty<'tcx>> {
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_item);
-    let fn_sig = cx.tcx.node_id_to_type(fn_item).fn_sig().subst(cx.tcx, &parameter_env.free_substs);
+    let fn_sig = cx.tcx.node_id_to_type(fn_item).fn_sig().subst(cx.tcx, parameter_env.free_substs);
     let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, &fn_sig);
     if let ty::FnConverging(ret_ty) = fn_sig.output {
         Some(ret_ty)
@@ -809,10 +808,11 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Optio
 // not for type parameters.
 pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>, parameter_item: NodeId) -> bool {
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, parameter_item);
-    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, Some(parameter_env), ProjectionMode::Any);
-    let new_a = a.subst(infcx.tcx, &infcx.parameter_environment.free_substs);
-    let new_b = b.subst(infcx.tcx, &infcx.parameter_environment.free_substs);
-    infcx.can_equate(&new_a, &new_b).is_ok()
+    cx.tcx.infer_ctxt(None, Some(parameter_env), ProjectionMode::Any).enter(|infcx| {
+        let new_a = a.subst(infcx.tcx, infcx.parameter_environment.free_substs);
+        let new_b = b.subst(infcx.tcx, infcx.parameter_environment.free_substs);
+        infcx.can_equate(&new_a, &new_b).is_ok()
+    })
 }
 
 /// Recover the essential nodes of a desugared for loop:

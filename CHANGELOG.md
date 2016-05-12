@@ -1,6 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.67 — 2016-05-12
+* Rustup to *rustc 1.10.0-nightly (22ac88f1a 2016-05-11)*
+
+## 0.0.66 — 2016-05-11
+* New `cargo clippy` subcommand
+* New lints: [`assign_op_pattern`], [`assign_ops`], [`needless_borrow`]
+
 ## 0.0.65 — 2016-05-08
 * Rustup to *rustc 1.10.0-nightly (62e2b2fb7 2016-05-06)*
 * New lints: [`float_arithmetic`], [`integer_arithmetic`]

@@ -130,7 +130,7 @@ fn is_relevant_expr(expr: &Expr) -> bool {
         ExprRet(None) | ExprBreak(_) => false,
         ExprCall(ref path_expr, _) => {
             if let ExprPath(_, ref path) = path_expr.node {
-                !match_path(path, &paths::BEGIN_UNWIND)
+                !match_path(path, &paths::BEGIN_PANIC)
             } else {
                 true
             }
