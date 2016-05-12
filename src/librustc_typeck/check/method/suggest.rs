@@ -101,8 +101,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             sources.sort();
             sources.dedup();
+            // Dynamic limit to avoid hiding just one candidate, which is silly.
+            let limit = if sources.len() == 5 { 5 } else { 4 };
 
-            for (idx, source) in sources.iter().enumerate() {
+            for (idx, source) in sources.iter().take(limit).enumerate() {
                 match *source {
                     CandidateSource::ImplSource(impl_did) => {
                         // Provide the best span we can. Use the item, if local to crate, else
@@ -150,6 +152,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    self.tcx.item_path_str(trait_did));
                     }
                 }
+            }
+            if sources.len() > limit {
+                err.note(&format!("and {} others", sources.len() - limit));
             }
         };
 
@@ -295,10 +300,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             err.help(&msg[..]);
 
-            for (i, trait_did) in candidates.iter().enumerate() {
+            let limit = if candidates.len() == 5 { 5 } else { 4 };
+            for (i, trait_did) in candidates.iter().take(limit).enumerate() {
                 err.help(&format!("candidate #{}: `use {}`",
                                   i + 1,
                                   self.tcx.item_path_str(*trait_did)));
+            }
+            if candidates.len() > limit {
+                err.note(&format!("and {} others", candidates.len() - limit));
             }
             return
         }
