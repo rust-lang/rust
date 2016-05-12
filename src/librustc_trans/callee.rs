@@ -499,44 +499,20 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return immediate_rvalue(llfn, fn_ptr_ty);
     }
 
-    let attrs;
     let local_id = ccx.tcx().map.as_local_node_id(def_id);
-    let maybe_node = local_id.and_then(|id| tcx.map.find(id));
-    let (sym, attrs, local_item) = match maybe_node {
+    let local_item = match local_id.and_then(|id| tcx.map.find(id)) {
         Some(hir_map::NodeItem(&hir::Item {
-            ref attrs, id, span, node: hir::ItemFn(..), ..
+            span, node: hir::ItemFn(..), ..
         })) |
         Some(hir_map::NodeTraitItem(&hir::TraitItem {
-            ref attrs, id, span, node: hir::MethodTraitItem(_, Some(_)), ..
+            span, node: hir::MethodTraitItem(_, Some(_)), ..
         })) |
         Some(hir_map::NodeImplItem(&hir::ImplItem {
-            ref attrs, id, span, node: hir::ImplItemKind::Method(..), ..
+            span, node: hir::ImplItemKind::Method(..), ..
         })) => {
-            let sym = symbol_names::exported_name(ccx.shared(), instance);
-
-            if declare::get_defined_value(ccx, &sym).is_some() {
-                ccx.sess().span_fatal(span,
-                    &format!("symbol `{}` is already defined", sym));
-            }
-
-            (sym, &attrs[..], Some(id))
+            Some(span)
         }
-
-        Some(hir_map::NodeForeignItem(&hir::ForeignItem {
-            ref attrs, name, node: hir::ForeignItemFn(..), ..
-        })) => {
-            (imported_name(name, attrs).to_string(), &attrs[..], None)
-        }
-
-        None => {
-            attrs = ccx.sess().cstore.item_attrs(def_id);
-            let sym = symbol_names::exported_name(ccx.shared(), instance);
-            (sym, &attrs[..], None)
-        }
-
-        ref variant => {
-            bug!("get_fn: unexpected variant: {:?}", variant)
-        }
+        _ => None
     };
 
     // This is subtle and surprising, but sometimes we have to bitcast
@@ -563,8 +539,16 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // reference. It also occurs when testing libcore and in some
     // other weird situations. Annoying.
 
+    let sym = instance.symbol_name(ccx.shared());
     let llptrty = type_of::type_of(ccx, fn_ptr_ty);
     let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {
+        if let Some(span) = local_item {
+            if declare::get_defined_value(ccx, &sym).is_some() {
+                ccx.sess().span_fatal(span,
+                    &format!("symbol `{}` is already defined", sym));
+            }
+        }
+
         if common::val_ty(llfn) != llptrty {
             if local_item.is_some() {
                 bug!("symbol `{}` previously declared as {:?}, now wanted as {:?}",
@@ -581,7 +565,8 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         assert_eq!(common::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 
-        attributes::from_fn_attrs(ccx, attrs, llfn);
+        let attrs = ccx.tcx().get_attrs(def_id);
+        attributes::from_fn_attrs(ccx, &attrs, llfn);
         if local_item.is_some() {
             // FIXME(eddyb) Doubt all extern fn should allow unwinding.
             attributes::unwind(llfn, true);

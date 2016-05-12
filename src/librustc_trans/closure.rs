@@ -150,7 +150,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return llfn;
     }
 
-    let symbol = symbol_names::exported_name(ccx.shared(), instance);
+    let symbol = instance.symbol_name(ccx.shared());
 
     // Compute the rust-call form of the closure call method.
     let sig = &tcx.closure_type(closure_id, substs).sig;
