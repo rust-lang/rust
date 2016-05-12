@@ -6,7 +6,6 @@ version = "0.0.0"
 [lib]
 name = "rand"
 path = "lib.rs"
-test = false
 
 [dependencies]
 core = { path = "../libcore" }

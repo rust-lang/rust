@@ -27,11 +27,7 @@
 #![feature(libc)]
 #![feature(staged_api)]
 #![feature(unique)]
-#![cfg_attr(test, feature(rustc_private, rand))]
-
-#[cfg(test)]
-#[macro_use]
-extern crate log;
+#![cfg_attr(test, feature(rand))]
 
 extern crate libc;
 
@@ -175,14 +171,8 @@ mod tests {
             for _ in 0..2000 {
                 input.extend_from_slice(r.choose(&words).unwrap());
             }
-            debug!("de/inflate of {} bytes of random word-sequences",
-                   input.len());
             let cmp = deflate_bytes(&input);
             let out = inflate_bytes(&cmp).unwrap();
-            debug!("{} bytes deflated to {} ({:.1}% size)",
-                   input.len(),
-                   cmp.len(),
-                   100.0 * ((cmp.len() as f64) / (input.len() as f64)));
             assert_eq!(&*input, &*out);
         }
     }

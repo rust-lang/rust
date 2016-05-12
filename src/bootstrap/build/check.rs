@@ -13,13 +13,16 @@
 //! This file implements the various regression test suites that we execute on
 //! our CI.
 
-use std::fs;
+use std::env;
+use std::fs::{self, File};
+use std::io::prelude::*;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 
 use build_helper::output;
+use bootstrap::{dylib_path, dylib_path_var};
 
-use build::{Build, Compiler};
+use build::{Build, Compiler, Mode};
 
 /// Runs the `linkchecker` tool as compiled in `stage` by the `host` compiler.
 ///
@@ -221,4 +224,76 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
     cmd.arg(markdown);
     cmd.arg("--test-args").arg(build.flags.args.join(" "));
     build.run(&mut cmd);
+}
+
+/// Run all unit tests plus documentation tests for an entire crate DAG defined
+/// by a `Cargo.toml`
+///
+/// This is what runs tests for crates like the standard library, compiler, etc.
+/// It essentially is the driver for running `cargo test`.
+///
+/// Currently this runs all tests for a DAG by passing a bunch of `-p foo`
+/// arguments, and those arguments are discovered from `Cargo.lock`.
+pub fn krate(build: &Build,
+             compiler: &Compiler,
+             target: &str,
+             mode: Mode) {
+    let (name, path, features) = match mode {
+        Mode::Libstd => ("libstd", "src/rustc/std_shim", build.std_features()),
+        Mode::Libtest => ("libtest", "src/rustc/test_shim", String::new()),
+        Mode::Librustc => ("librustc", "src/rustc", build.rustc_features()),
+        _ => panic!("can only test libraries"),
+    };
+    println!("Testing {} stage{} ({} -> {})", name, compiler.stage,
+             compiler.host, target);
+
+    // Build up the base `cargo test` command.
+    let mut cargo = build.cargo(compiler, mode, target, "test");
+    cargo.arg("--manifest-path")
+         .arg(build.src.join(path).join("Cargo.toml"))
+         .arg("--features").arg(features);
+
+    // Generate a list of `-p` arguments to pass to the `cargo test` invocation
+    // by crawling the corresponding Cargo.lock file.
+    let lockfile = build.src.join(path).join("Cargo.lock");
+    let mut contents = String::new();
+    t!(t!(File::open(&lockfile)).read_to_string(&mut contents));
+    let mut lines = contents.lines();
+    while let Some(line) = lines.next() {
+        let prefix = "name = \"";
+        if !line.starts_with(prefix) {
+            continue
+        }
+        lines.next(); // skip `version = ...`
+
+        // skip crates.io or otherwise non-path crates
+        if let Some(line) = lines.next() {
+            if line.starts_with("source") {
+                continue
+            }
+        }
+
+        let crate_name = &line[prefix.len()..line.len() - 1];
+
+        // Right now jemalloc is our only target-specific crate in the sense
+        // that it's not present on all platforms. Custom skip it here for now,
+        // but if we add more this probably wants to get more generalized.
+        if crate_name.contains("jemalloc") {
+            continue
+        }
+
+        cargo.arg("-p").arg(crate_name);
+    }
+
+    // The tests are going to run with the *target* libraries, so we need to
+    // ensure that those libraries show up in the LD_LIBRARY_PATH equivalent.
+    //
+    // Note that to run the compiler we need to run with the *host* libraries,
+    // but our wrapper scripts arrange for that to be the case anyway.
+    let mut dylib_path = dylib_path();
+    dylib_path.insert(0, build.sysroot_libdir(compiler, target));
+    cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+    cargo.args(&build.flags.args);
+
+    build.run(&mut cargo);
 }
