@@ -25,7 +25,7 @@ impl<'a> super::ForestObligation for &'a str {
 
 struct ClosureObligationProcessor<OF, BF, O, E> {
     process_obligation: OF,
-    process_backedge: BF,
+    _process_backedge: BF,
     marker: PhantomData<(O, E)>,
 }
 
@@ -36,7 +36,7 @@ fn C<OF, BF, O>(of: OF, bf: BF) -> ClosureObligationProcessor<OF, BF, O, &'stati
 {
     ClosureObligationProcessor {
         process_obligation: of,
-        process_backedge: bf,
+        _process_backedge: bf,
         marker: PhantomData
     }
 }
@@ -57,9 +57,10 @@ impl<OF, BF, O, E> ObligationProcessor for ClosureObligationProcessor<OF, BF, O,
         (self.process_obligation)(obligation)
     }
 
-    fn process_backedge(&mut self, cycle: &[Self::Obligation]) {
-        (self.process_backedge)(cycle);
-    }
+    fn process_backedge<'c, I>(&mut self, _cycle: I,
+                               _marker: PhantomData<&'c Self::Obligation>)
+        where I: Clone + Iterator<Item=&'c Self::Obligation> {
+        }
 }
 
 
