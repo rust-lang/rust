@@ -403,11 +403,8 @@ pub fn format_input(input: Input, config: &Config) -> (Summary, FileMap, FormatR
     let mut summary = Summary::new();
     let codemap = Rc::new(CodeMap::new());
 
-    let tty_handler = Handler::with_tty_emitter(ColorConfig::Auto,
-                                                None,
-                                                true,
-                                                false,
-                                                codemap.clone());
+    let tty_handler =
+        Handler::with_tty_emitter(ColorConfig::Auto, None, true, false, codemap.clone());
     let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
 
     let main_file = match input {

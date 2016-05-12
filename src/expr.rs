@@ -136,18 +136,25 @@ impl Rewrite for ast::Expr {
                     Some(ident) => format!(" {}", ident.node),
                     None => String::new(),
                 };
-                wrap_str(format!("continue{}", id_str), context.config.max_width, width, offset)
+                wrap_str(format!("continue{}", id_str),
+                         context.config.max_width,
+                         width,
+                         offset)
             }
             ast::ExprKind::Break(ref opt_ident) => {
                 let id_str = match *opt_ident {
                     Some(ident) => format!(" {}", ident.node),
                     None => String::new(),
                 };
-                wrap_str(format!("break{}", id_str), context.config.max_width, width, offset)
+                wrap_str(format!("break{}", id_str),
+                         context.config.max_width,
+                         width,
+                         offset)
             }
             ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
                 rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
             }
+            ast::ExprKind::Try(..) |
             ast::ExprKind::Field(..) |
             ast::ExprKind::TupField(..) |
             ast::ExprKind::MethodCall(..) => rewrite_chain(self, context, width, offset),
@@ -199,11 +206,7 @@ impl Rewrite for ast::Expr {
                         rewrite_unary_prefix(context, delim, &**rhs, width, offset)
                     }
                     (Some(ref lhs), None) => {
-                        Some(format!("{}{}",
-                                     try_opt!(lhs.rewrite(context,
-                                                          try_opt!(width.checked_sub(delim.len())),
-                                                          offset)),
-                                     delim))
+                        rewrite_unary_suffix(context, delim, &**lhs, width, offset)
                     }
                     (None, None) => wrap_str(delim.into(), context.config.max_width, width, offset),
                 }
@@ -211,9 +214,7 @@ impl Rewrite for ast::Expr {
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
             ast::ExprKind::InPlace(..) |
-            ast::ExprKind::InlineAsm(..) |
-            // TODO(#867): Handle try shorthand
-            ast::ExprKind::Try(_) => {
+            ast::ExprKind::InlineAsm(..) => {
                 wrap_str(context.snippet(self.span),
                          context.config.max_width,
                          width,
@@ -689,11 +690,8 @@ fn extract_comment(span: Span,
                    -> Option<String> {
     let comment_str = context.snippet(span);
     if contains_comment(&comment_str) {
-        let comment = try_opt!(rewrite_comment(comment_str.trim(),
-                                               false,
-                                               width,
-                                               offset,
-                                               context.config));
+        let comment =
+            try_opt!(rewrite_comment(comment_str.trim(), false, width, offset, context.config));
         Some(format!("\n{indent}{}\n{indent}",
                      comment,
                      indent = offset.to_string(context.config)))
@@ -793,14 +791,11 @@ fn rewrite_if_else(context: &RewriteContext,
             }
         };
 
-        let between_if_else_block = mk_sp(if_block.span.hi,
-                                          context.codemap.span_before(mk_sp(if_block.span.hi,
-                                                                            else_block.span.lo),
-                                                                      "else"));
-        let between_if_else_block_comment = extract_comment(between_if_else_block,
-                                                            &context,
-                                                            offset,
-                                                            width);
+        let between_if_else_block =
+            mk_sp(if_block.span.hi,
+                  context.codemap.span_before(mk_sp(if_block.span.hi, else_block.span.lo), "else"));
+        let between_if_else_block_comment =
+            extract_comment(between_if_else_block, &context, offset, width);
 
         let after_else = mk_sp(context.codemap
                                    .span_after(mk_sp(if_block.span.hi, else_block.span.lo),
@@ -927,11 +922,8 @@ fn rewrite_match_arm_comment(context: &RewriteContext,
     }
     let missed_str = missed_str[first..].trim();
     if !missed_str.is_empty() {
-        let comment = try_opt!(rewrite_comment(&missed_str,
-                                               false,
-                                               width,
-                                               arm_indent,
-                                               context.config));
+        let comment =
+            try_opt!(rewrite_comment(&missed_str, false, width, arm_indent, context.config));
         result.push('\n');
         result.push_str(arm_indent_str);
         result.push_str(&comment);
@@ -1155,10 +1147,9 @@ impl Rewrite for ast::Arm {
         let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
         let indent = context.block_indent.block_indent(context.config);
         let inner_context = &RewriteContext { block_indent: indent, ..*context };
-        let next_line_body = try_opt!(nop_block_collapse(body.rewrite(inner_context,
-                                                                      body_budget,
-                                                                      indent),
-                                                         body_budget));
+        let next_line_body =
+            try_opt!(nop_block_collapse(body.rewrite(inner_context, body_budget, indent),
+                                        body_budget));
         let indent_str = offset.block_indent(context.config).to_string(context.config);
         let (body_prefix, body_suffix) = if context.config.wrap_match_arms {
             if context.config.match_block_trailing_comma {
@@ -1762,6 +1753,21 @@ pub fn rewrite_unary_prefix<R: Rewrite>(context: &RewriteContext,
         .map(|r| format!("{}{}", prefix, r))
 }
 
+// FIXME: this is probably not correct for multi-line Rewrites. we should
+// subtract suffix.len() from the last line budget, not the first!
+pub fn rewrite_unary_suffix<R: Rewrite>(context: &RewriteContext,
+                                        suffix: &str,
+                                        rewrite: &R,
+                                        width: usize,
+                                        offset: Indent)
+                                        -> Option<String> {
+    rewrite.rewrite(context, try_opt!(width.checked_sub(suffix.len())), offset)
+        .map(|mut r| {
+            r.push_str(suffix);
+            r
+        })
+}
+
 fn rewrite_unary_op(context: &RewriteContext,
                     op: &ast::UnOp,
                     expr: &ast::Expr,
@@ -1817,24 +1823,42 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
     let max_width = try_opt!(width.checked_sub(last_line_width + 1));
     let rhs = ex.rewrite(&context, max_width, offset + last_line_width + 1);
 
+    fn count_line_breaks(src: &str) -> usize {
+        src.chars().filter(|&x| x == '\n').count()
+    }
+
     match rhs {
-        Some(new_str) => {
+        Some(ref new_str) if count_line_breaks(new_str) < 2 => {
             result.push(' ');
-            result.push_str(&new_str)
+            result.push_str(new_str);
         }
-        None => {
-            // Expression did not fit on the same line as the identifier. Retry
-            // on the next line.
+        _ => {
+            // Expression did not fit on the same line as the identifier or is
+            // at least three lines big. Try splitting the line and see
+            // if that works better.
             let new_offset = offset.block_indent(context.config);
-            result.push_str(&format!("\n{}", new_offset.to_string(context.config)));
-
-            // FIXME: we probably should related max_width to width instead of
-            // config.max_width where is the 1 coming from anyway?
-            let max_width = try_opt!(context.config.max_width.checked_sub(new_offset.width() + 1));
+            let max_width = try_opt!((width + offset.width()).checked_sub(new_offset.width()));
             let inner_context = context.nested_context();
-            let rhs = ex.rewrite(&inner_context, max_width, new_offset);
+            let new_rhs = ex.rewrite(&inner_context, max_width, new_offset);
 
-            result.push_str(&&try_opt!(rhs));
+            // FIXME: DRY!
+            match (rhs, new_rhs) {
+                (Some(ref orig_rhs), Some(ref replacement_rhs))
+                    if count_line_breaks(orig_rhs) >
+                       count_line_breaks(replacement_rhs) + 1 => {
+                    result.push_str(&format!("\n{}", new_offset.to_string(context.config)));
+                    result.push_str(replacement_rhs);
+                }
+                (None, Some(ref final_rhs)) => {
+                    result.push_str(&format!("\n{}", new_offset.to_string(context.config)));
+                    result.push_str(final_rhs);
+                }
+                (None, None) => return None,
+                (Some(ref orig_rhs), _) => {
+                    result.push(' ');
+                    result.push_str(orig_rhs);
+                }
+            }
         }
     }
 

@@ -144,10 +144,8 @@ impl Rewrite for Pat {
                                          |f| f.node.rewrite(context, budget, offset),
                                          context.codemap.span_after(self.span, "{"),
                                          self.span.hi);
-                let mut field_string = try_opt!(format_item_list(items,
-                                                                 budget,
-                                                                 offset,
-                                                                 context.config));
+                let mut field_string =
+                    try_opt!(format_item_list(items, budget, offset, context.config));
                 if elipses {
                     if field_string.contains('\n') {
                         field_string.push_str(",\n");

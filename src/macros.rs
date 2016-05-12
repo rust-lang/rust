@@ -25,7 +25,7 @@ use syntax::parse::tts_to_parser;
 use syntax::codemap::{mk_sp, BytePos};
 
 use Indent;
-use rewrite::RewriteContext;
+use rewrite::{Rewrite, RewriteContext};
 use expr::{rewrite_call, rewrite_array};
 use comment::{FindUncommented, contains_comment};
 use utils::{CodeMapSpanUtils, wrap_str};
@@ -56,6 +56,12 @@ pub fn rewrite_macro(mac: &ast::Mac,
                      width: usize,
                      offset: Indent)
                      -> Option<String> {
+    if context.config.use_try_shorthand {
+        if let Some(expr) = convert_try_mac(mac, context) {
+            return expr.rewrite(context, width, offset);
+        }
+    }
+
     let original_style = macro_style(mac, context);
     let macro_name = match extra_ident {
         None |
@@ -138,6 +144,24 @@ pub fn rewrite_macro(mac: &ast::Mac,
                      width,
                      offset)
         }
+    }
+}
+
+/// Tries to convert a macro use into a short hand try expression. Returns None
+/// when the macro is not an instance of try! (or parsing the inner expression
+/// failed).
+pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::Expr> {
+    if &format!("{}", mac.node.path)[..] == "try" {
+        let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone(), Vec::new());
+
+        Some(ast::Expr {
+            id: 0, // dummy value
+            node: ast::ExprKind::Try(try_opt!(parser.parse_expr().ok())),
+            span: mac.span, // incorrect span, but shouldn't matter too much
+            attrs: None,
+        })
+    } else {
+        None
     }
 }
 

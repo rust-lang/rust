@@ -1,9 +1,5 @@
 fn main() -> &'static str {
-    let too_many_lines = "H\
-                          e\
-                          l\
-                          l\
-                          o";
+    let too_many_lines = "Hello";
     let leave_me = "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\
                     s
                     jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj";

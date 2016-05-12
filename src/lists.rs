@@ -307,11 +307,8 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
                               comment.trim().contains('\n') ||
                               comment.trim().len() > width;
 
-            let formatted_comment = try_opt!(rewrite_comment(comment,
-                                                             block_style,
-                                                             width,
-                                                             offset,
-                                                             formatting.config));
+            let formatted_comment =
+                try_opt!(rewrite_comment(comment, block_style, width, offset, formatting.config));
 
             result.push(' ');
             result.push_str(&formatted_comment);

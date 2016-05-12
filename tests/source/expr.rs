@@ -249,7 +249,6 @@ fn ranges() {
     let x = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa .. bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
     let y = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ... bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
     let z = ... x ;
-    let infi_range_2 = ... ;
 
     a ... b
 

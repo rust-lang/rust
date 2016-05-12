@@ -41,7 +41,7 @@ fn main() {
     }
 
     let x = if veeeeeeeeery_loooooong_condition() {
-        aaaaaaaaaaaaaaaaaaaaaaaaaaa
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     } else {
         bbbbbbbbbb
     };
