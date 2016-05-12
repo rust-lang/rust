@@ -575,11 +575,6 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         llfn
     };
 
-    // Always insert into item_symbols, in case this item is exported.
-    if let Some(id) = local_item {
-        ccx.item_symbols().borrow_mut().insert(id, sym);
-    }
-
     ccx.instances().borrow_mut().insert(instance, llfn);
 
     immediate_rvalue(llfn, fn_ptr_ty)

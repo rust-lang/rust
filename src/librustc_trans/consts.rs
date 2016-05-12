@@ -1032,13 +1032,10 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
 
                 // Create the global before evaluating the initializer;
                 // this is necessary to allow recursive statics.
-                let g = declare::define_global(ccx, &sym, llty).unwrap_or_else(|| {
+                declare::define_global(ccx, &sym, llty).unwrap_or_else(|| {
                     ccx.sess().span_fatal(span,
                         &format!("symbol `{}` is already defined", sym))
-                });
-
-                ccx.item_symbols().borrow_mut().insert(id, sym);
-                g
+                })
             }
 
             hir_map::NodeForeignItem(&hir::ForeignItem {

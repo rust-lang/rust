@@ -38,7 +38,6 @@ use llvm;
 use rustc::cfg;
 use rustc::hir::def_id::DefId;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
-use middle::weak_lang_items;
 use rustc::hir::pat_util::simple_name;
 use rustc::ty::subst::{self, Substs};
 use rustc::traits;
@@ -2337,15 +2336,6 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
             set_global_section(ccx, g, item);
             update_linkage(ccx, g, Some(item.id), OriginalTranslation);
         }
-        hir::ItemForeignMod(ref m) => {
-            if m.abi == Abi::RustIntrinsic || m.abi == Abi::PlatformIntrinsic {
-                return;
-            }
-            for fi in &m.items {
-                let lname = imported_name(fi.name, &fi.attrs).to_string();
-                ccx.item_symbols().borrow_mut().insert(fi.id, lname);
-            }
-        }
         _ => {}
     }
 }
@@ -2430,16 +2420,6 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
     }
 }
 
-pub fn imported_name(name: ast::Name, attrs: &[ast::Attribute]) -> InternedString {
-    match attr::first_attr_value_str_by_name(attrs, "link_name") {
-        Some(ln) => ln.clone(),
-        None => match weak_lang_items::link_name(attrs) {
-            Some(name) => name,
-            None => name.as_str(),
-        }
-    }
-}
-
 fn contains_null(s: &str) -> bool {
     s.bytes().any(|b| b == 0)
 }
@@ -2463,7 +2443,6 @@ pub fn write_metadata<'a, 'tcx>(cx: &SharedCrateContext<'a, 'tcx>,
     let cstore = &cx.tcx().sess.cstore;
     let metadata = cstore.encode_metadata(cx.tcx(),
                                           cx.export_map(),
-                                          cx.item_symbols(),
                                           cx.link_meta(),
                                           reachable,
                                           mir_map,
