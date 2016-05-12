@@ -12,6 +12,7 @@ pub mod remove_dead_blocks;
 pub mod simplify_cfg;
 pub mod erase_regions;
 pub mod no_landing_pads;
+pub mod predecessor_map;
 pub mod type_check;
 pub mod break_cleanup_edges;
 pub mod promote_consts;
