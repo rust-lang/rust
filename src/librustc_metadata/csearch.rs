@@ -25,7 +25,7 @@ use rustc::hir::map as hir_map;
 use rustc::hir::map::DefKey;
 use rustc::mir::repr::Mir;
 use rustc::mir::mir_map::MirMap;
-use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
+use rustc::util::nodemap::{FnvHashMap, NodeSet, DefIdMap};
 use rustc::session::config::PanicStrategy;
 
 use std::cell::RefCell;
@@ -113,13 +113,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.dep_graph.read(DepNode::MetaData(def_id));
         let cdata = self.get_crate_data(def_id.krate);
         decoder::get_item_attrs(&cdata, def_id.index)
-    }
-
-    fn item_symbol(&self, def: DefId) -> String
-    {
-        self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_symbol(&cdata, def.index)
     }
 
     fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::TraitDef<'tcx>
@@ -569,7 +562,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            reexports: &def::ExportMap,
-                           item_symbols: &RefCell<NodeMap<String>>,
                            link_meta: &LinkMeta,
                            reachable: &NodeSet,
                            mir_map: &MirMap<'tcx>,
@@ -579,7 +571,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
             diag: tcx.sess.diagnostic(),
             tcx: tcx,
             reexports: reexports,
-            item_symbols: item_symbols,
             link_meta: link_meta,
             cstore: self,
             reachable: reachable,
