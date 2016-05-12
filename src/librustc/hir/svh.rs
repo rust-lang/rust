@@ -36,17 +36,7 @@ impl Svh {
     }
 
     pub fn to_string(&self) -> String {
-        let hash = self.hash;
-        return (0..64).step_by(4).map(|i| hex(hash >> i)).collect();
-
-        fn hex(b: u64) -> char {
-            let b = (b & 0xf) as u8;
-            let b = match b {
-                0 ... 9 => '0' as u8 + b,
-                _ => 'a' as u8 + b - 10,
-            };
-            b as char
-        }
+        format!("{:016x}", self.hash)
     }
 }
 
