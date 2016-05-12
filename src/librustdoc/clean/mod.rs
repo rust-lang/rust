@@ -1534,13 +1534,6 @@ impl Type {
         }
     }
 
-    pub fn trait_name(&self) -> Option<String> {
-        match *self {
-            ResolvedPath { ref path, .. } => Some(path.last_name()),
-            _ => None,
-        }
-    }
-
     pub fn is_generic(&self) -> bool {
         match *self {
             ResolvedPath { is_generic, .. } => is_generic,
