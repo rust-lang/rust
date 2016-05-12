@@ -62,8 +62,6 @@ fn foo(x: Empty) {
 However, this won't:
 
 ```compile_fail
-enum Empty {}
-
 fn foo(x: Option<String>) {
     match x {
         // empty
@@ -191,7 +189,7 @@ inner `String` to be moved into a variable called `s`.
 let x = Some("s".to_string());
 
 match x {
-    op_string @ Some(s) => {},
+    op_string @ Some(s) => {}, // error: cannot bind by-move with sub-bindings
     None => {},
 }
 ```
@@ -288,7 +286,8 @@ struct X { x: (), }
 
 let x = Some((X { x: () }, X { x: () }));
 match x {
-    Some((y, ref z)) => {},
+    Some((y, ref z)) => {}, // error: cannot bind by-move and by-ref in the
+                            //        same pattern
     None => panic!()
 }
 ```
@@ -573,6 +572,12 @@ be a compile-time constant. Erroneous code example:
     let len = 10;
     let x = [0i32; len]; // error: expected constant integer for repeat count,
                          //        found variable
+```
+
+Working example:
+
+```
+let x = [0i32; 10];
 ```
 "##,
 
