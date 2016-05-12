@@ -104,8 +104,8 @@
 //! octal.
 //!
 //! There are various parameters which do require a particular type, however.
-//! Namely, the `{:.*}` syntax, which sets the number of numbers after the
-//! decimal in floating-point types:
+//! An example is the `{:.*}` syntax, which sets the number of decimal places
+//! in floating-point types:
 //!
 //! ```
 //! let formatted_number = format!("{:.*}", 2, 1.234567);
