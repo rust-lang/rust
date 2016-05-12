@@ -136,14 +136,20 @@ impl Rewrite for ast::Expr {
                     Some(ident) => format!(" {}", ident.node),
                     None => String::new(),
                 };
-                wrap_str(format!("continue{}", id_str), context.config.max_width, width, offset)
+                wrap_str(format!("continue{}", id_str),
+                         context.config.max_width,
+                         width,
+                         offset)
             }
             ast::ExprKind::Break(ref opt_ident) => {
                 let id_str = match *opt_ident {
                     Some(ident) => format!(" {}", ident.node),
                     None => String::new(),
                 };
-                wrap_str(format!("break{}", id_str), context.config.max_width, width, offset)
+                wrap_str(format!("break{}", id_str),
+                         context.config.max_width,
+                         width,
+                         offset)
             }
             ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
                 rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
@@ -684,11 +690,8 @@ fn extract_comment(span: Span,
                    -> Option<String> {
     let comment_str = context.snippet(span);
     if contains_comment(&comment_str) {
-        let comment = try_opt!(rewrite_comment(comment_str.trim(),
-                                               false,
-                                               width,
-                                               offset,
-                                               context.config));
+        let comment =
+            try_opt!(rewrite_comment(comment_str.trim(), false, width, offset, context.config));
         Some(format!("\n{indent}{}\n{indent}",
                      comment,
                      indent = offset.to_string(context.config)))
@@ -788,14 +791,11 @@ fn rewrite_if_else(context: &RewriteContext,
             }
         };
 
-        let between_if_else_block = mk_sp(if_block.span.hi,
-                                          context.codemap.span_before(mk_sp(if_block.span.hi,
-                                                                            else_block.span.lo),
-                                                                      "else"));
-        let between_if_else_block_comment = extract_comment(between_if_else_block,
-                                                            &context,
-                                                            offset,
-                                                            width);
+        let between_if_else_block =
+            mk_sp(if_block.span.hi,
+                  context.codemap.span_before(mk_sp(if_block.span.hi, else_block.span.lo), "else"));
+        let between_if_else_block_comment =
+            extract_comment(between_if_else_block, &context, offset, width);
 
         let after_else = mk_sp(context.codemap
                                    .span_after(mk_sp(if_block.span.hi, else_block.span.lo),
@@ -922,11 +922,8 @@ fn rewrite_match_arm_comment(context: &RewriteContext,
     }
     let missed_str = missed_str[first..].trim();
     if !missed_str.is_empty() {
-        let comment = try_opt!(rewrite_comment(&missed_str,
-                                               false,
-                                               width,
-                                               arm_indent,
-                                               context.config));
+        let comment =
+            try_opt!(rewrite_comment(&missed_str, false, width, arm_indent, context.config));
         result.push('\n');
         result.push_str(arm_indent_str);
         result.push_str(&comment);
@@ -1150,10 +1147,9 @@ impl Rewrite for ast::Arm {
         let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
         let indent = context.block_indent.block_indent(context.config);
         let inner_context = &RewriteContext { block_indent: indent, ..*context };
-        let next_line_body = try_opt!(nop_block_collapse(body.rewrite(inner_context,
-                                                                      body_budget,
-                                                                      indent),
-                                                         body_budget));
+        let next_line_body =
+            try_opt!(nop_block_collapse(body.rewrite(inner_context, body_budget, indent),
+                                        body_budget));
         let indent_str = offset.block_indent(context.config).to_string(context.config);
         let (body_prefix, body_suffix) = if context.config.wrap_match_arms {
             if context.config.match_block_trailing_comma {
@@ -1766,10 +1762,10 @@ pub fn rewrite_unary_suffix<R: Rewrite>(context: &RewriteContext,
                                         offset: Indent)
                                         -> Option<String> {
     rewrite.rewrite(context, try_opt!(width.checked_sub(suffix.len())), offset)
-           .map(|mut r| {
-               r.push_str(suffix);
-               r
-           })
+        .map(|mut r| {
+            r.push_str(suffix);
+            r
+        })
 }
 
 fn rewrite_unary_op(context: &RewriteContext,
@@ -1848,7 +1844,8 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
             // FIXME: DRY!
             match (rhs, new_rhs) {
                 (Some(ref orig_rhs), Some(ref replacement_rhs))
-                    if count_line_breaks(orig_rhs) > count_line_breaks(replacement_rhs) + 1 => {
+                    if count_line_breaks(orig_rhs) >
+                       count_line_breaks(replacement_rhs) + 1 => {
                     result.push_str(&format!("\n{}", new_offset.to_string(context.config)));
                     result.push_str(replacement_rhs);
                 }

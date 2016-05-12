@@ -46,23 +46,18 @@ fn main() {
         do_something_else();
     };
 
-    let arg_test = |big_argument_name, test123| {
-        looooooooooooooooooong_function_naaaaaaaaaaaaaaaaame()
-    };
+    let arg_test =
+        |big_argument_name, test123| looooooooooooooooooong_function_naaaaaaaaaaaaaaaaame();
 
-    let arg_test = |big_argument_name, test123| {
-        looooooooooooooooooong_function_naaaaaaaaaaaaaaaaame()
-    };
+    let arg_test =
+        |big_argument_name, test123| looooooooooooooooooong_function_naaaaaaaaaaaaaaaaame();
 
     let simple_closure = move || -> () {};
 
     let closure = |input: Ty| -> Option<String> { foo() };
 
-    let closure_with_return_type = |aaaaaaaaaaaaaaaaaaaaaaarg1,
-                                    aaaaaaaaaaaaaaaaaaaaaaarg2|
-                                    -> Strong {
-        "sup".to_owned()
-    };
+    let closure_with_return_type =
+        |aaaaaaaaaaaaaaaaaaaaaaarg1, aaaaaaaaaaaaaaaaaaaaaaarg2| -> Strong { "sup".to_owned() };
 
     |arg1, arg2, _, _, arg3, arg4| {
         let temp = arg4 + arg3;

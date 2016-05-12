@@ -137,21 +137,18 @@ fn issue587() {
 fn try_shorthand() {
     let x = expr?;
     let y = expr.kaas()?.test();
-    let loooooooooooooooooooooooooooooooooooooooooong = does_this?
-                                                            .look?
-                                                            .good?
-                                                            .should_we_break?
-                                                            .after_the_first_question_mark?;
+    let loooooooooooooooooooooooooooooooooooooooooong =
+        does_this?.look?.good?.should_we_break?.after_the_first_question_mark?;
     let yyyy = expr?.another?.another?.another?.another?.another?.another?.another?.another?.test();
     let zzzz = expr?.another?.another?.another?.another?;
     let aaa = x??????????????????????????????????????????????????????????????????????????;
 
     let y = a.very
-             .loooooooooooooooooooooooooooooooooooooong()
-             .chain()
-             .inside()
-             .weeeeeeeeeeeeeee()?
-             .test()
-             .0
-             .x;
+        .loooooooooooooooooooooooooooooooooooooong()
+        .chain()
+        .inside()
+        .weeeeeeeeeeeeeee()?
+        .test()
+        .0
+        .x;
 }

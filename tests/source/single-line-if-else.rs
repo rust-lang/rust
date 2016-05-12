@@ -36,7 +36,7 @@ fn main() {
         do_something()
     }
 
-    let x = if veeeeeeeeery_loooooong_condition() { aaaaaaaaaaaaaaaaaaaaaaaaaaa } else { bbbbbbbbbb };
+    let x = if veeeeeeeeery_loooooong_condition() { aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa } else { bbbbbbbbbb };
   
     let x = if veeeeeeeeery_loooooong_condition()     {    aaaaaaaaaaaaaaaaaaaaaaaaa }   else  {
         bbbbbbbbbb };

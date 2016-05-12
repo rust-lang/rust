@@ -66,11 +66,8 @@ impl Rewrite for ast::Local {
             let budget = try_opt!(width.checked_sub(context.block_indent.width() + 1));
 
             // 1 = trailing semicolon;
-            result = try_opt!(rewrite_assign_rhs(&context,
-                                                 result,
-                                                 ex,
-                                                 budget,
-                                                 context.block_indent));
+            result =
+                try_opt!(rewrite_assign_rhs(&context, result, ex, budget, context.block_indent));
         }
 
         result.push(';');
@@ -656,18 +653,17 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         let has_body = !trait_items.is_empty();
 
-        let where_density = if (context.config.where_density == Density::Compressed &&
-                                (!result.contains('\n') ||
-                                 context.config.fn_args_layout == FnArgLayoutStyle::Block)) ||
-                               (context.config.fn_args_layout == FnArgLayoutStyle::Block &&
-                                result.is_empty()) ||
-                               (context.config.where_density == Density::CompressedIfEmpty &&
-                                !has_body &&
-                                !result.contains('\n')) {
-            Density::Compressed
-        } else {
-            Density::Tall
-        };
+        let where_density =
+            if (context.config.where_density == Density::Compressed &&
+                (!result.contains('\n') ||
+                 context.config.fn_args_layout == FnArgLayoutStyle::Block)) ||
+               (context.config.fn_args_layout == FnArgLayoutStyle::Block && result.is_empty()) ||
+               (context.config.where_density == Density::CompressedIfEmpty && !has_body &&
+                !result.contains('\n')) {
+                Density::Compressed
+            } else {
+                Density::Tall
+            };
 
         let where_budget = try_opt!(context.config
             .max_width
@@ -1134,9 +1130,8 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
             let mut_str = format_mutability(m);
             match lt {
                 Some(ref l) => {
-                    let lifetime_str = try_opt!(l.rewrite(context,
-                                                          usize::max_value(),
-                                                          Indent::empty()));
+                    let lifetime_str =
+                        try_opt!(l.rewrite(context, usize::max_value(), Indent::empty()));
                     Some(format!("&{} {}self", lifetime_str, mut_str))
                 }
                 None => Some(format!("&{}self", mut_str)),

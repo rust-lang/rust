@@ -375,12 +375,8 @@ impl Rewrite for ast::WherePredicate {
                 // 3 = " = ".len()
                 let used_width = 3 + ty_str.len();
                 let budget = try_opt!(width.checked_sub(used_width));
-                let path_str = try_opt!(rewrite_path(context,
-                                                     false,
-                                                     None,
-                                                     path,
-                                                     budget,
-                                                     offset + used_width));
+                let path_str =
+                    try_opt!(rewrite_path(context, false, None, path, budget, offset + used_width));
                 format!("{} = {}", path_str, ty_str)
             }
         };
@@ -538,9 +534,8 @@ impl Rewrite for ast::Ty {
                 Some(match *lifetime {
                     Some(ref lifetime) => {
                         let lt_budget = try_opt!(width.checked_sub(2 + mut_len));
-                        let lt_str = try_opt!(lifetime.rewrite(context,
-                                                               lt_budget,
-                                                               offset + 2 + mut_len));
+                        let lt_str =
+                            try_opt!(lifetime.rewrite(context, lt_budget, offset + 2 + mut_len));
                         let lt_len = lt_str.len();
                         let budget = try_opt!(width.checked_sub(2 + mut_len + lt_len));
                         format!("&{} {}{}",
