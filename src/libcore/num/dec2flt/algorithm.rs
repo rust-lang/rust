@@ -32,31 +32,87 @@ fn power_of_ten(e: i16) -> Fp {
     Fp { f: sig, e: exp }
 }
 
+// Most architectures floating point operations with explicit bit size, therefore the precision of
+// the computation is determined on a per-operation basis.
 #[cfg(any(not(target_arch="x86"), target_feature="sse2"))]
 mod fpu_precision {
     pub fn set_precision<T>() { }
 }
 
+// On x86, the x87 FPU is used for float operations if the SSE[2] extensions are not available.
+// The x87 FPU operates with 80 bits of precision by default, which means that operations will
+// round to 80 bits causing double rounding to happen when values are eventually represented as
+// 32/64 bit float values. To overcome this, the FPU control word can be set so that the
+// computations are performed in the desired precision.
 #[cfg(all(target_arch="x86", not(target_feature="sse2")))]
 mod fpu_precision {
     use mem::size_of;
     use ops::Drop;
 
+    /// A structure used to preserve the original value of the FPU control word, so that it can be
+    /// restored when the structure is dropped.
+    ///
+    /// The x87 FPU is a 16-bits register whose fields are as follows:
+    ///
+    ///    1111 11
+    ///    5432 10 98 76 5 4 3 2 1 0
+    ///   +----+--+--+--+-+-+-+-+-+-+
+    ///   |    |RC|PC|  |P|U|O|Z|D|I|
+    ///   |    |  |  |  |M|M|M|M|M|M|
+    ///   +----+--+--+--+-+-+-+-+-+-+
+    /// The fields are:
+    ///  - Invalid operation Mask
+    ///  - Denormal operand Mask
+    ///  - Zero divide Mask
+    ///  - Overflow Mask
+    ///  - Underflow Mask
+    ///  - Precision Mask
+    ///  - Precision Control
+    ///  - Rounding Control
+    ///
+    /// The fields with no name are unused (on FPUs more modern than 287).
+    ///
+    /// The 6 LSBs (bits 0-5) are the exception mask bits; each blocks a specific type of floating
+    /// point exceptions from being raised.
+    ///
+    /// The Precision Control field determines the precision of the operations performed by the
+    /// FPU. It can set to:
+    ///  - 0b00, single precision i.e. 32-bits
+    ///  - 0b10, double precision i.e. 64-bits
+    ///  - 0b11, double extended precision i.e. 80-bits (default state)
+    /// The 0b01 value is reserved and should not be used.
+    ///
+    /// The Rounding Control field determines how values which cannot be represented exactly are
+    /// rounded. It can be set to:
+    ///  - 0b00, round to nearest even (default state)
+    ///  - 0b01, round down (toward -inf)
+    ///  - 0b10, round up (toward +inf)
+    ///  - 0b11, round toward 0 (truncate)
     pub struct FPUControlWord(u16);
 
     fn set_cw(cw: u16) {
         unsafe { asm!("fldcw $0" :: "m" (cw)) :: "volatile" }
     }
 
+    /// Set the precision field of the FPU to `T` and return a `FPUControlWord`
     pub fn set_precision<T>() -> FPUControlWord {
         let cw = 0u16;
+
+        // Compute the value for the Precision Control field that is appropriate for `T`.
         let cw_precision = match size_of::<T>() {
             4 => 0x0000, // 32 bits
             8 => 0x0200, // 64 bits
             _ => 0x0300, // default, 80 bits
         };
+
+        // Get the original value of the control word to restore it later, when the
+        // `FPUControlWord` structure is dropped
         unsafe { asm!("fnstcw $0" : "=*m" (&cw)) ::: "volatile" }
+
+        // Set the control word to the desired precision. This is achieved by masking away the old
+        // precision (bits 8 and 9, 0x300) and replacing it with the precision flag computed above.
         set_cw((cw & 0xFCFF) | cw_precision);
+
         FPUControlWord(cw)
     }
 
@@ -71,10 +127,6 @@ mod fpu_precision {
 ///
 /// This is extracted into a separate function so that it can be attempted before constructing
 /// a bignum.
-///
-/// The fast path crucially depends on arithmetic being correctly rounded, so on x86
-/// without SSE or SSE2 it requires the precision of the x87 FPU stack to be changed
-/// so that it directly rounds to 64/32 bit.
 pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Option<T> {
     let num_digits = integral.len() + fractional.len();
     // log_10(f64::max_sig) ~ 15.95. We compare the exact value to max_sig near the end,
@@ -91,11 +143,16 @@ pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Opt
         return None;
     }
 
+    // The fast path crucially depends on arithmetic being rounded to the correct number of bits
+    // without any intermediate rounding. On x86 (without SSE or SSE2) this requires the precision
+    // of the x87 FPU stack to be changed so that it directly rounds to 64/32 bit.
+    // The `set_precision` function takes care of setting the precision on architectures which
+    // require setting it by changing the global state (like the control word of the x87 FPU).
     let _cw = fpu_precision::set_precision::<T>();
 
     // The case e < 0 cannot be folded into the other branch. Negative powers result in
     // a repeating fractional part in binary, which are rounded, which causes real
-    // (and occasioally quite significant!) errors in the final result.
+    // (and occasionally quite significant!) errors in the final result.
     if e >= 0 {
         Some(T::from_int(f) * T::short_fast_pow10(e as usize))
     } else {
