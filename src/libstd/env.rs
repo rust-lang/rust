@@ -452,16 +452,16 @@ pub fn home_dir() -> Option<PathBuf> {
 
 /// Returns the path of a temporary directory.
 ///
-/// On Unix, returns the value of the 'TMPDIR' environment variable if it is
-/// set, otherwise for non-Android it returns '/tmp'. If Android, since there
-/// is no global temporary folder (it is usually allocated per-app), we return
-/// '/data/local/tmp'.
+/// On Unix, returns the value of the `TMPDIR` environment variable if it is
+/// set, otherwise for non-Android it returns `/tmp`. If Android, since there
+/// is no global temporary folder (it is usually allocated per-app), it returns
+/// `/data/local/tmp`.
 ///
-/// On Windows, returns the value of, in order, the 'TMP', 'TEMP',
-/// 'USERPROFILE' environment variable  if any are set and not the empty
-/// string. Otherwise, tmpdir returns the path of the Windows directory. This
-/// behavior is identical to that of [GetTempPath][msdn], which this function
-/// uses internally.
+/// On Windows, returns the value of, in order, the `TMP`, `TEMP`,
+/// `USERPROFILE` environment variable if any are set and not the empty
+/// string. Otherwise, `temp_dir` returns the path of the Windows directory.
+/// This behavior is identical to that of [`GetTempPath`][msdn], which this
+/// function uses internally.
 ///
 /// [msdn]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992(v=vs.85).aspx
 ///
