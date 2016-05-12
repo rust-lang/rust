@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::ffi::OsString;
-use std::fmt::Write as FmtWrite;
 use std::fs::{self, File};
 use std::io::{self, BufWriter};
 use std::io::prelude::*;

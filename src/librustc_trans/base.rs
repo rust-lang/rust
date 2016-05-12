@@ -2425,11 +2425,8 @@ fn contains_null(s: &str) -> bool {
     s.bytes().any(|b| b == 0)
 }
 
-pub fn write_metadata<'a, 'tcx>(cx: &SharedCrateContext<'a, 'tcx>,
-                                krate: &hir::Crate,
-                                reachable: &NodeSet,
-                                mir_map: &MirMap<'tcx>)
-                                -> Vec<u8> {
+fn write_metadata(cx: &SharedCrateContext,
+                  reachable_ids: &NodeSet) -> Vec<u8> {
     use flate;
 
     let any_library = cx.sess()
@@ -2445,9 +2442,9 @@ pub fn write_metadata<'a, 'tcx>(cx: &SharedCrateContext<'a, 'tcx>,
     let metadata = cstore.encode_metadata(cx.tcx(),
                                           cx.export_map(),
                                           cx.link_meta(),
-                                          reachable,
-                                          mir_map,
-                                          krate);
+                                          reachable_ids,
+                                          cx.mir_map(),
+                                          cx.tcx().map.krate());
     let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.extend_from_slice(&flate::deflate_bytes(&metadata));
 
@@ -2634,10 +2631,12 @@ pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
                 node: hir::ItemStatic(..), .. }) |
             hir_map::NodeItem(&hir::Item {
                 node: hir::ItemFn(..), .. }) |
-            hir_map::NodeTraitItem(&hir::TraitItem {
-                node: hir::MethodTraitItem(_, Some(_)), .. }) |
             hir_map::NodeImplItem(&hir::ImplItem {
-                node: hir::ImplItemKind::Method(..), .. }) => true,
+                node: hir::ImplItemKind::Method(..), .. }) => {
+                let def_id = scx.tcx().map.local_def_id(id);
+                let scheme = scx.tcx().lookup_item_type(def_id);
+                scheme.generics.types.is_empty()
+            }
 
             _ => false
         }
@@ -2681,12 +2680,43 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              check_overflow,
                                              check_dropflag);
 
+    let reachable_symbol_ids = filter_reachable_ids(&shared_ccx);
+
+    // Translate the metadata.
+    let metadata = time(tcx.sess.time_passes(), "write metadata", || {
+        write_metadata(&shared_ccx, &reachable_symbol_ids)
+    });
+
+    let metadata_module = ModuleTranslation {
+        llcx: shared_ccx.metadata_llcx(),
+        llmod: shared_ccx.metadata_llmod(),
+    };
+    let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
+
     let codegen_units = collect_and_partition_translation_items(&shared_ccx);
     let codegen_unit_count = codegen_units.len();
     assert!(tcx.sess.opts.cg.codegen_units == codegen_unit_count ||
             tcx.sess.opts.debugging_opts.incremental.is_some());
 
     let crate_context_list = CrateContextList::new(&shared_ccx, codegen_units);
+
+    let modules = crate_context_list.iter()
+        .map(|ccx| ModuleTranslation { llcx: ccx.llcx(), llmod: ccx.llmod() })
+        .collect();
+
+    // Skip crate items and just output metadata in -Z no-trans mode.
+    if tcx.sess.opts.no_trans {
+        let linker_info = LinkerInfo::new(&shared_ccx, &[]);
+        return CrateTranslation {
+            modules: modules,
+            metadata_module: metadata_module,
+            link: link_meta,
+            metadata: metadata,
+            reachable: vec![],
+            no_builtins: no_builtins,
+            linker_info: linker_info
+        };
+    }
 
     {
         let ccx = crate_context_list.get_ccx(0);
@@ -2717,13 +2747,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let reachable_symbol_ids = filter_reachable_ids(&shared_ccx);
-
-    // Translate the metadata.
-    let metadata = time(tcx.sess.time_passes(), "write metadata", || {
-        write_metadata(&shared_ccx, krate, &reachable_symbol_ids, mir_map)
-    });
-
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();
         println!("--- trans stats ---");
@@ -2752,10 +2775,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             println!("{:7} {}", *v, *k);
         }
     }
-
-    let modules = crate_context_list.iter()
-        .map(|ccx| ModuleTranslation { llcx: ccx.llcx(), llmod: ccx.llmod() })
-        .collect();
 
     let sess = shared_ccx.sess();
     let mut reachable_symbols = reachable_symbol_ids.iter().map(|&id| {
@@ -2789,12 +2808,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
        sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
         create_imps(&crate_context_list);
     }
-
-    let metadata_module = ModuleTranslation {
-        llcx: shared_ccx.metadata_llcx(),
-        llmod: shared_ccx.metadata_llmod(),
-    };
-    let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
 
     let linker_info = LinkerInfo::new(&shared_ccx, &reachable_symbols);
     CrateTranslation {
