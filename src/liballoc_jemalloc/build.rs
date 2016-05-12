@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(warnings)]
+
 extern crate build_helper;
 extern crate gcc;
 
@@ -18,6 +20,7 @@ use build_helper::run;
 
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
+    println!("cargo:rerun-if-changed=build.rs");
 
     let target = env::var("TARGET").unwrap();
     let host = env::var("HOST").unwrap();
@@ -39,6 +42,19 @@ fn main() {
     let ar = build_helper::cc2ar(compiler.path(), &target);
     let cflags = compiler.args().iter().map(|s| s.to_str().unwrap())
                          .collect::<Vec<_>>().join(" ");
+
+    let mut stack = src_dir.join("../jemalloc")
+                           .read_dir().unwrap()
+                           .map(|e| e.unwrap())
+                           .collect::<Vec<_>>();
+    while let Some(entry) = stack.pop() {
+        let path = entry.path();
+        if entry.file_type().unwrap().is_dir() {
+            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
+        } else {
+            println!("cargo:rerun-if-changed={}", path.display());
+        }
+    }
 
     let mut cmd = Command::new("sh");
     cmd.arg(src_dir.join("../jemalloc/configure").to_str().unwrap()
