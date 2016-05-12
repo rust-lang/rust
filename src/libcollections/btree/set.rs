@@ -34,7 +34,7 @@ use Bound;
 /// to any other item, as determined by the [`Ord`] trait, changes while it is in the set. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
 ///
-/// [`BTreeMap`]: struct.BTreeMap.html
+/// [`BTreeMap`]: ../btree_map/struct.BTreeMap.html
 /// [`Ord`]: ../../std/cmp/trait.Ord.html
 /// [`Cell`]: ../../std/cell/struct.Cell.html
 /// [`RefCell`]: ../../std/cell/struct.RefCell.html
