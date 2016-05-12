@@ -116,6 +116,7 @@ use syntax::ast;
 use syntax::abi::Abi;
 
 use std::cell::RefCell;
+use util::nodemap::NodeMap;
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -136,7 +137,9 @@ pub struct TypeAndSubsts<'tcx> {
 }
 
 pub struct CrateCtxt<'a, 'tcx: 'a> {
-    // A mapping from method call sites to traits that have that method.
+    ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
+
+    /// A mapping from method call sites to traits that have that method.
     pub trait_map: hir::TraitMap,
 
     /// A vector of every trait accessible in the whole crate
@@ -334,6 +337,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              -> CompileResult {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
+        ast_ty_to_ty_cache: RefCell::new(NodeMap()),
         trait_map: trait_map,
         all_traits: RefCell::new(None),
         stack: RefCell::new(Vec::new()),
