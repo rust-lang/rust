@@ -485,6 +485,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn symbol_hasher(&self) -> &RefCell<Sha256> {
         &self.symbol_hasher
     }
+
+    pub fn mir_map(&self) -> &MirMap<'tcx> {
+        &self.mir_map
+    }
 }
 
 impl<'tcx> LocalCrateContext<'tcx> {
