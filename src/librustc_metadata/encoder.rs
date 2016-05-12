@@ -1344,6 +1344,8 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     index.record(def_id, rbml_w);
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id_and_key(ecx, rbml_w, def_id);
+    let parent_id = ecx.tcx.map.get_parent(nitem.id);
+    encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
     encode_visibility(rbml_w, &nitem.vis);
     match nitem.node {
       hir::ForeignItemFn(ref fndecl, _) => {

@@ -30,7 +30,7 @@ pub use self::ValueOrigin::*;
 use super::CrateTranslation;
 use super::ModuleTranslation;
 
-use back::{link, symbol_names};
+use back::link;
 use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
@@ -2629,10 +2629,7 @@ fn iter_functions(llmod: llvm::ModuleRef) -> ValueIter {
 /// This list is later used by linkers to determine the set of symbols needed to
 /// be exposed from a dynamic library and it's also encoded into the metadata.
 pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
-    scx.reachable().iter().map(|x| *x).filter(|id| {
-        // First, only worry about nodes which have a symbol name
-        scx.item_symbols().borrow().contains_key(id)
-    }).filter(|&id| {
+    scx.reachable().iter().map(|x| *x).filter(|&id| {
         // Next, we want to ignore some FFI functions that are not exposed from
         // this crate. Reachable FFI functions can be lumped into two
         // categories:
@@ -2650,7 +2647,18 @@ pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
             hir_map::NodeForeignItem(..) => {
                 scx.sess().cstore.is_statically_included_foreign_item(id)
             }
-            _ => true,
+
+            // Only consider nodes that actually have exported symbols.
+            hir_map::NodeItem(&hir::Item {
+                node: hir::ItemStatic(..), .. }) |
+            hir_map::NodeItem(&hir::Item {
+                node: hir::ItemFn(..), .. }) |
+            hir_map::NodeTraitItem(&hir::TraitItem {
+                node: hir::MethodTraitItem(_, Some(_)), .. }) |
+            hir_map::NodeImplItem(&hir::ImplItem {
+                node: hir::ImplItemKind::Method(..), .. }) => true,
+
+            _ => false
         }
     }).collect()
 }
@@ -2769,8 +2777,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .collect();
 
     let sess = shared_ccx.sess();
-    let mut reachable_symbols = reachable_symbol_ids.iter().map(|id| {
-        shared_ccx.item_symbols().borrow()[id].to_string()
+    let mut reachable_symbols = reachable_symbol_ids.iter().map(|&id| {
+        let def_id = shared_ccx.tcx().map.local_def_id(id);
+        Instance::mono(shared_ccx.tcx(), def_id).symbol_name(&shared_ccx)
     }).collect::<Vec<_>>();
     if sess.entry_fn.borrow().is_some() {
         reachable_symbols.push("main".to_string());
@@ -2785,8 +2794,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             reachable_symbols.extend(syms.into_iter().filter(|did| {
                 sess.cstore.is_extern_item(shared_ccx.tcx(), *did)
             }).map(|did| {
-                let instance = Instance::mono(shared_ccx.tcx(), did);
-                symbol_names::exported_name(&shared_ccx, instance)
+                Instance::mono(shared_ccx.tcx(), did).symbol_name(&shared_ccx)
             }));
         }
     }

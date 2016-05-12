@@ -14,7 +14,6 @@
 //! item-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use back::symbol_names;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
 use syntax::ast;
@@ -52,8 +51,7 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
         for attr in tcx.get_attrs(def_id).iter() {
             if attr.check_name(SYMBOL_NAME) {
                 // for now, can only use on monomorphic names
-                let instance = Instance::mono(tcx, def_id);
-                let name = symbol_names::exported_name(self.ccx.shared(), instance);
+                let name = Instance::mono(tcx, def_id).symbol_name(self.ccx.shared());
                 tcx.sess.span_err(attr.span, &format!("symbol-name({})", name));
             } else if attr.check_name(ITEM_PATH) {
                 let path = tcx.item_path_str(def_id);
