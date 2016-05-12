@@ -31,7 +31,7 @@ pub use self::mutex::MUTEX_INIT;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::mutex::{Mutex, MutexGuard, StaticMutex};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::once::{Once, ONCE_INIT};
+pub use self::once::{Once, OnceState, ONCE_INIT};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use sys_common::poison::{PoisonError, TryLockError, TryLockResult, LockResult};
 #[stable(feature = "rust1", since = "1.0.0")]
