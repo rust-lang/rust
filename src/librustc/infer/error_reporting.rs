@@ -482,10 +482,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                        trace.origin);
 
         if !is_simple_error {
-            err = err.note_expected_found(&"type", &expected, &found);
+            err.note_expected_found(&"type", &expected, &found);
         }
 
-        err = err.span_label(trace.origin.span(), &terr);
+        err.span_label(trace.origin.span(), &terr);
 
         self.check_and_note_conflicting_crates(&mut err, terr, trace.origin.span());
 

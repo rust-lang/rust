@@ -11,5 +11,5 @@
 struct hello(isize);
 
 fn main() {
-    let hello = 0; //~ERROR declaration of `hello` shadows
+    let hello = 0; //~ERROR cannot be named the same
 }

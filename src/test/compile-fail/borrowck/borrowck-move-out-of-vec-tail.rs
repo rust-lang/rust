@@ -27,10 +27,12 @@ pub fn main() {
     match x {
         [_, tail..] => {
             match tail {
-                [Foo { string: a }, //~ ERROR cannot move out of borrowed content
+                [Foo { string: a },
+                //~^ ERROR cannot move out of borrowed content
+                //~| move occurs here
+                //~| attempting to move value to here
                  Foo { string: b }] => {
-                    //~^^ NOTE attempting to move value to here
-                    //~^^ NOTE and here
+                    //~^ NOTE and here
                 }
                 _ => {
                     unreachable!();

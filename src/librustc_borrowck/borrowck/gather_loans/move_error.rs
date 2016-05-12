@@ -121,22 +121,25 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         Categorization::Deref(_, _, mc::Implicit(..)) |
         Categorization::Deref(_, _, mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
-            struct_span_err!(bccx, move_from.span, E0507,
+            let mut err = struct_span_err!(bccx, move_from.span, E0507,
                              "cannot move out of {}",
-                             move_from.descriptive_string(bccx.tcx))
-            .span_label(
+                             move_from.descriptive_string(bccx.tcx));
+            err.span_label(
                 move_from.span,
                 &format!("move occurs here")
-                )
+                );
+            err
         }
 
         Categorization::Interior(ref b, mc::InteriorElement(Kind::Index, _)) => {
             let expr = bccx.tcx.map.expect_expr(move_from.id);
             if let hir::ExprIndex(..) = expr.node {
-                struct_span_err!(bccx, move_from.span, E0508,
-                                 "cannot move out of type `{}`, \
-                                  a non-copy fixed-size array",
-                                 b.ty)
+                let mut err = struct_span_err!(bccx, move_from.span, E0508,
+                                               "cannot move out of type `{}`, \
+                                               a non-copy fixed-size array",
+                                               b.ty);
+                err.span_label(move_from.span, &format!("can not move out of here"));
+                err
             } else {
                 span_bug!(move_from.span, "this path should not cause illegal move");
             }
@@ -147,10 +150,12 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             match b.ty.sty {
                 ty::TyStruct(def, _) |
                 ty::TyEnum(def, _) if def.has_dtor() => {
-                    struct_span_err!(bccx, move_from.span, E0509,
-                                     "cannot move out of type `{}`, \
-                                      which defines the `Drop` trait",
-                                     b.ty)
+                    let mut err = struct_span_err!(bccx, move_from.span, E0509,
+                                                   "cannot move out of type `{}`, \
+                                                   which defines the `Drop` trait",
+                                                   b.ty);
+                    err.span_label(move_from.span, &format!("can not move out of here"));
+                    err
                 },
                 _ => {
                     span_bug!(move_from.span, "this path should not cause illegal move");
@@ -168,7 +173,7 @@ fn note_move_destination(mut err: DiagnosticBuilder,
                          pat_name: ast::Name,
                          is_first_note: bool) -> DiagnosticBuilder {
     if is_first_note {
-        err = err.span_label(
+        err.span_label(
             move_to_span,
             &format!("attempting to move value to here"));
         err.help(

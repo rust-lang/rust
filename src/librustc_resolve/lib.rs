@@ -123,7 +123,7 @@ enum ResolutionError<'a> {
     SelfUsedOutsideImplOrTrait,
     /// error E0412: use of undeclared
     UseOfUndeclared(&'a str, &'a str, SuggestedCandidates),
-    /// error E0413: declaration shadows an enum variant or unit-like struct in scope
+    /// error E0413: cannot be named the same as an enum variant or unit-like struct in scope
     DeclarationShadowsEnumVariantOrUnitLikeStruct(Name),
     /// error E0414: only irrefutable patterns allowed here
     ConstantForIrrefutableBinding(Name),
@@ -205,7 +205,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                                            E0401,
                                            "can't use type parameters from outer function; \
                                            try using a local type parameter instead");
-            err = err.span_label(span, &format!("use of type variable from outer function"));
+            err.span_label(span, &format!("use of type variable from outer function"));
             err
         }
         ResolutionError::OuterTypeParameterContext => {
@@ -232,7 +232,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                                            "trait `{}` is not in scope",
                                            name);
             show_candidates(&mut err, &candidates);
-            err = err.span_label(span, &format!("`{}` is not in scope", name));
+            err.span_label(span, &format!("`{}` is not in scope", name));
             err
         }
         ResolutionError::UndeclaredAssociatedType => {
@@ -285,7 +285,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                                            span,
                                            E0411,
                                            "use of `Self` outside of an impl or trait");
-            err = err.span_label(span, &format!("Used outside of impl or trait"));
+            err.span_label(span, &format!("Used outside of impl or trait"));
             err
         }
         ResolutionError::UseOfUndeclared(kind, name, candidates) => {
@@ -296,7 +296,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                                            kind,
                                            name);
             show_candidates(&mut err, &candidates);
-            err = err.span_label(span, &format!("undefined or not in scope"));
+            err.span_label(span, &format!("undefined or not in scope"));
             err
         }
         ResolutionError::DeclarationShadowsEnumVariantOrUnitLikeStruct(name) => {
@@ -306,7 +306,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "`{}` cannot be named the same as an enum variant \
                               or unit-like struct in scope",
                              name);
-            err = err.span_label(span,
+            err.span_label(span,
                 &format!("has same name as enum variant or unit-like struct"));
             err
         }
@@ -315,13 +315,13 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                                            span,
                                            E0414,
                                        "let variables cannot be named the same as const variables");
-            err = err.span_label(span,
-                             &format!("cannot be named the same as a const variable"));
+            err.span_label(span,
+                           &format!("cannot be named the same as a const variable"));
             if let Some(binding) = resolver.current_module
                                            .resolve_name_in_lexical_scope(name, ValueNS) {
                 let participle = if binding.is_import() { "imported" } else { "defined" };
-                err = err.span_label(binding.span, &format!("a constant `{}` is {} here",
-                    name, participle));
+                err.span_label(binding.span, &format!("a constant `{}` is {} here",
+                               name, participle));
             }
             err
         }
@@ -331,7 +331,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              E0415,
                              "identifier `{}` is bound more than once in this parameter list",
                              identifier);
-            err = err.span_label(span, &format!("used as parameter more than once"));
+            err.span_label(span, &format!("used as parameter more than once"));
             err
         }
         ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(identifier) => {
@@ -340,7 +340,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              E0416,
                              "identifier `{}` is bound more than once in the same pattern",
                              identifier);
-            err = err.span_label(span, &format!("used in a pattern more than once"));
+            err.span_label(span, &format!("used in a pattern more than once"));
             err
         }
         ResolutionError::StaticVariableReference(binding) => {
@@ -349,10 +349,10 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                                            E0417,
                                            "static variables cannot be referenced in a \
                                             pattern, use a `const` instead");
-            err = err.span_label(span, &format!("static variable used in pattern"));
+            err.span_label(span, &format!("static variable used in pattern"));
             if binding.span != codemap::DUMMY_SP {
                 let participle = if binding.is_import() { "imported" } else { "defined" };
-                err = err.span_label(binding.span, &format!("static variable {} here", participle));
+                err.span_label(binding.span, &format!("static variable {} here", participle));
             }
             err
         }
@@ -1819,8 +1819,8 @@ impl<'a> Resolver<'a> {
                 // If it's a typedef, give a note
                 if let Def::TyAlias(..) = path_res.base_def {
                     let trait_name = trait_path.segments.last().unwrap().identifier.name;
-                    err = err.span_label(trait_path.span,
-                        &format!("`{}` is not a trait", trait_name));
+                    err.span_label(trait_path.span,
+                                   &format!("`{}` is not a trait", trait_name));
 
                     let definition_site = {
                         let segments = &trait_path.segments;
@@ -1832,8 +1832,8 @@ impl<'a> Resolver<'a> {
                     };
 
                     if definition_site != codemap::DUMMY_SP {
-                        err = err.span_label(definition_site,
-                            &format!("note: type aliases cannot be used for traits"));
+                        err.span_label(definition_site,
+                                       &format!("type aliases cannot be used for traits"));
                     }
                 }
                 err.emit();
@@ -3480,14 +3480,15 @@ impl<'a> Resolver<'a> {
                 (false, false) => struct_span_err!(self.session, span, E0428, "{}", msg),
                 (true, true) => struct_span_err!(self.session, span, E0252, "{}", msg),
                 _ => {
-                    let e = struct_span_err!(self.session, span, E0255, "{}", msg);
-                    e.span_label(span, &format!("`{}` was already imported", name))
+                    let mut e = struct_span_err!(self.session, span, E0255, "{}", msg);
+                    e.span_label(span, &format!("`{}` was already imported", name));
+                    e
                 }
             },
         };
 
         if old_binding.span != codemap::DUMMY_SP {
-            err = err.span_label(old_binding.span, &format!("previous {} of `{}` here", noun, name));
+            err.span_label(old_binding.span, &format!("previous {} of `{}` here", noun, name));
         }
         err.emit();
     }

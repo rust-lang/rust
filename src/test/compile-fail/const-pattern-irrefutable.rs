@@ -13,16 +13,16 @@ mod foo {
     pub const d: u8 = 2;
 }
 
-use foo::b as c; //~ NOTE constant imported here
-use foo::d; //~ NOTE constant imported here
+use foo::b as c; //~ NOTE is imported here
+use foo::d; //~ NOTE is imported here
 
-const a: u8 = 2; //~ NOTE constant defined here
+const a: u8 = 2; //~ NOTE is defined here
 
 fn main() {
-    let a = 4; //~ ERROR variable bindings cannot
-               //~^ NOTE there already is a constant in scope
-    let c = 4; //~ ERROR variable bindings cannot
-               //~^ NOTE there already is a constant in scope
-    let d = 4; //~ ERROR variable bindings cannot
-               //~^ NOTE there already is a constant in scope
+    let a = 4; //~ ERROR let variables cannot
+               //~^ NOTE cannot be named the same as a const variable
+    let c = 4; //~ ERROR let variables cannot
+               //~^ NOTE cannot be named the same as a const variable
+    let d = 4; //~ ERROR let variables cannot
+               //~^ NOTE cannot be named the same as a const variable
 }

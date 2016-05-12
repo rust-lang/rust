@@ -61,7 +61,9 @@ fn move_after_borrow() {
     let a: Box<_> = box B { x: box 0, y: box 1 };
     let _x = &a.x;
     //~^ NOTE borrow of `a.x` occurs here
-    let _y = a.y; //~ ERROR cannot move
+    let _y = a.y;
+    //~^ ERROR cannot move
+    //~| move out of
 }
 
 fn copy_after_mut_borrow() {
@@ -75,7 +77,9 @@ fn move_after_mut_borrow() {
     let mut a: Box<_> = box B { x: box 0, y: box 1 };
     let _x = &mut a.x;
     //~^ NOTE borrow of `a.x` occurs here
-    let _y = a.y; //~ ERROR cannot move
+    let _y = a.y;
+    //~^ ERROR cannot move
+    //~| move out of
 }
 
 fn borrow_after_mut_borrow() {
@@ -127,7 +131,9 @@ fn move_after_borrow_nested() {
     let a: Box<_> = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
     let _x = &a.x.x;
     //~^ borrow of `a.x.x` occurs here
-    let _y = a.y; //~ ERROR cannot move
+    let _y = a.y;
+    //~^ ERROR cannot move
+    //~| move out of
 }
 
 fn copy_after_mut_borrow_nested() {
@@ -141,7 +147,9 @@ fn move_after_mut_borrow_nested() {
     let mut a: Box<_> = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
     let _x = &mut a.x.x;
     //~^ NOTE borrow of `a.x.x` occurs here
-    let _y = a.y; //~ ERROR cannot move
+    let _y = a.y;
+    //~^ ERROR cannot move
+    //~| move out of
 }
 
 fn borrow_after_mut_borrow_nested() {

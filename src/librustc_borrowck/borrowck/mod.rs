@@ -624,9 +624,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         let mut db = self.struct_span_err(
             err.span,
             &self.bckerr_to_string(&err));
-        self.note_and_explain_bckerr(&mut db, err);
-        db.span_label(span, &format!("cannot borrow"))
-          .emit();
+        self.note_and_explain_bckerr(&mut db, err, span);
+        db.emit();
     }
 
     pub fn report_use_of_moved_value(&self,
@@ -721,10 +720,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             err.span_label(
                 use_span,
                 &format!("value moved{} here in previous iteration of loop",
-                         move_note))
+                         move_note));
+            err
         } else {
             err.span_label(use_span, &format!("value {} here after move", verb_participle))
-               .span_label(move_span, &format!("value moved{} here", move_note))
+               .span_label(move_span, &format!("value moved{} here", move_note));
+            err
         };
 
         err.note(&format!("move occurs because `{}` has type `{}`, \
@@ -951,7 +952,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             .emit();
     }
 
-    pub fn note_and_explain_bckerr(&self, db: &mut DiagnosticBuilder, err: BckError<'tcx>) {
+    pub fn note_and_explain_bckerr(&self, db: &mut DiagnosticBuilder, err: BckError<'tcx>,
+        error_span: Span) {
         let code = err.code;
         match code {
             err_mutbl => {
@@ -976,13 +978,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             let span = self.tcx.map.span(local_id);
                             if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
                                 if snippet != "self" {
-                                    db.span_suggestion(
-                                        span,
-                                        &format!("to make the {} mutable, use `mut` as shown:",
-                                                 self.cmt_to_string(&err.cmt)),
-                                        format!("mut {}", snippet));
+                                    db.span_label(span,
+                                        &format!("use `mut {}` here to make mutable", snippet));
                                 }
                             }
+                            db.span_label(error_span, &format!("cannot borrow mutably"));
                         }
                     }
                 }
@@ -1000,6 +1000,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     super_scope,
                     "");
                 if let Some(span) = statement_scope_span(self.tcx, super_scope) {
+                    db.span_label(error_span, &format!("does not live long enough"));
                     db.span_help(span,
                                  "consider using a `let` binding to increase its lifetime");
                 }

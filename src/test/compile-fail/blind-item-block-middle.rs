@@ -12,6 +12,6 @@ mod foo { pub struct bar; }
 
 fn main() {
     let bar = 5;
-    //~^ ERROR declaration of `bar` shadows an enum variant or unit-like struct in scope
+    //~^ ERROR cannot be named the same
     use foo::bar;
 }
