@@ -560,7 +560,7 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &Expr) {
     let parent = cx.tcx.map.get_parent(expr.id);
     let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, parent);
 
-    if !ty.moves_by_default(&parameter_environment, expr.span) {
+    if !ty.moves_by_default(cx.tcx.global_tcx(), &parameter_environment, expr.span) {
         span_lint(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type");
     }
 }
@@ -1044,5 +1044,5 @@ fn is_bool(ty: &Ty) -> bool {
 
 fn is_copy<'a, 'ctx>(cx: &LateContext<'a, 'ctx>, ty: ty::Ty<'ctx>, item: &Item) -> bool {
     let env = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
-    !ty.subst(cx.tcx, &env.free_substs).moves_by_default(&env, item.span)
+    !ty.subst(cx.tcx, env.free_substs).moves_by_default(cx.tcx.global_tcx(), &env, item.span)
 }

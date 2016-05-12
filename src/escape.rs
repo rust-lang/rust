@@ -1,11 +1,9 @@
 use rustc::hir::*;
 use rustc::hir::intravisit as visit;
 use rustc::hir::map::Node::{NodeExpr, NodeStmt};
-use rustc::infer;
 use rustc::lint::*;
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::{cmt, Categorization};
-use rustc::traits::ProjectionMode;
 use rustc::ty::adjustment::AutoAdjustment;
 use rustc::ty;
 use rustc::util::nodemap::NodeSet;
@@ -42,7 +40,7 @@ fn is_non_trait_box(ty: ty::Ty) -> bool {
 }
 
 struct EscapeDelegate<'a, 'tcx: 'a> {
-    cx: &'a LateContext<'a, 'tcx>,
+    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     set: NodeSet,
 }
 
@@ -55,15 +53,18 @@ impl LintPass for EscapePass {
 impl LateLintPass for EscapePass {
     fn check_fn(&mut self, cx: &LateContext, _: visit::FnKind, decl: &FnDecl, body: &Block, _: Span, id: NodeId) {
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
-        let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, Some(param_env), ProjectionMode::Any);
+
+        let infcx = cx.tcx.borrowck_fake_infer_ctxt(param_env);
         let mut v = EscapeDelegate {
-            cx: cx,
+            tcx: cx.tcx,
             set: NodeSet(),
         };
+
         {
             let mut vis = ExprUseVisitor::new(&mut v, &infcx);
             vis.walk_fn(decl, body);
         }
+
         for node in v.set {
             span_lint(cx,
                       BOXED_LOCAL,
@@ -75,7 +76,6 @@ impl LateLintPass for EscapePass {
 
 impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn consume(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, mode: ConsumeMode) {
-
         if let Categorization::Local(lid) = cmt.cat {
             if self.set.contains(&lid) {
                 if let Move(DirectRefMove) = mode {
@@ -87,7 +87,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     }
     fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {}
     fn consume_pat(&mut self, consume_pat: &Pat, cmt: cmt<'tcx>, _: ConsumeMode) {
-        let map = &self.cx.tcx.map;
+        let map = &self.tcx.map;
         if map.is_argument(consume_pat.id) {
             // Skip closure arguments
             if let Some(NodeExpr(..)) = map.find(map.get_parent_node(consume_pat.id)) {
@@ -132,8 +132,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
 
         if let Categorization::Local(lid) = cmt.cat {
             if self.set.contains(&lid) {
-                if let Some(&AutoAdjustment::AdjustDerefRef(adj)) = self.cx
-                                                                        .tcx
+                if let Some(&AutoAdjustment::AdjustDerefRef(adj)) = self.tcx
                                                                         .tables
                                                                         .borrow()
                                                                         .adjustments
@@ -148,13 +147,11 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                     }
                 } else if LoanCause::AddrOf == loan_cause {
                     // &x
-                    if let Some(&AutoAdjustment::AdjustDerefRef(adj)) = self.cx
-                                                                            .tcx
+                    if let Some(&AutoAdjustment::AdjustDerefRef(adj)) = self.tcx
                                                                             .tables
                                                                             .borrow()
                                                                             .adjustments
-                                                                            .get(&self.cx
-                                                                                      .tcx
+                                                                            .get(&self.tcx
                                                                                       .map
                                                                                       .get_parent_node(borrow_id)) {
                         if adj.autoderefs <= 1 {

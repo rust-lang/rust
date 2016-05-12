@@ -1,6 +1,6 @@
 //! This module contains paths to types and functions Clippy needs to know about.
 
-pub const BEGIN_UNWIND: [&'static str; 3] = ["std", "rt", "begin_unwind"];
+pub const BEGIN_PANIC: [&'static str; 3] = ["std", "rt", "begin_panic"];
 pub const BINARY_HEAP: [&'static str; 3] = ["collections", "binary_heap", "BinaryHeap"];
 pub const BOX: [&'static str; 3] = ["std", "boxed", "Box"];
 pub const BOX_NEW: [&'static str; 4] = ["std", "boxed", "Box", "new"];

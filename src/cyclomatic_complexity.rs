@@ -58,7 +58,7 @@ impl CyclomaticComplexity {
             divergence: 0,
             short_circuits: 0,
             returns: 0,
-            tcx: cx.tcx,
+            tcx: &cx.tcx,
         };
         helper.visit_block(block);
         let CCHelper { match_arms, divergence, short_circuits, returns, .. } = helper;
@@ -117,15 +117,15 @@ impl LateLintPass for CyclomaticComplexity {
     }
 }
 
-struct CCHelper<'a, 'tcx: 'a> {
+struct CCHelper<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     match_arms: u64,
     divergence: u64,
     returns: u64,
     short_circuits: u64, // && and ||
-    tcx: &'a ty::TyCtxt<'tcx>,
+    tcx: &'a ty::TyCtxt<'a, 'gcx, 'tcx>,
 }
 
-impl<'a, 'b, 'tcx> Visitor<'a> for CCHelper<'b, 'tcx> {
+impl<'a, 'b, 'tcx, 'gcx> Visitor<'a> for CCHelper<'b, 'gcx, 'tcx> {
     fn visit_expr(&mut self, e: &'a Expr) {
         match e.node {
             ExprMatch(_, ref arms, _) => {

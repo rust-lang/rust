@@ -105,7 +105,7 @@ declare_lint! {
 fn check_let_unit(cx: &LateContext, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
         let bindtype = &cx.tcx.pat_ty(&local.pat).sty;
-        if *bindtype == ty::TyTuple(vec![]) {
+        if *bindtype == ty::TyTuple(&[]) {
             if in_external_macro(cx, decl.span) || in_macro(cx, local.pat.span) {
                 return;
             }
@@ -162,7 +162,7 @@ impl LateLintPass for UnitCmp {
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
             let sty = &cx.tcx.expr_ty(left).sty;
-            if *sty == ty::TyTuple(vec![]) && op.is_comparison() {
+            if *sty == ty::TyTuple(&[]) && op.is_comparison() {
                 let result = match op {
                     BiEq | BiLe | BiGe => "true",
                     _ => "false",

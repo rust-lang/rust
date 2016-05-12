@@ -33,7 +33,7 @@ impl LateLintPass for PanicPass {
             let ExprCall(ref fun, ref params) = ex.node,
             params.len() == 2,
             let ExprPath(None, ref path) = fun.node,
-            match_path(path, &paths::BEGIN_UNWIND),
+            match_path(path, &paths::BEGIN_PANIC),
             let ExprLit(ref lit) = params[0].node,
             is_direct_expn_of(cx, params[0].span, "panic").is_some(),
             let LitKind::Str(ref string, _) = lit.node,
