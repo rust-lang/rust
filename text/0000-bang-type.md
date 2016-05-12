@@ -380,6 +380,9 @@ type variable to any expression of type `!`.
 In the compiler, remove the distinction between diverging and converging
 functions. Use the type system to do things like reachability analysis.
 
+Allow expressions of type `!` to be explicitly cast to any other type (eg.
+`let x: u32 = break as u32;`)
+
 Add an implementation for `!` of any trait that it can trivially implement. Add
 methods to `Result<T, !>` and `Result<!, E>` for safely extracting the inner
 value. Name these methods along the lines of `unwrap_nopanic`, `safe_unwrap` or
