@@ -101,7 +101,7 @@ unsafe impl Send for Once {}
 
 /// State yielded to the `call_once_force` method which can be used to query
 /// whether the `Once` was previously poisoned or not.
-#[unstable(feature = "once_poison", issue = "31688")]
+#[unstable(feature = "once_poison", issue = "33577")]
 pub struct OnceState {
     poisoned: bool,
 }
@@ -218,7 +218,7 @@ impl Once {
     /// The closure `f` is yielded a structure which can be used to query the
     /// state of this `Once` (whether initialization has previously panicked or
     /// not).
-    #[unstable(feature = "once_poison", issue = "31688")]
+    #[unstable(feature = "once_poison", issue = "33577")]
     pub fn call_once_force<F>(&'static self, f: F) where F: FnOnce(&OnceState) {
         // same as above, just with a different parameter to `call_inner`.
         if self.state.load(Ordering::SeqCst) == COMPLETE {
@@ -360,7 +360,7 @@ impl OnceState {
     ///
     /// Once an initalization routine for a `Once` has panicked it will forever
     /// indicate to future forced initialization routines that it is poisoned.
-    #[unstable(feature = "once_poison", issue = "31688")]
+    #[unstable(feature = "once_poison", issue = "33577")]
     pub fn poisoned(&self) -> bool {
         self.poisoned
     }
