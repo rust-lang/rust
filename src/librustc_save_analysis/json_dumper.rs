@@ -36,9 +36,9 @@ impl<'b, W: Write> Drop for JsonDumper<'b, W> {
 }
 
 macro_rules! impl_fn {
-    ($fn_name: ident, $data_type: ident, $bin: ident) => {
+    ($fn_name: ident, $data_type: ident, $bucket: ident) => {
         fn $fn_name(&mut self, data: $data_type) {
-            self.result.$bin.push(From::from(data));
+            self.result.$bucket.push(From::from(data));
         }
     }
 }
@@ -105,10 +105,27 @@ impl Analysis {
     }
 }
 
+// DefId::index is a newtype and so the JSON serialisation is ugly. Therefore
+// we use our own Id which is the same, but without the newtype.
+#[derive(Debug, RustcEncodable)]
+struct Id {
+    krate: u32,
+    index: u32,
+}
+
+impl From<DefId> for Id {
+    fn from(id: DefId) -> Id {
+        Id {
+            krate: id.krate,
+            index: id.index.as_u32(),
+        }
+    }
+}
+
 #[derive(Debug, RustcEncodable)]
 struct Import {
     kind: ImportKind,
-    id: DefId,
+    id: Id,
     span: SpanData,
     name: String,
     value: String,
@@ -125,7 +142,7 @@ impl From<ExternCrateData> for Import {
     fn from(data: ExternCrateData) -> Import {
         Import {
             kind: ImportKind::ExternCrate,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             value: String::new(),
@@ -136,7 +153,7 @@ impl From<UseData> for Import {
     fn from(data: UseData) -> Import {
         Import {
             kind: ImportKind::Use,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             value: String::new(),
@@ -147,7 +164,7 @@ impl From<UseGlobData> for Import {
     fn from(data: UseGlobData) -> Import {
         Import {
             kind: ImportKind::GlobUse,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: "*".to_owned(),
             value: data.names.join(", "),
@@ -158,7 +175,7 @@ impl From<UseGlobData> for Import {
 #[derive(Debug, RustcEncodable)]
 struct Def {
     kind: DefKind,
-    id: DefId,
+    id: Id,
     span: SpanData,
     name: String,
     qualname: String,
@@ -191,7 +208,7 @@ impl From<EnumData> for Def {
     fn from(data: EnumData) -> Def {
         Def {
             kind: DefKind::Enum,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
@@ -204,7 +221,7 @@ impl From<TupleVariantData> for Def {
     fn from(data: TupleVariantData) -> Def {
         Def {
             kind: DefKind::Tuple,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
@@ -216,7 +233,7 @@ impl From<StructVariantData> for Def {
     fn from(data: StructVariantData) -> Def {
         Def {
             kind: DefKind::Struct,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
@@ -228,7 +245,7 @@ impl From<StructData> for Def {
     fn from(data: StructData) -> Def {
         Def {
             kind: DefKind::Struct,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
@@ -240,7 +257,7 @@ impl From<TraitData> for Def {
     fn from(data: TraitData) -> Def {
         Def {
             kind: DefKind::Trait,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
@@ -252,7 +269,7 @@ impl From<FunctionData> for Def {
     fn from(data: FunctionData) -> Def {
         Def {
             kind: DefKind::Function,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
@@ -264,7 +281,7 @@ impl From<MethodData> for Def {
     fn from(data: MethodData) -> Def {
         Def {
             kind: DefKind::Function,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
@@ -276,7 +293,7 @@ impl From<MacroData> for Def {
     fn from(data: MacroData) -> Def {
         Def {
             kind: DefKind::Macro,
-            id: null_def_id(),
+            id: From::from(null_def_id()),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
@@ -288,7 +305,7 @@ impl From<ModData> for Def {
     fn from(data:ModData) -> Def {
         Def {
             kind: DefKind::Mod,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
@@ -300,7 +317,7 @@ impl From<TypeDefData> for Def {
     fn from(data: TypeDefData) -> Def {
         Def {
             kind: DefKind::Type,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
@@ -312,7 +329,7 @@ impl From<VariableData> for Def {
     fn from(data: VariableData) -> Def {
         Def {
             kind: DefKind::Variable,
-            id: data.id,
+            id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
@@ -333,7 +350,7 @@ enum RefKind {
 struct Ref {
     kind: RefKind,
     span: SpanData,
-    ref_id: DefId,
+    ref_id: Id,
 }
 
 impl From<FunctionRefData> for Ref {
@@ -341,7 +358,7 @@ impl From<FunctionRefData> for Ref {
         Ref {
             kind: RefKind::Function,
             span: data.span,
-            ref_id: data.ref_id,
+            ref_id: From::from(data.ref_id),
         }
     }
 }
@@ -350,7 +367,7 @@ impl From<FunctionCallData> for Ref {
         Ref {
             kind: RefKind::Function,
             span: data.span,
-            ref_id: data.ref_id,
+            ref_id: From::from(data.ref_id),
         }
     }
 }
@@ -359,7 +376,7 @@ impl From<MethodCallData> for Ref {
         Ref {
             kind: RefKind::Function,
             span: data.span,
-            ref_id: data.ref_id.or(data.decl_id).unwrap_or(null_def_id()),
+            ref_id: From::from(data.ref_id.or(data.decl_id).unwrap_or(null_def_id())),
         }
     }
 }
@@ -368,7 +385,7 @@ impl From<ModRefData> for Ref {
         Ref {
             kind: RefKind::Mod,
             span: data.span,
-            ref_id: data.ref_id.unwrap_or(null_def_id()),
+            ref_id: From::from(data.ref_id.unwrap_or(null_def_id())),
         }
     }
 }
@@ -377,7 +394,7 @@ impl From<TypeRefData> for Ref {
         Ref {
             kind: RefKind::Type,
             span: data.span,
-            ref_id: data.ref_id.unwrap_or(null_def_id()),
+            ref_id: From::from(data.ref_id.unwrap_or(null_def_id())),
         }
     }
 }
@@ -386,7 +403,7 @@ impl From<VariableRefData> for Ref {
         Ref {
             kind: RefKind::Variable,
             span: data.span,
-            ref_id: data.ref_id,
+            ref_id: From::from(data.ref_id),
         }
     }
 }
