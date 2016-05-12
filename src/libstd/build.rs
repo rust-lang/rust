@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(warnings)]
+
 extern crate gcc;
 extern crate build_helper;
 
 use std::env;
-use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -20,6 +21,7 @@ use build_helper::run;
 
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
+    println!("cargo:rerun-if-changed=build.rs");
 
     let target = env::var("TARGET").unwrap();
     let host = env::var("HOST").unwrap();
@@ -65,8 +67,16 @@ fn build_libbacktrace(host: &str, target: &str) {
     println!("cargo:rustc-link-lib=static=backtrace");
     println!("cargo:rustc-link-search=native={}/.libs", build_dir.display());
 
-    if fs::metadata(&build_dir.join(".libs/libbacktrace.a")).is_ok() {
-        return
+    let mut stack = src_dir.read_dir().unwrap()
+                           .map(|e| e.unwrap())
+                           .collect::<Vec<_>>();
+    while let Some(entry) = stack.pop() {
+        let path = entry.path();
+        if entry.file_type().unwrap().is_dir() {
+            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
+        } else {
+            println!("cargo:rerun-if-changed={}", path.display());
+        }
     }
 
     let compiler = gcc::Config::new().get_compiler();

@@ -29,6 +29,7 @@ extern crate bootstrap;
 
 use std::env;
 use std::ffi::OsString;
+use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
@@ -43,16 +44,22 @@ fn main() {
     // have the standard library built yet and may not be able to produce an
     // executable. Otherwise we just use the standard compiler we're
     // bootstrapping with.
-    let rustc = if target.is_none() {
-        env::var_os("RUSTC_SNAPSHOT").unwrap()
+    let (rustc, libdir) = if target.is_none() {
+        ("RUSTC_SNAPSHOT", "RUSTC_SNAPSHOT_LIBDIR")
     } else {
-        env::var_os("RUSTC_REAL").unwrap()
+        ("RUSTC_REAL", "RUSTC_LIBDIR")
     };
     let stage = env::var("RUSTC_STAGE").unwrap();
 
+    let rustc = env::var_os(rustc).unwrap();
+    let libdir = env::var_os(libdir).unwrap();
+    let mut dylib_path = bootstrap::dylib_path();
+    dylib_path.insert(0, PathBuf::from(libdir));
+
     let mut cmd = Command::new(rustc);
     cmd.args(&args)
-       .arg("--cfg").arg(format!("stage{}", stage));
+       .arg("--cfg").arg(format!("stage{}", stage))
+       .env(bootstrap::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
