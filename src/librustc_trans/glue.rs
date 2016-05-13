@@ -285,7 +285,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let bcx = fcx.init(false, None);
 
-    update_linkage(ccx, llfn, None, OriginalTranslation);
+    update_linkage(ccx, llfn, None);
 
     ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1);
     // All glue functions take values passed *by alias*; this is a
