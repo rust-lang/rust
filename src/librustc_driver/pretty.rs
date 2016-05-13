@@ -812,17 +812,17 @@ pub fn print_after_parsing(sess: &Session,
     write_output(out, ofile);
 }
 
-pub fn print_after_write_deps<'tcx, 'a: 'tcx>(sess: &'a Session,
-                                              ast_map: &hir_map::Map<'tcx>,
-                                              analysis: &ty::CrateAnalysis,
-                                              resolutions: &Resolutions,
-                                              input: &Input,
-                                              krate: &ast::Crate,
-                                              crate_name: &str,
-                                              ppm: PpMode,
-                                              arenas: &'tcx ty::CtxtArenas<'tcx>,
-                                              opt_uii: Option<UserIdentifiedItem>,
-                                              ofile: Option<&Path>) {
+pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
+                                                ast_map: &hir_map::Map<'tcx>,
+                                                analysis: &ty::CrateAnalysis,
+                                                resolutions: &Resolutions,
+                                                input: &Input,
+                                                krate: &ast::Crate,
+                                                crate_name: &str,
+                                                ppm: PpMode,
+                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
+                                                opt_uii: Option<UserIdentifiedItem>,
+                                                ofile: Option<&Path>) {
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
 

@@ -461,23 +461,23 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 
         if let Some((ppm, opt_uii)) = parse_pretty(sess, matches) {
             if ppm.needs_ast_map(&opt_uii) {
-                control.after_write_deps.stop = Compilation::Stop;
+                control.after_hir_lowering.stop = Compilation::Stop;
 
                 control.after_parse.callback = box move |state| {
                     state.krate = Some(pretty::fold_crate(state.krate.take().unwrap(), ppm));
                 };
-                control.after_write_deps.callback = box move |state| {
-                    pretty::print_after_write_deps(state.session,
-                                                   state.ast_map.unwrap(),
-                                                   state.analysis.unwrap(),
-                                                   state.resolutions.unwrap(),
-                                                   state.input,
-                                                   &state.expanded_crate.take().unwrap(),
-                                                   state.crate_name.unwrap(),
-                                                   ppm,
-                                                   state.arenas.unwrap(),
-                                                   opt_uii.clone(),
-                                                   state.out_file);
+                control.after_hir_lowering.callback = box move |state| {
+                    pretty::print_after_hir_lowering(state.session,
+                                                     state.ast_map.unwrap(),
+                                                     state.analysis.unwrap(),
+                                                     state.resolutions.unwrap(),
+                                                     state.input,
+                                                     &state.expanded_crate.take().unwrap(),
+                                                     state.crate_name.unwrap(),
+                                                     ppm,
+                                                     state.arenas.unwrap(),
+                                                     opt_uii.clone(),
+                                                     state.out_file);
                 };
             } else {
                 control.after_parse.stop = Compilation::Stop;
