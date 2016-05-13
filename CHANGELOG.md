@@ -215,6 +215,7 @@ All notable changes to this project will be documented in this file.
 [`unicode_not_nfc`]: https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc
 [`unit_cmp`]: https://github.com/Manishearth/rust-clippy/wiki#unit_cmp
 [`unnecessary_mut_passed`]: https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed
+[`unnecessary_operation`]: https://github.com/Manishearth/rust-clippy/wiki#unnecessary_operation
 [`unneeded_field_pattern`]: https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern
 [`unsafe_removed_from_name`]: https://github.com/Manishearth/rust-clippy/wiki#unsafe_removed_from_name
 [`unstable_as_mut_slice`]: https://github.com/Manishearth/rust-clippy/wiki#unstable_as_mut_slice

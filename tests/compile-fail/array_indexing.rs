@@ -3,7 +3,7 @@
 
 #![deny(indexing_slicing)]
 #![deny(out_of_bounds_indexing)]
-#![allow(no_effect)]
+#![allow(no_effect, unnecessary_operation)]
 
 fn main() {
     let x = [1,2,3,4];

@@ -3,7 +3,7 @@
 
 #[deny(eq_op)]
 #[allow(identity_op)]
-#[allow(no_effect, unused_variables)]
+#[allow(no_effect, unused_variables, unnecessary_operation)]
 #[deny(nonminimal_bool)]
 fn main() {
     // simple values and comparisons

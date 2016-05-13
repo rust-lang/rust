@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 149 lints included in this crate:
+There are 150 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -154,6 +154,7 @@ name                                                                            
 [unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                                   | allow   | using a unicode literal not in NFC normal form (see [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)
 [unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                                 | warn    | comparing unit values (which is always `true` or `false`, respectively)
 [unnecessary_mut_passed](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed)                     | warn    | an argument is passed as a mutable reference although the function/method only demands an immutable reference
+[unnecessary_operation](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_operation)                       | warn    | outer expressions with no effect
 [unneeded_field_pattern](https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern)                     | warn    | Struct fields are bound to a wildcard instead of using `..`
 [unsafe_removed_from_name](https://github.com/Manishearth/rust-clippy/wiki#unsafe_removed_from_name)                 | warn    | unsafe removed from name
 [unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                                     | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop

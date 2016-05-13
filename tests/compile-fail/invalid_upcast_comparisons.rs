@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(invalid_upcast_comparisons)]
-#![allow(unused, eq_op, no_effect)]
+#![allow(unused, eq_op, no_effect, unnecessary_operation)]
 fn main() {
     let zero: u32 = 0;
     let u8_max: u8 = 255;

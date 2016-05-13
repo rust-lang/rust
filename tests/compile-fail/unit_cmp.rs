@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(unit_cmp)]
-#![allow(no_effect)]
+#![allow(no_effect, unnecessary_operation)]
 
 #[derive(PartialEq)]
 pub struct ContainsUnit(()); // should be fine

@@ -1,7 +1,7 @@
 #![feature(plugin, box_syntax, inclusive_range_syntax)]
 #![plugin(clippy)]
 
-#![deny(no_effect)]
+#![deny(no_effect, unnecessary_operation)]
 #![allow(dead_code)]
 #![allow(path_statements)]
 
@@ -50,22 +50,59 @@ fn main() {
 
     // Do not warn
     get_number();
-    Tuple(get_number());
-    Struct { field: get_number() };
-    Struct { ..get_struct() };
-    Enum::Tuple(get_number());
-    Enum::Struct { field: get_number() };
-    5 + get_number();
-    *&get_number();
-    &get_number();
-    (5, 6, get_number());
-    box get_number();
-    get_number()..;
-    ..get_number();
-    5..get_number();
-    [42, get_number()];
-    [42, 55][get_number() as usize];
-    (42, get_number()).1;
-    [get_number(); 55];
-    [42; 55][get_number() as usize];
+
+    Tuple(get_number()); //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION get_number();
+    Struct { field: get_number() }; //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION get_number();
+    Struct { ..get_struct() }; //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION get_number();
+    Enum::Tuple(get_number()); //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION get_number();
+    Enum::Struct { field: get_number() }; //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION get_number();
+    5 + get_number(); //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION 5;get_number();
+    *&get_number(); //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION &get_number();
+    &get_number(); //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION get_number();
+    (5, 6, get_number()); //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION 5;6;get_number();
+    box get_number(); //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION get_number();
+    get_number()..; //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION get_number();
+    ..get_number(); //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION get_number();
+    5..get_number(); //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION 5;get_number();
+    [42, get_number()]; //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION 42;get_number();
+    [42, 55][get_number() as usize]; //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION [42, 55];get_number() as usize;
+    (42, get_number()).1; //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION 42;get_number();
+    [get_number(); 55]; //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION get_number();
+    [42; 55][get_number() as usize]; //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION [42; 55];get_number() as usize;
 }

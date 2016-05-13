@@ -519,6 +519,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         neg_multiply::NEG_MULTIPLY,
         new_without_default::NEW_WITHOUT_DEFAULT,
         no_effect::NO_EFFECT,
+        no_effect::UNNECESSARY_OPERATION,
         non_expressive_names::MANY_SINGLE_CHAR_NAMES,
         open_options::NONSENSICAL_OPEN_OPTIONS,
         overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,

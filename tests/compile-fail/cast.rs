@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #[deny(cast_precision_loss, cast_possible_truncation, cast_sign_loss, cast_possible_wrap)]
-#[allow(no_effect)]
+#[allow(no_effect, unnecessary_operation)]
 fn main() {
     // Test cast_precision_loss
     1i32 as f32; //~ERROR casting i32 to f32 causes a loss of precision (i32 is 32 bits wide, but f32's mantissa is only 23 bits wide)

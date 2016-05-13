@@ -5,7 +5,7 @@ const ONE : i64 = 1;
 const NEG_ONE : i64 = -1;
 const ZERO : i64 = 0;
 
-#[allow(eq_op, no_effect)]
+#[allow(eq_op, no_effect, unnecessary_operation)]
 #[deny(identity_op)]
 fn main() {
     let x = 0;
