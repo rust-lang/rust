@@ -50,6 +50,7 @@ pub mod runtest;
 pub mod common;
 pub mod errors;
 mod raise_fd_limit;
+mod uidiff;
 
 fn main() {
     #[cfg(cargobuild)]
