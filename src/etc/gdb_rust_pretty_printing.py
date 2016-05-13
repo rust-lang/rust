@@ -70,6 +70,8 @@ class GdbValue(rustpp.Value):
         return child
 
     def as_integer(self):
+        if self.gdb_val.type.code == gdb.TYPE_CODE_PTR:
+            return int(str(self.gdb_val), 0)
         return int(self.gdb_val)
 
     def get_wrapped_value(self):
