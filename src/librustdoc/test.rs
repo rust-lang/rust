@@ -28,7 +28,7 @@ use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::{get_unstable_features_setting, OutputType};
 use rustc::session::search_paths::{SearchPaths, PathKind};
-use rustc::hir::lowering::{lower_crate, LoweringContext, DummyResolver};
+use rustc::hir::lowering::{lower_crate, DummyResolver};
 use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
 use rustc_driver::{driver, Compilation};
@@ -98,8 +98,7 @@ pub fn run(input: &str,
     let defs = &RefCell::new(hir_map::collect_definitions(&krate));
 
     let mut dummy_resolver = DummyResolver;
-    let lcx = LoweringContext::new(&sess, Some(&krate), &mut dummy_resolver);
-    let krate = lower_crate(&lcx, &krate);
+    let krate = lower_crate(&krate, &sess, &mut dummy_resolver);
 
     let opts = scrape_test_config(&krate);
 

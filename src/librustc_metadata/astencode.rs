@@ -57,7 +57,7 @@ use rustc_serialize::{Encodable, EncoderHelpers};
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::ast::NodeId;
 #[cfg(test)] use rustc::hir::print as pprust;
-#[cfg(test)] use rustc::hir::lowering::{lower_item, LoweringContext, DummyResolver};
+#[cfg(test)] use rustc::hir::lowering::{LoweringContext, DummyResolver};
 
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1319,11 +1319,11 @@ fn mk_ctxt() -> parse::ParseSess {
 }
 
 #[cfg(test)]
-fn with_testing_context<T, F: FnOnce(LoweringContext) -> T>(f: F) -> T {
+fn with_testing_context<T, F: FnOnce(&mut LoweringContext) -> T>(f: F) -> T {
     let assigner = FakeNodeIdAssigner;
     let mut resolver = DummyResolver;
-    let lcx = LoweringContext::new(&assigner, None, &mut resolver);
-    f(lcx)
+    let mut lcx = LoweringContext::testing_context(&assigner, &mut resolver);
+    f(&mut lcx)
 }
 
 #[cfg(test)]
@@ -1340,7 +1340,7 @@ fn roundtrip(in_item: hir::Item) {
 fn test_basic() {
     let cx = mk_ctxt();
     with_testing_context(|lcx| {
-        roundtrip(lower_item(&lcx, &quote_item!(&cx,
+        roundtrip(lcx.lower_item(&quote_item!(&cx,
             fn foo() {}
         ).unwrap()));
     });
@@ -1350,7 +1350,7 @@ fn test_basic() {
 fn test_smalltalk() {
     let cx = mk_ctxt();
     with_testing_context(|lcx| {
-        roundtrip(lower_item(&lcx, &quote_item!(&cx,
+        roundtrip(lcx.lower_item(&quote_item!(&cx,
             fn foo() -> isize { 3 + 4 } // first smalltalk program ever executed.
         ).unwrap()));
     });
@@ -1360,7 +1360,7 @@ fn test_smalltalk() {
 fn test_more() {
     let cx = mk_ctxt();
     with_testing_context(|lcx| {
-        roundtrip(lower_item(&lcx, &quote_item!(&cx,
+        roundtrip(lcx.lower_item(&quote_item!(&cx,
             fn foo(x: usize, y: usize) -> usize {
                 let z = x + y;
                 return z;
@@ -1380,10 +1380,10 @@ fn test_simplification() {
     ).unwrap();
     let cx = mk_ctxt();
     with_testing_context(|lcx| {
-        let hir_item = lower_item(&lcx, &item);
+        let hir_item = lcx.lower_item(&item);
         let item_in = InlinedItemRef::Item(&hir_item);
         let item_out = simplify_ast(item_in);
-        let item_exp = InlinedItem::Item(P(lower_item(&lcx, &quote_item!(&cx,
+        let item_exp = InlinedItem::Item(P(lcx.lower_item(&quote_item!(&cx,
             fn new_int_alist<B>() -> alist<isize, B> {
                 return alist {eq_fn: eq_int, data: Vec::new()};
             }
