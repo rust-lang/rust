@@ -1,7 +1,7 @@
 extern crate compiletest_rs as compiletest;
 
 use std::path::PathBuf;
-use std::env::var;
+use std::env::{var, temp_dir};
 
 fn run_mode(dir: &'static str, mode: &'static str) {
     let mut config = compiletest::default_config();
@@ -14,6 +14,10 @@ fn run_mode(dir: &'static str, mode: &'static str) {
     }
 
     config.mode = cfg_mode;
+    if cfg!(windows) {
+        // work around https://github.com/laumann/compiletest-rs/issues/35 on msvc windows
+        config.build_base = temp_dir();
+    }
     config.src_base = PathBuf::from(format!("tests/{}", dir));
 
     compiletest::run_tests(&config);
