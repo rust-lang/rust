@@ -18,6 +18,7 @@ use header::TestProps;
 use header;
 use procsrv;
 use test::TestPaths;
+use uidiff;
 use util::logv;
 
 use std::env;
@@ -2115,8 +2116,8 @@ actual:\n\
         let normalized_stderr = self.normalize_output(&proc_res.stderr);
 
         let mut errors = 0;
-        errors += self.compare_output("stdout", normalized_stdout.as_bytes(), &expected_stdout);
-        errors += self.compare_output("stderr", normalized_stderr.as_bytes(), &expected_stderr);
+        errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
+        errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
 
         if errors > 0 {
             println!("To update references, run this command from build directory:");
@@ -2127,7 +2128,8 @@ actual:\n\
                      self.config.src_base.display(),
                      self.config.build_base.display(),
                      relative_path_to_file.display());
-            self.fatal(&format!("{} errors occurred comparing output.", errors));
+            self.fatal_proc_rec(&format!("{} errors occurred comparing output.", errors),
+                                &proc_res);
         }
     }
 
@@ -2135,7 +2137,9 @@ actual:\n\
         let parent_dir = self.testpaths.file.parent().unwrap();
         let parent_dir_str = parent_dir.display().to_string();
         output.replace(&parent_dir_str, "$DIR")
-              .replace("\\", "/") // windows, you know.
+              .replace("\\", "/") // normalize for paths on windows
+              .replace("\r\n", "\n") // normalize for linebreaks on windows
+              .replace("\t", "\\t") // makes tabs visible
     }
 
     fn expected_output_path(&self, kind: &str) -> PathBuf {
@@ -2146,13 +2150,13 @@ actual:\n\
         self.testpaths.file.with_extension(extension)
     }
 
-    fn load_expected_output(&self, path: &Path) -> Vec<u8> {
+    fn load_expected_output(&self, path: &Path) -> String {
         if !path.exists() {
-            return vec![];
+            return String::new();
         }
 
-        let mut result = Vec::new();
-        match File::open(path).and_then(|mut f| f.read_to_end(&mut result)) {
+        let mut result = String::new();
+        match File::open(path).and_then(|mut f| f.read_to_string(&mut result)) {
             Ok(_) => result,
             Err(e) => {
                 self.fatal(&format!("failed to load expected output from `{}`: {}", path.display(), e))
@@ -2160,17 +2164,20 @@ actual:\n\
         }
     }
 
-    fn compare_output(&self, kind: &str, actual: &[u8], expected: &[u8]) -> usize {
-        if self.config.verbose {
-            println!("normalized {}:\n{}\n", kind, str::from_utf8(actual).unwrap_or("not utf8"));
-            println!("expected {}:\n{}\n", kind, str::from_utf8(expected).unwrap_or("not utf8"));
-        }
+    fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
         if actual == expected {
             return 0;
         }
 
+        println!("normalized {}:\n{}\n", kind, actual);
+        println!("expected {}:\n{}\n", kind, expected);
+        println!("diff of {}:\n", kind);
+        for line in uidiff::diff_lines(actual, expected) {
+            println!("{}", line);
+        }
+
         let output_file = self.output_base_name().with_extension(kind);
-        match File::create(&output_file).and_then(|mut f| f.write_all(actual)) {
+        match File::create(&output_file).and_then(|mut f| f.write_all(actual.as_bytes())) {
             Ok(()) => { }
             Err(e) => {
                 self.fatal(&format!("failed to write {} to `{}`: {}",
