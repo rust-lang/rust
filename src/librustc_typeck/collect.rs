@@ -78,11 +78,12 @@ use rscope::*;
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
 use util::common::{ErrorReported, MemoizationMap};
-use util::nodemap::FnvHashMap;
+use util::nodemap::{NodeMap, FnvHashMap};
 use {CrateCtxt, write_ty_to_tcx};
 
 use rustc_const_math::ConstInt;
 
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::rc::Rc;
@@ -146,7 +147,10 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx>
 
 impl<'a,'tcx> CrateCtxt<'a,'tcx> {
     fn icx(&'a self, param_bounds: &'a GetTypeParameterBounds<'tcx>) -> ItemCtxt<'a,'tcx> {
-        ItemCtxt { ccx: self, param_bounds: param_bounds }
+        ItemCtxt {
+            ccx: self,
+            param_bounds: param_bounds,
+        }
     }
 
     fn cycle_check<F,R>(&self,
@@ -297,6 +301,10 @@ impl<'a,'tcx> ItemCtxt<'a,'tcx> {
 
 impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> { self.ccx.tcx }
+
+    fn ast_ty_to_ty_cache(&self) -> &RefCell<NodeMap<Ty<'tcx>>> {
+        &self.ccx.ast_ty_to_ty_cache
+    }
 
     fn get_item_type_scheme(&self, span: Span, id: DefId)
                             -> Result<ty::TypeScheme<'tcx>, ErrorReported>

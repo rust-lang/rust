@@ -64,10 +64,10 @@ use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope,
              ElisionFailureInfo, ElidedLifetime};
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
-use util::nodemap::FnvHashSet;
+use util::nodemap::{NodeMap, FnvHashSet};
 
 use rustc_const_math::ConstInt;
-
+use std::cell::RefCell;
 use syntax::{abi, ast};
 use syntax::codemap::{Span, Pos};
 use syntax::errors::DiagnosticBuilder;
@@ -80,6 +80,9 @@ use rustc_back::slice;
 
 pub trait AstConv<'gcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
+
+    /// A cache used for the result of `ast_ty_to_ty_cache`
+    fn ast_ty_to_ty_cache(&self) -> &RefCell<NodeMap<Ty<'tcx>>>;
 
     /// Identify the type scheme for an item with a type, like a type
     /// alias, fn, or struct. This allows you to figure out the set of
@@ -1416,13 +1419,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                       rscope: &RegionScope,
                       span: Span,
                       param_mode: PathParamMode,
-                      def: &Def,
+                      def: Def,
                       opt_self_ty: Option<Ty<'tcx>>,
                       base_segments: &[hir::PathSegment])
                       -> Ty<'tcx> {
         let tcx = self.tcx();
 
-        match *def {
+        debug!("base_def_to_ty(def={:?}, opt_self_ty={:?}, base_segments={:?})",
+               def, opt_self_ty, base_segments);
+
+        match def {
             Def::Trait(trait_def_id) => {
                 // N.B. this case overlaps somewhat with
                 // TyObjectSum, see that fn for details
@@ -1515,20 +1521,27 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                       rscope: &RegionScope,
                                       span: Span,
                                       param_mode: PathParamMode,
-                                      def: &Def,
+                                      mut def: Def,
                                       opt_self_ty: Option<Ty<'tcx>>,
                                       base_segments: &[hir::PathSegment],
                                       assoc_segments: &[hir::PathSegment])
-                                      -> Ty<'tcx> {
+                                      -> (Ty<'tcx>, Def) {
+        debug!("finish_resolving_def_to_ty(def={:?}, \
+                base_segments={:?}, \
+                assoc_segments={:?})",
+               def,
+               base_segments,
+               assoc_segments);
         let mut ty = self.base_def_to_ty(rscope,
                                          span,
                                          param_mode,
                                          def,
                                          opt_self_ty,
                                          base_segments);
-        let mut def = *def;
+        debug!("finish_resolving_def_to_ty: base_def_to_ty returned {:?}", ty);
         // If any associated type segments remain, attempt to resolve them.
         for segment in assoc_segments {
+            debug!("finish_resolving_def_to_ty: segment={:?}", segment);
             if ty.sty == ty::TyError {
                 break;
             }
@@ -1540,7 +1553,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             ty = a_ty;
             def = a_def;
         }
-        ty
+        (ty, def)
     }
 
     /// Parses the programmer's textual representation of a type into our
@@ -1551,7 +1564,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let tcx = self.tcx();
 
-        match ast_ty.node {
+        let cache = self.ast_ty_to_ty_cache();
+        match cache.borrow().get(&ast_ty.id) {
+            Some(ty) => { return ty; }
+            None => { }
+        }
+
+        let result_ty = match ast_ty.node {
             hir::TyVec(ref ty) => {
                 tcx.mk_slice(self.ast_ty_to_ty(rscope, &ty))
             }
@@ -1599,6 +1618,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 self.conv_ty_poly_trait_ref(rscope, ast_ty.span, bounds)
             }
             hir::TyPath(ref maybe_qself, ref path) => {
+                debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
                 let path_res = if let Some(&d) = tcx.def_map.borrow().get(&ast_ty.id) {
                     d
                 } else if let Some(hir::QSelf { position: 0, .. }) = *maybe_qself {
@@ -1615,13 +1635,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| {
                     self.ast_ty_to_ty(rscope, &qself.ty)
                 });
-                let ty = self.finish_resolving_def_to_ty(rscope,
-                                                         ast_ty.span,
-                                                         PathParamMode::Explicit,
-                                                         &def,
-                                                         opt_self_ty,
-                                                         &path.segments[..base_ty_end],
-                                                         &path.segments[base_ty_end..]);
+                let (ty, _def) = self.finish_resolving_def_to_ty(rscope,
+                                                                 ast_ty.span,
+                                                                 PathParamMode::Explicit,
+                                                                 def,
+                                                                 opt_self_ty,
+                                                                 &path.segments[..base_ty_end],
+                                                                 &path.segments[base_ty_end..]);
 
                 if path_res.depth != 0 && ty.sty != ty::TyError {
                     // Write back the new resolution.
@@ -1675,7 +1695,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, None, None, ast_ty.span)
             }
-        }
+        };
+
+        cache.borrow_mut().insert(ast_ty.id, result_ty);
+
+        result_ty
     }
 
     pub fn ty_of_arg(&self,
