@@ -8,7 +8,7 @@ use utils::span_lint;
 /// **What it does:** Check for functions with too many parameters.
 ///
 /// **Why is this bad?** Functions with lots of parameters are considered bad style and reduce
-/// readability (“what does the 5th parameter means?”). Consider grouping some parameters into a
+/// readability (“what does the 5th parameter mean?”). Consider grouping some parameters into a
 /// new type.
 ///
 /// **Known problems:** None.
@@ -70,7 +70,7 @@ impl Functions {
             span_lint(cx,
                       TOO_MANY_ARGUMENTS,
                       span,
-                      &format!("this function has to many arguments ({}/{})", args, self.threshold));
+                      &format!("this function has too many arguments ({}/{})", args, self.threshold));
         }
     }
 }
