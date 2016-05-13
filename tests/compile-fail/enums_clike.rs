@@ -1,3 +1,4 @@
+// ignore-x86
 #![feature(plugin, associated_consts)]
 #![plugin(clippy)]
 #![deny(clippy)]
