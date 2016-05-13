@@ -73,6 +73,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                 ret_ty: Literal(path_local!(bool)),
                 attributes: attrs,
                 is_unsafe: false,
+                unify_fieldless_variants: true,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     $f(a, b, c)
                 }))
