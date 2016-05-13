@@ -2542,6 +2542,8 @@ impl<'a> Resolver<'a> {
     /// returned value. See `hir::def::PathResolution` for more info.
     fn resolve_path(&mut self, id: NodeId, path: &Path, path_depth: usize, namespace: Namespace)
                     -> Result<PathResolution, bool /* true if an error was reported */ > {
+        debug!("resolve_path(id={:?} path={:?}, path_depth={:?})", id, path, path_depth);
+
         let span = path.span;
         let segments = &path.segments[..path.segments.len() - path_depth];
 
