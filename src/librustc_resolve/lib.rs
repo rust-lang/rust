@@ -285,7 +285,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                                            span,
                                            E0411,
                                            "use of `Self` outside of an impl or trait");
-            err.span_label(span, &format!("Used outside of impl or trait"));
+            err.span_label(span, &format!("used outside of impl or trait"));
             err
         }
         ResolutionError::UseOfUndeclared(kind, name, candidates) => {
