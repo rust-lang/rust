@@ -109,15 +109,16 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         });
     match map_node {
         hir_map::NodeItem(&hir::Item {
-            ref attrs, node: hir::ItemFn(ref decl, _, _, _, _, ref body), ..
-        }) |
-        hir_map::NodeTraitItem(&hir::TraitItem {
-            ref attrs, node: hir::MethodTraitItem(
-                hir::MethodSig { ref decl, .. }, Some(ref body)), ..
+            ref attrs,
+            node: hir::ItemFn(ref decl, _, _, _, _, ref body), ..
         }) |
         hir_map::NodeImplItem(&hir::ImplItem {
             ref attrs, node: hir::ImplItemKind::Method(
                 hir::MethodSig { ref decl, .. }, ref body), ..
+        }) |
+        hir_map::NodeTraitItem(&hir::TraitItem {
+            ref attrs, node: hir::MethodTraitItem(
+                hir::MethodSig { ref decl, .. }, Some(ref body)), ..
         }) => {
             attributes::from_fn_attrs(ccx, attrs, lldecl);
 
