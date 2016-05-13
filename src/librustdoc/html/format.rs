@@ -587,7 +587,13 @@ fn fmt_impl(i: &clean::Impl, f: &mut fmt::Formatter, link_trait: bool) -> fmt::R
         if link_trait {
             write!(f, "{}", *ty)?;
         } else {
-            write!(f, "{}", ty.trait_name().unwrap())?;
+            match *ty {
+                clean::ResolvedPath{ typarams: None, ref path, is_generic: false, .. } => {
+                    let last = path.segments.last().unwrap();
+                    write!(f, "{}{}", last.name, last.params)?;
+                }
+                _ => unreachable!(),
+            }
         }
         write!(f, " for ")?;
     }
