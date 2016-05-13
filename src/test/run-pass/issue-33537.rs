@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod remove_dead_blocks;
-pub mod simplify_cfg;
-pub mod erase_regions;
-pub mod no_landing_pads;
-pub mod predecessor_map;
-pub mod type_check;
-pub mod break_cleanup_edges;
-pub mod promote_consts;
-pub mod qualify_consts;
+#![feature(const_fn)]
+
+const fn foo() -> *const i8 {
+    b"foo" as *const _ as *const i8
+}
+
+const fn bar() -> i32 {
+    *&{(1, 2, 3).1}
+}
+
+fn main() {
+    assert_eq!(foo(), b"foo" as *const _ as *const i8);
+    assert_eq!(bar(), 2);
+}

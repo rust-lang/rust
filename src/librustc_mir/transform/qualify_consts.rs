@@ -64,13 +64,18 @@ bitflags! {
         // pointer comparisons, ptr-to-int casts, etc.
         const NOT_CONST         = 1 << 6,
 
+        // Refers to temporaries which cannot be promoted as
+        // promote_consts decided they weren't simple enough.
+        const NOT_PROMOTABLE    = 1 << 7,
+
         // Borrows of temporaries can be promoted only
         // if they have none of the above qualifications.
-        const UNPROMOTABLE      = !0,
+        const NEVER_PROMOTE     = !0,
 
         // Const items can only have MUTABLE_INTERIOR
-        // without producing an error.
-        const CONST_ERROR       = !Qualif::MUTABLE_INTERIOR.bits
+        // and NOT_PROMOTABLE without producing an error.
+        const CONST_ERROR       = !Qualif::MUTABLE_INTERIOR.bits &
+                                  !Qualif::NOT_PROMOTABLE.bits
     }
 }
 
@@ -503,6 +508,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 self.add(Qualif::NOT_CONST);
             }
             Lvalue::Temp(index) => {
+                if !self.temp_promotion_state[index as usize].is_promotable() {
+                    self.add(Qualif::NOT_PROMOTABLE);
+                }
+
                 if let Some(qualif) = self.temp_qualif[index as usize] {
                     self.add(qualif);
                 } else {
@@ -688,8 +697,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 // We might have a candidate for promotion.
                 let candidate = Candidate::Ref(self.location);
                 if self.mode == Mode::Fn || self.mode == Mode::ConstFn {
-                    if !self.qualif.intersects(Qualif::UNPROMOTABLE) {
-                        self.promotion_candidates.push(candidate);
+                    if !self.qualif.intersects(Qualif::NEVER_PROMOTE) {
+                        // We can only promote direct borrows of temps.
+                        if let Lvalue::Temp(_) = *lvalue {
+                            self.promotion_candidates.push(candidate);
+                        }
                     }
                 }
             }
@@ -781,7 +793,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     this.visit_operand(arg);
                     if is_shuffle && i == 2 && this.mode == Mode::Fn {
                         let candidate = Candidate::ShuffleIndices(bb);
-                        if !this.qualif.intersects(Qualif::UNPROMOTABLE) {
+                        if !this.qualif.intersects(Qualif::NEVER_PROMOTE) {
                             this.promotion_candidates.push(candidate);
                         } else {
                             span_err!(this.tcx.sess, this.span, E0526,

@@ -37,7 +37,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc::hir::lowering::{lower_crate, LoweringContext};
+use rustc::hir::lowering::lower_crate;
 use rustc_passes::{no_asm, loops, consts, rvalues, static_recursion};
 use rustc_const_eval::check_match;
 use super::Compilation;
@@ -816,8 +816,7 @@ pub fn lower_and_resolve<'a>(sess: &Session,
 
         // Lower ast -> hir.
         let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
-            let lcx = LoweringContext::new(sess, Some(krate), &mut resolver);
-            hir_map::Forest::new(lower_crate(&lcx, krate), dep_graph)
+            hir_map::Forest::new(lower_crate(krate, sess, &mut resolver), dep_graph)
         });
 
         (ty::CrateAnalysis {
@@ -1038,7 +1037,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
         passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
         passes.push_pass(box mir::transform::erase_regions::EraseRegions);
-        passes.push_pass(box mir::transform::break_critical_edges::BreakCriticalEdges);
+        passes.push_pass(box mir::transform::break_cleanup_edges::BreakCleanupEdges);
         passes.run_passes(tcx, &mut mir_map);
     });
 
