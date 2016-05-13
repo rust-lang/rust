@@ -1103,7 +1103,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let no_analysis = debugging_opts.no_analysis;
 
     let mut output_types = HashMap::new();
-    if !debugging_opts.parse_only && !no_trans {
+    if !debugging_opts.parse_only {
         for list in matches.opt_strs("emit") {
             for output_type in list.split(',') {
                 let mut parts = output_type.splitn(2, '=');

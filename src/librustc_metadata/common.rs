@@ -33,7 +33,7 @@ pub const tag_items_data_item_family: usize = 0x24;
 
 pub const tag_items_data_item_type: usize = 0x25;
 
-pub const tag_items_data_item_symbol: usize = 0x26;
+// GAP 0x26
 
 pub const tag_items_data_item_variant: usize = 0x27;
 

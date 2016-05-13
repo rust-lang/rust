@@ -101,7 +101,8 @@ impl<'a> PluginLoader<'a> {
     fn load_plugin(&mut self, span: Span, name: &str, args: Vec<P<ast::MetaItem>>) {
         let registrar = self.reader.find_plugin_registrar(span, name);
 
-        if let Some((lib, symbol)) = registrar {
+        if let Some((lib, svh, index)) = registrar {
+            let symbol = self.sess.generate_plugin_registrar_symbol(&svh, index);
             let fun = self.dylink_registrar(span, lib, symbol);
             self.plugins.push(PluginRegistrar {
                 fun: fun,
