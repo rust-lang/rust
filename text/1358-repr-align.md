@@ -1,7 +1,7 @@
 - Feature Name: `repr_align`
 - Start Date: 2015-11-09
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1358
+- Rust Issue: https://github.com/rust-lang/rust/issues/33626
 
 # Summary
 [summary]: #summary
