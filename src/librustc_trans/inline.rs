@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
 use middle::cstore::{FoundAst, InlinedItem};
 use rustc::hir::def_id::DefId;
-use rustc::ty::subst::Substs;
-use base::{push_ctxt, trans_item, trans_fn};
-use callee::Callee;
+use base::push_ctxt;
 use common::*;
+use monomorphize::Instance;
 
 use rustc::dep_graph::DepNode;
 use rustc::hir;
@@ -52,30 +50,6 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
 
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
-            trans_item(ccx, item);
-
-            if let hir::ItemFn(_, _, _, _, ref generics, _) = item.node {
-                // Generics have no symbol, so they can't be given any linkage.
-                if !generics.is_type_parameterized() {
-                    let linkage = if ccx.sess().opts.cg.codegen_units == 1 {
-                        // We could use AvailableExternallyLinkage here,
-                        // but InternalLinkage allows LLVM to optimize more
-                        // aggressively (at the cost of sometimes
-                        // duplicating code).
-                        InternalLinkage
-                    } else {
-                        // With multiple compilation units, duplicated code
-                        // is more of a problem.  Also, `codegen_units > 1`
-                        // means the user is okay with losing some
-                        // performance.
-                        AvailableExternallyLinkage
-                    };
-                    let empty_substs = tcx.mk_substs(Substs::empty());
-                    let def_id = tcx.map.local_def_id(item.id);
-                    let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
-                    SetLinkage(llfn, linkage);
-                }
-            }
 
             item.id
         }
@@ -135,34 +109,11 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
             // don't.
             trait_item.id
         }
-        FoundAst::Found(&InlinedItem::ImplItem(impl_did, ref impl_item)) => {
+        FoundAst::Found(&InlinedItem::ImplItem(_, ref impl_item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(impl_item.id));
             ccx.external_srcs().borrow_mut().insert(impl_item.id, fn_id);
 
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
-
-            // Translate monomorphic impl methods immediately.
-            if let hir::ImplItemKind::Method(ref sig, ref body) = impl_item.node {
-                let impl_tpt = tcx.lookup_item_type(impl_did);
-                if impl_tpt.generics.types.is_empty() &&
-                        sig.generics.ty_params.is_empty() {
-                    let def_id = tcx.map.local_def_id(impl_item.id);
-                    let empty_substs = ccx.empty_substs_for_def_id(def_id);
-                    let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
-                    trans_fn(ccx,
-                             &sig.decl,
-                             body,
-                             llfn,
-                             empty_substs,
-                             impl_item.id);
-                    // See linkage comments on items.
-                    if ccx.sess().opts.cg.codegen_units == 1 {
-                        SetLinkage(llfn, InternalLinkage);
-                    } else {
-                        SetLinkage(llfn, AvailableExternallyLinkage);
-                    }
-                }
-            }
 
             impl_item.id
         }
@@ -183,4 +134,13 @@ pub fn get_local_instance(ccx: &CrateContext, fn_id: DefId)
 
 pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> DefId {
     get_local_instance(ccx, fn_id).unwrap_or(fn_id)
+}
+
+pub fn maybe_inline_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                       instance: Instance<'tcx>) -> Instance<'tcx> {
+    let def_id = maybe_instantiate_inline(ccx, instance.def);
+    Instance {
+        def: def_id,
+        substs: instance.substs
+    }
 }

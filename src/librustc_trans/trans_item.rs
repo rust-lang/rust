@@ -14,19 +14,22 @@
 //! item-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
+use attributes;
 use base;
-use context::CrateContext;
+use context::{SharedCrateContext, CrateContext};
 use declare;
 use glue::DropGlueKind;
 use llvm;
-use monomorphize::Instance;
+use monomorphize::{self, Instance};
+use inline;
 use rustc::hir;
+use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{self, NodeId};
-use syntax::attr;
+use syntax::{attr,errors};
 use syntax::parse::token;
 use type_of;
 
@@ -59,14 +62,17 @@ impl<'tcx> Hash for TransItem<'tcx> {
 }
 
 
-impl<'tcx> TransItem<'tcx> {
+impl<'a, 'tcx> TransItem<'tcx> {
 
-    pub fn predefine<'ccx>(&self,
-                           ccx: &CrateContext<'ccx, 'tcx>,
-                           linkage: llvm::Linkage) {
+    pub fn predefine(&self,
+                     ccx: &CrateContext<'a, 'tcx>,
+                     linkage: llvm::Linkage) {
         match *self {
             TransItem::Static(node_id) => {
                 TransItem::predefine_static(ccx, node_id, linkage);
+            }
+            TransItem::Fn(instance) => {
+                TransItem::predefine_fn(ccx, instance, linkage);
             }
             _ => {
                 // Not yet implemented
@@ -74,9 +80,9 @@ impl<'tcx> TransItem<'tcx> {
         }
     }
 
-    fn predefine_static<'a>(ccx: &CrateContext<'a, 'tcx>,
-                            node_id: ast::NodeId,
-                            linkage: llvm::Linkage) {
+    fn predefine_static(ccx: &CrateContext<'a, 'tcx>,
+                        node_id: ast::NodeId,
+                        linkage: llvm::Linkage) {
         let def_id = ccx.tcx().map.local_def_id(node_id);
         let ty = ccx.tcx().lookup_item_type(def_id).ty;
         let llty = type_of::type_of(ccx, ty);
@@ -101,7 +107,57 @@ impl<'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn requests_inline<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+    fn predefine_fn(ccx: &CrateContext<'a, 'tcx>,
+                    instance: Instance<'tcx>,
+                    linkage: llvm::Linkage) {
+        let unit = ccx.codegen_unit();
+        debug!("predefine_fn[cg={}](instance={:?})", &unit.name[..], instance);
+        assert!(!instance.substs.types.needs_infer() &&
+                !instance.substs.types.has_param_types());
+
+        let instance = inline::maybe_inline_instance(ccx, instance);
+
+        let item_ty = ccx.tcx().lookup_item_type(instance.def).ty;
+        let item_ty = ccx.tcx().erase_regions(&item_ty);
+        let mono_ty = monomorphize::apply_param_substs(ccx.tcx(), instance.substs, &item_ty);
+
+        let fn_node_id = ccx.tcx().map.as_local_node_id(instance.def).unwrap();
+        let map_node = errors::expect(
+            ccx.sess().diagnostic(),
+            ccx.tcx().map.find(fn_node_id),
+            || {
+                format!("while instantiating `{}`, couldn't find it in \
+                     the item map (may have attempted to monomorphize \
+                     an item defined in a different crate?)",
+                    instance)
+            });
+
+        match map_node {
+            hir_map::NodeItem(&hir::Item {
+                ref attrs, node: hir::ItemFn(..), ..
+            }) |
+            hir_map::NodeTraitItem(&hir::TraitItem {
+                ref attrs, node: hir::MethodTraitItem(..), ..
+            }) |
+            hir_map::NodeImplItem(&hir::ImplItem {
+                ref attrs, node: hir::ImplItemKind::Method(..), ..
+            }) => {
+                let symbol = instance.symbol_name(ccx.shared());
+                let lldecl = declare::declare_fn(ccx, &symbol, mono_ty);
+
+                attributes::from_fn_attrs(ccx, attrs, lldecl);
+                llvm::SetLinkage(lldecl, linkage);
+                base::set_link_section(ccx, lldecl, attrs);
+
+                ccx.instances().borrow_mut().insert(instance, lldecl);
+            }
+            _ => bug!("Invalid item for TransItem::Fn: `{:?}`", map_node)
+        };
+
+    }
+
+
+    pub fn requests_inline(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         match *self {
             TransItem::Fn(ref instance) => {
                 let attributes = tcx.get_attrs(instance.def);
@@ -128,7 +184,7 @@ impl<'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn explicit_linkage<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
+    pub fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
         let def_id = match *self {
             TransItem::Fn(ref instance) => instance.def,
             TransItem::Static(node_id) => tcx.map.local_def_id(node_id),
@@ -152,7 +208,8 @@ impl<'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn to_string<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
+    pub fn to_string(&self, scx: &SharedCrateContext<'a, 'tcx>) -> String {
+        let tcx = scx.tcx();
         let hir_map = &tcx.map;
 
         return match *self {
@@ -170,13 +227,12 @@ impl<'tcx> TransItem<'tcx> {
             },
             TransItem::Static(node_id) => {
                 let def_id = hir_map.local_def_id(node_id);
-                let instance = Instance::new(def_id,
-                                             tcx.mk_substs(subst::Substs::empty()));
+                let instance = Instance::mono(scx, def_id);
                 to_string_internal(tcx, "static ", instance)
             },
         };
 
-        fn to_string_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx,'tcx>,
+        fn to_string_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         prefix: &str,
                                         instance: Instance<'tcx>)
                                         -> String {

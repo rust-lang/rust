@@ -75,6 +75,7 @@ use debuginfo::{self, DebugLoc, ToDebugLoc};
 use declare;
 use expr;
 use glue;
+use inline;
 use machine;
 use machine::{llalign_of_min, llsize_of, llsize_of_real};
 use meth;
@@ -1948,6 +1949,49 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                   closure::ClosureEnv::NotClosure);
 }
 
+pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
+    let instance = inline::maybe_inline_instance(ccx, instance);
+
+    let fn_node_id = ccx.tcx().map.as_local_node_id(instance.def).unwrap();
+
+    let _s = StatRecorder::new(ccx, ccx.tcx().node_path_str(fn_node_id));
+    debug!("trans_instance(instance={:?})", instance);
+    let _icx = push_ctxt("trans_instance");
+
+    let item = ccx.tcx().map.find(fn_node_id).unwrap();
+
+    let fn_ty = ccx.tcx().lookup_item_type(instance.def).ty;
+    let fn_ty = ccx.tcx().erase_regions(&fn_ty);
+    let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), instance.substs, &fn_ty);
+
+    let sig = ccx.tcx().erase_late_bound_regions(fn_ty.fn_sig());
+    let sig = ccx.tcx().normalize_associated_type(&sig);
+    let abi = fn_ty.fn_abi();
+
+    let lldecl = match ccx.instances().borrow().get(&instance) {
+        Some(&val) => val,
+        None => bug!("Instance `{:?}` not already declared", instance)
+    };
+
+    match item {
+        hir_map::NodeItem(&hir::Item {
+            node: hir::ItemFn(ref decl, _, _, _, _, ref body), ..
+        }) |
+        hir_map::NodeTraitItem(&hir::TraitItem {
+            node: hir::MethodTraitItem(
+                hir::MethodSig { ref decl, .. }, Some(ref body)), ..
+        }) |
+        hir_map::NodeImplItem(&hir::ImplItem {
+            node: hir::ImplItemKind::Method(
+                hir::MethodSig { ref decl, .. }, ref body), ..
+        }) => {
+            trans_closure(ccx, decl, body, lldecl, instance,
+                          fn_node_id, &sig, abi, closure::ClosureEnv::NotClosure);
+        }
+        _ => bug!("Instance is a {:?}?", item)
+    }
+}
+
 pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  ctor_ty: Ty<'tcx>,
                                                  disr: Disr,
@@ -2267,70 +2311,23 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
     let _icx = push_ctxt("trans_item");
 
     let tcx = ccx.tcx();
-    let from_external = ccx.external_srcs().borrow().contains_key(&item.id);
-
     match item.node {
-        hir::ItemFn(ref decl, _, _, _, ref generics, ref body) => {
-            if !generics.is_type_parameterized() {
-                let trans_everywhere = attr::requests_inline(&item.attrs);
-                // Ignore `trans_everywhere` for cross-crate inlined items
-                // (`from_external`).  `trans_item` will be called once for each
-                // compilation unit that references the item, so it will still get
-                // translated everywhere it's needed.
-                for (ref ccx, is_origin) in ccx.maybe_iter(!from_external && trans_everywhere) {
-                    let def_id = tcx.map.local_def_id(item.id);
-                    let empty_substs = ccx.empty_substs_for_def_id(def_id);
-                    let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
-                    trans_fn(ccx, &decl, &body, llfn, empty_substs, item.id);
-                    set_link_section(ccx, llfn, &item.attrs);
-                    update_linkage(ccx,
-                                   llfn,
-                                   Some(item.id),
-                                   if is_origin {
-                                       OriginalTranslation
-                                   } else {
-                                       InlinedCopy
-                                   });
-
-                    if is_entry_fn(ccx.sess(), item.id) {
-                        create_entry_wrapper(ccx, item.span, llfn);
-                        // check for the #[rustc_error] annotation, which forces an
-                        // error in trans. This is used to write compile-fail tests
-                        // that actually test that compilation succeeds without
-                        // reporting an error.
-                        if tcx.has_attr(def_id, "rustc_error") {
-                            tcx.sess.span_fatal(item.span, "compilation successful");
-                        }
-                    }
+        hir::ItemFn(_, _, _, _, _, _) => {
+            let def_id = tcx.map.local_def_id(item.id);
+            // check for the #[rustc_error] annotation, which forces an
+            // error in trans. This is used to write compile-fail tests
+            // that actually test that compilation succeeds without
+            // reporting an error.
+            if is_entry_fn(ccx.sess(), item.id) {
+                let empty_substs = ccx.empty_substs_for_def_id(def_id);
+                let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
+                create_entry_wrapper(ccx, item.span, llfn);
+                if tcx.has_attr(def_id, "rustc_error") {
+                    tcx.sess.span_fatal(item.span, "compilation successful");
                 }
             }
-        }
-        hir::ItemImpl(_, _, ref generics, _, _, ref impl_items) => {
-            // Both here and below with generic methods, be sure to recurse and look for
-            // items that we need to translate.
-            if !generics.ty_params.is_empty() {
-                return;
-            }
 
-            for impl_item in impl_items {
-                if let hir::ImplItemKind::Method(ref sig, ref body) = impl_item.node {
-                    if sig.generics.ty_params.is_empty() {
-                        let trans_everywhere = attr::requests_inline(&impl_item.attrs);
-                        for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
-                            let def_id = tcx.map.local_def_id(impl_item.id);
-                            let empty_substs = ccx.empty_substs_for_def_id(def_id);
-                            let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
-                            trans_fn(ccx, &sig.decl, body, llfn, empty_substs, impl_item.id);
-                            update_linkage(ccx, llfn, Some(impl_item.id),
-                                if is_origin {
-                                    OriginalTranslation
-                                } else {
-                                    InlinedCopy
-                                });
-                        }
-                    }
-                }
-            }
+            // Function is actually translated in trans_instance
         }
         hir::ItemEnum(ref enum_definition, ref gens) => {
             if gens.ty_params.is_empty() {
@@ -2338,8 +2335,9 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                 enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
             }
         }
+        hir::ItemImpl(..) |
         hir::ItemStatic(..) => {
-            // Don't do anything here. Translation of statics has been moved to
+            // Don't do anything here. Translation has been moved to
             // being "collector-driven".
         }
         _ => {}
@@ -2482,16 +2480,16 @@ fn internalize_symbols(cx: &CrateContextList, reachable: &HashSet<&str>) {
                 let linkage = llvm::LLVMGetLinkage(val);
                 // We only care about external declarations (not definitions)
                 // and available_externally definitions.
-                if !(linkage == llvm::ExternalLinkage as c_uint &&
-                     llvm::LLVMIsDeclaration(val) != 0) &&
-                   !(linkage == llvm::AvailableExternallyLinkage as c_uint) {
-                    continue;
+                let is_available_externally = linkage == llvm::AvailableExternallyLinkage as c_uint;
+                let is_decl = llvm::LLVMIsDeclaration(val) != 0;
+
+                if is_decl || is_available_externally {
+                    let name = CStr::from_ptr(llvm::LLVMGetValueName(val))
+                        .to_bytes()
+                        .to_vec();
+                    declared.insert(name);
                 }
 
-                let name = CStr::from_ptr(llvm::LLVMGetValueName(val))
-                               .to_bytes()
-                               .to_vec();
-                declared.insert(name);
             }
         }
 
@@ -2501,21 +2499,27 @@ fn internalize_symbols(cx: &CrateContextList, reachable: &HashSet<&str>) {
         for ccx in cx.iter() {
             for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
                 let linkage = llvm::LLVMGetLinkage(val);
-                // We only care about external definitions.
-                if !((linkage == llvm::ExternalLinkage as c_uint ||
-                      linkage == llvm::WeakODRLinkage as c_uint) &&
-                     llvm::LLVMIsDeclaration(val) == 0) {
-                    continue;
-                }
 
-                let name = CStr::from_ptr(llvm::LLVMGetValueName(val))
-                               .to_bytes()
-                               .to_vec();
-                if !declared.contains(&name) &&
-                   !reachable.contains(str::from_utf8(&name).unwrap()) {
-                    llvm::SetLinkage(val, llvm::InternalLinkage);
-                    llvm::SetDLLStorageClass(val, llvm::DefaultStorageClass);
-                    llvm::UnsetComdat(val);
+                let is_external = linkage == llvm::ExternalLinkage as c_uint;
+                let is_weak_odr = linkage == llvm::WeakODRLinkage as c_uint;
+                let is_decl = llvm::LLVMIsDeclaration(val) != 0;
+
+                // We only care about external definitions.
+                if (is_external || is_weak_odr) && !is_decl {
+
+                    let name = CStr::from_ptr(llvm::LLVMGetValueName(val))
+                                .to_bytes()
+                                .to_vec();
+
+                    let is_declared = declared.contains(&name);
+                    let reachable = reachable.contains(str::from_utf8(&name).unwrap());
+
+                    if !is_declared && !reachable {
+                        llvm::SetLinkage(val, llvm::InternalLinkage);
+                        llvm::SetDLLStorageClass(val, llvm::DefaultStorageClass);
+                        llvm::UnsetComdat(val);
+                    }
+
                 }
             }
         }
@@ -2743,6 +2747,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     } else {
                         span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
                     }
+                }
+                TransItem::Fn(instance) => {
+                    trans_instance(&ccx, instance);
                 }
                 _ => { }
             }
@@ -2980,7 +2987,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         let mut item_keys: Vec<_> = items
             .iter()
             .map(|i| {
-                let mut output = i.to_string(scx.tcx());
+                let mut output = i.to_string(scx);
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let mut cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
