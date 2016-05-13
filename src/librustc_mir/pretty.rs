@@ -144,7 +144,8 @@ pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     writeln!(w, "{}scope tree:", INDENT)?;
-    write_scope_tree(tcx, mir, auxiliary, &scope_tree, w, None, 1)?;
+    write_scope_tree(tcx, mir, auxiliary, &scope_tree, w, None, 1, false)?;
+    writeln!(w, "")?;
 
     writeln!(w, "}}")?;
     Ok(())
@@ -207,10 +208,27 @@ fn write_scope_tree(tcx: TyCtxt,
                     scope_tree: &FnvHashMap<Option<ScopeId>, Vec<ScopeId>>,
                     w: &mut Write,
                     parent: Option<ScopeId>,
-                    depth: usize)
+                    depth: usize,
+                    same_line: bool)
                     -> io::Result<()> {
-    for &child in scope_tree.get(&parent).unwrap_or(&vec![]) {
-        let indent = depth * INDENT.len();
+    let indent = if same_line {
+        0
+    } else {
+        depth * INDENT.len()
+    };
+
+    let children = match scope_tree.get(&parent) {
+        Some(childs) => childs,
+        None => return Ok(()),
+    };
+
+    for (index, &child) in children.iter().enumerate() {
+        if index == 0 && same_line {
+            // We know we're going to output a scope, so prefix it with a space to separate it from
+            // the previous scopes on this line
+            write!(w, " ")?;
+        }
+
         let data = &mir.scopes[child];
         assert_eq!(data.parent_scope, parent);
         write!(w, "{0:1$}{2}", "", indent, child.index())?;
@@ -223,15 +241,22 @@ fn write_scope_tree(tcx: TyCtxt,
             writeln!(w, "{0:1$}Extent: {2:?}", "", indent, data)?;
         }
 
-        if scope_tree.get(&Some(child)).map(Vec::is_empty).unwrap_or(true) {
-            // No child scopes, skip the braces
-            writeln!(w, "")?;
+        let child_count = scope_tree.get(&Some(child)).map(Vec::len).unwrap_or(0);
+        if child_count < 2 {
+            // Skip the braces when there's no or only a single subscope
+            write_scope_tree(tcx, mir, auxiliary, scope_tree, w,
+                             Some(child), depth, true)?;
         } else {
+            // 2 or more child scopes? Put them in braces and on new lines.
             writeln!(w, " {{")?;
             write_scope_tree(tcx, mir, auxiliary, scope_tree, w,
-                             Some(child), depth + 1)?;
+                             Some(child), depth + 1, false)?;
 
-            writeln!(w, "{0:1$}}}", "", indent - INDENT.len())?;
+            write!(w, "\n{0:1$}}}", "", depth * INDENT.len())?;
+        }
+
+        if !same_line && index + 1 < children.len() {
+            writeln!(w, "")?;
         }
     }
 
