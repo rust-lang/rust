@@ -19,10 +19,8 @@ use callee::Callee;
 use common::{self, C_uint, BlockAndBuilder, Result};
 use datum::{Datum, Lvalue};
 use debuginfo::DebugLoc;
-use declare;
 use adt;
 use machine;
-use type_::Type;
 use type_of;
 use tvec;
 use value::Value;
@@ -531,43 +529,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 bcx.udiv(lhs, rhs)
             },
             mir::BinOp::Rem => if is_float {
-                // LLVM currently always lowers the `frem` instructions appropriate
-                // library calls typically found in libm. Notably f64 gets wired up
-                // to `fmod` and f32 gets wired up to `fmodf`. Inconveniently for
-                // us, 32-bit MSVC does not actually have a `fmodf` symbol, it's
-                // instead just an inline function in a header that goes up to a
-                // f64, uses `fmod`, and then comes back down to a f32.
-                //
-                // Although LLVM knows that `fmodf` doesn't exist on MSVC, it will
-                // still unconditionally lower frem instructions over 32-bit floats
-                // to a call to `fmodf`. To work around this we special case MSVC
-                // 32-bit float rem instructions and instead do the call out to
-                // `fmod` ourselves.
-                //
-                // Note that this is currently duplicated with src/libcore/ops.rs
-                // which does the same thing, and it would be nice to perhaps unify
-                // these two implementations one day! Also note that we call `fmod`
-                // for both 32 and 64-bit floats because if we emit any FRem
-                // instruction at all then LLVM is capable of optimizing it into a
-                // 32-bit FRem (which we're trying to avoid).
-                let tcx = bcx.tcx();
-                let use_fmod = tcx.sess.target.target.options.is_like_msvc &&
-                    tcx.sess.target.target.arch == "x86";
-                if use_fmod {
-                    let f64t = Type::f64(bcx.ccx());
-                    let fty = Type::func(&[f64t, f64t], &f64t);
-                    let llfn = declare::declare_cfn(bcx.ccx(), "fmod", fty);
-                    if input_ty == tcx.types.f32 {
-                        let lllhs = bcx.fpext(lhs, f64t);
-                        let llrhs = bcx.fpext(rhs, f64t);
-                        let llres = bcx.call(llfn, &[lllhs, llrhs], None);
-                        bcx.fptrunc(llres, Type::f32(bcx.ccx()))
-                    } else {
-                        bcx.call(llfn, &[lhs, rhs], None)
-                    }
-                } else {
-                    bcx.frem(lhs, rhs)
-                }
+                bcx.frem(lhs, rhs)
             } else if is_signed {
                 bcx.srem(lhs, rhs)
             } else {
