@@ -381,6 +381,8 @@ impl<'a> Step<'a> {
                     self.check_cfail(compiler),
                     self.check_rfail(compiler),
                     self.check_pfail(compiler),
+                    self.check_incremental(compiler),
+                    self.check_ui(compiler),
                     self.check_crate_std(compiler),
                     self.check_crate_test(compiler),
                     self.check_crate_rustc(compiler),
