@@ -12,6 +12,7 @@
 
 
 static mut TEST: &'static mut [isize] = &mut [1];
+static mut EMPTY: &'static mut [isize] = &mut [];
 
 pub fn main() {
     unsafe {

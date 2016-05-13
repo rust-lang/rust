@@ -652,9 +652,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
                     // is allowed right now, and only in functions.
-                    let allow = if let ty::TyArray(_, 0) = ty.sty {
-                        self.mode == Mode::Fn
-                    } else if self.mode == Mode::StaticMut {
+                    let allow = if self.mode == Mode::StaticMut {
                         // Inside a `static mut`, &mut [...] is also allowed.
                         match ty.sty {
                             ty::TyArray(..) | ty::TySlice(_) => {
@@ -665,6 +663,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             }
                             _ => false
                         }
+                    } else if let ty::TyArray(_, 0) = ty.sty {
+                        self.mode == Mode::Fn
                     } else {
                         false
                     };
