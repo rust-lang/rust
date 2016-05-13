@@ -341,6 +341,7 @@ struct MyErrorWithParam<T> {
     x: T
 }
 
+#[allow(unnecessary_operation)]
 fn starts_with() {
     "".chars().next() == Some(' ');
     //~^ ERROR starts_with
