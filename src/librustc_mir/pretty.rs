@@ -22,7 +22,7 @@ use syntax::codemap::Span;
 
 const INDENT: &'static str = "    ";
 /// Alignment for lining up comments following MIR statements
-const ALIGN: usize = 50;
+const ALIGN: usize = 40;
 
 /// If the session is properly configured, dumps a human-readable
 /// representation of the mir into:
