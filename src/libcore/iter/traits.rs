@@ -462,8 +462,8 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 /// # impl Iterator for Counter {
 /// #     type Item = usize;
 /// #     fn next(&mut self) -> Option<usize> {
-/// #         self.count += 1;
 /// #         if self.count < 6 {
+/// #             self.count += 1;
 /// #             Some(self.count)
 /// #         } else {
 /// #             None
@@ -473,7 +473,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 /// impl ExactSizeIterator for Counter {
 ///     // We already have the number of iterations, so we can use it directly.
 ///     fn len(&self) -> usize {
-///         5 - self.count
+///         6 - self.count
 ///     }
 /// }
 ///
@@ -481,7 +481,20 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 ///
 /// let counter = Counter::new();
 ///
+/// assert_eq!(6, counter.len());
+/// assert_eq!(Some(1), counter.next());
 /// assert_eq!(5, counter.len());
+/// assert_eq!(Some(2), counter.next());
+/// assert_eq!(4, counter.len());
+/// assert_eq!(Some(3), counter.next());
+/// assert_eq!(3, counter.len());
+/// assert_eq!(Some(4), counter.next());
+/// assert_eq!(2, counter.len());
+/// assert_eq!(Some(5), counter.next());
+/// assert_eq!(1, counter.len());
+/// assert_eq!(Some(6), counter.next());
+/// assert_eq!(0, counter.len());
+/// assert_eq!(None, counter.next());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExactSizeIterator: Iterator {
