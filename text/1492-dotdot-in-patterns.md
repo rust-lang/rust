@@ -1,6 +1,6 @@
 - Feature Name: dotdot_in_patterns
 - Start Date: 2016-02-06
-- RFC PR: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1492
 - Rust Issue: (leave this empty)
 
 # Summary
@@ -69,6 +69,7 @@ S { subpat1, subpat2, .. }
 // anywhere except for one conventionally chosen position (the last one) or in sublist bindings,
 // so we don't propose extensions to struct patterns.
 S { subpat1, .., subpatN }
+// **NOT PROPOSED**: Struct patterns with bindings
 S { subpat1, binding.., subpatN }
 
 // Tuple struct patterns, the last and the only position, no extra subpatterns allowed.
@@ -77,22 +78,20 @@ S(..)
 S(subpat1, subpat2, ..)
 S(.., subpatN-1, subpatN)
 S(subpat1, .., subpatN)
-// **NEW**: Tuple struct patterns, any position with a sublist binding.
-// The binding has a tuple type.
-// By ref bindings are not allowed, because layouts of S(A, B, C, D) and (B, C) are not necessarily
-// compatible (e.g. field reordering is possible).
+// **NOT PROPOSED**: Struct patterns with bindings
 S(subpat1, binding.., subpatN)
 
 // **NEW**: Tuple patterns, any position.
 (subpat1, subpat2, ..)
 (.., subpatN-1, subpatN)
 (subpat1, .., subpatN)
-// **NEW**: Tuple patterns, any position with a sublist binding.
-// The binding has a tuple type.
-// By ref bindings are not allowed, because layouts of (A, B, C, D) and (B, C) are not necessarily
-// compatible (e.g. field reordering is possible).
+// **NOT PROPOSED**: Tuple patterns with bindings
 (subpat1, binding.., subpatN)
+```
 
+Slice patterns are not covered in this RFC, but here is the syntax for reference:
+
+```
 // Slice patterns, the last position.
 [subpat1, subpat2, ..]
 // Slice patterns, the first position.
