@@ -342,6 +342,14 @@ impl Build {
                     check::compiletest(self, &compiler, target.target,
                                        "codegen-units", "codegen-units");
                 }
+                CheckIncremental { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "incremental", "incremental");
+                }
+                CheckUi { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "ui", "ui");
+                }
                 CheckDebuginfo { compiler } => {
                     if target.target.contains("msvc") ||
                        target.target.contains("android") {
