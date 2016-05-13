@@ -882,12 +882,18 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // won't actually be in the location we say it is because it'll be after
                 // the unsized field. Several other pieces of code assume that the unsized
                 // field is definitely the last one.
-                if def.dtor_kind().has_drop_flag() &&
+                let dtor_kind = def.dtor_kind();
+                if dtor_kind.has_drop_flag() &&
                    ty.is_sized(tcx, &infcx.parameter_environment, DUMMY_SP) {
                     st.extend(dl, Some(Ok(&Scalar {
                         value: Int(I8),
                         non_zero: false
                     })).into_iter(), ty)?;
+                }
+                if dtor_kind == ty::TraitDtor(false) && st.min_size().bytes() == 0 {
+                    let span = tcx.map.def_id_span(def.did, DUMMY_SP);
+                    tcx.sess.span_fatal(span, &format!(
+                        "cannot have a destructor for zero-sized type `{}`", ty));
                 }
                 Univariant {
                     variant: st,
@@ -898,7 +904,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                 let hint = *tcx.lookup_repr_hints(def.did).get(0)
                     .unwrap_or(&attr::ReprAny);
 
-                let dtor = def.dtor_kind().has_drop_flag();
+                let dtor_kind = def.dtor_kind();
+                let dtor = dtor_kind.has_drop_flag();
                 let drop_flag = if dtor {
                     Some(Scalar { value: Int(I8), non_zero: false })
                 } else {
@@ -953,6 +960,11 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                     let mut st = Struct::new(dl, false);
                     st.extend(dl, fields.chain(drop_flag.iter().map(Ok)), ty)?;
+                    if dtor_kind == ty::TraitDtor(false) && st.min_size().bytes() == 0 {
+                        let span = tcx.map.def_id_span(def.did, DUMMY_SP);
+                        tcx.sess.span_fatal(span, &format!(
+                            "cannot have a destructor for zero-sized type `{}`", ty));
+                    }
                     return Ok(Univariant { variant: st, non_zero: false });
                 }
 

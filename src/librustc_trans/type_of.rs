@@ -231,6 +231,11 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
         return llty;
     }
 
+    // FIXME(eddyb) use the layout to actually compute the LLVM type.
+    let _layout = cx.tcx().normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+        t.layout(&infcx)
+    });
+
     let mut llty = match t.sty {
       ty::TyBool => Type::bool(cx),
       ty::TyChar => Type::char(cx),

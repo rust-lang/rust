@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs, unsafe_no_drop_flag)]
-
-// ignore-pretty : (#23623) problems when  ending with // comments
+#![feature(unsafe_no_drop_flag)]
 
 static mut destructions : isize = 3;
 
-#[rustc_no_mir] // FIXME #29855 MIR doesn't handle all drops correctly.
 pub fn foo() {
     #[unsafe_no_drop_flag]
     struct Foo;
+    //~^ ERROR cannot have a destructor for zero-sized type `foo::Foo`
 
     impl Drop for Foo {
         fn drop(&mut self) {
