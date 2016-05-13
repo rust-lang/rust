@@ -1151,7 +1151,8 @@ fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         sp: Span,
                         e: &'tcx hir::Expr,
                         id: ast::NodeId) {
-    ccx.inherited(None).enter(|inh| {
+    let param_env = ParameterEnvironment::for_item(ccx.tcx, id);
+    ccx.inherited(Some(param_env)).enter(|inh| {
         let rty = ccx.tcx.node_id_to_type(id);
         let fcx = FnCtxt::new(&inh, ty::FnConverging(rty), e.id);
         let declty = fcx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(id)).ty;
