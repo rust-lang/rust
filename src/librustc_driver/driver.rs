@@ -138,6 +138,19 @@ pub fn compile_input(sess: &Session,
                                                                  &id),
                                 Ok(()));
 
+        write_out_deps(sess, &outputs, &id);
+
+        controller_entry_point!(after_write_deps,
+                                sess,
+                                CompileState::state_after_write_deps(input,
+                                                                     sess,
+                                                                     outdir,
+                                                                     output,
+                                                                     &cstore,
+                                                                     &expanded_crate,
+                                                                     &id),
+                                Ok(()));
+
         let expanded_crate = assign_node_ids(sess, expanded_crate);
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
 
@@ -173,25 +186,22 @@ pub fn compile_input(sess: &Session,
                            "indexing hir",
                            move || hir_map::map_crate(hir_forest, defs));
 
-
-        write_out_deps(sess, &outputs, &id);
-
         {
             let _ignore = hir_map.dep_graph.in_ignore();
-            controller_entry_point!(after_write_deps,
+            controller_entry_point!(after_hir_lowering,
                                     sess,
-                                    CompileState::state_after_write_deps(input,
-                                                                         sess,
-                                                                         outdir,
-                                                                         output,
-                                                                         &arenas,
-                                                                         &cstore,
-                                                                         &hir_map,
-                                                                         &analysis,
-                                                                         &resolutions,
-                                                                         &expanded_crate,
-                                                                         &hir_map.krate(),
-                                                                         &id),
+                                    CompileState::state_after_hir_lowering(input,
+                                                                  sess,
+                                                                  outdir,
+                                                                  output,
+                                                                  &arenas,
+                                                                  &cstore,
+                                                                  &hir_map,
+                                                                  &analysis,
+                                                                  &resolutions,
+                                                                  &expanded_crate,
+                                                                  &hir_map.krate(),
+                                                                  &id),
                                     Ok(()));
         }
 
@@ -311,6 +321,7 @@ pub struct CompileController<'a> {
     pub after_parse: PhaseController<'a>,
     pub after_expand: PhaseController<'a>,
     pub after_write_deps: PhaseController<'a>,
+    pub after_hir_lowering: PhaseController<'a>,
     pub after_analysis: PhaseController<'a>,
     pub after_llvm: PhaseController<'a>,
 
@@ -323,6 +334,7 @@ impl<'a> CompileController<'a> {
             after_parse: PhaseController::basic(),
             after_expand: PhaseController::basic(),
             after_write_deps: PhaseController::basic(),
+            after_hir_lowering: PhaseController::basic(),
             after_analysis: PhaseController::basic(),
             after_llvm: PhaseController::basic(),
             make_glob_map: resolve::MakeGlobMap::No,
@@ -433,15 +445,32 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
                               session: &'ast Session,
                               out_dir: &'a Option<PathBuf>,
                               out_file: &'a Option<PathBuf>,
-                              arenas: &'ast ty::CtxtArenas<'ast>,
                               cstore: &'a CStore,
-                              hir_map: &'a hir_map::Map<'ast>,
-                              analysis: &'a ty::CrateAnalysis,
-                              resolutions: &'a Resolutions,
                               krate: &'a ast::Crate,
-                              hir_crate: &'a hir::Crate,
                               crate_name: &'a str)
                               -> CompileState<'a, 'b, 'ast, 'tcx> {
+        CompileState {
+            crate_name: Some(crate_name),
+            cstore: Some(cstore),
+            expanded_crate: Some(krate),
+            out_file: out_file.as_ref().map(|s| &**s),
+            ..CompileState::empty(input, session, out_dir)
+        }
+    }
+
+    fn state_after_hir_lowering(input: &'a Input,
+                                session: &'ast Session,
+                                out_dir: &'a Option<PathBuf>,
+                                out_file: &'a Option<PathBuf>,
+                                arenas: &'ast ty::CtxtArenas<'ast>,
+                                cstore: &'a CStore,
+                                hir_map: &'a hir_map::Map<'ast>,
+                                analysis: &'a ty::CrateAnalysis,
+                                resolutions: &'a Resolutions,
+                                krate: &'a ast::Crate,
+                                hir_crate: &'a hir::Crate,
+                                crate_name: &'a str)
+                                -> CompileState<'a, 'b, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             arenas: Some(arenas),
