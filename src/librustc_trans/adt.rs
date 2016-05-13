@@ -306,10 +306,8 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                      cx.tcx().item_path_str(def.did));
             }
 
-            if cases.len() == 1 {
+            if cases.len() == 1 && hint == attr::ReprAny {
                 // Equivalent to a struct/tuple/newtype.
-                // (Typechecking will reject discriminant-sizing attrs.)
-                assert_eq!(hint, attr::ReprAny);
                 let mut ftys = cases[0].tys.clone();
                 if dtor { ftys.push(cx.tcx().dtor_type()); }
                 return Univariant(mk_struct(cx, &ftys[..], false, t),
