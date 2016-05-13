@@ -469,21 +469,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let is_simple_error = if let &TypeError::Sorts(ref values) = terr {
-            values.expected.is_primitive() && values.found.is_primitive()
-        } else {
-            false
-        };
-
         let mut err = struct_span_err!(self.tcx.sess,
                                        trace.origin.span(),
                                        E0308,
                                        "{}",
                                        trace.origin);
 
-        if !is_simple_error {
-            err = err.note_expected_found(&"type", &expected, &found);
-        }
+        err = err.note_expected_found(&"type", &expected, &found);
 
         err = err.span_label(trace.origin.span(), &terr);
 
