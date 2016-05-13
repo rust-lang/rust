@@ -312,9 +312,15 @@ impl StyledBuffer {
             self.text[line][col] = chr;
             self.styles[line][col] = style;
         } else {
-            while self.text[line].len() < col {
-                self.text[line].push(' ');
+            let mut i = self.text[line].len();
+            while i < col {
+                let s = match self.text[0].get(i) {
+                    Some(&'\t') => '\t',
+                    _ => ' '
+                };
+                self.text[line].push(s);
                 self.styles[line].push(Style::NoStyle);
+                i += 1;
             }
             self.text[line].push(chr);
             self.styles[line].push(style);
