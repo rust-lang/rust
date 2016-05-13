@@ -176,7 +176,10 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                          trait_closure_kind);
                 vec![llfn].into_iter()
             }
-            traits::VtableFnPointer(bare_fn_ty) => {
+            traits::VtableFnPointer(
+                traits::VtableFnPointerData {
+                    fn_ty: bare_fn_ty,
+                    nested: _ }) => {
                 let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_ref.def_id()).unwrap();
                 vec![trans_fn_pointer_shim(ccx, trait_closure_kind, bare_fn_ty)].into_iter()
             }
