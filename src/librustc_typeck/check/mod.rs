@@ -3305,7 +3305,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let expr_ty = self.instantiate_type(def.def_id(), path);
         self.write_ty(expr.id, expr_ty);
 
-        self.check_expr_struct_fields(expr_ty, expr.span, variant, fields,
+        self.check_expr_struct_fields(expr_ty, path.span, variant, fields,
                                       base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
             self.check_expr_has_type(base_expr, expr_ty);
