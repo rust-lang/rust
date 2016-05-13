@@ -25,8 +25,6 @@
 
 #![allow(non_camel_case_types)]
 
-pub use self::ValueOrigin::*;
-
 use super::CrateTranslation;
 use super::ModuleTranslation;
 
@@ -1918,37 +1916,6 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     fcx.finish(bcx, fn_cleanup_debug_loc.debug_loc());
 }
 
-/// Creates an LLVM function corresponding to a source language function.
-pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                          decl: &hir::FnDecl,
-                          body: &hir::Block,
-                          llfndecl: ValueRef,
-                          param_substs: &'tcx Substs<'tcx>,
-                          id: ast::NodeId) {
-    let _s = StatRecorder::new(ccx, ccx.tcx().node_path_str(id));
-    debug!("trans_fn(param_substs={:?})", param_substs);
-    let _icx = push_ctxt("trans_fn");
-    let def_id = if let Some(&def_id) = ccx.external_srcs().borrow().get(&id) {
-        def_id
-    } else {
-        ccx.tcx().map.local_def_id(id)
-    };
-    let fn_ty = ccx.tcx().lookup_item_type(def_id).ty;
-    let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &fn_ty);
-    let sig = ccx.tcx().erase_late_bound_regions(fn_ty.fn_sig());
-    let sig = ccx.tcx().normalize_associated_type(&sig);
-    let abi = fn_ty.fn_abi();
-    trans_closure(ccx,
-                  decl,
-                  body,
-                  llfndecl,
-                  Instance::new(def_id, param_substs),
-                  id,
-                  &sig,
-                  abi,
-                  closure::ClosureEnv::NotClosure);
-}
-
 pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
     let instance = inline::maybe_inline_instance(ccx, instance);
 
@@ -2215,46 +2182,14 @@ pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
     }
 }
 
-
-/// Enum describing the origin of an LLVM `Value`, for linkage purposes.
-#[derive(Copy, Clone)]
-pub enum ValueOrigin {
-    /// The LLVM `Value` is in this context because the corresponding item was
-    /// assigned to the current compilation unit.
-    OriginalTranslation,
-    /// The `Value`'s corresponding item was assigned to some other compilation
-    /// unit, but the `Value` was translated in this context anyway because the
-    /// item is marked `#[inline]`.
-    InlinedCopy,
-}
-
 /// Set the appropriate linkage for an LLVM `ValueRef` (function or global).
 /// If the `llval` is the direct translation of a specific Rust item, `id`
 /// should be set to the `NodeId` of that item.  (This mapping should be
 /// 1-to-1, so monomorphizations and drop/visit glue should have `id` set to
-/// `None`.)  `llval_origin` indicates whether `llval` is the translation of an
-/// item assigned to `ccx`'s compilation unit or an inlined copy of an item
-/// assigned to a different compilation unit.
+/// `None`.)
 pub fn update_linkage(ccx: &CrateContext,
                       llval: ValueRef,
-                      id: Option<ast::NodeId>,
-                      llval_origin: ValueOrigin) {
-    match llval_origin {
-        InlinedCopy => {
-            // `llval` is a translation of an item defined in a separate
-            // compilation unit.  This only makes sense if there are at least
-            // two compilation units.
-            assert!(ccx.sess().opts.cg.codegen_units > 1 ||
-                    ccx.sess().opts.debugging_opts.incremental.is_some());
-            // `llval` is a copy of something defined elsewhere, so use
-            // `AvailableExternallyLinkage` to avoid duplicating code in the
-            // output.
-            llvm::SetLinkage(llval, llvm::AvailableExternallyLinkage);
-            return;
-        },
-        OriginalTranslation => {},
-    }
-
+                      id: Option<ast::NodeId>) {
     if let Some(id) = id {
         let item = ccx.tcx().map.get(id);
         if let hir_map::NodeItem(i) = item {

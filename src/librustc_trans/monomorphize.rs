@@ -17,7 +17,6 @@ use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TypeFoldable, TyCtxt};
 use attributes;
 use base::{push_ctxt};
-use base::trans_fn;
 use base;
 use common::*;
 use declare;
@@ -27,17 +26,16 @@ use rustc::util::ppaux;
 
 use rustc::hir;
 
-use syntax::attr;
 use errors;
 
 use std::fmt;
+use trans_item::TransItem;
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: DefId,
                                 psubsts: &'tcx subst::Substs<'tcx>)
                                 -> (ValueRef, Ty<'tcx>) {
     debug!("monomorphic_fn(fn_id={:?}, real_substs={:?})", fn_id, psubsts);
-
     assert!(!psubsts.types.needs_infer() && !psubsts.types.has_param_types());
 
     let _icx = push_ctxt("monomorphic_fn");
@@ -53,6 +51,8 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if let Some(&val) = ccx.instances().borrow().get(&instance) {
         debug!("leaving monomorphic fn {:?}", instance);
         return (val, mono_ty);
+    } else {
+        assert!(!ccx.codegen_unit().items.contains_key(&TransItem::Fn(instance)));
     }
 
     debug!("monomorphic_fn({:?})", instance);
@@ -96,6 +96,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     ccx.instances().borrow_mut().insert(instance, lldecl);
 
+
     // we can only monomorphize things in this crate (or inlined into it)
     let fn_node_id = ccx.tcx().map.as_local_node_id(fn_id).unwrap();
     let map_node = errors::expect(
@@ -110,34 +111,18 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     match map_node {
         hir_map::NodeItem(&hir::Item {
             ref attrs,
-            node: hir::ItemFn(ref decl, _, _, _, _, ref body), ..
+            node: hir::ItemFn(..), ..
         }) |
         hir_map::NodeImplItem(&hir::ImplItem {
             ref attrs, node: hir::ImplItemKind::Method(
-                hir::MethodSig { ref decl, .. }, ref body), ..
+                hir::MethodSig { .. }, _), ..
         }) |
         hir_map::NodeTraitItem(&hir::TraitItem {
             ref attrs, node: hir::MethodTraitItem(
-                hir::MethodSig { ref decl, .. }, Some(ref body)), ..
+                hir::MethodSig { .. }, Some(_)), ..
         }) => {
             attributes::from_fn_attrs(ccx, attrs, lldecl);
-
-            let is_first = !ccx.available_monomorphizations().borrow()
-                                                             .contains(&symbol);
-            if is_first {
-                ccx.available_monomorphizations().borrow_mut().insert(symbol.clone());
-            }
-
-            let trans_everywhere = attr::requests_inline(attrs);
-            if trans_everywhere || is_first {
-                let origin = if is_first { base::OriginalTranslation } else { base::InlinedCopy };
-                base::update_linkage(ccx, lldecl, None, origin);
-                trans_fn(ccx, decl, body, lldecl, psubsts, fn_node_id);
-            } else {
-                // We marked the value as using internal linkage earlier, but that is illegal for
-                // declarations, so switch back to external linkage.
-                llvm::SetLinkage(lldecl, llvm::ExternalLinkage);
-            }
+            llvm::SetLinkage(lldecl, llvm::ExternalLinkage);
         }
 
         hir_map::NodeVariant(_) | hir_map::NodeStructCtor(_) => {
