@@ -105,9 +105,18 @@ pub fn compiletest(build: &Build,
     cmd.arg("--host").arg(compiler.host);
     cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(&build.config.build));
 
+    let mut flags = format!("-Crpath");
+    if build.config.rust_optimize_tests {
+        flags.push_str(" -O");
+    }
+    if build.config.rust_debuginfo_tests {
+        flags.push_str(" -g");
+    }
+
+    cmd.arg("--host-rustcflags").arg(&flags);
+
     let linkflag = format!("-Lnative={}", build.test_helpers_out(target).display());
-    cmd.arg("--host-rustcflags").arg("-Crpath");
-    cmd.arg("--target-rustcflags").arg(format!("-Crpath {}", linkflag));
+    cmd.arg("--target-rustcflags").arg(format!("{} {}", flags, linkflag));
 
     // FIXME: needs android support
     cmd.arg("--android-cross-path").arg("");
