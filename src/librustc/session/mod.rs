@@ -628,9 +628,9 @@ pub fn span_bug_fmt<S: Into<MultiSpan>>(file: &'static str,
 }
 
 fn opt_span_bug_fmt<S: Into<MultiSpan>>(file: &'static str,
-                                          line: u32,
-                                          span: Option<S>,
-                                          args: fmt::Arguments) -> ! {
+                                        line: u32,
+                                        span: Option<S>,
+                                        args: fmt::Arguments) -> ! {
     tls::with_opt(move |tcx| {
         let msg = format!("{}:{}: {}", file, line, args);
         match (tcx, span) {
