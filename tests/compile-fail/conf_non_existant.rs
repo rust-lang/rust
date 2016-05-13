@@ -1,4 +1,4 @@
-// error-pattern: error reading Clippy's configuration file: No such file or directory
+// error-pattern: error reading Clippy's configuration file
 
 #![feature(plugin)]
 #![plugin(clippy(conf_file="./tests/compile-fail/non_existant_conf.toml"))]
