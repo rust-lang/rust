@@ -32,6 +32,7 @@ use self::dataflow::{BitDenotation};
 use self::dataflow::{Dataflow, DataflowAnalysis, DataflowResults};
 use self::dataflow::{HasMoveData};
 use self::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
+use self::dataflow::{DefinitelyInitializedLvals};
 use self::gather_moves::{MoveData, MovePathIndex, Location};
 use self::gather_moves::{MovePathContent};
 
@@ -78,12 +79,17 @@ pub fn borrowck_mir<'a, 'tcx: 'a>(
         do_dataflow(tcx, mir, id, attributes, ctxt, MaybeInitializedLvals::default());
     let (ctxt, flow_uninits) =
         do_dataflow(tcx, mir, id, attributes, ctxt, MaybeUninitializedLvals::default());
+    let (ctxt, flow_def_inits) =
+        do_dataflow(tcx, mir, id, attributes, ctxt, DefinitelyInitializedLvals::default());
 
     if has_rustc_mir_with(attributes, "rustc_peek_maybe_init").is_some() {
         dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &ctxt, &flow_inits);
     }
     if has_rustc_mir_with(attributes, "rustc_peek_maybe_uninit").is_some() {
         dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &ctxt, &flow_uninits);
+    }
+    if has_rustc_mir_with(attributes, "rustc_peek_definite_init").is_some() {
+        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &ctxt, &flow_def_inits);
     }
     let move_data = ctxt.2;
 

@@ -661,6 +661,53 @@ pub struct MaybeUninitializedLvals<'a, 'tcx: 'a> {
     phantom: PhantomData<Fn(&'a MoveData<'tcx>, TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>)>
 }
 
+/// `DefinitelyInitializedLvals` tracks all l-values that are definitely
+/// initialized upon reaching a particular point in the control flow
+/// for a function.
+///
+/// FIXME: Note that once flow-analysis is complete, this should be
+/// the set-complement of MaybeUninitializedLvals; thus we can get rid
+/// of one or the other of these two. I'm inclined to get rid of
+/// MaybeUninitializedLvals, simply because the sets will tend to be
+/// smaller in this analysis and thus easier for humans to process
+/// when debugging.
+///
+/// For example, in code like the following, we have corresponding
+/// dataflow information shown in the right-hand comments.
+///
+/// ```rust
+/// struct S;
+/// fn foo(pred: bool) {                       // definite-init:
+///                                            // {          }
+///     let a = S; let b = S; let c; let d;    // {a, b      }
+///
+///     if pred {
+///         drop(a);                           // {   b,     }
+///         b = S;                             // {   b,     }
+///
+///     } else {
+///         drop(b);                           // {a,        }
+///         d = S;                             // {a,       d}
+///
+///     }                                      // {          }
+///
+///     c = S;                                 // {       c  }
+/// }
+/// ```
+///
+/// To determine whether an l-value *may* be uninitialized at a
+/// particular control-flow point, one can take the set-complement
+/// of this data.
+///
+/// Similarly, at a given `drop` statement, the set-difference between
+/// this data and `MaybeInitializedLvals` yields the set of l-values
+/// that would require a dynamic drop-flag at that statement.
+#[derive(Debug, Default)]
+pub struct DefinitelyInitializedLvals<'a, 'tcx: 'a> {
+    // See "Note on PhantomData" above.
+    phantom: PhantomData<Fn(&'a MoveData<'tcx>, TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>)>
+}
+
 /// `MovingOutStatements` tracks the statements that perform moves out
 /// of particular l-values. More precisely, it tracks whether the
 /// *effect* of such moves (namely, the uninitialization of the
@@ -809,6 +856,23 @@ impl<'a, 'tcx> MaybeUninitializedLvals<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> DefinitelyInitializedLvals<'a, 'tcx> {
+    fn update_bits(sets: &mut BlockSets, path: MovePathIndex,
+                   state: super::DropFlagState)
+    {
+        match state {
+            DropFlagState::Dead => {
+                sets.gen_set.clear_bit(path.idx());
+                sets.kill_set.set_bit(path.idx());
+            }
+            DropFlagState::Live => {
+                sets.gen_set.set_bit(path.idx());
+                sets.kill_set.clear_bit(path.idx());
+            }
+        }
+    }
+}
+
 impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
     type Bit = MovePath<'tcx>;
     type Ctxt = (TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>, MoveData<'tcx>);
@@ -940,6 +1004,72 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
+    type Bit = MovePath<'tcx>;
+    type Ctxt = (TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>, MoveData<'tcx>);
+    fn name() -> &'static str { "definite_init" }
+    fn bits_per_block(&self, ctxt: &Self::Ctxt) -> usize {
+        ctxt.2.move_paths.len()
+    }
+    fn interpret<'c>(&self, ctxt: &'c Self::Ctxt, idx: usize) -> &'c Self::Bit {
+        &ctxt.2.move_paths[MovePathIndex::new(idx)]
+    }
+
+    // sets on_entry bits for Arg lvalues
+    fn start_block_effect(&self, ctxt: &Self::Ctxt, sets: &mut BlockSets) {
+        for e in &mut sets.on_entry[..] { *e = 0; }
+
+        super::drop_flag_effects_for_function_entry(
+            ctxt.0, ctxt.1, &ctxt.2,
+            |path, s| {
+                assert!(s == DropFlagState::Live);
+                sets.on_entry.set_bit(path.idx());
+            });
+    }
+
+    fn statement_effect(&self,
+                        ctxt: &Self::Ctxt,
+                        sets: &mut BlockSets,
+                        bb: repr::BasicBlock,
+                        idx: usize)
+    {
+        super::drop_flag_effects_for_location(
+            ctxt.0, ctxt.1, &ctxt.2,
+            Location { block: bb, index: idx },
+            |path, s| Self::update_bits(sets, path, s)
+        )
+    }
+
+    fn terminator_effect(&self,
+                         ctxt: &Self::Ctxt,
+                         sets: &mut BlockSets,
+                         bb: repr::BasicBlock,
+                         statements_len: usize)
+    {
+        super::drop_flag_effects_for_location(
+            ctxt.0, ctxt.1, &ctxt.2,
+            Location { block: bb, index: statements_len },
+            |path, s| Self::update_bits(sets, path, s)
+        )
+    }
+
+    fn propagate_call_return(&self,
+                             ctxt: &Self::Ctxt,
+                             in_out: &mut [usize],
+                             _call_bb: repr::BasicBlock,
+                             _dest_bb: repr::BasicBlock,
+                             dest_lval: &repr::Lvalue) {
+        // when a call returns successfully, that means we need to set
+        // the bits for that dest_lval to 1 (initialized).
+        let move_path_index = ctxt.2.rev_lookup.find(dest_lval);
+        super::on_all_children_bits(
+            ctxt.0, ctxt.1, &ctxt.2,
+            move_path_index,
+            |mpi| { in_out.set_bit(mpi.idx()); }
+        );
+    }
+}
+
 fn zero_to_one(bitvec: &mut [usize], move_index: MoveOutIndex) {
     let retval = bitvec.set_bit(move_index.idx());
     assert!(retval);
@@ -966,21 +1096,25 @@ impl<'a, 'tcx> BitwiseOperator for MaybeUninitializedLvals<'a, 'tcx> {
     }
 }
 
-// FIXME: I'm not sure it ever makes sense to use `true` for a
-// DataflowOperator::initial_value implementation, because: the way
-// that dataflow fixed point iteration works, you want to start at
-// bottom and work your way to a fixed point.
+impl<'a, 'tcx> BitwiseOperator for DefinitelyInitializedLvals<'a, 'tcx> {
+    #[inline]
+    fn join(&self, pred1: usize, pred2: usize) -> usize {
+        pred1 & pred2 // "definitely" means we intersect effects of both preds
+    }
+}
+
+// FIXME: `DataflowOperator::initial_value` should be named
+// `bottom_value`. The way that dataflow fixed point iteration works,
+// you want to start at bottom and work your way to a fixed point.
+// This needs to include the detail that the control-flow merges will
+// apply the `join` operator above to current state (which starts at
+// that bottom value).
 //
 // This means, for propagation across the graph, that you either want
 // to start at all-zeroes and then use Union as your merge when
 // propagating, or you start at all-ones and then use Intersect as
 // your merge when propagating.
-//
-// (An alternative could be, when propagating from Block A into block
-// B, to clear B's on_entry bits, and then iterate over all of B's
-// immediate predecessors. This would require storing on_exit state
-// for each block, however.)
-   
+
 impl<'a, 'tcx> DataflowOperator for MovingOutStatements<'a, 'tcx> {
     #[inline]
     fn initial_value() -> bool {
@@ -999,6 +1133,13 @@ impl<'a, 'tcx> DataflowOperator for MaybeUninitializedLvals<'a, 'tcx> {
     #[inline]
     fn initial_value() -> bool {
         false // bottom = uninitialized
+    }
+}
+
+impl<'a, 'tcx> DataflowOperator for DefinitelyInitializedLvals<'a, 'tcx> {
+    #[inline]
+    fn initial_value() -> bool {
+        true // bottom = initialized
     }
 }
 
