@@ -366,7 +366,7 @@ For example, in practice, many iterator implementation break due to
 region relationships:
 
 ```rust
-impl<'a, T> IntoIterator for &'a LinkedList<T> { 
+impl<'a, T> IntoIterator for &'a LinkedList<T> {
    type Item = &'a T;
    ...
 }
@@ -402,14 +402,14 @@ types:
       | T                             // Type
     O = for<r..> TraitId<P1..Pn>      // Object type fragment
     r = 'x                            // Region name
-    
+
 We'll use this to describe the rules in detail.
 
 A quick note on terminology: an "object type fragment" is part of an
 object type: so if you have `Box<FnMut()+Send>`, `FnMut()` and `Send`
 are object type fragments. Object type fragments are identical to full
 trait references, except that they do not have a self type (no `P0`).
-    
+
 ### Syntactic definition of the outlives relation
 
 The outlives relation is defined in purely syntactic terms as follows.
@@ -454,8 +454,8 @@ or projections are involved:
     OutlivesFragment:
       ∀i. R,r.. ⊢ Pi: 'a
       --------------------------------------------------
-      R ⊢ for<r..> TraitId<P0..Pn>: 'a      
-      
+      R ⊢ for<r..> TraitId<P0..Pn>: 'a
+
 #### Outlives for lifetimes
 
 The outlives relation for lifetimes depends on whether the lifetime in
@@ -487,7 +487,7 @@ lifetime is not yet known. This means for example that `for<'a> fn(&'a
 i32): 'x` holds, even though we do not yet know what region `'a` is
 (and in fact it may be instantiated many times with different values
 on each call to the fn).
-      
+
     OutlivesRegionBound:
       'x ∈ R               // bound region
       --------------------------------------------------
@@ -525,7 +525,7 @@ but reflects the behavior of my prototype implementation.)
       <> ⊢ <P0 as Trait<P1..Pn>>::Id: 'a
 
     OutlivesProjectionTraitDef:
-      WC = [Xi => Pi] WhereClauses(Trait) 
+      WC = [Xi => Pi] WhereClauses(Trait)
       <P0 as Trait<P1..Pn>>::Id: 'b in WC
       <> ⊢ 'b: 'a
       --------------------------------------------------
@@ -643,7 +643,7 @@ form:
 ```
 C = r0: r1
   | C AND C
-```  
+```
 
 This is convenient because a simple fixed-point iteration suffices to
 find the minimal regions which satisfy the constraints.
@@ -719,6 +719,7 @@ declare one), but we'll take those basic conditions for granted.
 
     WfTuple:
       ∀i. R ⊢ Ti WF
+      ∀i<n. R ⊢ Ti: Sized       // the *last* field may be unsized
       --------------------------------------------------
       R ⊢ (T0..Tn) WF
 
@@ -812,7 +813,7 @@ object type fragment is WF if its components are WF:
       TraitId is object safe
       --------------------------------------------------
       R ⊢ for<r..> TraitId<P1..Pn>
-      
+
 Note that we don't check the where clauses declared on the trait
 itself. These are checked when the object is created. The reason not
 to check them here is because the `Self` type is not known (this is an
@@ -1024,15 +1025,15 @@ that a projection outlives `'a` if its inputs outlive `'a`. To start,
 let's specify the projection `<PROJ>` as:
 
     <P0 as Trait<P1...Pn>>::Id
-    
+
 where `P` can be a lifetime or type parameter as appropriate.
-    
+
 Then we know that there exists some impl of the form:
 
 ```rust
 impl<X0..Xn> Trait<Q1..Qn> for Q0 {
     type Id = T;
-}    
+}
 ```
 
 Here again, `X` can be a lifetime or type parameter name, and `Q` can
@@ -1105,6 +1106,11 @@ then `R ⊢ P': 'a`. Proceed by induction and by cases over the form of `P`:
 in a type outlive `'a`, then the type outlives `'a`. Follows by
 inspection of the outlives rules.
 
+# Edit History
+
+[RFC1592] - amend to require that tuple fields be sized
+
 [crater-errors]: https://gist.github.com/nikomatsakis/2f851e2accfa7ba2830d#root-regressions-sorted-by-rank
 [crater-all]: https://gist.github.com/nikomatsakis/364fae49de18268680f2#root-regressions-sorted-by-rank
 [#21953]: https://github.com/rust-lang/rust/issues/21953
+[RFC1592]: https://github.com/rust-lang/rfcs/pull/1592
