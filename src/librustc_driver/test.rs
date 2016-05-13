@@ -26,10 +26,9 @@ use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc_metadata::cstore::CStore;
-use rustc_metadata::creader::LocalCrateReader;
+use rustc_metadata::creader::read_local_crates;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
-use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -120,13 +119,13 @@ fn test_env<F>(source_string: &str,
 
     let dep_graph = DepGraph::new(false);
     let krate = driver::assign_node_ids(&sess, krate);
-    let defs = &RefCell::new(hir_map::collect_definitions(&krate));
-    LocalCrateReader::new(&sess, &cstore, defs, &krate, "test_crate").read_crates(&dep_graph);
+    let mut defs = hir_map::collect_definitions(&krate);
+    read_local_crates(&sess, &cstore, &defs, &krate, "test_crate", &dep_graph);
     let _ignore = dep_graph.in_ignore();
 
     let (_, resolutions, mut hir_forest) = {
-        let (defs, dep_graph) = (&mut *defs.borrow_mut(), dep_graph.clone());
-        driver::lower_and_resolve(&sess, "test-crate", defs, &krate, dep_graph, MakeGlobMap::No)
+        driver::lower_and_resolve(&sess, "test-crate", &mut defs, &krate, dep_graph.clone(),
+                                  MakeGlobMap::No)
     };
 
     let arenas = ty::CtxtArenas::new();
