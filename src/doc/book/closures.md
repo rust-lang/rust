@@ -334,7 +334,7 @@ fn call_with_ref<F>(some_closure:F) -> i32
 Normally you can specify the lifetime of the parameter to our closure. We
 could annotate it on the function declaration:
 
-```
+```ignore
 fn call_with_ref<'a, F>(some_closure:F) -> i32 
     where F: Fn(&'a 32) -> i32 {
 ```
@@ -348,12 +348,12 @@ to compile.
 In order to say that we only need the lifetime to be valid for the invocation scope
 of the closure we can use Higher-Ranked Trait Bounds with the `for<...>` syntax:
 
-```
+```ignore
 fn call_with_ref<F>(some_closure:F) -> i32
     where F: for<'a> Fn(&'a 32) -> i32 {
 ```
 
-This lets the rust compiler find the minimum lifetime to invoke our closure and 
+This lets the Rust compiler find the minimum lifetime to invoke our closure and 
 satisfy the borrow checker's rules. Our function then compiles and excutes as we
 expect.
 
