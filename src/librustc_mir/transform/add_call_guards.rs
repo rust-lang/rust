@@ -11,10 +11,9 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::traversal;
 
 use pretty;
-
-use traversal;
 
 pub struct AddCallGuards;
 
@@ -40,7 +39,7 @@ pub struct AddCallGuards;
 
 impl<'tcx> MirPass<'tcx> for AddCallGuards {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
-        let mut pred_count = vec![0u32; mir.basic_blocks.len()];
+        let mut pred_count = vec![0u32; mir.cfg.basic_blocks.len()];
 
         // Build the precedecessor map for the MIR
         for (_, data) in traversal::preorder(mir) {
@@ -55,7 +54,7 @@ impl<'tcx> MirPass<'tcx> for AddCallGuards {
         let mut new_blocks = Vec::new();
 
         let bbs = mir.all_basic_blocks();
-        let cur_len = mir.basic_blocks.len();
+        let cur_len = mir.cfg.basic_blocks.len();
 
         for &bb in &bbs {
             let data = mir.basic_block_data_mut(bb);
@@ -91,7 +90,7 @@ impl<'tcx> MirPass<'tcx> for AddCallGuards {
         pretty::dump_mir(tcx, "break_cleanup_edges", &0, src, mir, None);
         debug!("Broke {} N edges", new_blocks.len());
 
-        mir.basic_blocks.extend_from_slice(&new_blocks);
+        mir.cfg.basic_blocks.extend_from_slice(&new_blocks);
     }
 }
 

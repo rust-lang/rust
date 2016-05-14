@@ -32,7 +32,7 @@ impl<'tcx> MirPatch<'tcx> {
     pub fn new(mir: &Mir<'tcx>) -> Self {
         let mut result = MirPatch {
             patch_map: iter::repeat(None)
-                .take(mir.basic_blocks.len()).collect(),
+                .take(mir.cfg.basic_blocks.len()).collect(),
             new_blocks: vec![],
             new_temps: vec![],
             new_statements: vec![],
@@ -86,7 +86,7 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn terminator_loc(&self, mir: &Mir<'tcx>, bb: BasicBlock) -> Location {
-        let offset = match bb.index().checked_sub(mir.basic_blocks.len()) {
+        let offset = match bb.index().checked_sub(mir.cfg.basic_blocks.len()) {
             Some(index) => self.new_blocks[index].statements.len(),
             None => mir.basic_block_data(bb).statements.len()
         };
@@ -131,13 +131,13 @@ impl<'tcx> MirPatch<'tcx> {
         debug!("MirPatch: {:?} new temps, starting from index {}: {:?}",
                self.new_temps.len(), mir.temp_decls.len(), self.new_temps);
         debug!("MirPatch: {} new blocks, starting from index {}",
-               self.new_blocks.len(), mir.basic_blocks.len());
-        mir.basic_blocks.extend(self.new_blocks);
+               self.new_blocks.len(), mir.cfg.basic_blocks.len());
+        mir.cfg.basic_blocks.extend(self.new_blocks);
         mir.temp_decls.extend(self.new_temps);
         for (src, patch) in self.patch_map.into_iter().enumerate() {
             if let Some(patch) = patch {
                 debug!("MirPatch: patching block {:?}", src);
-                mir.basic_blocks[src].terminator_mut().kind = patch;
+                mir.cfg.basic_blocks[src].terminator_mut().kind = patch;
             }
         }
 
@@ -175,7 +175,7 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn context_for_location(&self, mir: &Mir, loc: Location) -> (Span, ScopeId) {
-        let data = match loc.block.index().checked_sub(mir.basic_blocks.len()) {
+        let data = match loc.block.index().checked_sub(mir.cfg.basic_blocks.len()) {
             Some(new) => &self.new_blocks[new],
             None => mir.basic_block_data(loc.block)
         };

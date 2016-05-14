@@ -112,7 +112,7 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD>
 
     fn walk_cfg(&mut self, in_out: &mut IdxSet<BD::Idx>) {
         let mir = self.builder.mir;
-        for (bb_idx, bb_data) in mir.basic_blocks.iter().enumerate() {
+        for (bb_idx, bb_data) in mir.cfg.basic_blocks.iter().enumerate() {
             let builder = &mut self.builder;
             {
                 let sets = builder.flow_state.sets.for_block(bb_idx);
@@ -396,7 +396,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
         // (now rounded up to multiple of word size)
         let bits_per_block = words_per_block * usize_bits;
 
-        let num_blocks = mir.basic_blocks.len();
+        let num_blocks = mir.cfg.basic_blocks.len();
         let num_overall = num_blocks * bits_per_block;
 
         let zeroes = Bits::new(IdxSetBuf::new_empty(num_overall));

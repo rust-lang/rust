@@ -24,11 +24,11 @@
 
 use rustc::mir::repr::*;
 use rustc::mir::visit::{LvalueContext, MutVisitor, Visitor};
+use rustc::mir::traversal::ReversePostorder;
 use rustc::ty::{self, TyCtxt};
 use syntax::codemap::Span;
 
 use build::Location;
-use traversal::ReversePostorder;
 
 use std::mem;
 
@@ -163,8 +163,8 @@ struct Promoter<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
     fn new_block(&mut self) -> BasicBlock {
-        let index = self.promoted.basic_blocks.len();
-        self.promoted.basic_blocks.push(BasicBlockData {
+        let index = self.promoted.cfg.basic_blocks.len();
+        self.promoted.cfg.basic_blocks.push(BasicBlockData {
             statements: vec![],
             terminator: Some(Terminator {
                 span: self.promoted.span,
@@ -177,7 +177,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn assign(&mut self, dest: Lvalue<'tcx>, rvalue: Rvalue<'tcx>, span: Span) {
-        let data = self.promoted.basic_blocks.last_mut().unwrap();
+        let data = self.promoted.cfg.basic_blocks.last_mut().unwrap();
         data.statements.push(Statement {
             span: span,
             scope: ScopeId::new(0),
@@ -268,7 +268,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         if stmt_idx < no_stmts {
             self.assign(new_temp, rvalue.unwrap(), span);
         } else {
-            let last = self.promoted.basic_blocks.len() - 1;
+            let last = self.promoted.cfg.basic_blocks.len() - 1;
             let new_target = self.new_block();
             let mut call = call.unwrap();
             match call {
@@ -277,7 +277,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 }
                 _ => bug!()
             }
-            let terminator = &mut self.promoted.basic_blocks[last].terminator_mut();
+            let terminator = &mut self.promoted.cfg.basic_blocks[last].terminator_mut();
             terminator.span = span;
             terminator.kind = call;
         }
@@ -366,7 +366,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         let mut promoter = Promoter {
             source: mir,
             promoted: Mir {
-                basic_blocks: vec![],
+                cfg: CFG { basic_blocks: vec![] },
                 scopes: vec![ScopeData {
                     span: span,
                     parent_scope: None
@@ -388,7 +388,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
 
     // Eliminate assignments to, and drops of promoted temps.
     let promoted = |index: u32| temps[index as usize] == TempState::PromotedOut;
-    for block in &mut mir.basic_blocks {
+    for block in &mut mir.cfg.basic_blocks {
         block.statements.retain(|statement| {
             match statement.kind {
                 StatementKind::Assign(Lvalue::Temp(index), _) => {
