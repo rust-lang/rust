@@ -1,4 +1,3 @@
-use rustc::infer;
 use rustc::middle::const_val;
 use rustc::hir::def_id::DefId;
 use rustc::mir::mir_map::MirMap;
@@ -25,7 +24,7 @@ const TRACE_EXECUTION: bool = true;
 
 struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     /// A mapping from NodeIds to Mir, from rustc. Only contains MIR for crate-local items.
     mir_map: &'a MirMap<'tcx>,
@@ -124,7 +123,7 @@ enum TerminatorTarget {
 }
 
 impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
-    fn new(tcx: &'a TyCtxt<'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
         GlobalEvalContext {
             tcx: tcx,
             mir_map: mir_map,
@@ -367,7 +366,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                     let last_ty = self.operand_ty(last_arg);
                                     let last_layout = self.type_layout(last_ty);
                                     match (&last_ty.sty, last_layout) {
-                                        (&ty::TyTuple(ref fields),
+                                        (&ty::TyTuple(fields),
                                          &Layout::Univariant { ref variant, .. }) => {
                                             let offsets = iter::once(0)
                                                 .chain(variant.offset_after_field.iter()
@@ -1063,7 +1062,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     fn monomorphize(&self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         let substituted = ty.subst(self.tcx, self.substs());
-        infer::normalize_associated_type(self.tcx, &substituted)
+        self.tcx.normalize_associated_type(&substituted)
     }
 
     fn type_needs_drop(&self, ty: ty::Ty<'tcx>) -> bool {
@@ -1080,7 +1079,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     }
 
     fn type_is_sized(&self, ty: ty::Ty<'tcx>) -> bool {
-        ty.is_sized(&self.tcx.empty_parameter_environment(), DUMMY_SP)
+        ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
     }
 
     fn type_size(&self, ty: ty::Ty<'tcx>) -> usize {
@@ -1091,10 +1090,10 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         // TODO(solson): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty);
 
-        let infcx = infer::normalizing_infer_ctxt(self.tcx, &self.tcx.tables, ProjectionMode::Any);
-
-        // TODO(solson): Report this error properly.
-        ty.layout(&infcx).unwrap()
+        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+            // TODO(solson): Report this error properly.
+            ty.layout(&infcx).unwrap()
+        })
     }
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: ty::Ty<'tcx>) -> EvalResult<PrimVal> {
@@ -1173,30 +1172,31 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
         // Do the initial selection for the obligation. This yields the shallow result we are
         // looking for -- that is, what specific impl.
-        let infcx = infer::normalizing_infer_ctxt(self.tcx, &self.tcx.tables, ProjectionMode::Any);
-        let mut selcx = traits::SelectionContext::new(&infcx);
+        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+            let mut selcx = traits::SelectionContext::new(&infcx);
 
-        let obligation = traits::Obligation::new(
-            traits::ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID),
-            trait_ref.to_poly_trait_predicate(),
-        );
-        let selection = selcx.select(&obligation).unwrap().unwrap();
+            let obligation = traits::Obligation::new(
+                traits::ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID),
+                trait_ref.to_poly_trait_predicate(),
+            );
+            let selection = selcx.select(&obligation).unwrap().unwrap();
 
-        // Currently, we use a fulfillment context to completely resolve all nested obligations.
-        // This is because they can inform the inference of the impl's type parameters.
-        let mut fulfill_cx = traits::FulfillmentContext::new();
-        let vtable = selection.map(|predicate| {
-            fulfill_cx.register_predicate_obligation(&infcx, predicate);
-        });
-        infer::drain_fulfillment_cx_or_panic(
-            DUMMY_SP, &infcx, &mut fulfill_cx, &vtable
-        )
+            // Currently, we use a fulfillment context to completely resolve all nested obligations.
+            // This is because they can inform the inference of the impl's type parameters.
+            let mut fulfill_cx = traits::FulfillmentContext::new();
+            let vtable = selection.map(|predicate| {
+                fulfill_cx.register_predicate_obligation(&infcx, predicate);
+            });
+            infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &vtable)
+        })
     }
 
     /// Trait method, which has to be resolved to an impl method.
-    pub fn trait_method(&self, def_id: DefId, substs: &'tcx Substs<'tcx>)
-        -> (DefId, &'tcx Substs<'tcx>)
-    {
+    pub fn trait_method(
+        &self,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>
+    ) -> (DefId, &'tcx Substs<'tcx>) {
         let method_item = self.tcx.impl_or_trait_item(def_id);
         let trait_id = method_item.container().id();
         let trait_ref = ty::Binder(substs.to_trait_ref(self.tcx, trait_id));
@@ -1279,8 +1279,8 @@ pub struct ImplMethod<'tcx> {
 }
 
 /// Locates the applicable definition of a method, given its name.
-pub fn get_impl_method<'tcx>(
-    tcx: &TyCtxt<'tcx>,
+pub fn get_impl_method<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     impl_def_id: DefId,
     substs: &'tcx Substs<'tcx>,
     name: ast::Name,
@@ -1289,23 +1289,34 @@ pub fn get_impl_method<'tcx>(
 
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
-    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
 
     match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
         Some(node_item) => {
+            let substs = tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+                let substs = traits::translate_substs(&infcx, impl_def_id,
+                                                      substs, node_item.node);
+                tcx.lift(&substs).unwrap_or_else(|| {
+                    bug!("trans::meth::get_impl_method: translate_substs \
+                          returned {:?} which contains inference types/regions",
+                         substs);
+                })
+            });
             ImplMethod {
                 method: node_item.item,
-                substs: traits::translate_substs(&infcx, impl_def_id, substs, node_item.node),
+                substs: substs,
                 is_provided: node_item.node.is_from_trait(),
             }
         }
         None => {
-            bug!("method {:?} not found in {:?}", name, impl_def_id);
+            bug!("method {:?} not found in {:?}", name, impl_def_id)
         }
     }
 }
 
-pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) {
+pub fn interpret_start_points<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir_map: &MirMap<'tcx>,
+) {
     for (&id, mir) in &mir_map.map {
         for attr in tcx.map.attrs(id) {
             use syntax::attr::AttrMetaMethods;
