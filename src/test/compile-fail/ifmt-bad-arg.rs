@@ -23,9 +23,6 @@ fn main() {
     format!("{foo}", 1, foo=2);        //~ ERROR: argument never used
     format!("", foo=2);                //~ ERROR: named argument never used
 
-    format!("{0:x} {0:X}", 1);         //~ ERROR: redeclared with type `X`
-    format!("{foo:x} {foo:X}", foo=1); //~ ERROR: redeclared with type `X`
-
     format!("{foo}", foo=1, foo=2);    //~ ERROR: duplicate argument
     format!("", foo=1, 2);             //~ ERROR: positional arguments cannot follow
 
