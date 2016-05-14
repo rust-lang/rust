@@ -316,7 +316,7 @@
 //! # Syntax
 //!
 //! The syntax for the formatting language used is drawn from other languages,
-//! so it should not be too alien. Arguments are formatted with python-like
+//! so it should not be too alien. Arguments are formatted with Python-like
 //! syntax, meaning that arguments are surrounded by `{}` instead of the C-like
 //! `%`. The actual grammar for the formatting syntax is:
 //!
