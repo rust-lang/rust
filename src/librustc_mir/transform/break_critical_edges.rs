@@ -11,10 +11,10 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::traversal;
 
 use rustc_data_structures::bitvec::BitVector;
 
-use traversal;
 
 pub struct BreakCriticalEdges;
 
@@ -51,7 +51,7 @@ impl<'tcx> MirPass<'tcx> for BreakCriticalEdges {
 impl Pass for BreakCriticalEdges {}
 
 fn break_critical_edges(mir: &mut Mir) {
-    let mut pred_count = vec![0u32; mir.basic_blocks.len()];
+    let mut pred_count = vec![0u32; mir.cfg.basic_blocks.len()];
 
     // Build the precedecessor map for the MIR
     for (_, data) in traversal::preorder(mir) {
@@ -62,14 +62,14 @@ fn break_critical_edges(mir: &mut Mir) {
         }
     }
 
-    let cleanup_map : BitVector = mir.basic_blocks
+    let cleanup_map : BitVector = mir.cfg.basic_blocks
         .iter().map(|bb| bb.is_cleanup).collect();
 
     // We need a place to store the new blocks generated
     let mut new_blocks = Vec::new();
 
     let bbs = mir.all_basic_blocks();
-    let cur_len = mir.basic_blocks.len();
+    let cur_len = mir.cfg.basic_blocks.len();
 
     for &bb in &bbs {
         let data = mir.basic_block_data_mut(bb);
@@ -104,7 +104,7 @@ fn break_critical_edges(mir: &mut Mir) {
 
     debug!("Broke {} N edges", new_blocks.len());
 
-    mir.basic_blocks.extend_from_slice(&new_blocks);
+    mir.cfg.basic_blocks.extend_from_slice(&new_blocks);
 }
 
 // Returns true if the terminator would use an invoke in LLVM.

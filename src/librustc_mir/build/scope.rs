@@ -86,7 +86,8 @@ should go to.
 
 */
 
-use build::{BlockAnd, BlockAndExtension, Builder, CFG, ScopeAuxiliary};
+use build::{BlockAnd, BlockAndExtension, Builder, ScopeAuxiliary};
+use build::cfg::CfgExt;
 use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
 use rustc::ty::subst::{Substs, Subst, VecPerParamSpace};

@@ -242,7 +242,7 @@ macro_rules! make_mir_visitor {
             fn super_mir(&mut self,
                          mir: & $($mutability)* Mir<'tcx>) {
                 let Mir {
-                    ref $($mutability)* basic_blocks,
+                    ref $($mutability)* cfg,
                     ref $($mutability)* scopes,
                     promoted: _, // Visited by passes separately.
                     ref $($mutability)* return_ty,
@@ -252,6 +252,10 @@ macro_rules! make_mir_visitor {
                     upvar_decls: _,
                     ref $($mutability)* span,
                 } = *mir;
+
+                let CFG {
+                    ref $($mutability)* basic_blocks
+                } = *cfg;
 
                 for (index, data) in basic_blocks.into_iter().enumerate() {
                     let block = BasicBlock::new(index);

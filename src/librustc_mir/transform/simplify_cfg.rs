@@ -123,7 +123,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
             RemoveDeadBlocks.run_pass(tcx, src, mir);
         }
         // FIXME: Should probably be moved into some kind of pass manager
-        mir.basic_blocks.shrink_to_fit();
+        mir.cfg.basic_blocks.shrink_to_fit();
     }
 }
 
