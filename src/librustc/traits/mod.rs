@@ -239,7 +239,7 @@ pub enum Vtable<'tcx, N> {
     VtableParam(Vec<N>),
 
     /// Virtual calls through an object
-    VtableObject(VtableObjectData<'tcx>),
+    VtableObject(VtableObjectData<'tcx, N>),
 
     /// Successful resolution for a builtin trait.
     VtableBuiltin(VtableBuiltinData<N>),
@@ -250,7 +250,7 @@ pub enum Vtable<'tcx, N> {
     VtableClosure(VtableClosureData<'tcx, N>),
 
     /// Same as above, but for a fn pointer type with the given signature.
-    VtableFnPointer(ty::Ty<'tcx>),
+    VtableFnPointer(VtableFnPointerData<'tcx, N>),
 }
 
 /// Identifies a particular impl in the source, along with a set of
@@ -293,14 +293,22 @@ pub struct VtableBuiltinData<N> {
 /// A vtable for some object-safe trait `Foo` automatically derived
 /// for the object type `Foo`.
 #[derive(PartialEq,Eq,Clone)]
-pub struct VtableObjectData<'tcx> {
+pub struct VtableObjectData<'tcx, N> {
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
 
     /// The vtable is formed by concatenating together the method lists of
     /// the base object trait and all supertraits; this is the start of
     /// `upcast_trait_ref`'s methods in that vtable.
-    pub vtable_base: usize
+    pub vtable_base: usize,
+
+    pub nested: Vec<N>,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct VtableFnPointerData<'tcx, N> {
+    pub fn_ty: ty::Ty<'tcx>,
+    pub nested: Vec<N>
 }
 
 /// Creates predicate obligations from the generic bounds.
@@ -569,7 +577,20 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableBuiltin(i) => i.nested,
             VtableDefaultImpl(d) => d.nested,
             VtableClosure(c) => c.nested,
-            VtableObject(_) | VtableFnPointer(..) => vec![]
+            VtableObject(d) => d.nested,
+            VtableFnPointer(d) => d.nested,
+        }
+    }
+
+    fn nested_obligations_mut(&mut self) -> &mut Vec<N> {
+        match self {
+            &mut VtableImpl(ref mut i) => &mut i.nested,
+            &mut VtableParam(ref mut n) => n,
+            &mut VtableBuiltin(ref mut i) => &mut i.nested,
+            &mut VtableDefaultImpl(ref mut d) => &mut d.nested,
+            &mut VtableClosure(ref mut c) => &mut c.nested,
+            &mut VtableObject(ref mut d) => &mut d.nested,
+            &mut VtableFnPointer(ref mut d) => &mut d.nested,
         }
     }
 
@@ -578,18 +599,25 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(i) => VtableImpl(VtableImplData {
                 impl_def_id: i.impl_def_id,
                 substs: i.substs,
-                nested: i.nested.into_iter().map(f).collect()
+                nested: i.nested.into_iter().map(f).collect(),
             }),
             VtableParam(n) => VtableParam(n.into_iter().map(f).collect()),
             VtableBuiltin(i) => VtableBuiltin(VtableBuiltinData {
-                nested: i.nested.into_iter().map(f).collect()
+                nested: i.nested.into_iter().map(f).collect(),
             }),
-            VtableObject(o) => VtableObject(o),
+            VtableObject(o) => VtableObject(VtableObjectData {
+                upcast_trait_ref: o.upcast_trait_ref,
+                vtable_base: o.vtable_base,
+                nested: o.nested.into_iter().map(f).collect(),
+            }),
             VtableDefaultImpl(d) => VtableDefaultImpl(VtableDefaultImplData {
                 trait_def_id: d.trait_def_id,
-                nested: d.nested.into_iter().map(f).collect()
+                nested: d.nested.into_iter().map(f).collect(),
             }),
-            VtableFnPointer(f) => VtableFnPointer(f),
+            VtableFnPointer(p) => VtableFnPointer(VtableFnPointerData {
+                fn_ty: p.fn_ty,
+                nested: p.nested.into_iter().map(f).collect(),
+            }),
             VtableClosure(c) => VtableClosure(VtableClosureData {
                 closure_def_id: c.closure_def_id,
                 substs: c.substs,
