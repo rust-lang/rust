@@ -23,7 +23,7 @@ struct Struct {
 }
 
 impl Drop for Struct {
-    //~ TRANS_ITEM fn local_drop_glue::{{impl}}[0]::drop[0] @@ local_drop_glue[WeakODR] local_drop_glue-mod1[Declaration]
+    //~ TRANS_ITEM fn local_drop_glue::{{impl}}[0]::drop[0] @@ local_drop_glue[WeakODR]
     fn drop(&mut self) {}
 }
 

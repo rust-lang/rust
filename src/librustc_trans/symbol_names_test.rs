@@ -52,7 +52,7 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
         for attr in tcx.get_attrs(def_id).iter() {
             if attr.check_name(SYMBOL_NAME) {
                 // for now, can only use on monomorphic names
-                let instance = Instance::mono(tcx, def_id);
+                let instance = Instance::mono(self.ccx.shared(), def_id);
                 let name = symbol_names::exported_name(self.ccx, &instance);
                 tcx.sess.span_err(attr.span, &format!("symbol-name({})", name));
             } else if attr.check_name(ITEM_PATH) {
