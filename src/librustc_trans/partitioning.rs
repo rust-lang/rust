@@ -121,6 +121,7 @@ use llvm;
 use monomorphize;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
+use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
 use rustc::ty::TyCtxt;
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use syntax::parse::token::{self, InternedString};
@@ -283,7 +284,10 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
     }
 
     fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
-        token::intern_and_get_ident(&format!("{}.{}", crate_name, index)[..])
+        token::intern_and_get_ident(&format!("{}{}{}",
+            crate_name,
+            NUMBERED_CODEGEN_UNIT_MARKER,
+            index)[..])
     }
 }
 

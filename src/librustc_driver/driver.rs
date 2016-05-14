@@ -1081,7 +1081,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 
         // Remove assembly source, unless --save-temps was specified
         if !sess.opts.cg.save_temps {
-            fs::remove_file(&outputs.temp_path(OutputType::Assembly)).unwrap();
+            fs::remove_file(&outputs.temp_path(OutputType::Assembly, None)).unwrap();
         }
     } else {
         time(sess.time_passes(),
