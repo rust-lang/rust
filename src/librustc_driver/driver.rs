@@ -28,7 +28,7 @@ use rustc_borrowck as borrowck;
 use rustc_incremental;
 use rustc_resolve as resolve;
 use rustc_metadata::macro_import;
-use rustc_metadata::creader::LocalCrateReader;
+use rustc_metadata::creader::read_local_crates;
 use rustc_metadata::cstore::CStore;
 use rustc_trans::back::link;
 use rustc_trans::back::write;
@@ -155,22 +155,21 @@ pub fn compile_input(sess: &Session,
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
 
         // Collect defintions for def ids.
-        let defs = &RefCell::new(time(sess.time_passes(),
-                                 "collecting defs",
-                                 || hir_map::collect_definitions(&expanded_crate)));
+        let mut defs = time(sess.time_passes(),
+                            "collecting defs",
+                            || hir_map::collect_definitions(&expanded_crate));
 
         time(sess.time_passes(),
              "external crate/lib resolution",
-             || LocalCrateReader::new(sess, &cstore, defs, &expanded_crate, &id)
-                    .read_crates(&dep_graph));
+             || read_local_crates(sess, &cstore, &defs, &expanded_crate, &id, &dep_graph));
 
         time(sess.time_passes(),
              "early lint checks",
              || lint::check_ast_crate(sess, &expanded_crate));
 
         let (analysis, resolutions, mut hir_forest) = {
-            let defs = &mut *defs.borrow_mut();
-            lower_and_resolve(sess, &id, defs, &expanded_crate, dep_graph, control.make_glob_map)
+            lower_and_resolve(sess, &id, &mut defs, &expanded_crate, dep_graph,
+                              control.make_glob_map)
         };
 
         // Discard MTWT tables that aren't required past lowering to HIR.

@@ -41,12 +41,12 @@ use syntax::parse::token::InternedString;
 use syntax::visit;
 use log;
 
-pub struct LocalCrateReader<'a> {
+struct LocalCrateReader<'a> {
     sess: &'a Session,
     cstore: &'a CStore,
     creader: CrateReader<'a>,
     krate: &'a ast::Crate,
-    defintions: &'a RefCell<hir_map::Definitions>,
+    definitions: &'a hir_map::Definitions,
 }
 
 pub struct CrateReader<'a> {
@@ -841,25 +841,25 @@ impl<'a> CrateReader<'a> {
 }
 
 impl<'a> LocalCrateReader<'a> {
-    pub fn new(sess: &'a Session,
-               cstore: &'a CStore,
-               defs: &'a RefCell<hir_map::Definitions>,
-               krate: &'a ast::Crate,
-               local_crate_name: &str)
-               -> LocalCrateReader<'a> {
+    fn new(sess: &'a Session,
+           cstore: &'a CStore,
+           defs: &'a hir_map::Definitions,
+           krate: &'a ast::Crate,
+           local_crate_name: &str)
+           -> LocalCrateReader<'a> {
         LocalCrateReader {
             sess: sess,
             cstore: cstore,
             creader: CrateReader::new(sess, cstore, local_crate_name),
             krate: krate,
-            defintions: defs,
+            definitions: defs,
         }
     }
 
     // Traverses an AST, reading all the information about use'd crates and
     // extern libraries necessary for later resolving, typechecking, linking,
     // etc.
-    pub fn read_crates(&mut self, dep_graph: &DepGraph) {
+    fn read_crates(&mut self, dep_graph: &DepGraph) {
         let _task = dep_graph.in_task(DepNode::CrateReader);
 
         self.process_crate(self.krate);
@@ -902,9 +902,8 @@ impl<'a> LocalCrateReader<'a> {
                                                                       PathKind::Crate,
                                                                       true);
 
-                        let defs = self.defintions.borrow();
-                        let def_id = defs.opt_local_def_id(i.id).unwrap();
-                        let len = defs.def_path(def_id.index).data.len();
+                        let def_id = self.definitions.opt_local_def_id(i.id).unwrap();
+                        let len = self.definitions.def_path(def_id.index).data.len();
 
                         self.creader.update_extern_crate(cnum,
                                                          ExternCrate {
@@ -980,6 +979,17 @@ impl<'a> LocalCrateReader<'a> {
             list.extend(fm.items.iter().map(|it| it.id));
         }
     }
+}
+
+/// Traverses an AST, reading all the information about use'd crates and extern
+/// libraries necessary for later resolving, typechecking, linking, etc.
+pub fn read_local_crates(sess: & Session,
+                         cstore: & CStore,
+                         defs: & hir_map::Definitions,
+                         krate: & ast::Crate,
+                         local_crate_name: &str,
+                         dep_graph: &DepGraph) {
+    LocalCrateReader::new(sess, cstore, defs, krate, local_crate_name).read_crates(dep_graph)
 }
 
 /// Imports the codemap from an external crate into the codemap of the crate
