@@ -41,9 +41,10 @@ fn main() {
     });
 
     let (tx, rx) = channel();
+    let mut spawned_cnt = 0;
     for _ in 0..1000 {
         let tx = tx.clone();
-        Builder::new().stack_size(64 * 1024).spawn(move|| {
+        let res = Builder::new().stack_size(64 * 1024).spawn(move|| {
             match TcpStream::connect(addr) {
                 Ok(mut stream) => {
                     stream.write(&[1]);
@@ -53,13 +54,17 @@ fn main() {
             }
             tx.send(()).unwrap();
         });
+        if let Ok(_) = res {
+            spawned_cnt += 1;
+        };
     }
 
     // Wait for all clients to exit, but don't wait for the server to exit. The
     // server just runs infinitely.
     drop(tx);
-    for _ in 0..1000 {
+    for _ in 0..spawned_cnt {
         rx.recv().unwrap();
     }
+    assert_eq!(spawned_cnt, 1000);
     process::exit(0);
 }
