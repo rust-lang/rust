@@ -21,7 +21,8 @@ use rustc::hir::map as hir_map;
 use {abi, adt, closure, debuginfo, expr, machine};
 use base::{self, exported_name, imported_name, push_ctxt};
 use callee::Callee;
-use collector::{self, TransItem};
+use collector;
+use trans_item::TransItem;
 use common::{type_is_sized, C_nil, const_get_elt};
 use common::{CrateContext, C_integral, C_floating, C_bool, C_str_slice, C_bytes, val_ty};
 use common::{C_struct, C_undef, const_to_opt_int, const_to_opt_uint, VariantInfo, C_uint};
@@ -1011,7 +1012,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                             -> Datum<'tcx, Lvalue> {
     let ty = ccx.tcx().lookup_item_type(def_id).ty;
 
-    let instance = Instance::mono(ccx.tcx(), def_id);
+    let instance = Instance::mono(ccx.shared(), def_id);
     if let Some(&g) = ccx.instances().borrow().get(&instance) {
         return Datum::new(g, ty, Lvalue::new("static"));
     }

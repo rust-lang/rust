@@ -59,7 +59,7 @@ use callee::{Callee, CallArgs, ArgExprs, ArgVals};
 use cleanup::{self, CleanupMethods, DropHint};
 use closure;
 use common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_uint, C_integral};
-use collector::{self, TransItem, TransItemState, TransItemCollectionMode};
+use collector::{self, TransItemState, TransItemCollectionMode};
 use common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use common::{CrateContext, DropFlagHintsMap, Field, FunctionContext};
 use common::{Result, NodeIdAndSpan, VariantInfo};
@@ -80,8 +80,9 @@ use machine::{llalign_of_min, llsize_of, llsize_of_real};
 use meth;
 use mir;
 use monomorphize::{self, Instance};
-use partitioning::{self, PartitioningStrategy, InstantiationMode, CodegenUnit};
+use partitioning::{self, PartitioningStrategy, CodegenUnit};
 use symbol_names_test;
+use trans_item::TransItem;
 use tvec;
 use type_::Type;
 use type_of;
@@ -2941,8 +2942,8 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         None => TransItemCollectionMode::Lazy
     };
 
-    let (items, reference_map) = time(time_passes, "translation item collection", || {
-        collector::collect_crate_translation_items(scx, collection_mode)
+    let (items, inlining_map) = time(time_passes, "translation item collection", || {
+        collector::collect_crate_translation_items(&scx, collection_mode)
     });
 
     let strategy = if scx.sess().opts.debugging_opts.incremental.is_some() {
@@ -2955,7 +2956,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         partitioning::partition(scx.tcx(),
                                 items.iter().cloned(),
                                 strategy,
-                                &reference_map)
+                                &inlining_map)
     });
 
     if scx.sess().opts.debugging_opts.print_trans_items.is_some() {
@@ -2983,18 +2984,17 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
                     output.push_str(&cgu_name[..]);
 
                     let linkage_abbrev = match linkage {
-                        InstantiationMode::Def(llvm::ExternalLinkage) => "External",
-                        InstantiationMode::Def(llvm::AvailableExternallyLinkage) => "Available",
-                        InstantiationMode::Def(llvm::LinkOnceAnyLinkage) => "OnceAny",
-                        InstantiationMode::Def(llvm::LinkOnceODRLinkage) => "OnceODR",
-                        InstantiationMode::Def(llvm::WeakAnyLinkage) => "WeakAny",
-                        InstantiationMode::Def(llvm::WeakODRLinkage) => "WeakODR",
-                        InstantiationMode::Def(llvm::AppendingLinkage) => "Appending",
-                        InstantiationMode::Def(llvm::InternalLinkage) => "Internal",
-                        InstantiationMode::Def(llvm::PrivateLinkage) => "Private",
-                        InstantiationMode::Def(llvm::ExternalWeakLinkage) => "ExternalWeak",
-                        InstantiationMode::Def(llvm::CommonLinkage) => "Common",
-                        InstantiationMode::Decl => "Declaration",
+                        llvm::ExternalLinkage => "External",
+                        llvm::AvailableExternallyLinkage => "Available",
+                        llvm::LinkOnceAnyLinkage => "OnceAny",
+                        llvm::LinkOnceODRLinkage => "OnceODR",
+                        llvm::WeakAnyLinkage => "WeakAny",
+                        llvm::WeakODRLinkage => "WeakODR",
+                        llvm::AppendingLinkage => "Appending",
+                        llvm::InternalLinkage => "Internal",
+                        llvm::PrivateLinkage => "Private",
+                        llvm::ExternalWeakLinkage => "ExternalWeak",
+                        llvm::CommonLinkage => "Common",
                     };
 
                     output.push_str("[");

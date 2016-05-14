@@ -494,7 +494,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         _ => bug!("expected fn item type, found {}", ty)
     };
 
-    let instance = Instance::mono(ccx.tcx(), def_id);
+    let instance = Instance::mono(ccx.shared(), def_id);
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
         return immediate_rvalue(llfn, fn_ptr_ty);
     }

@@ -19,10 +19,10 @@
 // Used in different modules/codegen units but always instantiated in the same
 // codegen unit.
 
-//~ TRANS_ITEM fn local_generic::generic[0]<u32> @@ local_generic.volatile[WeakODR] local_generic[Declaration]
-//~ TRANS_ITEM fn local_generic::generic[0]<u64> @@ local_generic.volatile[WeakODR] local_generic-mod1[Declaration]
-//~ TRANS_ITEM fn local_generic::generic[0]<char> @@ local_generic.volatile[WeakODR] local_generic-mod1-mod1[Declaration]
-//~ TRANS_ITEM fn local_generic::generic[0]<&str> @@ local_generic.volatile[WeakODR] local_generic-mod2[Declaration]
+//~ TRANS_ITEM fn local_generic::generic[0]<u32> @@ local_generic.volatile[WeakODR]
+//~ TRANS_ITEM fn local_generic::generic[0]<u64> @@ local_generic.volatile[WeakODR]
+//~ TRANS_ITEM fn local_generic::generic[0]<char> @@ local_generic.volatile[WeakODR]
+//~ TRANS_ITEM fn local_generic::generic[0]<&str> @@ local_generic.volatile[WeakODR]
 pub fn generic<T>(x: T) -> T { x }
 
 //~ TRANS_ITEM fn local_generic::user[0] @@ local_generic[WeakODR]

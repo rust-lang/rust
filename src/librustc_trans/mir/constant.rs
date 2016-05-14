@@ -854,6 +854,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
 pub fn trans_static_initializer(ccx: &CrateContext, def_id: DefId)
                                 -> Result<ValueRef, ConstEvalFailure> {
-    let instance = Instance::mono(ccx.tcx(), def_id);
+    let instance = Instance::mono(ccx.shared(), def_id);
     MirConstContext::trans_def(ccx, instance, vec![]).map(|c| c.llval)
 }
