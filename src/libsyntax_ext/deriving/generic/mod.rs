@@ -257,6 +257,9 @@ pub struct MethodDef<'a> {
     // Is it an `unsafe fn`?
     pub is_unsafe: bool,
 
+    /// Can we combine fieldless variants for enums into a single match arm?
+    pub unify_fieldless_variants: bool,
+
     pub combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
 }
 
@@ -1131,12 +1134,15 @@ impl<'a> MethodDef<'a> {
         let catch_all_substructure = EnumNonMatchingCollapsed(
             self_arg_idents, &variants[..], &vi_idents[..]);
 
+        let first_fieldless = variants.iter().find(|v| v.node.data.fields().is_empty());
+
         // These arms are of the form:
         // (Variant1, Variant1, ...) => Body1
         // (Variant2, Variant2, ...) => Body2
         // ...
         // where each tuple has length = self_args.len()
         let mut match_arms: Vec<ast::Arm> = variants.iter().enumerate()
+            .filter(|&(_, v)| !(self.unify_fieldless_variants && v.node.data.fields().is_empty()))
             .map(|(index, variant)| {
                 let mk_self_pat = |cx: &mut ExtCtxt, self_arg_name: &str| {
                     let (p, idents) = trait_.create_enum_variant_pattern(
@@ -1219,6 +1225,28 @@ impl<'a> MethodDef<'a> {
 
                 cx.arm(sp, vec![single_pat], arm_expr)
             }).collect();
+
+        let default = match first_fieldless {
+            Some(v) if self.unify_fieldless_variants => {
+                // We need a default case that handles the fieldless variants.
+                // The index and actual variant aren't meaningful in this case,
+                // so just use whatever
+                Some(self.call_substructure_method(
+                    cx, trait_, type_ident, &self_args[..], nonself_args,
+                    &EnumMatching(0, v, Vec::new())))
+            }
+            _ if variants.len() > 1 && self_args.len() > 1 => {
+                // Since we know that all the arguments will match if we reach
+                // the match expression we add the unreachable intrinsics as the
+                // result of the catch all which should help llvm in optimizing it
+                Some(deriving::call_intrinsic(cx, sp, "unreachable", vec![]))
+            }
+            _ => None
+        };
+        if let Some(arm) = default {
+            match_arms.push(cx.arm(sp, vec![cx.pat_wild(sp)], arm));
+        }
+
         // We will usually need the catch-all after matching the
         // tuples `(VariantK, VariantK, ...)` for each VariantK of the
         // enum.  But:
@@ -1291,13 +1319,6 @@ impl<'a> MethodDef<'a> {
             let arm_expr = self.call_substructure_method(
                 cx, trait_, type_ident, &self_args[..], nonself_args,
                 &catch_all_substructure);
-
-            //Since we know that all the arguments will match if we reach the match expression we
-            //add the unreachable intrinsics as the result of the catch all which should help llvm
-            //in optimizing it
-            match_arms.push(cx.arm(sp,
-                                   vec![cx.pat_wild(sp)],
-                                   deriving::call_intrinsic(cx, sp, "unreachable", vec![])));
 
             // Final wrinkle: the self_args are expressions that deref
             // down to desired l-values, but we cannot actually deref

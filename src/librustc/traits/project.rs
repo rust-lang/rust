@@ -19,6 +19,7 @@ use super::PredicateObligation;
 use super::SelectionContext;
 use super::SelectionError;
 use super::VtableClosureData;
+use super::VtableFnPointerData;
 use super::VtableImplData;
 use super::util;
 
@@ -158,7 +159,7 @@ enum ProjectionTyCandidate<'tcx> {
     Closure(VtableClosureData<'tcx, PredicateObligation<'tcx>>),
 
     // fn pointer return type
-    FnPointer(Ty<'tcx>),
+    FnPointer(VtableFnPointerData<'tcx, PredicateObligation<'tcx>>),
 }
 
 struct ProjectionTyCandidateSet<'tcx> {
@@ -218,10 +219,7 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
                                             obligation.cause.clone(),
                                             obligation.recursion_depth) {
             Some(n) => n,
-            None => {
-                consider_unification_despite_ambiguity(selcx, obligation);
-                return Ok(None);
-            }
+            None => return Ok(None),
         };
 
     debug!("project_and_unify_type: normalized_ty={:?} obligations={:?}",
@@ -237,59 +235,6 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
             Ok(Some(obligations))
         },
         Err(err) => Err(MismatchedProjectionTypes { err: err }),
-    }
-}
-
-fn consider_unification_despite_ambiguity<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
-    obligation: &ProjectionObligation<'tcx>)
-{
-    debug!("consider_unification_despite_ambiguity(obligation={:?})",
-           obligation);
-
-    let def_id = obligation.predicate.projection_ty.trait_ref.def_id;
-    match selcx.tcx().lang_items.fn_trait_kind(def_id) {
-        Some(_) => { }
-        None => { return; }
-    }
-
-    let infcx = selcx.infcx();
-    let self_ty = obligation.predicate.projection_ty.trait_ref.self_ty();
-    let self_ty = infcx.shallow_resolve(self_ty);
-    debug!("consider_unification_despite_ambiguity: self_ty.sty={:?}",
-           self_ty.sty);
-    match self_ty.sty {
-        ty::TyClosure(closure_def_id, substs) => {
-            let closure_typer = selcx.closure_typer();
-            let closure_type = closure_typer.closure_type(closure_def_id, substs);
-            let ty::Binder((_, ret_type)) =
-                infcx.tcx.closure_trait_ref_and_return_type(def_id,
-                                                            self_ty,
-                                                            &closure_type.sig,
-                                                            util::TupleArgumentsFlag::No);
-            // We don't have to normalize the return type here - this is only
-            // reached for TyClosure: Fn inputs where the closure kind is
-            // still unknown, which should only occur in typeck where the
-            // closure type is already normalized.
-            let (ret_type, _) =
-                infcx.replace_late_bound_regions_with_fresh_var(
-                    obligation.cause.span,
-                    infer::AssocTypeProjection(obligation.predicate.projection_ty.item_name),
-                    &ty::Binder(ret_type));
-
-            debug!("consider_unification_despite_ambiguity: ret_type={:?}",
-                   ret_type);
-            let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
-            let obligation_ty = obligation.predicate.ty;
-            match infcx.eq_types(true, origin, obligation_ty, ret_type) {
-                Ok(InferOk { obligations, .. }) => {
-                    // FIXME(#32730) propagate obligations
-                    assert!(obligations.is_empty());
-                }
-                Err(_) => { /* ignore errors */ }
-            }
-        }
-        _ => { }
     }
 }
 
@@ -929,9 +874,9 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
             candidate_set.vec.push(
                 ProjectionTyCandidate::Closure(data));
         }
-        super::VtableFnPointer(fn_type) => {
+        super::VtableFnPointer(data) => {
             candidate_set.vec.push(
-                ProjectionTyCandidate::FnPointer(fn_type));
+                ProjectionTyCandidate::FnPointer(data));
         }
         super::VtableParam(..) => {
             // This case tell us nothing about the value of an
@@ -997,8 +942,8 @@ fn confirm_candidate<'cx, 'gcx, 'tcx>(
             confirm_closure_candidate(selcx, obligation, closure_vtable)
         }
 
-        ProjectionTyCandidate::FnPointer(fn_type) => {
-            confirm_fn_pointer_candidate(selcx, obligation, fn_type)
+        ProjectionTyCandidate::FnPointer(fn_pointer_vtable) => {
+            confirm_fn_pointer_candidate(selcx, obligation, fn_pointer_vtable)
         }
     }
 }
@@ -1006,10 +951,13 @@ fn confirm_candidate<'cx, 'gcx, 'tcx>(
 fn confirm_fn_pointer_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    fn_type: Ty<'tcx>)
+    fn_pointer_vtable: VtableFnPointerData<'tcx, PredicateObligation<'tcx>>)
     -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
-    let fn_type = selcx.infcx().shallow_resolve(fn_type);
+    // FIXME(#32730) propagate obligations (fn pointer vtable nested obligations ONLY come from
+    // unification in inference)
+    assert!(fn_pointer_vtable.nested.is_empty());
+    let fn_type = selcx.infcx().shallow_resolve(fn_pointer_vtable.fn_ty);
     let sig = fn_type.fn_sig();
     confirm_callable_candidate(selcx, obligation, sig, util::TupleArgumentsFlag::Yes)
 }

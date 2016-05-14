@@ -17,6 +17,7 @@ use cstore::{self, CStore, CrateSource, MetadataBlob};
 use decoder;
 use loader::{self, CratePaths};
 
+use rustc::hir::def_id::DefIndex;
 use rustc::hir::svh::Svh;
 use rustc::dep_graph::{DepGraph, DepNode};
 use rustc::session::{config, Session};
@@ -578,9 +579,10 @@ impl<'a> CrateReader<'a> {
         macros
     }
 
-    /// Look for a plugin registrar. Returns library path and symbol name.
+    /// Look for a plugin registrar. Returns library path, crate
+    /// SVH and DefIndex of the registrar function.
     pub fn find_plugin_registrar(&mut self, span: Span, name: &str)
-                                 -> Option<(PathBuf, String)> {
+                                 -> Option<(PathBuf, Svh, DefIndex)> {
         let ekrate = self.read_extension_crate(span, &CrateInfo {
              name: name.to_string(),
              ident: name.to_string(),
@@ -598,12 +600,14 @@ impl<'a> CrateReader<'a> {
             span_fatal!(self.sess, span, E0456, "{}", &message[..]);
         }
 
+        let svh = decoder::get_crate_hash(ekrate.metadata.as_slice());
         let registrar =
-            decoder::get_plugin_registrar_fn(ekrate.metadata.as_slice())
-            .map(|id| decoder::get_symbol_from_buf(ekrate.metadata.as_slice(), id));
+            decoder::get_plugin_registrar_fn(ekrate.metadata.as_slice());
 
         match (ekrate.dylib.as_ref(), registrar) {
-            (Some(dylib), Some(reg)) => Some((dylib.to_path_buf(), reg)),
+            (Some(dylib), Some(reg)) => {
+                Some((dylib.to_path_buf(), svh, reg))
+            }
             (None, Some(_)) => {
                 span_err!(self.sess, span, E0457,
                           "plugin `{}` only found in rlib format, but must be available \

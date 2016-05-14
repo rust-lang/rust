@@ -14,12 +14,38 @@ use hir::def_id::{DefId, CRATE_DEF_INDEX};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 
+use std::cell::Cell;
+
+thread_local! {
+    static FORCE_ABSOLUTE: Cell<bool> = Cell::new(false)
+}
+
+/// Enforces that item_path_str always returns an absolute path.
+/// This is useful when building symbols that contain types,
+/// where we want the crate name to be part of the symbol.
+pub fn with_forced_absolute_paths<F: FnOnce() -> R, R>(f: F) -> R {
+    FORCE_ABSOLUTE.with(|force| {
+        let old = force.get();
+        force.set(true);
+        let result = f();
+        force.set(old);
+        result
+    })
+}
+
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns a string identifying this def-id. This string is
     /// suitable for user output. It is relative to the current crate
-    /// root.
+    /// root, unless with_forced_absolute_paths was used.
     pub fn item_path_str(self, def_id: DefId) -> String {
-        let mut buffer = LocalPathBuffer::new(RootMode::Local);
+        let mode = FORCE_ABSOLUTE.with(|force| {
+            if force.get() {
+                RootMode::Absolute
+            } else {
+                RootMode::Local
+            }
+        });
+        let mut buffer = LocalPathBuffer::new(mode);
         self.push_item_path(&mut buffer, def_id);
         buffer.into_string()
     }

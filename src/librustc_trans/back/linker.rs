@@ -9,11 +9,15 @@
 // except according to those terms.
 
 use std::ffi::OsString;
+use std::fmt::Write as FmtWrite;
 use std::fs::{self, File};
 use std::io::{self, BufWriter};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use context::SharedCrateContext;
+use monomorphize::Instance;
 
 use back::archive;
 use middle::dependency_format::Linkage;
@@ -21,7 +25,75 @@ use session::Session;
 use session::config::CrateTypeDylib;
 use session::config;
 use syntax::ast;
-use CrateTranslation;
+
+/// For all the linkers we support, and information they might
+/// need out of the shared crate context before we get rid of it.
+pub enum LinkerInfo {
+    Gnu,
+    Msvc {
+        dylib_exports: String
+    }
+}
+
+impl<'a, 'tcx> LinkerInfo {
+    pub fn new(scx: &SharedCrateContext<'a, 'tcx>,
+               reachable: &[String]) -> LinkerInfo {
+        if scx.sess().target.target.options.is_like_msvc {
+            let mut exports = String::new();
+            if scx.sess().crate_types.borrow().contains(&CrateTypeDylib) {
+                for sym in reachable {
+                    writeln!(exports, "  {}", sym).unwrap();
+                }
+
+                // Take a look at how all upstream crates are linked into this
+                // dynamic library. For all statically linked libraries we take all
+                // their reachable symbols and emit them as well.
+                let cstore = &scx.sess().cstore;
+                let formats = scx.sess().dependency_formats.borrow();
+                let symbols = formats[&CrateTypeDylib].iter();
+                let symbols = symbols.enumerate().filter_map(|(i, f)| {
+                    if *f == Linkage::Static {
+                        Some((i + 1) as ast::CrateNum)
+                    } else {
+                        None
+                    }
+                }).flat_map(|cnum| {
+                    cstore.reachable_ids(cnum)
+                }).map(|did| -> String {
+                    Instance::mono(scx.tcx(), did).symbol_name(scx)
+                });
+                for symbol in symbols {
+                    writeln!(exports, "  {}", symbol).unwrap();
+                }
+            }
+            LinkerInfo::Msvc {
+                dylib_exports: exports
+            }
+        } else {
+            LinkerInfo::Gnu
+        }
+    }
+
+    pub fn to_linker(&'a self,
+                     cmd: &'a mut Command,
+                     sess: &'a Session) -> Box<Linker+'a> {
+        match *self {
+            LinkerInfo::Gnu => {
+                Box::new(GnuLinker {
+                    cmd: cmd,
+                    sess: sess
+                }) as Box<Linker>
+            }
+            LinkerInfo::Msvc { ref dylib_exports } => {
+                Box::new(MsvcLinker {
+                    cmd: cmd,
+                    sess: sess,
+                    dylib_exports: dylib_exports
+                }) as Box<Linker>
+            }
+        }
+    }
+}
 
 /// Linker abstraction used by back::link to build up the command to invoke a
 /// linker.
@@ -53,13 +125,12 @@ pub trait Linker {
     fn hint_dynamic(&mut self);
     fn whole_archives(&mut self);
     fn no_whole_archives(&mut self);
-    fn export_symbols(&mut self, sess: &Session, trans: &CrateTranslation,
-                      tmpdir: &Path);
+    fn export_symbols(&mut self, tmpdir: &Path);
 }
 
 pub struct GnuLinker<'a> {
-    pub cmd: &'a mut Command,
-    pub sess: &'a Session,
+    cmd: &'a mut Command,
+    sess: &'a Session,
 }
 
 impl<'a> GnuLinker<'a> {
@@ -198,14 +269,15 @@ impl<'a> Linker for GnuLinker<'a> {
         self.cmd.arg("-Wl,-Bdynamic");
     }
 
-    fn export_symbols(&mut self, _: &Session, _: &CrateTranslation, _: &Path) {
+    fn export_symbols(&mut self, _: &Path) {
         // noop, visibility in object files takes care of this
     }
 }
 
 pub struct MsvcLinker<'a> {
-    pub cmd: &'a mut Command,
-    pub sess: &'a Session,
+    cmd: &'a mut Command,
+    sess: &'a Session,
+    dylib_exports: &'a str
 }
 
 impl<'a> Linker for MsvcLinker<'a> {
@@ -322,8 +394,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     // crates. Upstream rlibs may be linked statically to this dynamic library,
     // in which case they may continue to transitively be used and hence need
     // their symbols exported.
-    fn export_symbols(&mut self, sess: &Session, trans: &CrateTranslation,
-                      tmpdir: &Path) {
+    fn export_symbols(&mut self, tmpdir: &Path) {
         let path = tmpdir.join("lib.def");
         let res = (|| -> io::Result<()> {
             let mut f = BufWriter::new(File::create(&path)?);
@@ -332,37 +403,11 @@ impl<'a> Linker for MsvcLinker<'a> {
             // straight to exports.
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
-
-            // Write out all our local symbols
-            for sym in trans.reachable.iter() {
-                writeln!(f, "  {}", sym)?;
-            }
-
-            // Take a look at how all upstream crates are linked into this
-            // dynamic library. For all statically linked libraries we take all
-            // their reachable symbols and emit them as well.
-            let cstore = &sess.cstore;
-            let formats = sess.dependency_formats.borrow();
-            let symbols = formats[&CrateTypeDylib].iter();
-            let symbols = symbols.enumerate().filter_map(|(i, f)| {
-                if *f == Linkage::Static {
-                    Some((i + 1) as ast::CrateNum)
-                } else {
-                    None
-                }
-            }).flat_map(|cnum| {
-                cstore.reachable_ids(cnum)
-            }).map(|did| {
-                cstore.item_symbol(did)
-            });
-            for symbol in symbols {
-                writeln!(f, "  {}", symbol)?;
-            }
-
+            f.write(self.dylib_exports.as_bytes())?;
             Ok(())
         })();
         if let Err(e) = res {
-            sess.fatal(&format!("failed to write lib.def file: {}", e));
+            self.sess.fatal(&format!("failed to write lib.def file: {}", e));
         }
         let mut arg = OsString::from("/DEF:");
         arg.push(path);
