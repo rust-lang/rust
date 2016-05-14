@@ -39,7 +39,7 @@ use syntax::ast::{self, NodeId, PatKind};
 use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
-use syntax::print::pprust::{path_to_string, ty_to_string};
+use syntax::print::pprust::{path_to_string, ty_to_string, bounds_to_string, generics_to_string};
 use syntax::ptr::P;
 
 use super::{escape, generated_code, SaveContext, PathCollector};
@@ -388,18 +388,23 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
         if let Some(method_data) = self.save_ctxt.get_method_data(id, name, span) {
 
+            let sig_str = ::make_signature(&sig.decl, &sig.generics);
             if body.is_some() {
                 if !self.span.filter_generated(Some(method_data.span), span) {
-                    self.dumper.function(method_data.clone().lower(self.tcx));
+                    let mut data = method_data.clone();
+                    data.value = sig_str;
+                    self.dumper.function(data.lower(self.tcx));
                 }
                 self.process_formals(&sig.decl.inputs, &method_data.qualname);
             } else {
                 if !self.span.filter_generated(Some(method_data.span), span) {
                     self.dumper.method(MethodData {
                         id: method_data.id,
+                        name: method_data.name,
                         span: method_data.span,
                         scope: method_data.scope,
                         qualname: method_data.qualname.clone(),
+                        value: sig_str,
                     }.lower(self.tcx));
                 }
             }
@@ -455,16 +460,18 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         let param_sub_spans = self.span.spans_for_ty_params(full_span,
                                                             (generics.ty_params.len() as isize));
         for (param, param_ss) in generics.ty_params.iter().zip(param_sub_spans) {
+            let name = escape(self.span.snippet(param_ss));
             // Append $id to name to make sure each one is unique
-            let name = format!("{}::{}${}",
-                               prefix,
-                               escape(self.span.snippet(param_ss)),
-                               id);
+            let qualname = format!("{}::{}${}",
+                                   prefix,
+                                   name,
+                                   id);
             if !self.span.filter_generated(Some(param_ss), full_span) {
-                self.dumper.typedef(TypedefData {
+                self.dumper.typedef(TypeDefData {
                     span: param_ss,
+                    name: name,
                     id: param.id,
-                    qualname: name,
+                    qualname: qualname,
                     value: String::new()
                 }.lower(self.tcx));
             }
@@ -536,18 +543,33 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         self.visit_expr(expr);
     }
 
+    // FIXME tuple structs should generate tuple-specific data.
     fn process_struct(&mut self,
                       item: &ast::Item,
                       def: &ast::VariantData,
                       ty_params: &ast::Generics) {
+        let name = item.ident.to_string();
         let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
-        let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Struct);
+        let val = if let ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _) =
+                    item.node {
+            let fields_str = fields.iter()
+                                   .enumerate()
+                                   .map(|(i, f)| f.ident.map(|i| i.to_string())
+                                                  .unwrap_or(i.to_string()))
+                                   .collect::<Vec<_>>()
+                                   .join(", ");
+            format!("{} {{ {} }}", name, fields_str)
+        } else {
+            String::new()
+        };
+
         if !self.span.filter_generated(sub_span, item.span) {
             self.dumper.struct_data(StructData {
                 span: sub_span.expect("No span found for struct"),
                 id: item.id,
+                name: name,
                 ctor_id: def.id(),
                 qualname: qualname.clone(),
                 scope: self.cur_scope,
@@ -580,19 +602,26 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
 
         for variant in &enum_definition.variants {
-            let name = &variant.node.name.name.as_str();
+            let name = variant.node.name.name.to_string();
             let mut qualname = enum_data.qualname.clone();
             qualname.push_str("::");
-            qualname.push_str(name);
-            let val = self.span.snippet(variant.span);
+            qualname.push_str(&name);
 
             match variant.node.data {
-                ast::VariantData::Struct(..) => {
+                ast::VariantData::Struct(ref fields, _) => {
                     let sub_span = self.span.span_for_first_ident(variant.span);
+                    let fields_str = fields.iter()
+                                           .enumerate()
+                                           .map(|(i, f)| f.ident.map(|i| i.to_string())
+                                                          .unwrap_or(i.to_string()))
+                                           .collect::<Vec<_>>()
+                                           .join(", ");
+                    let val = format!("{}::{} {{ {} }}", enum_data.name, name, fields_str);
                     if !self.span.filter_generated(sub_span, variant.span) {
                         self.dumper.struct_variant(StructVariantData {
                             span: sub_span.expect("No span found for struct variant"),
                             id: variant.node.data.id(),
+                            name: name,
                             qualname: qualname,
                             type_value: enum_data.qualname.clone(),
                             value: val,
@@ -600,13 +629,22 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         }.lower(self.tcx));
                     }
                 }
-                _ => {
+                ref v => {
                     let sub_span = self.span.span_for_first_ident(variant.span);
+                    let mut val = format!("{}::{}", enum_data.name, name);
+                    if let &ast::VariantData::Tuple(ref fields, _) = v {
+                        val.push('(');
+                        val.push_str(&fields.iter()
+                                            .map(|f| ty_to_string(&f.ty))
+                                            .collect::<Vec<_>>()
+                                            .join(", "));
+                        val.push(')');
+                    }
                     if !self.span.filter_generated(sub_span, variant.span) {
                         self.dumper.tuple_variant(TupleVariantData {
                             span: sub_span.expect("No span found for tuple variant"),
                             id: variant.node.data.id(),
-                            name: name.to_string(),
+                            name: name,
                             qualname: qualname,
                             type_value: enum_data.qualname.clone(),
                             value: val,
@@ -672,13 +710,22 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                      generics: &ast::Generics,
                      trait_refs: &ast::TyParamBounds,
                      methods: &[ast::TraitItem]) {
+        let name = item.ident.to_string();
         let qualname = format!("::{}", self.tcx.node_path_str(item.id));
-        let val = self.span.snippet(item.span);
+        let mut val = name.clone();
+        if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
+            val.push_str(&generics_to_string(generics));
+        }
+        if !trait_refs.is_empty() {
+            val.push_str(": ");
+            val.push_str(&bounds_to_string(trait_refs));
+        }
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Trait);
         if !self.span.filter_generated(sub_span, item.span) {
             self.dumper.trait_data(TraitData {
                 span: sub_span.expect("No span found for trait"),
                 id: item.id,
+                name: name,
                 qualname: qualname.clone(),
                 scope: self.cur_scope,
                 value: val
@@ -908,13 +955,15 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         self.visit_pat(&p);
 
         for &(id, ref p, immut, _) in &collector.collected_paths {
-            let value = if immut == ast::Mutability::Immutable {
+            let mut value = if immut == ast::Mutability::Immutable {
                 value.to_string()
             } else {
                 "<mutable>".to_string()
             };
             let types = self.tcx.node_types();
             let typ = types.get(&id).map(|t| t.to_string()).unwrap_or(String::new());
+            value.push_str(": ");
+            value.push_str(&typ);
             // Get the span only for the name of the variable (I hope the path
             // is only ever a variable name, but who knows?).
             let sub_span = self.span.span_for_last_ident(p.span);
@@ -1107,8 +1156,9 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                 let value = ty_to_string(&ty);
                 let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Type);
                 if !self.span.filter_generated(sub_span, item.span) {
-                    self.dumper.typedef(TypedefData {
+                    self.dumper.typedef(TypeDefData {
                         span: sub_span.expect("No span found for typedef"),
+                        name: item.ident.to_string(),
                         id: item.id,
                         qualname: qualname.clone(),
                         value: value
@@ -1275,13 +1325,13 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
             }
             ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) |
             ast::ExprKind::WhileLet(ref pattern, ref subexpression, ref block, _) => {
-                let value = self.span.snippet(mk_sp(ex.span.lo, subexpression.span.hi));
+                let value = self.span.snippet(subexpression.span);
                 self.process_var_decl(pattern, value);
                 visit::walk_expr(self, subexpression);
                 visit::walk_block(self, block);
             }
             ast::ExprKind::IfLet(ref pattern, ref subexpression, ref block, ref opt_else) => {
-                let value = self.span.snippet(mk_sp(ex.span.lo, subexpression.span.hi));
+                let value = self.span.snippet(subexpression.span);
                 self.process_var_decl(pattern, value);
                 visit::walk_expr(self, subexpression);
                 visit::walk_block(self, block);
@@ -1371,7 +1421,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
 
     fn visit_local(&mut self, l: &ast::Local) {
         self.process_macro_use(l.span, l.id);
-        let value = self.span.snippet(l.span);
+        let value = l.init.as_ref().map(|i| self.span.snippet(i.span)).unwrap_or(String::new());
         self.process_var_decl(&l.pat, value);
 
         // Just walk the initialiser and type (don't want to walk the pattern again).

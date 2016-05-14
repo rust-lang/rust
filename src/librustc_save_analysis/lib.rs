@@ -52,7 +52,7 @@ use syntax::ast::{self, NodeId, PatKind};
 use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
-use syntax::print::pprust::ty_to_string;
+use syntax::print::pprust::{ty_to_string, arg_to_string};
 
 pub use self::csv_dumper::CsvDumper;
 pub use self::json_dumper::JsonDumper;
@@ -122,11 +122,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.node {
-            ast::ItemKind::Fn(..) => {
+            ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
                 let name = self.tcx.node_path_str(item.id);
                 let qualname = format!("::{}", name);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
                 filter!(self.span_utils, sub_span, item.span, None);
+
+
                 Some(Data::FunctionData(FunctionData {
                     id: item.id,
                     name: name,
@@ -134,6 +136,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     declaration: None,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
+                    value: make_signature(decl, generics),
                 }))
             }
             ast::ItemKind::Static(ref typ, mt, ref expr) => {
@@ -190,16 +193,22 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     filename: filename,
                 }))
             }
-            ast::ItemKind::Enum(..) => {
-                let enum_name = format!("::{}", self.tcx.node_path_str(item.id));
-                let val = self.span_utils.snippet(item.span);
+            ast::ItemKind::Enum(ref def, _) => {
+                let name = item.ident.to_string();
+                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Enum);
                 filter!(self.span_utils, sub_span, item.span, None);
+                let variants_str = def.variants.iter()
+                                      .map(|v| v.node.name.to_string())
+                                      .collect::<Vec<_>>()
+                                      .join(", ");
+                let val = format!("{}::{{{}}}", name, variants_str);
                 Some(Data::EnumData(EnumData {
                     id: item.id,
+                    name: name,
                     value: val,
                     span: sub_span.unwrap(),
-                    qualname: enum_name,
+                    qualname: qualname,
                     scope: self.enclosing_scope(item.id),
                 }))
             }
@@ -353,6 +362,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             declaration: decl_id,
             span: sub_span.unwrap(),
             scope: self.enclosing_scope(id),
+            // FIXME you get better data here by using the visitor.
+            value: String::new(),
         })
     }
 
@@ -635,6 +646,35 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn enclosing_scope(&self, id: NodeId) -> NodeId {
         self.tcx.map.get_enclosing_scope(id).unwrap_or(0)
     }
+}
+
+fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
+    let mut sig = String::new();
+    if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
+        sig.push('<');
+        sig.push_str(&generics.lifetimes.iter()
+                              .map(|l| l.lifetime.name.to_string())
+                              .collect::<Vec<_>>()
+                              .join(", "));
+        if !generics.lifetimes.is_empty() {
+            sig.push_str(", ");
+        }
+        sig.push_str(&generics.ty_params.iter()
+                              .map(|l| l.ident.to_string())
+                              .collect::<Vec<_>>()
+                              .join(", "));
+        sig.push_str("> ");
+    }
+    sig.push('(');
+    sig.push_str(&decl.inputs.iter().map(arg_to_string).collect::<Vec<_>>().join(", "));
+    sig.push(')');
+    match decl.output {
+        ast::FunctionRetTy::None(_) => sig.push_str(" -> !"),
+        ast::FunctionRetTy::Default(_) => {}
+        ast::FunctionRetTy::Ty(ref t) => sig.push_str(&format!(" -> {}", ty_to_string(t))),
+    }
+
+    sig
 }
 
 // An AST visitor for collecting paths from patterns.

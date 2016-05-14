@@ -331,7 +331,7 @@ impl<'b, W: Write + 'b> Dump for CsvDumper<'b, W> {
         self.record("type_ref", data.span, values);
     }
 
-    fn typedef(&mut self, data: TypedefData) {
+    fn typedef(&mut self, data: TypeDefData) {
         let id = data.id.index.as_u32().to_string();
         let values = make_values_str(&[
             ("id", &id),

@@ -2030,10 +2030,7 @@ pub enum ItemKind {
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
     Struct(VariantData, Generics),
     /// Represents a Trait Declaration
-    Trait(Unsafety,
-              Generics,
-              TyParamBounds,
-              Vec<TraitItem>),
+    Trait(Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
 
     // Default trait implementations
     ///
