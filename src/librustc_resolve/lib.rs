@@ -1949,9 +1949,7 @@ impl<'a> Resolver<'a> {
                                     this.check_trait_item(impl_item.ident.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
-                                    this.with_constant_rib(|this| {
-                                        visit::walk_impl_item(this, impl_item);
-                                    });
+                                    visit::walk_impl_item(this, impl_item);
                                 }
                                 ImplItemKind::Method(ref sig, _) => {
                                     // If this is a trait impl, ensure the method

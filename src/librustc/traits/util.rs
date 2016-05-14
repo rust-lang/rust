@@ -473,9 +473,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Given an upcast trait object described by `object`, returns the
     /// index of the method `method_def_id` (which should be part of
     /// `object.upcast_trait_ref`) within the vtable for `object`.
-    pub fn get_vtable_index_of_object_method(self,
-                                             object: &super::VtableObjectData<'tcx>,
-                                             method_def_id: DefId) -> usize {
+    pub fn get_vtable_index_of_object_method<N>(self,
+                                                object: &super::VtableObjectData<'tcx, N>,
+                                                method_def_id: DefId) -> usize {
         // Count number of methods preceding the one we are selecting and
         // add them to the total offset.
         // Skip over associated types and constants.

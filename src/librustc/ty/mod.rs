@@ -1260,22 +1260,13 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
         match tcx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
-                    hir::ImplItemKind::Type(_) => {
+                    hir::ImplItemKind::Type(_) | hir::ImplItemKind::Const(_, _) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the impl
                         let impl_id = tcx.map.get_parent(id);
                         let impl_def_id = tcx.map.local_def_id(impl_id);
                         let scheme = tcx.lookup_item_type(impl_def_id);
                         let predicates = tcx.lookup_predicates(impl_def_id);
-                        tcx.construct_parameter_environment(impl_item.span,
-                                                            &scheme.generics,
-                                                            &predicates,
-                                                            tcx.region_maps.item_extent(id))
-                    }
-                    hir::ImplItemKind::Const(_, _) => {
-                        let def_id = tcx.map.local_def_id(id);
-                        let scheme = tcx.lookup_item_type(def_id);
-                        let predicates = tcx.lookup_predicates(def_id);
                         tcx.construct_parameter_environment(impl_item.span,
                                                             &scheme.generics,
                                                             &predicates,
@@ -1303,7 +1294,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             }
             Some(ast_map::NodeTraitItem(trait_item)) => {
                 match trait_item.node {
-                    hir::TypeTraitItem(..) => {
+                    hir::TypeTraitItem(..) | hir::ConstTraitItem(..) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the trait
                         let trait_id = tcx.map.get_parent(id);
@@ -1312,15 +1303,6 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         let predicates = tcx.lookup_predicates(trait_def_id);
                         tcx.construct_parameter_environment(trait_item.span,
                                                             &trait_def.generics,
-                                                            &predicates,
-                                                            tcx.region_maps.item_extent(id))
-                    }
-                    hir::ConstTraitItem(..) => {
-                        let def_id = tcx.map.local_def_id(id);
-                        let scheme = tcx.lookup_item_type(def_id);
-                        let predicates = tcx.lookup_predicates(def_id);
-                        tcx.construct_parameter_environment(trait_item.span,
-                                                            &scheme.generics,
                                                             &predicates,
                                                             tcx.region_maps.item_extent(id))
                     }

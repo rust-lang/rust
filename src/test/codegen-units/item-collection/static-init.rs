@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod remove_dead_blocks;
-pub mod simplify_cfg;
-pub mod erase_regions;
-pub mod no_landing_pads;
-pub mod type_check;
-pub mod break_cleanup_edges;
-pub mod promote_consts;
-pub mod qualify_consts;
+// compile-flags:-Zprint-trans-items=eager
+
+pub static FN : fn() = foo::<i32>;
+
+pub fn foo<T>() { }
+
+//~ TRANS_ITEM fn static_init::foo[0]<i32>
+//~ TRANS_ITEM static static_init::FN[0]
+
+fn main() { }
+
+//~ TRANS_ITEM fn static_init::main[0]
+//~ TRANS_ITEM drop-glue i8

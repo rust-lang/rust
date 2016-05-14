@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,12 +7,15 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![feature(associated_consts)]
 
-pub mod remove_dead_blocks;
-pub mod simplify_cfg;
-pub mod erase_regions;
-pub mod no_landing_pads;
-pub mod type_check;
-pub mod break_cleanup_edges;
-pub mod promote_consts;
-pub mod qualify_consts;
+trait Lattice {
+    const BOTTOM: Self;
+}
+
+// FIXME(#33573): this should work without the 'static lifetime bound.
+impl<T: 'static> Lattice for Option<T> {
+    const BOTTOM: Option<T> = None;
+}
+
+fn main(){}
