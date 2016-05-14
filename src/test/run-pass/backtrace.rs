@@ -115,7 +115,7 @@ fn runtest(me: &str) {
 }
 
 fn main() {
-    if cfg!(windows) && cfg!(target_arch = "x86") && cfg!(target_env = "gnu") {
+    if cfg!(windows) && cfg!(target_env = "gnu") {
         return
     }
 
