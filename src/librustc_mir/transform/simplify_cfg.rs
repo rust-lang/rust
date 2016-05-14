@@ -29,7 +29,6 @@ impl SimplifyCfg {
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
-        simplify_branches(mir);
         RemoveDeadBlocks.run_pass(tcx, src, mir);
         merge_consecutive_blocks(mir);
         RemoveDeadBlocks.run_pass(tcx, src, mir);
@@ -152,53 +151,4 @@ fn final_target(mir: &Mir, mut target: BasicBlock) -> Option<BasicBlock> {
     }
 
     Some(target)
-}
-
-fn simplify_branches(mir: &mut Mir) {
-    loop {
-        let mut changed = false;
-
-        for bb in mir.all_basic_blocks() {
-            let basic_block = mir.basic_block_data_mut(bb);
-            let mut terminator = basic_block.terminator_mut();
-            terminator.kind = match terminator.kind {
-                TerminatorKind::If { ref targets, .. } if targets.0 == targets.1 => {
-                    changed = true;
-                    TerminatorKind::Goto { target: targets.0 }
-                }
-
-                TerminatorKind::If { ref targets, cond: Operand::Constant(Constant {
-                    literal: Literal::Value {
-                        value: ConstVal::Bool(cond)
-                    }, ..
-                }) } => {
-                    changed = true;
-                    if cond {
-                        TerminatorKind::Goto { target: targets.0 }
-                    } else {
-                        TerminatorKind::Goto { target: targets.1 }
-                    }
-                }
-
-                TerminatorKind::Assert { target, cond: Operand::Constant(Constant {
-                    literal: Literal::Value {
-                        value: ConstVal::Bool(cond)
-                    }, ..
-                }), expected, .. } if cond == expected => {
-                    changed = true;
-                    TerminatorKind::Goto { target: target }
-                }
-
-                TerminatorKind::SwitchInt { ref targets, .. } if targets.len() == 1 => {
-                    changed = true;
-                    TerminatorKind::Goto { target: targets[0] }
-                }
-                _ => continue
-            }
-        }
-
-        if !changed {
-            break;
-        }
-    }
 }

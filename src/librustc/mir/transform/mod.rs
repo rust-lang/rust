@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod lattice;
+pub mod dataflow;
+
 use dep_graph::DepNode;
 use hir;
 use hir::map::DefPathData;
