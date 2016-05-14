@@ -544,7 +544,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
         self.last_span = mir.span;
         debug!("run_on_mir: {:?}", mir.span);
-        for block in &mir.basic_blocks {
+        for block in &mir.cfg.basic_blocks {
             for stmt in &block.statements {
                 if stmt.span != DUMMY_SP {
                     self.last_span = stmt.span;

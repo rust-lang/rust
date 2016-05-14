@@ -24,6 +24,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(associated_consts)]
+#![feature(inclusive_range_syntax)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(collections)]
@@ -108,6 +109,8 @@ pub mod mir {
     pub mod visit;
     pub mod transform;
     pub mod mir_map;
+    pub mod cfg;
+    pub mod traversal;
 }
 
 pub mod session;

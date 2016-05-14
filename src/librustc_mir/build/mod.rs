@@ -58,10 +58,6 @@ pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     cached_return_block: Option<BasicBlock>,
 }
 
-struct CFG<'tcx> {
-    basic_blocks: Vec<BasicBlockData<'tcx>>,
-}
-
 /// For each scope, we track the extent (from the HIR) and a
 /// single-entry-multiple-exit subgraph that contains all the
 /// statements/terminators within it.
@@ -294,7 +290,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         (Mir {
-            basic_blocks: self.cfg.basic_blocks,
+            cfg: self.cfg,
             scopes: self.scope_datas,
             promoted: vec![],
             var_decls: self.var_decls,

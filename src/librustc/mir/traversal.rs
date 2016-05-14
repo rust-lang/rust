@@ -12,7 +12,7 @@ use std::vec;
 
 use rustc_data_structures::bitvec::BitVector;
 
-use rustc::mir::repr::*;
+use mir::repr::*;
 
 /// Preorder traversal of a graph.
 ///
@@ -44,7 +44,7 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
 
         Preorder {
             mir: mir,
-            visited: BitVector::new(mir.basic_blocks.len()),
+            visited: BitVector::new(mir.cfg.basic_blocks.len()),
             worklist: worklist
         }
     }
@@ -106,7 +106,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
     pub fn new(mir: &'a Mir<'tcx>, root: BasicBlock) -> Postorder<'a, 'tcx> {
         let mut po = Postorder {
             mir: mir,
-            visited: BitVector::new(mir.basic_blocks.len()),
+            visited: BitVector::new(mir.cfg.basic_blocks.len()),
             visit_stack: Vec::new()
         };
 

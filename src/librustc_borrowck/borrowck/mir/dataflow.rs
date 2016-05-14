@@ -167,7 +167,7 @@ impl<'c, 'b: 'c, 'a: 'b, 'tcx: 'a, OnReturn> PropagationContext<'c, 'b, 'a, 'tcx
 
     fn walk_cfg(&mut self, in_out: &mut [usize]) {
         let &mut MirBorrowckCtxt { ref mir, ref mut flow_state, .. } = self.mbcx;
-        for (idx, bb) in mir.basic_blocks.iter().enumerate() {
+        for (idx, bb) in mir.cfg.basic_blocks.iter().enumerate() {
             {
                 let sets = flow_state.sets.for_block(idx);
                 debug_assert!(in_out.len() == sets.on_entry.len());
@@ -371,7 +371,7 @@ impl<D: BitDenotation> DataflowState<D> {
         let bits_per_block = denotation.bits_per_block();
         let usize_bits = mem::size_of::<usize>() * 8;
         let words_per_block = (bits_per_block + usize_bits - 1) / usize_bits;
-        let num_blocks = mir.basic_blocks.len();
+        let num_blocks = mir.cfg.basic_blocks.len();
         let num_words = num_blocks * words_per_block;
 
         let entry = if denotation.initial_value() { usize::MAX } else {0};

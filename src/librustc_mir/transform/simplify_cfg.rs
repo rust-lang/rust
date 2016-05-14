@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::middle::const_val::ConstVal;
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
@@ -74,40 +73,6 @@ impl SimplifyCfg {
         changed
     }
 
-    fn simplify_branches(&self, mir: &mut Mir) -> bool {
-        let mut changed = false;
-
-        for bb in mir.all_basic_blocks() {
-            let basic_block = mir.basic_block_data_mut(bb);
-            let mut terminator = basic_block.terminator_mut();
-            terminator.kind = match terminator.kind {
-                TerminatorKind::If { ref targets, .. } if targets.0 == targets.1 => {
-                    changed = true;
-                    TerminatorKind::Goto { target: targets.0 }
-                }
-
-                TerminatorKind::If { ref targets, cond: Operand::Constant(Constant {
-                    literal: Literal::Value {
-                        value: ConstVal::Bool(cond)
-                    }, ..
-                }) } => {
-                    changed = true;
-                    if cond {
-                        TerminatorKind::Goto { target: targets.0 }
-                    } else {
-                        TerminatorKind::Goto { target: targets.1 }
-                    }
-                }
-
-                TerminatorKind::SwitchInt { ref targets, .. } if targets.len() == 1 => {
-                    TerminatorKind::Goto { target: targets[0] }
-                }
-                _ => continue
-            }
-        }
-
-        changed
-    }
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
@@ -118,12 +83,11 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
         while changed {
             pretty::dump_mir(tcx, "simplify_cfg", &counter, src, mir, None);
             counter += 1;
-            changed = self.simplify_branches(mir);
             changed |= self.remove_goto_chains(mir);
             RemoveDeadBlocks.run_pass(tcx, src, mir);
         }
         // FIXME: Should probably be moved into some kind of pass manager
-        mir.basic_blocks.shrink_to_fit();
+        mir.cfg.basic_blocks.shrink_to_fit();
     }
 }
 

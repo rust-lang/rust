@@ -26,6 +26,7 @@ use rustc::mir::repr::*;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::transform::{Pass, MirMapPass, MirSource};
 use rustc::mir::visit::{LvalueContext, Visitor};
+use rustc::mir::traversal::{self, ReversePostorder};
 use rustc::util::nodemap::DefIdMap;
 use syntax::abi::Abi;
 use syntax::codemap::Span;
@@ -35,7 +36,6 @@ use std::collections::hash_map::Entry;
 use std::fmt;
 
 use build::Location;
-use traversal::{self, ReversePostorder};
 
 use super::promote_consts::{self, Candidate, TempState};
 
@@ -391,7 +391,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     fn qualify_const(&mut self) -> Qualif {
         let mir = self.mir;
 
-        let mut seen_blocks = BitVector::new(mir.basic_blocks.len());
+        let mut seen_blocks = BitVector::new(mir.cfg.basic_blocks.len());
         let mut bb = START_BLOCK;
         loop {
             seen_blocks.insert(bb.index());
