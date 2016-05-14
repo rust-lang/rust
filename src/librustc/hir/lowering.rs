@@ -54,7 +54,7 @@ use syntax::errors::Handler;
 use syntax::ext::mtwt;
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned, Span};
-use syntax::parse::token;
+use syntax::parse::token::{self, keywords};
 use syntax::std_inject;
 use syntax::visit::{self, Visitor};
 
@@ -146,7 +146,11 @@ impl<'a, 'hir> LoweringContext<'a> {
 
 pub fn lower_ident(_lctx: &LoweringContext, ident: Ident) -> hir::Ident {
     hir::Ident {
-        name: mtwt::resolve(ident),
+        name: if ident.name != keywords::SelfValue.name() {
+            mtwt::resolve(ident)
+        } else {
+            ident.name
+        },
         unhygienic_name: ident.name,
     }
 }
