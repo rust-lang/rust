@@ -19,6 +19,7 @@ use super::PredicateObligation;
 use super::SelectionContext;
 use super::SelectionError;
 use super::VtableClosureData;
+use super::VtableFnPointerData;
 use super::VtableImplData;
 use super::util;
 
@@ -158,7 +159,7 @@ enum ProjectionTyCandidate<'tcx> {
     Closure(VtableClosureData<'tcx, PredicateObligation<'tcx>>),
 
     // fn pointer return type
-    FnPointer(Ty<'tcx>),
+    FnPointer(VtableFnPointerData<'tcx, PredicateObligation<'tcx>>),
 }
 
 struct ProjectionTyCandidateSet<'tcx> {
@@ -873,9 +874,9 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
             candidate_set.vec.push(
                 ProjectionTyCandidate::Closure(data));
         }
-        super::VtableFnPointer(fn_type) => {
+        super::VtableFnPointer(data) => {
             candidate_set.vec.push(
-                ProjectionTyCandidate::FnPointer(fn_type));
+                ProjectionTyCandidate::FnPointer(data));
         }
         super::VtableParam(..) => {
             // This case tell us nothing about the value of an
@@ -941,8 +942,8 @@ fn confirm_candidate<'cx, 'gcx, 'tcx>(
             confirm_closure_candidate(selcx, obligation, closure_vtable)
         }
 
-        ProjectionTyCandidate::FnPointer(fn_type) => {
-            confirm_fn_pointer_candidate(selcx, obligation, fn_type)
+        ProjectionTyCandidate::FnPointer(fn_pointer_vtable) => {
+            confirm_fn_pointer_candidate(selcx, obligation, fn_pointer_vtable)
         }
     }
 }
@@ -950,10 +951,13 @@ fn confirm_candidate<'cx, 'gcx, 'tcx>(
 fn confirm_fn_pointer_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    fn_type: Ty<'tcx>)
+    fn_pointer_vtable: VtableFnPointerData<'tcx, PredicateObligation<'tcx>>)
     -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
-    let fn_type = selcx.infcx().shallow_resolve(fn_type);
+    // FIXME(#32730) propagate obligations (fn pointer vtable nested obligations ONLY come from
+    // unification in inference)
+    assert!(fn_pointer_vtable.nested.is_empty());
+    let fn_type = selcx.infcx().shallow_resolve(fn_pointer_vtable.fn_ty);
     let sig = fn_type.fn_sig();
     confirm_callable_candidate(selcx, obligation, sig, util::TupleArgumentsFlag::Yes)
 }
