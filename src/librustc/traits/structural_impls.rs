@@ -99,11 +99,20 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableDefaultImplData<N> {
     }
 }
 
-impl<'tcx> fmt::Debug for traits::VtableObjectData<'tcx> {
+impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableObjectData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableObject(upcast={:?}, vtable_base={})",
+        write!(f, "VtableObject(upcast={:?}, vtable_base={}, nested={:?})",
                self.upcast_trait_ref,
-               self.vtable_base)
+               self.vtable_base,
+               self.nested)
+    }
+}
+
+impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableFnPointerData<'tcx, N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VtableFnPointer(fn_ty={:?}, nested={:?})",
+               self.fn_ty,
+               self.nested)
     }
 }
 
@@ -185,19 +194,26 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
                     })
                 })
             }
-            traits::VtableFnPointer(ty) => {
-                tcx.lift(&ty).map(traits::VtableFnPointer)
+            traits::VtableFnPointer(traits::VtableFnPointerData { fn_ty, nested }) => {
+                tcx.lift(&fn_ty).map(|fn_ty| {
+                    traits::VtableFnPointer(traits::VtableFnPointerData {
+                        fn_ty: fn_ty,
+                        nested: nested,
+                    })
+                })
             }
             traits::VtableParam(n) => Some(traits::VtableParam(n)),
             traits::VtableBuiltin(d) => Some(traits::VtableBuiltin(d)),
             traits::VtableObject(traits::VtableObjectData {
                 upcast_trait_ref,
-                vtable_base
+                vtable_base,
+                nested
             }) => {
                 tcx.lift(&upcast_trait_ref).map(|trait_ref| {
                     traits::VtableObject(traits::VtableObjectData {
                         upcast_trait_ref: trait_ref,
-                        vtable_base: vtable_base
+                        vtable_base: vtable_base,
+                        nested: nested
                     })
                 })
             }
@@ -276,16 +292,30 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableBuiltinDa
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx> {
+impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx, N> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         traits::VtableObjectData {
             upcast_trait_ref: self.upcast_trait_ref.fold_with(folder),
-            vtable_base: self.vtable_base
+            vtable_base: self.vtable_base,
+            nested: self.nested.fold_with(folder),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.upcast_trait_ref.visit_with(visitor)
+        self.upcast_trait_ref.visit_with(visitor) || self.nested.visit_with(visitor)
+    }
+}
+
+impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableFnPointerData<'tcx, N> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        traits::VtableFnPointerData {
+            fn_ty: self.fn_ty.fold_with(folder),
+            nested: self.nested.fold_with(folder),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.fn_ty.visit_with(visitor) || self.nested.visit_with(visitor)
     }
 }
 
