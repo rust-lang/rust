@@ -39,6 +39,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
     //      Clone + Copy, and then there'd be no Clone impl at all if the user fills in something
     //      that is Clone but not Copy. and until specialization we can't write both impls.
     let bounds;
+    let unify_fieldless_variants;
     let substructure;
     match *item {
         Annotatable::Item(ref annitem) => {
@@ -49,6 +50,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                         && attr::contains_name(&annitem.attrs, "derive_Copy") => {
 
                     bounds = vec![Literal(path_std!(cx, core::marker::Copy))];
+                    unify_fieldless_variants = true;
                     substructure = combine_substructure(Box::new(|c, s, sub| {
                         cs_clone("Clone", c, s, sub, Mode::Shallow)
                     }));
@@ -56,6 +58,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
 
                 _ => {
                     bounds = vec![];
+                    unify_fieldless_variants = false;
                     substructure = combine_substructure(Box::new(|c, s, sub| {
                         cs_clone("Clone", c, s, sub, Mode::Deep)
                     }));
@@ -84,6 +87,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                 ret_ty: Self_,
                 attributes: attrs,
                 is_unsafe: false,
+                unify_fieldless_variants: unify_fieldless_variants,
                 combine_substructure: substructure,
             }
         ),
