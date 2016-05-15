@@ -21,6 +21,9 @@ extern {
 // CHECK: declare void @unwinding_extern_fn
     #[unwind]
     fn unwinding_extern_fn();
+
+// CHECK: declare void @extern_varargs_fn(...)
+    fn extern_varargs_fn(...);
 }
 
 pub unsafe fn force_declare() {
