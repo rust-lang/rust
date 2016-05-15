@@ -21,6 +21,8 @@ use syntax::ast::NodeId;
 use syntax::codemap::Span;
 
 const INDENT: &'static str = "    ";
+/// Alignment for lining up comments following MIR statements
+const ALIGN: usize = 40;
 
 /// If the session is properly configured, dumps a human-readable
 /// representation of the mir into:
@@ -79,11 +81,20 @@ pub fn write_mir_pretty<'a, 'b, 'tcx, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                                          -> io::Result<()>
     where I: Iterator<Item=(&'a NodeId, &'a Mir<'tcx>)>, 'tcx: 'a
 {
+    let mut first = true;
     for (&id, mir) in iter {
+        if first {
+            first = false;
+        } else {
+            // Put empty lines between all items
+            writeln!(w, "")?;
+        }
+
         let src = MirSource::from_node(tcx, id);
         write_mir_fn(tcx, src, mir, w, None)?;
 
         for (i, mir) in mir.promoted.iter().enumerate() {
+            writeln!(w, "")?;
             write_mir_fn(tcx, MirSource::Promoted(id, i), mir, w, None)?;
         }
     }
@@ -131,7 +142,10 @@ pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   .or_insert(vec![])
                   .push(ScopeId::new(index));
     }
-    write_scope_tree(tcx, mir, auxiliary, &scope_tree, w, None, 1)?;
+
+    writeln!(w, "{}scope tree:", INDENT)?;
+    write_scope_tree(tcx, mir, auxiliary, &scope_tree, w, None, 1, false)?;
+    writeln!(w, "")?;
 
     writeln!(w, "}}")?;
     Ok(())
@@ -147,7 +161,7 @@ fn write_basic_block(tcx: TyCtxt,
     let data = mir.basic_block_data(block);
 
     // Basic block label at the top.
-    writeln!(w, "\n{}{:?}: {{", INDENT, block)?;
+    writeln!(w, "{}{:?}: {{", INDENT, block)?;
 
     // List of statements in the middle.
     let mut current_location = Location { block: block, statement_index: 0 };
@@ -165,25 +179,27 @@ fn write_basic_block(tcx: TyCtxt,
             }
         }
 
-        writeln!(w, "{0}{0}{1:?}; // {2}",
-                 INDENT,
-                 statement,
+        let indented_mir = format!("{0}{0}{1:?};", INDENT, statement);
+        writeln!(w, "{0:1$} // {2}",
+                 indented_mir,
+                 ALIGN,
                  comment(tcx, statement.scope, statement.span))?;
 
         current_location.statement_index += 1;
     }
 
     // Terminator at the bottom.
-    writeln!(w, "{0}{0}{1:?}; // {2}",
-             INDENT,
-             data.terminator().kind,
+    let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
+    writeln!(w, "{0:1$} // {2}",
+             indented_terminator,
+             ALIGN,
              comment(tcx, data.terminator().scope, data.terminator().span))?;
 
-    writeln!(w, "{}}}", INDENT)
+    writeln!(w, "{}}}\n", INDENT)
 }
 
 fn comment(tcx: TyCtxt, scope: ScopeId, span: Span) -> String {
-    format!("Scope({}) at {}", scope.index(), tcx.sess.codemap().span_to_string(span))
+    format!("scope {} at {}", scope.index(), tcx.sess.codemap().span_to_string(span))
 }
 
 fn write_scope_tree(tcx: TyCtxt,
@@ -192,18 +208,32 @@ fn write_scope_tree(tcx: TyCtxt,
                     scope_tree: &FnvHashMap<Option<ScopeId>, Vec<ScopeId>>,
                     w: &mut Write,
                     parent: Option<ScopeId>,
-                    depth: usize)
+                    depth: usize,
+                    same_line: bool)
                     -> io::Result<()> {
-    for &child in scope_tree.get(&parent).unwrap_or(&vec![]) {
-        let indent = depth * INDENT.len();
+    let indent = if same_line {
+        0
+    } else {
+        depth * INDENT.len()
+    };
+
+    let children = match scope_tree.get(&parent) {
+        Some(childs) => childs,
+        None => return Ok(()),
+    };
+
+    for (index, &child) in children.iter().enumerate() {
+        if index == 0 && same_line {
+            // We know we're going to output a scope, so prefix it with a space to separate it from
+            // the previous scopes on this line
+            write!(w, " ")?;
+        }
+
         let data = &mir.scopes[child];
         assert_eq!(data.parent_scope, parent);
-        writeln!(w, "{0:1$}Scope({2}) {{", "", indent, child.index())?;
+        write!(w, "{0:1$}{2}", "", indent, child.index())?;
 
         let indent = indent + INDENT.len();
-        if let Some(parent) = parent {
-            writeln!(w, "{0:1$}Parent: Scope({2})", "", indent, parent.index())?;
-        }
 
         if let Some(auxiliary) = auxiliary {
             let extent = auxiliary[child].extent;
@@ -211,9 +241,25 @@ fn write_scope_tree(tcx: TyCtxt,
             writeln!(w, "{0:1$}Extent: {2:?}", "", indent, data)?;
         }
 
-        write_scope_tree(tcx, mir, auxiliary, scope_tree, w,
-                         Some(child), depth + 1)?;
+        let child_count = scope_tree.get(&Some(child)).map(Vec::len).unwrap_or(0);
+        if child_count < 2 {
+            // Skip the braces when there's no or only a single subscope
+            write_scope_tree(tcx, mir, auxiliary, scope_tree, w,
+                             Some(child), depth, true)?;
+        } else {
+            // 2 or more child scopes? Put them in braces and on new lines.
+            writeln!(w, " {{")?;
+            write_scope_tree(tcx, mir, auxiliary, scope_tree, w,
+                             Some(child), depth + 1, false)?;
+
+            write!(w, "\n{0:1$}}}", "", depth * INDENT.len())?;
+        }
+
+        if !same_line && index + 1 < children.len() {
+            writeln!(w, "")?;
+        }
     }
+
     Ok(())
 }
 
@@ -261,13 +307,20 @@ fn write_mir_intro<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // User variable types (including the user's name in a comment).
     for (i, var) in mir.var_decls.iter().enumerate() {
-        write!(w, "{}let ", INDENT)?;
-        if var.mutability == Mutability::Mut {
-            write!(w, "mut ")?;
-        }
-        writeln!(w, "{:?}: {}; // {} in {}",
-                 Lvalue::Var(i as u32),
-                 var.ty,
+        let mut_str = if var.mutability == Mutability::Mut {
+            "mut "
+        } else {
+            ""
+        };
+
+        let indented_var = format!("{}let {}{:?}: {};",
+                                   INDENT,
+                                   mut_str,
+                                   Lvalue::Var(i as u32),
+                                   var.ty);
+        writeln!(w, "{0:1$} // \"{2}\" in {3}",
+                 indented_var,
+                 ALIGN,
                  var.name,
                  comment(tcx, var.scope, var.span))?;
     }
@@ -275,6 +328,11 @@ fn write_mir_intro<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Compiler-introduced temporary types.
     for (i, temp) in mir.temp_decls.iter().enumerate() {
         writeln!(w, "{}let mut {:?}: {};", INDENT, Lvalue::Temp(i as u32), temp.ty)?;
+    }
+
+    // Wrote any declaration? Add an empty line before the first block is printed.
+    if !mir.var_decls.is_empty() || !mir.temp_decls.is_empty() {
+        writeln!(w, "")?;
     }
 
     Ok(())
