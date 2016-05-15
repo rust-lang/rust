@@ -1,4 +1,5 @@
 #[must_use]
+#[derive(Debug, Clone)]
 pub struct Summary {
     // Encountered e.g. an IO error.
     has_operational_errors: bool,

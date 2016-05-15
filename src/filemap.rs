@@ -13,7 +13,6 @@
 
 use strings::string_buffer::StringBuffer;
 
-use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, Write, Read, stdout, BufWriter};
 
@@ -22,27 +21,26 @@ use rustfmt_diff::{make_diff, print_diff, Mismatch};
 use checkstyle::{output_header, output_footer, output_checkstyle_file};
 
 // A map of the files of a crate, with their new content
-pub type FileMap = HashMap<String, StringBuffer>;
+pub type FileMap = Vec<FileRecord>;
+
+pub type FileRecord = (String, StringBuffer);
 
 // Append a newline to the end of each file.
-pub fn append_newlines(file_map: &mut FileMap) {
-    for (_, s) in file_map.iter_mut() {
-        s.push_str("\n");
-    }
+pub fn append_newline(s: &mut StringBuffer) {
+    s.push_str("\n");
 }
 
 pub fn write_all_files<T>(file_map: &FileMap, out: &mut T, config: &Config) -> Result<(), io::Error>
     where T: Write
 {
     output_header(out, config.write_mode).ok();
-    for filename in file_map.keys() {
-        try!(write_file(&file_map[filename], filename, out, config));
+    for &(ref filename, ref text) in file_map {
+        try!(write_file(text, filename, out, config));
     }
     output_footer(out, config.write_mode).ok();
 
     Ok(())
 }
-
 
 // Prints all newlines either as `\n` or as `\r\n`.
 pub fn write_system_newlines<T>(writer: T,

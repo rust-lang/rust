@@ -31,7 +31,9 @@ use syntax::errors::{Handler, DiagnosticBuilder};
 use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::parse::{self, ParseSess};
 
-use std::io::{stdout, Write};
+use strings::string_buffer::StringBuffer;
+
+use std::io::{self, stdout, Write};
 use std::ops::{Add, Sub};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -42,6 +44,7 @@ use issues::{BadIssueSeeker, Issue};
 use filemap::FileMap;
 use visitor::FmtVisitor;
 use config::Config;
+use checkstyle::{output_header, output_footer};
 
 pub use self::summary::Summary;
 
@@ -274,12 +277,16 @@ impl fmt::Display for FormatReport {
 }
 
 // Formatting which depends on the AST.
-fn format_ast(krate: &ast::Crate,
-              parse_session: &ParseSess,
-              main_file: &Path,
-              config: &Config)
-              -> FileMap {
-    let mut file_map = FileMap::new();
+fn format_ast<F>(krate: &ast::Crate,
+                 parse_session: &ParseSess,
+                 main_file: &Path,
+                 config: &Config,
+                 mut after_file: F)
+                 -> Result<FileMap, io::Error>
+    where F: FnMut(&str, &mut StringBuffer) -> Result<(), io::Error>
+{
+    let mut result = FileMap::new();
+
     // We always skip children for the "Plain" write mode, since there is
     // nothing to distinguish the nested module contents.
     let skip_children = config.skip_children || config.write_mode == config::WriteMode::Plain;
@@ -293,92 +300,86 @@ fn format_ast(krate: &ast::Crate,
         }
         let mut visitor = FmtVisitor::from_codemap(parse_session, config);
         visitor.format_separate_mod(module);
-        file_map.insert(path.to_owned(), visitor.buffer);
+
+        try!(after_file(path, &mut visitor.buffer));
+
+        result.push((path.to_owned(), visitor.buffer));
     }
-    file_map
+
+    Ok(result)
 }
 
 // Formatting done on a char by char or line by line basis.
-// TODO(#209) warn on bad license
-// TODO(#20) other stuff for parity with make tidy
-fn format_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
-    let mut truncate_todo = Vec::new();
-    let mut report = FormatReport::new();
-
+// FIXME(#209) warn on bad license
+// FIXME(#20) other stuff for parity with make tidy
+fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &mut FormatReport) {
     // Iterate over the chars in the file map.
-    for (f, text) in file_map.iter() {
-        let mut trims = vec![];
-        let mut last_wspace: Option<usize> = None;
-        let mut line_len = 0;
-        let mut cur_line = 1;
-        let mut newline_count = 0;
-        let mut errors = vec![];
-        let mut issue_seeker = BadIssueSeeker::new(config.report_todo, config.report_fixme);
+    let mut trims = vec![];
+    let mut last_wspace: Option<usize> = None;
+    let mut line_len = 0;
+    let mut cur_line = 1;
+    let mut newline_count = 0;
+    let mut errors = vec![];
+    let mut issue_seeker = BadIssueSeeker::new(config.report_todo, config.report_fixme);
 
-        for (c, b) in text.chars() {
-            if c == '\r' {
-                line_len += c.len_utf8();
-                continue;
-            }
-
-            // Add warnings for bad todos/ fixmes
-            if let Some(issue) = issue_seeker.inspect(c) {
-                errors.push(FormattingError {
-                    line: cur_line,
-                    kind: ErrorKind::BadIssue(issue),
-                });
-            }
-
-            if c == '\n' {
-                // Check for (and record) trailing whitespace.
-                if let Some(lw) = last_wspace {
-                    trims.push((cur_line, lw, b));
-                    line_len -= b - lw;
-                }
-                // Check for any line width errors we couldn't correct.
-                if line_len > config.max_width {
-                    errors.push(FormattingError {
-                        line: cur_line,
-                        kind: ErrorKind::LineOverflow,
-                    });
-                }
-                line_len = 0;
-                cur_line += 1;
-                newline_count += 1;
-                last_wspace = None;
-            } else {
-                newline_count = 0;
-                line_len += c.len_utf8();
-                if c.is_whitespace() {
-                    if last_wspace.is_none() {
-                        last_wspace = Some(b);
-                    }
-                } else {
-                    last_wspace = None;
-                }
-            }
+    for (c, b) in text.chars() {
+        if c == '\r' {
+            line_len += c.len_utf8();
+            continue;
         }
 
-        if newline_count > 1 {
-            debug!("track truncate: {} {} {}", f, text.len, newline_count);
-            truncate_todo.push((f.to_owned(), text.len - newline_count + 1))
-        }
-
-        for &(l, _, _) in &trims {
+        // Add warnings for bad todos/ fixmes
+        if let Some(issue) = issue_seeker.inspect(c) {
             errors.push(FormattingError {
-                line: l,
-                kind: ErrorKind::TrailingWhitespace,
+                line: cur_line,
+                kind: ErrorKind::BadIssue(issue),
             });
         }
 
-        report.file_error_map.insert(f.to_owned(), errors);
+        if c == '\n' {
+            // Check for (and record) trailing whitespace.
+            if let Some(lw) = last_wspace {
+                trims.push((cur_line, lw, b));
+                line_len -= b - lw;
+            }
+            // Check for any line width errors we couldn't correct.
+            if line_len > config.max_width {
+                errors.push(FormattingError {
+                    line: cur_line,
+                    kind: ErrorKind::LineOverflow,
+                });
+            }
+            line_len = 0;
+            cur_line += 1;
+            newline_count += 1;
+            last_wspace = None;
+        } else {
+            newline_count = 0;
+            line_len += c.len_utf8();
+            if c.is_whitespace() {
+                if last_wspace.is_none() {
+                    last_wspace = Some(b);
+                }
+            } else {
+                last_wspace = None;
+            }
+        }
     }
 
-    for (f, l) in truncate_todo {
-        file_map.get_mut(&f).unwrap().truncate(l);
+    if newline_count > 1 {
+        debug!("track truncate: {} {}", text.len, newline_count);
+        let line = text.len - newline_count + 1;
+        text.truncate(line);
     }
 
-    report
+    for &(l, _, _) in &trims {
+        errors.push(FormattingError {
+            line: l,
+            kind: ErrorKind::TrailingWhitespace,
+        });
+    }
+
+    report.file_error_map.insert(name.to_owned(), errors);
 }
 
 fn parse_input(input: Input,
@@ -399,7 +400,10 @@ fn parse_input(input: Input,
     result.map_err(|e| Some(e))
 }
 
-pub fn format_input(input: Input, config: &Config) -> (Summary, FileMap, FormatReport) {
+pub fn format_input<T: Write>(input: Input,
+                              config: &Config,
+                              mut out: Option<&mut T>)
+                              -> Result<(Summary, FileMap, FormatReport), (io::Error, Summary)> {
     let mut summary = Summary::new();
     let codemap = Rc::new(CodeMap::new());
 
@@ -419,7 +423,7 @@ pub fn format_input(input: Input, config: &Config) -> (Summary, FileMap, FormatR
                 diagnostic.emit();
             }
             summary.add_parsing_error();
-            return (summary, FileMap::new(), FormatReport::new());
+            return Ok((summary, FileMap::new(), FormatReport::new()));
         }
     };
 
@@ -431,17 +435,33 @@ pub fn format_input(input: Input, config: &Config) -> (Summary, FileMap, FormatR
     let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None, codemap.clone()));
     parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
-    let mut file_map = format_ast(&krate, &parse_session, &main_file, config);
+    let mut report = FormatReport::new();
 
-    // For some reason, the codemap does not include terminating
-    // newlines so we must add one on for each file. This is sad.
-    filemap::append_newlines(&mut file_map);
+    match format_ast(&krate,
+                     &parse_session,
+                     &main_file,
+                     config,
+                     |file_name, file| {
+        // For some reason, the codemap does not include terminating
+        // newlines so we must add one on for each file. This is sad.
+        filemap::append_newline(file);
 
-    let report = format_lines(&mut file_map, config);
-    if report.has_warnings() {
-        summary.add_formatting_error();
+        format_lines(file, file_name, config, &mut report);
+
+        if let Some(ref mut out) = out {
+            try!(filemap::write_file(file, file_name, out, config));
+        }
+        Ok(())
+    }) {
+        Ok(file_map) => {
+            if report.has_warnings() {
+                summary.add_formatting_error();
+            }
+
+            Ok((summary, file_map, report))
+        }
+        Err(e) => Err((e, summary)),
     }
-    (summary, file_map, report)
 }
 
 pub enum Input {
@@ -450,18 +470,22 @@ pub enum Input {
 }
 
 pub fn run(input: Input, config: &Config) -> Summary {
-    let (mut summary, file_map, report) = format_input(input, config);
-    if report.has_warnings() {
-        msg!("{}", report);
+    let mut out = &mut stdout();
+    output_header(out, config.write_mode).ok();
+    match format_input(input, config, Some(out)) {
+        Ok((summary, _, report)) => {
+            output_footer(out, config.write_mode).ok();
+
+            if report.has_warnings() {
+                msg!("{}", report);
+            }
+
+            summary
+        }
+        Err((msg, mut summary)) => {
+            msg!("Error writing files: {}", msg);
+            summary.add_operational_error();
+            summary
+        }
     }
-
-    let mut out = stdout();
-    let write_result = filemap::write_all_files(&file_map, &mut out, config);
-
-    if let Err(msg) = write_result {
-        msg!("Error writing files: {}", msg);
-        summary.add_operational_error();
-    }
-
-    summary
 }

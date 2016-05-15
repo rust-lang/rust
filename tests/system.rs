@@ -143,9 +143,16 @@ fn self_tests() {
 fn stdin_formatting_smoke_test() {
     let input = Input::Text("fn main () {}".to_owned());
     let config = Config::default();
-    let (error_summary, file_map, _report) = format_input(input, &config);
+    let (error_summary, file_map, _report) = format_input::<io::Stdout>(input, &config, None)
+        .unwrap();
     assert!(error_summary.has_no_errors());
-    assert_eq!(file_map["stdin"].to_string(), "fn main() {}\n")
+    for &(ref file_name, ref text) in &file_map {
+        if file_name == "stdin" {
+            assert!(text.to_string() == "fn main() {}\n");
+            return;
+        }
+    }
+    panic!("no stdin");
 }
 
 #[test]
@@ -153,7 +160,8 @@ fn format_lines_errors_are_reported() {
     let long_identifier = String::from_utf8(vec![b'a'; 239]).unwrap();
     let input = Input::Text(format!("fn {}() {{}}", long_identifier));
     let config = Config::default();
-    let (error_summary, _file_map, _report) = format_input(input, &config);
+    let (error_summary, _file_map, _report) = format_input::<io::Stdout>(input, &config, None)
+        .unwrap();
     assert!(error_summary.has_formatting_errors());
 }
 
@@ -212,7 +220,8 @@ fn read_config(filename: &str) -> Config {
 
 fn format_file<P: Into<PathBuf>>(filename: P, config: &Config) -> (FileMap, FormatReport) {
     let input = Input::File(filename.into());
-    let (_error_summary, file_map, report) = format_input(input, &config);
+    let (_error_summary, file_map, report) = format_input::<io::Stdout>(input, &config, None)
+        .unwrap();
     return (file_map, report);
 }
 
@@ -222,7 +231,7 @@ pub fn idempotent_check(filename: String) -> Result<FormatReport, HashMap<String
     let (file_map, format_report) = format_file(filename, &config);
 
     let mut write_result = HashMap::new();
-    for (filename, text) in file_map.iter() {
+    for &(ref filename, ref text) in &file_map {
         let mut v = Vec::new();
         // Won't panic, as we're not doing any IO.
         write_system_newlines(&mut v, text, &config).unwrap();
