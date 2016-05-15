@@ -10,11 +10,11 @@
 
 fn main() {
     match Some(1) {
-        None @ _ => {} //~ ERROR declaration of `None` shadows an enum variant
+        None @ _ => {} //~ ERROR cannot be named the same
     };
     const C: u8 = 1;
     match 1 {
-        C @ 2 => { //~ ERROR variable bindings cannot shadow constants
+        C @ 2 => { //~ ERROR cannot be named the same
             println!("{}", C);
         }
         _ => {}

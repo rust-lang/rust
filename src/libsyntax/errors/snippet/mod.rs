@@ -618,6 +618,7 @@ impl FileInfo {
                         styled_buffer.set_style(0, p, Style::UnderlinePrimary);
                     } else {
                         styled_buffer.putc(1, p, '-', Style::UnderlineSecondary);
+                        styled_buffer.set_style(0, p, Style::UnderlineSecondary);
                     }
                 }
             }

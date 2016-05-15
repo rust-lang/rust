@@ -202,8 +202,8 @@ pub fn emit_type_err<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                      terr: &ty::error::TypeError<'tcx>,
                                      msg: &str) {
     let mut err = struct_span_err!(tcx.sess, span, E0211, "{}", msg);
-    err = err.span_label(span, &terr);
-    err = err.note_expected_found(&"type", &expected_ty, &found_ty);
+    err.span_label(span, &terr);
+    err.note_expected_found(&"type", &expected_ty, &found_ty);
     tcx.note_and_explain_type_err(&mut err, terr, span);
     err.emit();
 }

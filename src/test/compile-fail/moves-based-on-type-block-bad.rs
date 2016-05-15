@@ -32,6 +32,7 @@ fn main() {
     loop {
         f(&s, |hellothere| {
             match hellothere.x { //~ ERROR cannot move out
+                                 //~| move occurs here
                 box E::Foo(_) => {}
                 box E::Bar(x) => println!("{}", x.to_string()), //~ NOTE attempting to move value to here
                 box E::Baz => {}

@@ -26,6 +26,7 @@ fn f() {
 
     v3.push(&'x');           // statement 6
     //~^ ERROR borrowed value does not live long enough
+    //~| does not live long enough
     //~| NOTE ...but borrowed value is only valid for the statement
     //~| HELP consider using a `let` binding to increase its lifetime
 
@@ -36,6 +37,7 @@ fn f() {
 
         v4.push(&'y');
         //~^ ERROR borrowed value does not live long enough
+        //~| does not live long enough
         //~| NOTE ...but borrowed value is only valid for the statement
         //~| HELP consider using a `let` binding to increase its lifetime
 
@@ -46,6 +48,7 @@ fn f() {
 
     v5.push(&'z');
     //~^ ERROR borrowed value does not live long enough
+    //~| does not live long enough
     //~| NOTE ...but borrowed value is only valid for the statement
     //~| HELP consider using a `let` binding to increase its lifetime
 
