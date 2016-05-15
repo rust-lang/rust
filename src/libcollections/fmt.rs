@@ -298,7 +298,7 @@
 //! fn my_fmt_fn(args: fmt::Arguments) {
 //!     write!(&mut io::stdout(), "{}", args);
 //! }
-//! my_fmt_fn(format_args!("or a {} too", "function"));
+//! my_fmt_fn(format_args!(", or a {} too", "function"));
 //! ```
 //!
 //! The result of the `format_args!` macro is a value of type `fmt::Arguments`.
