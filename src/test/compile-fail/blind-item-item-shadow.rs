@@ -10,6 +10,8 @@
 
 mod foo { pub mod foo {  } } //~ NOTE previous definition of `foo` here
 
-use foo::foo; //~ ERROR a module named `foo` has already been defined in this module
+use foo::foo;
+//~^ ERROR a module named `foo` has already been defined in this module
+//~| was already imported
 
 fn main() {}

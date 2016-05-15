@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:declaration of `None` shadows
+// error-pattern:cannot be named the same
 use std::option::*;
 
 fn main() {

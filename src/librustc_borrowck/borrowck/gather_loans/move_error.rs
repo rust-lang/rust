@@ -72,7 +72,7 @@ fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         let mut err = report_cannot_move_out_of(bccx, error.move_from.clone());
         let mut is_first_note = true;
         for move_to in &error.move_to_places {
-            note_move_destination(&mut err, move_to.span,
+            err = note_move_destination(err, move_to.span,
                                   move_to.name, is_first_note);
             is_first_note = false;
         }
@@ -121,18 +121,25 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         Categorization::Deref(_, _, mc::Implicit(..)) |
         Categorization::Deref(_, _, mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
-            struct_span_err!(bccx, move_from.span, E0507,
+            let mut err = struct_span_err!(bccx, move_from.span, E0507,
                              "cannot move out of {}",
-                             move_from.descriptive_string(bccx.tcx))
+                             move_from.descriptive_string(bccx.tcx));
+            err.span_label(
+                move_from.span,
+                &format!("move occurs here")
+                );
+            err
         }
 
         Categorization::Interior(ref b, mc::InteriorElement(Kind::Index, _)) => {
             let expr = bccx.tcx.map.expect_expr(move_from.id);
             if let hir::ExprIndex(..) = expr.node {
-                struct_span_err!(bccx, move_from.span, E0508,
-                                 "cannot move out of type `{}`, \
-                                  a non-copy fixed-size array",
-                                 b.ty)
+                let mut err = struct_span_err!(bccx, move_from.span, E0508,
+                                               "cannot move out of type `{}`, \
+                                               a non-copy fixed-size array",
+                                               b.ty);
+                err.span_label(move_from.span, &format!("can not move out of here"));
+                err
             } else {
                 span_bug!(move_from.span, "this path should not cause illegal move");
             }
@@ -143,10 +150,12 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             match b.ty.sty {
                 ty::TyStruct(def, _) |
                 ty::TyEnum(def, _) if def.has_dtor() => {
-                    struct_span_err!(bccx, move_from.span, E0509,
-                                     "cannot move out of type `{}`, \
-                                      which defines the `Drop` trait",
-                                     b.ty)
+                    let mut err = struct_span_err!(bccx, move_from.span, E0509,
+                                                   "cannot move out of type `{}`, \
+                                                   which defines the `Drop` trait",
+                                                   b.ty);
+                    err.span_label(move_from.span, &format!("can not move out of here"));
+                    err
                 },
                 _ => {
                     span_bug!(move_from.span, "this path should not cause illegal move");
@@ -159,22 +168,24 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     }
 }
 
-fn note_move_destination(err: &mut DiagnosticBuilder,
+fn note_move_destination(mut err: DiagnosticBuilder,
                          move_to_span: codemap::Span,
                          pat_name: ast::Name,
-                         is_first_note: bool) {
+                         is_first_note: bool) -> DiagnosticBuilder {
     if is_first_note {
-        err.span_note(
+        err.span_label(
             move_to_span,
-            "attempting to move value to here");
+            &format!("attempting to move value to here"));
         err.help(
             &format!("to prevent the move, \
                       use `ref {0}` or `ref mut {0}` to capture value by \
                       reference",
                      pat_name));
+        err
     } else {
         err.span_note(move_to_span,
                       &format!("and here (use `ref {0}` or `ref mut {0}`)",
                                pat_name));
+        err
     }
 }

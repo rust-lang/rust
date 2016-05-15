@@ -13,6 +13,7 @@ static foo: i32 = 0;
 
 fn bar(foo: i32) {}
 //~^ ERROR static variables cannot be referenced in a pattern, use a `const` instead
+//~| static variable used in pattern
 
 mod submod {
     pub static answer: i32 = 42;
@@ -23,6 +24,6 @@ use self::submod::answer;
 
 fn question(answer: i32) {}
 //~^ ERROR static variables cannot be referenced in a pattern, use a `const` instead
-
+//~| static variable used in pattern
 fn main() {
 }

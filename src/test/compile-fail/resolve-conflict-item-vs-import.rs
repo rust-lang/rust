@@ -13,6 +13,6 @@ use std::mem::transmute;
 
 fn transmute() {}
 //~^ ERROR a value named `transmute` has already been imported in this module
-
+//~| was already imported
 fn main() {
 }
