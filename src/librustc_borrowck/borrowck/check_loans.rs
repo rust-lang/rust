@@ -475,7 +475,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
             let mut err = match (new_loan.kind, old_loan.kind) {
                 (ty::MutBorrow, ty::MutBorrow) => {
-                    let mut err =struct_span_err!(self.bccx, new_loan.span, E0499,
+                    let mut err = struct_span_err!(self.bccx, new_loan.span, E0499,
                                                   "cannot borrow `{}`{} as mutable \
                                                   more than once at a time",
                                                   nl, new_loan_msg);
