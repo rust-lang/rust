@@ -50,11 +50,71 @@ pub fn strip_unconfigured_items(diagnostic: &Handler, krate: ast::Crate,
 
 impl<'a, F> fold::Folder for Context<'a, F> where F: FnMut(&[ast::Attribute]) -> bool {
     fn fold_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
-        fold_foreign_mod(self, foreign_mod)
+        ast::ForeignMod {
+            abi: foreign_mod.abi,
+            items: foreign_mod.items.into_iter().filter(|item| {
+                (self.in_cfg)(&item.attrs)
+            }).collect(),
+        }
     }
+
     fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
-        fold_item_kind(self, item)
+        let fold_struct = |this: &mut Self, vdata| match vdata {
+            ast::VariantData::Struct(fields, id) => {
+                ast::VariantData::Struct(fields.into_iter().filter(|m| {
+                    (this.in_cfg)(&m.attrs)
+                }).collect(), id)
+            }
+            ast::VariantData::Tuple(fields, id) => {
+                ast::VariantData::Tuple(fields.into_iter().filter(|m| {
+                    (this.in_cfg)(&m.attrs)
+                }).collect(), id)
+            }
+            ast::VariantData::Unit(id) => ast::VariantData::Unit(id)
+        };
+
+        let item = match item {
+            ast::ItemKind::Impl(u, o, a, b, c, impl_items) => {
+                let impl_items = impl_items.into_iter()
+                                           .filter(|ii| (self.in_cfg)(&ii.attrs))
+                                           .collect();
+                ast::ItemKind::Impl(u, o, a, b, c, impl_items)
+            }
+            ast::ItemKind::Trait(u, a, b, methods) => {
+                let methods = methods.into_iter()
+                                     .filter(|ti| (self.in_cfg)(&ti.attrs))
+                                     .collect();
+                ast::ItemKind::Trait(u, a, b, methods)
+            }
+            ast::ItemKind::Struct(def, generics) => {
+                ast::ItemKind::Struct(fold_struct(self, def), generics)
+            }
+            ast::ItemKind::Enum(def, generics) => {
+                let variants = def.variants.into_iter().filter_map(|v| {
+                    if !(self.in_cfg)(&v.node.attrs) {
+                        None
+                    } else {
+                        Some(Spanned {
+                            node: ast::Variant_ {
+                                name: v.node.name,
+                                attrs: v.node.attrs,
+                                data: fold_struct(self, v.node.data),
+                                disr_expr: v.node.disr_expr,
+                            },
+                            span: v.span
+                        })
+                    }
+                });
+                ast::ItemKind::Enum(ast::EnumDef {
+                    variants: variants.collect(),
+                }, generics)
+            }
+            item => item,
+        };
+
+        fold::noop_fold_item_kind(item, self)
     }
+
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
         // If an expr is valid to cfg away it will have been removed by the
         // outer stmt or expression folder before descending in here.
@@ -69,17 +129,33 @@ impl<'a, F> fold::Folder for Context<'a, F> where F: FnMut(&[ast::Attribute]) ->
         }
         fold_expr(self, expr)
     }
+
     fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        fold_opt_expr(self, expr)
+        if (self.in_cfg)(expr.attrs()) {
+            Some(fold_expr(self, expr))
+        } else {
+            None
+        }
     }
+
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
-        fold_stmt(self, stmt)
+        if (self.in_cfg)(stmt.node.attrs()) {
+            fold::noop_fold_stmt(stmt, self)
+        } else {
+            SmallVector::zero()
+        }
     }
+
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
         fold::noop_fold_mac(mac, self)
     }
+
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
-        fold_item(self, item)
+        if (self.in_cfg)(&item.attrs) {
+            SmallVector::one(item.map(|i| self.fold_item_simple(i)))
+        } else {
+            SmallVector::zero()
+        }
     }
 }
 
@@ -92,114 +168,6 @@ pub fn strip_items<'a, F>(diagnostic: &'a Handler,
         diagnostic: diagnostic,
     };
     ctxt.fold_crate(krate)
-}
-
-fn filter_foreign_item<F>(cx: &mut Context<F>,
-                          item: ast::ForeignItem)
-                          -> Option<ast::ForeignItem> where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    if foreign_item_in_cfg(cx, &item) {
-        Some(item)
-    } else {
-        None
-    }
-}
-
-fn fold_foreign_mod<F>(cx: &mut Context<F>,
-                       ast::ForeignMod {abi, items}: ast::ForeignMod)
-                       -> ast::ForeignMod where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    ast::ForeignMod {
-        abi: abi,
-        items: items.into_iter()
-                    .filter_map(|a| filter_foreign_item(cx, a))
-                    .collect()
-    }
-}
-
-fn fold_item<F>(cx: &mut Context<F>, item: P<ast::Item>) -> SmallVector<P<ast::Item>> where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    if item_in_cfg(cx, &item) {
-        SmallVector::one(item.map(|i| cx.fold_item_simple(i)))
-    } else {
-        SmallVector::zero()
-    }
-}
-
-fn fold_item_kind<F>(cx: &mut Context<F>, item: ast::ItemKind) -> ast::ItemKind where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    let item = match item {
-        ast::ItemKind::Impl(u, o, a, b, c, impl_items) => {
-            let impl_items = impl_items.into_iter()
-                                       .filter(|ii| (cx.in_cfg)(&ii.attrs))
-                                       .collect();
-            ast::ItemKind::Impl(u, o, a, b, c, impl_items)
-        }
-        ast::ItemKind::Trait(u, a, b, methods) => {
-            let methods = methods.into_iter()
-                                 .filter(|ti| (cx.in_cfg)(&ti.attrs))
-                                 .collect();
-            ast::ItemKind::Trait(u, a, b, methods)
-        }
-        ast::ItemKind::Struct(def, generics) => {
-            ast::ItemKind::Struct(fold_struct(cx, def), generics)
-        }
-        ast::ItemKind::Enum(def, generics) => {
-            let variants = def.variants.into_iter().filter_map(|v| {
-                if !(cx.in_cfg)(&v.node.attrs) {
-                    None
-                } else {
-                    Some(Spanned {
-                        node: ast::Variant_ {
-                            name: v.node.name,
-                            attrs: v.node.attrs,
-                            data: fold_struct(cx, v.node.data),
-                            disr_expr: v.node.disr_expr,
-                        },
-                        span: v.span
-                    })
-                }
-            });
-            ast::ItemKind::Enum(ast::EnumDef {
-                variants: variants.collect(),
-            }, generics)
-        }
-        item => item,
-    };
-
-    fold::noop_fold_item_kind(item, cx)
-}
-
-fn fold_struct<F>(cx: &mut Context<F>, vdata: ast::VariantData) -> ast::VariantData where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    match vdata {
-        ast::VariantData::Struct(fields, id) => {
-            ast::VariantData::Struct(fields.into_iter().filter(|m| {
-                (cx.in_cfg)(&m.attrs)
-            }).collect(), id)
-        }
-        ast::VariantData::Tuple(fields, id) => {
-            ast::VariantData::Tuple(fields.into_iter().filter(|m| {
-                (cx.in_cfg)(&m.attrs)
-            }).collect(), id)
-        }
-        ast::VariantData::Unit(id) => ast::VariantData::Unit(id)
-    }
-}
-
-fn fold_opt_expr<F>(cx: &mut Context<F>, expr: P<ast::Expr>) -> Option<P<ast::Expr>>
-    where F: FnMut(&[ast::Attribute]) -> bool
-{
-    if expr_in_cfg(cx, &expr) {
-        Some(fold_expr(cx, expr))
-    } else {
-        None
-    }
 }
 
 fn fold_expr<F>(cx: &mut Context<F>, expr: P<ast::Expr>) -> P<ast::Expr> where
@@ -220,40 +188,6 @@ fn fold_expr<F>(cx: &mut Context<F>, expr: P<ast::Expr>) -> P<ast::Expr> where
             attrs: attrs,
         }, cx)
     })
-}
-
-fn fold_stmt<F>(cx: &mut Context<F>, stmt: ast::Stmt) -> SmallVector<ast::Stmt>
-    where F: FnMut(&[ast::Attribute]) -> bool
-{
-    if stmt_in_cfg(cx, &stmt) {
-        fold::noop_fold_stmt(stmt, cx)
-    } else {
-        SmallVector::zero()
-    }
-}
-
-fn stmt_in_cfg<F>(cx: &mut Context<F>, stmt: &ast::Stmt) -> bool where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    (cx.in_cfg)(stmt.node.attrs())
-}
-
-fn expr_in_cfg<F>(cx: &mut Context<F>, expr: &ast::Expr) -> bool where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    (cx.in_cfg)(expr.attrs())
-}
-
-fn item_in_cfg<F>(cx: &mut Context<F>, item: &ast::Item) -> bool where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    return (cx.in_cfg)(&item.attrs);
-}
-
-fn foreign_item_in_cfg<F>(cx: &mut Context<F>, item: &ast::ForeignItem) -> bool where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    return (cx.in_cfg)(&item.attrs);
 }
 
 fn is_cfg(attr: &ast::Attribute) -> bool {
