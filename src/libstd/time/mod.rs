@@ -76,7 +76,7 @@ pub struct Instant(time::Instant);
 /// Distinct from the `Instant` type, this time measurement **is not
 /// monotonic**. This means that you can save a file to the file system, then
 /// save another file to the file system, **and the second file has a
-/// `SystemTime` measurement earlier than the second**. In other words, an
+/// `SystemTime` measurement earlier than the first**. In other words, an
 /// operation that happens after another operation in real time may have an
 /// earlier `SystemTime`!
 ///
