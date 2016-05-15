@@ -142,13 +142,13 @@ pub enum Ordering {
     #[stable(feature = "rust1", since = "1.0.0")]
     Relaxed,
     /// When coupled with a store, all previous writes become visible
-    /// to another thread that performs a load with `Acquire` ordering
+    /// to the other threads that perform a load with `Acquire` ordering
     /// on the same value.
     #[stable(feature = "rust1", since = "1.0.0")]
     Release,
     /// When coupled with a load, all subsequent loads will see data
     /// written before a store with `Release` ordering on the same value
-    /// in another thread.
+    /// in other threads.
     #[stable(feature = "rust1", since = "1.0.0")]
     Acquire,
     /// When coupled with a load, uses `Acquire` ordering, and with a store

@@ -45,8 +45,8 @@ Matching with the wrong number of fields has no sensible interpretation:
 
 ```compile_fail
 enum Fruit {
-    Apple(String, String),
-    Pear(u32),
+    Fruit::Apple(String, String),
+    Fruit::Pear(u32),
 }
 
 let x = Fruit::Apple(String::new(), String::new());
@@ -77,8 +77,8 @@ enum Number {
 
 // Assuming x is a Number we can pattern match on its contents.
 match x {
-    Zero(inside) => {},
-    One(inside) => {},
+    Number::Zero(inside) => {},
+    Number::One(inside) => {},
 }
 ```
 
@@ -3284,6 +3284,164 @@ impl Baz for Bar { } // Note: This is OK
 ```
 "##,
 
+E0374: r##"
+A struct without a field containing an unsized type cannot implement
+`CoerceUnsized`. An
+[unsized type](https://doc.rust-lang.org/book/unsized-types.html)
+is any type that the compiler doesn't know the length or alignment of at
+compile time. Any struct containing an unsized type is also unsized.
+
+Example of erroneous code:
+
+```compile_fail
+#![feature(coerce_unsized)]
+use std::ops::CoerceUnsized;
+
+struct Foo<T: ?Sized> {
+    a: i32,
+}
+
+// error: Struct `Foo` has no unsized fields that need `CoerceUnsized`.
+impl<T, U> CoerceUnsized<Foo<U>> for Foo<T>
+    where T: CoerceUnsized<U> {}
+```
+
+`CoerceUnsized` is used to coerce one struct containing an unsized type
+into another struct containing a different unsized type. If the struct
+doesn't have any fields of unsized types then you don't need explicit
+coercion to get the types you want. To fix this you can either
+not try to implement `CoerceUnsized` or you can add a field that is
+unsized to the struct.
+
+Example:
+
+```
+#![feature(coerce_unsized)]
+use std::ops::CoerceUnsized;
+
+// We don't need to impl `CoerceUnsized` here.
+struct Foo {
+    a: i32,
+}
+
+// We add the unsized type field to the struct.
+struct Bar<T: ?Sized> {
+    a: i32,
+    b: T,
+}
+
+// The struct has an unsized field so we can implement
+// `CoerceUnsized` for it.
+impl<T, U> CoerceUnsized<Bar<U>> for Bar<T>
+    where T: CoerceUnsized<U> {}
+```
+
+Note that `CoerceUnsized` is mainly used by smart pointers like `Box`, `Rc`
+and `Arc` to be able to mark that they can coerce unsized types that they
+are pointing at.
+"##,
+
+E0375: r##"
+A struct with more than one field containing an unsized type cannot implement
+`CoerceUnsized`. This only occurs when you are trying to coerce one of the
+types in your struct to another type in the struct. In this case we try to
+impl `CoerceUnsized` from `T` to `U` which are both types that the struct
+takes. An [unsized type](https://doc.rust-lang.org/book/unsized-types.html)
+is any type that the compiler doesn't know the length or alignment of at
+compile time. Any struct containing an unsized type is also unsized.
+
+Example of erroneous code:
+
+```compile_fail
+#![feature(coerce_unsized)]
+use std::ops::CoerceUnsized;
+
+struct Foo<T: ?Sized, U: ?Sized> {
+    a: i32,
+    b: T,
+    c: U,
+}
+
+// error: Struct `Foo` has more than one unsized field.
+impl<T, U> CoerceUnsized<Foo<U, T>> for Foo<T, U> {}
+```
+
+`CoerceUnsized` only allows for coercion from a structure with a single
+unsized type field to another struct with a single unsized type field.
+In fact Rust only allows for a struct to have one unsized type in a struct
+and that unsized type must be the last field in the struct. So having two
+unsized types in a single struct is not allowed by the compiler. To fix this
+use only one field containing an unsized type in the struct and then use
+multiple structs to manage each unsized type field you need.
+
+Example:
+
+```
+#![feature(coerce_unsized)]
+use std::ops::CoerceUnsized;
+
+struct Foo<T: ?Sized> {
+    a: i32,
+    b: T,
+}
+
+impl <T, U> CoerceUnsized<Foo<U>> for Foo<T>
+    where T: CoerceUnsized<U> {}
+
+fn coerce_foo<T: CoerceUnsized<U>, U>(t: T) -> Foo<U> {
+    Foo { a: 12i32, b: t } // we use coercion to get the `Foo<U>` type we need
+}
+```
+
+"##,
+
+E0376: r##"
+The type you are trying to impl `CoerceUnsized` for is not a struct.
+`CoerceUnsized` can only be implemented for a struct. Unsized types are
+already able to be coerced without an implementation of `CoerceUnsized`
+whereas a struct containing an unsized type needs to know the unsized type
+field it's containing is able to be coerced. An
+[unsized type](https://doc.rust-lang.org/book/unsized-types.html)
+is any type that the compiler doesn't know the length or alignment of at
+compile time. Any struct containing an unsized type is also unsized.
+
+Example of erroneous code:
+
+```compile_fail
+#![feature(coerce_unsized)]
+use std::ops::CoerceUnsized;
+
+struct Foo<T: ?Sized> {
+    a: T,
+}
+
+// error: The type `U` is not a struct
+impl<T, U> CoerceUnsized<U> for Foo<T> {}
+```
+
+The `CoerceUnsized` trait takes a struct type. Make sure the type you are
+providing to `CoerceUnsized` is a struct with only the last field containing an
+unsized type.
+
+Example:
+
+```
+#![feature(coerce_unsized)]
+use std::ops::CoerceUnsized;
+
+struct Foo<T> {
+    a: T,
+}
+
+// The `Foo<U>` is a struct so `CoerceUnsized` can be implemented
+impl<T, U> CoerceUnsized<Foo<U>> for Foo<T> where T: CoerceUnsized<U> {}
+```
+
+Note that in Rust, structs can only contain an unsized type if the field
+containing the unsized type is the last and only unsized type field in the
+struct.
+"##,
+
 E0379: r##"
 Trait methods cannot be declared `const` by design. For more information, see
 [RFC 911].
@@ -3777,13 +3935,6 @@ register_diagnostics! {
     E0320, // recursive overflow during dropck
     E0328, // cannot implement Unsize explicitly
 //  E0372, // coherence not object safe
-    E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
-           // between structures with one field being coerced, none found
-    E0375, // the trait `CoerceUnsized` may only be implemented for a coercion
-           // between structures with one field being coerced, but multiple
-           // fields need coercions
-    E0376, // the trait `CoerceUnsized` may only be implemented for a coercion
-           // between structures
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
     E0399, // trait items need to be implemented because the associated

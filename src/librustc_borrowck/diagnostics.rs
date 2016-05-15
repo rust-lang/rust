@@ -378,6 +378,53 @@ let c = &i; // still ok!
 ```
 "##,
 
+E0500: r##"
+A borrowed variable was used in another closure. Example of erroneous code:
+
+```compile_fail
+fn you_know_nothing(jon_snow: &mut i32) {
+    let nights_watch = || {
+        *jon_snow = 2;
+    };
+    let starks = || {
+        *jon_snow = 3; // error: closure requires unique access to `jon_snow`
+                       //        but it is already borrowed
+    };
+}
+
+In here, `jon_snow` is already borrowed by the `nights_watch` closure, so it
+cannot be borrowed by the `starks` closure at the same time. To fix this issue,
+you can put the closure in its own scope:
+
+```
+fn you_know_nothing(jon_snow: &mut i32) {
+    {
+        let nights_watch = || {
+            *jon_snow = 2;
+        };
+    } // At this point, `jon_snow` is free.
+    let starks = || {
+        *jon_snow = 3;
+    };
+}
+```
+
+Or, if the type implements the `Clone` trait, you can clone it between
+closures:
+
+```
+fn you_know_nothing(jon_snow: &mut i32) {
+    let mut jon_copy = jon_snow.clone();
+    let nights_watch = || {
+        jon_copy = 2;
+    };
+    let starks = || {
+        *jon_snow = 3;
+    };
+}
+```
+"##,
+
 E0501: r##"
 This error indicates that a mutable variable is being used while it is still
 captured by a closure. Because the closure has borrowed the variable, it is not
@@ -642,6 +689,85 @@ fn print_fancy_ref(fancy_ref: &FancyNum){
 ```
 "##,
 
+E0505: r##"
+A value was moved out while it was still borrowed.
+Erroneous code example:
+
+```compile_fail
+struct Value {}
+
+fn eat(val: Value) {}
+
+fn main() {
+    let x = Value{};
+    {
+        let _ref_to_val: &Value = &x;
+        eat(x);
+    }
+}
+```
+
+Here, the function `eat` takes the ownership of `x`. However,
+`x` cannot be moved because it was borrowed to `_ref_to_val`.
+To fix that you can do few different things:
+
+* Try to avoid moving the variable.
+* Release borrow before move.
+* Implement the `Copy` trait on the type.
+
+Examples:
+
+```
+struct Value {}
+
+fn eat(val: &Value) {}
+
+fn main() {
+    let x = Value{};
+    {
+        let _ref_to_val: &Value = &x;
+        eat(&x); // pass by reference, if it's possible
+    }
+}
+```
+
+Or:
+
+```
+struct Value {}
+
+fn eat(val: Value) {}
+
+fn main() {
+    let x = Value{};
+    {
+        let _ref_to_val: &Value = &x;
+    }
+    eat(x); // release borrow and then move it.
+}
+```
+
+Or:
+
+```
+#[derive(Clone, Copy)] // implement Copy trait
+struct Value {}
+
+fn eat(val: Value) {}
+
+fn main() {
+    let x = Value{};
+    {
+        let _ref_to_val: &Value = &x;
+        eat(x); // it will be copied here.
+    }
+}
+```
+
+You can find more information about borrowing in the rust-book:
+http://doc.rust-lang.org/stable/book/references-and-borrowing.html
+"##,
+
 E0507: r##"
 You tried to move out of a value which was borrowed. Erroneous code example:
 
@@ -857,10 +983,8 @@ fn main() {
 register_diagnostics! {
     E0385, // {} in an aliasable location
     E0388, // {} in a static location
-    E0500, // closure requires unique access to `..` but .. is already borrowed
     E0502, // cannot borrow `..`.. as .. because .. is also borrowed as ...
     E0503, // cannot use `..` because it was mutably borrowed
-    E0505, // cannot move out of `..` because it is borrowed
     E0508, // cannot move out of type `..`, a non-copy fixed-size array
     E0524, // two closures require unique access to `..` at the same time
 }
