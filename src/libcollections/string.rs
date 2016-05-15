@@ -184,7 +184,7 @@ use boxed::Box;
 /// let len = story.len();
 /// let capacity = story.capacity();
 ///
-/// // story has thirteen bytes
+/// // story has nineteen bytes
 /// assert_eq!(19, len);
 ///
 /// // Now that we have our parts, we throw the story away.
