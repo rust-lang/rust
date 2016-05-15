@@ -42,6 +42,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
                 ret_ty: Self_,
                 attributes: attrs,
                 is_unsafe: false,
+                unify_fieldless_variants: false,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     default_substructure(a, b, c)
                 }))

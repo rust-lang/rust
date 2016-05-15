@@ -45,6 +45,7 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt,
                 ret_ty: Literal(path_std!(cx, core::fmt::Result)),
                 attributes: Vec::new(),
                 is_unsafe: false,
+                unify_fieldless_variants: false,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     show_substructure(a, b, c)
                 }))
