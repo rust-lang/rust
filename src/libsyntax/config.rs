@@ -26,14 +26,14 @@ pub trait CfgFolder: fold::Folder {
 
 /// A folder that strips out items that do not belong in the current
 /// configuration.
-struct Context<'a, F> where F: FnMut(&[ast::Attribute]) -> bool {
-    in_cfg: F,
-    diagnostic: &'a Handler,
+pub struct StripUnconfigured<'a> {
+    diag: CfgDiagReal<'a, 'a>,
+    config: &'a ast::CrateConfig,
 }
 
-impl<'a, F: FnMut(&[ast::Attribute]) -> bool> CfgFolder for Context<'a, F> {
+impl<'a> CfgFolder for StripUnconfigured<'a> {
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
-        if (self.in_cfg)(node.attrs()) {
+        if in_cfg(self.config, node.attrs(), &mut self.diag) {
             Some(node)
         } else {
             None
@@ -43,7 +43,7 @@ impl<'a, F: FnMut(&[ast::Attribute]) -> bool> CfgFolder for Context<'a, F> {
     fn visit_unconfigurable_expr(&mut self, expr: &ast::Expr) {
         if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
             let msg = "removing an expression is not supported in this position";
-            self.diagnostic.span_err(attr.span, msg);
+            self.diag.diag.span_err(attr.span, msg);
         }
     }
 }
@@ -58,16 +58,14 @@ pub fn strip_unconfigured_items(diagnostic: &Handler, krate: ast::Crate,
     check_for_gated_stmt_expr_attributes(&krate, feature_gated_cfgs);
 
     let krate = process_cfg_attr(diagnostic, krate, feature_gated_cfgs);
-    let config = krate.config.clone();
-    strip_items(diagnostic,
-                krate,
-                |attrs| {
-                    let mut diag = CfgDiagReal {
-                        diag: diagnostic,
-                        feature_gated_cfgs: feature_gated_cfgs,
-                    };
-                    in_cfg(&config, attrs, &mut diag)
-                })
+
+    StripUnconfigured {
+        config: &krate.config.clone(),
+        diag: CfgDiagReal {
+            diag: diagnostic,
+            feature_gated_cfgs: feature_gated_cfgs,
+        },
+    }.fold_crate(krate)
 }
 
 impl<T: CfgFolder> fold::Folder for T {
@@ -156,17 +154,6 @@ impl<T: CfgFolder> fold::Folder for T {
         self.configure(item).map(|item| SmallVector::one(item.map(|i| self.fold_item_simple(i))))
                             .unwrap_or(SmallVector::zero())
     }
-}
-
-pub fn strip_items<'a, F>(diagnostic: &'a Handler,
-                          krate: ast::Crate, in_cfg: F) -> ast::Crate where
-    F: FnMut(&[ast::Attribute]) -> bool,
-{
-    let mut ctxt = Context {
-        in_cfg: in_cfg,
-        diagnostic: diagnostic,
-    };
-    ctxt.fold_crate(krate)
 }
 
 fn fold_expr<F: CfgFolder>(folder: &mut F, expr: P<ast::Expr>) -> P<ast::Expr> {
