@@ -337,7 +337,7 @@ impl Class {
             Class::MacroNonTerminal => "macro-nonterminal",
             Class::String => "string",
             Class::Number => "number",
-            Class::Bool => "boolvalue",
+            Class::Bool => "bool-val",
             Class::Ident => "ident",
             Class::Lifetime => "lifetime",
             Class::PreludeTy => "prelude-ty",
