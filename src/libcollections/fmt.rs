@@ -527,7 +527,7 @@ use string;
 /// use std::fmt;
 ///
 /// let s = fmt::format(format_args!("Hello, {}!", "world"));
-/// assert_eq!(s, "Hello, world!".to_string());
+/// assert_eq!(s, "Hello, world!");
 /// ```
 ///
 /// Please note that using [`format!`][format!] might be preferrable.
@@ -535,7 +535,7 @@ use string;
 ///
 /// ```
 /// let s = format!("Hello, {}!", "world");
-/// assert_eq!(s, "Hello, world!".to_string());
+/// assert_eq!(s, "Hello, world!");
 /// ```
 ///
 /// [format!]: ../macro.format!.html
