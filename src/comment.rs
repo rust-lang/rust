@@ -31,7 +31,7 @@ pub fn rewrite_comment(orig: &str,
     // Edge case: block comments. Let's not trim their lines (for now).
     let (opener, closer, line_start) = if block_style {
         ("/* ", " */", " * ")
-    } else if !config.normalise_comments {
+    } else if !config.normalize_comments {
         if orig.starts_with("/**") {
             ("/** ", " **/", " ** ")
         } else if orig.starts_with("/*!") {

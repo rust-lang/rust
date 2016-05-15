@@ -1,4 +1,4 @@
-// rustfmt-normalise_comments: false
+// rustfmt-normalize_comments: false
 
 //! Doc comment
 fn test() {
