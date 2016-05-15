@@ -113,7 +113,7 @@ If there are styling choices you don't agree with, we are usually happy to add
 options covering different styles. File an issue, or even better, submit a PR.
 
 
-## Gotchas
+## Tips
 
 * For things you do not want rustfmt to mangle, use one of
 
@@ -125,6 +125,8 @@ options covering different styles. File an issue, or even better, submit a PR.
   directory or its parents to override the default settings of rustfmt.
 * After successful compilation, a `rustfmt` executable can be found in the
   target directory.
+* If you're having issues compiling Rustfmt (or compile errors when trying to
+  install), make sure you have the most recent version of Rust installed.
 
 
 ## License
