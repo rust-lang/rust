@@ -16,7 +16,7 @@ pub trait Rewrite<'tcx, L: Lattice> {
     /// that is, given some fact `fact` true before both the statement and relacement graph, and
     /// a fact `fact2` which is true after the statement, the same `fact2` must be true after the
     /// replacement graph too.
-    fn stmt(&mir::Statement<'tcx>, &L, &mut CFG<'tcx>) -> StatementChange<'tcx>;
+    fn stmt(&self, &mir::Statement<'tcx>, &L, &mut CFG<'tcx>) -> StatementChange<'tcx>;
 
     /// The rewrite function which given a terminator optionally produces an alternative graph to
     /// be placed in place of the original statement.
@@ -28,7 +28,11 @@ pub trait Rewrite<'tcx, L: Lattice> {
     /// that is, given some fact `fact` true before both the terminator and relacement graph, and
     /// a fact `fact2` which is true after the statement, the same `fact2` must be true after the
     /// replacement graph too.
-    fn term(&mir::Terminator<'tcx>, &L, &mut CFG<'tcx>) -> TerminatorChange<'tcx>;
+    fn term(&self, &mir::Terminator<'tcx>, &L, &mut CFG<'tcx>) -> TerminatorChange<'tcx>;
+
+    fn and_then<R2>(self, other: R2) -> RewriteAndThen<Self, R2> where Self: Sized {
+        RewriteAndThen(self, other)
+    }
 }
 
 /// This combinator has the following behaviour:
@@ -36,16 +40,16 @@ pub trait Rewrite<'tcx, L: Lattice> {
 /// * Rewrite the node with the first rewriter.
 ///   * if the first rewriter replaced the node, 2nd rewriter is used to rewrite the replacement.
 ///   * otherwise 2nd rewriter is used to rewrite the original node.
-pub struct RewriteAndThen<'tcx, R1, R2>(::std::marker::PhantomData<(&'tcx (), R1, R2)>);
-impl<'tcx, L, R1, R2> Rewrite<'tcx, L> for RewriteAndThen<'tcx, R1, R2>
+pub struct RewriteAndThen<R1, R2>(R1, R2);
+impl<'tcx, L, R1, R2> Rewrite<'tcx, L> for RewriteAndThen<R1, R2>
 where L: Lattice, R1: Rewrite<'tcx, L>, R2: Rewrite<'tcx, L> {
-    fn stmt(s: &mir::Statement<'tcx>, l: &L, c: &mut CFG<'tcx>) -> StatementChange<'tcx> {
-        let rs = <R1 as Rewrite<L>>::stmt(s, l, c);
+    fn stmt(&self, s: &mir::Statement<'tcx>, l: &L, c: &mut CFG<'tcx>) -> StatementChange<'tcx> {
+        let rs = self.0.stmt(s, l, c);
         match rs {
-            StatementChange::None => <R2 as Rewrite<L>>::stmt(s, l, c),
+            StatementChange::None => self.1.stmt(s, l, c),
             StatementChange::Remove => StatementChange::Remove,
             StatementChange::Statement(ns) =>
-                match <R2 as Rewrite<L>>::stmt(&ns, l, c) {
+                match self.1.stmt(&ns, l, c) {
                     StatementChange::None => StatementChange::Statement(ns),
                     x => x
                 },
@@ -54,7 +58,7 @@ where L: Lattice, R1: Rewrite<'tcx, L>, R2: Rewrite<'tcx, L> {
                 // replaced by other statements 1:1
                 let mut new_new_stmts = Vec::with_capacity(nss.len());
                 for s in nss {
-                    match <R2 as Rewrite<L>>::stmt(&s, l, c) {
+                    match self.1.stmt(&s, l, c) {
                         StatementChange::None => new_new_stmts.push(s),
                         StatementChange::Remove => {},
                         StatementChange::Statement(ns) => new_new_stmts.push(ns),
@@ -66,11 +70,11 @@ where L: Lattice, R1: Rewrite<'tcx, L>, R2: Rewrite<'tcx, L> {
         }
     }
 
-    fn term(t: &mir::Terminator<'tcx>, l: &L, c: &mut CFG<'tcx>) -> TerminatorChange<'tcx> {
-        let rt = <R1 as Rewrite<L>>::term(t, l, c);
+    fn term(&self, t: &mir::Terminator<'tcx>, l: &L, c: &mut CFG<'tcx>) -> TerminatorChange<'tcx> {
+        let rt = self.0.term(t, l, c);
         match rt {
-            TerminatorChange::None => <R2 as Rewrite<L>>::term(t, l, c),
-            TerminatorChange::Terminator(nt) => match <R2 as Rewrite<L>>::term(&nt, l, c) {
+            TerminatorChange::None => self.1.term(t, l, c),
+            TerminatorChange::Terminator(nt) => match self.1.term(&nt, l, c) {
                 TerminatorChange::None => TerminatorChange::Terminator(nt),
                 x => x
             }
@@ -117,7 +121,7 @@ pub trait Transfer<'tcx> {
 
     /// The transfer function which given a statement and a fact produces a fact which is true
     /// after the statement.
-    fn stmt(&mir::Statement<'tcx>, Self::Lattice) -> Self::Lattice;
+    fn stmt(&self, &mir::Statement<'tcx>, Self::Lattice) -> Self::Lattice;
 
     /// The transfer function which given a terminator and a fact produces a fact for each
     /// successor of the terminator.
@@ -125,7 +129,7 @@ pub trait Transfer<'tcx> {
     /// Corectness precondtition:
     /// * The list of facts produced should only contain the facts for blocks which are successors
     /// of the terminator being transfered.
-    fn term(&mir::Terminator<'tcx>, Self::Lattice) -> Vec<Self::Lattice>;
+    fn term(&self, &mir::Terminator<'tcx>, Self::Lattice) -> Vec<Self::Lattice>;
 }
 
 
@@ -162,7 +166,7 @@ impl<F: Lattice> ::std::ops::IndexMut<BasicBlock> for Facts<F> {
 }
 
 /// Analyse and rewrite using dataflow in the forward direction
-pub fn ar_forward<'tcx, T, R>(cfg: &CFG<'tcx>, fs: Facts<T::Lattice>, mut queue: BitVector)
+pub fn ar_forward<'tcx, T, R>(cfg: &CFG<'tcx>, fs: Facts<T::Lattice>, mut queue: BitVector, transfer: T, rewrite: R)
 -> (CFG<'tcx>, Facts<T::Lattice>)
 where T: Transfer<'tcx>,
       R: Rewrite<'tcx, T::Lattice>
@@ -176,22 +180,22 @@ where T: Transfer<'tcx>,
         for stmt in &old_statements {
             // Given a fact and statement produce a new fact and optionally a replacement
             // graph.
-            let mut new_repl = R::stmt(&stmt, &fact, cfg);
+            let mut new_repl = rewrite.stmt(&stmt, &fact, cfg);
             new_repl.normalise();
             match new_repl {
                 StatementChange::None => {
-                    fact = T::stmt(stmt, fact);
+                    fact = transfer.stmt(stmt, fact);
                     cfg.push(new_graph, stmt.clone());
                 }
                 StatementChange::Remove => changed = true,
                 StatementChange::Statement(stmt) => {
                     changed = true;
-                    fact = T::stmt(&stmt, fact);
+                    fact = transfer.stmt(&stmt, fact);
                     cfg.push(new_graph, stmt);
                 }
                 StatementChange::Statements(stmts) => {
                     changed = true;
-                    for stmt in &stmts { fact = T::stmt(stmt, fact); }
+                    for stmt in &stmts { fact = transfer.stmt(stmt, fact); }
                     cfg[new_graph].statements.extend(stmts);
                 }
 
@@ -202,7 +206,7 @@ where T: Transfer<'tcx>,
 
         // Handle the terminator replacement and transfer.
         let terminator = ::std::mem::replace(&mut cfg[bb].terminator, None).unwrap();
-        let repl = R::term(&terminator, &fact, cfg);
+        let repl = rewrite.term(&terminator, &fact, cfg);
         match repl {
             TerminatorChange::None => {
                 cfg[new_graph].terminator = Some(terminator.clone());
@@ -212,7 +216,7 @@ where T: Transfer<'tcx>,
                 cfg[new_graph].terminator = Some(t);
             }
         }
-        let new_facts = T::term(cfg[new_graph].terminator(), fact);
+        let new_facts = transfer.term(cfg[new_graph].terminator(), fact);
         ::std::mem::replace(&mut cfg[bb].terminator, Some(terminator));
 
         (if changed { Some(new_graph) } else { None }, new_facts)
