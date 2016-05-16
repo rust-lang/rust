@@ -24,8 +24,10 @@ use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 
 mod abs_domain;
+pub mod elaborate_drops;
 mod dataflow;
 mod gather_moves;
+mod patch;
 // mod graphviz;
 
 use self::dataflow::{BitDenotation};
@@ -34,7 +36,7 @@ use self::dataflow::{Dataflow, DataflowAnalysis, DataflowResults};
 use self::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use self::dataflow::{DefinitelyInitializedLvals};
 use self::gather_moves::{MoveData, MovePathIndex, Location};
-use self::gather_moves::{MovePathContent};
+use self::gather_moves::{MovePathContent, MovePathData};
 
 fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<P<MetaItem>> {
     for attr in attrs {
@@ -200,6 +202,37 @@ impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
 enum DropFlagState {
     Present, // i.e. initialized
     Absent, // i.e. deinitialized or "moved"
+}
+
+impl DropFlagState {
+    fn value(self) -> bool {
+        match self {
+            DropFlagState::Live => true,
+            DropFlagState::Dead => false
+        }
+    }
+}
+
+fn move_path_children_matching<'tcx, F>(move_paths: &MovePathData<'tcx>,
+                                        path: MovePathIndex,
+                                        mut cond: F)
+                                        -> Option<MovePathIndex>
+    where F: FnMut(&repr::LvalueProjection<'tcx>) -> bool
+{
+    let mut next_child = move_paths[path].first_child;
+    while let Some(child_index) = next_child {
+        match move_paths[child_index].content {
+            MovePathContent::Lvalue(repr::Lvalue::Projection(ref proj)) => {
+                if cond(proj) {
+                    return Some(child_index)
+                }
+            }
+            _ => {}
+        }
+        next_child = move_paths[child_index].next_sibling;
+    }
+
+    None
 }
 
 fn on_all_children_bits<'a, 'tcx, F>(
