@@ -872,7 +872,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                        &format!("borrow of `{}` occurs here",
                                self.bccx.loan_path_to_string(loan_path)))
             .span_label(span,
-                       &format!("assignment to `{}` occurs here",
+                       &format!("assignment to borrowed `{}` occurs here",
                                self.bccx.loan_path_to_string(loan_path)))
             .emit();
     }

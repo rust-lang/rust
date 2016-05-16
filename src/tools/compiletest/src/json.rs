@@ -12,7 +12,7 @@ use errors::{Error, ErrorKind};
 use rustc_serialize::json;
 use std::str::FromStr;
 use std::path::Path;
-use runtest::{fatal_proc_rec, ProcRes};
+use runtest::{ProcRes};
 
 // These structs are a subset of the ones found in
 // `syntax::errors::json`.
@@ -73,9 +73,9 @@ fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> 
                 expected_errors
             }
             Err(error) => {
-                fatal_proc_rec(None, &format!(
+                proc_res.fatal(Some(&format!(
                     "failed to decode compiler output as json: `{}`\noutput: {}\nline: {}",
-                    error, line, output), proc_res);
+                    error, line, output)));
             }
         }
     } else {
