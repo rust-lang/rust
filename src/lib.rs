@@ -122,13 +122,11 @@ pub fn main() {
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         let args = wrap_args(std::env::args().skip(2), dep_path, sys_root);
         let path = std::env::current_exe().expect("current executable path invalid");
-        let run = std::process::Command::new("cargo")
+        std::process::Command::new("cargo")
             .args(&args)
             .env("RUSTC", path)
             .spawn().expect("could not run cargo")
-            .wait().expect("failed to wait for cargo?")
-            .success();
-        assert!(run, "cargo rustc failed");
+            .wait().expect("failed to wait for cargo?");
     } else {
         let args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
             env::args().collect()
