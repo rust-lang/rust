@@ -720,16 +720,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         ret
     });
 
-    // JBC: make CFG processing part of expansion to avoid this problem:
-
-    // strip again, in case expansion added anything with a #[cfg].
     krate = sess.track_errors(|| {
-        let krate = time(time_passes, "configuration 2", || {
-            syntax::config::strip_unconfigured_items(sess.diagnostic(),
-                                                     krate,
-                                                     &mut feature_gated_cfgs)
-        });
-
         time(time_passes, "gated configuration checking", || {
             let features = sess.features.borrow();
             feature_gated_cfgs.sort();
