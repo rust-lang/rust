@@ -363,6 +363,20 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // no checks needed for these
             }
 
+
+            TerminatorKind::DropAndReplace {
+                ref location,
+                ref value,
+                ..
+            } => {
+                let lv_ty = mir.lvalue_ty(tcx, location).to_ty(tcx);
+                let rv_ty = mir.operand_ty(tcx, value);
+                if let Err(terr) = self.sub_types(self.last_span, rv_ty, lv_ty) {
+                    span_mirbug!(self, term, "bad DropAndReplace ({:?} = {:?}): {:?}",
+                                 lv_ty, rv_ty, terr);
+                }
+            }
+
             TerminatorKind::If { ref cond, .. } => {
                 let cond_ty = mir.operand_ty(tcx, cond);
                 match cond_ty.sty {

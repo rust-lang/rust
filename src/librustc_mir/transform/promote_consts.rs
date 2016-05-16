@@ -399,7 +399,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         });
         let terminator = block.terminator_mut();
         match terminator.kind {
-            TerminatorKind::Drop { value: Lvalue::Temp(index), target, .. } => {
+            TerminatorKind::Drop { location: Lvalue::Temp(index), target, .. } => {
                 if promoted(index) {
                     terminator.kind = TerminatorKind::Goto {
                         target: target

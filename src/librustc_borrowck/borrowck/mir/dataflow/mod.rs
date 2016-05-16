@@ -444,10 +444,17 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
             repr::TerminatorKind::Return |
             repr::TerminatorKind::Resume => {}
             repr::TerminatorKind::Goto { ref target } |
-            repr::TerminatorKind::Drop { ref target, value: _, unwind: None } => {
+            repr::TerminatorKind::Drop { ref target, location: _, unwind: None } |
+
+            repr::TerminatorKind::DropAndReplace {
+                ref target, value: _, location: _, unwind: None
+            } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
             }
-            repr::TerminatorKind::Drop { ref target, value: _, unwind: Some(ref unwind) } => {
+            repr::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
+            repr::TerminatorKind::DropAndReplace {
+                ref target, value: _, location: _, unwind: Some(ref unwind)
+            } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
                 self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
             }

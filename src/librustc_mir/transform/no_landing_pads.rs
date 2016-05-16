@@ -29,11 +29,10 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
             TerminatorKind::SwitchInt { .. } => {
                 /* nothing to do */
             },
+            TerminatorKind::Call { cleanup: ref mut unwind, .. } |
+            TerminatorKind::DropAndReplace { ref mut unwind, .. } |
             TerminatorKind::Drop { ref mut unwind, .. } => {
                 unwind.take();
-            },
-            TerminatorKind::Call { ref mut cleanup, .. } => {
-                cleanup.take();
             },
         }
         self.super_terminator(bb, terminator);

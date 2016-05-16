@@ -394,10 +394,20 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Return => {
                     }
 
-                    TerminatorKind::Drop { ref $($mutability)* value,
+                    TerminatorKind::Drop { ref $($mutability)* location,
                                            target,
                                            unwind } => {
-                        self.visit_lvalue(value, LvalueContext::Drop);
+                        self.visit_lvalue(location, LvalueContext::Drop);
+                        self.visit_branch(block, target);
+                        unwind.map(|t| self.visit_branch(block, t));
+                    }
+
+                    TerminatorKind::DropAndReplace { ref $($mutability)* location,
+                                                     ref $($mutability)* value,
+                                                     target,
+                                                     unwind } => {
+                        self.visit_lvalue(location, LvalueContext::Drop);
+                        self.visit_operand(value);
                         self.visit_branch(block, target);
                         unwind.map(|t| self.visit_branch(block, t));
                     }

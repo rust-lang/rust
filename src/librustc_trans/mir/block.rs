@@ -143,8 +143,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 })
             }
 
-            mir::TerminatorKind::Drop { ref value, target, unwind } => {
-                let lvalue = self.trans_lvalue(&bcx, value);
+            mir::TerminatorKind::Drop { ref location, target, unwind } => {
+                let lvalue = self.trans_lvalue(&bcx, location);
                 let ty = lvalue.ty.to_ty(bcx.tcx());
                 // Double check for necessity to drop
                 if !glue::type_needs_drop(bcx.tcx(), ty) {
@@ -175,6 +175,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     drop::drop_fill(&bcx, lvalue.llval, ty);
                     funclet_br(bcx, self.llblock(target));
                 }
+            }
+
+            mir::TerminatorKind::DropAndReplace { .. } => {
+                bug!("undesugared DropAndReplace in trans: {:?}", data);
             }
 
             mir::TerminatorKind::Call { ref func, ref args, ref destination, ref cleanup } => {

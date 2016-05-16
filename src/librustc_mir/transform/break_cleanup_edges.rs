@@ -105,7 +105,9 @@ impl Pass for BreakCleanupEdges {}
 fn term_is_invoke(term: &Terminator) -> bool {
     match term.kind {
         TerminatorKind::Call { cleanup: Some(_), .. } |
-        TerminatorKind::Drop { unwind: Some(_), .. } => true,
+        // FIXME: not sure whether we need this one
+        TerminatorKind::Drop { unwind: Some(_), .. } |
+        TerminatorKind::DropAndReplace { .. } => true,
         _ => false
     }
 }
