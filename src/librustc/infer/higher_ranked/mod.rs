@@ -15,7 +15,6 @@ use super::{CombinedSnapshot,
             InferCtxt,
             LateBoundRegion,
             HigherRankedType,
-            SubregionOrigin,
             SkolemizationMap};
 use super::combine::CombineFields;
 use super::region_inference::{TaintDirections};
@@ -527,7 +526,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // be itself or other new variables.
             let incoming_taints = self.tainted_regions(snapshot,
                                                        skol,
-                                                       TaintDirections::incoming());
+                                                       TaintDirections::both());
             for &tainted_region in &incoming_taints {
                 // Each skolemized should only be relatable to itself
                 // or new variables:
@@ -567,71 +566,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         self.issue_32330_warnings(span, &warnings);
-
-        for (_, &skol) in skol_map {
-            // The outputs from a skolemized variable must all be
-            // equatable with `'static`.
-            let outgoing_taints = self.tainted_regions(snapshot,
-                                                       skol,
-                                                       TaintDirections::outgoing());
-            for &tainted_region in &outgoing_taints {
-                match tainted_region {
-                    ty::ReVar(vid) if new_vars.contains(&vid) => {
-                        // There is a path from a skolemized variable
-                        // to some region variable that doesn't escape
-                        // this snapshot:
-                        //
-                        //    [skol] -> [tainted_region]
-                        //
-                        // We can ignore this. The reasoning relies on
-                        // the fact that the preivous loop
-                        // completed. There are two possible cases
-                        // here.
-                        //
-                        // - `tainted_region` eventually reaches a
-                        //   skolemized variable, which *must* be `skol`
-                        //   (because otherwise we would have already
-                        //   returned `Err`). In that case,
-                        //   `tainted_region` could be inferred to `skol`.
-                        //
-                        // - `tainted_region` never reaches a
-                        //   skolemized variable. In that case, we can
-                        //   safely choose `'static` as an upper bound
-                        //   incoming edges. This is a conservative
-                        //   choice -- the LUB might be one of the
-                        //   incoming skolemized variables, which we
-                        //   might know by ambient bounds. We can
-                        //   consider a more clever choice of upper
-                        //   bound later (modulo some theoretical
-                        //   breakage).
-                        //
-                        // We used to force such `tainted_region` to be
-                        // `'static`, but that leads to problems when
-                        // combined with `plug_leaks`. If you have a case
-                        // where `[skol] -> [tainted_region] -> [skol]`,
-                        // then `plug_leaks` concludes it should replace
-                        // `'static` with a late-bound region, which is
-                        // clearly wrong. (Well, what actually happens is
-                        // you get assertion failures because it WOULD
-                        // have to replace 'static with a late-bound
-                        // region.)
-                    }
-                    ty::ReSkolemized(..) => {
-                        // the only skolemized region we find in the
-                        // successors of X can be X; if there was another
-                        // region Y, then X would have been in the preds
-                        // of Y, and we would have aborted above
-                        assert_eq!(skol, tainted_region);
-                    }
-                    _ => {
-                        self.region_vars.make_subregion(
-                            SubregionOrigin::SkolemizeSuccessor(span),
-                            ty::ReStatic,
-                            tainted_region);
-                    }
-                }
-            }
-        }
 
         Ok(())
     }
@@ -682,7 +616,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             skol_map
             .iter()
             .flat_map(|(&skol_br, &skol)| {
-                self.tainted_regions(snapshot, skol, TaintDirections::incoming())
+                self.tainted_regions(snapshot, skol, TaintDirections::both())
                     .into_iter()
                     .map(move |tainted_region| (tainted_region, skol_br))
             })
