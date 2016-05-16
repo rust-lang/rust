@@ -68,24 +68,19 @@ impl<'tcx> MirPass<'tcx> for ACSPropagate {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         let mut q = BitVector::new(mir.cfg.len());
         q.insert(START_BLOCK.index());
-        let ret = ar_forward::<ACSPropagateTransfer, ACSPropagate>(&mut mir.cfg, Facts::new(), q);
+        let ret = ar_forward::<ACSPropagateTransfer, RewriteAndThen<'tcx, AliasRewrite,
+                                          RewriteAndThen<'tcx, ConstRewrite, SimplifyRewrite>>>(&mut mir.cfg, Facts::new(), q);
         mir.cfg = ret.0;
         pretty::dump_mir(tcx, "acs_propagate", &0, src, mir, None);
     }
 
 }
 
-impl<'tcx> DataflowPass<'tcx> for ACSPropagate {
-    type Lattice = ACSLattice<'tcx>;
-    type Rewrite = RewriteAndThen<'tcx, AliasRewrite,
-                                  RewriteAndThen<'tcx, ConstRewrite, SimplifyRewrite>>;
-    type Transfer = ACSPropagateTransfer;
-}
-
 pub struct ACSPropagateTransfer;
 
-impl<'tcx> Transfer<'tcx, ACSLattice<'tcx>> for ACSPropagateTransfer {
-    type TerminatorOut = Vec<ACSLattice<'tcx>>;
+impl<'tcx> Transfer<'tcx> for ACSPropagateTransfer {
+    type Lattice = ACSLattice<'tcx>;
+
     fn stmt(s: &Statement<'tcx>, mut lat: ACSLattice<'tcx>) -> ACSLattice<'tcx> {
         let StatementKind::Assign(ref lval, ref rval) = s.kind;
         match *rval {
@@ -97,7 +92,8 @@ impl<'tcx> Transfer<'tcx, ACSLattice<'tcx>> for ACSPropagateTransfer {
         };
         lat
     }
-    fn term(t: &Terminator<'tcx>, lat: ACSLattice<'tcx>) -> Self::TerminatorOut {
+
+    fn term(t: &Terminator<'tcx>, lat: ACSLattice<'tcx>) -> Vec<ACSLattice<'tcx>> {
         // FIXME: this should inspect the terminators and set their known values to constants. Esp.
         // for the if: in the truthy branch the operand is known to be true and in the falsy branch
         // the operand is known to be false. Now we just ignore the potential here.

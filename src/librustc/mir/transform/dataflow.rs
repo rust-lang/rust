@@ -5,13 +5,6 @@ use rustc_data_structures::bitvec::BitVector;
 
 use mir::transform::lattice::Lattice;
 
-
-pub trait DataflowPass<'tcx> {
-    type Lattice: Lattice;
-    type Rewrite: Rewrite<'tcx, Self::Lattice>;
-    type Transfer: Transfer<'tcx, Self::Lattice>;
-}
-
 pub trait Rewrite<'tcx, L: Lattice> {
     /// The rewrite function which given a statement optionally produces an alternative graph to be
     /// placed in place of the original statement.
@@ -119,11 +112,12 @@ impl<'tcx> StatementChange<'tcx> {
     }
 }
 
-pub trait Transfer<'tcx, L: Lattice> {
-    type TerminatorOut;
+pub trait Transfer<'tcx> {
+    type Lattice: Lattice;
+
     /// The transfer function which given a statement and a fact produces a fact which is true
     /// after the statement.
-    fn stmt(&mir::Statement<'tcx>, L) -> L;
+    fn stmt(&mir::Statement<'tcx>, Self::Lattice) -> Self::Lattice;
 
     /// The transfer function which given a terminator and a fact produces a fact for each
     /// successor of the terminator.
@@ -131,7 +125,7 @@ pub trait Transfer<'tcx, L: Lattice> {
     /// Corectness precondtition:
     /// * The list of facts produced should only contain the facts for blocks which are successors
     /// of the terminator being transfered.
-    fn term(&mir::Terminator<'tcx>, L) -> Self::TerminatorOut;
+    fn term(&mir::Terminator<'tcx>, Self::Lattice) -> Vec<Self::Lattice>;
 }
 
 
@@ -168,11 +162,10 @@ impl<F: Lattice> ::std::ops::IndexMut<BasicBlock> for Facts<F> {
 }
 
 /// Analyse and rewrite using dataflow in the forward direction
-pub fn ar_forward<'tcx, T, P>(cfg: &CFG<'tcx>, fs: Facts<P::Lattice>, mut queue: BitVector)
--> (CFG<'tcx>, Facts<P::Lattice>)
-// FIXME: shouldn’t need that T generic.
-where T: Transfer<'tcx, P::Lattice, TerminatorOut=Vec<P::Lattice>>,
-      P: DataflowPass<'tcx, Transfer=T>
+pub fn ar_forward<'tcx, T, R>(cfg: &CFG<'tcx>, fs: Facts<T::Lattice>, mut queue: BitVector)
+-> (CFG<'tcx>, Facts<T::Lattice>)
+where T: Transfer<'tcx>,
+      R: Rewrite<'tcx, T::Lattice>
 {
     fixpoint(cfg, Direction::Forward, |bb, fact, cfg| {
         let new_graph = cfg.start_new_block();
@@ -183,22 +176,22 @@ where T: Transfer<'tcx, P::Lattice, TerminatorOut=Vec<P::Lattice>>,
         for stmt in &old_statements {
             // Given a fact and statement produce a new fact and optionally a replacement
             // graph.
-            let mut new_repl = P::Rewrite::stmt(&stmt, &fact, cfg);
+            let mut new_repl = R::stmt(&stmt, &fact, cfg);
             new_repl.normalise();
             match new_repl {
                 StatementChange::None => {
-                    fact = P::Transfer::stmt(stmt, fact);
+                    fact = T::stmt(stmt, fact);
                     cfg.push(new_graph, stmt.clone());
                 }
                 StatementChange::Remove => changed = true,
                 StatementChange::Statement(stmt) => {
                     changed = true;
-                    fact = P::Transfer::stmt(&stmt, fact);
+                    fact = T::stmt(&stmt, fact);
                     cfg.push(new_graph, stmt);
                 }
                 StatementChange::Statements(stmts) => {
                     changed = true;
-                    for stmt in &stmts { fact = P::Transfer::stmt(stmt, fact); }
+                    for stmt in &stmts { fact = T::stmt(stmt, fact); }
                     cfg[new_graph].statements.extend(stmts);
                 }
 
@@ -209,7 +202,7 @@ where T: Transfer<'tcx, P::Lattice, TerminatorOut=Vec<P::Lattice>>,
 
         // Handle the terminator replacement and transfer.
         let terminator = ::std::mem::replace(&mut cfg[bb].terminator, None).unwrap();
-        let repl = P::Rewrite::term(&terminator, &fact, cfg);
+        let repl = R::term(&terminator, &fact, cfg);
         match repl {
             TerminatorChange::None => {
                 cfg[new_graph].terminator = Some(terminator.clone());
@@ -219,7 +212,7 @@ where T: Transfer<'tcx, P::Lattice, TerminatorOut=Vec<P::Lattice>>,
                 cfg[new_graph].terminator = Some(t);
             }
         }
-        let new_facts = P::Transfer::term(cfg[new_graph].terminator(), fact);
+        let new_facts = T::term(cfg[new_graph].terminator(), fact);
         ::std::mem::replace(&mut cfg[bb].terminator, Some(terminator));
 
         (if changed { Some(new_graph) } else { None }, new_facts)
