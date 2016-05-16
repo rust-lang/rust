@@ -340,11 +340,6 @@ pub enum SubregionOrigin<'tcx> {
 
     // Region constraint arriving from destructor safety
     SafeDestructor(Span),
-
-    // When doing a higher-ranked comparison, this region was a
-    // successor from a skolemized region, which means that it must be
-    // `'static` to be sound.
-    SkolemizeSuccessor(Span),
 }
 
 /// Places that type/region parameters can appear.
@@ -1798,7 +1793,6 @@ impl<'tcx> SubregionOrigin<'tcx> {
             AddrOf(a) => a,
             AutoBorrow(a) => a,
             SafeDestructor(a) => a,
-            SkolemizeSuccessor(a) => a,
         }
     }
 }

@@ -919,17 +919,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     "");
                 err
             }
-            infer::SkolemizeSuccessor(span) => {
-                let mut err =
-                    struct_span_err!(self.tcx.sess, span, E0526,
-                                     "to satisfy higher-ranked bounds, \
-                                      a static lifetime is required");
-                self.tcx.note_and_explain_region(&mut err,
-                    "but the lifetime is only valid for ",
-                    sub,
-                    "");
-                err
-            }
         }
     }
 
@@ -1816,11 +1805,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     span,
                     "...so that references are valid when the destructor \
                      runs");
-            }
-            infer::SkolemizeSuccessor(span) => {
-                err.span_note(
-                    span,
-                    "...so that higher-ranked bounds are satisfied");
             }
         }
     }
