@@ -172,7 +172,7 @@ extern "rust-intrinsic" {
     /// attached to the function.
     ///
     /// For example, dataflow uses this to inject static assertions so
-    /// that `rustc_oeek(potentially_uninitialized)` would actually
+    /// that `rustc_peek(potentially_uninitialized)` would actually
     /// double-check that dataflow did indeed compute that it is
     /// uninitialized at that point in the control flow.
     #[cfg(not(stage0))]
