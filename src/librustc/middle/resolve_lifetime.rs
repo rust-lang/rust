@@ -483,7 +483,6 @@ impl<'a> LifetimeContext<'a> {
             FnKind::Method(_, sig, _, _) => {
                 intravisit::walk_fn_decl(self, fd);
                 self.visit_generics(&sig.generics);
-                self.visit_explicit_self(&sig.explicit_self);
             }
             FnKind::Closure(_) => {
                 intravisit::walk_fn_decl(self, fd);

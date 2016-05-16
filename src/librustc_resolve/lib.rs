@@ -596,7 +596,6 @@ impl<'a, 'v> Visitor<'v> for Resolver<'a> {
             }
             FnKind::Method(_, sig, _) => {
                 self.visit_generics(&sig.generics);
-                self.visit_explicit_self(&sig.explicit_self);
                 MethodRibKind
             }
             FnKind::Closure => ClosureRibKind(node_id),

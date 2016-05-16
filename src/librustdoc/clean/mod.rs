@@ -1025,7 +1025,6 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Method {
     pub generics: Generics,
-    pub self_: SelfTy,
     pub unsafety: hir::Unsafety,
     pub constness: hir::Constness,
     pub decl: FnDecl,
@@ -1034,14 +1033,9 @@ pub struct Method {
 
 impl Clean<Method> for hir::MethodSig {
     fn clean(&self, cx: &DocContext) -> Method {
-        let all_inputs = &self.decl.inputs;
-        let inputs = match self.explicit_self.node {
-            hir::SelfStatic => &**all_inputs,
-            _ => &all_inputs[1..]
-        };
         let decl = FnDecl {
             inputs: Arguments {
-                values: inputs.clean(cx),
+                values: self.decl.inputs.clean(cx),
             },
             output: self.decl.output.clean(cx),
             variadic: false,
@@ -1049,7 +1043,6 @@ impl Clean<Method> for hir::MethodSig {
         };
         Method {
             generics: self.generics.clean(cx),
-            self_: self.explicit_self.node.clean(cx),
             unsafety: self.unsafety,
             constness: self.constness,
             decl: decl,
@@ -1063,19 +1056,14 @@ pub struct TyMethod {
     pub unsafety: hir::Unsafety,
     pub decl: FnDecl,
     pub generics: Generics,
-    pub self_: SelfTy,
     pub abi: Abi,
 }
 
 impl Clean<TyMethod> for hir::MethodSig {
     fn clean(&self, cx: &DocContext) -> TyMethod {
-        let inputs = match self.explicit_self.node {
-            hir::SelfStatic => &*self.decl.inputs,
-            _ => &self.decl.inputs[1..]
-        };
         let decl = FnDecl {
             inputs: Arguments {
-                values: inputs.clean(cx),
+                values: self.decl.inputs.clean(cx),
             },
             output: self.decl.output.clean(cx),
             variadic: false,
@@ -1084,30 +1072,8 @@ impl Clean<TyMethod> for hir::MethodSig {
         TyMethod {
             unsafety: self.unsafety.clone(),
             decl: decl,
-            self_: self.explicit_self.node.clean(cx),
             generics: self.generics.clean(cx),
             abi: self.abi
-        }
-    }
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
-pub enum SelfTy {
-    SelfStatic,
-    SelfValue,
-    SelfBorrowed(Option<Lifetime>, Mutability),
-    SelfExplicit(Type),
-}
-
-impl Clean<SelfTy> for hir::ExplicitSelf_ {
-    fn clean(&self, cx: &DocContext) -> SelfTy {
-        match *self {
-            hir::SelfStatic => SelfStatic,
-            hir::SelfValue(_) => SelfValue,
-            hir::SelfRegion(ref lt, ref mt, _) => {
-                SelfBorrowed(lt.clean(cx), mt.clean(cx))
-            }
-            hir::SelfExplicit(ref typ, _) => SelfExplicit(typ.clean(cx)),
         }
     }
 }
@@ -1150,6 +1116,12 @@ pub struct FnDecl {
     pub attrs: Vec<Attribute>,
 }
 
+impl FnDecl {
+    pub fn has_self(&self) -> bool {
+        return self.inputs.values.len() > 0 && self.inputs.values[0].name == "self";
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub struct Arguments {
     pub values: Vec<Argument>,
@@ -1185,9 +1157,6 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
         } else {
             cx.tcx().sess.cstore.method_arg_names(did).into_iter()
         }.peekable();
-        if let Some("self") = names.peek().map(|s| &s[..]) {
-            let _ = names.next();
-        }
         FnDecl {
             output: Return(sig.0.output.clean(cx)),
             attrs: Vec::new(),
@@ -1210,6 +1179,29 @@ pub struct Argument {
     pub type_: Type,
     pub name: String,
     pub id: ast::NodeId,
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+pub enum SelfTy {
+    SelfValue,
+    SelfBorrowed(Option<Lifetime>, Mutability),
+    SelfExplicit(Type),
+}
+
+impl Argument {
+    pub fn to_self(&self) -> Option<SelfTy> {
+        if self.name == "self" {
+            match self.type_ {
+                Infer => Some(SelfValue),
+                BorrowedRef{ref lifetime, mutability, ref type_} if **type_ == Infer => {
+                    Some(SelfBorrowed(lifetime.clone(), mutability))
+                }
+                _ => Some(SelfExplicit(self.type_.clone()))
+            }
+        } else {
+            None
+        }
+    }
 }
 
 impl Clean<Argument> for hir::Arg {
@@ -1346,36 +1338,21 @@ impl Clean<Item> for hir::ImplItem {
 
 impl<'tcx> Clean<Item> for ty::Method<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
-        let (self_, sig) = match self.explicit_self {
-            ty::ExplicitSelfCategory::Static => (hir::SelfStatic.clean(cx),
-                                                 self.fty.sig.clone()),
-            s => {
-                let sig = ty::Binder(ty::FnSig {
-                    inputs: self.fty.sig.0.inputs[1..].to_vec(),
-                    ..self.fty.sig.0.clone()
-                });
-                let s = match s {
-                    ty::ExplicitSelfCategory::ByValue => SelfValue,
-                    ty::ExplicitSelfCategory::ByReference(..) => {
-                        match self.fty.sig.0.inputs[0].sty {
-                            ty::TyRef(r, mt) => {
-                                SelfBorrowed(r.clean(cx), mt.mutbl.clean(cx))
-                            }
-                            _ => unreachable!(),
-                        }
-                    }
-                    ty::ExplicitSelfCategory::ByBox => {
-                        SelfExplicit(self.fty.sig.0.inputs[0].clean(cx))
-                    }
-                    ty::ExplicitSelfCategory::Static => unreachable!(),
-                };
-                (s, sig)
-            }
-        };
-
         let generics = (&self.generics, &self.predicates,
                         subst::FnSpace).clean(cx);
-        let decl = (self.def_id, &sig).clean(cx);
+        let mut decl = (self.def_id, &self.fty.sig).clean(cx);
+        match self.explicit_self {
+            ty::ExplicitSelfCategory::ByValue => {
+                decl.inputs.values[0].type_ = Infer;
+            }
+            ty::ExplicitSelfCategory::ByReference(..) => {
+                match decl.inputs.values[0].type_ {
+                    BorrowedRef{ref mut type_, ..} => **type_ = Infer,
+                    _ => unreachable!(),
+                }
+            }
+            _ => {}
+        }
         let provided = match self.container {
             ty::ImplContainer(..) => false,
             ty::TraitContainer(did) => {
@@ -1388,7 +1365,6 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             MethodItem(Method {
                 unsafety: self.fty.unsafety,
                 generics: generics,
-                self_: self_,
                 decl: decl,
                 abi: self.fty.abi,
 
@@ -1399,7 +1375,6 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             TyMethodItem(TyMethod {
                 unsafety: self.fty.unsafety,
                 generics: generics,
-                self_: self_,
                 decl: decl,
                 abi: self.fty.abi,
             })

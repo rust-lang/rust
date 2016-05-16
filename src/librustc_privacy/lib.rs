@@ -831,8 +831,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
                                 }
                             }
                             hir::ImplItemKind::Method(ref sig, _) => {
-                                if sig.explicit_self.node == hir::SelfStatic &&
-                                      self.item_is_public(&impl_item.id, &impl_item.vis) {
+                                if !sig.decl.has_self() &&
+                                        self.item_is_public(&impl_item.id, &impl_item.vis) {
                                     found_pub_static = true;
                                     intravisit::walk_impl_item(self, impl_item);
                                 }

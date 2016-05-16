@@ -16,13 +16,12 @@ pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
 
 use attr::ThinAttributes;
-use codemap::{Span, Spanned, DUMMY_SP, ExpnId};
+use codemap::{mk_sp, respan, Span, Spanned, DUMMY_SP, ExpnId};
 use abi::Abi;
 use errors;
 use ext::base;
 use ext::tt::macro_parser;
-use parse::token::InternedString;
-use parse::token;
+use parse::token::{self, keywords, InternedString};
 use parse::lexer;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use print::pprust;
@@ -1674,7 +1673,25 @@ pub struct Arg {
     pub id: NodeId,
 }
 
+/// Represents the kind of 'self' associated with a method.
+/// String representation of `Ident` here is always "self", but hygiene contexts may differ.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum SelfKind {
+    /// No self
+    Static,
+    /// `self`, `mut self`
+    Value(Ident),
+    /// `&'lt self`, `&'lt mut self`
+    Region(Option<Lifetime>, Mutability, Ident),
+    /// `self: TYPE`, `mut self: TYPE`
+    Explicit(P<Ty>, Ident),
+}
+
+pub type ExplicitSelf = Spanned<SelfKind>;
+
 impl Arg {
+    #[unstable(feature = "rustc_private", issue = "27812")]
+    #[rustc_deprecated(since = "1.10.0", reason = "use `from_self` instead")]
     pub fn new_self(span: Span, mutability: Mutability, self_ident: Ident) -> Arg {
         let path = Spanned{span:span,node:self_ident};
         Arg {
@@ -1690,6 +1707,51 @@ impl Arg {
                 span: span
             }),
             id: DUMMY_NODE_ID
+        }
+    }
+
+    pub fn to_self(&self) -> Option<ExplicitSelf> {
+        if let PatKind::Ident(_, ident, _) = self.pat.node {
+            if ident.node.name == keywords::SelfValue.name() {
+                return match self.ty.node {
+                    TyKind::Infer => Some(respan(self.pat.span, SelfKind::Value(ident.node))),
+                    TyKind::Rptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyKind::Infer => {
+                        Some(respan(self.pat.span, SelfKind::Region(lt, mutbl, ident.node)))
+                    }
+                    _ => Some(respan(mk_sp(self.pat.span.lo, self.ty.span.hi),
+                                     SelfKind::Explicit(self.ty.clone(), ident.node))),
+                }
+            }
+        }
+        None
+    }
+
+    pub fn from_self(eself: ExplicitSelf, ident_sp: Span, mutbl: Mutability) -> Arg {
+        let pat = |ident, span| P(Pat {
+            id: DUMMY_NODE_ID,
+            node: PatKind::Ident(BindingMode::ByValue(mutbl), respan(ident_sp, ident), None),
+            span: span,
+        });
+        let infer_ty = P(Ty {
+            id: DUMMY_NODE_ID,
+            node: TyKind::Infer,
+            span: DUMMY_SP,
+        });
+        let arg = |ident, ty, span| Arg {
+            pat: pat(ident, span),
+            ty: ty,
+            id: DUMMY_NODE_ID,
+        };
+        match eself.node {
+            SelfKind::Static => panic!("bug: `Arg::from_self` is called \
+                                        with `SelfKind::Static` argument"),
+            SelfKind::Explicit(ty, ident) => arg(ident, ty, mk_sp(eself.span.lo, ident_sp.hi)),
+            SelfKind::Value(ident) => arg(ident, infer_ty, eself.span),
+            SelfKind::Region(lt, mutbl, ident) => arg(ident, P(Ty {
+                id: DUMMY_NODE_ID,
+                node: TyKind::Rptr(lt, MutTy { ty: infer_ty, mutbl: mutbl }),
+                span: DUMMY_SP,
+            }), eself.span),
         }
     }
 }
@@ -1771,21 +1833,6 @@ impl FunctionRetTy {
         }
     }
 }
-
-/// Represents the kind of 'self' associated with a method
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum SelfKind {
-    /// No self
-    Static,
-    /// `self`
-    Value(Ident),
-    /// `&'lt self`, `&'lt mut self`
-    Region(Option<Lifetime>, Mutability, Ident),
-    /// `self: TYPE`
-    Explicit(P<Ty>, Ident),
-}
-
-pub type ExplicitSelf = Spanned<SelfKind>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Mod {
