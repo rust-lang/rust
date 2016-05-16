@@ -11,13 +11,14 @@
 use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
-use common::{Incremental, RunMake};
+use common::{Incremental, RunMake, Ui};
 use errors::{self, ErrorKind, Error};
 use json;
 use header::TestProps;
 use header;
 use procsrv;
 use test::TestPaths;
+use uidiff;
 use util::logv;
 
 use std::env;
@@ -29,6 +30,7 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus};
+use std::str;
 
 pub fn run(config: Config, testpaths: &TestPaths) {
     match &*config.target {
@@ -118,6 +120,7 @@ impl<'test> TestCx<'test> {
             CodegenUnits => self.run_codegen_units_test(),
             Incremental => self.run_incremental_test(),
             RunMake => self.run_rmake_test(),
+            Ui => self.run_ui_test(),
         }
     }
 
@@ -1314,6 +1317,7 @@ actual:\n\
             Codegen |
             Rustdoc |
             RunMake |
+            Ui |
             CodegenUnits => {
                 // do not use JSON output
             }
@@ -2095,6 +2099,96 @@ actual:\n\
             }
         }
         fs::remove_dir(path)
+    }
+
+    fn run_ui_test(&self) {
+        println!("ui: {}", self.testpaths.file.display());
+
+        let proc_res = self.compile_test();
+
+        let expected_stderr_path = self.expected_output_path("stderr");
+        let expected_stderr = self.load_expected_output(&expected_stderr_path);
+
+        let expected_stdout_path = self.expected_output_path("stdout");
+        let expected_stdout = self.load_expected_output(&expected_stdout_path);
+
+        let normalized_stdout = self.normalize_output(&proc_res.stdout);
+        let normalized_stderr = self.normalize_output(&proc_res.stderr);
+
+        let mut errors = 0;
+        errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
+        errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+
+        if errors > 0 {
+            println!("To update references, run this command from build directory:");
+            let relative_path_to_file =
+                self.testpaths.relative_dir
+                              .join(self.testpaths.file.file_name().unwrap());
+            println!("{}/update-references.sh '{}' '{}'",
+                     self.config.src_base.display(),
+                     self.config.build_base.display(),
+                     relative_path_to_file.display());
+            self.fatal_proc_rec(&format!("{} errors occurred comparing output.", errors),
+                                &proc_res);
+        }
+    }
+
+    fn normalize_output(&self, output: &str) -> String {
+        let parent_dir = self.testpaths.file.parent().unwrap();
+        let parent_dir_str = parent_dir.display().to_string();
+        output.replace(&parent_dir_str, "$DIR")
+              .replace("\\", "/") // normalize for paths on windows
+              .replace("\r\n", "\n") // normalize for linebreaks on windows
+              .replace("\t", "\\t") // makes tabs visible
+    }
+
+    fn expected_output_path(&self, kind: &str) -> PathBuf {
+        let extension = match self.revision {
+            Some(r) => format!("{}.{}", r, kind),
+            None => kind.to_string(),
+        };
+        self.testpaths.file.with_extension(extension)
+    }
+
+    fn load_expected_output(&self, path: &Path) -> String {
+        if !path.exists() {
+            return String::new();
+        }
+
+        let mut result = String::new();
+        match File::open(path).and_then(|mut f| f.read_to_string(&mut result)) {
+            Ok(_) => result,
+            Err(e) => {
+                self.fatal(&format!("failed to load expected output from `{}`: {}",
+                                    path.display(), e))
+            }
+        }
+    }
+
+    fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
+        if actual == expected {
+            return 0;
+        }
+
+        println!("normalized {}:\n{}\n", kind, actual);
+        println!("expected {}:\n{}\n", kind, expected);
+        println!("diff of {}:\n", kind);
+        for line in uidiff::diff_lines(actual, expected) {
+            println!("{}", line);
+        }
+
+        let output_file = self.output_base_name().with_extension(kind);
+        match File::create(&output_file).and_then(|mut f| f.write_all(actual.as_bytes())) {
+            Ok(()) => { }
+            Err(e) => {
+                self.fatal(&format!("failed to write {} to `{}`: {}",
+                                    kind, output_file.display(), e))
+            }
+        }
+
+        println!("\nThe actual {0} differed from the expected {0}.", kind);
+        println!("Actual {} saved to {}", kind, output_file.display());
+        1
     }
 }
 

@@ -274,6 +274,7 @@ check-stage$(1)-T-$(2)-H-$(3)-exec: \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-gdb-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-lldb-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-incremental-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-ui-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-exec
 
@@ -452,6 +453,9 @@ CODEGEN_CC := $(call rwildcard,$(S)src/test/codegen/,*.cc)
 CODEGEN_UNITS_RS := $(call rwildcard,$(S)src/test/codegen-units/,*.rs)
 INCREMENTAL_RS := $(call rwildcard,$(S)src/test/incremental/,*.rs)
 RMAKE_RS := $(wildcard $(S)src/test/run-make/*/Makefile)
+UI_RS := $(call rwildcard,$(S)src/test/ui/,*.rs) \
+         $(call rwildcard,$(S)src/test/ui/,*.stdout) \
+         $(call rwildcard,$(S)src/test/ui/,*.stderr)
 RUSTDOCCK_RS := $(call rwildcard,$(S)src/test/rustdoc/,*.rs)
 
 RPASS_TESTS := $(RPASS_RS)
@@ -469,6 +473,7 @@ CODEGEN_TESTS := $(CODEGEN_RS) $(CODEGEN_CC)
 CODEGEN_UNITS_TESTS := $(CODEGEN_UNITS_RS)
 INCREMENTAL_TESTS := $(INCREMENTAL_RS)
 RMAKE_TESTS := $(RMAKE_RS)
+UI_TESTS := $(UI_RS)
 RUSTDOCCK_TESTS := $(RUSTDOCCK_RS)
 
 CTEST_SRC_BASE_rpass = run-pass
@@ -540,6 +545,11 @@ CTEST_SRC_BASE_rmake = run-make
 CTEST_BUILD_BASE_rmake = run-make
 CTEST_MODE_rmake = run-make
 CTEST_RUNTOOL_rmake = $(CTEST_RUNTOOL)
+
+CTEST_SRC_BASE_ui = ui
+CTEST_BUILD_BASE_ui = ui
+CTEST_MODE_ui = ui
+CTEST_RUNTOOL_ui = $(CTEST_RUNTOOL)
 
 CTEST_SRC_BASE_rustdocck = rustdoc
 CTEST_BUILD_BASE_rustdocck = rustdoc
@@ -672,7 +682,7 @@ CTEST_DEPS_codegen-units_$(1)-T-$(2)-H-$(3) = $$(CODEGEN_UNITS_TESTS)
 CTEST_DEPS_incremental_$(1)-T-$(2)-H-$(3) = $$(INCREMENTAL_TESTS)
 CTEST_DEPS_rmake_$(1)-T-$(2)-H-$(3) = $$(RMAKE_TESTS) \
 	$$(CSREQ$(1)_T_$(3)_H_$(3)) $$(SREQ$(1)_T_$(2)_H_$(3))
-
+CTEST_DEPS_ui_$(1)-T-$(2)-H-$(3) = $$(UI_TESTS)
 CTEST_DEPS_rustdocck_$(1)-T-$(2)-H-$(3) = $$(RUSTDOCCK_TESTS) \
 		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
 		$(S)src/etc/htmldocck.py
@@ -744,7 +754,7 @@ endef
 
 CTEST_NAMES = rpass rpass-valgrind rpass-full rfail-full cfail-full rfail cfail pfail \
 	debuginfo-gdb debuginfo-lldb codegen codegen-units rustdocck incremental \
-	rmake
+	rmake ui
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
@@ -943,6 +953,7 @@ TEST_GROUPS = \
 	codegen \
 	codegen-units \
 	incremental \
+	ui \
 	doc \
 	$(foreach docname,$(DOC_NAMES),doc-$(docname)) \
 	pretty \
