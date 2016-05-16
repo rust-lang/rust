@@ -57,18 +57,18 @@ impl<'tcx> Lattice for Either<'tcx> {
     }
 }
 
-pub type ACSLattice<'a> = FnvHashMap<Lvalue<'a>, Either<'a>>;
+pub type AcsLattice<'a> = FnvHashMap<Lvalue<'a>, Either<'a>>;
 
-pub struct ACSPropagate;
+pub struct AcsPropagate;
 
-impl Pass for ACSPropagate {}
+impl Pass for AcsPropagate {}
 
-impl<'tcx> MirPass<'tcx> for ACSPropagate {
+impl<'tcx> MirPass<'tcx> for AcsPropagate {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         let ret = ar_forward(
             &mut mir.cfg,
             Facts::new(),
-            ACSPropagateTransfer,
+            AcsPropagateTransfer,
             AliasRewrite.and_then(ConstRewrite).and_then(SimplifyRewrite)
         );
         mir.cfg = ret.0;
@@ -77,12 +77,12 @@ impl<'tcx> MirPass<'tcx> for ACSPropagate {
 
 }
 
-pub struct ACSPropagateTransfer;
+pub struct AcsPropagateTransfer;
 
-impl<'tcx> Transfer<'tcx> for ACSPropagateTransfer {
-    type Lattice = ACSLattice<'tcx>;
+impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
+    type Lattice = AcsLattice<'tcx>;
 
-    fn stmt(&self, s: &Statement<'tcx>, mut lat: ACSLattice<'tcx>) -> ACSLattice<'tcx> {
+    fn stmt(&self, s: &Statement<'tcx>, mut lat: AcsLattice<'tcx>) -> AcsLattice<'tcx> {
         let StatementKind::Assign(ref lval, ref rval) = s.kind;
         match *rval {
             Rvalue::Use(Operand::Consume(ref nlval)) =>
@@ -94,7 +94,7 @@ impl<'tcx> Transfer<'tcx> for ACSPropagateTransfer {
         lat
     }
 
-    fn term(&self, t: &Terminator<'tcx>, lat: ACSLattice<'tcx>) -> Vec<ACSLattice<'tcx>> {
+    fn term(&self, t: &Terminator<'tcx>, lat: AcsLattice<'tcx>) -> Vec<AcsLattice<'tcx>> {
         // FIXME: this should inspect the terminators and set their known values to constants. Esp.
         // for the if: in the truthy branch the operand is known to be true and in the falsy branch
         // the operand is known to be false. Now we just ignore the potential here.
@@ -106,8 +106,8 @@ impl<'tcx> Transfer<'tcx> for ACSPropagateTransfer {
 
 pub struct AliasRewrite;
 
-impl<'tcx> Rewrite<'tcx, ACSLattice<'tcx>> for AliasRewrite {
-    fn stmt(&self, s: &Statement<'tcx>, l: &ACSLattice<'tcx>, cfg: &mut CFG<'tcx>)
+impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for AliasRewrite {
+    fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
     -> StatementChange<'tcx> {
         let mut ns = s.clone();
         let mut vis = RewriteAliasVisitor(&l, false);
@@ -115,7 +115,7 @@ impl<'tcx> Rewrite<'tcx, ACSLattice<'tcx>> for AliasRewrite {
         if vis.1 { StatementChange::Statement(ns) } else { StatementChange::None }
     }
 
-    fn term(&self, t: &Terminator<'tcx>, l: &ACSLattice<'tcx>, cfg: &mut CFG<'tcx>)
+    fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
     -> TerminatorChange<'tcx> {
         let mut nt = t.clone();
         let mut vis = RewriteAliasVisitor(&l, false);
@@ -124,7 +124,7 @@ impl<'tcx> Rewrite<'tcx, ACSLattice<'tcx>> for AliasRewrite {
     }
 }
 
-struct RewriteAliasVisitor<'a, 'tcx: 'a>(pub &'a ACSLattice<'tcx>, pub bool);
+struct RewriteAliasVisitor<'a, 'tcx: 'a>(pub &'a AcsLattice<'tcx>, pub bool);
 impl<'a, 'tcx> MutVisitor<'tcx> for RewriteAliasVisitor<'a, 'tcx> {
     fn visit_lvalue(&mut self, lvalue: &mut Lvalue<'tcx>, context: LvalueContext) {
         match context {
@@ -146,8 +146,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RewriteAliasVisitor<'a, 'tcx> {
 
 pub struct ConstRewrite;
 
-impl<'tcx> Rewrite<'tcx, ACSLattice<'tcx>> for ConstRewrite {
-    fn stmt(&self, s: &Statement<'tcx>, l: &ACSLattice<'tcx>, cfg: &mut CFG<'tcx>)
+impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for ConstRewrite {
+    fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
     -> StatementChange<'tcx> {
         let mut ns = s.clone();
         let mut vis = RewriteConstVisitor(&l, false);
@@ -155,7 +155,7 @@ impl<'tcx> Rewrite<'tcx, ACSLattice<'tcx>> for ConstRewrite {
         if vis.1 { StatementChange::Statement(ns) } else { StatementChange::None }
     }
 
-    fn term(&self, t: &Terminator<'tcx>, l: &ACSLattice<'tcx>, cfg: &mut CFG<'tcx>)
+    fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
     -> TerminatorChange<'tcx> {
         let mut nt = t.clone();
         let mut vis = RewriteConstVisitor(&l, false);
@@ -164,7 +164,7 @@ impl<'tcx> Rewrite<'tcx, ACSLattice<'tcx>> for ConstRewrite {
     }
 }
 
-struct RewriteConstVisitor<'a, 'tcx: 'a>(pub &'a ACSLattice<'tcx>, pub bool);
+struct RewriteConstVisitor<'a, 'tcx: 'a>(pub &'a AcsLattice<'tcx>, pub bool);
 impl<'a, 'tcx> MutVisitor<'tcx> for RewriteConstVisitor<'a, 'tcx> {
     fn visit_operand(&mut self, op: &mut Operand<'tcx>) {
         let repl = if let Operand::Consume(ref lval) = *op {
@@ -186,13 +186,13 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RewriteConstVisitor<'a, 'tcx> {
 
 pub struct SimplifyRewrite;
 
-impl<'tcx> Rewrite<'tcx, ACSLattice<'tcx>> for SimplifyRewrite {
-    fn stmt(&self, s: &Statement<'tcx>, l: &ACSLattice<'tcx>, cfg: &mut CFG<'tcx>)
+impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for SimplifyRewrite {
+    fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
     -> StatementChange<'tcx> {
         StatementChange::None
     }
 
-    fn term(&self, t: &Terminator<'tcx>, l: &ACSLattice<'tcx>, cfg: &mut CFG<'tcx>)
+    fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
     -> TerminatorChange<'tcx> {
         match t.kind {
             TerminatorKind::If { ref targets, .. } if targets.0 == targets.1 => {
