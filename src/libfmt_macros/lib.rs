@@ -144,6 +144,8 @@ pub struct Parser<'a> {
     cur: iter::Peekable<str::CharIndices<'a>>,
     /// Error messages accumulated during parsing
     pub errors: Vec<string::String>,
+    /// Current position of implicit positional argument pointer
+    curarg: usize,
 }
 
 impl<'a> Iterator for Parser<'a> {
@@ -186,6 +188,7 @@ impl<'a> Parser<'a> {
             input: s,
             cur: s.char_indices().peekable(),
             errors: vec![],
+            curarg: 0,
         }
     }
 
@@ -259,9 +262,41 @@ impl<'a> Parser<'a> {
     /// Parses an Argument structure, or what's contained within braces inside
     /// the format string
     fn argument(&mut self) -> Argument<'a> {
+        let mut pos = self.position();
+        let mut format = self.format();
+
+        // Resolve CountIsNextParam's into absolute references.
+        // Current argument's position must be known so this is done after
+        // format parsing.
+        // Curiously, currently {:.*} for named arguments is implemented,
+        // and it consumes a positional arg slot just like a positional {:.*}
+        // does. The current behavior is reproduced to prevent any
+        // incompatibilities.
+        match format.precision {
+            CountIsNextParam => {
+                // eat the current implicit arg
+                let i = self.curarg;
+                self.curarg += 1;
+                format.precision = CountIsParam(i);
+            }
+            _ => {}
+        }
+
+        // Resolve ArgumentNext's into absolute references.
+        // This must come after count resolution because we may consume one
+        // more arg if precision is CountIsNextParam.
+        match pos {
+            ArgumentNext => {
+                let i = self.curarg;
+                self.curarg += 1;
+                pos = ArgumentIs(i);
+            }
+            _ => {}
+        }
+
         Argument {
-            position: self.position(),
-            format: self.format(),
+            position: pos,
+            format: format,
         }
     }
 
@@ -487,7 +522,7 @@ mod tests {
     fn format_nothing() {
         same("{}",
              &[NextArgument(Argument {
-                   position: ArgumentNext,
+                   position: ArgumentIs(0),
                    format: fmtdflt(),
                })]);
     }
@@ -565,7 +600,7 @@ mod tests {
     fn format_counts() {
         same("{:10s}",
              &[NextArgument(Argument {
-                   position: ArgumentNext,
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
@@ -577,7 +612,7 @@ mod tests {
                })]);
         same("{:10$.10s}",
              &[NextArgument(Argument {
-                   position: ArgumentNext,
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
@@ -589,19 +624,19 @@ mod tests {
                })]);
         same("{:.*s}",
              &[NextArgument(Argument {
-                   position: ArgumentNext,
+                   position: ArgumentIs(1),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
                        flags: 0,
-                       precision: CountIsNextParam,
+                       precision: CountIsParam(0),
                        width: CountImplied,
                        ty: "s",
                    },
                })]);
         same("{:.10$s}",
              &[NextArgument(Argument {
-                   position: ArgumentNext,
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
@@ -613,7 +648,7 @@ mod tests {
                })]);
         same("{:a$.b$s}",
              &[NextArgument(Argument {
-                   position: ArgumentNext,
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
@@ -628,7 +663,7 @@ mod tests {
     fn format_flags() {
         same("{:-}",
              &[NextArgument(Argument {
-                   position: ArgumentNext,
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
@@ -640,7 +675,7 @@ mod tests {
                })]);
         same("{:+#}",
              &[NextArgument(Argument {
-                   position: ArgumentNext,
+                   position: ArgumentIs(0),
                    format: FormatSpec {
                        fill: None,
                        align: AlignUnknown,
