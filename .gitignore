@@ -57,6 +57,7 @@
 /*-*-*/
 /Makefile
 /build
+/config.toml
 /dist/
 /dl/
 /doc
