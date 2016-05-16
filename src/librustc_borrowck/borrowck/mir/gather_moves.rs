@@ -671,10 +671,18 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                 let _ = discr;
             }
 
-            TerminatorKind::Drop { value: ref lval, target: _, unwind: _ } => {
+            TerminatorKind::Drop { ref location, target: _, unwind: _ } => {
                 let source = Location { block: bb,
                                         index: bb_data.statements.len() };
-                bb_ctxt.on_move_out_lval(SK::Drop, lval, source);
+                bb_ctxt.on_move_out_lval(SK::Drop, location, source);
+            }
+            TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
+                let assigned_path = bb_ctxt.builder.move_path_for(location);
+                bb_ctxt.path_map.fill_to(assigned_path.idx());
+
+                let source = Location { block: bb,
+                                        index: bb_data.statements.len() };
+                bb_ctxt.on_operand(SK::Use, value, source);
             }
             TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
                 let source = Location { block: bb,

@@ -309,15 +309,23 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
         Some(stmt) => match stmt.kind {
             repr::StatementKind::Assign(ref lvalue, _) => {
                 debug!("drop_flag_effects: assignment {:?}", stmt);
-                on_all_children_bits(tcx, mir, move_data,
+                 on_all_children_bits(tcx, mir, move_data,
                                      move_data.rev_lookup.find(lvalue),
                                      |moi| callback(moi, DropFlagState::Present))
             }
         },
         None => {
-            // terminator - no move-ins except for function return edge
-            let term = bb.terminator();
-            debug!("drop_flag_effects: terminator {:?}", term);
+            debug!("drop_flag_effects: replace {:?}", bb.terminator());
+            match bb.terminator().kind {
+                repr::TerminatorKind::DropAndReplace { ref location, .. } => {
+                    on_all_children_bits(tcx, mir, move_data,
+                                         move_data.rev_lookup.find(location),
+                                         |moi| callback(moi, DropFlagState::Present))
+                }
+                _ => {
+                    // other terminators do not contain move-ins
+                }
+            }
         }
     }
 }

@@ -34,29 +34,25 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let scope_id = this.innermost_scope_id();
                 let lhs_span = lhs.span;
 
-                let lhs_ty = lhs.ty;
-                let rhs_ty = rhs.ty;
-
-                let lhs_needs_drop = this.hir.needs_drop(lhs_ty);
-                let rhs_needs_drop = this.hir.needs_drop(rhs_ty);
-
                 // Note: we evaluate assignments right-to-left. This
                 // is better for borrowck interaction with overloaded
                 // operators like x[j] = x[i].
 
                 // Generate better code for things that don't need to be
                 // dropped.
-                let rhs = if lhs_needs_drop || rhs_needs_drop {
-                    let op = unpack!(block = this.as_operand(block, rhs));
-                    Rvalue::Use(op)
+                if this.hir.needs_drop(lhs.ty) {
+                    let rhs = unpack!(block = this.as_operand(block, rhs));
+                    let lhs = unpack!(block = this.as_lvalue(block, lhs));
+                    unpack!(block = this.build_drop_and_replace(
+                        block, lhs_span, lhs, rhs
+                    ));
+                    block.unit()
                 } else {
-                    unpack!(block = this.as_rvalue(block, rhs))
-                };
-
-                let lhs = unpack!(block = this.as_lvalue(block, lhs));
-                unpack!(block = this.build_drop(block, lhs_span, lhs.clone(), lhs_ty));
-                this.cfg.push_assign(block, scope_id, expr_span, &lhs, rhs);
-                block.unit()
+                    let rhs = unpack!(block = this.as_rvalue(block, rhs));
+                    let lhs = unpack!(block = this.as_lvalue(block, lhs));
+                    this.cfg.push_assign(block, scope_id, expr_span, &lhs, rhs);
+                    block.unit()
+                }
             }
             ExprKind::AssignOp { op, lhs, rhs } => {
                 // FIXME(#28160) there is an interesting semantics
