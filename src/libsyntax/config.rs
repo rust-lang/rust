@@ -38,6 +38,16 @@ pub struct StripUnconfigured<'a> {
 }
 
 impl<'a> StripUnconfigured<'a> {
+    pub fn new(config: &'a ast::CrateConfig,
+               diagnostic: &'a Handler,
+               feature_gated_cfgs: &'a mut Vec<GatedCfgAttr>)
+               -> Self {
+        StripUnconfigured {
+            config: config,
+            diag: CfgDiagReal { diag: diagnostic, feature_gated_cfgs: feature_gated_cfgs },
+        }
+    }
+
     fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Option<ast::Attribute> {
         if !attr.check_name("cfg_attr") {
             return Some(attr);
@@ -121,13 +131,8 @@ pub fn strip_unconfigured_items(diagnostic: &Handler, krate: ast::Crate,
                                 feature_gated_cfgs: &mut Vec<GatedCfgAttr>)
                                 -> ast::Crate
 {
-    StripUnconfigured {
-        config: &krate.config.clone(),
-        diag: CfgDiagReal {
-            diag: diagnostic,
-            feature_gated_cfgs: feature_gated_cfgs,
-        },
-    }.fold_crate(krate)
+    let config = &krate.config.clone();
+    StripUnconfigured::new(config, diagnostic, feature_gated_cfgs).fold_crate(krate)
 }
 
 impl<T: CfgFolder> fold::Folder for T {

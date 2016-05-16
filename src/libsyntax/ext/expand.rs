@@ -19,6 +19,7 @@ use attr;
 use attr::{AttrMetaMethods, WithAttrs, ThinAttributesExt};
 use codemap;
 use codemap::{Span, Spanned, ExpnInfo, ExpnId, NameAndSpan, MacroBang, MacroAttribute};
+use config::StripUnconfigured;
 use ext::base::*;
 use feature_gate::{self, Features};
 use fold;
@@ -74,6 +75,17 @@ impl_macro_generable! {
         "item",      .make_items,      lift .fold_item,      |_span| SmallVector::zero();
     SmallVector<ast::Stmt>:
         "statement", .make_stmts,      lift .fold_stmt,      |_span| SmallVector::zero();
+}
+
+impl MacroGenerable for Option<P<ast::Expr>> {
+    fn kind_name() -> &'static str { "expression" }
+    fn dummy(_span: Span) -> Self { None }
+    fn make_with<'a>(result: Box<MacResult + 'a>) -> Option<Self> {
+        result.make_expr().map(Some)
+    }
+    fn fold_with<F: Folder>(self, folder: &mut F) -> Self {
+        self.and_then(|expr| folder.fold_opt_expr(expr))
+    }
 }
 
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
@@ -322,7 +334,8 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
     };
 
     let marked = expanded.fold_with(&mut Marker { mark: mark, expn_id: Some(fld.cx.backtrace()) });
-    let fully_expanded = marked.fold_with(fld);
+    let configured = marked.fold_with(&mut fld.strip_unconfigured());
+    let fully_expanded = configured.fold_with(fld);
     fld.cx.bt_pop();
     fully_expanded
 }
@@ -987,6 +1000,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     pub fn new(cx: &'a mut ExtCtxt<'b>) -> MacroExpander<'a, 'b> {
         MacroExpander { cx: cx }
     }
+
+    fn strip_unconfigured(&mut self) -> StripUnconfigured {
+        StripUnconfigured::new(&self.cx.cfg,
+                               &self.cx.parse_sess.span_diagnostic,
+                               self.cx.feature_gated_cfgs)
+    }
 }
 
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
@@ -997,6 +1016,19 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
         expand_expr(expr, self)
+    }
+
+    fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
+        match expr.node {
+            ast::ExprKind::Mac(_) => {}
+            _ => return Some(expand_expr(expr, self)),
+        }
+
+        expr.and_then(|ast::Expr {node, span, attrs, ..}| match node {
+            ast::ExprKind::Mac(mac) =>
+                expand_mac_invoc(mac, None, attrs.into_attr_vec(), span, self),
+            _ => unreachable!(),
+        })
     }
 
     fn fold_pat(&mut self, pat: P<ast::Pat>) -> P<ast::Pat> {
