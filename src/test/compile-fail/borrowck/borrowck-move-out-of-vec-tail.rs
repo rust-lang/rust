@@ -29,8 +29,8 @@ pub fn main() {
             match tail {
                 [Foo { string: a },
                 //~^ ERROR cannot move out of borrowed content
-                //~| move occurs here
-                //~| attempting to move value to here
+                //~| cannot move out
+                //~| to prevent move
                  Foo { string: b }] => {
                     //~^ NOTE and here
                 }

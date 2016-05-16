@@ -90,7 +90,7 @@ use std::cell::{Cell, RefCell};
 use std::char::from_u32;
 use std::fmt;
 use syntax::ast;
-use syntax::errors::DiagnosticBuilder;
+use syntax::errors::{DiagnosticBuilder, check_old_skool};
 use syntax::codemap::{self, Pos, Span};
 use syntax::parse::token;
 use syntax::ptr::P;
@@ -481,7 +481,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                        "{}",
                                        trace.origin);
 
-        if !is_simple_error {
+        if !is_simple_error || check_old_skool() {
             err.note_expected_found(&"type", &expected, &found);
         }
 

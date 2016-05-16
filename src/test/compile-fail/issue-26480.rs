@@ -26,6 +26,8 @@ macro_rules! write {
                   $arr.len() * size_of($arr[0]));
             //~^ ERROR mismatched types
             //~| expected u64, found usize
+            //~| expected type
+            //~| found type
         }
     }}
 }
@@ -38,6 +40,8 @@ fn main() {
     let hello = ['H', 'e', 'y'];
     write!(hello);
     //~^ NOTE in this expansion of write!
+    //~| NOTE in this expansion of write!
+    //~| NOTE in this expansion of write!
 
     cast!(2);
     //~^ NOTE in this expansion of cast!
