@@ -90,6 +90,7 @@ pub enum Style {
     UnderlineSecondary,
     LabelPrimary,
     LabelSecondary,
+    OldSkoolNote,
     NoStyle,
 }
 
@@ -497,6 +498,28 @@ impl FileInfo {
                     match self.primary_span {
                         Some(span) => {
                             let lo = codemap.lookup_char_pos(span.lo);
+                            //Before each secondary line in old skool-mode, print the label
+                            //as an old-style note
+                            if !line.annotations[0].is_primary {
+                                if let Some(ann) = line.annotations[0].label.clone() {
+                                    output.push(RenderedLine {
+                                        text: vec![StyledString {
+                                            text: lo.file.name.clone(),
+                                            style: Style::FileNameStyle,
+                                        }, StyledString {
+                                            text: format!(":{}:{}: ", lo.line, lo.col.0 + 1),
+                                            style: Style::LineAndColumn,
+                                        }, StyledString {
+                                            text: format!("note: "),
+                                            style: Style::LabelSecondary,
+                                        }, StyledString {
+                                            text: format!("{}", ann),
+                                            style: Style::OldSkoolNote,
+                                        }],
+                                        kind: RenderedLineKind::Annotations,
+                                    });
+                                }
+                            }
                             rendered_lines[0].text.insert(0, StyledString {
                                 text: format!(":{} ", lo.line),
                                 style: Style::LineAndColumn,
