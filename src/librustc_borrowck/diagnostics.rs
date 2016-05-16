@@ -391,6 +391,7 @@ fn you_know_nothing(jon_snow: &mut i32) {
                        //        but it is already borrowed
     };
 }
+```
 
 In here, `jon_snow` is already borrowed by the `nights_watch` closure, so it
 cannot be borrowed by the `starks` closure at the same time. To fix this issue,
