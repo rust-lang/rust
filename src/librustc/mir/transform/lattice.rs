@@ -23,7 +23,6 @@ impl<T: Lattice> Lattice for WTop<T> {
     /// ⊤ + V = ⊤ (no change)
     /// V + ⊤ = ⊤
     /// ⊤ + ⊤ = ⊤ (no change)
-//    default fn join(&mut self, other: &Self) -> bool {
     fn join(&mut self, other: &Self) -> bool {
         match (self, other) {
             (&mut WTop::Value(ref mut this), &WTop::Value(ref o)) => <T as Lattice>::join(this, o),
