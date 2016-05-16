@@ -52,21 +52,7 @@ where L: Lattice, R1: Rewrite<'tcx, L>, R2: Rewrite<'tcx, L> {
                 match self.1.stmt(&ns, l, c) {
                     StatementChange::None => StatementChange::Statement(ns),
                     x => x
-                },
-            StatementChange::Statements(nss) => {
-                // We expect the common case of all statements in this vector being replaced/not
-                // replaced by other statements 1:1
-                let mut new_new_stmts = Vec::with_capacity(nss.len());
-                for s in nss {
-                    match self.1.stmt(&s, l, c) {
-                        StatementChange::None => new_new_stmts.push(s),
-                        StatementChange::Remove => {},
-                        StatementChange::Statement(ns) => new_new_stmts.push(ns),
-                        StatementChange::Statements(nss) => new_new_stmts.extend(nss)
-                    }
                 }
-                StatementChange::Statements(new_new_stmts)
-            }
         }
     }
 
@@ -96,24 +82,6 @@ pub enum StatementChange<'tcx> {
     Remove,
     /// Replace with another single statement
     Statement(mir::Statement<'tcx>),
-    /// Replace with a list of statements
-    Statements(Vec<mir::Statement<'tcx>>),
-}
-
-impl<'tcx> StatementChange<'tcx> {
-    fn normalise(&mut self) {
-        let old = ::std::mem::replace(self, StatementChange::None);
-        *self = match old {
-            StatementChange::Statements(mut stmts) => {
-                match stmts.len() {
-                    0 => StatementChange::Remove,
-                    1 => StatementChange::Statement(stmts.pop().unwrap()),
-                    _ => StatementChange::Statements(stmts)
-                }
-            }
-            o => o
-        }
-    }
 }
 
 pub trait Transfer<'tcx> {
@@ -180,9 +148,7 @@ where T: Transfer<'tcx>,
         for stmt in &old_statements {
             // Given a fact and statement produce a new fact and optionally a replacement
             // graph.
-            let mut new_repl = rewrite.stmt(&stmt, &fact, cfg);
-            new_repl.normalise();
-            match new_repl {
+            match rewrite.stmt(&stmt, &fact, cfg) {
                 StatementChange::None => {
                     fact = transfer.stmt(stmt, fact);
                     cfg.push(new_graph, stmt.clone());
@@ -193,12 +159,6 @@ where T: Transfer<'tcx>,
                     fact = transfer.stmt(&stmt, fact);
                     cfg.push(new_graph, stmt);
                 }
-                StatementChange::Statements(stmts) => {
-                    changed = true;
-                    for stmt in &stmts { fact = transfer.stmt(stmt, fact); }
-                    cfg[new_graph].statements.extend(stmts);
-                }
-
             }
         }
         // Swap the statements back in.
