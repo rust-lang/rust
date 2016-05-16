@@ -81,7 +81,7 @@
 //!
 //! ```
 //! format!("{argument}", argument = "test");   // => "test"
-//! format!("{name} {}", 1, name = 2);        // => "2 1"
+//! format!("{name} {}", 1, name = 2);          // => "2 1"
 //! format!("{a} {c} {b}", a="a", b='b', c=3);  // => "a 3 b"
 //! ```
 //!
@@ -104,8 +104,8 @@
 //! octal.
 //!
 //! There are various parameters which do require a particular type, however.
-//! Namely, the `{:.*}` syntax, which sets the number of numbers after the
-//! decimal in floating-point types:
+//! An example is the `{:.*}` syntax, which sets the number of decimal places
+//! in floating-point types:
 //!
 //! ```
 //! let formatted_number = format!("{:.*}", 2, 1.234567);
@@ -527,7 +527,7 @@ use string;
 /// use std::fmt;
 ///
 /// let s = fmt::format(format_args!("Hello, {}!", "world"));
-/// assert_eq!(s, "Hello, world!".to_string());
+/// assert_eq!(s, "Hello, world!");
 /// ```
 ///
 /// Please note that using [`format!`][format!] might be preferrable.
@@ -535,7 +535,7 @@ use string;
 ///
 /// ```
 /// let s = format!("Hello, {}!", "world");
-/// assert_eq!(s, "Hello, world!".to_string());
+/// assert_eq!(s, "Hello, world!");
 /// ```
 ///
 /// [format!]: ../macro.format!.html
