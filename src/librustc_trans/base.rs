@@ -2450,9 +2450,7 @@ fn write_metadata(cx: &SharedCrateContext,
 
     let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed[..]);
     let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
-    let name = format!("rust_metadata_{}_{}",
-                       cx.link_meta().crate_name,
-                       cx.link_meta().crate_hash);
+    let name = cx.metadata_symbol_name();
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
         llvm::LLVMAddGlobal(cx.metadata_llmod(), val_ty(llconst).to_ref(), buf.as_ptr())

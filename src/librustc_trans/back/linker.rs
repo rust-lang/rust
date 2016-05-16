@@ -42,6 +42,11 @@ fn exported_symbols<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
     let mut symbols = reachable.to_vec();
 
+    // Make sure to keep the metadata in dylibs (cdylibs don't have it).
+    if crate_type == CrateTypeDylib {
+        symbols.push(scx.metadata_symbol_name());
+    }
+
     // Take a look at how all upstream crates are linked into this
     // dynamic library. For all statically linked libraries we take all
     // their reachable symbols and emit them as well.
