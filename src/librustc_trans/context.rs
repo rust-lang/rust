@@ -503,6 +503,12 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             Substs::new(VecPerParamSpace::empty(),
                         scheme.generics.regions.map(|_| ty::ReStatic)))
     }
+
+    pub fn metadata_symbol_name(&self) -> String {
+        format!("rust_metadata_{}_{}",
+                self.link_meta().crate_name,
+                self.link_meta().crate_hash)
+    }
 }
 
 impl<'tcx> LocalCrateContext<'tcx> {
