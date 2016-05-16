@@ -152,7 +152,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                 ty::TyEnum(def, _) if def.has_dtor() => {
                     let mut err = struct_span_err!(bccx, move_from.span, E0509,
                                                    "cannot move out of type `{}`, \
-                                                   which defines the `Drop` trait",
+                                                   which implements the `Drop` trait",
                                                    b.ty);
                     err.span_label(move_from.span, &format!("cannot move out of here"));
                     err
