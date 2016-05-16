@@ -111,6 +111,8 @@ macro_rules! targets {
             (check_pfail, CheckPFail { compiler: Compiler<'a> }),
             (check_codegen, CheckCodegen { compiler: Compiler<'a> }),
             (check_codegen_units, CheckCodegenUnits { compiler: Compiler<'a> }),
+            (check_incremental, CheckIncremental { compiler: Compiler<'a> }),
+            (check_ui, CheckUi { compiler: Compiler<'a> }),
             (check_debuginfo, CheckDebuginfo { compiler: Compiler<'a> }),
             (check_rustdoc, CheckRustdoc { compiler: Compiler<'a> }),
             (check_pretty, CheckPretty { compiler: Compiler<'a> }),
@@ -379,6 +381,8 @@ impl<'a> Step<'a> {
                     self.check_cfail(compiler),
                     self.check_rfail(compiler),
                     self.check_pfail(compiler),
+                    self.check_incremental(compiler),
+                    self.check_ui(compiler),
                     self.check_crate_std(compiler),
                     self.check_crate_test(compiler),
                     self.check_crate_rustc(compiler),
@@ -412,6 +416,8 @@ impl<'a> Step<'a> {
             Source::CheckPFail { compiler } |
             Source::CheckCodegen { compiler } |
             Source::CheckCodegenUnits { compiler } |
+            Source::CheckIncremental { compiler } |
+            Source::CheckUi { compiler } |
             Source::CheckRustdoc { compiler } |
             Source::CheckPretty { compiler } |
             Source::CheckCFail { compiler } |
