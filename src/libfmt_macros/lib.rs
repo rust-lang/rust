@@ -80,8 +80,6 @@ pub struct FormatSpec<'a> {
 /// Enum describing where an argument for a format can be located.
 #[derive(Copy, Clone, PartialEq)]
 pub enum Position<'a> {
-    /// The argument will be in the next position. This is the default.
-    ArgumentNext,
     /// The argument is located at a specific index.
     ArgumentIs(usize),
     /// The argument has a name.
@@ -127,8 +125,6 @@ pub enum Count<'a> {
     CountIsName(&'a str),
     /// The count is specified by the argument at the given index.
     CountIsParam(usize),
-    /// The count is specified by the next parameter.
-    CountIsNextParam,
     /// The count is implied and cannot be explicitly specified.
     CountImplied,
 }
@@ -262,37 +258,18 @@ impl<'a> Parser<'a> {
     /// Parses an Argument structure, or what's contained within braces inside
     /// the format string
     fn argument(&mut self) -> Argument<'a> {
-        let mut pos = self.position();
-        let mut format = self.format();
+        let pos = self.position();
+        let format = self.format();
 
-        // Resolve CountIsNextParam's into absolute references.
-        // Current argument's position must be known so this is done after
-        // format parsing.
-        // Curiously, currently {:.*} for named arguments is implemented,
-        // and it consumes a positional arg slot just like a positional {:.*}
-        // does. The current behavior is reproduced to prevent any
-        // incompatibilities.
-        match format.precision {
-            CountIsNextParam => {
-                // eat the current implicit arg
+        // Resolve position after parsing format spec.
+        let pos = match pos {
+            Some(position) => position,
+            None => {
                 let i = self.curarg;
                 self.curarg += 1;
-                format.precision = CountIsParam(i);
+                ArgumentIs(i)
             }
-            _ => {}
-        }
-
-        // Resolve ArgumentNext's into absolute references.
-        // This must come after count resolution because we may consume one
-        // more arg if precision is CountIsNextParam.
-        match pos {
-            ArgumentNext => {
-                let i = self.curarg;
-                self.curarg += 1;
-                pos = ArgumentIs(i);
-            }
-            _ => {}
-        }
+        };
 
         Argument {
             position: pos,
@@ -302,13 +279,19 @@ impl<'a> Parser<'a> {
 
     /// Parses a positional argument for a format. This could either be an
     /// integer index of an argument, a named argument, or a blank string.
-    fn position(&mut self) -> Position<'a> {
+    /// Returns `Some(parsed_position)` if the position is not implicitly
+    /// consuming a macro argument, `None` if it's the case.
+    fn position(&mut self) -> Option<Position<'a>> {
         if let Some(i) = self.integer() {
-            ArgumentIs(i)
+            Some(ArgumentIs(i))
         } else {
             match self.cur.peek() {
-                Some(&(_, c)) if c.is_alphabetic() => ArgumentNamed(self.word()),
-                _ => ArgumentNext,
+                Some(&(_, c)) if c.is_alphabetic() => Some(ArgumentNamed(self.word())),
+
+                // This is an `ArgumentNext`.
+                // Record the fact and do the resolution after parsing the
+                // format spec, to make things like `{:.*}` work.
+                _ => None,
             }
         }
     }
@@ -375,7 +358,11 @@ impl<'a> Parser<'a> {
         }
         if self.consume('.') {
             if self.consume('*') {
-                spec.precision = CountIsNextParam;
+                // Resolve `CountIsNextParam`.
+                // We can do this immediately as `position` is resolved later.
+                let i = self.curarg;
+                self.curarg += 1;
+                spec.precision = CountIsParam(i);
             } else {
                 spec.precision = self.count();
             }
