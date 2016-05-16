@@ -115,7 +115,7 @@ trait Trait {
 
 Now, `foo()` can no longer be called on a trait object, but you will now be
 allowed to make a trait object, and that will be able to call any object-safe
-methods". With such a bound, one can still call `foo()` on types implementing
+methods. With such a bound, one can still call `foo()` on types implementing
 that trait that aren't behind trait objects.
 
 ### Method has generic type parameters
