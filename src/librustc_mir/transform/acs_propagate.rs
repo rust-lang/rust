@@ -29,7 +29,6 @@
 //! manually here.
 
 use rustc_data_structures::fnv::FnvHashMap;
-use rustc_data_structures::bitvec::BitVector;
 use rustc::mir::repr::*;
 use rustc::mir::visit::{MutVisitor, LvalueContext};
 use rustc::mir::transform::lattice::Lattice;
@@ -66,11 +65,9 @@ impl Pass for ACSPropagate {}
 
 impl<'tcx> MirPass<'tcx> for ACSPropagate {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
-        let mut q = BitVector::new(mir.cfg.len());
-        q.insert(START_BLOCK.index());
         let ret = ar_forward(
             &mut mir.cfg,
-            Facts::new(), q,
+            Facts::new(),
             ACSPropagateTransfer,
             AliasRewrite.and_then(ConstRewrite).and_then(SimplifyRewrite)
         );

@@ -1,6 +1,6 @@
 use mir::repr as mir;
 use mir::cfg::CFG;
-use mir::repr::BasicBlock;
+use mir::repr::{BasicBlock, START_BLOCK};
 use rustc_data_structures::bitvec::BitVector;
 
 use mir::transform::lattice::Lattice;
@@ -134,11 +134,14 @@ impl<F: Lattice> ::std::ops::IndexMut<BasicBlock> for Facts<F> {
 }
 
 /// Analyse and rewrite using dataflow in the forward direction
-pub fn ar_forward<'tcx, T, R>(cfg: &CFG<'tcx>, fs: Facts<T::Lattice>, mut queue: BitVector, transfer: T, rewrite: R)
+pub fn ar_forward<'tcx, T, R>(cfg: &CFG<'tcx>, fs: Facts<T::Lattice>, transfer: T, rewrite: R)
 -> (CFG<'tcx>, Facts<T::Lattice>)
 where T: Transfer<'tcx>,
       R: Rewrite<'tcx, T::Lattice>
 {
+    let mut queue = BitVector::new(cfg.len());
+    queue.insert(START_BLOCK.index());
+
     fixpoint(cfg, Direction::Forward, |bb, fact, cfg| {
         let new_graph = cfg.start_new_block();
         let mut fact = fact.clone();
