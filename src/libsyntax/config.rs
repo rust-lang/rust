@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use attr::AttrMetaMethods;
+use attr::{AttrMetaMethods, HasAttrs};
 use errors::Handler;
 use feature_gate::GatedCfgAttr;
 use fold::Folder;
@@ -20,7 +20,7 @@ use ptr::P;
 use util::small_vector::SmallVector;
 
 pub trait CfgFolder: fold::Folder {
-    fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool;
+    fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T>;
     fn visit_unconfigurable_expr(&mut self, _expr: &ast::Expr) {}
 }
 
@@ -32,8 +32,12 @@ struct Context<'a, F> where F: FnMut(&[ast::Attribute]) -> bool {
 }
 
 impl<'a, F: FnMut(&[ast::Attribute]) -> bool> CfgFolder for Context<'a, F> {
-    fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
-        (self.in_cfg)(attrs)
+    fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
+        if (self.in_cfg)(node.attrs()) {
+            Some(node)
+        } else {
+            None
+        }
     }
 
     fn visit_unconfigurable_expr(&mut self, expr: &ast::Expr) {
@@ -70,49 +74,39 @@ impl<T: CfgFolder> fold::Folder for T {
     fn fold_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
         ast::ForeignMod {
             abi: foreign_mod.abi,
-            items: foreign_mod.items.into_iter().filter(|item| {
-                self.in_cfg(&item.attrs)
-            }).collect(),
+            items: foreign_mod.items.into_iter().filter_map(|item| self.configure(item)).collect(),
         }
     }
 
     fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
         let fold_struct = |this: &mut Self, vdata| match vdata {
             ast::VariantData::Struct(fields, id) => {
-                ast::VariantData::Struct(fields.into_iter().filter(|m| {
-                    this.in_cfg(&m.attrs)
-                }).collect(), id)
+                let fields = fields.into_iter().filter_map(|field| this.configure(field));
+                ast::VariantData::Struct(fields.collect(), id)
             }
             ast::VariantData::Tuple(fields, id) => {
-                ast::VariantData::Tuple(fields.into_iter().filter(|m| {
-                    this.in_cfg(&m.attrs)
-                }).collect(), id)
+                let fields = fields.into_iter().filter_map(|field| this.configure(field));
+                ast::VariantData::Tuple(fields.collect(), id)
             }
             ast::VariantData::Unit(id) => ast::VariantData::Unit(id)
         };
 
         let item = match item {
-            ast::ItemKind::Impl(u, o, a, b, c, impl_items) => {
-                let impl_items = impl_items.into_iter()
-                                           .filter(|ii| self.in_cfg(&ii.attrs))
-                                           .collect();
-                ast::ItemKind::Impl(u, o, a, b, c, impl_items)
+            ast::ItemKind::Impl(u, o, a, b, c, items) => {
+                let items = items.into_iter().filter_map(|item| self.configure(item)).collect();
+                ast::ItemKind::Impl(u, o, a, b, c, items)
             }
-            ast::ItemKind::Trait(u, a, b, methods) => {
-                let methods = methods.into_iter()
-                                     .filter(|ti| self.in_cfg(&ti.attrs))
-                                     .collect();
-                ast::ItemKind::Trait(u, a, b, methods)
+            ast::ItemKind::Trait(u, a, b, items) => {
+                let items = items.into_iter().filter_map(|item| self.configure(item)).collect();
+                ast::ItemKind::Trait(u, a, b, items)
             }
             ast::ItemKind::Struct(def, generics) => {
                 ast::ItemKind::Struct(fold_struct(self, def), generics)
             }
             ast::ItemKind::Enum(def, generics) => {
                 let variants = def.variants.into_iter().filter_map(|v| {
-                    if !self.in_cfg(&v.node.attrs) {
-                        None
-                    } else {
-                        Some(Spanned {
+                    self.configure(v).map(|v| {
+                        Spanned {
                             node: ast::Variant_ {
                                 name: v.node.name,
                                 attrs: v.node.attrs,
@@ -120,8 +114,8 @@ impl<T: CfgFolder> fold::Folder for T {
                                 disr_expr: v.node.disr_expr,
                             },
                             span: v.span
-                        })
-                    }
+                        }
+                    })
                 });
                 ast::ItemKind::Enum(ast::EnumDef {
                     variants: variants.collect(),
@@ -146,19 +140,12 @@ impl<T: CfgFolder> fold::Folder for T {
     }
 
     fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        if self.in_cfg(expr.attrs()) {
-            Some(fold_expr(self, expr))
-        } else {
-            None
-        }
+        self.configure(expr).map(|expr| fold_expr(self, expr))
     }
 
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
-        if self.in_cfg(stmt.node.attrs()) {
-            fold::noop_fold_stmt(stmt, self)
-        } else {
-            SmallVector::zero()
-        }
+        self.configure(stmt).map(|stmt| fold::noop_fold_stmt(stmt, self))
+                            .unwrap_or(SmallVector::zero())
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
@@ -166,11 +153,8 @@ impl<T: CfgFolder> fold::Folder for T {
     }
 
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
-        if self.in_cfg(&item.attrs) {
-            SmallVector::one(item.map(|i| self.fold_item_simple(i)))
-        } else {
-            SmallVector::zero()
-        }
+        self.configure(item).map(|item| SmallVector::one(item.map(|i| self.fold_item_simple(i))))
+                            .unwrap_or(SmallVector::zero())
     }
 }
 
@@ -192,7 +176,7 @@ fn fold_expr<F: CfgFolder>(folder: &mut F, expr: P<ast::Expr>) -> P<ast::Expr> {
             node: match node {
                 ast::ExprKind::Match(m, arms) => {
                     ast::ExprKind::Match(m, arms.into_iter()
-                                        .filter(|a| folder.in_cfg(&a.attrs))
+                                        .filter_map(|a| folder.configure(a))
                                         .collect())
                 }
                 _ => node
