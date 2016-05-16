@@ -161,6 +161,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         let trait_self_ty = tcx.erase_late_bound_regions(&trait_ref).self_ty();
 
+        if trait_self_ty.is_ty_var() {
+            return None;
+        }
+
         self.tcx.lookup_trait_def(trait_ref.def_id())
             .for_each_relevant_impl(self.tcx, trait_self_ty, |def_id| {
                 let impl_self_ty = tcx
@@ -169,17 +173,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     .self_ty()
                     .subst(tcx, &self.impl_substs(def_id, obligation.clone()));
 
+                if !tcx.has_attr(def_id, "rustc_on_unimplemented") {
+                    return;
+                }
+
                 if let Ok(..) = self.can_equate(&trait_self_ty, &impl_self_ty) {
                     ambiguous = result.is_some();
                     result = Some(def_id);
                 }
             });
 
-        match result {
-            Some(def_id) if !ambiguous && tcx.has_attr(def_id, "rustc_on_unimplemented") => {
-                result
-            }
-            _ => None
+        if ambiguous {
+            None
+        } else {
+            result
         }
     }
 

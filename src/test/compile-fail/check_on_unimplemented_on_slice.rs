@@ -12,6 +12,8 @@
 
 #![feature(rustc_attrs)]
 
+use std::ops::Index;
+
 #[rustc_error]
 fn main() {
     let x = &[1, 2, 3] as &[i32];
