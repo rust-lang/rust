@@ -2159,7 +2159,8 @@ actual:\n\
         match File::open(path).and_then(|mut f| f.read_to_string(&mut result)) {
             Ok(_) => result,
             Err(e) => {
-                self.fatal(&format!("failed to load expected output from `{}`: {}", path.display(), e))
+                self.fatal(&format!("failed to load expected output from `{}`: {}",
+                                    path.display(), e))
             }
         }
     }
