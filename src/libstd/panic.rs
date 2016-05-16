@@ -73,7 +73,7 @@ pub fn take_handler() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
 ///
 /// [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/1236-stabilize-catch-panic.md
 ///
-/// ## What is `RecoverSafe`?
+/// ## What is `UnwindSafe`?
 ///
 /// Now that we've got an idea of what panic safety is in Rust, it's also
 /// important to understand what this trait represents. As mentioned above, one
@@ -81,7 +81,7 @@ pub fn take_handler() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
 /// module as it allows catching a panic and then re-using the environment of
 /// the closure.
 ///
-/// Simply put, a type `T` implements `RecoverSafe` if it cannot easily allow
+/// Simply put, a type `T` implements `UnwindSafe` if it cannot easily allow
 /// witnessing a broken invariant through the use of `recover` (catching a
 /// panic). This trait is a marker trait, so it is automatically implemented for
 /// many types, and it is also structurally composed (e.g. a struct is recover
@@ -108,7 +108,7 @@ pub fn take_handler() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
 ///
 /// Is not intended that most types or functions need to worry about this trait.
 /// It is only used as a bound on the `recover` function and as mentioned above,
-/// the lack of `unsafe` means it is mostly an advisory. The `AssertRecoverSafe`
+/// the lack of `unsafe` means it is mostly an advisory. The `AssertUnwindSafe`
 /// wrapper struct in this module can be used to force this trait to be
 /// implemented for any closed over variables passed to the `recover` function
 /// (more on this below).
@@ -246,7 +246,7 @@ impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Rc<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Arc<T> {}
 
-// Pretty simple implementations for the `RefRecoverSafe` marker trait,
+// Pretty simple implementations for the `RefUnwindSafe` marker trait,
 // basically just saying that this is a marker trait and `UnsafeCell` is the
 // only thing which doesn't implement it (which then transitively applies to
 // everything else).
