@@ -32,14 +32,14 @@ fn power_of_ten(e: i16) -> Fp {
     Fp { f: sig, e: exp }
 }
 
-// Most architectures floating point operations with explicit bit size, therefore the precision of
-// the computation is determined on a per-operation basis.
+// In most architectures, floating point operations have an explicit bit size, therefore the
+// precision of the computation is determined on a per-operation basis.
 #[cfg(any(not(target_arch="x86"), target_feature="sse2"))]
 mod fpu_precision {
     pub fn set_precision<T>() { }
 }
 
-// On x86, the x87 FPU is used for float operations if the SSE[2] extensions are not available.
+// On x86, the x87 FPU is used for float operations if the SSE/SSE2 extensions are not available.
 // The x87 FPU operates with 80 bits of precision by default, which means that operations will
 // round to 80 bits causing double rounding to happen when values are eventually represented as
 // 32/64 bit float values. To overcome this, the FPU control word can be set so that the
@@ -54,40 +54,19 @@ mod fpu_precision {
     ///
     /// The x87 FPU is a 16-bits register whose fields are as follows:
     ///
-    ///    1111 11
-    ///    5432 10 98 76 5 4 3 2 1 0
-    ///   +----+--+--+--+-+-+-+-+-+-+
-    ///   |    |RC|PC|  |P|U|O|Z|D|I|
-    ///   |    |  |  |  |M|M|M|M|M|M|
-    ///   +----+--+--+--+-+-+-+-+-+-+
-    /// The fields are:
-    ///  - Invalid operation Mask
-    ///  - Denormal operand Mask
-    ///  - Zero divide Mask
-    ///  - Overflow Mask
-    ///  - Underflow Mask
-    ///  - Precision Mask
-    ///  - Precision Control
-    ///  - Rounding Control
+    /// | 12-15 | 10-11 | 8-9 | 6-7 |  5 |  4 |  3 |  2 |  1 |  0 |
+    /// |------:|------:|----:|----:|---:|---:|---:|---:|---:|---:|
+    /// |       | RC    | PC  |     | PM | UM | OM | ZM | DM | IM |
     ///
-    /// The fields with no name are unused (on FPUs more modern than 287).
+    /// The documentation for all of the fields is available in the IA-32 Architectures Software
+    /// Developer's Manual (Volume 1).
     ///
-    /// The 6 LSBs (bits 0-5) are the exception mask bits; each blocks a specific type of floating
-    /// point exceptions from being raised.
-    ///
-    /// The Precision Control field determines the precision of the operations performed by the
-    /// FPU. It can set to:
+    /// The only field which is relevant for the following code is PC, Precision Control. This
+    /// field determines the precision of the operations performed by the  FPU. It can be set to:
     ///  - 0b00, single precision i.e. 32-bits
     ///  - 0b10, double precision i.e. 64-bits
     ///  - 0b11, double extended precision i.e. 80-bits (default state)
     /// The 0b01 value is reserved and should not be used.
-    ///
-    /// The Rounding Control field determines how values which cannot be represented exactly are
-    /// rounded. It can be set to:
-    ///  - 0b00, round to nearest even (default state)
-    ///  - 0b01, round down (toward -inf)
-    ///  - 0b10, round up (toward +inf)
-    ///  - 0b11, round toward 0 (truncate)
     pub struct FPUControlWord(u16);
 
     fn set_cw(cw: u16) {
