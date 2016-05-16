@@ -526,6 +526,10 @@ impl Destination {
             }
             Style::OldSkoolNote => {
                 self.start_attr(term::Attr::Bold)?;
+                self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_GREEN))?;
+            }
+            Style::OldSkoolNoteText => {
+                self.start_attr(term::Attr::Bold)?;
             }
             Style::UnderlinePrimary | Style::LabelPrimary => {
                 self.start_attr(term::Attr::Bold)?;
