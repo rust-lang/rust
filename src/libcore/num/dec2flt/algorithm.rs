@@ -70,7 +70,7 @@ mod fpu_precision {
     pub struct FPUControlWord(u16);
 
     fn set_cw(cw: u16) {
-        unsafe { asm!("fldcw $0" :: "m" (cw)) :: "volatile" }
+        unsafe { asm!("fldcw $0" :: "m" (cw) :: "volatile") }
     }
 
     /// Set the precision field of the FPU to `T` and return a `FPUControlWord`
@@ -86,7 +86,7 @@ mod fpu_precision {
 
         // Get the original value of the control word to restore it later, when the
         // `FPUControlWord` structure is dropped
-        unsafe { asm!("fnstcw $0" : "=*m" (&cw)) ::: "volatile" }
+        unsafe { asm!("fnstcw $0" : "=*m" (&cw) ::: "volatile") }
 
         // Set the control word to the desired precision. This is achieved by masking away the old
         // precision (bits 8 and 9, 0x300) and replacing it with the precision flag computed above.
