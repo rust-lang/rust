@@ -2508,9 +2508,7 @@ pub fn write_metadata<'a, 'tcx>(cx: &SharedCrateContext<'a, 'tcx>,
 
     let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed[..]);
     let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
-    let name = format!("rust_metadata_{}_{}",
-                       cx.link_meta().crate_name,
-                       cx.link_meta().crate_hash);
+    let name = cx.metadata_symbol_name();
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
         llvm::LLVMAddGlobal(cx.metadata_llmod(), val_ty(llconst).to_ref(), buf.as_ptr())
@@ -2810,6 +2808,10 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }).collect::<Vec<_>>();
     if sess.entry_fn.borrow().is_some() {
         reachable_symbols.push("main".to_string());
+    }
+
+    if sess.crate_types.borrow().contains(&config::CrateTypeDylib) {
+        reachable_symbols.push(shared_ccx.metadata_symbol_name());
     }
 
     // For the purposes of LTO or when creating a cdylib, we add to the
