@@ -777,11 +777,11 @@ impl LateLintPass for AbsurdExtremeComparisons {
 ///
 /// **Why is this bad?** An expression like `let x : u8 = ...; (x as u32) > 300` will mistakenly imply that it is possible for `x` to be outside the range of `u8`.
 ///
-/// **Known problems:** None
+/// **Known problems:** https://github.com/Manishearth/rust-clippy/issues/886
 ///
 /// **Example:** `let x : u8 = ...; (x as u32) > 300`
 declare_lint! {
-    pub INVALID_UPCAST_COMPARISONS, Warn,
+    pub INVALID_UPCAST_COMPARISONS, Allow,
     "a comparison involving an upcast which is always true or false"
 }
 

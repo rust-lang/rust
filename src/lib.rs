@@ -427,6 +427,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         types::CAST_POSSIBLE_WRAP,
         types::CAST_PRECISION_LOSS,
         types::CAST_SIGN_LOSS,
+        types::INVALID_UPCAST_COMPARISONS,
         unicode::NON_ASCII_LITERAL,
         unicode::UNICODE_NOT_NFC,
     ]);
@@ -543,7 +544,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
         types::ABSURD_EXTREME_COMPARISONS,
         types::BOX_VEC,
         types::CHAR_LIT_AS_U8,
-        types::INVALID_UPCAST_COMPARISONS,
         types::LET_UNIT_VALUE,
         types::LINKEDLIST,
         types::TYPE_COMPLEXITY,
