@@ -62,7 +62,7 @@ use rustc::middle::stability;
 use rustc::session::config::get_unstable_features_setting;
 use rustc::hir;
 
-use clean::{self, SelfTy, Attributes, GetDefId};
+use clean::{self, Attributes, GetDefId};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
@@ -592,8 +592,6 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     for &(did, ref item) in orphan_methods {
         match paths.get(&did) {
             Some(&(ref fqp, _)) => {
-                // Needed to determine `self` type.
-                let parent_basename = Some(fqp[fqp.len() - 1].clone());
                 search_index.push(IndexItem {
                     ty: shortty(item),
                     name: item.name.clone().unwrap(),
@@ -601,7 +599,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                     desc: Escape(&shorter(item.doc_value())).to_string(),
                     parent: Some(did),
                     parent_idx: None,
-                    search_type: get_index_search_type(&item, parent_basename),
+                    search_type: get_index_search_type(&item),
                 });
             },
             None => {}
@@ -1081,13 +1079,6 @@ impl DocFolder for Cache {
 
             match parent {
                 (parent, Some(path)) if is_method || (!self.stripped_mod) => {
-                    // Needed to determine `self` type.
-                    let parent_basename = self.parent_stack.first().and_then(|parent| {
-                        match self.paths.get(parent) {
-                            Some(&(ref fqp, _)) => Some(fqp[fqp.len() - 1].clone()),
-                            _ => None
-                        }
-                    });
                     debug_assert!(!item.is_stripped());
 
                     // A crate has a module at its root, containing all items,
@@ -1101,7 +1092,7 @@ impl DocFolder for Cache {
                             desc: Escape(&shorter(item.doc_value())).to_string(),
                             parent: parent,
                             parent_idx: None,
-                            search_type: get_index_search_type(&item, parent_basename),
+                            search_type: get_index_search_type(&item),
                         });
                     }
                 }
@@ -2167,7 +2158,6 @@ fn render_assoc_item(w: &mut fmt::Formatter,
               constness: hir::Constness,
               abi: abi::Abi,
               g: &clean::Generics,
-              selfty: &clean::SelfTy,
               d: &clean::FnDecl,
               link: AssocItemLink)
               -> fmt::Result {
@@ -2201,18 +2191,18 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                href = href,
                name = name,
                generics = *g,
-               decl = Method(selfty, d),
+               decl = Method(d),
                where_clause = WhereClause(g))
     }
     match item.inner {
         clean::StrippedItem(..) => Ok(()),
         clean::TyMethodItem(ref m) => {
             method(w, item, m.unsafety, hir::Constness::NotConst,
-                   m.abi, &m.generics, &m.self_, &m.decl, link)
+                   m.abi, &m.generics, &m.decl, link)
         }
         clean::MethodItem(ref m) => {
             method(w, item, m.unsafety, m.constness,
-                   m.abi, &m.generics, &m.self_, &m.decl,
+                   m.abi, &m.generics, &m.decl,
                    link)
         }
         clean::AssociatedConstItem(ref ty, ref default) => {
@@ -2570,8 +2560,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         let name = item.name.as_ref().unwrap();
 
         let is_static = match item.inner {
-            clean::MethodItem(ref method) => method.self_ == SelfTy::SelfStatic,
-            clean::TyMethodItem(ref method) => method.self_ == SelfTy::SelfStatic,
+            clean::MethodItem(ref method) => !method.decl.has_self(),
+            clean::TyMethodItem(ref method) => !method.decl.has_self(),
             _ => false
         };
 
@@ -2760,27 +2750,15 @@ fn make_item_keywords(it: &clean::Item) -> String {
     format!("{}, {}", BASIC_KEYWORDS, it.name.as_ref().unwrap())
 }
 
-fn get_index_search_type(item: &clean::Item,
-                         parent: Option<String>) -> Option<IndexItemFunctionType> {
-    let (decl, selfty) = match item.inner {
-        clean::FunctionItem(ref f) => (&f.decl, None),
-        clean::MethodItem(ref m) => (&m.decl, Some(&m.self_)),
-        clean::TyMethodItem(ref m) => (&m.decl, Some(&m.self_)),
+fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
+    let decl = match item.inner {
+        clean::FunctionItem(ref f) => &f.decl,
+        clean::MethodItem(ref m) => &m.decl,
+        clean::TyMethodItem(ref m) => &m.decl,
         _ => return None
     };
 
-    let mut inputs = Vec::new();
-
-    // Consider `self` an argument as well.
-    match parent.and_then(|p| selfty.map(|s| (p, s)) ) {
-        Some((_, &clean::SelfStatic)) | None => (),
-        Some((name, _)) => inputs.push(Type { name: Some(name.to_ascii_lowercase()) }),
-    }
-
-    inputs.extend(&mut decl.inputs.values.iter().map(|arg| {
-        get_index_type(&arg.type_)
-    }));
-
+    let inputs = decl.inputs.values.iter().map(|arg| get_index_type(&arg.type_)).collect();
     let output = match decl.output {
         clean::FunctionRetTy::Return(ref return_type) => Some(get_index_type(return_type)),
         _ => None

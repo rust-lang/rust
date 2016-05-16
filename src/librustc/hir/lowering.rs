@@ -388,32 +388,10 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn lower_explicit_self_underscore(&mut self, es: &SelfKind) -> hir::ExplicitSelf_ {
-        match *es {
-            SelfKind::Static => hir::SelfStatic,
-            SelfKind::Value(v) => hir::SelfValue(v.name),
-            SelfKind::Region(ref lifetime, m, ident) => {
-                hir::SelfRegion(self.lower_opt_lifetime(lifetime),
-                                self.lower_mutability(m),
-                                ident.name)
-            }
-            SelfKind::Explicit(ref typ, ident) => {
-                hir::SelfExplicit(self.lower_ty(typ), ident.name)
-            }
-        }
-    }
-
     fn lower_mutability(&mut self, m: Mutability) -> hir::Mutability {
         match m {
             Mutability::Mutable => hir::MutMutable,
             Mutability::Immutable => hir::MutImmutable,
-        }
-    }
-
-    fn lower_explicit_self(&mut self, s: &ExplicitSelf) -> hir::ExplicitSelf {
-        Spanned {
-            node: self.lower_explicit_self_underscore(&s.node),
-            span: s.span,
         }
     }
 
@@ -797,10 +775,19 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_method_sig(&mut self, sig: &MethodSig) -> hir::MethodSig {
+        // Check for `self: _` and `self: &_`
+        if let SelfKind::Explicit(ref ty, _) = sig.explicit_self.node {
+            match sig.decl.inputs.get(0).and_then(Arg::to_self).map(|eself| eself.node) {
+                Some(SelfKind::Value(..)) | Some(SelfKind::Region(..)) => {
+                    self.id_assigner.diagnostic().span_err(ty.span,
+                        "the type placeholder `_` is not allowed within types on item signatures");
+                }
+                _ => {}
+            }
+        }
         hir::MethodSig {
             generics: self.lower_generics(&sig.generics),
             abi: sig.abi,
-            explicit_self: self.lower_explicit_self(&sig.explicit_self),
             unsafety: self.lower_unsafety(sig.unsafety),
             constness: self.lower_constness(sig.constness),
             decl: self.lower_fn_decl(&sig.decl),

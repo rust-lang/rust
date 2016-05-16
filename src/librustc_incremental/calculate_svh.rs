@@ -172,7 +172,6 @@ mod svh_visitor {
         SawImplItem,
         SawStructField,
         SawVariant,
-        SawExplicitSelf,
         SawPath,
         SawBlock,
         SawPat,
@@ -389,10 +388,6 @@ mod svh_visitor {
 
         fn visit_struct_field(&mut self, s: &'a StructField) {
             SawStructField.hash(self.st); visit::walk_struct_field(self, s)
-        }
-
-        fn visit_explicit_self(&mut self, es: &'a ExplicitSelf) {
-            SawExplicitSelf.hash(self.st); visit::walk_explicit_self(self, es)
         }
 
         fn visit_path(&mut self, path: &'a Path, _: ast::NodeId) {

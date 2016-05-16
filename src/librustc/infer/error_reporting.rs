@@ -976,8 +976,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ast_map::NodeItem(ref item) => {
                     match item.node {
                         hir::ItemFn(ref fn_decl, unsafety, constness, _, ref gen, _) => {
-                            Some((fn_decl, gen, unsafety, constness,
-                                  item.name, None, item.span))
+                            Some((fn_decl, gen, unsafety, constness, item.name, item.span))
                         },
                         _ => None
                     }
@@ -990,7 +989,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                   sig.unsafety,
                                   sig.constness,
                                   item.name,
-                                  Some(&sig.explicit_self.node),
                                   item.span))
                         }
                         _ => None,
@@ -1004,7 +1002,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                   sig.unsafety,
                                   sig.constness,
                                   item.name,
-                                  Some(&sig.explicit_self.node),
                                   item.span))
                         }
                         _ => None
@@ -1014,13 +1011,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             },
             None => None
         };
-        let (fn_decl, generics, unsafety, constness, name, expl_self, span)
+        let (fn_decl, generics, unsafety, constness, name, span)
                                     = node_inner.expect("expect item fn");
-        let rebuilder = Rebuilder::new(self.tcx, fn_decl, expl_self,
-                                       generics, same_regions, &life_giver);
-        let (fn_decl, expl_self, generics) = rebuilder.rebuild();
-        self.give_expl_lifetime_param(err, &fn_decl, unsafety, constness, name,
-                                      expl_self.as_ref(), &generics, span);
+        let rebuilder = Rebuilder::new(self.tcx, fn_decl, generics, same_regions, &life_giver);
+        let (fn_decl, generics) = rebuilder.rebuild();
+        self.give_expl_lifetime_param(err, &fn_decl, unsafety, constness, name, &generics, span);
     }
 }
 
@@ -1038,7 +1033,6 @@ struct RebuildPathInfo<'a> {
 struct Rebuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     fn_decl: &'a hir::FnDecl,
-    expl_self_opt: Option<&'a hir::ExplicitSelf_>,
     generics: &'a hir::Generics,
     same_regions: &'a [SameRegions],
     life_giver: &'a LifeGiver,
@@ -1054,7 +1048,6 @@ enum FreshOrKept {
 impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
            fn_decl: &'a hir::FnDecl,
-           expl_self_opt: Option<&'a hir::ExplicitSelf_>,
            generics: &'a hir::Generics,
            same_regions: &'a [SameRegions],
            life_giver: &'a LifeGiver)
@@ -1062,7 +1055,6 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
         Rebuilder {
             tcx: tcx,
             fn_decl: fn_decl,
-            expl_self_opt: expl_self_opt,
             generics: generics,
             same_regions: same_regions,
             life_giver: life_giver,
@@ -1071,9 +1063,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn rebuild(&self)
-               -> (hir::FnDecl, Option<hir::ExplicitSelf_>, hir::Generics) {
-        let mut expl_self_opt = self.expl_self_opt.cloned();
+    fn rebuild(&self) -> (hir::FnDecl, hir::Generics) {
         let mut inputs = self.fn_decl.inputs.clone();
         let mut output = self.fn_decl.output.clone();
         let mut ty_params = self.generics.ty_params.clone();
@@ -1089,8 +1079,6 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 Kept => { kept_lifetimes.insert(lifetime.name); }
                 _ => ()
             }
-            expl_self_opt = self.rebuild_expl_self(expl_self_opt, lifetime,
-                                                   &anon_nums, &region_names);
             inputs = self.rebuild_args_ty(&inputs[..], lifetime,
                                           &anon_nums, &region_names);
             output = self.rebuild_output(&output, lifetime, &anon_nums, &region_names);
@@ -1110,7 +1098,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
             output: output,
             variadic: self.fn_decl.variadic
         };
-        (new_fn_decl, expl_self_opt, generics)
+        (new_fn_decl, generics)
     }
 
     fn pick_lifetime(&self,
@@ -1248,34 +1236,6 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 }
             }
         }).collect()
-    }
-
-    fn rebuild_expl_self(&self,
-                         expl_self_opt: Option<hir::ExplicitSelf_>,
-                         lifetime: hir::Lifetime,
-                         anon_nums: &HashSet<u32>,
-                         region_names: &HashSet<ast::Name>)
-                         -> Option<hir::ExplicitSelf_> {
-        match expl_self_opt {
-            Some(ref expl_self) => match *expl_self {
-                hir::SelfRegion(lt_opt, muta, id) => match lt_opt {
-                    Some(lt) => if region_names.contains(&lt.name) {
-                        return Some(hir::SelfRegion(Some(lifetime), muta, id));
-                    },
-                    None => {
-                        let anon = self.cur_anon.get();
-                        self.inc_and_offset_cur_anon(1);
-                        if anon_nums.contains(&anon) {
-                            self.track_anon(anon);
-                            return Some(hir::SelfRegion(Some(lifetime), muta, id));
-                        }
-                    }
-                },
-                _ => ()
-            },
-            None => ()
-        }
-        expl_self_opt
     }
 
     fn rebuild_generics(&self,
@@ -1575,11 +1535,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 unsafety: hir::Unsafety,
                                 constness: hir::Constness,
                                 name: ast::Name,
-                                opt_explicit_self: Option<&hir::ExplicitSelf_>,
                                 generics: &hir::Generics,
                                 span: Span) {
-        let suggested_fn = pprust::fun_to_string(decl, unsafety, constness, name,
-                                                 opt_explicit_self, generics);
+        let suggested_fn = pprust::fun_to_string(decl, unsafety, constness, name, generics);
         let msg = format!("consider using an explicit lifetime \
                            parameter as shown: {}", suggested_fn);
         err.span_help(span, &msg[..]);

@@ -43,7 +43,7 @@ pub struct UnsafetySpace(pub hir::Unsafety);
 #[derive(Copy, Clone)]
 pub struct ConstnessSpace(pub hir::Constness);
 /// Wrapper struct for properly emitting a method declaration.
-pub struct Method<'a>(pub &'a clean::SelfTy, pub &'a clean::FnDecl);
+pub struct Method<'a>(pub &'a clean::FnDecl);
 /// Similar to VisSpace, but used for mutability
 #[derive(Copy, Clone)]
 pub struct MutableSpace(pub clean::Mutability);
@@ -648,29 +648,31 @@ impl fmt::Display for clean::FnDecl {
 
 impl<'a> fmt::Display for Method<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let Method(selfty, d) = *self;
+        let decl = self.0;
         let mut args = String::new();
-        match *selfty {
-            clean::SelfStatic => {},
-            clean::SelfValue => args.push_str("self"),
-            clean::SelfBorrowed(Some(ref lt), mtbl) => {
-                args.push_str(&format!("&amp;{} {}self", *lt, MutableSpace(mtbl)));
-            }
-            clean::SelfBorrowed(None, mtbl) => {
-                args.push_str(&format!("&amp;{}self", MutableSpace(mtbl)));
-            }
-            clean::SelfExplicit(ref typ) => {
-                args.push_str(&format!("self: {}", *typ));
-            }
-        }
-        for (i, input) in d.inputs.values.iter().enumerate() {
+        for (i, input) in decl.inputs.values.iter().enumerate() {
             if i > 0 || !args.is_empty() { args.push_str(", "); }
-            if !input.name.is_empty() {
-                args.push_str(&format!("{}: ", input.name));
+            if let Some(selfty) = input.to_self() {
+                match selfty {
+                    clean::SelfValue => args.push_str("self"),
+                    clean::SelfBorrowed(Some(ref lt), mtbl) => {
+                        args.push_str(&format!("&amp;{} {}self", *lt, MutableSpace(mtbl)));
+                    }
+                    clean::SelfBorrowed(None, mtbl) => {
+                        args.push_str(&format!("&amp;{}self", MutableSpace(mtbl)));
+                    }
+                    clean::SelfExplicit(ref typ) => {
+                        args.push_str(&format!("self: {}", *typ));
+                    }
+                }
+            } else {
+                if !input.name.is_empty() {
+                    args.push_str(&format!("{}: ", input.name));
+                }
+                args.push_str(&format!("{}", input.type_));
             }
-            args.push_str(&format!("{}", input.type_));
         }
-        write!(f, "({args}){arrow}", args = args, arrow = d.output)
+        write!(f, "({args}){arrow}", args = args, arrow = decl.output)
     }
 }
 

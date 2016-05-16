@@ -867,9 +867,8 @@ impl<'a> MethodDef<'a> {
         let self_arg = match explicit_self.node {
             ast::SelfKind::Static => None,
             // creating fresh self id
-            _ => Some(ast::Arg::new_self(trait_.span,
-                                         ast::Mutability::Immutable,
-                                         keywords::SelfValue.ident()))
+            _ => Some(ast::Arg::from_self(explicit_self.clone(), trait_.span,
+                                          ast::Mutability::Immutable)),
         };
         let args = {
             let args = arg_types.into_iter().map(|(name, ty)| {

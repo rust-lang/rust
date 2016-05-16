@@ -361,7 +361,7 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                 let mut item = method.clean(cx);
                 item.inner = match item.inner.clone() {
                     clean::TyMethodItem(clean::TyMethod {
-                        unsafety, decl, self_, generics, abi
+                        unsafety, decl, generics, abi
                     }) => {
                         let constness = if tcx.sess.cstore.is_const_fn(did) {
                             hir::Constness::Const
@@ -373,7 +373,6 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                             unsafety: unsafety,
                             constness: constness,
                             decl: decl,
-                            self_: self_,
                             generics: generics,
                             abi: abi
                         })
