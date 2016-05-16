@@ -67,7 +67,7 @@ struct Context<'a, 'b:'a> {
 
     name_positions: HashMap<String, usize>,
 
-    /// Updated as arguments are consumed or methods are entered
+    /// Updated as arguments are consumed
     next_arg: usize,
 }
 
