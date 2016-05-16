@@ -200,6 +200,12 @@ impl<'a, 'tcx: 'a, O> DataflowAnalysis<'a, 'tcx, O>
 
 pub struct DataflowResults<O>(DataflowState<O>) where O: BitDenotation;
 
+impl<O: BitDenotation> DataflowResults<O> {
+    pub fn sets(&self) -> &AllSets {
+        &self.0.sets
+    }
+}
+
 // FIXME: This type shouldn't be public, but the graphviz::MirWithFlowState trait
 // references it in a method signature. Look into using `pub(crate)` to address this.
 pub struct DataflowState<O: BitDenotation>
