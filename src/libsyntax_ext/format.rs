@@ -68,8 +68,10 @@ struct Context<'a, 'b:'a> {
 
     name_positions: HashMap<String, usize>,
 
-    /// Updated as arguments are consumed
-    next_arg: usize,
+    /// Current position of the implicit positional arg pointer, as if it
+    /// still existed in this phase of processing.
+    /// Used only for `all_pieces_simple` tracking in `trans_piece`.
+    curarg: usize,
 }
 
 /// Parses the arguments from the given list of tokens, returning None
@@ -159,11 +161,6 @@ impl<'a, 'b> Context<'a, 'b> {
                 // argument second, if it's an implicit positional parameter
                 // it's written second, so it should come after width/precision.
                 let pos = match arg.position {
-                    parse::ArgumentNext => {
-                        let i = self.next_arg;
-                        self.next_arg += 1;
-                        Exact(i)
-                    }
                     parse::ArgumentIs(i) => Exact(i),
                     parse::ArgumentNamed(s) => Named(s.to_string()),
                 };
@@ -182,11 +179,6 @@ impl<'a, 'b> Context<'a, 'b> {
             }
             parse::CountIsName(s) => {
                 self.verify_arg_type(Named(s.to_string()), Unsigned);
-            }
-            parse::CountIsNextParam => {
-                let next_arg = self.next_arg;
-                self.verify_arg_type(Exact(next_arg), Unsigned);
-                self.next_arg += 1;
             }
         }
     }
@@ -309,7 +301,6 @@ impl<'a, 'b> Context<'a, 'b> {
                 count("Param", Some(self.ecx.expr_usize(sp, i)))
             }
             parse::CountImplied => count("Implied", None),
-            parse::CountIsNextParam => count("NextParam", None),
             parse::CountIsName(n) => {
                 let i = match self.name_positions.get(n) {
                     Some(&i) => i,
@@ -355,8 +346,6 @@ impl<'a, 'b> Context<'a, 'b> {
                         }
                     };
                     match arg.position {
-                        // These two have a direct mapping
-                        parse::ArgumentNext => pos("Next", None),
                         parse::ArgumentIs(i) => pos("At", Some(i)),
 
                         // Named arguments are converted to positional arguments
@@ -373,7 +362,13 @@ impl<'a, 'b> Context<'a, 'b> {
                 };
 
                 let simple_arg = parse::Argument {
-                    position: parse::ArgumentNext,
+                    position: {
+                        // We don't have ArgumentNext any more, so we have to
+                        // track the current argument ourselves.
+                        let i = self.curarg;
+                        self.curarg += 1;
+                        parse::ArgumentIs(i)
+                    },
                     format: parse::FormatSpec {
                         fill: arg.format.fill,
                         align: parse::AlignUnknown,
@@ -640,7 +635,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         name_positions: HashMap::new(),
         name_types: HashMap::new(),
         name_ordering: name_ordering,
-        next_arg: 0,
+        curarg: 0,
         literal: String::new(),
         pieces: Vec::new(),
         str_pieces: Vec::new(),
