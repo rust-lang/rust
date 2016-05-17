@@ -67,8 +67,7 @@ struct Context<'a, 'b:'a> {
 
     name_positions: HashMap<String, usize>,
 
-    /// Updated as arguments are consumed or methods are entered
-    nest_level: usize,
+    /// Updated as arguments are consumed
     next_arg: usize,
 }
 
@@ -164,9 +163,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 let pos = match arg.position {
                     parse::ArgumentNext => {
                         let i = self.next_arg;
-                        if self.check_positional_ok() {
-                            self.next_arg += 1;
-                        }
+                        self.next_arg += 1;
                         Exact(i)
                     }
                     parse::ArgumentIs(i) => Exact(i),
@@ -189,22 +186,10 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.verify_arg_type(Named(s.to_string()), Unsigned);
             }
             parse::CountIsNextParam => {
-                if self.check_positional_ok() {
-                    let next_arg = self.next_arg;
-                    self.verify_arg_type(Exact(next_arg), Unsigned);
-                    self.next_arg += 1;
-                }
+                let next_arg = self.next_arg;
+                self.verify_arg_type(Exact(next_arg), Unsigned);
+                self.next_arg += 1;
             }
-        }
-    }
-
-    fn check_positional_ok(&mut self) -> bool {
-        if self.nest_level != 0 {
-            self.ecx.span_err(self.fmtsp, "cannot use implicit positional \
-                                           arguments nested inside methods");
-            false
-        } else {
-            true
         }
     }
 
@@ -655,7 +640,6 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         name_positions: HashMap::new(),
         name_types: HashMap::new(),
         name_ordering: name_ordering,
-        nest_level: 0,
         next_arg: 0,
         literal: String::new(),
         pieces: Vec::new(),
