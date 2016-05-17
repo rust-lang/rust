@@ -6,12 +6,9 @@
 # Summary
 [summary]: #summary
 
-[RFC 505] introduced certain conventions around documenting Rust projects. This RFC supersedes
-that one, though it has the same aims: to describe how the Rust project should be documented,
-and provide guidance for other Rust projects as well.
-
-This RFC will contain some similar text as RFC 505, so that we can have one RFC with the full
-conventions.
+[RFC 505] introduced certain conventions around documenting Rust projects. This
+RFC aguments that one, and a full text of the older one combined with these
+modfications is provided below.
 
 [RFC 505]: https://github.com/rust-lang/rfcs/blob/master/text/0505-api-comment-conventions.md
 
@@ -27,15 +24,24 @@ but it tries to motivate and clarify them.
 # Detailed design
 [design]: #detailed-design
 
-This RFC is large. Here’s a table of contents:
+# Drawbacks
+[drawbacks]: #drawbacks
 
-* [Content](#content)
-  * [Summary sentence](#summary-sentence)
-  * [English](#english)
-* [Form](#form)
-  * [Use line comments](#use-line-comments)
-  * [Using Markdown](#using-markdown)
-* [Example](#example)
+It’s possible that RFC 505 went far enough, and something this detailed is inappropriate.
+
+# Alternatives
+[alternatives]: #alternatives
+
+We could stick with the more minimal conventions of the previous RFC.
+
+# Unresolved questions
+[unresolved]: #unresolved-questions
+
+None.
+
+# Appendix A: Full conventions text
+
+Below is a combination of RFC 505 + this RFC’s modifications, for convenience.
 
 ## Content
 [content]: #content
@@ -50,17 +56,17 @@ providing a summary of the code. This line is used as a summary description
 throughout Rustdoc’s output, so it’s a good idea to keep it short.
 
 The summary line should be written in third person singular present indicative
-form. Basically, this means write “Returns” instead of “Return.”
+form. Basically, this means write ‘Returns’ instead of ‘Return’.
 
 ### English
 [english]: #english
 
 This section applies to `rustc` and the standard library.
 
-All documentation is standardized on American English, with regards to
-spelling, grammar, and punctuation conventions. Language changes over time,
-so this doesn’t mean that there is always a correct answer to every grammar
-question, but there is often some kind of formal consensus.
+All documentation for the standard library is standardized on American English,
+with regards to spelling, grammar, and punctuation conventions. Language
+changes over time, so this doesn’t mean that there is always a correct answer
+to every grammar question, but there is often some kind of formal consensus.
 
 One specific rule that comes up often: when quoting something for emphasis,
 use a single quote, and put punctuation outside the quotes, ‘this’. When
@@ -130,9 +136,9 @@ Use top level headings # to indicate sections within your comment. Common headin
 Even if you only include one example, use the plural form: ‘Examples’ rather
 than ‘Example’. Future tooling is easier this way.
 
-Use graves (`) to denote a code fragment within a sentence.
+Use backticks (`) to denote a code fragment within a sentence.
 
-Use triple graves (```) to write longer examples, like this:
+Use backticks (```) to write longer examples, like this:
 
     This code does something cool.
 
@@ -186,6 +192,14 @@ to
 
 ```
 [Rust website](http://www.rust-lang.org)
+```
+
+If the text is very long, feel free to use the shortened form:
+
+```
+This link [is very long and links to the Rust website][website].
+
+[website]: http://www.rust-lang.org
 ```
 
 ### Examples in API docs
@@ -393,17 +407,3 @@ pub fn ref_slice<T>(opt: &Option<T>) -> &[T] {
 
 ## Formatting
 
-# Drawbacks
-[drawbacks]: #drawbacks
-
-It’s possible that RFC 505 went far enough, and something this detailed is inappropriate.
-
-# Alternatives
-[alternatives]: #alternatives
-
-We could stick with the more minimal conventions of the previous RFC.
-
-# Unresolved questions
-[unresolved]: #unresolved-questions
-
-None.
