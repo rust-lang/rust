@@ -26,11 +26,11 @@ use super::{
 
 use fmt_macros::{Parser, Piece, Position};
 use hir::def_id::DefId;
-use infer::{InferCtxt, TypeOrigin};
-use ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable, TypeVariants};
+use infer::{InferCtxt};
+use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::fast_reject;
 use ty::fold::TypeFolder;
-use ty::subst::{self, ParamSpace, Subst};
+use ty::subst::{self, Subst};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
@@ -58,128 +58,6 @@ impl<'a, 'gcx, 'tcx> TraitErrorKey<'tcx> {
             predicate: infcx.tcx.erase_regions(&predicate),
             warning_node_id: warning_node_id
         }
-    }
-}
-
-// Enum used to differentiate the "big" and "little" weights.
-enum Weight {
-    Coarse,
-    Precise,
-}
-
-trait AssociatedWeight {
-    fn get_weight(&self) -> (u32, u32);
-}
-
-impl<'a> AssociatedWeight for TypeVariants<'a> {
-    // Left number is for "global"/"big" weight and right number is for better precision.
-    fn get_weight(&self) -> (u32, u32) {
-        match *self {
-            TypeVariants::TyBool => (1, 1),
-            TypeVariants::TyChar => (1, 2),
-            TypeVariants::TyStr => (1, 3),
-
-            TypeVariants::TyInt(_) => (2, 1),
-            TypeVariants::TyUint(_) => (2, 2),
-            TypeVariants::TyFloat(_) => (2, 3),
-            TypeVariants::TyRawPtr(_) => (2, 4),
-
-            TypeVariants::TyEnum(_, _) => (3, 1),
-            TypeVariants::TyStruct(_, _) => (3, 2),
-            TypeVariants::TyBox(_) => (3, 3),
-            TypeVariants::TyTuple(_) => (3, 4),
-
-            TypeVariants::TyArray(_, _) => (4, 1),
-            TypeVariants::TySlice(_) => (4, 2),
-
-            TypeVariants::TyRef(_, _) => (5, 1),
-            TypeVariants::TyFnDef(_, _, _) => (5, 2),
-            TypeVariants::TyFnPtr(_) => (5, 3),
-
-            TypeVariants::TyTrait(_) => (6, 1),
-
-            TypeVariants::TyClosure(_, _) => (7, 1),
-
-            TypeVariants::TyProjection(_) => (8, 1),
-            TypeVariants::TyParam(_) => (8, 2),
-            TypeVariants::TyInfer(_) => (8, 3),
-
-            TypeVariants::TyError => (9, 1),
-        }
-    }
-}
-
-// The "closer" the types are, the lesser the weight.
-fn get_weight_diff(a: &ty::TypeVariants, b: &TypeVariants, weight: Weight) -> u32 {
-    let (w1, w2) = match weight {
-        Weight::Coarse => (a.get_weight().0, b.get_weight().0),
-        Weight::Precise => (a.get_weight().1, b.get_weight().1),
-    };
-    if w1 < w2 {
-        w2 - w1
-    } else {
-        w1 - w2
-    }
-}
-
-// Once we have "globally matching" types, we need to run another filter on them.
-//
-// In the function `get_best_matching_type`, we got the types which might fit the
-// most to the type we're looking for. This second filter now intends to get (if
-// possible) the type which fits the most.
-//
-// For example, the trait expects an `usize` and here you have `u32` and `i32`.
-// Obviously, the "correct" one is `u32`.
-fn filter_matching_types<'tcx>(weights: &[(usize, u32)],
-                               imps: &[(DefId, subst::Substs<'tcx>)],
-                               trait_types: &[ty::Ty<'tcx>])
-                               -> usize {
-    let matching_weight = weights[0].1;
-    let iter = weights.iter().filter(|&&(_, weight)| weight == matching_weight);
-    let mut filtered_weights = vec!();
-
-    for &(pos, _) in iter {
-        let mut weight = 0;
-        for (type_to_compare, original_type) in imps[pos].1
-                                                         .types
-                                                         .get_slice(ParamSpace::TypeSpace)
-                                                         .iter()
-                                                         .zip(trait_types.iter()) {
-            weight += get_weight_diff(&type_to_compare.sty, &original_type.sty, Weight::Precise);
-        }
-        filtered_weights.push((pos, weight));
-    }
-    filtered_weights.sort_by(|a, b| a.1.cmp(&b.1));
-    filtered_weights[0].0
-}
-
-// Here, we run the "big" filter. Little example:
-//
-// We receive a `String`, an `u32` and an `i32`.
-// The trait expected an `usize`.
-// From human point of view, it's easy to determine that `String` doesn't correspond to
-// the expected type at all whereas `u32` and `i32` could.
-//
-// This first filter intends to only keep the types which match the most.
-fn get_best_matching_type<'tcx>(imps: &[(DefId, subst::Substs<'tcx>)],
-                                trait_types: &[ty::Ty<'tcx>]) -> usize {
-    let mut weights = vec!();
-    for (pos, imp) in imps.iter().enumerate() {
-        let mut weight = 0;
-        for (type_to_compare, original_type) in imp.1
-                                                   .types
-                                                   .get_slice(ParamSpace::TypeSpace)
-                                                   .iter()
-                                                   .zip(trait_types.iter()) {
-            weight += get_weight_diff(&type_to_compare.sty, &original_type.sty, Weight::Coarse);
-        }
-        weights.push((pos, weight));
-    }
-    weights.sort_by(|a, b| a.1.cmp(&b.1));
-    if weights[0].1 == weights[1].1 {
-        filter_matching_types(&weights, &imps, trait_types)
-    } else {
-        weights[0].0
     }
 }
 
@@ -272,72 +150,53 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         substs
     }
 
-    fn get_current_failing_impl(&self,
-                                trait_ref: &TraitRef<'tcx>,
-                                obligation: &PredicateObligation<'tcx>)
-                                -> Option<(DefId, subst::Substs<'tcx>)> {
-        let simp = fast_reject::simplify_type(self.tcx,
-                                              trait_ref.self_ty(),
-                                              true);
-        let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id);
+    fn impl_with_self_type_of(&self,
+                              trait_ref: ty::PolyTraitRef<'tcx>,
+                              obligation: &PredicateObligation<'tcx>)
+                              -> Option<DefId>
+    {
+        let tcx = self.tcx;
+        let mut result = None;
+        let mut ambiguous = false;
 
-        match simp {
-            Some(_) => {
-                let mut matching_impls = Vec::new();
-                trait_def.for_each_impl(self.tcx, |def_id| {
-                    let imp = self.tcx.impl_trait_ref(def_id).unwrap();
-                    let substs = self.impl_substs(def_id, obligation.clone());
-                    let imp = imp.subst(self.tcx, &substs);
+        let trait_self_ty = tcx.erase_late_bound_regions(&trait_ref).self_ty();
 
-                    if self.eq_types(true,
-                                      TypeOrigin::Misc(obligation.cause.span),
-                                      trait_ref.self_ty(),
-                                      imp.self_ty()).is_ok() {
-                        matching_impls.push((def_id, imp.substs.clone()));
-                    }
-                });
-                if matching_impls.len() == 0 {
-                    None
-                } else if matching_impls.len() == 1 {
-                    Some(matching_impls[0].clone())
-                } else {
-                    let end = trait_ref.input_types().len() - 1;
-                    // we need to determine which type is the good one!
-                    Some(matching_impls[get_best_matching_type(&matching_impls,
-                                                               &trait_ref.input_types()[0..end])]
-                                                              .clone())
+        if trait_self_ty.is_ty_var() {
+            return None;
+        }
+
+        self.tcx.lookup_trait_def(trait_ref.def_id())
+            .for_each_relevant_impl(self.tcx, trait_self_ty, |def_id| {
+                let impl_self_ty = tcx
+                    .impl_trait_ref(def_id)
+                    .unwrap()
+                    .self_ty()
+                    .subst(tcx, &self.impl_substs(def_id, obligation.clone()));
+
+                if !tcx.has_attr(def_id, "rustc_on_unimplemented") {
+                    return;
                 }
-            },
-            None => None,
-        }
-    }
 
-    fn find_attr(&self,
-                 def_id: DefId,
-                 attr_name: &str)
-                 -> Option<ast::Attribute> {
-        for item in self.tcx.get_attrs(def_id).iter() {
-            if item.check_name(attr_name) {
-                return Some(item.clone());
-            }
+                if let Ok(..) = self.can_equate(&trait_self_ty, &impl_self_ty) {
+                    ambiguous = result.is_some();
+                    result = Some(def_id);
+                }
+            });
+
+        if ambiguous {
+            None
+        } else {
+            result
         }
-        None
     }
 
     fn on_unimplemented_note(&self,
                              trait_ref: ty::PolyTraitRef<'tcx>,
                              obligation: &PredicateObligation<'tcx>) -> Option<String> {
+        let def_id = self.impl_with_self_type_of(trait_ref, obligation)
+            .unwrap_or(trait_ref.def_id());
         let trait_ref = trait_ref.skip_binder();
-        let def_id = match self.get_current_failing_impl(trait_ref, obligation) {
-            Some((def_id, _)) => {
-                if let Some(_) = self.find_attr(def_id, "rustc_on_unimplemented") {
-                    def_id
-                } else {
-                    trait_ref.def_id
-                }
-            },
-            None => trait_ref.def_id,
-        };
+
         let span = obligation.cause.span;
         let mut report = None;
         for item in self.tcx.get_attrs(def_id).iter() {
@@ -511,113 +370,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// that we can give a more helpful error message (and, in particular,
     /// we do not suggest increasing the overflow limit, which is not
     /// going to help).
-    pub fn report_overflow_error_cycle(&self, cycle: &Vec<PredicateObligation<'tcx>>) -> ! {
-        assert!(cycle.len() > 1);
-
-        debug!("report_overflow_error_cycle(cycle length = {})", cycle.len());
-
-        let cycle = self.resolve_type_vars_if_possible(cycle);
+    pub fn report_overflow_error_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> ! {
+        let cycle = self.resolve_type_vars_if_possible(&cycle.to_owned());
+        assert!(cycle.len() > 0);
 
         debug!("report_overflow_error_cycle: cycle={:?}", cycle);
 
-        assert_eq!(&cycle[0].predicate, &cycle.last().unwrap().predicate);
-
-        self.try_report_overflow_error_type_of_infinite_size(&cycle);
         self.report_overflow_error(&cycle[0], false);
-    }
-
-    /// If a cycle results from evaluated whether something is Sized, that
-    /// is a particular special case that always results from a struct or
-    /// enum definition that lacks indirection (e.g., `struct Foo { x: Foo
-    /// }`). We wish to report a targeted error for this case.
-    pub fn try_report_overflow_error_type_of_infinite_size(&self,
-        cycle: &[PredicateObligation<'tcx>])
-    {
-        let sized_trait = match self.tcx.lang_items.sized_trait() {
-            Some(v) => v,
-            None => return,
-        };
-        let top_is_sized = {
-            match cycle[0].predicate {
-                ty::Predicate::Trait(ref data) => data.def_id() == sized_trait,
-                _ => false,
-            }
-        };
-        if !top_is_sized {
-            return;
-        }
-
-        // The only way to have a type of infinite size is to have,
-        // somewhere, a struct/enum type involved. Identify all such types
-        // and report the cycle to the user.
-
-        let struct_enum_tys: Vec<_> =
-            cycle.iter()
-                 .flat_map(|obligation| match obligation.predicate {
-                     ty::Predicate::Trait(ref data) => {
-                         assert_eq!(data.def_id(), sized_trait);
-                         let self_ty = data.skip_binder().trait_ref.self_ty(); // (*)
-                         // (*) ok to skip binder because this is just
-                         // error reporting and regions don't really
-                         // matter
-                         match self_ty.sty {
-                             ty::TyEnum(..) | ty::TyStruct(..) => Some(self_ty),
-                             _ => None,
-                         }
-                     }
-                     _ => {
-                         span_bug!(obligation.cause.span,
-                                   "Sized cycle involving non-trait-ref: {:?}",
-                                   obligation.predicate);
-                     }
-                 })
-                 .collect();
-
-        assert!(!struct_enum_tys.is_empty());
-
-        // This is a bit tricky. We want to pick a "main type" in the
-        // listing that is local to the current crate, so we can give a
-        // good span to the user. But it might not be the first one in our
-        // cycle list. So find the first one that is local and then
-        // rotate.
-        let (main_index, main_def_id) =
-            struct_enum_tys.iter()
-                           .enumerate()
-                           .filter_map(|(index, ty)| match ty.sty {
-                               ty::TyEnum(adt_def, _) | ty::TyStruct(adt_def, _)
-                                   if adt_def.did.is_local() =>
-                                   Some((index, adt_def.did)),
-                               _ =>
-                                   None,
-                           })
-                           .next()
-                           .unwrap(); // should always be SOME local type involved!
-
-        // Rotate so that the "main" type is at index 0.
-        let struct_enum_tys: Vec<_> =
-            struct_enum_tys.iter()
-                           .cloned()
-                           .skip(main_index)
-                           .chain(struct_enum_tys.iter().cloned().take(main_index))
-                           .collect();
-
-        let tcx = self.tcx;
-        let mut err = tcx.recursive_type_with_infinite_size_error(main_def_id);
-        let len = struct_enum_tys.len();
-        if len > 2 {
-            err.note(&format!("type `{}` is embedded within `{}`...",
-                     struct_enum_tys[0],
-                     struct_enum_tys[1]));
-            for &next_ty in &struct_enum_tys[1..len-1] {
-                err.note(&format!("...which in turn is embedded within `{}`...", next_ty));
-            }
-            err.note(&format!("...which in turn is embedded within `{}`, \
-                               completing the cycle.",
-                              struct_enum_tys[len-1]));
-        }
-        err.emit();
-        self.tcx.sess.abort_if_errors();
-        bug!();
     }
 
     pub fn report_selection_error(&self,
