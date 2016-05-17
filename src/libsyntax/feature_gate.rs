@@ -302,6 +302,9 @@ declare_features! (
     // Used to identify the `compiler_builtins` crate
     // rustc internal
     (active, compiler_builtins, "1.13.0", None),
+
+    // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
+    (active, generic_param_attrs, "1.11.0", Some(34761)),
 );
 
 declare_features! (
@@ -1207,6 +1210,24 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
         gate_feature_post!(&self, pub_restricted, span, "`pub(restricted)` syntax is experimental");
 
         visit::walk_vis(self, vis)
+    }
+
+    fn visit_generics(&mut self, g: &ast::Generics) {
+        for t in &g.ty_params {
+            if !t.attrs.is_empty() {
+                gate_feature_post!(&self, generic_param_attrs, t.attrs[0].span,
+                                   "attributes on type parameter bindings are experimental");
+            }
+        }
+        visit::walk_generics(self, g)
+    }
+
+    fn visit_lifetime_def(&mut self, lifetime_def: &ast::LifetimeDef) {
+        if !lifetime_def.attrs.is_empty() {
+            gate_feature_post!(&self, generic_param_attrs, lifetime_def.attrs[0].span,
+                               "attributes on lifetime bindings are experimental");
+        }
+        visit::walk_lifetime_def(self, lifetime_def)
     }
 }
 
