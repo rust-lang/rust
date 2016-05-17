@@ -392,12 +392,17 @@ fn parse_input(input: Input,
         }
     };
 
-    // Bail out if the parser recovered from an error.
-    if parse_session.span_diagnostic.has_errors() {
-        return Err(None);
+    match result {
+        Ok(c) => {
+            if parse_session.span_diagnostic.has_errors() {
+                // Bail out if the parser recovered from an error.
+                Err(None)
+            } else {
+                Ok(c)
+            }
+        }
+        Err(e) => Err(Some(e)),
     }
-
-    result.map_err(|e| Some(e))
 }
 
 pub fn format_input<T: Write>(input: Input,
