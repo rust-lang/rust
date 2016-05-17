@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use diff;
 use term;
+use std::io;
 
 #[derive(Debug, PartialEq)]
 pub enum DiffLine {
@@ -87,8 +88,18 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
 pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F)
     where F: Fn(u32) -> String
 {
-    let mut t = term::stdout().unwrap();
+    if let Some(t) = term::stdout() {
+        print_diff_fancy(diff, get_section_title, t);
+    } else {
+        print_diff_basic(diff, get_section_title);
+    }
+}
 
+fn print_diff_fancy<F>(diff: Vec<Mismatch>,
+                       get_section_title: F,
+                       mut t: Box<term::Terminal<Output = io::Stdout>>)
+    where F: Fn(u32) -> String
+{
     for mismatch in diff {
         let title = get_section_title(mismatch.line_number);
         writeln!(t, "{}", title).unwrap();
@@ -110,5 +121,28 @@ pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F)
             }
         }
         t.reset().unwrap();
+    }
+}
+
+pub fn print_diff_basic<F>(diff: Vec<Mismatch>, get_section_title: F)
+    where F: Fn(u32) -> String
+{
+    for mismatch in diff {
+        let title = get_section_title(mismatch.line_number);
+        println!("{}", title);
+
+        for line in mismatch.lines {
+            match line {
+                DiffLine::Context(ref str) => {
+                    println!(" {}⏎", str);
+                }
+                DiffLine::Expected(ref str) => {
+                    println!("+{}⏎", str);
+                }
+                DiffLine::Resulting(ref str) => {
+                    println!("-{}⏎", str);
+                }
+            }
+        }
     }
 }
