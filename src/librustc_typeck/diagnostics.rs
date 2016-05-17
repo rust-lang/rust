@@ -45,16 +45,16 @@ Matching with the wrong number of fields has no sensible interpretation:
 
 ```compile_fail
 enum Fruit {
-    Fruit::Apple(String, String),
-    Fruit::Pear(u32),
+    Apple(String, String),
+    Pear(u32),
 }
 
 let x = Fruit::Apple(String::new(), String::new());
 
 // Incorrect.
 match x {
-    Apple(a) => {},
-    Apple(a, b, c) => {},
+    Fruit::Apple(a) => {},
+    Fruit::Apple(a, b, c) => {},
 }
 ```
 
