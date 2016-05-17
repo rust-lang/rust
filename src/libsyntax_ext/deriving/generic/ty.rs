@@ -194,6 +194,7 @@ impl<'a> Ty<'a> {
 fn mk_ty_param(cx: &ExtCtxt,
                span: Span,
                name: &str,
+               attrs: &[ast::Attribute],
                bounds: &[Path],
                self_ident: Ident,
                self_generics: &Generics)
@@ -204,7 +205,7 @@ fn mk_ty_param(cx: &ExtCtxt,
             cx.typarambound(path)
         })
         .collect();
-    cx.typaram(span, cx.ident_of(name), bounds, None)
+    cx.typaram(span, cx.ident_of(name), attrs.to_owned(), bounds, None)
 }
 
 fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>, span: Span)
@@ -246,7 +247,7 @@ impl<'a> LifetimeBounds<'a> {
                 let bounds = bounds.iter()
                     .map(|b| cx.lifetime(span, cx.ident_of(*b).name))
                     .collect();
-                cx.lifetime_def(span, cx.ident_of(*lt).name, bounds)
+                cx.lifetime_def(span, cx.ident_of(*lt).name, vec![], bounds)
             })
             .collect();
         let ty_params = self.bounds
@@ -254,7 +255,7 @@ impl<'a> LifetimeBounds<'a> {
             .map(|t| {
                 match *t {
                     (ref name, ref bounds) => {
-                        mk_ty_param(cx, span, *name, bounds, self_ty, self_generics)
+                        mk_ty_param(cx, span, *name, &[], bounds, self_ty, self_generics)
                     }
                 }
             })
