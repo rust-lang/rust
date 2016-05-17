@@ -20,6 +20,7 @@
 use super::{SelectionContext, FulfillmentContext};
 use super::util::{fresh_type_vars_for_impl, impl_trait_ref_and_oblig};
 
+use rustc_data_structures::fnv::FnvHashMap;
 use hir::def_id::DefId;
 use infer::{InferCtxt, TypeOrigin};
 use middle::region;
@@ -111,6 +112,10 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              impl1_def_id: DefId,
                              impl2_def_id: DefId) -> bool {
+    if let Some(r) = tcx.specializes_cache.borrow().check(impl1_def_id, impl2_def_id) {
+        return r;
+    }
+
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
     if !tcx.sess.features.borrow().specialization &&
@@ -146,7 +151,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              .unwrap()
                              .subst(tcx, &penv.free_substs);
 
-    tcx.normalizing_infer_ctxt(ProjectionMode::Topmost).enter(|mut infcx| {
+    let result = tcx.normalizing_infer_ctxt(ProjectionMode::Topmost).enter(|mut infcx| {
         // Normalize the trait reference, adding any obligations
         // that arise into the impl1 assumptions.
         let Normalized { value: impl1_trait_ref, obligations: normalization_obligations } = {
@@ -167,7 +172,10 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Attempt to prove that impl2 applies, given all of the above.
         fulfill_implication(&infcx, impl1_trait_ref, impl2_def_id).is_ok()
-    })
+    });
+
+    tcx.specializes_cache.borrow_mut().insert(impl1_def_id, impl2_def_id, result);
+    result
 }
 
 /// Attempt to fulfill all obligations of `target_impl` after unification with
@@ -224,4 +232,24 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
             Ok(infcx.resolve_type_vars_if_possible(&target_substs))
         }
     })
+}
+
+pub struct SpecializesCache {
+    map: FnvHashMap<(DefId, DefId), bool>
+}
+
+impl SpecializesCache {
+    pub fn new() -> Self {
+        SpecializesCache {
+            map: FnvHashMap()
+        }
+    }
+
+    pub fn check(&self, a: DefId, b: DefId) -> Option<bool> {
+        self.map.get(&(a, b)).cloned()
+    }
+
+    pub fn insert(&mut self, a: DefId, b: DefId, result: bool) {
+        self.map.insert((a, b), result);
+    }
 }
