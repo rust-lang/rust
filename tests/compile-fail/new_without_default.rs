@@ -2,18 +2,18 @@
 #![plugin(clippy)]
 
 #![allow(dead_code)]
-#![deny(new_without_default)]
+#![deny(new_without_default, new_without_default_derive)]
 
 struct Foo;
 
 impl Foo {
-    fn new() -> Foo { Foo } //~ERROR: you should consider adding a `Default` implementation for `Foo`
+    fn new() -> Foo { Foo } //~ERROR: you should consider deriving a `Default` implementation for `Foo`
 }
 
 struct Bar;
 
 impl Bar {
-    fn new() -> Self { Bar } //~ERROR: you should consider adding a `Default` implementation for `Bar`
+    fn new() -> Self { Bar } //~ERROR: you should consider deriving a `Default` implementation for `Bar`
 }
 
 struct Ok;

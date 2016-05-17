@@ -527,6 +527,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         needless_update::NEEDLESS_UPDATE,
         neg_multiply::NEG_MULTIPLY,
         new_without_default::NEW_WITHOUT_DEFAULT,
+        new_without_default::NEW_WITHOUT_DEFAULT_DERIVE,
         no_effect::NO_EFFECT,
         no_effect::UNNECESSARY_OPERATION,
         non_expressive_names::MANY_SINGLE_CHAR_NAMES,

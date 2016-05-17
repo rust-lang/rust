@@ -174,6 +174,7 @@ All notable changes to this project will be documented in this file.
 [`neg_multiply`]: https://github.com/Manishearth/rust-clippy/wiki#neg_multiply
 [`new_ret_no_self`]: https://github.com/Manishearth/rust-clippy/wiki#new_ret_no_self
 [`new_without_default`]: https://github.com/Manishearth/rust-clippy/wiki#new_without_default
+[`new_without_default_derive`]: https://github.com/Manishearth/rust-clippy/wiki#new_without_default_derive
 [`no_effect`]: https://github.com/Manishearth/rust-clippy/wiki#no_effect
 [`non_ascii_literal`]: https://github.com/Manishearth/rust-clippy/wiki#non_ascii_literal
 [`nonminimal_bool`]: https://github.com/Manishearth/rust-clippy/wiki#nonminimal_bool
