@@ -732,17 +732,26 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
           let impl_def_id = ccx.tcx.map.local_def_id(it.id);
           match ccx.tcx.impl_trait_ref(impl_def_id) {
               Some(impl_trait_ref) => {
-                check_impl_items_against_trait(ccx,
-                                               it.span,
-                                               impl_def_id,
-                                               &impl_trait_ref,
-                                               impl_items);
+                  let trait_def_id = impl_trait_ref.def_id;
+
+                  check_impl_items_against_trait(ccx,
+                                                 it.span,
+                                                 impl_def_id,
+                                                 &impl_trait_ref,
+                                                 impl_items);
+                  check_on_unimplemented(
+                      ccx,
+                      &ccx.tcx.lookup_trait_def(trait_def_id).generics,
+                      it,
+                      ccx.tcx.item_name(trait_def_id));
               }
               None => { }
           }
       }
-      hir::ItemTrait(_, ref generics, _, _) => {
-        check_trait_on_unimplemented(ccx, generics, it);
+      hir::ItemTrait(..) => {
+        let def_id = ccx.tcx.map.local_def_id(it.id);
+        let generics = &ccx.tcx.lookup_trait_def(def_id).generics;
+        check_on_unimplemented(ccx, generics, it, it.name);
       }
       hir::ItemStruct(..) => {
         check_struct(ccx, it.id, it.span);
@@ -854,15 +863,16 @@ fn check_trait_fn_not_const<'a,'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                               generics: &hir::Generics,
-                               item: &hir::Item) {
+fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                    generics: &ty::Generics,
+                                    item: &hir::Item,
+                                    name: ast::Name) {
     if let Some(ref attr) = item.attrs.iter().find(|a| {
         a.check_name("rustc_on_unimplemented")
     }) {
         if let Some(ref istring) = attr.value_str() {
             let parser = Parser::new(&istring);
-            let types = &generics.ty_params;
+            let types = &generics.types;
             for token in parser {
                 match token {
                     Piece::String(_) => (), // Normal string, no need to check it
@@ -878,7 +888,7 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 span_err!(ccx.tcx.sess, attr.span, E0230,
                                                  "there is no type parameter \
                                                           {} on trait {}",
-                                                           s, item.name);
+                                                           s, name);
                             }
                         },
                         // `{:1}` and `{}` are not to be used
