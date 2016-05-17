@@ -90,7 +90,6 @@
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(unsize)]
-#![feature(extended_compare_and_swap)]
 
 #![cfg_attr(not(test), feature(raw, fn_traits, placement_new_protocol))]
 #![cfg_attr(test, feature(test, box_heap))]
