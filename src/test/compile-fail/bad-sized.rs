@@ -14,5 +14,4 @@ pub fn main() {
     let x: Vec<Trait + Sized> = Vec::new();
     //~^ ERROR `Trait + Sized: std::marker::Sized` is not satisfied
     //~| ERROR `Trait + Sized: std::marker::Sized` is not satisfied
-    //~| ERROR `Trait + Sized: std::marker::Sized` is not satisfied
 }

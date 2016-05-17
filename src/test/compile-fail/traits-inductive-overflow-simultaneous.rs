@@ -8,15 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test new Index error message for slices
+// Regression test for #33344, initial version. This example allowed
+// arbitrary trait bounds to be synthesized.
 
-#![feature(rustc_attrs)]
+trait Tweedledum: IntoIterator {}
+trait Tweedledee: IntoIterator {}
 
-use std::ops::Index;
+impl<T: Tweedledum> Tweedledee for T {}
+impl<T: Tweedledee> Tweedledum for T {}
 
-#[rustc_error]
+trait Combo: IntoIterator {}
+impl<T: Tweedledee + Tweedledum> Combo for T {}
+
+fn is_ee<T: Combo>(t: T) {
+    t.into_iter();
+}
+
 fn main() {
-    let x = &[1, 2, 3] as &[i32];
-    x[1i32]; //~ ERROR E0277
-             //~| NOTE a usize is required
+    is_ee(4);
+    //~^ ERROR overflow evaluating the requirement `_: Tweedle
 }

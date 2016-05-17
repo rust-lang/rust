@@ -18,5 +18,7 @@ use std::cell::RefCell;
 fn assert<T: RecoverSafe + ?Sized>() {}
 
 fn main() {
-    assert::<Arc<RefCell<i32>>>(); //~ ERROR E0277
+    assert::<Arc<RefCell<i32>>>();
+    //~^ ERROR `std::cell::UnsafeCell<i32>: std::panic::RefUnwindSafe` is not satisfied
+    //~^^ ERROR `std::cell::UnsafeCell<usize>: std::panic::RefUnwindSafe` is not satisfied
 }
