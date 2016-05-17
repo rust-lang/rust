@@ -592,6 +592,31 @@ impl<T: ?Sized> Drop for Arc<T> {
     }
 }
 
+impl<T> Weak<T> {
+    /// Constructs a new `Weak<T>` without an accompanying instance of T.
+    ///
+    /// This allocates memory for T, but does not initialize it. Calling
+    /// Weak<T>::upgrade() on the return value always gives None.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Weak;
+    ///
+    /// let empty: Weak<i64> = Weak::new();
+    /// ```
+    #[stable(feature = "downgraded_weak", since = "1.10.0")]
+    pub fn new() -> Weak<T> {
+        unsafe {
+            Weak { ptr: Shared::new(Box::into_raw(box ArcInner {
+                strong: atomic::AtomicUsize::new(0),
+                weak: atomic::AtomicUsize::new(1),
+                data: uninitialized(),
+            }))}
+        }
+    }
+}
+
 impl<T: ?Sized> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
     ///
@@ -679,6 +704,13 @@ impl<T: ?Sized> Clone for Weak<T> {
         }
 
         return Weak { ptr: self.ptr };
+    }
+}
+
+#[stable(feature = "downgraded_weak", since = "1.10.0")]
+impl<T> Default for Weak<T> {
+    fn default() -> Weak<T> {
+        Weak::new()
     }
 }
 
@@ -904,35 +936,6 @@ impl<T: ?Sized + Hash> Hash for Arc<T> {
 impl<T> From<T> for Arc<T> {
     fn from(t: T) -> Self {
         Arc::new(t)
-    }
-}
-
-impl<T> Weak<T> {
-    /// Constructs a new `Weak<T>` without an accompanying instance of T.
-    ///
-    /// This allocates memory for T, but does not initialize it. Calling
-    /// Weak<T>::upgrade() on the return value always gives None.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(downgraded_weak)]
-    ///
-    /// use std::sync::Weak;
-    ///
-    /// let empty: Weak<i64> = Weak::new();
-    /// ```
-    #[unstable(feature = "downgraded_weak",
-               reason = "recently added",
-               issue = "30425")]
-    pub fn new() -> Weak<T> {
-        unsafe {
-            Weak { ptr: Shared::new(Box::into_raw(box ArcInner {
-                strong: atomic::AtomicUsize::new(0),
-                weak: atomic::AtomicUsize::new(1),
-                data: uninitialized(),
-            }))}
-        }
     }
 }
 

@@ -24,7 +24,6 @@
 #![feature(iter_arith)]
 #![feature(libc)]
 #![feature(nonzero)]
-#![feature(peekable_is_empty)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(slice_patterns)]

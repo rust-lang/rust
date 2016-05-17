@@ -7,7 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![unstable(feature = "unix_socket", reason = "newly added", issue = "32312")]
+
+#![stable(feature = "unix_socket", since = "1.10.0")]
 
 //! Unix-specific networking functionality
 
@@ -75,6 +76,7 @@ enum AddressKind<'a> {
 
 /// An address associated with a Unix socket.
 #[derive(Clone)]
+#[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct SocketAddr {
     addr: libc::sockaddr_un,
     len: libc::socklen_t,
@@ -109,6 +111,7 @@ impl SocketAddr {
     }
 
     /// Returns true iff the address is unnamed.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn is_unnamed(&self) -> bool {
         if let AddressKind::Unnamed = self.address() {
             true
@@ -118,6 +121,7 @@ impl SocketAddr {
     }
 
     /// Returns the contents of this address if it is a `pathname` address.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn as_pathname(&self) -> Option<&Path> {
         if let AddressKind::Pathname(path) = self.address() {
             Some(path)
@@ -141,6 +145,7 @@ impl SocketAddr {
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for SocketAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self.address() {
@@ -168,8 +173,6 @@ impl<'a> fmt::Display for AsciiEscaped<'a> {
 /// # Examples
 ///
 /// ```rust,no_run
-/// #![feature(unix_socket)]
-///
 /// use std::os::unix::net::UnixStream;
 /// use std::io::prelude::*;
 ///
@@ -179,8 +182,10 @@ impl<'a> fmt::Display for AsciiEscaped<'a> {
 /// stream.read_to_string(&mut response).unwrap();
 /// println!("{}", response);
 /// ```
+#[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixStream(Socket);
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixStream {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixStream");
@@ -197,6 +202,7 @@ impl fmt::Debug for UnixStream {
 
 impl UnixStream {
     /// Connects to the socket named by `path`.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
         fn inner(path: &Path) -> io::Result<UnixStream> {
             unsafe {
@@ -213,6 +219,7 @@ impl UnixStream {
     /// Creates an unnamed pair of connected sockets.
     ///
     /// Returns two `UnixStream`s which are connected to each other.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn pair() -> io::Result<(UnixStream, UnixStream)> {
         let (i1, i2) = Socket::new_pair(libc::AF_UNIX, libc::SOCK_STREAM)?;
         Ok((UnixStream(i1), UnixStream(i2)))
@@ -224,16 +231,19 @@ impl UnixStream {
     /// object references. Both handles will read and write the same stream of
     /// data, and options set on one stream will be propogated to the other
     /// stream.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn try_clone(&self) -> io::Result<UnixStream> {
         self.0.duplicate().map(UnixStream)
     }
 
     /// Returns the socket address of the local half of this connection.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
     }
 
     /// Returns the socket address of the remote half of this connection.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(*self.0.as_inner(), addr, len) })
     }
@@ -243,6 +253,7 @@ impl UnixStream {
     /// If the provided value is `None`, then `read` calls will block
     /// indefinitely. It is an error to pass the zero `Duration` to this
     /// method.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_RCVTIMEO)
     }
@@ -252,26 +263,31 @@ impl UnixStream {
     /// If the provided value is `None`, then `write` calls will block
     /// indefinitely. It is an error to pass the zero `Duration` to this
     /// method.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_SNDTIMEO)
     }
 
     /// Returns the read timeout of this socket.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_RCVTIMEO)
     }
 
     /// Returns the write timeout of this socket.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_SNDTIMEO)
     }
 
     /// Moves the socket into or out of nonblocking mode.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
 
     /// Returns the value of the `SO_ERROR` option.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
     }
@@ -281,11 +297,13 @@ impl UnixStream {
     /// This function will cause all pending and future I/O calls on the
     /// specified portions to immediately return with an appropriate value
     /// (see the documentation of `Shutdown`).
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.0.shutdown(how)
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl io::Read for UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         io::Read::read(&mut &*self, buf)
@@ -296,6 +314,7 @@ impl io::Read for UnixStream {
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl<'a> io::Read for &'a UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
@@ -306,6 +325,7 @@ impl<'a> io::Read for &'a UnixStream {
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl io::Write for UnixStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         io::Write::write(&mut &*self, buf)
@@ -316,6 +336,7 @@ impl io::Write for UnixStream {
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl<'a> io::Write for &'a UnixStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
@@ -326,18 +347,21 @@ impl<'a> io::Write for &'a UnixStream {
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl AsRawFd for UnixStream {
     fn as_raw_fd(&self) -> RawFd {
         *self.0.as_inner()
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl FromRawFd for UnixStream {
     unsafe fn from_raw_fd(fd: RawFd) -> UnixStream {
         UnixStream(Socket::from_inner(fd))
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl IntoRawFd for UnixStream {
     fn into_raw_fd(self) -> RawFd {
         self.0.into_inner()
@@ -349,8 +373,6 @@ impl IntoRawFd for UnixStream {
 /// # Examples
 ///
 /// ```rust,no_run
-/// #![feature(unix_socket)]
-///
 /// use std::thread;
 /// use std::os::unix::net::{UnixStream, UnixListener};
 ///
@@ -377,8 +399,10 @@ impl IntoRawFd for UnixStream {
 /// // close the listener socket
 /// drop(listener);
 /// ```
+#[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixListener(Socket);
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixListener {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixListener");
@@ -392,6 +416,7 @@ impl fmt::Debug for UnixListener {
 
 impl UnixListener {
     /// Creates a new `UnixListener` bound to the specified socket.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         fn inner(path: &Path) -> io::Result<UnixListener> {
             unsafe {
@@ -412,6 +437,7 @@ impl UnixListener {
     /// This function will block the calling thread until a new Unix connection
     /// is established. When established, the corersponding `UnixStream` and
     /// the remote peer's address will be returned.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
         let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
         let mut len = mem::size_of_val(&storage) as libc::socklen_t;
@@ -425,21 +451,25 @@ impl UnixListener {
     /// The returned `UnixListener` is a reference to the same socket that this
     /// object references. Both handles can be used to accept incoming
     /// connections and options set on one listener will affect the other.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn try_clone(&self) -> io::Result<UnixListener> {
         self.0.duplicate().map(UnixListener)
     }
 
     /// Returns the local socket address of this listener.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
     }
 
     /// Moves the socket into or out of nonblocking mode.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
 
     /// Returns the value of the `SO_ERROR` option.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
     }
@@ -448,29 +478,34 @@ impl UnixListener {
     ///
     /// The iterator will never return `None` and will also not yield the
     /// peer's `SocketAddr` structure.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn incoming<'a>(&'a self) -> Incoming<'a> {
         Incoming { listener: self }
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl AsRawFd for UnixListener {
     fn as_raw_fd(&self) -> RawFd {
         *self.0.as_inner()
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl FromRawFd for UnixListener {
     unsafe fn from_raw_fd(fd: RawFd) -> UnixListener {
         UnixListener(Socket::from_inner(fd))
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl IntoRawFd for UnixListener {
     fn into_raw_fd(self) -> RawFd {
         self.0.into_inner()
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl<'a> IntoIterator for &'a UnixListener {
     type Item = io::Result<UnixStream>;
     type IntoIter = Incoming<'a>;
@@ -484,10 +519,12 @@ impl<'a> IntoIterator for &'a UnixListener {
 ///
 /// It will never return `None`.
 #[derive(Debug)]
+#[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct Incoming<'a> {
     listener: &'a UnixListener,
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl<'a> Iterator for Incoming<'a> {
     type Item = io::Result<UnixStream>;
 
@@ -505,8 +542,6 @@ impl<'a> Iterator for Incoming<'a> {
 /// # Examples
 ///
 /// ```rust,no_run
-/// #![feature(unix_socket)]
-///
 /// use std::os::unix::net::UnixDatagram;
 ///
 /// let socket = UnixDatagram::bind("/path/to/my/socket").unwrap();
@@ -515,8 +550,10 @@ impl<'a> Iterator for Incoming<'a> {
 /// let (count, address) = socket.recv_from(&mut buf).unwrap();
 /// println!("socket {:?} sent {:?}", address, &buf[..count]);
 /// ```
+#[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixDatagram(Socket);
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixDatagram {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixDatagram");
@@ -533,6 +570,7 @@ impl fmt::Debug for UnixDatagram {
 
 impl UnixDatagram {
     /// Creates a Unix datagram socket bound to the given path.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixDatagram> {
         fn inner(path: &Path) -> io::Result<UnixDatagram> {
             unsafe {
@@ -548,6 +586,7 @@ impl UnixDatagram {
     }
 
     /// Creates a Unix Datagram socket which is not bound to any address.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn unbound() -> io::Result<UnixDatagram> {
         let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_DGRAM)?;
         Ok(UnixDatagram(inner))
@@ -556,6 +595,7 @@ impl UnixDatagram {
     /// Create an unnamed pair of connected sockets.
     ///
     /// Returns two `UnixDatagrams`s which are connected to each other.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn pair() -> io::Result<(UnixDatagram, UnixDatagram)> {
         let (i1, i2) = Socket::new_pair(libc::AF_UNIX, libc::SOCK_DGRAM)?;
         Ok((UnixDatagram(i1), UnixDatagram(i2)))
@@ -565,6 +605,7 @@ impl UnixDatagram {
     ///
     /// The `send` method may be used to send data to the specified address.
     /// `recv` and `recv_from` will only receive data from that address.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         fn inner(d: &UnixDatagram, path: &Path) -> io::Result<()> {
             unsafe {
@@ -583,11 +624,13 @@ impl UnixDatagram {
     /// The returned `UnixListener` is a reference to the same socket that this
     /// object references. Both handles can be used to accept incoming
     /// connections and options set on one listener will affect the other.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn try_clone(&self) -> io::Result<UnixDatagram> {
         self.0.duplicate().map(UnixDatagram)
     }
 
     /// Returns the address of this socket.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
     }
@@ -595,6 +638,7 @@ impl UnixDatagram {
     /// Returns the address of this socket's peer.
     ///
     /// The `connect` method will connect the socket to a peer.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(*self.0.as_inner(), addr, len) })
     }
@@ -603,6 +647,7 @@ impl UnixDatagram {
     ///
     /// On success, returns the number of bytes read and the address from
     /// whence the data came.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let mut count = 0;
         let addr = SocketAddr::new(|addr, len| {
@@ -629,6 +674,7 @@ impl UnixDatagram {
     /// Receives data from the socket.
     ///
     /// On success, returns the number of bytes read.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
     }
@@ -636,6 +682,7 @@ impl UnixDatagram {
     /// Sends data on the socket to the specified address.
     ///
     /// On success, returns the number of bytes written.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn send_to<P: AsRef<Path>>(&self, buf: &[u8], path: P) -> io::Result<usize> {
         fn inner(d: &UnixDatagram, buf: &[u8], path: &Path) -> io::Result<usize> {
             unsafe {
@@ -659,6 +706,7 @@ impl UnixDatagram {
     /// will return an error if the socket has not already been connected.
     ///
     /// On success, returns the number of bytes written.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
@@ -668,6 +716,7 @@ impl UnixDatagram {
     /// If the provided value is `None`, then `recv` and `recv_from` calls will
     /// block indefinitely. It is an error to pass the zero `Duration` to this
     /// method.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_RCVTIMEO)
     }
@@ -677,26 +726,31 @@ impl UnixDatagram {
     /// If the provided value is `None`, then `send` and `send_to` calls will
     /// block indefinitely. It is an error to pass the zero `Duration` to this
     /// method.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_SNDTIMEO)
     }
 
     /// Returns the read timeout of this socket.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_RCVTIMEO)
     }
 
     /// Returns the write timeout of this socket.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_SNDTIMEO)
     }
 
     /// Moves the socket into or out of nonblocking mode.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
 
     /// Returns the value of the `SO_ERROR` option.
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
     }
@@ -706,23 +760,27 @@ impl UnixDatagram {
     /// This function will cause all pending and future I/O calls on the
     /// specified portions to immediately return with an appropriate value
     /// (see the documentation of `Shutdown`).
+    #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.0.shutdown(how)
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl AsRawFd for UnixDatagram {
     fn as_raw_fd(&self) -> RawFd {
         *self.0.as_inner()
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl FromRawFd for UnixDatagram {
     unsafe fn from_raw_fd(fd: RawFd) -> UnixDatagram {
         UnixDatagram(Socket::from_inner(fd))
     }
 }
 
+#[stable(feature = "unix_socket", since = "1.10.0")]
 impl IntoRawFd for UnixDatagram {
     fn into_raw_fd(self) -> RawFd {
         self.0.into_inner()
