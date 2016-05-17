@@ -81,14 +81,13 @@ pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::TupleArgumentsFlag::*;
 
 use astconv::{AstConv, ast_region_to_region, PathParamMode};
-use check::_match::PatCtxt;
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use middle::cstore::LOCAL_CRATE;
 use hir::def::{self, Def};
 use hir::def_id::DefId;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
-use hir::pat_util::{self, pat_id_map};
+use hir::pat_util::{self};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
 use rustc::traits::{self, ProjectionMode};
 use rustc::ty::{GenericPredicates, TypeScheme};
@@ -672,11 +671,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             });
 
             // Check the pattern.
-            let pcx = PatCtxt {
-                fcx: &fcx,
-                map: pat_id_map(&input.pat),
-            };
-            pcx.check_pat(&input.pat, *arg_ty);
+            fcx.check_pat(&input.pat, *arg_ty);
         }
 
         visit.visit_block(body);
@@ -3786,11 +3781,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        let pcx = PatCtxt {
-            fcx: self,
-            map: pat_id_map(&local.pat),
-        };
-        pcx.check_pat(&local.pat, t);
+        self.check_pat(&local.pat, t);
         let pat_ty = self.node_ty(local.pat.id);
         if pat_ty.references_error() {
             self.write_ty(local.id, pat_ty);
