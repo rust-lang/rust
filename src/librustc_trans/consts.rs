@@ -19,7 +19,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use {abi, adt, closure, debuginfo, expr, machine};
-use base::{self, exported_name, imported_name, push_ctxt};
+use base::{self, push_ctxt};
 use callee::Callee;
 use collector;
 use trans_item::TransItem;
@@ -1017,34 +1017,31 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
         return Datum::new(g, ty, Lvalue::new("static"));
     }
 
+    let sym = instance.symbol_name(ccx.shared());
+
     let g = if let Some(id) = ccx.tcx().map.as_local_node_id(def_id) {
         let llty = type_of::type_of(ccx, ty);
         match ccx.tcx().map.get(id) {
             hir_map::NodeItem(&hir::Item {
-                ref attrs, span, node: hir::ItemStatic(..), ..
+                span, node: hir::ItemStatic(..), ..
             }) => {
                 // If this static came from an external crate, then
                 // we need to get the symbol from metadata instead of
                 // using the current crate's name/version
                 // information in the hash of the symbol
-                let sym = exported_name(ccx, instance, attrs);
                 debug!("making {}", sym);
 
                 // Create the global before evaluating the initializer;
                 // this is necessary to allow recursive statics.
-                let g = declare::define_global(ccx, &sym, llty).unwrap_or_else(|| {
+                declare::define_global(ccx, &sym, llty).unwrap_or_else(|| {
                     ccx.sess().span_fatal(span,
                         &format!("symbol `{}` is already defined", sym))
-                });
-
-                ccx.item_symbols().borrow_mut().insert(id, sym);
-                g
+                })
             }
 
             hir_map::NodeForeignItem(&hir::ForeignItem {
-                ref attrs, name, span, node: hir::ForeignItemStatic(..), ..
+                ref attrs, span, node: hir::ForeignItemStatic(..), ..
             }) => {
-                let ident = imported_name(name, attrs);
                 let g = if let Some(name) =
                         attr::first_attr_value_str_by_name(&attrs, "linkage") {
                     // If this is a static with a linkage specified, then we need to handle
@@ -1066,7 +1063,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                     };
                     unsafe {
                         // Declare a symbol `foo` with the desired linkage.
-                        let g1 = declare::declare_global(ccx, &ident, llty2);
+                        let g1 = declare::declare_global(ccx, &sym, llty2);
                         llvm::SetLinkage(g1, linkage);
 
                         // Declare an internal global `extern_with_linkage_foo` which
@@ -1076,10 +1073,10 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                         // `extern_with_linkage_foo` will instead be initialized to
                         // zero.
                         let mut real_name = "_rust_extern_with_linkage_".to_string();
-                        real_name.push_str(&ident);
+                        real_name.push_str(&sym);
                         let g2 = declare::define_global(ccx, &real_name, llty).unwrap_or_else(||{
                             ccx.sess().span_fatal(span,
-                                &format!("symbol `{}` is already defined", ident))
+                                &format!("symbol `{}` is already defined", sym))
                         });
                         llvm::SetLinkage(g2, llvm::InternalLinkage);
                         llvm::LLVMSetInitializer(g2, g1);
@@ -1087,7 +1084,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                     }
                 } else {
                     // Generate an external declaration.
-                    declare::declare_global(ccx, &ident, llty)
+                    declare::declare_global(ccx, &sym, llty)
                 };
 
                 for attr in attrs {
@@ -1104,8 +1101,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
     } else {
         // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
         // FIXME(nagisa): investigate whether it can be changed into define_global
-        let name = ccx.sess().cstore.item_symbol(def_id);
-        let g = declare::declare_global(ccx, &name, type_of::type_of(ccx, ty));
+        let g = declare::declare_global(ccx, &sym, type_of::type_of(ccx, ty));
         // Thread-local statics in some other crate need to *always* be linked
         // against in a thread-local fashion, so we need to be sure to apply the
         // thread-local attribute locally if it was present remotely. If we

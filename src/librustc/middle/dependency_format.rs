@@ -115,9 +115,10 @@ fn calculate_type(sess: &session::Session,
         // got long ago), so don't bother with anything.
         config::CrateTypeRlib => return Vec::new(),
 
-        // Staticlibs must have all static dependencies. If any fail to be
-        // found, we generate some nice pretty errors.
-        config::CrateTypeStaticlib => {
+        // Staticlibs and cdylibs must have all static dependencies. If any fail
+        // to be found, we generate some nice pretty errors.
+        config::CrateTypeStaticlib |
+        config::CrateTypeCdylib => {
             match attempt_static(sess) {
                 Some(v) => return v,
                 None => {}
