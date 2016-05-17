@@ -95,9 +95,9 @@ between.
 Obviously, the orders used during mapping and actual expansion must agree, but
 fortunately the rules are very simple now only explicit references remain.
 We iterate over the list of known positional *macro arguments*, recording the
-index every bunch of *generated `ArgumentV1` objects* would begin for each
-positional *macro argument*. After that, we also record the total number for
-mapping the named *macro arguments*, as the relative offsets of named
+index at which every bunch of *generated `ArgumentV1` objects* would begin for
+each positional *macro argument*. After that, we also record the total number
+for mapping the named *macro arguments*, as the relative offsets of named
 *placeholders* are already recorded during verification.
 
 ### Expansion
