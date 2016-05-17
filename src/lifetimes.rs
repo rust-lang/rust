@@ -46,19 +46,19 @@ impl LintPass for LifetimePass {
 impl LateLintPass for LifetimePass {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemFn(ref decl, _, _, _, ref generics, _) = item.node {
-            check_fn_inner(cx, decl, None, generics, item.span);
+            check_fn_inner(cx, decl, generics, item.span);
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
         if let ImplItemKind::Method(ref sig, _) = item.node {
-            check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self), &sig.generics, item.span);
+            check_fn_inner(cx, &sig.decl, &sig.generics, item.span);
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         if let MethodTraitItem(ref sig, _) = item.node {
-            check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self), &sig.generics, item.span);
+            check_fn_inner(cx, &sig.decl, &sig.generics, item.span);
         }
     }
 }
@@ -87,7 +87,7 @@ fn bound_lifetimes(bound: &TyParamBound) -> Option<HirVec<&Lifetime>> {
     }
 }
 
-fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>, generics: &Generics, span: Span) {
+fn check_fn_inner(cx: &LateContext, decl: &FnDecl, generics: &Generics, span: Span) {
     if in_external_macro(cx, span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
     }
@@ -96,16 +96,16 @@ fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>, g
                              .iter()
                              .flat_map(|ref typ| typ.bounds.iter().filter_map(bound_lifetimes).flat_map(|lts| lts));
 
-    if could_use_elision(cx, decl, slf, &generics.lifetimes, bounds_lts) {
+    if could_use_elision(cx, decl, &generics.lifetimes, bounds_lts) {
         span_lint(cx,
                   NEEDLESS_LIFETIMES,
                   span,
                   "explicit lifetimes given in parameter types where they could be elided");
     }
-    report_extra_lifetimes(cx, decl, generics, slf);
+    report_extra_lifetimes(cx, decl, generics);
 }
 
-fn could_use_elision<'a, T: Iterator<Item = &'a Lifetime>>(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>,
+fn could_use_elision<'a, T: Iterator<Item = &'a Lifetime>>(cx: &LateContext, func: &FnDecl,
                                                            named_lts: &[LifetimeDef], bounds_lts: T)
                                                            -> bool {
     // There are two scenarios where elision works:
@@ -121,15 +121,6 @@ fn could_use_elision<'a, T: Iterator<Item = &'a Lifetime>>(cx: &LateContext, fun
     let mut input_visitor = RefVisitor::new(cx);
     let mut output_visitor = RefVisitor::new(cx);
 
-    // extract lifetime in "self" argument for methods (there is a "self" argument
-    // in func.inputs, but its type is TyInfer)
-    if let Some(slf) = slf {
-        match slf.node {
-            SelfRegion(ref opt_lt, _, _) => input_visitor.record(opt_lt),
-            SelfExplicit(ref ty, _) => walk_ty(&mut input_visitor, ty),
-            _ => (),
-        }
-    }
     // extract lifetimes in input argument types
     for arg in &func.inputs {
         input_visitor.visit_ty(&arg.ty);
@@ -340,7 +331,7 @@ impl<'v> Visitor<'v> for LifetimeChecker {
     }
 }
 
-fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl, generics: &Generics, slf: Option<&ExplicitSelf>) {
+fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl, generics: &Generics) {
     let hs = generics.lifetimes
                      .iter()
                      .map(|lt| (lt.lifetime.name, lt.lifetime.span))
@@ -349,14 +340,6 @@ fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl, generics: &Generics, 
 
     walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
-
-    if let Some(slf) = slf {
-        match slf.node {
-            SelfRegion(Some(ref lt), _, _) => checker.visit_lifetime(lt),
-            SelfExplicit(ref t, _) => walk_ty(&mut checker, t),
-            _ => (),
-        }
-    }
 
     for &v in checker.0.values() {
         span_lint(cx, UNUSED_LIFETIMES, v, "this lifetime isn't used in the function definition");

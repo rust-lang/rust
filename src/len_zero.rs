@@ -126,10 +126,10 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItem]) {
 }
 
 fn is_self_sig(sig: &MethodSig) -> bool {
-    if let SelfStatic = sig.explicit_self.node {
-        false
-    } else {
+    if sig.decl.has_self() {
         sig.decl.inputs.len() == 1
+    } else {
+        false
     }
 }
 
