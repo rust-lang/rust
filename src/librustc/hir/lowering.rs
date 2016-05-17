@@ -1260,8 +1260,9 @@ impl<'a> LoweringContext<'a> {
                                     maybe_expr.as_ref().map(|x| self.lower_expr(x)))
                 }
                 ExprKind::Paren(ref ex) => {
-                    // merge attributes into the inner expression.
                     return self.lower_expr(ex).map(|mut ex| {
+                        ex.span = e.span;
+                        // merge attributes into the inner expression.
                         ex.attrs.update(|attrs| {
                             attrs.prepend(e.attrs.clone())
                         });
