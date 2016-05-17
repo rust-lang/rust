@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.68 — 2016-05-17
+* Rustup to *rustc 1.10.0-nightly (cd6a40017 2016-05-16)*
+* New lint: [`unnecessary_operation`]
+
 ## 0.0.67 — 2016-05-12
 * Rustup to *rustc 1.10.0-nightly (22ac88f1a 2016-05-11)*
 
