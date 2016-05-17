@@ -172,9 +172,8 @@ pub fn run_core(search_paths: SearchPaths,
                                                      &arenas,
                                                      &name,
                                                      |tcx, _, analysis, result| {
-        // Return if the driver hit an err (in `result`)
         if let Err(_) = result {
-            return None
+            sess.fatal("Compilation failed, aborting rustdoc");
         }
 
         let _ignore = tcx.dep_graph.in_ignore();
@@ -206,6 +205,6 @@ pub fn run_core(search_paths: SearchPaths,
             v.clean(&ctxt)
         };
 
-        Some((krate, ctxt.renderinfo.into_inner()))
-    }), &sess).unwrap()
+        (krate, ctxt.renderinfo.into_inner())
+    }), &sess)
 }
