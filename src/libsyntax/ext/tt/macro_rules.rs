@@ -179,7 +179,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         let lhs_tt = match *lhs {
             TokenTree::Delimited(_, ref delim) => &delim.tts[..],
-            _ => cx.span_fatal(sp, "malformed macro lhs")
+            _ => cx.span_bug(sp, "malformed macro lhs")
         };
 
         match TokenTree::parse(cx, lhs_tt, arg) {
@@ -187,7 +187,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 let rhs = match rhses[i] {
                     // ignore delimiters
                     TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
-                    _ => cx.span_fatal(sp, "malformed macro rhs"),
+                    _ => cx.span_bug(sp, "malformed macro rhs"),
                 };
                 // rhs has holes ( `$id` and `$(...)` that need filled)
                 let trncbr = new_tt_reader(&cx.parse_sess().span_diagnostic,
@@ -326,19 +326,14 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     NormalTT(exp, Some(def.span), def.allow_internal_unstable)
 }
 
-// why is this here? because of https://github.com/rust-lang/rust/issues/27774
-fn ref_slice<A>(s: &A) -> &[A] { use std::slice::from_raw_parts; unsafe { from_raw_parts(s, 1) } }
-
 fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &TokenTree) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     match lhs {
         &TokenTree::Delimited(_, ref tts) => check_matcher(cx, &tts.tts),
-        tt @ &TokenTree::Sequence(..) => check_matcher(cx, ref_slice(tt)),
         _ => {
-            cx.span_err(lhs.get_span(),
-                        "invalid macro matcher; matchers must be contained \
-                         in balanced delimiters or a repetition indicator");
+            cx.span_err(lhs.get_span(), "invalid macro matcher; matchers must \
+                                         be contained in balanced delimiters");
             false
         }
     }
