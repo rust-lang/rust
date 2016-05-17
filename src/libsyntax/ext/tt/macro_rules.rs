@@ -179,6 +179,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         let lhs_tt = match *lhs {
             TokenTree::Delimited(_, ref delim) => &delim.tts[..],
+            TokenTree::Sequence(..) => ref_slice(lhs),
             _ => cx.span_fatal(sp, "malformed macro lhs")
         };
 
