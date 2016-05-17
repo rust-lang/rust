@@ -1657,6 +1657,17 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
     Ok(())
 }
 
+fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink) -> fmt::Result {
+    if let Some(s) = item.doc_value() {
+        write!(w, "<div class='docblock'>{}", Markdown(&plain_summary_line(Some(s))))?;
+        if s.contains('\n') {
+            write!(w, "<a href='{}'>Read more</a>", naive_assoc_href(item, link))?;
+        }
+        write!(w, "</div>")?;
+    }
+    Ok(())
+}
+
 fn item_module(w: &mut fmt::Formatter, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     document(w, cx, item)?;
@@ -2609,6 +2620,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         if !is_default_item && (!is_static || render_static) {
             document(w, cx, item)
         } else {
+            document_short(w, item, link)?;
             Ok(())
         }
     }
