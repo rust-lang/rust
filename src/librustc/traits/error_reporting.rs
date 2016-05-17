@@ -30,7 +30,7 @@ use infer::{InferCtxt};
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::fast_reject;
 use ty::fold::TypeFolder;
-use ty::subst::{self, Subst};
+use ty::subst::{self, Subst, TypeSpace};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
@@ -135,8 +135,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         let ity = tcx.lookup_item_type(did);
         let (tps, rps, _) =
-            (ity.generics.types.get_slice(subst::TypeSpace),
-             ity.generics.regions.get_slice(subst::TypeSpace),
+            (ity.generics.types.get_slice(TypeSpace),
+             ity.generics.regions.get_slice(TypeSpace),
              ity.ty);
 
         let rps = self.region_vars_for_defs(obligation.cause.span, rps);
@@ -144,56 +144,102 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             subst::VecPerParamSpace::empty(),
             subst::VecPerParamSpace::new(rps, Vec::new(), Vec::new()));
         self.type_vars_for_defs(obligation.cause.span,
-                                subst::ParamSpace::TypeSpace,
+                                TypeSpace,
                                 &mut substs,
                                 tps);
         substs
     }
 
-    fn impl_with_self_type_of(&self,
-                              trait_ref: ty::PolyTraitRef<'tcx>,
-                              obligation: &PredicateObligation<'tcx>)
-                              -> Option<DefId>
-    {
-        let tcx = self.tcx;
-        let mut result = None;
-        let mut ambiguous = false;
-
-        let trait_self_ty = tcx.erase_late_bound_regions(&trait_ref).self_ty();
-
-        if trait_self_ty.is_ty_var() {
-            return None;
+    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+        /// returns the fuzzy category of a given type, or None
+        /// if the type can be equated to any type.
+        fn type_category<'tcx>(t: Ty<'tcx>) -> Option<u32> {
+            match t.sty {
+                ty::TyBool => Some(0),
+                ty::TyChar => Some(1),
+                ty::TyStr => Some(2),
+                ty::TyInt(..) | ty::TyUint(..) |
+                ty::TyInfer(ty::IntVar(..)) => Some(3),
+                ty::TyFloat(..) | ty::TyInfer(ty::FloatVar(..)) => Some(4),
+                ty::TyEnum(..) => Some(5),
+                ty::TyStruct(..) => Some(6),
+                ty::TyBox(..) | ty::TyRef(..) | ty::TyRawPtr(..) => Some(7),
+                ty::TyArray(..) | ty::TySlice(..) => Some(8),
+                ty::TyFnDef(..) | ty::TyFnPtr(..) => Some(9),
+                ty::TyTrait(..) => Some(10),
+                ty::TyClosure(..) => Some(11),
+                ty::TyTuple(..) => Some(12),
+                ty::TyProjection(..) => Some(13),
+                ty::TyParam(..) => Some(14),
+                ty::TyInfer(..) | ty::TyError => None
+            }
         }
 
-        self.tcx.lookup_trait_def(trait_ref.def_id())
+        match (type_category(a), type_category(b)) {
+            (Some(cat_a), Some(cat_b)) => match (&a.sty, &b.sty) {
+                (&ty::TyStruct(def_a, _), &ty::TyStruct(def_b, _)) |
+                (&ty::TyEnum(def_a, _), &ty::TyEnum(def_b, _)) =>
+                    def_a == def_b,
+                _ => cat_a == cat_b
+            },
+            // infer and error can be equated to all types
+            _ => true
+        }
+    }
+
+    fn impl_similar_to(&self,
+                       trait_ref: ty::PolyTraitRef<'tcx>,
+                       obligation: &PredicateObligation<'tcx>)
+                       -> Option<DefId>
+    {
+        let tcx = self.tcx;
+
+        let trait_ref = tcx.erase_late_bound_regions(&trait_ref);
+        let trait_self_ty = trait_ref.self_ty();
+
+        let mut self_match_impls = vec![];
+        let mut fuzzy_match_impls = vec![];
+
+        self.tcx.lookup_trait_def(trait_ref.def_id)
             .for_each_relevant_impl(self.tcx, trait_self_ty, |def_id| {
-                let impl_self_ty = tcx
+                let impl_trait_ref = tcx
                     .impl_trait_ref(def_id)
                     .unwrap()
-                    .self_ty()
                     .subst(tcx, &self.impl_substs(def_id, obligation.clone()));
 
-                if !tcx.has_attr(def_id, "rustc_on_unimplemented") {
-                    return;
-                }
+                let impl_self_ty = impl_trait_ref.self_ty();
 
                 if let Ok(..) = self.can_equate(&trait_self_ty, &impl_self_ty) {
-                    ambiguous = result.is_some();
-                    result = Some(def_id);
+                    self_match_impls.push(def_id);
+
+                    if trait_ref.substs.types.get_slice(TypeSpace).iter()
+                        .zip(impl_trait_ref.substs.types.get_slice(TypeSpace))
+                        .all(|(u,v)| self.fuzzy_match_tys(u, v))
+                    {
+                        fuzzy_match_impls.push(def_id);
+                    }
                 }
             });
 
-        if ambiguous {
-            None
+        let impl_def_id = if self_match_impls.len() == 1 {
+            self_match_impls[0]
+        } else if fuzzy_match_impls.len() == 1 {
+            fuzzy_match_impls[0]
         } else {
-            result
+            return None
+        };
+
+        if tcx.has_attr(impl_def_id, "rustc_on_unimplemented") {
+            Some(impl_def_id)
+        } else {
+            None
         }
     }
 
     fn on_unimplemented_note(&self,
                              trait_ref: ty::PolyTraitRef<'tcx>,
                              obligation: &PredicateObligation<'tcx>) -> Option<String> {
-        let def_id = self.impl_with_self_type_of(trait_ref, obligation)
+        let def_id = self.impl_similar_to(trait_ref, obligation)
             .unwrap_or(trait_ref.def_id());
         let trait_ref = trait_ref.skip_binder();
 
