@@ -145,43 +145,16 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             }
 
-            enum Effect<'a, 'tcx:'a> { Propagate(&'a repr::Lvalue<'tcx>), Compute }
-            let lvalue_effect: Effect = match *rvalue {
-                // tmp = rhs
-                repr::Rvalue::Use(repr::Operand::Consume(ref rhs_lval)) =>
-                    Effect::Propagate(rhs_lval),
-
-                repr::Rvalue::Use(repr::Operand::Constant(_)) =>
-                    Effect::Compute,
-
-                _ => {
-                    // (fall back to BitDenotation for all other kinds of Rvalues
-                    Effect::Compute
-                }
-            };
-
             let lhs_mpi = move_data.rev_lookup.find(lvalue);
 
-            if let Effect::Propagate(rhs_lval) = lvalue_effect {
-                let rhs_mpi = move_data.rev_lookup.find(rhs_lval);
-                let state = sets.on_entry.get_bit(rhs_mpi.idx());
-                debug!("rustc_peek: propagate into lvalue {:?} ({:?}) from rhs: {:?} state: {}",
-                       lvalue, lhs_mpi, rhs_lval, state);
-                if state {
-                    sets.on_entry.set_bit(lhs_mpi.idx());
-                } else {
-                    sets.on_entry.clear_bit(lhs_mpi.idx());
-                }
-            } else {
-                debug!("rustc_peek: computing effect on lvalue: {:?} ({:?}) in stmt: {:?}",
-                       lvalue, lhs_mpi, stmt);
-                // reset GEN and KILL sets before emulating their effect.
-                for e in &mut sets.gen_set[..] { *e = 0; }
-                for e in &mut sets.kill_set[..] { *e = 0; }
-                results.0.operator.statement_effect(flow_ctxt, &mut sets, bb, j);
-                bitwise(sets.on_entry, sets.gen_set, &Union);
-                bitwise(sets.on_entry, sets.kill_set, &Subtract);
-            }
+            debug!("rustc_peek: computing effect on lvalue: {:?} ({:?}) in stmt: {:?}",
+                   lvalue, lhs_mpi, stmt);
+            // reset GEN and KILL sets before emulating their effect.
+            for e in &mut sets.gen_set[..] { *e = 0; }
+            for e in &mut sets.kill_set[..] { *e = 0; }
+            results.0.operator.statement_effect(flow_ctxt, &mut sets, bb, j);
+            bitwise(sets.on_entry, sets.gen_set, &Union);
+            bitwise(sets.on_entry, sets.kill_set, &Subtract);
         }
 
         tcx.sess.span_err(span, &format!("rustc_peek: MIR did not match \
