@@ -27,13 +27,13 @@ use path::{self, PathBuf};
 use ptr;
 use slice;
 use str;
-use sync::StaticMutex;
+use sys_common::mutex::Mutex;
 use sys::cvt;
 use sys::fd;
 use vec;
 
 const TMPBUF_SZ: usize = 128;
-static ENV_LOCK: StaticMutex = StaticMutex::new();
+static ENV_LOCK: Mutex = Mutex::new();
 
 /// Returns the platform-specific value of errno
 #[cfg(not(target_os = "dragonfly"))]
@@ -434,10 +434,11 @@ pub unsafe fn environ() -> *mut *const *const c_char {
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
-    let _g = ENV_LOCK.lock();
-    return unsafe {
+    unsafe {
+        ENV_LOCK.lock();
         let mut environ = *environ();
         if environ == ptr::null() {
+            ENV_LOCK.unlock();
             panic!("os::env() failure getting env string from OS: {}",
                    io::Error::last_os_error());
         }
@@ -448,8 +449,13 @@ pub fn env() -> Env {
             }
             environ = environ.offset(1);
         }
-        Env { iter: result.into_iter(), _dont_send_or_sync_me: ptr::null_mut() }
-    };
+        let ret = Env {
+            iter: result.into_iter(),
+            _dont_send_or_sync_me: ptr::null_mut(),
+        };
+        ENV_LOCK.unlock();
+        return ret
+    }
 
     fn parse(input: &[u8]) -> Option<(OsString, OsString)> {
         // Strategy (copied from glibc): Variable name and value are separated
@@ -471,32 +477,40 @@ pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     // environment variables with a nul byte can't be set, so their value is
     // always None as well
     let k = CString::new(k.as_bytes())?;
-    let _g = ENV_LOCK.lock();
-    Ok(unsafe {
+    unsafe {
+        ENV_LOCK.lock();
         let s = libc::getenv(k.as_ptr()) as *const _;
-        if s.is_null() {
+        let ret = if s.is_null() {
             None
         } else {
             Some(OsStringExt::from_vec(CStr::from_ptr(s).to_bytes().to_vec()))
-        }
-    })
+        };
+        ENV_LOCK.unlock();
+        return Ok(ret)
+    }
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let k = CString::new(k.as_bytes())?;
     let v = CString::new(v.as_bytes())?;
-    let _g = ENV_LOCK.lock();
-    cvt(unsafe {
-        libc::setenv(k.as_ptr(), v.as_ptr(), 1)
-    }).map(|_| ())
+
+    unsafe {
+        ENV_LOCK.lock();
+        let ret = cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(|_| ());
+        ENV_LOCK.unlock();
+        return ret
+    }
 }
 
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
-    let _g = ENV_LOCK.lock();
-    cvt(unsafe {
-        libc::unsetenv(nbuf.as_ptr())
-    }).map(|_| ())
+
+    unsafe {
+        ENV_LOCK.lock();
+        let ret = cvt(libc::unsetenv(nbuf.as_ptr())).map(|_| ());
+        ENV_LOCK.unlock();
+        return ret
+    }
 }
 
 pub fn page_size() -> usize {

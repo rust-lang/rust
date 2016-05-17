@@ -864,7 +864,6 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// # #![feature(map_values_mut)]
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
@@ -881,8 +880,8 @@ impl<K, V, S> HashMap<K, V, S>
     ///     print!("{}", val);
     /// }
     /// ```
-    #[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
-    pub fn values_mut<'a>(&'a mut self) -> ValuesMut<K, V> {
+    #[stable(feature = "map_values_mut", since = "1.10.0")]
+    pub fn values_mut(&mut self) -> ValuesMut<K, V> {
         ValuesMut { inner: self.iter_mut() }
     }
 
@@ -1288,7 +1287,7 @@ pub struct Drain<'a, K: 'a, V: 'a> {
 }
 
 /// Mutable HashMap values iterator.
-#[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+#[stable(feature = "map_values_mut", since = "1.10.0")]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>
 }
@@ -1491,14 +1490,14 @@ impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
-#[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+#[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     type Item = &'a mut V;
 
     #[inline] fn next(&mut self) -> Option<(&'a mut V)> { self.inner.next().map(|(_, v)| v) }
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
-#[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+#[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
@@ -1537,7 +1536,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     }
 
     /// Returns a reference to this entry's key.
-    #[unstable(feature = "map_entry_keys", issue = "32281")]
+    #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         match *self {
             Occupied(ref entry) => entry.key(),
@@ -1548,7 +1547,7 @@ impl<'a, K, V> Entry<'a, K, V> {
 
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the key in the entry.
-    #[unstable(feature = "map_entry_keys", issue = "32281")]
+    #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         self.elem.read().0
     }
@@ -1596,7 +1595,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
 impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the VacantEntry.
-    #[unstable(feature = "map_entry_keys", issue = "32281")]
+    #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         &self.key
     }

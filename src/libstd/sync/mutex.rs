@@ -113,6 +113,7 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// *guard += 1;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub struct Mutex<T: ?Sized> {
     // Note that this static mutex is in a *box*, not inlined into the struct
     // itself. Once a native mutex has been used once, its address can never
@@ -156,6 +157,11 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 #[unstable(feature = "static_mutex",
            reason = "may be merged with Mutex in the future",
            issue = "27717")]
+#[rustc_deprecated(since = "1.10.0",
+                   reason = "the lazy-static crate suffices for static sync \
+                             primitives and eventually this type shouldn't \
+                             be necessary as `Mutex::new` in a static should \
+                             suffice")]
 pub struct StaticMutex {
     lock: sys::Mutex,
     poison: poison::Flag,
@@ -168,6 +174,7 @@ pub struct StaticMutex {
 /// `Deref` and `DerefMut` implementations
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
     // funny underscores due to how Deref/DerefMut currently work (they
     // disregard field privacy).
@@ -184,8 +191,15 @@ impl<'a, T: ?Sized> !marker::Send for MutexGuard<'a, T> {}
 #[unstable(feature = "static_mutex",
            reason = "may be merged with Mutex in the future",
            issue = "27717")]
+#[rustc_deprecated(since = "1.10.0",
+                   reason = "the lazy-static crate suffices for static sync \
+                             primitives and eventually this type shouldn't \
+                             be necessary as `Mutex::new` in a static should \
+                             suffice")]
+#[allow(deprecated)]
 pub const MUTEX_INIT: StaticMutex = StaticMutex::new();
 
+#[allow(deprecated)]
 impl<T> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -197,6 +211,7 @@ impl<T> Mutex<T> {
     }
 }
 
+#[allow(deprecated)]
 impl<T: ?Sized> Mutex<T> {
     /// Acquires a mutex, blocking the current thread until it is able to do so.
     ///
@@ -307,6 +322,7 @@ impl<T: ?Sized> Mutex<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<T: ?Sized> Drop for Mutex<T> {
     #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
@@ -346,6 +362,12 @@ static DUMMY: Dummy = Dummy(UnsafeCell::new(()));
 #[unstable(feature = "static_mutex",
            reason = "may be merged with Mutex in the future",
            issue = "27717")]
+#[rustc_deprecated(since = "1.10.0",
+                   reason = "the lazy-static crate suffices for static sync \
+                             primitives and eventually this type shouldn't \
+                             be necessary as `Mutex::new` in a static should \
+                             suffice")]
+#[allow(deprecated)]
 impl StaticMutex {
     /// Creates a new mutex in an unlocked state ready for use.
     pub const fn new() -> StaticMutex {
@@ -391,8 +413,8 @@ impl StaticMutex {
     }
 }
 
+#[allow(deprecated)]
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
-
     unsafe fn new(lock: &'mutex StaticMutex, data: &'mutex UnsafeCell<T>)
            -> LockResult<MutexGuard<'mutex, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
@@ -418,6 +440,7 @@ impl<'mutex, T: ?Sized> DerefMut for MutexGuard<'mutex, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
     #[inline]
     fn drop(&mut self) {
@@ -428,15 +451,18 @@ impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
     }
 }
 
+#[allow(deprecated)]
 pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
     &guard.__lock.lock
 }
 
+#[allow(deprecated)]
 pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
     &guard.__lock.poison
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use prelude::v1::*;
 

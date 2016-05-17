@@ -903,15 +903,6 @@ fn test_range_step() {
 }
 
 #[test]
-fn test_peekable_is_empty() {
-    let a = [1];
-    let mut it = a.iter().peekable();
-    assert!( !it.is_empty() );
-    it.next();
-    assert!( it.is_empty() );
-}
-
-#[test]
 fn test_repeat() {
     let mut it = repeat(42);
     assert_eq!(it.next(), Some(42));

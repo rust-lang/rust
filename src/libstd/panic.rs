@@ -22,7 +22,7 @@ use rc::Rc;
 use sync::{Arc, Mutex, RwLock};
 use thread::Result;
 
-#[unstable(feature = "panic_handler", issue = "30449")]
+#[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use panicking::{take_hook, set_hook, PanicInfo, Location};
 
 ///
