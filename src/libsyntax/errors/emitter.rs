@@ -367,7 +367,8 @@ impl EmitterWriter {
             let mut output_vec = vec![];
 
             for span_label in msp.span_labels() {
-                let mut snippet_data = snippet_data.clone();
+                let mut snippet_data = SnippetData::new(self.cm.clone(),
+                                                        Some(span_label.span));
 
                 snippet_data.push(span_label.span,
                                   span_label.is_primary,
