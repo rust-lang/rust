@@ -2565,8 +2565,9 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     }
 
     fn doctraititem(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
-                    link: AssocItemLink, render_static: bool, is_default_item: bool,
-                    outer_version: Option<&str>) -> fmt::Result {
+                    link: AssocItemLink, render_static: bool,
+                    is_default_item: bool, outer_version: Option<&str>,
+                    trait_: Option<&clean::Trait>) -> fmt::Result {
         let shortty = shortty(item);
         let name = item.name.as_ref().unwrap();
 
@@ -2618,16 +2619,33 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         }
 
         if !is_default_item && (!is_static || render_static) {
-            document(w, cx, item)
+
+            if item.doc_value().is_some() {
+                document(w, cx, item)
+            } else {
+                // In case the item isn't documented,
+                // provide short documentation from the trait
+                if let Some(t) = trait_ {
+                    if let Some(it) = t.items.iter()
+                                       .find(|i| i.name == item.name) {
+                        document_short(w, it, link)?;
+                    }
+                }
+                Ok(())
+            }
         } else {
             document_short(w, item, link)?;
             Ok(())
         }
     }
 
+    let traits = &cache().traits;
+    let trait_ = i.trait_did().and_then(|did| traits.get(&did));
+
     write!(w, "<div class='impl-items'>")?;
     for trait_item in &i.inner_impl().items {
-        doctraititem(w, cx, trait_item, link, render_header, false, outer_version)?;
+        doctraititem(w, cx, trait_item, link, render_header,
+                     false, outer_version, trait_)?;
     }
 
     fn render_default_items(w: &mut fmt::Formatter,
@@ -2645,17 +2663,15 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             let assoc_link = AssocItemLink::GotoSource(did, &i.provided_trait_methods);
 
             doctraititem(w, cx, trait_item, assoc_link, render_static, true,
-                         outer_version)?;
+                         outer_version, None)?;
         }
         Ok(())
     }
 
     // If we've implemented a trait, then also emit documentation for all
     // default items which weren't overridden in the implementation block.
-    if let Some(did) = i.trait_did() {
-        if let Some(t) = cache().traits.get(&did) {
-            render_default_items(w, cx, t, &i.inner_impl(), render_header, outer_version)?;
-        }
+    if let Some(t) = trait_ {
+        render_default_items(w, cx, t, &i.inner_impl(), render_header, outer_version)?;
     }
     write!(w, "</div>")?;
     Ok(())
