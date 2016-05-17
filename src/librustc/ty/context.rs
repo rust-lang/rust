@@ -291,6 +291,8 @@ impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
 pub struct GlobalCtxt<'tcx> {
     global_interners: CtxtInterners<'tcx>,
 
+    pub specializes_cache: RefCell<traits::SpecializesCache>,
+
     pub dep_graph: DepGraph,
 
     /// Common types, pre-interned for your convenience.
@@ -637,6 +639,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let dep_graph = map.dep_graph.clone();
         let fulfilled_predicates = traits::GlobalFulfilledPredicates::new(dep_graph.clone());
         tls::enter_global(GlobalCtxt {
+            specializes_cache: RefCell::new(traits::SpecializesCache::new()),
             global_interners: interners,
             dep_graph: dep_graph.clone(),
             types: common_types,
