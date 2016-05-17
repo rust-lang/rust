@@ -22,6 +22,22 @@ use super::BitDenotation;
 use super::DataflowResults;
 use super::HasMoveData;
 
+/// This function scans `mir` for all calls to the intrinsic
+/// `rustc_peek` that have the expression form `rustc_peek(&expr)`.
+///
+/// For each such call, determines what the dataflow bit-state is for
+/// the L-value corresponding to `expr`; if the bit-state is a 1, then
+/// that call to `rustc_peek` is ignored by the sanity check. If the
+/// bit-state is a 0, then this pass emits a error message saying
+/// "rustc_peek: bit not set".
+///
+/// The intention is that one can write unit tests for dataflow by
+/// putting code into a compile-fail test and using `rustc_peek` to
+/// make observations about the results of dataflow static analyses.
+///
+/// (If there are any calls to `rustc_peek` that do not match the
+/// expression form above, then that emits an error as well, but those
+/// errors are not intended to be used for unit tests.)
 pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 mir: &Mir<'tcx>,
                                                 id: ast::NodeId,
@@ -32,9 +48,8 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     debug!("sanity_check_via_rustc_peek id: {:?}", id);
     // FIXME: this is not DRY. Figure out way to abstract this and
-    // `dataflow::build_sets`. (But see note below about how the
-    // behavior of this traversal is a bit different than that
-    // performed by `build_sets`.)
+    // `dataflow::build_sets`. (But note it is doing non-standard
+    // stuff, so such generalization may not be realistic.)
 
     let blocks = mir.all_basic_blocks();
     'next_block: for bb in blocks {
@@ -99,22 +114,6 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let mut sets = super::BlockSets { on_entry: &mut entry[..],
                                           gen_set: &mut gen[..],
                                           kill_set: &mut kill[..] };
-        // Unfortunately if we just re-do the same thing that dataflow does, then
-        // it will always appear like Lvalues are initialized; e.g. in
-        // a case like:
-        //
-        // <bitset maps var1 to 0>
-        // tmp13 = var1;
-        // tmp14 = &tmp13;
-        // rustc_peek(tmp14)
-        //
-        // The gen_set for normal dataflow would treat tmp13 as
-        // initialized, even though it's source expression is
-        // uninitialized.
-        //
-        // Work around this for rustc_peek by explicitly propagating
-        // the relevant bitvector state when computing the effect of a
-        // statement.
 
         for (j, stmt) in statements.iter().enumerate() {
             debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
