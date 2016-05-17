@@ -17,7 +17,6 @@
 *.elc
 *.epub
 *.exe
-*.pdb
 *.fn
 *.html
 *.kdev4
@@ -29,6 +28,7 @@
 *.orig
 *.out
 *.patch
+*.pdb
 *.pdf
 *.pg
 *.pot
@@ -50,6 +50,10 @@
 .cproject
 .hg/
 .hgignore
+.idea
+__pycache__/
+*.py[cod]
+*$py.class
 .project
 .settings/
 .valgrindrc
@@ -65,6 +69,7 @@
 /llvm/
 /mingw-build/
 /nd/
+/obj/
 /rt/
 /rustllvm/
 /src/libunicode/DerivedCoreProperties.txt
@@ -73,13 +78,10 @@
 /src/libunicode/PropList.txt
 /src/libunicode/Scripts.txt
 /src/libunicode/UnicodeData.txt
-/stage0/
-/stage1/
-/stage2/
-/stage3/
+/stage[0-9]+/
+/target
 /test/
 /tmp/
-/obj/
 TAGS
 TAGS.emacs
 TAGS.vi
@@ -89,11 +91,9 @@ config.mk
 config.stamp
 keywords.md
 lexer.ml
-src/.DS_Store
 src/etc/dl
 src/librustc_llvm/llvmdeps.rs
 tmp.*.rs
 version.md
 version.ml
 version.texi
-/target
