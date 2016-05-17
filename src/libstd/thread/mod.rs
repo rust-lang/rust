@@ -101,7 +101,9 @@
 //! ## Blocking support: park and unpark
 //!
 //! Every thread is equipped with some basic low-level blocking support, via the
-//! `park` and `unpark` functions.
+//! `thread::park()` function and `thread::Thread::unpark()` method. `park()`
+//! blocks the current thread, which can then be resumed from another thread by
+//! calling the `unpark()` method on the blocked thread's handle.
 //!
 //! Conceptually, each `Thread` handle has an associated token, which is
 //! initially not present:
