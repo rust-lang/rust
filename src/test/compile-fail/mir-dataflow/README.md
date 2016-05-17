@@ -3,7 +3,7 @@ analysis.
 
 These unit tests check the dataflow analysis by embedding calls to a
 special `rustc_peek` intrinsic within the code, in tandem with an
-attribute `#[rustc_mir(rustc_peek_maybe_init)]` (*). With that
+attribute `#[rustc_mir(rustc_peek_maybe_init)]` (\*). With that
 attribute in place, `rustc_peek` calls are a signal to the compiler to
 lookup the computed dataflow state for the Lvalue corresponding to the
 argument expression being fed to `rustc_peek`. If the dataflow state
