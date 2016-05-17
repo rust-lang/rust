@@ -18,7 +18,7 @@ use ext::build::AstBuilder;
 use attr;
 use attr::{AttrMetaMethods, WithAttrs, ThinAttributesExt};
 use codemap;
-use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
+use codemap::{Span, Spanned, ExpnInfo, ExpnId, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
 use feature_gate::{self, Features};
 use fold;
@@ -33,7 +33,6 @@ use visit::Visitor;
 use std_inject;
 
 use std::collections::HashSet;
-use std::env;
 
 // A trait for AST nodes and AST node lists into which macro invocations may expand.
 trait MacroGenerable: Sized {
@@ -160,10 +159,10 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             let new_node = ast::ExprKind::Closure(capture_clause,
                                                   rewritten_fn_decl,
                                                   rewritten_block,
-                                                  fld.new_span(fn_decl_span));
+                                                  fn_decl_span);
             P(ast::Expr{ id:id,
                          node: new_node,
-                         span: fld.new_span(span),
+                         span: span,
                          attrs: fold_thin_attrs(attrs, fld) })
         }
 
@@ -322,7 +321,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
         return T::dummy(span);
     };
 
-    let marked = expanded.fold_with(&mut Marker { mark: mark });
+    let marked = expanded.fold_with(&mut Marker { mark: mark, expn_id: Some(fld.cx.backtrace()) });
     let fully_expanded = marked.fold_with(fld);
     fld.cx.bt_pop();
     fully_expanded
@@ -699,12 +698,12 @@ impl<'a> Folder for PatIdentRenamer<'a> {
                                            mtwt::apply_renames(self.renames, ident.ctxt));
                 let new_node =
                     PatKind::Ident(binding_mode,
-                                  Spanned{span: self.new_span(sp), node: new_ident},
+                                  Spanned{span: sp, node: new_ident},
                                   sub.map(|p| self.fold_pat(p)));
                 ast::Pat {
                     id: id,
                     node: new_node,
-                    span: self.new_span(span)
+                    span: span,
                 }
             },
             _ => unreachable!()
@@ -774,7 +773,7 @@ fn expand_annotatable(a: Annotatable,
                         }
                         _ => unreachable!()
                     },
-                    span: fld.new_span(ti.span)
+                    span: ti.span,
                 })
             }
             _ => fold::noop_fold_trait_item(it.unwrap(), fld)
@@ -914,7 +913,7 @@ fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
                 }
                 _ => unreachable!()
             },
-            span: fld.new_span(ii.span)
+            span: ii.span,
         }),
         ast::ImplItemKind::Macro(mac) => {
             expand_mac_invoc(mac, None, ii.attrs, ii.span, fld)
@@ -1060,10 +1059,6 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     fn fold_ty(&mut self, ty: P<ast::Ty>) -> P<ast::Ty> {
         expand_type(ty, self)
     }
-
-    fn new_span(&mut self, span: Span) -> Span {
-        new_span(self.cx, span)
-    }
 }
 
 impl<'a, 'b> MacroExpander<'a, 'b> {
@@ -1078,45 +1073,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn pop_mod_path(&mut self) {
         self.cx.mod_path_stack.pop().unwrap();
-    }
-}
-
-fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
-    debug!("new_span(sp={:?})", sp);
-
-    if cx.codemap().more_specific_trace(sp.expn_id, cx.backtrace()) {
-        // If the span we are looking at has a backtrace that has more
-        // detail than our current backtrace, then we keep that
-        // backtrace.  Honestly, I have no idea if this makes sense,
-        // because I have no idea why we are stripping the backtrace
-        // below. But the reason I made this change is because, in
-        // deriving, we were generating attributes with a specific
-        // backtrace, which was essential for `#[structural_match]` to
-        // be properly supported, but these backtraces were being
-        // stripped and replaced with a null backtrace. Sort of
-        // unclear why this is the case. --nmatsakis
-        debug!("new_span: keeping trace from {:?} because it is more specific",
-               sp.expn_id);
-        sp
-    } else {
-        // This discards information in the case of macro-defining macros.
-        //
-        // The comment above was originally added in
-        // b7ec2488ff2f29681fe28691d20fd2c260a9e454 in Feb 2012. I
-        // *THINK* the reason we are doing this is because we want to
-        // replace the backtrace of the macro contents with the
-        // backtrace that contains the macro use. But it's pretty
-        // unclear to me. --nmatsakis
-        let sp1 = Span {
-            lo: sp.lo,
-            hi: sp.hi,
-            expn_id: cx.backtrace(),
-        };
-        debug!("new_span({:?}) = {:?}", sp, sp1);
-        if sp.expn_id.into_u32() == 0 && env::var_os("NDM").is_some() {
-            panic!("NDM");
-        }
-        sp1
     }
 }
 
@@ -1206,8 +1162,9 @@ pub fn expand_crate(mut cx: ExtCtxt,
 // the ones defined here include:
 // Marker - add a mark to a context
 
-// A Marker adds the given mark to the syntax context
-struct Marker { mark: Mrk }
+// A Marker adds the given mark to the syntax context and
+// sets spans' `expn_id` to the given expn_id (unless it is `None`).
+struct Marker { mark: Mrk, expn_id: Option<ExpnId> }
 
 impl Folder for Marker {
     fn fold_ident(&mut self, id: Ident) -> Ident {
@@ -1220,14 +1177,21 @@ impl Folder for Marker {
                 tts: self.fold_tts(&node.tts),
                 ctxt: mtwt::apply_mark(self.mark, node.ctxt),
             },
-            span: span,
+            span: self.new_span(span),
         }
+    }
+
+    fn new_span(&mut self, mut span: Span) -> Span {
+        if let Some(expn_id) = self.expn_id {
+            span.expn_id = expn_id;
+        }
+        span
     }
 }
 
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
 fn mark_tts(tts: &[TokenTree], m: Mrk) -> Vec<TokenTree> {
-    noop_fold_tts(tts, &mut Marker{mark:m})
+    noop_fold_tts(tts, &mut Marker{mark:m, expn_id: None})
 }
 
 /// Check that there are no macro invocations left in the AST:
