@@ -759,7 +759,6 @@ impl<T> [T] {
     /// fourth could match any position in `[1,4]`.
     ///
     /// ```rust
-    /// #![feature(slice_binary_search_by_key)]
     /// let s = [(0, 0), (2, 1), (4, 1), (5, 1), (3, 1),
     ///          (1, 2), (2, 3), (4, 5), (5, 8), (3, 13),
     ///          (1, 21), (2, 34), (4, 55)];
@@ -770,7 +769,7 @@ impl<T> [T] {
     /// let r = s.binary_search_by_key(&1, |&(a,b)| b);
     /// assert!(match r { Ok(1...4) => true, _ => false, });
     /// ```
-    #[unstable(feature = "slice_binary_search_by_key", reason = "recently added", issue = "33018")]
+    #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]
     pub fn binary_search_by_key<B, F>(&self, b: &B, f: F) -> Result<usize, usize>
         where F: FnMut(&T) -> B,

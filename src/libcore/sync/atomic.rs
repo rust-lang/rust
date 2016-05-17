@@ -294,7 +294,6 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(extended_compare_and_swap)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let some_bool = AtomicBool::new(true);
@@ -313,7 +312,7 @@ impl AtomicBool {
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
     #[inline]
-    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     pub fn compare_exchange(&self,
                             current: bool,
                             new: bool,
@@ -342,7 +341,6 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(extended_compare_and_swap)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let val = AtomicBool::new(false);
@@ -357,7 +355,7 @@ impl AtomicBool {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     pub fn compare_exchange_weak(&self,
                                  current: bool,
                                  new: bool,
@@ -640,7 +638,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(extended_compare_and_swap)]
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
@@ -653,7 +650,7 @@ impl<T> AtomicPtr<T> {
     ///                                       Ordering::SeqCst, Ordering::Relaxed);
     /// ```
     #[inline]
-    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     pub fn compare_exchange(&self,
                             current: *mut T,
                             new: *mut T,
@@ -688,7 +685,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(extended_compare_and_swap)]
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let some_ptr = AtomicPtr::new(&mut 5);
@@ -703,7 +699,7 @@ impl<T> AtomicPtr<T> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     pub fn compare_exchange_weak(&self,
                                  current: *mut T,
                                  new: *mut T,
@@ -896,7 +892,6 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            /// # #![feature(extended_compare_and_swap)]
             /// use std::sync::atomic::{AtomicIsize, Ordering};
             ///
             /// let some_isize = AtomicIsize::new(5);
@@ -940,7 +935,6 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            /// # #![feature(extended_compare_and_swap)]
             /// use std::sync::atomic::{AtomicIsize, Ordering};
             ///
             /// let val = AtomicIsize::new(4);
@@ -1110,14 +1104,14 @@ atomic_int! {
 #[cfg(any(stage0, target_has_atomic = "ptr"))]
 atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
-    unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767"),
+    stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     isize AtomicIsize ATOMIC_ISIZE_INIT
 }
 #[cfg(any(stage0, target_has_atomic = "ptr"))]
 atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
-    unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767"),
+    stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     usize AtomicUsize ATOMIC_USIZE_INIT
 }
