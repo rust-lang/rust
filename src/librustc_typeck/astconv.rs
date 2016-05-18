@@ -222,12 +222,6 @@ fn report_elision_failure(
 
     let elided_len = elided_params.len();
 
-    let any_lifetimes = if elided_len > 0 {
-        true
-    } else {
-        false
-    };
-
     for (i, info) in elided_params.into_iter().enumerate() {
         let ElisionFailureInfo {
             name, lifetime_count: n, have_bound_regions
@@ -262,7 +256,7 @@ fn report_elision_failure(
                     there is no value for it to be borrowed from");
         help!(db,
                    "consider giving it a 'static lifetime");
-    } else if !any_lifetimes {
+    } else if elided_len == 0 {
         help!(db,
                    "this function's return type contains a borrowed value with \
                     an elided lifetime, but the lifetime cannot be derived from \
