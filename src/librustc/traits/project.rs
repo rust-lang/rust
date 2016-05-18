@@ -88,8 +88,9 @@ pub enum ProjectionMode {
     /// }
     ///
     /// fn main() {
-    ///     let <() as Assoc>::Output = true;
+    ///     let x: <() as Assoc>::Output = true;
     /// }
+    /// ```
     AnyFinal,
 
     /// At trans time, all projections will succeed.
@@ -642,7 +643,7 @@ fn project_type<'cx, 'gcx, 'tcx>(
                         return None;
                     }
                 } else {
-                    // Normally this situation could only arise througha
+                    // Normally this situation could only arise through a
                     // compiler bug, but at coherence-checking time we only look
                     // at the topmost impl (we don't even consider the trait
                     // itself) for the definition -- so we can fail to find a
@@ -666,8 +667,6 @@ fn project_type<'cx, 'gcx, 'tcx>(
                     // trait Foo {}
                     // impl Foo for <u8 as Assoc>::Output {}
                     // impl Foo for <u16 as Assoc>::Output {}
-                    //     return None;
-                    // }
                     // ```
                     //
                     // The essential problem here is that the projection fails,

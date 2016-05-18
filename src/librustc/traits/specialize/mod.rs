@@ -93,7 +93,7 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 
             fulfill_implication(infcx, source_trait_ref, target_impl).unwrap_or_else(|_| {
                 bug!("When translating substitutions for specialization, the expected \
-                      specializaiton failed to hold")
+                      specialization failed to hold")
             })
         }
         specialization_graph::Node::Trait(..) => source_trait_ref.substs,
