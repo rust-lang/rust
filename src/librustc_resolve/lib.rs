@@ -3624,6 +3624,7 @@ pub fn resolve_crate<'a, 'b>(resolver: &'b mut Resolver<'a>, krate: &'b Crate) {
     // reflects not just its contents but the results of name
     // resolution on those contents. Hopefully we'll push this back at
     // some point.
+    let _ignore = resolver.session.dep_graph.in_ignore();
 
     resolver.build_reduced_graph(krate);
     resolve_imports::resolve_imports(resolver);

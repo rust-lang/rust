@@ -41,7 +41,7 @@ impl DefIdDirectory {
 
     pub fn retrace(&self, tcx: TyCtxt) -> RetracedDefIdDirectory {
         let ids = self.paths.iter()
-                            .map(|path| tcx.map.retrace_path(path))
+                            .map(|path| tcx.retrace_path(path))
                             .collect();
         RetracedDefIdDirectory { ids: ids }
     }
@@ -64,7 +64,7 @@ impl RetracedDefIdDirectory {
 
 pub struct DefIdDirectoryBuilder<'a,'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    hash: DefIdMap<Option<DefPathIndex>>,
+    hash: DefIdMap<DefPathIndex>,
     directory: DefIdDirectory,
 }
 
@@ -77,29 +77,22 @@ impl<'a,'tcx> DefIdDirectoryBuilder<'a,'tcx> {
         }
     }
 
-    pub fn add(&mut self, def_id: DefId) -> Option<DefPathIndex> {
-        if !def_id.is_local() {
-            // FIXME(#32015) clarify story about cross-crate dep tracking
-            return None;
-        }
-
+    pub fn add(&mut self, def_id: DefId) -> DefPathIndex {
+        debug!("DefIdDirectoryBuilder: def_id={:?}", def_id);
         let tcx = self.tcx;
         let paths = &mut self.directory.paths;
         self.hash.entry(def_id)
                  .or_insert_with(|| {
                      let def_path = tcx.def_path(def_id);
-                     if !def_path.is_local() {
-                         return None;
-                     }
                      let index = paths.len() as u32;
                      paths.push(def_path);
-                     Some(DefPathIndex { index: index })
+                     DefPathIndex { index: index }
                  })
                  .clone()
     }
 
-    pub fn map(&mut self, node: DepNode<DefId>) -> Option<DepNode<DefPathIndex>> {
-        node.map_def(|&def_id| self.add(def_id))
+    pub fn map(&mut self, node: DepNode<DefId>) -> DepNode<DefPathIndex> {
+        node.map_def(|&def_id| Some(self.add(def_id))).unwrap()
     }
 
     pub fn into_directory(self) -> DefIdDirectory {

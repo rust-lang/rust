@@ -319,6 +319,7 @@ impl<'a> CrateReader<'a> {
             extern_crate: Cell::new(None),
             index: decoder::load_index(metadata.as_slice()),
             xref_index: decoder::load_xrefs(metadata.as_slice()),
+            key_map: decoder::load_key_map(metadata.as_slice()),
             data: metadata,
             cnum_map: RefCell::new(cnum_map),
             cnum: cnum,

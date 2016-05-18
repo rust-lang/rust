@@ -1420,6 +1420,7 @@ impl fmt::Display for CrateType {
 
 #[cfg(test)]
 mod tests {
+    use dep_graph::DepGraph;
     use middle::cstore::DummyCrateStore;
     use session::config::{build_configuration, build_session_options};
     use session::build_session;
@@ -1439,6 +1440,7 @@ mod tests {
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
     fn test_switch_implies_cfg_test() {
+        let dep_graph = DepGraph::new(false);
         let matches =
             &match getopts(&["--test".to_string()], &optgroups()) {
               Ok(m) => m,
@@ -1446,7 +1448,7 @@ mod tests {
             };
         let registry = diagnostics::registry::Registry::new(&[]);
         let sessopts = build_session_options(matches);
-        let sess = build_session(sessopts, None, registry, Rc::new(DummyCrateStore));
+        let sess = build_session(sessopts, &dep_graph, None, registry, Rc::new(DummyCrateStore));
         let cfg = build_configuration(&sess);
         assert!((attr::contains_name(&cfg[..], "test")));
     }
@@ -1455,6 +1457,7 @@ mod tests {
     // another --cfg test
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
+        let dep_graph = DepGraph::new(false);
         let matches =
             &match getopts(&["--test".to_string(), "--cfg=test".to_string()],
                            &optgroups()) {
@@ -1465,7 +1468,7 @@ mod tests {
             };
         let registry = diagnostics::registry::Registry::new(&[]);
         let sessopts = build_session_options(matches);
-        let sess = build_session(sessopts, None, registry,
+        let sess = build_session(sessopts, &dep_graph, None, registry,
                                  Rc::new(DummyCrateStore));
         let cfg = build_configuration(&sess);
         let mut test_items = cfg.iter().filter(|m| m.name() == "test");
@@ -1475,13 +1478,14 @@ mod tests {
 
     #[test]
     fn test_can_print_warnings() {
+        let dep_graph = DepGraph::new(false);
         {
             let matches = getopts(&[
                 "-Awarnings".to_string()
             ], &optgroups()).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
-            let sess = build_session(sessopts, None, registry,
+            let sess = build_session(sessopts, &dep_graph, None, registry,
                                      Rc::new(DummyCrateStore));
             assert!(!sess.diagnostic().can_emit_warnings);
         }
@@ -1493,7 +1497,7 @@ mod tests {
             ], &optgroups()).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
-            let sess = build_session(sessopts, None, registry,
+            let sess = build_session(sessopts, &dep_graph, None, registry,
                                      Rc::new(DummyCrateStore));
             assert!(sess.diagnostic().can_emit_warnings);
         }
@@ -1504,7 +1508,7 @@ mod tests {
             ], &optgroups()).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
-            let sess = build_session(sessopts, None, registry,
+            let sess = build_session(sessopts, &dep_graph, None, registry,
                                      Rc::new(DummyCrateStore));
             assert!(sess.diagnostic().can_emit_warnings);
         }

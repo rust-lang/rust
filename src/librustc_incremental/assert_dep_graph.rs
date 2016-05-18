@@ -44,6 +44,7 @@
 
 use graphviz as dot;
 use rustc::dep_graph::{DepGraphQuery, DepNode};
+use rustc::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::{FnvHashMap, FnvHashSet};
@@ -195,7 +196,7 @@ fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         for &(_, source_def_id, source_dep_node) in sources {
-            let dependents = query.transitive_dependents(source_dep_node);
+            let dependents = query.transitive_successors(source_dep_node);
             for &(target_span, ref target_pass, _, ref target_dep_node) in targets {
                 if !dependents.contains(&target_dep_node) {
                     tcx.sess.span_err(
@@ -220,12 +221,11 @@ fn dump_graph(tcx: TyCtxt) {
     let nodes = match env::var("RUST_DEP_GRAPH_FILTER") {
         Ok(string) => {
             // Expect one of: "-> target", "source -> target", or "source ->".
-            let parts: Vec<_> = string.split("->").collect();
-            if parts.len() > 2 {
-                bug!("Invalid RUST_DEP_GRAPH_FILTER: expected '[source] -> [target]'");
-            }
-            let sources = node_set(&query, &parts[0]);
-            let targets = node_set(&query, &parts[1]);
+            let edge_filter = EdgeFilter::new(&string).unwrap_or_else(|e| {
+                bug!("invalid filter: {}", e)
+            });
+            let sources = node_set(&query, &edge_filter.source);
+            let targets = node_set(&query, &edge_filter.target);
             filter_nodes(&query, &sources, &targets)
         }
         Err(_) => {
@@ -295,26 +295,16 @@ impl<'a, 'tcx> dot::Labeller<'a> for GraphvizDepGraph {
 // Given an optional filter like `"x,y,z"`, returns either `None` (no
 // filter) or the set of nodes whose labels contain all of those
 // substrings.
-fn node_set(query: &DepGraphQuery<DefId>, filter: &str)
+fn node_set(query: &DepGraphQuery<DefId>, filter: &DepNodeFilter)
             -> Option<FnvHashSet<DepNode<DefId>>>
 {
     debug!("node_set(filter={:?})", filter);
 
-    if filter.trim().is_empty() {
+    if filter.accepts_all() {
         return None;
     }
 
-    let filters: Vec<&str> = filter.split("&").map(|s| s.trim()).collect();
-
-    debug!("node_set: filters={:?}", filters);
-
-    Some(query.nodes()
-         .into_iter()
-         .filter(|n| {
-             let s = format!("{:?}", n);
-             filters.iter().all(|f| s.contains(f))
-         })
-        .collect())
+    Some(query.nodes().into_iter().filter(|n| filter.test(n)).collect())
 }
 
 fn filter_nodes(query: &DepGraphQuery<DefId>,

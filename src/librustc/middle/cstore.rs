@@ -22,19 +22,19 @@
 // are *mostly* used as a part of that interface, but these should
 // probably get a better home if someone can find one.
 
-use hir::svh::Svh;
-use hir::map as hir_map;
 use hir::def::{self, Def};
+use hir::def_id::{DefId, DefIndex};
+use hir::map as hir_map;
+use hir::map::definitions::DefKey;
+use hir::svh::Svh;
 use middle::lang_items;
 use ty::{self, Ty, TyCtxt, VariantKind};
-use hir::def_id::{DefId, DefIndex};
 use mir::repr::Mir;
 use mir::mir_map::MirMap;
 use session::Session;
 use session::config::PanicStrategy;
 use session::search_paths::PathKind;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
-use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::path::PathBuf;
@@ -150,12 +150,7 @@ pub struct ExternCrate {
 
 /// A store of Rust crates, through with their metadata
 /// can be accessed.
-///
-/// The `: Any` bound is a temporary measure that allows access
-/// to the backing `rustc_metadata::cstore::CStore` object. It
-/// will be removed in the near future - if you need to access
-/// internal APIs, please tell us.
-pub trait CrateStore<'tcx> : Any {
+pub trait CrateStore<'tcx> {
     // item info
     fn stability(&self, def: DefId) -> Option<attr::Stability>;
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
@@ -240,6 +235,10 @@ pub trait CrateStore<'tcx> : Any {
     fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId>;
 
     // resolve
+    fn def_index_for_def_key(&self,
+                             cnum: ast::CrateNum,
+                             def: DefKey)
+                             -> Option<DefIndex>;
     fn def_key(&self, def: DefId) -> hir_map::DefKey;
     fn relative_def_path(&self, def: DefId) -> hir_map::DefPath;
     fn variant_kind(&self, def_id: DefId) -> Option<VariantKind>;
@@ -367,6 +366,12 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                                   -> Vec<Rc<ty::Method<'tcx>>> { bug!("provided_trait_methods") }
     fn trait_item_def_ids(&self, def: DefId)
                           -> Vec<ty::ImplOrTraitItemId> { bug!("trait_item_def_ids") }
+    fn def_index_for_def_key(&self,
+                             cnum: ast::CrateNum,
+                             def: DefKey)
+                             -> Option<DefIndex> {
+        None
+    }
 
     // impl info
     fn impl_items(&self, impl_def_id: DefId) -> Vec<ty::ImplOrTraitItemId>

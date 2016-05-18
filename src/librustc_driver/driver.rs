@@ -152,7 +152,6 @@ pub fn compile_input(sess: &Session,
                                 Ok(()));
 
         let expanded_crate = assign_node_ids(sess, expanded_crate);
-        let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
 
         // Collect defintions for def ids.
         let mut defs = time(sess.time_passes(),
@@ -161,15 +160,15 @@ pub fn compile_input(sess: &Session,
 
         time(sess.time_passes(),
              "external crate/lib resolution",
-             || read_local_crates(sess, &cstore, &defs, &expanded_crate, &id, &dep_graph));
+             || read_local_crates(sess, &cstore, &defs, &expanded_crate, &id, &sess.dep_graph));
 
         time(sess.time_passes(),
              "early lint checks",
              || lint::check_ast_crate(sess, &expanded_crate));
 
         let (analysis, resolutions, mut hir_forest) = {
-            lower_and_resolve(sess, &id, &mut defs, &expanded_crate, dep_graph,
-                              control.make_glob_map)
+            lower_and_resolve(sess, &id, &mut defs, &expanded_crate,
+                              &sess.dep_graph, control.make_glob_map)
         };
 
         // Discard MTWT tables that aren't required past lowering to HIR.
@@ -805,7 +804,7 @@ pub fn lower_and_resolve<'a>(sess: &Session,
                              id: &'a str,
                              defs: &mut hir_map::Definitions,
                              krate: &ast::Crate,
-                             dep_graph: DepGraph,
+                             dep_graph: &DepGraph,
                              make_glob_map: resolve::MakeGlobMap)
                              -> (ty::CrateAnalysis<'a>, Resolutions, hir_map::Forest) {
     resolve::with_resolver(sess, defs, make_glob_map, |mut resolver| {
@@ -815,7 +814,7 @@ pub fn lower_and_resolve<'a>(sess: &Session,
 
         // Lower ast -> hir.
         let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
-            hir_map::Forest::new(lower_crate(krate, sess, &mut resolver), dep_graph)
+            hir_map::Forest::new(lower_crate(sess, krate, sess, &mut resolver), dep_graph)
         });
 
         (ty::CrateAnalysis {

@@ -10,7 +10,6 @@
 
 //! Code to save/load the dep-graph from files.
 
-use calculate_svh::SvhCalculate;
 use rbml::Error;
 use rbml::opaque::Decoder;
 use rustc::dep_graph::DepNode;
@@ -25,6 +24,7 @@ use std::path::Path;
 use super::data::*;
 use super::directory::*;
 use super::dirty_clean;
+use super::hash::*;
 use super::util::*;
 
 type DirtyNodes = FnvHashSet<DepNode<DefId>>;
@@ -131,20 +131,20 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 hashed_items: &[SerializedHash],
+                                 hashes: &[SerializedHash],
                                  retraced: &RetracedDefIdDirectory)
                                  -> DirtyNodes {
+    let mut hcx = HashContext::new(tcx);
     let mut items_removed = false;
     let mut dirty_nodes = FnvHashSet();
-    for hashed_item in hashed_items {
-        match retraced.def_id(hashed_item.index) {
-            Some(def_id) => {
-                // FIXME(#32753) -- should we use a distinct hash here
-                let current_hash = tcx.calculate_item_hash(def_id);
+    for hash in hashes {
+        match hash.node.map_def(|&i| retraced.def_id(i)) {
+            Some(dep_node) => {
+                let current_hash = hcx.hash(dep_node).unwrap();
                 debug!("initial_dirty_nodes: hash of {:?} is {:?}, was {:?}",
-                       def_id, current_hash, hashed_item.hash);
-                if current_hash != hashed_item.hash {
-                    dirty_nodes.insert(DepNode::Hir(def_id));
+                       dep_node, current_hash, hash.hash);
+                if current_hash != hash.hash {
+                    dirty_nodes.insert(dep_node);
                 }
             }
             None => {

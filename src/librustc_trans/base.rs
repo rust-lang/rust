@@ -47,6 +47,7 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
 use rustc::mir::mir_map::MirMap;
+use rustc_data_structures::graph::OUTGOING;
 use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
 use _match;
@@ -1368,7 +1369,7 @@ fn build_cfg<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 // return slot alloca. This can cause errors related to clean-up due to
 // the clobbering of the existing value in the return slot.
 fn has_nested_returns(tcx: TyCtxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bool {
-    for index in cfg.graph.depth_traverse(cfg.entry) {
+    for index in cfg.graph.depth_traverse(cfg.entry, OUTGOING) {
         let n = cfg.graph.node_data(index);
         match tcx.map.find(n.id()) {
             Some(hir_map::NodeExpr(ex)) => {

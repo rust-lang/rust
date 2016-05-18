@@ -134,8 +134,10 @@ pub fn run_core(search_paths: SearchPaths,
                                                                false,
                                                                codemap.clone());
 
-    let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-    let sess = session::build_session_(sessopts, cpath, diagnostic_handler,
+    let dep_graph = DepGraph::new(false);
+    let _ignore = dep_graph.in_ignore();
+    let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+    let sess = session::build_session_(sessopts, &dep_graph, cpath, diagnostic_handler,
                                        codemap, cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
@@ -151,15 +153,14 @@ pub fn run_core(search_paths: SearchPaths,
                     .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let krate = driver::assign_node_ids(&sess, krate);
-    let dep_graph = DepGraph::new(false);
 
     let mut defs = hir_map::collect_definitions(&krate);
     read_local_crates(&sess, &cstore, &defs, &krate, &name, &dep_graph);
 
     // Lower ast -> hir and resolve.
     let (analysis, resolutions, mut hir_forest) = {
-        driver::lower_and_resolve(&sess, &name, &mut defs, &krate, dep_graph,
-                                  resolve::MakeGlobMap::No)
+        driver::lower_and_resolve(&sess, &name, &mut defs, &krate,
+                                  &sess.dep_graph, resolve::MakeGlobMap::No)
     };
 
     let arenas = ty::CtxtArenas::new();
@@ -177,7 +178,6 @@ pub fn run_core(search_paths: SearchPaths,
             return None
         }
 
-        let _ignore = tcx.dep_graph.in_ignore();
         let ty::CrateAnalysis { access_levels, .. } = analysis;
 
         // Convert from a NodeId set to a DefId set since we don't always have easy access

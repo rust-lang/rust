@@ -67,6 +67,7 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_trans::back::link;
+use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::session::config::{get_unstable_features_setting, nightly_options};
@@ -196,9 +197,11 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
         },
     };
 
-    let cstore = Rc::new(CStore::new(token::get_ident_interner()));
+    let dep_graph = DepGraph::new(sopts.build_dep_graph());
+    let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
     let codemap = Rc::new(CodeMap::with_file_loader(loader));
     let sess = session::build_session_with_codemap(sopts,
+                                                   &dep_graph,
                                                    input_file_path,
                                                    descriptions,
                                                    cstore.clone(),
@@ -425,9 +428,13 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     describe_lints(&ls, false);
                     return None;
                 }
-                let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-                let sess = build_session(sopts.clone(), None, descriptions.clone(),
-                                         cstore.clone());
+                let dep_graph = DepGraph::new(sopts.build_dep_graph());
+                let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+                let sess = build_session(sopts.clone(),
+                    &dep_graph,
+                    None,
+                    descriptions.clone(),
+                    cstore.clone());
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let should_stop = RustcDefaultCalls::print_crate_info(&sess, None, odir, ofile);
                 if should_stop == Compilation::Stop {

@@ -11,13 +11,14 @@
 //! type context book-keeping
 
 use dep_graph::{DepGraph, DepTrackingMap};
-use hir::map as ast_map;
 use session::Session;
 use lint;
 use middle;
 use middle::cstore::LOCAL_CRATE;
 use hir::def::DefMap;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, DefIndex};
+use hir::map as ast_map;
+use hir::map::{DefKey, DefPath, DefPathData, DisambiguatedDefPathData};
 use middle::free_region::FreeRegionMap;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime;
@@ -511,6 +512,49 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             self.sess.cstore.crate_disambiguator(cnum)
         }
+    }
+
+    /// Given a def-key `key` and a crate `krate`, finds the def-index
+    /// that `krate` assigned to `key`. This `DefIndex` will always be
+    /// relative to `krate`.
+    ///
+    /// Returns `None` if there is no `DefIndex` with that key.
+    pub fn def_index_for_def_key(self, krate: ast::CrateNum, key: DefKey)
+                                 -> Option<DefIndex> {
+        if krate == LOCAL_CRATE {
+            self.map.def_index_for_def_key(key)
+        } else {
+            self.sess.cstore.def_index_for_def_key(krate, key)
+        }
+    }
+
+    pub fn retrace_path(self, path: &DefPath) -> Option<DefId> {
+        debug!("retrace_path(path={:?})", path);
+
+        let root_key = DefKey {
+            parent: None,
+            disambiguated_data: DisambiguatedDefPathData {
+                data: DefPathData::CrateRoot,
+                disambiguator: 0,
+            },
+        };
+
+        let root_index = self.def_index_for_def_key(path.krate, root_key)
+                             .expect("no root key?");
+
+        debug!("retrace_path: root_index={:?}", root_index);
+
+        let mut index = root_index;
+        for data in &path.data {
+            let key = DefKey { parent: Some(index), disambiguated_data: data.clone() };
+            debug!("retrace_path: key={:?}", key);
+            match self.def_index_for_def_key(path.krate, key) {
+                Some(i) => index = i,
+                None => return None,
+            }
+        }
+
+        Some(DefId { krate: path.krate, index: index })
     }
 
     pub fn type_parameter_def(self,
