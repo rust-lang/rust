@@ -25,6 +25,7 @@ use middle::dependency_format::Linkage;
 use CrateTranslation;
 use util::common::time;
 use util::fs::fix_windows_verbatim_for_gcc;
+use rustc::dep_graph::DepNode;
 use rustc::ty::TyCtxt;
 use rustc_back::tempdir::TempDir;
 
@@ -183,6 +184,8 @@ pub fn link_binary(sess: &Session,
                    trans: &CrateTranslation,
                    outputs: &OutputFilenames,
                    crate_name: &str) -> Vec<PathBuf> {
+    let _task = sess.dep_graph.in_task(DepNode::LinkBinary);
+
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         if invalid_output_for_target(sess, crate_type) {
