@@ -267,7 +267,8 @@ impl<'a> FmtVisitor<'a> {
                                            def,
                                            Some(generics),
                                            item.span,
-                                           indent)
+                                           indent,
+                                           None)
                         .map(|s| {
                             match *def {
                                 ast::VariantData::Tuple(..) => s + ";",

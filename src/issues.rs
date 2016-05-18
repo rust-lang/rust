@@ -32,14 +32,8 @@ impl ReportTactic {
 
 #[derive(Clone, Copy)]
 enum Seeking {
-    Issue {
-        todo_idx: usize,
-        fixme_idx: usize,
-    },
-    Number {
-        issue: Issue,
-        part: NumberPart,
-    },
+    Issue { todo_idx: usize, fixme_idx: usize },
+    Number { issue: Issue, part: NumberPart },
 }
 
 #[derive(Clone, Copy)]

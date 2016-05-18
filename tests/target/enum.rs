@@ -42,9 +42,7 @@ enum StructLikeVariants {
         #[Attr50]
         y: SomeType, // Aanother Comment
     },
-    SL {
-        a: A,
-    },
+    SL { a: A },
 }
 
 enum X {
@@ -64,10 +62,7 @@ pub enum EnumWithAttributes {
     SkippedItem(String,String,), // Post-comment
     #[another_attr]
     #[attr2]
-    ItemStruct {
-        x: usize,
-        y: usize,
-    }, /* Comment AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
+    ItemStruct { x: usize, y: usize }, /* Comment AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
     // And another
     ForcedPreflight, /* AAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                       * AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
@@ -81,24 +76,15 @@ pub enum SingleTuple {
 }
 
 pub enum SingleStruct {
-    Match {
-        name: String,
-        loc: usize,
-    }, // Post-comment
+    Match { name: String, loc: usize }, // Post-comment
 }
 
 pub enum GenericEnum<I, T>
     where I: Iterator<Item = T>
 {
     // Pre Comment
-    Left {
-        list: I,
-        root: T,
-    }, // Post-comment
-    Right {
-        list: I,
-        root: T,
-    }, // Post Comment
+    Left { list: I, root: T }, // Post-comment
+    Right { list: I, root: T }, // Post Comment
 }
 
 

@@ -33,9 +33,7 @@ enum E<S, T>
     where S: P,
           T: P,
 {
-    A {
-        a: T,
-    },
+    A { a: T },
 }
 
 type Double<T>

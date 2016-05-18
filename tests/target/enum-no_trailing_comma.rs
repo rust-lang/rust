@@ -21,21 +21,11 @@ enum TupY {
 }
 
 enum StructX {
-    A {
-        s: u16,
-    },
-    B {
-        u: u32,
-        i: i32,
-    }
+    A { s: u16 },
+    B { u: u32, i: i32 }
 }
 
 enum StructY {
-    A {
-        s: u16,
-    },
-    B {
-        u: u32,
-        i: i32,
-    }
+    A { s: u16 },
+    B { u: u32, i: i32 }
 }

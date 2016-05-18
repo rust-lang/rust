@@ -14,7 +14,7 @@ use Indent;
 use utils::{CodeMapSpanUtils, format_mutability, format_visibility, contains_skip, end_typaram,
             wrap_str, last_line_width, semicolon_for_expr, format_unsafety, trim_newlines};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
-            DefinitiveListTactic, definitive_tactic, format_item_list};
+            DefinitiveListTactic, ListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
 use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
@@ -419,7 +419,8 @@ impl<'a> FmtVisitor<'a> {
                               &field.node.data,
                               None,
                               field.span,
-                              indent)
+                              indent,
+                              Some(self.config.struct_variant_width))
             }
             ast::VariantData::Unit(..) => {
                 let tag = if let Some(ref expr) = field.node.disr_expr {
@@ -588,7 +589,8 @@ pub fn format_struct(context: &RewriteContext,
                      struct_def: &ast::VariantData,
                      generics: Option<&ast::Generics>,
                      span: Span,
-                     offset: Indent)
+                     offset: Indent,
+                     one_line_width: Option<usize>)
                      -> Option<String> {
     match *struct_def {
         ast::VariantData::Unit(..) => format_unit_struct(item_name, ident, vis),
@@ -610,7 +612,8 @@ pub fn format_struct(context: &RewriteContext,
                                  fields,
                                  generics,
                                  span,
-                                 offset)
+                                 offset,
+                                 one_line_width)
         }
     }
 }
@@ -758,7 +761,8 @@ fn format_struct_struct(context: &RewriteContext,
                         fields: &[ast::StructField],
                         generics: Option<&ast::Generics>,
                         span: Span,
-                        offset: Indent)
+                        offset: Indent,
+                        one_line_width: Option<usize>)
                         -> Option<String> {
     let mut result = String::with_capacity(1024);
 
@@ -813,11 +817,18 @@ fn format_struct_struct(context: &RewriteContext,
                              |field| field.ty.span.hi,
                              |field| field.rewrite(context, item_budget, item_indent),
                              context.codemap.span_after(span, "{"),
-                             span.hi);
+                             span.hi)
+        .collect::<Vec<_>>();
     // 1 = ,
     let budget = context.config.max_width - offset.width() + context.config.tab_spaces - 1;
+
+    let tactic = match one_line_width {
+        Some(w) => definitive_tactic(&items, ListTactic::LimitedHorizontalVertical(w), budget),
+        None => DefinitiveListTactic::Vertical,
+    };
+
     let fmt = ListFormatting {
-        tactic: DefinitiveListTactic::Vertical,
+        tactic: tactic,
         separator: ",",
         trailing_separator: context.config.struct_trailing_comma,
         indent: item_indent,
@@ -825,11 +836,16 @@ fn format_struct_struct(context: &RewriteContext,
         ends_with_newline: true,
         config: context.config,
     };
-    Some(format!("{}\n{}{}\n{}}}",
-                 result,
-                 offset.block_indent(context.config).to_string(context.config),
-                 try_opt!(write_list(items, &fmt)),
-                 offset.to_string(context.config)))
+    let items_str = try_opt!(write_list(&items, &fmt));
+    if one_line_width.is_some() && !items_str.contains('\n') {
+        Some(format!("{} {} }}", result, items_str))
+    } else {
+        Some(format!("{}\n{}{}\n{}}}",
+                     result,
+                     offset.block_indent(context.config).to_string(context.config),
+                     items_str,
+                     offset.to_string(context.config)))
+    }
 }
 
 fn format_tuple_struct(context: &RewriteContext,
