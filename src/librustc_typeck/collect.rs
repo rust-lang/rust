@@ -568,7 +568,8 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let (fty, explicit_self_category) =
         AstConv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
-                              sig, untransformed_rcvr_ty);
+                              sig,
+                              untransformed_rcvr_ty);
 
     let def_id = ccx.tcx.map.local_def_id(id);
     let substs = mk_item_substs(ccx, &ty_generics);
