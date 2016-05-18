@@ -300,6 +300,7 @@ pub enum CrateType {
     CrateTypeDylib,
     CrateTypeRlib,
     CrateTypeStaticlib,
+    CrateTypeCdylib,
 }
 
 #[derive(Clone)]
@@ -1103,7 +1104,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let no_analysis = debugging_opts.no_analysis;
 
     let mut output_types = HashMap::new();
-    if !debugging_opts.parse_only && !no_trans {
+    if !debugging_opts.parse_only {
         for list in matches.opt_strs("emit") {
             for output_type in list.split(',') {
                 let mut parts = output_type.splitn(2, '=');
@@ -1326,6 +1327,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
                 "rlib"      => CrateTypeRlib,
                 "staticlib" => CrateTypeStaticlib,
                 "dylib"     => CrateTypeDylib,
+                "cdylib"    => CrateTypeCdylib,
                 "bin"       => CrateTypeExecutable,
                 _ => {
                     return Err(format!("unknown crate type: `{}`",
@@ -1413,7 +1415,8 @@ impl fmt::Display for CrateType {
             CrateTypeExecutable => "bin".fmt(f),
             CrateTypeDylib => "dylib".fmt(f),
             CrateTypeRlib => "rlib".fmt(f),
-            CrateTypeStaticlib => "staticlib".fmt(f)
+            CrateTypeStaticlib => "staticlib".fmt(f),
+            CrateTypeCdylib => "cdylib".fmt(f),
         }
     }
 }

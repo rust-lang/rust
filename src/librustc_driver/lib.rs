@@ -504,10 +504,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             control.after_write_deps.stop = Compilation::Stop;
         }
 
-        if sess.opts.no_trans {
-            control.after_analysis.stop = Compilation::Stop;
-        }
-
         if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe) {
             control.after_llvm.stop = Compilation::Stop;
         }
