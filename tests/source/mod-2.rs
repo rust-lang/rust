@@ -1,4 +1,4 @@
 // Some nested mods
 
- mod   nestedmod  ;
+#[cfg(test)]  mod   nestedmod  ;
 pub  mod no_new_line_beginning;

@@ -185,20 +185,41 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn visit_item(&mut self, item: &ast::Item) {
-        // Only look at attributes for modules (except for rustfmt_skip) if the
-        // module is inline. We want to avoid looking at attributes in another
-        // file, which the AST doesn't distinguish.
+        // This is where we bail out if there is a skip attribute. This is only
+        // complex in the module case. It is complex because the module could be
+        // in a seperate file and there might be attributes in both files, but
+        // the AST lumps them all together.
         match item.node {
             ast::ItemKind::Mod(ref m) => {
                 let outer_file = self.codemap.lookup_char_pos(item.span.lo).file;
                 let inner_file = self.codemap.lookup_char_pos(m.inner.lo).file;
                 if outer_file.name == inner_file.name {
+                    // Module is inline, in this case we treat modules like any
+                    // other item.
                     if self.visit_attrs(&item.attrs) {
                         self.push_rewrite(item.span, None);
                         return;
                     }
                 } else if utils::contains_skip(&item.attrs) {
+                    // Module is not inline, but should be skipped.
                     return;
+                } else {
+                    // Module is not inline and should not be skipped. We want
+                    // to process only the attributes in the current file.
+                    let attrs = item.attrs
+                        .iter()
+                        .filter_map(|a| {
+                            let attr_file = self.codemap.lookup_char_pos(a.span.lo).file;
+                            if attr_file.name == outer_file.name {
+                                Some(a.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>();
+                    // Assert because if we should skip it should be caught by
+                    // the above case.
+                    assert!(!self.visit_attrs(&attrs));
                 }
             }
             _ => {
