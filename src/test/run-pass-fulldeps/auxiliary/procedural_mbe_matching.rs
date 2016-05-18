@@ -56,8 +56,12 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
                 _ => unreachable!()
             }
         }
-        Failure(_, s) | Error(_, s) => {
-            panic!("expected Success, but got Error/Failure: {}", s);
+        Failure(diag) => {
+            diag.span_help(sp, "expected Success, but got Failure");
+            panic!(diag);
+        }
+        Error(_, s) => {
+            panic!("expected Success, but got Error: {}", s);
         }
     };
 

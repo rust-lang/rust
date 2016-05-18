@@ -82,9 +82,9 @@ use ast;
 use ast::{TokenTree, Name, Ident};
 use codemap::{BytePos, mk_sp, Span, Spanned};
 use codemap;
-use errors::FatalError;
+use errors::DiagnosticBuilder;
 use parse::lexer::*; //resolve bug?
-use parse::ParseSess;
+use parse::{ParseSess, PResult};
 use parse::parser::{PathStyle, Parser};
 use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, Nonterminal};
@@ -200,8 +200,8 @@ pub enum NamedMatch {
     MatchedNonterminal(Nonterminal)
 }
 
-pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
-            -> ParseResult<HashMap<Name, Rc<NamedMatch>>> {
+pub fn nameize<'a>(p_s: &'a ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
+                   -> ParseResult<'a, HashMap<Name, Rc<NamedMatch>>> {
     fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
              ret_val: &mut HashMap<Name, Rc<NamedMatch>>, idx: &mut usize)
              -> Result<(), (codemap::Span, String)> {
@@ -248,16 +248,16 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
     Success(ret_val)
 }
 
-pub enum ParseResult<T> {
+pub enum ParseResult<'a, T> {
     Success(T),
     /// Arm failed to match
-    Failure(codemap::Span, String),
+    Failure(DiagnosticBuilder<'a>),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(codemap::Span, String)
 }
 
-pub type NamedParseResult = ParseResult<HashMap<Name, Rc<NamedMatch>>>;
-pub type PositionalParseResult = ParseResult<Vec<Rc<NamedMatch>>>;
+pub type NamedParseResult<'a> = ParseResult<'a, HashMap<Name, Rc<NamedMatch>>>;
+pub type PositionalParseResult<'a> = ParseResult<'a, Vec<Rc<NamedMatch>>>;
 
 /// Perform a token equality check, ignoring syntax context (that is, an
 /// unhygienic comparison)
@@ -270,11 +270,11 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     }
 }
 
-pub fn parse(sess: &ParseSess,
-             cfg: ast::CrateConfig,
-             mut rdr: TtReader,
-             ms: &[TokenTree])
-             -> NamedParseResult {
+pub fn parse<'a>(sess: &'a ParseSess,
+                 cfg: ast::CrateConfig,
+                 mut rdr: TtReader<'a>,
+                 ms: &[TokenTree])
+                 -> NamedParseResult<'a> {
     let mut cur_eis = Vec::new();
     cur_eis.push(initial_matcher_pos(Rc::new(ms.iter()
                                                 .cloned()
@@ -445,7 +445,9 @@ pub fn parse(sess: &ParseSess,
             } else if eof_eis.len() > 1 {
                 return Error(sp, "ambiguity: multiple successful parses".to_string());
             } else {
-                return Failure(sp, "unexpected end of macro invocation".to_string());
+                return Failure(sess.span_diagnostic.struct_span_err(
+                    sp, "unexpected end of macro invocation"
+                ));
             }
         } else {
             if (!bb_eis.is_empty() && !next_eis.is_empty())
@@ -466,8 +468,10 @@ pub fn parse(sess: &ParseSess,
                     }
                 ))
             } else if bb_eis.is_empty() && next_eis.is_empty() {
-                return Failure(sp, format!("no rules expected the token `{}`",
-                            pprust::token_to_string(&tok)));
+                return Failure(sess.span_diagnostic.struct_span_err(
+                    sp, &format!("no rules expected the token `{}`",
+                                 pprust::token_to_string(&tok))
+                ));
             } else if !next_eis.is_empty() {
                 /* Now process the next token */
                 while !next_eis.is_empty() {
@@ -481,8 +485,12 @@ pub fn parse(sess: &ParseSess,
                 match ei.top_elts.get_tt(ei.idx) {
                     TokenTree::Token(span, MatchNt(_, ident)) => {
                         let match_cur = ei.match_cur;
-                        (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
-                            parse_nt(&mut rust_parser, span, &ident.name.as_str()))));
+                        let nt = match parse_nt(&mut rust_parser, span,
+                                                &ident.name.as_str()) {
+                            Ok(nt) => Rc::new(MatchedNonterminal(nt)),
+                            Err(diag) => return Failure(diag)
+                        };
+                        (&mut ei.matches[match_cur]).push(nt);
                         ei.idx += 1;
                         ei.match_cur += 1;
                     }
@@ -500,55 +508,45 @@ pub fn parse(sess: &ParseSess,
     }
 }
 
-pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
+pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> PResult<'a, Nonterminal> {
     match name {
         "tt" => {
             p.quote_depth += 1; //but in theory, non-quoted tts might be useful
             let res: ::parse::PResult<'a, _> = p.parse_token_tree();
-            let res = token::NtTT(P(panictry!(res)));
+            let res = token::NtTT(P(try!(res)));
             p.quote_depth -= 1;
-            return res;
+            return Ok(res);
         }
         _ => {}
     }
     // check at the beginning and the parser checks after each bump
     p.check_unknown_macro_variable();
     match name {
-        "item" => match panictry!(p.parse_item()) {
-            Some(i) => token::NtItem(i),
-            None => {
-                p.fatal("expected an item keyword").emit();
-                panic!(FatalError);
-            }
+        "item" => match try!(p.parse_item()) {
+            Some(i) => Ok(token::NtItem(i)),
+            None => Err(p.fatal("expected an item keyword"))
         },
-        "block" => token::NtBlock(panictry!(p.parse_block())),
-        "stmt" => match panictry!(p.parse_stmt()) {
-            Some(s) => token::NtStmt(P(s)),
-            None => {
-                p.fatal("expected a statement").emit();
-                panic!(FatalError);
-            }
+        "block" => Ok(token::NtBlock(try!(p.parse_block()))),
+        "stmt" => match try!(p.parse_stmt()) {
+            Some(s) => Ok(token::NtStmt(P(s))),
+            None => Err(p.fatal("expected a statement"))
         },
-        "pat" => token::NtPat(panictry!(p.parse_pat())),
-        "expr" => token::NtExpr(panictry!(p.parse_expr())),
-        "ty" => token::NtTy(panictry!(p.parse_ty())),
+        "pat" => Ok(token::NtPat(try!(p.parse_pat()))),
+        "expr" => Ok(token::NtExpr(try!(p.parse_expr()))),
+        "ty" => Ok(token::NtTy(try!(p.parse_ty()))),
         // this could be handled like a token, since it is one
         "ident" => match p.token {
             token::Ident(sn) => {
                 p.bump();
-                token::NtIdent(Box::new(Spanned::<Ident>{node: sn, span: p.span}))
+                Ok(token::NtIdent(Box::new(Spanned::<Ident>{node: sn, span: p.span})))
             }
             _ => {
                 let token_str = pprust::token_to_string(&p.token);
-                p.fatal(&format!("expected ident, found {}",
-                                 &token_str[..])).emit();
-                panic!(FatalError)
+                Err(p.fatal(&format!("expected ident, found {}", &token_str[..])))
             }
         },
-        "path" => {
-            token::NtPath(Box::new(panictry!(p.parse_path(PathStyle::Type))))
-        },
-        "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
+        "path" => Ok(token::NtPath(Box::new(try!(p.parse_path(PathStyle::Type))))),
+        "meta" => Ok(token::NtMeta(try!(p.parse_meta_item()))),
         // this is not supposed to happen, since it has been checked
         // when compiling the macro.
         _ => p.span_bug(sp, "invalid fragment specifier")

@@ -1276,8 +1276,8 @@ impl TokenTree {
     }
 
     /// Use this token tree as a matcher to parse given tts.
-    pub fn parse(cx: &base::ExtCtxt, mtch: &[TokenTree], tts: &[TokenTree])
-                 -> macro_parser::NamedParseResult {
+    pub fn parse<'a>(cx: &'a base::ExtCtxt, mtch: &[TokenTree], tts: &[TokenTree])
+                     -> macro_parser::NamedParseResult<'a> {
         // `None` is because we're not interpolating
         let arg_rdr = lexer::new_tt_reader_with_doc_flag(&cx.parse_sess().span_diagnostic,
                                                          None,

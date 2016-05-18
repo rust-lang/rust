@@ -312,6 +312,10 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    pub fn span(&self) -> &MultiSpan {
+        &self.span
+    }
+
     pub fn message(&self) -> &str {
         &self.message
     }

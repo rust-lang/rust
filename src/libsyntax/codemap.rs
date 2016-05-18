@@ -330,6 +330,10 @@ impl MultiSpan {
         &self.primary_spans
     }
 
+    pub fn primary_spans_mut(&mut self) -> &mut [Span] {
+        &mut self.primary_spans
+    }
+
     /// Returns the strings to highlight. We always ensure that there
     /// is an entry for each of the primary spans -- for each primary
     /// span P, if there is at least one label with span P, we return

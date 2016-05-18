@@ -10,6 +10,7 @@
 
 use ast::{self, TokenTree};
 use codemap::{Span, DUMMY_SP};
+use errors::FatalError;
 use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};
@@ -158,7 +159,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
 }
 
 /// Given `lhses` and `rhses`, this is the new macro we create
-fn generic_extension<'cx>(cx: &'cx ExtCtxt,
+fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                           sp: Span,
                           name: ast::Ident,
                           imported_from: Option<ast::Ident>,
@@ -174,7 +175,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 
     // Which arm's failure should we report? (the one furthest along)
     let mut best_fail_spot = DUMMY_SP;
-    let mut best_fail_msg = "internal error: ran no matchers".to_string();
+    let mut best_fail_diag = None;
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         let lhs_tt = match *lhs {
@@ -184,6 +185,8 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 
         match TokenTree::parse(cx, lhs_tt, arg) {
             Success(named_matches) => {
+                best_fail_diag.map(|mut d| cx.parse_sess.span_diagnostic.cancel(&mut d));
+
                 let rhs = match rhses[i] {
                     // ignore delimiters
                     TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
@@ -214,17 +217,36 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     macro_ident: name
                 })
             }
-            Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
-                best_fail_spot = sp;
-                best_fail_msg = (*msg).clone();
-            },
+            Failure(diag) => {
+                let sp = diag.span().primary_span();
+                let mut new_diag = Some(diag);
+                if let Some(sp) = sp {
+                    if sp.lo >= best_fail_spot.lo {
+                        best_fail_spot = sp;
+                        ::std::mem::swap(&mut best_fail_diag, &mut new_diag);
+                    }
+                }
+                // remove the previous diag if we swapped, of the new one if we didn't.
+                new_diag.map(|mut diag| cx.parse_sess.span_diagnostic.cancel(&mut diag));
+            }
             Error(err_sp, ref msg) => {
                 cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..])
             }
         }
     }
 
-     cx.span_fatal(best_fail_spot.substitute_dummy(sp), &best_fail_msg[..]);
+    match best_fail_diag {
+        None => cx.span_bug(sp, "internal error: ran no matchers"),
+        Some(mut diag) => {
+            let mut span = diag.span().clone();
+            for span in span.primary_spans_mut() {
+                *span = span.substitute_dummy(sp);
+            }
+            diag.set_span(span);
+            diag.emit();
+            panic!(FatalError);
+        }
+    }
 }
 
 // Note that macro-by-example's input is also matched against a token tree:
@@ -279,7 +301,16 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
                                    arg_reader,
                                    &argument_gram) {
         Success(m) => m,
-        Failure(sp, str) | Error(sp, str) => {
+        Failure(mut diag) => {
+            let mut span = diag.span().clone();
+            for span in span.primary_spans_mut() {
+                *span = span.substitute_dummy(def.span);
+            }
+            diag.set_span(span);
+            diag.emit();
+            panic!(FatalError);
+        }
+        Error(sp, str) => {
             panic!(cx.parse_sess().span_diagnostic
                      .span_fatal(sp.substitute_dummy(def.span), &str[..]));
         }
