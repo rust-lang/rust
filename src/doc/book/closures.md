@@ -344,7 +344,7 @@ assert_eq!(2, answer);
 In this example, we don’t strictly need the intermediate variable `f`,
 the name of the function works just fine too:
 
-```ignore
+```rust,ignore
 let answer = call_with_one(&add_one);
 ```
 

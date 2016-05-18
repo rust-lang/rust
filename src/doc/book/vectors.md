@@ -40,7 +40,7 @@ The indices count from `0`, so the third element is `v[2]`.
 
 It’s also important to note that you must index with the `usize` type:
 
-```ignore
+```rust,ignore
 let v = vec![1, 2, 3, 4, 5];
 
 let i: usize = 0;
@@ -71,7 +71,7 @@ you cannot index with an `i32`.
 
 If you try to access an index that doesn’t exist:
 
-```ignore
+```rust,ignore
 let v = vec![1, 2, 3];
 println!("Item 7 is {}", v[7]);
 ```
