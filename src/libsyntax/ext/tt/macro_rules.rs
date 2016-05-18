@@ -291,16 +291,15 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     let lhses = match **argument_map.get(&lhs_nm.name).unwrap() {
         MatchedSeq(ref s, _) => {
             s.iter().map(|m| match **m {
-                MatchedNonterminal(NtTT(ref tt)) => (**tt).clone(),
+                MatchedNonterminal(NtTT(ref tt)) => {
+                    valid &= check_lhs_nt_follows(cx, tt);
+                    (**tt).clone()
+                }
                 _ => cx.span_bug(def.span, "wrong-structured lhs")
             }).collect()
         }
         _ => cx.span_bug(def.span, "wrong-structured lhs")
     };
-
-    for lhs in &lhses {
-        valid &= check_lhs_nt_follows(cx, lhs);
-    }
 
     let rhses = match **argument_map.get(&rhs_nm.name).unwrap() {
         MatchedSeq(ref s, _) => {
