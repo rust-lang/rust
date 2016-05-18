@@ -216,7 +216,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                         else if let Expr_::ExprPath(_, path) = expr.node.clone() {
                             if let Some(segment) = path.segments.last() {
-                                report_function!(expr.span, segment.identifier.name);
+                                report_function!(expr.span, segment.name);
                             }
                         }
                     }

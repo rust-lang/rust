@@ -762,7 +762,7 @@ fn encode_method_argument_names(rbml_w: &mut Encoder,
     for arg in &decl.inputs {
         let tag = tag_method_argument_name;
         if let PatKind::Ident(_, ref path1, _) = arg.pat.node {
-            let name = path1.node.name.as_str();
+            let name = path1.node.as_str();
             rbml_w.wr_tagged_bytes(tag, name.as_bytes());
         } else {
             rbml_w.wr_tagged_bytes(tag, &[]);

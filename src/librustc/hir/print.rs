@@ -1351,9 +1351,9 @@ impl<'a> State<'a> {
             hir::ExprIf(ref test, ref blk, ref elseopt) => {
                 self.print_if(&test, &blk, elseopt.as_ref().map(|e| &**e))?;
             }
-            hir::ExprWhile(ref test, ref blk, opt_ident) => {
-                if let Some(ident) = opt_ident {
-                    self.print_name(ident.name)?;
+            hir::ExprWhile(ref test, ref blk, opt_name) => {
+                if let Some(name) = opt_name {
+                    self.print_name(name)?;
                     self.word_space(":")?;
                 }
                 self.head("while")?;
@@ -1361,9 +1361,9 @@ impl<'a> State<'a> {
                 space(&mut self.s)?;
                 self.print_block(&blk)?;
             }
-            hir::ExprLoop(ref blk, opt_ident) => {
-                if let Some(ident) = opt_ident {
-                    self.print_name(ident.name)?;
+            hir::ExprLoop(ref blk, opt_name) => {
+                if let Some(name) = opt_name {
+                    self.print_name(name)?;
                     self.word_space(":")?;
                 }
                 self.head("loop")?;
@@ -1455,19 +1455,19 @@ impl<'a> State<'a> {
             hir::ExprPath(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, true)?
             }
-            hir::ExprBreak(opt_ident) => {
+            hir::ExprBreak(opt_name) => {
                 word(&mut self.s, "break")?;
                 space(&mut self.s)?;
-                if let Some(ident) = opt_ident {
-                    self.print_name(ident.node.name)?;
+                if let Some(name) = opt_name {
+                    self.print_name(name.node)?;
                     space(&mut self.s)?;
                 }
             }
-            hir::ExprAgain(opt_ident) => {
+            hir::ExprAgain(opt_name) => {
                 word(&mut self.s, "continue")?;
                 space(&mut self.s)?;
-                if let Some(ident) = opt_ident {
-                    self.print_name(ident.node.name)?;
+                if let Some(name) = opt_name {
+                    self.print_name(name.node)?;
                     space(&mut self.s)?
                 }
             }
@@ -1615,7 +1615,7 @@ impl<'a> State<'a> {
                 word(&mut self.s, "::")?
             }
 
-            self.print_name(segment.identifier.name)?;
+            self.print_name(segment.name)?;
 
             self.print_path_parameters(&segment.parameters, colons_before_params)?;
         }
@@ -1639,7 +1639,7 @@ impl<'a> State<'a> {
         word(&mut self.s, ">")?;
         word(&mut self.s, "::")?;
         let item_segment = path.segments.last().unwrap();
-        self.print_name(item_segment.identifier.name)?;
+        self.print_name(item_segment.name)?;
         self.print_path_parameters(&item_segment.parameters, colons_before_params)
     }
 
@@ -1727,7 +1727,7 @@ impl<'a> State<'a> {
                         self.word_nbsp("mut")?;
                     }
                 }
-                self.print_name(path1.node.name)?;
+                self.print_name(path1.node)?;
                 match *sub {
                     Some(ref p) => {
                         word(&mut self.s, "@")?;
@@ -2095,7 +2095,7 @@ impl<'a> State<'a> {
             hir::ViewPathSimple(name, ref path) => {
                 self.print_path(path, false, 0)?;
 
-                if path.segments.last().unwrap().identifier.name != name {
+                if path.segments.last().unwrap().name != name {
                     space(&mut self.s)?;
                     self.word_space("as")?;
                     self.print_name(name)?;
@@ -2151,8 +2151,8 @@ impl<'a> State<'a> {
                 if let Some(eself) = input.to_self() {
                     self.print_explicit_self(&eself)?;
                 } else {
-                    let invalid = if let PatKind::Ident(_, ident, _) = input.pat.node {
-                        ident.node.name == keywords::Invalid.name()
+                    let invalid = if let PatKind::Ident(_, name, _) = input.pat.node {
+                        name.node == keywords::Invalid.name()
                     } else {
                         false
                     };

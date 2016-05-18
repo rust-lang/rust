@@ -166,7 +166,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
             {
                 let id = match self.binding_map {
                     None => pat.id,
-                    Some(ref map) => map[&ident.node.name],
+                    Some(ref map) => map[&ident.node],
                 };
                 let var_ty = self.cx.tcx.node_id_to_type(pat.id);
                 let region = match var_ty.sty {
@@ -197,7 +197,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 PatternKind::Binding {
                     mutability: mutability,
                     mode: mode,
-                    name: ident.node.name,
+                    name: ident.node,
                     var: id,
                     ty: var_ty,
                     subpattern: self.to_opt_pattern(sub),

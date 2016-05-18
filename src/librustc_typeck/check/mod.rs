@@ -3870,7 +3870,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                  &ty_segments[..base_ty_end],
                                                                  &ty_segments[base_ty_end..]);
             let item_segment = path.segments.last().unwrap();
-            let item_name = item_segment.identifier.name;
+            let item_name = item_segment.name;
             let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
                 Ok(def) => Some(def),
                 Err(error) => {

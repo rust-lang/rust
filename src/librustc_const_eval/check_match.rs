@@ -240,24 +240,24 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat) {
     pat.walk(|p| {
         match p.node {
-            PatKind::Ident(hir::BindByValue(hir::MutImmutable), ident, None) => {
+            PatKind::Ident(hir::BindByValue(hir::MutImmutable), name, None) => {
                 let pat_ty = cx.tcx.pat_ty(p);
                 if let ty::TyEnum(edef, _) = pat_ty.sty {
                     let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
                     if let Some(Def::Local(..)) = def {
                         if edef.variants.iter().any(|variant|
-                            variant.name == ident.node.unhygienic_name
+                            variant.name == name.node.unhygienize()
                                 && variant.kind() == VariantKind::Unit
                         ) {
                             let ty_path = cx.tcx.item_path_str(edef.did);
                             let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
                                 "pattern binding `{}` is named the same as one \
                                  of the variants of the type `{}`",
-                                ident.node, ty_path);
+                                name.node, ty_path);
                             help!(err,
                                 "if you meant to match on a variant, \
                                  consider making the path in the pattern qualified: `{}::{}`",
-                                ty_path, ident.node);
+                                ty_path, name.node);
                             err.emit();
                         }
                     }
