@@ -2844,8 +2844,11 @@ impl<'a> Parser<'a> {
                         // Silently recover, the EOF token will be seen again
                         // and an error emitted then. Thus we don't pop from
                         // self.open_braces here.
-                    },
-                    _ => unreachable!(),
+                    }
+                    _ => {
+                        // Bad token: an error will already have been emitted; just skip it.
+                        self.bump();
+                    }
                 }
 
                 Ok(TokenTree::Delimited(span, Rc::new(Delimited {
