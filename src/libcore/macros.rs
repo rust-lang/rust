@@ -86,7 +86,7 @@ macro_rules! assert {
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! assert_eq {
     ($left:expr , $right:expr) => ({
-        match (&($left), &($right)) {
+        match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
                     panic!("assertion failed: `(left == right)` \
