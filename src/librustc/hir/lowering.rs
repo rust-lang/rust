@@ -1261,7 +1261,10 @@ impl<'a> LoweringContext<'a> {
                 }
                 ExprKind::Paren(ref ex) => {
                     return self.lower_expr(ex).map(|mut ex| {
-                        ex.span = e.span;
+                        // include parens in span, but only if it is a super-span.
+                        if e.span.contains(ex.span) {
+                            ex.span = e.span;
+                        }
                         // merge attributes into the inner expression.
                         ex.attrs.update(|attrs| {
                             attrs.prepend(e.attrs.clone())
