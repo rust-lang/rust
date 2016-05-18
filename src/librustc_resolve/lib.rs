@@ -1102,6 +1102,10 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         }
     }
 
+    fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
+        self.def_map.get(&id).cloned()
+    }
+
     fn record_resolution(&mut self, id: NodeId, def: Def) {
         self.def_map.insert(id, PathResolution { base_def: def, depth: 0 });
     }
@@ -1123,7 +1127,7 @@ impl Named for ast::PathSegment {
 
 impl Named for hir::PathSegment {
     fn name(&self) -> Name {
-        self.identifier.name
+        self.name
     }
 }
 

@@ -46,8 +46,6 @@ use syntax::ptr::P;
 
 use std::collections::BTreeMap;
 use std::fmt;
-use std::hash::{Hash, Hasher};
-use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// HIR doesn't commit to a concrete storage type and have its own alias for a vector.
 /// It can be `Vec`, `P<[T]>` or potentially `Box<[T]>`, or some other container with similar
@@ -75,63 +73,6 @@ pub mod map;
 pub mod pat_util;
 pub mod print;
 pub mod svh;
-
-/// Identifier in HIR
-#[derive(Clone, Copy, Eq)]
-pub struct Ident {
-    /// Hygienic name (renamed), should be used by default
-    pub name: Name,
-    /// Unhygienic name (original, not renamed), needed in few places in name resolution
-    pub unhygienic_name: Name,
-}
-
-impl Ident {
-    /// Creates a HIR identifier with both `name` and `unhygienic_name` initialized with
-    /// the argument. Hygiene properties of the created identifier depend entirely on this
-    /// argument. If the argument is a plain interned string `intern("iter")`, then the result
-    /// is unhygienic and can interfere with other entities named "iter". If the argument is
-    /// a "fresh" name created with `gensym("iter")`, then the result is hygienic and can't
-    /// interfere with other entities having the same string as a name.
-    pub fn from_name(name: Name) -> Ident {
-        Ident { name: name, unhygienic_name: name }
-    }
-}
-
-impl PartialEq for Ident {
-    fn eq(&self, other: &Ident) -> bool {
-        self.name == other.name
-    }
-}
-
-impl Hash for Ident {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state)
-    }
-}
-
-impl fmt::Debug for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.name, f)
-    }
-}
-
-impl fmt::Display for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.name, f)
-    }
-}
-
-impl Encodable for Ident {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        self.name.encode(s)
-    }
-}
-
-impl Decodable for Ident {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        Ok(Ident::from_name(Name::decode(d)?))
-    }
-}
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
@@ -184,12 +125,12 @@ impl fmt::Display for Path {
 impl Path {
     /// Convert a span and an identifier to the corresponding
     /// 1-segment path.
-    pub fn from_ident(s: Span, ident: Ident) -> Path {
+    pub fn from_name(s: Span, name: Name) -> Path {
         Path {
             span: s,
             global: false,
             segments: hir_vec![PathSegment {
-                identifier: ident,
+                name: name,
                 parameters: PathParameters::none()
             }],
         }
@@ -201,15 +142,7 @@ impl Path {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct PathSegment {
     /// The identifier portion of this path segment.
-    ///
-    /// Hygiene properties of this identifier are worth noting.
-    /// Most path segments are not hygienic and they are not renamed during
-    /// lowering from AST to HIR (see comments to `fn lower_path`). However segments from
-    /// unqualified paths with one segment originating from `ExprPath` (local-variable-like paths)
-    /// can be hygienic, so they are renamed. You should not normally care about this peculiarity
-    /// and just use `identifier.name` unless you modify identifier resolution code
-    /// (`fn resolve_identifier` and other functions called by it in `rustc_resolve`).
-    pub identifier: Ident,
+    pub name: Name,
 
     /// Type/lifetime parameters attached to this path. They come in
     /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`. Note that
@@ -600,7 +533,7 @@ pub enum PatKind {
     /// which it is. The resolver determines this, and
     /// records this pattern's `NodeId` in an auxiliary
     /// set (of "PatIdents that refer to unit patterns or constants").
-    Ident(BindingMode, Spanned<Ident>, Option<P<Pat>>),
+    Ident(BindingMode, Spanned<Name>, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.
@@ -940,11 +873,11 @@ pub enum Expr_ {
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`
-    ExprWhile(P<Expr>, P<Block>, Option<Ident>),
+    ExprWhile(P<Expr>, P<Block>, Option<Name>),
     /// Conditionless loop (can be exited with break, continue, or return)
     ///
     /// `'label: loop { block }`
-    ExprLoop(P<Block>, Option<Ident>),
+    ExprLoop(P<Block>, Option<Name>),
     /// A `match` block, with a source that indicates whether or not it is
     /// the result of a desugaring, and if so, which kind.
     ExprMatch(P<Expr>, HirVec<Arm>, MatchSource),
@@ -980,9 +913,9 @@ pub enum Expr_ {
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Option<Spanned<Ident>>),
+    ExprBreak(Option<Spanned<Name>>),
     /// A `continue`, with an optional label
-    ExprAgain(Option<Spanned<Ident>>),
+    ExprAgain(Option<Spanned<Name>>),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
@@ -1209,8 +1142,8 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 
 impl Arg {
     pub fn to_self(&self) -> Option<ExplicitSelf> {
-        if let PatKind::Ident(BindByValue(mutbl), ident, _) = self.pat.node {
-            if ident.node.unhygienic_name == keywords::SelfValue.name() {
+        if let PatKind::Ident(BindByValue(mutbl), name, _) = self.pat.node {
+            if name.node.unhygienize() == keywords::SelfValue.name() {
                 return match self.ty.node {
                     TyInfer => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
                     TyRptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyInfer => {
@@ -1225,8 +1158,8 @@ impl Arg {
     }
 
     pub fn is_self(&self) -> bool {
-        if let PatKind::Ident(_, ident, _) = self.pat.node {
-            ident.node.unhygienic_name == keywords::SelfValue.name()
+        if let PatKind::Ident(_, name, _) = self.pat.node {
+            name.node.unhygienize() == keywords::SelfValue.name()
         } else {
             false
         }

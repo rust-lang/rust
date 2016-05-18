@@ -1283,7 +1283,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                  -> (Ty<'tcx>, Def)
     {
         let tcx = self.tcx();
-        let assoc_name = item_segment.identifier.name;
+        let assoc_name = item_segment.name;
 
         debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
 
@@ -1394,7 +1394,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             self.report_ambiguous_associated_type(span,
                                                   "Type",
                                                   &path_str,
-                                                  &item_segment.identifier.name.as_str());
+                                                  &item_segment.name.as_str());
             return tcx.types.err;
         };
 
@@ -1409,7 +1409,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("qpath_to_ty: trait_ref={:?}", trait_ref);
 
-        self.projected_ty(span, trait_ref, item_segment.identifier.name)
+        self.projected_ty(span, trait_ref, item_segment.name)
     }
 
     /// Convert a type supplied as value for a type argument from AST into our

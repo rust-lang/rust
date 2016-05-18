@@ -928,13 +928,13 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     match expr.node {
         hir::ExprBreak(label_opt) => {
-            controlflow::trans_break(bcx, expr, label_opt.map(|l| l.node.name))
+            controlflow::trans_break(bcx, expr, label_opt.map(|l| l.node))
         }
         hir::ExprType(ref e, _) => {
             trans_into(bcx, &e, Ignore)
         }
         hir::ExprAgain(label_opt) => {
-            controlflow::trans_cont(bcx, expr, label_opt.map(|l| l.node.name))
+            controlflow::trans_cont(bcx, expr, label_opt.map(|l| l.node))
         }
         hir::ExprRet(ref ex) => {
             // Check to see if the return expression itself is reachable.
