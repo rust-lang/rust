@@ -453,7 +453,7 @@ fn resolve_socket_addr(s: &str, p: u16) -> io::Result<vec::IntoIter<SocketAddr>>
             a.set_port(p);
             a
         })
-    }).collect()?;
+    }).collect::<Result<_, _>>()?;
     Ok(v.into_iter())
 }
 
