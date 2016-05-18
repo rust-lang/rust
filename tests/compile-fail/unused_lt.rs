@@ -44,6 +44,12 @@ impl<'a> Foo<'a> for u8 {
     }
 }
 
+struct Bar;
+
+impl Bar {
+    fn x<'a>(&self) {} //~ ERROR this lifetime
+}
+
 // test for #489 (used lifetimes in bounds)
 pub fn parse<'a, I: Iterator<Item=&'a str>>(_it: &mut I) {
     unimplemented!()
