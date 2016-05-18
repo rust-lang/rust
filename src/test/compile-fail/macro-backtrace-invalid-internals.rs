@@ -36,13 +36,13 @@ macro_rules! fake_method_expr {
 
 macro_rules! fake_field_expr {
      () => {
-          1.fake
+          1.fake //~ ERROR no field with that name
      }
 }
 
 macro_rules! fake_anon_field_expr {
      () => {
-          (1).0
+          (1).0 //~ ERROR type was not a tuple
      }
 }
 
@@ -52,8 +52,6 @@ fn main() {
     fake_anon_field_stmt!(); //~ NOTE in this expansion of
 
     let _ = fake_method_expr!(); //~ NOTE in this expansion of
-    let _ = fake_field_expr!(); //~ ERROR no field with that name
-                                //~^ NOTE in this expansion of
-    let _ = fake_anon_field_expr!(); //~ ERROR type was not a tuple
-                                     //~^ NOTE in this expansion of
+    let _ = fake_field_expr!(); //~ NOTE in this expansion of
+    let _ = fake_anon_field_expr!(); //~ NOTE in this expansion of
 }
