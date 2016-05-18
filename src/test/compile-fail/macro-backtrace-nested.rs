@@ -12,20 +12,19 @@
 // we replace the span of the expanded expression with that of the call site.
 
 macro_rules! nested_expr {
-    () => (fake)
+    () => (fake) //~ ERROR unresolved name
+                 //~^ ERROR unresolved name
 }
 
 macro_rules! call_nested_expr {
-    () => (nested_expr!())
+    () => (nested_expr!()) //~ NOTE in this expansion of nested_expr!
 }
 
 macro_rules! call_nested_expr_sum {
-    () => { 1 + nested_expr!(); } //~ ERROR unresolved name
-                                  //~^ NOTE in this expansion of nested_expr!
+    () => { 1 + nested_expr!(); } //~ NOTE in this expansion of nested_expr!
 }
 
 fn main() {
-    1 + call_nested_expr!(); //~ ERROR unresolved name
-                             //~^ NOTE in this expansion of call_nested_expr!
+    1 + call_nested_expr!(); //~ NOTE in this expansion of call_nested_expr!
     call_nested_expr_sum!(); //~ NOTE in this expansion of
 }
