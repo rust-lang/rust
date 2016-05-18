@@ -549,13 +549,8 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
             token::NtPath(Box::new(panictry!(p.parse_path(PathStyle::Type))))
         },
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
-        _ => {
-            p.span_fatal_help(sp,
-                              &format!("invalid fragment specifier `{}`", name),
-                              "valid fragment specifiers are `ident`, `block`, \
-                               `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt` \
-                               and `item`").emit();
-            panic!(FatalError);
-        }
+        // this is not supposed to happen, since it has been checked
+        // when compiling the macro.
+        _ => p.span_bug(sp, "invalid fragment specifier")
     }
 }
