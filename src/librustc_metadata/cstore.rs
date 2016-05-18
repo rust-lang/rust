@@ -20,7 +20,9 @@ use decoder;
 use index;
 use loader;
 
-use rustc::hir::def_id::DefId;
+use rustc::dep_graph::DepGraph;
+use rustc::hir::def_id::{DefIndex, DefId};
+use rustc::hir::map::DefKey;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{ExternCrate};
 use rustc::session::config::PanicStrategy;
@@ -78,6 +80,13 @@ pub struct crate_metadata {
     pub index: index::Index,
     pub xref_index: index::DenseIndex,
 
+    /// For each public item in this crate, we encode a key.  When the
+    /// crate is loaded, we read all the keys and put them in this
+    /// hashmap, which gives the reverse mapping.  This allows us to
+    /// quickly retrace a `DefPath`, which is needed for incremental
+    /// compilation support.
+    pub key_map: FnvHashMap<DefKey, DefIndex>,
+
     /// Flag if this crate is required by an rlib version of this crate, or in
     /// other words whether it was explicitly linked to. An example of a crate
     /// where this is false is when an allocator crate is injected into the
@@ -86,6 +95,7 @@ pub struct crate_metadata {
 }
 
 pub struct CStore {
+    pub dep_graph: DepGraph,
     metas: RefCell<FnvHashMap<ast::CrateNum, Rc<crate_metadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<ast::CrateNum>>,
@@ -98,8 +108,10 @@ pub struct CStore {
 }
 
 impl CStore {
-    pub fn new(intr: Rc<IdentInterner>) -> CStore {
+    pub fn new(dep_graph: &DepGraph,
+               intr: Rc<IdentInterner>) -> CStore {
         CStore {
+            dep_graph: dep_graph.clone(),
             metas: RefCell::new(FnvHashMap()),
             extern_mod_crate_map: RefCell::new(FnvHashMap()),
             used_crate_sources: RefCell::new(Vec::new()),

@@ -42,7 +42,8 @@ pub fn visit_all_items_in_krate<'a, 'tcx, V, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let _task = self.tcx.dep_graph.in_task(task_id);
             debug!("Started task {:?}", task_id);
             self.tcx.dep_graph.read(DepNode::Hir(item_def_id));
-            self.visitor.visit_item(i)
+            self.visitor.visit_item(i);
+            debug!("Ended task {:?}", task_id);
         }
     }
 

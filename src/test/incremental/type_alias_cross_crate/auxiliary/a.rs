@@ -1,4 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! When in incremental mode, this pass dumps out the dependency graph
-//! into the given directory. At the same time, it also hashes the
-//! various HIR nodes.
+#![crate_type="rlib"]
 
-mod data;
-mod directory;
-mod dirty_clean;
-mod hash;
-mod load;
-mod save;
-mod util;
+#[cfg(rpass1)]
+pub type X = u32;
 
-pub use self::load::load_dep_graph;
-pub use self::save::save_dep_graph;
+#[cfg(rpass2)]
+pub type X = i32;
+
+pub type Y = char;
+
+pub fn foo() { }

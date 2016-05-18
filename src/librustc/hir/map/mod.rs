@@ -19,7 +19,7 @@ use dep_graph::{DepGraph, DepNode};
 
 use middle::cstore::InlinedItem;
 use middle::cstore::InlinedItem as II;
-use hir::def_id::{CRATE_DEF_INDEX, DefId};
+use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID, };
@@ -160,10 +160,10 @@ pub struct Forest {
 }
 
 impl Forest {
-    pub fn new(krate: Crate, dep_graph: DepGraph) -> Forest {
+    pub fn new(krate: Crate, dep_graph: &DepGraph) -> Forest {
         Forest {
             krate: krate,
-            dep_graph: dep_graph,
+            dep_graph: dep_graph.clone(),
             inlined_items: TypedArena::new()
         }
     }
@@ -285,9 +285,8 @@ impl<'ast> Map<'ast> {
         self.definitions.borrow().def_path(def_id.index)
     }
 
-    pub fn retrace_path(&self, path: &DefPath) -> Option<DefId> {
-        self.definitions.borrow().retrace_path(path)
-                                 .map(DefId::local)
+    pub fn def_index_for_def_key(&self, def_key: DefKey) -> Option<DefIndex> {
+        self.definitions.borrow().def_index_for_def_key(def_key)
     }
 
     pub fn local_def_id(&self, node: NodeId) -> DefId {

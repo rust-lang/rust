@@ -18,10 +18,10 @@ use self::NodesMatchingUII::*;
 use abort_on_err;
 use driver::{self, Resolutions};
 
-use rustc::dep_graph::DepGraph;
 use rustc::ty::{self, TyCtxt};
 use rustc::cfg;
 use rustc::cfg::graphviz::LabelledCFG;
+use rustc::dep_graph::DepGraph;
 use rustc::session::Session;
 use rustc::session::config::Input;
 use rustc_borrowck as borrowck;

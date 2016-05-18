@@ -79,8 +79,11 @@ pub fn run(input: &str,
                                                                false,
                                                                codemap.clone());
 
-    let cstore = Rc::new(CStore::new(token::get_ident_interner()));
+    let dep_graph = DepGraph::new(false);
+    let _ignore = dep_graph.in_ignore();
+    let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
     let sess = session::build_session_(sessopts,
+                                       &dep_graph,
                                        Some(input_path.clone()),
                                        diagnostic_handler,
                                        codemap,
@@ -98,12 +101,12 @@ pub fn run(input: &str,
     let defs = hir_map::collect_definitions(&krate);
 
     let mut dummy_resolver = DummyResolver;
-    let krate = lower_crate(&krate, &sess, &mut dummy_resolver);
+    let krate = lower_crate(&sess, &krate, &sess, &mut dummy_resolver);
 
     let opts = scrape_test_config(&krate);
 
     let _ignore = dep_graph.in_ignore();
-    let mut forest = hir_map::Forest::new(krate, dep_graph.clone());
+    let mut forest = hir_map::Forest::new(krate, &dep_graph);
     let map = hir_map::map_crate(&mut forest, defs);
 
     let ctx = core::DocContext {
@@ -238,8 +241,10 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     // Compile the code
     let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
-    let cstore = Rc::new(CStore::new(token::get_ident_interner()));
+    let dep_graph = DepGraph::new(false);
+    let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
     let sess = session::build_session_(sessopts,
+                                       &dep_graph,
                                        None,
                                        diagnostic_handler,
                                        codemap,

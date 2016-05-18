@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use dep_graph::DepGraph;
 use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
@@ -49,6 +50,7 @@ pub mod search_paths;
 // Represents the data associated with a compilation
 // session for a single crate.
 pub struct Session {
+    pub dep_graph: DepGraph,
     pub target: config::Config,
     pub host: Target,
     pub opts: config::Options,
@@ -408,18 +410,21 @@ fn split_msg_into_multilines(msg: &str) -> Option<String> {
 }
 
 pub fn build_session(sopts: config::Options,
+                     dep_graph: &DepGraph,
                      local_crate_source_file: Option<PathBuf>,
                      registry: diagnostics::registry::Registry,
                      cstore: Rc<for<'a> CrateStore<'a>>)
                      -> Session {
     build_session_with_codemap(sopts,
-                              local_crate_source_file,
-                              registry,
-                              cstore,
-                              Rc::new(codemap::CodeMap::new()))
+                               dep_graph,
+                               local_crate_source_file,
+                               registry,
+                               cstore,
+                               Rc::new(codemap::CodeMap::new()))
 }
 
 pub fn build_session_with_codemap(sopts: config::Options,
+                                  dep_graph: &DepGraph,
                                   local_crate_source_file: Option<PathBuf>,
                                   registry: diagnostics::registry::Registry,
                                   cstore: Rc<for<'a> CrateStore<'a>>,
@@ -450,10 +455,16 @@ pub fn build_session_with_codemap(sopts: config::Options,
                                       treat_err_as_bug,
                                       emitter);
 
-    build_session_(sopts, local_crate_source_file, diagnostic_handler, codemap, cstore)
+    build_session_(sopts,
+                   dep_graph,
+                   local_crate_source_file,
+                   diagnostic_handler,
+                   codemap,
+                   cstore)
 }
 
 pub fn build_session_(sopts: config::Options,
+                      dep_graph: &DepGraph,
                       local_crate_source_file: Option<PathBuf>,
                       span_diagnostic: errors::Handler,
                       codemap: Rc<codemap::CodeMap>,
@@ -482,6 +493,7 @@ pub fn build_session_(sopts: config::Options,
     );
 
     let sess = Session {
+        dep_graph: dep_graph.clone(),
         target: target_cfg,
         host: host,
         opts: sopts,
@@ -616,9 +628,9 @@ pub fn span_bug_fmt<S: Into<MultiSpan>>(file: &'static str,
 }
 
 fn opt_span_bug_fmt<S: Into<MultiSpan>>(file: &'static str,
-                                          line: u32,
-                                          span: Option<S>,
-                                          args: fmt::Arguments) -> ! {
+                                        line: u32,
+                                        span: Option<S>,
+                                        args: fmt::Arguments) -> ! {
     tls::with_opt(move |tcx| {
         let msg = format!("{}:{}: {}", file, line, args);
         match (tcx, span) {

@@ -1,4 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! When in incremental mode, this pass dumps out the dependency graph
-//! into the given directory. At the same time, it also hashes the
-//! various HIR nodes.
+// aux-build:a.rs
+// revisions:rpass1 rpass2
 
-mod data;
-mod directory;
-mod dirty_clean;
-mod hash;
-mod load;
-mod save;
-mod util;
+#![feature(rustc_attrs)]
 
-pub use self::load::load_dep_graph;
-pub use self::save::save_dep_graph;
+extern crate a;
+
+#[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+pub fn use_X() -> u32 {
+    let x: a::X = 22;
+    x as u32
+}
+
+#[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
+pub fn use_Y() {
+    let x: a::Y = 'c';
+}
+
+pub fn main() { }

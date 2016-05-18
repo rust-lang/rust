@@ -104,8 +104,10 @@ fn test_env<F>(source_string: &str,
     options.unstable_features = UnstableFeatures::Allow;
     let diagnostic_handler = errors::Handler::with_emitter(true, false, emitter);
 
-    let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-    let sess = session::build_session_(options, None, diagnostic_handler,
+    let dep_graph = DepGraph::new(false);
+    let _ignore = dep_graph.in_ignore();
+    let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+    let sess = session::build_session_(options, &dep_graph, None, diagnostic_handler,
                                        Rc::new(CodeMap::new()), cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let krate_config = Vec::new();
@@ -117,15 +119,14 @@ fn test_env<F>(source_string: &str,
     let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, "test", None)
                     .expect("phase 2 aborted");
 
-    let dep_graph = DepGraph::new(false);
     let krate = driver::assign_node_ids(&sess, krate);
     let mut defs = hir_map::collect_definitions(&krate);
     read_local_crates(&sess, &cstore, &defs, &krate, "test_crate", &dep_graph);
     let _ignore = dep_graph.in_ignore();
 
     let (_, resolutions, mut hir_forest) = {
-        driver::lower_and_resolve(&sess, "test-crate", &mut defs, &krate, dep_graph.clone(),
-                                  MakeGlobMap::No)
+        driver::lower_and_resolve(&sess, "test-crate", &mut defs, &krate,
+                                  &sess.dep_graph, MakeGlobMap::No)
     };
 
     let arenas = ty::CtxtArenas::new();

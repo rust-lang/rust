@@ -82,8 +82,10 @@ impl DefPath {
         let mut data = vec![];
         let mut index = Some(start_index);
         loop {
+            debug!("DefPath::make: krate={:?} index={:?}", krate, index);
             let p = index.unwrap();
             let key = get_key(p);
+            debug!("DefPath::make: key={:?}", key);
             match key.disambiguated_data.data {
                 DefPathData::CrateRoot => {
                     assert!(key.parent.is_none());
@@ -178,6 +180,10 @@ impl Definitions {
         self.data[index.as_usize()].key.clone()
     }
 
+    pub fn def_index_for_def_key(&self, key: DefKey) -> Option<DefIndex> {
+        self.key_map.get(&key).cloned()
+    }
+
     /// Returns the path from the crate root to `index`. The root
     /// nodes are not included in the path (i.e., this will be an
     /// empty vector for the crate root). For an inlined item, this
@@ -206,37 +212,6 @@ impl Definitions {
         } else {
             None
         }
-    }
-
-    pub fn retrace_path(&self, path: &DefPath) -> Option<DefIndex> {
-        debug!("retrace_path(path={:?})", path);
-
-        // we assume that we only want to retrace paths relative to
-        // the crate root
-        assert!(path.is_local());
-
-        let root_key = DefKey {
-            parent: None,
-            disambiguated_data: DisambiguatedDefPathData {
-                data: DefPathData::CrateRoot,
-                disambiguator: 0,
-            },
-        };
-        let root_id = self.key_map[&root_key];
-
-        debug!("retrace_path: root_id={:?}", root_id);
-
-        let mut id = root_id;
-        for data in &path.data {
-            let key = DefKey { parent: Some(id), disambiguated_data: data.clone() };
-            debug!("key = {:?}", key);
-            id = match self.key_map.get(&key) {
-                Some(&id) => id,
-                None => return None
-            };
-        }
-
-        Some(id)
     }
 
     pub fn create_def_with_parent(&mut self,
