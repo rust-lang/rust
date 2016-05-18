@@ -1659,11 +1659,12 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
 
 fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink) -> fmt::Result {
     if let Some(s) = item.doc_value() {
-        write!(w, "<div class='docblock'>{}", Markdown(&plain_summary_line(Some(s))))?;
-        if s.contains('\n') {
-            write!(w, "<a href='{}'>Read more</a>", naive_assoc_href(item, link))?;
-        }
-        write!(w, "</div>")?;
+        let markdown = if s.contains('\n') {
+            format!("{} [Read more]({})", &plain_summary_line(Some(s)), naive_assoc_href(item, link))
+        } else {
+            format!("{}", &plain_summary_line(Some(s)))
+        };
+        write!(w, "<div class='docblock'>{}</div>", Markdown(&markdown))?;
     }
     Ok(())
 }
