@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+#![feature(custom_attribute, rustc_attrs)]
 
 macro_rules! mac {
     {} => {
@@ -16,6 +16,9 @@ macro_rules! mac {
         mod m {
             #[lang_item]
             fn f() {}
+
+            #[cfg_attr(target_thread_local, custom)]
+            fn g() {}
         }
     }
 }
