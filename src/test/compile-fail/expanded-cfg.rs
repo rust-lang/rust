@@ -20,6 +20,9 @@ macro_rules! mac {
             #[cfg_attr(target_thread_local, custom)]
             fn g() {}
         }
+
+        #[cfg(attr)]
+        unconfigured_invocation!();
     }
 }
 
