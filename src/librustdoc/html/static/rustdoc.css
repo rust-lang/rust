@@ -640,6 +640,10 @@ span.since {
     margin-right: 5px;
 }
 
+:target > code {
+   background: #FDFFD3;
+}
+
 /* Media Queries */
 
 @media (max-width: 700px) {
