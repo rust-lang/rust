@@ -1660,7 +1660,8 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
 fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink) -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
-            format!("{} [Read more]({})", &plain_summary_line(Some(s)), naive_assoc_href(item, link))
+            format!("{} [Read more]({})",
+                    &plain_summary_line(Some(s)), naive_assoc_href(item, link))
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
@@ -2619,25 +2620,26 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             _ => panic!("can't make docs for trait item with name {:?}", item.name)
         }
 
-        if !is_default_item && (!is_static || render_static) {
+        if !is_static || render_static {
+            if !is_default_item {
 
-            if item.doc_value().is_some() {
-                document(w, cx, item)
-            } else {
-                // In case the item isn't documented,
-                // provide short documentation from the trait
-                if let Some(t) = trait_ {
-                    if let Some(it) = t.items.iter()
-                                       .find(|i| i.name == item.name) {
-                        document_short(w, it, link)?;
+                if item.doc_value().is_some() {
+                    document(w, cx, item)?;
+                } else {
+                    // In case the item isn't documented,
+                    // provide short documentation from the trait
+                    if let Some(t) = trait_ {
+                        if let Some(it) = t.items.iter()
+                                           .find(|i| i.name == item.name) {
+                            document_short(w, it, link)?;
+                        }
                     }
                 }
-                Ok(())
+            } else {
+                document_short(w, item, link)?;
             }
-        } else {
-            document_short(w, item, link)?;
-            Ok(())
         }
+        Ok(())
     }
 
     let traits = &cache().traits;
