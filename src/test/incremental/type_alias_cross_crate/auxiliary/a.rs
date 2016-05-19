@@ -17,5 +17,3 @@ pub type X = u32;
 pub type X = i32;
 
 pub type Y = char;
-
-pub fn foo() { }
