@@ -779,11 +779,10 @@ impl<T> [T] {
         core_slice::SliceExt::binary_search_by_key(self, b, f)
     }
 
-    /// Sorts the slice, in place.
-    ///
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
     ///
-    /// This is a stable sort.
+    /// This sort is stable and `O(n log n)` worst-case but allocates
+    /// approximately `2 * n` where `n` is the length of `self`.
     ///
     /// # Examples
     ///
@@ -804,10 +803,8 @@ impl<T> [T] {
     /// Sorts the slice, in place, using `key` to extract a key by which to
     /// order the sort by.
     ///
-    /// This sort is `O(n log n)` worst-case and stable, but allocates
+    /// This sort is stable and `O(n log n)` worst-case but allocates
     /// approximately `2 * n`, where `n` is the length of `self`.
-    ///
-    /// This is a stable sort.
     ///
     /// # Examples
     ///
@@ -828,7 +825,7 @@ impl<T> [T] {
     /// Sorts the slice, in place, using `compare` to compare
     /// elements.
     ///
-    /// This sort is `O(n log n)` worst-case and stable, but allocates
+    /// This sort is stable and `O(n log n)` worst-case but allocates
     /// approximately `2 * n`, where `n` is the length of `self`.
     ///
     /// # Examples
