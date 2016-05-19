@@ -175,6 +175,7 @@ And then `bold()` calls `italic()`:
 | **2**   | **b**|**100**|
 | **1**   | **a**| **5** |
 | 0       | x    | 42    |
+
 Whew! Our stack is growing tall.
 
 After `italic()` is over, its frame is deallocated, leaving only `bold()` and
@@ -260,8 +261,7 @@ layout of a program which has been running for a while now:
 | (2<sup>30</sup>) - 3 |      |                        |
 | (2<sup>30</sup>) - 4 |      | 42                     |
 | ...                  | ...  | ...                    |
-| 3                    | y    | → (2<sup>30</sup>) - 4 |
-| 2                    | y    | 42                     |
+| 2                    | z    | → (2<sup>30</sup>) - 4 |
 | 1                    | y    | 42                     |
 | 0                    | x    | → (2<sup>30</sup>) - 1 |
 
