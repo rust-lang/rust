@@ -18,5 +18,7 @@ use std::ops::Index;
 fn main() {
     let x = &[1, 2, 3] as &[i32];
     x[1i32]; //~ ERROR E0277
-             //~| NOTE a usize is required
+             //~| NOTE slice indices are of type `usize`
+    x[..1i32]; //~ ERROR E0277
+               //~| NOTE slice indices are of type `usize`
 }

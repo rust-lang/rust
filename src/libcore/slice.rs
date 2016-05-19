@@ -523,8 +523,7 @@ impl<T> SliceExt for [T] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(unused_attributes)]
-#[rustc_on_unimplemented = "a usize is required to index into a slice"]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::Index<usize> for [T] {
     type Output = T;
 
@@ -535,8 +534,7 @@ impl<T> ops::Index<usize> for [T] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(unused_attributes)]
-#[rustc_on_unimplemented = "a usize is required to index into a slice"]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::IndexMut<usize> for [T] {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut T {
@@ -570,6 +568,7 @@ fn slice_index_order_fail(index: usize, end: usize) -> ! {
 /// Requires that `begin <= end` and `end <= self.len()`,
 /// otherwise slicing will panic.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::Index<ops::Range<usize>> for [T] {
     type Output = [T];
 
@@ -596,6 +595,7 @@ impl<T> ops::Index<ops::Range<usize>> for [T] {
 ///
 /// Equivalent to `&self[0 .. end]`
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::Index<ops::RangeTo<usize>> for [T] {
     type Output = [T];
 
@@ -611,6 +611,7 @@ impl<T> ops::Index<ops::RangeTo<usize>> for [T] {
 ///
 /// Equivalent to `&self[begin .. self.len()]`
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::Index<ops::RangeFrom<usize>> for [T] {
     type Output = [T];
 
@@ -636,6 +637,7 @@ impl<T> ops::Index<RangeFull> for [T] {
 }
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::Index<ops::RangeInclusive<usize>> for [T] {
     type Output = [T];
 
@@ -651,6 +653,7 @@ impl<T> ops::Index<ops::RangeInclusive<usize>> for [T] {
     }
 }
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::Index<ops::RangeToInclusive<usize>> for [T] {
     type Output = [T];
 
@@ -671,6 +674,7 @@ impl<T> ops::Index<ops::RangeToInclusive<usize>> for [T] {
 /// Requires that `begin <= end` and `end <= self.len()`,
 /// otherwise slicing will panic.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::IndexMut<ops::Range<usize>> for [T] {
     #[inline]
     fn index_mut(&mut self, index: ops::Range<usize>) -> &mut [T] {
@@ -695,6 +699,7 @@ impl<T> ops::IndexMut<ops::Range<usize>> for [T] {
 ///
 /// Equivalent to `&mut self[0 .. end]`
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::IndexMut<ops::RangeTo<usize>> for [T] {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut [T] {
@@ -708,6 +713,7 @@ impl<T> ops::IndexMut<ops::RangeTo<usize>> for [T] {
 ///
 /// Equivalent to `&mut self[begin .. self.len()]`
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::IndexMut<ops::RangeFrom<usize>> for [T] {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut [T] {
@@ -730,6 +736,7 @@ impl<T> ops::IndexMut<RangeFull> for [T] {
 }
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::IndexMut<ops::RangeInclusive<usize>> for [T] {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut [T] {
@@ -743,6 +750,7 @@ impl<T> ops::IndexMut<ops::RangeInclusive<usize>> for [T] {
     }
 }
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[rustc_on_unimplemented = "slice indices are of type `usize`"]
 impl<T> ops::IndexMut<ops::RangeToInclusive<usize>> for [T] {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut [T] {
@@ -1933,4 +1941,3 @@ macro_rules! impl_marker_for {
 
 impl_marker_for!(BytewiseEquality,
                  u8 i8 u16 i16 u32 i32 u64 i64 usize isize char bool);
-
