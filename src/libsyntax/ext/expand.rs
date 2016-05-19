@@ -750,77 +750,10 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
         PatKind::Mac(_) => {}
         _ => return noop_fold_pat(p, fld)
     }
-    p.map(|ast::Pat {node, span, ..}| {
-        let (pth, tts) = match node {
-            PatKind::Mac(mac) => (mac.node.path, mac.node.tts),
+    p.and_then(|ast::Pat {node, span, ..}| {
+        match node {
+            PatKind::Mac(mac) => expand_mac_invoc(mac, span, fld),
             _ => unreachable!()
-        };
-
-        if pth.segments.len() > 1 {
-            fld.cx.span_err(pth.span, "expected macro name without module separators");
-            return DummyResult::raw_pat(span);
-        }
-        let extname = pth.segments[0].identifier.name;
-        let marked_after = match fld.cx.syntax_env.find(extname) {
-            None => {
-                fld.cx.span_err(pth.span,
-                                &format!("macro undefined: '{}!'",
-                                        extname));
-                // let compilation continue
-                return DummyResult::raw_pat(span);
-            }
-
-            Some(rc) => match *rc {
-                NormalTT(ref expander, tt_span, allow_internal_unstable) => {
-                    fld.cx.bt_push(ExpnInfo {
-                        call_site: span,
-                        callee: NameAndSpan {
-                            format: MacroBang(extname),
-                            span: tt_span,
-                            allow_internal_unstable: allow_internal_unstable,
-                        }
-                    });
-
-                    let fm = fresh_mark();
-                    let marked_before = mark_tts(&tts[..], fm);
-                    let mac_span = fld.cx.original_span();
-                    let pat = expander.expand(fld.cx,
-                                              mac_span,
-                                              &marked_before[..]).make_pat();
-                    let expanded = match pat {
-                        Some(e) => e,
-                        None => {
-                            fld.cx.span_err(
-                                pth.span,
-                                &format!(
-                                    "non-pattern macro in pattern position: {}",
-                                    extname
-                                    )
-                            );
-                            return DummyResult::raw_pat(span);
-                        }
-                    };
-
-                    // mark after:
-                    mark_pat(expanded,fm)
-                }
-                _ => {
-                    fld.cx.span_err(span,
-                                    &format!("{}! is not legal in pattern position",
-                                            extname));
-                    return DummyResult::raw_pat(span);
-                }
-            }
-        };
-
-        let fully_expanded =
-            fld.fold_pat(marked_after).node.clone();
-        fld.cx.bt_pop();
-
-        ast::Pat {
-            id: ast::DUMMY_NODE_ID,
-            node: fully_expanded,
-            span: span
         }
     })
 }
@@ -1386,11 +1319,6 @@ impl Folder for Marker {
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
 fn mark_tts(tts: &[TokenTree], m: Mrk) -> Vec<TokenTree> {
     noop_fold_tts(tts, &mut Marker{mark:m})
-}
-
-// apply a given mark to the given pattern. Used following the expansion of a macro.
-fn mark_pat(pat: P<ast::Pat>, m: Mrk) -> P<ast::Pat> {
-    Marker{mark:m}.fold_pat(pat)
 }
 
 // apply a given mark to the given item. Used following the expansion of a macro.
