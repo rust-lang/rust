@@ -272,11 +272,9 @@ fn expand_mac_invoc<T: MacroGenerable>(mac: ast::Mac, span: Span, fld: &mut Macr
                 let parsed = match opt_parsed {
                     Some(e) => e,
                     None => {
-                        fld.cx.span_err(
-                            pth.span,
-                            &format!("non-expression macro in expression position: {}",
-                                    extname
-                                    ));
+                        let msg = format!("non-{kind} macro in {kind} position: {name}",
+                                          name = extname, kind = T::kind_name());
+                        fld.cx.span_err(pth.span, &msg);
                         return None;
                     }
                 };
