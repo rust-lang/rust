@@ -165,7 +165,7 @@ concurrency bugs.
 As an example, here is a Rust program that would have a data race in many
 languages. It will not compile:
 
-```ignore
+```rust,ignore
 use std::thread;
 use std::time::Duration;
 
@@ -204,7 +204,7 @@ Calling `clone()` on an `Rc<T>` will return a new owned reference and bump the
 internal reference count. We create one of these for each thread:
 
 
-```ignore
+```rust,ignore
 use std::thread;
 use std::time::Duration;
 use std::rc::Rc;
@@ -250,7 +250,7 @@ In essence, `Arc<T>` is a type that lets us share ownership of data _across
 threads_.
 
 
-```ignore
+```rust,ignore
 use std::thread;
 use std::sync::Arc;
 use std::time::Duration;
@@ -336,7 +336,7 @@ The lock "release" here is implicit; when the result of the lock (in this case,
 Note that [`lock`](../std/sync/struct.Mutex.html#method.lock) method of
 [`Mutex`](../std/sync/struct.Mutex.html) has this signature:
 
-```ignore
+```rust,ignore
 fn lock(&self) -> LockResult<MutexGuard<T>>
 ```
 

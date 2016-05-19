@@ -306,7 +306,7 @@ let y = TraitObject {
 Not every trait can be used to make a trait object. For example, vectors implement
 `Clone`, but if we try to make a trait object:
 
-```ignore
+```rust,ignore
 let v = vec![1, 2, 3];
 let o = &v as &Clone;
 ```

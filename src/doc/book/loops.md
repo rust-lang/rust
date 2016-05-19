@@ -74,7 +74,7 @@ for x in 0..10 {
 
 In slightly more abstract terms,
 
-```ignore
+```rust,ignore
 for var in expression {
     code
 }

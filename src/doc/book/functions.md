@@ -134,7 +134,7 @@ x = y = 5
 In Rust, however, using `let` to introduce a binding is _not_ an expression. The
 following will produce a compile-time error:
 
-```ignore
+```rust,ignore
 let x = (let y = 5); // expected identifier, found keyword `let`
 ```
 
@@ -283,7 +283,7 @@ stack backtrace:
 
 A diverging function can be used as any type:
 
-```should_panic
+```rust,should_panic
 # fn diverges() -> ! {
 #    panic!("This function never returns!");
 # }
