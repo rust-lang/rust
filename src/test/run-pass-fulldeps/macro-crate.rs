@@ -33,6 +33,14 @@ impl Qux for i32 {
 
 impl Qux for u8 {}
 
+#[wrap]
+struct Bar;
+
+impl Bar
+{
+    fn new() -> Self { Bar }
+}
+
 pub fn main() {
     assert_eq!(1, make_a_1!());
     assert_eq!(2, exported_macro!());

@@ -149,6 +149,33 @@ impl<F> MultiItemModifier for F
     }
 }
 
+pub trait ItemRenovator {
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              span: Span,
+              meta_item: &ast::MetaItem,
+              item: Annotatable,
+              push: &mut FnMut(Annotatable))
+              -> Annotatable;
+}
+
+impl<F> ItemRenovator for F
+    where F : Fn(&mut ExtCtxt,
+                 Span,
+                 &ast::MetaItem,
+                 Annotatable,
+                 &mut FnMut(Annotatable)) -> Annotatable
+{
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              sp: Span,
+              meta_item: &ast::MetaItem,
+              item: Annotatable,
+              push: &mut FnMut(Annotatable)) -> Annotatable {
+        (*self)(ecx, sp, meta_item, item, push)
+    }
+}
+
 /// Represents a thing that maps token trees to Macro Results
 pub trait TTMacroExpander {
     fn expand<'cx>(&self,
@@ -418,6 +445,12 @@ pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and modifies it
     /// in-place. More flexible version than Modifier.
     MultiModifier(Box<MultiItemModifier + 'static>),
+
+    /// A syntax extension that is attached to an item, modifying it in
+    /// place *and* creating new items based upon it.
+    ///
+    /// It can be thought of as the union of `MultiDecorator` and `MultiModifier`.
+    Renovator(Box<ItemRenovator + 'static>),
 
     /// A normal, function-like syntax extension.
     ///

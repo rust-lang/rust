@@ -39,6 +39,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
         token::intern("duplicate"),
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         MultiDecorator(Box::new(expand_duplicate)));
+    reg.register_syntax_extension(
+        token::intern("wrap"),
+        Renovator(Box::new(expand_wrap)));
 }
 
 fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
@@ -138,4 +141,25 @@ fn expand_duplicate(cx: &mut ExtCtxt,
     }
 }
 
+fn expand_wrap(cx: &mut ExtCtxt,
+               sp: Span,
+               meta_item: &MetaItem,
+               mut item: Annotatable,
+               push: &mut FnMut(Annotatable)) -> Annotatable
+{
+
+    match item {
+        Annotatable::Item(item) => {
+            push(Annotatable::Item(item.clone()));
+
+            Annotatable::Item(P(Item {
+                attrs: item.attrs.clone(),
+                ..(*quote_item!(cx, enum Foo2 { Bar2, Baz2 }).unwrap()).clone()
+            }))
+        },
+        _ => item,
+    }
+}
+
 pub fn foo() {}
+pub fn main() { }

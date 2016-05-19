@@ -725,7 +725,7 @@ fn expand_annotatable(a: Annotatable,
 
     let mut decorator_items = SmallVector::zero();
     let mut new_attrs = Vec::new();
-    expand_decorators(a.clone(), fld, &mut decorator_items, &mut new_attrs);
+    let a = expand_renovators_and_decorators(a, fld, &mut decorator_items, &mut new_attrs);
 
     let mut new_items: SmallVector<Annotatable> = match a {
         Annotatable::Item(it) => match it.node {
@@ -816,47 +816,63 @@ macro_rules! partition {
 partition!(multi_modifiers, MultiModifier);
 
 
-fn expand_decorators(a: Annotatable,
-                     fld: &mut MacroExpander,
-                     decorator_items: &mut SmallVector<Annotatable>,
-                     new_attrs: &mut Vec<ast::Attribute>)
+fn expand_renovators_and_decorators(mut item: Annotatable,
+                                    fld: &mut MacroExpander,
+                                    decorator_items: &mut SmallVector<Annotatable>,
+                                    new_attrs: &mut Vec<ast::Attribute>) -> Annotatable
 {
-    for attr in a.attrs() {
+    let attrs: Vec<_> = item.attrs().iter().cloned().collect();
+
+    for attr in attrs {
         let mname = intern(&attr.name());
+
+        fld.cx.bt_push(ExpnInfo {
+            call_site: attr.span,
+            callee: NameAndSpan {
+                format: MacroAttribute(mname),
+                span: Some(attr.span),
+                // attributes can do whatever they like,
+                // for now.
+                allow_internal_unstable: true,
+            }
+        });
+
+        // we'd ideally decorator_items.push_all(expand_annotatable(ann, fld)),
+        // but that double-mut-borrows fld
+        let mut items: SmallVector<Annotatable> = SmallVector::zero();
+
         match fld.cx.syntax_env.find(mname) {
             Some(rc) => match *rc {
                 MultiDecorator(ref dec) => {
                     attr::mark_used(&attr);
 
-                    fld.cx.bt_push(ExpnInfo {
-                        call_site: attr.span,
-                        callee: NameAndSpan {
-                            format: MacroAttribute(mname),
-                            span: Some(attr.span),
-                            // attributes can do whatever they like,
-                            // for now.
-                            allow_internal_unstable: true,
-                        }
-                    });
-
-                    // we'd ideally decorator_items.push_all(expand_annotatable(ann, fld)),
-                    // but that double-mut-borrows fld
-                    let mut items: SmallVector<Annotatable> = SmallVector::zero();
                     dec.expand(fld.cx,
                                attr.span,
                                &attr.node.value,
-                               &a,
+                               &item,
                                &mut |ann| items.push(ann));
-                    decorator_items.extend(items.into_iter()
-                        .flat_map(|ann| expand_annotatable(ann, fld).into_iter()));
+                },
+                Renovator(ref ren) => {
+                    attr::mark_used(&attr);
 
-                    fld.cx.bt_pop();
-                }
-                _ => new_attrs.push((*attr).clone()),
+                    item = ren.expand(fld.cx,
+                                      attr.span,
+                                      &attr.node.value,
+                                      item,
+                                      &mut |ann| items.push(ann));
+                },
+                _ => new_attrs.push(attr),
             },
-            _ => new_attrs.push((*attr).clone()),
+            _ => new_attrs.push(attr),
         }
+
+        decorator_items.extend(items.into_iter()
+            .flat_map(|ann| expand_annotatable(ann, fld).into_iter()));
+
+        fld.cx.bt_pop();
     }
+
+    item
 }
 
 fn expand_item_multi_modifier(mut it: Annotatable,
