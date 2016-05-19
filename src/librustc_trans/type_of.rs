@@ -157,6 +157,17 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     llsizingty
 }
 
+pub fn fat_ptr_base_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
+    match ty.sty {
+        ty::TyBox(t) |
+        ty::TyRef(_, ty::TypeAndMut { ty: t, .. }) |
+        ty::TyRawPtr(ty::TypeAndMut { ty: t, .. }) if !type_is_sized(ccx.tcx(), t) => {
+            in_memory_type_of(ccx, t).ptr_to()
+        }
+        _ => bug!("expected fat ptr ty but got {:?}", ty)
+    }
+}
+
 fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
     let unsized_part = ccx.tcx().struct_tail(ty);
     match unsized_part.sty {

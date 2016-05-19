@@ -262,14 +262,17 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         assert!(common::type_is_fat_ptr(bcx.tcx(), cast_ty));
 
                         match operand.val {
-                            OperandValue::FatPtr(..) => {
+                            OperandValue::FatPtr(lldata, llextra) => {
                                 // unsize from a fat pointer - this is a
                                 // "trait-object-to-supertrait" coercion, for
                                 // example,
                                 //   &'a fmt::Debug+Send => &'a fmt::Debug,
-                                // and is a no-op at the LLVM level
+                                // So we need to pointercast the base to ensure
+                                // the types match up.
                                 self.set_operand_dropped(&bcx, source);
-                                operand.val
+                                let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx(), cast_ty);
+                                let lldata = bcx.pointercast(lldata, llcast_ty);
+                                OperandValue::FatPtr(lldata, llextra)
                             }
                             OperandValue::Immediate(lldata) => {
                                 // "standard" unsize
