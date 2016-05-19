@@ -35,11 +35,11 @@ impl LintPass for BlackListedName {
 impl LateLintPass for BlackListedName {
     fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
         if let PatKind::Ident(_, ref ident, _) = pat.node {
-            if self.blacklist.iter().any(|s| s == &*ident.node.name.as_str()) {
+            if self.blacklist.iter().any(|s| s == &*ident.node.as_str()) {
                 span_lint(cx,
                           BLACKLISTED_NAME,
                           pat.span,
-                          &format!("use of a blacklisted/placeholder name `{}`", ident.node.name));
+                          &format!("use of a blacklisted/placeholder name `{}`", ident.node));
             }
         }
     }

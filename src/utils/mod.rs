@@ -200,7 +200,7 @@ pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool 
 /// match_path(path, &["std", "rt", "begin_unwind"])
 /// ```
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
-    path.segments.iter().rev().zip(segments.iter().rev()).all(|(a, b)| a.identifier.name.as_str() == *b)
+    path.segments.iter().rev().zip(segments.iter().rev()).all(|(a, b)| a.name.as_str() == *b)
 }
 
 /// Match a `Path` against a slice of segment string literals, e.g.

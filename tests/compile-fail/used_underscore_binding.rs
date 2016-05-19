@@ -3,15 +3,16 @@
 #![deny(clippy)]
 
 #![allow(blacklisted_name)]
+#![deny(used_underscore_binding)]
 
 /// Test that we lint if we use a binding with a single leading underscore
 fn prefix_underscore(_foo: u32) -> u32 {
-    _foo + 1 //~ ERROR used binding which is prefixed with an underscore
+    _foo + 1 //~ ERROR used binding `_foo` which is prefixed with an underscore
 }
 
 /// Test that we lint even if the use is within a macro expansion
 fn in_macro(_foo: u32) {
-    println!("{}", _foo); //~ ERROR used binding which is prefixed with an underscore
+    println!("{}", _foo); //~ ERROR used binding `_foo` which is prefixed with an underscore
 }
 
 // Struct for testing use of fields prefixed with an underscore
@@ -22,7 +23,7 @@ struct StructFieldTest {
 /// Test that we lint the use of a struct field which is prefixed with an underscore
 fn in_struct_field() {
     let mut s = StructFieldTest { _underscore_field: 0 };
-    s._underscore_field += 1; //~ Error used binding which is prefixed with an underscore
+    s._underscore_field += 1; //~ Error used binding `_underscore_field` which is prefixed with an underscore
 }
 
 /// Test that we do not lint if the underscore is not a prefix

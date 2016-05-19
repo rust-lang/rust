@@ -286,7 +286,7 @@ impl LateLintPass for LoopsPass {
                 if let Some(lhs_constructor) = path.segments.last() {
                     if method_name.node.as_str() == "next" &&
                        match_trait_method(cx, match_expr, &paths::ITERATOR) &&
-                       lhs_constructor.identifier.name.as_str() == "Some" &&
+                       lhs_constructor.name.as_str() == "Some" &&
                        !is_iterator_used_after_while_let(cx, iter_expr) {
                         let iterator = snippet(cx, method_args[0].span, "_");
                         let loop_var = snippet(cx, pat_args[0].span, "_");
@@ -333,7 +333,7 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
         if let PatKind::Ident(_, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
                 cx: cx,
-                var: ident.node.name,
+                var: ident.node,
                 indexed: HashMap::new(),
                 nonindex: false,
             };
@@ -378,9 +378,9 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                               expr.span,
                               &format!("the loop variable `{}` is used to index `{}`. Consider using `for ({}, \
                                         item) in {}.iter().enumerate(){}{}` or similar iterators",
-                                       ident.node.name,
+                                       ident.node,
                                        indexed,
-                                       ident.node.name,
+                                       ident.node,
                                        indexed,
                                        take,
                                        skip));
@@ -396,7 +396,7 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                               expr.span,
                               &format!("the loop variable `{}` is only used to index `{}`. \
                                         Consider using `for item in {}` or similar iterators",
-                                       ident.node.name,
+                                       ident.node,
                                        indexed,
                                        repl));
                 }
@@ -412,7 +412,7 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
         method.node.as_str() == "len",
         let ExprPath(_, ref path) = len_args[0].node,
         path.segments.len() == 1,
-        &path.segments[0].identifier.name == var
+        &path.segments[0].name == var
     ], {
         return true;
     }}
@@ -613,7 +613,7 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
 fn pat_is_wild(pat: &PatKind, body: &Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
-        PatKind::Ident(_, ident, None) if ident.node.name.as_str().starts_with('_') => {
+        PatKind::Ident(_, ident, None) if ident.node.as_str().starts_with('_') => {
             let mut visitor = UsedVisitor {
                 var: ident.node,
                 used: false,
@@ -626,14 +626,14 @@ fn pat_is_wild(pat: &PatKind, body: &Expr) -> bool {
 }
 
 struct UsedVisitor {
-    var: Ident, // var to look for
+    var: ast::Name, // var to look for
     used: bool, // has the var been used otherwise?
 }
 
 impl<'a> Visitor<'a> for UsedVisitor {
     fn visit_expr(&mut self, expr: &Expr) {
         if let ExprPath(None, ref path) = expr.node {
-            if path.segments.len() == 1 && path.segments[0].identifier == self.var {
+            if path.segments.len() == 1 && path.segments[0].name == self.var {
                 self.used = true;
                 return;
             }
@@ -653,7 +653,7 @@ struct VarVisitor<'v, 't: 'v> {
 impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
     fn visit_expr(&mut self, expr: &'v Expr) {
         if let ExprPath(None, ref path) = expr.node {
-            if path.segments.len() == 1 && path.segments[0].identifier.name == self.var {
+            if path.segments.len() == 1 && path.segments[0].name == self.var {
                 // we are referencing our variable! now check if it's as an index
                 if_let_chain! {
                     [
@@ -667,11 +667,11 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
                             match def.base_def {
                                 Def::Local(..) | Def::Upvar(..) => {
                                     let extent = self.cx.tcx.region_maps.var_scope(def.base_def.var_id());
-                                    self.indexed.insert(seqvar.segments[0].identifier.name, Some(extent));
+                                    self.indexed.insert(seqvar.segments[0].name, Some(extent));
                                     return;  // no need to walk further
                                 }
                                 Def::Static(..) | Def::Const(..) => {
-                                    self.indexed.insert(seqvar.segments[0].identifier.name, None);
+                                    self.indexed.insert(seqvar.segments[0].name, None);
                                     return;  // no need to walk further
                                 }
                                 _ => (),
@@ -885,7 +885,7 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
         if let DeclLocal(ref local) = decl.node {
             if local.pat.id == self.var_id {
                 if let PatKind::Ident(_, ref ident, _) = local.pat.node {
-                    self.name = Some(ident.node.name);
+                    self.name = Some(ident.node);
 
                     self.state = if let Some(ref init) = local.init {
                         if is_integer_literal(init, 0) {

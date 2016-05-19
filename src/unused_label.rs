@@ -65,10 +65,10 @@ impl<'v> Visitor<'v> for UnusedLabelVisitor {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
             hir::ExprBreak(Some(label)) | hir::ExprAgain(Some(label)) => {
-                self.labels.remove(&label.node.name.as_str());
+                self.labels.remove(&label.node.as_str());
             }
             hir::ExprLoop(_, Some(label)) | hir::ExprWhile(_, _, Some(label)) => {
-                self.labels.insert(label.name.as_str(), expr.span);
+                self.labels.insert(label.as_str(), expr.span);
             }
             _ => (),
         }

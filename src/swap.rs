@@ -75,7 +75,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             let ExprPath(None, ref rhs2) = rhs2.node,
             rhs2.segments.len() == 1,
 
-            tmp_name.node.name.as_str() == rhs2.segments[0].identifier.name.as_str(),
+            tmp_name.node.as_str() == rhs2.segments[0].name.as_str(),
             SpanlessEq::new(cx).ignore_fn().eq_expr(tmp_init, lhs1),
             SpanlessEq::new(cx).ignore_fn().eq_expr(rhs1, lhs2)
         ], {
