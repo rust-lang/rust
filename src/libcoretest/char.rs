@@ -262,4 +262,37 @@ fn ed_iterator_specializations() {
     assert_eq!('\''.escape_default().last(), Some('\''));
 }
 
+#[test]
+fn eu_iterator_specializations() {
+    fn check(c: char) {
+        let len = c.escape_unicode().count();
 
+        // Check OoB
+        assert_eq!(c.escape_unicode().nth(len), None);
+
+        // For all possible in-bound offsets
+        let mut iter = c.escape_unicode();
+        for offset in 0..len {
+            // Check last
+            assert_eq!(iter.clone().last(), Some('}'));
+
+            // Check counting
+            assert_eq!(iter.clone().count(), len - offset);
+
+            // Check nth
+            assert_eq!(c.escape_unicode().nth(offset), iter.next());
+        }
+
+        // Check post-last
+        assert_eq!(iter.clone().last(), None);
+        assert_eq!(iter.clone().count(), 0);
+    }
+
+    check('\u{0}');
+    check('\u{1}');
+    check('\u{12}');
+    check('\u{123}');
+    check('\u{1234}');
+    check('\u{12340}');
+    check('\u{10FFFF}');
+}
