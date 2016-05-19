@@ -55,6 +55,8 @@ fn foo(mut x: i32) {
 # }
 ```
 
+Note that here, the `x` is mutable, but not the `y`.
+
 [pattern]: patterns.html
 
 # Interior vs. Exterior Mutability
