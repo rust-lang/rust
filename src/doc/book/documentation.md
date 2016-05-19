@@ -362,7 +362,7 @@ Here’s an example of documenting a macro:
 /// # }
 /// ```
 ///
-/// ```should_panic
+/// ```rust,should_panic
 /// # #[macro_use] extern crate foo;
 /// # fn main() {
 /// panic_unless!(true == false, “I’m broken.”);
@@ -429,7 +429,7 @@ There are a few more annotations that are useful to help `rustdoc` do the right
 thing when testing your code:
 
 ```rust
-/// ```ignore
+/// ```rust,ignore
 /// fn foo() {
 /// ```
 # fn foo() {}
@@ -441,7 +441,7 @@ with `text` if it's not code, or using `#`s to get a working example that
 only shows the part you care about.
 
 ```rust
-/// ```should_panic
+/// ```rust,should_panic
 /// assert!(false);
 /// ```
 # fn foo() {}
@@ -451,7 +451,7 @@ only shows the part you care about.
 not actually pass as a test.
 
 ```rust
-/// ```no_run
+/// ```rust,no_run
 /// loop {
 ///     println!("Hello, world");
 /// }
@@ -563,7 +563,7 @@ can be useful when changing some options, or when writing a macro.
 
 `rustdoc` will show the documentation for a public re-export in both places:
 
-```ignore
+```rust,ignore
 extern crate foo;
 
 pub use foo::bar;
@@ -575,7 +575,7 @@ documentation in both places.
 
 This behavior can be suppressed with `no_inline`:
 
-```ignore
+```rust,ignore
 extern crate foo;
 
 #[doc(no_inline)]

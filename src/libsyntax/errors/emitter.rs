@@ -423,7 +423,7 @@ impl EmitterWriter {
                     &format!(" (defined in {})",
                         self.cm.span_to_filename(def_site_span)));
             }
-            let snippet = self.cm.span_to_string(sp);
+            let snippet = self.cm.span_to_string(trace.call_site);
             print_diagnostic(&mut self.dst, &snippet, Note, &diag_string, None)?;
         }
         Ok(())

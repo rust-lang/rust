@@ -1566,7 +1566,8 @@ impl<'a> fmt::Display for Item<'a> {
         write!(fmt, "</span>")?; // in-band
         write!(fmt, "<span class='out-of-band'>")?;
         if let Some(version) = self.item.stable_since() {
-            write!(fmt, "<span class='since'>{}</span>", version)?;
+            write!(fmt, "<span class='since' title='Stable since Rust version {0}'>{0}</span>",
+                   version)?;
         }
         write!(fmt,
                r##"<span id='render-detail'>
@@ -2136,7 +2137,7 @@ fn render_stability_since_raw<'a>(w: &mut fmt::Formatter,
                                   containing_ver: Option<&'a str>) -> fmt::Result {
     if let Some(v) = ver {
         if containing_ver != ver && v.len() > 0 {
-            write!(w, "<div class=\"since\">{}</div>",
+            write!(w, "<div class='since' title='Stable since Rust version {0}'>{0}</div>",
                    v)?
         }
     }

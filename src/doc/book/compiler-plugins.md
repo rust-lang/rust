@@ -37,7 +37,7 @@ Let's write a plugin
 [`roman_numerals.rs`](https://github.com/rust-lang/rust/tree/master/src/test/auxiliary/roman_numerals.rs)
 that implements Roman numeral integer literals.
 
-```ignore
+```rust,ignore
 #![crate_type="dylib"]
 #![feature(plugin_registrar, rustc_private)]
 
@@ -102,7 +102,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
 Then we can use `rn!()` like any other macro:
 
-```ignore
+```rust,ignore
 #![feature(plugin)]
 #![plugin(roman_numerals)]
 
@@ -132,7 +132,7 @@ Some of the [macro debugging tips](macros.html#debugging-macro-code) are applica
 You can use `syntax::parse` to turn token trees into
 higher-level syntax elements like expressions:
 
-```ignore
+```rust,ignore
 fn expand_foo(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         -> Box<MacResult+'static> {
 
@@ -169,7 +169,7 @@ infrastructure](../reference.html#lint-check-attributes) with additional checks 
 code style, safety, etc. Now let's write a plugin [`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/auxiliary/lint_plugin_test.rs)
 that warns about any item named `lintme`.
 
-```ignore
+```rust,ignore
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
 
@@ -211,7 +211,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
 Then code like
 
-```ignore
+```rust,ignore
 #![plugin(lint_plugin_test)]
 
 fn lintme() { }
