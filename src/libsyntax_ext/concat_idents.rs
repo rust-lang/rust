@@ -52,22 +52,36 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
     }
     let res = str_to_ident(&res_str);
 
-    let e = P(ast::Expr {
-        id: ast::DUMMY_NODE_ID,
-        node: ast::ExprKind::Path(None,
-            ast::Path {
-                 span: sp,
-                 global: false,
-                 segments: vec!(
-                    ast::PathSegment {
-                        identifier: res,
-                        parameters: ast::PathParameters::none(),
-                    }
-                )
-            }
-        ),
-        span: sp,
-        attrs: None,
-    });
-    MacEager::expr(e)
+    struct Result { ident: ast::Ident, span: Span };
+
+    impl Result {
+        fn path(&self) -> ast::Path {
+            let segment = ast::PathSegment {
+                identifier: self.ident,
+                parameters: ast::PathParameters::none()
+            };
+            ast::Path { span: self.span, global: false, segments: vec![segment] }
+        }
+    }
+
+    impl base::MacResult for Result {
+        fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
+            Some(P(ast::Expr {
+                id: ast::DUMMY_NODE_ID,
+                node: ast::ExprKind::Path(None, self.path()),
+                span: self.span,
+                attrs: None,
+            }))
+        }
+
+        fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
+            Some(P(ast::Ty {
+                id: ast::DUMMY_NODE_ID,
+                node: ast::TyKind::Path(None, self.path()),
+                span: self.span,
+            }))
+        }
+    }
+
+    Box::new(Result { ident: res, span: sp })
 }
