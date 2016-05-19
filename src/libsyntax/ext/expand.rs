@@ -70,15 +70,9 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             // Keep going, outside-in.
             let fully_expanded = fld.fold_expr(expanded_expr);
-            let span = fld.new_span(span);
             fld.cx.bt_pop();
 
-            fully_expanded.map(|e| ast::Expr {
-                id: ast::DUMMY_NODE_ID,
-                node: e.node,
-                span: span,
-                attrs: e.attrs,
-            })
+            fully_expanded
         }
 
         ast::ExprKind::InPlace(placer, value_expr) => {

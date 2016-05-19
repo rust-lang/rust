@@ -195,7 +195,7 @@ fn main() {
 `is_square()` needs to check that the sides are equal, so the sides must be of
 a type that implements the [`core::cmp::PartialEq`][PartialEq] trait:
 
-```ignore
+```rust,ignore
 impl<T: PartialEq> Rectangle<T> { ... }
 ```
 
