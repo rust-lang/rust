@@ -123,7 +123,7 @@ fn main() {
 For `HasArea` and `Square`, we declare a type parameter `T` and replace
 `f64` with it. The `impl` needs more involved modifications:
 
-```ignore
+```rust,ignore
 impl<T> HasArea<T> for Square<T>
         where T: Mul<Output=T> + Copy { ... }
 ```

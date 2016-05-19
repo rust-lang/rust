@@ -78,7 +78,7 @@ macro_rules! vec {
 
 Whoa, that’s a lot of new syntax! Let’s break it down.
 
-```ignore
+```rust,ignore
 macro_rules! vec { ... }
 ```
 
@@ -92,7 +92,7 @@ syntax and serves to distinguish a macro from an ordinary function.
 The macro is defined through a series of rules, which are pattern-matching
 cases. Above, we had
 
-```ignore
+```rust,ignore
 ( $( $x:expr ),* ) => { ... };
 ```
 
@@ -112,7 +112,7 @@ separated by commas.
 Aside from the special matcher syntax, any Rust tokens that appear in a matcher
 must match exactly. For example,
 
-```rust
+```rust,ignore
 macro_rules! foo {
     (x => $e:expr) => (println!("mode X: {}", $e));
     (y => $e:expr) => (println!("mode Y: {}", $e));
@@ -147,7 +147,7 @@ The right-hand side of a macro rule is ordinary Rust syntax, for the most part.
 But we can splice in bits of syntax captured by the matcher. From the original
 example:
 
-```ignore
+```rust,ignore
 $(
     temp_vec.push($x);
 )*
@@ -165,7 +165,7 @@ within the repeated block.
 Another detail: the `vec!` macro has *two* pairs of braces on the right-hand
 side. They are often combined like so:
 
-```ignore
+```rust,ignore
 macro_rules! foo {
     () => {{
         ...
