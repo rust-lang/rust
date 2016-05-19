@@ -23,7 +23,7 @@ struct Struct {
 }
 
 impl Drop for Struct {
-    //~ TRANS_ITEM fn local_drop_glue::{{impl}}[0]::drop[0] @@ local_drop_glue[WeakODR]
+    //~ TRANS_ITEM fn local_drop_glue::{{impl}}[0]::drop[0] @@ local_drop_glue[External]
     fn drop(&mut self) {}
 }
 
@@ -32,7 +32,7 @@ struct Outer {
     _a: Struct
 }
 
-//~ TRANS_ITEM fn local_drop_glue::user[0] @@ local_drop_glue[WeakODR]
+//~ TRANS_ITEM fn local_drop_glue::user[0] @@ local_drop_glue[External]
 fn user()
 {
     let _ = Outer {
@@ -53,7 +53,7 @@ mod mod1
         _b: (u32, Struct),
     }
 
-    //~ TRANS_ITEM fn local_drop_glue::mod1[0]::user[0] @@ local_drop_glue-mod1[WeakODR]
+    //~ TRANS_ITEM fn local_drop_glue::mod1[0]::user[0] @@ local_drop_glue-mod1[External]
     fn user()
     {
         let _ = Struct2 {

@@ -184,6 +184,14 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
+    pub fn is_generic_fn(&self) -> bool {
+        match *self {
+            TransItem::Fn(ref instance) => !instance.substs.types.is_empty(),
+            TransItem::DropGlue(..) |
+            TransItem::Static(..)   => false,
+        }
+    }
+
     pub fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
         let def_id = match *self {
             TransItem::Fn(ref instance) => instance.def,

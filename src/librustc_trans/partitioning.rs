@@ -126,7 +126,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use syntax::parse::token::{self, InternedString};
 use trans_item::TransItem;
-use util::nodemap::{FnvHashMap, FnvHashSet};
+use util::nodemap::{FnvHashMap, FnvHashSet, NodeSet};
 
 pub struct CodegenUnit<'tcx> {
     pub name: InternedString,
@@ -147,14 +147,23 @@ const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               trans_items: I,
                               strategy: PartitioningStrategy,
-                              inlining_map: &InliningMap<'tcx>)
+                              inlining_map: &InliningMap<'tcx>,
+                              reachable: &NodeSet)
                               -> Vec<CodegenUnit<'tcx>>
     where I: Iterator<Item = TransItem<'tcx>>
 {
+    if let PartitioningStrategy::FixedUnitCount(1) = strategy {
+        // If there is only a single codegen-unit, we can use a very simple
+        // scheme and don't have to bother with doing much analysis.
+        return vec![single_codegen_unit(tcx, trans_items, reachable)];
+    }
+
     // In the first step, we place all regular translation items into their
     // respective 'home' codegen unit. Regular translation items are all
     // functions and statics defined in the local crate.
-    let mut initial_partitioning = place_root_translation_items(tcx, trans_items);
+    let mut initial_partitioning = place_root_translation_items(tcx,
+                                                                trans_items,
+                                                                reachable);
 
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
@@ -179,7 +188,8 @@ struct PreInliningPartitioning<'tcx> {
 struct PostInliningPartitioning<'tcx>(Vec<CodegenUnit<'tcx>>);
 
 fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                             trans_items: I)
+                                             trans_items: I,
+                                             _reachable: &NodeSet)
                                              -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = TransItem<'tcx>>
 {
@@ -219,7 +229,18 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         TransItem::Static(..) => llvm::ExternalLinkage,
                         TransItem::DropGlue(..) => unreachable!(),
                         // Is there any benefit to using ExternalLinkage?:
-                        TransItem::Fn(..) => llvm::WeakODRLinkage,
+                        TransItem::Fn(ref instance) => {
+                            if instance.substs.types.is_empty() {
+                                // This is a non-generic functions, we always
+                                // make it visible externally on the chance that
+                                // it might be used in another codegen unit.
+                                llvm::ExternalLinkage
+                            } else {
+                                // Monomorphizations of generic functions are
+                                // always weak-odr
+                                llvm::WeakODRLinkage
+                            }
+                        }
                     }
                 }
             };
@@ -282,13 +303,6 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
             items: FnvHashMap()
         });
     }
-
-    fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
-        token::intern_and_get_ident(&format!("{}{}{}",
-            crate_name,
-            NUMBERED_CODEGEN_UNIT_MARKER,
-            index)[..])
-    }
 }
 
 fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartitioning<'tcx>,
@@ -317,6 +331,11 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
                 if initial_partitioning.roots.contains(&trans_item) {
                     // This item will be instantiated in some other codegen unit,
                     // so we just add it here with AvailableExternallyLinkage
+                    new_codegen_unit.items.insert(trans_item,
+                                                  llvm::AvailableExternallyLinkage);
+                } else if trans_item.is_from_extern_crate() && !trans_item.is_generic_fn() {
+                    // An instantiation of this item is always available in the
+                    // crate it was imported from.
                     new_codegen_unit.items.insert(trans_item,
                                                   llvm::AvailableExternallyLinkage);
                 } else {
@@ -413,4 +432,55 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     return token::intern_and_get_ident(&mod_path[..]);
+}
+
+fn single_codegen_unit<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                    trans_items: I,
+                                    reachable: &NodeSet)
+                                    -> CodegenUnit<'tcx>
+    where I: Iterator<Item = TransItem<'tcx>>
+{
+    let mut items = FnvHashMap();
+
+    for trans_item in trans_items {
+        let linkage = trans_item.explicit_linkage(tcx).unwrap_or_else(|| {
+            match trans_item {
+                TransItem::Static(node_id) => {
+                    if reachable.contains(&node_id) {
+                        llvm::ExternalLinkage
+                    } else {
+                        llvm::InternalLinkage
+                    }
+                }
+                TransItem::DropGlue(_) => {
+                    llvm::InternalLinkage
+                }
+                TransItem::Fn(instance) => {
+                    if trans_item.is_generic_fn() ||
+                       trans_item.is_from_extern_crate() ||
+                       !reachable.contains(&tcx.map
+                                               .as_local_node_id(instance.def)
+                                               .unwrap()) {
+                        llvm::InternalLinkage
+                    } else {
+                        llvm::ExternalLinkage
+                    }
+                }
+            }
+        });
+
+        items.insert(trans_item, linkage);
+    }
+
+    CodegenUnit {
+        name: numbered_codegen_unit_name(&tcx.crate_name[..], 0),
+        items: items
+    }
+}
+
+fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
+    token::intern_and_get_ident(&format!("{}{}{}",
+        crate_name,
+        NUMBERED_CODEGEN_UNIT_MARKER,
+        index)[..])
 }

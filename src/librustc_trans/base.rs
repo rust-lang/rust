@@ -2548,8 +2548,8 @@ fn iter_functions(llmod: llvm::ModuleRef) -> ValueIter {
 ///
 /// This list is later used by linkers to determine the set of symbols needed to
 /// be exposed from a dynamic library and it's also encoded into the metadata.
-pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
-    scx.reachable().iter().map(|x| *x).filter(|&id| {
+pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
+    reachable.into_iter().filter(|&id| {
         // Next, we want to ignore some FFI functions that are not exposed from
         // this crate. Reachable FFI functions can be lumped into two
         // categories:
@@ -2563,9 +2563,9 @@ pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
         //
         // As a result, if this id is an FFI item (foreign item) then we only
         // let it through if it's included statically.
-        match scx.tcx().map.get(id) {
+        match tcx.map.get(id) {
             hir_map::NodeForeignItem(..) => {
-                scx.sess().cstore.is_statically_included_foreign_item(id)
+                tcx.sess.cstore.is_statically_included_foreign_item(id)
             }
 
             // Only consider nodes that actually have exported symbols.
@@ -2575,8 +2575,8 @@ pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
                 node: hir::ItemFn(..), .. }) |
             hir_map::NodeImplItem(&hir::ImplItem {
                 node: hir::ImplItemKind::Method(..), .. }) => {
-                let def_id = scx.tcx().map.local_def_id(id);
-                let scheme = scx.tcx().lookup_item_type(def_id);
+                let def_id = tcx.map.local_def_id(id);
+                let scheme = tcx.lookup_item_type(def_id);
                 scheme.generics.types.is_empty()
             }
 
@@ -2598,6 +2598,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let krate = tcx.map.krate();
 
     let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
+    let reachable = filter_reachable_ids(tcx, reachable);
 
     let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
         v
@@ -2621,12 +2622,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              reachable,
                                              check_overflow,
                                              check_dropflag);
-
-    let reachable_symbol_ids = filter_reachable_ids(&shared_ccx);
-
     // Translate the metadata.
     let metadata = time(tcx.sess.time_passes(), "write metadata", || {
-        write_metadata(&shared_ccx, &reachable_symbol_ids)
+        write_metadata(&shared_ccx, shared_ccx.reachable())
     });
 
     let metadata_module = ModuleTranslation {
@@ -2755,7 +2753,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let sess = shared_ccx.sess();
-    let mut reachable_symbols = reachable_symbol_ids.iter().map(|&id| {
+    let mut reachable_symbols = shared_ccx.reachable().iter().map(|&id| {
         let def_id = shared_ccx.tcx().map.local_def_id(id);
         Instance::mono(&shared_ccx, def_id).symbol_name(&shared_ccx)
     }).collect::<Vec<_>>();
@@ -2911,7 +2909,8 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         partitioning::partition(scx.tcx(),
                                 items.iter().cloned(),
                                 strategy,
-                                &inlining_map)
+                                &inlining_map,
+                                scx.reachable())
     });
 
     if scx.sess().opts.debugging_opts.print_trans_items.is_some() {

@@ -25,7 +25,7 @@
 //~ TRANS_ITEM fn local_generic::generic[0]<&str> @@ local_generic.volatile[WeakODR]
 pub fn generic<T>(x: T) -> T { x }
 
-//~ TRANS_ITEM fn local_generic::user[0] @@ local_generic[WeakODR]
+//~ TRANS_ITEM fn local_generic::user[0] @@ local_generic[External]
 fn user() {
     let _ = generic(0u32);
 }
@@ -33,7 +33,7 @@ fn user() {
 mod mod1 {
     pub use super::generic;
 
-    //~ TRANS_ITEM fn local_generic::mod1[0]::user[0] @@ local_generic-mod1[WeakODR]
+    //~ TRANS_ITEM fn local_generic::mod1[0]::user[0] @@ local_generic-mod1[External]
     fn user() {
         let _ = generic(0u64);
     }
@@ -41,7 +41,7 @@ mod mod1 {
     mod mod1 {
         use super::generic;
 
-        //~ TRANS_ITEM fn local_generic::mod1[0]::mod1[0]::user[0] @@ local_generic-mod1-mod1[WeakODR]
+        //~ TRANS_ITEM fn local_generic::mod1[0]::mod1[0]::user[0] @@ local_generic-mod1-mod1[External]
         fn user() {
             let _ = generic('c');
         }
@@ -51,7 +51,7 @@ mod mod1 {
 mod mod2 {
     use super::generic;
 
-    //~ TRANS_ITEM fn local_generic::mod2[0]::user[0] @@ local_generic-mod2[WeakODR]
+    //~ TRANS_ITEM fn local_generic::mod2[0]::user[0] @@ local_generic-mod2[External]
     fn user() {
         let _ = generic("abc");
     }
