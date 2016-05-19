@@ -58,6 +58,9 @@ struct Annotation {
     /// Is this annotation derived from primary span
     is_primary: bool,
 
+    /// Is this a large span minimized down to a smaller span
+    is_minimized: bool,
+
     /// Optional label to display adjacent to the annotation.
     label: Option<String>,
 }
@@ -90,6 +93,8 @@ pub enum Style {
     UnderlineSecondary,
     LabelPrimary,
     LabelSecondary,
+    OldSkoolNoteText,
+    OldSkoolNote,
     NoStyle,
 }
 
@@ -382,10 +387,10 @@ impl FileInfo {
         // Basically, although this loses information, multi-line spans just
         // never look good.
 
-        let (line, start_col, mut end_col) = if lines.len() == 1 {
-            (lines[0].line_index, lines[0].start_col, lines[0].end_col)
+        let (line, start_col, mut end_col, is_minimized) = if lines.len() == 1 {
+            (lines[0].line_index, lines[0].start_col, lines[0].end_col, false)
         } else {
-            (lines[0].line_index, lines[0].start_col, CharPos(lines[0].start_col.0 + 1))
+            (lines[0].line_index, lines[0].start_col, CharPos(lines[0].start_col.0 + 1), true)
         };
 
         // Watch out for "empty spans". If we get a span like 6..6, we
@@ -401,6 +406,7 @@ impl FileInfo {
         self.lines[index].push_annotation(start_col,
                                           end_col,
                                           is_primary,
+                                          is_minimized,
                                           label);
     }
 
@@ -497,6 +503,30 @@ impl FileInfo {
                     match self.primary_span {
                         Some(span) => {
                             let lo = codemap.lookup_char_pos(span.lo);
+                            let hi = codemap.lookup_char_pos(span.hi);
+                            //Before each secondary line in old skool-mode, print the label
+                            //as an old-style note
+                            if !line.annotations[0].is_primary {
+                                if let Some(ann) = line.annotations[0].label.clone() {
+                                    output.push(RenderedLine {
+                                        text: vec![StyledString {
+                                            text: lo.file.name.clone(),
+                                            style: Style::FileNameStyle,
+                                        }, StyledString {
+                                            text: format!(":{}:{}: {}:{} ", lo.line, lo.col.0 + 1,
+                                                hi.line, hi.col.0+1),
+                                            style: Style::LineAndColumn,
+                                        }, StyledString {
+                                            text: format!("note: "),
+                                            style: Style::OldSkoolNote,
+                                        }, StyledString {
+                                            text: format!("{}", ann),
+                                            style: Style::OldSkoolNoteText,
+                                        }],
+                                        kind: RenderedLineKind::Annotations,
+                                    });
+                                }
+                            }
                             rendered_lines[0].text.insert(0, StyledString {
                                 text: format!(":{} ", lo.line),
                                 style: Style::LineAndColumn,
@@ -598,7 +628,7 @@ impl FileInfo {
                             if annotation.is_primary {
                                 Style::UnderlinePrimary
                             } else {
-                                Style::UnderlineSecondary
+                                Style::OldSkoolNote
                             });
                     }
                     else {
@@ -606,7 +636,7 @@ impl FileInfo {
                             if annotation.is_primary {
                                 Style::UnderlinePrimary
                             } else {
-                                Style::UnderlineSecondary
+                                Style::OldSkoolNote
                             });
                     }
                 }
@@ -615,10 +645,14 @@ impl FileInfo {
                 for p in annotation.start_col .. annotation.end_col {
                     if annotation.is_primary {
                         styled_buffer.putc(1, p, '^', Style::UnderlinePrimary);
-                        styled_buffer.set_style(0, p, Style::UnderlinePrimary);
+                        if !annotation.is_minimized {
+                            styled_buffer.set_style(0, p, Style::UnderlinePrimary);
+                        }
                     } else {
                         styled_buffer.putc(1, p, '-', Style::UnderlineSecondary);
-                        styled_buffer.set_style(0, p, Style::UnderlineSecondary);
+                        if !annotation.is_minimized {
+                            styled_buffer.set_style(0, p, Style::UnderlineSecondary);
+                        }
                     }
                 }
             }
@@ -819,11 +853,13 @@ impl Line {
                        start: CharPos,
                        end: CharPos,
                        is_primary: bool,
+                       is_minimized: bool,
                        label: Option<String>) {
         self.annotations.push(Annotation {
             start_col: start.0,
             end_col: end.0,
             is_primary: is_primary,
+            is_minimized: is_minimized,
             label: label,
         });
     }
