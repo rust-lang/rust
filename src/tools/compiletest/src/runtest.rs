@@ -1003,7 +1003,7 @@ actual:\n\
         let expect_note = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Note));
 
         // Parse the JSON output from the compiler and extract out the messages.
-        let actual_errors = json::parse_output(&file_name, &proc_res.stderr);
+        let actual_errors = json::parse_output(&file_name, &proc_res.stderr, &proc_res);
         let mut unexpected = 0;
         let mut not_found = 0;
         let mut found = vec![false; expected_errors.len()];
@@ -1547,21 +1547,7 @@ actual:\n\
 
     fn fatal_proc_rec(&self, err: &str, proc_res: &ProcRes) -> ! {
         self.error(err);
-        print!("\
-            status: {}\n\
-            command: {}\n\
-            stdout:\n\
-            ------------------------------------------\n\
-            {}\n\
-            ------------------------------------------\n\
-            stderr:\n\
-            ------------------------------------------\n\
-            {}\n\
-            ------------------------------------------\n\
-            \n",
-               proc_res.status, proc_res.cmdline, proc_res.stdout,
-               proc_res.stderr);
-        panic!();
+        proc_res.fatal(None);
     }
 
     fn _arm_exec_compiled_test(&self, env: Vec<(String, String)>) -> ProcRes {
@@ -2211,7 +2197,7 @@ struct ProcArgs {
     args: Vec<String>,
 }
 
-struct ProcRes {
+pub struct ProcRes {
     status: Status,
     stdout: String,
     stderr: String,
@@ -2221,6 +2207,29 @@ struct ProcRes {
 enum Status {
     Parsed(i32),
     Normal(ExitStatus),
+}
+
+impl ProcRes {
+    pub fn fatal(&self, err: Option<&str>) -> ! {
+        if let Some(e) = err {
+            println!("\nerror: {}", e);
+        }
+        print!("\
+            status: {}\n\
+            command: {}\n\
+            stdout:\n\
+            ------------------------------------------\n\
+            {}\n\
+            ------------------------------------------\n\
+            stderr:\n\
+            ------------------------------------------\n\
+            {}\n\
+            ------------------------------------------\n\
+            \n",
+               self.status, self.cmdline, self.stdout,
+               self.stderr);
+        panic!();
+    }
 }
 
 impl Status {

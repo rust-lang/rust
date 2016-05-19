@@ -12,6 +12,7 @@ use errors::{Error, ErrorKind};
 use rustc_serialize::json;
 use std::str::FromStr;
 use std::path::Path;
+use runtest::{ProcRes};
 
 // These structs are a subset of the ones found in
 // `syntax::errors::json`.
@@ -55,13 +56,13 @@ struct DiagnosticCode {
     explanation: Option<String>,
 }
 
-pub fn parse_output(file_name: &str, output: &str) -> Vec<Error> {
+pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
     output.lines()
-          .flat_map(|line| parse_line(file_name, line))
+          .flat_map(|line| parse_line(file_name, line, output, proc_res))
           .collect()
 }
 
-fn parse_line(file_name: &str, line: &str) -> Vec<Error> {
+fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
     // The compiler sometimes intermingles non-JSON stuff into the
     // output.  This hack just skips over such lines. Yuck.
     if line.chars().next() == Some('{') {
@@ -72,7 +73,9 @@ fn parse_line(file_name: &str, line: &str) -> Vec<Error> {
                 expected_errors
             }
             Err(error) => {
-                panic!("failed to decode compiler output as json: `{}`", error);
+                proc_res.fatal(Some(&format!(
+                    "failed to decode compiler output as json: `{}`\noutput: {}\nline: {}",
+                    error, line, output)));
             }
         }
     } else {

@@ -126,7 +126,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                              move_from.descriptive_string(bccx.tcx));
             err.span_label(
                 move_from.span,
-                &format!("move occurs here")
+                &format!("cannot move out of {}", move_from.descriptive_string(bccx.tcx))
                 );
             err
         }
@@ -138,7 +138,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                "cannot move out of type `{}`, \
                                                a non-copy fixed-size array",
                                                b.ty);
-                err.span_label(move_from.span, &format!("can not move out of here"));
+                err.span_label(move_from.span, &format!("cannot move out of here"));
                 err
             } else {
                 span_bug!(move_from.span, "this path should not cause illegal move");
@@ -154,7 +154,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                    "cannot move out of type `{}`, \
                                                    which defines the `Drop` trait",
                                                    b.ty);
-                    err.span_label(move_from.span, &format!("can not move out of here"));
+                    err.span_label(move_from.span, &format!("cannot move out of here"));
                     err
                 },
                 _ => {
@@ -175,16 +175,12 @@ fn note_move_destination(mut err: DiagnosticBuilder,
     if is_first_note {
         err.span_label(
             move_to_span,
-            &format!("attempting to move value to here"));
-        err.help(
-            &format!("to prevent the move, \
-                      use `ref {0}` or `ref mut {0}` to capture value by \
-                      reference",
+            &format!("hint: to prevent move, use `ref {0}` or `ref mut {0}`",
                      pat_name));
         err
     } else {
-        err.span_note(move_to_span,
-                      &format!("and here (use `ref {0}` or `ref mut {0}`)",
+        err.span_label(move_to_span,
+                      &format!("...and here (use `ref {0}` or `ref mut {0}`)",
                                pat_name));
         err
     }
