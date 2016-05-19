@@ -178,12 +178,12 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
 }
 
 fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
-           externs: core::Externs,
+           externs: core::Externs, for_macro: bool,
            should_panic: bool, no_run: bool, as_test_harness: bool,
            compile_fail: bool, opts: &TestOptions) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
-    let test = maketest(test, Some(cratename), as_test_harness, opts);
+    let test = maketest(test, Some(cratename), for_macro, as_test_harness, opts);
     let input = config::Input::Str {
         name: driver::anon_src(),
         input: test.to_owned(),
@@ -317,7 +317,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     }
 }
 
-pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
+pub fn maketest(s: &str, cratename: Option<&str>, for_macro: bool, dont_insert_main: bool,
                 opts: &TestOptions) -> String {
     let (crate_attrs, everything_else) = partition_source(s);
 
@@ -336,8 +336,8 @@ pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
     // compiler.
     if !s.contains("extern crate") && !opts.no_crate_inject && cratename != Some("std") {
         if let Some(cratename) = cratename {
-            if s.contains(cratename) {
-                prog.push_str(&format!("extern crate {};\n", cratename));
+            if for_macro || s.contains(cratename) {
+                prog.push_str(&format!("#[macro_use] extern crate {};\n", cratename));
             }
         }
     }
@@ -386,6 +386,7 @@ pub struct Collector {
     libs: SearchPaths,
     externs: core::Externs,
     cnt: usize,
+    for_macro: bool,
     use_headers: bool,
     current_header: Option<String>,
     cratename: String,
@@ -402,6 +403,7 @@ impl Collector {
             libs: libs,
             externs: externs,
             cnt: 0,
+            for_macro: false,
             use_headers: use_headers,
             current_header: None,
             cratename: cratename,
@@ -424,6 +426,7 @@ impl Collector {
         let externs = self.externs.clone();
         let cratename = self.cratename.to_string();
         let opts = self.opts.clone();
+        let for_macro = self.for_macro;
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -438,6 +441,7 @@ impl Collector {
                         cfgs,
                         libs,
                         externs,
+                        for_macro,
                         should_panic,
                         no_run,
                         as_test_harness,
@@ -477,6 +481,10 @@ impl DocFolder for Collector {
         let pushed = current_name.map(|name| self.names.push(name)).is_some();
 
         if let Some(doc) = item.doc_value() {
+            self.for_macro = match item.inner {
+                clean::MacroItem(_) => true,
+                _ => false,
+            };
             self.cnt = 0;
             markdown::find_testable_code(doc, &mut *self);
         }

@@ -13,3 +13,18 @@
 /// ```
 #[cfg(feature = "bar")]
 pub fn foo() -> i32 { 1 }
+
+/// ```
+/// assert_eq!(mymacro!(), 5);
+/// ```
+#[macro_export]
+macro_rules! mymacro {
+    () => { 5 };
+}
+
+/// ```
+/// assert_eq!(foo::foo2(), 5);
+/// ```
+pub fn foo2() -> i32 {
+    5
+}

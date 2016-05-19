@@ -241,17 +241,16 @@ Here's the full algorithm rustdoc uses to preprocess examples:
    `unused_variables`, `unused_assignments`, `unused_mut`,
    `unused_attributes`, and `dead_code`. Small examples often trigger
    these lints.
-3. If the example does not contain `extern crate`, then `extern crate
-   <mycrate>;` is inserted (note the lack of `#[macro_use]`).
+3. If the example does not contain `extern crate`, then `#[macro_use]
+   extern crate <mycrate>;` is inserted if the example is either for
+   a macro definition, or contains the crate name.
 4. Finally, if the example does not contain `fn main`, the remainder of the
    text is wrapped in `fn main() { your_code }`.
 
 This generated `fn main` can be a problem! If you have `extern crate` or a `mod`
 statements in the example code that are referred to by `use` statements, they will
 fail to resolve unless you include at least `fn main() {}` to inhibit step 4.
-`#[macro_use] extern crate` also does not work except at the crate root, so when
-testing macros an explicit `main` is always required. It doesn't have to clutter
-up your docs, though -- keep reading!
+These additions don't have to clutter up your docs, though -- keep reading!
 
 Sometimes this algorithm isn't enough, though. For example, all of these code samples
 with `///` we've been talking about? The raw text:
@@ -356,17 +355,11 @@ Here’s an example of documenting a macro:
 /// # Examples
 ///
 /// ```
-/// # #[macro_use] extern crate foo;
-/// # fn main() {
 /// panic_unless!(1 + 1 == 2, “Math is broken.”);
-/// # }
 /// ```
 ///
 /// ```should_panic
-/// # #[macro_use] extern crate foo;
-/// # fn main() {
 /// panic_unless!(true == false, “I’m broken.”);
-/// # }
 /// ```
 #[macro_export]
 macro_rules! panic_unless {
@@ -374,11 +367,6 @@ macro_rules! panic_unless {
 }
 # fn main() {}
 ```
-
-You’ll note three things: we need to add our own `extern crate` line, so that
-we can add the `#[macro_use]` attribute. Second, we’ll need to add our own
-`main()` as well (for reasons discussed above). Finally, a judicious use of
-`#` to comment out those two things, so they don’t show up in the output.
 
 Another case where the use of `#` is handy is when you want to ignore
 error handling. Lets say you want the following,
