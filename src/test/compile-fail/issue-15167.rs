@@ -11,22 +11,26 @@
 // macro f should not be able to inject a reference to 'n'.
 
 macro_rules! f { () => (n) }
+//~^ ERROR unresolved name `n`
+//~| ERROR unresolved name `n`
+//~| ERROR unresolved name `n`
+//~| ERROR unresolved name `n`
 
 fn main() -> (){
     for n in 0..1 {
-        println!("{}", f!()); //~ ERROR unresolved name `n`
+        println!("{}", f!());
     }
 
     if let Some(n) = None {
-        println!("{}", f!()); //~ ERROR unresolved name `n`
+        println!("{}", f!());
     }
 
     if false {
     } else if let Some(n) = None {
-        println!("{}", f!()); //~ ERROR unresolved name `n`
+        println!("{}", f!());
     }
 
     while let Some(n) = None {
-        println!("{}", f!()); //~ ERROR unresolved name `n`
+        println!("{}", f!());
     }
 }
