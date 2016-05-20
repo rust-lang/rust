@@ -23,6 +23,6 @@ fn main() {
 
     match x {
         X { x: y } => println!("contents: {}", y)
-        //~^ ERROR cannot move out of type `X`, which defines the `Drop` trait
+        //~^ ERROR cannot move out of type `X`, which implements the `Drop` trait
     }
 }
