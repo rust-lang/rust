@@ -55,5 +55,6 @@ struct Foo<T: ?Sized> {
 }
 ```
 
-This `?Sized`, read as “T may or may not be `Sized`”, allowing us to match both constant size and unsized types.
-All generic type parameters implicitly have the `Sized` bound, so `?Sized` can be used to opt-out of the implicit bound.
+This `?Sized`, read as “T may or may not be `Sized`”, allowing us to match both
+constant size and unsized types. All generic type parameters implicitly have
+the `Sized` bound, so `?Sized` can be used to opt-out of the implicit bound.
