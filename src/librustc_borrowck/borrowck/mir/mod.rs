@@ -195,8 +195,8 @@ impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum DropFlagState {
-    Live,
-    Dead
+    Present, // i.e. initialized
+    Absent, // i.e. deinitialized or "moved"
 }
 
 fn on_all_children_bits<'a, 'tcx, F>(
@@ -266,7 +266,7 @@ fn drop_flag_effects_for_function_entry<'a, 'tcx, F>(
         let move_path_index = move_data.rev_lookup.find(&lvalue);
         on_all_children_bits(tcx, mir, move_data,
                              move_path_index,
-                             |moi| callback(moi, DropFlagState::Live));
+                             |moi| callback(moi, DropFlagState::Present));
     }
 }
 
@@ -296,7 +296,7 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
 
         on_all_children_bits(tcx, mir, move_data,
                              path,
-                             |moi| callback(moi, DropFlagState::Dead))
+                             |moi| callback(moi, DropFlagState::Absent))
     }
 
     let bb = mir.basic_block_data(loc.block);
@@ -306,7 +306,7 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
                 debug!("drop_flag_effects: assignment {:?}", stmt);
                 on_all_children_bits(tcx, mir, move_data,
                                      move_data.rev_lookup.find(lvalue),
-                                     |moi| callback(moi, DropFlagState::Live))
+                                     |moi| callback(moi, DropFlagState::Present))
             }
         },
         None => {
