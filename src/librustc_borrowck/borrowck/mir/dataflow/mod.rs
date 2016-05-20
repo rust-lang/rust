@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> DataflowOperator for MaybeInitializedLvals<'a, 'tcx> {
 impl<'a, 'tcx> DataflowOperator for MaybeUninitializedLvals<'a, 'tcx> {
     #[inline]
     fn initial_value() -> bool {
-        false // bottom = uninitialized
+        false // bottom = initialized (start_block_effect counters this at outset)
     }
 }
 
