@@ -84,14 +84,17 @@ fn h() -> ! {
 }
 ```
 
-This proposal changes the type to `T`, where:
+This proposal changes the result type of 'loop' to `T`, where:
 
-*   a loop which is never "broken" via `break` has result-type `!` (which is coercible to anything, as of today)
-*   where a loop is "broken" via `break;` or `break 'label;`, its result type is `()`
-*   where a loop is "broken" via `break EXPR;` or `break 'label EXPR;`, `EXPR` must evaluate to type `T`
-*   a loop's return type may be deduced from its context, e.g. `let x: T = loop { ... };`
+*   if a loop is "broken" via `break;` or `break 'label;`, the loop's result type must be `()`
+*   if a loop is "broken" via `break EXPR;` or `break 'label EXPR;`, `EXPR` must evaluate to type `T`
+*   as a special case, if a loop is "broken" via `break EXPR;` or `break 'label EXPR;` where `EXPR` evaluates to type `!` (does not return), this does not place a constraint on the type of the loop
+*   if external constaint on the loop's result type exist (e.g. `let x: S = loop { ... };`), then `T` must be coercible to this type
 
-It is an error if these types do not agree. Examples:
+It is an error if these types do not agree or if the compiler's type deduction
+rules do not yield a concrete type.
+
+Examples of errors:
 
 ```rust
 // error: loop type must be () and must be i32
@@ -115,7 +118,7 @@ fn z() -> ! {
 }
 ```
 
-Where a loop does not break, the return type is coercible:
+Examples involving `!`:
 
 ```rust
 fn f() -> () {
@@ -126,28 +129,15 @@ fn g() -> u32 {
     // ! coerces to u32
     loop {}
 }
-```
-
-### Result value
-
-A loop only yields a value if broken via some form of `break ...;` statement,
-in which case it yields the value resulting from the evaulation of the
-statement's expression (`EXPR` above), or `()` if there is no `EXPR`
-expression.
-
-## Examples
-
-```rust
-assert_eq!(loop { break; }, ());
-assert_eq!(loop { break 5; }, 5);
-let x = 'a loop {
-    'b loop {
-        break 'a 1;
+fn z() -> ! {
+    loop {
+        break panic!();
     }
-    break 'a 2;
-};
-assert_eq!(x, 1);
+}
 ```
+
+Example showing the equivalence of `break;` and `break ();`:
+
 ```rust
 fn y() -> () {
     loop {
@@ -159,12 +149,26 @@ fn y() -> () {
     }
 }
 ```
+
+### Result value
+
+A loop only yields a value if broken via some form of `break ...;` statement,
+in which case it yields the value resulting from the evaulation of the
+statement's expression (`EXPR` above), or `()` if there is no `EXPR`
+expression.
+
+Examples:
+
 ```rust
-fn z() -> ! {
-    loop {
-        break panic!();
+assert_eq!(loop { break; }, ());
+assert_eq!(loop { break 5; }, 5);
+let x = 'a loop {
+    'b loop {
+        break 'a 1;
     }
-}
+    break 'a 2;
+};
+assert_eq!(x, 1);
 ```
 
 # Drawbacks
