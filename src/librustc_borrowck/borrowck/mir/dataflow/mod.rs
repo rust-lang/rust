@@ -35,7 +35,7 @@ pub trait Dataflow {
 }
 
 impl<'a, 'tcx: 'a, BD> Dataflow for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
-    where BD: BitDenotation, BD::Bit: Debug, BD::Ctxt: HasMoveData<'tcx>
+    where BD: BitDenotation + DataflowOperator, BD::Bit: Debug, BD::Ctxt: HasMoveData<'tcx>
 {
     fn dataflow(&mut self) {
         self.flow_state.build_sets();
@@ -53,7 +53,7 @@ struct PropagationContext<'b, 'a: 'b, 'tcx: 'a, O>
 }
 
 impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
-    where BD: BitDenotation, BD::Ctxt: HasMoveData<'tcx>
+    where BD: BitDenotation + DataflowOperator, BD::Ctxt: HasMoveData<'tcx>
 {
     fn propagate(&mut self) {
         let mut temp = vec![0; self.flow_state.sets.words_per_block];
@@ -100,10 +100,10 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
 }
 
 impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD>
-    where BD: BitDenotation, BD::Ctxt: HasMoveData<'tcx>
+    where BD: BitDenotation + DataflowOperator, BD::Ctxt: HasMoveData<'tcx>
 {
     fn reset(&mut self, bits: &mut [usize]) {
-        let e = if BD::initial_value() {usize::MAX} else {0};
+        let e = if BD::bottom_value() {usize::MAX} else {0};
         for b in bits {
             *b = e;
         }
@@ -317,17 +317,17 @@ impl<O: BitDenotation> DataflowState<O> {
 }
 
 pub trait BitwiseOperator {
-    /// Joins two predecessor bits together, typically either `|` or `&`
+    /// Applies some bit-operation pointwise to each of the bits in the two inputs.
     fn join(&self, pred1: usize, pred2: usize) -> usize;
 }
 
 /// Parameterization for the precise form of data flow that is used.
-pub trait DataflowOperator : BitwiseOperator {
+pub trait DataflowOperator: BitwiseOperator {
     /// Specifies the initial value for each bit in the `on_entry` set
-    fn initial_value() -> bool;
+    fn bottom_value() -> bool;
 }
 
-pub trait BitDenotation: DataflowOperator {
+pub trait BitDenotation {
     /// Specifies what is represented by each bit in the dataflow bitvector.
     type Bit;
 
@@ -425,7 +425,7 @@ pub trait BitDenotation: DataflowOperator {
 }
 
 impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
-    where D: BitDenotation, D::Ctxt: HasMoveData<'tcx>
+    where D: BitDenotation + DataflowOperator, D::Ctxt: HasMoveData<'tcx>
 {
     pub fn new(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
                mir: &'a Mir<'tcx>,
@@ -437,7 +437,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
         let num_blocks = mir.basic_blocks.len();
         let num_words = num_blocks * words_per_block;
 
-        let entry = if D::initial_value() { usize::MAX } else {0};
+        let entry = if D::bottom_value() { usize::MAX } else {0};
 
         let zeroes = Bits::new(0, num_words);
         let on_entry = Bits::new(entry, num_words);
@@ -460,7 +460,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
 }
 
 impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
-    where D: BitDenotation, D::Ctxt: HasMoveData<'tcx>
+    where D: BitDenotation + DataflowOperator, D::Ctxt: HasMoveData<'tcx>
 {
     /// Propagates the bits of `in_out` into all the successors of `bb`,
     /// using bitwise operator denoted by `self.operator`.
@@ -851,7 +851,6 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
     fn interpret<'c>(&self, ctxt: &'c Self::Ctxt, idx: usize) -> &'c Self::Bit {
         &ctxt.2.move_paths[MovePathIndex::new(idx)]
     }
-
     fn start_block_effect(&self, ctxt: &Self::Ctxt, sets: &mut BlockSets)
     {
         super::drop_flag_effects_for_function_entry(
@@ -1072,12 +1071,10 @@ impl<'a, 'tcx> BitwiseOperator for DefinitelyInitializedLvals<'a, 'tcx> {
     }
 }
 
-// FIXME: `DataflowOperator::initial_value` should be named
-// `bottom_value`. The way that dataflow fixed point iteration works,
-// you want to start at bottom and work your way to a fixed point.
-// This needs to include the detail that the control-flow merges will
-// apply the `join` operator above to current state (which starts at
-// that bottom value).
+// The way that dataflow fixed point iteration works, you want to
+// start at bottom and work your way to a fixed point. Control-flow
+// merges will apply the `join` operator to each block entry's current
+// state (which starts at that bottom value).
 //
 // This means, for propagation across the graph, that you either want
 // to start at all-zeroes and then use Union as your merge when
@@ -1086,28 +1083,28 @@ impl<'a, 'tcx> BitwiseOperator for DefinitelyInitializedLvals<'a, 'tcx> {
 
 impl<'a, 'tcx> DataflowOperator for MovingOutStatements<'a, 'tcx> {
     #[inline]
-    fn initial_value() -> bool {
+    fn bottom_value() -> bool {
         false // bottom = no loans in scope by default
     }
 }
 
 impl<'a, 'tcx> DataflowOperator for MaybeInitializedLvals<'a, 'tcx> {
     #[inline]
-    fn initial_value() -> bool {
+    fn bottom_value() -> bool {
         false // bottom = uninitialized
     }
 }
 
 impl<'a, 'tcx> DataflowOperator for MaybeUninitializedLvals<'a, 'tcx> {
     #[inline]
-    fn initial_value() -> bool {
+    fn bottom_value() -> bool {
         false // bottom = initialized (start_block_effect counters this at outset)
     }
 }
 
 impl<'a, 'tcx> DataflowOperator for DefinitelyInitializedLvals<'a, 'tcx> {
     #[inline]
-    fn initial_value() -> bool {
+    fn bottom_value() -> bool {
         true // bottom = initialized
     }
 }
