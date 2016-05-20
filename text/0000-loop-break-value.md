@@ -59,8 +59,9 @@ expression.
 
 ### result type
 
-Currently the result-type of a 'loop' without 'break' is `!` (never returns),
-which may be coerced to `()`. This is important since a loop may appear as
+Currently the result-type of a 'loop' without 'break' is `!` (never returns,
+and may be coerced to any type), and the result type of a 'loop' with 'break'
+is `()`. This is important since a loop may appear as
 the last expression of a function:
 
 ```rust
@@ -86,24 +87,24 @@ fn h() -> ! {
 
 This proposal changes the result type to `T`, where:
 
-*   a loop which is never "broken" via `break` has result-type `!` (coercible to `()`)
-*   a loop's return type may be deduced from its context, e.g. `let x: T = loop { ... };`
+*   a loop which is never "broken" via `break` has result-type `!` (coercible)
 *   where a loop is "broken" via `break;` or `break 'label;`, its result type is `()`
 *   where a loop is "broken" via `break EXPR;` or `break 'label EXPR;`, `EXPR` must evaluate to type `T`
+*   a loop's return type may be deduced from its context, e.g. `let x: T = loop { ... };`
 
 It is an error if these types do not agree. Examples:
 
 ```rust
-// error: loop type must be ! or () not i32
-let a: i32 = loop {};
+// error: loop type must be () and must be i32
+let a: i32 = loop { break; };
 // error: loop type must be i32 and must be &str
 let b: i32 = loop { break "I am not an integer."; };
 // error: loop type must be Option<_> and must be &str
 let c = loop {
     if Q() {
-        "answer"
+        break "answer";
     } else {
-        None
+        break None;
     }
 };
 fn z() -> ! {
@@ -112,6 +113,19 @@ fn z() -> ! {
     loop {
         if Q() { break; }
     }
+}
+```
+
+Where a loop does not break, the return type is coercible:
+
+```rust
+fn f() -> () {
+    // ! coerces to ()
+    loop {}
+}
+fn g() -> u32 {
+    // ! coerces to u32
+    loop {}
 }
 ```
 
@@ -142,9 +156,6 @@ assert_eq!(x, 1);
 The proposal changes the syntax of `break` statements, requiring updates to
 parsers and possibly syntax highlighters.
 
-The type of `loop` expressions is no longer fixed and cannot be explicitly
-typed.
-
 # Alternatives
 [alternatives]: #alternatives
 
@@ -164,6 +175,21 @@ It is thus proposed not to change these expressions at this time.
 
 It should be noted that `for`, `while` and `while let` can all be emulated via
 `loop`, so perhaps allowing the former to return values is less important.
+Alternatively, a new keyword such as `default` or `else` could be used to
+specify the other exit value as in:
 
-See [discussion of #961](https://github.com/rust-lang/rfcs/issues/961)
+```rust
+fn first<T: Copy>(list: Iterator<T>) -> Option<T> {
+    for x in list {
+        break Some(x);
+    } default {
+        None
+    }
+}
+```
+
+The exact syntax is disputed. It is suggested that this RFC should not be
+blocked on this issue since break-with-value can still be implemented in the
+manner above after this RFC. See the
+[discussion of #961](https://github.com/rust-lang/rfcs/issues/961)
 for more on this topic.
