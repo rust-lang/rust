@@ -257,9 +257,6 @@ pub fn compile_input(sess: &Session,
                 tcx.print_debug_stats();
             }
 
-            // Discard interned strings as they are no longer required.
-            token::get_ident_interner().clear();
-
             Ok((outputs, trans))
         })??
     };
@@ -1009,11 +1006,13 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || lint::check_crate(tcx, &analysis.access_levels));
 
         // The above three passes generate errors w/o aborting
-        if sess.err_count() > 0 {
-            return Ok(f(tcx, Some(mir_map), analysis, Err(sess.err_count())));
-        }
+        let errors = if sess.err_count() == 0 { Ok(()) } else { Err(sess.err_count()) };
 
-        Ok(f(tcx, Some(mir_map), analysis, Ok(())))
+        let result = f(tcx, Some(mir_map), analysis, errors);
+
+        // Discard interned strings as they are no longer required.
+        token::get_ident_interner().clear();
+        Ok(result)
     })
 }
 
