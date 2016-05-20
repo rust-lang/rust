@@ -92,8 +92,11 @@ impl<'a> Registry<'a> {
     /// ```no_run
     /// #![plugin(my_plugin_name(... args ...))]
     /// ```
-    pub fn args<'b>(&'b self) -> &'b Vec<P<ast::MetaItem>> {
-        self.args_hidden.as_ref().expect("args not set")
+    ///
+    /// Returns empty slice in case the plugin was loaded
+    /// with `--extra-plugins`
+    pub fn args<'b>(&'b self) -> &'b [P<ast::MetaItem>] {
+        self.args_hidden.as_ref().map(|v| &v[..]).unwrap_or(&[])
     }
 
     /// Register a syntax extension of any kind.
