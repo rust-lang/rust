@@ -12,7 +12,7 @@ error is emitted by the compiler at that point; if it is a 0-bit, then
 that invocation of `rustc_peek` will emit an error with the message
 "rustc_peek: bit not set".
 
-(*): Or `#[rustc_mir(rustc_peek_maybe_uninit)]`, and perhaps other
+(\*): Or `#[rustc_mir(rustc_peek_maybe_uninit)]`, and perhaps other
 variants in the future.
 
 The end effect is that one can write unit tests for MIR dataflow that
