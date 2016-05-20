@@ -10,7 +10,9 @@
 
 use std::mem;
 
-/// `BitSlice` provides helper methods for treating a `[usize]`
+pub type Word = usize;
+
+/// `BitSlice` provides helper methods for treating a `[Word]`
 /// as a bitvector.
 pub trait BitSlice {
     fn clear_bit(&mut self, idx: usize) -> bool;
@@ -18,12 +20,12 @@ pub trait BitSlice {
     fn get_bit(&self, idx: usize) -> bool;
 }
 
-impl BitSlice for [usize] {
+impl BitSlice for [Word] {
     /// Clears bit at `idx` to 0; returns true iff this changed `self.`
     fn clear_bit(&mut self, idx: usize) -> bool {
         let words = self;
         debug!("clear_bit: words={} idx={}",
-               bits_to_string(words, words.len() * mem::size_of::<usize>()), bit_str(idx));
+               bits_to_string(words, words.len() * mem::size_of::<Word>()), bit_str(idx));
         let BitLookup { word, bit_in_word, bit_mask } = bit_lookup(idx);
         debug!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, bit_mask);
         let oldv = words[word];
@@ -36,7 +38,7 @@ impl BitSlice for [usize] {
     fn set_bit(&mut self, idx: usize) -> bool {
         let words = self;
         debug!("set_bit: words={} idx={}",
-               bits_to_string(words, words.len() * mem::size_of::<usize>()), bit_str(idx));
+               bits_to_string(words, words.len() * mem::size_of::<Word>()), bit_str(idx));
         let BitLookup { word, bit_in_word, bit_mask } = bit_lookup(idx);
         debug!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, bit_mask);
         let oldv = words[word];
@@ -54,31 +56,31 @@ impl BitSlice for [usize] {
 }
 
 struct BitLookup {
-    /// An index of the word holding the bit in original `[usize]` of query.
+    /// An index of the word holding the bit in original `[Word]` of query.
     word: usize,
     /// Index of the particular bit within the word holding the bit.
     bit_in_word: usize,
     /// Word with single 1-bit set corresponding to where the bit is located.
-    bit_mask: usize,
+    bit_mask: Word,
 }
 
 #[inline]
 fn bit_lookup(bit: usize) -> BitLookup {
-    let usize_bits = mem::size_of::<usize>() * 8;
-    let word = bit / usize_bits;
-    let bit_in_word = bit % usize_bits;
+    let word_bits = mem::size_of::<Word>() * 8;
+    let word = bit / word_bits;
+    let bit_in_word = bit % word_bits;
     let bit_mask = 1 << bit_in_word;
     BitLookup { word: word, bit_in_word: bit_in_word, bit_mask: bit_mask }
 }
 
 
-fn bit_str(bit: usize) -> String {
+fn bit_str(bit: Word) -> String {
     let byte = bit >> 3;
     let lobits = 1 << (bit & 0b111);
     format!("[{}:{}-{:02x}]", bit, byte, lobits)
 }
 
-pub fn bits_to_string(words: &[usize], bits: usize) -> String {
+pub fn bits_to_string(words: &[Word], bits: usize) -> String {
     let mut result = String::new();
     let mut sep = '[';
 
