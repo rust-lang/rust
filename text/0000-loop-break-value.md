@@ -6,7 +6,8 @@
 # Summary
 [summary]: #summary
 
-(This is a result of discussion of issue #961 and related to RFCs
+(This is a result of discussion of
+[issue #961](https://github.com/rust-lang/rfcs/issues/961) and related to RFCs
 [352](https://github.com/rust-lang/rfcs/pull/352) and
 [955](https://github.com/rust-lang/rfcs/pull/955).)
 
@@ -164,4 +165,5 @@ It is thus proposed not to change these expressions at this time.
 It should be noted that `for`, `while` and `while let` can all be emulated via
 `loop`, so perhaps allowing the former to return values is less important.
 
-See discussion of #961 for more on this topic.
+See [discussion of #961](https://github.com/rust-lang/rfcs/issues/961)
+for more on this topic.
