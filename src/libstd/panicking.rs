@@ -75,10 +75,11 @@ static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
 /// Registers a custom panic hook, replacing any that was previously registered.
 ///
-/// The panic hook is invoked when a thread panics, but before it begins
-/// unwinding the stack. The default hook prints a message to standard error
-/// and generates a backtrace if requested, but this behavior can be customized
-/// with the `set_hook` and `take_hook` functions.
+/// The panic hook is invoked when a thread panics, but before the panic runtime
+/// is invoked. As such, the hook will run with both the aborting and unwinding
+/// runtimes. The default hook prints a message to standard error and generates
+/// a backtrace if requested, but this behavior can be customized with the
+/// `set_hook` and `take_hook` functions.
 ///
 /// The hook is provided with a `PanicInfo` struct which contains information
 /// about the origin of the panic, including the payload passed to `panic!` and
