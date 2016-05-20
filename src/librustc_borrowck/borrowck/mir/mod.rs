@@ -29,6 +29,7 @@ mod gather_moves;
 // mod graphviz;
 
 use self::dataflow::{BitDenotation};
+use self::dataflow::{DataflowOperator};
 use self::dataflow::{Dataflow, DataflowAnalysis, DataflowResults};
 use self::dataflow::{HasMoveData};
 use self::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
@@ -119,7 +120,7 @@ fn do_dataflow<'a, 'tcx, BD>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              attributes: &[ast::Attribute],
                              ctxt: BD::Ctxt,
                              bd: BD) -> (BD::Ctxt, DataflowResults<BD>)
-    where BD: BitDenotation, BD::Bit: Debug, BD::Ctxt: HasMoveData<'tcx>
+    where BD: BitDenotation + DataflowOperator, BD::Bit: Debug, BD::Ctxt: HasMoveData<'tcx>
 {
     use syntax::attr::AttrMetaMethods;
 
