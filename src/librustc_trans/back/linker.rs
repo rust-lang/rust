@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
+use std::fmt;
 use std::fs::{self, File};
-use std::io::{self, BufWriter};
 use std::io::prelude::*;
+use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output};
 
 use back::archive;
 use middle::dependency_format::Linkage;
@@ -30,7 +31,7 @@ use CrateTranslation;
 /// represents the meaning of each option being passed down. This trait is then
 /// used to dispatch on whether a GNU-like linker (generally `ld.exe`) or an
 /// MSVC linker (e.g. `link.exe`) is being used.
-pub trait Linker {
+pub trait Linker: fmt::Debug + fmt::Display {
     fn link_dylib(&mut self, lib: &str);
     fn link_rust_dylib(&mut self, lib: &str, path: &Path);
     fn link_framework(&mut self, framework: &str);
@@ -48,7 +49,9 @@ pub trait Linker {
     fn debuginfo(&mut self);
     fn no_default_libraries(&mut self);
     fn build_dylib(&mut self, out_filename: &Path);
-    fn args(&mut self, args: &[String]);
+    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self;
+    fn args<S: AsRef<OsStr>>(&mut self, args: &[S]) -> &mut Self;
+    fn output(&mut self) -> io::Result<Output>;
     fn hint_static(&mut self);
     fn hint_dynamic(&mut self);
     fn whole_archives(&mut self);
@@ -58,8 +61,10 @@ pub trait Linker {
 }
 
 pub struct GnuLinker<'a> {
-    pub cmd: &'a mut Command,
+    pub name: &'a str,
+    pub cmd: Command,
     pub sess: &'a Session,
+    pub is_lld: bool,
 }
 
 impl<'a> GnuLinker<'a> {
@@ -68,37 +73,95 @@ impl<'a> GnuLinker<'a> {
     }
 }
 
+impl<'a> fmt::Debug for GnuLinker<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.cmd.fmt(f)
+    }
+}
+
+impl<'a> fmt::Display for GnuLinker<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.name.fmt(f)
+    }
+}
+
 impl<'a> Linker for GnuLinker<'a> {
-    fn link_dylib(&mut self, lib: &str) { self.cmd.arg("-l").arg(lib); }
-    fn link_staticlib(&mut self, lib: &str) { self.cmd.arg("-l").arg(lib); }
-    fn link_rlib(&mut self, lib: &Path) { self.cmd.arg(lib); }
-    fn include_path(&mut self, path: &Path) { self.cmd.arg("-L").arg(path); }
-    fn framework_path(&mut self, path: &Path) { self.cmd.arg("-F").arg(path); }
-    fn output_filename(&mut self, path: &Path) { self.cmd.arg("-o").arg(path); }
-    fn add_object(&mut self, path: &Path) { self.cmd.arg(path); }
-    fn position_independent_executable(&mut self) { self.cmd.arg("-pie"); }
-    fn args(&mut self, args: &[String]) { self.cmd.args(args); }
+    fn link_dylib(&mut self, lib: &str) {
+        if self.is_lld && self.sess.target.target.options.is_like_osx {
+            let mut v = OsString::from("-l");
+            v.push(lib);
+            self.arg(&v);
+        } else {
+            self.arg("-l").arg(lib);
+        }
+    }
+    fn link_staticlib(&mut self, lib: &str) {
+        if self.is_lld && self.sess.target.target.options.is_like_osx {
+            let mut v = OsString::from("-l");
+            v.push(lib);
+            self.arg(&v);
+        } else {
+            self.arg("-l").arg(lib);
+        }
+    }
+    fn link_rlib(&mut self, lib: &Path) { self.arg(lib); }
+    fn include_path(&mut self, path: &Path) { self.arg("-L").arg(path); }
+    fn framework_path(&mut self, path: &Path) { self.arg("-F").arg(path); }
+    fn output_filename(&mut self, path: &Path) { self.arg("-o").arg(path); }
+    fn add_object(&mut self, path: &Path) { self.arg(path); }
+    fn position_independent_executable(&mut self) { self.arg("-pie"); }
+    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
+        if self.is_lld {
+            match arg.as_ref().to_str() {
+                Some(args_str) => {
+                    for arg_str in args_str.trim_left_matches("-Wl,").split(',') {
+                        self.cmd.arg(arg_str);
+                    }
+                },
+                None => {
+                    self.cmd.arg(arg.as_ref());
+                },
+            }
+        } else {
+            self.cmd.arg(arg);
+        }
+        self
+    }
+    fn args<S: AsRef<OsStr>>(&mut self, args: &[S]) -> &mut Self {
+        for arg in args {
+            self.arg(arg);
+        }
+        self
+    }
+    fn output(&mut self) -> io::Result<Output> {
+        self.cmd.output()
+    }
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
-        self.cmd.arg("-l").arg(lib);
+        if self.is_lld && self.sess.target.target.options.is_like_osx {
+            let mut v = OsString::from("-l");
+            v.push(lib);
+            self.arg(&v);
+        } else {
+            self.arg("-l").arg(lib);
+        }
     }
 
     fn link_framework(&mut self, framework: &str) {
-        self.cmd.arg("-framework").arg(framework);
+        self.arg("-framework").arg(framework);
     }
 
     fn link_whole_staticlib(&mut self, lib: &str, search_path: &[PathBuf]) {
-        let target = &self.sess.target.target;
-        if !target.options.is_like_osx {
-            self.cmd.arg("-Wl,--whole-archive")
-                    .arg("-l").arg(lib)
-                    .arg("-Wl,--no-whole-archive");
-        } else {
+        if self.sess.target.target.options.is_like_osx {
             // -force_load is the OSX equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             let mut v = OsString::from("-Wl,-force_load,");
             v.push(&archive::find_library(lib, search_path, &self.sess));
-            self.cmd.arg(&v);
+            self.arg(&v);
+        } else {
+            self.arg("-Wl,--whole-archive");
+            self.link_staticlib(lib);
+            self.arg("-Wl,--no-whole-archive");
         }
     }
 
@@ -106,10 +169,11 @@ impl<'a> Linker for GnuLinker<'a> {
         if self.sess.target.target.options.is_like_osx {
             let mut v = OsString::from("-Wl,-force_load,");
             v.push(lib);
-            self.cmd.arg(&v);
+            self.arg(&v);
         } else {
-            self.cmd.arg("-Wl,--whole-archive").arg(lib)
-                    .arg("-Wl,--no-whole-archive");
+            self.arg("-Wl,--whole-archive")
+                .arg(lib)
+                .arg("-Wl,--no-whole-archive");
         }
     }
 
@@ -129,10 +193,10 @@ impl<'a> Linker for GnuLinker<'a> {
         // for partial linking when using multiple codegen units (-r).  So we
         // insert it here.
         if self.sess.target.target.options.is_like_osx {
-            self.cmd.arg("-Wl,-dead_strip");
+            self.arg("-Wl,-dead_strip");
         } else if self.sess.target.target.options.is_like_solaris {
-            self.cmd.arg("-Wl,-z");
-            self.cmd.arg("-Wl,ignore");
+            self.arg("-Wl,-z");
+            self.arg("-Wl,ignore");
 
         // If we're building a dylib, we don't use --gc-sections because LLVM
         // has already done the best it can do, and we also don't want to
@@ -140,7 +204,7 @@ impl<'a> Linker for GnuLinker<'a> {
         // --gc-sections drops the size of hello world from 1.8MB to 597K, a 67%
         // reduction.
         } else if !is_dylib {
-            self.cmd.arg("-Wl,--gc-sections");
+            self.arg("-Wl,--gc-sections");
         }
     }
 
@@ -151,7 +215,7 @@ impl<'a> Linker for GnuLinker<'a> {
         // need a numeric argument, but other linkers do.
         if self.sess.opts.optimize == config::OptLevel::Default ||
            self.sess.opts.optimize == config::OptLevel::Aggressive {
-            self.cmd.arg("-Wl,-O1");
+            self.arg("-Wl,-O1");
         }
     }
 
@@ -160,42 +224,42 @@ impl<'a> Linker for GnuLinker<'a> {
     }
 
     fn no_default_libraries(&mut self) {
-        self.cmd.arg("-nodefaultlibs");
+        self.arg("-nodefaultlibs");
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
         // On mac we need to tell the linker to let this library be rpathed
         if self.sess.target.target.options.is_like_osx {
-            self.cmd.args(&["-dynamiclib", "-Wl,-dylib"]);
+            self.args(&["-dynamiclib", "-Wl,-dylib"]);
 
             if self.sess.opts.cg.rpath {
                 let mut v = OsString::from("-Wl,-install_name,@rpath/");
                 v.push(out_filename.file_name().unwrap());
-                self.cmd.arg(&v);
+                self.arg(&v);
             }
         } else {
-            self.cmd.arg("-shared");
+            self.arg("-shared");
         }
     }
 
     fn whole_archives(&mut self) {
         if !self.takes_hints() { return }
-        self.cmd.arg("-Wl,--whole-archive");
+        self.arg("-Wl,--whole-archive");
     }
 
     fn no_whole_archives(&mut self) {
         if !self.takes_hints() { return }
-        self.cmd.arg("-Wl,--no-whole-archive");
+        self.arg("-Wl,--no-whole-archive");
     }
 
     fn hint_static(&mut self) {
         if !self.takes_hints() { return }
-        self.cmd.arg("-Wl,-Bstatic");
+        self.arg("-Wl,-Bstatic");
     }
 
     fn hint_dynamic(&mut self) {
         if !self.takes_hints() { return }
-        self.cmd.arg("-Wl,-Bdynamic");
+        self.arg("-Wl,-Bdynamic");
     }
 
     fn export_symbols(&mut self, _: &Session, _: &CrateTranslation, _: &Path) {
@@ -204,26 +268,51 @@ impl<'a> Linker for GnuLinker<'a> {
 }
 
 pub struct MsvcLinker<'a> {
-    pub cmd: &'a mut Command,
+    pub name: &'a str,
+    pub cmd: Command,
     pub sess: &'a Session,
 }
 
-impl<'a> Linker for MsvcLinker<'a> {
-    fn link_rlib(&mut self, lib: &Path) { self.cmd.arg(lib); }
-    fn add_object(&mut self, path: &Path) { self.cmd.arg(path); }
-    fn args(&mut self, args: &[String]) { self.cmd.args(args); }
+impl<'a> fmt::Debug for MsvcLinker<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.cmd.fmt(f)
+    }
+}
 
-    fn build_dylib(&mut self, out_filename: &Path) {
-        self.cmd.arg("/DLL");
-        let mut arg: OsString = "/IMPLIB:".into();
-        arg.push(out_filename.with_extension("dll.lib"));
+impl<'a> fmt::Display for MsvcLinker<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.name.fmt(f)
+    }
+}
+
+impl<'a> Linker for MsvcLinker<'a> {
+    fn link_rlib(&mut self, lib: &Path) { self.arg(lib); }
+    fn add_object(&mut self, path: &Path) { self.arg(path); }
+    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
         self.cmd.arg(arg);
+        self
+    }
+    fn args<S: AsRef<OsStr>>(&mut self, args: &[S]) -> &mut Self {
+        for arg in args {
+            self.arg(arg);
+        }
+        self
+    }
+    fn output(&mut self) -> io::Result<Output> {
+        self.cmd.output()
     }
 
-    fn gc_sections(&mut self, _is_dylib: bool) { self.cmd.arg("/OPT:REF,ICF"); }
+    fn build_dylib(&mut self, out_filename: &Path) {
+        self.arg("/DLL");
+        let mut arg: OsString = "/IMPLIB:".into();
+        arg.push(out_filename.with_extension("dll.lib"));
+        self.arg(arg);
+    }
+
+    fn gc_sections(&mut self, _is_dylib: bool) { self.arg("/OPT:REF,ICF"); }
 
     fn link_dylib(&mut self, lib: &str) {
-        self.cmd.arg(&format!("{}.lib", lib));
+        self.arg(&format!("{}.lib", lib));
     }
 
     fn link_rust_dylib(&mut self, lib: &str, path: &Path) {
@@ -233,12 +322,12 @@ impl<'a> Linker for MsvcLinker<'a> {
         // not present.
         let name = format!("{}.dll.lib", lib);
         if fs::metadata(&path.join(&name)).is_ok() {
-            self.cmd.arg(name);
+            self.arg(name);
         }
     }
 
     fn link_staticlib(&mut self, lib: &str) {
-        self.cmd.arg(&format!("{}.lib", lib));
+        self.arg(&format!("{}.lib", lib));
     }
 
     fn position_independent_executable(&mut self) {
@@ -260,13 +349,13 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn include_path(&mut self, path: &Path) {
         let mut arg = OsString::from("/LIBPATH:");
         arg.push(path);
-        self.cmd.arg(&arg);
+        self.arg(&arg);
     }
 
     fn output_filename(&mut self, path: &Path) {
         let mut arg = OsString::from("/OUT:");
         arg.push(path);
-        self.cmd.arg(&arg);
+        self.arg(&arg);
     }
 
     fn framework_path(&mut self, _path: &Path) {
@@ -291,7 +380,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn debuginfo(&mut self) {
         // This will cause the Microsoft linker to generate a PDB file
         // from the CodeView line tables in the object files.
-        self.cmd.arg("/DEBUG");
+        self.arg("/DEBUG");
     }
 
     fn whole_archives(&mut self) {
@@ -366,6 +455,6 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
         let mut arg = OsString::from("/DEF:");
         arg.push(path);
-        self.cmd.arg(&arg);
+        self.arg(&arg);
     }
 }

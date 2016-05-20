@@ -136,14 +136,14 @@ pub fn build_link_meta<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     return r;
 }
 
-pub fn get_linker(sess: &Session) -> (String, Command) {
+pub fn get_linker(sess: &Session) -> (&str, Command) {
     if let Some(ref linker) = sess.opts.cg.linker {
-        (linker.clone(), Command::new(linker))
+        (linker, Command::new(linker))
     } else if sess.target.target.options.is_like_msvc {
-        ("link.exe".to_string(), msvc::link_exe_cmd(sess))
+        ("link.exe", msvc::link_exe_cmd(sess))
     } else {
-        (sess.target.target.options.linker.clone(),
-         Command::new(&sess.target.target.options.linker))
+        let linker = &sess.target.target.options.linker;
+        (linker, Command::new(linker))
     }
 }
 
@@ -624,6 +624,67 @@ fn link_natively(sess: &Session, dylib: bool,
     let (pname, mut cmd) = get_linker(sess);
     cmd.env("PATH", command_path(sess));
 
+    let is_lld = pname.ends_with("lld");
+
+    if is_lld {
+        if sess.target.target.options.is_like_msvc {
+            cmd.args(&["-flavor", "link"]);
+        } else if sess.target.target.options.is_like_osx {
+            cmd.args(&["-flavor", "darwin"]);
+        } else {
+            cmd.args(&["-flavor", "gnu"]);
+        }
+    }
+
+    if sess.target.target.options.is_like_msvc {
+        let mut linker = MsvcLinker {
+            name: pname,
+            cmd: cmd,
+            sess: &sess,
+        };
+        link_natively_helper(&mut linker,
+                             sess,
+                             dylib,
+                             objects,
+                             out_filename,
+                             trans,
+                             outputs,
+                             tmpdir);
+    } else {
+        let mut linker = GnuLinker {
+            name: pname,
+            cmd: cmd,
+            sess: &sess,
+            is_lld: is_lld,
+        };
+        link_natively_helper(&mut linker,
+                             sess,
+                             dylib,
+                             objects,
+                             out_filename,
+                             trans,
+                             outputs,
+                             tmpdir);
+    }
+
+    // On OSX, debuggers need this utility to get run to do some munging of
+    // the symbols
+    if sess.target.target.options.is_like_osx && sess.opts.debuginfo != NoDebugInfo {
+        match Command::new("dsymutil").arg(out_filename).output() {
+            Ok(..) => {}
+            Err(e) => sess.fatal(&format!("failed to run dsymutil: {}", e)),
+        }
+    }
+}
+
+fn link_natively_helper<T: Linker>(cmd: &mut T,
+                                   sess: &Session,
+                                   dylib: bool,
+                                   objects: &[PathBuf],
+                                   out_filename: &Path,
+                                   trans: &CrateTranslation,
+                                   outputs: &OutputFilenames,
+                                   tmpdir: &Path) {
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
 
@@ -636,18 +697,18 @@ fn link_natively(sess: &Session, dylib: bool,
         cmd.arg(root.join(obj));
     }
 
-    {
-        let mut linker = if sess.target.target.options.is_like_msvc {
-            Box::new(MsvcLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
-        } else {
-            Box::new(GnuLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
-        };
-        link_args(&mut *linker, sess, dylib, tmpdir,
-                  objects, out_filename, trans, outputs);
-        if !sess.target.target.options.no_compiler_rt {
-            linker.link_staticlib("compiler-rt");
-        }
+    link_args(cmd,
+              sess,
+              dylib,
+              tmpdir,
+              objects,
+              out_filename,
+              trans,
+              outputs);
+    if !sess.target.target.options.no_compiler_rt {
+        cmd.link_staticlib("compiler-rt");
     }
+
     cmd.args(&sess.target.target.options.late_link_args);
     for obj in &sess.target.target.options.post_link_objects {
         cmd.arg(root.join(obj));
@@ -680,7 +741,7 @@ fn link_natively(sess: &Session, dylib: bool,
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
                 sess.struct_err(&format!("linking with `{}` failed: {}",
-                                         pname,
+                                         cmd,
                                          prog.status))
                     .note(&format!("{:?}", &cmd))
                     .note(&escape_string(&output[..]))
@@ -691,29 +752,19 @@ fn link_natively(sess: &Session, dylib: bool,
             info!("linker stdout:\n{}", escape_string(&prog.stdout[..]));
         },
         Err(e) => {
-            sess.fatal(&format!("could not exec the linker `{}`: {}", pname, e));
-        }
-    }
-
-
-    // On OSX, debuggers need this utility to get run to do some munging of
-    // the symbols
-    if sess.target.target.options.is_like_osx && sess.opts.debuginfo != NoDebugInfo {
-        match Command::new("dsymutil").arg(out_filename).output() {
-            Ok(..) => {}
-            Err(e) => sess.fatal(&format!("failed to run dsymutil: {}", e)),
+            sess.fatal(&format!("could not exec the linker `{}`: {}", cmd, e));
         }
     }
 }
 
-fn link_args(cmd: &mut Linker,
-             sess: &Session,
-             dylib: bool,
-             tmpdir: &Path,
-             objects: &[PathBuf],
-             out_filename: &Path,
-             trans: &CrateTranslation,
-             outputs: &OutputFilenames) {
+fn link_args<T: Linker>(cmd: &mut T,
+                        sess: &Session,
+                        dylib: bool,
+                        tmpdir: &Path,
+                        objects: &[PathBuf],
+                        out_filename: &Path,
+                        trans: &CrateTranslation,
+                        outputs: &OutputFilenames) {
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
@@ -857,7 +908,7 @@ fn link_args(cmd: &mut Linker,
 // Also note that the native libraries linked here are only the ones located
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
-fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
+fn add_local_native_libraries<T: Linker>(cmd: &mut T, sess: &Session) {
     sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path, k| {
         match k {
             PathKind::Framework => { cmd.framework_path(path); }
@@ -907,8 +958,7 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
 // Rust crates are not considered at all when creating an rlib output. All
 // dependencies will be linked when producing the final output (instead of
 // the intermediate rlib version)
-fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
-                            dylib: bool, tmpdir: &Path) {
+fn add_upstream_rust_crates<T: Linker>(cmd: &mut T, sess: &Session, dylib: bool, tmpdir: &Path) {
     // All of the heavy lifting has previously been accomplished by the
     // dependency_format module of the compiler. This is just crawling the
     // output of that module, adding crates as necessary.
@@ -982,8 +1032,11 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
     // (aka we're making an executable), we can just pass the rlib blindly to
     // the linker (fast) because it's fine if it's not actually included as
     // we're at the end of the dependency chain.
-    fn add_static_crate(cmd: &mut Linker, sess: &Session, tmpdir: &Path,
-                        dylib: bool, cratepath: &Path) {
+    fn add_static_crate<T: Linker>(cmd: &mut T,
+                                   sess: &Session,
+                                   tmpdir: &Path,
+                                   dylib: bool,
+                                   cratepath: &Path) {
         if !sess.lto() && !dylib {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
             return
@@ -1030,7 +1083,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
     }
 
     // Same thing as above, but for dynamic crates instead of static crates.
-    fn add_dynamic_crate(cmd: &mut Linker, sess: &Session, cratepath: &Path) {
+    fn add_dynamic_crate<T: Linker>(cmd: &mut T, sess: &Session, cratepath: &Path) {
         // If we're performing LTO, then it should have been previously required
         // that all upstream rust dependencies were available in an rlib format.
         assert!(!sess.lto());
@@ -1065,7 +1118,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
+fn add_upstream_native_libraries<T: Linker>(cmd: &mut T, sess: &Session) {
     // Be sure to use a topological sorting of crates because there may be
     // interdependencies between native libraries. When passing -nodefaultlibs,
     // for example, almost all native libraries depend on libc, so we have to
