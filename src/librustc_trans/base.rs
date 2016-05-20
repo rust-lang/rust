@@ -617,7 +617,13 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         (&ty::TyRawPtr(..), &ty::TyRawPtr(..)) => {
             let (base, info) = if common::type_is_fat_ptr(bcx.tcx(), src_ty) {
                 // fat-ptr to fat-ptr unsize preserves the vtable
-                load_fat_ptr(bcx, src, src_ty)
+                // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
+                // So we need to pointercast the base to ensure
+                // the types match up.
+                let (base, info) = load_fat_ptr(bcx, src, src_ty);
+                let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx(), dst_ty);
+                let base = PointerCast(bcx, base, llcast_ty);
+                (base, info)
             } else {
                 let base = load_ty(bcx, src, src_ty);
                 unsize_thin_ptr(bcx, base, src_ty, dst_ty)
