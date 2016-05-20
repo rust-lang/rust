@@ -54,7 +54,7 @@ Four forms of `break` will be supported:
 3.  `break EXPR;`
 4.  `break 'label EXPR;`
 
-where `'label` is the name of a loop and `EXPR` is an expression.
+where `'label` is the name of a loop and `EXPR` is an converging expression.
 
 ### Result type of loop
 
@@ -88,7 +88,6 @@ This proposal changes the result type of 'loop' to `T`, where:
 
 *   if a loop is "broken" via `break;` or `break 'label;`, the loop's result type must be `()`
 *   if a loop is "broken" via `break EXPR;` or `break 'label EXPR;`, `EXPR` must evaluate to type `T`
-*   as a special case, if a loop is "broken" via `break EXPR;` or `break 'label EXPR;` where `EXPR` evaluates to type `!` (does not return), this does not place a constraint on the type of the loop
 *   if external constaint on the loop's result type exist (e.g. `let x: S = loop { ... };`), then `T` must be coercible to this type
 
 It is an error if these types do not agree or if the compiler's type deduction
@@ -128,11 +127,6 @@ fn f() -> () {
 fn g() -> u32 {
     // ! coerces to u32
     loop {}
-}
-fn z() -> ! {
-    loop {
-        break panic!();
-    }
 }
 ```
 
