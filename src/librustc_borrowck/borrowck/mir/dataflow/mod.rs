@@ -951,6 +951,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
 
     // sets on_entry bits for Arg lvalues
     fn start_block_effect(&self, ctxt: &Self::Ctxt, sets: &mut BlockSets) {
+        // set all bits to 1 (uninit) before gathering counterevidence
         for e in &mut sets.on_entry[..] { *e = !0; }
 
         super::drop_flag_effects_for_function_entry(
