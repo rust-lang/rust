@@ -511,7 +511,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[P<hi
                 return;
             }
         }
-        // (path, fn_has_argument, methods)
+        // (path, fn_has_argument, methods, suffix)
         let know_types: &[(&[_], _, &[_], _)] = &[(&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
                                                   (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
                                                   (&paths::OPTION,

@@ -288,7 +288,7 @@ fn or_fun_call() {
     with_vec.unwrap_or(vec![]);
     //~^ERROR use of `unwrap_or`
     //~|HELP try this
-    //~|SUGGESTION with_vec.unwrap_or_else(|| vec![]);
+    // FIXME #944: ~|SUGGESTION with_vec.unwrap_or_else(|| vec![]);
 
     let without_default = Some(Foo);
     without_default.unwrap_or(Foo::new());
