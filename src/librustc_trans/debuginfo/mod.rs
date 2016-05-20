@@ -14,8 +14,7 @@ mod doc;
 use self::VariableAccess::*;
 use self::VariableKind::*;
 
-use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit,
-                  get_namespace_and_span_for_item};
+use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
 use self::namespace::mangled_name_of_item;
 use self::type_names::compute_debuginfo_type_name;
 use self::metadata::{type_metadata, diverging_type_metadata};
@@ -33,7 +32,7 @@ use rustc::hir;
 
 use abi::Abi;
 use common::{NodeIdAndSpan, CrateContext, FunctionContext, Block, BlockAndBuilder};
-use monomorphize::Instance;
+use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
@@ -240,8 +239,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // Do this here already, in case we do an early exit from this function.
     source_loc::set_debug_location(cx, None, UnknownLocation);
 
+    let (containing_scope, span) = get_containing_scope_and_span(cx, instance);
+
     // This can be the case for functions inlined from another crate
-    let (containing_scope, span) = get_namespace_and_span_for_item(cx, instance.def);
     if span == codemap::DUMMY_SP {
         return FunctionDebugContext::FunctionWithoutDebugInfo;
     }
@@ -283,6 +283,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let function_name = CString::new(name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
+
     let fn_metadata = unsafe {
         llvm::LLVMDIBuilderCreateFunction(
             DIB(cx),
@@ -403,6 +404,47 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         };
 
         return create_DIArray(DIB(cx), &template_params[..]);
+    }
+
+    fn get_containing_scope_and_span<'ccx, 'tcx>(cx: &CrateContext<'ccx, 'tcx>,
+                                                 instance: Instance<'tcx>)
+                                                 -> (DIScope, Span) {
+        // First, let's see if this is a method within an inherent impl. Because
+        // if yes, we want to make the result subroutine DIE a child of the
+        // subroutine's self-type.
+        let self_type = cx.tcx().impl_of_method(instance.def).and_then(|impl_def_id| {
+            // If the method does *not* belong to a trait, proceed
+            if cx.tcx().trait_id_of_impl(impl_def_id).is_none() {
+                let impl_self_ty = cx.tcx().lookup_item_type(impl_def_id).ty;
+                let impl_self_ty = cx.tcx().erase_regions(&impl_self_ty);
+                let impl_self_ty = monomorphize::apply_param_substs(cx.tcx(),
+                                                                    instance.substs,
+                                                                    &impl_self_ty);
+                Some(type_metadata(cx, impl_self_ty, codemap::DUMMY_SP))
+            } else {
+                // For trait method impls we still use the "parallel namespace"
+                // strategy
+                None
+            }
+        });
+
+        let containing_scope = self_type.unwrap_or_else(|| {
+            namespace::item_namespace(cx, DefId {
+                krate: instance.def.krate,
+                index: cx.tcx()
+                         .def_key(instance.def)
+                         .parent
+                         .expect("get_containing_scope_and_span: missing parent?")
+            })
+        });
+
+        // Try to get some span information, if we have an inlined item.
+        let definition_span = match cx.external().borrow().get(&instance.def) {
+            Some(&Some(node_id)) => cx.tcx().map.span(node_id),
+            _ => cx.tcx().map.def_id_span(instance.def, codemap::DUMMY_SP)
+        };
+
+        (containing_scope, definition_span)
     }
 }
 
