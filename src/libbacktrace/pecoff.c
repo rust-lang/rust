@@ -602,6 +602,9 @@ coff_add (struct backtrace_state *state, int descriptor,
   const b_coff_section_header *sects;
   struct backtrace_view str_view;
   int str_view_valid;
+  // NOTE: upstream this is a `size_t` but this was fixed in Rust commit
+  //       55e2b7e1b, see #33729 for more info. If you see this in a diff
+  //       against the upstream libbacktrace, that's what's going on.
   uint32_t str_size;
   off_t str_off;
   struct backtrace_view syms_view;
