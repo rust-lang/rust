@@ -1667,8 +1667,33 @@ impl RandomState {
     #[allow(deprecated)] // rand
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn new() -> RandomState {
-        let mut r = rand::thread_rng();
-        RandomState { k0: r.gen(), k1: r.gen() }
+        // Historically this function did not cache keys from the OS and instead
+        // simply always called `rand::thread_rng().gen()` twice. In #31356 it
+        // was discovered, however, that because we re-seed the thread-local RNG
+        // from the OS periodically that this can cause excessive slowdown when
+        // many hash maps are created on a thread. To solve this performance
+        // trap we cache the first set of randomly generated keys per-thread.
+        //
+        // In doing this, however, we lose the property that all hash maps have
+        // nondeterministic iteration order as all of those created on the same
+        // thread would have the same hash keys. This property has been nice in
+        // the past as it allows for maximal flexibility in the implementation
+        // of `HashMap` itself.
+        //
+        // The constraint here (if there even is one) is just that maps created
+        // on the same thread have the same iteration order, and that *may* be
+        // relied upon even though it is not a documented guarantee at all of
+        // the `HashMap` type. In any case we've decided that this is reasonable
+        // for now, so caching keys thread-locally seems fine.
+        thread_local!(static KEYS: (u64, u64) = {
+            let r = rand::OsRng::new();
+            let mut r = r.expect("failed to create an OS RNG");
+            (r.gen(), r.gen())
+        });
+
+        KEYS.with(|&(k0, k1)| {
+            RandomState { k0: k0, k1: k1 }
+        })
     }
 }
 
