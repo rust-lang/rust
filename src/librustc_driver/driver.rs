@@ -1174,6 +1174,9 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                          Some(ref n) if *n == "dylib" => {
                              Some(config::CrateTypeDylib)
                          }
+                         Some(ref n) if *n == "cdylib" => {
+                             Some(config::CrateTypeCdylib)
+                         }
                          Some(ref n) if *n == "lib" => {
                              Some(config::default_lib_output())
                          }

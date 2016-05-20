@@ -300,6 +300,7 @@ pub enum CrateType {
     CrateTypeDylib,
     CrateTypeRlib,
     CrateTypeStaticlib,
+    CrateTypeCdylib,
 }
 
 #[derive(Clone)]
@@ -1326,6 +1327,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
                 "rlib"      => CrateTypeRlib,
                 "staticlib" => CrateTypeStaticlib,
                 "dylib"     => CrateTypeDylib,
+                "cdylib"    => CrateTypeCdylib,
                 "bin"       => CrateTypeExecutable,
                 _ => {
                     return Err(format!("unknown crate type: `{}`",
@@ -1413,7 +1415,8 @@ impl fmt::Display for CrateType {
             CrateTypeExecutable => "bin".fmt(f),
             CrateTypeDylib => "dylib".fmt(f),
             CrateTypeRlib => "rlib".fmt(f),
-            CrateTypeStaticlib => "staticlib".fmt(f)
+            CrateTypeStaticlib => "staticlib".fmt(f),
+            CrateTypeCdylib => "cdylib".fmt(f),
         }
     }
 }

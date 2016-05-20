@@ -18,7 +18,7 @@ use std::process::Command;
 use back::archive;
 use middle::dependency_format::Linkage;
 use session::Session;
-use session::config::CrateTypeDylib;
+use session::config::CrateType;
 use session::config;
 use syntax::ast;
 use CrateTranslation;
@@ -42,7 +42,7 @@ pub trait Linker {
     fn framework_path(&mut self, path: &Path);
     fn output_filename(&mut self, path: &Path);
     fn add_object(&mut self, path: &Path);
-    fn gc_sections(&mut self, is_dylib: bool);
+    fn gc_sections(&mut self, keep_metadata: bool);
     fn position_independent_executable(&mut self);
     fn optimize(&mut self);
     fn debuginfo(&mut self);
@@ -53,8 +53,11 @@ pub trait Linker {
     fn hint_dynamic(&mut self);
     fn whole_archives(&mut self);
     fn no_whole_archives(&mut self);
-    fn export_symbols(&mut self, sess: &Session, trans: &CrateTranslation,
-                      tmpdir: &Path);
+    fn export_symbols(&mut self,
+                      sess: &Session,
+                      trans: &CrateTranslation,
+                      tmpdir: &Path,
+                      crate_type: CrateType);
 }
 
 pub struct GnuLinker<'a> {
@@ -113,7 +116,7 @@ impl<'a> Linker for GnuLinker<'a> {
         }
     }
 
-    fn gc_sections(&mut self, is_dylib: bool) {
+    fn gc_sections(&mut self, keep_metadata: bool) {
         // The dead_strip option to the linker specifies that functions and data
         // unreachable by the entry point will be removed. This is quite useful
         // with Rust's compilation model of compiling libraries at a time into
@@ -139,7 +142,7 @@ impl<'a> Linker for GnuLinker<'a> {
         // eliminate the metadata. If we're building an executable, however,
         // --gc-sections drops the size of hello world from 1.8MB to 597K, a 67%
         // reduction.
-        } else if !is_dylib {
+        } else if !keep_metadata {
             self.cmd.arg("-Wl,--gc-sections");
         }
     }
@@ -198,8 +201,46 @@ impl<'a> Linker for GnuLinker<'a> {
         self.cmd.arg("-Wl,-Bdynamic");
     }
 
-    fn export_symbols(&mut self, _: &Session, _: &CrateTranslation, _: &Path) {
-        // noop, visibility in object files takes care of this
+    fn export_symbols(&mut self,
+                      sess: &Session,
+                      trans: &CrateTranslation,
+                      tmpdir: &Path,
+                      crate_type: CrateType) {
+        // If we're compiling a dylib, then we let symbol visibility in object
+        // files to take care of whether they're exported or not.
+        //
+        // If we're compiling a cdylib, however, we manually create a list of
+        // exported symbols to ensure we don't expose any more. The object files
+        // have far more public symbols than we actually want to export, so we
+        // hide them all here.
+        if crate_type == CrateType::CrateTypeDylib {
+            return
+        }
+
+        let path = tmpdir.join("list");
+        let prefix = if self.sess.target.target.options.is_like_osx {
+            "_"
+        } else {
+            ""
+        };
+        let res = (|| -> io::Result<()> {
+            let mut f = BufWriter::new(File::create(&path)?);
+            for sym in exported_symbols(sess, trans, crate_type) {
+                writeln!(f, "{}{}", prefix, sym)?;
+            }
+            Ok(())
+        })();
+        if let Err(e) = res {
+            sess.fatal(&format!("failed to write lib.def file: {}", e));
+        }
+        let mut arg = OsString::new();
+        if self.sess.target.target.options.is_like_osx {
+            arg.push("-Wl,-exported_symbols_list,");
+        } else {
+            arg.push("-Wl,--retain-symbols-file=");
+        }
+        arg.push(&path);
+        self.cmd.arg(arg);
     }
 }
 
@@ -220,7 +261,9 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.cmd.arg(arg);
     }
 
-    fn gc_sections(&mut self, _is_dylib: bool) { self.cmd.arg("/OPT:REF,ICF"); }
+    fn gc_sections(&mut self, _keep_metadata: bool) {
+        self.cmd.arg("/OPT:REF,ICF");
+    }
 
     fn link_dylib(&mut self, lib: &str) {
         self.cmd.arg(&format!("{}.lib", lib));
@@ -322,8 +365,11 @@ impl<'a> Linker for MsvcLinker<'a> {
     // crates. Upstream rlibs may be linked statically to this dynamic library,
     // in which case they may continue to transitively be used and hence need
     // their symbols exported.
-    fn export_symbols(&mut self, sess: &Session, trans: &CrateTranslation,
-                      tmpdir: &Path) {
+    fn export_symbols(&mut self,
+                      sess: &Session,
+                      trans: &CrateTranslation,
+                      tmpdir: &Path,
+                      crate_type: CrateType) {
         let path = tmpdir.join("lib.def");
         let res = (|| -> io::Result<()> {
             let mut f = BufWriter::new(File::create(&path)?);
@@ -333,30 +379,8 @@ impl<'a> Linker for MsvcLinker<'a> {
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
 
-            // Write out all our local symbols
-            for sym in trans.reachable.iter() {
+            for sym in exported_symbols(sess, trans, crate_type) {
                 writeln!(f, "  {}", sym)?;
-            }
-
-            // Take a look at how all upstream crates are linked into this
-            // dynamic library. For all statically linked libraries we take all
-            // their reachable symbols and emit them as well.
-            let cstore = &sess.cstore;
-            let formats = sess.dependency_formats.borrow();
-            let symbols = formats[&CrateTypeDylib].iter();
-            let symbols = symbols.enumerate().filter_map(|(i, f)| {
-                if *f == Linkage::Static {
-                    Some((i + 1) as ast::CrateNum)
-                } else {
-                    None
-                }
-            }).flat_map(|cnum| {
-                cstore.reachable_ids(cnum)
-            }).map(|did| {
-                cstore.item_symbol(did)
-            });
-            for symbol in symbols {
-                writeln!(f, "  {}", symbol)?;
             }
 
             Ok(())
@@ -368,4 +392,37 @@ impl<'a> Linker for MsvcLinker<'a> {
         arg.push(path);
         self.cmd.arg(&arg);
     }
+}
+
+fn exported_symbols(sess: &Session,
+                    trans: &CrateTranslation,
+                    crate_type: CrateType) -> Vec<String> {
+    let mut symbols = trans.reachable.iter().cloned().collect::<Vec<_>>();
+
+    // If we're producing anything other than a dylib then the `reachable` array
+    // above is the exhaustive set of symbols we should be exporting.
+    //
+    // For dylibs, however, we need to take a look at how all upstream crates
+    // are linked into this dynamic library. For all statically linked
+    // libraries we take all their reachable symbols and emit them as well.
+    if crate_type != CrateType::CrateTypeDylib {
+        return symbols
+    }
+
+    let cstore = &sess.cstore;
+    let formats = sess.dependency_formats.borrow();
+    let upstream_symbols = formats[&crate_type].iter();
+    symbols.extend(upstream_symbols.enumerate().filter_map(|(i, f)| {
+        if *f == Linkage::Static {
+            Some((i + 1) as ast::CrateNum)
+        } else {
+            None
+        }
+    }).flat_map(|cnum| {
+        cstore.reachable_ids(cnum)
+    }).map(|did| {
+        cstore.item_symbol(did)
+    }));
+
+    return symbols
 }
