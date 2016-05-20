@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,21 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct X {
-    x: String,
+trait Foo {
+    fn foo<T: Default>(x: T) -> Self;
 }
 
-impl Drop for X {
-    fn drop(&mut self) {
-        println!("value: {}", self.x);
-    }
+struct Bar;
+
+impl Foo for Bar {
+    fn foo(x: bool) -> Self { Bar } //~ ERROR E0049
 }
 
 fn main() {
-    let x = X { x: "hello".to_string() };
-
-    match x {
-        X { x: y } => println!("contents: {}", y)
-        //~^ ERROR cannot move out of type `X`, which implements the `Drop` trait
-    }
 }
