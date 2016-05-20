@@ -10,6 +10,7 @@
 
 use syntax::abi::{Abi};
 use syntax::ast;
+use syntax::codemap::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::repr::{self, Mir};
@@ -58,34 +59,9 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     ref terminator,
                                     is_cleanup: _ } = bb_data;
 
-        let (args, span) = if let Some(repr::Terminator { ref kind, span, .. }) = *terminator {
-            if let repr::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind
-            {
-                if let repr::Operand::Constant(ref func) = *oper
-                {
-                    if let ty::TyFnDef(def_id, _, &ty::BareFnTy { abi, .. }) = func.ty.sty
-                    {
-                        let name = tcx.item_name(def_id);
-                        if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
-                            if name.as_str() == "rustc_peek" {
-                                (args, span)
-                            } else {
-                                continue;
-                            }
-                        } else {
-                            continue;
-                        }
-                    } else {
-                        continue;
-                    }
-                } else {
-                    continue;
-                }
-            } else {
-                continue;
-            }
-        } else {
-            continue;
+        let (args, span) = match is_rustc_peek(tcx, terminator) {
+            Some(args_and_span) => args_and_span,
+            None => continue,
         };
         assert!(args.len() == 1);
         let peek_arg_lval = match args[0] {
@@ -162,4 +138,28 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           rustc_peek expects input of \
                                           form `&expr`"));
     }
+
+}
+
+fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           terminator: &'a Option<repr::Terminator<'tcx>>)
+                           -> Option<(&'a [repr::Operand<'tcx>], Span)> {
+    if let Some(repr::Terminator { ref kind, span, .. }) = *terminator {
+        if let repr::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind
+        {
+            if let repr::Operand::Constant(ref func) = *oper
+            {
+                if let ty::TyFnDef(def_id, _, &ty::BareFnTy { abi, .. }) = func.ty.sty
+                {
+                    let name = tcx.item_name(def_id);
+                    if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
+                        if name.as_str() == "rustc_peek" {
+                            return Some((args, span));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return None;
 }
