@@ -26,8 +26,9 @@
 //! [1]: http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations
 //!
 //! Atomic variables are safe to share between threads (they implement `Sync`)
-//! but they do not themselves provide the mechanism for sharing. The most
-//! common way to share an atomic variable is to put it into an `Arc` (an
+//! but they do not themselves provide the mechanism for sharing and follow the
+//! [threading model](../../../std/thread/index.html#the-threading-model) of rust.
+//! The most common way to share an atomic variable is to put it into an `Arc` (an
 //! atomically-reference-counted shared pointer).
 //!
 //! Most atomic types may be stored in static variables, initialized using
@@ -48,12 +49,16 @@
 //!     let spinlock = Arc::new(AtomicUsize::new(1));
 //!
 //!     let spinlock_clone = spinlock.clone();
-//!     thread::spawn(move|| {
+//!     let thread = thread::spawn(move|| {
 //!         spinlock_clone.store(0, Ordering::SeqCst);
 //!     });
 //!
 //!     // Wait for the other thread to release the lock
 //!     while spinlock.load(Ordering::SeqCst) != 0 {}
+//!
+//!     if let Err(panic) = thread.join() {
+//!         println!("Thread had an error: {:?}", panic);
+//!     }
 //! }
 //! ```
 //!
