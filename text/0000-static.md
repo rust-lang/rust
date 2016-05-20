@@ -12,8 +12,7 @@ Let's default lifetimes in static and const declarations to `'static`.
 [motivation]: #motivation
 
 Currently, having references in `static` and `const` declarations is cumbersome 
-due to having to explicitly write `&'static ..`. On the other hand anything but 
-static is likely either useless, unsound or both. Also the long lifetime name 
+due to having to explicitly write `&'static ..`. Also the long lifetime name 
 causes substantial rightwards drift, which makes it hard to format the code 
 to be visually appealing.
 
