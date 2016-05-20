@@ -50,6 +50,10 @@ POSSIBILITY OF SUCH DAMAGE.  */
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
+#ifndef MAP_FAILED
+#define MAP_FAILED ((void *)-1)
+#endif
+
 /* A list of free memory blocks.  */
 
 struct backtrace_freelist_struct
