@@ -37,10 +37,10 @@ statics and const declarations. In those declarations, the compiler will assume
 `'static` when a lifetime is not explicitly given in both refs and generics.
 
 Note that this RFC does not forbid writing the lifetimes, it only sets a 
-default when no is given. Thus the change is unlikely to cause any breakage and 
-should be deemed backwards-compatible. It's also very unlikely that 
-implementing this RFC will restrict our design space for `static` and `const` 
-definitions down the road.
+default when no is given. Thus the change will not cause any breakage and is 
+thus backwards-compatible. It's also very unlikely that implementing this RFC 
+will restrict our design space for `static` and `const` definitions down the 
+road.
 
 The `'static` default does *not* override lifetime elision in function 
 signatures, but work alongside it:
@@ -84,5 +84,5 @@ later.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-* Does this change requires changing the grammar?
-* Are there other Rust-code handling programs that need to be updated?
+* Are there third party Rust-code handling programs that need to be updated to
+deal with this change?
