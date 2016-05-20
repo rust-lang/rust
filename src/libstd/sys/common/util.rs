@@ -10,7 +10,6 @@
 
 use env;
 use fmt;
-use intrinsics;
 use io::prelude::*;
 use sync::atomic::{self, Ordering};
 use sys::stdio::Stderr;
@@ -34,9 +33,31 @@ pub fn dumb_print(args: fmt::Arguments) {
     let _ = Stderr::new().map(|mut stderr| stderr.write_fmt(args));
 }
 
+#[cfg(unix)]
+pub fn abort(args: fmt::Arguments) -> ! {
+    use libc;
+    dumb_print(format_args!("fatal runtime error: {}\n", args));
+    unsafe { libc::abort(); }
+}
+
+// On windows, use the processor-specific __fastfail mechanism
+// https://msdn.microsoft.com/en-us/library/dn774154.aspx
+#[cfg(all(windows, target_arch = "x86"))]
 pub fn abort(args: fmt::Arguments) -> ! {
     dumb_print(format_args!("fatal runtime error: {}\n", args));
-    unsafe { intrinsics::abort(); }
+    unsafe {
+        asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+        ::intrinsics::unreachable();
+    }
+}
+
+#[cfg(all(windows, target_arch = "x86_64"))]
+pub fn abort(args: fmt::Arguments) -> ! {
+    dumb_print(format_args!("fatal runtime error: {}\n", args));
+    unsafe {
+        asm!("int $$0x29" :: "{rcx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+        ::intrinsics::unreachable();
+    }
 }
 
 #[allow(dead_code)] // stack overflow detection not enabled on all platforms
