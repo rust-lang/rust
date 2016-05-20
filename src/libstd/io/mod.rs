@@ -726,7 +726,7 @@ pub trait Read {
     /// # fn foo() -> io::Result<()> {
     /// let mut f = try!(File::open("foo.txt"));
     ///
-    /// for c in f.chars() {
+    /// for c in f.utf8_chars() {
     ///     println!("{}", c.unwrap());
     /// }
     /// # Ok(())
@@ -736,8 +736,15 @@ pub trait Read {
                                          of where errors happen is currently \
                                          unclear and may change",
                issue = "27802")]
-    fn chars(self) -> Chars<Self> where Self: Sized {
-        Chars { inner: self, buffer: None }
+    fn utf8_chars(self) -> Utf8Chars<Self> where Self: Sized {
+        Utf8Chars { inner: self, buffer: None }
+    }
+
+    /// Former name of the `utf8_chars` method.
+    #[rustc_deprecated(since = "1.10.0", reason = "renamed to `utf8_chars`")]
+    #[unstable(feature = "io", reason = "renamed while unstable", issue = "27802")]
+    fn chars(self) -> Utf8Chars<Self> where Self: Sized {
+        self.utf8_chars()
     }
 
     /// Creates an adaptor which will chain this stream with another.
@@ -1547,23 +1554,23 @@ impl<R: Read> Iterator for Bytes<R> {
 
 /// An iterator over the `char`s of a reader.
 ///
-/// This struct is generally created by calling [`chars()`][chars] on a reader.
-/// Please see the documentation of `chars()` for more details.
+/// This struct is generally created by calling [`utf8_chars()`][utf8_chars] on a reader.
+/// Please see the documentation of `utf8_chars()` for more details.
 ///
-/// [chars]: trait.Read.html#method.chars
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+/// [utf8_chars]: trait.Read.html#method.utf8_chars
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars",
            issue = "27802")]
-pub struct Chars<R> {
+pub struct Utf8Chars<R> {
     inner: R,
     buffer: Option<u8>,
 }
 
-/// An enumeration of possible errors that can be generated from the `Chars`
+/// An enumeration of possible errors that can be generated from the `Utf8Chars`
 /// adapter.
 #[derive(Debug)]
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars",
            issue = "27802")]
-pub enum CharsError {
+pub enum Utf8CharsError {
     /// Variant representing that the underlying stream was read successfully
     /// but contains a byte sequence ill-formed in UTF-8.
     InvalidUtf8,
@@ -1576,12 +1583,12 @@ pub enum CharsError {
     Io(Error),
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars",
            issue = "27802")]
-impl<R: Read> Iterator for Chars<R> {
-    type Item = result::Result<char, CharsError>;
+impl<R: Read> Iterator for Utf8Chars<R> {
+    type Item = result::Result<char, Utf8CharsError>;
 
-    fn next(&mut self) -> Option<result::Result<char, CharsError>> {
+    fn next(&mut self) -> Option<result::Result<char, Utf8CharsError>> {
         let mut buf = [0];
         macro_rules! read_byte {
             (EOF => $on_eof: expr) => {
@@ -1591,7 +1598,7 @@ impl<R: Read> Iterator for Chars<R> {
                             Ok(0) => $on_eof,
                             Ok(..) => break,
                             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-                            Err(e) => return Some(Err(CharsError::Io(e))),
+                            Err(e) => return Some(Err(Utf8CharsError::Io(e))),
                         }
                     }
                     buf[0]
@@ -1607,11 +1614,11 @@ impl<R: Read> Iterator for Chars<R> {
         macro_rules! continuation_byte {
             ($range: pat) => {
                 {
-                    match read_byte!(EOF => return Some(Err(CharsError::IncompleteUtf8))) {
+                    match read_byte!(EOF => return Some(Err(Utf8CharsError::IncompleteUtf8))) {
                         byte @ $range => (byte & 0b0011_1111) as u32,
                         byte => {
                             self.buffer = Some(byte);
-                            return Some(Err(CharsError::InvalidUtf8))
+                            return Some(Err(Utf8CharsError::InvalidUtf8))
                         }
                     }
                 }
@@ -1647,7 +1654,7 @@ impl<R: Read> Iterator for Chars<R> {
                 let fourth = continuation_byte!(0x80...0xBF);
                 ((first & 0b0000_0111) as u32) << 18 | second << 12 | third << 6 | fourth
             }
-            _ => return Some(Err(CharsError::InvalidUtf8))
+            _ => return Some(Err(Utf8CharsError::InvalidUtf8))
         };
         unsafe {
             Some(Ok(char::from_u32_unchecked(code_point)))
@@ -1655,38 +1662,38 @@ impl<R: Read> Iterator for Chars<R> {
     }
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars",
            issue = "27802")]
-impl std_error::Error for CharsError {
+impl std_error::Error for Utf8CharsError {
     fn description(&self) -> &str {
         match *self {
-            CharsError::InvalidUtf8 => "invalid UTF-8 byte sequence",
-            CharsError::IncompleteUtf8 => {
+            Utf8CharsError::InvalidUtf8 => "invalid UTF-8 byte sequence",
+            Utf8CharsError::IncompleteUtf8 => {
                 "stream ended in the middle of an UTF-8 byte sequence"
             }
-            CharsError::Io(ref e) => std_error::Error::description(e),
+            Utf8CharsError::Io(ref e) => std_error::Error::description(e),
         }
     }
     fn cause(&self) -> Option<&std_error::Error> {
         match *self {
-            CharsError::InvalidUtf8 | CharsError::IncompleteUtf8 => None,
-            CharsError::Io(ref e) => e.cause(),
+            Utf8CharsError::InvalidUtf8 | Utf8CharsError::IncompleteUtf8 => None,
+            Utf8CharsError::Io(ref e) => e.cause(),
         }
     }
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars",
            issue = "27802")]
-impl fmt::Display for CharsError {
+impl fmt::Display for Utf8CharsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            CharsError::InvalidUtf8 => {
+            Utf8CharsError::InvalidUtf8 => {
                 "invalid UTF-8 byte sequence".fmt(f)
             }
-            CharsError::IncompleteUtf8 => {
+            Utf8CharsError::IncompleteUtf8 => {
                 "stream ended in the middle of an UTF-8 byte sequence".fmt(f)
             }
-            CharsError::Io(ref e) => e.fmt(f),
+            Utf8CharsError::Io(ref e) => e.fmt(f),
         }
     }
 }
@@ -1761,7 +1768,7 @@ mod tests {
     use prelude::v1::*;
     use io::prelude::*;
     use io;
-    use super::CharsError;
+    use super::Utf8CharsError;
     use super::Cursor;
     use test;
     use super::repeat;
@@ -1769,15 +1776,16 @@ mod tests {
     fn chars_lossy(bytes: &[u8]) -> String {
         // Follow Unicode Standard §5.22 "Best Practice for U+FFFD Substitution"
         // http://www.unicode.org/versions/Unicode8.0.0/ch05.pdf#G40630
-        Cursor::new(bytes).chars().map(|result| match result {
+        Cursor::new(bytes).utf8_chars().map(|result| match result {
             Ok(c) => c,
-            Err(CharsError::InvalidUtf8) | Err(CharsError::IncompleteUtf8) => '\u{FFFD}',
-            Err(CharsError::Io(e)) => panic!("{}", e),
+            Err(Utf8CharsError::InvalidUtf8) |
+            Err(Utf8CharsError::IncompleteUtf8) => '\u{FFFD}',
+            Err(Utf8CharsError::Io(e)) => panic!("{}", e),
         }).collect()
     }
 
     #[test]
-    fn chars() {
+    fn utf8_chars() {
         assert_eq!(chars_lossy(b"\xf0\x9fabc"), "�abc");
         assert_eq!(chars_lossy(b"\xed\xa0\x80a"), "���a");
         assert_eq!(chars_lossy(b"\xed\xa0a"), "��a");

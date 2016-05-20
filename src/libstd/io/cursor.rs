@@ -481,7 +481,7 @@ mod tests {
     #[test]
     fn test_read_char() {
         let b = &b"Vi\xE1\xBB\x87t"[..];
-        let mut c = Cursor::new(b).chars();
+        let mut c = Cursor::new(b).utf8_chars();
         assert_eq!(c.next().unwrap().unwrap(), 'V');
         assert_eq!(c.next().unwrap().unwrap(), 'i');
         assert_eq!(c.next().unwrap().unwrap(), 'ệ');
@@ -492,7 +492,7 @@ mod tests {
     #[test]
     fn test_read_bad_char() {
         let b = &b"\x80"[..];
-        let mut c = Cursor::new(b).chars();
+        let mut c = Cursor::new(b).utf8_chars();
         assert!(c.next().unwrap().is_err());
     }
 
