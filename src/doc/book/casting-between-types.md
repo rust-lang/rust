@@ -135,14 +135,14 @@ cast four bytes into a `u32`:
 ```rust,ignore
 let a = [0u8, 0u8, 0u8, 0u8];
 
-let b = a as u32; // four eights makes 32
+let b = a as u32; // four u8s makes a u32
 ```
 
 This errors with:
 
 ```text
 error: non-scalar cast: `[u8; 4]` as `u32`
-let b = a as u32; // four eights makes 32
+let b = a as u32; // four u8s makes a u32
         ^~~~~~~~
 ```
 
