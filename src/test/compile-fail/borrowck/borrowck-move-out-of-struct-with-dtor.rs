@@ -16,17 +16,17 @@ impl Drop for S {
 fn move_in_match() {
     match (S {f:"foo".to_string()}) {
         S {f:_s} => {}
-        //~^ ERROR cannot move out of type `S`, which defines the `Drop` trait
+        //~^ ERROR cannot move out of type `S`, which implements the `Drop` trait
     }
 }
 
 fn move_in_let() {
     let S {f:_s} = S {f:"foo".to_string()};
-    //~^ ERROR cannot move out of type `S`, which defines the `Drop` trait
+    //~^ ERROR cannot move out of type `S`, which implements the `Drop` trait
 }
 
 fn move_in_fn_arg(S {f:_s}: S) {
-    //~^ ERROR cannot move out of type `S`, which defines the `Drop` trait
+    //~^ ERROR cannot move out of type `S`, which implements the `Drop` trait
 }
 
 fn main() {}
