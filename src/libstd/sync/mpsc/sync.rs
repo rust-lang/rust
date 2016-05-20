@@ -44,6 +44,7 @@ use sync::atomic::{Ordering, AtomicUsize};
 use sync::mpsc::blocking::{self, WaitToken, SignalToken};
 use sync::mpsc::select::StartResult::{self, Installed, Abort};
 use sync::{Mutex, MutexGuard};
+use time::Instant;
 
 pub struct Packet<T> {
     /// Only field outside of the mutex. Just done for kicks, but mainly because
@@ -124,6 +125,38 @@ fn wait<'a, 'b, T>(lock: &'a Mutex<State<T>>,
     drop(guard);         // unlock
     wait_token.wait();   // block
     lock.lock().unwrap() // relock
+}
+
+/// Same as wait, but waiting at most until `deadline`.
+fn wait_timeout_receiver<'a, 'b, T>(lock: &'a Mutex<State<T>>,
+                                    deadline: Instant,
+                                    mut guard: MutexGuard<'b, State<T>>,
+                                    success: &mut bool)
+                                    -> MutexGuard<'a, State<T>>
+{
+    let (wait_token, signal_token) = blocking::tokens();
+    match mem::replace(&mut guard.blocker, BlockedReceiver(signal_token)) {
+        NoneBlocked => {}
+        _ => unreachable!(),
+    }
+    drop(guard);         // unlock
+    *success = wait_token.wait_max_until(deadline);   // block
+    let mut new_guard = lock.lock().unwrap(); // relock
+    if !*success {
+        abort_selection(&mut new_guard);
+    }
+    new_guard
+}
+
+fn abort_selection<'a, T>(guard: &mut MutexGuard<'a , State<T>>) -> bool {
+    match mem::replace(&mut guard.blocker, NoneBlocked) {
+        NoneBlocked => true,
+        BlockedSender(token) => {
+            guard.blocker = BlockedSender(token);
+            true
+        }
+        BlockedReceiver(token) => { drop(token); false }
+    }
 }
 
 /// Wakes up a thread, dropping the lock at the correct time
@@ -238,22 +271,37 @@ impl<T> Packet<T> {
     //
     // When reading this, remember that there can only ever be one receiver at
     // time.
-    pub fn recv(&self) -> Result<T, ()> {
+    pub fn recv(&self, deadline: Option<Instant>) -> Result<T, Failure> {
         let mut guard = self.lock.lock().unwrap();
 
-        // Wait for the buffer to have something in it. No need for a while loop
-        // because we're the only receiver.
-        let mut waited = false;
+        let mut woke_up_after_waiting = false;
+        // Wait for the buffer to have something in it. No need for a
+        // while loop because we're the only receiver.
         if !guard.disconnected && guard.buf.size() == 0 {
-            guard = wait(&self.lock, guard, BlockedReceiver);
-            waited = true;
+            if let Some(deadline) = deadline {
+                guard = wait_timeout_receiver(&self.lock,
+                                              deadline,
+                                              guard,
+                                              &mut woke_up_after_waiting);
+            } else {
+                guard = wait(&self.lock, guard, BlockedReceiver);
+                woke_up_after_waiting = true;
+            }
         }
-        if guard.disconnected && guard.buf.size() == 0 { return Err(()) }
+
+        // NB: Channel could be disconnected while waiting, so the order of
+        // these conditionals is important.
+        if guard.disconnected && guard.buf.size() == 0 {
+            return Err(Disconnected);
+        }
 
         // Pick up the data, wake up our neighbors, and carry on
-        assert!(guard.buf.size() > 0);
+        assert!(guard.buf.size() > 0 || (deadline.is_some() && !woke_up_after_waiting));
+
+        if guard.buf.size() == 0 { return Err(Empty); }
+
         let ret = guard.buf.dequeue();
-        self.wakeup_senders(waited, guard);
+        self.wakeup_senders(woke_up_after_waiting, guard);
         Ok(ret)
     }
 
@@ -392,14 +440,7 @@ impl<T> Packet<T> {
     // The return value indicates whether there's data on this port.
     pub fn abort_selection(&self) -> bool {
         let mut guard = self.lock.lock().unwrap();
-        match mem::replace(&mut guard.blocker, NoneBlocked) {
-            NoneBlocked => true,
-            BlockedSender(token) => {
-                guard.blocker = BlockedSender(token);
-                true
-            }
-            BlockedReceiver(token) => { drop(token); false }
-        }
+        abort_selection(&mut guard)
     }
 }
 

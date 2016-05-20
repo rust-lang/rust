@@ -30,6 +30,7 @@ use sync::mpsc::select::StartResult::*;
 use sync::mpsc::select::StartResult;
 use sync::{Mutex, MutexGuard};
 use thread;
+use time::Instant;
 
 const DISCONNECTED: isize = isize::MIN;
 const FUDGE: isize = 1024;
@@ -66,7 +67,7 @@ impl<T> Packet<T> {
     // Creation of a packet *must* be followed by a call to postinit_lock
     // and later by inherit_blocker
     pub fn new() -> Packet<T> {
-        let p = Packet {
+        Packet {
             queue: mpsc::Queue::new(),
             cnt: AtomicIsize::new(0),
             steals: 0,
@@ -75,8 +76,7 @@ impl<T> Packet<T> {
             port_dropped: AtomicBool::new(false),
             sender_drain: AtomicIsize::new(0),
             select_lock: Mutex::new(()),
-        };
-        return p;
+        }
     }
 
     // This function should be used after newly created Packet
@@ -216,7 +216,7 @@ impl<T> Packet<T> {
         Ok(())
     }
 
-    pub fn recv(&mut self) -> Result<T, Failure> {
+    pub fn recv(&mut self, deadline: Option<Instant>) -> Result<T, Failure> {
         // This code is essentially the exact same as that found in the stream
         // case (see stream.rs)
         match self.try_recv() {
@@ -226,7 +226,14 @@ impl<T> Packet<T> {
 
         let (wait_token, signal_token) = blocking::tokens();
         if self.decrement(signal_token) == Installed {
-            wait_token.wait()
+            if let Some(deadline) = deadline {
+                let timed_out = !wait_token.wait_max_until(deadline);
+                if timed_out {
+                    self.abort_selection(false);
+                }
+            } else {
+                wait_token.wait();
+            }
         }
 
         match self.try_recv() {
