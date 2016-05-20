@@ -734,8 +734,6 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                 // MoveOuts from it, and *also* all MoveOuts
                 // for children and associated fragment sets.
                 let move_path_index = rev_lookup.find(lvalue);
-
-                sets.kill_set.set_bit(move_path_index.idx());
                 super::on_all_children_bits(tcx,
                                             mir,
                                             move_data,
@@ -777,7 +775,6 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
         let move_path_index = move_data.rev_lookup.find(dest_lval);
         let bits_per_block = self.bits_per_block(ctxt);
 
-        in_out.clear_bit(move_path_index.idx());
         let path_map = &move_data.path_map;
         super::on_all_children_bits(ctxt.0,
                                     ctxt.1,
