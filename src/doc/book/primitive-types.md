@@ -171,11 +171,9 @@ and a length.
 ## Slicing syntax
 
 You can use a combo of `&` and `[]` to create a slice from various things. The
-`&` indicates that slices are similar to [references], which we will cover in
+`&` indicates that slices are similar to [references][references], which we will cover in
 detail later in this section. The `[]`s, with a range, let you define the
 length of the slice:
-
-[references]: references-and-borrowing.html
 
 ```rust
 let a = [0, 1, 2, 3, 4];
@@ -198,7 +196,7 @@ documentation][slice].
 Rust’s `str` type is the most primitive string type. As an [unsized type][dst],
 it’s not very useful by itself, but becomes useful when placed behind a
 reference, like `&str`. We'll elaborate further when we cover
-[Strings][strings] and [references].
+[Strings][strings] and [references][references].
 
 [dst]: unsized-types.html
 [strings]: strings.html
