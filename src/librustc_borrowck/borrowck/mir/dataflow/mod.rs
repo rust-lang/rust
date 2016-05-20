@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use std::usize;
 
 use super::MirBorrowckCtxtPreDataflow;
-use super::gather_moves::{Location, MoveData, MovePathData, MovePathIndex, MoveOutIndex, PathMap};
+use super::gather_moves::{Location, MoveData, MovePathIndex, MoveOutIndex};
 use super::gather_moves::{MoveOut, MovePath};
 use super::DropFlagState;
 
@@ -99,40 +99,6 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
     }
 }
 
-fn on_all_children_bits<Each>(path_map: &PathMap,
-                              move_paths: &MovePathData,
-                              move_path_index: MovePathIndex,
-                              mut each_child: Each)
-    where Each: FnMut(MoveOutIndex)
-{
-    return on_all_children_bits_recur(
-        path_map, move_paths, move_path_index, &mut each_child);
-
-    fn on_all_children_bits_recur<Each>(path_map: &PathMap,
-                                        move_paths: &MovePathData,
-                                        move_path_index: MovePathIndex,
-                                        each_child: &mut Each)
-        where Each: FnMut(MoveOutIndex)
-    {
-        // 1. invoke `each_child` callback for all moves that directly
-        //    influence path for `move_path_index`
-        for move_index in &path_map[move_path_index] {
-            each_child(*move_index);
-        }
-
-        // 2. for each child of the path (that is named in this
-        //    function), recur.
-        //
-        // (Unnamed children are irrelevant to dataflow; by
-        // definition they have no associated moves.)
-        let mut next_child_index = move_paths[move_path_index].first_child;
-        while let Some(child_index) = next_child_index {
-            on_all_children_bits_recur(path_map, move_paths, child_index, each_child);
-            next_child_index = move_paths[child_index].next_sibling;
-        }
-    }
-}
-
 impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD>
     where BD: BitDenotation, BD::Ctxt: HasMoveData<'tcx>
 {
@@ -161,23 +127,23 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD>
     }
 }
 
+fn dataflow_path(context: &str, prepost: &str, path: &str) -> PathBuf {
+    format!("{}_{}", context, prepost);
+    let mut path = PathBuf::from(path);
+    let new_file_name = {
+        let orig_file_name = path.file_name().unwrap().to_str().unwrap();
+        format!("{}_{}", context, orig_file_name)
+    };
+    path.set_file_name(new_file_name);
+    path
+}
+
 impl<'a, 'tcx: 'a, BD> MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
     where BD: BitDenotation, BD::Bit: Debug, BD::Ctxt: HasMoveData<'tcx>
 {
-    fn path(context: &str, prepost: &str, path: &str) -> PathBuf {
-        format!("{}_{}", context, prepost);
-        let mut path = PathBuf::from(path);
-        let new_file_name = {
-            let orig_file_name = path.file_name().unwrap().to_str().unwrap();
-            format!("{}_{}", context, orig_file_name)
-        };
-        path.set_file_name(new_file_name);
-        path
-    }
-
     fn pre_dataflow_instrumentation(&self) -> io::Result<()> {
         if let Some(ref path_str) = self.print_preflow_to {
-            let path = Self::path(BD::name(), "preflow", path_str);
+            let path = dataflow_path(BD::name(), "preflow", path_str);
             graphviz::print_borrowck_graph_to(self, &path)
         } else {
             Ok(())
@@ -186,7 +152,7 @@ impl<'a, 'tcx: 'a, BD> MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
 
     fn post_dataflow_instrumentation(&self) -> io::Result<()> {
         if let Some(ref path_str) = self.print_postflow_to {
-            let path = Self::path(BD::name(), "postflow", path_str);
+            let path = dataflow_path(BD::name(), "postflow", path_str);
             graphviz::print_borrowck_graph_to(self, &path)
         } else{
             Ok(())
@@ -746,9 +712,8 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                         sets: &mut BlockSets,
                         bb: repr::BasicBlock,
                         idx: usize) {
-        let &(_tcx, mir, ref move_data) = ctxt;
+        let &(tcx, mir, ref move_data) = ctxt;
         let stmt = &mir.basic_block_data(bb).statements[idx];
-        let move_paths = &move_data.move_paths;
         let loc_map = &move_data.loc_map;
         let path_map = &move_data.path_map;
         let rev_lookup = &move_data.rev_lookup;
@@ -771,13 +736,14 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                 let move_path_index = rev_lookup.find(lvalue);
 
                 sets.kill_set.set_bit(move_path_index.idx());
-                on_all_children_bits(path_map,
-                                     move_paths,
-                                     move_path_index,
-                                     |moi| {
-                                         assert!(moi.idx() < bits_per_block);
-                                         sets.kill_set.set_bit(moi.idx());
-                                     });
+                super::on_all_children_bits(tcx,
+                                            mir,
+                                            move_data,
+                                            move_path_index,
+                                            |mpi| for moi in &path_map[mpi] {
+                                                assert!(moi.idx() < bits_per_block);
+                                                sets.kill_set.set_bit(moi.idx());
+                                            });
             }
         }
     }
@@ -812,13 +778,15 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
         let bits_per_block = self.bits_per_block(ctxt);
 
         in_out.clear_bit(move_path_index.idx());
-        on_all_children_bits(&move_data.path_map,
-                             &move_data.move_paths,
-                             move_path_index,
-                             |moi| {
-                                 assert!(moi.idx() < bits_per_block);
-                                 in_out.clear_bit(moi.idx());
-                             });
+        let path_map = &move_data.path_map;
+        super::on_all_children_bits(ctxt.0,
+                                    ctxt.1,
+                                    move_data,
+                                    move_path_index,
+                                    |mpi| for moi in &path_map[mpi] {
+                                        assert!(moi.idx() < bits_per_block);
+                                        in_out.clear_bit(moi.idx());
+                                    });
     }
 }
 
