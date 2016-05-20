@@ -43,9 +43,9 @@ sometimes this is undesirable and sometimes impossible due to lifetimes.
 [design]: #detailed-design
 
 This proposal does two things: let `break` take a value, and let `loop` have a
-result type other than `()`.
+type other than `()`.
 
-### break syntax
+## Break Syntax
 
 Four forms of `break` will be supported:
 
@@ -54,12 +54,11 @@ Four forms of `break` will be supported:
 3.  `break EXPR;`
 4.  `break 'label EXPR;`
 
-where `'label` is the name of a looping construct and `EXPR` is an evaluable
-expression.
+where `'label` is the name of a loop and `EXPR` is an expression.
 
-### result type
+### Type of Loop
 
-Currently the result-type of a 'loop' without 'break' is `!` (never returns),
+Currently the type of a 'loop' without 'break' is `!` (never returns),
 which may be coerced to `()`. This is important since a loop may appear as
 the last expression of a function:
 
@@ -79,17 +78,17 @@ fn g() -> () {
 fn h() -> ! {
     loop {
         do_something();
-        // this loop is not allowed to break due to `!` result type
+        // this loop is not allowed to break due to inferred `!` type
     }
 }
 ```
 
-This proposal changes the result type to `T`, where:
+This proposal changes the type to `T`, where:
 
-*   a loop which is never "broken" via `break` has result-type `!` (coercible to `()`)
-*   a loop's return type may be deduced from its context, e.g. `let x: T = loop { ... };`
-*   where a loop is "broken" via `break;` or `break 'label;`, its result type is `()`
-*   where a loop is "broken" via `break EXPR;` or `break 'label EXPR;`, `EXPR` must evaluate to type `T`
+*   a loop which is never "broken" via `break` has type `!` (which is coercible to anything, as today)
+*   where a loop is "broken" via `break;` or `break 'label;`, its type is `()`
+*   where a loop is "broken" via `break EXPR;` or `break 'label EXPR;`, and `EXPR: T`, the loop has type `T`
+*   all "breaks" out of of a loop must have the same type
 
 It is an error if these types do not agree. Examples:
 
@@ -100,7 +99,7 @@ let a: i32 = loop {};
 let b: i32 = loop { break "I am not an integer."; };
 // error: loop type must be Option<_> and must be &str
 let c = loop {
-    if Q() {
+    break if Q() {
         "answer"
     } else {
         None
@@ -115,14 +114,14 @@ fn z() -> ! {
 }
 ```
 
-### result value
+## Result Value
 
 A loop only yields a value if broken via some form of `break ...;` statement,
 in which case it yields the value resulting from the evaulation of the
 statement's expression (`EXPR` above), or `()` if there is no `EXPR`
 expression.
 
-Examples:
+## Examples
 
 ```rust
 assert_eq!(loop { break; }, ());
@@ -134,6 +133,24 @@ let x = 'a loop {
     break 'a 2;
 };
 assert_eq!(x, 1);
+```
+```rust
+fn y() -> () {
+    loop {
+        if coin_flip() {
+            break;
+        } else {
+            break ();
+        }
+    }
+}
+```
+```rust
+fn z() -> ! {
+    loop {
+        break panic!();
+    }
+}
 ```
 
 # Drawbacks
