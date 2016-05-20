@@ -1002,18 +1002,18 @@ operate on.
 This will cause an error:
 
 ```compile_fail
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Bad;
 ```
 
 This will not:
 
 ```
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Good(u32);
 ```
 "##,
