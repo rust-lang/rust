@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,21 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct X {
-    x: String,
+// Be smart about span of parenthesized expression in macro.
+
+macro_rules! paren {
+    ($e:expr) => (($e))
+    //            ^^^^ do not highlight here
 }
 
-impl Drop for X {
-    fn drop(&mut self) {
-        println!("value: {}", self.x);
+mod m {
+    pub struct S {
+        x: i32
+    }
+    pub fn make() -> S {
+        S { x: 0 }
     }
 }
 
 fn main() {
-    let x = X { x: "hello".to_string() };
-
-    match x {
-        X { x: y } => println!("contents: {}", y)
-        //~^ ERROR cannot move out of type `X`, which implements the `Drop` trait
-    }
+    let s = m::make();
+    paren!(s.x); //~ ERROR field `x` of struct `m::S` is private
+    //     ^^^ highlight here
 }
