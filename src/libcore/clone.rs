@@ -48,7 +48,8 @@ use marker::Sized;
 
 /// A common trait for cloning an object.
 ///
-/// This trait can be used with `#[derive]`.
+/// This trait can be used with `#[derive]` if all fields are `Clone`. The `derive`d
+/// implementation of `clone()` calls `clone()` on each field.
 ///
 /// Types that are `Copy` should have a trivial implementation of `Clone`. More formally:
 /// if `T: Copy`, `x: T`, and `y: &T`, then `let x = y.clone();` is equivalent to `let x = *y;`.

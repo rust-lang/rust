@@ -58,7 +58,10 @@ use option::Option::{self, Some};
 /// the rule that `eq` is a strict inverse of `ne`; that is, `!(a == b)` if and
 /// only if `a != b`.
 ///
-/// This trait can be used with `#[derive]`.
+/// This trait can be used with `#[derive]`. When `derive`d on structs, two
+/// instances are equal if all fields are equal, and non equal if any fields
+/// are not equal. When `derive`d on enums, each variant is equal to itself
+/// and not equal to the other variants.
 ///
 /// # Examples
 ///
@@ -96,7 +99,9 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 /// This property cannot be checked by the compiler, and therefore `Eq` implies
 /// `PartialEq`, and has no extra methods.
 ///
-/// This trait can be used with `#[derive]`.
+/// This trait can be used with `#[derive]`. When `derive`d, because `Eq` has
+/// no extra methods, it is only informing the compiler that this is an
+/// equivalence relation rather than a partial equivalence relation.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Eq: PartialEq<Self> {
     // FIXME #13101: this method is used solely by #[deriving] to

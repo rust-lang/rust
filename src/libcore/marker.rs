@@ -173,7 +173,8 @@ pub trait Unsize<T: ?Sized> {
 ///
 /// # Derivable
 ///
-/// This trait can be used with `#[derive]`.
+/// This trait can be used with `#[derive]` if all of its components implement `Copy` and the type
+/// implements `Clone`. The implementation will copy the bytes of each field using `memcpy`.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
 pub trait Copy : Clone {
