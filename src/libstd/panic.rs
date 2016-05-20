@@ -395,7 +395,7 @@ pub fn recover<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
     catch_unwind(f)
 }
 
-/// Triggers a panic without invoking the panic handler.
+/// Triggers a panic without invoking the panic hook.
 ///
 /// This is designed to be used in conjunction with `catch_unwind` to, for
 /// example, carry a panic across a layer of C code.
