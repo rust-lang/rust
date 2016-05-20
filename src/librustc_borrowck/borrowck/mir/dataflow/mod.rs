@@ -827,11 +827,11 @@ impl<'a, 'tcx> MaybeInitializedLvals<'a, 'tcx> {
                    state: super::DropFlagState)
     {
         match state {
-            DropFlagState::Dead => {
+            DropFlagState::Absent => {
                 sets.gen_set.clear_bit(path.idx());
                 sets.kill_set.set_bit(path.idx());
             }
-            DropFlagState::Live => {
+            DropFlagState::Present => {
                 sets.gen_set.set_bit(path.idx());
                 sets.kill_set.clear_bit(path.idx());
             }
@@ -844,11 +844,11 @@ impl<'a, 'tcx> MaybeUninitializedLvals<'a, 'tcx> {
                    state: super::DropFlagState)
     {
         match state {
-            DropFlagState::Dead => {
+            DropFlagState::Absent => {
                 sets.gen_set.set_bit(path.idx());
                 sets.kill_set.clear_bit(path.idx());
             }
-            DropFlagState::Live => {
+            DropFlagState::Present => {
                 sets.gen_set.clear_bit(path.idx());
                 sets.kill_set.set_bit(path.idx());
             }
@@ -861,11 +861,11 @@ impl<'a, 'tcx> DefinitelyInitializedLvals<'a, 'tcx> {
                    state: super::DropFlagState)
     {
         match state {
-            DropFlagState::Dead => {
+            DropFlagState::Absent => {
                 sets.gen_set.clear_bit(path.idx());
                 sets.kill_set.set_bit(path.idx());
             }
-            DropFlagState::Live => {
+            DropFlagState::Present => {
                 sets.gen_set.set_bit(path.idx());
                 sets.kill_set.clear_bit(path.idx());
             }
@@ -889,7 +889,7 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
         super::drop_flag_effects_for_function_entry(
             ctxt.0, ctxt.1, &ctxt.2,
             |path, s| {
-                assert!(s == DropFlagState::Live);
+                assert!(s == DropFlagState::Present);
                 sets.on_entry.set_bit(path.idx());
             });
     }
@@ -956,7 +956,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
         super::drop_flag_effects_for_function_entry(
             ctxt.0, ctxt.1, &ctxt.2,
             |path, s| {
-                assert!(s == DropFlagState::Live);
+                assert!(s == DropFlagState::Present);
                 sets.on_entry.clear_bit(path.idx());
             });
     }
@@ -1022,7 +1022,7 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
         super::drop_flag_effects_for_function_entry(
             ctxt.0, ctxt.1, &ctxt.2,
             |path, s| {
-                assert!(s == DropFlagState::Live);
+                assert!(s == DropFlagState::Present);
                 sets.on_entry.set_bit(path.idx());
             });
     }
