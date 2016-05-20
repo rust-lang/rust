@@ -27,7 +27,8 @@ static my_awesome_table: &[&HashMap<Cow<str>, u32>] = ..
 ```
 
 The type declaration still causes some rightwards drift, but at least all the
-contained information is useful.
+contained information is useful. There is one exception to the rule: lifetime
+elision for function signatures will work as it does now (see example below).
 
 # Detailed design
 [design]: #detailed-design
@@ -41,6 +42,24 @@ default when no is given. Thus the change is unlikely to cause any breakage and
 should be deemed backwards-compatible. It's also very unlikely that 
 implementing this RFC will restrict our design space for `static` and `const` 
 definitions down the road.
+
+The `'static` default does *not* override lifetime elision in function 
+signatures, but work alongside it:
+
+```rust
+static foo: fn(&u32) -> &u32 = ...;  // for<'a> fn(&'a u32) -> &'a u32
+static bar: &Fn(&u32) -> &u32 = ...; // &'static for<'a> Fn(&'a u32) -> &'a u32
+```
+
+With generics, it will work as anywhere else. Notably, writing out the lifetime
+is still possible.
+
+```
+trait SomeObject<'a> { ... }
+static foo: &SomeObject = ...; // &'static SomeObject<'static>
+static bar: &for<'a> SomeObject<'a> = ...; // &'static for<'a> SomeObject<'a>
+static baz: &'static [u8] = ...;
+```
 
 # Drawbacks
 [drawbacks]: #drawbacks
