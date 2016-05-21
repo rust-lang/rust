@@ -53,15 +53,42 @@ use option::Option::{self, Some};
 /// symmetrically and transitively: if `T: PartialEq<U>` and `U: PartialEq<V>`
 /// then `U: PartialEq<T>` and `T: PartialEq<V>`.
 ///
-/// PartialEq only requires the `eq` method to be implemented; `ne` is defined
-/// in terms of it by default. Any manual implementation of `ne` *must* respect
-/// the rule that `eq` is a strict inverse of `ne`; that is, `!(a == b)` if and
-/// only if `a != b`.
+/// ## Derivable
 ///
 /// This trait can be used with `#[derive]`. When `derive`d on structs, two
 /// instances are equal if all fields are equal, and non equal if any fields
 /// are not equal. When `derive`d on enums, each variant is equal to itself
 /// and not equal to the other variants.
+///
+/// ## How can I implement `PartialEq`?
+///
+/// PartialEq only requires the `eq` method to be implemented; `ne` is defined
+/// in terms of it by default. Any manual implementation of `ne` *must* respect
+/// the rule that `eq` is a strict inverse of `ne`; that is, `!(a == b)` if and
+/// only if `a != b`.
+///
+/// An example implementation for a domain in which two books are considered
+/// the same book if their ISBN matches, even if the formats differ:
+///
+/// ```
+/// enum BookFormat { Paperback, Hardback, Ebook }
+/// struct Book {
+///     isbn: i32,
+///     format: BookFormat,
+/// }
+/// impl PartialEq for Book {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.isbn == other.isbn
+///     }
+/// }
+///
+/// let b1 = Book { isbn: 3, format: BookFormat::Paperback };
+/// let b2 = Book { isbn: 3, format: BookFormat::Ebook };
+/// let b3 = Book { isbn: 10, format: BookFormat::Paperback };
+///
+/// assert!(b1 == b2);
+/// assert!(b1 != b3);
+/// ```
 ///
 /// # Examples
 ///
