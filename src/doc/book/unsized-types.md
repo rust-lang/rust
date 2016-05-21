@@ -47,7 +47,7 @@ pointers, can use this `impl`.
 # ?Sized
 
 If you want to write a function that accepts a dynamically sized type, you
-can use the special syntax, `?Sized`:
+can use the special bound syntax, `?Sized`:
 
 ```rust
 struct Foo<T: ?Sized> {
@@ -56,6 +56,6 @@ struct Foo<T: ?Sized> {
 ```
 
 This `?Sized`, read as “T may or may not be `Sized`”, which allows us to match
-both constant size and unsized types. All generic type parameters implicitly
-have the `Sized` bound, so `?Sized` can be used to opt-out of the implicit
+both sized and unsized types. All generic type parameters implicitly
+have the `Sized` bound, so the `?Sized` can be used to opt-out of the implicit
 bound.
