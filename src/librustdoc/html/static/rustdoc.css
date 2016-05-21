@@ -472,7 +472,7 @@ body.blur > :not(#help) {
     background: #e9e9e9;
     box-shadow: 0 0 6px rgba(0,0,0,.2);
     width: 550px;
-    height: 300px;
+    height: 330px;
     border: 1px solid #bfbfbf;
 }
 #help dt {
