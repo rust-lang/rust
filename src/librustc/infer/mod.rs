@@ -643,6 +643,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                             -> T::Lifted
         where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
     {
+        debug!("drain_fulfillment_cx_or_panic()");
+
         let when = "resolving bounds after type-checking";
         let v = match self.drain_fulfillment_cx(fulfill_cx, result) {
             Ok(v) => v,
@@ -817,6 +819,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot {
+        debug!("start_snapshot()");
+
         let obligations_in_snapshot = self.obligations_in_snapshot.get();
         self.obligations_in_snapshot.set(false);
 
@@ -854,7 +858,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn commit_from(&self, snapshot: CombinedSnapshot) {
-        debug!("commit_from!");
+        debug!("commit_from()");
         let CombinedSnapshot { type_snapshot,
                                int_snapshot,
                                float_snapshot,
