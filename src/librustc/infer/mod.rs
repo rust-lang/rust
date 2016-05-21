@@ -45,6 +45,7 @@ use syntax::errors::DiagnosticBuilder;
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 
 use self::combine::CombineFields;
+use self::higher_ranked::HrMatchResult;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::unify_key::ToType;
 
@@ -63,6 +64,7 @@ pub mod sub;
 pub mod type_variable;
 pub mod unify_key;
 
+#[must_use]
 pub struct InferOk<'tcx, T> {
     pub value: T,
     pub obligations: PredicateObligations<'tcx>,
@@ -1574,6 +1576,39 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.replace_late_bound_regions(
             value,
             |br| self.next_region_var(LateBoundRegion(span, br, lbrct)))
+    }
+
+    /// Given a higher-ranked projection predicate like:
+    ///
+    ///     for<'a> <T as Fn<&'a u32>>::Output = &'a u32
+    ///
+    /// and a target trait-ref like:
+    ///
+    ///     <T as Fn<&'x u32>>
+    ///
+    /// find a substitution `S` for the higher-ranked regions (here,
+    /// `['a => 'x]`) such that the predicate matches the trait-ref,
+    /// and then return the value (here, `&'a u32`) but with the
+    /// substitution applied (hence, `&'x u32`).
+    ///
+    /// See `higher_ranked_match` in `higher_ranked/mod.rs` for more
+    /// details.
+    pub fn match_poly_projection_predicate(&self,
+                                           origin: TypeOrigin,
+                                           match_a: ty::PolyProjectionPredicate<'tcx>,
+                                           match_b: ty::TraitRef<'tcx>)
+                                           -> RelateResult<HrMatchResult<Ty<'tcx>>>
+    {
+        let span = origin.span();
+        let match_trait_ref = match_a.skip_binder().projection_ty.trait_ref;
+        let trace = TypeTrace {
+            origin: origin,
+            values: TraitRefs(ExpectedFound::new(true, match_trait_ref, match_b))
+        };
+
+        let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref, p.ty));
+        self.combine_fields(true, trace)
+            .higher_ranked_match(span, &match_pair, &match_b)
     }
 
     /// See `verify_generic_bound` method in `region_inference`
