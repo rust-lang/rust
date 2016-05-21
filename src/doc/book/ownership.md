@@ -155,7 +155,7 @@ vector object and its data live in separate memory regions instead of being a
 single contiguous memory allocation (due to reasons we will not go into at
 this point of time). These two parts of the vector (the one on the stack and
 one on the heap) must agree with each other at all times with regards to
-things like the length, capacity etc.
+things like the length, capacity, etc.
 
 When we move `v` to `v2`, Rust actually does a bitwise copy of the vector
 object `v` into the stack allocation represented by `v2`. This shallow copy
