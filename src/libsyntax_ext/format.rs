@@ -27,8 +27,8 @@ use std::collections::HashMap;
 
 #[derive(PartialEq)]
 enum ArgumentType {
-    Known(String),
-    Unsigned
+    Placeholder(String),
+    Count,
 }
 
 enum Position {
@@ -182,7 +182,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     parse::ArgumentNamed(s) => Named(s.to_string()),
                 };
 
-                let ty = Known(arg.format.ty.to_string());
+                let ty = Placeholder(arg.format.ty.to_string());
                 self.verify_arg_type(pos, ty);
             }
         }
@@ -192,10 +192,10 @@ impl<'a, 'b> Context<'a, 'b> {
         match c {
             parse::CountImplied | parse::CountIs(..) => {}
             parse::CountIsParam(i) => {
-                self.verify_arg_type(Exact(i), Unsigned);
+                self.verify_arg_type(Exact(i), Count);
             }
             parse::CountIsName(s) => {
-                self.verify_arg_type(Named(s.to_string()), Unsigned);
+                self.verify_arg_type(Named(s.to_string()), Count);
             }
         }
     }
@@ -545,7 +545,7 @@ impl<'a, 'b> Context<'a, 'b> {
                   ty: &ArgumentType, arg: P<ast::Expr>)
                   -> P<ast::Expr> {
         let trait_ = match *ty {
-            Known(ref tyname) => {
+            Placeholder(ref tyname) => {
                 match &tyname[..] {
                     ""  => "Display",
                     "?" => "Debug",
@@ -564,7 +564,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     }
                 }
             }
-            Unsigned => {
+            Count => {
                 let path = ecx.std_path(&["fmt", "ArgumentV1", "from_usize"]);
                 return ecx.expr_call_global(macsp, path, vec![arg])
             }
