@@ -340,7 +340,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                                               data.clone(),
                                               self.cause.clone(),
                                               self.depth);
-                debug!("AssociatedTypeNormalizer: depth={} normalized {:?} to {:?} with {} add'l obligations",
+                debug!("AssociatedTypeNormalizer: depth={} normalized {:?} to {:?} \
+                        with {} add'l obligations",
                        self.depth, ty, normalized_ty, obligations.len());
                 self.obligations.extend(obligations);
                 normalized_ty
@@ -1235,5 +1236,93 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
             .ancestors(impl_def_id)
             .type_defs(selcx.tcx(), assoc_ty_name)
             .next()
+    }
+}
+
+// # Cache
+
+pub struct ProjectionCache<'tcx> {
+    map: SnapshotMap<ty::ProjectionTy<'tcx>, ProjectionCacheEntry<'tcx>>,
+}
+
+#[derive(Clone, Debug)]
+enum ProjectionCacheEntry<'tcx> {
+    InProgress,
+    Ambiguous,
+    Error,
+    NormalizedTy(Ty<'tcx>),
+}
+
+// NB: intentionally not Clone
+pub struct ProjectionCacheSnapshot {
+    snapshot: Snapshot
+}
+
+impl<'tcx> ProjectionCache<'tcx> {
+    pub fn new() -> Self {
+        ProjectionCache {
+            map: SnapshotMap::new()
+        }
+    }
+
+    pub fn snapshot(&mut self) -> ProjectionCacheSnapshot {
+        ProjectionCacheSnapshot { snapshot: self.map.snapshot() }
+    }
+
+    pub fn rollback_to(&mut self, snapshot: ProjectionCacheSnapshot) {
+        self.map.rollback_to(snapshot.snapshot);
+    }
+
+    pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
+        self.map.commit(snapshot.snapshot);
+    }
+
+    /// Try to start normalize `key`; returns an error if
+    /// normalization already occured (this error corresponds to a
+    /// cache hit, so it's actually a good thing).
+    fn try_start(&mut self, key: ty::ProjectionTy<'tcx>)
+                 -> Result<(), ProjectionCacheEntry<'tcx>> {
+        match self.map.get(&key) {
+            Some(entry) => return Err(entry.clone()),
+            None => { }
+        }
+
+        self.map.insert(key, ProjectionCacheEntry::InProgress);
+        Ok(())
+    }
+
+    /// Indicates that `key` was normalized to `value`. If `cacheable` is false,
+    /// then this result is sadly not cacheable.
+    fn complete(&mut self,
+                key: ty::ProjectionTy<'tcx>,
+                value: &NormalizedTy<'tcx>,
+                cacheable: bool) {
+        let fresh_key = if cacheable {
+            debug!("ProjectionCacheEntry::complete: adding cache entry: key={:?}, value={:?}",
+                   key, value);
+            self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value.value))
+        } else {
+            debug!("ProjectionCacheEntry::complete: cannot cache: key={:?}, value={:?}",
+                   key, value);
+            !self.map.remove(key)
+        };
+
+        assert!(!fresh_key, "never started projecting `{:?}`", key);
+    }
+
+    /// Indicates that trying to normalize `key` resulted in
+    /// ambiguity. No point in trying it again then until we gain more
+    /// type information (in which case, the "fully resolved" key will
+    /// be different).
+    fn ambiguous(&mut self, key: ty::ProjectionTy<'tcx>) {
+        let fresh = self.map.insert(key, ProjectionCacheEntry::Ambiguous);
+        assert!(!fresh, "never started projecting `{:?}`", key);
+    }
+
+    /// Indicates that trying to normalize `key` resulted in
+    /// error.
+    fn error(&mut self, key: ty::ProjectionTy<'tcx>) {
+        let fresh = self.map.insert(key, ProjectionCacheEntry::Error);
+        assert!(!fresh, "never started projecting `{:?}`", key);
     }
 }

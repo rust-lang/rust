@@ -106,6 +106,12 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     pub tables: InferTables<'a, 'gcx, 'tcx>,
 
+    // Cache for projections. This cache is snapshotted along with the
+    // infcx.
+    //
+    // Public so that `traits::project` can use it.
+    pub projection_cache: RefCell<traits::ProjectionCache<'tcx>>,
+
     // We instantiate UnificationTable with bounds<Ty> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
@@ -479,6 +485,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             parameter_environment: param_env,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
+            projection_cache: RefCell::new(traits::ProjectionCache::new()),
             reported_trait_errors: RefCell::new(FnvHashSet()),
             normalize: false,
             projection_mode: ProjectionMode::AnyFinal,
@@ -512,6 +519,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         global_tcx.enter_local(arenas, |tcx| f(InferCtxt {
             tcx: tcx,
             tables: tables,
+            projection_cache: RefCell::new(traits::ProjectionCache::new()),
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
@@ -547,6 +555,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
 
 #[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot {
+    projection_cache_snapshot: traits::ProjectionCacheSnapshot,
     type_snapshot: type_variable::Snapshot,
     int_snapshot: unify::Snapshot<ty::IntVid>,
     float_snapshot: unify::Snapshot<ty::FloatVid>,
@@ -827,6 +836,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.obligations_in_snapshot.set(false);
 
         CombinedSnapshot {
+            projection_cache_snapshot: self.projection_cache.borrow_mut().snapshot(),
             type_snapshot: self.type_variables.borrow_mut().snapshot(),
             int_snapshot: self.int_unification_table.borrow_mut().snapshot(),
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
@@ -837,7 +847,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot) {
         debug!("rollback_to(cause={})", cause);
-        let CombinedSnapshot { type_snapshot,
+        let CombinedSnapshot { projection_cache_snapshot,
+                               type_snapshot,
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
@@ -846,6 +857,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         assert!(!self.obligations_in_snapshot.get());
         self.obligations_in_snapshot.set(obligations_in_snapshot);
 
+        self.projection_cache
+            .borrow_mut()
+            .rollback_to(projection_cache_snapshot);
         self.type_variables
             .borrow_mut()
             .rollback_to(type_snapshot);
@@ -861,7 +875,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     fn commit_from(&self, snapshot: CombinedSnapshot) {
         debug!("commit_from()");
-        let CombinedSnapshot { type_snapshot,
+        let CombinedSnapshot { projection_cache_snapshot,
+                               type_snapshot,
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
@@ -869,6 +884,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.obligations_in_snapshot.set(obligations_in_snapshot);
 
+        self.projection_cache
+            .borrow_mut()
+            .commit(projection_cache_snapshot);
         self.type_variables
             .borrow_mut()
             .commit(type_snapshot);
@@ -926,7 +944,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         F: FnOnce() -> Result<T, E>
     {
         debug!("commit_regions_if_ok()");
-        let CombinedSnapshot { type_snapshot,
+        let CombinedSnapshot { projection_cache_snapshot,
+                               type_snapshot,
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
@@ -941,6 +960,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         // Roll back any non-region bindings - they should be resolved
         // inside `f`, with, e.g. `resolve_type_vars_if_possible`.
+        self.projection_cache
+            .borrow_mut()
+            .rollback_to(projection_cache_snapshot);
         self.type_variables
             .borrow_mut()
             .rollback_to(type_snapshot);
