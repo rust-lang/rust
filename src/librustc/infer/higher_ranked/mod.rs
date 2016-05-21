@@ -15,6 +15,7 @@ use super::{CombinedSnapshot,
             InferCtxt,
             LateBoundRegion,
             HigherRankedType,
+            SubregionOrigin,
             SkolemizationMap};
 use super::combine::CombineFields;
 use super::region_inference::{TaintDirections};
@@ -24,6 +25,19 @@ use ty::error::TypeError;
 use ty::relate::{Relate, RelateResult, TypeRelation};
 use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
+
+pub struct HrMatchResult<U> {
+    pub value: U,
+
+    /// Normally, when we do a higher-ranked match operation, we
+    /// expect all higher-ranked regions to be constrained as part of
+    /// the match operation. However, in the transition period for
+    /// #32330, it can happen that we sometimes have unconstrained
+    /// regions that get instantiated with fresh variables. In that
+    /// case, we collect the set of unconstrained bound regions here
+    /// and replace them with fresh variables.
+    pub unconstrained_regions: Vec<ty::BoundRegion>,
+}
 
 impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
     pub fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>)
@@ -76,6 +90,134 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             debug!("higher_ranked_sub: OK result={:?}", result);
 
             Ok(ty::Binder(result))
+        });
+    }
+
+    /// The value consists of a pair `(t, u)` where `t` is the
+    /// *matcher* and `u` is a *value*. The idea is to find a
+    /// substitution `S` such that `S(t) == b`, and then return
+    /// `S(u)`. In other words, find values for the late-bound regions
+    /// in `a` that can make `t == b` and then replace the LBR in `u`
+    /// with those values.
+    ///
+    /// This routine is (as of this writing) used in trait matching,
+    /// particularly projection.
+    ///
+    /// NB. It should not happen that there are LBR appearing in `U`
+    /// that do not appear in `T`. If that happens, those regions are
+    /// unconstrained, and this routine replaces them with `'static`.
+    pub fn higher_ranked_match<T, U>(&self,
+                                     span: Span,
+                                     a_pair: &Binder<(T, U)>,
+                                     b_match: &T)
+                                     -> RelateResult<'tcx, HrMatchResult<U>>
+        where T: Relate<'tcx>,
+              U: TypeFoldable<'tcx>
+    {
+        debug!("higher_ranked_match(a={:?}, b={:?})",
+               a_pair, b_match);
+
+        // Start a snapshot so we can examine "all bindings that were
+        // created as part of this type comparison".
+        return self.infcx.commit_if_ok(|snapshot| {
+            // First, we instantiate each bound region in the matcher
+            // with a skolemized region.
+            let ((a_match, a_value), skol_map) =
+                self.infcx.skolemize_late_bound_regions(a_pair, snapshot);
+
+            debug!("higher_ranked_match: a_match={:?}", a_match);
+            debug!("higher_ranked_match: skol_map={:?}", skol_map);
+
+            // Equate types now that bound regions have been replaced.
+            try!(self.equate().relate(&a_match, &b_match));
+
+            // Map each skolemized region to a vector of other regions that it
+            // must be equated with. (Note that this vector may include other
+            // skolemized regions from `skol_map`.)
+            let skol_resolution_map: FnvHashMap<_, _> =
+                skol_map
+                .iter()
+                .map(|(&br, &skol)| {
+                    let tainted_regions =
+                        self.infcx.tainted_regions(snapshot,
+                                                   skol,
+                                                   TaintDirections::incoming()); // [1]
+
+                    // [1] this routine executes after the skolemized
+                    // regions have been *equated* with something
+                    // else, so examining the incoming edges ought to
+                    // be enough to collect all constraints
+
+                    (skol, (br, tainted_regions))
+                })
+                .collect();
+
+            // For each skolemized region, pick a representative -- which can
+            // be any region from the sets above, except for other members of
+            // `skol_map`. There should always be a representative if things
+            // are properly well-formed.
+            let mut unconstrained_regions = vec![];
+            let skol_representatives: FnvHashMap<_, _> =
+                skol_resolution_map
+                .iter()
+                .map(|(&skol, &(br, ref regions))| {
+                    let representative =
+                        regions.iter()
+                               .filter(|r| !skol_resolution_map.contains_key(r))
+                               .cloned()
+                               .next()
+                               .unwrap_or_else(|| { // [1]
+                                   unconstrained_regions.push(br);
+                                   self.infcx.next_region_var(
+                                       LateBoundRegion(span, br, HigherRankedType))
+                               });
+
+                    // [1] There should always be a representative,
+                    // unless the higher-ranked region did not appear
+                    // in the values being matched. We should reject
+                    // as ill-formed cases that can lead to this, but
+                    // right now we sometimes issue warnings (see
+                    // #32330).
+
+                    (skol, representative)
+                })
+                .collect();
+
+            // Equate all the members of each skolemization set with the
+            // representative.
+            for (skol, &(_br, ref regions)) in &skol_resolution_map {
+                let representative = &skol_representatives[skol];
+                debug!("higher_ranked_match: \
+                        skol={:?} representative={:?} regions={:?}",
+                       skol, representative, regions);
+                for region in regions.iter()
+                                     .filter(|&r| !skol_resolution_map.contains_key(r))
+                                     .filter(|&r| r != representative)
+                {
+                    let origin = SubregionOrigin::Subtype(self.trace.clone());
+                    self.infcx.region_vars.make_eqregion(origin,
+                                                         *representative,
+                                                         *region);
+                }
+            }
+
+            // Replace the skolemized regions appearing in value with
+            // their representatives
+            let a_value =
+                fold_regions_in(
+                    self.tcx(),
+                    &a_value,
+                    |r, _| skol_representatives.get(&r).cloned().unwrap_or(r));
+
+            debug!("higher_ranked_match: value={:?}", a_value);
+
+            // We are now done with these skolemized variables.
+            self.infcx.pop_skolemized(skol_map, snapshot);
+
+            Ok(HrMatchResult {
+                value: a_value,
+                unconstrained_regions: unconstrained_regions,
+            })
         });
     }
 
