@@ -636,7 +636,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             def_id: def_id,
             space: space,
             index: index,
-            bounds: bounds
+            bounds: bounds,
         }
     }
 
