@@ -42,6 +42,7 @@ pub mod bitvec;
 pub mod graph;
 pub mod ivar;
 pub mod obligation_forest;
+pub mod snapshot_map;
 pub mod snapshot_vec;
 pub mod transitive_relation;
 pub mod unify;
