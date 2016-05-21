@@ -424,6 +424,79 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
            projection_ty,
            depth);
 
+    // FIXME(#20304) For now, I am caching here, which is good, but it
+    // means we don't capture the type variables that are created in
+    // the case of ambiguity. Which means we may create a large stream
+    // of such variables. OTOH, if we move the caching up a level, we
+    // would not benefit from caching when proving `T: Trait<U=Foo>`
+    // bounds. It might be the case that we want two distinct caches,
+    // or else another kind of cache entry.
+
+    match infcx.projection_cache.borrow_mut().try_start(projection_ty) {
+        Ok(()) => { }
+        Err(ProjectionCacheEntry::Ambiguous) => {
+            // If we found ambiguity the last time, that generally
+            // means we will continue to do so until some type in the
+            // key changes (and we know it hasn't, because we just
+            // fully resolved it). One exception though is closure
+            // types, which can transition from having a fixed kind to
+            // no kind with no visible change in the key.
+            //
+            // FIXME(#32286) refactor this so that closure type
+            // changes
+            debug!("opt_normalize_projection_type: \
+                    found cache entry: ambiguous");
+            if !projection_ty.has_closure_types() {
+                return None;
+            }
+        }
+        Err(ProjectionCacheEntry::InProgress) => {
+            // If while normalized A::B, we are asked to normalize
+            // A::B, just return A::B itself. This is a conservative
+            // answer, in the sense that A::B *is* clearly equivalent
+            // to A::B, though there may be a better value we can
+            // find.
+
+            // Under lazy normalization, this can arise when
+            // bootstrapping.  That is, imagine an environment with a
+            // where-clause like `A::B == u32`. Now, if we are asked
+            // to normalize `A::B`, we will want to check the
+            // where-clauses in scope. So we will try to unify `A::B`
+            // with `A::B`, which can trigger a recursive
+            // normalization. In that case, I think we will want this code:
+            //
+            // ```
+            // let ty = selcx.tcx().mk_projection(projection_ty.trait_ref,
+            //                                    projection_ty.item_name);
+            // return Some(NormalizedTy { value: v, obligations: vec![] });
+            // ```
+
+            debug!("opt_normalize_projection_type: \
+                    found cache entry: in-progress");
+
+            // But for now, let's classify this as an overflow:
+            let recursion_limit = selcx.tcx().sess.recursion_limit.get();
+            let obligation = Obligation::with_depth(cause.clone(),
+                                                    recursion_limit,
+                                                    projection_ty);
+            selcx.infcx().report_overflow_error(&obligation, false);
+        }
+        Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
+            // If we find the value in the cache, then the obligations
+            // have already been returned from the previous entry (and
+            // should therefore have been honored).
+            debug!("opt_normalize_projection_type: \
+                    found normalized ty `{:?}`",
+                   ty);
+            return Some(NormalizedTy { value: ty, obligations: vec![] });
+        }
+        Err(ProjectionCacheEntry::Error) => {
+            debug!("opt_normalize_projection_type: \
+                    found error");
+            return Some(normalize_to_error(selcx, projection_ty, cause, depth));
+        }
+    }
+
     let obligation = Obligation::with_depth(cause.clone(), depth, projection_ty.clone());
     match project_type(selcx, &obligation) {
         Ok(ProjectedTy::Progress(Progress { ty: projected_ty,
@@ -454,31 +527,37 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                        depth);
 
                 obligations.extend(normalizer.obligations);
-                Some(Normalized {
+                Normalized {
                     value: normalized_ty,
                     obligations: obligations,
-                })
+                }
             } else {
-                Some(Normalized {
+                Normalized {
                     value: projected_ty,
                     obligations: obligations,
-                })
+                }
             };
-
-            result
+            infcx.projection_cache.borrow_mut()
+                                  .complete(projection_ty, &result, cacheable);
+            Some(result)
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
             debug!("opt_normalize_projection_type: \
                     projected_ty={:?} no progress",
                    projected_ty);
-            Some(Normalized {
+            let result = Normalized {
                 value: projected_ty,
                 obligations: vec!()
-            })
+            };
+            infcx.projection_cache.borrow_mut()
+                                  .complete(projection_ty, &result, true);
+            Some(result)
         }
         Err(ProjectionTyError::TooManyCandidates) => {
             debug!("opt_normalize_projection_type: \
                     too many candidates");
+            infcx.projection_cache.borrow_mut()
+                                  .ambiguous(projection_ty);
             None
         }
         Err(ProjectionTyError::TraitSelectionError(_)) => {
@@ -488,6 +567,8 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // Trait`, which when processed will cause the error to be
             // reported later
 
+            infcx.projection_cache.borrow_mut()
+                                  .error(projection_ty);
             Some(normalize_to_error(selcx, projection_ty, cause, depth))
         }
     }
