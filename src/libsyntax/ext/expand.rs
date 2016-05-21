@@ -69,16 +69,6 @@ impl_macro_generable! {
         "statement", .make_stmts,      lift .fold_stmt,      |_span| SmallVector::zero();
 }
 
-// this function is called to detect use of feature-gated or invalid attributes
-// on macro invoations since they will not be detected after macro expansion
-fn check_attributes(attrs: &[ast::Attribute], fld: &MacroExpander) {
-    for attr in attrs.iter() {
-        feature_gate::check_attribute(&attr, &fld.cx.parse_sess.span_diagnostic,
-                                      &fld.cx.parse_sess.codemap(),
-                                      &fld.cx.ecfg.features.unwrap());
-    }
-}
-
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
     let expr_span = e.span;
     return e.and_then(|ast::Expr {id, node, span, attrs}| match node {
@@ -209,7 +199,13 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
     fn mac_result<'a>(path: &ast::Path, ident: Option<Ident>, tts: Vec<TokenTree>, mark: Mrk,
                       attrs: Vec<ast::Attribute>, call_site: Span, fld: &'a mut MacroExpander)
                       -> Option<Box<MacResult + 'a>> {
-        check_attributes(&attrs, fld);
+        // Detect use of feature-gated or invalid attributes on macro invoations
+        // since they will not be detected after macro expansion.
+        for attr in attrs.iter() {
+            feature_gate::check_attribute(&attr, &fld.cx.parse_sess.span_diagnostic,
+                                          &fld.cx.parse_sess.codemap(),
+                                          &fld.cx.ecfg.features.unwrap());
+        }
 
         if path.segments.len() > 1 {
             fld.cx.span_err(path.span, "expected macro name without module separators");
