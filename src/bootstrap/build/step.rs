@@ -106,19 +106,25 @@ macro_rules! targets {
             (check_cargotest, CheckCargoTest { stage: u32 }),
             (check_tidy, CheckTidy { stage: u32 }),
             (check_rpass, CheckRPass { compiler: Compiler<'a> }),
+            (check_rpass_full, CheckRPassFull { compiler: Compiler<'a> }),
+            (check_rpass_valgrind, CheckRPassValgrind { compiler: Compiler<'a> }),
             (check_rfail, CheckRFail { compiler: Compiler<'a> }),
+            (check_rfail_full, CheckRFailFull { compiler: Compiler<'a> }),
             (check_cfail, CheckCFail { compiler: Compiler<'a> }),
+            (check_cfail_full, CheckCFailFull { compiler: Compiler<'a> }),
             (check_pfail, CheckPFail { compiler: Compiler<'a> }),
+            (check_pretty, CheckPretty { compiler: Compiler<'a> }),
+            (check_pretty_rpass, CheckPrettyRPass { compiler: Compiler<'a> }),
+            (check_pretty_rpass_full, CheckPrettyRPassFull { compiler: Compiler<'a> }),
+            (check_pretty_rfail, CheckPrettyRFail { compiler: Compiler<'a> }),
+            (check_pretty_rfail_full, CheckPrettyRFailFull { compiler: Compiler<'a> }),
+            (check_pretty_rpass_valgrind, CheckPrettyRPassValgrind { compiler: Compiler<'a> }),
             (check_codegen, CheckCodegen { compiler: Compiler<'a> }),
             (check_codegen_units, CheckCodegenUnits { compiler: Compiler<'a> }),
             (check_incremental, CheckIncremental { compiler: Compiler<'a> }),
             (check_ui, CheckUi { compiler: Compiler<'a> }),
             (check_debuginfo, CheckDebuginfo { compiler: Compiler<'a> }),
             (check_rustdoc, CheckRustdoc { compiler: Compiler<'a> }),
-            (check_pretty, CheckPretty { compiler: Compiler<'a> }),
-            (check_rpass_valgrind, CheckRPassValgrind { compiler: Compiler<'a> }),
-            (check_rpass_full, CheckRPassFull { compiler: Compiler<'a> }),
-            (check_cfail_full, CheckCFailFull { compiler: Compiler<'a> }),
             (check_docs, CheckDocs { compiler: Compiler<'a> }),
             (check_error_index, CheckErrorIndex { compiler: Compiler<'a> }),
             (check_rmake, CheckRMake { compiler: Compiler<'a> }),
@@ -378,8 +384,11 @@ impl<'a> Step<'a> {
             Source::Check { stage, compiler } => {
                 vec![
                     self.check_rpass(compiler),
-                    self.check_cfail(compiler),
+                    self.check_rpass_full(compiler),
                     self.check_rfail(compiler),
+                    self.check_rfail_full(compiler),
+                    self.check_cfail(compiler),
+                    self.check_cfail_full(compiler),
                     self.check_pfail(compiler),
                     self.check_incremental(compiler),
                     self.check_ui(compiler),
@@ -391,9 +400,12 @@ impl<'a> Step<'a> {
                     self.check_debuginfo(compiler),
                     self.check_rustdoc(compiler),
                     self.check_pretty(compiler),
+                    self.check_pretty_rpass(compiler),
+                    self.check_pretty_rpass_full(compiler),
+                    self.check_pretty_rfail(compiler),
+                    self.check_pretty_rfail_full(compiler),
+                    self.check_pretty_rpass_valgrind(compiler),
                     self.check_rpass_valgrind(compiler),
-                    self.check_rpass_full(compiler),
-                    self.check_cfail_full(compiler),
                     self.check_error_index(compiler),
                     self.check_docs(compiler),
                     self.check_rmake(compiler),
@@ -412,6 +424,8 @@ impl<'a> Step<'a> {
             Source::CheckTidy { stage } => {
                 vec![self.tool_tidy(stage)]
             }
+            Source::CheckPrettyRPass { compiler } |
+            Source::CheckPrettyRFail { compiler } |
             Source::CheckRFail { compiler } |
             Source::CheckPFail { compiler } |
             Source::CheckCodegen { compiler } |
@@ -438,7 +452,11 @@ impl<'a> Step<'a> {
                 ]
             }
             Source::CheckRPassFull { compiler } |
+            Source::CheckRFailFull { compiler } |
             Source::CheckCFailFull { compiler } |
+            Source::CheckPrettyRPassFull { compiler } |
+            Source::CheckPrettyRFailFull { compiler } |
+            Source::CheckPrettyRPassValgrind { compiler } |
             Source::CheckRMake { compiler } => {
                 vec![self.librustc(compiler),
                      self.tool_compiletest(compiler.stage)]

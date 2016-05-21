@@ -143,6 +143,11 @@ impl PMDSource {
     }
 }
 
+enum LoadResult {
+    Previous(ast::CrateNum),
+    Loaded(loader::Library),
+}
+
 impl<'a> CrateReader<'a> {
     pub fn new(sess: &'a Session,
                cstore: &'a CStore,
@@ -358,12 +363,8 @@ impl<'a> CrateReader<'a> {
                      kind: PathKind,
                      explicitly_linked: bool)
                      -> (ast::CrateNum, Rc<cstore::crate_metadata>, cstore::CrateSource) {
-        enum LookupResult {
-            Previous(ast::CrateNum),
-            Loaded(loader::Library),
-        }
         let result = match self.existing_match(name, hash, kind) {
-            Some(cnum) => LookupResult::Previous(cnum),
+            Some(cnum) => LoadResult::Previous(cnum),
             None => {
                 let mut load_ctxt = loader::Context {
                     sess: self.sess,
@@ -380,37 +381,56 @@ impl<'a> CrateReader<'a> {
                     rejected_via_kind: vec!(),
                     should_match_name: true,
                 };
-                let library = load_ctxt.load_library_crate();
-
-                // In the case that we're loading a crate, but not matching
-                // against a hash, we could load a crate which has the same hash
-                // as an already loaded crate. If this is the case prevent
-                // duplicates by just using the first crate.
-                let meta_hash = decoder::get_crate_hash(library.metadata
-                                                               .as_slice());
-                let mut result = LookupResult::Loaded(library);
-                self.cstore.iter_crate_data(|cnum, data| {
-                    if data.name() == name && meta_hash == data.hash() {
-                        assert!(hash.is_none());
-                        result = LookupResult::Previous(cnum);
-                    }
-                });
-                result
+                match self.load(&mut load_ctxt) {
+                    Some(result) => result,
+                    None => load_ctxt.report_load_errs(),
+                }
             }
         };
 
         match result {
-            LookupResult::Previous(cnum) => {
+            LoadResult::Previous(cnum) => {
                 let data = self.cstore.get_crate_data(cnum);
                 if explicitly_linked && !data.explicitly_linked.get() {
                     data.explicitly_linked.set(explicitly_linked);
                 }
                 (cnum, data, self.cstore.used_crate_source(cnum))
             }
-            LookupResult::Loaded(library) => {
+            LoadResult::Loaded(library) => {
                 self.register_crate(root, ident, name, span, library,
                                     explicitly_linked)
             }
+        }
+    }
+
+    fn load(&mut self, loader: &mut loader::Context) -> Option<LoadResult> {
+        let library = match loader.maybe_load_library_crate() {
+            Some(lib) => lib,
+            None => return None,
+        };
+
+        // In the case that we're loading a crate, but not matching
+        // against a hash, we could load a crate which has the same hash
+        // as an already loaded crate. If this is the case prevent
+        // duplicates by just using the first crate.
+        //
+        // Note that we only do this for target triple crates, though, as we
+        // don't want to match a host crate against an equivalent target one
+        // already loaded.
+        if loader.triple == self.sess.opts.target_triple {
+            let meta_hash = decoder::get_crate_hash(library.metadata.as_slice());
+            let meta_name = decoder::get_crate_name(library.metadata.as_slice())
+                                    .to_string();
+            let mut result = LoadResult::Loaded(library);
+            self.cstore.iter_crate_data(|cnum, data| {
+                if data.name() == meta_name && meta_hash == data.hash() {
+                    assert!(loader.hash.is_none());
+                    result = LoadResult::Previous(cnum);
+                }
+            });
+            Some(result)
+        } else {
+            Some(LoadResult::Loaded(library))
         }
     }
 
@@ -488,35 +508,46 @@ impl<'a> CrateReader<'a> {
             rejected_via_kind: vec!(),
             should_match_name: true,
         };
-        let library = match load_ctxt.maybe_load_library_crate() {
-            Some(l) => l,
-            None if is_cross => {
-                // Try loading from target crates. This will abort later if we
-                // try to load a plugin registrar function,
-                target_only = true;
-                should_link = info.should_link;
-
-                load_ctxt.target = &self.sess.target.target;
-                load_ctxt.triple = target_triple;
-                load_ctxt.filesearch = self.sess.target_filesearch(PathKind::Crate);
-                load_ctxt.load_library_crate()
+        let library = self.load(&mut load_ctxt).or_else(|| {
+            if !is_cross {
+                return None
             }
-            None => { load_ctxt.report_load_errs(); },
+            // Try loading from target crates. This will abort later if we
+            // try to load a plugin registrar function,
+            target_only = true;
+            should_link = info.should_link;
+
+            load_ctxt.target = &self.sess.target.target;
+            load_ctxt.triple = target_triple;
+            load_ctxt.filesearch = self.sess.target_filesearch(PathKind::Crate);
+
+            self.load(&mut load_ctxt)
+        });
+        let library = match library {
+            Some(l) => l,
+            None => load_ctxt.report_load_errs(),
         };
 
-        let dylib = library.dylib.clone();
-        let register = should_link && self.existing_match(&info.name,
-                                                          None,
-                                                          PathKind::Crate).is_none();
-        let metadata = if register {
-            // Register crate now to avoid double-reading metadata
-            let (_, cmd, _) = self.register_crate(&None, &info.ident,
-                                                  &info.name, span, library,
-                                                  true);
-            PMDSource::Registered(cmd)
-        } else {
-            // Not registering the crate; just hold on to the metadata
-            PMDSource::Owned(library.metadata)
+        let (dylib, metadata) = match library {
+            LoadResult::Previous(cnum) => {
+                let dylib = self.cstore.opt_used_crate_source(cnum).unwrap().dylib;
+                let data = self.cstore.get_crate_data(cnum);
+                (dylib, PMDSource::Registered(data))
+            }
+            LoadResult::Loaded(library) => {
+                let dylib = library.dylib.clone();
+                let metadata = if should_link {
+                    // Register crate now to avoid double-reading metadata
+                    let (_, cmd, _) = self.register_crate(&None, &info.ident,
+                                                          &info.name, span,
+                                                          library, true);
+                    PMDSource::Registered(cmd)
+                } else {
+                    // Not registering the crate; just hold on to the metadata
+                    PMDSource::Owned(library.metadata)
+                };
+                (dylib, metadata)
+            }
         };
 
         ExtensionCrate {
