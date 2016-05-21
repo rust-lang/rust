@@ -171,7 +171,7 @@ pub trait Unsize<T: ?Sized> {
 /// then it might be prudent to not implement `Copy`. This is because removing `Copy` is a breaking
 /// change: that second example would fail to compile if we made `Foo` non-`Copy`.
 ///
-/// # Derivable
+/// ## Derivable
 ///
 /// This trait can be used with `#[derive]` if all of its components implement `Copy` and the type
 /// implements `Clone`. The implementation will copy the bytes of each field using `memcpy`.
