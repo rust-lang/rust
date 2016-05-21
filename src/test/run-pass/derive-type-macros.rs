@@ -16,13 +16,26 @@ macro_rules! passthru {
     ($t:ty) => { $t }
 }
 
+macro_rules! useassoc {
+    ($t:ident, $assoc:ident) => { ($t, $t::$assoc) }
+}
+
+trait HasAssoc { type Type; }
+
+impl HasAssoc for i32 { type Type = i32; }
+
 #[derive(Debug)]
-struct Thing<T> {
-    thing: passthru!(T)
+struct Thing1<T: HasAssoc> {
+    thing: useassoc!(T, Type)
+}
+#[derive(Debug)]
+struct Thing2<T: HasAssoc> {
+    thing: (T, T::Type)
 }
 
 fn main() {
-    let t: passthru!(Thing<passthru!(i32)>) = Thing { thing: 42 };
-    println!("{:?}", t);
+    let t1: passthru!(Thing1<passthru!(i32)>) = Thing1 { thing: (42, 42) };
+    let t2: passthru!(Thing2<passthru!(i32)>) = Thing2 { thing: (42, 42) };
+    println!("{:?} {:?}", t1, t2);
 }
 
