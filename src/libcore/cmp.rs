@@ -254,8 +254,8 @@ impl PartialOrd for Ordering {
 /// total order. For example, for floating point numbers, `NaN < 0 == false` and `NaN >= 0 ==
 /// false` (cf. IEEE 754-2008 section 5.11).
 ///
-/// This trait can be used with `#[derive]`. When `derive`d, it will produce an ordering
-/// based on the top-to-bottom declaration order of the struct's members.
+/// This trait can be used with `#[derive]`. When `derive`d, it will produce a lexicographic
+/// ordering based on the top-to-bottom declaration order of the struct's members.
 ///
 /// # Examples
 ///
