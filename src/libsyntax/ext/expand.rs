@@ -201,47 +201,46 @@ fn expand_mac_invoc<T>(mac: ast::Mac, attrs: Vec<ast::Attribute>, span: Span,
                        fld: &mut MacroExpander) -> T
     where T: MacroGenerable,
 {
-    check_attributes(&attrs, fld);
-
     // it would almost certainly be cleaner to pass the whole
     // macro invocation in, rather than pulling it apart and
     // marking the tts and the ctxt separately. This also goes
     // for the other three macro invocation chunks of code
     // in this file.
 
-    let Mac_ { path: pth, tts, .. } = mac.node;
-    if pth.segments.len() > 1 {
-        fld.cx.span_err(pth.span,
-                        "expected macro name without module \
-                        separators");
-        // let compilation continue
-        return T::dummy(span);
-    }
-    let extname = pth.segments[0].identifier.name;
-    match fld.cx.syntax_env.find(extname) {
-        None => {
-            let mut err = fld.cx.struct_span_err(
-                pth.span,
-                &format!("macro undefined: '{}!'",
-                        &extname));
+    let Mac_ { path, tts, .. } = mac.node;
+    let mark = fresh_mark();
+
+    fn mac_result<'a>(path: &ast::Path, tts: Vec<TokenTree>, mark: Mrk,
+                      attrs: Vec<ast::Attribute>, call_site: Span, fld: &'a mut MacroExpander)
+                      -> Option<Box<MacResult + 'a>> {
+        check_attributes(&attrs, fld);
+
+        if path.segments.len() > 1 {
+            fld.cx.span_err(path.span, "expected macro name without module separators");
+            return None;
+        }
+
+        let extname = path.segments[0].identifier.name;
+        let extension = if let Some(extension) = fld.cx.syntax_env.find(extname) {
+            extension
+        } else {
+            let mut err = fld.cx.struct_span_err(path.span,
+                                                 &format!("macro undefined: '{}!'", &extname));
             fld.cx.suggest_macro_name(&extname.as_str(), &mut err);
             err.emit();
+            return None;
+        };
 
-            // let compilation continue
-            T::dummy(span)
-        }
-        Some(rc) => match *rc {
+        match *extension {
             NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
                 fld.cx.bt_push(ExpnInfo {
-                        call_site: span,
-                        callee: NameAndSpan {
-                            format: MacroBang(extname),
-                            span: exp_span,
-                            allow_internal_unstable: allow_internal_unstable,
-                        },
-                    });
-                let fm = fresh_mark();
-                let marked_before = mark_tts(&tts[..], fm);
+                    call_site: call_site,
+                    callee: NameAndSpan {
+                        format: MacroBang(extname),
+                        span: exp_span,
+                        allow_internal_unstable: allow_internal_unstable,
+                    },
+                });
 
                 // The span that we pass to the expanders we want to
                 // be the root of the call stack. That's the most
@@ -249,35 +248,35 @@ fn expand_mac_invoc<T>(mac: ast::Mac, attrs: Vec<ast::Attribute>, span: Span,
                 // the macro.
                 let mac_span = fld.cx.original_span();
 
-                let opt_parsed = {
-                    let expanded = expandfun.expand(fld.cx,
-                                                    mac_span,
-                                                    &marked_before[..]);
-                    T::make_with(expanded)
-                };
-                let parsed = match opt_parsed {
-                    Some(e) => e,
-                    None => {
-                        let msg = format!("non-{kind} macro in {kind} position: {name}",
-                                          name = extname, kind = T::kind_name());
-                        fld.cx.span_err(pth.span, &msg);
-                        return T::dummy(span);
-                    }
-                };
-                let marked = parsed.fold_with(&mut Marker { mark: fm });
-                let fully_expanded = marked.fold_with(fld);
-                fld.cx.bt_pop();
-                fully_expanded
+                let marked_tts = mark_tts(&tts[..], mark);
+                Some(expandfun.expand(fld.cx, mac_span, &marked_tts))
             }
             _ => {
-                fld.cx.span_err(
-                    pth.span,
-                    &format!("'{}' is not a tt-style macro",
-                            extname));
-                T::dummy(span)
+                fld.cx.span_err(path.span,
+                                &format!("'{}' is not a tt-style macro", extname));
+                None
             }
         }
     }
+
+    let opt_expanded = T::make_with(match mac_result(&path, tts, mark, attrs, span, fld) {
+        Some(result) => result,
+        None => return T::dummy(span),
+    });
+
+    let expanded = if let Some(expanded) = opt_expanded {
+        expanded
+    } else {
+        let msg = format!("non-{kind} macro in {kind} position: {name}",
+                          name = path.segments[0].identifier.name, kind = T::kind_name());
+        fld.cx.span_err(path.span, &msg);
+        return T::dummy(span);
+    };
+
+    let marked = expanded.fold_with(&mut Marker { mark: mark });
+    let fully_expanded = marked.fold_with(fld);
+    fld.cx.bt_pop();
+    fully_expanded
 }
 
 /// Rename loop label and expand its loop body
