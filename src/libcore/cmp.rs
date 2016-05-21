@@ -126,9 +126,32 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 /// This property cannot be checked by the compiler, and therefore `Eq` implies
 /// `PartialEq`, and has no extra methods.
 ///
+/// ## Derivable
+///
 /// This trait can be used with `#[derive]`. When `derive`d, because `Eq` has
 /// no extra methods, it is only informing the compiler that this is an
-/// equivalence relation rather than a partial equivalence relation.
+/// equivalence relation rather than a partial equivalence relation. Note that
+/// the `derive` strategy requires all fields are `PartialEq`, which isn't
+/// always desired.
+///
+/// ## How can I implement `Eq`?
+///
+/// If you cannot use the `derive` strategy, specify that your type implements
+/// `Eq`, which has no methods:
+///
+/// ```
+/// enum BookFormat { Paperback, Hardback, Ebook }
+/// struct Book {
+///     isbn: i32,
+///     format: BookFormat,
+/// }
+/// impl PartialEq for Book {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.isbn == other.isbn
+///     }
+/// }
+/// impl Eq for Book {}
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Eq: PartialEq<Self> {
     // FIXME #13101: this method is used solely by #[deriving] to
