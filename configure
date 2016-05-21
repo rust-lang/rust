@@ -599,6 +599,7 @@ opt debug-assertions 0 "build with debugging assertions"
 opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
 opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
+opt local-rebuild 0 "use an installed rustc matching the current version, for rebuilds"
 opt llvm-static-stdcpp 0 "statically link to libstdc++ for LLVM"
 opt rpath 1 "build rpaths into rustc itself"
 opt stage0-landing-pads 1 "enable landing pads during bootstrap with stage0"
@@ -845,6 +846,16 @@ BIN_SUF=
 if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ]
 then
     BIN_SUF=.exe
+fi
+
+# --enable-local-rebuild implies --enable-local-rust too
+if [ -n "$CFG_ENABLE_LOCAL_REBUILD" ]
+then
+    if [ -z "$CFG_ENABLE_LOCAL_RUST" ]
+    then
+        CFG_ENABLE_LOCAL_RUST=1
+        putvar CFG_ENABLE_LOCAL_RUST
+    fi
 fi
 
 if [ -n "$CFG_ENABLE_LOCAL_RUST" ]
