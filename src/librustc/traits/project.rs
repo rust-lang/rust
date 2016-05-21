@@ -24,13 +24,14 @@ use super::VtableImplData;
 use super::util;
 
 use hir::def_id::DefId;
-use infer::{self, InferOk, TypeOrigin};
+use infer::{InferOk, TypeOrigin};
+use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
+use std::env;
+use syntax::parse::token;
+use syntax::ast;
 use ty::subst::Subst;
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
-use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
-use syntax::parse::token;
-use syntax::ast;
 use util::common::FN_OUTPUT_NAME;
 
 use std::rc::Rc;
