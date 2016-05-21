@@ -11,7 +11,6 @@
 //! See README.md
 
 pub use self::Constraint::*;
-pub use self::Verify::*;
 pub use self::UndoLogEntry::*;
 pub use self::CombineMapType::*;
 pub use self::RegionResolutionError::*;
@@ -47,25 +46,28 @@ pub enum Constraint {
     // Concrete region is subregion of region variable
     ConstrainRegSubVar(Region, RegionVid),
 
-    // Region variable is subregion of concrete region
-    //
-    // FIXME(#29436) -- should be remove in favor of a Verify
+    // Region variable is subregion of concrete region. This does not
+    // directly affect inference, but instead is checked after
+    // inference is complete.
     ConstrainVarSubReg(RegionVid, Region),
+
+    // A constraint where neither side is a variable. This does not
+    // directly affect inference, but instead is checked after
+    // inference is complete.
+    ConstrainRegSubReg(Region, Region),
 }
 
-// Something we have to verify after region inference is done, but
-// which does not directly influence the inference process
-pub enum Verify<'tcx> {
-    // VerifyRegSubReg(a, b): Verify that `a <= b`. Neither `a` nor
-    // `b` are inference variables.
-    VerifyRegSubReg(SubregionOrigin<'tcx>, Region, Region),
-
-    // VerifyGenericBound(T, _, R, RS): The parameter type `T` (or
-    // associated type) must outlive the region `R`. `T` is known to
-    // outlive `RS`. Therefore verify that `R <= RS[i]` for some
-    // `i`. Inference variables may be involved (but this verification
-    // step doesn't influence inference).
-    VerifyGenericBound(GenericKind<'tcx>, SubregionOrigin<'tcx>, Region, VerifyBound),
+// VerifyGenericBound(T, _, R, RS): The parameter type `T` (or
+// associated type) must outlive the region `R`. `T` is known to
+// outlive `RS`. Therefore verify that `R <= RS[i]` for some
+// `i`. Inference variables may be involved (but this verification
+// step doesn't influence inference).
+#[derive(Debug)]
+pub struct Verify<'tcx> {
+    kind: GenericKind<'tcx>,
+    origin: SubregionOrigin<'tcx>,
+    region: Region,
+    bound: VerifyBound,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -336,20 +338,16 @@ impl TaintSet {
                     &AddConstraint(ConstrainVarSubReg(a, b)) => {
                         self.add_edge(ReVar(a), b);
                     }
+                    &AddConstraint(ConstrainRegSubReg(a, b)) => {
+                        self.add_edge(a, b);
+                    }
                     &AddGiven(a, b) => {
                         self.add_edge(ReFree(a), ReVar(b));
                     }
                     &AddVerify(i) => {
-                        match verifys[i] {
-                            VerifyRegSubReg(_, a, b) => {
-                                self.add_edge(a, b);
-                            }
-                            VerifyGenericBound(_, _, a, ref bound) => {
-                                bound.for_each_region(&mut |b| {
-                                    self.add_edge(a, b);
-                                });
-                            }
-                        }
+                        verifys[i].bound.for_each_region(&mut |b| {
+                            self.add_edge(verifys[i].region, b);
+                        });
                     }
                     &Purged |
                     &AddCombination(..) |
@@ -609,6 +607,8 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                     skols.contains(&a),
                 &AddConstraint(ConstrainVarSubReg(_, b)) =>
                     skols.contains(&b),
+                &AddConstraint(ConstrainRegSubReg(a, b)) =>
+                    skols.contains(&a) || skols.contains(&b),
                 &AddGiven(_, _) =>
                     false,
                 &AddVerify(_) =>
@@ -679,11 +679,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         debug!("RegionVarBindings: add_verify({:?})", verify);
 
         // skip no-op cases known to be satisfied
-        match verify {
-            VerifyGenericBound(_, _, _, VerifyBound::AllBounds(ref bs)) if bs.len() == 0 => {
-                return;
-            }
-            _ => {}
+        match verify.bound {
+            VerifyBound::AllBounds(ref bs) if bs.len() == 0 => { return; }
+            _ => { }
         }
 
         let mut verifys = self.verifys.borrow_mut();
@@ -751,7 +749,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 self.add_constraint(ConstrainVarSubReg(sub_id, r), origin);
             }
             _ => {
-                self.add_verify(VerifyRegSubReg(origin, sub, sup));
+                self.add_constraint(ConstrainRegSubReg(sub, sup), origin);
             }
         }
     }
@@ -762,7 +760,12 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                                 kind: GenericKind<'tcx>,
                                 sub: Region,
                                 bound: VerifyBound) {
-        self.add_verify(VerifyGenericBound(kind, origin, sub, bound));
+        self.add_verify(Verify {
+            kind: kind,
+            origin: origin,
+            region: sub,
+            bound: bound
+        });
     }
 
     pub fn lub_regions(&self, origin: SubregionOrigin<'tcx>, a: Region, b: Region) -> Region {
@@ -988,10 +991,6 @@ pub enum VarValue {
     ErrorValue,
 }
 
-struct VarData {
-    value: VarValue,
-}
-
 struct RegionAndOrigin<'tcx> {
     region: Region,
     origin: SubregionOrigin<'tcx>,
@@ -1017,18 +1016,14 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         let graph = self.construct_graph();
         self.expand_givens(&graph);
         self.expansion(free_regions, &mut var_data);
-        self.contraction(free_regions, &mut var_data);
-        let values = self.extract_values_and_collect_conflicts(free_regions,
-                                                               &var_data,
-                                                               &graph,
-                                                               errors);
-        self.collect_concrete_region_errors(free_regions, &values, errors);
-        values
+        self.collect_errors(free_regions, &mut var_data, errors);
+        self.collect_var_errors(free_regions, &var_data, &graph, errors);
+        var_data
     }
 
-    fn construct_var_data(&self) -> Vec<VarData> {
+    fn construct_var_data(&self) -> Vec<VarValue> {
         (0..self.num_vars() as usize)
-            .map(|_| VarData { value: Value(ty::ReEmpty) })
+            .map(|_| Value(ty::ReEmpty))
             .collect()
     }
 
@@ -1065,30 +1060,28 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn expansion(&self, free_regions: &FreeRegionMap, var_data: &mut [VarData]) {
-        self.iterate_until_fixed_point("Expansion", |constraint| {
+    fn expansion(&self, free_regions: &FreeRegionMap, var_values: &mut [VarValue]) {
+        self.iterate_until_fixed_point("Expansion", |constraint, origin| {
             debug!("expansion: constraint={:?} origin={:?}",
-                   constraint,
-                   self.constraints
-                       .borrow()
-                       .get(constraint)
-                       .unwrap());
+                   constraint, origin);
             match *constraint {
                 ConstrainRegSubVar(a_region, b_vid) => {
-                    let b_data = &mut var_data[b_vid.index as usize];
+                    let b_data = &mut var_values[b_vid.index as usize];
                     self.expand_node(free_regions, a_region, b_vid, b_data)
                 }
                 ConstrainVarSubVar(a_vid, b_vid) => {
-                    match var_data[a_vid.index as usize].value {
+                    match var_values[a_vid.index as usize] {
                         ErrorValue => false,
                         Value(a_region) => {
-                            let b_node = &mut var_data[b_vid.index as usize];
+                            let b_node = &mut var_values[b_vid.index as usize];
                             self.expand_node(free_regions, a_region, b_vid, b_node)
                         }
                     }
                 }
+                ConstrainRegSubReg(..) |
                 ConstrainVarSubReg(..) => {
-                    // This is a contraction constraint.  Ignore it.
+                    // These constraints are checked after expansion
+                    // is done, in `collect_errors`.
                     false
                 }
             }
@@ -1099,12 +1092,12 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                    free_regions: &FreeRegionMap,
                    a_region: Region,
                    b_vid: RegionVid,
-                   b_data: &mut VarData)
+                   b_data: &mut VarValue)
                    -> bool {
         debug!("expand_node({:?}, {:?} == {:?})",
                a_region,
                b_vid,
-               b_data.value);
+               b_data);
 
         // Check if this relationship is implied by a given.
         match a_region {
@@ -1117,7 +1110,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             _ => {}
         }
 
-        match b_data.value {
+        match *b_data {
             Value(cur_region) => {
                 let lub = self.lub_concrete_regions(free_regions, a_region, cur_region);
                 if lub == cur_region {
@@ -1129,7 +1122,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                        cur_region,
                        lub);
 
-                b_data.value = Value(lub);
+                *b_data = Value(lub);
                 return true;
             }
 
@@ -1139,63 +1132,30 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    // FIXME(#29436) -- this fn would just go away if we removed ConstrainVarSubReg
-    fn contraction(&self, free_regions: &FreeRegionMap, var_data: &mut [VarData]) {
-        self.iterate_until_fixed_point("Contraction", |constraint| {
-            debug!("contraction: constraint={:?} origin={:?}",
-                   constraint,
-                   self.constraints
-                       .borrow()
-                       .get(constraint)
-                       .unwrap());
+    /// After expansion is complete, go and check upper bounds (i.e.,
+    /// cases where the region cannot grow larger than a fixed point)
+    /// and check that they are satisfied.
+    fn collect_errors(&self,
+                      free_regions: &FreeRegionMap,
+                      var_data: &mut Vec<VarValue>,
+                      errors: &mut Vec<RegionResolutionError<'tcx>>) {
+        let constraints = self.constraints.borrow();
+        for (constraint, origin) in constraints.iter() {
+            debug!("collect_errors: constraint={:?} origin={:?}",
+                   constraint, origin);
             match *constraint {
                 ConstrainRegSubVar(..) |
                 ConstrainVarSubVar(..) => {
                     // Expansion will ensure that these constraints hold. Ignore.
                 }
-                ConstrainVarSubReg(a_vid, b_region) => {
-                    let a_data = &mut var_data[a_vid.index as usize];
-                    debug!("contraction: {:?} == {:?}, {:?}",
-                           a_vid,
-                           a_data.value,
-                           b_region);
 
-                    let a_region = match a_data.value {
-                        ErrorValue => return false,
-                        Value(a_region) => a_region,
-                    };
-
-                    if !free_regions.is_subregion_of(self.tcx, a_region, b_region) {
-                        debug!("Setting {:?} to ErrorValue: {:?} not subregion of {:?}",
-                               a_vid,
-                               a_region,
-                               b_region);
-                        a_data.value = ErrorValue;
-                    }
-                }
-            }
-
-            false
-        })
-    }
-
-    fn collect_concrete_region_errors(&self,
-                                      free_regions: &FreeRegionMap,
-                                      values: &Vec<VarValue>,
-                                      errors: &mut Vec<RegionResolutionError<'tcx>>) {
-        let mut reg_reg_dups = FnvHashSet();
-        for verify in self.verifys.borrow().iter() {
-            match *verify {
-                VerifyRegSubReg(ref origin, sub, sup) => {
+                ConstrainRegSubReg(sub, sup) => {
                     if free_regions.is_subregion_of(self.tcx, sub, sup) {
                         continue;
                     }
 
-                    if !reg_reg_dups.insert((sub, sup)) {
-                        continue;
-                    }
-
-                    debug!("region inference error at {:?}: {:?} <= {:?} is not true",
+                    debug!("collect_errors: region error at {:?}: \
+                            cannot verify that {:?} <= {:?}",
                            origin,
                            sub,
                            sup);
@@ -1203,30 +1163,61 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                     errors.push(ConcreteFailure((*origin).clone(), sub, sup));
                 }
 
-                VerifyGenericBound(ref kind, ref origin, sub, ref bound) => {
-                    let sub = normalize(values, sub);
-                    if bound.is_met(self.tcx, free_regions, values, sub) {
-                        continue;
+                ConstrainVarSubReg(a_vid, b_region) => {
+                    let a_data = &mut var_data[a_vid.index as usize];
+                    debug!("contraction: {:?} == {:?}, {:?}",
+                           a_vid,
+                           a_data,
+                           b_region);
+
+                    let a_region = match *a_data {
+                        ErrorValue => continue,
+                        Value(a_region) => a_region,
+                    };
+
+                    // Do not report these errors immediately:
+                    // instead, set the variable value to error and
+                    // collect them later.
+                    if !free_regions.is_subregion_of(self.tcx, a_region, b_region) {
+                        debug!("collect_errors: region error at {:?}: \
+                                cannot verify that {:?}={:?} <= {:?}",
+                               origin,
+                               a_vid,
+                               a_region,
+                               b_region);
+                        *a_data = ErrorValue;
                     }
-
-                    debug!("region inference error at {:?}: verifying {:?} <= {:?}",
-                           origin,
-                           sub,
-                           bound);
-
-                    errors.push(GenericBoundFailure((*origin).clone(), kind.clone(), sub));
                 }
             }
         }
+
+        for verify in self.verifys.borrow().iter() {
+            debug!("collect_errors: verify={:?}", verify);
+            let sub = normalize(var_data, verify.region);
+            if verify.bound.is_met(self.tcx, free_regions, var_data, sub) {
+                continue;
+            }
+
+            debug!("collect_errors: region error at {:?}: \
+                    cannot verify that {:?} <= {:?}",
+                   verify.origin,
+                   verify.region,
+                   verify.bound);
+
+            errors.push(GenericBoundFailure(verify.origin.clone(),
+                                            verify.kind.clone(),
+                                            sub));
+        }
     }
 
-    fn extract_values_and_collect_conflicts(&self,
-                                            free_regions: &FreeRegionMap,
-                                            var_data: &[VarData],
-                                            graph: &RegionGraph,
-                                            errors: &mut Vec<RegionResolutionError<'tcx>>)
-                                            -> Vec<VarValue> {
-        debug!("extract_values_and_collect_conflicts()");
+    /// Go over the variables that were declared to be error variables
+    /// and create a `RegionResolutionError` for each of them.
+    fn collect_var_errors(&self,
+                          free_regions: &FreeRegionMap,
+                          var_data: &[VarValue],
+                          graph: &RegionGraph,
+                          errors: &mut Vec<RegionResolutionError<'tcx>>) {
+        debug!("collect_var_errors");
 
         // This is the best way that I have found to suppress
         // duplicate and related errors. Basically we keep a set of
@@ -1242,7 +1233,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         let mut dup_vec = vec![u32::MAX; self.num_vars() as usize];
 
         for idx in 0..self.num_vars() as usize {
-            match var_data[idx].value {
+            match var_data[idx] {
                 Value(_) => {
                     /* Inference successful */
                 }
@@ -1279,8 +1270,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 }
             }
         }
-
-        (0..self.num_vars() as usize).map(|idx| var_data[idx].value).collect()
     }
 
     fn construct_graph(&self) -> RegionGraph {
@@ -1314,6 +1303,10 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 }
                 ConstrainVarSubReg(a_id, _) => {
                     graph.add_edge(NodeIndex(a_id.index as usize), dummy_sink, *constraint);
+                }
+                ConstrainRegSubReg(..) => {
+                    // this would be an edge from `dummy_source` to
+                    // `dummy_sink`; just ignore it.
                 }
             }
         }
@@ -1457,13 +1450,18 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                             origin: this.constraints.borrow().get(&edge.data).unwrap().clone(),
                         });
                     }
+
+                    ConstrainRegSubReg(..) => {
+                        panic!("cannot reach reg-sub-reg edge in region inference \
+                                post-processing")
+                    }
                 }
             }
         }
     }
 
     fn iterate_until_fixed_point<F>(&self, tag: &str, mut body: F)
-        where F: FnMut(&Constraint) -> bool
+        where F: FnMut(&Constraint, &SubregionOrigin<'tcx>) -> bool
     {
         let mut iteration = 0;
         let mut changed = true;
@@ -1471,8 +1469,8 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             changed = false;
             iteration += 1;
             debug!("---- {} Iteration {}{}", "#", tag, iteration);
-            for (constraint, _) in self.constraints.borrow().iter() {
-                let edge_changed = body(constraint);
+            for (constraint, origin) in self.constraints.borrow().iter() {
+                let edge_changed = body(constraint, origin);
                 if edge_changed {
                     debug!("Updated due to constraint {:?}", constraint);
                     changed = true;
@@ -1482,19 +1480,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         debug!("---- {} Complete after {} iteration(s)", tag, iteration);
     }
 
-}
-
-impl<'tcx> fmt::Debug for Verify<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            VerifyRegSubReg(_, ref a, ref b) => {
-                write!(f, "VerifyRegSubReg({:?}, {:?})", a, b)
-            }
-            VerifyGenericBound(_, ref p, ref a, ref bs) => {
-                write!(f, "VerifyGenericBound({:?}, {:?}, {:?})", p, a, bs)
-            }
-        }
-    }
 }
 
 fn normalize(values: &Vec<VarValue>, r: ty::Region) -> ty::Region {
