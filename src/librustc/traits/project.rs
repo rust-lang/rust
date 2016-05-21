@@ -257,9 +257,13 @@ pub fn normalize_with_depth<'a, 'b, 'gcx, 'tcx, T>(
 
     where T : TypeFoldable<'tcx>
 {
+    debug!("normalize_with_depth(depth={}, value={:?})", depth, value);
     let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth);
     let result = normalizer.fold(value);
-
+    debug!("normalize_with_depth: depth={} result={:?} with {} obligations",
+           depth, result, normalizer.obligations.len());
+    debug!("normalize_with_depth: depth={} obligations={:?}",
+           depth, normalizer.obligations);
     Normalized {
         value: result,
         obligations: normalizer.obligations,
@@ -331,13 +335,15 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                 // binder). It would be better to normalize in a
                 // binding-aware fashion.
 
-                let Normalized { value: ty, obligations } =
+                let Normalized { value: normalized_ty, obligations } =
                     normalize_projection_type(self.selcx,
                                               data.clone(),
                                               self.cause.clone(),
                                               self.depth);
+                debug!("AssociatedTypeNormalizer: depth={} normalized {:?} to {:?} with {} add'l obligations",
+                       self.depth, ty, normalized_ty, obligations.len());
                 self.obligations.extend(obligations);
-                ty
+                normalized_ty
             }
 
             _ => {
