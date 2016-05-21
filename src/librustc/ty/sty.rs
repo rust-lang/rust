@@ -716,7 +716,7 @@ pub struct EarlyBoundRegion {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TyVid {
-    pub index: u32
+    pub index: u32,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
