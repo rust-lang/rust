@@ -28,6 +28,7 @@ use infer::{self, InferOk, TypeOrigin};
 use ty::subst::Subst;
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
+use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::parse::token;
 use syntax::ast;
 use util::common::FN_OUTPUT_NAME;
@@ -424,19 +425,25 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 
     let obligation = Obligation::with_depth(cause.clone(), depth, projection_ty.clone());
     match project_type(selcx, &obligation) {
-        Ok(ProjectedTy::Progress(projected_ty, mut obligations)) => {
+        Ok(ProjectedTy::Progress(Progress { ty: projected_ty,
+                                            mut obligations,
+                                            cacheable })) => {
             // if projection succeeded, then what we get out of this
             // is also non-normalized (consider: it was derived from
             // an impl, where-clause etc) and hence we must
             // re-normalize it
 
             debug!("opt_normalize_projection_type: \
-                    projected_ty={:?} depth={} obligations={:?}",
+                    projected_ty={:?} \
+                    depth={} \
+                    obligations={:?} \
+                    cacheable={:?}",
                    projected_ty,
                    depth,
-                   obligations);
+                   obligations,
+                   cacheable);
 
-            if projected_ty.has_projection_types() {
+            let result = if projected_ty.has_projection_types() {
                 let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth+1);
                 let normalized_ty = normalizer.fold(&projected_ty);
 
@@ -455,7 +462,9 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                     value: projected_ty,
                     obligations: obligations,
                 })
-            }
+            };
+
+            result
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
             debug!("opt_normalize_projection_type: \
@@ -520,11 +529,37 @@ fn normalize_to_error<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tc
 }
 
 enum ProjectedTy<'tcx> {
-    Progress(Ty<'tcx>, Vec<PredicateObligation<'tcx>>),
+    Progress(Progress<'tcx>),
     NoProgress(Ty<'tcx>),
 }
 
+struct Progress<'tcx> {
+    ty: Ty<'tcx>,
+    obligations: Vec<PredicateObligation<'tcx>>,
+    cacheable: bool,
+}
+
+impl<'tcx> Progress<'tcx> {
+    fn error<'a,'gcx>(tcx: TyCtxt<'a,'gcx,'tcx>) -> Self {
+        Progress {
+            ty: tcx.types.err,
+            obligations: vec![],
+            cacheable: true
+        }
+    }
+
+    fn with_addl_obligations(mut self,
+                             mut obligations: Vec<PredicateObligation<'tcx>>)
+                             -> Self {
+        self.obligations.append(&mut obligations);
+        self
+    }
+}
+
 /// Compute the result of a projection type (if we can).
+///
+/// IMPORTANT:
+/// - `obligation` must be fully normalized
 fn project_type<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>)
@@ -539,13 +574,12 @@ fn project_type<'cx, 'gcx, 'tcx>(
         selcx.infcx().report_overflow_error(&obligation, true);
     }
 
-    let obligation_trait_ref =
-        selcx.infcx().resolve_type_vars_if_possible(&obligation.predicate.trait_ref);
+    let obligation_trait_ref = &obligation.predicate.trait_ref;
 
     debug!("project: obligation_trait_ref={:?}", obligation_trait_ref);
 
     if obligation_trait_ref.references_error() {
-        return Ok(ProjectedTy::Progress(selcx.tcx().types.err, vec!()));
+        return Ok(ProjectedTy::Progress(Progress::error(selcx.tcx())));
     }
 
     let mut candidates = ProjectionTyCandidateSet {
@@ -623,16 +657,17 @@ fn project_type<'cx, 'gcx, 'tcx>(
 
     match candidates.vec.pop() {
         Some(candidate) => {
-            let (ty, obligations) = confirm_candidate(selcx,
-                                                      obligation,
-                                                      &obligation_trait_ref,
-                                                      candidate);
-            Ok(ProjectedTy::Progress(ty, obligations))
+            Ok(ProjectedTy::Progress(
+                confirm_candidate(selcx,
+                                  obligation,
+                                  &obligation_trait_ref,
+                                  candidate)))
         }
         None => {
-            Ok(ProjectedTy::NoProgress(selcx.tcx().mk_projection(
-                obligation.predicate.trait_ref.clone(),
-                obligation.predicate.item_name)))
+            Ok(ProjectedTy::NoProgress(
+                selcx.tcx().mk_projection(
+                    obligation.predicate.trait_ref.clone(),
+                    obligation.predicate.item_name)))
         }
     }
 }
@@ -935,7 +970,7 @@ fn confirm_candidate<'cx, 'gcx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate: ProjectionTyCandidate<'tcx>)
-    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+    -> Progress<'tcx>
 {
     debug!("confirm_candidate(candidate={:?}, obligation={:?})",
            candidate,
@@ -957,7 +992,7 @@ fn confirm_select_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>)
-    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+    -> Progress<'tcx>
 {
     let poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
     let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
@@ -995,7 +1030,7 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation:  &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>)
-    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+    -> Progress<'tcx>
 {
     let self_ty = obligation_trait_ref.self_ty();
     let object_ty = selcx.infcx().shallow_resolve(self_ty);
@@ -1007,7 +1042,7 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
             span_bug!(
                 obligation.cause.span,
                 "confirm_object_candidate called with non-object: {:?}",
-                object_ty);
+                object_ty)
         }
     };
     let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), object_ty);
@@ -1051,7 +1086,7 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
                 debug!("confirm_object_candidate: no env-predicate \
                         found in object type `{:?}`; ill-formed",
                        object_ty);
-                return (selcx.tcx().types.err, vec!());
+                return Progress::error(selcx.tcx());
             }
         }
     };
@@ -1063,7 +1098,7 @@ fn confirm_fn_pointer_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     fn_pointer_vtable: VtableFnPointerData<'tcx, PredicateObligation<'tcx>>)
-    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+    -> Progress<'tcx>
 {
     // FIXME(#32730) drop this assertion once obligations are propagated from inference (fn pointer
     // vtable nested obligations ONLY come from unification in inference)
@@ -1077,23 +1112,22 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     vtable: VtableClosureData<'tcx, PredicateObligation<'tcx>>)
-    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+    -> Progress<'tcx>
 {
     let closure_typer = selcx.closure_typer();
     let closure_type = closure_typer.closure_type(vtable.closure_def_id, vtable.substs);
     let Normalized {
         value: closure_type,
-        mut obligations
+        obligations
     } = normalize_with_depth(selcx,
                              obligation.cause.clone(),
                              obligation.recursion_depth+1,
                              &closure_type);
-    let (ty, mut cc_obligations) = confirm_callable_candidate(selcx,
-                                                              obligation,
-                                                              &closure_type.sig,
-                                                              util::TupleArgumentsFlag::No);
-    obligations.append(&mut cc_obligations);
-    (ty, obligations)
+    confirm_callable_candidate(selcx,
+                               obligation,
+                               &closure_type.sig,
+                               util::TupleArgumentsFlag::No)
+        .with_addl_obligations(obligations)
 }
 
 fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
@@ -1101,7 +1135,7 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     fn_sig: &ty::PolyFnSig<'tcx>,
     flag: util::TupleArgumentsFlag)
-    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+    -> Progress<'tcx>
 {
     let tcx = selcx.tcx();
 
@@ -1134,47 +1168,38 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     poly_projection: ty::PolyProjectionPredicate<'tcx>)
-    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+    -> Progress<'tcx>
 {
     let infcx = selcx.infcx();
-
-    let projection =
-        infcx.replace_late_bound_regions_with_fresh_var(
-            obligation.cause.span,
-            infer::LateBoundRegionConversionTime::HigherRankedType,
-            &poly_projection).0;
-
-    assert_eq!(projection.projection_ty.item_name,
-               obligation.predicate.item_name);
-
     let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
-    let obligations = match infcx.eq_trait_refs(false,
-                                                origin,
-                                                obligation.predicate.trait_ref.clone(),
-                                                projection.projection_ty.trait_ref.clone()) {
-        Ok(InferOk { obligations, .. }) => {
-            // FIXME(#32730) once obligations are generated in inference, remove this assertion
+    let trait_ref = obligation.predicate.trait_ref;
+    match infcx.match_poly_projection_predicate(origin, poly_projection, trait_ref) {
+        Ok(InferOk { value: ty_match, obligations }) => {
+            // FIXME(#32730) once obligations are generated in inference, drop this assertion
             assert!(obligations.is_empty());
-            obligations
+            Progress {
+                ty: ty_match.value,
+                obligations: obligations,
+                cacheable: ty_match.unconstrained_regions.is_empty(),
+            }
         }
         Err(e) => {
             span_bug!(
                 obligation.cause.span,
-                "Failed to unify `{:?}` and `{:?}` in projection: {}",
+                "Failed to unify obligation `{:?}` \
+                 with poly_projection `{:?}`: {:?}",
                 obligation,
-                projection,
+                poly_projection,
                 e);
         }
-    };
-
-    (projection.ty, obligations)
+    }
 }
 
 fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     impl_vtable: VtableImplData<'tcx, PredicateObligation<'tcx>>)
-    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+    -> Progress<'tcx>
 {
     let VtableImplData { substs, nested, impl_def_id } = impl_vtable;
 
@@ -1195,7 +1220,11 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
                 tcx.types.err
             });
             let substs = translate_substs(selcx.infcx(), impl_def_id, substs, node_item.node);
-            (ty.subst(tcx, substs), nested)
+            Progress {
+                ty: ty.subst(tcx, substs),
+                obligations: nested,
+                cacheable: true
+            }
         }
         None => {
             span_bug!(obligation.cause.span,

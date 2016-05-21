@@ -1619,7 +1619,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                            origin: TypeOrigin,
                                            match_a: ty::PolyProjectionPredicate<'tcx>,
                                            match_b: ty::TraitRef<'tcx>)
-                                           -> RelateResult<HrMatchResult<Ty<'tcx>>>
+                                           -> InferResult<'tcx, HrMatchResult<Ty<'tcx>>>
     {
         let span = origin.span();
         let match_trait_ref = match_a.skip_binder().projection_ty.trait_ref;
@@ -1629,8 +1629,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
 
         let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref, p.ty));
-        self.combine_fields(true, trace)
-            .higher_ranked_match(span, &match_pair, &match_b)
+        let combine = self.combine_fields(true, trace);
+        let result = combine.higher_ranked_match(span, &match_pair, &match_b)?;
+        Ok(InferOk { value: result, obligations: combine.obligations })
     }
 
     /// See `verify_generic_bound` method in `region_inference`
