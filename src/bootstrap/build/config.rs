@@ -59,6 +59,8 @@ pub struct Config {
     pub rust_rpath: bool,
     pub rustc_default_linker: Option<String>,
     pub rustc_default_ar: Option<String>,
+    pub rust_optimize_tests: bool,
+    pub rust_debuginfo_tests: bool,
 
     pub build: String,
     pub host: Vec<String>,
@@ -136,6 +138,8 @@ struct Rust {
     channel: Option<String>,
     musl_root: Option<String>,
     rpath: Option<bool>,
+    optimize_tests: Option<bool>,
+    debuginfo_tests: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -154,6 +158,7 @@ impl Config {
         config.llvm_optimize = true;
         config.use_jemalloc = true;
         config.rust_optimize = true;
+        config.rust_optimize_tests = true;
         config.submodules = true;
         config.docs = true;
         config.rust_rpath = true;
@@ -219,6 +224,8 @@ impl Config {
             set(&mut config.rust_debug_assertions, rust.debug_assertions);
             set(&mut config.rust_debuginfo, rust.debuginfo);
             set(&mut config.rust_optimize, rust.optimize);
+            set(&mut config.rust_optimize_tests, rust.optimize_tests);
+            set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.debug_jemalloc, rust.debug_jemalloc);
             set(&mut config.use_jemalloc, rust.use_jemalloc);
@@ -306,6 +313,8 @@ impl Config {
                 ("JEMALLOC", self.use_jemalloc),
                 ("DEBUG_JEMALLOC", self.debug_jemalloc),
                 ("RPATH", self.rust_rpath),
+                ("OPTIMIZE_TESTS", self.rust_optimize_tests),
+                ("DEBUGINFO_TESTS", self.rust_debuginfo_tests),
             }
 
             match key {

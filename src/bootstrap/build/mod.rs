@@ -318,9 +318,17 @@ impl Build {
                     check::compiletest(self, &compiler, target.target,
                                        "run-pass", "run-pass");
                 }
+                CheckRPassFull { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "run-pass", "run-pass-fulldeps");
+                }
                 CheckCFail { compiler } => {
                     check::compiletest(self, &compiler, target.target,
                                        "compile-fail", "compile-fail");
+                }
+                CheckCFailFull { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "compile-fail", "compile-fail-fulldeps")
                 }
                 CheckPFail { compiler } => {
                     check::compiletest(self, &compiler, target.target,
@@ -330,9 +338,33 @@ impl Build {
                     check::compiletest(self, &compiler, target.target,
                                        "run-fail", "run-fail");
                 }
+                CheckRFailFull { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "run-fail", "run-fail-fulldeps");
+                }
                 CheckPretty { compiler } => {
                     check::compiletest(self, &compiler, target.target,
                                        "pretty", "pretty");
+                }
+                CheckPrettyRPass { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "pretty", "run-pass");
+                }
+                CheckPrettyRPassFull { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "pretty", "run-pass-fulldeps");
+                }
+                CheckPrettyRFail { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "pretty", "run-fail");
+                }
+                CheckPrettyRFailFull { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "pretty", "run-fail-fulldeps");
+                }
+                CheckPrettyRPassValgrind { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "pretty", "run-pass-valgrind");
                 }
                 CheckCodegen { compiler } => {
                     check::compiletest(self, &compiler, target.target,
@@ -369,14 +401,6 @@ impl Build {
                 CheckRPassValgrind { compiler } => {
                     check::compiletest(self, &compiler, target.target,
                                        "run-pass-valgrind", "run-pass-valgrind");
-                }
-                CheckRPassFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "run-pass", "run-pass-fulldeps");
-                }
-                CheckCFailFull { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "compile-fail", "compile-fail-fulldeps")
                 }
                 CheckDocs { compiler } => {
                     check::docs(self, &compiler);

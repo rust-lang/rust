@@ -122,6 +122,11 @@
 # desired in distributions, for example.
 #rpath = true
 
+# Flag indicating whether tests are compiled with optimizations (the -O flag) or
+# with debuginfo (the -g flag)
+#optimize-tests = true
+#debuginfo-tests = true
+
 # =============================================================================
 # Options for specific targets
 #
