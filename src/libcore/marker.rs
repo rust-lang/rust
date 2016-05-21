@@ -136,26 +136,6 @@ pub trait Unsize<T: ?Sized> {
 /// the trait `Copy` may not be implemented for this type; field `points` does not implement `Copy`
 /// ```
 ///
-/// ## How can I implement `Copy`?
-///
-/// There are two ways to implement `Copy` on your type:
-///
-/// ```
-/// #[derive(Copy, Clone)]
-/// struct MyStruct;
-/// ```
-///
-/// and
-///
-/// ```
-/// struct MyStruct;
-/// impl Copy for MyStruct {}
-/// impl Clone for MyStruct { fn clone(&self) -> MyStruct { *self } }
-/// ```
-///
-/// There is a small difference between the two: the `derive` strategy will also place a `Copy`
-/// bound on type parameters, which isn't always desired.
-///
 /// ## When can my type _not_ be `Copy`?
 ///
 /// Some types can't be copied safely. For example, copying `&mut T` would create an aliased
@@ -175,6 +155,26 @@ pub trait Unsize<T: ?Sized> {
 ///
 /// This trait can be used with `#[derive]` if all of its components implement `Copy` and the type
 /// implements `Clone`. The implementation will copy the bytes of each field using `memcpy`.
+///
+/// ## How can I implement `Copy`?
+///
+/// There are two ways to implement `Copy` on your type:
+///
+/// ```
+/// #[derive(Copy, Clone)]
+/// struct MyStruct;
+/// ```
+///
+/// and
+///
+/// ```
+/// struct MyStruct;
+/// impl Copy for MyStruct {}
+/// impl Clone for MyStruct { fn clone(&self) -> MyStruct { *self } }
+/// ```
+///
+/// There is a small difference between the two: the `derive` strategy will also place a `Copy`
+/// bound on type parameters, which isn't always desired.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
 pub trait Copy : Clone {
