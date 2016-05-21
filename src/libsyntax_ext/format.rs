@@ -24,6 +24,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use syntax::tokenstream;
 
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 
 #[derive(PartialEq)]
 enum ArgumentType {
@@ -69,6 +70,12 @@ struct Context<'a, 'b:'a> {
     /// consumed so far for each argument, to facilitate correct `Position`
     /// mapping in `trans_piece`.
     arg_index_map: Vec<usize>,
+
+    count_args_index_offset: usize,
+
+    count_args: Vec<Position>,
+    count_positions: HashMap<usize, usize>,
+    count_positions_count: usize,
 
     /// Current position of the implicit positional arg pointer, as if it
     /// still existed in this phase of processing.
@@ -225,7 +232,22 @@ impl<'a, 'b> Context<'a, 'b> {
                     self.ecx.span_err(self.fmtsp, &msg[..]);
                     return;
                 }
-                self.arg_types[arg].push(ty);
+                match ty {
+                    Placeholder(_) => {
+                        self.arg_types[arg].push(ty);
+                    }
+                    Count => {
+                        match self.count_positions.entry(arg) {
+                            Entry::Vacant(e) => {
+                                let i = self.count_positions_count;
+                                e.insert(i);
+                                self.count_args.push(Exact(arg));
+                                self.count_positions_count += 1;
+                            }
+                            Entry::Occupied(_) => {}
+                        }
+                    }
+                }
             }
 
             Named(name) => {
@@ -255,15 +277,17 @@ impl<'a, 'b> Context<'a, 'b> {
             self.arg_index_map.push(sofar);
             sofar += self.arg_types[i].len();
         }
+
+        // Record starting index for counts, which appear just
+        // after the positional args
+        self.count_args_index_offset = sofar;
     }
 
     fn rtpath(ecx: &ExtCtxt, s: &str) -> Vec<ast::Ident> {
         ecx.std_path(&["fmt", "rt", "v1", s])
     }
 
-    fn trans_count(&self,
-                   c: parse::Count,
-                   arg_index_consumed: &mut Vec<usize>) -> P<ast::Expr> {
+    fn trans_count(&self, c: parse::Count) -> P<ast::Expr> {
         let sp = self.macsp;
         let count = |c, arg| {
             let mut path = Context::rtpath(self.ecx, "Count");
@@ -278,9 +302,12 @@ impl<'a, 'b> Context<'a, 'b> {
             parse::CountIsParam(i) => {
                 // This needs mapping too, as `i` is referring to a macro
                 // argument.
-                let arg_idx = self.arg_index_map[i] + arg_index_consumed[i];
-                arg_index_consumed[i] += 1;
-                count("Param", Some(self.ecx.expr_usize(sp, arg_idx)))
+                let i = match self.count_positions.get(&i) {
+                    Some(&i) => i,
+                    None => 0, // error already emitted elsewhere
+                };
+                let i = i + self.count_args_index_offset;
+                count("Param", Some(self.ecx.expr_usize(sp, i)))
             }
             parse::CountImplied => count("Implied", None),
             // should never be the case, names are already resolved
@@ -383,8 +410,8 @@ impl<'a, 'b> Context<'a, 'b> {
                 };
                 let align = self.ecx.expr_path(align);
                 let flags = self.ecx.expr_u32(sp, arg.format.flags);
-                let prec = self.trans_count(arg.format.precision, arg_index_consumed);
-                let width = self.trans_count(arg.format.width, arg_index_consumed);
+                let prec = self.trans_count(arg.format.precision);
+                let width = self.trans_count(arg.format.width);
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "FormatSpec"));
                 let fmt = self.ecx.expr_struct(sp, path, vec!(
                     self.ecx.field_imm(sp, self.ecx.ident_of("fill"), fill),
@@ -431,6 +458,7 @@ impl<'a, 'b> Context<'a, 'b> {
     /// to
     fn into_expr(mut self) -> P<ast::Expr> {
         let mut locals = Vec::new();
+        let mut counts = Vec::new();
         let mut pats = Vec::new();
         let mut heads = Vec::new();
 
@@ -447,6 +475,10 @@ impl<'a, 'b> Context<'a, 'b> {
                                            piece_ty,
                                            self.str_pieces);
 
+        // Before consuming the expressions, we have to remember spans for
+        // count arguments as they are now generated separate from other
+        // arguments, hence have no access to the `P<ast::Expr>`'s.
+        let spans_pos: Vec<_> = self.args.iter().map(|e| e.span.clone()).collect();
 
         // Right now there is a bug such that for the expression:
         //      foo(bar(&1))
@@ -464,11 +496,23 @@ impl<'a, 'b> Context<'a, 'b> {
             }
             heads.push(self.ecx.expr_addr_of(e.span, e));
         }
+        for pos in self.count_args {
+            let name = self.ecx.ident_of(&match pos {
+                Exact(i) => format!("__arg{}", i),
+                _ => panic!("should never happen"),
+            });
+            let span = match pos {
+                Exact(i) => spans_pos[i],
+                _ => panic!("should never happen"),
+            };
+            counts.push(Context::format_arg(self.ecx, self.macsp, span, &Count,
+                                            self.ecx.expr_ident(span, name)));
+        }
 
         // Now create a vector containing all the arguments
-        let args = locals.into_iter().collect();
+        let args = locals.into_iter().chain(counts.into_iter());
 
-        let args_array = self.ecx.expr_vec(self.fmtsp, args);
+        let args_array = self.ecx.expr_vec(self.fmtsp, args.collect());
 
         // Constructs an AST equivalent to:
         //
@@ -594,6 +638,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         names: names,
         curarg: 0,
         arg_index_map: Vec::new(),
+        count_args: Vec::new(),
+        count_positions: HashMap::new(),
+        count_positions_count: 0,
+        count_args_index_offset: 0,
         literal: String::new(),
         pieces: Vec::new(),
         str_pieces: Vec::new(),
@@ -648,6 +696,9 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     let num_pos_args = cx.args.len() - cx.names.len();
     for (i, ty) in cx.arg_types.iter().enumerate() {
         if ty.len() == 0 {
+            if cx.count_positions.contains_key(&i) {
+                continue;
+            }
             let msg = if i >= num_pos_args {
                 // named argument
                 "named argument never used"
