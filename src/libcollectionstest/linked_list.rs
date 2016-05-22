@@ -54,7 +54,7 @@ fn test_basic() {
 
 #[cfg(test)]
 fn generate_test() -> LinkedList<i32> {
-    list_from(&[0,1,2,3,4,5,6])
+    list_from(&[0, 1, 2, 3, 4, 5, 6])
 }
 
 #[cfg(test)]
@@ -78,7 +78,7 @@ fn test_split_off() {
 
     // not singleton, forwards
     {
-        let u = vec![1,2,3,4,5];
+        let u = vec![1, 2, 3, 4, 5];
         let mut m = list_from(&u);
         let mut n = m.split_off(2);
         assert_eq!(m.len(), 2);
@@ -92,7 +92,7 @@ fn test_split_off() {
     }
     // not singleton, backwards
     {
-        let u = vec![1,2,3,4,5];
+        let u = vec![1, 2, 3, 4, 5];
         let mut m = list_from(&u);
         let mut n = m.split_off(4);
         assert_eq!(m.len(), 4);
@@ -246,33 +246,33 @@ fn test_eq() {
     m.push_back(1);
     assert!(n == m);
 
-    let n = list_from(&[2,3,4]);
-    let m = list_from(&[1,2,3]);
+    let n = list_from(&[2, 3, 4]);
+    let m = list_from(&[1, 2, 3]);
     assert!(n != m);
 }
 
 #[test]
 fn test_hash() {
-  let mut x = LinkedList::new();
-  let mut y = LinkedList::new();
+    let mut x = LinkedList::new();
+    let mut y = LinkedList::new();
 
-  assert!(::hash(&x) == ::hash(&y));
+    assert!(::hash(&x) == ::hash(&y));
 
-  x.push_back(1);
-  x.push_back(2);
-  x.push_back(3);
+    x.push_back(1);
+    x.push_back(2);
+    x.push_back(3);
 
-  y.push_front(3);
-  y.push_front(2);
-  y.push_front(1);
+    y.push_front(3);
+    y.push_front(2);
+    y.push_front(1);
 
-  assert!(::hash(&x) == ::hash(&y));
+    assert!(::hash(&x) == ::hash(&y));
 }
 
 #[test]
 fn test_ord() {
     let n = list_from(&[]);
-    let m = list_from(&[1,2,3]);
+    let m = list_from(&[1, 2, 3]);
     assert!(n < m);
     assert!(m > n);
     assert!(n <= n);
@@ -281,7 +281,7 @@ fn test_ord() {
 
 #[test]
 fn test_ord_nan() {
-    let nan = 0.0f64/0.0;
+    let nan = 0.0f64 / 0.0;
     let n = list_from(&[nan]);
     let m = list_from(&[nan]);
     assert!(!(n < m));
@@ -296,15 +296,15 @@ fn test_ord_nan() {
     assert!(!(n <= one));
     assert!(!(n >= one));
 
-    let u = list_from(&[1.0f64,2.0,nan]);
-    let v = list_from(&[1.0f64,2.0,3.0]);
+    let u = list_from(&[1.0f64, 2.0, nan]);
+    let v = list_from(&[1.0f64, 2.0, 3.0]);
     assert!(!(u < v));
     assert!(!(u > v));
     assert!(!(u <= v));
     assert!(!(u >= v));
 
-    let s = list_from(&[1.0f64,2.0,4.0,2.0]);
-    let t = list_from(&[1.0f64,2.0,3.0,2.0]);
+    let s = list_from(&[1.0f64, 2.0, 4.0, 2.0]);
+    let t = list_from(&[1.0f64, 2.0, 3.0, 2.0]);
     assert!(!(s < t));
     assert!(s > one);
     assert!(!(s <= one));
@@ -317,7 +317,8 @@ fn test_show() {
     assert_eq!(format!("{:?}", list), "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
     let list: LinkedList<_> = vec!["just", "one", "test", "more"].iter().cloned().collect();
-    assert_eq!(format!("{:?}", list), "[\"just\", \"one\", \"test\", \"more\"]");
+    assert_eq!(format!("{:?}", list),
+               "[\"just\", \"one\", \"test\", \"more\"]");
 }
 
 #[test]
