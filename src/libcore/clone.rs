@@ -46,15 +46,39 @@
 
 use marker::Sized;
 
-/// A common trait for cloning an object.
+/// A common trait for cloning an object. Differs from `Copy` in that you can
+/// define `Clone` to run arbitrary code, while you are not allowed to override
+/// the implementation of `Copy` that only does a `memcpy`.
+///
+/// Since `Clone` is more general than `Copy`, you can automatically make anything
+/// `Copy` be `Clone` as well.
+///
+/// ## Derivable
 ///
 /// This trait can be used with `#[derive]` if all fields are `Clone`. The `derive`d
 /// implementation of `clone()` calls `clone()` on each field.
+///
+/// ## How can I implement `Clone`?
 ///
 /// Types that are `Copy` should have a trivial implementation of `Clone`. More formally:
 /// if `T: Copy`, `x: T`, and `y: &T`, then `let x = y.clone();` is equivalent to `let x = *y;`.
 /// Manual implementations should be careful to uphold this invariant; however, unsafe code
 /// must not rely on it to ensure memory safety.
+///
+/// An example is an array holding more than 32 of a type that is `Clone`; the standard library
+/// only implements `Clone` up until arrays of size 32. In this case, the implementation of
+/// `Clone` cannot be `derive`d, but can be implemented as:
+///
+/// ```
+/// #[derive(Copy)]
+/// struct Stats {
+///    frequencies: [i32; 100],
+/// }
+///
+/// impl Clone for Stats {
+///     fn clone(&self) -> Self { *self }
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Clone : Sized {
     /// Returns a copy of the value.
