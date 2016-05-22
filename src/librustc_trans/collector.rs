@@ -523,7 +523,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             let ty = monomorphize::apply_param_substs(self.scx.tcx(),
                                                       self.param_substs,
                                                       &ty);
-            let ty = self.scx.tcx().erase_regions(&ty);
+            assert!(ty.is_normalized_for_trans());
             let ty = glue::get_drop_glue_type(self.scx.tcx(), ty);
             self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
         }
@@ -859,6 +859,7 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                                        &callee_substs);
 
     let trait_ref = ty::Binder(rcvr_substs.to_trait_ref(tcx, trait_id));
+    let trait_ref = tcx.normalize_associated_type(&trait_ref);
     let vtbl = fulfill_obligation(scx, DUMMY_SP, trait_ref);
 
     // Now that we know which impl is being used, we can dispatch to
@@ -992,11 +993,8 @@ fn create_fn_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let concrete_substs = monomorphize::apply_param_substs(tcx,
                                                            param_substs,
                                                            &fn_substs);
-    let concrete_substs = tcx.erase_regions(&concrete_substs);
-
-    let trans_item =
-        TransItem::Fn(Instance::new(def_id, concrete_substs));
-    return trans_item;
+    assert!(concrete_substs.is_normalized_for_trans());
+    TransItem::Fn(Instance::new(def_id, concrete_substs))
 }
 
 /// Creates a `TransItem` for each method that is referenced by the vtable for
@@ -1034,10 +1032,14 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
                             } else {
                                 None
                             }
-                        })
-                        .collect::<Vec<_>>();
+                        });
 
-                    output.extend(items.into_iter());
+                    output.extend(items);
+
+                    // Also add the destructor
+                    let dg_type = glue::get_drop_glue_type(scx.tcx(),
+                                                           trait_ref.self_ty());
+                    output.push(TransItem::DropGlue(DropGlueKind::Ty(dg_type)));
                 }
                 _ => { /* */ }
             }
@@ -1234,7 +1236,7 @@ pub enum TransItemState {
 }
 
 pub fn collecting_debug_information(scx: &SharedCrateContext) -> bool {
-    return scx.sess().opts.cg.debug_assertions == Some(true) &&
+    return cfg!(debug_assertions) &&
            scx.sess().opts.debugging_opts.print_trans_items.is_some();
 }
 
