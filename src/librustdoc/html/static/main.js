@@ -124,7 +124,8 @@
             focusSearchBar();
             break;
 
-        case "+":
+        case "t":
+        case "T":
             toggleAllDocs();
             break;
 
