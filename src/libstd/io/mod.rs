@@ -1569,7 +1569,7 @@ pub enum CharsError {
     NotUtf8,
 
     /// Variant representing that an I/O error occurred.
-    Other(Error),
+    Io(Error),
 }
 
 #[unstable(feature = "io", reason = "awaiting stability of Read::chars",
@@ -1587,7 +1587,7 @@ impl<R: Read> Iterator for Chars<R> {
                             Ok(0) => $on_eof,
                             Ok(..) => break,
                             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-                            Err(e) => return Some(Err(CharsError::Other(e))),
+                            Err(e) => return Some(Err(CharsError::Io(e))),
                         }
                     }
                     buf[0]
@@ -1657,13 +1657,13 @@ impl std_error::Error for CharsError {
     fn description(&self) -> &str {
         match *self {
             CharsError::NotUtf8 => "invalid utf8 encoding",
-            CharsError::Other(ref e) => std_error::Error::description(e),
+            CharsError::Io(ref e) => std_error::Error::description(e),
         }
     }
     fn cause(&self) -> Option<&std_error::Error> {
         match *self {
             CharsError::NotUtf8 => None,
-            CharsError::Other(ref e) => e.cause(),
+            CharsError::Io(ref e) => e.cause(),
         }
     }
 }
@@ -1676,7 +1676,7 @@ impl fmt::Display for CharsError {
             CharsError::NotUtf8 => {
                 "byte stream did not contain valid utf8".fmt(f)
             }
-            CharsError::Other(ref e) => e.fmt(f),
+            CharsError::Io(ref e) => e.fmt(f),
         }
     }
 }
@@ -1762,7 +1762,7 @@ mod tests {
         Cursor::new(bytes).chars().map(|result| match result {
             Ok(c) => c,
             Err(CharsError::NotUtf8) => '\u{FFFD}',
-            Err(CharsError::Other(e)) => panic!("{}", e),
+            Err(CharsError::Io(e)) => panic!("{}", e),
         }).collect()
     }
 
