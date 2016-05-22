@@ -174,6 +174,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RewriteConstVisitor<'a, 'tcx> {
             None
         };
         if let Some(c) = repl {
+            self.1 = true;
             *op = Operand::Constant(c);
         }
 
