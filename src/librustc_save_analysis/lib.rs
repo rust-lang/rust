@@ -123,15 +123,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.node {
             ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
-                let name = self.tcx.node_path_str(item.id);
-                let qualname = format!("::{}", name);
+                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
                 filter!(self.span_utils, sub_span, item.span, None);
 
 
                 Some(Data::FunctionData(FunctionData {
                     id: item.id,
-                    name: name,
+                    name: item.ident.to_string(),
                     qualname: qualname,
                     declaration: None,
                     span: sub_span.unwrap(),
