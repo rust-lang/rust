@@ -204,6 +204,12 @@ declare_lint! {
     "object-unsafe non-principal fragments in object types were erroneously allowed"
 }
 
+declare_lint! {
+    pub LIFETIME_UNDERSCORE,
+    Warn,
+    "lifetimes or labels named `'_` were erroneously allowed"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -242,7 +248,8 @@ impl LintPass for HardwiredLints {
             SUPER_OR_SELF_IN_GLOBAL_PATH,
             UNSIZED_IN_TUPLE,
             OBJECT_UNSAFE_FRAGMENT,
-            HR_LIFETIME_IN_ASSOC_TYPE
+            HR_LIFETIME_IN_ASSOC_TYPE,
+            LIFETIME_UNDERSCORE
         )
     }
 }
