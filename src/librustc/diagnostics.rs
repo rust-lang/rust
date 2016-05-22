@@ -20,6 +20,8 @@ remainder of a zero divisor) in a static or constant expression. Erroneous
 code example:
 
 ```compile_fail
+#[deny(const_err)]
+
 const X: i32 = 42 / 0;
 // error: attempted to divide by zero in a constant expression
 ```
@@ -66,7 +68,7 @@ this restriction.
 
 This happens when a trait has a method like the following:
 
-```compile_fail
+```
 trait Trait {
     fn foo(&self) -> Self;
 }
