@@ -272,7 +272,9 @@ ifneq ($(strip $(findstring TAGS.emacs,$(MAKECMDGOALS)) \
 endif
 
 .DEFAULT:
-	@echo "\n======================================================"
+	@echo
+	@echo "======================================================"
 	@echo "== If you need help, run 'make help' or 'make tips' =="
-	@echo "======================================================\n"
+	@echo "======================================================"
+	@echo
 	exit 1
