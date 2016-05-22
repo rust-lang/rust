@@ -1565,8 +1565,12 @@ pub struct Chars<R> {
            issue = "27802")]
 pub enum CharsError {
     /// Variant representing that the underlying stream was read successfully
-    /// but it did not contain valid utf8 data.
-    NotUtf8,
+    /// but contains a byte sequence ill-formed in UTF-8.
+    InvalidUtf8,
+
+    /// Variant representing that the underlying stream contains the start
+    /// of a byte sequence well-formed in UTF-8, but ends prematurely.
+    IncompleteUtf8,
 
     /// Variant representing that an I/O error occurred.
     Io(Error),
@@ -1603,11 +1607,11 @@ impl<R: Read> Iterator for Chars<R> {
         macro_rules! continuation_byte {
             ($range: pat) => {
                 {
-                    match read_byte!(EOF => return Some(Err(CharsError::NotUtf8))) {
+                    match read_byte!(EOF => return Some(Err(CharsError::IncompleteUtf8))) {
                         byte @ $range => (byte & 0b0011_1111) as u32,
                         byte => {
                             self.buffer = Some(byte);
-                            return Some(Err(CharsError::NotUtf8))
+                            return Some(Err(CharsError::InvalidUtf8))
                         }
                     }
                 }
@@ -1643,7 +1647,7 @@ impl<R: Read> Iterator for Chars<R> {
                 let fourth = continuation_byte!(0x80...0xBF);
                 ((first & 0b0000_0111) as u32) << 18 | second << 12 | third << 6 | fourth
             }
-            _ => return Some(Err(CharsError::NotUtf8))
+            _ => return Some(Err(CharsError::InvalidUtf8))
         };
         unsafe {
             Some(Ok(char::from_u32_unchecked(code_point)))
@@ -1656,13 +1660,16 @@ impl<R: Read> Iterator for Chars<R> {
 impl std_error::Error for CharsError {
     fn description(&self) -> &str {
         match *self {
-            CharsError::NotUtf8 => "invalid utf8 encoding",
+            CharsError::InvalidUtf8 => "invalid UTF-8 byte sequence",
+            CharsError::IncompleteUtf8 => {
+                "stream ended in the middle of an UTF-8 byte sequence"
+            }
             CharsError::Io(ref e) => std_error::Error::description(e),
         }
     }
     fn cause(&self) -> Option<&std_error::Error> {
         match *self {
-            CharsError::NotUtf8 => None,
+            CharsError::InvalidUtf8 | CharsError::IncompleteUtf8 => None,
             CharsError::Io(ref e) => e.cause(),
         }
     }
@@ -1673,8 +1680,11 @@ impl std_error::Error for CharsError {
 impl fmt::Display for CharsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            CharsError::NotUtf8 => {
-                "byte stream did not contain valid utf8".fmt(f)
+            CharsError::InvalidUtf8 => {
+                "invalid UTF-8 byte sequence".fmt(f)
+            }
+            CharsError::IncompleteUtf8 => {
+                "stream ended in the middle of an UTF-8 byte sequence".fmt(f)
             }
             CharsError::Io(ref e) => e.fmt(f),
         }
@@ -1761,7 +1771,7 @@ mod tests {
         // http://www.unicode.org/versions/Unicode8.0.0/ch05.pdf#G40630
         Cursor::new(bytes).chars().map(|result| match result {
             Ok(c) => c,
-            Err(CharsError::NotUtf8) => '\u{FFFD}',
+            Err(CharsError::InvalidUtf8) | Err(CharsError::IncompleteUtf8) => '\u{FFFD}',
             Err(CharsError::Io(e)) => panic!("{}", e),
         }).collect()
     }
