@@ -245,8 +245,48 @@ impl Ordering {
 /// - total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is true; and
 /// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
 ///
+/// ## Derivable
+///
 /// This trait can be used with `#[derive]`. When `derive`d, it will produce a lexicographic
 /// ordering based on the top-to-bottom declaration order of the struct's members.
+///
+/// ## How can I implement `Ord`?
+///
+/// `Ord` requires that the type also be `PartialOrd` and `Eq` (which requires `PartialEq`).
+///
+/// Then you must define an implementation for `cmp`. You may find it useful to use
+/// `cmp` on your type's fields.
+///
+/// Here's an example where you want to sort people by height only, disregarding `id`
+/// and `name`:
+///
+/// ```
+/// use std::cmp::Ordering;
+/// #[derive(Eq)]
+/// struct Person {
+///     id: u32,
+///     name: String,
+///     height: u32,
+/// }
+///
+/// impl Ord for Person {
+///     fn cmp(&self, other: &Self) -> Ordering {
+///         self.height.cmp(&other.height)
+///     }
+/// }
+///
+/// impl PartialOrd for Person {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+///         Some(self.cmp(other))
+///     }
+/// }
+///
+/// impl PartialEq for Person {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.height == other.height
+///     }
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Ord: Eq + PartialOrd<Self> {
     /// This method returns an `Ordering` between `self` and `other`.
