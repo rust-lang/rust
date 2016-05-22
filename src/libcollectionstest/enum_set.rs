@@ -17,7 +17,9 @@ use self::Foo::*;
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(usize)]
 enum Foo {
-    A, B, C
+    A,
+    B,
+    C,
 }
 
 impl CLike for Foo {
@@ -60,9 +62,8 @@ fn test_len() {
     assert_eq!(e.len(), 0);
 }
 
-///////////////////////////////////////////////////////////////////////////
-// intersect
-
+/// ////////////////////////////////////////////////////////////////////////
+/// intersect
 #[test]
 fn test_two_empties_do_not_intersect() {
     let e1: EnumSet<Foo> = EnumSet::new();
@@ -105,9 +106,8 @@ fn test_overlapping_intersects() {
     assert!(!e1.is_disjoint(&e2));
 }
 
-///////////////////////////////////////////////////////////////////////////
-// contains and contains_elem
-
+/// ////////////////////////////////////////////////////////////////////////
+/// contains and contains_elem
 #[test]
 fn test_superset() {
     let mut e1: EnumSet<Foo> = EnumSet::new();
@@ -141,9 +141,8 @@ fn test_contains() {
     assert!(!e1.contains(&C));
 }
 
-///////////////////////////////////////////////////////////////////////////
-// iter
-
+/// ////////////////////////////////////////////////////////////////////////
+/// iter
 #[test]
 fn test_iterator() {
     let mut e1: EnumSet<Foo> = EnumSet::new();
@@ -157,20 +156,19 @@ fn test_iterator() {
 
     e1.insert(C);
     let elems: Vec<_> = e1.iter().collect();
-    assert_eq!(elems, [A,C]);
+    assert_eq!(elems, [A, C]);
 
     e1.insert(C);
     let elems: Vec<_> = e1.iter().collect();
-    assert_eq!(elems, [A,C]);
+    assert_eq!(elems, [A, C]);
 
     e1.insert(B);
     let elems: Vec<_> = e1.iter().collect();
-    assert_eq!(elems, [A,B,C]);
+    assert_eq!(elems, [A, B, C]);
 }
 
-///////////////////////////////////////////////////////////////////////////
-// operators
-
+/// ////////////////////////////////////////////////////////////////////////
+/// operators
 #[test]
 fn test_operators() {
     let mut e1: EnumSet<Foo> = EnumSet::new();
@@ -183,7 +181,7 @@ fn test_operators() {
 
     let e_union = e1 | e2;
     let elems: Vec<_> = e_union.iter().collect();
-    assert_eq!(elems, [A,B,C]);
+    assert_eq!(elems, [A, B, C]);
 
     let e_intersection = e1 & e2;
     let elems: Vec<_> = e_intersection.iter().collect();
@@ -201,17 +199,17 @@ fn test_operators() {
     // Bitwise XOR of two sets, aka symmetric difference
     let e_symmetric_diff = e1 ^ e2;
     let elems: Vec<_> = e_symmetric_diff.iter().collect();
-    assert_eq!(elems, [A,B]);
+    assert_eq!(elems, [A, B]);
 
     // Another way to express symmetric difference
     let e_symmetric_diff = (e1 - e2) | (e2 - e1);
     let elems: Vec<_> = e_symmetric_diff.iter().collect();
-    assert_eq!(elems, [A,B]);
+    assert_eq!(elems, [A, B]);
 
     // Yet another way to express symmetric difference
     let e_symmetric_diff = (e1 | e2) - (e1 & e2);
     let elems: Vec<_> = e_symmetric_diff.iter().collect();
-    assert_eq!(elems, [A,B]);
+    assert_eq!(elems, [A, B]);
 }
 
 #[test]
@@ -221,13 +219,76 @@ fn test_overflow() {
     #[derive(Copy, Clone)]
     #[repr(usize)]
     enum Bar {
-        V00, V01, V02, V03, V04, V05, V06, V07, V08, V09,
-        V10, V11, V12, V13, V14, V15, V16, V17, V18, V19,
-        V20, V21, V22, V23, V24, V25, V26, V27, V28, V29,
-        V30, V31, V32, V33, V34, V35, V36, V37, V38, V39,
-        V40, V41, V42, V43, V44, V45, V46, V47, V48, V49,
-        V50, V51, V52, V53, V54, V55, V56, V57, V58, V59,
-        V60, V61, V62, V63, V64, V65, V66, V67, V68, V69,
+        V00,
+        V01,
+        V02,
+        V03,
+        V04,
+        V05,
+        V06,
+        V07,
+        V08,
+        V09,
+        V10,
+        V11,
+        V12,
+        V13,
+        V14,
+        V15,
+        V16,
+        V17,
+        V18,
+        V19,
+        V20,
+        V21,
+        V22,
+        V23,
+        V24,
+        V25,
+        V26,
+        V27,
+        V28,
+        V29,
+        V30,
+        V31,
+        V32,
+        V33,
+        V34,
+        V35,
+        V36,
+        V37,
+        V38,
+        V39,
+        V40,
+        V41,
+        V42,
+        V43,
+        V44,
+        V45,
+        V46,
+        V47,
+        V48,
+        V49,
+        V50,
+        V51,
+        V52,
+        V53,
+        V54,
+        V55,
+        V56,
+        V57,
+        V58,
+        V59,
+        V60,
+        V61,
+        V62,
+        V63,
+        V64,
+        V65,
+        V66,
+        V67,
+        V68,
+        V69,
     }
 
     impl CLike for Bar {

@@ -15,7 +15,7 @@ use std::mem::size_of;
 use test::Bencher;
 
 struct DropCounter<'a> {
-    count: &'a mut u32
+    count: &'a mut u32,
 }
 
 impl<'a> Drop for DropCounter<'a> {
@@ -33,17 +33,17 @@ fn test_small_vec_struct() {
 fn test_double_drop() {
     struct TwoVec<T> {
         x: Vec<T>,
-        y: Vec<T>
+        y: Vec<T>,
     }
 
     let (mut count_x, mut count_y) = (0, 0);
     {
         let mut tv = TwoVec {
             x: Vec::new(),
-            y: Vec::new()
+            y: Vec::new(),
         };
-        tv.x.push(DropCounter {count: &mut count_x});
-        tv.y.push(DropCounter {count: &mut count_y});
+        tv.x.push(DropCounter { count: &mut count_x });
+        tv.y.push(DropCounter { count: &mut count_y });
 
         // If Vec had a drop flag, here is where it would be zeroed.
         // Instead, it should rely on its internal state to prevent
@@ -85,12 +85,16 @@ fn test_extend() {
     let mut w = Vec::new();
 
     v.extend(0..3);
-    for i in 0..3 { w.push(i) }
+    for i in 0..3 {
+        w.push(i)
+    }
 
     assert_eq!(v, w);
 
     v.extend(3..10);
-    for i in 3..10 { w.push(i) }
+    for i in 3..10 {
+        w.push(i)
+    }
 
     assert_eq!(v, w);
 
@@ -117,7 +121,7 @@ fn test_extend_ref() {
 fn test_slice_from_mut() {
     let mut values = vec![1, 2, 3, 4, 5];
     {
-        let slice = &mut values[2 ..];
+        let slice = &mut values[2..];
         assert!(slice == [3, 4, 5]);
         for p in slice {
             *p += 2;
@@ -131,7 +135,7 @@ fn test_slice_from_mut() {
 fn test_slice_to_mut() {
     let mut values = vec![1, 2, 3, 4, 5];
     {
-        let slice = &mut values[.. 2];
+        let slice = &mut values[..2];
         assert!(slice == [1, 2]);
         for p in slice {
             *p += 1;
@@ -169,7 +173,7 @@ fn test_split_at_mut() {
 #[test]
 fn test_clone() {
     let v: Vec<i32> = vec![];
-    let w = vec!(1, 2, 3);
+    let w = vec![1, 2, 3];
 
     assert_eq!(v, v.clone());
 
@@ -181,9 +185,9 @@ fn test_clone() {
 
 #[test]
 fn test_clone_from() {
-    let mut v = vec!();
-    let three: Vec<Box<_>> = vec!(box 1, box 2, box 3);
-    let two: Vec<Box<_>> = vec!(box 4, box 5);
+    let mut v = vec![];
+    let three: Vec<Box<_>> = vec![box 1, box 2, box 3];
+    let two: Vec<Box<_>> = vec![box 4, box 5];
     // zero, long
     v.clone_from(&three);
     assert_eq!(v, three);
@@ -235,16 +239,22 @@ fn zero_sized_values() {
     assert_eq!(v.iter_mut().count(), 4);
 
     for &mut () in &mut v {}
-    unsafe { v.set_len(0); }
+    unsafe {
+        v.set_len(0);
+    }
     assert_eq!(v.iter_mut().count(), 0);
 }
 
 #[test]
 fn test_partition() {
-    assert_eq!(vec![].into_iter().partition(|x: &i32| *x < 3), (vec![], vec![]));
-    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 4), (vec![1, 2, 3], vec![]));
-    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 2), (vec![1], vec![2, 3]));
-    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 0), (vec![], vec![1, 2, 3]));
+    assert_eq!(vec![].into_iter().partition(|x: &i32| *x < 3),
+               (vec![], vec![]));
+    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 4),
+               (vec![1, 2, 3], vec![]));
+    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 2),
+               (vec![1], vec![2, 3]));
+    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 0),
+               (vec![], vec![1, 2, 3]));
 }
 
 #[test]
@@ -264,7 +274,9 @@ fn test_vec_truncate_drop() {
     struct Elem(i32);
     impl Drop for Elem {
         fn drop(&mut self) {
-            unsafe { drops += 1; }
+            unsafe {
+                drops += 1;
+            }
         }
     }
 
@@ -344,7 +356,7 @@ fn test_slice_out_of_bounds_5() {
 #[test]
 #[should_panic]
 fn test_swap_remove_empty() {
-    let mut vec= Vec::<i32>::new();
+    let mut vec = Vec::<i32>::new();
     vec.swap_remove(0);
 }
 
@@ -386,7 +398,7 @@ fn test_drain_items() {
         vec2.push(i);
     }
     assert_eq!(vec, []);
-    assert_eq!(vec2, [ 1, 2, 3 ]);
+    assert_eq!(vec2, [1, 2, 3]);
 }
 
 #[test]
@@ -472,7 +484,7 @@ fn test_into_iter_count() {
 
 #[test]
 fn test_into_iter_clone() {
-    fn iter_equal<I: Iterator<Item=i32>>(it: I, slice: &[i32]) {
+    fn iter_equal<I: Iterator<Item = i32>>(it: I, slice: &[i32]) {
         let v: Vec<i32> = it.collect();
         assert_eq!(&v[..], slice);
     }

@@ -31,8 +31,8 @@ impl<'a> IntoCow<'a, str> for &'a str {
 
 #[test]
 fn test_from_str() {
-  let owned: Option<::std::string::String> = "string".parse().ok();
-  assert_eq!(owned.as_ref().map(|s| &**s), Some("string"));
+    let owned: Option<::std::string::String> = "string".parse().ok();
+    assert_eq!(owned.as_ref().map(|s| &**s), Some("string"));
 }
 
 #[test]
@@ -44,8 +44,7 @@ fn test_unsized_to_string() {
 #[test]
 fn test_from_utf8() {
     let xs = b"hello".to_vec();
-    assert_eq!(String::from_utf8(xs).unwrap(),
-               String::from("hello"));
+    assert_eq!(String::from_utf8(xs).unwrap(), String::from("hello"));
 
     let xs = "ศไทย中华Việt Nam".as_bytes().to_vec();
     assert_eq!(String::from_utf8(xs).unwrap(),
@@ -87,56 +86,40 @@ fn test_from_utf8_lossy() {
                String::from("\u{FFFD}foo\u{FFFD}bar\u{FFFD}\u{FFFD}baz").into_cow());
 
     let xs = b"\xF0\x80\x80\x80foo\xF0\x90\x80\x80bar";
-    assert_eq!(String::from_utf8_lossy(xs), String::from("\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}\
-                                           foo\u{10000}bar").into_cow());
+    assert_eq!(String::from_utf8_lossy(xs),
+               String::from("\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}foo\u{10000}bar").into_cow());
 
     // surrogates
     let xs = b"\xED\xA0\x80foo\xED\xBF\xBFbar";
-    assert_eq!(String::from_utf8_lossy(xs), String::from("\u{FFFD}\u{FFFD}\u{FFFD}foo\
-                                           \u{FFFD}\u{FFFD}\u{FFFD}bar").into_cow());
+    assert_eq!(String::from_utf8_lossy(xs),
+               String::from("\u{FFFD}\u{FFFD}\u{FFFD}foo\u{FFFD}\u{FFFD}\u{FFFD}bar").into_cow());
 }
 
 #[test]
 fn test_from_utf16() {
-    let pairs =
-        [(String::from("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n"),
-          vec![0xd800, 0xdf45, 0xd800, 0xdf3f,
-            0xd800, 0xdf3b, 0xd800, 0xdf46,
-            0xd800, 0xdf39, 0xd800, 0xdf3b,
-            0xd800, 0xdf30, 0x000a]),
+    let pairs = [(String::from("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n"),
+                  vec![0xd800, 0xdf45, 0xd800, 0xdf3f, 0xd800, 0xdf3b, 0xd800, 0xdf46, 0xd800,
+                       0xdf39, 0xd800, 0xdf3b, 0xd800, 0xdf30, 0x000a]),
 
-         (String::from("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n"),
-          vec![0xd801, 0xdc12, 0xd801,
-            0xdc49, 0xd801, 0xdc2e, 0xd801,
-            0xdc40, 0xd801, 0xdc32, 0xd801,
-            0xdc4b, 0x0020, 0xd801, 0xdc0f,
-            0xd801, 0xdc32, 0xd801, 0xdc4d,
-            0x000a]),
+                 (String::from("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n"),
+                  vec![0xd801, 0xdc12, 0xd801, 0xdc49, 0xd801, 0xdc2e, 0xd801, 0xdc40, 0xd801,
+                       0xdc32, 0xd801, 0xdc4b, 0x0020, 0xd801, 0xdc0f, 0xd801, 0xdc32, 0xd801,
+                       0xdc4d, 0x000a]),
 
-         (String::from("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n"),
-          vec![0xd800, 0xdf00, 0xd800, 0xdf16,
-            0xd800, 0xdf0b, 0xd800, 0xdf04,
-            0xd800, 0xdf11, 0xd800, 0xdf09,
-            0x00b7, 0xd800, 0xdf0c, 0xd800,
-            0xdf04, 0xd800, 0xdf15, 0xd800,
-            0xdf04, 0xd800, 0xdf0b, 0xd800,
-            0xdf09, 0xd800, 0xdf11, 0x000a ]),
+                 (String::from("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n"),
+                  vec![0xd800, 0xdf00, 0xd800, 0xdf16, 0xd800, 0xdf0b, 0xd800, 0xdf04, 0xd800,
+                       0xdf11, 0xd800, 0xdf09, 0x00b7, 0xd800, 0xdf0c, 0xd800, 0xdf04, 0xd800,
+                       0xdf15, 0xd800, 0xdf04, 0xd800, 0xdf0b, 0xd800, 0xdf09, 0xd800, 0xdf11,
+                       0x000a]),
 
-         (String::from("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n"),
-          vec![0xd801, 0xdc8b, 0xd801, 0xdc98,
-            0xd801, 0xdc88, 0xd801, 0xdc91,
-            0xd801, 0xdc9b, 0xd801, 0xdc92,
-            0x0020, 0xd801, 0xdc95, 0xd801,
-            0xdc93, 0x0020, 0xd801, 0xdc88,
-            0xd801, 0xdc9a, 0xd801, 0xdc8d,
-            0x0020, 0xd801, 0xdc8f, 0xd801,
-            0xdc9c, 0xd801, 0xdc92, 0xd801,
-            0xdc96, 0xd801, 0xdc86, 0x0020,
-            0xd801, 0xdc95, 0xd801, 0xdc86,
-            0x000a ]),
-         // Issue #12318, even-numbered non-BMP planes
-         (String::from("\u{20000}"),
-          vec![0xD840, 0xDC00])];
+                 (String::from("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n"),
+                  vec![0xd801, 0xdc8b, 0xd801, 0xdc98, 0xd801, 0xdc88, 0xd801, 0xdc91, 0xd801,
+                       0xdc9b, 0xd801, 0xdc92, 0x0020, 0xd801, 0xdc95, 0xd801, 0xdc93, 0x0020,
+                       0xd801, 0xdc88, 0xd801, 0xdc9a, 0xd801, 0xdc8d, 0x0020, 0xd801, 0xdc8f,
+                       0xd801, 0xdc9c, 0xd801, 0xdc92, 0xd801, 0xdc96, 0xd801, 0xdc86, 0x0020,
+                       0xd801, 0xdc95, 0xd801, 0xdc86, 0x000a]),
+                 // Issue #12318, even-numbered non-BMP planes
+                 (String::from("\u{20000}"), vec![0xD840, 0xDC00])];
 
     for p in &pairs {
         let (s, u) = (*p).clone();
@@ -173,13 +156,15 @@ fn test_utf16_invalid() {
 fn test_from_utf16_lossy() {
     // completely positive cases tested above.
     // lead + eof
-    assert_eq!(String::from_utf16_lossy(&[0xD800]), String::from("\u{FFFD}"));
+    assert_eq!(String::from_utf16_lossy(&[0xD800]),
+               String::from("\u{FFFD}"));
     // lead + lead
     assert_eq!(String::from_utf16_lossy(&[0xD800, 0xD800]),
                String::from("\u{FFFD}\u{FFFD}"));
 
     // isolated trail
-    assert_eq!(String::from_utf16_lossy(&[0x0061, 0xDC00]), String::from("a\u{FFFD}"));
+    assert_eq!(String::from_utf16_lossy(&[0x0061, 0xDC00]),
+               String::from("a\u{FFFD}"));
 
     // general
     assert_eq!(String::from_utf16_lossy(&[0xD800, 0xd801, 0xdc8b, 0xD800]),
@@ -288,7 +273,8 @@ fn remove() {
     assert_eq!(s, "ไทย中华Vit Nam; foobar");
 }
 
-#[test] #[should_panic]
+#[test]
+#[should_panic]
 fn remove_bad() {
     "ศ".to_string().remove(1);
 }
@@ -302,8 +288,16 @@ fn insert() {
     assert_eq!(s, "ệfooยbar");
 }
 
-#[test] #[should_panic] fn insert_bad1() { "".to_string().insert(1, 't'); }
-#[test] #[should_panic] fn insert_bad2() { "ệ".to_string().insert(1, 't'); }
+#[test]
+#[should_panic]
+fn insert_bad1() {
+    "".to_string().insert(1, 't');
+}
+#[test]
+#[should_panic]
+fn insert_bad2() {
+    "ệ".to_string().insert(1, 't');
+}
 
 #[test]
 fn test_slicing() {
@@ -331,8 +325,7 @@ fn test_vectors() {
     assert_eq!(format!("{:?}", x), "[]");
     assert_eq!(format!("{:?}", vec![1]), "[1]");
     assert_eq!(format!("{:?}", vec![1, 2, 3]), "[1, 2, 3]");
-    assert!(format!("{:?}", vec![vec![], vec![1], vec![1, 1]]) ==
-           "[[], [1], [1, 1]]");
+    assert!(format!("{:?}", vec![vec![], vec![1], vec![1, 1]]) == "[[], [1], [1, 1]]");
 }
 
 #[test]
@@ -390,9 +383,7 @@ fn test_into_boxed_str() {
 
 #[bench]
 fn bench_with_capacity(b: &mut Bencher) {
-    b.iter(|| {
-        String::with_capacity(100)
-    });
+    b.iter(|| String::with_capacity(100));
 }
 
 #[bench]
@@ -495,25 +486,19 @@ fn bench_exact_size_shrink_to_fit(b: &mut Bencher) {
 fn bench_from_str(b: &mut Bencher) {
     let s = "Hello there, the quick brown fox jumped over the lazy dog! \
              Lorem ipsum dolor sit amet, consectetur. ";
-    b.iter(|| {
-        String::from(s)
-    })
+    b.iter(|| String::from(s))
 }
 
 #[bench]
 fn bench_from(b: &mut Bencher) {
     let s = "Hello there, the quick brown fox jumped over the lazy dog! \
              Lorem ipsum dolor sit amet, consectetur. ";
-    b.iter(|| {
-        String::from(s)
-    })
+    b.iter(|| String::from(s))
 }
 
 #[bench]
 fn bench_to_string(b: &mut Bencher) {
     let s = "Hello there, the quick brown fox jumped over the lazy dog! \
              Lorem ipsum dolor sit amet, consectetur. ";
-    b.iter(|| {
-        s.to_string()
-    })
+    b.iter(|| s.to_string())
 }
