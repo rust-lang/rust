@@ -73,6 +73,7 @@ these platforms are required to have each of the following:
 | `armv7s-apple-ios`            |  ✓  |     |     | ARM iOS                    |
 | `i386-apple-ios`              |  ✓  |     |     | 32-bit x86 iOS             |
 | `i586-pc-windows-msvc`        |  ✓  |     |     | 32-bit Windows w/o SSE     |
+| `i686-pc-windows-msvc` (XP)   |  ✓  |     |     | Windows XP support         |
 | `mips-unknown-linux-gnu`      |  ✓  |     |     | MIPS Linux (2.6.18+)       |
 | `mips-unknown-linux-musl`     |  ✓  |     |     | MIPS Linux with MUSL       |
 | `mipsel-unknown-linux-gnu`    |  ✓  |     |     | MIPS (LE) Linux (2.6.18+)  |
@@ -81,6 +82,7 @@ these platforms are required to have each of the following:
 | `powerpc64-unknown-linux-gnu` |  ✓  |     |     | PPC64 Linux (2.6.18+)      |
 |`powerpc64le-unknown-linux-gnu`|  ✓  |     |     | PPC64LE Linux (2.6.18+)    |
 | `x86_64-apple-ios`            |  ✓  |     |     | 64-bit x86 iOS             |
+| `x86_64-pc-windows-msvc` (XP) |  ✓  |     |     | Windows XP support         |
 | `x86_64-rumprun-netbsd`       |  ✓  |     |     | 64-bit NetBSD Rump Kernel  |
 | `x86_64-unknown-freebsd`      |  ✓  |  ✓  |  ✓  | 64-bit FreeBSD             |
 | `x86_64-unknown-linux-musl`   |  ✓  |     |     | 64-bit Linux with MUSL     |
@@ -100,9 +102,7 @@ unofficial locations.
 | `aarch64-linux-android`       |  ✓  |     |     | ARM64 Android              |
 | `armv7-linux-androideabi`     |  ✓  |     |     | ARM-v7a Android            |
 | `i686-linux-android`          |  ✓  |     |     | 32-bit x86 Android         |
-| `i686-pc-windows-msvc` (XP)   |  ✓  |     |     | Windows XP support         |
 | `i686-unknown-freebsd`        |  ✓  |  ✓  |  ✓  | 32-bit FreeBSD             |
-| `x86_64-pc-windows-msvc` (XP) |  ✓  |     |     | Windows XP support         |
 | `x86_64-sun-solaris`          |  ✓  |  ✓  |     | 64-bit Solaris/SunOS       |
 | `x86_64-unknown-bitrig`       |  ✓  |  ✓  |     | 64-bit Bitrig              |
 | `x86_64-unknown-dragonfly`    |  ✓  |  ✓  |     | 64-bit DragonFlyBSD        |
