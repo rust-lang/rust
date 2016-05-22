@@ -26,3 +26,25 @@ fn fixed_size_array() {
     assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_array).len(), 0);
     assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_zero_sized).len(), 0);
 }
+
+#[test]
+fn fixed_size_array_conversions() {
+    let mut empty: [u32; 0] = [];
+    let () = empty.into();
+    let &() = empty.as_ref();
+    let &mut () = empty.as_mut();
+
+    let mut foo: [u8; 3] = *b"foo";
+    let (a, b, c) = foo.into();
+    assert!((a, b, c) == (b'f', b'o', b'o'));
+
+    let &(a, b, c) = foo.as_ref();
+    assert!((a, b, c) == (b'f', b'o', b'o'));
+
+    {
+        let &mut (ref mut a, b, c) = foo.as_mut();
+        assert!((*a, b, c) == (b'f', b'o', b'o'));
+        *a = b'F';
+    }
+    assert!(&foo == b"Foo");
+}

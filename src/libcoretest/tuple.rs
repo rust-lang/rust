@@ -66,3 +66,26 @@ fn test_show() {
     let s = format!("{:?}", (1, "hi", true));
     assert_eq!(s, "(1, \"hi\", true)");
 }
+
+#[test]
+fn test_tuple_conversions() {
+    let _: [u32; 0] = ().into();
+    let _: &[u32; 0] = ().as_ref();
+    let _: &mut [u32; 0] = ().as_mut();
+
+    let mut foo = (b'f', b'o', b'o');
+    assert_eq!(foo.as_ref().iter().cloned().collect::<Vec<u8>>(), vec![b'f', b'o', b'o']);
+
+    let [a, b, c]: [u8; 3] = foo.into();
+    assert!(&[a, b, c] == b"foo");
+
+    let &[a, b, c] = foo.as_ref();
+    assert!(&[a, b, c] == b"foo");
+
+    {
+        let &mut [ref mut a, b, c] = foo.as_mut();
+        assert!(&[*a, b, c] == b"foo");
+        *a = b'F';
+    }
+    assert!(foo == (b'F', b'o', b'o'));
+}
