@@ -79,7 +79,7 @@ println!("Item 7 is {}", v[7]);
 then the current thread will [panic] with a message like this:
 
 ```text
-thread '<main>' panicked at 'index out of bounds: the len is 3 but the index is 7'
+thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 7'
 ```
 
 If you want to handle out-of-bounds errors without panicking, you can use
