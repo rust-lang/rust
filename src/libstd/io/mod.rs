@@ -747,6 +747,46 @@ pub trait Read {
         self.utf8_chars()
     }
 
+    /// Transforms this `Read` instance to an `Iterator` over `char`s.
+    ///
+    /// This adaptor will attempt to interpret this reader as a UTF-8 encoded
+    /// sequence of characters. The returned iterator will return `None` once
+    /// EOF is reached for this reader. Otherwise each element yielded will be a
+    /// `Result<char, E>` where `E` may contain information about what I/O error
+    /// occurred.
+    ///
+    /// Compared to `utf8_chars`, byte sequences invalid in UTF-8 are replaced
+    /// with U+FFFD replacement characters instead of being a variant of error.
+    ///
+    /// # Examples
+    ///
+    /// [`File`][file]s implement `Read`:
+    ///
+    /// [file]: ../fs/struct.File.html
+    ///
+    /// ```
+    /// #![feature(io)]
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut f = try!(File::open("foo.txt"));
+    ///
+    /// for c in f.utf8_chars_lossy() {
+    ///     println!("{}", c.unwrap());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "io", reason = "the semantics of a partial read/write \
+                                         of where errors happen is currently \
+                                         unclear and may change",
+               issue = "27802")]
+    fn utf8_chars_lossy(self) -> Utf8CharsLossy<Self> where Self: Sized {
+        Utf8CharsLossy { inner: self.utf8_chars() }
+    }
+
     /// Creates an adaptor which will chain this stream with another.
     ///
     /// The returned `Read` instance will first read all bytes from this object
@@ -1698,6 +1738,35 @@ impl fmt::Display for Utf8CharsError {
     }
 }
 
+/// An iterator over the `char`s of a reader.
+///
+/// This struct is generally created by calling [`utf8_chars()`][utf8_chars] on a reader.
+/// Please see the documentation of `utf8_chars()` for more details.
+///
+/// [utf8_chars]: trait.Read.html#method.utf8_chars
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars_lossy",
+           issue = "27802")]
+pub struct Utf8CharsLossy<R> {
+    inner: Utf8Chars<R>,
+}
+
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars",
+           issue = "27802")]
+impl<R: Read> Iterator for Utf8CharsLossy<R> {
+    type Item = result::Result<char, Error>;
+
+    fn next(&mut self) -> Option<result::Result<char, Error>> {
+        // Follow Unicode Standard §5.22 "Best Practice for U+FFFD Substitution"
+        // http://www.unicode.org/versions/Unicode8.0.0/ch05.pdf#G40630
+        self.inner.next().map(|result| match result {
+            Ok(c) => Ok(c),
+            Err(Utf8CharsError::InvalidUtf8) |
+            Err(Utf8CharsError::IncompleteUtf8) => Ok('\u{FFFD}'),
+            Err(Utf8CharsError::Io(e)) => Err(e),
+        })
+    }
+}
+
 /// An iterator over the contents of an instance of `BufRead` split on a
 /// particular byte.
 ///
@@ -1768,24 +1837,16 @@ mod tests {
     use prelude::v1::*;
     use io::prelude::*;
     use io;
-    use super::Utf8CharsError;
     use super::Cursor;
     use test;
     use super::repeat;
 
     fn chars_lossy(bytes: &[u8]) -> String {
-        // Follow Unicode Standard §5.22 "Best Practice for U+FFFD Substitution"
-        // http://www.unicode.org/versions/Unicode8.0.0/ch05.pdf#G40630
-        Cursor::new(bytes).utf8_chars().map(|result| match result {
-            Ok(c) => c,
-            Err(Utf8CharsError::InvalidUtf8) |
-            Err(Utf8CharsError::IncompleteUtf8) => '\u{FFFD}',
-            Err(Utf8CharsError::Io(e)) => panic!("{}", e),
-        }).collect()
+        Cursor::new(bytes).utf8_chars_lossy().collect::<Result<_, _>>().unwrap()
     }
 
     #[test]
-    fn utf8_chars() {
+    fn utf8_chars_lossy() {
         assert_eq!(chars_lossy(b"\xf0\x9fabc"), "�abc");
         assert_eq!(chars_lossy(b"\xed\xa0\x80a"), "���a");
         assert_eq!(chars_lossy(b"\xed\xa0a"), "��a");
