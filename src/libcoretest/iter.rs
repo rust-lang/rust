@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::iter::*;
-use core::{i8, i16, isize};
+use core::{i16, i8, isize};
 use core::usize;
 
 use test::Bencher;
@@ -17,52 +17,52 @@ use test::Bencher;
 #[test]
 fn test_lt() {
     let empty: [isize; 0] = [];
-    let xs = [1,2,3];
-    let ys = [1,2,0];
+    let xs = [1, 2, 3];
+    let ys = [1, 2, 0];
 
     assert!(!xs.iter().lt(ys.iter()));
     assert!(!xs.iter().le(ys.iter()));
-    assert!( xs.iter().gt(ys.iter()));
-    assert!( xs.iter().ge(ys.iter()));
+    assert!(xs.iter().gt(ys.iter()));
+    assert!(xs.iter().ge(ys.iter()));
 
-    assert!( ys.iter().lt(xs.iter()));
-    assert!( ys.iter().le(xs.iter()));
+    assert!(ys.iter().lt(xs.iter()));
+    assert!(ys.iter().le(xs.iter()));
     assert!(!ys.iter().gt(xs.iter()));
     assert!(!ys.iter().ge(xs.iter()));
 
-    assert!( empty.iter().lt(xs.iter()));
-    assert!( empty.iter().le(xs.iter()));
+    assert!(empty.iter().lt(xs.iter()));
+    assert!(empty.iter().le(xs.iter()));
     assert!(!empty.iter().gt(xs.iter()));
     assert!(!empty.iter().ge(xs.iter()));
 
     // Sequence with NaN
     let u = [1.0f64, 2.0];
-    let v = [0.0f64/0.0, 3.0];
+    let v = [0.0f64 / 0.0, 3.0];
 
     assert!(!u.iter().lt(v.iter()));
     assert!(!u.iter().le(v.iter()));
     assert!(!u.iter().gt(v.iter()));
     assert!(!u.iter().ge(v.iter()));
 
-    let a = [0.0f64/0.0];
+    let a = [0.0f64 / 0.0];
     let b = [1.0f64];
     let c = [2.0f64];
 
-    assert!(a.iter().lt(b.iter()) == (a[0] <  b[0]));
+    assert!(a.iter().lt(b.iter()) == (a[0] < b[0]));
     assert!(a.iter().le(b.iter()) == (a[0] <= b[0]));
-    assert!(a.iter().gt(b.iter()) == (a[0] >  b[0]));
+    assert!(a.iter().gt(b.iter()) == (a[0] > b[0]));
     assert!(a.iter().ge(b.iter()) == (a[0] >= b[0]));
 
-    assert!(c.iter().lt(b.iter()) == (c[0] <  b[0]));
+    assert!(c.iter().lt(b.iter()) == (c[0] < b[0]));
     assert!(c.iter().le(b.iter()) == (c[0] <= b[0]));
-    assert!(c.iter().gt(b.iter()) == (c[0] >  b[0]));
+    assert!(c.iter().gt(b.iter()) == (c[0] > b[0]));
     assert!(c.iter().ge(b.iter()) == (c[0] >= b[0]));
 }
 
 #[test]
 fn test_multi_iter() {
-    let xs = [1,2,3,4];
-    let ys = [4,3,2,1];
+    let xs = [1, 2, 3, 4];
+    let ys = [4, 3, 2, 1];
     assert!(xs.iter().eq(ys.iter().rev()));
     assert!(xs.iter().lt(xs.iter().skip(2)));
 }
@@ -148,9 +148,18 @@ fn test_iterator_chain_find() {
 
 #[test]
 fn test_filter_map() {
-    let it = (0..).step_by(1).take(10)
-        .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
-    assert_eq!(it.collect::<Vec<usize>>(), [0*0, 2*2, 4*4, 6*6, 8*8]);
+    let it = (0..)
+                 .step_by(1)
+                 .take(10)
+                 .filter_map(|x| {
+                     if x % 2 == 0 {
+                         Some(x * x)
+                     } else {
+                         None
+                     }
+                 });
+    assert_eq!(it.collect::<Vec<usize>>(),
+               [0 * 0, 2 * 2, 4 * 4, 6 * 6, 8 * 8]);
 }
 
 #[test]
@@ -310,7 +319,7 @@ fn test_iterator_skip() {
     while let Some(&x) = it.next() {
         assert_eq!(x, ys[i]);
         i += 1;
-        assert_eq!(it.len(), xs.len()-5-i);
+        assert_eq!(it.len(), xs.len() - 5 - i);
     }
     assert_eq!(i, ys.len());
     assert_eq!(it.len(), 0);
@@ -407,7 +416,7 @@ fn test_iterator_take() {
     while let Some(&x) = it.next() {
         assert_eq!(x, ys[i]);
         i += 1;
-        assert_eq!(it.len(), 5-i);
+        assert_eq!(it.len(), 5 - i);
     }
     assert_eq!(i, ys.len());
     assert_eq!(it.len(), 0);
@@ -447,7 +456,7 @@ fn test_iterator_take_short() {
     while let Some(&x) = it.next() {
         assert_eq!(x, ys[i]);
         i += 1;
-        assert_eq!(it.len(), 4-i);
+        assert_eq!(it.len(), 4 - i);
     }
     assert_eq!(i, ys.len());
     assert_eq!(it.len(), 0);
@@ -584,9 +593,10 @@ fn test_iterator_size_hint() {
     assert_eq!(c.clone().take_while(|_| false).size_hint(), (0, None));
     assert_eq!(c.clone().skip_while(|_| false).size_hint(), (0, None));
     assert_eq!(c.clone().enumerate().size_hint(), (usize::MAX, None));
-    assert_eq!(c.clone().chain(vi.clone().cloned()).size_hint(), (usize::MAX, None));
+    assert_eq!(c.clone().chain(vi.clone().cloned()).size_hint(),
+               (usize::MAX, None));
     assert_eq!(c.clone().zip(vi.clone()).size_hint(), (10, Some(10)));
-    assert_eq!(c.clone().scan(0, |_,_| Some(0)).size_hint(), (0, None));
+    assert_eq!(c.clone().scan(0, |_, _| Some(0)).size_hint(), (0, None));
     assert_eq!(c.clone().filter(|_| false).size_hint(), (0, None));
     assert_eq!(c.clone().map(|_| 0).size_hint(), (usize::MAX, None));
     assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
@@ -600,9 +610,10 @@ fn test_iterator_size_hint() {
     assert_eq!(vi.clone().enumerate().size_hint(), (10, Some(10)));
     assert_eq!(vi.clone().chain(v2).size_hint(), (13, Some(13)));
     assert_eq!(vi.clone().zip(v2).size_hint(), (3, Some(3)));
-    assert_eq!(vi.clone().scan(0, |_,_| Some(0)).size_hint(), (0, Some(10)));
+    assert_eq!(vi.clone().scan(0, |_, _| Some(0)).size_hint(),
+               (0, Some(10)));
     assert_eq!(vi.clone().filter(|_| false).size_hint(), (0, Some(10)));
-    assert_eq!(vi.clone().map(|&i| i+1).size_hint(), (10, Some(10)));
+    assert_eq!(vi.clone().map(|&i| i + 1).size_hint(), (10, Some(10)));
     assert_eq!(vi.filter_map(|_| Some(0)).size_hint(), (0, Some(10)));
 }
 
@@ -684,8 +695,7 @@ fn test_rev() {
     let mut it = xs.iter();
     it.next();
     it.next();
-    assert!(it.rev().cloned().collect::<Vec<isize>>() ==
-            vec![16, 14, 12, 10, 8, 6]);
+    assert!(it.rev().cloned().collect::<Vec<isize>>() == vec![16, 14, 12, 10, 8, 6]);
 }
 
 #[test]
@@ -758,7 +768,13 @@ fn test_double_ended_filter() {
 #[test]
 fn test_double_ended_filter_map() {
     let xs = [1, 2, 3, 4, 5, 6];
-    let mut it = xs.iter().filter_map(|&x| if x & 1 == 0 { Some(x * 2) } else { None });
+    let mut it = xs.iter().filter_map(|&x| {
+        if x & 1 == 0 {
+            Some(x * 2)
+        } else {
+            None
+        }
+    });
     assert_eq!(it.next_back().unwrap(), 12);
     assert_eq!(it.next_back().unwrap(), 8);
     assert_eq!(it.next().unwrap(), 4);
@@ -783,11 +799,20 @@ fn test_double_ended_chain() {
 
     // test that .chain() is well behaved with an unfused iterator
     struct CrazyIterator(bool);
-    impl CrazyIterator { fn new() -> CrazyIterator { CrazyIterator(false) } }
+    impl CrazyIterator {
+        fn new() -> CrazyIterator {
+            CrazyIterator(false)
+        }
+    }
     impl Iterator for CrazyIterator {
         type Item = i32;
         fn next(&mut self) -> Option<i32> {
-            if self.0 { Some(99) } else { self.0 = true; None }
+            if self.0 {
+                Some(99)
+            } else {
+                self.0 = true;
+                None
+            }
         }
     }
 
@@ -803,8 +828,14 @@ fn test_double_ended_chain() {
 
 #[test]
 fn test_rposition() {
-    fn f(xy: &(isize, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-    fn g(xy: &(isize, char)) -> bool { let (_x, y) = *xy; y == 'd' }
+    fn f(xy: &(isize, char)) -> bool {
+        let (_x, y) = *xy;
+        y == 'b'
+    }
+    fn g(xy: &(isize, char)) -> bool {
+        let (_x, y) = *xy;
+        y == 'd'
+    }
     let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
     assert_eq!(v.iter().rposition(f), Some(3));
@@ -814,9 +845,7 @@ fn test_rposition() {
 #[test]
 #[should_panic]
 fn test_rposition_panic() {
-    let v: [(Box<_>, Box<_>); 4] =
-        [(box 0, box 0), (box 0, box 0),
-         (box 0, box 0), (box 0, box 0)];
+    let v: [(Box<_>, Box<_>); 4] = [(box 0, box 0), (box 0, box 0), (box 0, box 0), (box 0, box 0)];
     let mut i = 0;
     v.iter().rposition(|_elt| {
         if i == 2 {
@@ -830,18 +859,18 @@ fn test_rposition_panic() {
 
 #[test]
 fn test_double_ended_flat_map() {
-    let u = [0,1];
-    let v = [5,6,7,8];
+    let u = [0, 1];
+    let v = [5, 6, 7, 8];
     let mut it = u.iter().flat_map(|x| &v[*x..v.len()]);
     assert_eq!(it.next_back().unwrap(), &8);
-    assert_eq!(it.next().unwrap(),      &5);
+    assert_eq!(it.next().unwrap(), &5);
     assert_eq!(it.next_back().unwrap(), &7);
     assert_eq!(it.next_back().unwrap(), &6);
     assert_eq!(it.next_back().unwrap(), &8);
-    assert_eq!(it.next().unwrap(),      &6);
+    assert_eq!(it.next().unwrap(), &6);
     assert_eq!(it.next_back().unwrap(), &7);
     assert_eq!(it.next_back(), None);
-    assert_eq!(it.next(),      None);
+    assert_eq!(it.next(), None);
     assert_eq!(it.next_back(), None);
 }
 
@@ -861,7 +890,8 @@ fn test_double_ended_range() {
 #[test]
 fn test_range() {
     assert_eq!((0..5).collect::<Vec<_>>(), [0, 1, 2, 3, 4]);
-    assert_eq!((-10..-1).collect::<Vec<_>>(), [-10, -9, -8, -7, -6, -5, -4, -3, -2]);
+    assert_eq!((-10..-1).collect::<Vec<_>>(),
+               [-10, -9, -8, -7, -6, -5, -4, -3, -2]);
     assert_eq!((0..5).rev().collect::<Vec<_>>(), [4, 3, 2, 1, 0]);
     assert_eq!((200..-5).count(), 0);
     assert_eq!((200..-5).rev().count(), 0);
@@ -897,18 +927,12 @@ fn test_range_step() {
     assert_eq!((20..-5).step_by(1).size_hint(), (0, Some(0)));
     assert_eq!((20..20).step_by(1).size_hint(), (0, Some(0)));
     assert_eq!((0..1).step_by(0).size_hint(), (0, None));
-    assert_eq!((i8::MAX..i8::MIN).step_by(i8::MIN).size_hint(), (2, Some(2)));
-    assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX).size_hint(), (3, Some(3)));
-    assert_eq!((isize::MIN..isize::MAX).step_by(1).size_hint(), (usize::MAX, Some(usize::MAX)));
-}
-
-#[test]
-fn test_peekable_is_empty() {
-    let a = [1];
-    let mut it = a.iter().peekable();
-    assert!( !it.is_empty() );
-    it.next();
-    assert!( it.is_empty() );
+    assert_eq!((i8::MAX..i8::MIN).step_by(i8::MIN).size_hint(),
+               (2, Some(2)));
+    assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX).size_hint(),
+               (3, Some(3)));
+    assert_eq!((isize::MIN..isize::MAX).step_by(1).size_hint(),
+               (usize::MAX, Some(usize::MAX)));
 }
 
 #[test]
@@ -994,7 +1018,11 @@ fn bench_skip_while(b: &mut Bencher) {
     b.iter(|| {
         let it = 0..100;
         let mut sum = 0;
-        it.skip_while(|&x| { sum += x; sum < 4000 }).all(|_| true);
+        it.skip_while(|&x| {
+              sum += x;
+              sum < 4000
+          })
+          .all(|_| true);
     });
 }
 
@@ -1009,7 +1037,9 @@ fn bench_multiple_take(b: &mut Bencher) {
     });
 }
 
-fn scatter(x: i32) -> i32 { (x * 31) % 127 }
+fn scatter(x: i32) -> i32 {
+    (x * 31) % 127
+}
 
 #[bench]
 fn bench_max_by_key(b: &mut Bencher) {

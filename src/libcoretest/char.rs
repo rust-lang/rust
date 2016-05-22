@@ -115,12 +115,12 @@ fn test_is_control() {
 
 #[test]
 fn test_is_digit() {
-   assert!('2'.is_numeric());
-   assert!('7'.is_numeric());
-   assert!(!'c'.is_numeric());
-   assert!(!'i'.is_numeric());
-   assert!(!'z'.is_numeric());
-   assert!(!'Q'.is_numeric());
+    assert!('2'.is_numeric());
+    assert!('7'.is_numeric());
+    assert!(!'c'.is_numeric());
+    assert!(!'i'.is_numeric());
+    assert!(!'z'.is_numeric());
+    assert!(!'Q'.is_numeric());
 }
 
 #[test]
@@ -158,7 +158,9 @@ fn test_escape_default() {
 
 #[test]
 fn test_escape_unicode() {
-    fn string(c: char) -> String { c.escape_unicode().collect() }
+    fn string(c: char) -> String {
+        c.escape_unicode().collect()
+    }
 
     let s = string('\x00');
     assert_eq!(s, "\\u{0}");
@@ -216,8 +218,8 @@ fn test_len_utf16() {
 fn test_decode_utf16() {
     fn check(s: &[u16], expected: &[Result<char, u16>]) {
         let v = char::decode_utf16(s.iter().cloned())
-                     .map(|r| r.map_err(|e| e.unpaired_surrogate()))
-                     .collect::<Vec<_>>();
+                    .map(|r| r.map_err(|e| e.unpaired_surrogate()))
+                    .collect::<Vec<_>>();
         assert_eq!(v, expected);
     }
     check(&[0xD800, 0x41, 0x42], &[Err(0xD800), Ok('A'), Ok('B')]);

@@ -30,7 +30,9 @@ fn invalid_chars() {
                 let mut input = String::new();
                 input.push_str(s);
                 input.insert(i, c);
-                assert!(parse_decimal(&input) == Invalid, "did not reject invalid {:?}", input);
+                assert!(parse_decimal(&input) == Invalid,
+                        "did not reject invalid {:?}",
+                        input);
             }
         }
     }
@@ -38,14 +40,18 @@ fn invalid_chars() {
 
 #[test]
 fn valid() {
-    assert_eq!(parse_decimal("123.456e789"), Valid(Decimal::new(b"123", b"456", 789)));
-    assert_eq!(parse_decimal("123.456e+789"), Valid(Decimal::new(b"123", b"456", 789)));
-    assert_eq!(parse_decimal("123.456e-789"), Valid(Decimal::new(b"123", b"456", -789)));
+    assert_eq!(parse_decimal("123.456e789"),
+               Valid(Decimal::new(b"123", b"456", 789)));
+    assert_eq!(parse_decimal("123.456e+789"),
+               Valid(Decimal::new(b"123", b"456", 789)));
+    assert_eq!(parse_decimal("123.456e-789"),
+               Valid(Decimal::new(b"123", b"456", -789)));
     assert_eq!(parse_decimal(".050"), Valid(Decimal::new(b"", b"050", 0)));
     assert_eq!(parse_decimal("999"), Valid(Decimal::new(b"999", b"", 0)));
     assert_eq!(parse_decimal("1.e300"), Valid(Decimal::new(b"1", b"", 300)));
     assert_eq!(parse_decimal(".1e300"), Valid(Decimal::new(b"", b"1", 300)));
-    assert_eq!(parse_decimal("101e-33"), Valid(Decimal::new(b"101", b"", -33)));
+    assert_eq!(parse_decimal("101e-33"),
+               Valid(Decimal::new(b"101", b"", -33)));
     let zeros: String = iter::repeat('0').take(25).collect();
     let s = format!("1.5e{}", zeros);
     assert_eq!(parse_decimal(&s), Valid(Decimal::new(b"1", b"5", 0)));

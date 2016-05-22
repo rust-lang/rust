@@ -12,7 +12,8 @@ use core::any::TypeId;
 
 #[test]
 fn test_typeid_sized_types() {
-    struct X; struct Y(u32);
+    struct X;
+    struct Y(u32);
 
     assert_eq!(TypeId::of::<X>(), TypeId::of::<X>());
     assert_eq!(TypeId::of::<Y>(), TypeId::of::<Y>());
@@ -22,7 +23,8 @@ fn test_typeid_sized_types() {
 #[test]
 fn test_typeid_unsized_types() {
     trait Z {}
-    struct X(str); struct Y(Z + 'static);
+    struct X(str);
+    struct Y(Z + 'static);
 
     assert_eq!(TypeId::of::<X>(), TypeId::of::<X>());
     assert_eq!(TypeId::of::<Y>(), TypeId::of::<Y>());

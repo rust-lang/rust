@@ -15,9 +15,7 @@ use std::mem::size_of;
 
 #[test]
 fn test_create_nonzero_instance() {
-    let _a = unsafe {
-        NonZero::new(21)
-    };
+    let _a = unsafe { NonZero::new(21) };
 }
 
 #[test]
@@ -27,17 +25,15 @@ fn test_size_nonzero_in_option() {
 
 #[test]
 fn test_match_on_nonzero_option() {
-    let a = Some(unsafe {
-        NonZero::new(42)
-    });
+    let a = Some(unsafe { NonZero::new(42) });
     match a {
         Some(val) => assert_eq!(*val, 42),
-        None => panic!("unexpected None while matching on Some(NonZero(_))")
+        None => panic!("unexpected None while matching on Some(NonZero(_))"),
     }
 
     match unsafe { Some(NonZero::new(43)) } {
         Some(val) => assert_eq!(*val, 43),
-        None => panic!("unexpected None while matching on Some(NonZero(_))")
+        None => panic!("unexpected None while matching on Some(NonZero(_))"),
     }
 }
 
@@ -55,7 +51,7 @@ fn test_match_option_vec() {
     let a = Some(vec![1, 2, 3, 4]);
     match a {
         Some(v) => assert_eq!(v, [1, 2, 3, 4]),
-        None => panic!("unexpected None while matching on Some(vec![1, 2, 3, 4])")
+        None => panic!("unexpected None while matching on Some(vec![1, 2, 3, 4])"),
     }
 }
 
@@ -66,7 +62,7 @@ fn test_match_option_rc() {
     let five = Rc::new(5);
     match Some(five) {
         Some(r) => assert_eq!(*r, 5),
-        None => panic!("unexpected None while matching on Some(Rc::new(5))")
+        None => panic!("unexpected None while matching on Some(Rc::new(5))"),
     }
 }
 
@@ -77,7 +73,7 @@ fn test_match_option_arc() {
     let five = Arc::new(5);
     match Some(five) {
         Some(a) => assert_eq!(*a, 5),
-        None => panic!("unexpected None while matching on Some(Arc::new(5))")
+        None => panic!("unexpected None while matching on Some(Arc::new(5))"),
     }
 }
 
@@ -95,6 +91,6 @@ fn test_match_option_string() {
     let five = "Five".to_string();
     match Some(five) {
         Some(s) => assert_eq!(s, "Five"),
-        None => panic!("unexpected None while matching on Some(String { ... })")
+        None => panic!("unexpected None while matching on Some(String { ... })"),
     }
 }

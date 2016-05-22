@@ -53,27 +53,40 @@ fn fp_to_float_half_to_even() {
 fn integers_to_f64() {
     assert_eq!(fp_to_float::<f64>(Fp { f: 1, e: 0 }), 1.0);
     assert_eq!(fp_to_float::<f64>(Fp { f: 42, e: 7 }), (42 << 7) as f64);
-    assert_eq!(fp_to_float::<f64>(Fp { f: 1 << 20, e: 30 }), (1u64 << 50) as f64);
+    assert_eq!(fp_to_float::<f64>(Fp {
+                   f: 1 << 20,
+                   e: 30,
+               }),
+               (1u64 << 50) as f64);
     assert_eq!(fp_to_float::<f64>(Fp { f: 4, e: -3 }), 0.5);
 }
 
-const SOME_FLOATS: [f64; 9] =
-    [0.1f64, 33.568, 42.1e-5, 777.0e9, 1.1111, 0.347997,
-     9843579834.35892, 12456.0e-150, 54389573.0e-150];
+const SOME_FLOATS: [f64; 9] = [0.1f64,
+                               33.568,
+                               42.1e-5,
+                               777.0e9,
+                               1.1111,
+                               0.347997,
+                               9843579834.35892,
+                               12456.0e-150,
+                               54389573.0e-150];
 
 
 #[test]
 fn human_f64_roundtrip() {
     for &x in &SOME_FLOATS {
         let (f, e, _) = x.integer_decode();
-        let fp = Fp { f: f, e: e};
+        let fp = Fp { f: f, e: e };
         assert_eq!(fp_to_float::<f64>(fp), x);
     }
 }
 
 #[test]
 fn rounding_overflow() {
-    let x = Fp { f: 0xFF_FF_FF_FF_FF_FF_FF_00u64, e: 42 };
+    let x = Fp {
+        f: 0xFF_FF_FF_FF_FF_FF_FF_00u64,
+        e: 42,
+    };
     let rounded = round_normal::<f64>(x);
     let adjusted_k = x.e + 64 - 53;
     assert_eq!(rounded.sig, 1 << 52);

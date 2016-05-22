@@ -15,9 +15,9 @@ fn test() {
     unsafe {
         struct Pair {
             fst: isize,
-            snd: isize
+            snd: isize,
         };
-        let mut p = Pair {fst: 10, snd: 20};
+        let mut p = Pair { fst: 10, snd: 20 };
         let pptr: *mut Pair = &mut p;
         let iptr: *mut isize = pptr as *mut isize;
         assert_eq!(*iptr, 10);
@@ -25,7 +25,7 @@ fn test() {
         assert_eq!(*iptr, 30);
         assert_eq!(p.fst, 30);
 
-        *pptr = Pair {fst: 50, snd: 60};
+        *pptr = Pair { fst: 50, snd: 60 };
         assert_eq!(*iptr, 50);
         assert_eq!(p.fst, 50);
         assert_eq!(p.snd, 60);
@@ -34,17 +34,11 @@ fn test() {
         let mut v1 = vec![0u16, 0u16, 0u16];
 
         copy(v0.as_ptr().offset(1), v1.as_mut_ptr().offset(1), 1);
-        assert!((v1[0] == 0u16 &&
-                 v1[1] == 32001u16 &&
-                 v1[2] == 0u16));
+        assert!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
         copy(v0.as_ptr().offset(2), v1.as_mut_ptr(), 1);
-        assert!((v1[0] == 32002u16 &&
-                 v1[1] == 32001u16 &&
-                 v1[2] == 0u16));
+        assert!((v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 0u16));
         copy(v0.as_ptr(), v1.as_mut_ptr().offset(2), 1);
-        assert!((v1[0] == 32002u16 &&
-                 v1[1] == 32001u16 &&
-                 v1[2] == 32000u16));
+        assert!((v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 32000u16));
     }
 }
 
@@ -133,7 +127,7 @@ fn test_ptr_addition() {
 #[test]
 fn test_ptr_subtraction() {
     unsafe {
-        let xs = vec![0,1,2,3,4,5,6,7,8,9];
+        let xs = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
         let mut idx = 9;
         let ptr = xs.as_ptr();
 
@@ -151,7 +145,7 @@ fn test_ptr_subtraction() {
             m_ptr = m_ptr.offset(-1);
         }
 
-        assert_eq!(xs_mut, [0,2,4,6,8,10,12,14,16,18]);
+        assert_eq!(xs_mut, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]);
     }
 }
 
@@ -159,7 +153,9 @@ fn test_ptr_subtraction() {
 fn test_set_memory() {
     let mut xs = [0u8; 20];
     let ptr = xs.as_mut_ptr();
-    unsafe { write_bytes(ptr, 5u8, xs.len()); }
+    unsafe {
+        write_bytes(ptr, 5u8, xs.len());
+    }
     assert!(xs == [5u8; 20]);
 }
 
