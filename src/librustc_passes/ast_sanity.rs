@@ -21,7 +21,7 @@ use rustc::session::Session;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::errors;
-use syntax::parse::token::keywords;
+use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 
 struct SanityChecker<'a> {
@@ -42,6 +42,17 @@ impl<'a> SanityChecker<'a> {
                 lint::builtin::LIFETIME_UNDERSCORE, id, span,
                 format!("invalid label name `{}`", label.name)
             );
+        }
+    }
+
+    fn invalid_visibility(&self, vis: &Visibility, span: Span, note: Option<&str>) {
+        if vis != &Visibility::Inherited {
+            let mut err = struct_span_err!(self.session, span, E0449,
+                                           "unnecessary visibility qualifier");
+            if let Some(note) = note {
+                err.span_note(span, note);
+            }
+            err.emit();
         }
     }
 }
@@ -71,6 +82,89 @@ impl<'a, 'v> Visitor<'v> for SanityChecker<'a> {
         }
 
         visit::walk_expr(self, expr)
+    }
+
+    fn visit_path(&mut self, path: &Path, id: NodeId) {
+        if path.global && path.segments.len() > 0 {
+            let ident = path.segments[0].identifier;
+            if token::Ident(ident).is_path_segment_keyword() {
+                self.session.add_lint(
+                    lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH, id, path.span,
+                    format!("global paths cannot start with `{}`", ident)
+                );
+            }
+        }
+
+        visit::walk_path(self, path)
+    }
+
+    fn visit_item(&mut self, item: &Item) {
+        match item.node {
+            ItemKind::Use(ref view_path) => {
+                let path = view_path.node.path();
+                if !path.segments.iter().all(|segment| segment.parameters.is_empty()) {
+                    self.err_handler().span_err(path.span, "type or lifetime parameters \
+                                                            in import path");
+                }
+            }
+            ItemKind::Impl(_, _, _, Some(..), _, ref impl_items) => {
+                self.invalid_visibility(&item.vis, item.span, None);
+                for impl_item in impl_items {
+                    self.invalid_visibility(&impl_item.vis, impl_item.span, None);
+                }
+            }
+            ItemKind::Impl(_, _, _, None, _, _) => {
+                self.invalid_visibility(&item.vis, item.span, Some("place qualifiers on individual \
+                                                                    impl items instead"));
+            }
+            ItemKind::DefaultImpl(..) => {
+                self.invalid_visibility(&item.vis, item.span, None);
+            }
+            ItemKind::ForeignMod(..) => {
+                self.invalid_visibility(&item.vis, item.span, Some("place qualifiers on individual \
+                                                                    foreign items instead"));
+            }
+            ItemKind::Enum(ref def, _) => {
+                for variant in &def.variants {
+                    for field in variant.node.data.fields() {
+                        self.invalid_visibility(&field.vis, field.span, None);
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        visit::walk_item(self, item)
+    }
+
+    fn visit_variant_data(&mut self, vdata: &VariantData, _: Ident,
+                          _: &Generics, _: NodeId, span: Span) {
+        if vdata.fields().is_empty() {
+            if vdata.is_tuple() {
+                self.err_handler().struct_span_err(span, "empty tuple structs and enum variants \
+                                                          are not allowed, use unit structs and \
+                                                          enum variants instead")
+                                         .span_help(span, "remove trailing `()` to make a unit \
+                                                           struct or unit enum variant")
+                                         .emit();
+            }
+        }
+
+        visit::walk_struct_def(self, vdata)
+    }
+
+    fn visit_vis(&mut self, vis: &Visibility) {
+        match *vis {
+            Visibility::Restricted{ref path, ..} => {
+                if !path.segments.iter().all(|segment| segment.parameters.is_empty()) {
+                    self.err_handler().span_err(path.span, "type or lifetime parameters \
+                                                            in visibility path");
+                }
+            }
+            _ => {}
+        }
+
+        visit::walk_vis(self, vis)
     }
 }
 

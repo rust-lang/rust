@@ -22,21 +22,20 @@ use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
 use rustc::middle::cstore::{ChildItem, DlDef};
-use rustc::lint;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::ty::{self, VariantKind};
 
-use syntax::ast::{Name, NodeId};
+use syntax::ast::Name;
 use syntax::attr::AttrMetaMethods;
-use syntax::parse::token::{self, keywords};
+use syntax::parse::token;
 use syntax::codemap::{Span, DUMMY_SP};
 
 use syntax::ast::{Block, Crate, DeclKind};
 use syntax::ast::{ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, PathListItemKind};
 use syntax::ast::{Stmt, StmtKind, TraitItemKind};
-use syntax::ast::{Variant, ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
+use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::visit::{self, Visitor};
 
 trait ToNameBinding<'a> {
@@ -95,36 +94,6 @@ impl<'b> Resolver<'b> {
         block.stmts.iter().any(is_item)
     }
 
-    fn sanity_check_import(&self, view_path: &ViewPath, id: NodeId) {
-        let path = match view_path.node {
-            ViewPathSimple(_, ref path) |
-            ViewPathGlob (ref path) |
-            ViewPathList(ref path, _) => path
-        };
-
-        // Check for type parameters
-        let found_param = path.segments.iter().any(|segment| {
-            !segment.parameters.types().is_empty() ||
-            !segment.parameters.lifetimes().is_empty() ||
-            !segment.parameters.bindings().is_empty()
-        });
-        if found_param {
-            self.session.span_err(path.span, "type or lifetime parameters in import path");
-        }
-
-        // Checking for special identifiers in path
-        // prevent `self` or `super` at beginning of global path
-        if path.global && path.segments.len() > 0 {
-            let first = path.segments[0].identifier.name;
-            if first == keywords::Super.name() || first == keywords::SelfValue.name() {
-                self.session.add_lint(
-                    lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH, id, path.span,
-                    format!("expected identifier, found keyword `{}`", first)
-                );
-            }
-        }
-    }
-
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &Item, parent_ref: &mut Module<'b>) {
         let parent = *parent_ref;
@@ -157,8 +126,6 @@ impl<'b> Resolver<'b> {
                                          .collect()
                     }
                 };
-
-                self.sanity_check_import(view_path, item.id);
 
                 // Build up the import directives.
                 let is_prelude = item.attrs.iter().any(|attr| attr.name() == "prelude_import");

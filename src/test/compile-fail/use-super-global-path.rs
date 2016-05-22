@@ -12,7 +12,7 @@
 
 mod foo {
     pub fn g() {
-        use ::super::main; //~ WARN expected identifier, found keyword `super`
+        use ::super::main; //~ WARN global paths cannot start with `super`
         //~^ WARN this was previously accepted by the compiler but is being phased out
         main();
     }
