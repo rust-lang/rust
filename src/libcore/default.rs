@@ -84,10 +84,33 @@
 
 use marker::Sized;
 
-/// A trait for giving a type a useful default value.
+/// A trait for giving a type a useful default value. For more information, see
+/// [the module-level documentation][module].
 ///
-/// A struct can derive default implementations of `Default` for basic types using
-/// `#[derive(Default)]`.
+/// [module]: ../../std/default/index.html
+///
+/// ## Derivable
+///
+/// This trait can be used with `#[derive]` if all of the type's fields implement
+/// `Default`. When `derive`d, it will use the default value for each field's type.
+///
+/// ## How can I implement `Default`?
+///
+/// Provide an implementation for the `default()` method that returns the value of
+/// your type that should be the default:
+///
+/// ```
+/// # #![allow(dead_code)]
+/// enum Kind {
+///     A,
+///     B,
+///     C,
+/// }
+///
+/// impl Default for Kind {
+///     fn default() -> Kind { Kind::A }
+/// }
+/// ```
 ///
 /// # Examples
 ///
