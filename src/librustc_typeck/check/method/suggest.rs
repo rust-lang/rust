@@ -178,28 +178,43 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     rcvr_ty,
                     None);
 
-                // If the item has the name of a field, give a help note
-                if let (&ty::TyStruct(def, substs), Some(expr)) = (&rcvr_ty.sty, rcvr_expr) {
-                    if let Some(field) = def.struct_variant().find_field_named(item_name) {
-                        let expr_string = match tcx.sess.codemap().span_to_snippet(expr.span) {
-                            Ok(expr_string) => expr_string,
-                            _ => "s".into() // Default to a generic placeholder for the
-                                            // expression when we can't generate a string
-                                            // snippet
-                        };
+                // If the method name is the name of a field with a function or closure type,
+                // give a helping note that it has to be called as (x.f)(...).
+                if let Some(expr) = rcvr_expr {
+                    self.autoderef(
+                        span,
+                        rcvr_ty,
+                        || None,
+                        UnresolvedTypeAction::Ignore,
+                        LvaluePreference::NoPreference,
+                        |ty, _| {
+                            if let ty::TyStruct(def, substs) = ty.sty {
+                                if let Some(field) = def.struct_variant()
+                                                        .find_field_named(item_name) {
+                                    let snippet = tcx.sess.codemap().span_to_snippet(expr.span);
+                                    let expr_string = match snippet {
+                                        Ok(expr_string) => expr_string,
+                                        _ => "s".into() // Default to a generic placeholder for the
+                                                        // expression when we can't generate a
+                                                        // string snippet
+                                    };
 
-                        let field_ty = field.ty(tcx, substs);
+                                    let field_ty = field.ty(tcx, substs);
 
-                        if self.is_fn_ty(&field_ty, span) {
-                            err.span_note(span,
-                                          &format!("use `({0}.{1})(...)` if you meant to call \
-                                                   the function stored in the `{1}` field",
-                                                   expr_string, item_name));
-                        } else {
-                            err.span_note(span, &format!("did you mean to write `{0}.{1}`?",
-                                                         expr_string, item_name));
-                        }
-                    }
+                                    if self.is_fn_ty(&field_ty, span) {
+                                        err.note(&format!("use `({0}.{1})(...)` if you meant to \
+                                                           call the function stored in the `{1}` \
+                                                           field",
+                                                          expr_string, item_name));
+                                    } else {
+                                        err.note(&format!("did you mean to write `{0}.{1}`?",
+                                                          expr_string, item_name));
+                                    }
+                                    return Some(());
+                                }
+                            }
+                            None
+                        });
                 }
 
                 if self.is_fn_ty(&rcvr_ty, span) {
