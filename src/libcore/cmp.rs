@@ -337,6 +337,13 @@ impl PartialOrd for Ordering {
 /// transitively: if `T: PartialOrd<U>` and `U: PartialOrd<V>` then `U: PartialOrd<T>` and `T:
 /// PartialOrd<V>`.
 ///
+/// ## Derivable
+///
+/// This trait can be used with `#[derive]`. When `derive`d, it will produce a lexicographic
+/// ordering based on the top-to-bottom declaration order of the struct's members.
+///
+/// ## How can I implement `Ord`?
+///
 /// PartialOrd only requires implementation of the `partial_cmp` method, with the others generated
 /// from default implementations.
 ///
@@ -344,8 +351,43 @@ impl PartialOrd for Ordering {
 /// total order. For example, for floating point numbers, `NaN < 0 == false` and `NaN >= 0 ==
 /// false` (cf. IEEE 754-2008 section 5.11).
 ///
-/// This trait can be used with `#[derive]`. When `derive`d, it will produce a lexicographic
-/// ordering based on the top-to-bottom declaration order of the struct's members.
+/// `PartialOrd` requires your type to be `PartialEq`.
+///
+/// If your type is `Ord`, you can implement `partial_cmp` by using `cmp`:
+///
+/// ```
+/// impl PartialOrd for Person {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+///         Some(self.cmp(other))
+///     }
+/// }
+/// ```
+///
+/// You may also find it useful to use `partial_cmp` on your type`s fields. Here
+/// is an example of `Person` types who have a floating-point `height` field that
+/// is the only field to be used for sorting:
+///
+/// ```
+/// use std::cmp::Ordering;
+///
+/// struct Person {
+///     id: u32,
+///     name: String,
+///     height: f64,
+/// }
+///
+/// impl PartialOrd for Person {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+///         self.height.partial_cmp(&other.height)
+///     }
+/// }
+///
+/// impl PartialEq for Person {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.height == other.height
+///     }
+/// }
+/// ```
 ///
 /// # Examples
 ///
