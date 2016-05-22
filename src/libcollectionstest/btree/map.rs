@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::collections::BTreeMap;
-use std::collections::Bound::{Excluded, Included, Unbounded, self};
+use std::collections::Bound::{self, Excluded, Included, Unbounded};
 use std::collections::btree_map::Entry::{Occupied, Vacant};
 use std::rc::Rc;
 
@@ -20,41 +20,41 @@ fn test_basic_large() {
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
-        assert_eq!(map.insert(i, 10*i), None);
+        assert_eq!(map.insert(i, 10 * i), None);
         assert_eq!(map.len(), i + 1);
     }
 
     for i in 0..size {
-        assert_eq!(map.get(&i).unwrap(), &(i*10));
+        assert_eq!(map.get(&i).unwrap(), &(i * 10));
     }
 
-    for i in size..size*2 {
+    for i in size..size * 2 {
         assert_eq!(map.get(&i), None);
     }
 
     for i in 0..size {
-        assert_eq!(map.insert(i, 100*i), Some(10*i));
+        assert_eq!(map.insert(i, 100 * i), Some(10 * i));
         assert_eq!(map.len(), size);
     }
 
     for i in 0..size {
-        assert_eq!(map.get(&i).unwrap(), &(i*100));
+        assert_eq!(map.get(&i).unwrap(), &(i * 100));
     }
 
-    for i in 0..size/2 {
-        assert_eq!(map.remove(&(i*2)), Some(i*200));
+    for i in 0..size / 2 {
+        assert_eq!(map.remove(&(i * 2)), Some(i * 200));
         assert_eq!(map.len(), size - i - 1);
     }
 
-    for i in 0..size/2 {
-        assert_eq!(map.get(&(2*i)), None);
-        assert_eq!(map.get(&(2*i+1)).unwrap(), &(i*200 + 100));
+    for i in 0..size / 2 {
+        assert_eq!(map.get(&(2 * i)), None);
+        assert_eq!(map.get(&(2 * i + 1)).unwrap(), &(i * 200 + 100));
     }
 
-    for i in 0..size/2 {
-        assert_eq!(map.remove(&(2*i)), None);
-        assert_eq!(map.remove(&(2*i+1)), Some(i*200 + 100));
-        assert_eq!(map.len(), size/2 - i - 1);
+    for i in 0..size / 2 {
+        assert_eq!(map.remove(&(2 * i)), None);
+        assert_eq!(map.remove(&(2 * i + 1)), Some(i * 200 + 100));
+        assert_eq!(map.len(), size / 2 - i - 1);
     }
 }
 
@@ -81,7 +81,9 @@ fn test_iter() {
     // Forwards
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
-    fn test<T>(size: usize, mut iter: T) where T: Iterator<Item=(usize, usize)> {
+    fn test<T>(size: usize, mut iter: T)
+        where T: Iterator<Item = (usize, usize)>
+    {
         for i in 0..size {
             assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
             assert_eq!(iter.next().unwrap(), (i, i));
@@ -101,7 +103,9 @@ fn test_iter_rev() {
     // Forwards
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
-    fn test<T>(size: usize, mut iter: T) where T: Iterator<Item=(usize, usize)> {
+    fn test<T>(size: usize, mut iter: T)
+        where T: Iterator<Item = (usize, usize)>
+    {
         for i in 0..size {
             assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
             assert_eq!(iter.next().unwrap(), (size - i - 1, size - i - 1));
@@ -125,8 +129,7 @@ fn test_values_mut() {
     }
 
     let values: Vec<String> = a.values().cloned().collect();
-    assert_eq!(values, [String::from("hello!"),
-                        String::from("goodbye!")]);
+    assert_eq!(values, [String::from("hello!"), String::from("goodbye!")]);
 }
 
 #[test]
@@ -137,7 +140,8 @@ fn test_iter_mixed() {
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test<T>(size: usize, mut iter: T)
-            where T: Iterator<Item=(usize, usize)> + DoubleEndedIterator {
+        where T: Iterator<Item = (usize, usize)> + DoubleEndedIterator
+    {
         for i in 0..size / 4 {
             assert_eq!(iter.size_hint(), (size - i * 2, Some(size - i * 2)));
             assert_eq!(iter.next().unwrap(), (i, i));
@@ -202,7 +206,7 @@ fn test_range() {
     for i in 0..size {
         for j in i..size {
             let mut kvs = map.range(Included(&i), Included(&j)).map(|(&k, &v)| (k, v));
-            let mut pairs = (i..j+1).map(|i| (i, i));
+            let mut pairs = (i..j + 1).map(|i| (i, i));
 
             for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
                 assert_eq!(kv, pair);
@@ -242,7 +246,7 @@ fn test_borrow() {
 }
 
 #[test]
-fn test_entry(){
+fn test_entry() {
     let xs = [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
 
     let mut map: BTreeMap<_, _> = xs.iter().cloned().collect();
@@ -341,17 +345,23 @@ fn test_bad_zst() {
     struct Bad;
 
     impl PartialEq for Bad {
-        fn eq(&self, _: &Self) -> bool { false }
+        fn eq(&self, _: &Self) -> bool {
+            false
+        }
     }
 
     impl Eq for Bad {}
 
     impl PartialOrd for Bad {
-        fn partial_cmp(&self, _: &Self) -> Option<Ordering> { Some(Ordering::Less) }
+        fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
+            Some(Ordering::Less)
+        }
     }
 
     impl Ord for Bad {
-        fn cmp(&self, _: &Self) -> Ordering { Ordering::Less }
+        fn cmp(&self, _: &Self) -> Ordering {
+            Ordering::Less
+        }
     }
 
     let mut m = BTreeMap::new();
@@ -368,27 +378,27 @@ fn test_clone() {
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
-        assert_eq!(map.insert(i, 10*i), None);
+        assert_eq!(map.insert(i, 10 * i), None);
         assert_eq!(map.len(), i + 1);
         assert_eq!(map, map.clone());
     }
 
     for i in 0..size {
-        assert_eq!(map.insert(i, 100*i), Some(10*i));
+        assert_eq!(map.insert(i, 100 * i), Some(10 * i));
         assert_eq!(map.len(), size);
         assert_eq!(map, map.clone());
     }
 
-    for i in 0..size/2 {
-        assert_eq!(map.remove(&(i*2)), Some(i*200));
+    for i in 0..size / 2 {
+        assert_eq!(map.remove(&(i * 2)), Some(i * 200));
         assert_eq!(map.len(), size - i - 1);
         assert_eq!(map, map.clone());
     }
 
-    for i in 0..size/2 {
-        assert_eq!(map.remove(&(2*i)), None);
-        assert_eq!(map.remove(&(2*i+1)), Some(i*200 + 100));
-        assert_eq!(map.len(), size/2 - i - 1);
+    for i in 0..size / 2 {
+        assert_eq!(map.remove(&(2 * i)), None);
+        assert_eq!(map.remove(&(2 * i + 1)), Some(i * 200 + 100));
+        assert_eq!(map.len(), size / 2 - i - 1);
         assert_eq!(map, map.clone());
     }
 }
@@ -398,16 +408,36 @@ fn test_clone() {
 fn test_variance() {
     use std::collections::btree_map::{Iter, IntoIter, Range, Keys, Values};
 
-    fn map_key<'new>(v: BTreeMap<&'static str, ()>) -> BTreeMap<&'new str, ()> { v }
-    fn map_val<'new>(v: BTreeMap<(), &'static str>) -> BTreeMap<(), &'new str> { v }
-    fn iter_key<'a, 'new>(v: Iter<'a, &'static str, ()>) -> Iter<'a, &'new str, ()> { v }
-    fn iter_val<'a, 'new>(v: Iter<'a, (), &'static str>) -> Iter<'a, (), &'new str> { v }
-    fn into_iter_key<'new>(v: IntoIter<&'static str, ()>) -> IntoIter<&'new str, ()> { v }
-    fn into_iter_val<'new>(v: IntoIter<(), &'static str>) -> IntoIter<(), &'new str> { v }
-    fn range_key<'a, 'new>(v: Range<'a, &'static str, ()>) -> Range<'a, &'new str, ()> { v }
-    fn range_val<'a, 'new>(v: Range<'a, (), &'static str>) -> Range<'a, (), &'new str> { v }
-    fn keys<'a, 'new>(v: Keys<'a, &'static str, ()>) -> Keys<'a, &'new str, ()> { v }
-    fn vals<'a, 'new>(v: Values<'a, (), &'static str>) -> Values<'a, (), &'new str> { v }
+    fn map_key<'new>(v: BTreeMap<&'static str, ()>) -> BTreeMap<&'new str, ()> {
+        v
+    }
+    fn map_val<'new>(v: BTreeMap<(), &'static str>) -> BTreeMap<(), &'new str> {
+        v
+    }
+    fn iter_key<'a, 'new>(v: Iter<'a, &'static str, ()>) -> Iter<'a, &'new str, ()> {
+        v
+    }
+    fn iter_val<'a, 'new>(v: Iter<'a, (), &'static str>) -> Iter<'a, (), &'new str> {
+        v
+    }
+    fn into_iter_key<'new>(v: IntoIter<&'static str, ()>) -> IntoIter<&'new str, ()> {
+        v
+    }
+    fn into_iter_val<'new>(v: IntoIter<(), &'static str>) -> IntoIter<(), &'new str> {
+        v
+    }
+    fn range_key<'a, 'new>(v: Range<'a, &'static str, ()>) -> Range<'a, &'new str, ()> {
+        v
+    }
+    fn range_val<'a, 'new>(v: Range<'a, (), &'static str>) -> Range<'a, (), &'new str> {
+        v
+    }
+    fn keys<'a, 'new>(v: Keys<'a, &'static str, ()>) -> Keys<'a, &'new str, ()> {
+        v
+    }
+    fn vals<'a, 'new>(v: Values<'a, (), &'static str>) -> Values<'a, (), &'new str> {
+        v
+    }
 }
 
 #[test]
@@ -440,7 +470,7 @@ fn test_vacant_entry_key() {
         Vacant(e) => {
             assert_eq!(key, *e.key());
             e.insert(value.clone());
-        },
+        }
     }
     assert_eq!(a.len(), 1);
     assert_eq!(a[key], value);
