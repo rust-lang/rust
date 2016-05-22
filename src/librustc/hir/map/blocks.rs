@@ -133,7 +133,13 @@ struct ClosureParts<'a> {
 
 impl<'a> ClosureParts<'a> {
     fn new(d: &'a FnDecl, b: &'a Block, id: NodeId, s: Span, attrs: &'a [Attribute]) -> Self {
-        ClosureParts { decl: d, body: b, id: id, span: s, attrs: attrs }
+        ClosureParts {
+            decl: d,
+            body: b,
+            id: id,
+            span: s,
+            attrs: attrs,
+        }
     }
 }
 

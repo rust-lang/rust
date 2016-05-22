@@ -19,10 +19,13 @@ use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
 use syntax::codemap::Span;
 
-/// A Visitor that walks over the HIR and collects Node's into a HIR map.
+/// A Visitor that walks over the HIR and collects Nodes into a HIR map
 pub struct NodeCollector<'ast> {
+    /// The crate
     pub krate: &'ast Crate,
+    /// The node map
     pub map: Vec<MapEntry<'ast>>,
+    /// The parent of this node
     pub parent_node: NodeId,
 }
 
