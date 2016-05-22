@@ -956,7 +956,7 @@ first instance of `Foo` could be made to initialize another instance!
 
 Here's an example of a struct that has this problem:
 
-```compile_fail
+```ignore
 struct Foo { x: Box<Foo> } // error
 ```
 
@@ -977,7 +977,7 @@ are generic.
 
 This will cause an error:
 
-```compile_fail
+```ignore
 #![feature(repr_simd)]
 
 #[repr(simd)]
@@ -1168,7 +1168,7 @@ for an explicit choice of the discriminant type. In either cases, the
 discriminant values must fall within a valid range for the expected type;
 otherwise this error is raised. For example:
 
-```compile_fail
+```ignore
 #[repr(u8)]
 enum Thing {
     A = 1024,
@@ -1179,7 +1179,7 @@ enum Thing {
 Here, 1024 lies outside the valid range for `u8`, so the discriminant for `A` is
 invalid. Here is another, more subtle example which depends on target word size:
 
-```compile_fail
+```ignore
 enum DependsOnPointerSize {
     A = 1 << 32
 }
@@ -2081,7 +2081,7 @@ E0193: r##"
 `where` clauses must use generic type parameters: it does not make sense to use
 them otherwise. An example causing this error:
 
-```compile_fail
+```ignore
 trait Foo {
     fn bar(&self);
 }
@@ -3145,7 +3145,7 @@ An attempt was made to access an associated constant through either a generic
 type parameter or `Self`. This is not supported yet. An example causing this
 error is shown below:
 
-```compile_fail
+```ignore
 #![feature(associated_consts)]
 
 trait Foo {
@@ -3332,6 +3332,7 @@ The maximum value of an enum was reached, so it cannot be automatically
 set in the next enum value. Erroneous code example:
 
 ```compile_fail
+#[deny(overflowing_literals)]
 enum Foo {
     X = 0x7fffffffffffffff,
     Y, // error: enum discriminant overflowed on value after
