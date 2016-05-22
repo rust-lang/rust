@@ -16,9 +16,11 @@ macro_rules! m {
 
 struct S<T>(T);
 m!{ S<u8> } //~ ERROR type or lifetime parameters in visibility path
+//~^ ERROR failed to resolve module path. Not a module `S`
 
 mod foo {
     struct S(pub(foo<T>) ()); //~ ERROR type or lifetime parameters in visibility path
+    //~^ ERROR type name `T` is undefined or not in scope
 }
 
 fn main() {}

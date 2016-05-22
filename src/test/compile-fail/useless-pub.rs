@@ -15,14 +15,12 @@ pub trait E {
 }
 
 impl E for A {
-    pub fn foo(&self) {}             //~ ERROR: unnecessary visibility
+    pub fn foo(&self) {} //~ ERROR: unnecessary visibility qualifier
 }
 
 enum Foo {
     V1 { pub f: i32 }, //~ ERROR unnecessary visibility qualifier
-                       //| NOTE visibility qualifiers have no effect on variant fields
     V2(pub i32), //~ ERROR unnecessary visibility qualifier
-                 //| NOTE visibility qualifiers have no effect on variant fields
 }
 
 fn main() {}
