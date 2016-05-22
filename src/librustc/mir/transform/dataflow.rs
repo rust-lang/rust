@@ -126,7 +126,7 @@ impl<F: Lattice> ::std::ops::Index<BasicBlock> for Facts<F> {
 
 impl<F: Lattice> ::std::ops::IndexMut<BasicBlock> for Facts<F> {
     fn index_mut(&mut self, index: BasicBlock) -> &mut F {
-        if let None = self.0.get_mut(index.index()) {
+        if self.0.get(index.index()).is_none() {
             self.put(index, <F as Lattice>::bottom());
         }
         self.0.get_mut(index.index()).unwrap()
@@ -165,10 +165,10 @@ where T: Transfer<'tcx>,
             }
         }
         // Swap the statements back in.
-        ::std::mem::replace(&mut cfg[bb].statements, old_statements);
+        cfg[bb].statements = old_statements;
 
         // Handle the terminator replacement and transfer.
-        let terminator = ::std::mem::replace(&mut cfg[bb].terminator, None).unwrap();
+        let terminator = cfg[bb].terminator.take().unwrap();
         let repl = rewrite.term(&terminator, &fact, cfg);
         match repl {
             TerminatorChange::None => {
@@ -180,7 +180,7 @@ where T: Transfer<'tcx>,
             }
         }
         let new_facts = transfer.term(cfg[new_graph].terminator(), fact);
-        ::std::mem::replace(&mut cfg[bb].terminator, Some(terminator));
+        cfg[bb].terminator = Some(terminator);
 
         (if changed { Some(new_graph) } else { None }, new_facts)
     }, &mut queue, fs)

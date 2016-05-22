@@ -24,7 +24,7 @@
 //! For all of them we will be using a lattice of Hashmap from Lvalue to
 //! WTop<Either<Lvalue, Constant>>
 //!
-//! My personal believ is that it should be possible to make a way to compose two hashmap lattices
+//! My personal belief is that it should be possible to make a way to compose two hashmap lattices
 //! into one, but I can’t seem to get it just right yet, so we do the composing and decomposing
 //! manually here.
 
@@ -107,7 +107,7 @@ impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
 pub struct AliasRewrite;
 
 impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for AliasRewrite {
-    fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
+    fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
     -> StatementChange<'tcx> {
         let mut ns = s.clone();
         let mut vis = RewriteAliasVisitor(&l, false);
@@ -115,7 +115,7 @@ impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for AliasRewrite {
         if vis.1 { StatementChange::Statement(ns) } else { StatementChange::None }
     }
 
-    fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
+    fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
     -> TerminatorChange<'tcx> {
         let mut nt = t.clone();
         let mut vis = RewriteAliasVisitor(&l, false);
@@ -130,13 +130,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RewriteAliasVisitor<'a, 'tcx> {
         match context {
             LvalueContext::Store | LvalueContext::Call => {}
             _ => {
-                let replacement = self.0.get(lvalue);
-                match replacement {
-                    Some(&Either::Lvalue(ref nlval)) => {
-                        self.1 = true;
-                        *lvalue = nlval.clone();
-                    }
-                    _ => {}
+                if let Some(&Either::Lvalue(ref nlval)) = self.0.get(lvalue) {
+                    self.1 = true;
+                    *lvalue = nlval.clone();
                 }
             }
         }
@@ -147,7 +143,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RewriteAliasVisitor<'a, 'tcx> {
 pub struct ConstRewrite;
 
 impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for ConstRewrite {
-    fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
+    fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
     -> StatementChange<'tcx> {
         let mut ns = s.clone();
         let mut vis = RewriteConstVisitor(&l, false);
@@ -155,7 +151,7 @@ impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for ConstRewrite {
         if vis.1 { StatementChange::Statement(ns) } else { StatementChange::None }
     }
 
-    fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
+    fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
     -> TerminatorChange<'tcx> {
         let mut nt = t.clone();
         let mut vis = RewriteConstVisitor(&l, false);
@@ -167,6 +163,7 @@ impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for ConstRewrite {
 struct RewriteConstVisitor<'a, 'tcx: 'a>(pub &'a AcsLattice<'tcx>, pub bool);
 impl<'a, 'tcx> MutVisitor<'tcx> for RewriteConstVisitor<'a, 'tcx> {
     fn visit_operand(&mut self, op: &mut Operand<'tcx>) {
+        // To satisy borrow checker, modify `op` after inspecting it
         let repl = if let Operand::Consume(ref lval) = *op {
             if let Some(&Either::Const(ref c)) = self.0.get(lval) {
                 Some(c.clone())
@@ -179,6 +176,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RewriteConstVisitor<'a, 'tcx> {
         if let Some(c) = repl {
             *op = Operand::Constant(c);
         }
+
         self.super_operand(op);
     }
 }
@@ -186,13 +184,13 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RewriteConstVisitor<'a, 'tcx> {
 
 pub struct SimplifyRewrite;
 
-impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for SimplifyRewrite {
-    fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
+impl<'tcx, L: Lattice> Rewrite<'tcx, L> for SimplifyRewrite {
+    fn stmt(&self, _: &Statement<'tcx>, _: &L, _: &mut CFG<'tcx>)
     -> StatementChange<'tcx> {
         StatementChange::None
     }
 
-    fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, cfg: &mut CFG<'tcx>)
+    fn term(&self, t: &Terminator<'tcx>, _: &L, _: &mut CFG<'tcx>)
     -> TerminatorChange<'tcx> {
         match t.kind {
             TerminatorKind::If { ref targets, .. } if targets.0 == targets.1 => {
