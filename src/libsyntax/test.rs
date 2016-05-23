@@ -68,14 +68,10 @@ struct TestCtxt<'a> {
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
 pub fn modify_for_testing(sess: &ParseSess,
+                          should_test: bool,
                           cfg: &ast::CrateConfig,
                           krate: ast::Crate,
                           span_diagnostic: &errors::Handler) -> ast::Crate {
-    // We generate the test harness when building in the 'test'
-    // configuration, either with the '--test' or '--cfg test'
-    // command line options.
-    let should_test = attr::contains_name(&krate.config, "test");
-
     // Check for #[reexport_test_harness_main = "some_name"] which
     // creates a `use some_name = __test::main;`. This needs to be
     // unconditional, so that the attribute is still marked as used in
