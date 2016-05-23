@@ -473,7 +473,6 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[P<hi
                 let path: &str = &path.segments
                                       .last()
                                       .expect("A path must have at least one segment")
-                                      .identifier
                                       .name
                                       .as_str();
 
@@ -512,7 +511,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[P<hi
                 return;
             }
         }
-        // (path, fn_has_argument, methods)
+        // (path, fn_has_argument, methods, suffix)
         let know_types: &[(&[_], _, &[_], _)] = &[(&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
                                                   (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
                                                   (&paths::OPTION,
@@ -811,7 +810,7 @@ fn lint_chars_next(cx: &LateContext, expr: &hir::Expr, chain: &hir::Expr, other:
         let hir::ExprCall(ref fun, ref arg_char) = other.node,
         arg_char.len() == 1,
         let hir::ExprPath(None, ref path) = fun.node,
-        path.segments.len() == 1 && path.segments[0].identifier.name.as_str() == "Some"
+        path.segments.len() == 1 && path.segments[0].name.as_str() == "Some"
     ], {
         let self_ty = walk_ptrs_ty(cx.tcx.expr_ty_adjusted(&args[0][0]));
 

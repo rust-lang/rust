@@ -31,7 +31,7 @@ impl LateLintPass for OverflowCheckConditional {
         let Expr_::ExprPath(_,ref path1) = ident1.node,
         let Expr_::ExprPath(_, ref path2) = ident2.node,
         let Expr_::ExprPath(_, ref path3) = second.node,
-        (&path1.segments[0]).identifier == (&path3.segments[0]).identifier || (&path2.segments[0]).identifier == (&path3.segments[0]).identifier,
+        &path1.segments[0] == &path3.segments[0] || &path2.segments[0] == &path3.segments[0],
         cx.tcx.expr_ty(ident1).is_integral(),
         cx.tcx.expr_ty(ident2).is_integral()
         ], {
@@ -53,7 +53,7 @@ impl LateLintPass for OverflowCheckConditional {
         let Expr_::ExprPath(_,ref path1) = ident1.node,
         let Expr_::ExprPath(_, ref path2) = ident2.node,
         let Expr_::ExprPath(_, ref path3) = first.node,
-        (&path1.segments[0]).identifier == (&path3.segments[0]).identifier || (&path2.segments[0]).identifier == (&path3.segments[0]).identifier,
+        &path1.segments[0] == &path3.segments[0] || &path2.segments[0] == &path3.segments[0],
         cx.tcx.expr_ty(ident1).is_integral(),
         cx.tcx.expr_ty(ident2).is_integral()
         ], {

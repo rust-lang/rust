@@ -288,7 +288,7 @@ fn or_fun_call() {
     with_vec.unwrap_or(vec![]);
     //~^ERROR use of `unwrap_or`
     //~|HELP try this
-    //~|SUGGESTION with_vec.unwrap_or_else(|| vec![]);
+    // FIXME #944: ~|SUGGESTION with_vec.unwrap_or_else(|| vec![]);
 
     let without_default = Some(Foo);
     without_default.unwrap_or(Foo::new());
@@ -493,10 +493,8 @@ fn single_char_pattern() {
 fn temporary_cstring() {
     use std::ffi::CString;
 
-    ( // extra parenthesis to better test spans
+    CString::new("foo").unwrap().as_ptr();
     //~^ ERROR you are getting the inner pointer of a temporary `CString`
     //~| NOTE that pointer will be invalid outside this expression
-        CString::new("foo").unwrap()
-        //~^ HELP assign the `CString` to a variable to extend its lifetime
-    ).as_ptr();
+    //~| HELP assign the `CString` to a variable to extend its lifetime
 }

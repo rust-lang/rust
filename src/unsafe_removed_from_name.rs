@@ -41,7 +41,7 @@ impl LateLintPass for UnsafeNameRemoval {
                         path.segments
                             .last()
                             .expect("use paths cannot be empty")
-                            .identifier.name,
+                            .name,
                         *name,
                         cx, &item.span
                         );

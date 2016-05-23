@@ -66,7 +66,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, block: &Block) {
     let mut bindings = Vec::new();
     for arg in &decl.inputs {
         if let PatKind::Ident(_, ident, _) = arg.pat.node {
-            bindings.push((ident.node.unhygienic_name, ident.span))
+            bindings.push((ident.node.unhygienize(), ident.span))
         }
     }
     check_block(cx, block, &mut bindings);
@@ -120,7 +120,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
     // TODO: match more stuff / destructuring
     match pat.node {
         PatKind::Ident(_, ref ident, ref inner) => {
-            let name = ident.node.unhygienic_name;
+            let name = ident.node.unhygienize();
             if is_binding(cx, pat) {
                 let mut new_binding = true;
                 for tup in bindings.iter_mut() {
@@ -208,15 +208,16 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, pattern_span: Span, 
             let db = span_lint(cx,
                                SHADOW_SAME,
                                span,
-                               &format!("{} is shadowed by itself in {}",
+                               &format!("`{}` is shadowed by itself in `{}`",
                                         snippet(cx, pattern_span, "_"),
                                         snippet(cx, expr.span, "..")));
+
             note_orig(cx, db, SHADOW_SAME, prev_span);
         } else if contains_self(name, expr) {
             let db = span_note_and_lint(cx,
                                         SHADOW_REUSE,
                                         pattern_span,
-                                        &format!("{} is shadowed by {} which reuses the original value",
+                                        &format!("`{}` is shadowed by `{}` which reuses the original value",
                                                  snippet(cx, pattern_span, "_"),
                                                  snippet(cx, expr.span, "..")),
                                         expr.span,
@@ -226,7 +227,7 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, pattern_span: Span, 
             let db = span_note_and_lint(cx,
                                         SHADOW_UNRELATED,
                                         pattern_span,
-                                        &format!("{} is shadowed by {}",
+                                        &format!("`{}` is shadowed by `{}`",
                                                  snippet(cx, pattern_span, "_"),
                                                  snippet(cx, expr.span, "..")),
                                         expr.span,
@@ -326,7 +327,7 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
 }
 
 fn path_eq_name(name: Name, path: &Path) -> bool {
-    !path.global && path.segments.len() == 1 && path.segments[0].identifier.unhygienic_name == name
+    !path.global && path.segments.len() == 1 && path.segments[0].name.unhygienize() == name
 }
 
 struct ContainsSelf {
@@ -335,8 +336,8 @@ struct ContainsSelf {
 }
 
 impl<'v> Visitor<'v> for ContainsSelf {
-    fn visit_ident(&mut self, _: Span, ident: Ident) {
-        if self.name == ident.unhygienic_name {
+    fn visit_name(&mut self, _: Span, name: Name) {
+        if self.name == name.unhygienize() {
             self.result = true;
         }
     }

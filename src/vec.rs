@@ -38,17 +38,19 @@ impl LateLintPass for UselessVec {
             let TypeVariants::TySlice(..) = ty.ty.sty,
             let ExprAddrOf(_, ref addressee) = expr.node,
         ], {
-            check_vec_macro(cx, expr, addressee);
+            check_vec_macro(cx, addressee, expr.span);
         }}
 
         // search for `for _ in vec![…]`
         if let Some((_, arg, _)) = recover_for_loop(expr) {
-            check_vec_macro(cx, arg, arg);
+            // report the error around the `vec!` not inside `<std macros>:`
+            let span = cx.sess().codemap().source_callsite(arg.span);
+            check_vec_macro(cx, arg, span);
         }
     }
 }
 
-fn check_vec_macro(cx: &LateContext, expr: &Expr, vec: &Expr) {
+fn check_vec_macro(cx: &LateContext, vec: &Expr, span: Span) {
     if let Some(vec_args) = unexpand_vec(cx, vec) {
         let snippet = match vec_args {
             VecArgs::Repeat(elem, len) => {
@@ -69,8 +71,8 @@ fn check_vec_macro(cx: &LateContext, expr: &Expr, vec: &Expr) {
             }
         };
 
-        span_lint_and_then(cx, USELESS_VEC, expr.span, "useless use of `vec!`", |db| {
-            db.span_suggestion(expr.span, "you can use a slice directly", snippet);
+        span_lint_and_then(cx, USELESS_VEC, span, "useless use of `vec!`", |db| {
+            db.span_suggestion(span, "you can use a slice directly", snippet);
         });
     }
 }

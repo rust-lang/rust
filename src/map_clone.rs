@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
+use syntax::ast;
 use utils::{is_adjusted, match_path, match_trait_method, match_type, paths, snippet,
             span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 
@@ -52,7 +53,7 @@ impl LateLintPass for MapClonePass {
                                     if clone_call.node.as_str() == "clone" &&
                                         clone_args.len() == 1 &&
                                         match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
-                                        expr_eq_ident(&clone_args[0], arg_ident)
+                                        expr_eq_name(&clone_args[0], arg_ident)
                                     {
                                         span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
                                             "you seem to be using .map() to clone the contents of an {}, consider \
@@ -82,11 +83,11 @@ impl LateLintPass for MapClonePass {
     }
 }
 
-fn expr_eq_ident(expr: &Expr, id: Ident) -> bool {
+fn expr_eq_name(expr: &Expr, id: ast::Name) -> bool {
     match expr.node {
         ExprPath(None, ref path) => {
             let arg_segment = [PathSegment {
-                                   identifier: id,
+                                   name: id,
                                    parameters: PathParameters::none(),
                                }];
             !path.global && path.segments[..] == arg_segment
@@ -105,18 +106,18 @@ fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static s
     }
 }
 
-fn get_arg_name(pat: &Pat) -> Option<Ident> {
+fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
     match pat.node {
-        PatKind::Ident(_, ident, None) => Some(ident.node),
+        PatKind::Ident(_, name, None) => Some(name.node),
         PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
         _ => None,
     }
 }
 
-fn only_derefs(cx: &LateContext, expr: &Expr, id: Ident) -> bool {
+fn only_derefs(cx: &LateContext, expr: &Expr, id: ast::Name) -> bool {
     match expr.node {
         ExprUnary(UnDeref, ref subexpr) if !is_adjusted(cx, subexpr) => only_derefs(cx, subexpr, id),
-        _ => expr_eq_ident(expr, id),
+        _ => expr_eq_name(expr, id),
     }
 }
 
