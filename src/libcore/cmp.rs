@@ -76,6 +76,7 @@ use option::Option::{self, Some};
 ///     isbn: i32,
 ///     format: BookFormat,
 /// }
+///
 /// impl PartialEq for Book {
 ///     fn eq(&self, other: &Self) -> bool {
 ///         self.isbn == other.isbn
@@ -262,6 +263,7 @@ impl Ordering {
 ///
 /// ```
 /// use std::cmp::Ordering;
+///
 /// #[derive(Eq)]
 /// struct Person {
 ///     id: u32,
