@@ -42,19 +42,27 @@ pub fn dumb_print(args: fmt::Arguments) {
 // implemented as an illegal instruction.
 #[cfg(unix)]
 unsafe fn abort_internal() -> ! {
-    use libc;
-    libc::abort()
+    ::libc::abort()
 }
 
-// On Windows, we want to avoid using libc, and there isn't a direct
-// equivalent of libc::abort.  The __failfast intrinsic may be a reasonable
-// substitute, but desireability of using it over the abort instrinsic is
-// debateable; see https://github.com/rust-lang/rust/pull/31519 for details.
-#[cfg(not(unix))]
+// On Windows, use the processor-specific __fastfail mechanism.  In Windows 8
+// and later, this will terminate the process immediately without running any
+// in-process exception handlers.  In earlier versions of Windows, this
+// sequence of instructions will be treated as an access violation,
+// terminating the process but without necessarily bypassing all exception
+// handlers.
+//
+// https://msdn.microsoft.com/en-us/library/dn774154.aspx
+#[cfg(all(windows, any(target_arch = "x86", target_arch = "x86_64")))]
 unsafe fn abort_internal() -> ! {
-    use intrinsics;
-    intrinsics::abort()
+    asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+    ::intrinsics::unreachable();
 }
+
+// Other platforms should use the appropriate platform-specific mechanism for
+// aborting the process.  If no platform-specific mechanism is available,
+// ::intrinsics::abort() may be used instead.  The above implementations cover
+// all targets currently supported by libstd.
 
 pub fn abort(args: fmt::Arguments) -> ! {
     dumb_print(format_args!("fatal runtime error: {}\n", args));
