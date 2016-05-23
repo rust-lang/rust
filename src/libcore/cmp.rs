@@ -255,8 +255,8 @@ impl Ordering {
 ///
 /// `Ord` requires that the type also be `PartialOrd` and `Eq` (which requires `PartialEq`).
 ///
-/// Then you must define an implementation for `cmp`. You may find it useful to use
-/// `cmp` on your type's fields.
+/// Then you must define an implementation for `cmp()`. You may find it useful to use
+/// `cmp()` on your type's fields.
 ///
 /// Here's an example where you want to sort people by height only, disregarding `id`
 /// and `name`:
@@ -355,7 +355,7 @@ impl PartialOrd for Ordering {
 ///
 /// `PartialOrd` requires your type to be `PartialEq`.
 ///
-/// If your type is `Ord`, you can implement `partial_cmp` by using `cmp`:
+/// If your type is `Ord`, you can implement `partial_cmp()` by using `cmp()`:
 ///
 /// ```
 /// impl PartialOrd for Person {
@@ -365,7 +365,7 @@ impl PartialOrd for Ordering {
 /// }
 /// ```
 ///
-/// You may also find it useful to use `partial_cmp` on your type`s fields. Here
+/// You may also find it useful to use `partial_cmp()` on your type`s fields. Here
 /// is an example of `Person` types who have a floating-point `height` field that
 /// is the only field to be used for sorting:
 ///
