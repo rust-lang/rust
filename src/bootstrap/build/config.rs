@@ -67,7 +67,7 @@ pub struct Config {
     pub target: Vec<String>,
     pub rustc: Option<String>,
     pub cargo: Option<String>,
-    pub rebuild: bool,
+    pub local_rebuild: bool,
 
     // libstd features
     pub debug_jemalloc: bool,
@@ -316,7 +316,7 @@ impl Config {
                 ("RPATH", self.rust_rpath),
                 ("OPTIMIZE_TESTS", self.rust_optimize_tests),
                 ("DEBUGINFO_TESTS", self.rust_debuginfo_tests),
-                ("LOCAL_REBUILD", self.rebuild),
+                ("LOCAL_REBUILD", self.local_rebuild),
             }
 
             match key {
