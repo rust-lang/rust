@@ -9,76 +9,6 @@
 // except according to those terms.
 
 //! The `Default` trait for types which may have meaningful default values.
-//!
-//! Sometimes, you want to fall back to some kind of default value, and
-//! don't particularly care what it is. This comes up often with `struct`s
-//! that define a set of options:
-//!
-//! ```
-//! # #[allow(dead_code)]
-//! struct SomeOptions {
-//!     foo: i32,
-//!     bar: f32,
-//! }
-//! ```
-//!
-//! How can we define some default values? You can use `Default`:
-//!
-//! ```
-//! # #[allow(dead_code)]
-//! #[derive(Default)]
-//! struct SomeOptions {
-//!     foo: i32,
-//!     bar: f32,
-//! }
-//!
-//!
-//! fn main() {
-//!     let options: SomeOptions = Default::default();
-//! }
-//! ```
-//!
-//! Now, you get all of the default values. Rust implements `Default` for various primitives types.
-//! If you have your own type, you need to implement `Default` yourself:
-//!
-//! ```
-//! # #![allow(dead_code)]
-//! enum Kind {
-//!     A,
-//!     B,
-//!     C,
-//! }
-//!
-//! impl Default for Kind {
-//!     fn default() -> Kind { Kind::A }
-//! }
-//!
-//! #[derive(Default)]
-//! struct SomeOptions {
-//!     foo: i32,
-//!     bar: f32,
-//!     baz: Kind,
-//! }
-//!
-//!
-//! fn main() {
-//!     let options: SomeOptions = Default::default();
-//! }
-//! ```
-//!
-//! If you want to override a particular option, but still retain the other defaults:
-//!
-//! ```
-//! # #[allow(dead_code)]
-//! # #[derive(Default)]
-//! # struct SomeOptions {
-//! #     foo: i32,
-//! #     bar: f32,
-//! # }
-//! fn main() {
-//!     let options = SomeOptions { foo: 42, ..Default::default() };
-//! }
-//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -86,10 +16,49 @@ use marker::Sized;
 
 /// A trait for giving a type a useful default value.
 ///
-/// For more information, see
-/// [the module-level documentation][module].
+/// Sometimes, you want to fall back to some kind of default value, and
+/// don't particularly care what it is. This comes up often with `struct`s
+/// that define a set of options:
 ///
-/// [module]: ../../std/default/index.html
+/// ```
+/// # #[allow(dead_code)]
+/// struct SomeOptions {
+///     foo: i32,
+///     bar: f32,
+/// }
+/// ```
+///
+/// How can we define some default values? You can use `Default`:
+///
+/// ```
+/// # #[allow(dead_code)]
+/// #[derive(Default)]
+/// struct SomeOptions {
+///     foo: i32,
+///     bar: f32,
+/// }
+///
+///
+/// fn main() {
+///     let options: SomeOptions = Default::default();
+/// }
+/// ```
+///
+/// Now, you get all of the default values. Rust implements `Default` for various primitives types.
+///
+/// If you want to override a particular option, but still retain the other defaults:
+///
+/// ```
+/// # #[allow(dead_code)]
+/// # #[derive(Default)]
+/// # struct SomeOptions {
+/// #     foo: i32,
+/// #     bar: f32,
+/// # }
+/// fn main() {
+///     let options = SomeOptions { foo: 42, ..Default::default() };
+/// }
+/// ```
 ///
 /// ## Derivable
 ///
