@@ -342,7 +342,6 @@ fn test_dedup_unique() {
     v2.dedup();
     // If the boxed pointers were leaked or otherwise misused, valgrind
     // and/or rt should raise errors.
-    //
 }
 
 #[test]
@@ -355,7 +354,6 @@ fn test_dedup_shared() {
     v2.dedup();
     // If the pointers were leaked or otherwise misused, valgrind and/or
     // rt should raise errors.
-    //
 }
 
 #[test]
