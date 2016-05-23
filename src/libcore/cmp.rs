@@ -56,7 +56,7 @@ use option::Option::{self, Some};
 /// ## Derivable
 ///
 /// This trait can be used with `#[derive]`. When `derive`d on structs, two
-/// instances are equal if all fields are equal, and non equal if any fields
+/// instances are equal if all fields are equal, and not equal if any fields
 /// are not equal. When `derive`d on enums, each variant is equal to itself
 /// and not equal to the other variants.
 ///
