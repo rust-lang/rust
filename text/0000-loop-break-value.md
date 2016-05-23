@@ -28,7 +28,7 @@ Let a `loop { ... }` expression return a value via `break my_value;`.
 Some examples which can be much more concisely written with this RFC:
 
 ```rust
-// without break-with-value:
+// without loop-break-value:
 let x = {
     let temp_bar;
     loop {
@@ -41,13 +41,13 @@ let x = {
     foo(temp_bar)
 };
 
-// with break-with-value:
+// with loop-break-value:
 let x = foo(loop {
         ...
         if ... { break bar; }
     });
 
-// without break-with-value:
+// without loop-break-value:
 let computation = {
     let result;
     loop {
@@ -60,7 +60,7 @@ let computation = {
 };
 self.use(computation);
 
-// with break-with-value:
+// with loop-break-value:
 let computation = loop {
         if let Some(r) = self.do_something() {
             break r;
@@ -88,7 +88,7 @@ where `'label` is the name of a loop and `EXPR` is an converging expression.
 
 ### Result type of loop
 
-Currently the result-type of a 'loop' without 'break' is `!` (never returns),
+Currently the result type of a 'loop' without 'break' is `!` (never returns),
 which may be coerced to any type), and the result type of a 'loop' with 'break'
 is `()`. This is important since a loop may appear as
 the last expression of a function:
@@ -220,21 +220,21 @@ It is thus proposed not to change these expressions at this time.
 
 It should be noted that `for`, `while` and `while let` can all be emulated via
 `loop`, so perhaps allowing the former to return values is less important.
-Alternatively, a new keyword such as `default` or `else` could be used to
+Alternatively, a keyword such as `else default` could be used to
 specify the other exit value as in:
 
 ```rust
 fn first<T: Copy>(list: Iterator<T>) -> Option<T> {
     for x in list {
         break Some(x);
-    } default {
+    } else default {
         None
     }
 }
 ```
 
-The exact syntax is disputed. It is suggested that this RFC should not be
-blocked on this issue since break-with-value can still be implemented in the
-manner above after this RFC. See the
-[discussion of #961](https://github.com/rust-lang/rfcs/issues/961)
-for more on this topic.
+The exact syntax is disputed; (JelteF has some suggestions which should work
+without infinite parser lookahead)
+[https://github.com/rust-lang/rfcs/issues/961#issuecomment-220728894].
+It is suggested that this RFC should not be blocked on this issue since
+loop-break-value can still be implemented in the manner above after this RFC.
