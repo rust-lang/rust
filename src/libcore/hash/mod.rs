@@ -38,7 +38,7 @@
 //! ```
 //!
 //! If you need more control over how a value is hashed, you need to implement
-//! the trait `Hash`:
+//! the `Hash` trait:
 //!
 //! ```rust
 //! use std::hash::{Hash, Hasher, SipHasher};
@@ -106,7 +106,7 @@ mod sip;
 /// ## How can I implement `Hash`?
 ///
 /// If you need more control over how a value is hashed, you need to implement
-/// the trait `Hash`:
+/// the `Hash` trait:
 ///
 /// ```
 /// use std::hash::{Hash, Hasher};
