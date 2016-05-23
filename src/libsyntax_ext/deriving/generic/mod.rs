@@ -201,7 +201,7 @@ use syntax::codemap::{self, respan, DUMMY_SP};
 use syntax::codemap::Span;
 use syntax::errors::Handler;
 use syntax::util::move_map::MoveMap;
-use syntax::parse::token::{intern, keywords, InternedString};
+use syntax::parse::token::{keywords, InternedString};
 use syntax::ptr::P;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
@@ -1421,20 +1421,9 @@ impl<'a> MethodDef<'a> {
 // general helper methods.
 impl<'a> TraitDef<'a> {
     fn set_expn_info(&self,
-                     cx: &mut ExtCtxt,
+                     _cx: &mut ExtCtxt,
                      mut to_set: Span) -> Span {
-        let trait_name = match self.path.path.last() {
-            None => cx.span_bug(self.span, "trait with empty path in generic `derive`"),
-            Some(name) => *name
-        };
-        to_set.expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
-            call_site: to_set,
-            callee: codemap::NameAndSpan {
-                format: codemap::MacroAttribute(intern(&format!("derive({})", trait_name))),
-                span: Some(self.span),
-                allow_internal_unstable: false,
-            }
-        });
+        to_set.expn_id = self.span.expn_id;
         to_set
     }
 

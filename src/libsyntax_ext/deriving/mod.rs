@@ -16,7 +16,7 @@ use syntax::ext::base::{ExtCtxt, SyntaxEnv, Annotatable};
 use syntax::ext::base::{MultiDecorator, MultiItemDecorator, MultiModifier};
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
-use syntax::codemap::Span;
+use syntax::codemap::{self, Span};
 use syntax::parse::token::{intern, intern_and_get_ident};
 use syntax::ptr::P;
 
@@ -96,36 +96,6 @@ fn expand_derive(cx: &mut ExtCtxt,
             let mut found_partial_eq = false;
             let mut found_eq = false;
 
-            // This span is **very** sensitive and crucial to
-            // getting the stability behavior we want. What we are
-            // doing is marking the generated `#[derive_*]` with the
-            // span of the `#[deriving(...)]` attribute (the
-            // entire attribute, not just the `PartialEq` or `Eq`
-            // part), but with the current backtrace. The current
-            // backtrace will contain a topmost entry that IS this
-            // `#[deriving(...)]` attribute and with the
-            // "allow-unstable" flag set to true.
-            //
-            // Note that we do NOT use the span of the `Eq`
-            // text itself. You might think this is
-            // equivalent, because the `Eq` appears within the
-            // `#[deriving(Eq)]` attribute, and hence we would
-            // inherit the "allows unstable" from the
-            // backtrace.  But in fact this is not always the
-            // case. The actual source text that led to
-            // deriving can be `#[$attr]`, for example, where
-            // `$attr == deriving(Eq)`. In that case, the
-            // "#[derive_*]" would be considered to
-            // originate not from the deriving call but from
-            // text outside the deriving call, and hence would
-            // be forbidden from using unstable
-            // content.
-            //
-            // See tests src/run-pass/rfc1445 for
-            // examples. --nmatsakis
-            let span = Span { expn_id: cx.backtrace(), .. span };
-            assert!(cx.parse_sess.codemap().span_allows_unstable(span));
-
             for titem in traits.iter().rev() {
                 let tname = match titem.node {
                     MetaItemKind::Word(ref tname) => tname,
@@ -150,6 +120,17 @@ fn expand_derive(cx: &mut ExtCtxt,
                     found_partial_eq = true;
                 }
 
+                let span = Span {
+                    expn_id: cx.codemap().record_expansion(codemap::ExpnInfo {
+                        call_site: titem.span,
+                        callee: codemap::NameAndSpan {
+                            format: codemap::MacroAttribute(intern(&format!("derive({})", tname))),
+                            span: Some(titem.span),
+                            allow_internal_unstable: true,
+                        },
+                    }), ..titem.span
+                };
+
                 // #[derive(Foo, Bar)] expands to #[derive_Foo] #[derive_Bar]
                 item.attrs.push(cx.attribute(span, cx.meta_word(titem.span,
                     intern_and_get_ident(&format!("derive_{}", tname)))));
@@ -158,6 +139,35 @@ fn expand_derive(cx: &mut ExtCtxt,
             // RFC #1445. `#[derive(PartialEq, Eq)]` adds a (trusted)
             // `#[structural_match]` attribute.
             if found_partial_eq && found_eq {
+                // This span is **very** sensitive and crucial to
+                // getting the stability behavior we want. What we are
+                // doing is marking `#[structural_match]` with the
+                // span of the `#[deriving(...)]` attribute (the
+                // entire attribute, not just the `PartialEq` or `Eq`
+                // part), but with the current backtrace. The current
+                // backtrace will contain a topmost entry that IS this
+                // `#[deriving(...)]` attribute and with the
+                // "allow-unstable" flag set to true.
+                //
+                // Note that we do NOT use the span of the `Eq`
+                // text itself. You might think this is
+                // equivalent, because the `Eq` appears within the
+                // `#[deriving(Eq)]` attribute, and hence we would
+                // inherit the "allows unstable" from the
+                // backtrace.  But in fact this is not always the
+                // case. The actual source text that led to
+                // deriving can be `#[$attr]`, for example, where
+                // `$attr == deriving(Eq)`. In that case, the
+                // "#[structural_match]" would be considered to
+                // originate not from the deriving call but from
+                // text outside the deriving call, and hence would
+                // be forbidden from using unstable
+                // content.
+                //
+                // See tests src/run-pass/rfc1445 for
+                // examples. --nmatsakis
+                let span = Span { expn_id: cx.backtrace(), .. span };
+                assert!(cx.parse_sess.codemap().span_allows_unstable(span));
                 debug!("inserting structural_match with span {:?}", span);
                 let structural_match = intern_and_get_ident("structural_match");
                 item.attrs.push(cx.attribute(span,
