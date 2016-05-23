@@ -511,7 +511,7 @@ impl Build {
              .arg("--target").arg(target);
 
         let stage;
-        if compiler.stage == 0 && self.config.rebuild {
+        if compiler.stage == 0 && self.config.local_rebuild {
             // Assume the local-rebuild rustc already has stage1 features.
             stage = 1;
         } else {
@@ -752,7 +752,7 @@ impl Build {
         // In stage0 we're using a previously released stable compiler, so we
         // use the stage0 bootstrap key. Otherwise we use our own build's
         // bootstrap key.
-        let bootstrap_key = if compiler.is_snapshot(self) && !self.config.rebuild {
+        let bootstrap_key = if compiler.is_snapshot(self) && !self.config.local_rebuild {
             &self.bootstrap_key_stage0
         } else {
             &self.bootstrap_key
