@@ -84,7 +84,9 @@
 
 use marker::Sized;
 
-/// A trait for giving a type a useful default value. For more information, see
+/// A trait for giving a type a useful default value.
+///
+/// For more information, see
 /// [the module-level documentation][module].
 ///
 /// [module]: ../../std/default/index.html
