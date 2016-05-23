@@ -11,13 +11,16 @@
 use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
+use std::ops::{Deref, DerefMut, Range};
 use bitslice::{BitSlice, Word};
+use bitslice::{bitwise, Union, Subtract};
 
 pub trait Indexed {
     type Idx: Idx;
 }
 
-pub trait Idx {
+pub trait Idx: 'static {
+    fn new(usize) -> Self;
     fn idx(&self) -> usize;
 }
 
@@ -26,10 +29,16 @@ pub struct OwnIdxSet<T: Idx> {
     bits: Vec<Word>,
 }
 
+impl<T: Idx> Clone for OwnIdxSet<T> {
+    fn clone(&self) -> Self {
+        OwnIdxSet { _pd: PhantomData, bits: self.bits.clone() }
+    }
+}
+
 // pnkfelix wants to have this be `IdxSet<T>([Word]) and then pass
 // around `&mut IdxSet<T>` or `&IdxSet<T>`.
 //
-// Mmapping a `&OwnIdxSet<T>` to `&IdxSet<T>` (at least today)
+// WARNING: Mapping a `&OwnIdxSet<T>` to `&IdxSet<T>` (at least today)
 // requires a transmute relying on representation guarantees that may
 // not hold in the future.
 
@@ -65,9 +74,41 @@ impl<T: Idx> OwnIdxSet<T> {
     pub fn new_empty(universe_size: usize) -> Self {
         Self::new(0, universe_size)
     }
+}
+
+impl<T: Idx> IdxSet<T> {
+    unsafe fn from_slice(s: &[Word]) -> &Self {
+        mem::transmute(s) // (see above WARNING)
+    }
+
+    unsafe fn from_slice_mut(s: &mut [Word]) -> &mut Self {
+        mem::transmute(s) // (see above WARNING)
+    }
+}
+
+impl<T: Idx> Deref for OwnIdxSet<T> {
+    type Target = IdxSet<T>;
+    fn deref(&self) -> &IdxSet<T> {
+        unsafe { IdxSet::from_slice(&self.bits[..]) }
+    }
+}
+
+impl<T: Idx> DerefMut for OwnIdxSet<T> {
+    fn deref_mut(&mut self) -> &mut IdxSet<T> {
+        unsafe { IdxSet::from_slice_mut(&mut self.bits[..]) }
+    }
+}
+
+impl<T: Idx> IdxSet<T> {
+    pub fn to_owned(&self) -> OwnIdxSet<T> {
+        OwnIdxSet {
+            _pd: Default::default(),
+            bits: self.bits.to_owned(),
+        }
+    }
 
     /// Removes `elem` from the set `self`; returns true iff this changed `self`.
-    pub fn clear(&mut self, elem: &T) -> bool {
+    pub fn remove(&mut self, elem: &T) -> bool {
         self.bits.clear_bit(elem.idx())
     }
 
@@ -76,12 +117,38 @@ impl<T: Idx> OwnIdxSet<T> {
         self.bits.set_bit(elem.idx())
     }
 
+    pub fn range(&self, elems: &Range<T>) -> &Self {
+        let elems = elems.start.idx()..elems.end.idx();
+        unsafe { Self::from_slice(&self.bits[elems]) }
+    }
+
+    pub fn range_mut(&mut self, elems: &Range<T>) -> &mut Self {
+        let elems = elems.start.idx()..elems.end.idx();
+        unsafe { Self::from_slice_mut(&mut self.bits[elems]) }
+    }
+
     /// Returns true iff set `self` contains `elem`.
     pub fn contains(&self, elem: &T) -> bool {
         self.bits.get_bit(elem.idx())
     }
 
-    pub fn bits(&self) -> &[Word] {
+    pub fn words(&self) -> &[Word] {
         &self.bits[..]
+    }
+
+    pub fn words_mut(&mut self) -> &mut [Word] {
+        &mut self.bits[..]
+    }
+
+    pub fn clone_from(&mut self, other: &IdxSet<T>) {
+        self.words_mut().clone_from_slice(other.words());
+    }
+
+    pub fn union(&mut self, other: &IdxSet<T>) -> bool {
+        bitwise(self.words_mut(), other.words(), &Union)
+    }
+
+    pub fn subtract(&mut self, other: &IdxSet<T>) -> bool {
+        bitwise(self.words_mut(), other.words(), &Subtract)
     }
 }

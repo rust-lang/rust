@@ -54,8 +54,9 @@ struct Graph<'a, 'tcx, MWF:'a> where MWF: MirWithFlowState<'tcx>,
 
 pub fn print_borrowck_graph_to<'a, 'tcx, BD>(
     mbcx: &MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>,
-    path: &Path) -> io::Result<()> where BD: BitDenotation,
-                                        BD::Bit: Debug, BD::Ctxt: HasMoveData<'tcx>
+    path: &Path)
+    -> io::Result<()>
+    where BD: BitDenotation, BD::Bit: Debug, BD::Ctxt: HasMoveData<'tcx>,
 {
     let g = Graph { mbcx: mbcx, phantom: PhantomData };
     let mut v = Vec::new();
@@ -180,7 +181,7 @@ impl<'a, 'tcx, MWF> dot::Labeller<'a> for Graph<'a, 'tcx, MWF>
                                         <td></td></tr>",
                        bg = BG_FLOWCONTENT,
                        face = FACE_MONOSPACE,
-                       entrybits=bits_to_string(entry, bits_per_block))
+                       entrybits=bits_to_string(entry.words(), bits_per_block))
             },
             |w| {
                 let ctxt = self.mbcx.analysis_ctxt();
@@ -197,7 +198,7 @@ impl<'a, 'tcx, MWF> dot::Labeller<'a> for Graph<'a, 'tcx, MWF>
                                            <td></td></tr>",
                            bg = BG_FLOWCONTENT,
                            face = FACE_MONOSPACE,
-                           genbits=bits_to_string(gen, bits_per_block))?;
+                           genbits=bits_to_string(gen.words(), bits_per_block))?;
                 }
 
                 {
@@ -209,7 +210,7 @@ impl<'a, 'tcx, MWF> dot::Labeller<'a> for Graph<'a, 'tcx, MWF>
                            bg = BG_FLOWCONTENT,
                            align = ALIGN_RIGHT,
                            face = FACE_MONOSPACE,
-                           killbits=bits_to_string(kill, bits_per_block))?;
+                           killbits=bits_to_string(kill.words(), bits_per_block))?;
                 }
 
                 // (chunked_present_right)
