@@ -79,7 +79,7 @@ use marker::Sized;
 /// }
 ///
 /// impl Clone for Stats {
-///     fn clone(&self) -> Self { *self }
+///     fn clone(&self) -> Stats { *self }
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
