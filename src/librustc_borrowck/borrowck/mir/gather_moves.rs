@@ -20,6 +20,7 @@ use std::iter;
 use std::ops::Index;
 
 use super::abs_domain::{AbstractElem, Lift};
+use indexed_set::{Idx, Indexed};
 
 // This submodule holds some newtype'd Index wrappers that are using
 // NonZero to ensure that Option<Index> occupies only a single word.
@@ -28,6 +29,7 @@ use super::abs_domain::{AbstractElem, Lift};
 // (which is likely to yield a subtle off-by-one error).
 mod indexes {
     use core::nonzero::NonZero;
+    use indexed_set::Idx;
 
     macro_rules! new_index {
         ($Index:ident) => {
@@ -35,10 +37,13 @@ mod indexes {
             pub struct $Index(NonZero<usize>);
 
             impl $Index {
-                pub fn new(idx: usize) -> Self {
+            }
+
+            impl Idx for $Index {
+                fn new(idx: usize) -> Self {
                     unsafe { $Index(NonZero::new(idx + 1)) }
                 }
-                pub fn idx(&self) -> usize {
+                fn idx(&self) -> usize {
                     *self.0 - 1
                 }
             }
@@ -54,6 +59,14 @@ mod indexes {
 
 pub use self::indexes::MovePathIndex;
 pub use self::indexes::MoveOutIndex;
+
+impl<'tcx> Indexed for MovePath<'tcx> {
+    type Idx = MovePathIndex;
+}
+
+impl Indexed for MoveOut {
+    type Idx = MoveOutIndex;
+}
 
 impl self::indexes::MoveOutIndex {
     pub fn move_path_index(&self, move_data: &MoveData) -> MovePathIndex {
