@@ -48,9 +48,10 @@ use marker::Sized;
 
 /// A common trait for the ability to explicitly duplicate an object.
 ///
-/// Differs from `Copy` in that you can
-/// define `Clone` to run arbitrary code, while you are not allowed to override
-/// the implementation of `Copy` that only does a `memcpy`.
+/// Differs from `Copy` in that `Copy` is implicit and extremely inexpensive, while
+/// `Clone` is always explicit and may or may not be expensive. In order to enforce
+/// these characteristics, Rust does not allow you to reimplement `Copy`, but you
+/// may reimplement `Clone` and run arbitrary code.
 ///
 /// Since `Clone` is more general than `Copy`, you can automatically make anything
 /// `Copy` be `Clone` as well.
