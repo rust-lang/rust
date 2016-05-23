@@ -358,9 +358,30 @@ impl PartialOrd for Ordering {
 /// If your type is `Ord`, you can implement `partial_cmp()` by using `cmp()`:
 ///
 /// ```
+/// use std::cmp::Ordering;
+///
+/// #[derive(Eq)]
+/// struct Person {
+///     id: u32,
+///     name: String,
+///     height: u32,
+/// }
+///
 /// impl PartialOrd for Person {
 ///     fn partial_cmp(&self, other: &Person) -> Option<Ordering> {
 ///         Some(self.cmp(other))
+///     }
+/// }
+///
+/// impl Ord for Person {
+///     fn cmp(&self, other: &Person) -> Ordering {
+///         self.height.cmp(&other.height)
+///     }
+/// }
+///
+/// impl PartialEq for Person {
+///     fn eq(&self, other: &Person) -> bool {
+///         self.height == other.height
 ///     }
 /// }
 /// ```
