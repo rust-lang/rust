@@ -47,8 +47,7 @@ fn check_status(status: std::process::ExitStatus)
     use std::os::unix::process::ExitStatusExt;
 
     assert!(!status.success());
-    assert!(status.signal() != Some(libc::SIGSEGV)
-            && status.signal() != Some(libc::SIGBUS));
+    assert_eq!(status.signal(), Some(libc::SIGABRT));
 }
 
 #[cfg(not(unix))]
