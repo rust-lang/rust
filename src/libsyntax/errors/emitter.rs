@@ -238,7 +238,7 @@ impl EmitterWriter {
                 self.first = false;
             } else {
                 if !self.old_school {
-                    write!(self.dst, "\n")?;
+                    write!(self.dst, "\n\n")?;
                 }
             }
         }
