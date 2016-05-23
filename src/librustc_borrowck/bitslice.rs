@@ -109,3 +109,32 @@ pub fn bits_to_string(words: &[Word], bits: usize) -> String {
     result.push(']');
     return result
 }
+
+#[inline]
+pub fn bitwise<Op:BitwiseOperator>(out_vec: &mut [usize],
+                                   in_vec: &[usize],
+                                   op: &Op) -> bool {
+    assert_eq!(out_vec.len(), in_vec.len());
+    let mut changed = false;
+    for (out_elt, in_elt) in out_vec.iter_mut().zip(in_vec) {
+        let old_val = *out_elt;
+        let new_val = op.join(old_val, *in_elt);
+        *out_elt = new_val;
+        changed |= old_val != new_val;
+    }
+    changed
+}
+
+pub trait BitwiseOperator {
+    /// Applies some bit-operation pointwise to each of the bits in the two inputs.
+    fn join(&self, pred1: usize, pred2: usize) -> usize;
+}
+
+pub struct Union;
+impl BitwiseOperator for Union {
+    fn join(&self, a: usize, b: usize) -> usize { a | b }
+}
+pub struct Subtract;
+impl BitwiseOperator for Subtract {
+    fn join(&self, a: usize, b: usize) -> usize { a & !b }
+}

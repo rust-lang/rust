@@ -15,10 +15,7 @@ use syntax::codemap::Span;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::repr::{self, Mir};
 
-use bitslice::BitSlice;
-
-use super::super::gather_moves::MovePath;
-use super::{bitwise, Union, Subtract};
+use super::super::gather_moves::{MovePath, MovePathIndex};
 use super::BitDenotation;
 use super::DataflowResults;
 use super::HasMoveData;
@@ -45,7 +42,7 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 _attributes: &[ast::Attribute],
                                                 flow_ctxt: &O::Ctxt,
                                                 results: &DataflowResults<O>)
-    where O: BitDenotation<Bit=MovePath<'tcx>>, O::Ctxt: HasMoveData<'tcx>
+    where O: BitDenotation<Bit=MovePath<'tcx>, Idx=MovePathIndex>, O::Ctxt: HasMoveData<'tcx>
 {
     debug!("sanity_check_via_rustc_peek id: {:?}", id);
     // FIXME: this is not DRY. Figure out way to abstract this and
@@ -87,9 +84,9 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // include terminator (since we are peeking the state of the
         // argument at time immediate preceding Call to `rustc_peek`).
 
-        let mut sets = super::BlockSets { on_entry: &mut entry[..],
-                                          gen_set: &mut gen[..],
-                                          kill_set: &mut kill[..] };
+        let mut sets = super::BlockSets { on_entry: &mut entry,
+                                          gen_set: &mut gen,
+                                          kill_set: &mut kill };
 
         for (j, stmt) in statements.iter().enumerate() {
             debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
@@ -105,7 +102,7 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                          ref peeking_at_lval) = *rvalue {
                     // Okay, our search is over.
                     let peek_mpi = move_data.rev_lookup.find(peeking_at_lval);
-                    let bit_state = sets.on_entry.get_bit(peek_mpi.idx());
+                    let bit_state = sets.on_entry.contains(&peek_mpi);
                     debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
                            lvalue, peeking_at_lval, bit_state);
                     if !bit_state {
@@ -126,11 +123,11 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             debug!("rustc_peek: computing effect on lvalue: {:?} ({:?}) in stmt: {:?}",
                    lvalue, lhs_mpi, stmt);
             // reset GEN and KILL sets before emulating their effect.
-            for e in &mut sets.gen_set[..] { *e = 0; }
-            for e in &mut sets.kill_set[..] { *e = 0; }
+            for e in sets.gen_set.words_mut() { *e = 0; }
+            for e in sets.kill_set.words_mut() { *e = 0; }
             results.0.operator.statement_effect(flow_ctxt, &mut sets, bb, j);
-            bitwise(sets.on_entry, sets.gen_set, &Union);
-            bitwise(sets.on_entry, sets.kill_set, &Subtract);
+            sets.on_entry.union(sets.gen_set);
+            sets.on_entry.subtract(sets.kill_set);
         }
 
         tcx.sess.span_err(span, &format!("rustc_peek: MIR did not match \
