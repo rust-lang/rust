@@ -68,8 +68,8 @@ use marker::Sized;
 /// Manual implementations should be careful to uphold this invariant; however, unsafe code
 /// must not rely on it to ensure memory safety.
 ///
-/// An example is an array holding more than 32 of a type that is `Clone`; the standard library
-/// only implements `Clone` up until arrays of size 32. In this case, the implementation of
+/// An example is an array holding more than 32 elements of a type that is `Clone`; the standard
+/// library only implements `Clone` up until arrays of size 32. In this case, the implementation of
 /// `Clone` cannot be `derive`d, but can be implemented as:
 ///
 /// ```
