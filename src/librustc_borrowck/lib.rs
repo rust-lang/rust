@@ -47,6 +47,7 @@ pub mod diagnostics;
 
 mod borrowck;
 mod bitslice;
+mod indexed_set;
 
 pub mod graphviz;
 
