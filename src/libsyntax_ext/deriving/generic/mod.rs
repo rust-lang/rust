@@ -1420,20 +1420,13 @@ impl<'a> MethodDef<'a> {
 
 // general helper methods.
 impl<'a> TraitDef<'a> {
-    fn set_expn_info(&self,
-                     _cx: &mut ExtCtxt,
-                     mut to_set: Span) -> Span {
-        to_set.expn_id = self.span.expn_id;
-        to_set
-    }
-
     fn summarise_struct(&self,
                         cx: &mut ExtCtxt,
                         struct_def: &VariantData) -> StaticFields {
         let mut named_idents = Vec::new();
         let mut just_spans = Vec::new();
         for field in struct_def.fields(){
-            let sp = self.set_expn_info(cx, field.span);
+            let sp = Span { expn_id: self.span.expn_id, ..field.span };
             match field.ident {
                 Some(ident) => named_idents.push((ident, sp)),
                 _ => just_spans.push(sp),
@@ -1475,7 +1468,7 @@ impl<'a> TraitDef<'a> {
         let mut paths = Vec::new();
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
-            let sp = self.set_expn_info(cx, struct_field.span);
+            let sp = Span { expn_id: self.span.expn_id, ..struct_field.span };
             let ident = cx.ident_of(&format!("{}_{}", prefix, i));
             paths.push(codemap::Spanned{span: sp, node: ident});
             let val = cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)));
