@@ -122,18 +122,28 @@ pub fn main() {
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         let args = wrap_args(std::env::args().skip(2), dep_path, sys_root);
         let path = std::env::current_exe().expect("current executable path invalid");
-        std::process::Command::new("cargo")
+        let exit_status = std::process::Command::new("cargo")
             .args(&args)
             .env("RUSTC", path)
             .spawn().expect("could not run cargo")
             .wait().expect("failed to wait for cargo?");
+
+        if let Some(code) = exit_status.code() {
+            std::process::exit(code);
+        }
     } else {
         let args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
             env::args().collect()
         } else {
             env::args().chain(Some("--sysroot".to_owned())).chain(Some(sys_root)).collect()
         };
-        rustc_driver::run_compiler(&args, &mut ClippyCompilerCalls::new());
+        let (result, _) = rustc_driver::run_compiler(&args, &mut ClippyCompilerCalls::new());
+
+        if let Err(err_count) = result {
+            if err_count > 0 {
+                std::process::exit(1);
+            }
+        }
     }
 }
 
