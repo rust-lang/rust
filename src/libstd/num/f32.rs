@@ -829,6 +829,13 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[rustc_deprecated(since = "1.10.0",
+                       reason = "you probably meant `(self - other).abs()`: \
+                                 this operation is `(self - other).max(0.0)` (also \
+                                 known as `fdimf` in C). If you truly need the positive \
+                                 difference, consider using that expression or the C function \
+                                 `fdimf`, depending on how you wish to handle NaN (please consider \
+                                 filing an issue describing your use-case too).")]
     pub fn abs_sub(self, other: f32) -> f32 {
         unsafe { cmath::fdimf(self, other) }
     }
@@ -939,7 +946,7 @@ impl f32 {
     /// let f = f32::consts::PI / 2.0;
     ///
     /// // asin(sin(pi/2))
-    /// let abs_difference = f.sin().asin().abs_sub(f32::consts::PI / 2.0);
+    /// let abs_difference = (f.sin().asin() - f32::consts::PI / 2.0).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
@@ -959,7 +966,7 @@ impl f32 {
     /// let f = f32::consts::PI / 4.0;
     ///
     /// // acos(cos(pi/4))
-    /// let abs_difference = f.cos().acos().abs_sub(f32::consts::PI / 4.0);
+    /// let abs_difference = (f.cos().acos() - f32::consts::PI / 4.0).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
@@ -978,7 +985,7 @@ impl f32 {
     /// let f = 1.0f32;
     ///
     /// // atan(tan(1))
-    /// let abs_difference = f.tan().atan().abs_sub(1.0);
+    /// let abs_difference = (f.tan().atan() - 1.0).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
@@ -1048,7 +1055,7 @@ impl f32 {
     /// let x = 7.0f64;
     ///
     /// // e^(ln(7)) - 1
-    /// let abs_difference = x.ln().exp_m1().abs_sub(6.0);
+    /// let abs_difference = (x.ln().exp_m1() - 6.0).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -1108,7 +1115,7 @@ impl f32 {
     /// let f = x.cosh();
     /// // Solving cosh() at 1 gives this result
     /// let g = (e*e + 1.0)/(2.0*e);
-    /// let abs_difference = f.abs_sub(g);
+    /// let abs_difference = (f - g).abs();
     ///
     /// // Same result
     /// assert!(abs_difference <= f32::EPSILON);
@@ -1191,9 +1198,9 @@ impl f32 {
     /// let e = f32::consts::E;
     /// let f = e.tanh().atanh();
     ///
-    /// let abs_difference = f.abs_sub(e);
+    /// let abs_difference = (f - e).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1745,24 +1752,6 @@ mod tests {
         assert_eq!(match inf.frexp() { (x, _) => x }, inf);
         assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
         assert!(match nan.frexp() { (x, _) => x.is_nan() })
-    }
-
-    #[test]
-    fn test_abs_sub() {
-        assert_eq!((-1f32).abs_sub(1f32), 0f32);
-        assert_eq!(1f32.abs_sub(1f32), 0f32);
-        assert_eq!(1f32.abs_sub(0f32), 1f32);
-        assert_eq!(1f32.abs_sub(-1f32), 2f32);
-        assert_eq!(NEG_INFINITY.abs_sub(0f32), 0f32);
-        assert_eq!(INFINITY.abs_sub(1f32), INFINITY);
-        assert_eq!(0f32.abs_sub(NEG_INFINITY), INFINITY);
-        assert_eq!(0f32.abs_sub(INFINITY), 0f32);
-    }
-
-    #[test]
-    fn test_abs_sub_nowin() {
-        assert!(NAN.abs_sub(-1f32).is_nan());
-        assert!(1f32.abs_sub(NAN).is_nan());
     }
 
     #[test]

@@ -718,9 +718,16 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn abs_sub(self, other: f64) -> f64 {
-        unsafe { cmath::fdim(self, other) }
-    }
+    #[rustc_deprecated(since = "1.10.0",
+                       reason = "you probably meant `(self - other).abs()`: \
+                                 this operation is `(self - other).max(0.0)` (also \
+                                 known as `fdim` in C). If you truly need the positive \
+                                 difference, consider using that expression or the C function \
+                                 `fdim`, depending on how you wish to handle NaN (please consider \
+                                 filing an issue describing your use-case too).")]
+     pub fn abs_sub(self, other: f64) -> f64 {
+         unsafe { cmath::fdim(self, other) }
+     }
 
     /// Takes the cubic root of a number.
     ///
@@ -1640,24 +1647,6 @@ mod tests {
         assert_eq!(match inf.frexp() { (x, _) => x }, inf);
         assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
         assert!(match nan.frexp() { (x, _) => x.is_nan() })
-    }
-
-    #[test]
-    fn test_abs_sub() {
-        assert_eq!((-1f64).abs_sub(1f64), 0f64);
-        assert_eq!(1f64.abs_sub(1f64), 0f64);
-        assert_eq!(1f64.abs_sub(0f64), 1f64);
-        assert_eq!(1f64.abs_sub(-1f64), 2f64);
-        assert_eq!(NEG_INFINITY.abs_sub(0f64), 0f64);
-        assert_eq!(INFINITY.abs_sub(1f64), INFINITY);
-        assert_eq!(0f64.abs_sub(NEG_INFINITY), INFINITY);
-        assert_eq!(0f64.abs_sub(INFINITY), 0f64);
-    }
-
-    #[test]
-    fn test_abs_sub_nowin() {
-        assert!(NAN.abs_sub(-1f64).is_nan());
-        assert!(1f64.abs_sub(NAN).is_nan());
     }
 
     #[test]
