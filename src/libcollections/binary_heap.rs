@@ -151,6 +151,7 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::ops::{Drop, Deref, DerefMut};
 use core::iter::FromIterator;
 use core::mem::swap;
 use core::mem::size_of;
@@ -216,6 +217,37 @@ use super::SpecExtend;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BinaryHeap<T> {
     data: Vec<T>,
+}
+
+/// A container object that represents the result of the [`peek_mut()`] method
+/// on `BinaryHeap`. See its documentation for details.
+///
+/// [`peek_mut()`]: struct.BinaryHeap.html#method.peek_mut
+#[unstable(feature = "binary_heap_peek_mut", issue = "34392")]
+pub struct PeekMut<'a, T: 'a + Ord> {
+    heap: &'a mut BinaryHeap<T>
+}
+
+#[unstable(feature = "binary_heap_peek_mut", issue = "34392")]
+impl<'a, T: Ord> Drop for PeekMut<'a, T> {
+    fn drop(&mut self) {
+        self.heap.sift_down(0);
+    }
+}
+
+#[unstable(feature = "binary_heap_peek_mut", issue = "34392")]
+impl<'a, T: Ord> Deref for PeekMut<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.heap.data[0]
+    }
+}
+
+#[unstable(feature = "binary_heap_peek_mut", issue = "34392")]
+impl<'a, T: Ord> DerefMut for PeekMut<'a, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.heap.data[0]
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -321,6 +353,42 @@ impl<T: Ord> BinaryHeap<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peek(&self) -> Option<&T> {
         self.data.get(0)
+    }
+
+    /// Returns a mutable reference to the greatest item in the binary heap, or
+    /// `None` if it is empty.
+    ///
+    /// Note: If the `PeekMut` value is leaked, the heap may be in an
+    /// inconsistent state.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_peek_mut)]
+    /// use std::collections::BinaryHeap;
+    /// let mut heap = BinaryHeap::new();
+    /// assert!(heap.peek_mut().is_none());
+    ///
+    /// heap.push(1);
+    /// heap.push(5);
+    /// heap.push(2);
+    /// {
+    ///     let mut val = heap.peek_mut().unwrap();
+    ///     *val = 0;
+    /// }
+    /// assert_eq!(heap.peek(), Some(&2));
+    /// ```
+    #[unstable(feature = "binary_heap_peek_mut", issue = "34392")]
+    pub fn peek_mut(&mut self) -> Option<PeekMut<T>> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(PeekMut {
+                heap: self
+            })
+        }
     }
 
     /// Returns the number of elements the binary heap can hold without reallocating.
