@@ -46,7 +46,9 @@
 
 use marker::Sized;
 
-/// A common trait for cloning an object. Differs from `Copy` in that you can
+/// A common trait for the ability to explicitly duplicate an object.
+///
+/// Differs from `Copy` in that you can
 /// define `Clone` to run arbitrary code, while you are not allowed to override
 /// the implementation of `Copy` that only does a `memcpy`.
 ///
