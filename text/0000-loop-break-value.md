@@ -16,28 +16,58 @@ Let a `loop { ... }` expression return a value via `break my_value;`.
 # Motivation
 [motivation]: #motivation
 
-This pattern is currently hard to implement without resorting to a function or
-closure wrapping the loop:
+> Rust is an expression-oriented language. Currently loop constructs don't
+> provide any useful value as expressions, they are run only for their
+> side-effects. But there clearly is a "natural-looking", practical case,
+> described in [this thread](https://github.com/rust-lang/rfcs/issues/961)
+> and [this] RFC, where the loop expressions could have
+> meaningful values. I feel that not allowing that case runs against the
+> expression-oriented conciseness of Rust.
+> [comment by golddranks](https://github.com/rust-lang/rfcs/issues/961#issuecomment-220820787)
+
+Some examples which can be much more concisely written with this RFC:
 
 ```rust
-fn f() {
-    let outcome = loop {
-        // get and process some input, e.g. from the user or from a list of
-        // files
-        let result = get_result();
-        
-        if successful() {
-            break result;
+// without break-with-value:
+let x = {
+    let temp_bar;
+    loop {
+        ...
+        if ... {
+            temp_bar = bar;
+            break;
         }
-        // otherwise keep trying
-    };
-    
-    use_the_result(outcome);
-}
-```
+    }
+    foo(temp_bar)
+};
 
-In some cases, one can simply move `use_the_result(outcome)` into the loop, but
-sometimes this is undesirable and sometimes impossible due to lifetimes.
+// with break-with-value:
+let x = foo(loop {
+        ...
+        if ... { break bar; }
+    });
+
+// without break-with-value:
+let computation = {
+    let result;
+    loop {
+        if let Some(r) = self.do_something() {
+            result = r;
+            break;
+        }
+    }
+    result.do_computation()
+};
+self.use(computation);
+
+// with break-with-value:
+let computation = loop {
+        if let Some(r) = self.do_something() {
+            break r;
+        }
+    }.do_computation();
+self.use(computation);
+```
 
 # Detailed design
 [design]: #detailed-design
