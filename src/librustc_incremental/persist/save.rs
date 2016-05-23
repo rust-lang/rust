@@ -126,8 +126,8 @@ pub fn encode_dep_graph<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
 
     // Encode the directory and then the graph data.
     let directory = builder.into_directory();
-    try!(directory.encode(encoder));
-    try!(graph.encode(encoder));
+    directory.encode(encoder)?;
+    graph.encode(encoder)?;
 
     Ok(())
 }
@@ -188,7 +188,7 @@ pub fn encode_metadata_hashes<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
     };
 
     // Encode everything.
-    try!(serialized_hashes.encode(encoder));
+    serialized_hashes.encode(encoder)?;
 
     Ok(())
 }

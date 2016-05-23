@@ -3044,7 +3044,7 @@ impl<'a> Parser<'a> {
                     RangeLimits::Closed
                 };
 
-                let r = try!(self.mk_range(Some(lhs), rhs, limits));
+                let r = self.mk_range(Some(lhs), rhs, limits)?;
                 lhs = self.mk_expr(lhs_span.lo, rhs_span.hi, r, None);
                 break
             }
@@ -3163,9 +3163,7 @@ impl<'a> Parser<'a> {
             RangeLimits::Closed
         };
 
-        let r = try!(self.mk_range(None,
-                                   opt_end,
-                                   limits));
+        let r = self.mk_range(None, opt_end, limits)?;
         Ok(self.mk_expr(lo, hi, r, attrs))
     }
 
@@ -4517,7 +4515,7 @@ impl<'a> Parser<'a> {
 
                         parsed_something = true;
                     } else if self.eat(&token::Eq) {
-                        // let ty = try!(self.parse_ty());
+                        // let ty = self.parse_ty()?;
                         let hi = self.last_span.hi;
                         let span = mk_sp(lo, hi);
                         // where_clause.predicates.push(

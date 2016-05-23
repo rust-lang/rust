@@ -80,8 +80,8 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     // Deserialize the directory and dep-graph.
     let mut decoder = Decoder::new(data, 0);
-    let directory = try!(DefIdDirectory::decode(&mut decoder));
-    let serialized_dep_graph = try!(SerializedDepGraph::decode(&mut decoder));
+    let directory = DefIdDirectory::decode(&mut decoder)?;
+    let serialized_dep_graph = SerializedDepGraph::decode(&mut decoder)?;
 
     debug!("decode_dep_graph: directory = {:#?}", directory);
     debug!("decode_dep_graph: serialized_dep_graph = {:#?}", serialized_dep_graph);

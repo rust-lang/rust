@@ -58,7 +58,7 @@ fn create_dir_racy(path: &Path) -> io::Result<()> {
         Err(e) => return Err(e),
     }
     match path.parent() {
-        Some(p) => try!(create_dir_racy(p)),
+        Some(p) => create_dir_racy(p)?,
         None => return Err(io::Error::new(io::ErrorKind::Other,
                                           "failed to create whole tree")),
     }

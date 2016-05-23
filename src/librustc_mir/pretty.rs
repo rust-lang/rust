@@ -64,12 +64,12 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let file_name = format!("rustc.node{}.{}.{}.mir",
                             node_id, pass_name, disambiguator);
     let _ = fs::File::create(&file_name).and_then(|mut file| {
-        try!(writeln!(file, "// MIR for `{}`", node_path));
-        try!(writeln!(file, "// node_id = {}", node_id));
-        try!(writeln!(file, "// pass_name = {}", pass_name));
-        try!(writeln!(file, "// disambiguator = {}", disambiguator));
-        try!(writeln!(file, ""));
-        try!(write_mir_fn(tcx, src, mir, &mut file, auxiliary));
+        writeln!(file, "// MIR for `{}`", node_path)?;
+        writeln!(file, "// node_id = {}", node_id)?;
+        writeln!(file, "// pass_name = {}", pass_name)?;
+        writeln!(file, "// disambiguator = {}", disambiguator)?;
+        writeln!(file, "")?;
+        write_mir_fn(tcx, src, mir, &mut file, auxiliary)?;
         Ok(())
     });
 }
