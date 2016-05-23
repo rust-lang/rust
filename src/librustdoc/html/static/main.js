@@ -124,8 +124,8 @@
             focusSearchBar();
             break;
 
-        case "t":
-        case "T":
+        case "+":
+            ev.preventDefault();
             toggleAllDocs();
             break;
 
