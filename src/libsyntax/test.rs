@@ -59,7 +59,6 @@ struct TestCtxt<'a> {
     testfns: Vec<Test>,
     reexport_test_harness_main: Option<InternedString>,
     is_test_crate: bool,
-    config: ast::CrateConfig,
 
     // top-level re-export submodule, filled out after folding is finished
     toplevel_reexport: Option<ast::Ident>,
@@ -69,7 +68,6 @@ struct TestCtxt<'a> {
 // existing main functions, and synthesizing a main test harness
 pub fn modify_for_testing(sess: &ParseSess,
                           should_test: bool,
-                          cfg: &ast::CrateConfig,
                           krate: ast::Crate,
                           span_diagnostic: &errors::Handler) -> ast::Crate {
     // Check for #[reexport_test_harness_main = "some_name"] which
@@ -81,7 +79,7 @@ pub fn modify_for_testing(sess: &ParseSess,
                                            "reexport_test_harness_main");
 
     if should_test {
-        generate_test_harness(sess, reexport_test_harness_main, krate, cfg, span_diagnostic)
+        generate_test_harness(sess, reexport_test_harness_main, krate, span_diagnostic)
     } else {
         strip_test_functions(span_diagnostic, krate)
     }
@@ -267,7 +265,6 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
 fn generate_test_harness(sess: &ParseSess,
                          reexport_test_harness_main: Option<InternedString>,
                          krate: ast::Crate,
-                         cfg: &ast::CrateConfig,
                          sd: &errors::Handler) -> ast::Crate {
     // Remove the entry points
     let mut cleaner = EntryPointCleaner { depth: 0 };
@@ -277,14 +274,13 @@ fn generate_test_harness(sess: &ParseSess,
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         span_diagnostic: sd,
-        ext_cx: ExtCtxt::new(sess, cfg.clone(),
+        ext_cx: ExtCtxt::new(sess, vec![],
                              ExpansionConfig::default("test".to_string()),
                              &mut feature_gated_cfgs),
         path: Vec::new(),
         testfns: Vec::new(),
         reexport_test_harness_main: reexport_test_harness_main,
         is_test_crate: is_test_crate(&krate),
-        config: krate.config.clone(),
         toplevel_reexport: None,
     };
     cx.ext_cx.crate_root = Some("std");
