@@ -551,6 +551,12 @@ impl<'tcx> Progress<'tcx> {
     fn with_addl_obligations(mut self,
                              mut obligations: Vec<PredicateObligation<'tcx>>)
                              -> Self {
+        debug!("with_addl_obligations: self.obligations.len={} obligations.len={}",
+               self.obligations.len(), obligations.len());
+
+        debug!("with_addl_obligations: self.obligations={:?} obligations={:?}",
+               self.obligations, obligations);
+
         self.obligations.append(&mut obligations);
         self
     }
@@ -1123,11 +1129,18 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
                              obligation.cause.clone(),
                              obligation.recursion_depth+1,
                              &closure_type);
+
+    debug!("confirm_closure_candidate: obligation={:?},closure_type={:?},obligations={:?}",
+           obligation,
+           closure_type,
+           obligations);
+
     confirm_callable_candidate(selcx,
                                obligation,
                                &closure_type.sig,
                                util::TupleArgumentsFlag::No)
         .with_addl_obligations(obligations)
+        .with_addl_obligations(vtable.nested)
 }
 
 fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
