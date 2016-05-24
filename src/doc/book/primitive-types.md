@@ -175,8 +175,6 @@ You can use a combo of `&` and `[]` to create a slice from various things. The
 detail later in this section. The `[]`s, with a range, let you define the
 length of the slice:
 
-[references]: references-and-borrowing.html
-
 ```rust
 let a = [0, 1, 2, 3, 4];
 let complete = &a[..]; // A slice containing all of the elements in a
