@@ -499,7 +499,7 @@ impl Handler {
     pub fn cancel(&mut self, err: &mut DiagnosticBuilder) {
         if err.level == Level::Error || err.level == Level::Fatal {
             assert!(self.has_errors());
-            self.err_count.set(self.err_count.get() + 1);
+            self.err_count.set(self.err_count.get() - 1);
         }
         err.cancel();
     }
