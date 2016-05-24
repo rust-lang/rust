@@ -97,17 +97,18 @@
 //! virtually impossible. Thus, symbol hash generation exclusively relies on
 //! DefPaths which are much more robust in the face of changes to the code base.
 
-use common::{CrateContext, gensym_name};
+use common::{CrateContext, SharedCrateContext, gensym_name};
 use monomorphize::Instance;
 use util::sha2::{Digest, Sha256};
 
-use rustc::middle::cstore;
+use rustc::middle::{cstore, weak_lang_items};
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
-use rustc::ty::item_path::{ItemPathBuffer, RootMode};
+use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::hir::map::definitions::{DefPath, DefPathData};
 
 use std::fmt::Write;
+use syntax::attr;
 use syntax::parse::token::{self, InternedString};
 use serialize::hex::ToHex;
 
@@ -134,7 +135,7 @@ fn def_path_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_path: &DefPath)
     s
 }
 
-fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
                              // path to the item this name is for
                              def_path: &DefPath,
@@ -152,9 +153,9 @@ fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("get_symbol_hash(def_path={:?}, parameters={:?})",
            def_path, parameters);
 
-    let tcx = ccx.tcx();
+    let tcx = scx.tcx();
 
-    let mut hash_state = ccx.symbol_hasher().borrow_mut();
+    let mut hash_state = scx.symbol_hasher().borrow_mut();
 
     hash_state.reset();
 
@@ -187,22 +188,47 @@ fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               instance: &Instance<'tcx>)
+pub fn exported_name<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+                               instance: Instance<'tcx>)
                                -> String {
-    let &Instance { def: mut def_id, ref substs } = instance;
+    let Instance { def: def_id, ref substs } = instance;
 
     debug!("exported_name(def_id={:?}, substs={:?})",
            def_id, substs);
 
-    if let Some(node_id) = ccx.tcx().map.as_local_node_id(def_id) {
-        if let Some(&src_def_id) = ccx.external_srcs().borrow().get(&node_id) {
-            def_id = src_def_id;
+    let node_id = scx.tcx().map.as_local_node_id(instance.def);
+
+    if let Some(id) = node_id {
+        if scx.sess().plugin_registrar_fn.get() == Some(id) {
+            let svh = &scx.link_meta().crate_hash;
+            let idx = instance.def.index;
+            return scx.sess().generate_plugin_registrar_symbol(svh, idx);
         }
     }
 
-    let def_path = ccx.tcx().def_path(def_id);
-    assert_eq!(def_path.krate, def_id.krate);
+    // FIXME(eddyb) Precompute a custom symbol name based on attributes.
+    let attrs;
+    let attrs = if let Some(id) = node_id {
+        scx.tcx().map.attrs(id)
+    } else {
+        attrs = scx.sess().cstore.item_attrs(def_id);
+        &attrs[..]
+    };
+
+    if let Some(name) = attr::find_export_name_attr(scx.sess().diagnostic(), attrs) {
+        // Use provided name
+        return name.to_string();
+    }
+
+    if attr::contains_name(attrs, "no_mangle") {
+        // Don't mangle
+        return scx.tcx().item_name(instance.def).as_str().to_string()
+    }
+    if let Some(name) = weak_lang_items::link_name(attrs) {
+        return name.to_string();
+    }
+
+    let def_path = scx.tcx().def_path(def_id);
 
     // We want to compute the "type" of this item. Unfortunately, some
     // kinds of items (e.g., closures) don't have an entry in the
@@ -211,11 +237,11 @@ pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let mut ty_def_id = def_id;
     let instance_ty;
     loop {
-        let key = ccx.tcx().def_key(ty_def_id);
+        let key = scx.tcx().def_key(ty_def_id);
         match key.disambiguated_data.data {
             DefPathData::TypeNs(_) |
             DefPathData::ValueNs(_) => {
-                instance_ty = ccx.tcx().lookup_item_type(ty_def_id);
+                instance_ty = scx.tcx().lookup_item_type(ty_def_id);
                 break;
             }
             _ => {
@@ -232,9 +258,9 @@ pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Erase regions because they may not be deterministic when hashed
     // and should not matter anyhow.
-    let instance_ty = ccx.tcx().erase_regions(&instance_ty.ty);
+    let instance_ty = scx.tcx().erase_regions(&instance_ty.ty);
 
-    let hash = get_symbol_hash(ccx, &def_path, instance_ty, substs.types.as_slice());
+    let hash = get_symbol_hash(scx, &def_path, instance_ty, substs.types.as_slice());
 
     let mut buffer = SymbolPathBuffer {
         names: Vec::with_capacity(def_path.data.len())
@@ -271,7 +297,7 @@ pub fn internal_name_from_type_and_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>
         data: vec![],
         krate: cstore::LOCAL_CRATE,
     };
-    let hash = get_symbol_hash(ccx, &def_path, t, &[]);
+    let hash = get_symbol_hash(ccx.shared(), &def_path, t, &[]);
     mangle(path.iter().cloned(), Some(&hash[..]))
 }
 
