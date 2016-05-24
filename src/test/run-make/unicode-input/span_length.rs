@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rand, core)]
+#![feature(rand)]
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -17,6 +17,11 @@ use std::path::Path;
 use std::process::Command;
 use std::__rand::{thread_rng, Rng};
 use std::{char, env};
+
+pub fn check_old_skool() -> bool {
+    use std::env;
+    env::var("RUST_NEW_ERROR_FORMAT").is_err()
+}
 
 // creates a file with `fn main() { <random ident> }` and checks the
 // compiler emits a span of the appropriate length (for the
@@ -65,10 +70,17 @@ fn main() {
 
         let err = String::from_utf8_lossy(&result.stderr);
 
-        // the span should end the line (e.g no extra ~'s)
-        let expected_span = format!("^{}\n", repeat("~").take(n - 1)
-                                                        .collect::<String>());
-        assert!(err.contains(&expected_span));
+        if check_old_skool() {
+            // the span should end the line (e.g no extra ~'s)
+            let expected_span = format!("^{}\n", repeat("~").take(n - 1)
+                                                            .collect::<String>());
+            assert!(err.contains(&expected_span));
+        } else {
+            // the span should end the line (e.g no extra ~'s)
+            let expected_span = format!("^{}\n", repeat("^").take(n - 1)
+                                                            .collect::<String>());
+            assert!(err.contains(&expected_span));
+        }
     }
 
     // Test multi-column characters and tabs
@@ -76,9 +88,6 @@ fn main() {
         let _ = write!(&mut File::create(&main_file).unwrap(),
                        r#"extern "路濫狼á́́" fn foo() {{}} extern "路濫狼á́" fn bar() {{}}"#);
     }
-
-    // Extra characters. Every line is preceded by `filename:lineno <actual code>`
-    let offset = main_file.to_str().unwrap().len() + 3;
 
     let result = Command::new("sh")
                          .arg("-c")
@@ -91,17 +100,31 @@ fn main() {
 
     // Test both the length of the snake and the leading spaces up to it
 
-    // First snake is 8 ~s long, with 7 preceding spaces (excluding file name/line offset)
-    let expected_span = format!("\n{}^{}\n",
-                                repeat(" ").take(offset + 7).collect::<String>(),
-                                repeat("~").take(8).collect::<String>());
-    assert!(err.contains(&expected_span));
-    // Second snake is only 7 ~s long, with 36 preceding spaces,
-    // because rustc counts chars() now rather than width(). This
-    // is because width() functions are to be removed from
-    // librustc_unicode
-    let expected_span = format!("\n{}^{}\n",
-                                repeat(" ").take(offset + 36).collect::<String>(),
-                                repeat("~").take(7).collect::<String>());
-    assert!(err.contains(&expected_span));
+    if check_old_skool() {
+        // Extra characters. Every line is preceded by `filename:lineno <actual code>`
+        let offset = main_file.to_str().unwrap().len() + 3;
+
+        // First snake is 8 ~s long, with 7 preceding spaces (excluding file name/line offset)
+        let expected_span = format!("\n{}^{}\n",
+                                    repeat(" ").take(offset + 7).collect::<String>(),
+                                    repeat("~").take(8).collect::<String>());
+        assert!(err.contains(&expected_span));
+        // Second snake is only 7 ~s long, with 36 preceding spaces,
+        // because rustc counts chars() now rather than width(). This
+        // is because width() functions are to be removed from
+        // librustc_unicode
+        let expected_span = format!("\n{}^{}\n",
+                                    repeat(" ").take(offset + 36).collect::<String>(),
+                                    repeat("~").take(7).collect::<String>());
+        assert!(err.contains(&expected_span));
+    } else {
+        let expected_span = format!("\n  |>{}{}\n",
+                                    repeat(" ").take(8).collect::<String>(),
+                                    repeat("^").take(9).collect::<String>());
+        assert!(err.contains(&expected_span));
+        let expected_span = format!("\n  |>{}{}\n",
+                                    repeat(" ").take(37).collect::<String>(),
+                                    repeat("^").take(8).collect::<String>());
+        assert!(err.contains(&expected_span));
+    }
 }
