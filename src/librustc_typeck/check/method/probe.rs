@@ -13,13 +13,13 @@ use super::NoMatchData;
 use super::{CandidateSource, ImplSource, TraitSource};
 use super::suggest;
 
-use check::{FnCtxt, UnresolvedTypeAction};
+use check::{FnCtxt};
 use hir::def_id::DefId;
 use hir::def::Def;
 use rustc::ty::subst;
 use rustc::ty::subst::Subst;
 use rustc::traits;
-use rustc::ty::{self, NoPreference, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
+use rustc::ty::{self, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::infer::{InferOk, TypeOrigin};
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
@@ -208,25 +208,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn create_steps(&self,
                     span: Span,
                     self_ty: Ty<'tcx>)
-                    -> Option<Vec<CandidateStep<'tcx>>> {
-        let mut steps = Vec::new();
+                    -> Option<Vec<CandidateStep<'tcx>>>
+    {
+        // FIXME: we don't need to create the entire steps in one pass
 
-        let (final_ty, dereferences, _) = self.autoderef(span,
-                                                         self_ty,
-                                                         || None,
-                                                         UnresolvedTypeAction::Error,
-                                                         NoPreference,
-                                                         |t, d| {
-            steps.push(CandidateStep {
-                self_ty: t,
-                autoderefs: d,
-                unsize: false
-            });
-            None::<()> // keep iterating until we can't anymore
-        });
+        let mut autoderef = self.autoderef(span, self_ty);
+        let mut steps: Vec<_> = autoderef.by_ref().map(|(ty, d)| CandidateStep {
+            self_ty: ty,
+            autoderefs: d,
+            unsize: false
+        }).collect();
 
+        let final_ty = autoderef.unambiguous_final_ty();
         match final_ty.sty {
             ty::TyArray(elem_ty, _) => {
+                let dereferences = steps.len() - 1;
+
                 steps.push(CandidateStep {
                     self_ty: self.tcx.mk_slice(elem_ty),
                     autoderefs: dereferences,
@@ -236,6 +233,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty::TyError => return None,
             _ => (),
         }
+
+        debug!("create_steps: steps={:?}", steps);
 
         Some(steps)
     }
