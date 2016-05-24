@@ -504,6 +504,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
                         scheme.generics.regions.map(|_| ty::ReStatic)))
     }
 
+    pub fn symbol_hasher(&self) -> &RefCell<Sha256> {
+        &self.symbol_hasher
+    }
+
     pub fn metadata_symbol_name(&self) -> String {
         format!("rust_metadata_{}_{}",
                 self.link_meta().crate_name,

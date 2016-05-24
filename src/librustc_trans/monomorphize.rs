@@ -88,7 +88,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         monomorphizing.insert(fn_id, depth + 1);
     }
 
-    let symbol = symbol_names::exported_name(ccx, &instance);
+    let symbol = symbol_names::exported_name(ccx.shared(), instance);
 
     debug!("monomorphize_fn mangled to {}", symbol);
     assert!(declare::get_defined_value(ccx, &symbol).is_none());
