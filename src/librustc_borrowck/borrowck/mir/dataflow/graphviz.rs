@@ -109,7 +109,7 @@ pub fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
     path: &Path,
     render_idx: P)
     -> io::Result<()>
-    where BD: BitDenotation<Ctxt=MoveData<'tcx>>, BD::Bit: Debug,
+    where BD: BitDenotation<Ctxt=MoveData<'tcx>>,
           P: for <'b> Fn(&'b BD::Ctxt, BD::Idx) -> &'b Debug
 {
     let g = Graph { mbcx: mbcx, phantom: PhantomData, render_idx: render_idx };
@@ -131,7 +131,7 @@ fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
 }
 
 impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
-    where MWF: MirWithFlowState<'tcx>, <MWF::BD as BitDenotation>::Bit: Debug,
+    where MWF: MirWithFlowState<'tcx>,
           P: for <'b> Fn(&'b <MWF::BD as BitDenotation>::Ctxt, <MWF::BD as BitDenotation>::Idx) -> &'b Debug,
 {
     type Node = Node;

@@ -12,7 +12,7 @@ use rustc::ty::TyCtxt;
 use rustc::mir::repr::{self, Mir};
 
 use super::super::gather_moves::{Location};
-use super::super::gather_moves::{MoveData, MoveOut, MoveOutIndex, MovePath, MovePathIndex};
+use super::super::gather_moves::{MoveData, MoveOutIndex, MovePathIndex};
 use super::super::DropFlagState;
 use super::super::drop_flag_effects_for_function_entry;
 use super::super::drop_flag_effects_for_location;
@@ -226,15 +226,12 @@ impl<'a, 'tcx> DefinitelyInitializedLvals<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
     type Idx = MovePathIndex;
-    type Bit = MovePath<'tcx>;
     type Ctxt = MoveData<'tcx>;
     fn name() -> &'static str { "maybe_init" }
     fn bits_per_block(&self, ctxt: &Self::Ctxt) -> usize {
         ctxt.move_paths.len()
     }
-    fn interpret<'c>(&self, ctxt: &'c Self::Ctxt, idx: usize) -> &'c Self::Bit {
-        &ctxt.move_paths[MovePathIndex::new(idx)]
-    }
+
     fn start_block_effect(&self, ctxt: &Self::Ctxt, sets: &mut BlockSets<MovePathIndex>)
     {
         drop_flag_effects_for_function_entry(
@@ -288,14 +285,10 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
     type Idx = MovePathIndex;
-    type Bit = MovePath<'tcx>;
     type Ctxt = MoveData<'tcx>;
     fn name() -> &'static str { "maybe_uninit" }
     fn bits_per_block(&self, ctxt: &Self::Ctxt) -> usize {
         ctxt.move_paths.len()
-    }
-    fn interpret<'c>(&self, ctxt: &'c Self::Ctxt, idx: usize) -> &'c Self::Bit {
-        &ctxt.move_paths[MovePathIndex::new(idx)]
     }
 
     // sets on_entry bits for Arg lvalues
@@ -354,14 +347,10 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
     type Idx = MovePathIndex;
-    type Bit = MovePath<'tcx>;
     type Ctxt = MoveData<'tcx>;
     fn name() -> &'static str { "definite_init" }
     fn bits_per_block(&self, ctxt: &Self::Ctxt) -> usize {
         ctxt.move_paths.len()
-    }
-    fn interpret<'c>(&self, ctxt: &'c Self::Ctxt, idx: usize) -> &'c Self::Bit {
-        &ctxt.move_paths[MovePathIndex::new(idx)]
     }
 
     // sets on_entry bits for Arg lvalues
@@ -419,15 +408,12 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
     type Idx = MoveOutIndex;
-    type Bit = MoveOut;
     type Ctxt = MoveData<'tcx>;
     fn name() -> &'static str { "moving_out" }
     fn bits_per_block(&self, ctxt: &Self::Ctxt) -> usize {
         ctxt.moves.len()
     }
-    fn interpret<'c>(&self, ctxt: &'c Self::Ctxt, idx: usize) -> &'c Self::Bit {
-        &ctxt.moves[idx]
-    }
+
     fn start_block_effect(&self,_move_data: &Self::Ctxt, _sets: &mut BlockSets<MoveOutIndex>) {
         // no move-statements have been executed prior to function
         // execution, so this method has no effect on `_sets`.
