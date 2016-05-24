@@ -26,7 +26,6 @@ use super::util;
 use hir::def_id::DefId;
 use infer::{InferOk, TypeOrigin};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
-use std::env;
 use syntax::parse::token;
 use syntax::ast;
 use ty::subst::Subst;
