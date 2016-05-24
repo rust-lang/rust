@@ -284,6 +284,7 @@ impl Build {
                 DocNomicon { stage } => {
                     doc::rustbook(self, stage, target.target, "nomicon",
                                   &doc_out);
+                    std::fs::copy("src/doc/nomicon/safeandunsafe.svg", "doc/nomicon/safeandunsafe.svg");
                 }
                 DocStyle { stage } => {
                     doc::rustbook(self, stage, target.target, "style",

@@ -208,6 +208,7 @@ doc/nomicon/index.html: $(RUSTBOOK_EXE) $(wildcard $(S)/src/doc/nomicon/*.md) | 
 	@$(call E, rustbook: $@)
 	$(Q)rm -rf doc/nomicon
 	$(Q)$(RUSTBOOK) build $(S)src/doc/nomicon doc/nomicon
+	$(Q)cp src/doc/nomicon/safeandunsafe.svg doc/nomicon/safeandunsafe.svg
 
 style: doc/style/index.html
 
