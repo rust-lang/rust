@@ -19,9 +19,16 @@ use ptr::P;
 use util::small_vector::SmallVector;
 
 pub trait CfgFolder: fold::Folder {
+    // Check if a node with the given attributes is in this configuration.
     fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool;
+
+    // Update a node before checking if it is in this configuration (used to implement `cfg_attr`).
     fn process_attrs<T: HasAttrs>(&mut self, node: T) -> T { node }
+
+    // Visit attributes on expression and statements (but not attributes on items in blocks).
     fn visit_stmt_or_expr_attrs(&mut self, _attrs: &[ast::Attribute]) {}
+
+    // Visit unremovable (non-optional) expressions -- c.f. `fold_expr` vs `fold_opt_expr`.
     fn visit_unremovable_expr(&mut self, _expr: &ast::Expr) {}
 
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
