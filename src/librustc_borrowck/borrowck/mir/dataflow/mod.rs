@@ -36,8 +36,7 @@ pub trait Dataflow<BD: BitDenotation> {
 }
 
 impl<'a, 'tcx: 'a, BD> Dataflow<BD> for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
-    where BD: BitDenotation<Ctxt=MoveData<'tcx>> + DataflowOperator,
-          BD::Bit: Debug,
+    where BD: BitDenotation<Ctxt=MoveData<'tcx>> + DataflowOperator
 {
     fn dataflow<P>(&mut self, p: P) where P: Fn(&BD::Ctxt, BD::Idx) -> &Debug {
         self.flow_state.build_sets();
@@ -48,14 +47,14 @@ impl<'a, 'tcx: 'a, BD> Dataflow<BD> for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
 }
 
 struct PropagationContext<'b, 'a: 'b, 'tcx: 'a, O>
-    where O: 'b + BitDenotation, O::Ctxt: 'a+HasMoveData<'tcx>
+    where O: 'b + BitDenotation, O::Ctxt: 'a
 {
     builder: &'b mut DataflowAnalysis<'a, 'tcx, O>,
     changed: bool,
 }
 
 impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
-    where BD: BitDenotation + DataflowOperator, BD::Ctxt: HasMoveData<'tcx>
+    where BD: BitDenotation + DataflowOperator
 {
     fn propagate(&mut self) {
         let mut temp = OwnIdxSet::new_empty(self.flow_state.sets.bits_per_block);
@@ -102,7 +101,7 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
 }
 
 impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD>
-    where BD: BitDenotation + DataflowOperator, BD::Ctxt: HasMoveData<'tcx>
+    where BD: BitDenotation + DataflowOperator
 {
     fn reset(&mut self, bits: &mut IdxSet<BD::Idx>) {
         let e = if BD::bottom_value() {!0} else {0};
@@ -141,7 +140,7 @@ fn dataflow_path(context: &str, prepost: &str, path: &str) -> PathBuf {
 }
 
 impl<'a, 'tcx: 'a, BD> MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
-    where BD: BitDenotation<Ctxt=MoveData<'tcx>>, BD::Bit: Debug
+    where BD: BitDenotation<Ctxt=MoveData<'tcx>>
 {
     fn pre_dataflow_instrumentation<P>(&self, p: P) -> io::Result<()>
         where P: Fn(&BD::Ctxt, BD::Idx) -> &Debug
@@ -182,19 +181,8 @@ impl<E:Idx> Bits<E> {
     }
 }
 
-pub trait HasMoveData<'tcx> {
-    fn move_data(&self) -> &MoveData<'tcx>;
-}
-
-impl<'tcx> HasMoveData<'tcx> for MoveData<'tcx> {
-    fn move_data(&self) -> &MoveData<'tcx> { self }
-}
-impl<'tcx, A, B> HasMoveData<'tcx> for (A, B, MoveData<'tcx>) {
-    fn move_data(&self) -> &MoveData<'tcx> { &self.2 }
-}
-
 pub struct DataflowAnalysis<'a, 'tcx: 'a, O>
-    where O: BitDenotation, O::Ctxt: 'a+HasMoveData<'tcx>
+    where O: BitDenotation, O::Ctxt: 'a
 {
     flow_state: DataflowState<O>,
     mir: &'a Mir<'tcx>,
@@ -202,7 +190,7 @@ pub struct DataflowAnalysis<'a, 'tcx: 'a, O>
 }
 
 impl<'a, 'tcx: 'a, O> DataflowAnalysis<'a, 'tcx, O>
-    where O: BitDenotation, O::Ctxt: HasMoveData<'tcx>
+    where O: BitDenotation
 {
     pub fn results(self) -> DataflowResults<O> {
         DataflowResults(self.flow_state)
@@ -301,9 +289,6 @@ pub trait DataflowOperator: BitwiseOperator {
 }
 
 pub trait BitDenotation {
-    /// Specifies what is represented by each bit in the dataflow bitvector.
-    type Bit;
-
     /// Specifies what index type is used to access the bitvector.
     type Idx: Idx;
 
@@ -321,10 +306,6 @@ pub trait BitDenotation {
 
     /// Size of each bitvector allocated for each block in the analysis.
     fn bits_per_block(&self, &Self::Ctxt) -> usize;
-
-    /// Provides the meaning of each entry in the dataflow bitvector.
-    /// (Mostly intended for use for better debug instrumentation.)
-    fn interpret<'a>(&self, &'a Self::Ctxt, idx: usize) -> &'a Self::Bit;
 
     /// Mutates the block-sets (the flow sets for the given
     /// basic block) according to the effects that have been
@@ -396,8 +377,7 @@ pub trait BitDenotation {
 }
 
 impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
-    where D: BitDenotation + DataflowOperator,
-          D::Ctxt: HasMoveData<'tcx>
+    where D: BitDenotation + DataflowOperator
 {
     pub fn new(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
                mir: &'a Mir<'tcx>,
@@ -439,8 +419,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
 }
 
 impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
-    where D: BitDenotation + DataflowOperator,
-          D::Ctxt: HasMoveData<'tcx>,
+    where D: BitDenotation + DataflowOperator
 {
     /// Propagates the bits of `in_out` into all the successors of `bb`,
     /// using bitwise operator denoted by `self.operator`.

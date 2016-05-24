@@ -15,10 +15,9 @@ use syntax::codemap::Span;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::repr::{self, Mir};
 
-use super::super::gather_moves::{MovePath, MovePathIndex};
+use super::super::gather_moves::{MoveData, MovePathIndex};
 use super::BitDenotation;
 use super::DataflowResults;
-use super::HasMoveData;
 
 /// This function scans `mir` for all calls to the intrinsic
 /// `rustc_peek` that have the expression form `rustc_peek(&expr)`.
@@ -42,7 +41,7 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 _attributes: &[ast::Attribute],
                                                 flow_ctxt: &O::Ctxt,
                                                 results: &DataflowResults<O>)
-    where O: BitDenotation<Bit=MovePath<'tcx>, Idx=MovePathIndex>, O::Ctxt: HasMoveData<'tcx>
+    where O: BitDenotation<Ctxt=MoveData<'tcx>, Idx=MovePathIndex>
 {
     debug!("sanity_check_via_rustc_peek id: {:?}", id);
     // FIXME: this is not DRY. Figure out way to abstract this and
@@ -57,10 +56,10 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            mir: &Mir<'tcx>,
-                           flow_ctxt: &O::Ctxt,
+                           move_data: &O::Ctxt,
                            results: &DataflowResults<O>,
                            bb: repr::BasicBlock) where
-    O: BitDenotation<Bit=MovePath<'tcx>, Idx=MovePathIndex>, O::Ctxt: HasMoveData<'tcx>
+    O: BitDenotation<Ctxt=MoveData<'tcx>, Idx=MovePathIndex>
 {
     let bb_data = mir.basic_block_data(bb);
     let &repr::BasicBlockData { ref statements,
@@ -87,8 +86,6 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut entry = results.0.sets.on_entry_set_for(bb.index()).to_owned();
     let mut gen = results.0.sets.gen_set_for(bb.index()).to_owned();
     let mut kill = results.0.sets.kill_set_for(bb.index()).to_owned();
-
-    let move_data = flow_ctxt.move_data();
 
     // Emulate effect of all statements in the block up to (but not
     // including) the borrow within `peek_arg_lval`. Do *not* include
@@ -138,7 +135,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // reset GEN and KILL sets before emulating their effect.
         for e in sets.gen_set.words_mut() { *e = 0; }
         for e in sets.kill_set.words_mut() { *e = 0; }
-        results.0.operator.statement_effect(flow_ctxt, &mut sets, bb, j);
+        results.0.operator.statement_effect(move_data, &mut sets, bb, j);
         sets.on_entry.union(sets.gen_set);
         sets.on_entry.subtract(sets.kill_set);
     }
