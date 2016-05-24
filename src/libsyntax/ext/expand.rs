@@ -1191,7 +1191,6 @@ impl Folder for Marker {
             node: Mac_ {
                 path: self.fold_path(node.path),
                 tts: self.fold_tts(&node.tts),
-                ctxt: mtwt::apply_mark(self.mark, node.ctxt),
             },
             span: self.new_span(span),
         }
