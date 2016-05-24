@@ -757,6 +757,7 @@ fn get_source(input: &Input, sess: &Session) -> (Vec<u8>, String) {
     let src_name = driver::source_name(input);
     let src = sess.codemap()
                   .get_filemap(&src_name)
+                  .unwrap()
                   .src
                   .as_ref()
                   .unwrap()

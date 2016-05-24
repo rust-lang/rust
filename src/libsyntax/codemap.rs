@@ -1191,13 +1191,13 @@ impl CodeMap {
         }
     }
 
-    pub fn get_filemap(&self, filename: &str) -> Rc<FileMap> {
+    pub fn get_filemap(&self, filename: &str) -> Option<Rc<FileMap>> {
         for fm in self.files.borrow().iter() {
             if filename == fm.name {
-                return fm.clone();
+                return Some(fm.clone());
             }
         }
-        panic!("asking for {} which we don't know about", filename);
+        None
     }
 
     /// For a global BytePos compute the local offset within the containing FileMap
