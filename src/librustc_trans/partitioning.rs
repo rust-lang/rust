@@ -228,7 +228,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    // always ensure we have at least one CGO; otherwise, if we have a
+    // always ensure we have at least one CGU; otherwise, if we have a
     // crate with just types (for example), we could wind up with no CGU
     if codegen_units.is_empty() {
         let codegen_unit_name = InternedString::new(FALLBACK_CODEGEN_UNIT);
