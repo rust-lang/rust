@@ -13,7 +13,7 @@ use test::TestPaths;
 fn dogfood() {
     let mut config = compiletest::default_config();
 
-    let cfg_mode = "run-pass".parse().expect("Invalid mode");
+    let cfg_mode = "run-fail".parse().expect("Invalid mode");
     let mut s = String::new();
     s.push_str(" -L target/debug/");
     s.push_str(" -L target/debug/deps");
@@ -30,13 +30,21 @@ fn dogfood() {
 
     config.mode = cfg_mode;
 
-    let paths = TestPaths {
-        base: PathBuf::new(),
-        file: PathBuf::from("src/lib.rs"),
-        relative_dir: PathBuf::new(),
-    };
+    let files = [
+        "src/main.rs",
+        "src/lib.rs",
+        "clippy_lints/src/lib.rs",
+    ];
 
-    set_var("CLIPPY_DOGFOOD", "tastes like chicken");
+    for file in &files {
+        let paths = TestPaths {
+            base: PathBuf::new(),
+            file: PathBuf::from(file),
+            relative_dir: PathBuf::new(),
+        };
 
-    compiletest::runtest::run(config, &paths);
+        set_var("CLIPPY_DOGFOOD", "tastes like chicken");
+
+        compiletest::runtest::run(config.clone(), &paths);
+    }
 }
