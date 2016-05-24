@@ -978,18 +978,18 @@ are generic.
 This will cause an error:
 
 ```compile_fail
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Bad<T>(T, T, T);
 ```
 
 This will not:
 
 ```
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Good(u32, u32, u32);
 ```
 "##,
@@ -1026,18 +1026,18 @@ will trigger this error.
 This will cause an error:
 
 ```compile_fail
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Bad(u16, u32, u32);
 ```
 
 This will not:
 
 ```
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Good(u32, u32, u32);
 ```
 "##,
@@ -1049,18 +1049,18 @@ must be machine types so SIMD operations can be applied to them.
 This will cause an error:
 
 ```compile_fail
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Bad(String);
 ```
 
 This will not:
 
 ```
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Good(u32, u32, u32);
 ```
 "##,
@@ -2387,39 +2387,135 @@ impl Copy for &'static Bar { } // error
 "##,
 
 E0207: r##"
-You declared an unused type parameter when implementing a trait on an object.
-Erroneous code example:
+Any type parameter or lifetime parameter of an `impl` must meet at least one of
+the following criteria:
+
+ - it appears in the self type of the impl
+ - for a trait impl, it appears in the trait reference
+ - it is bound as an associated type
+
+### Error example 1
+
+Suppose we have a struct `Foo` and we would like to define some methods for it.
+The following definition leads to a compiler error:
 
 ```compile_fail
-trait MyTrait {
-    fn get(&self) -> usize;
-}
-
 struct Foo;
 
-impl<T> MyTrait for Foo {
-    fn get(&self) -> usize {
-        0
+impl<T: Default> Foo {
+// error: the type parameter `T` is not constrained by the impl trait, self
+// type, or predicates [E0207]
+    fn get(&self) -> T {
+        <T as Default>::default()
     }
 }
 ```
 
-Please check your object definition and remove unused type
-parameter(s). Example:
+The problem is that the parameter `T` does not appear in the self type (`Foo`)
+of the impl. In this case, we can fix the error by moving the type parameter
+from the `impl` to the method `get`:
+
 
 ```
-trait MyTrait {
-    fn get(&self) -> usize;
-}
-
 struct Foo;
 
-impl MyTrait for Foo {
-    fn get(&self) -> usize {
-        0
+// Move the type parameter from the impl to the method
+impl Foo {
+    fn get<T: Default>(&self) -> T {
+        <T as Default>::default()
     }
 }
 ```
+
+### Error example 2
+
+As another example, suppose we have a `Maker` trait and want to establish a
+type `FooMaker` that makes `Foo`s:
+
+```compile_fail
+trait Maker {
+    type Item;
+    fn make(&mut self) -> Self::Item;
+}
+
+struct Foo<T> {
+    foo: T
+}
+
+struct FooMaker;
+
+impl<T: Default> Maker for FooMaker {
+// error: the type parameter `T` is not constrained by the impl trait, self
+// type, or predicates [E0207]
+    type Item = Foo<T>;
+
+    fn make(&mut self) -> Foo<T> {
+        Foo { foo: <T as Default>::default() }
+    }
+}
+```
+
+This fails to compile because `T` does not appear in the trait or in the
+implementing type.
+
+One way to work around this is to introduce a phantom type parameter into
+`FooMaker`, like so:
+
+```
+use std::marker::PhantomData;
+
+trait Maker {
+    type Item;
+    fn make(&mut self) -> Self::Item;
+}
+
+struct Foo<T> {
+    foo: T
+}
+
+// Add a type parameter to `FooMaker`
+struct FooMaker<T> {
+    phantom: PhantomData<T>,
+}
+
+impl<T: Default> Maker for FooMaker<T> {
+    type Item = Foo<T>;
+
+    fn make(&mut self) -> Foo<T> {
+        Foo {
+            foo: <T as Default>::default(),
+        }
+    }
+}
+```
+
+Another way is to do away with the associated type in `Maker` and use an input
+type parameter instead:
+
+```
+// Use a type parameter instead of an associated type here
+trait Maker<Item> {
+    fn make(&mut self) -> Item;
+}
+
+struct Foo<T> {
+    foo: T
+}
+
+struct FooMaker;
+
+impl<T: Default> Maker<Foo<T>> for FooMaker {
+    fn make(&mut self) -> Foo<T> {
+        Foo { foo: <T as Default>::default() }
+    }
+}
+```
+
+### Additional information
+
+For more information, please see [RFC 447].
+
+[RFC 447]: https://github.com/rust-lang/rfcs/blob/master/text/0447-no-unused-impl-parameters.md
 "##,
 
 E0210: r##"
