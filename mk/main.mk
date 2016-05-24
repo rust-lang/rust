@@ -34,7 +34,14 @@ CFG_FILENAME_EXTRA=$(shell printf '%s' $(CFG_RELEASE)$(CFG_EXTRA_FILENAME) | $(C
 # intentionally not "secure" by any definition, this is largely just a deterrent
 # from users enabling unstable features on the stable compiler.
 CFG_BOOTSTRAP_KEY=$(CFG_FILENAME_EXTRA)
+
+# The stage0 compiler needs to use the previous key recorded in src/stage0.txt,
+# except for local-rebuild when it just uses the same current key.
+ifdef CFG_ENABLE_LOCAL_REBUILD
+CFG_BOOTSTRAP_KEY_STAGE0=$(CFG_BOOTSTRAP_KEY)
+else
 CFG_BOOTSTRAP_KEY_STAGE0=$(shell grep 'rustc_key' $(S)src/stage0.txt | sed 's/rustc_key: '//)
+endif
 
 ifeq ($(CFG_RELEASE_CHANNEL),stable)
 # This is the normal semver version string, e.g. "0.12.0", "0.12.0-nightly"
@@ -526,6 +533,11 @@ ifneq ($(strip $(CFG_BUILD)),$(strip $(3)))
 CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
 
 RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(TARGET_RPATH_VAR1_T_$(2)_H_$$(CFG_BUILD))
+else
+ifdef CFG_ENABLE_LOCAL_REBUILD
+# Assume the local-rebuild rustc already has stage1 features too.
+CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
+endif
 endif
 endif
 
