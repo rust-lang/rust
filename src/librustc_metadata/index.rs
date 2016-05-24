@@ -31,7 +31,10 @@ impl Index {
     /// Given the RBML doc representing the index, save the offests
     /// for later.
     pub fn from_rbml(index: rbml::Doc) -> Index {
-        Index { data_start: index.start, data_end: index.end }
+        Index {
+            data_start: index.start,
+            data_end: index.end,
+        }
     }
 
     /// Given the metadata, extract out the offset of a particular
@@ -41,8 +44,7 @@ impl Index {
         let words = bytes_to_words(&bytes[self.data_start..self.data_end]);
         let index = def_index.as_usize();
 
-        debug!("lookup_item: index={:?} words.len={:?}",
-               index, words.len());
+        debug!("lookup_item: index={:?} words.len={:?}", index, words.len());
 
         let position = u32::from_be(words[index]);
         if position == u32::MAX {
@@ -68,9 +70,7 @@ pub struct IndexData {
 
 impl IndexData {
     pub fn new(max_index: usize) -> IndexData {
-        IndexData {
-            positions: vec![u32::MAX; max_index]
-        }
+        IndexData { positions: vec![u32::MAX; max_index] }
     }
 
     pub fn record(&mut self, def_id: DefId, position: u64) {
@@ -86,7 +86,9 @@ impl IndexData {
 
         assert!(self.positions[item] == u32::MAX,
                 "recorded position for item {:?} twice, first at {:?} and now at {:?}",
-                item, self.positions[item], position);
+                item,
+                self.positions[item],
+                position);
 
         self.positions[item] = position;
     }
@@ -102,7 +104,7 @@ impl IndexData {
 /// these be merged?)
 pub struct DenseIndex {
     start: usize,
-    end: usize
+    end: usize,
 }
 
 impl DenseIndex {
@@ -111,10 +113,10 @@ impl DenseIndex {
         data.get(ix as usize).map(|d| u32::from_be(*d))
     }
     pub fn from_buf(buf: &[u8], start: usize, end: usize) -> Self {
-        assert!((end-start)%4 == 0 && start <= end && end <= buf.len());
+        assert!((end - start) % 4 == 0 && start <= end && end <= buf.len());
         DenseIndex {
             start: start,
-            end: end
+            end: end,
         }
     }
 }
@@ -131,15 +133,10 @@ pub fn write_dense_index(entries: Vec<u32>, buf: &mut Cursor<Vec<u8>>) {
 }
 
 fn write_be_u32<W: Write>(w: &mut W, u: u32) {
-    let _ = w.write_all(&[
-        (u >> 24) as u8,
-        (u >> 16) as u8,
-        (u >>  8) as u8,
-        (u >>  0) as u8,
-    ]);
+    let _ = w.write_all(&[(u >> 24) as u8, (u >> 16) as u8, (u >> 8) as u8, (u >> 0) as u8]);
 }
 
 fn bytes_to_words(b: &[u8]) -> &[u32] {
     assert!(b.len() % 4 == 0);
-    unsafe { slice::from_raw_parts(b.as_ptr() as *const u32, b.len()/4) }
+    unsafe { slice::from_raw_parts(b.as_ptr() as *const u32, b.len() / 4) }
 }
