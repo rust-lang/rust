@@ -57,7 +57,7 @@ impl<T: Idx> fmt::Debug for IdxSet<T> {
 
 impl<T: Idx> OwnIdxSet<T> {
     fn new(init: Word, universe_size: usize) -> Self {
-        let bits_per_word = mem::size_of::<Word>();
+        let bits_per_word = mem::size_of::<Word>() * 8;
         let num_words = (universe_size + (bits_per_word - 1)) / bits_per_word;
         OwnIdxSet {
             _pd: Default::default(),
