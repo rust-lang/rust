@@ -122,6 +122,7 @@ a.test-arrow {
     color: #555;
     box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
     background-color: white;
+    text-transform: none;
 }
 
 em.stab.unstable { background: #FFF5D6; border-color: #FFC600; }
