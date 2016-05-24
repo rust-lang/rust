@@ -31,13 +31,10 @@ mod gather_moves;
 use self::dataflow::{BitDenotation};
 use self::dataflow::{DataflowOperator};
 use self::dataflow::{Dataflow, DataflowAnalysis, DataflowResults};
-use self::dataflow::{HasMoveData};
 use self::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use self::dataflow::{DefinitelyInitializedLvals};
 use self::gather_moves::{MoveData, MovePathIndex, Location};
 use self::gather_moves::{MovePathContent};
-
-use std::fmt::Debug;
 
 fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<P<MetaItem>> {
     for attr in attrs {
@@ -118,7 +115,7 @@ fn do_dataflow<'a, 'tcx, BD>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              attributes: &[ast::Attribute],
                              ctxt: &BD::Ctxt,
                              bd: BD) -> DataflowResults<BD>
-    where BD: BitDenotation<Idx=MovePathIndex, Ctxt=MoveData<'tcx>> + DataflowOperator, BD::Bit: Debug
+    where BD: BitDenotation<Idx=MovePathIndex, Ctxt=MoveData<'tcx>> + DataflowOperator
 {
     use syntax::attr::AttrMetaMethods;
 
@@ -154,7 +151,7 @@ fn do_dataflow<'a, 'tcx, BD>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 
 pub struct MirBorrowckCtxtPreDataflow<'a, 'tcx: 'a, BD>
-    where BD: BitDenotation, BD::Ctxt: 'a+HasMoveData<'tcx>
+    where BD: BitDenotation, BD::Ctxt: 'a
 {
     node_id: ast::NodeId,
     flow_state: DataflowAnalysis<'a, 'tcx, BD>,
