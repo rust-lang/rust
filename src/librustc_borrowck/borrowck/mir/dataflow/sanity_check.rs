@@ -80,9 +80,10 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let move_data = flow_ctxt.move_data();
 
         // Emulate effect of all statements in the block up to (but
-        // not including) the assignment to `peek_arg_lval`. Do *not*
-        // include terminator (since we are peeking the state of the
-        // argument at time immediate preceding Call to `rustc_peek`).
+        // not including) the borrow within `peek_arg_lval`. Do *not*
+        // include call to `peek_arg_lval` itself (since we are
+        // peeking the state of the argument at time immediate
+        // preceding Call to `rustc_peek`).
 
         let mut sets = super::BlockSets { on_entry: &mut entry,
                                           gen_set: &mut gen,
