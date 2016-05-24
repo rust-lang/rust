@@ -51,92 +51,102 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let blocks = mir.all_basic_blocks();
     'next_block: for bb in blocks {
-        let bb_data = mir.basic_block_data(bb);
-        let &repr::BasicBlockData { ref statements,
-                                    ref terminator,
-                                    is_cleanup: _ } = bb_data;
+        each_block(tcx, mir, flow_ctxt, results, bb);
+    }
+}
 
-        let (args, span) = match is_rustc_peek(tcx, terminator) {
-            Some(args_and_span) => args_and_span,
-            None => continue,
-        };
-        assert!(args.len() == 1);
-        let peek_arg_lval = match args[0] {
-            repr::Operand::Consume(ref lval @ repr::Lvalue::Temp(_)) => {
-                lval
-            }
-            repr::Operand::Consume(_) => {
-                bug!("dataflow::sanity_check cannot feed a non-temp to rustc_peek.");
-            }
-            repr::Operand::Constant(_) => {
-                bug!("dataflow::sanity_check cannot feed a constant to rustc_peek.");
-            }
-        };
+fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           mir: &Mir<'tcx>,
+                           flow_ctxt: &O::Ctxt,
+                           results: &DataflowResults<O>,
+                           bb: repr::BasicBlock) where
+    O: BitDenotation<Bit=MovePath<'tcx>, Idx=MovePathIndex>, O::Ctxt: HasMoveData<'tcx>
+{
+    let bb_data = mir.basic_block_data(bb);
+    let &repr::BasicBlockData { ref statements,
+                                ref terminator,
+                                is_cleanup: _ } = bb_data;
 
-        let mut entry = results.0.sets.on_entry_set_for(bb.index()).to_owned();
-        let mut gen = results.0.sets.gen_set_for(bb.index()).to_owned();
-        let mut kill = results.0.sets.kill_set_for(bb.index()).to_owned();
-
-        let move_data = flow_ctxt.move_data();
-
-        // Emulate effect of all statements in the block up to (but
-        // not including) the borrow within `peek_arg_lval`. Do *not*
-        // include call to `peek_arg_lval` itself (since we are
-        // peeking the state of the argument at time immediate
-        // preceding Call to `rustc_peek`).
-
-        let mut sets = super::BlockSets { on_entry: &mut entry,
-                                          gen_set: &mut gen,
-                                          kill_set: &mut kill };
-
-        for (j, stmt) in statements.iter().enumerate() {
-            debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
-            let (lvalue, rvalue) = match stmt.kind {
-                repr::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                    (lvalue, rvalue)
-                }
-            };
-
-            if lvalue == peek_arg_lval {
-                if let repr::Rvalue::Ref(_,
-                                         repr::BorrowKind::Shared,
-                                         ref peeking_at_lval) = *rvalue {
-                    // Okay, our search is over.
-                    let peek_mpi = move_data.rev_lookup.find(peeking_at_lval);
-                    let bit_state = sets.on_entry.contains(&peek_mpi);
-                    debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
-                           lvalue, peeking_at_lval, bit_state);
-                    if !bit_state {
-                        tcx.sess.span_err(span, &format!("rustc_peek: bit not set"));
-                    }
-                    continue 'next_block;
-                } else {
-                    // Our search should have been over, but the input
-                    // does not match expectations of `rustc_peek` for
-                    // this sanity_check.
-                    tcx.sess.span_err(span, &format!("rustc_peek: argument expression \
-                                                      must be immediate borrow of form `&expr`"));
-                }
-            }
-
-            let lhs_mpi = move_data.rev_lookup.find(lvalue);
-
-            debug!("rustc_peek: computing effect on lvalue: {:?} ({:?}) in stmt: {:?}",
-                   lvalue, lhs_mpi, stmt);
-            // reset GEN and KILL sets before emulating their effect.
-            for e in sets.gen_set.words_mut() { *e = 0; }
-            for e in sets.kill_set.words_mut() { *e = 0; }
-            results.0.operator.statement_effect(flow_ctxt, &mut sets, bb, j);
-            sets.on_entry.union(sets.gen_set);
-            sets.on_entry.subtract(sets.kill_set);
+    let (args, span) = match is_rustc_peek(tcx, terminator) {
+        Some(args_and_span) => args_and_span,
+        None => return,
+    };
+    assert!(args.len() == 1);
+    let peek_arg_lval = match args[0] {
+        repr::Operand::Consume(ref lval @ repr::Lvalue::Temp(_)) => {
+            lval
         }
+        repr::Operand::Consume(_) |
+        repr::Operand::Constant(_) => {
+            tcx.sess.diagnostic().span_err(
+                span, "dataflow::sanity_check cannot feed a non-temp to rustc_peek.");
+            return;
+        }
+    };
 
-        tcx.sess.span_err(span, &format!("rustc_peek: MIR did not match \
-                                          anticipated pattern; note that \
-                                          rustc_peek expects input of \
-                                          form `&expr`"));
+    let mut entry = results.0.sets.on_entry_set_for(bb.index()).to_owned();
+    let mut gen = results.0.sets.gen_set_for(bb.index()).to_owned();
+    let mut kill = results.0.sets.kill_set_for(bb.index()).to_owned();
+
+    let move_data = flow_ctxt.move_data();
+
+    // Emulate effect of all statements in the block up to (but not
+    // including) the borrow within `peek_arg_lval`. Do *not* include
+    // call to `peek_arg_lval` itself (since we are peeking the state
+    // of the argument at time immediate preceding Call to
+    // `rustc_peek`).
+
+    let mut sets = super::BlockSets { on_entry: &mut entry,
+                                      gen_set: &mut gen,
+                                      kill_set: &mut kill };
+
+    for (j, stmt) in statements.iter().enumerate() {
+        debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
+        let (lvalue, rvalue) = match stmt.kind {
+            repr::StatementKind::Assign(ref lvalue, ref rvalue) => {
+                (lvalue, rvalue)
+            }
+        };
+
+        if lvalue == peek_arg_lval {
+            if let repr::Rvalue::Ref(_,
+                                     repr::BorrowKind::Shared,
+                                     ref peeking_at_lval) = *rvalue {
+                // Okay, our search is over.
+                let peek_mpi = move_data.rev_lookup.find(peeking_at_lval);
+                let bit_state = sets.on_entry.contains(&peek_mpi);
+                debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
+                       lvalue, peeking_at_lval, bit_state);
+                if !bit_state {
+                    tcx.sess.span_err(span, &format!("rustc_peek: bit not set"));
+                }
+                return;
+            } else {
+                // Our search should have been over, but the input
+                // does not match expectations of `rustc_peek` for
+                // this sanity_check.
+                let msg = &format!("rustc_peek: argument expression \
+                                    must be immediate borrow of form `&expr`");
+                tcx.sess.span_err(span, msg);
+            }
+        }
+        
+        let lhs_mpi = move_data.rev_lookup.find(lvalue);
+
+        debug!("rustc_peek: computing effect on lvalue: {:?} ({:?}) in stmt: {:?}",
+               lvalue, lhs_mpi, stmt);
+        // reset GEN and KILL sets before emulating their effect.
+        for e in sets.gen_set.words_mut() { *e = 0; }
+        for e in sets.kill_set.words_mut() { *e = 0; }
+        results.0.operator.statement_effect(flow_ctxt, &mut sets, bb, j);
+        sets.on_entry.union(sets.gen_set);
+        sets.on_entry.subtract(sets.kill_set);
     }
 
+    tcx.sess.span_err(span, &format!("rustc_peek: MIR did not match \
+                                      anticipated pattern; note that \
+                                      rustc_peek expects input of \
+                                      form `&expr`"));
 }
 
 fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
