@@ -978,18 +978,18 @@ are generic.
 This will cause an error:
 
 ```compile_fail
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Bad<T>(T, T, T);
 ```
 
 This will not:
 
 ```
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Good(u32, u32, u32);
 ```
 "##,
@@ -1026,18 +1026,18 @@ will trigger this error.
 This will cause an error:
 
 ```compile_fail
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Bad(u16, u32, u32);
 ```
 
 This will not:
 
 ```
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Good(u32, u32, u32);
 ```
 "##,
@@ -1049,18 +1049,18 @@ must be machine types so SIMD operations can be applied to them.
 This will cause an error:
 
 ```compile_fail
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Bad(String);
 ```
 
 This will not:
 
 ```
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct Good(u32, u32, u32);
 ```
 "##,
