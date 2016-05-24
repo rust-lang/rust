@@ -15,13 +15,50 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use context::SharedCrateContext;
+use monomorphize::Instance;
+
 use back::archive;
 use middle::dependency_format::Linkage;
 use session::Session;
 use session::config::CrateType;
 use session::config;
 use syntax::ast;
-use CrateTranslation;
+
+/// For all the linkers we support, and information they might
+/// need out of the shared crate context before we get rid of it.
+pub struct LinkerInfo {
+    dylib_exports: Vec<String>,
+    cdylib_exports: Vec<String>
+}
+
+impl<'a, 'tcx> LinkerInfo {
+    pub fn new(scx: &SharedCrateContext<'a, 'tcx>,
+               reachable: &[String]) -> LinkerInfo {
+        LinkerInfo {
+            dylib_exports: exported_symbols(scx, reachable, CrateType::CrateTypeDylib),
+            cdylib_exports: exported_symbols(scx, reachable, CrateType::CrateTypeCdylib)
+        }
+    }
+
+    pub fn to_linker(&'a self,
+                     cmd: &'a mut Command,
+                     sess: &'a Session) -> Box<Linker+'a> {
+        if sess.target.target.options.is_like_msvc {
+            Box::new(MsvcLinker {
+                cmd: cmd,
+                sess: sess,
+                info: self
+            }) as Box<Linker>
+        } else {
+            Box::new(GnuLinker {
+                cmd: cmd,
+                sess: sess,
+                info: self
+            }) as Box<Linker>
+        }
+    }
+}
 
 /// Linker abstraction used by back::link to build up the command to invoke a
 /// linker.
@@ -53,16 +90,13 @@ pub trait Linker {
     fn hint_dynamic(&mut self);
     fn whole_archives(&mut self);
     fn no_whole_archives(&mut self);
-    fn export_symbols(&mut self,
-                      sess: &Session,
-                      trans: &CrateTranslation,
-                      tmpdir: &Path,
-                      crate_type: CrateType);
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType);
 }
 
 pub struct GnuLinker<'a> {
-    pub cmd: &'a mut Command,
-    pub sess: &'a Session,
+    cmd: &'a mut Command,
+    sess: &'a Session,
+    info: &'a LinkerInfo
 }
 
 impl<'a> GnuLinker<'a> {
@@ -201,11 +235,7 @@ impl<'a> Linker for GnuLinker<'a> {
         self.cmd.arg("-Wl,-Bdynamic");
     }
 
-    fn export_symbols(&mut self,
-                      sess: &Session,
-                      trans: &CrateTranslation,
-                      tmpdir: &Path,
-                      crate_type: CrateType) {
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
         // If we're compiling a dylib, then we let symbol visibility in object
         // files to take care of whether they're exported or not.
         //
@@ -225,13 +255,13 @@ impl<'a> Linker for GnuLinker<'a> {
         };
         let res = (|| -> io::Result<()> {
             let mut f = BufWriter::new(File::create(&path)?);
-            for sym in exported_symbols(sess, trans, crate_type) {
+            for sym in &self.info.cdylib_exports {
                 writeln!(f, "{}{}", prefix, sym)?;
             }
             Ok(())
         })();
         if let Err(e) = res {
-            sess.fatal(&format!("failed to write lib.def file: {}", e));
+            self.sess.fatal(&format!("failed to write lib.def file: {}", e));
         }
         let mut arg = OsString::new();
         if self.sess.target.target.options.is_like_osx {
@@ -245,8 +275,9 @@ impl<'a> Linker for GnuLinker<'a> {
 }
 
 pub struct MsvcLinker<'a> {
-    pub cmd: &'a mut Command,
-    pub sess: &'a Session,
+    cmd: &'a mut Command,
+    sess: &'a Session,
+    info: &'a LinkerInfo
 }
 
 impl<'a> Linker for MsvcLinker<'a> {
@@ -366,8 +397,6 @@ impl<'a> Linker for MsvcLinker<'a> {
     // in which case they may continue to transitively be used and hence need
     // their symbols exported.
     fn export_symbols(&mut self,
-                      sess: &Session,
-                      trans: &CrateTranslation,
                       tmpdir: &Path,
                       crate_type: CrateType) {
         let path = tmpdir.join("lib.def");
@@ -378,15 +407,18 @@ impl<'a> Linker for MsvcLinker<'a> {
             // straight to exports.
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
-
-            for sym in exported_symbols(sess, trans, crate_type) {
-                writeln!(f, "  {}", sym)?;
+            let symbols = if crate_type == CrateType::CrateTypeCdylib {
+                &self.info.cdylib_exports
+            } else {
+                &self.info.dylib_exports
+            };
+            for symbol in symbols {
+                writeln!(f, "  {}", symbol)?;
             }
-
             Ok(())
         })();
         if let Err(e) = res {
-            sess.fatal(&format!("failed to write lib.def file: {}", e));
+            self.sess.fatal(&format!("failed to write lib.def file: {}", e));
         }
         let mut arg = OsString::from("/DEF:");
         arg.push(path);
@@ -394,10 +426,23 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 }
 
-fn exported_symbols(sess: &Session,
-                    trans: &CrateTranslation,
-                    crate_type: CrateType) -> Vec<String> {
-    let mut symbols = trans.reachable.iter().cloned().collect::<Vec<_>>();
+fn exported_symbols(scx: &SharedCrateContext,
+                    reachable: &[String],
+                    crate_type: CrateType)
+                    -> Vec<String> {
+    if !scx.sess().crate_types.borrow().contains(&crate_type) {
+        return vec![];
+    }
+
+    // See explanation in GnuLinker::export_symbols, for
+    // why we don't ever need dylib symbols on non-MSVC.
+    if crate_type == CrateType::CrateTypeDylib {
+        if !scx.sess().target.target.options.is_like_msvc {
+            return vec![];
+        }
+    }
+
+    let mut symbols = reachable.to_vec();
 
     // If we're producing anything other than a dylib then the `reachable` array
     // above is the exhaustive set of symbols we should be exporting.
@@ -409,10 +454,10 @@ fn exported_symbols(sess: &Session,
         return symbols
     }
 
-    let cstore = &sess.cstore;
-    let formats = sess.dependency_formats.borrow();
-    let upstream_symbols = formats[&crate_type].iter();
-    symbols.extend(upstream_symbols.enumerate().filter_map(|(i, f)| {
+    let cstore = &scx.sess().cstore;
+    let formats = scx.sess().dependency_formats.borrow();
+    let deps = formats[&crate_type].iter();
+    symbols.extend(deps.enumerate().filter_map(|(i, f)| {
         if *f == Linkage::Static {
             Some((i + 1) as ast::CrateNum)
         } else {
@@ -420,9 +465,8 @@ fn exported_symbols(sess: &Session,
         }
     }).flat_map(|cnum| {
         cstore.reachable_ids(cnum)
-    }).map(|did| {
-        cstore.item_symbol(did)
+    }).map(|did| -> String {
+        Instance::mono(scx, did).symbol_name(scx)
     }));
-
-    return symbols
+    symbols
 }

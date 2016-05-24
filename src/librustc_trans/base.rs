@@ -31,6 +31,7 @@ use super::CrateTranslation;
 use super::ModuleTranslation;
 
 use back::link;
+use back::linker::LinkerInfo;
 use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
@@ -2828,6 +2829,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
 
+    let linker_info = LinkerInfo::new(&shared_ccx, &reachable_symbols);
     CrateTranslation {
         modules: modules,
         metadata_module: metadata_module,
@@ -2835,6 +2837,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         metadata: metadata,
         reachable: reachable_symbols,
         no_builtins: no_builtins,
+        linker_info: linker_info
     }
 }
 
