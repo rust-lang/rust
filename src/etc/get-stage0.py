@@ -35,8 +35,9 @@ def main(argv):
     filename = filename_base + '.tar.gz'
     url = 'https://static.rust-lang.org/dist/' + date + '/' + filename
     dst = dl_dir + '/' + filename
-    if not os.path.exists(dst):
-        bootstrap.get(url, dst)
+    if os.path.exists(dst):
+        os.unlink(dst)
+    bootstrap.get(url, dst)
 
     stage0_dst = triple + '/stage0'
     if os.path.exists(stage0_dst):

@@ -43,7 +43,6 @@
 // Since libcore defines many fundamental lang items, all tests live in a
 // separate crate, libcoretest, to avoid bizarre issues.
 
-#![cfg_attr(stage0, allow(unused_attributes))]
 #![crate_name = "core"]
 #![stable(feature = "core", since = "1.6.0")]
 #![crate_type = "rlib"]

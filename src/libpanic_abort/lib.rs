@@ -25,8 +25,8 @@
 
 #![feature(staged_api)]
 
-#![cfg_attr(not(stage0), panic_runtime)]
-#![cfg_attr(not(stage0), feature(panic_runtime))]
+#![panic_runtime]
+#![feature(panic_runtime)]
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(windows, feature(core_intrinsics))]
 
@@ -93,7 +93,6 @@ pub unsafe extern fn __rust_start_panic(_data: usize, _vtable: usize) -> u32 {
 // Essentially this symbol is just defined to get wired up to libcore/libstd
 // binaries, but it should never be called as we don't link in an unwinding
 // runtime at all.
-#[cfg(not(stage0))]
 pub mod personalities {
 
     #[no_mangle]
