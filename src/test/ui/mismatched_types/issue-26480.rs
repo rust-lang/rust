@@ -30,7 +30,7 @@ macro_rules! write {
 }
 
 macro_rules! cast {
-    ($x:expr) => ($x as ()) 
+    ($x:expr) => ($x as ())
 }
 
 fn main() {
