@@ -480,20 +480,6 @@ fn test_is_whitespace() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn test_slice_shift_char() {
-    let data = "ประเทศไทย中";
-    assert_eq!(data.slice_shift_char(), Some(('ป', "ระเทศไทย中")));
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_slice_shift_char_2() {
-    let empty = "";
-    assert_eq!(empty.slice_shift_char(), None);
-}
-
-#[test]
 fn test_is_utf8() {
     // deny overlong encodings
     assert!(from_utf8(&[0xc0, 0x80]).is_err());
@@ -675,30 +661,6 @@ fn test_contains_char() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn test_char_at() {
-    let s = "ศไทย中华Việt Nam";
-    let v = vec!['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-    let mut pos = 0;
-    for ch in &v {
-        assert!(s.char_at(pos) == *ch);
-        pos += ch.to_string().len();
-    }
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_char_at_reverse() {
-    let s = "ศไทย中华Việt Nam";
-    let v = vec!['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-    let mut pos = s.len();
-    for ch in v.iter().rev() {
-        assert!(s.char_at_reverse(pos) == *ch);
-        pos -= ch.to_string().len();
-    }
-}
-
-#[test]
 fn test_split_at() {
     let s = "ศไทย中华Việt Nam";
     for (index, _) in s.char_indices() {
@@ -762,26 +724,6 @@ fn test_total_ord() {
     assert_eq!("1234".cmp("1234"), Equal);
     assert_eq!("12345555".cmp("123456"), Less);
     assert_eq!("22".cmp("1234"), Greater);
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_char_range_at() {
-    let data = "b¢€𤭢𤭢€¢b";
-    assert_eq!('b', data.char_range_at(0).ch);
-    assert_eq!('¢', data.char_range_at(1).ch);
-    assert_eq!('€', data.char_range_at(3).ch);
-    assert_eq!('𤭢', data.char_range_at(6).ch);
-    assert_eq!('𤭢', data.char_range_at(10).ch);
-    assert_eq!('€', data.char_range_at(14).ch);
-    assert_eq!('¢', data.char_range_at(17).ch);
-    assert_eq!('b', data.char_range_at(19).ch);
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_char_range_at_reverse_underflow() {
-    assert_eq!("abc".char_range_at_reverse(0).next, 0);
 }
 
 #[test]

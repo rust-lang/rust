@@ -159,20 +159,6 @@ fn ref_map_accessor() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn ref_filter_map_accessor() {
-    struct X(RefCell<Result<u32, ()>>);
-    impl X {
-        fn accessor(&self) -> Option<Ref<u32>> {
-            Ref::filter_map(self.0.borrow(), |r| r.as_ref().ok())
-        }
-    }
-    let x = X(RefCell::new(Ok(7)));
-    let d: Ref<u32> = x.accessor().unwrap();
-    assert_eq!(*d, 7);
-}
-
-#[test]
 fn ref_mut_map_accessor() {
     struct X(RefCell<(u32, char)>);
     impl X {
@@ -187,24 +173,6 @@ fn ref_mut_map_accessor() {
         *d += 1;
     }
     assert_eq!(*x.0.borrow(), (8, 'z'));
-}
-
-#[test]
-#[allow(deprecated)]
-fn ref_mut_filter_map_accessor() {
-    struct X(RefCell<Result<u32, ()>>);
-    impl X {
-        fn accessor(&self) -> Option<RefMut<u32>> {
-            RefMut::filter_map(self.0.borrow_mut(), |r| r.as_mut().ok())
-        }
-    }
-    let x = X(RefCell::new(Ok(7)));
-    {
-        let mut d: RefMut<u32> = x.accessor().unwrap();
-        assert_eq!(*d, 7);
-        *d += 1;
-    }
-    assert_eq!(*x.0.borrow(), Ok(8));
 }
 
 #[test]

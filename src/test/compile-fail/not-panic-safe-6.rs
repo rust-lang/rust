@@ -9,12 +9,11 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![feature(recover)]
 
-use std::panic::RecoverSafe;
+use std::panic::UnwindSafe;
 use std::cell::RefCell;
 
-fn assert<T: RecoverSafe + ?Sized>() {}
+fn assert<T: UnwindSafe + ?Sized>() {}
 
 fn main() {
     assert::<*mut RefCell<i32>>();
