@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 150 lints included in this crate:
+There are 151 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -107,6 +107,7 @@ name                                                                            
 [neg_multiply](https://github.com/Manishearth/rust-clippy/wiki#neg_multiply)                                         | warn    | Warns on multiplying integers with -1
 [new_ret_no_self](https://github.com/Manishearth/rust-clippy/wiki#new_ret_no_self)                                   | warn    | not returning `Self` in a `new` method
 [new_without_default](https://github.com/Manishearth/rust-clippy/wiki#new_without_default)                           | warn    | `fn new() -> Self` method without `Default` implementation
+[new_without_default_derive](https://github.com/Manishearth/rust-clippy/wiki#new_without_default_derive)             | warn    | `fn new() -> Self` without `#[derive]`able `Default` implementation
 [no_effect](https://github.com/Manishearth/rust-clippy/wiki#no_effect)                                               | warn    | statements with no effect
 [non_ascii_literal](https://github.com/Manishearth/rust-clippy/wiki#non_ascii_literal)                               | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
 [nonminimal_bool](https://github.com/Manishearth/rust-clippy/wiki#nonminimal_bool)                                   | allow   | checks for boolean expressions that can be written more concisely
