@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::usize;
 
 use super::MirBorrowckCtxtPreDataflow;
-use super::gather_moves::{MoveData};
+use super::MoveDataParamEnv;
 
 use bitslice::{bitwise, BitwiseOperator};
 use indexed_set::{Idx, IdxSet, OwnIdxSet};
@@ -36,7 +36,7 @@ pub trait Dataflow<BD: BitDenotation> {
 }
 
 impl<'a, 'tcx: 'a, BD> Dataflow<BD> for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
-    where BD: BitDenotation<Ctxt=MoveData<'tcx>> + DataflowOperator
+    where BD: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>> + DataflowOperator
 {
     fn dataflow<P>(&mut self, p: P) where P: Fn(&BD::Ctxt, BD::Idx) -> &Debug {
         self.flow_state.build_sets();
@@ -140,7 +140,7 @@ fn dataflow_path(context: &str, prepost: &str, path: &str) -> PathBuf {
 }
 
 impl<'a, 'tcx: 'a, BD> MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
-    where BD: BitDenotation<Ctxt=MoveData<'tcx>>
+    where BD: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>>
 {
     fn pre_dataflow_instrumentation<P>(&self, p: P) -> io::Result<()>
         where P: Fn(&BD::Ctxt, BD::Idx) -> &Debug

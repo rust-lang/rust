@@ -50,6 +50,11 @@ fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<P<MetaItem
     return None;
 }
 
+pub struct MoveDataParamEnv<'tcx> {
+    move_data: MoveData<'tcx>,
+    param_env: ty::ParameterEnvironment<'tcx>,
+}
+
 pub fn borrowck_mir<'a, 'tcx: 'a>(
     bcx: &mut BorrowckCtxt<'a, 'tcx>,
     fk: FnKind,
@@ -72,21 +77,23 @@ pub fn borrowck_mir<'a, 'tcx: 'a>(
     let tcx = bcx.tcx;
 
     let move_data = MoveData::gather_moves(mir, tcx);
+    let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+    let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
     let flow_inits =
-        do_dataflow(tcx, mir, id, attributes, &move_data, MaybeInitializedLvals::new(tcx, mir));
+        do_dataflow(tcx, mir, id, attributes, &mdpe, MaybeInitializedLvals::new(tcx, mir));
     let flow_uninits =
-        do_dataflow(tcx, mir, id, attributes, &move_data, MaybeUninitializedLvals::new(tcx, mir));
+        do_dataflow(tcx, mir, id, attributes, &mdpe, MaybeUninitializedLvals::new(tcx, mir));
     let flow_def_inits =
-        do_dataflow(tcx, mir, id, attributes, &move_data, DefinitelyInitializedLvals::new(tcx, mir));
+        do_dataflow(tcx, mir, id, attributes, &mdpe, DefinitelyInitializedLvals::new(tcx, mir));
 
     if has_rustc_mir_with(attributes, "rustc_peek_maybe_init").is_some() {
-        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &move_data, &flow_inits);
+        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &mdpe, &flow_inits);
     }
     if has_rustc_mir_with(attributes, "rustc_peek_maybe_uninit").is_some() {
-        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &move_data, &flow_uninits);
+        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &mdpe, &flow_uninits);
     }
     if has_rustc_mir_with(attributes, "rustc_peek_definite_init").is_some() {
-        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &move_data, &flow_def_inits);
+        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &mdpe, &flow_def_inits);
     }
 
     if has_rustc_mir_with(attributes, "stop_after_dataflow").is_some() {
@@ -97,7 +104,7 @@ pub fn borrowck_mir<'a, 'tcx: 'a>(
         bcx: bcx,
         mir: mir,
         node_id: id,
-        move_data: move_data,
+        move_data: mdpe.move_data,
         flow_inits: flow_inits,
         flow_uninits: flow_uninits,
     };
@@ -115,7 +122,7 @@ fn do_dataflow<'a, 'tcx, BD>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              attributes: &[ast::Attribute],
                              ctxt: &BD::Ctxt,
                              bd: BD) -> DataflowResults<BD>
-    where BD: BitDenotation<Idx=MovePathIndex, Ctxt=MoveData<'tcx>> + DataflowOperator
+    where BD: BitDenotation<Idx=MovePathIndex, Ctxt=MoveDataParamEnv<'tcx>> + DataflowOperator
 {
     use syntax::attr::AttrMetaMethods;
 
@@ -145,7 +152,7 @@ fn do_dataflow<'a, 'tcx, BD>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         flow_state: DataflowAnalysis::new(tcx, mir, ctxt, bd),
     };
 
-    mbcx.dataflow(|move_data, i| &move_data.move_paths[i]);
+    mbcx.dataflow(|ctxt, i| &ctxt.move_data.move_paths[i]);
     mbcx.flow_state.results()
 }
 
@@ -253,10 +260,11 @@ fn on_all_children_bits<'a, 'tcx, F>(
 fn drop_flag_effects_for_function_entry<'a, 'tcx, F>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
-    move_data: &MoveData<'tcx>,
+    ctxt: &MoveDataParamEnv<'tcx>,
     mut callback: F)
     where F: FnMut(MovePathIndex, DropFlagState)
 {
+    let move_data = &ctxt.move_data;
     for i in 0..(mir.arg_decls.len() as u32) {
         let lvalue = repr::Lvalue::Arg(i);
         let move_path_index = move_data.rev_lookup.find(&lvalue);
@@ -269,11 +277,13 @@ fn drop_flag_effects_for_function_entry<'a, 'tcx, F>(
 fn drop_flag_effects_for_location<'a, 'tcx, F>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
-    move_data: &MoveData<'tcx>,
+    ctxt: &MoveDataParamEnv<'tcx>,
     loc: Location,
     mut callback: F)
     where F: FnMut(MovePathIndex, DropFlagState)
 {
+    let move_data = &ctxt.move_data;
+    let param_env = &ctxt.param_env;
     debug!("drop_flag_effects_for_location({:?})", loc);
 
     // first, move out of the RHS
@@ -284,8 +294,7 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
         // don't move out of non-Copy things
         if let MovePathContent::Lvalue(ref lvalue) = move_data.move_paths[path].content {
             let ty = mir.lvalue_ty(tcx, lvalue).to_ty(tcx);
-            let empty_param_env = tcx.empty_parameter_environment();
-            if !ty.moves_by_default(tcx, &empty_param_env, DUMMY_SP) {
+            if !ty.moves_by_default(tcx, param_env, DUMMY_SP) {
                 continue;
             }
         }
