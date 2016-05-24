@@ -10,10 +10,11 @@
 
 // error-pattern:thread '<main>' panicked at 'foobar'
 
-#![feature(std_panic, panic_handler)]
+#![feature(panic_handler)]
+
 use std::panic;
 
 fn main() {
-    panic::take_handler();
+    panic::take_hook();
     panic!("foobar");
 }

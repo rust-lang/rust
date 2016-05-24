@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::raw::Slice;
+struct Slice<T> {
+    data: *const T,
+    len: usize,
+}
 
 fn main() {
     let Slice { data: data, len: len } = "foo";
     //~^ ERROR mismatched types
     //~| expected type `&str`
-    //~| found type `std::raw::Slice<_>`
-    //~| expected &-ptr, found struct `std::raw::Slice`
+    //~| found type `Slice<_>`
+    //~| expected &-ptr, found struct `Slice`
 }

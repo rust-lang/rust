@@ -25,7 +25,6 @@
 #![feature(pattern)]
 #![feature(rand)]
 #![feature(step_by)]
-#![feature(str_char)]
 #![feature(str_escape)]
 #![feature(test)]
 #![feature(unboxed_closures)]
