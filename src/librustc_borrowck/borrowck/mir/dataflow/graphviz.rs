@@ -24,7 +24,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::path::Path;
 
-use super::super::gather_moves::{MoveData};
+use super::super::MoveDataParamEnv;
 use super::super::MirBorrowckCtxtPreDataflow;
 use bitslice::bits_to_string;
 use indexed_set::{Idx, IdxSet};
@@ -79,7 +79,7 @@ impl<O: BitDenotation> DataflowState<O> {
 }
 
 pub trait MirWithFlowState<'tcx> {
-    type BD: BitDenotation<Ctxt=MoveData<'tcx>>;
+    type BD: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>>;
     fn node_id(&self) -> NodeId;
     fn mir(&self) -> &Mir<'tcx>;
     fn analysis_ctxt(&self) -> &<Self::BD as BitDenotation>::Ctxt;
@@ -87,7 +87,7 @@ pub trait MirWithFlowState<'tcx> {
 }
 
 impl<'a, 'tcx: 'a, BD> MirWithFlowState<'tcx> for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
-    where 'a, 'tcx: 'a, BD: BitDenotation<Ctxt=MoveData<'tcx>>
+    where 'a, 'tcx: 'a, BD: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>>
 {
     type BD = BD;
     fn node_id(&self) -> NodeId { self.node_id }
@@ -109,7 +109,7 @@ pub fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
     path: &Path,
     render_idx: P)
     -> io::Result<()>
-    where BD: BitDenotation<Ctxt=MoveData<'tcx>>,
+    where BD: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>>,
           P: for <'b> Fn(&'b BD::Ctxt, BD::Idx) -> &'b Debug
 {
     let g = Graph { mbcx: mbcx, phantom: PhantomData, render_idx: render_idx };

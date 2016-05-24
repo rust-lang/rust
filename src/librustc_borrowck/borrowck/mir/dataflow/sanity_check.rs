@@ -15,7 +15,8 @@ use syntax::codemap::Span;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::repr::{self, Mir};
 
-use super::super::gather_moves::{MoveData, MovePathIndex};
+use super::super::gather_moves::{MovePathIndex};
+use super::super::MoveDataParamEnv;
 use super::BitDenotation;
 use super::DataflowResults;
 
@@ -41,7 +42,7 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 _attributes: &[ast::Attribute],
                                                 flow_ctxt: &O::Ctxt,
                                                 results: &DataflowResults<O>)
-    where O: BitDenotation<Ctxt=MoveData<'tcx>, Idx=MovePathIndex>
+    where O: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>, Idx=MovePathIndex>
 {
     debug!("sanity_check_via_rustc_peek id: {:?}", id);
     // FIXME: this is not DRY. Figure out way to abstract this and
@@ -56,11 +57,12 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            mir: &Mir<'tcx>,
-                           move_data: &O::Ctxt,
+                           ctxt: &O::Ctxt,
                            results: &DataflowResults<O>,
                            bb: repr::BasicBlock) where
-    O: BitDenotation<Ctxt=MoveData<'tcx>, Idx=MovePathIndex>
+    O: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>, Idx=MovePathIndex>
 {
+    let move_data = &ctxt.move_data;
     let bb_data = mir.basic_block_data(bb);
     let &repr::BasicBlockData { ref statements,
                                 ref terminator,
@@ -127,7 +129,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 tcx.sess.span_err(span, msg);
             }
         }
-        
+
         let lhs_mpi = move_data.rev_lookup.find(lvalue);
 
         debug!("rustc_peek: computing effect on lvalue: {:?} ({:?}) in stmt: {:?}",
@@ -135,7 +137,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // reset GEN and KILL sets before emulating their effect.
         for e in sets.gen_set.words_mut() { *e = 0; }
         for e in sets.kill_set.words_mut() { *e = 0; }
-        results.0.operator.statement_effect(move_data, &mut sets, bb, j);
+        results.0.operator.statement_effect(ctxt, &mut sets, bb, j);
         sets.on_entry.union(sets.gen_set);
         sets.on_entry.subtract(sets.kill_set);
     }
