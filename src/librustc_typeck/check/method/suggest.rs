@@ -13,7 +13,7 @@
 
 use CrateCtxt;
 
-use check::{self, FnCtxt, UnresolvedTypeAction};
+use check::{FnCtxt};
 use rustc::hir::map as hir_map;
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use middle::cstore;
@@ -21,7 +21,6 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use middle::lang_items::FnOnceTraitLangItem;
 use rustc::ty::subst::Substs;
-use rustc::ty::LvaluePreference;
 use rustc::traits::{Obligation, SelectionContext};
 use util::nodemap::{FnvHashSet};
 
@@ -48,42 +47,28 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty::TyClosure(..) | ty::TyFnDef(..) | ty::TyFnPtr(_) => true,
             // If it's not a simple function, look for things which implement FnOnce
             _ => {
-                if let Ok(fn_once_trait_did) =
-                        tcx.lang_items.require(FnOnceTraitLangItem) {
-                    let (_, _, opt_is_fn) = self.autoderef(span,
-                                                           ty,
-                                                           || None,
-                                                           UnresolvedTypeAction::Ignore,
-                                                           LvaluePreference::NoPreference,
-                                                           |ty, _| {
-                        self.probe(|_| {
-                            let fn_once_substs =
-                                Substs::new_trait(vec![self.next_ty_var()], vec![], ty);
-                            let trait_ref =
-                                ty::TraitRef::new(fn_once_trait_did,
-                                                  tcx.mk_substs(fn_once_substs));
-                            let poly_trait_ref = trait_ref.to_poly_trait_ref();
-                            let obligation = Obligation::misc(span,
-                                                              self.body_id,
-                                                              poly_trait_ref
-                                                                 .to_predicate());
-                            let mut selcx = SelectionContext::new(self);
+                let fn_once = match tcx.lang_items.require(FnOnceTraitLangItem) {
+                    Ok(fn_once) => fn_once,
+                    Err(..) => return false
+                };
 
-                            if selcx.evaluate_obligation(&obligation) {
-                                Some(())
-                            } else {
-                                None
-                            }
-                        })
-                    });
-
-                    opt_is_fn.is_some()
-                } else {
-                    false
-                }
+                self.autoderef(span, ty).any(|(ty, _)| self.probe(|_| {
+                    let fn_once_substs =
+                        Substs::new_trait(vec![self.next_ty_var()], vec![], ty);
+                    let trait_ref =
+                        ty::TraitRef::new(fn_once,
+                                          tcx.mk_substs(fn_once_substs));
+                    let poly_trait_ref = trait_ref.to_poly_trait_ref();
+                    let obligation = Obligation::misc(span,
+                                                      self.body_id,
+                                                      poly_trait_ref
+                                                      .to_predicate());
+                    SelectionContext::new(self).evaluate_obligation(&obligation)
+                }))
             }
         }
     }
+
     pub fn report_method_error(&self,
                                span: Span,
                                rcvr_ty: Ty<'tcx>,
@@ -384,15 +369,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return is_local(self.resolve_type_vars_with_obligations(rcvr_ty));
         }
 
-        self.autoderef(span, rcvr_ty, || None,
-                       check::UnresolvedTypeAction::Ignore, ty::NoPreference,
-                       |ty, _| {
-            if is_local(ty) {
-                Some(())
-            } else {
-                None
-            }
-        }).2.is_some()
+        self.autoderef(span, rcvr_ty).any(|(ty, _)| is_local(ty))
     }
 }
 
