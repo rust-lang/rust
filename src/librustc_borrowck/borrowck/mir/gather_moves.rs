@@ -659,7 +659,8 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                     debug!("gather_moves Return on_move_out_lval return {:?}", source);
                     bb_ctxt.on_move_out_lval(SK::Return, &Lvalue::ReturnPointer, source);
                 } else {
-                    debug!("gather_moves Return on_move_out_lval assuming unreachable return {:?}", source);
+                    debug!("gather_moves Return on_move_out_lval \
+                            assuming unreachable return {:?}", source);
                 }
             }
 
