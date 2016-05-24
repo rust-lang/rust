@@ -132,7 +132,9 @@ fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
 
 impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
     where MWF: MirWithFlowState<'tcx>,
-          P: for <'b> Fn(&'b <MWF::BD as BitDenotation>::Ctxt, <MWF::BD as BitDenotation>::Idx) -> &'b Debug,
+          P: for <'b> Fn(&'b <MWF::BD as BitDenotation>::Ctxt,
+                         <MWF::BD as BitDenotation>::Idx)
+                         -> &'b Debug,
 {
     type Node = Node;
     type Edge = Edge;
@@ -243,8 +245,10 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
             |w| {
                 let ctxt = self.mbcx.analysis_ctxt();
                 let flow = self.mbcx.flow_state();
-                let gen_interp = flow.interpret_set(ctxt, flow.sets.gen_set_for(i), &self.render_idx);
-                let kill_interp = flow.interpret_set(ctxt, flow.sets.kill_set_for(i), &self.render_idx);
+                let gen_interp =
+                    flow.interpret_set(ctxt, flow.sets.gen_set_for(i), &self.render_idx);
+                let kill_interp =
+                    flow.interpret_set(ctxt, flow.sets.kill_set_for(i), &self.render_idx);
                 chunked_present_left(w, &gen_interp[..], chunk_size)?;
                 let bits_per_block = flow.sets.bits_per_block();
                 {
