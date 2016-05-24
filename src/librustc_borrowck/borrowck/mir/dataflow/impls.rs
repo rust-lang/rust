@@ -24,23 +24,9 @@ use bitslice::BitSlice; // adds set_bit/get_bit to &[usize] bitvector rep.
 use bitslice::{BitwiseOperator};
 use indexed_set::{Idx, IdxSet};
 
-use std::marker::PhantomData;
-
 // Dataflow analyses are built upon some interpretation of the
 // bitvectors attached to each basic block, represented via a
 // zero-sized structure.
-//
-// Note on PhantomData: Each interpretation will need to instantiate
-// the `Bit` and `Ctxt` associated types, and in this case, those
-// associated types need an associated lifetime `'tcx`. The
-// interpretive structures are zero-sized, so they all need to carry a
-// `PhantomData` representing how the structures relate to the `'tcx`
-// lifetime.
-//
-// But, since all of the uses of `'tcx` are solely via instances of
-// `Ctxt` that are passed into the `BitDenotation` methods, we can
-// consistently use a `PhantomData` that is just a function over a
-// `&Ctxt` (== `&MoveData<'tcx>).
 
 /// `MaybeInitializedLvals` tracks all l-values that might be
 /// initialized upon reaching a particular point in the control flow
@@ -77,10 +63,15 @@ use std::marker::PhantomData;
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeUninitializedLvals` yields the set of
 /// l-values that would require a dynamic drop-flag at that statement.
-#[derive(Debug, Default)]
 pub struct MaybeInitializedLvals<'a, 'tcx: 'a> {
-    // See "Note on PhantomData" above.
-    phantom: PhantomData<Fn(&'a MoveData<'tcx>, TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>)>
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &'a Mir<'tcx>,
+}
+
+impl<'a, 'tcx: 'a> MaybeInitializedLvals<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+        MaybeInitializedLvals { tcx: tcx, mir: mir }
+    }
 }
 
 /// `MaybeUninitializedLvals` tracks all l-values that might be
@@ -118,10 +109,15 @@ pub struct MaybeInitializedLvals<'a, 'tcx: 'a> {
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeInitializedLvals` yields the set of
 /// l-values that would require a dynamic drop-flag at that statement.
-#[derive(Debug, Default)]
 pub struct MaybeUninitializedLvals<'a, 'tcx: 'a> {
-    // See "Note on PhantomData" above.
-    phantom: PhantomData<Fn(&'a MoveData<'tcx>, TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>)>
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &'a Mir<'tcx>,
+}
+
+impl<'a, 'tcx: 'a> MaybeUninitializedLvals<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+        MaybeUninitializedLvals { tcx: tcx, mir: mir }
+    }
 }
 
 /// `DefinitelyInitializedLvals` tracks all l-values that are definitely
@@ -165,10 +161,15 @@ pub struct MaybeUninitializedLvals<'a, 'tcx: 'a> {
 /// Similarly, at a given `drop` statement, the set-difference between
 /// this data and `MaybeInitializedLvals` yields the set of l-values
 /// that would require a dynamic drop-flag at that statement.
-#[derive(Debug, Default)]
 pub struct DefinitelyInitializedLvals<'a, 'tcx: 'a> {
-    // See "Note on PhantomData" above.
-    phantom: PhantomData<Fn(&'a MoveData<'tcx>, TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>)>
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &'a Mir<'tcx>,
+}
+
+impl<'a, 'tcx: 'a> DefinitelyInitializedLvals<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+        DefinitelyInitializedLvals { tcx: tcx, mir: mir }
+    }
 }
 
 /// `MovingOutStatements` tracks the statements that perform moves out
@@ -184,10 +185,10 @@ pub struct DefinitelyInitializedLvals<'a, 'tcx: 'a> {
 /// control flow. But `MovingOutStatements` also includes the added
 /// data of *which* particular statement causing the deinitialization
 /// that the borrow checker's error meessage may need to report.
-#[derive(Debug, Default)]
+#[allow(dead_code)]
 pub struct MovingOutStatements<'a, 'tcx: 'a> {
-    // See "Note on PhantomData" above.
-    phantom: PhantomData<Fn(&'a MoveData<'tcx>, TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>)>
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &'a Mir<'tcx>,
 }
 
 impl<'a, 'tcx> MaybeInitializedLvals<'a, 'tcx> {
@@ -226,18 +227,18 @@ impl<'a, 'tcx> DefinitelyInitializedLvals<'a, 'tcx> {
 impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
     type Idx = MovePathIndex;
     type Bit = MovePath<'tcx>;
-    type Ctxt = (TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>, MoveData<'tcx>);
+    type Ctxt = MoveData<'tcx>;
     fn name() -> &'static str { "maybe_init" }
     fn bits_per_block(&self, ctxt: &Self::Ctxt) -> usize {
-        ctxt.2.move_paths.len()
+        ctxt.move_paths.len()
     }
     fn interpret<'c>(&self, ctxt: &'c Self::Ctxt, idx: usize) -> &'c Self::Bit {
-        &ctxt.2.move_paths[MovePathIndex::new(idx)]
+        &ctxt.move_paths[MovePathIndex::new(idx)]
     }
     fn start_block_effect(&self, ctxt: &Self::Ctxt, sets: &mut BlockSets<MovePathIndex>)
     {
         drop_flag_effects_for_function_entry(
-            ctxt.0, ctxt.1, &ctxt.2,
+            self.tcx, self.mir, ctxt,
             |path, s| {
                 assert!(s == DropFlagState::Present);
                 sets.on_entry.add(&path);
@@ -251,7 +252,7 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
                         idx: usize)
     {
         drop_flag_effects_for_location(
-            ctxt.0, ctxt.1, &ctxt.2,
+            self.tcx, self.mir, ctxt,
             Location { block: bb, index: idx },
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -264,7 +265,7 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
                          statements_len: usize)
     {
         drop_flag_effects_for_location(
-            ctxt.0, ctxt.1, &ctxt.2,
+            self.tcx, self.mir, ctxt,
             Location { block: bb, index: statements_len },
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -278,9 +279,8 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
                              dest_lval: &repr::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 1 (initialized).
-        let move_data = &ctxt.2;
-        let move_path_index = move_data.rev_lookup.find(dest_lval);
-        on_all_children_bits(ctxt.0, ctxt.1, &ctxt.2,
+        let move_path_index = ctxt.rev_lookup.find(dest_lval);
+        on_all_children_bits(self.tcx, self.mir, ctxt,
                              move_path_index,
                              |mpi| { in_out.add(&mpi); });
     }
@@ -289,13 +289,13 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
 impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
     type Idx = MovePathIndex;
     type Bit = MovePath<'tcx>;
-    type Ctxt = (TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>, MoveData<'tcx>);
+    type Ctxt = MoveData<'tcx>;
     fn name() -> &'static str { "maybe_uninit" }
     fn bits_per_block(&self, ctxt: &Self::Ctxt) -> usize {
-        ctxt.2.move_paths.len()
+        ctxt.move_paths.len()
     }
     fn interpret<'c>(&self, ctxt: &'c Self::Ctxt, idx: usize) -> &'c Self::Bit {
-        &ctxt.2.move_paths[MovePathIndex::new(idx)]
+        &ctxt.move_paths[MovePathIndex::new(idx)]
     }
 
     // sets on_entry bits for Arg lvalues
@@ -304,7 +304,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
         for e in sets.on_entry.words_mut() { *e = !0; }
 
         drop_flag_effects_for_function_entry(
-            ctxt.0, ctxt.1, &ctxt.2,
+            self.tcx, self.mir, ctxt,
             |path, s| {
                 assert!(s == DropFlagState::Present);
                 sets.on_entry.remove(&path);
@@ -318,7 +318,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
                         idx: usize)
     {
         drop_flag_effects_for_location(
-            ctxt.0, ctxt.1, &ctxt.2,
+            self.tcx, self.mir, ctxt,
             Location { block: bb, index: idx },
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -331,7 +331,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
                          statements_len: usize)
     {
         drop_flag_effects_for_location(
-            ctxt.0, ctxt.1, &ctxt.2,
+            self.tcx, self.mir, ctxt,
             Location { block: bb, index: statements_len },
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -345,8 +345,8 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
                              dest_lval: &repr::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 1 (initialized).
-        let move_path_index = ctxt.2.rev_lookup.find(dest_lval);
-        on_all_children_bits(ctxt.0, ctxt.1, &ctxt.2,
+        let move_path_index = ctxt.rev_lookup.find(dest_lval);
+        on_all_children_bits(self.tcx, self.mir, ctxt,
                              move_path_index,
                              |mpi| { in_out.remove(&mpi); });
     }
@@ -355,13 +355,13 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
 impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
     type Idx = MovePathIndex;
     type Bit = MovePath<'tcx>;
-    type Ctxt = (TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>, MoveData<'tcx>);
+    type Ctxt = MoveData<'tcx>;
     fn name() -> &'static str { "definite_init" }
     fn bits_per_block(&self, ctxt: &Self::Ctxt) -> usize {
-        ctxt.2.move_paths.len()
+        ctxt.move_paths.len()
     }
     fn interpret<'c>(&self, ctxt: &'c Self::Ctxt, idx: usize) -> &'c Self::Bit {
-        &ctxt.2.move_paths[MovePathIndex::new(idx)]
+        &ctxt.move_paths[MovePathIndex::new(idx)]
     }
 
     // sets on_entry bits for Arg lvalues
@@ -369,7 +369,7 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
         for e in sets.on_entry.words_mut() { *e = 0; }
 
         drop_flag_effects_for_function_entry(
-            ctxt.0, ctxt.1, &ctxt.2,
+            self.tcx, self.mir, ctxt,
             |path, s| {
                 assert!(s == DropFlagState::Present);
                 sets.on_entry.add(&path);
@@ -383,7 +383,7 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
                         idx: usize)
     {
         drop_flag_effects_for_location(
-            ctxt.0, ctxt.1, &ctxt.2,
+            self.tcx, self.mir, ctxt,
             Location { block: bb, index: idx },
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -396,7 +396,7 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
                          statements_len: usize)
     {
         drop_flag_effects_for_location(
-            ctxt.0, ctxt.1, &ctxt.2,
+            self.tcx, self.mir, ctxt,
             Location { block: bb, index: statements_len },
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -410,8 +410,8 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
                              dest_lval: &repr::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 1 (initialized).
-        let move_path_index = ctxt.2.rev_lookup.find(dest_lval);
-        on_all_children_bits(ctxt.0, ctxt.1, &ctxt.2,
+        let move_path_index = ctxt.rev_lookup.find(dest_lval);
+        on_all_children_bits(self.tcx, self.mir, ctxt,
                              move_path_index,
                              |mpi| { in_out.add(&mpi); });
     }
@@ -420,13 +420,13 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
 impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
     type Idx = MoveOutIndex;
     type Bit = MoveOut;
-    type Ctxt = (TyCtxt<'a, 'tcx, 'tcx>, &'a Mir<'tcx>, MoveData<'tcx>);
+    type Ctxt = MoveData<'tcx>;
     fn name() -> &'static str { "moving_out" }
     fn bits_per_block(&self, ctxt: &Self::Ctxt) -> usize {
-        ctxt.2.moves.len()
+        ctxt.moves.len()
     }
     fn interpret<'c>(&self, ctxt: &'c Self::Ctxt, idx: usize) -> &'c Self::Bit {
-        &ctxt.2.moves[idx]
+        &ctxt.moves[idx]
     }
     fn start_block_effect(&self,_move_data: &Self::Ctxt, _sets: &mut BlockSets<MoveOutIndex>) {
         // no move-statements have been executed prior to function
@@ -437,7 +437,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                         sets: &mut BlockSets<MoveOutIndex>,
                         bb: repr::BasicBlock,
                         idx: usize) {
-        let &(tcx, mir, ref move_data) = ctxt;
+        let (tcx, mir, move_data) = (self.tcx, self.mir, ctxt);
         let stmt = &mir.basic_block_data(bb).statements[idx];
         let loc_map = &move_data.loc_map;
         let path_map = &move_data.path_map;
@@ -477,7 +477,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                          bb: repr::BasicBlock,
                          statements_len: usize)
     {
-        let &(_tcx, mir, ref move_data) = ctxt;
+        let (mir, move_data) = (self.mir, ctxt);
         let term = mir.basic_block_data(bb).terminator.as_ref().unwrap();
         let loc_map = &move_data.loc_map;
         let loc = Location { block: bb, index: statements_len };
@@ -496,13 +496,13 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                              _call_bb: repr::BasicBlock,
                              _dest_bb: repr::BasicBlock,
                              dest_lval: &repr::Lvalue) {
-        let move_data = &ctxt.2;
+        let move_data = ctxt;
         let move_path_index = move_data.rev_lookup.find(dest_lval);
         let bits_per_block = self.bits_per_block(ctxt);
 
         let path_map = &move_data.path_map;
-        on_all_children_bits(ctxt.0,
-                             ctxt.1,
+        on_all_children_bits(self.tcx,
+                             self.mir,
                              move_data,
                              move_path_index,
                              |mpi| for moi in &path_map[mpi] {
