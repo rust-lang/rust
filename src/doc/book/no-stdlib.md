@@ -84,4 +84,4 @@ which do not trigger a panic can be assured that this function is never
 called. The second function, `panic_fmt`, is also used by the failure
 mechanisms of the compiler.
 
-[unwind]: https://github.com/rust-lang/rust/blob/master/src/libstd/sys/common/unwind/gcc.rs
+[unwind]: https://github.com/rust-lang/rust/blob/master/src/libpanic_unwind/gcc.rs
