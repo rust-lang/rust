@@ -47,10 +47,10 @@ use core::f64;
 use core::intrinsics;
 use core::marker::PhantomData;
 
-pub use isaac::{IsaacRng, Isaac64Rng};
+pub use isaac::{Isaac64Rng, IsaacRng};
 pub use chacha::ChaChaRng;
 
-use distributions::{Range, IndependentSample};
+use distributions::{IndependentSample, Range};
 use distributions::range::SampleRange;
 
 #[cfg(test)]

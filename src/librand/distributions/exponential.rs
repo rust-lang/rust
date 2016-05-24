@@ -13,8 +13,8 @@
 #[cfg(not(test))] // only necessary for no_std
 use FloatMath;
 
-use {Rng, Rand};
-use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
+use {Rand, Rng};
+use distributions::{IndependentSample, Sample, ziggurat, ziggurat_tables};
 
 /// A wrapper around an `f64` to generate Exp(1) random numbers.
 ///
@@ -88,7 +88,7 @@ impl IndependentSample<f64> for Exp {
 
 #[cfg(test)]
 mod tests {
-    use distributions::{Sample, IndependentSample};
+    use distributions::{IndependentSample, Sample};
     use super::Exp;
 
     #[test]
