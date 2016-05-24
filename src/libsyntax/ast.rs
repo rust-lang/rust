@@ -1278,7 +1278,6 @@ pub type Mac = Spanned<Mac_>;
 pub struct Mac_ {
     pub path: Path,
     pub tts: Vec<TokenTree>,
-    pub ctxt: SyntaxContext,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
