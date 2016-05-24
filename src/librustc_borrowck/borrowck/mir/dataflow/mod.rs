@@ -121,9 +121,8 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD>
                 in_out.union(sets.gen_set);
                 in_out.subtract(sets.kill_set);
             }
-            builder.propagate_bits_into_graph_successors_of(in_out,
-                                                            &mut self.changed,
-                                                            (repr::BasicBlock::new(bb_idx), bb_data));
+            builder.propagate_bits_into_graph_successors_of(
+                in_out, &mut self.changed, (repr::BasicBlock::new(bb_idx), bb_data));
         }
     }
 }
