@@ -494,6 +494,13 @@ impl FileInfo {
                         }],
                         kind: RenderedLineKind::OtherFileName,
                     });
+                    output.push(RenderedLine {
+                        text: vec![StyledString {
+                            text: "".to_string(),
+                            style: Style::FileNameStyle,
+                        }],
+                        kind: RenderedLineKind::Annotations,
+                    });
                 }
             }
         }
