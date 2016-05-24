@@ -118,7 +118,7 @@ fn do_dataflow<'a, 'tcx, BD>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              attributes: &[ast::Attribute],
                              ctxt: &BD::Ctxt,
                              bd: BD) -> DataflowResults<BD>
-    where BD: BitDenotation + DataflowOperator, BD::Bit: Debug, BD::Ctxt: HasMoveData<'tcx>
+    where BD: BitDenotation<Idx=MovePathIndex, Ctxt=MoveData<'tcx>> + DataflowOperator, BD::Bit: Debug
 {
     use syntax::attr::AttrMetaMethods;
 
@@ -148,7 +148,7 @@ fn do_dataflow<'a, 'tcx, BD>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         flow_state: DataflowAnalysis::new(tcx, mir, ctxt, bd),
     };
 
-    mbcx.dataflow();
+    mbcx.dataflow(|move_data, i| &move_data.move_paths[i]);
     mbcx.flow_state.results()
 }
 
