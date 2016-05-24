@@ -233,8 +233,7 @@ extern {
 // an argument to the C++ personality function.
 //
 // Again, I'm not entirely sure what this is describing, it just seems to work.
-#[cfg_attr(all(not(test), not(stage0)),
-           lang = "msvc_try_filter")]
+#[cfg_attr(not(test), lang = "msvc_try_filter")]
 static mut TYPE_DESCRIPTOR1: _TypeDescriptor = _TypeDescriptor {
     pVFTable: &TYPE_INFO_VTABLE as *const _ as *const _,
     spare: 0 as *mut _,
@@ -306,13 +305,6 @@ pub unsafe fn cleanup(payload: [u64; 2]) -> Box<Any + Send> {
         data: payload[0] as *mut _,
         vtable: payload[1] as *mut _,
     })
-}
-
-#[lang = "msvc_try_filter"]
-#[cfg(stage0)]
-unsafe extern fn __rust_try_filter(_eh_ptrs: *mut u8,
-                                   _payload: *mut u8) -> i32 {
-    return 0
 }
 
 // This is required by the compiler to exist (e.g. it's a lang item), but
