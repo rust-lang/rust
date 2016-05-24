@@ -19,7 +19,7 @@ use std::mem::{drop, replace};
 struct S(i32);
 
 #[rustc_mir_borrowck]
-#[rustc_mir(rustc_peek_maybe_uninit,stop_after_dataflow,borrowck_graphviz_postflow="/tmp/uninits-2.dot")]
+#[rustc_mir(rustc_peek_maybe_uninit,stop_after_dataflow)]
 fn foo(x: &mut S) {
     // `x` is initialized here, so maybe-uninit bit is 0.
 
