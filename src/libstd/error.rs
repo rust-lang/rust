@@ -212,6 +212,13 @@ impl<T: Error> Error for Box<T> {
     }
 }
 
+#[stable(feature = "fmt_error", since = "1.11.0")]
+impl Error for fmt::Error {
+    fn description(&self) -> &str {
+        "an error occurred when formatting an argument"
+    }
+}
+
 // copied from any.rs
 impl Error + 'static {
     /// Returns true if the boxed type is the same as `T`
