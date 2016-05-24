@@ -75,24 +75,22 @@ pub fn borrowck_mir<'a, 'tcx: 'a>(
     let tcx = bcx.tcx;
 
     let move_data = MoveData::gather_moves(mir, tcx);
-    let ctxt = (tcx, mir, move_data);
-    let (ctxt, flow_inits) =
-        do_dataflow(tcx, mir, id, attributes, ctxt, MaybeInitializedLvals::default());
-    let (ctxt, flow_uninits) =
-        do_dataflow(tcx, mir, id, attributes, ctxt, MaybeUninitializedLvals::default());
-    let (ctxt, flow_def_inits) =
-        do_dataflow(tcx, mir, id, attributes, ctxt, DefinitelyInitializedLvals::default());
+    let flow_inits =
+        do_dataflow(tcx, mir, id, attributes, &move_data, MaybeInitializedLvals::new(tcx, mir));
+    let flow_uninits =
+        do_dataflow(tcx, mir, id, attributes, &move_data, MaybeUninitializedLvals::new(tcx, mir));
+    let flow_def_inits =
+        do_dataflow(tcx, mir, id, attributes, &move_data, DefinitelyInitializedLvals::new(tcx, mir));
 
     if has_rustc_mir_with(attributes, "rustc_peek_maybe_init").is_some() {
-        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &ctxt, &flow_inits);
+        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &move_data, &flow_inits);
     }
     if has_rustc_mir_with(attributes, "rustc_peek_maybe_uninit").is_some() {
-        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &ctxt, &flow_uninits);
+        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &move_data, &flow_uninits);
     }
     if has_rustc_mir_with(attributes, "rustc_peek_definite_init").is_some() {
-        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &ctxt, &flow_def_inits);
+        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &move_data, &flow_def_inits);
     }
-    let move_data = ctxt.2;
 
     if has_rustc_mir_with(attributes, "stop_after_dataflow").is_some() {
         bcx.tcx.sess.fatal("stop_after_dataflow ended compilation");
@@ -118,8 +116,8 @@ fn do_dataflow<'a, 'tcx, BD>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              mir: &Mir<'tcx>,
                              node_id: ast::NodeId,
                              attributes: &[ast::Attribute],
-                             ctxt: BD::Ctxt,
-                             bd: BD) -> (BD::Ctxt, DataflowResults<BD>)
+                             ctxt: &BD::Ctxt,
+                             bd: BD) -> DataflowResults<BD>
     where BD: BitDenotation + DataflowOperator, BD::Bit: Debug, BD::Ctxt: HasMoveData<'tcx>
 {
     use syntax::attr::AttrMetaMethods;
@@ -156,7 +154,7 @@ fn do_dataflow<'a, 'tcx, BD>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 
 pub struct MirBorrowckCtxtPreDataflow<'a, 'tcx: 'a, BD>
-    where BD: BitDenotation, BD::Ctxt: HasMoveData<'tcx>
+    where BD: BitDenotation, BD::Ctxt: 'a+HasMoveData<'tcx>
 {
     node_id: ast::NodeId,
     flow_state: DataflowAnalysis<'a, 'tcx, BD>,

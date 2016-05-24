@@ -49,7 +49,7 @@ impl<'a, 'tcx: 'a, BD> Dataflow for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
 }
 
 struct PropagationContext<'b, 'a: 'b, 'tcx: 'a, O>
-    where O: 'b + BitDenotation, O::Ctxt: HasMoveData<'tcx>
+    where O: 'b + BitDenotation, O::Ctxt: 'a+HasMoveData<'tcx>
 {
     builder: &'b mut DataflowAnalysis<'a, 'tcx, O>,
     changed: bool,
@@ -191,18 +191,18 @@ impl<'tcx, A, B> HasMoveData<'tcx> for (A, B, MoveData<'tcx>) {
 }
 
 pub struct DataflowAnalysis<'a, 'tcx: 'a, O>
-    where O: BitDenotation, O::Ctxt: HasMoveData<'tcx>
+    where O: BitDenotation, O::Ctxt: 'a+HasMoveData<'tcx>
 {
     flow_state: DataflowState<O>,
-    ctxt: O::Ctxt,
     mir: &'a Mir<'tcx>,
+    ctxt: &'a O::Ctxt,
 }
 
 impl<'a, 'tcx: 'a, O> DataflowAnalysis<'a, 'tcx, O>
     where O: BitDenotation, O::Ctxt: HasMoveData<'tcx>
 {
-    pub fn results(self) -> (O::Ctxt, DataflowResults<O>) {
-        (self.ctxt, DataflowResults(self.flow_state))
+    pub fn results(self) -> DataflowResults<O> {
+        DataflowResults(self.flow_state)
     }
 
     pub fn mir(&self) -> &'a Mir<'tcx> { self.mir }
@@ -440,7 +440,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
 {
     pub fn new(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
                mir: &'a Mir<'tcx>,
-               ctxt: D::Ctxt,
+               ctxt: &'a D::Ctxt,
                denotation: D) -> Self {
         let bits_per_block = denotation.bits_per_block(&ctxt);
         let usize_bits = mem::size_of::<usize>() * 8;
