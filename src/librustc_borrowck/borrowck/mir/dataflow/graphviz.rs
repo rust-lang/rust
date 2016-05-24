@@ -21,15 +21,65 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::marker::PhantomData;
+use std::mem;
 use std::path::Path;
 
+use super::super::gather_moves::{MoveData};
 use super::super::MirBorrowckCtxtPreDataflow;
 use bitslice::bits_to_string;
+use indexed_set::{Idx, IdxSet};
 use super::{BitDenotation, DataflowState};
-use super::{HasMoveData};
+
+impl<O: BitDenotation> DataflowState<O> {
+    fn each_bit<F>(&self, ctxt: &O::Ctxt, words: &IdxSet<O::Idx>, mut f: F)
+        where F: FnMut(O::Idx) {
+        //! Helper for iterating over the bits in a bitvector.
+
+        let bits_per_block = self.operator.bits_per_block(ctxt);
+        let usize_bits: usize = mem::size_of::<usize>() * 8;
+
+        for (word_index, &word) in words.words().iter().enumerate() {
+            if word != 0 {
+                let base_index = word_index * usize_bits;
+                for offset in 0..usize_bits {
+                    let bit = 1 << offset;
+                    if (word & bit) != 0 {
+                        // NB: we round up the total number of bits
+                        // that we store in any given bit set so that
+                        // it is an even multiple of usize::BITS. This
+                        // means that there may be some stray bits at
+                        // the end that do not correspond to any
+                        // actual value; that's why we first check
+                        // that we are in range of bits_per_block.
+                        let bit_index = base_index + offset as usize;
+                        if bit_index >= bits_per_block {
+                            return;
+                        } else {
+                            f(O::Idx::new(bit_index));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn interpret_set<'c, P>(&self,
+                                ctxt: &'c O::Ctxt,
+                                words: &IdxSet<O::Idx>,
+                                render_idx: &P)
+                                -> Vec<&'c Debug>
+        where P: for <'b> Fn(&'b O::Ctxt, O::Idx) -> &'b Debug
+    {
+        let mut v = Vec::new();
+        self.each_bit(ctxt, words, |i| {
+            v.push(render_idx(ctxt, i));
+        });
+        v
+    }
+}
 
 pub trait MirWithFlowState<'tcx> {
-    type BD: BitDenotation;
+    type BD: BitDenotation<Ctxt=MoveData<'tcx>>;
     fn node_id(&self) -> NodeId;
     fn mir(&self) -> &Mir<'tcx>;
     fn analysis_ctxt(&self) -> &<Self::BD as BitDenotation>::Ctxt;
@@ -37,7 +87,7 @@ pub trait MirWithFlowState<'tcx> {
 }
 
 impl<'a, 'tcx: 'a, BD> MirWithFlowState<'tcx> for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
-    where 'a, 'tcx: 'a, BD: BitDenotation, BD::Ctxt: HasMoveData<'tcx>
+    where 'a, 'tcx: 'a, BD: BitDenotation<Ctxt=MoveData<'tcx>>
 {
     type BD = BD;
     fn node_id(&self) -> NodeId { self.node_id }
@@ -46,19 +96,23 @@ impl<'a, 'tcx: 'a, BD> MirWithFlowState<'tcx> for MirBorrowckCtxtPreDataflow<'a,
     fn flow_state(&self) -> &DataflowState<Self::BD> { &self.flow_state.flow_state }
 }
 
-struct Graph<'a, 'tcx, MWF:'a> where MWF: MirWithFlowState<'tcx>,
+struct Graph<'a, 'tcx, MWF:'a, P> where
+    MWF: MirWithFlowState<'tcx>
 {
     mbcx: &'a MWF,
-    phantom: PhantomData<&'tcx ()>
+    phantom: PhantomData<&'tcx ()>,
+    render_idx: P,
 }
 
-pub fn print_borrowck_graph_to<'a, 'tcx, BD>(
+pub fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
     mbcx: &MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>,
-    path: &Path)
+    path: &Path,
+    render_idx: P)
     -> io::Result<()>
-    where BD: BitDenotation, BD::Bit: Debug, BD::Ctxt: HasMoveData<'tcx>,
+    where BD: BitDenotation<Ctxt=MoveData<'tcx>>, BD::Bit: Debug,
+          P: for <'b> Fn(&'b BD::Ctxt, BD::Idx) -> &'b Debug
 {
-    let g = Graph { mbcx: mbcx, phantom: PhantomData };
+    let g = Graph { mbcx: mbcx, phantom: PhantomData, render_idx: render_idx };
     let mut v = Vec::new();
     dot::render(&g, &mut v)?;
     debug!("print_borrowck_graph_to path: {} node_id: {}",
@@ -76,8 +130,9 @@ fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
     (0..succ_len).map(|index| Edge { source: bb, index: index}).collect()
 }
 
-impl<'a, 'tcx, MWF> dot::Labeller<'a> for Graph<'a, 'tcx, MWF>
-    where MWF: MirWithFlowState<'tcx>, <MWF::BD as BitDenotation>::Bit: Debug
+impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
+    where MWF: MirWithFlowState<'tcx>, <MWF::BD as BitDenotation>::Bit: Debug,
+          P: for <'b> Fn(&'b <MWF::BD as BitDenotation>::Ctxt, <MWF::BD as BitDenotation>::Idx) -> &'b Debug,
 {
     type Node = Node;
     type Edge = Edge;
@@ -136,10 +191,10 @@ impl<'a, 'tcx, MWF> dot::Labeller<'a> for Graph<'a, 'tcx, MWF>
         const BG_FLOWCONTENT: &'static str = r#"bgcolor="pink""#;
         const ALIGN_RIGHT: &'static str = r#"align="right""#;
         const FACE_MONOSPACE: &'static str = r#"FACE="Courier""#;
-        fn chunked_present_left<D: Debug, W:io::Write>(w: &mut W,
-                                                       interpreted: &[&D],
-                                                       chunk_size: usize)
-                                                       -> io::Result<()>
+        fn chunked_present_left<W:io::Write>(w: &mut W,
+                                             interpreted: &[&Debug],
+                                             chunk_size: usize)
+                                             -> io::Result<()>
         {
             // This function may emit a sequence of <tr>'s, but it
             // always finishes with an (unfinished)
@@ -171,7 +226,9 @@ impl<'a, 'tcx, MWF> dot::Labeller<'a> for Graph<'a, 'tcx, MWF>
             |w| {
                 let ctxt = self.mbcx.analysis_ctxt();
                 let flow = self.mbcx.flow_state();
-                let entry_interp = flow.interpret_set(ctxt, flow.sets.on_entry_set_for(i));
+                let entry_interp = flow.interpret_set(ctxt,
+                                                      flow.sets.on_entry_set_for(i),
+                                                      &self.render_idx);
                 chunked_present_left(w, &entry_interp[..], chunk_size)?;
                 let bits_per_block = flow.sets.bits_per_block();
                 let entry = flow.sets.on_entry_set_for(i);
@@ -186,8 +243,8 @@ impl<'a, 'tcx, MWF> dot::Labeller<'a> for Graph<'a, 'tcx, MWF>
             |w| {
                 let ctxt = self.mbcx.analysis_ctxt();
                 let flow = self.mbcx.flow_state();
-                let gen_interp = flow.interpret_set(ctxt, flow.sets.gen_set_for(i));
-                let kill_interp = flow.interpret_set(ctxt, flow.sets.kill_set_for(i));
+                let gen_interp = flow.interpret_set(ctxt, flow.sets.gen_set_for(i), &self.render_idx);
+                let kill_interp = flow.interpret_set(ctxt, flow.sets.kill_set_for(i), &self.render_idx);
                 chunked_present_left(w, &gen_interp[..], chunk_size)?;
                 let bits_per_block = flow.sets.bits_per_block();
                 {
@@ -245,7 +302,7 @@ impl<'a, 'tcx, MWF> dot::Labeller<'a> for Graph<'a, 'tcx, MWF>
     }
 }
 
-impl<'a, 'tcx, MWF> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF>
+impl<'a, 'tcx, MWF, P> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF, P>
     where MWF: MirWithFlowState<'tcx>
 {
     type Node = Node;

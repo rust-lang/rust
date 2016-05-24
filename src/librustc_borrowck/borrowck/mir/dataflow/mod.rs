@@ -31,20 +31,19 @@ mod graphviz;
 mod sanity_check;
 mod impls;
 
-pub trait Dataflow {
-    fn dataflow(&mut self);
+pub trait Dataflow<BD: BitDenotation> {
+    fn dataflow<P>(&mut self, p: P) where P: Fn(&BD::Ctxt, BD::Idx) -> &Debug;
 }
 
-impl<'a, 'tcx: 'a, BD> Dataflow for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
-    where BD: BitDenotation + DataflowOperator,
+impl<'a, 'tcx: 'a, BD> Dataflow<BD> for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
+    where BD: BitDenotation<Ctxt=MoveData<'tcx>> + DataflowOperator,
           BD::Bit: Debug,
-          BD::Ctxt: HasMoveData<'tcx>
 {
-    fn dataflow(&mut self) {
+    fn dataflow<P>(&mut self, p: P) where P: Fn(&BD::Ctxt, BD::Idx) -> &Debug {
         self.flow_state.build_sets();
-        self.pre_dataflow_instrumentation().unwrap();
+        self.pre_dataflow_instrumentation(|c,i| p(c,i)).unwrap();
         self.flow_state.propagate();
-        self.post_dataflow_instrumentation().unwrap();
+        self.post_dataflow_instrumentation(|c,i| p(c,i)).unwrap();
     }
 }
 
@@ -142,21 +141,25 @@ fn dataflow_path(context: &str, prepost: &str, path: &str) -> PathBuf {
 }
 
 impl<'a, 'tcx: 'a, BD> MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
-    where BD: BitDenotation, BD::Bit: Debug, BD::Ctxt: HasMoveData<'tcx>
+    where BD: BitDenotation<Ctxt=MoveData<'tcx>>, BD::Bit: Debug
 {
-    fn pre_dataflow_instrumentation(&self) -> io::Result<()> {
+    fn pre_dataflow_instrumentation<P>(&self, p: P) -> io::Result<()>
+        where P: Fn(&BD::Ctxt, BD::Idx) -> &Debug
+    {
         if let Some(ref path_str) = self.print_preflow_to {
             let path = dataflow_path(BD::name(), "preflow", path_str);
-            graphviz::print_borrowck_graph_to(self, &path)
+            graphviz::print_borrowck_graph_to(self, &path, p)
         } else {
             Ok(())
         }
     }
 
-    fn post_dataflow_instrumentation(&self) -> io::Result<()> {
+    fn post_dataflow_instrumentation<P>(&self, p: P) -> io::Result<()>
+        where P: Fn(&BD::Ctxt, BD::Idx) -> &Debug
+    {
         if let Some(ref path_str) = self.print_postflow_to {
             let path = dataflow_path(BD::name(), "postflow", path_str);
-            graphviz::print_borrowck_graph_to(self, &path)
+            graphviz::print_borrowck_graph_to(self, &path, p)
         } else{
             Ok(())
         }
@@ -288,48 +291,6 @@ impl<E:Idx> AllSets<E> {
     }
     pub fn on_entry_set_for(&self, block_idx: usize) -> &IdxSet<E> {
         self.lookup_set_for(&self.on_entry_sets, block_idx)
-    }
-}
-
-impl<O: BitDenotation> DataflowState<O> {
-    fn each_bit<F>(&self, ctxt: &O::Ctxt, words: &IdxSet<O::Idx>, mut f: F)
-        where F: FnMut(usize) {
-        //! Helper for iterating over the bits in a bitvector.
-
-        let bits_per_block = self.operator.bits_per_block(ctxt);
-        let usize_bits: usize = mem::size_of::<usize>() * 8;
-
-        for (word_index, &word) in words.words().iter().enumerate() {
-            if word != 0 {
-                let base_index = word_index * usize_bits;
-                for offset in 0..usize_bits {
-                    let bit = 1 << offset;
-                    if (word & bit) != 0 {
-                        // NB: we round up the total number of bits
-                        // that we store in any given bit set so that
-                        // it is an even multiple of usize::BITS. This
-                        // means that there may be some stray bits at
-                        // the end that do not correspond to any
-                        // actual value; that's why we first check
-                        // that we are in range of bits_per_block.
-                        let bit_index = base_index + offset as usize;
-                        if bit_index >= bits_per_block {
-                            return;
-                        } else {
-                            f(bit_index);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn interpret_set<'c>(&self, ctxt: &'c O::Ctxt, words: &IdxSet<O::Idx>) -> Vec<&'c O::Bit> {
-        let mut v = Vec::new();
-        self.each_bit(ctxt, words, |i| {
-            v.push(self.operator.interpret(ctxt, i));
-        });
-        v
     }
 }
 
