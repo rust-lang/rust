@@ -2702,7 +2702,10 @@ impl<'a> Parser<'a> {
                     return Ok(TokenTree::Token(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar)));
                 } else {
                     sp = mk_sp(sp.lo, self.span.hi);
-                    self.parse_ident()?
+                    self.parse_ident().unwrap_or_else(|mut e| {
+                        e.emit();
+                        keywords::Invalid.ident()
+                    })
                 }
             }
             token::SubstNt(name) => {
@@ -2845,7 +2848,7 @@ impl<'a> Parser<'a> {
                         // and an error emitted then. Thus we don't pop from
                         // self.open_braces here.
                     },
-                    _ => unreachable!(),
+                    _ => {}
                 }
 
                 Ok(TokenTree::Delimited(span, Rc::new(Delimited {
