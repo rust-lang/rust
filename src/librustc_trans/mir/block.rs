@@ -17,7 +17,7 @@ use adt;
 use base;
 use build;
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
-use common::{self, type_is_fat_ptr, Block, BlockAndBuilder, LandingPad};
+use common::{self, Block, BlockAndBuilder, LandingPad};
 use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
 use consts;
 use debuginfo::DebugLoc;
@@ -36,7 +36,7 @@ use super::analyze::CleanupKind;
 use super::constant::Const;
 use super::lvalue::{LvalueRef, load_fat_ptr};
 use super::operand::OperandRef;
-use super::operand::OperandValue::{self, FatPtr, Immediate, Ref};
+use super::operand::OperandValue::*;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
@@ -410,8 +410,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                     }
 
-                    let val = self.trans_operand(&bcx, arg).val;
-                    self.trans_argument(&bcx, val, &mut llargs, &fn_ty,
+                    let op = self.trans_operand(&bcx, arg);
+                    self.trans_argument(&bcx, op, &mut llargs, &fn_ty,
                                         &mut idx, &mut callee.data);
                 }
                 if let Some(tup) = untuple {
@@ -449,7 +449,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
                             // Make a fake operand for store_return
                             let op = OperandRef {
-                                val: OperandValue::Ref(dst),
+                                val: Ref(dst),
                                 ty: sig.output.unwrap()
                             };
                             self.store_return(&bcx, ret_dest, fn_ty.ret, op);
@@ -487,7 +487,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         ret_bcx.at_start(|ret_bcx| {
                             debug_loc.apply_to_bcx(ret_bcx);
                             let op = OperandRef {
-                                val: OperandValue::Immediate(invokeret),
+                                val: Immediate(invokeret),
                                 ty: sig.output.unwrap()
                             };
                             self.store_return(&ret_bcx, ret_dest, fn_ty.ret, op);
@@ -498,7 +498,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     fn_ty.apply_attrs_callsite(llret);
                     if let Some((_, target)) = *destination {
                         let op = OperandRef {
-                            val: OperandValue::Immediate(llret),
+                            val: Immediate(llret),
                             ty: sig.output.unwrap()
                         };
                         self.store_return(&bcx, ret_dest, fn_ty.ret, op);
@@ -513,25 +513,36 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
     fn trans_argument(&mut self,
                       bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                      val: OperandValue,
+                      mut op: OperandRef<'tcx>,
                       llargs: &mut Vec<ValueRef>,
                       fn_ty: &FnType,
                       next_idx: &mut usize,
                       callee: &mut CalleeData) {
-        // Treat the values in a fat pointer separately.
-        if let FatPtr(ptr, meta) = val {
-            if *next_idx == 0 {
-                if let Virtual(idx) = *callee {
-                    let llfn = bcx.with_block(|bcx| {
-                        meth::get_virtual_method(bcx, meta, idx)
-                    });
-                    let llty = fn_ty.llvm_type(bcx.ccx()).ptr_to();
-                    *callee = Fn(bcx.pointercast(llfn, llty));
+        if let Pair(a, b) = op.val {
+            // Treat the values in a fat pointer separately.
+            if common::type_is_fat_ptr(bcx.tcx(), op.ty) {
+                let (ptr, meta) = (a, b);
+                if *next_idx == 0 {
+                    if let Virtual(idx) = *callee {
+                        let llfn = bcx.with_block(|bcx| {
+                            meth::get_virtual_method(bcx, meta, idx)
+                        });
+                        let llty = fn_ty.llvm_type(bcx.ccx()).ptr_to();
+                        *callee = Fn(bcx.pointercast(llfn, llty));
+                    }
                 }
+
+                let imm_op = |x| OperandRef {
+                    val: Immediate(x),
+                    // We won't be checking the type again.
+                    ty: bcx.tcx().types.err
+                };
+                self.trans_argument(bcx, imm_op(ptr), llargs, fn_ty, next_idx, callee);
+                self.trans_argument(bcx, imm_op(meta), llargs, fn_ty, next_idx, callee);
+                return;
             }
-            self.trans_argument(bcx, Immediate(ptr), llargs, fn_ty, next_idx, callee);
-            self.trans_argument(bcx, Immediate(meta), llargs, fn_ty, next_idx, callee);
-            return;
+
+            op = op.pack_if_pair(bcx);
         }
 
         let arg = &fn_ty.args[*next_idx];
@@ -547,7 +558,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
 
         // Force by-ref if we have to load through a cast pointer.
-        let (mut llval, by_ref) = match val {
+        let (mut llval, by_ref) = match op.val {
             Immediate(llval) if arg.is_indirect() || arg.cast.is_some() => {
                 let llscratch = build::AllocaFcx(bcx.fcx(), arg.original_ty, "arg");
                 bcx.store(llval, llscratch);
@@ -555,7 +566,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
             Immediate(llval) => (llval, false),
             Ref(llval) => (llval, true),
-            FatPtr(_, _) => bug!("fat pointers handled above")
+            Pair(..) => bug!("pairs handled above")
         };
 
         if by_ref && !arg.is_indirect() {
@@ -602,12 +613,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     let ptr = adt::trans_field_ptr_builder(bcx, &base_repr, base, Disr(0), n);
                     let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
                         let (lldata, llextra) = load_fat_ptr(bcx, ptr);
-                        FatPtr(lldata, llextra)
+                        Pair(lldata, llextra)
                     } else {
                         // trans_argument will load this if it needs to
                         Ref(ptr)
                     };
-                    self.trans_argument(bcx, val, llargs, fn_ty, next_idx, callee);
+                    let op = OperandRef {
+                        val: val,
+                        ty: ty
+                    };
+                    self.trans_argument(bcx, op, llargs, fn_ty, next_idx, callee);
                 }
 
             }
@@ -619,11 +634,29 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         elem = bcx.trunc(elem, Type::i1(bcx.ccx()));
                     }
                     // If the tuple is immediate, the elements are as well
-                    let val = Immediate(elem);
-                    self.trans_argument(bcx, val, llargs, fn_ty, next_idx, callee);
+                    let op = OperandRef {
+                        val: Immediate(elem),
+                        ty: ty
+                    };
+                    self.trans_argument(bcx, op, llargs, fn_ty, next_idx, callee);
                 }
             }
-            FatPtr(_, _) => bug!("tuple is a fat pointer?!")
+            Pair(a, b) => {
+                let elems = [a, b];
+                for (n, &ty) in arg_types.iter().enumerate() {
+                    let mut elem = elems[n];
+                    // Truncate bools to i1, if needed
+                    if ty.is_bool() && common::val_ty(elem) != Type::i1(bcx.ccx()) {
+                        elem = bcx.trunc(elem, Type::i1(bcx.ccx()));
+                    }
+                    // Pair is always made up of immediates
+                    let op = OperandRef {
+                        val: Immediate(elem),
+                        ty: ty
+                    };
+                    self.trans_argument(bcx, op, llargs, fn_ty, next_idx, callee);
+                }
+            }
         }
 
     }
@@ -779,7 +812,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let f = Callee::def(bcx.ccx(), def_id, substs);
                 let datum = f.reify(bcx.ccx());
                 val = OperandRef {
-                    val: OperandValue::Immediate(datum.val),
+                    val: Immediate(datum.val),
                     ty: datum.ty
                 };
             }
@@ -806,17 +839,15 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 self.temps[idx as usize] = TempRef::Operand(Some(op));
             }
             DirectOperand(idx) => {
-                let op = if type_is_fat_ptr(bcx.tcx(), op.ty) {
-                    let llval = op.immediate();
-                    let ptr = bcx.extract_value(llval, 0);
-                    let meta = bcx.extract_value(llval, 1);
-
-                    OperandRef {
-                        val: OperandValue::FatPtr(ptr, meta),
-                        ty: op.ty
-                    }
+                // If there is a cast, we have to store and reload.
+                let op = if ret_ty.cast.is_some() {
+                    let tmp = bcx.with_block(|bcx| {
+                        base::alloc_ty(bcx, op.ty, "tmp_ret")
+                    });
+                    ret_ty.store(bcx, op.immediate(), tmp);
+                    self.trans_load(bcx, tmp, op.ty)
                 } else {
-                    op
+                    op.unpack_if_pair(bcx)
                 };
                 self.temps[idx as usize] = TempRef::Operand(Some(op));
             }

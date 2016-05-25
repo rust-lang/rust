@@ -16,14 +16,12 @@ use rustc::mir::repr as mir;
 use asm;
 use base;
 use callee::Callee;
-use common::{self, val_ty,
-             C_null, C_uint, C_undef, BlockAndBuilder, Result};
+use common::{self, val_ty, C_null, C_uint, BlockAndBuilder, Result};
 use datum::{Datum, Lvalue};
 use debuginfo::DebugLoc;
 use adt;
 use machine;
 use type_of;
-use type_::Type;
 use tvec;
 use value::Value;
 use Disr;
@@ -68,9 +66,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // `CoerceUnsized` can be passed by a where-clause,
                 // so the (generic) MIR may not be able to expand it.
                 let operand = self.trans_operand(&bcx, source);
+                let operand = operand.pack_if_pair(&bcx);
                 bcx.with_block(|bcx| {
                     match operand.val {
-                        OperandValue::FatPtr(..) => bug!(),
+                        OperandValue::Pair(..) => bug!(),
                         OperandValue::Immediate(llval) => {
                             // unsize from an immediate structure. We don't
                             // really need a temporary alloca here, but
@@ -255,7 +254,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         assert!(common::type_is_fat_ptr(bcx.tcx(), cast_ty));
 
                         match operand.val {
-                            OperandValue::FatPtr(lldata, llextra) => {
+                            OperandValue::Pair(lldata, llextra) => {
                                 // unsize from a fat pointer - this is a
                                 // "trait-object-to-supertrait" coercion, for
                                 // example,
@@ -264,7 +263,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 // the types match up.
                                 let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx(), cast_ty);
                                 let lldata = bcx.pointercast(lldata, llcast_ty);
-                                OperandValue::FatPtr(lldata, llextra)
+                                OperandValue::Pair(lldata, llextra)
                             }
                             OperandValue::Immediate(lldata) => {
                                 // "standard" unsize
@@ -272,7 +271,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                     base::unsize_thin_ptr(bcx, lldata,
                                                           operand.ty, cast_ty)
                                 });
-                                OperandValue::FatPtr(lldata, llextra)
+                                OperandValue::Pair(lldata, llextra)
                             }
                             OperandValue::Ref(_) => {
                                 bug!("by-ref operand {:?} in trans_rvalue_operand",
@@ -343,13 +342,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     mir::CastKind::Misc => { // Casts from a fat-ptr.
                         let ll_cast_ty = type_of::immediate_type_of(bcx.ccx(), cast_ty);
                         let ll_from_ty = type_of::immediate_type_of(bcx.ccx(), operand.ty);
-                        if let OperandValue::FatPtr(data_ptr, meta_ptr) = operand.val {
+                        if let OperandValue::Pair(data_ptr, meta_ptr) = operand.val {
                             if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
                                 let ll_cft = ll_cast_ty.field_types();
                                 let ll_fft = ll_from_ty.field_types();
                                 let data_cast = bcx.pointercast(data_ptr, ll_cft[0]);
                                 assert_eq!(ll_cft[1].kind(), ll_fft[1].kind());
-                                OperandValue::FatPtr(data_cast, meta_ptr)
+                                OperandValue::Pair(data_cast, meta_ptr)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
@@ -357,7 +356,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 OperandValue::Immediate(llval)
                             }
                         } else {
-                            bug!("Unexpected non-FatPtr operand")
+                            bug!("Unexpected non-Pair operand")
                         }
                     }
                 };
@@ -386,8 +385,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                 } else {
                     OperandRef {
-                        val: OperandValue::FatPtr(tr_lvalue.llval,
-                                                  tr_lvalue.llextra),
+                        val: OperandValue::Pair(tr_lvalue.llval,
+                                                tr_lvalue.llextra),
                         ty: ref_ty,
                     }
                 };
@@ -408,8 +407,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let rhs = self.trans_operand(&bcx, rhs);
                 let llresult = if common::type_is_fat_ptr(bcx.tcx(), lhs.ty) {
                     match (lhs.val, rhs.val) {
-                        (OperandValue::FatPtr(lhs_addr, lhs_extra),
-                         OperandValue::FatPtr(rhs_addr, rhs_extra)) => {
+                        (OperandValue::Pair(lhs_addr, lhs_extra),
+                         OperandValue::Pair(rhs_addr, rhs_extra)) => {
                             bcx.with_block(|bcx| {
                                 base::compare_fat_ptrs(bcx,
                                                        lhs_addr, lhs_extra,
@@ -441,7 +440,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let val_ty = self.mir.binop_ty(bcx.tcx(), op, lhs.ty, rhs.ty);
                 let operand_ty = bcx.tcx().mk_tup(vec![val_ty, bcx.tcx().types.bool]);
                 let operand = OperandRef {
-                    val: OperandValue::Immediate(result),
+                    val: result,
                     ty: operand_ty
                 };
 
@@ -579,7 +578,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                       op: mir::BinOp,
                                       lhs: ValueRef,
                                       rhs: ValueRef,
-                                      input_ty: Ty<'tcx>) -> ValueRef {
+                                      input_ty: Ty<'tcx>) -> OperandValue {
         let (val, of) = match op {
             // These are checked using intrinsics
             mir::BinOp::Add | mir::BinOp::Sub | mir::BinOp::Mul => {
@@ -592,10 +591,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let intrinsic = get_overflow_intrinsic(oop, bcx, input_ty);
                 let res = bcx.call(intrinsic, &[lhs, rhs], None);
 
-                let val = bcx.extract_value(res, 0);
-                let of = bcx.extract_value(res, 1);
-
-                (val, bcx.zext(of, Type::bool(bcx.ccx())))
+                (bcx.extract_value(res, 0),
+                 bcx.extract_value(res, 1))
             }
             mir::BinOp::Shl | mir::BinOp::Shr => {
                 let lhs_llty = val_ty(lhs);
@@ -608,19 +605,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let of = bcx.icmp(llvm::IntNE, outer_bits, C_null(rhs_llty));
                 let val = self.trans_scalar_binop(bcx, op, lhs, rhs, input_ty);
 
-                (val, bcx.zext(of, Type::bool(bcx.ccx())))
+                (val, of)
             }
             _ => {
                 bug!("Operator `{:?}` is not a checkable operator", op)
             }
         };
 
-        let val_ty = val_ty(val);
-        let res_ty = Type::struct_(bcx.ccx(), &[val_ty, Type::bool(bcx.ccx())], false);
-
-        let mut res_val = C_undef(res_ty);
-        res_val = bcx.insert_value(res_val, val, 0);
-        bcx.insert_value(res_val, of, 1)
+        OperandValue::Pair(val, of)
     }
 }
 

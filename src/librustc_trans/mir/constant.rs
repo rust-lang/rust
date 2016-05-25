@@ -98,9 +98,15 @@ impl<'tcx> Const<'tcx> {
         Const::new(val, ty)
     }
 
+    fn get_pair(&self) -> (ValueRef, ValueRef) {
+        (const_get_elt(self.llval, &[0]),
+         const_get_elt(self.llval, &[1]))
+    }
+
     fn get_fat_ptr(&self) -> (ValueRef, ValueRef) {
-        (const_get_elt(self.llval, &[abi::FAT_PTR_ADDR as u32]),
-         const_get_elt(self.llval, &[abi::FAT_PTR_EXTRA as u32]))
+        assert_eq!(abi::FAT_PTR_ADDR, 0);
+        assert_eq!(abi::FAT_PTR_EXTRA, 1);
+        self.get_pair()
     }
 
     fn as_lvalue(&self) -> ConstLvalue<'tcx> {
@@ -115,9 +121,9 @@ impl<'tcx> Const<'tcx> {
         let llty = type_of::immediate_type_of(ccx, self.ty);
         let llvalty = val_ty(self.llval);
 
-        let val = if common::type_is_fat_ptr(ccx.tcx(), self.ty) {
-            let (data, extra) = self.get_fat_ptr();
-            OperandValue::FatPtr(data, extra)
+        let val = if common::type_is_imm_pair(ccx, self.ty) {
+            let (a, b) = self.get_pair();
+            OperandValue::Pair(a, b)
         } else if common::type_is_immediate(ccx, self.ty) && llty == llvalty {
             // If the types match, we can use the value directly.
             OperandValue::Immediate(self.llval)
@@ -656,7 +662,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                 consts::ptrcast(data_ptr, ll_cast_ty)
                             }
                         } else {
-                            bug!("Unexpected non-FatPtr operand")
+                            bug!("Unexpected non-fat-pointer operand")
                         }
                     }
                 };
