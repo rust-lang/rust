@@ -966,7 +966,7 @@ impl<T: Clone> Vec<T> {
         }
     }
 
-    /// Appends all elements in a slice to the `Vec`.
+    /// Clones and appends all elements in a slice to the `Vec`.
     ///
     /// Iterates over the slice `other`, clones each element, and then appends
     /// it to this `Vec`. The `other` vector is traversed in-order.
