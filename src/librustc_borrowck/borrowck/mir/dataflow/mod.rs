@@ -324,9 +324,9 @@ pub trait BitDenotation {
     /// "transfer-function" represnting the overall-effect of the
     /// block, represented via GEN and KILL sets.
     ///
-    /// The statement here is `idx_stmt.1`; `idx_stmt.0` is just
-    /// an identifying index: namely, the index of the statement
-    /// in the basic block.
+    /// The statement is identified as `bb_data[idx_stmt]`, where
+    /// `bb_data` is the sequence of statements identifed by `bb` in
+    /// the MIR.
     fn statement_effect(&self,
                         ctxt: &Self::Ctxt,
                         sets: &mut BlockSets<Self::Idx>,
@@ -340,10 +340,6 @@ pub trait BitDenotation {
     /// This is used, in particular, for building up the
     /// "transfer-function" represnting the overall-effect of the
     /// block, represented via GEN and KILL sets.
-    ///
-    /// The terminator here is `idx_term.1`; `idx_term.0` is just an
-    /// identifying index: namely, the number of statements in `bb`
-    /// itself.
     ///
     /// The effects applied here cannot depend on which branch the
     /// terminator took.
@@ -367,6 +363,11 @@ pub trait BitDenotation {
     /// flow-dependent, the current MIR cannot encode them via just
     /// GEN and KILL sets attached to the block, and so instead we add
     /// this extra machinery to represent the flow-dependent effect.
+    ///
+    /// FIXME: Right now this is a bit of a wart in the API. It might
+    /// be better to represent this as an additional gen- and
+    /// kill-sets associated with each edge coming out of the basic
+    /// block.
     fn propagate_call_return(&self,
                              ctxt: &Self::Ctxt,
                              in_out: &mut IdxSet<Self::Idx>,
