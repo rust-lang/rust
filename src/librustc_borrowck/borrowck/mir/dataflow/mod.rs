@@ -21,7 +21,7 @@ use super::MirBorrowckCtxtPreDataflow;
 use super::MoveDataParamEnv;
 
 use bitslice::{bitwise, BitwiseOperator};
-use indexed_set::{Idx, IdxSet, OwnIdxSet};
+use indexed_set::{Idx, IdxSet, IdxSetBuf};
 
 pub use self::sanity_check::sanity_check_via_rustc_peek;
 pub use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
@@ -57,7 +57,7 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
     where BD: BitDenotation + DataflowOperator
 {
     fn propagate(&mut self) {
-        let mut temp = OwnIdxSet::new_empty(self.flow_state.sets.bits_per_block);
+        let mut temp = IdxSetBuf::new_empty(self.flow_state.sets.bits_per_block);
         let mut propcx = PropagationContext {
             builder: self,
             changed: true,
@@ -167,7 +167,7 @@ impl<'a, 'tcx: 'a, BD> MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
 /// Maps each block to a set of bits
 #[derive(Debug)]
 struct Bits<E:Idx> {
-    bits: OwnIdxSet<E>,
+    bits: IdxSetBuf<E>,
 }
 
 impl<E:Idx> Clone for Bits<E> {
@@ -175,7 +175,7 @@ impl<E:Idx> Clone for Bits<E> {
 }
 
 impl<E:Idx> Bits<E> {
-    fn new(bits: OwnIdxSet<E>) -> Self {
+    fn new(bits: IdxSetBuf<E>) -> Self {
         Bits { bits: bits }
     }
 }
@@ -393,11 +393,11 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
         let num_blocks = mir.basic_blocks.len();
         let num_overall = num_blocks * bits_per_block;
 
-        let zeroes = Bits::new(OwnIdxSet::new_empty(num_overall));
+        let zeroes = Bits::new(IdxSetBuf::new_empty(num_overall));
         let on_entry = Bits::new(if D::bottom_value() {
-            OwnIdxSet::new_filled(num_overall)
+            IdxSetBuf::new_filled(num_overall)
         } else {
-            OwnIdxSet::new_empty(num_overall)
+            IdxSetBuf::new_empty(num_overall)
         });
 
         DataflowAnalysis {
