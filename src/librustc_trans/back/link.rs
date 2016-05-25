@@ -188,6 +188,11 @@ pub fn link_binary(sess: &Session,
 
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
+        // Ignore executable crates if we have -Z no-trans, as they will error.
+        if sess.opts.no_trans && crate_type == config::CrateTypeExecutable {
+            continue;
+        }
+
         if invalid_output_for_target(sess, crate_type) {
            bug!("invalid output type `{:?}` for target os `{}`",
                 crate_type, sess.opts.target_triple);

@@ -502,6 +502,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         &self.symbol_hasher
     }
 
+    pub fn mir_map(&self) -> &MirMap<'tcx> {
+        &self.mir_map
+    }
+
     pub fn metadata_symbol_name(&self) -> String {
         format!("rust_metadata_{}_{}",
                 self.link_meta().crate_name,
