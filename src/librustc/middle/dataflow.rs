@@ -660,8 +660,8 @@ fn set_bit(words: &mut [usize], bit: usize) -> bool {
 }
 
 fn bit_str(bit: usize) -> String {
-    let byte = bit >> 8;
-    let lobits = 1 << (bit & 0xFF);
+    let byte = bit >> 3;
+    let lobits = 1 << (bit & 0b111);
     format!("[{}:{}-{:02x}]", bit, byte, lobits)
 }
 

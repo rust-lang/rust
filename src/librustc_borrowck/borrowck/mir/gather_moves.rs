@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use rustc::ty::TyCtxt;
+use rustc::ty::{FnOutput, TyCtxt};
 use rustc::mir::repr::*;
 use rustc::util::nodemap::FnvHashMap;
 
@@ -19,8 +19,8 @@ use std::fmt;
 use std::iter;
 use std::ops::Index;
 
-use super::dataflow::BitDenotation;
 use super::abs_domain::{AbstractElem, Lift};
+use indexed_set::{Idx};
 
 // This submodule holds some newtype'd Index wrappers that are using
 // NonZero to ensure that Option<Index> occupies only a single word.
@@ -29,17 +29,21 @@ use super::abs_domain::{AbstractElem, Lift};
 // (which is likely to yield a subtle off-by-one error).
 mod indexes {
     use core::nonzero::NonZero;
+    use indexed_set::Idx;
 
     macro_rules! new_index {
         ($Index:ident) => {
-            #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+            #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
             pub struct $Index(NonZero<usize>);
 
             impl $Index {
-                pub fn new(idx: usize) -> Self {
+            }
+
+            impl Idx for $Index {
+                fn new(idx: usize) -> Self {
                     unsafe { $Index(NonZero::new(idx + 1)) }
                 }
-                pub fn idx(&self) -> usize {
+                fn idx(&self) -> usize {
                     *self.0 - 1
                 }
             }
@@ -55,6 +59,12 @@ mod indexes {
 
 pub use self::indexes::MovePathIndex;
 pub use self::indexes::MoveOutIndex;
+
+impl self::indexes::MoveOutIndex {
+    pub fn move_path_index(&self, move_data: &MoveData) -> MovePathIndex {
+        move_data.moves[self.idx()].path
+    }
+}
 
 /// `MovePath` is a canonicalized representation of a path that is
 /// moved or assigned to.
@@ -125,6 +135,7 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
     }
 }
 
+#[derive(Debug)]
 pub struct MoveData<'tcx> {
     pub move_paths: MovePathData<'tcx>,
     pub moves: Vec<MoveOut>,
@@ -133,6 +144,7 @@ pub struct MoveData<'tcx> {
     pub rev_lookup: MovePathLookup<'tcx>,
 }
 
+#[derive(Debug)]
 pub struct LocMap {
     /// Location-indexed (BasicBlock for outer index, index within BB
     /// for inner index) map to list of MoveOutIndex's.
@@ -153,6 +165,7 @@ impl Index<Location> for LocMap {
     }
 }
 
+#[derive(Debug)]
 pub struct PathMap {
     /// Path-indexed map to list of MoveOutIndex's.
     ///
@@ -187,7 +200,7 @@ impl fmt::Debug for MoveOut {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Location {
     /// block where action is located
     pub block: BasicBlock,
@@ -202,8 +215,13 @@ impl fmt::Debug for Location {
     }
 }
 
+#[derive(Debug)]
 pub struct MovePathData<'tcx> {
     move_paths: Vec<MovePath<'tcx>>,
+}
+
+impl<'tcx> MovePathData<'tcx> {
+    pub fn len(&self) -> usize { self.move_paths.len() }
 }
 
 impl<'tcx> Index<MovePathIndex> for MovePathData<'tcx> {
@@ -224,6 +242,7 @@ struct MovePathDataBuilder<'a, 'tcx: 'a> {
 }
 
 /// Tables mapping from an l-value to its MovePathIndex.
+#[derive(Debug)]
 pub struct MovePathLookup<'tcx> {
     vars: MovePathInverseMap,
     temps: MovePathInverseMap,
@@ -272,6 +291,7 @@ impl<T:Clone> FillTo for Vec<T> {
 
 #[derive(Clone, Debug)]
 enum LookupKind { Generate, Reuse }
+#[derive(Clone, Debug)]
 struct Lookup<T>(LookupKind, T);
 
 impl Lookup<MovePathIndex> {
@@ -419,7 +439,14 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
         self.rev_lookup.lookup_proj(proj, base_index)
     }
 
+    fn create_move_path(&mut self, lval: &Lvalue<'tcx>) {
+        // Create MovePath for `lval`, discarding returned index.
+        self.move_path_for(lval);
+    }
+
     fn move_path_for(&mut self, lval: &Lvalue<'tcx>) -> MovePathIndex {
+        debug!("move_path_for({:?})", lval);
+
         let lookup: Lookup<MovePathIndex> = self.lookup(lval);
 
         // `lookup` is either the previously assigned index or a
@@ -491,7 +518,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
 #[derive(Debug)]
 enum StmtKind {
     Use, Repeat, Cast, BinaryOp, UnaryOp, Box,
-    Aggregate, Drop, CallFn, CallArg, Return,
+    Aggregate, Drop, CallFn, CallArg, Return, If,
 }
 
 fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveData<'tcx> {
@@ -511,6 +538,27 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
         rev_lookup: MovePathLookup::new(),
     };
 
+    // Before we analyze the program text, we create the MovePath's
+    // for all of the vars, args, and temps. (This enforces a basic
+    // property that even if the MIR body doesn't contain any
+    // references to a var/arg/temp, it will still be a valid
+    // operation to lookup the MovePath associated with it.)
+    assert!(mir.var_decls.len() <= ::std::u32::MAX as usize);
+    assert!(mir.arg_decls.len() <= ::std::u32::MAX as usize);
+    assert!(mir.temp_decls.len() <= ::std::u32::MAX as usize);
+    for var_idx in 0..mir.var_decls.len() {
+        let path_idx = builder.move_path_for(&Lvalue::Var(var_idx as u32));
+        path_map.fill_to(path_idx.idx());
+    }
+    for arg_idx in 0..mir.arg_decls.len() {
+        let path_idx = builder.move_path_for(&Lvalue::Arg(arg_idx as u32));
+        path_map.fill_to(path_idx.idx());
+    }
+    for temp_idx in 0..mir.temp_decls.len() {
+        let path_idx = builder.move_path_for(&Lvalue::Temp(temp_idx as u32));
+        path_map.fill_to(path_idx.idx());
+    }
+
     for bb in bbs {
         let loc_map_bb = &mut loc_map[bb.index()];
         let bb_data = mir.basic_block_data(bb);
@@ -521,7 +569,7 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
         debug_assert!(loc_map_bb.len() == len + 1);
 
         let mut bb_ctxt = BlockContext {
-            tcx: tcx,
+            _tcx: tcx,
             moves: &mut moves,
             builder: builder,
             path_map: &mut path_map,
@@ -532,8 +580,12 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
             let source = Location { block: bb, index: i };
             match stmt.kind {
                 StatementKind::Assign(ref lval, ref rval) => {
-                    // ensure MovePath created for `lval`.
-                    bb_ctxt.builder.move_path_for(lval);
+                    bb_ctxt.builder.create_move_path(lval);
+
+                    // Ensure that the path_map contains entries even
+                    // if the lvalue is assigned and never read.
+                    let assigned_path = bb_ctxt.builder.move_path_for(lval);
+                    bb_ctxt.path_map.fill_to(assigned_path.idx());
 
                     match *rval {
                         Rvalue::Use(ref operand) => {
@@ -569,27 +621,45 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                         Rvalue::InlineAsm { .. } => {}
 
                         Rvalue::Slice {..} => {
-                            bug!("cannot move out of slice");
+                            // A slice pattern `x..` binds `x` to a
+                            // reference; thus no move occurs.
+                            //
+                            // FIXME: I recall arielb1 questioning
+                            // whether this is even a legal thing to
+                            // have as an R-value. The particular
+                            // example where I am seeing this arise is
+                            // `TargetDataLayout::parse(&Session)` in
+                            // `rustc::ty::layout`.
+                            //
+                            // this should be removed soon.
+                            debug!("encountered Rvalue::Slice as RHS of Assign, source: {:?}",
+                                   source);
                         }
                     }
                 }
             }
         }
 
+        debug!("gather_moves({:?})", bb_data.terminator());
         match bb_data.terminator().kind {
             TerminatorKind::Goto { target: _ } | TerminatorKind::Resume => { }
 
             TerminatorKind::Return => {
                 let source = Location { block: bb,
                                         index: bb_data.statements.len() };
-                let lval = &Lvalue::ReturnPointer.deref();
-                bb_ctxt.on_move_out_lval(SK::Return, lval, source);
+                if let FnOutput::FnConverging(_) = bb_ctxt.builder.mir.return_ty {
+                    debug!("gather_moves Return on_move_out_lval return {:?}", source);
+                    bb_ctxt.on_move_out_lval(SK::Return, &Lvalue::ReturnPointer, source);
+                } else {
+                    debug!("gather_moves Return on_move_out_lval \
+                            assuming unreachable return {:?}", source);
+                }
             }
 
             TerminatorKind::If { ref cond, targets: _ } => {
-                // The `cond` is always of (copyable) type `bool`,
-                // so there will never be anything to move.
-                let _ = cond;
+                let source = Location { block: bb,
+                                        index: bb_data.statements.len() };
+                bb_ctxt.on_operand(SK::If, cond, source);
             }
 
             TerminatorKind::SwitchInt { switch_ty: _, values: _, targets: _, ref discr } |
@@ -606,18 +676,23 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                                         index: bb_data.statements.len() };
                 bb_ctxt.on_move_out_lval(SK::Drop, lval, source);
             }
-
             TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
                 let source = Location { block: bb,
                                         index: bb_data.statements.len() };
                 bb_ctxt.on_operand(SK::CallFn, func, source);
                 for arg in args {
+                    debug!("gather_moves Call on_operand {:?} {:?}", arg, source);
                     bb_ctxt.on_operand(SK::CallArg, arg, source);
                 }
                 if let Some((ref destination, _bb)) = *destination {
-                    // Create MovePath for `destination`, then
-                    // discard returned index.
-                    bb_ctxt.builder.move_path_for(destination);
+                    debug!("gather_moves Call create_move_path {:?} {:?}", destination, source);
+
+                    // Ensure that the path_map contains entries even
+                    // if the lvalue is assigned and never read.
+                    let assigned_path = bb_ctxt.builder.move_path_for(destination);
+                    bb_ctxt.path_map.fill_to(assigned_path.idx());
+
+                    bb_ctxt.builder.create_move_path(destination);
                 }
             }
         }
@@ -635,7 +710,6 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
     //
     // well you know, lets actually try just asserting that the path map *is* complete.
     assert_eq!(path_map.len(), builder.pre_move_paths.len());
-    path_map.fill_to(builder.pre_move_paths.len() - 1);
 
     let pre_move_paths = builder.pre_move_paths;
     let move_paths: Vec<_> = pre_move_paths.into_iter()
@@ -667,7 +741,7 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
 }
 
 struct BlockContext<'b, 'a: 'b, 'tcx: 'a> {
-    tcx: TyCtxt<'b, 'tcx, 'tcx>,
+    _tcx: TyCtxt<'b, 'tcx, 'tcx>,
     moves: &'b mut Vec<MoveOut>,
     builder: MovePathDataBuilder<'a, 'tcx>,
     path_map: &'b mut Vec<Vec<MoveOutIndex>>,
@@ -679,25 +753,6 @@ impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
                         stmt_kind: StmtKind,
                         lval: &Lvalue<'tcx>,
                         source: Location) {
-        let tcx = self.tcx;
-        let lval_ty = self.builder.mir.lvalue_ty(tcx, lval);
-
-        // FIXME: does lvalue_ty ever return TyError, or is it
-        // guaranteed to always return non-Infer/non-Error values?
-
-        // This code is just trying to avoid creating a MoveOut
-        // entry for values that do not need move semantics.
-        //
-        // type_contents is imprecise (may claim needs drop for
-        // types that in fact have no destructor). But that is
-        // still usable for our purposes here.
-        let consumed = lval_ty.to_ty(tcx).type_contents(tcx).needs_drop(tcx);
-
-        if !consumed {
-            debug!("ctxt: {:?} no consume of lval: {:?} of type {:?}",
-                   stmt_kind, lval, lval_ty);
-            return;
-        }
         let i = source.index;
         let index = MoveOutIndex::new(self.moves.len());
 
@@ -730,15 +785,5 @@ impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
                 self.on_move_out_lval(stmt_kind, lval, source);
             }
         }
-    }
-}
-
-impl<'tcx> BitDenotation for MoveData<'tcx>{
-    type Bit = MoveOut;
-    fn bits_per_block(&self) -> usize {
-        self.moves.len()
-    }
-    fn interpret(&self, idx: usize) -> &Self::Bit {
-        &self.moves[idx]
     }
 }
