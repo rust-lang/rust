@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(plugin, rustc_private, str_char, collections)]
+#![feature(plugin, rustc_private)]
 
 extern crate syntax;
 extern crate rustc;
@@ -24,6 +24,7 @@ use std::path::Path;
 
 use syntax::parse;
 use syntax::parse::lexer;
+use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
 use rustc::middle::cstore::DummyCrateStore;
 
@@ -32,17 +33,17 @@ use syntax::ast;
 use syntax::ast::Name;
 use syntax::codemap;
 use syntax::codemap::Pos;
-use syntax::parse::token;
+use syntax::parse::token::{self, BinOpToken, DelimToken, Lit, Token};
 use syntax::parse::lexer::TokenAndSpan;
 
 fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
     fn id() -> token::Token {
-        token::Ident(ast::Ident::with_empty_ctxt(Name(0)), token::Plain)
+        Token::Ident(ast::Ident::with_empty_ctxt(Name(0)))
     }
 
     let mut res = HashMap::new();
 
-    res.insert("-1".to_string(), token::Eof);
+    res.insert("-1".to_string(), Token::Eof);
 
     for line in file.split('\n') {
         let eq = match line.trim().rfind('=') {
@@ -54,65 +55,65 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
         let num = &line[eq + 1..];
 
         let tok = match val {
-            "SHR"               => token::BinOp(token::Shr),
-            "DOLLAR"            => token::Dollar,
-            "LT"                => token::Lt,
-            "STAR"              => token::BinOp(token::Star),
+            "SHR"               => Token::BinOp(BinOpToken::Shr),
+            "DOLLAR"            => Token::Dollar,
+            "LT"                => Token::Lt,
+            "STAR"              => Token::BinOp(BinOpToken::Star),
             "FLOAT_SUFFIX"      => id(),
             "INT_SUFFIX"        => id(),
-            "SHL"               => token::BinOp(token::Shl),
-            "LBRACE"            => token::OpenDelim(token::Brace),
-            "RARROW"            => token::RArrow,
-            "LIT_STR"           => token::Literal(token::Str_(Name(0)), None),
-            "DOTDOT"            => token::DotDot,
-            "MOD_SEP"           => token::ModSep,
-            "DOTDOTDOT"         => token::DotDotDot,
-            "NOT"               => token::Not,
-            "AND"               => token::BinOp(token::And),
-            "LPAREN"            => token::OpenDelim(token::Paren),
-            "ANDAND"            => token::AndAnd,
-            "AT"                => token::At,
-            "LBRACKET"          => token::OpenDelim(token::Bracket),
-            "LIT_STR_RAW"       => token::Literal(token::StrRaw(Name(0), 0), None),
-            "RPAREN"            => token::CloseDelim(token::Paren),
-            "SLASH"             => token::BinOp(token::Slash),
-            "COMMA"             => token::Comma,
-            "LIFETIME"          => token::Lifetime(ast::Ident::with_empty_ctxt(Name(0))),
-            "CARET"             => token::BinOp(token::Caret),
-            "TILDE"             => token::Tilde,
+            "SHL"               => Token::BinOp(BinOpToken::Shl),
+            "LBRACE"            => Token::OpenDelim(DelimToken::Brace),
+            "RARROW"            => Token::RArrow,
+            "LIT_STR"           => Token::Literal(Lit::Str_(Name(0)), None),
+            "DOTDOT"            => Token::DotDot,
+            "MOD_SEP"           => Token::ModSep,
+            "DOTDOTDOT"         => Token::DotDotDot,
+            "NOT"               => Token::Not,
+            "AND"               => Token::BinOp(BinOpToken::And),
+            "LPAREN"            => Token::OpenDelim(DelimToken::Paren),
+            "ANDAND"            => Token::AndAnd,
+            "AT"                => Token::At,
+            "LBRACKET"          => Token::OpenDelim(DelimToken::Bracket),
+            "LIT_STR_RAW"       => Token::Literal(Lit::StrRaw(Name(0), 0), None),
+            "RPAREN"            => Token::CloseDelim(DelimToken::Paren),
+            "SLASH"             => Token::BinOp(BinOpToken::Slash),
+            "COMMA"             => Token::Comma,
+            "LIFETIME"          => Token::Lifetime(ast::Ident::with_empty_ctxt(Name(0))),
+            "CARET"             => Token::BinOp(BinOpToken::Caret),
+            "TILDE"             => Token::Tilde,
             "IDENT"             => id(),
-            "PLUS"              => token::BinOp(token::Plus),
-            "LIT_CHAR"          => token::Literal(token::Char(Name(0)), None),
-            "LIT_BYTE"          => token::Literal(token::Byte(Name(0)), None),
-            "EQ"                => token::Eq,
-            "RBRACKET"          => token::CloseDelim(token::Bracket),
-            "COMMENT"           => token::Comment,
-            "DOC_COMMENT"       => token::DocComment(Name(0)),
-            "DOT"               => token::Dot,
-            "EQEQ"              => token::EqEq,
-            "NE"                => token::Ne,
-            "GE"                => token::Ge,
-            "PERCENT"           => token::BinOp(token::Percent),
-            "RBRACE"            => token::CloseDelim(token::Brace),
-            "BINOP"             => token::BinOp(token::Plus),
-            "POUND"             => token::Pound,
-            "OROR"              => token::OrOr,
-            "LIT_INTEGER"       => token::Literal(token::Integer(Name(0)), None),
-            "BINOPEQ"           => token::BinOpEq(token::Plus),
-            "LIT_FLOAT"         => token::Literal(token::Float(Name(0)), None),
-            "WHITESPACE"        => token::Whitespace,
-            "UNDERSCORE"        => token::Underscore,
-            "MINUS"             => token::BinOp(token::Minus),
-            "SEMI"              => token::Semi,
-            "COLON"             => token::Colon,
-            "FAT_ARROW"         => token::FatArrow,
-            "OR"                => token::BinOp(token::Or),
-            "GT"                => token::Gt,
-            "LE"                => token::Le,
-            "LIT_BYTE_STR"      => token::Literal(token::ByteStr(Name(0)), None),
-            "LIT_BYTE_STR_RAW"  => token::Literal(token::ByteStrRaw(Name(0), 0), None),
-            "QUESTION"          => token::Question,
-            "SHEBANG"           => token::Shebang(Name(0)),
+            "PLUS"              => Token::BinOp(BinOpToken::Plus),
+            "LIT_CHAR"          => Token::Literal(Lit::Char(Name(0)), None),
+            "LIT_BYTE"          => Token::Literal(Lit::Byte(Name(0)), None),
+            "EQ"                => Token::Eq,
+            "RBRACKET"          => Token::CloseDelim(DelimToken::Bracket),
+            "COMMENT"           => Token::Comment,
+            "DOC_COMMENT"       => Token::DocComment(Name(0)),
+            "DOT"               => Token::Dot,
+            "EQEQ"              => Token::EqEq,
+            "NE"                => Token::Ne,
+            "GE"                => Token::Ge,
+            "PERCENT"           => Token::BinOp(BinOpToken::Percent),
+            "RBRACE"            => Token::CloseDelim(DelimToken::Brace),
+            "BINOP"             => Token::BinOp(BinOpToken::Plus),
+            "POUND"             => Token::Pound,
+            "OROR"              => Token::OrOr,
+            "LIT_INTEGER"       => Token::Literal(Lit::Integer(Name(0)), None),
+            "BINOPEQ"           => Token::BinOpEq(BinOpToken::Plus),
+            "LIT_FLOAT"         => Token::Literal(Lit::Float(Name(0)), None),
+            "WHITESPACE"        => Token::Whitespace,
+            "UNDERSCORE"        => Token::Underscore,
+            "MINUS"             => Token::BinOp(BinOpToken::Minus),
+            "SEMI"              => Token::Semi,
+            "COLON"             => Token::Colon,
+            "FAT_ARROW"         => Token::FatArrow,
+            "OR"                => Token::BinOp(BinOpToken::Or),
+            "GT"                => Token::Gt,
+            "LE"                => Token::Le,
+            "LIT_BINARY"        => Token::Literal(Lit::ByteStr(Name(0)), None),
+            "LIT_BINARY_RAW"    => Token::Literal(Lit::ByteStrRaw(Name(0), 0), None),
+            "QUESTION"          => Token::Question,
+            "SHEBANG"           => Token::Shebang(Name(0)),
             _                   => continue,
         };
 
@@ -125,16 +126,16 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
 
 fn str_to_binop(s: &str) -> token::BinOpToken {
     match s {
-        "+"     => token::Plus,
-        "/"     => token::Slash,
-        "-"     => token::Minus,
-        "*"     => token::Star,
-        "%"     => token::Percent,
-        "^"     => token::Caret,
-        "&"     => token::And,
-        "|"     => token::Or,
-        "<<"    => token::Shl,
-        ">>"    => token::Shr,
+        "+"     => BinOpToken::Plus,
+        "/"     => BinOpToken::Slash,
+        "-"     => BinOpToken::Minus,
+        "*"     => BinOpToken::Star,
+        "%"     => BinOpToken::Percent,
+        "^"     => BinOpToken::Caret,
+        "&"     => BinOpToken::And,
+        "|"     => BinOpToken::Or,
+        "<<"    => BinOpToken::Shl,
+        ">>"    => BinOpToken::Shr,
         _       => panic!("Bad binop str `{}`", s),
     }
 }
@@ -142,13 +143,14 @@ fn str_to_binop(s: &str) -> token::BinOpToken {
 /// Assuming a string/byte string literal, strip out the leading/trailing
 /// hashes and surrounding quotes/raw/byte prefix.
 fn fix(mut lit: &str) -> ast::Name {
-    if lit.char_at(0) == 'r' {
-        if lit.char_at(1) == 'b' {
+    let prefix: Vec<char> = lit.chars().take(2).collect();
+    if prefix[0] == 'r' {
+        if prefix[1] == 'b' {
             lit = &lit[2..]
         } else {
             lit = &lit[1..];
         }
-    } else if lit.char_at(0) == 'b' {
+    } else if prefix[0] == 'b' {
         lit = &lit[1..];
     }
 
@@ -160,7 +162,8 @@ fn fix(mut lit: &str) -> ast::Name {
 
 /// Assuming a char/byte literal, strip the 'b' prefix and the single quotes.
 fn fixchar(mut lit: &str) -> ast::Name {
-    if lit.char_at(0) == 'b' {
+    let prefix = lit.chars().next().unwrap();
+    if prefix == 'b' {
         lit = &lit[1..];
     }
 
@@ -197,26 +200,25 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>, surrogate_
     debug!("What we got: content (`{}`), proto: {:?}", content, proto_tok);
 
     let real_tok = match *proto_tok {
-        token::BinOp(..)           => token::BinOp(str_to_binop(content)),
-        token::BinOpEq(..)         => token::BinOpEq(str_to_binop(&content[..content.len() - 1])),
-        token::Literal(token::Str_(..), n)      => token::Literal(token::Str_(fix(content)), n),
-        token::Literal(token::StrRaw(..), n)    => token::Literal(token::StrRaw(fix(content),
+        Token::BinOp(..)           => Token::BinOp(str_to_binop(content)),
+        Token::BinOpEq(..)         => Token::BinOpEq(str_to_binop(&content[..content.len() - 1])),
+        Token::Literal(Lit::Str_(..), n)      => Token::Literal(Lit::Str_(fix(content)), n),
+        Token::Literal(Lit::StrRaw(..), n)    => Token::Literal(Lit::StrRaw(fix(content),
                                                                              count(content)), n),
-        token::Literal(token::Char(..), n)      => token::Literal(token::Char(fixchar(content)), n),
-        token::Literal(token::Byte(..), n)      => token::Literal(token::Byte(fixchar(content)), n),
-        token::DocComment(..)      => token::DocComment(nm),
-        token::Literal(token::Integer(..), n)   => token::Literal(token::Integer(nm), n),
-        token::Literal(token::Float(..), n)     => token::Literal(token::Float(nm), n),
-        token::Literal(token::ByteStr(..), n)    => token::Literal(token::ByteStr(nm), n),
-        token::Literal(token::ByteStrRaw(..), n) => token::Literal(token::ByteStrRaw(fix(content),
+        Token::Literal(Lit::Char(..), n)      => Token::Literal(Lit::Char(fixchar(content)), n),
+        Token::Literal(Lit::Byte(..), n)      => Token::Literal(Lit::Byte(fixchar(content)), n),
+        Token::DocComment(..)      => Token::DocComment(nm),
+        Token::Literal(Lit::Integer(..), n)   => Token::Literal(Lit::Integer(nm), n),
+        Token::Literal(Lit::Float(..), n)     => Token::Literal(Lit::Float(nm), n),
+        Token::Literal(Lit::ByteStr(..), n)    => Token::Literal(Lit::ByteStr(nm), n),
+        Token::Literal(Lit::ByteStrRaw(..), n) => Token::Literal(Lit::ByteStrRaw(fix(content),
                                                                                 count(content)), n),
-        token::Ident(..)           => token::Ident(ast::Ident::with_empty_ctxt(nm),
-                                                   token::ModName),
-        token::Lifetime(..)        => token::Lifetime(ast::Ident::with_empty_ctxt(nm)),
+        Token::Ident(..)           => Token::Ident(ast::Ident::with_empty_ctxt(nm)),
+        Token::Lifetime(..)        => Token::Lifetime(ast::Ident::with_empty_ctxt(nm)),
         ref t => t.clone()
     };
 
-    let start_offset = if real_tok == token::Eof {
+    let start_offset = if real_tok == Token::Eof {
         1
     } else {
         0
@@ -245,8 +247,8 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>, surrogate_
 
 fn tok_cmp(a: &token::Token, b: &token::Token) -> bool {
     match a {
-        &token::Ident(id, _) => match b {
-                &token::Ident(id2, _) => id == id2,
+        &Token::Ident(id) => match b {
+                &Token::Ident(id2) => id == id2,
                 _ => false
         },
         _ => a == b
@@ -287,7 +289,7 @@ fn main() {
     debug!("Pairs: {:?}", surrogate_pairs_pos);
 
     let options = config::basic_options();
-    let session = session::build_session(options, None,
+    let session = session::build_session(options, &DepGraph::new(false), None,
                                          syntax::diagnostics::registry::Registry::new(&[]),
                                          Rc::new(DummyCrateStore));
     let filemap = session.parse_sess.codemap().new_filemap(String::from("<n/a>"), code);
@@ -310,7 +312,7 @@ fn main() {
 
     for antlr_tok in antlr_tokens {
         let rustc_tok = next(&mut lexer);
-        if rustc_tok.tok == token::Eof && antlr_tok.tok == token::Eof {
+        if rustc_tok.tok == Token::Eof && antlr_tok.tok == Token::Eof {
             continue
         }
 
@@ -337,19 +339,19 @@ fn main() {
         }
 
         matches!(
-            token::Literal(token::Byte(..), _),
-            token::Literal(token::Char(..), _),
-            token::Literal(token::Integer(..), _),
-            token::Literal(token::Float(..), _),
-            token::Literal(token::Str_(..), _),
-            token::Literal(token::StrRaw(..), _),
-            token::Literal(token::ByteStr(..), _),
-            token::Literal(token::ByteStrRaw(..), _),
-            token::Ident(..),
-            token::Lifetime(..),
-            token::Interpolated(..),
-            token::DocComment(..),
-            token::Shebang(..)
+            Token::Literal(Lit::Byte(..), _),
+            Token::Literal(Lit::Char(..), _),
+            Token::Literal(Lit::Integer(..), _),
+            Token::Literal(Lit::Float(..), _),
+            Token::Literal(Lit::Str_(..), _),
+            Token::Literal(Lit::StrRaw(..), _),
+            Token::Literal(Lit::ByteStr(..), _),
+            Token::Literal(Lit::ByteStrRaw(..), _),
+            Token::Ident(..),
+            Token::Lifetime(..),
+            Token::Interpolated(..),
+            Token::DocComment(..),
+            Token::Shebang(..)
         );
     }
 }
