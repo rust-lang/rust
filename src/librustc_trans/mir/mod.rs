@@ -327,10 +327,10 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
             llarg_idx += 1;
             llarg
         } else {
-            let lltemp = bcx.with_block(|bcx| {
-                base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
-            });
             if common::type_is_fat_ptr(tcx, arg_ty) {
+                let lltemp = bcx.with_block(|bcx| {
+                    base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
+                });
                 // we pass fat pointers as two words, but we want to
                 // represent them internally as a pointer to two words,
                 // so make an alloca to store them in.
@@ -338,12 +338,17 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 idx += 1;
                 arg.store_fn_arg(bcx, &mut llarg_idx, get_dataptr(bcx, lltemp));
                 meta.store_fn_arg(bcx, &mut llarg_idx, get_meta(bcx, lltemp));
+                lltemp
             } else  {
-                // otherwise, arg is passed by value, so make a
-                // temporary and store it there
+                // otherwise, arg is passed by value, so store it into a temporary.
+                let llarg_ty = arg.cast.unwrap_or(arg.memory_ty(bcx.ccx()));
+                let lltemp = bcx.with_block(|bcx| {
+                    base::alloca(bcx, llarg_ty, &format!("arg{}", arg_index))
+                });
                 arg.store_fn_arg(bcx, &mut llarg_idx, lltemp);
+                // And coerce the temporary into the type we expect.
+                bcx.pointercast(lltemp, arg.memory_ty(bcx.ccx()).ptr_to())
             }
-            lltemp
         };
         bcx.with_block(|bcx| arg_scope.map(|scope| {
             // Is this a regular argument?
