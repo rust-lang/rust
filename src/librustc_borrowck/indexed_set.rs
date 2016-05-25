@@ -17,10 +17,6 @@ use std::ops::{Deref, DerefMut, Range};
 use bitslice::{BitSlice, Word};
 use bitslice::{bitwise, Union, Subtract};
 
-pub trait Indexed {
-    type Idx: Idx;
-}
-
 pub trait Idx: 'static {
     fn new(usize) -> Self;
     fn idx(&self) -> usize;
