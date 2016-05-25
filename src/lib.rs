@@ -470,6 +470,7 @@ pub fn format_input<T: Write>(input: Input,
     }
 }
 
+#[derive(Debug)]
 pub enum Input {
     File(PathBuf),
     Text(String),
