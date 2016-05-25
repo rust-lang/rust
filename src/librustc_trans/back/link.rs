@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use super::archive::{ArchiveBuilder, ArchiveConfig};
-use super::linker::{Linker, GnuLinker, MsvcLinker};
+use super::linker::Linker;
 use super::rpath::RPathConfig;
 use super::rpath;
 use super::msvc;
@@ -188,6 +188,11 @@ pub fn link_binary(sess: &Session,
 
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
+        // Ignore executable crates if we have -Z no-trans, as they will error.
+        if sess.opts.no_trans && crate_type == config::CrateTypeExecutable {
+            continue;
+        }
+
         if invalid_output_for_target(sess, crate_type) {
            bug!("invalid output type `{:?}` for target os `{}`",
                 crate_type, sess.opts.target_triple);
@@ -637,13 +642,9 @@ fn link_natively(sess: &Session,
     }
 
     {
-        let mut linker = if sess.target.target.options.is_like_msvc {
-            Box::new(MsvcLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
-        } else {
-            Box::new(GnuLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
-        };
+        let mut linker = trans.linker_info.to_linker(&mut cmd, &sess);
         link_args(&mut *linker, sess, crate_type, tmpdir,
-                  objects, out_filename, trans, outputs);
+                  objects, out_filename, outputs);
         if !sess.target.target.options.no_compiler_rt {
             linker.link_staticlib("compiler-rt");
         }
@@ -712,7 +713,6 @@ fn link_args(cmd: &mut Linker,
              tmpdir: &Path,
              objects: &[PathBuf],
              out_filename: &Path,
-             trans: &CrateTranslation,
              outputs: &OutputFilenames) {
 
     // The default library location, we need this to find the runtime.
@@ -731,7 +731,7 @@ fn link_args(cmd: &mut Linker,
     // If we're building a dynamic library then some platforms need to make sure
     // that all symbols are exported correctly from the dynamic library.
     if crate_type != config::CrateTypeExecutable {
-        cmd.export_symbols(sess, trans, tmpdir, crate_type);
+        cmd.export_symbols(tmpdir, crate_type);
     }
 
     // When linking a dynamic library, we put the metadata into a section of the

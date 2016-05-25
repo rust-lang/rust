@@ -34,8 +34,7 @@ use mir::mir_map::MirMap;
 use session::Session;
 use session::config::PanicStrategy;
 use session::search_paths::PathKind;
-use util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
-use std::cell::RefCell;
+use util::nodemap::{FnvHashMap, NodeSet, DefIdMap};
 use std::rc::Rc;
 use std::path::PathBuf;
 use syntax::ast;
@@ -169,7 +168,6 @@ pub trait CrateStore<'tcx> {
     fn item_super_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                                  -> ty::GenericPredicates<'tcx>;
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
-    fn item_symbol(&self, def: DefId) -> String;
     fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef<'tcx>;
     fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>;
     fn method_arg_names(&self, did: DefId) -> Vec<String>;
@@ -205,6 +203,7 @@ pub trait CrateStore<'tcx> {
     fn is_impl(&self, did: DefId) -> bool;
     fn is_default_impl(&self, impl_did: DefId) -> bool;
     fn is_extern_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId) -> bool;
+    fn is_foreign_item(&self, did: DefId) -> bool;
     fn is_static_method(&self, did: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool;
     fn is_typedef(&self, did: DefId) -> bool;
@@ -274,7 +273,6 @@ pub trait CrateStore<'tcx> {
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>;
     fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            reexports: &def::ExportMap,
-                           item_symbols: &RefCell<NodeMap<String>>,
                            link_meta: &LinkMeta,
                            reachable: &NodeSet,
                            mir_map: &MirMap<'tcx>,
@@ -352,7 +350,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn item_super_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                                  -> ty::GenericPredicates<'tcx> { bug!("item_super_predicates") }
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> { bug!("item_attrs") }
-    fn item_symbol(&self, def: DefId) -> String { bug!("item_symbol") }
     fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef<'tcx>
         { bug!("trait_def") }
     fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>
@@ -399,6 +396,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_default_impl(&self, impl_did: DefId) -> bool { bug!("is_default_impl") }
     fn is_extern_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId) -> bool
         { bug!("is_extern_item") }
+    fn is_foreign_item(&self, did: DefId) -> bool { bug!("is_foreign_item") }
     fn is_static_method(&self, did: DefId) -> bool { bug!("is_static_method") }
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool { false }
     fn is_typedef(&self, did: DefId) -> bool { bug!("is_typedef") }
@@ -481,7 +479,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum> { None }
     fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            reexports: &def::ExportMap,
-                           item_symbols: &RefCell<NodeMap<String>>,
                            link_meta: &LinkMeta,
                            reachable: &NodeSet,
                            mir_map: &MirMap<'tcx>,

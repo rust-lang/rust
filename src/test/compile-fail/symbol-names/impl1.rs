@@ -25,7 +25,7 @@ mod bar {
     use foo::Foo;
 
     impl Foo {
-        #[rustc_symbol_name] //~ ERROR _ZN5impl13bar26_$LT$impl$u20$foo..Foo$GT$3baz
+        #[rustc_symbol_name] //~ ERROR _ZN5impl13bar33_$LT$impl$u20$impl1..foo..Foo$GT$3baz
         #[rustc_item_path] //~ ERROR item-path(bar::<impl foo::Foo>::baz)
         fn baz() { }
     }
