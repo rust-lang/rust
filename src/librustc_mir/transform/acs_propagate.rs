@@ -84,6 +84,15 @@ impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
 
     fn stmt(&self, s: &Statement<'tcx>, mut lat: AcsLattice<'tcx>) -> AcsLattice<'tcx> {
         let StatementKind::Assign(ref lval, ref rval) = s.kind;
+        if let &Lvalue::Projection(_) = lval {
+            let mut base = lval;
+            while let &Lvalue::Projection(ref proj) = base {
+                base = &proj.base;
+            }
+            lat.insert(base.clone(), Either::Top);
+            return lat;
+        }
+
         match *rval {
             Rvalue::Use(Operand::Consume(ref nlval)) =>
                 lat.insert(lval.clone(), Either::Lvalue(nlval.clone())),
@@ -94,7 +103,11 @@ impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
         lat
     }
 
-    fn term(&self, t: &Terminator<'tcx>, lat: AcsLattice<'tcx>) -> Vec<AcsLattice<'tcx>> {
+    fn term(&self, t: &Terminator<'tcx>, mut lat: AcsLattice<'tcx>) -> Vec<AcsLattice<'tcx>> {
+        if let TerminatorKind::Call { destination: Some((ref dest, _)), .. } = t.kind {
+            lat.insert(dest.clone(), Either::Top);
+        }
+
         // FIXME: this should inspect the terminators and set their known values to constants. Esp.
         // for the if: in the truthy branch the operand is known to be true and in the falsy branch
         // the operand is known to be false. Now we just ignore the potential here.
