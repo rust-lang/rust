@@ -18,6 +18,8 @@ enum Enum {
 fn get_number() -> i32 { 0 }
 fn get_struct() -> Struct { Struct { field: 0 } }
 
+unsafe fn unsafe_fn() -> i32 { 0 }
+
 fn main() {
     let s = get_struct();
     let s2 = get_struct();
@@ -50,6 +52,7 @@ fn main() {
 
     // Do not warn
     get_number();
+    unsafe { unsafe_fn() };
 
     Tuple(get_number()); //~ERROR statement can be reduced
     //~^HELP replace it with
@@ -105,4 +108,7 @@ fn main() {
     [42; 55][get_number() as usize]; //~ERROR statement can be reduced
     //~^HELP replace it with
     //~|SUGGESTION [42; 55];get_number() as usize;
+    {get_number()}; //~ERROR statement can be reduced
+    //~^HELP replace it with
+    //~|SUGGESTION get_number();
 }
