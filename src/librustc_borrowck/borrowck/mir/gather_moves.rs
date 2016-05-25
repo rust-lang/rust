@@ -20,7 +20,7 @@ use std::iter;
 use std::ops::Index;
 
 use super::abs_domain::{AbstractElem, Lift};
-use indexed_set::{Idx, Indexed};
+use indexed_set::{Idx};
 
 // This submodule holds some newtype'd Index wrappers that are using
 // NonZero to ensure that Option<Index> occupies only a single word.
@@ -59,14 +59,6 @@ mod indexes {
 
 pub use self::indexes::MovePathIndex;
 pub use self::indexes::MoveOutIndex;
-
-impl<'tcx> Indexed for MovePath<'tcx> {
-    type Idx = MovePathIndex;
-}
-
-impl Indexed for MoveOut {
-    type Idx = MoveOutIndex;
-}
 
 impl self::indexes::MoveOutIndex {
     pub fn move_path_index(&self, move_data: &MoveData) -> MovePathIndex {
