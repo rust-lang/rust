@@ -310,7 +310,7 @@ where T: Transfer<'tcx>,
 
 enum Direction {
     Forward,
-    Backward
+//    Backward
 }
 
 /// The fixpoint function is the engine of this whole thing. Important part of it is the `f: BF`
@@ -349,16 +349,17 @@ where BF: Fn(BasicBlock, &F, &mut CFG<'tcx>) -> (Option<BasicBlock>, Vec<F>),
         }
 
         // Then we record the facts in the correct direction.
-        if let Direction::Forward = direction {
-            for (f, &target) in new_facts.into_iter()
-                                        .zip(cfg[block].terminator().successors().iter()) {
-                let facts_changed = Lattice::join(&mut init_facts[target], &f);
-                if facts_changed {
-                    to_visit.insert(target.index());
+        match direction {
+            Direction::Forward => {
+                for (f, &target) in new_facts.into_iter()
+                                             .zip(cfg[block].terminator().successors().iter()) {
+                    let facts_changed = Lattice::join(&mut init_facts[target], &f);
+                    if facts_changed {
+                        to_visit.insert(target.index());
+                    }
                 }
             }
-        } else {
-            unimplemented!()
+            // Direction::Backward => unimplemented!()
             // let mut new_facts = new_facts;
             // let fact = new_facts.pop().unwrap().1;
             // for pred in cfg.predecessors(block) {
