@@ -1663,21 +1663,30 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                                     arg_ty,
                                     datum::Lvalue::new("FunctionContext::bind_args"))
                 } else {
-                    unpack_datum!(bcx, datum::lvalue_scratch_datum(bcx, arg_ty, "",
-                                                                   uninit_reason,
-                                                                   arg_scope_id, |bcx, dst| {
-                        debug!("FunctionContext::bind_args: {:?}: {:?}", hir_arg, arg_ty);
+                    let lltmp = if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
+                        let lltemp = alloc_ty(bcx, arg_ty, "");
                         let b = &bcx.build();
-                        if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
-                            let meta = &self.fn_ty.args[idx];
-                            idx += 1;
-                            arg.store_fn_arg(b, &mut llarg_idx, expr::get_dataptr(bcx, dst));
-                            meta.store_fn_arg(b, &mut llarg_idx, expr::get_meta(bcx, dst));
-                        } else {
-                            arg.store_fn_arg(b, &mut llarg_idx, dst);
-                        }
-                        bcx
-                    }))
+                        // we pass fat pointers as two words, but we want to
+                        // represent them internally as a pointer to two words,
+                        // so make an alloca to store them in.
+                        let meta = &self.fn_ty.args[idx];
+                        idx += 1;
+                        arg.store_fn_arg(b, &mut llarg_idx, expr::get_dataptr(bcx, lltemp));
+                        meta.store_fn_arg(b, &mut llarg_idx, expr::get_meta(bcx, lltemp));
+                        lltemp
+                    } else  {
+                        // otherwise, arg is passed by value, so store it into a temporary.
+                        let llarg_ty = arg.cast.unwrap_or(arg.memory_ty(bcx.ccx()));
+                        let lltemp = alloca(bcx, llarg_ty, "");
+                        let b = &bcx.build();
+                        arg.store_fn_arg(b, &mut llarg_idx, lltemp);
+                        // And coerce the temporary into the type we expect.
+                        b.pointercast(lltemp, arg.memory_ty(bcx.ccx()).ptr_to())
+                    };
+
+                    // FIXME: hacky lol?
+                    datum::Datum::new(lltmp, arg_ty,
+                                      datum::Lvalue::new("datum::lvalue_scratch_datum"))
                 }
             } else {
                 // FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
