@@ -9,7 +9,7 @@ use std::error::Error;
 use syntax::ast::{LitKind, NodeId};
 use syntax::codemap::{Span, BytePos};
 use syntax::parse::token::InternedString;
-use utils::{is_expn_of, match_path, match_type, paths, span_lint, span_help_and_lint};
+use utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_help_and_lint};
 
 /// **What it does:** This lint checks `Regex::new(_)` invocations for correct regex syntax.
 ///
@@ -81,7 +81,7 @@ impl LateLintPass for RegexPass {
                           span,
                           "`regex!(_)` found. \
                           Please use `Regex::new(_)`, which is faster for now.");
-                self.spans.insert(span);                    
+                self.spans.insert(span);
             }
             self.last = Some(block.id);
         }}
@@ -96,46 +96,22 @@ impl LateLintPass for RegexPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_let_chain!{[
             let ExprCall(ref fun, ref args) = expr.node,
-            let ExprPath(_, ref path) = fun.node,
-            match_path(path, &paths::REGEX_NEW) && args.len() == 1
+            args.len() == 1,
+            let Some(def) = cx.tcx.def_map.borrow().get(&fun.id),
         ], {
-            if let ExprLit(ref lit) = args[0].node {
-                if let LitKind::Str(ref r, _) = lit.node {
-                    match regex_syntax::Expr::parse(r) {
-                        Ok(r) => {
-                            if let Some(repl) = is_trivial_regex(&r) {
-                                span_help_and_lint(cx, TRIVIAL_REGEX, args[0].span,
-                                                   "trivial regex",
-                                                   &format!("consider using {}", repl));
-                            }
-                        }
-                        Err(e) => {
-                            span_lint(cx,
-                                      INVALID_REGEX,
-                                      str_span(args[0].span, &r, e.position()),
-                                      &format!("regex syntax error: {}",
-                                               e.description()));
-                        }
-                    }
-                }
-            } else if let Some(r) = const_str(cx, &*args[0]) {
-                match regex_syntax::Expr::parse(&r) {
-                    Ok(r) => {
-                        if let Some(repl) = is_trivial_regex(&r) {
-                            span_help_and_lint(cx, TRIVIAL_REGEX, args[0].span,
-                                               "trivial regex",
-                                               &format!("consider using {}", repl));
-                        }
-                    }
-                    Err(e) => {
-                        span_lint(cx,
-                                  INVALID_REGEX,
-                                  args[0].span,
-                                  &format!("regex syntax error on position {}: {}",
-                                           e.position(),
-                                           e.description()));
-                    }
-                }
+            let def_id = def.def_id();
+            if match_def_path(cx, def_id, &paths::REGEX_NEW) {
+                check_regex(cx, &args[0], true);
+            } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_NEW) {
+                check_regex(cx, &args[0], false);
+            } else if match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
+                check_regex(cx, &args[0], true);
+            } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
+                check_regex(cx, &args[0], false);
+            } else if match_def_path(cx, def_id, &paths::REGEX_SET_NEW) {
+                check_set(cx, &args[0], true);
+            } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_SET_NEW) {
+                check_set(cx, &args[0], false);
             }
         }}
     }
@@ -191,5 +167,59 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
             }
         }
         _ => None,
+    }
+}
+
+fn check_set(cx: &LateContext, expr: &Expr, utf8: bool) {
+    if_let_chain! {[
+        let ExprAddrOf(_, ref expr) = expr.node,
+        let ExprVec(ref exprs) = expr.node,
+    ], {
+        for expr in exprs {
+            check_regex(cx, expr, utf8);
+        }
+    }}
+}
+
+fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
+    let builder = regex_syntax::ExprBuilder::new().unicode(utf8);
+
+    if let ExprLit(ref lit) = expr.node {
+        if let LitKind::Str(ref r, _) = lit.node {
+            match builder.parse(r) {
+                Ok(r) => {
+                    if let Some(repl) = is_trivial_regex(&r) {
+                        span_help_and_lint(cx, TRIVIAL_REGEX, expr.span,
+                                           "trivial regex",
+                                           &format!("consider using {}", repl));
+                    }
+                }
+                Err(e) => {
+                    span_lint(cx,
+                              INVALID_REGEX,
+                              str_span(expr.span, r, e.position()),
+                              &format!("regex syntax error: {}",
+                                       e.description()));
+                }
+            }
+        }
+    } else if let Some(r) = const_str(cx, expr) {
+        match builder.parse(&r) {
+            Ok(r) => {
+                if let Some(repl) = is_trivial_regex(&r) {
+                    span_help_and_lint(cx, TRIVIAL_REGEX, expr.span,
+                                       "trivial regex",
+                                       &format!("consider using {}", repl));
+                }
+            }
+            Err(e) => {
+                span_lint(cx,
+                          INVALID_REGEX,
+                          expr.span,
+                          &format!("regex syntax error on position {}: {}",
+                                   e.position(),
+                                   e.description()));
+            }
+        }
     }
 }

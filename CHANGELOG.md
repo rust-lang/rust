@@ -1,9 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.70 — TBD
+* [`invalid_regex`] and [`trivial_regex`] can now warn on `RegexSet::new`,
+  `RegexBuilder::new` and byte regexes
+
 ## 0.0.69 — 2016-05-20
 * Rustup to *rustc 1.10.0-nightly (476fe6eef 2016-05-21)*
-* `used_underscore_binding` has been made `Allow` temporarily
+* [`used_underscore_binding`] has been made `Allow` temporarily
 
 ## 0.0.68 — 2016-05-17
 * Rustup to *rustc 1.10.0-nightly (cd6a40017 2016-05-16)*
