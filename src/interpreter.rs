@@ -6,7 +6,7 @@ use rustc::traits::{self, ProjectionMode};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::DefIdMap;
 use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
@@ -413,7 +413,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(target)
     }
 
-    fn drop(&mut self, ptr: Pointer, ty: ty::Ty<'tcx>) -> EvalResult<()> {
+    fn drop(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<()> {
         if !self.type_needs_drop(ty) {
             self.log(1, || print!("no need to drop {:?}", ty));
             return Ok(());
@@ -455,7 +455,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(())
     }
 
-    fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: ty::Ty<'tcx>) -> EvalResult<u64> {
+    fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<u64> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty);
 
@@ -466,16 +466,14 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             }
 
             RawNullablePointer { nndiscr, .. } => {
-                let not_null = match self.memory.read_usize(adt_ptr) {
-                    Ok(0) => false,
-                    Ok(_) | Err(EvalError::ReadPointerAsBytes) => true,
-                    Err(e) => return Err(e),
-                };
-                assert!(nndiscr == 0 || nndiscr == 1);
-                if not_null { nndiscr } else { 1 - nndiscr }
+                self.read_nonnull_discriminant_value(adt_ptr, nndiscr)?
             }
 
-            StructWrappedNullablePointer { .. } => unimplemented!(),
+            StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
+                let offset = self.nonnull_offset(adt_ty, nndiscr, discrfield);
+                let nonnull = adt_ptr.offset(offset.bytes() as isize);
+                self.read_nonnull_discriminant_value(nonnull, nndiscr)?
+            }
 
             // The discriminant_value intrinsic returns 0 for non-sum types.
             Array { .. } | FatPointer { .. } | Scalar { .. } | Univariant { .. } |
@@ -483,6 +481,16 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         };
 
         Ok(discr_val)
+    }
+
+    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u64) -> EvalResult<u64> {
+        let not_null = match self.memory.read_usize(ptr) {
+            Ok(0) => false,
+            Ok(_) | Err(EvalError::ReadPointerAsBytes) => true,
+            Err(e) => return Err(e),
+        };
+        assert!(nndiscr == 0 || nndiscr == 1);
+        Ok(if not_null { nndiscr } else { 1 - nndiscr })
     }
 
     fn call_intrinsic(
@@ -793,6 +801,23 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                         }
                     }
 
+                    StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield } => {
+                        if let mir::AggregateKind::Adt(_, variant, _) = *kind {
+                            if nndiscr == variant as u64 {
+                                let offsets = iter::once(0)
+                                    .chain(nonnull.offset_after_field.iter().map(|s| s.bytes()));
+                                try!(self.assign_fields(dest, offsets, operands));
+                            } else {
+                                assert_eq!(operands.len(), 0);
+                                let offset = self.nonnull_offset(dest_ty, nndiscr, discrfield);
+                                let dest = dest.offset(offset.bytes() as isize);
+                                try!(self.memory.write_isize(dest, 0));
+                            }
+                        } else {
+                            panic!("tried to assign {:?} to Layout::RawNullablePointer", kind);
+                        }
+                    }
+
                     CEnum { discr, signed, .. } => {
                         assert_eq!(operands.len(), 0);
                         if let mir::AggregateKind::Adt(adt_def, variant, _) = *kind {
@@ -900,6 +925,73 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(())
     }
 
+    fn nonnull_offset(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> Size {
+        // Skip the constant 0 at the start meant for LLVM GEP.
+        let mut path = discrfield.iter().skip(1).map(|&i| i as usize);
+
+        // Handle the field index for the outer non-null variant.
+        let inner_ty = match ty.sty {
+            ty::TyEnum(adt_def, substs) => {
+                let variant = &adt_def.variants[nndiscr as usize];
+                let index = path.next().unwrap();
+                let field = &variant.fields[index];
+                field.ty(self.tcx, substs)
+            }
+            _ => panic!(
+                "non-enum for StructWrappedNullablePointer: {}",
+                ty,
+            ),
+        };
+
+        self.field_path_offset(inner_ty, path)
+    }
+
+    fn field_path_offset<I: Iterator<Item = usize>>(&self, mut ty: Ty<'tcx>, path: I) -> Size {
+        let mut offset = Size::from_bytes(0);
+
+        // Skip the initial 0 intended for LLVM GEP.
+        for field_index in path {
+            let field_offset = self.get_field_offset(ty, field_index);
+            ty = self.get_field_ty(ty, field_index);
+            offset = offset.checked_add(field_offset, &self.tcx.data_layout).unwrap();
+        }
+
+        offset
+    }
+
+    fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> Ty<'tcx> {
+        match ty.sty {
+            ty::TyStruct(adt_def, substs) => {
+                adt_def.struct_variant().fields[field_index].ty(self.tcx, substs)
+            }
+
+            ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
+            ty::TyBox(ty) => {
+                assert_eq!(field_index, 0);
+                ty
+            }
+            _ => panic!("can't handle type: {:?}", ty),
+        }
+    }
+
+    fn get_field_offset(&self, ty: Ty<'tcx>, field_index: usize) -> Size {
+        let layout = self.type_layout(ty);
+
+        use rustc::ty::layout::Layout::*;
+        match *layout {
+            Univariant { .. } => {
+                assert_eq!(field_index, 0);
+                Size::from_bytes(0)
+            }
+            FatPointer { .. } => {
+                let bytes = layout::FAT_PTR_ADDR * self.memory.pointer_size;
+                Size::from_bytes(bytes as u64)
+            }
+            _ => panic!("can't handle type: {:?}, with layout: {:?}", ty, layout),
+        }
+    }
+
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
         use rustc::mir::repr::Operand::*;
         match *op {
@@ -944,19 +1036,21 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
                     Field(field, _) => {
+                        use rustc::ty::layout::Layout::*;
                         let variant = match *base_layout {
-                            Layout::Univariant { ref variant, .. } => variant,
-                            Layout::General { ref variants, .. } => {
+                            Univariant { ref variant, .. } => variant,
+                            General { ref variants, .. } => {
                                 if let LvalueExtra::DowncastVariant(variant_idx) = base.extra {
                                     &variants[variant_idx]
                                 } else {
                                     panic!("field access on enum had no variant index");
                                 }
                             }
-                            Layout::RawNullablePointer { .. } => {
+                            RawNullablePointer { .. } => {
                                 assert_eq!(field.index(), 0);
                                 return Ok(base);
                             }
+                            StructWrappedNullablePointer { ref nonnull, .. } => nonnull,
                             _ => panic!("field access on non-product type: {:?}", base_layout),
                         };
 
@@ -964,15 +1058,20 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                         base.ptr.offset(offset as isize)
                     },
 
-                    Downcast(_, variant) => match *base_layout {
-                        Layout::General { discr, .. } => {
-                            return Ok(Lvalue {
-                                ptr: base.ptr.offset(discr.size().bytes() as isize),
-                                extra: LvalueExtra::DowncastVariant(variant),
-                            });
+                    Downcast(_, variant) => {
+                        use rustc::ty::layout::Layout::*;
+                        match *base_layout {
+                            General { discr, .. } => {
+                                return Ok(Lvalue {
+                                    ptr: base.ptr.offset(discr.size().bytes() as isize),
+                                    extra: LvalueExtra::DowncastVariant(variant),
+                                });
+                            }
+                            RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
+                                return Ok(base);
+                            }
+                            _ => panic!("variant downcast on non-aggregate: {:?}", base_layout),
                         }
-                        Layout::RawNullablePointer { .. } => return Ok(base),
-                        _ => panic!("variant downcast on non-aggregate type: {:?}", base_layout),
                     },
 
                     Deref => {
@@ -1052,24 +1151,24 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         }
     }
 
-    fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> ty::Ty<'tcx> {
+    fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
         self.monomorphize(self.mir().lvalue_ty(self.tcx, lvalue).to_ty(self.tcx))
     }
 
-    fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
+    fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
         self.monomorphize(self.mir().operand_ty(self.tcx, operand))
     }
 
-    fn monomorphize(&self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+    fn monomorphize(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let substituted = ty.subst(self.tcx, self.substs());
         self.tcx.normalize_associated_type(&substituted)
     }
 
-    fn type_needs_drop(&self, ty: ty::Ty<'tcx>) -> bool {
+    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
         self.tcx.type_needs_drop_given_env(ty, &self.tcx.empty_parameter_environment())
     }
 
-    fn move_(&mut self, src: Pointer, dest: Pointer, ty: ty::Ty<'tcx>) -> EvalResult<()> {
+    fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<()> {
         let size = self.type_size(ty);
         self.memory.copy(src, dest, size)?;
         if self.type_needs_drop(ty) {
@@ -1078,15 +1177,15 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(())
     }
 
-    fn type_is_sized(&self, ty: ty::Ty<'tcx>) -> bool {
+    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
         ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
     }
 
-    fn type_size(&self, ty: ty::Ty<'tcx>) -> usize {
+    fn type_size(&self, ty: Ty<'tcx>) -> usize {
         self.type_layout(ty).size(&self.tcx.data_layout).bytes() as usize
     }
 
-    fn type_layout(&self, ty: ty::Ty<'tcx>) -> &'tcx Layout {
+    fn type_layout(&self, ty: Ty<'tcx>) -> &'tcx Layout {
         // TODO(solson): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty);
 
@@ -1096,7 +1195,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         })
     }
 
-    pub fn read_primval(&mut self, ptr: Pointer, ty: ty::Ty<'tcx>) -> EvalResult<PrimVal> {
+    pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<PrimVal> {
         use syntax::ast::{IntTy, UintTy};
         let val = match ty.sty {
             ty::TyBool              => PrimVal::Bool(self.memory.read_bool(ptr)?),
