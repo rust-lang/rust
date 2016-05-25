@@ -228,6 +228,17 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
+    // always ensure we have at least one CGU; otherwise, if we have a
+    // crate with just types (for example), we could wind up with no CGU
+    if codegen_units.is_empty() {
+        let codegen_unit_name = InternedString::new(FALLBACK_CODEGEN_UNIT);
+        codegen_units.entry(codegen_unit_name.clone())
+                     .or_insert_with(|| CodegenUnit {
+                         name: codegen_unit_name.clone(),
+                         items: FnvHashMap(),
+                     });
+    }
+
     PreInliningPartitioning {
         codegen_units: codegen_units.into_iter()
                                     .map(|(_, codegen_unit)| codegen_unit)
