@@ -42,6 +42,10 @@ pub struct FmtVisitor<'a> {
 
 impl<'a> FmtVisitor<'a> {
     fn visit_stmt(&mut self, stmt: &ast::Stmt) {
+        debug!("visit_stmt: {:?} {:?}",
+               self.codemap.lookup_char_pos(stmt.span.lo),
+               self.codemap.lookup_char_pos(stmt.span.hi));
+
         match stmt.node {
             ast::StmtKind::Decl(ref decl, _) => {
                 if let ast::DeclKind::Item(ref item) = decl.node {
