@@ -17,9 +17,10 @@ use syntax::codemap::{self, Span, BytePos};
 use syntax::abi;
 
 use {Indent, Spanned};
+use codemap::SpanUtils;
 use lists::{format_item_list, itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
-use utils::{CodeMapSpanUtils, extra_offset, format_mutability, wrap_str};
+use utils::{extra_offset, format_mutability, wrap_str};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 use config::TypeDensity;
 

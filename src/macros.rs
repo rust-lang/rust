@@ -25,10 +25,11 @@ use syntax::parse::tts_to_parser;
 use syntax::codemap::{mk_sp, BytePos};
 
 use Indent;
+use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
 use expr::{rewrite_call, rewrite_array};
 use comment::{FindUncommented, contains_comment};
-use utils::{CodeMapSpanUtils, wrap_str};
+use utils::wrap_str;
 
 const FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
 

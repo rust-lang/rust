@@ -15,7 +15,8 @@ use syntax::parse::ParseSess;
 use strings::string_buffer::StringBuffer;
 
 use Indent;
-use utils::{self, CodeMapSpanUtils};
+use utils;
+use codemap::SpanUtils;
 use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;

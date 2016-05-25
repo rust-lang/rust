@@ -11,8 +11,9 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use Indent;
-use utils::{CodeMapSpanUtils, format_mutability, format_visibility, contains_skip, end_typaram,
-            wrap_str, last_line_width, semicolon_for_expr, format_unsafety, trim_newlines};
+use codemap::SpanUtils;
+use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wrap_str,
+            last_line_width, semicolon_for_expr, format_unsafety, trim_newlines};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, ListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
