@@ -663,6 +663,22 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                 bb_ctxt.on_operand(SK::If, cond, source);
             }
 
+            TerminatorKind::Assert {
+                ref cond, expected: _,
+                ref msg, target: _, cleanup: _
+            } => {
+                // The `cond` is always of (copyable) type `bool`,
+                // so there will never be anything to move.
+                let _ = cond;
+                match *msg {
+                    AssertMessage:: BoundsCheck { ref len, ref index } => {
+                        // Same for the usize length and index in bounds-checking.
+                        let _ = (len, index);
+                    }
+                    AssertMessage::Math(_) => {}
+                }
+            }
+
             TerminatorKind::SwitchInt { switch_ty: _, values: _, targets: _, ref discr } |
             TerminatorKind::Switch { adt_def: _, targets: _, ref discr } => {
                 // The `discr` is not consumed; that is instead

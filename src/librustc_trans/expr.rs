@@ -2230,11 +2230,11 @@ impl OverflowOpViaIntrinsic {
                         binop_debug_loc);
 
         let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
-        Call(bcx, expect, &[cond, C_integral(Type::i1(bcx.ccx()), 0, false)],
-             binop_debug_loc);
+        let expected = Call(bcx, expect, &[cond, C_bool(bcx.ccx(), false)],
+                            binop_debug_loc);
 
         let bcx =
-            base::with_cond(bcx, cond, |bcx|
+            base::with_cond(bcx, expected, |bcx|
                 controlflow::trans_fail(bcx, info,
                     InternedString::new("arithmetic operation overflowed")));
 

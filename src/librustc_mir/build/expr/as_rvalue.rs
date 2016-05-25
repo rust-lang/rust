@@ -12,6 +12,7 @@
 
 use std;
 
+use rustc_const_math::{ConstMathErr, Op};
 use rustc_data_structures::fnv::FnvHashMap;
 
 use build::{BlockAnd, BlockAndExtension, Builder};
@@ -88,10 +89,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     this.cfg.push_assign(block, scope_id, expr_span, &is_min,
                                          Rvalue::BinaryOp(BinOp::Eq, arg.clone(), minval));
 
-                    let (of_block, ok_block) = this.build_cond_br(block, expr_span,
-                                                                  Operand::Consume(is_min));
-                    this.panic(of_block, "attempted to negate with overflow", expr_span);
-                    block = ok_block;
+                    let err = ConstMathErr::Overflow(Op::Neg);
+                    block = this.assert(block, Operand::Consume(is_min), false,
+                                        AssertMessage::Math(err), expr_span);
                 }
                 block.and(Rvalue::UnaryOp(op, arg))
             }
@@ -261,27 +261,32 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let val = result_value.clone().field(val_fld, ty);
             let of = result_value.field(of_fld, bool_ty);
 
-            let msg = if op == BinOp::Shl || op == BinOp::Shr {
-                "shift operation overflowed"
-            } else {
-                "arithmetic operation overflowed"
-            };
+            let err = ConstMathErr::Overflow(match op {
+                BinOp::Add => Op::Add,
+                BinOp::Sub => Op::Sub,
+                BinOp::Mul => Op::Mul,
+                BinOp::Shl => Op::Shl,
+                BinOp::Shr => Op::Shr,
+                _ => {
+                    bug!("MIR build_binary_op: {:?} is not checkable", op)
+                }
+            });
 
-            let (of_block, ok_block) = self.build_cond_br(block, span, Operand::Consume(of));
-            self.panic(of_block, msg, span);
+            block = self.assert(block, Operand::Consume(of), false,
+                                AssertMessage::Math(err), span);
 
-            ok_block.and(Rvalue::Use(Operand::Consume(val)))
+            block.and(Rvalue::Use(Operand::Consume(val)))
         } else {
             if ty.is_integral() && (op == BinOp::Div || op == BinOp::Rem) {
                 // Checking division and remainder is more complex, since we 1. always check
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
-                let (zero_msg, overflow_msg) = if op == BinOp::Div {
-                    ("attempted to divide by zero",
-                     "attempted to divide with overflow")
+                let (zero_err, overflow_err) = if op == BinOp::Div {
+                    (ConstMathErr::DivisionByZero,
+                     ConstMathErr::Overflow(Op::Div))
                 } else {
-                    ("attempted remainder with a divisor of zero",
-                     "attempted remainder with overflow")
+                    (ConstMathErr::RemainderByZero,
+                     ConstMathErr::Overflow(Op::Rem))
                 };
 
                 // Check for / 0
@@ -290,11 +295,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.cfg.push_assign(block, scope_id, span, &is_zero,
                                      Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), zero));
 
-                let (zero_block, ok_block) = self.build_cond_br(block, span,
-                                                                Operand::Consume(is_zero));
-                self.panic(zero_block, zero_msg, span);
-
-                block = ok_block;
+                block = self.assert(block, Operand::Consume(is_zero), false,
+                                    AssertMessage::Math(zero_err), span);
 
                 // We only need to check for the overflow in one case:
                 // MIN / -1, and only for signed values.
@@ -318,11 +320,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.cfg.push_assign(block, scope_id, span, &of,
                                          Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min));
 
-                    let (of_block, ok_block) = self.build_cond_br(block, span,
-                                                                  Operand::Consume(of));
-                    self.panic(of_block, overflow_msg, span);
-
-                    block = ok_block;
+                    block = self.assert(block, Operand::Consume(of), false,
+                                        AssertMessage::Math(overflow_err), span);
                 }
             }
 

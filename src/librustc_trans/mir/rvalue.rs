@@ -17,13 +17,13 @@ use asm;
 use base;
 use callee::Callee;
 use common::{self, val_ty,
-             C_null,
-             C_uint, C_undef, C_u8, BlockAndBuilder, Result};
+             C_null, C_uint, C_undef, BlockAndBuilder, Result};
 use datum::{Datum, Lvalue};
 use debuginfo::DebugLoc;
 use adt;
 use machine;
 use type_of;
+use type_::Type;
 use tvec;
 use value::Value;
 use Disr;
@@ -611,9 +611,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 (val, bcx.zext(of, Type::bool(bcx.ccx())))
             }
             _ => {
-                // Fall back to regular translation with a constant-false overflow flag
-                (self.trans_scalar_binop(bcx, op, lhs, rhs, input_ty),
-                 C_u8(bcx.ccx(), 0))
+                bug!("Operator `{:?}` is not a checkable operator", op)
             }
         };
 
