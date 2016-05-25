@@ -17,13 +17,21 @@ use std::ops::{Deref, DerefMut, Range};
 use bitslice::{BitSlice, Word};
 use bitslice::{bitwise, Union, Subtract};
 
+/// Represents some newtyped `usize` wrapper.
+///
+/// (purpose: avoid mixing indexes for different bitvector domains.)
 pub trait Idx: 'static {
     fn new(usize) -> Self;
     fn idx(&self) -> usize;
 }
 
+/// Represents a set (or packed family of sets), of some element type
+/// E, where each E is identified by some unique index type `T`.
+///
+/// In other words, `T` is the type used to index into the bitvector
+/// this type uses to represent the set of object it holds.
 pub struct OwnIdxSet<T: Idx> {
-    _pd: PhantomData<fn(&[T], usize) -> &T>,
+    _pd: PhantomData<fn(&T)>,
     bits: Vec<Word>,
 }
 
@@ -40,8 +48,13 @@ impl<T: Idx> Clone for OwnIdxSet<T> {
 // requires a transmute relying on representation guarantees that may
 // not hold in the future.
 
+/// Represents a set (or packed family of sets), of some element type
+/// E, where each E is identified by some unique index type `T`.
+///
+/// In other words, `T` is the type used to index into the bitslice
+/// this type uses to represent the set of object it holds.
 pub struct IdxSet<T: Idx> {
-    _pd: PhantomData<fn(&[T], usize) -> &T>,
+    _pd: PhantomData<fn(&T)>,
     bits: [Word],
 }
 
