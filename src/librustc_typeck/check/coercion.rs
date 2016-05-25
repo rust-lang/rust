@@ -363,6 +363,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             }
         };
 
+        // This commits the obligations to the fulfillcx. After this succeeds,
+        // this snapshot can't be rolled back.
         autoderef.finalize(LvaluePreference::from_mutbl(mt_b.mutbl), exprs());
 
         // Now apply the autoref. We have to extract the region out of
