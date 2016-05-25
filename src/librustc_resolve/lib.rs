@@ -67,7 +67,7 @@ use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Pat, PatKind, Path};
-use syntax::ast::{PathSegment, PathParameters, TraitItemKind, TraitRef, Ty, TyKind};
+use syntax::ast::{PathSegment, PathParameters, SelfKind, TraitItemKind, TraitRef, Ty, TyKind};
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
@@ -148,7 +148,13 @@ enum ResolutionError<'a> {
     /// error E0424: `self` is not available in a static method
     SelfNotAvailableInStaticMethod,
     /// error E0425: unresolved name
-    UnresolvedName(&'a str, &'a str, UnresolvedNameContext<'a>),
+    UnresolvedName {
+        path: &'a str,
+        message: &'a str,
+        context: UnresolvedNameContext<'a>,
+        is_static_method: bool,
+        is_field: bool
+    },
     /// error E0426: use of undeclared label
     UndeclaredLabel(&'a str),
     /// error E0427: cannot use `ref` binding mode with ...
@@ -406,16 +412,21 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "`self` is not available in a static method. Maybe a `self` \
                              argument is missing?")
         }
-        ResolutionError::UnresolvedName(path, msg, context) => {
+        ResolutionError::UnresolvedName { path, message: msg, context, is_static_method,
+                                          is_field } => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0425,
                                            "unresolved name `{}`{}",
                                            path,
                                            msg);
-
             match context {
-                UnresolvedNameContext::Other => { } // no help available
+                UnresolvedNameContext::Other => {
+                    if msg.is_empty() && is_static_method && is_field {
+                        err.help("this is an associated function, you don't have access to \
+                                  this type's fields or methods");
+                    }
+                }
                 UnresolvedNameContext::PathIsMod(parent) => {
                     err.help(&match parent.map(|parent| &parent.node) {
                         Some(&ExprKind::Field(_, ident)) => {
@@ -596,7 +607,7 @@ impl<'a, 'v> Visitor<'v> for Resolver<'a> {
             }
             FnKind::Method(_, sig, _) => {
                 self.visit_generics(&sig.generics);
-                MethodRibKind
+                MethodRibKind(sig.explicit_self.node == SelfKind::Static)
             }
             FnKind::Closure => ClosureRibKind(node_id),
         };
@@ -666,7 +677,9 @@ enum RibKind<'a> {
     // methods. Allow references to ty params that impl or trait
     // binds. Disallow any other upvars (including other ty params that are
     // upvars).
-    MethodRibKind,
+    //
+    // The boolean value represents the fact that this method is static or not.
+    MethodRibKind(bool),
 
     // We passed through an item scope. Disallow upvars.
     ItemRibKind,
@@ -1095,7 +1108,13 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
             Err(false) => {
                 let path_name = &format!("{}", path);
                 let error =
-                    ResolutionError::UnresolvedName(path_name, "", UnresolvedNameContext::Other);
+                    ResolutionError::UnresolvedName {
+                        path: path_name,
+                        message: "",
+                        context: UnresolvedNameContext::Other,
+                        is_static_method: false,
+                        is_field: false
+                    };
                 resolve_error(self, path.span, error);
                 Def::Err
             }
@@ -1657,7 +1676,9 @@ impl<'a> Resolver<'a> {
                                     let type_parameters =
                                         HasTypeParameters(&sig.generics,
                                                           FnSpace,
-                                                          MethodRibKind);
+                                                          MethodRibKind(
+                                                             sig.explicit_self.node ==
+                                                             SelfKind::Static));
                                     this.with_type_parameter_rib(type_parameters, |this| {
                                         visit::walk_trait_item(this, trait_item)
                                     });
@@ -1776,7 +1797,10 @@ impl<'a> Resolver<'a> {
         self.value_ribs.pop();
     }
 
-    fn resolve_function(&mut self, rib_kind: RibKind<'a>, declaration: &FnDecl, block: &Block) {
+    fn resolve_function(&mut self,
+                        rib_kind: RibKind<'a>,
+                        declaration: &FnDecl,
+                        block: &Block) {
         // Create a value rib for the function.
         self.value_ribs.push(Rib::new(rib_kind));
 
@@ -1983,7 +2007,9 @@ impl<'a> Resolver<'a> {
                                     let type_parameters =
                                         HasTypeParameters(&sig.generics,
                                                           FnSpace,
-                                                          MethodRibKind);
+                                                          MethodRibKind(
+                                                            sig.explicit_self.node ==
+                                                            SelfKind::Static));
                                     this.with_type_parameter_rib(type_parameters, |this| {
                                         visit::walk_impl_item(this, impl_item);
                                     });
@@ -2677,7 +2703,7 @@ impl<'a> Resolver<'a> {
                             def = Def::Upvar(node_def_id, node_id, depth, function_id);
                             seen.insert(node_id, depth);
                         }
-                        ItemRibKind | MethodRibKind => {
+                        ItemRibKind | MethodRibKind(_) => {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
@@ -2699,7 +2725,7 @@ impl<'a> Resolver<'a> {
             Def::TyParam(..) | Def::SelfTy(..) => {
                 for rib in ribs {
                     match rib.kind {
-                        NormalRibKind | MethodRibKind | ClosureRibKind(..) |
+                        NormalRibKind | MethodRibKind(_) | ClosureRibKind(..) |
                         ModuleRibKind(..) => {
                             // Nothing to do. Continue.
                         }
@@ -2992,9 +3018,13 @@ impl<'a> Resolver<'a> {
                             // `resolve_path` already reported the error
                         } else {
                             let mut method_scope = false;
+                            let mut is_static = false;
                             self.value_ribs.iter().rev().all(|rib| {
                                 method_scope = match rib.kind {
-                                    MethodRibKind => true,
+                                    MethodRibKind(is_static_) => {
+                                        is_static = is_static_;
+                                        true
+                                    }
                                     ItemRibKind | ConstantItemRibKind => false,
                                     _ => return true, // Keep advancing
                                 };
@@ -3008,22 +3038,29 @@ impl<'a> Resolver<'a> {
                                               ResolutionError::SelfNotAvailableInStaticMethod);
                             } else {
                                 let last_name = path.segments.last().unwrap().identifier.name;
-                                let mut msg = match self.find_fallback_in_self_type(last_name) {
+                                let (mut msg, is_field) =
+                                    match self.find_fallback_in_self_type(last_name) {
                                     NoSuggestion => {
                                         // limit search to 5 to reduce the number
                                         // of stupid suggestions
-                                        match self.find_best_match(&path_name) {
+                                        (match self.find_best_match(&path_name) {
                                             SuggestionType::Macro(s) => {
                                                 format!("the macro `{}`", s)
                                             }
                                             SuggestionType::Function(s) => format!("`{}`", s),
                                             SuggestionType::NotFound => "".to_string(),
-                                        }
+                                        }, false)
                                     }
-                                    Field => format!("`self.{}`", path_name),
-                                    TraitItem => format!("to call `self.{}`", path_name),
+                                    Field => {
+                                        (if is_static && method_scope {
+                                            "".to_string()
+                                        } else {
+                                            format!("`self.{}`", path_name)
+                                        }, true)
+                                    }
+                                    TraitItem => (format!("to call `self.{}`", path_name), false),
                                     TraitMethod(path_str) =>
-                                        format!("to call `{}::{}`", path_str, path_name),
+                                        (format!("to call `{}::{}`", path_str, path_name), false),
                                 };
 
                                 let mut context =  UnresolvedNameContext::Other;
@@ -3048,8 +3085,13 @@ impl<'a> Resolver<'a> {
 
                                 resolve_error(self,
                                               expr.span,
-                                              ResolutionError::UnresolvedName(
-                                                  &path_name, &msg, context));
+                                              ResolutionError::UnresolvedName {
+                                                  path: &path_name,
+                                                  message: &msg,
+                                                  context: context,
+                                                  is_static_method: method_scope && is_static,
+                                                  is_field: is_field,
+                                              });
                             }
                         }
                     }
