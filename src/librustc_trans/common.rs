@@ -1165,18 +1165,18 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
-pub fn langcall(bcx: Block,
+pub fn langcall(tcx: TyCtxt,
                 span: Option<Span>,
                 msg: &str,
                 li: LangItem)
                 -> DefId {
-    match bcx.tcx().lang_items.require(li) {
+    match tcx.lang_items.require(li) {
         Ok(id) => id,
         Err(s) => {
             let msg = format!("{} {}", msg, s);
             match span {
-                Some(span) => bcx.tcx().sess.span_fatal(span, &msg[..]),
-                None => bcx.tcx().sess.fatal(&msg[..]),
+                Some(span) => tcx.sess.span_fatal(span, &msg[..]),
+                None => tcx.sess.fatal(&msg[..]),
             }
         }
     }

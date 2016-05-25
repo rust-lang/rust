@@ -880,7 +880,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                rhs_t: Ty<'tcx>,
                                debug_loc: DebugLoc)
                                -> Result<'blk, 'tcx> {
-        let did = langcall(bcx,
+        let did = langcall(bcx.tcx(),
                            None,
                            &format!("comparison of `{}`", rhs_t),
                            StrEqFnLangItem);

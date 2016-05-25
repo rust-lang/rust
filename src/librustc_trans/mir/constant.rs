@@ -287,14 +287,21 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     }))
                 }
 
-                // This is only supported to make bounds checking work.
-                mir::TerminatorKind::If { ref cond, targets: (true_bb, false_bb) } => {
+                mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, .. } => {
                     let cond = self.const_operand(cond, span)?;
-                    if common::const_to_uint(cond.llval) != 0 {
-                        true_bb
-                    } else {
-                        false_bb
+                    let cond_bool = common::const_to_uint(cond.llval) != 0;
+                    if cond_bool != expected {
+                        let err = match *msg {
+                            mir::AssertMessage::BoundsCheck {..} => {
+                                ErrKind::IndexOutOfBounds
+                            }
+                            mir::AssertMessage::Math(ref err) => {
+                                ErrKind::Math(err.clone())
+                            }
+                        };
+                        consts::const_err(self.ccx, span, Err(err), TrueConst::Yes)?;
                     }
+                    target
                 }
 
                 mir::TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
@@ -307,13 +314,6 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         _ => span_bug!(span, "calling {:?} (of type {}) in constant",
                                        func, fn_ty)
                     };
-
-                    // Indexing OOB doesn't call a const fn, handle it.
-                    if Some(instance.def) == tcx.lang_items.panic_bounds_check_fn() {
-                        consts::const_err(self.ccx, span,
-                                          Err(ErrKind::IndexOutOfBounds),
-                                          TrueConst::Yes)?;
-                    }
 
                     let args = args.iter().map(|arg| {
                         self.const_operand(arg, span)

@@ -161,6 +161,7 @@ pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
                     /* nothing to do */
                 }
                 TerminatorKind::Call { cleanup: unwind, .. } |
+                TerminatorKind::Assert { cleanup: unwind, .. } |
                 TerminatorKind::DropAndReplace { unwind, .. } |
                 TerminatorKind::Drop { unwind, .. } => {
                     if let Some(unwind) = unwind {

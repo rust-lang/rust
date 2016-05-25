@@ -10,7 +10,7 @@
 
 use syntax::ast;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, RustcEncodable, RustcDecodable)]
 pub enum ConstMathErr {
     NotInRange,
     CmpBetweenUnequalTypes,
@@ -25,7 +25,7 @@ pub enum ConstMathErr {
 }
 pub use self::ConstMathErr::*;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, RustcEncodable, RustcDecodable)]
 pub enum Op {
     Add,
     Sub,

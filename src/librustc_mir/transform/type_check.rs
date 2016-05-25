@@ -431,6 +431,21 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     self.check_call_inputs(mir, term, &sig, args);
                 }
             }
+            TerminatorKind::Assert { ref cond, ref msg, .. } => {
+                let cond_ty = mir.operand_ty(tcx, cond);
+                if cond_ty != tcx.types.bool {
+                    span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
+                }
+
+                if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                    if mir.operand_ty(tcx, len) != tcx.types.usize {
+                        span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
+                    }
+                    if mir.operand_ty(tcx, index) != tcx.types.usize {
+                        span_mirbug!(self, index, "bounds-check index non-usize {:?}", index)
+                    }
+                }
+            }
         }
     }
 
@@ -561,7 +576,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             TerminatorKind::Drop { target, unwind, .. } |
-            TerminatorKind::DropAndReplace { target, unwind, .. } => {
+            TerminatorKind::DropAndReplace { target, unwind, .. } |
+            TerminatorKind::Assert { target, cleanup: unwind, .. } => {
                 self.assert_iscleanup(mir, block, target, is_cleanup);
                 if let Some(unwind) = unwind {
                     if is_cleanup {

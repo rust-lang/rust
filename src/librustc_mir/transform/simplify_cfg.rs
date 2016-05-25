@@ -181,7 +181,17 @@ fn simplify_branches(mir: &mut Mir) {
                     }
                 }
 
+                TerminatorKind::Assert { target, cond: Operand::Constant(Constant {
+                    literal: Literal::Value {
+                        value: ConstVal::Bool(cond)
+                    }, ..
+                }), expected, .. } if cond == expected => {
+                    changed = true;
+                    TerminatorKind::Goto { target: target }
+                }
+
                 TerminatorKind::SwitchInt { ref targets, .. } if targets.len() == 1 => {
+                    changed = true;
                     TerminatorKind::Goto { target: targets[0] }
                 }
                 _ => continue

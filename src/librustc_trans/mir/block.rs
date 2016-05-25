@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
+use rustc::middle::lang_items;
 use rustc::ty;
 use rustc::mir::repr as mir;
 use abi::{Abi, FnType, ArgType};
@@ -16,7 +17,9 @@ use adt;
 use base;
 use build;
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
-use common::{self, type_is_fat_ptr, Block, BlockAndBuilder, LandingPad, C_undef};
+use common::{self, type_is_fat_ptr, Block, BlockAndBuilder, LandingPad};
+use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
+use consts;
 use debuginfo::DebugLoc;
 use Disr;
 use machine::{llalign_of_min, llbitsize_of_real};
@@ -24,7 +27,9 @@ use meth;
 use type_of;
 use glue;
 use type_::Type;
+
 use rustc_data_structures::fnv::FnvHashMap;
+use syntax::parse::token;
 
 use super::{MirContext, TempRef};
 use super::analyze::CleanupKind;
@@ -209,6 +214,92 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 } else {
                     bcx.call(drop_fn, &[llvalue], cleanup_bundle);
                     funclet_br(self, bcx, target);
+                }
+            }
+
+            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
+                let cond = self.trans_operand(&bcx, cond).immediate();
+                let const_cond = common::const_to_opt_uint(cond).map(|c| c == 1);
+
+                // Don't translate the panic block if success if known.
+                let lltarget = self.llblock(target);
+                if const_cond == Some(expected) {
+                    funclet_br(bcx, lltarget);
+                    return;
+                }
+
+                if const_cond == Some(!expected) {
+                    // Do nothing to end up with an unconditional panic.
+                } else {
+                    // Pass the condition through llvm.expect for branch hinting.
+                    let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
+                    let cond = bcx.call(expect, &[cond, C_bool(bcx.ccx(), expected)], None);
+
+                    // Create the failure block and the conditional branch to it.
+                    // After this point, bcx is the block for the call to panic.
+                    let panic_block = self.fcx.new_block("panic", None);
+                    if expected {
+                        bcx.cond_br(cond, lltarget, panic_block.llbb);
+                    } else {
+                        bcx.cond_br(cond, panic_block.llbb, lltarget);
+                    }
+                    bcx = panic_block.build();
+                }
+
+                // Get the location information.
+                let loc = bcx.sess().codemap().lookup_char_pos(terminator.span.lo);
+                let filename = token::intern_and_get_ident(&loc.file.name);
+                let filename = C_str_slice(bcx.ccx(), filename);
+                let line = C_u32(bcx.ccx(), loc.line as u32);
+
+                // Put together the arguments to the panic entry point.
+                let (lang_item, args) = match *msg {
+                    mir::AssertMessage::BoundsCheck { ref len, ref index } => {
+                        let len = self.trans_operand(&mut bcx, len);
+                        let index = self.trans_operand(&mut bcx, index);
+
+                        let file_line = C_struct(bcx.ccx(), &[filename, line], false);
+                        let align = llalign_of_min(bcx.ccx(), common::val_ty(file_line));
+                        let file_line = consts::addr_of(bcx.ccx(),
+                                                        file_line,
+                                                        align,
+                                                        "panic_bounds_check_loc");
+                        (lang_items::PanicBoundsCheckFnLangItem,
+                         vec![file_line, index.immediate(), len.immediate()])
+                    }
+                    mir::AssertMessage::Math(ref err) => {
+                        let msg_str = token::intern_and_get_ident(err.description());
+                        let msg_str = C_str_slice(bcx.ccx(), msg_str);
+                        let msg_file_line = C_struct(bcx.ccx(),
+                                                     &[msg_str, filename, line],
+                                                     false);
+                        let align = llalign_of_min(bcx.ccx(), common::val_ty(msg_file_line));
+                        let msg_file_line = consts::addr_of(bcx.ccx(),
+                                                            msg_file_line,
+                                                            align,
+                                                            "panic_loc");
+                        (lang_items::PanicFnLangItem, vec![msg_file_line])
+                    }
+                };
+
+                // Obtain the panic entry point.
+                let def_id = common::langcall(bcx.tcx(), Some(terminator.span), "", lang_item);
+                let callee = Callee::def(bcx.ccx(), def_id,
+                    bcx.ccx().empty_substs_for_def_id(def_id));
+                let llfn = callee.reify(bcx.ccx()).val;
+
+                // Translate the actual panic invoke/call.
+                if let Some(unwind) = cleanup {
+                    let uwbcx = self.bcx(unwind);
+                    let unwind = self.make_landing_pad(uwbcx);
+                    bcx.invoke(llfn,
+                               &args,
+                               self.unreachable_block().llbb,
+                               unwind.llbb(),
+                               cleanup_bundle.as_ref());
+                } else {
+                    bcx.call(llfn, &args, cleanup_bundle.as_ref());
+                    bcx.unreachable();
                 }
             }
 

@@ -10,7 +10,7 @@
 
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
-use rustc_const_math::{ConstUsize, ConstInt};
+use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
 use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
@@ -354,6 +354,16 @@ pub enum TerminatorKind<'tcx> {
         /// Cleanups to be done if the call unwinds.
         cleanup: Option<BasicBlock>
     },
+
+    /// Jump to the target if the condition has the expected value,
+    /// otherwise panic with a message and a cleanup target.
+    Assert {
+        cond: Operand<'tcx>,
+        expected: bool,
+        msg: AssertMessage<'tcx>,
+        target: BasicBlock,
+        cleanup: Option<BasicBlock>
+    }
 }
 
 impl<'tcx> Terminator<'tcx> {
@@ -389,6 +399,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             Drop { ref target, unwind: None, .. } => {
                 slice::ref_slice(target).into_cow()
             }
+            Assert { target, cleanup: Some(unwind), .. } => vec![target, unwind].into_cow(),
+            Assert { ref target, .. } => slice::ref_slice(target).into_cow(),
         }
     }
 
@@ -413,6 +425,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             Drop { ref mut target, unwind: None, .. } => {
                 vec![target]
             }
+            Assert { ref mut target, cleanup: Some(ref mut unwind), .. } => vec![target, unwind],
+            Assert { ref mut target, .. } => vec![target]
         }
     }
 }
@@ -495,6 +509,26 @@ impl<'tcx> TerminatorKind<'tcx> {
                 }
                 write!(fmt, ")")
             }
+            Assert { ref cond, expected, ref msg, .. } => {
+                write!(fmt, "assert(")?;
+                if !expected {
+                    write!(fmt, "!")?;
+                }
+                write!(fmt, "{:?}, ", cond)?;
+
+                match *msg {
+                    AssertMessage::BoundsCheck { ref len, ref index } => {
+                        write!(fmt, "{:?}, {:?}, {:?}",
+                               "index out of bounds: the len is {} but the index is {}",
+                               len, index)?;
+                    }
+                    AssertMessage::Math(ref err) => {
+                        write!(fmt, "{:?}", err.description())?;
+                    }
+                }
+
+                write!(fmt, ")")
+            }
         }
     }
 
@@ -532,10 +566,21 @@ impl<'tcx> TerminatorKind<'tcx> {
             Drop { unwind: Some(_), .. } => {
                 vec!["return".into_cow(), "unwind".into_cow()]
             }
+            Assert { cleanup: None, .. } => vec!["".into()],
+            Assert { .. } =>
+                vec!["success".into_cow(), "unwind".into_cow()]
         }
     }
 }
 
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub enum AssertMessage<'tcx> {
+    BoundsCheck {
+        len: Operand<'tcx>,
+        index: Operand<'tcx>
+    },
+    Math(ConstMathErr)
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // Statements

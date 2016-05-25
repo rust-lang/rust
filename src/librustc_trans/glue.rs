@@ -53,7 +53,7 @@ pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                            -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_exchange_free");
 
-    let def_id = langcall(bcx, None, "", ExchangeFreeFnLangItem);
+    let def_id = langcall(bcx.tcx(), None, "", ExchangeFreeFnLangItem);
     let args = [PointerCast(bcx, v, Type::i8p(bcx.ccx())), size, align];
     Callee::def(bcx.ccx(), def_id, bcx.tcx().mk_substs(Substs::empty()))
         .call(bcx, debug_loc, ArgVals(&args), None).bcx
