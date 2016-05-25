@@ -1,6 +1,6 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::hir::def::{Def, PathResolution};
-use rustc::hir::{Expr, Expr_, Stmt, StmtSemi};
+use rustc::hir::{Expr, Expr_, Stmt, StmtSemi, BlockCheckMode, UnsafeSource};
 use utils::{in_macro, span_lint, snippet_opt, span_lint_and_then};
 use std::ops::Deref;
 
@@ -140,11 +140,11 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         }
         Expr_::ExprBlock(ref block) => {
             if block.stmts.is_empty() {
-                block.expr.as_ref().and_then(|e| if e.span == expr.span {
+                block.expr.as_ref().and_then(|e| match block.rules {
+                    BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) => None,
+                    BlockCheckMode::DefaultBlock => Some(vec![&**e]),
                     // in case of compiler-inserted signaling blocks
-                    reduce_expression(cx, e)
-                } else {
-                    Some(vec![e])
+                    _ => reduce_expression(cx, e),
                 })
             } else {
                 None
