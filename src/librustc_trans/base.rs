@@ -30,14 +30,14 @@ pub use self::ValueOrigin::*;
 use super::CrateTranslation;
 use super::ModuleTranslation;
 
-use back::{link, symbol_names};
+use back::link;
+use back::linker::LinkerInfo;
 use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use rustc::cfg;
 use rustc::hir::def_id::DefId;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
-use middle::weak_lang_items;
 use rustc::hir::pat_util::simple_name;
 use rustc::ty::subst::{self, Substs};
 use rustc::traits;
@@ -2344,15 +2344,6 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
             set_global_section(ccx, g, item);
             update_linkage(ccx, g, Some(item.id), OriginalTranslation);
         }
-        hir::ItemForeignMod(ref m) => {
-            if m.abi == Abi::RustIntrinsic || m.abi == Abi::PlatformIntrinsic {
-                return;
-            }
-            for fi in &m.items {
-                let lname = imported_name(fi.name, &fi.attrs).to_string();
-                ccx.item_symbols().borrow_mut().insert(fi.id, lname);
-            }
-        }
         _ => {}
     }
 }
@@ -2437,60 +2428,12 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
     }
 }
 
-pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               instance: Instance<'tcx>,
-                               attrs: &[ast::Attribute])
-                               -> String {
-    let id = ccx.tcx().map.as_local_node_id(instance.def).unwrap();
-
-    match ccx.external_srcs().borrow().get(&id) {
-        Some(&did) => {
-            let sym = ccx.sess().cstore.item_symbol(did);
-            debug!("found item {} in other crate...", sym);
-            return sym;
-        }
-        None => {}
-    }
-
-    match attr::find_export_name_attr(ccx.sess().diagnostic(), attrs) {
-        // Use provided name
-        Some(name) => name.to_string(),
-        _ => {
-            if attr::contains_name(attrs, "no_mangle") {
-                // Don't mangle
-                ccx.tcx().map.name(id).as_str().to_string()
-            } else {
-                match weak_lang_items::link_name(attrs) {
-                    Some(name) => name.to_string(),
-                    None => {
-                        // Usual name mangling
-                        symbol_names::exported_name(ccx, &instance)
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn imported_name(name: ast::Name, attrs: &[ast::Attribute]) -> InternedString {
-    match attr::first_attr_value_str_by_name(attrs, "link_name") {
-        Some(ln) => ln.clone(),
-        None => match weak_lang_items::link_name(attrs) {
-            Some(name) => name,
-            None => name.as_str(),
-        }
-    }
-}
-
 fn contains_null(s: &str) -> bool {
     s.bytes().any(|b| b == 0)
 }
 
-pub fn write_metadata<'a, 'tcx>(cx: &SharedCrateContext<'a, 'tcx>,
-                                krate: &hir::Crate,
-                                reachable: &NodeSet,
-                                mir_map: &MirMap<'tcx>)
-                                -> Vec<u8> {
+fn write_metadata(cx: &SharedCrateContext,
+                  reachable_ids: &NodeSet) -> Vec<u8> {
     use flate;
 
     let any_library = cx.sess()
@@ -2505,11 +2448,10 @@ pub fn write_metadata<'a, 'tcx>(cx: &SharedCrateContext<'a, 'tcx>,
     let cstore = &cx.tcx().sess.cstore;
     let metadata = cstore.encode_metadata(cx.tcx(),
                                           cx.export_map(),
-                                          cx.item_symbols(),
                                           cx.link_meta(),
-                                          reachable,
-                                          mir_map,
-                                          krate);
+                                          reachable_ids,
+                                          cx.mir_map(),
+                                          cx.tcx().map.krate());
     let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.extend_from_slice(&flate::deflate_bytes(&metadata));
 
@@ -2670,10 +2612,7 @@ fn iter_functions(llmod: llvm::ModuleRef) -> ValueIter {
 /// This list is later used by linkers to determine the set of symbols needed to
 /// be exposed from a dynamic library and it's also encoded into the metadata.
 pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
-    scx.reachable().iter().map(|x| *x).filter(|id| {
-        // First, only worry about nodes which have a symbol name
-        scx.item_symbols().borrow().contains_key(id)
-    }).filter(|&id| {
+    scx.reachable().iter().map(|x| *x).filter(|&id| {
         // Next, we want to ignore some FFI functions that are not exposed from
         // this crate. Reachable FFI functions can be lumped into two
         // categories:
@@ -2691,7 +2630,20 @@ pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
             hir_map::NodeForeignItem(..) => {
                 scx.sess().cstore.is_statically_included_foreign_item(id)
             }
-            _ => true,
+
+            // Only consider nodes that actually have exported symbols.
+            hir_map::NodeItem(&hir::Item {
+                node: hir::ItemStatic(..), .. }) |
+            hir_map::NodeItem(&hir::Item {
+                node: hir::ItemFn(..), .. }) |
+            hir_map::NodeImplItem(&hir::ImplItem {
+                node: hir::ImplItemKind::Method(..), .. }) => {
+                let def_id = scx.tcx().map.local_def_id(id);
+                let scheme = scx.tcx().lookup_item_type(def_id);
+                scheme.generics.types.is_empty()
+            }
+
+            _ => false
         }
     }).collect()
 }
@@ -2733,12 +2685,43 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              check_overflow,
                                              check_dropflag);
 
+    let reachable_symbol_ids = filter_reachable_ids(&shared_ccx);
+
+    // Translate the metadata.
+    let metadata = time(tcx.sess.time_passes(), "write metadata", || {
+        write_metadata(&shared_ccx, &reachable_symbol_ids)
+    });
+
+    let metadata_module = ModuleTranslation {
+        llcx: shared_ccx.metadata_llcx(),
+        llmod: shared_ccx.metadata_llmod(),
+    };
+    let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
+
     let codegen_units = collect_and_partition_translation_items(&shared_ccx);
     let codegen_unit_count = codegen_units.len();
     assert!(tcx.sess.opts.cg.codegen_units == codegen_unit_count ||
             tcx.sess.opts.debugging_opts.incremental.is_some());
 
     let crate_context_list = CrateContextList::new(&shared_ccx, codegen_units);
+
+    let modules = crate_context_list.iter()
+        .map(|ccx| ModuleTranslation { llcx: ccx.llcx(), llmod: ccx.llmod() })
+        .collect();
+
+    // Skip crate items and just output metadata in -Z no-trans mode.
+    if tcx.sess.opts.no_trans {
+        let linker_info = LinkerInfo::new(&shared_ccx, &[]);
+        return CrateTranslation {
+            modules: modules,
+            metadata_module: metadata_module,
+            link: link_meta,
+            metadata: metadata,
+            reachable: vec![],
+            no_builtins: no_builtins,
+            linker_info: linker_info
+        };
+    }
 
     {
         let ccx = crate_context_list.get_ccx(0);
@@ -2769,13 +2752,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let reachable_symbol_ids = filter_reachable_ids(&shared_ccx);
-
-    // Translate the metadata.
-    let metadata = time(tcx.sess.time_passes(), "write metadata", || {
-        write_metadata(&shared_ccx, krate, &reachable_symbol_ids, mir_map)
-    });
-
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();
         println!("--- trans stats ---");
@@ -2805,13 +2781,10 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let modules = crate_context_list.iter()
-        .map(|ccx| ModuleTranslation { llcx: ccx.llcx(), llmod: ccx.llmod() })
-        .collect();
-
     let sess = shared_ccx.sess();
-    let mut reachable_symbols = reachable_symbol_ids.iter().map(|id| {
-        shared_ccx.item_symbols().borrow()[id].to_string()
+    let mut reachable_symbols = reachable_symbol_ids.iter().map(|&id| {
+        let def_id = shared_ccx.tcx().map.local_def_id(id);
+        Instance::mono(&shared_ccx, def_id).symbol_name(&shared_ccx)
     }).collect::<Vec<_>>();
     if sess.entry_fn.borrow().is_some() {
         reachable_symbols.push("main".to_string());
@@ -2834,7 +2807,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         reachable_symbols.extend(syms.into_iter().filter(|did| {
             sess.cstore.is_extern_item(shared_ccx.tcx(), *did)
         }).map(|did| {
-            sess.cstore.item_symbol(did)
+            Instance::mono(&shared_ccx, did).symbol_name(&shared_ccx)
         }));
     }
 
@@ -2848,12 +2821,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         create_imps(&crate_context_list);
     }
 
-    let metadata_module = ModuleTranslation {
-        llcx: shared_ccx.metadata_llcx(),
-        llmod: shared_ccx.metadata_llmod(),
-    };
-    let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
-
+    let linker_info = LinkerInfo::new(&shared_ccx, &reachable_symbols);
     CrateTranslation {
         modules: modules,
         metadata_module: metadata_module,
@@ -2861,6 +2829,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         metadata: metadata,
         reachable: reachable_symbols,
         no_builtins: no_builtins,
+        linker_info: linker_info
     }
 }
 

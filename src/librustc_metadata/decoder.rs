@@ -213,10 +213,6 @@ fn item_sort(item: rbml::Doc) -> Option<char> {
     })
 }
 
-fn item_symbol(item: rbml::Doc) -> String {
-    reader::get_doc(item, tag_items_data_item_symbol).as_str().to_string()
-}
-
 fn untranslated_def_id(d: rbml::Doc) -> DefId {
     let id = reader::doc_as_u64(d);
     let index = DefIndex::new((id & 0xFFFF_FFFF) as usize);
@@ -638,18 +634,6 @@ pub fn get_impl_trait<'a, 'tcx>(cdata: Cmd,
         }
         _ => None
     }
-}
-
-pub fn get_symbol(cdata: Cmd, id: DefIndex) -> String {
-    return item_symbol(cdata.lookup_item(id));
-}
-
-/// If you have a crate_metadata, call get_symbol instead
-pub fn get_symbol_from_buf(data: &[u8], id: DefIndex) -> String {
-    let index = load_index(data);
-    let pos = index.lookup_item(data, id).unwrap();
-    let doc = reader::doc_at(data, pos as usize).unwrap().doc;
-    item_symbol(doc)
 }
 
 /// Iterates over the language items in the given crate.
@@ -1640,6 +1624,16 @@ pub fn is_extern_item<'a, 'tcx>(cdata: Cmd,
     } else {
         false
     }
+}
+
+pub fn is_foreign_item(cdata: Cmd, id: DefIndex) -> bool {
+    let item_doc = cdata.lookup_item(id);
+    let parent_item_id = match item_parent_item(cdata, item_doc) {
+        None => return false,
+        Some(item_id) => item_id,
+    };
+    let parent_item_doc = cdata.lookup_item(parent_item_id.index);
+    item_family(parent_item_doc) == ForeignMod
 }
 
 pub fn is_impl(cdata: Cmd, id: DefIndex) -> bool {

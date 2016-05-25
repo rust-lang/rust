@@ -34,7 +34,7 @@ use rustc::ty::util::IntTypeExt;
 use rustc::hir::svh::Svh;
 use rustc::mir::mir_map::MirMap;
 use rustc::session::config::{self, PanicStrategy};
-use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+use rustc::util::nodemap::{FnvHashMap, NodeSet};
 
 use rustc_serialize::Encodable;
 use std::cell::RefCell;
@@ -59,7 +59,6 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub reexports: &'a def::ExportMap,
-    pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
     pub type_abbrevs: tyencode::abbrev_map<'tcx>,
@@ -211,20 +210,6 @@ fn encode_region(ecx: &EncodeContext,
     tyencode::enc_region(rbml_w.writer, &ecx.ty_str_ctxt(), r);
     rbml_w.mark_stable_position();
     rbml_w.end_tag();
-}
-
-fn encode_symbol(ecx: &EncodeContext,
-                 rbml_w: &mut Encoder,
-                 id: NodeId) {
-    match ecx.item_symbols.borrow().get(&id) {
-        Some(x) => {
-            debug!("encode_symbol(id={}, str={})", id, *x);
-            rbml_w.wr_tagged_str(tag_items_data_item_symbol, x);
-        }
-        None => {
-            bug!("encode_symbol: id not found {}", id);
-        }
-    }
 }
 
 fn encode_disr_val(_: &EncodeContext,
@@ -518,10 +503,6 @@ fn encode_info_for_struct_ctor<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_name(rbml_w, name);
     encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(struct_id));
 
-    if ecx.item_symbols.borrow().contains_key(&ctor_id) {
-        encode_symbol(ecx, rbml_w, ctor_id);
-    }
-
     let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(ctor_id));
     let depr= ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(ctor_id));
     encode_stability(rbml_w, stab);
@@ -710,10 +691,6 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             }
             encode_constness(rbml_w, sig.constness);
             encode_defaultness(rbml_w, impl_item.defaultness);
-            if !any_types {
-                let m_id = ecx.local_id(m.def_id);
-                encode_symbol(ecx, rbml_w, m_id);
-            }
             encode_method_argument_names(rbml_w, &sig.decl);
         }
     }
@@ -894,7 +871,6 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             encode_family(rbml_w, 'c');
         }
         encode_bounds_and_type_for_item(rbml_w, ecx, index, item.id);
-        encode_symbol(ecx, rbml_w, item.id);
         encode_name(rbml_w, item.name);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
@@ -930,9 +906,6 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         if needs_inline || constness == hir::Constness::Const {
             encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
             encode_mir(ecx, rbml_w, item.id);
-        }
-        if tps_len == 0 {
-            encode_symbol(ecx, rbml_w, item.id);
         }
         encode_constness(rbml_w, constness);
         encode_visibility(rbml_w, vis);
@@ -1354,6 +1327,8 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     let _task = index.record(def_id, rbml_w);
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id_and_key(ecx, rbml_w, def_id);
+    let parent_id = ecx.tcx.map.get_parent(nitem.id);
+    encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
     encode_visibility(rbml_w, &nitem.vis);
     match nitem.node {
       hir::ForeignItemFn(ref fndecl, _) => {
@@ -1363,8 +1338,6 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(nitem));
             encode_mir(ecx, rbml_w, nitem.id);
-        } else {
-            encode_symbol(ecx, rbml_w, nitem.id);
         }
         encode_attributes(rbml_w, &nitem.attrs);
         let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
@@ -1385,7 +1358,6 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));
         encode_stability(rbml_w, stab);
         encode_deprecation(rbml_w, depr);
-        encode_symbol(ecx, rbml_w, nitem.id);
         encode_name(rbml_w, nitem.name);
       }
     }

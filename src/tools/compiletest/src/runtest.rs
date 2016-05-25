@@ -371,9 +371,16 @@ actual:\n\
         } else {
             &*self.config.target
         };
+
+        let out_dir = self.output_base_name().with_extension("pretty-out");
+        let _ = fs::remove_dir_all(&out_dir);
+        self.create_dir_racy(&out_dir);
+
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec!("-".to_owned(),
                             "-Zno-trans".to_owned(),
+                            "--out-dir".to_owned(),
+                            out_dir.to_str().unwrap().to_owned(),
                             format!("--target={}", target),
                             "-L".to_owned(),
                             self.config.build_base.to_str().unwrap().to_owned(),
