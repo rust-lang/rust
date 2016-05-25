@@ -39,7 +39,7 @@ use rustc::middle::const_val::ConstVal;
 use pretty;
 
 #[derive(PartialEq, Debug, Eq, Clone)]
-pub enum Either<'tcx> {
+enum Either<'tcx> {
     Top,
     Lvalue(Lvalue<'tcx>),
     Const(Constant<'tcx>),
@@ -57,7 +57,7 @@ impl<'tcx> Lattice for Either<'tcx> {
     }
 }
 
-pub type AcsLattice<'a> = FnvHashMap<Lvalue<'a>, Either<'a>>;
+type AcsLattice<'a> = FnvHashMap<Lvalue<'a>, Either<'a>>;
 
 pub struct AcsPropagate;
 
@@ -77,7 +77,7 @@ impl<'tcx> MirPass<'tcx> for AcsPropagate {
 
 }
 
-pub struct AcsPropagateTransfer;
+struct AcsPropagateTransfer;
 
 impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
     type Lattice = AcsLattice<'tcx>;
@@ -104,7 +104,7 @@ impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
     }
 }
 
-pub struct AliasRewrite;
+struct AliasRewrite;
 
 impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for AliasRewrite {
     fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
@@ -124,7 +124,7 @@ impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for AliasRewrite {
     }
 }
 
-struct RewriteAliasVisitor<'a, 'tcx: 'a>(pub &'a AcsLattice<'tcx>, pub bool);
+struct RewriteAliasVisitor<'a, 'tcx: 'a>(&'a AcsLattice<'tcx>, bool);
 impl<'a, 'tcx> MutVisitor<'tcx> for RewriteAliasVisitor<'a, 'tcx> {
     fn visit_lvalue(&mut self, lvalue: &mut Lvalue<'tcx>, context: LvalueContext) {
         match context {
@@ -140,7 +140,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RewriteAliasVisitor<'a, 'tcx> {
     }
 }
 
-pub struct ConstRewrite;
+struct ConstRewrite;
 
 impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for ConstRewrite {
     fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
@@ -160,7 +160,7 @@ impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for ConstRewrite {
     }
 }
 
-struct RewriteConstVisitor<'a, 'tcx: 'a>(pub &'a AcsLattice<'tcx>, pub bool);
+struct RewriteConstVisitor<'a, 'tcx: 'a>(&'a AcsLattice<'tcx>, bool);
 impl<'a, 'tcx> MutVisitor<'tcx> for RewriteConstVisitor<'a, 'tcx> {
     fn visit_operand(&mut self, op: &mut Operand<'tcx>) {
         // To satisy borrow checker, modify `op` after inspecting it
@@ -183,7 +183,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RewriteConstVisitor<'a, 'tcx> {
 }
 
 
-pub struct SimplifyRewrite;
+struct SimplifyRewrite;
 
 impl<'tcx, L: Lattice> Rewrite<'tcx, L> for SimplifyRewrite {
     fn stmt(&self, _: &Statement<'tcx>, _: &L, _: &mut CFG<'tcx>)
