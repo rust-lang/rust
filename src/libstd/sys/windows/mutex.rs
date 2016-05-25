@@ -64,6 +64,8 @@ impl Mutex {
             held: UnsafeCell::new(false),
         }
     }
+    #[inline]
+    pub unsafe fn init(&mut self) {}
     pub unsafe fn lock(&self) {
         match kind() {
             Kind::SRWLock => c::AcquireSRWLockExclusive(raw(self)),
