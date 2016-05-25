@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: move this to `rustc_data_structures`
+
 use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
