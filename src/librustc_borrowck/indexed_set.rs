@@ -30,21 +30,21 @@ pub trait Idx: 'static {
 ///
 /// In other words, `T` is the type used to index into the bitvector
 /// this type uses to represent the set of object it holds.
-pub struct OwnIdxSet<T: Idx> {
+pub struct IdxSetBuf<T: Idx> {
     _pd: PhantomData<fn(&T)>,
     bits: Vec<Word>,
 }
 
-impl<T: Idx> Clone for OwnIdxSet<T> {
+impl<T: Idx> Clone for IdxSetBuf<T> {
     fn clone(&self) -> Self {
-        OwnIdxSet { _pd: PhantomData, bits: self.bits.clone() }
+        IdxSetBuf { _pd: PhantomData, bits: self.bits.clone() }
     }
 }
 
 // pnkfelix wants to have this be `IdxSet<T>([Word]) and then pass
 // around `&mut IdxSet<T>` or `&IdxSet<T>`.
 //
-// WARNING: Mapping a `&OwnIdxSet<T>` to `&IdxSet<T>` (at least today)
+// WARNING: Mapping a `&IdxSetBuf<T>` to `&IdxSet<T>` (at least today)
 // requires a transmute relying on representation guarantees that may
 // not hold in the future.
 
@@ -58,7 +58,7 @@ pub struct IdxSet<T: Idx> {
     bits: [Word],
 }
 
-impl<T: Idx> fmt::Debug for OwnIdxSet<T> {
+impl<T: Idx> fmt::Debug for IdxSetBuf<T> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result { self.bits.fmt(w) }
 }
 
@@ -66,11 +66,11 @@ impl<T: Idx> fmt::Debug for IdxSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result { self.bits.fmt(w) }
 }
 
-impl<T: Idx> OwnIdxSet<T> {
+impl<T: Idx> IdxSetBuf<T> {
     fn new(init: Word, universe_size: usize) -> Self {
         let bits_per_word = mem::size_of::<Word>() * 8;
         let num_words = (universe_size + (bits_per_word - 1)) / bits_per_word;
-        OwnIdxSet {
+        IdxSetBuf {
             _pd: Default::default(),
             bits: vec![init; num_words],
         }
@@ -97,22 +97,22 @@ impl<T: Idx> IdxSet<T> {
     }
 }
 
-impl<T: Idx> Deref for OwnIdxSet<T> {
+impl<T: Idx> Deref for IdxSetBuf<T> {
     type Target = IdxSet<T>;
     fn deref(&self) -> &IdxSet<T> {
         unsafe { IdxSet::from_slice(&self.bits[..]) }
     }
 }
 
-impl<T: Idx> DerefMut for OwnIdxSet<T> {
+impl<T: Idx> DerefMut for IdxSetBuf<T> {
     fn deref_mut(&mut self) -> &mut IdxSet<T> {
         unsafe { IdxSet::from_slice_mut(&mut self.bits[..]) }
     }
 }
 
 impl<T: Idx> IdxSet<T> {
-    pub fn to_owned(&self) -> OwnIdxSet<T> {
-        OwnIdxSet {
+    pub fn to_owned(&self) -> IdxSetBuf<T> {
+        IdxSetBuf {
             _pd: Default::default(),
             bits: self.bits.to_owned(),
         }
