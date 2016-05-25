@@ -6,14 +6,16 @@
 
 extern crate regex;
 
-use regex::{Regex, RegexSet};
-use regex::bytes::{Regex as BRegex, RegexSet as BRegexSet};
+use regex::{Regex, RegexSet, RegexBuilder};
+use regex::bytes::{Regex as BRegex, RegexSet as BRegexSet, RegexBuilder as BRegexBuilder};
 
 const OPENING_PAREN : &'static str = "(";
 const NOT_A_REAL_REGEX : &'static str = "foobar";
 
 fn syntax_error() {
     let pipe_in_wrong_position = Regex::new("|");
+    //~^ERROR: regex syntax error: empty alternate
+    let pipe_in_wrong_position_builder = RegexBuilder::new("|");
     //~^ERROR: regex syntax error: empty alternate
     let wrong_char_ranice = Regex::new("[z-a]");
     //~^ERROR: regex syntax error: invalid character class range
@@ -26,6 +28,8 @@ fn syntax_error() {
     let binary_pipe_in_wrong_position = BRegex::new("|");
     //~^ERROR: regex syntax error: empty alternate
     let some_binary_regex = BRegex::new(OPENING_PAREN);
+    //~^ERROR: regex syntax error on position 0: unclosed
+    let some_binary_regex_builder = BRegexBuilder::new(OPENING_PAREN);
     //~^ERROR: regex syntax error on position 0: unclosed
 
     let closing_paren = ")";
@@ -54,6 +58,10 @@ fn syntax_error() {
 
 fn trivial_regex() {
     let trivial_eq = Regex::new("^foobar$");
+    //~^ERROR: trivial regex
+    //~|HELP consider using `==` on `str`s
+
+    let trivial_eq_builder = RegexBuilder::new("^foobar$");
     //~^ERROR: trivial regex
     //~|HELP consider using `==` on `str`s
 
@@ -96,11 +104,13 @@ fn trivial_regex() {
 
     // non-trivial regexes
     let non_trivial_dot = Regex::new("a.b");
+    let non_trivial_dot_builder = RegexBuilder::new("a.b");
     let non_trivial_eq = Regex::new("^foo|bar$");
     let non_trivial_starts_with = Regex::new("^foo|bar");
     let non_trivial_ends_with = Regex::new("^foo|bar");
     let non_trivial_ends_with = Regex::new("foo|bar");
     let non_trivial_binary = BRegex::new("foo|bar");
+    let non_trivial_binary_builder = BRegexBuilder::new("foo|bar");
 }
 
 fn main() {

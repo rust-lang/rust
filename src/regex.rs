@@ -104,6 +104,10 @@ impl LateLintPass for RegexPass {
                 check_regex(cx, &args[0], true);
             } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_NEW) {
                 check_regex(cx, &args[0], false);
+            } else if match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
+                check_regex(cx, &args[0], true);
+            } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
+                check_regex(cx, &args[0], false);
             } else if match_def_path(cx, def_id, &paths::REGEX_SET_NEW) {
                 check_set(cx, &args[0], true);
             } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_SET_NEW) {

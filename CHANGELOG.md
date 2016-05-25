@@ -2,8 +2,8 @@
 All notable changes to this project will be documented in this file.
 
 ## 0.0.70 — TBD
-* [`invalid_regex`] and [`trivial_regex`] can now warn on `RegexSet::new` and
-  byte regexes
+* [`invalid_regex`] and [`trivial_regex`] can now warn on `RegexSet::new`,
+  `RegexBuilder::new` and byte regexes
 
 ## 0.0.69 — 2016-05-20
 * Rustup to *rustc 1.10.0-nightly (476fe6eef 2016-05-21)*
