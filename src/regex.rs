@@ -11,7 +11,8 @@ use syntax::codemap::{Span, BytePos};
 use syntax::parse::token::InternedString;
 use utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_help_and_lint};
 
-/// **What it does:** This lint checks `Regex::new(_)` invocations for correct regex syntax.
+/// **What it does:** This lint checks [regex] creation (with `Regex::new`, `RegexBuilder::new` or
+/// `RegexSet::new`) for correct regex syntax.
 ///
 /// **Why is this bad?** This will lead to a runtime panic.
 ///
@@ -21,10 +22,11 @@ use utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_help_
 declare_lint! {
     pub INVALID_REGEX,
     Deny,
-    "finds invalid regular expressions in `Regex::new(_)` invocations"
+    "finds invalid regular expressions"
 }
 
-/// **What it does:** This lint checks for `Regex::new(_)` invocations with trivial regex.
+/// **What it does:** This lint checks for trivial [regex] creation (with `Regex::new`,
+/// `RegexBuilder::new` or `RegexSet::new`).
 ///
 /// **Why is this bad?** This can likely be replaced by `==` or `str::starts_with`,
 /// `str::ends_with` or `std::contains` or other `str` methods.
@@ -32,10 +34,12 @@ declare_lint! {
 /// **Known problems:** None.
 ///
 /// **Example:** `Regex::new("^foobar")`
+///
+/// [regex]: https://crates.io/crates/regex
 declare_lint! {
     pub TRIVIAL_REGEX,
     Warn,
-    "finds trivial regular expressions in `Regex::new(_)` invocations"
+    "finds trivial regular expressions"
 }
 
 /// **What it does:** This lint checks for usage of `regex!(_)` which as of now is usually slower than `Regex::new(_)` unless called in a loop (which is a bad idea anyway).

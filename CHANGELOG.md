@@ -72,7 +72,7 @@ All notable changes to this project will be documented in this file.
 ## ~~0.0.52~~
 
 ## 0.0.51 — 2016-03-13
-* Add `str` to types considered by `len_zero`
+* Add `str` to types considered by [`len_zero`]
 * New lints: [`indexing_slicing`]
 
 ## 0.0.50 — 2016-03-11

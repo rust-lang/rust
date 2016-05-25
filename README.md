@@ -74,7 +74,7 @@ name                                                                            
 [ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)                         | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
 [inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                                       | warn    | `#[inline(always)]` is a bad idea in most cases
 [integer_arithmetic](https://github.com/Manishearth/rust-clippy/wiki#integer_arithmetic)                             | allow   | Any integer arithmetic statement
-[invalid_regex](https://github.com/Manishearth/rust-clippy/wiki#invalid_regex)                                       | deny    | finds invalid regular expressions in `Regex::new(_)` invocations
+[invalid_regex](https://github.com/Manishearth/rust-clippy/wiki#invalid_regex)                                       | deny    | finds invalid regular expressions
 [invalid_upcast_comparisons](https://github.com/Manishearth/rust-clippy/wiki#invalid_upcast_comparisons)             | allow   | a comparison involving an upcast which is always true or false
 [items_after_statements](https://github.com/Manishearth/rust-clippy/wiki#items_after_statements)                     | allow   | finds blocks where an item comes after a statement
 [iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                                     | warn    | for-looping over `_.next()` which is probably not intended
@@ -150,7 +150,7 @@ name                                                                            
 [too_many_arguments](https://github.com/Manishearth/rust-clippy/wiki#too_many_arguments)                             | warn    | functions with too many arguments
 [toplevel_ref_arg](https://github.com/Manishearth/rust-clippy/wiki#toplevel_ref_arg)                                 | warn    | An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take references with `&`.
 [transmute_ptr_to_ref](https://github.com/Manishearth/rust-clippy/wiki#transmute_ptr_to_ref)                         | warn    | transmutes from a pointer to a reference type
-[trivial_regex](https://github.com/Manishearth/rust-clippy/wiki#trivial_regex)                                       | warn    | finds trivial regular expressions in `Regex::new(_)` invocations
+[trivial_regex](https://github.com/Manishearth/rust-clippy/wiki#trivial_regex)                                       | warn    | finds trivial regular expressions
 [type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                                   | warn    | usage of very complex types; recommends factoring out parts into `type` definitions
 [unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                                   | allow   | using a unicode literal not in NFC normal form (see [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)
 [unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                                 | warn    | comparing unit values (which is always `true` or `false`, respectively)
