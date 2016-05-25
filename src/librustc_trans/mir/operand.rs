@@ -187,6 +187,26 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                 }
 
+                // Moves out of pair fields are trivial.
+                if let &mir::Lvalue::Projection(ref proj) = lvalue {
+                    if let mir::Lvalue::Temp(index) = proj.base {
+                        let temp_ref = &self.temps[index as usize];
+                        if let &TempRef::Operand(Some(o)) = temp_ref {
+                            match (o.val, &proj.elem) {
+                                (OperandValue::Pair(a, b),
+                                 &mir::ProjectionElem::Field(ref f, ty)) => {
+                                    let llval = [a, b][f.index()];
+                                    return OperandRef {
+                                        val: OperandValue::Immediate(llval),
+                                        ty: bcx.monomorphize(&ty)
+                                    };
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+
                 // for most lvalues, to consume them we just load them
                 // out from their home
                 let tr_lvalue = self.trans_lvalue(bcx, lvalue);
