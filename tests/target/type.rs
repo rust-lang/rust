@@ -21,3 +21,5 @@ struct F {
                      // comment
                      ... /* comment 2 */),
 }
+
+fn issue_1006(def_id_to_string: for<'a, 'b> unsafe fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String) {}

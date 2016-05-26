@@ -600,6 +600,19 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
                    -> Option<String> {
     let mut result = String::with_capacity(128);
 
+    if !bare_fn.lifetimes.is_empty() {
+        result.push_str("for<");
+        // 6 = "for<> ".len(), 4 = "for<".
+        // This doesn't work out so nicely for mutliline situation with lots of
+        // rightward drift. If that is a problem, we could use the list stuff.
+        result.push_str(&try_opt!(bare_fn.lifetimes
+                .iter()
+                .map(|l| l.rewrite(context, try_opt!(width.checked_sub(6)), offset + 4))
+                .collect::<Option<Vec<_>>>())
+            .join(", "));
+        result.push_str("> ");
+    }
+
     result.push_str(&::utils::format_unsafety(bare_fn.unsafety));
 
     if bare_fn.abi != abi::Abi::Rust {
