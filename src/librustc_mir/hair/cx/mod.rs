@@ -17,32 +17,63 @@
 
 use hair::*;
 use rustc::mir::repr::*;
+use rustc::mir::transform::MirSource;
 
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval as const_eval;
 use rustc::hir::def_id::DefId;
+use rustc::hir::intravisit::FnKind;
+use rustc::hir::map::blocks::FnLikeNode;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use syntax::parse::token;
 use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
+use syntax::attr;
 
 #[derive(Copy, Clone)]
 pub struct Cx<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    constness: hir::Constness
+    constness: hir::Constness,
+
+    /// True if this MIR can get inlined in other crates.
+    inline: bool
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               constness: hir::Constness)
+               src: MirSource)
                -> Cx<'a, 'gcx, 'tcx> {
+        let (constness, inline) = match src {
+            MirSource::Const(_) |
+            MirSource::Static(..) => (hir::Constness::Const, false),
+            MirSource::Fn(id) => {
+                let def_id = infcx.tcx.map.local_def_id(id);
+                let fn_like = FnLikeNode::from_node(infcx.tcx.map.get(id));
+                match fn_like.map(|f| f.kind()) {
+                    Some(FnKind::ItemFn(_, _, _, c, _, _, attrs)) => {
+                        let scheme = infcx.tcx.lookup_item_type(def_id);
+                        let any_types = !scheme.generics.types.is_empty();
+                        (c, any_types || attr::requests_inline(attrs))
+                    }
+                    Some(FnKind::Method(_, m, _, attrs)) => {
+                        let scheme = infcx.tcx.lookup_item_type(def_id);
+                        let any_types = !scheme.generics.types.is_empty();
+                        (m.constness, any_types || attr::requests_inline(attrs))
+                    }
+                    _ => (hir::Constness::NotConst, true)
+                }
+            }
+            MirSource::Promoted(..) => bug!()
+        };
+
         Cx {
             tcx: infcx.tcx,
             infcx: infcx,
             constness: constness,
+            inline: inline
         }
     }
 }
@@ -153,6 +184,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
+    }
+
+    pub fn may_be_inlined_cross_crate(&self) -> bool {
+        self.inline
     }
 }
 
