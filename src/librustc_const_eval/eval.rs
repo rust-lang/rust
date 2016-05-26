@@ -380,12 +380,6 @@ pub enum ErrKind {
     NotOn(ConstVal),
     CallOn(ConstVal),
 
-    DivideByZero,
-    DivideWithOverflow,
-    ModuloByZero,
-    ModuloWithOverflow,
-    ShiftLeftWithOverflow,
-    ShiftRightWithOverflow,
     MissingStructField,
     NonConstPath,
     UnimplementedConstVal(&'static str),
@@ -436,12 +430,6 @@ impl ConstEvalErr {
             NotOn(ref const_val) => format!("not on {}", const_val.description()).into_cow(),
             CallOn(ref const_val) => format!("call on {}", const_val.description()).into_cow(),
 
-            DivideByZero         => "attempted to divide by zero".into_cow(),
-            DivideWithOverflow   => "attempted to divide with overflow".into_cow(),
-            ModuloByZero         => "attempted remainder with a divisor of zero".into_cow(),
-            ModuloWithOverflow   => "attempted remainder with overflow".into_cow(),
-            ShiftLeftWithOverflow => "attempted left shift with overflow".into_cow(),
-            ShiftRightWithOverflow => "attempted right shift with overflow".into_cow(),
             MissingStructField  => "nonexistent struct field".into_cow(),
             NonConstPath        => "non-constant path in constant expression".into_cow(),
             UnimplementedConstVal(what) =>
