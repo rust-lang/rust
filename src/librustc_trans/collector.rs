@@ -456,8 +456,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         match *rvalue {
             mir::Rvalue::Aggregate(mir::AggregateKind::Closure(def_id,
                                                                ref substs), _) => {
-                let mir = errors::expect(self.scx.sess().diagnostic(), self.scx.get_mir(def_id),
-                                         || format!("Could not find MIR for closure: {:?}", def_id));
+                let mir = errors::expect(self.scx.sess().diagnostic(),
+                                         self.scx.get_mir(def_id),
+                                         || {
+                    format!("Could not find MIR for closure: {:?}", def_id)
+                });
 
                 let concrete_substs = monomorphize::apply_param_substs(self.scx.tcx(),
                                                                        self.param_substs,
