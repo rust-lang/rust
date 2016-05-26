@@ -1301,7 +1301,7 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     // Args.
     let (mut one_line_budget, mut multi_line_budget, mut arg_indent) =
-        compute_budgets_for_args(context, &result, indent, ret_str_len, newline_brace);
+        try_opt!(compute_budgets_for_args(context, &result, indent, ret_str_len, newline_brace));
 
     if context.config.fn_args_layout == FnArgLayoutStyle::Block ||
        context.config.fn_args_layout == FnArgLayoutStyle::BlockAlways {
@@ -1617,7 +1617,7 @@ fn compute_budgets_for_args(context: &RewriteContext,
                             indent: Indent,
                             ret_str_len: usize,
                             newline_brace: bool)
-                            -> (usize, usize, Indent) {
+                            -> Option<((usize, usize, Indent))> {
     // Try keeping everything on the same line.
     if !result.contains("\n") {
         // 3 = `() `, space is before ret_string.
@@ -1628,23 +1628,23 @@ fn compute_budgets_for_args(context: &RewriteContext,
         let one_line_budget = context.config.max_width.checked_sub(used_space).unwrap_or(0);
 
         if one_line_budget > 0 {
-            let multi_line_budget = context.config.max_width -
-                                    (indent.width() + result.len() + "()".len());
+            // 4 = "() {".len()
+            let multi_line_budget =
+                try_opt!(context.config.max_width.checked_sub(indent.width() + result.len() + 4));
 
-            return (one_line_budget, multi_line_budget, indent + result.len() + 1);
+            return Some((one_line_budget, multi_line_budget, indent + result.len() + 1));
         }
     }
 
     // Didn't work. we must force vertical layout and put args on a newline.
     let new_indent = indent.block_indent(context.config);
-    let used_space = new_indent.width() + 2; // account for `(` and `)`
+    let used_space = new_indent.width() + 4; // Account for `(` and `)` and possibly ` {`.
     let max_space = context.config.max_width;
     if used_space <= max_space {
-        (0, max_space - used_space, new_indent)
+        Some((0, max_space - used_space, new_indent))
     } else {
         // Whoops! bankrupt.
-        // FIXME: take evasive action, perhaps kill the indent or something.
-        panic!("in compute_budgets_for_args");
+        None
     }
 }
 
