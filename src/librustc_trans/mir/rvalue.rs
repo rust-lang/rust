@@ -16,7 +16,7 @@ use rustc::mir::repr as mir;
 use asm;
 use base;
 use callee::Callee;
-use common::{self, val_ty, C_null, C_uint, BlockAndBuilder, Result};
+use common::{self, val_ty, C_bool, C_null, C_uint, BlockAndBuilder, Result};
 use datum::{Datum, Lvalue};
 use debuginfo::DebugLoc;
 use adt;
@@ -579,6 +579,15 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                       lhs: ValueRef,
                                       rhs: ValueRef,
                                       input_ty: Ty<'tcx>) -> OperandValue {
+        // This case can currently arise only from functions marked
+        // with #[rustc_inherit_overflow_checks] and inlined from
+        // another crate (mostly core::num generic/#[inline] fns),
+        // while the current crate doesn't use overflow checks.
+        if !bcx.ccx().check_overflow() {
+            let val = self.trans_scalar_binop(bcx, op, lhs, rhs, input_ty);
+            return OperandValue::Pair(val, C_bool(bcx.ccx(), false));
+        }
+
         let (val, of) = match op {
             // These are checked using intrinsics
             mir::BinOp::Add | mir::BinOp::Sub | mir::BinOp::Mul => {

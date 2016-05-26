@@ -502,6 +502,13 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                          is just used to make tests pass \
                                          and will never be stable",
                                         cfg_fn!(rustc_attrs))),
+    ("rustc_inherit_overflow_checks", Whitelisted, Gated("rustc_attrs",
+                                                         "the `#[rustc_inherit_overflow_checks]` \
+                                                          attribute is just used to control \
+                                                          overflow checking behavior of several \
+                                                          libcore functions that are inlined \
+                                                          across crates and will never be stable",
+                                                          cfg_fn!(rustc_attrs))),
 
     ("allow_internal_unstable", Normal, Gated("allow_internal_unstable",
                                               EXPLAIN_ALLOW_INTERNAL_UNSTABLE,
