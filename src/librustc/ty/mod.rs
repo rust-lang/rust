@@ -946,7 +946,7 @@ impl<'tcx> TraitPredicate<'tcx> {
 
     /// Creates the dep-node for selecting/evaluating this trait reference.
     fn dep_node(&self) -> DepNode<DefId> {
-        DepNode::TraitSelect(self.def_id())
+        DepNode::TraitSelect(self.def_id(), vec![])
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {
@@ -1768,9 +1768,8 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
                                         stack: &mut Vec<AdtDefMaster<'tcx>>)
     {
 
-        let dep_node = DepNode::SizedConstraint(self.did);
-
-        if self.sized_constraint.get(dep_node).is_some() {
+        let dep_node = || DepNode::SizedConstraint(self.did);
+        if self.sized_constraint.get(dep_node()).is_some() {
             return;
         }
 
@@ -1780,7 +1779,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
             //
             // Consider the type as Sized in the meanwhile to avoid
             // further errors.
-            self.sized_constraint.fulfill(dep_node, tcx.types.err);
+            self.sized_constraint.fulfill(dep_node(), tcx.types.err);
             return;
         }
 
@@ -1803,14 +1802,14 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
             _ => tcx.mk_tup(tys)
         };
 
-        match self.sized_constraint.get(dep_node) {
+        match self.sized_constraint.get(dep_node()) {
             Some(old_ty) => {
                 debug!("calculate_sized_constraint: {:?} recurred", self);
                 assert_eq!(old_ty, tcx.types.err)
             }
             None => {
                 debug!("calculate_sized_constraint: {:?} => {:?}", self, ty);
-                self.sized_constraint.fulfill(dep_node, ty)
+                self.sized_constraint.fulfill(dep_node(), ty)
             }
         }
     }

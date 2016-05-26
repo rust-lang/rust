@@ -114,15 +114,15 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let clean_nodes =
         serialized_dep_graph.nodes
                             .iter()
-                            .filter_map(|&node| retraced.map(node))
+                            .filter_map(|node| retraced.map(node))
                             .filter(|node| !dirty_nodes.contains(node))
-                            .map(|node| (node, node));
+                            .map(|node| (node.clone(), node));
 
     // Add nodes and edges that are not dirty into our main graph.
     let dep_graph = tcx.dep_graph.clone();
     for (source, target) in clean_edges.into_iter().chain(clean_nodes) {
-        let _task = dep_graph.in_task(target);
-        dep_graph.read(source);
+        let _task = dep_graph.in_task(target.clone());
+        dep_graph.read(source.clone());
 
         debug!("decode_dep_graph: clean edge: {:?} -> {:?}", source, target);
     }
@@ -140,7 +140,7 @@ fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     for hash in hashes {
         match hash.node.map_def(|&i| retraced.def_id(i)) {
             Some(dep_node) => {
-                let current_hash = hcx.hash(dep_node).unwrap();
+                let current_hash = hcx.hash(&dep_node).unwrap();
                 debug!("initial_dirty_nodes: hash of {:?} is {:?}, was {:?}",
                        dep_node, current_hash, hash.hash);
                 if current_hash != hash.hash {
@@ -171,7 +171,7 @@ fn compute_clean_edges(serialized_edges: &[(SerializedEdge)],
     // target) if neither node has been removed. If the source has
     // been removed, add target to the list of dirty nodes.
     let mut clean_edges = Vec::with_capacity(serialized_edges.len());
-    for &(serialized_source, serialized_target) in serialized_edges {
+    for &(ref serialized_source, ref serialized_target) in serialized_edges {
         if let Some(target) = retraced.map(serialized_target) {
             if let Some(source) = retraced.map(serialized_source) {
                 clean_edges.push((source, target))

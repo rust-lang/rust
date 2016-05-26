@@ -195,7 +195,7 @@ fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         };
 
-        for &(_, source_def_id, source_dep_node) in sources {
+        for &(_, source_def_id, ref source_dep_node) in sources {
             let dependents = query.transitive_successors(source_dep_node);
             for &(target_span, ref target_pass, _, ref target_dep_node) in targets {
                 if !dependents.contains(&target_dep_node) {
@@ -239,7 +239,7 @@ fn dump_graph(tcx: TyCtxt) {
     { // dump a .txt file with just the edges:
         let txt_path = format!("{}.txt", path);
         let mut file = File::create(&txt_path).unwrap();
-        for &(source, target) in &edges {
+        for &(ref source, ref target) in &edges {
             write!(file, "{:?} -> {:?}\n", source, target).unwrap();
         }
     }
@@ -252,34 +252,34 @@ fn dump_graph(tcx: TyCtxt) {
     }
 }
 
-pub struct GraphvizDepGraph(FnvHashSet<DepNode<DefId>>,
-                            Vec<(DepNode<DefId>, DepNode<DefId>)>);
+pub struct GraphvizDepGraph<'q>(FnvHashSet<&'q DepNode<DefId>>,
+                                Vec<(&'q DepNode<DefId>, &'q DepNode<DefId>)>);
 
-impl<'a, 'tcx> dot::GraphWalk<'a> for GraphvizDepGraph {
-    type Node = DepNode<DefId>;
-    type Edge = (DepNode<DefId>, DepNode<DefId>);
-    fn nodes(&self) -> dot::Nodes<DepNode<DefId>> {
+impl<'a, 'tcx, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
+    type Node = &'q DepNode<DefId>;
+    type Edge = (&'q DepNode<DefId>, &'q DepNode<DefId>);
+    fn nodes(&self) -> dot::Nodes<&'q DepNode<DefId>> {
         let nodes: Vec<_> = self.0.iter().cloned().collect();
         nodes.into_cow()
     }
-    fn edges(&self) -> dot::Edges<(DepNode<DefId>, DepNode<DefId>)> {
+    fn edges(&self) -> dot::Edges<(&'q DepNode<DefId>, &'q DepNode<DefId>)> {
         self.1[..].into_cow()
     }
-    fn source(&self, edge: &(DepNode<DefId>, DepNode<DefId>)) -> DepNode<DefId> {
+    fn source(&self, edge: &(&'q DepNode<DefId>, &'q DepNode<DefId>)) -> &'q DepNode<DefId> {
         edge.0
     }
-    fn target(&self, edge: &(DepNode<DefId>, DepNode<DefId>)) -> DepNode<DefId> {
+    fn target(&self, edge: &(&'q DepNode<DefId>, &'q DepNode<DefId>)) -> &'q DepNode<DefId> {
         edge.1
     }
 }
 
-impl<'a, 'tcx> dot::Labeller<'a> for GraphvizDepGraph {
-    type Node = DepNode<DefId>;
-    type Edge = (DepNode<DefId>, DepNode<DefId>);
+impl<'a, 'tcx, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
+    type Node = &'q DepNode<DefId>;
+    type Edge = (&'q DepNode<DefId>, &'q DepNode<DefId>);
     fn graph_id(&self) -> dot::Id {
         dot::Id::new("DependencyGraph").unwrap()
     }
-    fn node_id(&self, n: &DepNode<DefId>) -> dot::Id {
+    fn node_id(&self, n: &&'q DepNode<DefId>) -> dot::Id {
         let s: String =
             format!("{:?}", n).chars()
                               .map(|c| if c == '_' || c.is_alphanumeric() { c } else { '_' })
@@ -287,7 +287,7 @@ impl<'a, 'tcx> dot::Labeller<'a> for GraphvizDepGraph {
         debug!("n={:?} s={:?}", n, s);
         dot::Id::new(s).unwrap()
     }
-    fn node_label(&self, n: &DepNode<DefId>) -> dot::LabelText {
+    fn node_label(&self, n: &&'q DepNode<DefId>) -> dot::LabelText {
         dot::LabelText::label(format!("{:?}", n))
     }
 }
@@ -295,8 +295,8 @@ impl<'a, 'tcx> dot::Labeller<'a> for GraphvizDepGraph {
 // Given an optional filter like `"x,y,z"`, returns either `None` (no
 // filter) or the set of nodes whose labels contain all of those
 // substrings.
-fn node_set(query: &DepGraphQuery<DefId>, filter: &DepNodeFilter)
-            -> Option<FnvHashSet<DepNode<DefId>>>
+fn node_set<'q>(query: &'q DepGraphQuery<DefId>, filter: &DepNodeFilter)
+                -> Option<FnvHashSet<&'q DepNode<DefId>>>
 {
     debug!("node_set(filter={:?})", filter);
 
@@ -307,10 +307,10 @@ fn node_set(query: &DepGraphQuery<DefId>, filter: &DepNodeFilter)
     Some(query.nodes().into_iter().filter(|n| filter.test(n)).collect())
 }
 
-fn filter_nodes(query: &DepGraphQuery<DefId>,
-                sources: &Option<FnvHashSet<DepNode<DefId>>>,
-                targets: &Option<FnvHashSet<DepNode<DefId>>>)
-                -> FnvHashSet<DepNode<DefId>>
+fn filter_nodes<'q>(query: &'q DepGraphQuery<DefId>,
+                    sources: &Option<FnvHashSet<&'q DepNode<DefId>>>,
+                    targets: &Option<FnvHashSet<&'q DepNode<DefId>>>)
+                    -> FnvHashSet<&'q DepNode<DefId>>
 {
     if let &Some(ref sources) = sources {
         if let &Some(ref targets) = targets {
@@ -325,21 +325,21 @@ fn filter_nodes(query: &DepGraphQuery<DefId>,
     }
 }
 
-fn walk_nodes(query: &DepGraphQuery<DefId>,
-              starts: &FnvHashSet<DepNode<DefId>>,
-              direction: Direction)
-              -> FnvHashSet<DepNode<DefId>>
+fn walk_nodes<'q>(query: &'q DepGraphQuery<DefId>,
+                  starts: &FnvHashSet<&'q DepNode<DefId>>,
+                  direction: Direction)
+                  -> FnvHashSet<&'q DepNode<DefId>>
 {
     let mut set = FnvHashSet();
-    for start in starts {
+    for &start in starts {
         debug!("walk_nodes: start={:?} outgoing?={:?}", start, direction == OUTGOING);
-        if set.insert(*start) {
+        if set.insert(start) {
             let mut stack = vec![query.indices[start]];
             while let Some(index) = stack.pop() {
                 for (_, edge) in query.graph.adjacent_edges(index, direction) {
                     let neighbor_index = edge.source_or_target(direction);
                     let neighbor = query.graph.node_data(neighbor_index);
-                    if set.insert(*neighbor) {
+                    if set.insert(neighbor) {
                         stack.push(neighbor_index);
                     }
                 }
@@ -349,10 +349,10 @@ fn walk_nodes(query: &DepGraphQuery<DefId>,
     set
 }
 
-fn walk_between(query: &DepGraphQuery<DefId>,
-                sources: &FnvHashSet<DepNode<DefId>>,
-                targets: &FnvHashSet<DepNode<DefId>>)
-                -> FnvHashSet<DepNode<DefId>>
+fn walk_between<'q>(query: &'q DepGraphQuery<DefId>,
+                    sources: &FnvHashSet<&'q DepNode<DefId>>,
+                    targets: &FnvHashSet<&'q DepNode<DefId>>)
+                    -> FnvHashSet<&'q DepNode<DefId>>
 {
     // This is a bit tricky. We want to include a node only if it is:
     // (a) reachable from a source and (b) will reach a target. And we
@@ -365,16 +365,16 @@ fn walk_between(query: &DepGraphQuery<DefId>,
     let mut node_states = vec![State::Undecided; query.graph.len_nodes()];
 
     for &target in targets {
-        node_states[query.indices[&target].0] = State::Included;
+        node_states[query.indices[target].0] = State::Included;
     }
 
-    for source in sources.iter().map(|n| query.indices[n]) {
+    for source in sources.iter().map(|&n| query.indices[n]) {
         recurse(query, &mut node_states, source);
     }
 
     return query.nodes()
                 .into_iter()
-                .filter(|n| {
+                .filter(|&n| {
                     let index = query.indices[n];
                     node_states[index.0] == State::Included
                 })
@@ -417,12 +417,12 @@ fn walk_between(query: &DepGraphQuery<DefId>,
     }
 }
 
-fn filter_edges(query: &DepGraphQuery<DefId>,
-                nodes: &FnvHashSet<DepNode<DefId>>)
-                -> Vec<(DepNode<DefId>, DepNode<DefId>)>
+fn filter_edges<'q>(query: &'q DepGraphQuery<DefId>,
+                    nodes: &FnvHashSet<&'q DepNode<DefId>>)
+                    -> Vec<(&'q DepNode<DefId>, &'q DepNode<DefId>)>
 {
     query.edges()
          .into_iter()
-         .filter(|&(source, target)| nodes.contains(&source) && nodes.contains(&target))
+         .filter(|&(source, target)| nodes.contains(source) && nodes.contains(target))
          .collect()
 }

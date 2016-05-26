@@ -47,26 +47,26 @@ impl<D: Clone + Debug + Hash + Eq> DepGraphQuery<D> {
         self.indices.contains_key(&node)
     }
 
-    pub fn nodes(&self) -> Vec<DepNode<D>> {
+    pub fn nodes(&self) -> Vec<&DepNode<D>> {
         self.graph.all_nodes()
                   .iter()
-                  .map(|n| n.data.clone())
+                  .map(|n| &n.data)
                   .collect()
     }
 
-    pub fn edges(&self) -> Vec<(DepNode<D>,DepNode<D>)> {
+    pub fn edges(&self) -> Vec<(&DepNode<D>,&DepNode<D>)> {
         self.graph.all_edges()
                   .iter()
                   .map(|edge| (edge.source(), edge.target()))
-                  .map(|(s, t)| (self.graph.node_data(s).clone(),
-                                 self.graph.node_data(t).clone()))
+                  .map(|(s, t)| (self.graph.node_data(s),
+                                 self.graph.node_data(t)))
                   .collect()
     }
 
-    fn reachable_nodes(&self, node: DepNode<D>, direction: Direction) -> Vec<DepNode<D>> {
-        if let Some(&index) = self.indices.get(&node) {
+    fn reachable_nodes(&self, node: &DepNode<D>, direction: Direction) -> Vec<&DepNode<D>> {
+        if let Some(&index) = self.indices.get(node) {
             self.graph.depth_traverse(index, direction)
-                      .map(|s| self.graph.node_data(s).clone())
+                      .map(|s| self.graph.node_data(s))
                       .collect()
         } else {
             vec![]
@@ -75,20 +75,20 @@ impl<D: Clone + Debug + Hash + Eq> DepGraphQuery<D> {
 
     /// All nodes reachable from `node`. In other words, things that
     /// will have to be recomputed if `node` changes.
-    pub fn transitive_successors(&self, node: DepNode<D>) -> Vec<DepNode<D>> {
+    pub fn transitive_successors(&self, node: &DepNode<D>) -> Vec<&DepNode<D>> {
         self.reachable_nodes(node, OUTGOING)
     }
 
     /// All nodes that can reach `node`.
-    pub fn transitive_predecessors(&self, node: DepNode<D>) -> Vec<DepNode<D>> {
+    pub fn transitive_predecessors(&self, node: &DepNode<D>) -> Vec<&DepNode<D>> {
         self.reachable_nodes(node, INCOMING)
     }
 
     /// Just the outgoing edges from `node`.
-    pub fn immediate_successors(&self, node: DepNode<D>) -> Vec<DepNode<D>> {
+    pub fn immediate_successors(&self, node: &DepNode<D>) -> Vec<&DepNode<D>> {
         if let Some(&index) = self.indices.get(&node) {
             self.graph.successor_nodes(index)
-                      .map(|s| self.graph.node_data(s).clone())
+                      .map(|s| self.graph.node_data(s))
                       .collect()
         } else {
             vec![]

@@ -57,7 +57,7 @@ impl RetracedDefIdDirectory {
         self.ids[index.index as usize]
     }
 
-    pub fn map(&self, node: DepNode<DefPathIndex>) -> Option<DepNode<DefId>> {
+    pub fn map(&self, node: &DepNode<DefPathIndex>) -> Option<DepNode<DefId>> {
         node.map_def(|&index| self.def_id(index))
     }
 }
@@ -91,7 +91,7 @@ impl<'a,'tcx> DefIdDirectoryBuilder<'a,'tcx> {
                  .clone()
     }
 
-    pub fn map(&mut self, node: DepNode<DefId>) -> DepNode<DefPathIndex> {
+    pub fn map(&mut self, node: &DepNode<DefId>) -> DepNode<DefPathIndex> {
         node.map_def(|&def_id| Some(self.add(def_id))).unwrap()
     }
 
