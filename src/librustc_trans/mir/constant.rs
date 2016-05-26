@@ -298,8 +298,13 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     let cond_bool = common::const_to_uint(cond.llval) != 0;
                     if cond_bool != expected {
                         let err = match *msg {
-                            mir::AssertMessage::BoundsCheck {..} => {
-                                ErrKind::IndexOutOfBounds
+                            mir::AssertMessage::BoundsCheck { ref len, ref index } => {
+                                let len = self.const_operand(len, span)?;
+                                let index = self.const_operand(index, span)?;
+                                ErrKind::IndexOutOfBounds {
+                                    len: common::const_to_uint(len.llval),
+                                    index: common::const_to_uint(index.llval)
+                                }
                             }
                             mir::AssertMessage::Math(ref err) => {
                                 ErrKind::Math(err.clone())
