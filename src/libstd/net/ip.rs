@@ -251,7 +251,7 @@ impl PartialOrd for Ipv4Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv4Addr {
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
-        self.octets().cmp(&other.octets())
+        ntoh(self.inner.s_addr).cmp(&ntoh(other.inner.s_addr))
     }
 }
 
