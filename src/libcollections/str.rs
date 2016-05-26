@@ -1097,8 +1097,34 @@ impl str {
     /// assert_eq!(d, &["", "", "", "", "a", "", "b", "c"]);
     /// ```
     ///
-    /// This can lead to possibly surprising behavior when whitespace is used
-    /// as the separator. This code is correct:
+    /// Contiguous separators are separated by the empty string.
+    ///
+    /// ```
+    /// let x = "(///)".to_string();
+    /// let d: Vec<_> = x.split('/').collect();;
+    ///
+    /// assert_eq!(d, &["(", "", "", ")"]);
+    /// ```
+    ///
+    /// Separators at the start or end of a string are neighbored
+    /// by empty strings.
+    ///
+    /// ```
+    /// let d: Vec<_> = "010".split("0").collect();
+    /// assert_eq!(d, &["", "1", ""]);
+    /// ```
+    ///
+    /// When the empty string is used as a separator, it separates
+    /// every character in the string, along with the beginning
+    /// and end of the string.
+    ///
+    /// ```
+    /// let f: Vec<_> = "rust".split("").collect();
+    /// assert_eq!(f, &["", "r", "u", "s", "t", ""]);
+    /// ```
+    ///
+    /// Contiguous separators can lead to possibly surprising behavior
+    /// when whitespace is used as the separator. This code is correct:
     ///
     /// ```
     /// let x = "    a  b c".to_string();
