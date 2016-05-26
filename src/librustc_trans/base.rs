@@ -769,12 +769,12 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                              rhs: ValueRef,
                                              rhs_t: Ty<'tcx>)
                                              -> Block<'blk, 'tcx> {
-    let (zero_text, overflow_text) = if divrem.node == hir::BiDiv {
-        ("attempted to divide by zero",
-         "attempted to divide with overflow")
+    use rustc_const_math::{ConstMathErr, Op};
+
+    let (zero_err, overflow_err) = if divrem.node == hir::BiDiv {
+        (ConstMathErr::DivisionByZero, ConstMathErr::Overflow(Op::Div))
     } else {
-        ("attempted remainder with a divisor of zero",
-         "attempted remainder with overflow")
+        (ConstMathErr::RemainderByZero, ConstMathErr::Overflow(Op::Rem))
     };
     let debug_loc = call_info.debug_loc();
 
@@ -802,7 +802,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         }
     };
     let bcx = with_cond(cx, is_zero, |bcx| {
-        controlflow::trans_fail(bcx, call_info, InternedString::new(zero_text))
+        controlflow::trans_fail(bcx, call_info, InternedString::new(zero_err.description()))
     });
 
     // To quote LLVM's documentation for the sdiv instruction:
@@ -828,7 +828,8 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               C_integral(llty, min, true),
                               debug_loc);
             with_cond(bcx, is_min, |bcx| {
-                controlflow::trans_fail(bcx, call_info, InternedString::new(overflow_text))
+                controlflow::trans_fail(bcx, call_info,
+                                        InternedString::new(overflow_err.description()))
             })
         })
     } else {
