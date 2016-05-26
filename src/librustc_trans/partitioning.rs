@@ -124,14 +124,10 @@ use rustc::hir::map::DefPathData;
 use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
 use rustc::ty::TyCtxt;
 use rustc::ty::item_path::characteristic_def_id_of_type;
+use symbol_map::SymbolMap;
 use syntax::parse::token::{self, InternedString};
 use trans_item::TransItem;
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeSet};
-
-pub struct CodegenUnit<'tcx> {
-    pub name: InternedString,
-    pub items: FnvHashMap<TransItem<'tcx>, llvm::Linkage>,
-}
 
 pub enum PartitioningStrategy {
     /// Generate one codegen unit per source-level module.
@@ -140,6 +136,29 @@ pub enum PartitioningStrategy {
     /// Partition the whole crate into a fixed number of codegen units.
     FixedUnitCount(usize)
 }
+
+pub struct CodegenUnit<'tcx> {
+    pub name: InternedString,
+    pub items: FnvHashMap<TransItem<'tcx>, llvm::Linkage>,
+}
+
+impl<'tcx> CodegenUnit<'tcx> {
+    pub fn items_in_deterministic_order(&self,
+                                        symbol_map: &SymbolMap)
+                                        -> Vec<(TransItem<'tcx>, llvm::Linkage)> {
+        let mut items: Vec<(TransItem<'tcx>, llvm::Linkage)> =
+            self.items.iter().map(|(item, linkage)| (*item, *linkage)).collect();
+
+        items.as_mut_slice().sort_by(|&(trans_item1, _), &(trans_item2, _)| {
+            let symbol_name1 = symbol_map.get(trans_item1).unwrap();
+            let symbol_name2 = symbol_map.get(trans_item2).unwrap();
+            symbol_name1.cmp(symbol_name2)
+        });
+
+        items
+    }
+}
+
 
 // Anything we can't find a proper codegen unit for goes into this.
 const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
@@ -184,7 +203,13 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     debug_dump(tcx, "POST INLINING:", post_inlining.0.iter());
 
-    post_inlining.0
+    // Finally, sort by codegen unit name, so that we get deterministic results
+    let mut result = post_inlining.0;
+    result.as_mut_slice().sort_by(|cgu1, cgu2| {
+        (&cgu1.name[..]).cmp(&cgu2.name[..])
+    });
+
+    result
 }
 
 struct PreInliningPartitioning<'tcx> {

@@ -2626,14 +2626,20 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Instantiate translation items without filling out definitions yet...
     for ccx in crate_context_list.iter() {
-        for (&trans_item, &linkage) in &ccx.codegen_unit().items {
+        let trans_items = ccx.codegen_unit()
+                             .items_in_deterministic_order(&symbol_map);
+
+        for (trans_item, linkage) in trans_items {
             trans_item.predefine(&ccx, linkage);
         }
     }
 
     // ... and now that we have everything pre-defined, fill out those definitions.
     for ccx in crate_context_list.iter() {
-        for (trans_item, _) in &ccx.codegen_unit().items {
+        let trans_items = ccx.codegen_unit()
+                             .items_in_deterministic_order(&symbol_map);
+
+        for (trans_item, _) in trans_items {
            trans_item.define(&ccx);
         }
     }
