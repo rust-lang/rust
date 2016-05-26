@@ -1660,8 +1660,8 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                     self.schedule_drop_mem(arg_scope_id, llarg, arg_ty, None);
 
                     datum::Datum::new(llarg,
-                                    arg_ty,
-                                    datum::Lvalue::new("FunctionContext::bind_args"))
+                                      arg_ty,
+                                      datum::Lvalue::new("FunctionContext::bind_args"))
                 } else {
                     let lltmp = if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
                         let lltemp = alloc_ty(bcx, arg_ty, "");
@@ -1683,6 +1683,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                         // And coerce the temporary into the type we expect.
                         b.pointercast(lltemp, arg.memory_ty(bcx.ccx()).ptr_to())
                     };
+                    bcx.fcx.schedule_drop_mem(arg_scope_id, lltmp, arg_ty, None);
                     datum::Datum::new(lltmp, arg_ty,
                                       datum::Lvalue::new("bind_args"))
                 }
