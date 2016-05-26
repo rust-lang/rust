@@ -124,7 +124,9 @@ use rustc::hir::map::DefPathData;
 use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
 use rustc::ty::TyCtxt;
 use rustc::ty::item_path::characteristic_def_id_of_type;
+use std::cmp::Ordering;
 use symbol_map::SymbolMap;
+use syntax::ast::NodeId;
 use syntax::parse::token::{self, InternedString};
 use trans_item::TransItem;
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeSet};
@@ -144,18 +146,52 @@ pub struct CodegenUnit<'tcx> {
 
 impl<'tcx> CodegenUnit<'tcx> {
     pub fn items_in_deterministic_order(&self,
+                                        tcx: TyCtxt,
                                         symbol_map: &SymbolMap)
                                         -> Vec<(TransItem<'tcx>, llvm::Linkage)> {
         let mut items: Vec<(TransItem<'tcx>, llvm::Linkage)> =
             self.items.iter().map(|(item, linkage)| (*item, *linkage)).collect();
 
+        // The codegen tests rely on items being process in the same order as
+        // they appear in the file, so for local items, we sort by node_id first
         items.as_mut_slice().sort_by(|&(trans_item1, _), &(trans_item2, _)| {
-            let symbol_name1 = symbol_map.get(trans_item1).unwrap();
-            let symbol_name2 = symbol_map.get(trans_item2).unwrap();
-            symbol_name1.cmp(symbol_name2)
+
+            let node_id1 = local_node_id(tcx, trans_item1);
+            let node_id2 = local_node_id(tcx, trans_item2);
+
+            match (node_id1, node_id2) {
+                (None, None) => {
+                    let symbol_name1 = symbol_map.get(trans_item1).unwrap();
+                    let symbol_name2 = symbol_map.get(trans_item2).unwrap();
+                    symbol_name1.cmp(symbol_name2)
+                }
+                (None, Some(_)) => Ordering::Less,
+                (Some(_), None) => Ordering::Greater,
+                (Some(node_id1), Some(node_id2)) => {
+                    let ordering = node_id1.cmp(&node_id2);
+
+                    if ordering != Ordering::Equal {
+                        return ordering;
+                    }
+
+                    let symbol_name1 = symbol_map.get(trans_item1).unwrap();
+                    let symbol_name2 = symbol_map.get(trans_item2).unwrap();
+                    symbol_name1.cmp(symbol_name2)
+                }
+            }
         });
 
-        items
+        return items;
+
+        fn local_node_id(tcx: TyCtxt, trans_item: TransItem) -> Option<NodeId> {
+            match trans_item {
+                TransItem::Fn(instance) => {
+                    tcx.map.as_local_node_id(instance.def)
+                }
+                TransItem::Static(node_id) => Some(node_id),
+                TransItem::DropGlue(_) => None,
+            }
+        }
     }
 }
 
