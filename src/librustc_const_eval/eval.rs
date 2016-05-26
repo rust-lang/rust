@@ -856,9 +856,6 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Integral(U8(data[idx as usize]))
             },
 
-            Str(ref s) if idx as usize >= s.len() => signal!(e, IndexOutOfBounds),
-            // FIXME: return a const char
-            Str(_) => signal!(e, UnimplementedConstVal("indexing into str")),
             _ => signal!(e, IndexedNonVec),
         }
       }
