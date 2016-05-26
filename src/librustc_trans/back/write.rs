@@ -812,12 +812,10 @@ pub fn run_passes(sess: &Session,
                 copy_if_one_unit(OutputType::LlvmAssembly, false);
             }
             OutputType::Assembly => {
-                // TODO: These are probably wrong
                 copy_if_one_unit(OutputType::Assembly, false);
             }
             OutputType::Object => {
                 user_wants_objects = true;
-                // TODO: These are probably wrong
                 copy_if_one_unit(OutputType::Object, true);
             }
             OutputType::Exe |
