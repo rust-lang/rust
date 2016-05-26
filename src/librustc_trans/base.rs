@@ -1721,16 +1721,19 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             };
 
             let pat = &hir_arg.pat;
-            bcx = if let Some(name) = simple_name(pat) {
-                // Generate nicer LLVM for the common case of fn a pattern
-                // like `x: T`
-                set_value_name(arg_datum.val, &bcx.name(name));
-                self.lllocals.borrow_mut().insert(pat.id, arg_datum);
-                bcx
-            } else {
-                // General path. Copy out the values that are used in the
-                // pattern.
-                _match::bind_irrefutable_pat(bcx, pat, arg_datum.match_input(), arg_scope_id)
+            bcx = match simple_name(pat) {
+                // The check for alloca is necessary because above for the immediate argument case
+                // we had to cast. At this point arg_datum is not an alloca anymore and thus
+                // breaks debuginfo if we allow this optimisation.
+                Some(name)
+                if unsafe { llvm::LLVMIsAAllocaInst(arg_datum.val) != ::std::ptr::null_mut() } => {
+                    // Generate nicer LLVM for the common case of fn a pattern
+                    // like `x: T`
+                    set_value_name(arg_datum.val, &bcx.name(name));
+                    self.lllocals.borrow_mut().insert(pat.id, arg_datum);
+                    bcx
+                },
+                _ => _match::bind_irrefutable_pat(bcx, pat, arg_datum.match_input(), arg_scope_id)
             };
             debuginfo::create_argument_metadata(bcx, hir_arg);
         }
