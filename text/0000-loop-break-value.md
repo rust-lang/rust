@@ -218,16 +218,50 @@ otherwise and allows more flexibility in code layout.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-It would be possible to allow `for`, `while` and `while let` expressions return
-values in a similar way; however, these expressions may also terminate
-"naturally" (not via break), and no consensus has been reached on how the
-result value should be determined in this case, or even the result type.
-It is thus proposed not to change these expressions at this time.
+### Extension to for, while, while let
 
-It should be noted that `for`, `while` and `while let` can all be emulated via
-`loop`, so perhaps allowing the former to return values is less important.
-Alternatively, a keyword such as `else default` could be used to
-specify the other exit value as in:
+A frequently discussed issue is extension of this concept to allow `for`,
+`while` and `while let` expressions to return values in a similar way. There is
+however a complication: these expressions may also terminate "naturally" (not
+via break), and no consensus has been reached on how the result value should
+be determined in this case, or even the result type.
+
+There are three options:
+
+1.  Do not adjust `for`, `while` or `while let` at this time
+2.  Adjust these control structures to return an `Option<T>`, returning `None`
+    in the default case
+3.  Specify the default return value via some extra syntax
+
+#### Via `Option<T>`
+
+Unfortunately, option (2) is not possible to implement cleanly without breaking
+a lot of existing code: many functions use one of these control structures in
+tail position, where the current "value" of the expression, `()`, is implicitly
+used:
+
+```rust
+// function returns `()`
+fn print_my_values(v: &Vec<i32>) {
+    for x in v {
+        println!("Value: {}", x);
+    }
+    // loop exits with `()` which is implicitly "returned" from the function
+}
+```
+
+Two variations of option (2) are possible:
+
+*   Only adjust the control structures where they contain a `break EXPR;` or
+    `break 'label EXPR;` statement. This may work but would necessitate that
+    `break;` and `break ();` mean different things.
+*   As a special case, make `break ();` return `()` instead of `Some(())`,
+    while for other values `break x;` returns `Some(x)`.
+
+#### Via extra syntax for the default value
+
+Several syntaxes have been proposed for how a control structure's default value
+is set. For example:
 
 ```rust
 fn first<T: Copy>(list: Iterator<T>) -> Option<T> {
@@ -239,8 +273,18 @@ fn first<T: Copy>(list: Iterator<T>) -> Option<T> {
 }
 ```
 
-The exact syntax is disputed; (JelteF has some suggestions which should work
-without infinite parser lookahead)
-[https://github.com/rust-lang/rfcs/issues/961#issuecomment-220728894].
-It is suggested that this RFC should not be blocked on this issue since
-loop-break-value can still be implemented in the manner above after this RFC.
+or:
+
+```rust
+let x = for thing in things default "nope" {
+    if thing.valid() { break "found it!"; }
+}
+```
+
+There are two things to bear in mind when considering new syntax:
+
+*   It is undesirable to add a new keyword to the list of Rust's keywords
+*   It is strongly desirable that unbounded lookahead is required while syntax
+    parsing Rust code
+
+For more discussion on this topic, see [issue #961](https://github.com/rust-lang/rfcs/issues/961).
