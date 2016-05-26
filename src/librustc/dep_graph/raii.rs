@@ -20,14 +20,14 @@ pub struct DepTask<'graph> {
 impl<'graph> DepTask<'graph> {
     pub fn new(data: &'graph DepGraphThreadData, key: DepNode<DefId>)
                -> DepTask<'graph> {
-        data.enqueue(DepMessage::PushTask(key));
+        data.enqueue(DepMessage::PushTask(key.clone()));
         DepTask { data: data, key: key }
     }
 }
 
 impl<'graph> Drop for DepTask<'graph> {
     fn drop(&mut self) {
-        self.data.enqueue(DepMessage::PopTask(self.key));
+        self.data.enqueue(DepMessage::PopTask(self.key.clone()));
     }
 }
 
