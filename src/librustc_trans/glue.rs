@@ -20,7 +20,7 @@ use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
 use rustc::ty::subst::{Substs};
 use rustc::traits;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use abi::{Abi, FnType};
 use adt;
 use adt::GetDtorType; // for tcx.dtor_type()
@@ -96,10 +96,12 @@ pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     t: Ty<'tcx>) -> Ty<'tcx> {
+    assert!(t.is_normalized_for_trans());
+
     // Even if there is no dtor for t, there might be one deeper down and we
     // might need to pass in the vtable ptr.
     if !type_is_sized(tcx, t) {
-        return tcx.erase_regions(&t);
+        return t;
     }
 
     // FIXME (#22815): note that type_needs_drop conservatively
@@ -123,11 +125,11 @@ pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     // `Box<ZeroSizeType>` does not allocate.
                     tcx.types.i8
                 } else {
-                    tcx.erase_regions(&t)
+                    t
                 }
             })
         }
-        _ => tcx.erase_regions(&t)
+        _ => t
     }
 }
 
