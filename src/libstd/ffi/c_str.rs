@@ -159,6 +159,12 @@ pub struct CStr {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct NulError(usize, Vec<u8>);
 
+/// An error returned from `CStr::from_bytes_with_nul` to indicate that a nul
+/// byte was found too early in the slice provided or one wasn't found at all.
+#[derive(Clone, PartialEq, Debug)]
+#[stable(feature = "cstr_from_bytes", since = "1.10.0")]
+pub struct FromBytesWithNulError { _a: () }
+
 /// An error returned from `CString::into_string` to indicate that a UTF-8 error
 /// was encountered during the conversion.
 #[derive(Clone, PartialEq, Debug)]
@@ -461,20 +467,18 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cstr_from_bytes)]
     /// use std::ffi::CStr;
     ///
-    /// # fn main() {
     /// let cstr = CStr::from_bytes_with_nul(b"hello\0");
-    /// assert!(cstr.is_some());
-    /// # }
+    /// assert!(cstr.is_ok());
     /// ```
-    #[unstable(feature = "cstr_from_bytes", reason = "recently added", issue = "31190")]
-    pub fn from_bytes_with_nul(bytes: &[u8]) -> Option<&CStr> {
+    #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
+    pub fn from_bytes_with_nul(bytes: &[u8])
+                               -> Result<&CStr, FromBytesWithNulError> {
         if bytes.is_empty() || memchr::memchr(0, &bytes) != Some(bytes.len() - 1) {
-            None
+            Err(FromBytesWithNulError { _a: () })
         } else {
-            Some(unsafe { Self::from_bytes_with_nul_unchecked(bytes) })
+            Ok(unsafe { Self::from_bytes_with_nul_unchecked(bytes) })
         }
     }
 
@@ -487,18 +491,15 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cstr_from_bytes)]
     /// use std::ffi::{CStr, CString};
     ///
-    /// # fn main() {
     /// unsafe {
     ///     let cstring = CString::new("hello").unwrap();
     ///     let cstr = CStr::from_bytes_with_nul_unchecked(cstring.to_bytes_with_nul());
     ///     assert_eq!(cstr, &*cstring);
     /// }
-    /// # }
     /// ```
-    #[unstable(feature = "cstr_from_bytes", reason = "recently added", issue = "31190")]
+    #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     pub unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
         mem::transmute(bytes)
     }
@@ -742,12 +743,14 @@ mod tests {
     fn from_bytes_with_nul() {
         let data = b"123\0";
         let cstr = CStr::from_bytes_with_nul(data);
-        assert_eq!(cstr.map(CStr::to_bytes), Some(&b"123"[..]));
-        assert_eq!(cstr.map(CStr::to_bytes_with_nul), Some(&b"123\0"[..]));
+        assert_eq!(cstr.map(CStr::to_bytes), Ok(&b"123"[..]));
+        let cstr = CStr::from_bytes_with_nul(data);
+        assert_eq!(cstr.map(CStr::to_bytes_with_nul), Ok(&b"123\0"[..]));
 
         unsafe {
+            let cstr = CStr::from_bytes_with_nul(data);
             let cstr_unchecked = CStr::from_bytes_with_nul_unchecked(data);
-            assert_eq!(cstr, Some(cstr_unchecked));
+            assert_eq!(cstr, Ok(cstr_unchecked));
         }
     }
 
@@ -755,13 +758,13 @@ mod tests {
     fn from_bytes_with_nul_unterminated() {
         let data = b"123";
         let cstr = CStr::from_bytes_with_nul(data);
-        assert!(cstr.is_none());
+        assert!(cstr.is_err());
     }
 
     #[test]
     fn from_bytes_with_nul_interior() {
         let data = b"1\023\0";
         let cstr = CStr::from_bytes_with_nul(data);
-        assert!(cstr.is_none());
+        assert!(cstr.is_err());
     }
 }

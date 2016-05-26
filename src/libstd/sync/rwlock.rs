@@ -66,6 +66,7 @@ use sys_common::rwlock as sys;
 /// } // write lock is dropped here
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub struct RwLock<T: ?Sized> {
     inner: Box<StaticRwLock>,
     data: UnsafeCell<T>,
@@ -104,6 +105,11 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 #[unstable(feature = "static_rwlock",
            reason = "may be merged with RwLock in the future",
            issue = "27717")]
+#[rustc_deprecated(since = "1.10.0",
+                   reason = "the lazy-static crate suffices for static sync \
+                             primitives and eventually this type shouldn't \
+                             be necessary as `RwLock::new` in a static should \
+                             suffice")]
 pub struct StaticRwLock {
     lock: sys::RWLock,
     poison: poison::Flag,
@@ -113,12 +119,19 @@ pub struct StaticRwLock {
 #[unstable(feature = "static_rwlock",
            reason = "may be merged with RwLock in the future",
            issue = "27717")]
+#[rustc_deprecated(since = "1.10.0",
+                   reason = "the lazy-static crate suffices for static sync \
+                             primitives and eventually this type shouldn't \
+                             be necessary as `RwLock::new` in a static should \
+                             suffice")]
+#[allow(deprecated)]
 pub const RW_LOCK_INIT: StaticRwLock = StaticRwLock::new();
 
 /// RAII structure used to release the shared read access of a lock when
 /// dropped.
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a T,
@@ -131,6 +144,7 @@ impl<'a, T: ?Sized> !marker::Send for RwLockReadGuard<'a, T> {}
 /// dropped.
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a mut T,
@@ -140,6 +154,7 @@ pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> !marker::Send for RwLockWriteGuard<'a, T> {}
 
+#[allow(deprecated)]
 impl<T> RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
     ///
@@ -156,6 +171,7 @@ impl<T> RwLock<T> {
     }
 }
 
+#[allow(deprecated)]
 impl<T: ?Sized> RwLock<T> {
     /// Locks this rwlock with shared read access, blocking the current thread
     /// until it can be acquired.
@@ -325,6 +341,7 @@ impl<T: ?Sized> RwLock<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<T: ?Sized> Drop for RwLock<T> {
     #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
@@ -360,6 +377,12 @@ static DUMMY: Dummy = Dummy(UnsafeCell::new(()));
 #[unstable(feature = "static_rwlock",
            reason = "may be merged with RwLock in the future",
            issue = "27717")]
+#[rustc_deprecated(since = "1.10.0",
+                   reason = "the lazy-static crate suffices for static sync \
+                             primitives and eventually this type shouldn't \
+                             be necessary as `RwLock::new` in a static should \
+                             suffice")]
+#[allow(deprecated)]
 impl StaticRwLock {
     /// Creates a new rwlock.
     pub const fn new() -> StaticRwLock {
@@ -434,6 +457,7 @@ impl StaticRwLock {
     }
 }
 
+#[allow(deprecated)]
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     unsafe fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
            -> LockResult<RwLockReadGuard<'rwlock, T>> {
@@ -482,6 +506,7 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     unsafe fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
            -> LockResult<RwLockWriteGuard<'rwlock, T>> {
@@ -562,10 +587,12 @@ impl<'rwlock, T: ?Sized> Deref for RwLockWriteGuard<'rwlock, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'rwlock, T: ?Sized> DerefMut for RwLockWriteGuard<'rwlock, T> {
-    fn deref_mut(&mut self) -> &mut T { self.__data
+    fn deref_mut(&mut self) -> &mut T {
+        self.__data
     }
 }
 
+#[allow(deprecated)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> Drop for RwLockReadGuard<'a, T> {
     fn drop(&mut self) {
@@ -573,6 +600,7 @@ impl<'a, T: ?Sized> Drop for RwLockReadGuard<'a, T> {
     }
 }
 
+#[allow(deprecated)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> Drop for RwLockWriteGuard<'a, T> {
     fn drop(&mut self) {
@@ -582,6 +610,7 @@ impl<'a, T: ?Sized> Drop for RwLockWriteGuard<'a, T> {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     #![allow(deprecated)] // rand
 

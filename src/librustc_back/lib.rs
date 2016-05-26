@@ -38,7 +38,6 @@
 #![feature(staged_api)]
 #![feature(step_by)]
 #![feature(question_mark)]
-#![cfg_attr(unix, feature(static_mutex))]
 #![cfg_attr(test, feature(test, rand))]
 
 extern crate syntax;

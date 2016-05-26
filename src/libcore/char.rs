@@ -15,11 +15,9 @@
 #![allow(non_snake_case)]
 #![stable(feature = "core_char", since = "1.2.0")]
 
-use iter::Iterator;
+use prelude::v1::*;
+
 use mem::transmute;
-use option::Option::{None, Some};
-use option::Option;
-use slice::SliceExt;
 
 // UTF-8 ranges and tags for encoding characters
 const TAG_CONT: u8    = 0b1000_0000;

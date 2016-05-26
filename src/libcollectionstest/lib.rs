@@ -22,8 +22,6 @@
 #![feature(enumset)]
 #![feature(iter_arith)]
 #![feature(linked_list_contains)]
-#![feature(map_entry_keys)]
-#![feature(map_values_mut)]
 #![feature(pattern)]
 #![feature(rand)]
 #![feature(step_by)]
