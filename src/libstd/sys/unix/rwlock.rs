@@ -10,10 +10,12 @@
 
 use libc;
 use cell::UnsafeCell;
+use sync::atomic::{AtomicUsize, Ordering};
 
 pub struct RWLock {
     inner: UnsafeCell<libc::pthread_rwlock_t>,
     write_locked: UnsafeCell<bool>,
+    num_readers: AtomicUsize,
 }
 
 unsafe impl Send for RWLock {}
@@ -24,6 +26,7 @@ impl RWLock {
         RWLock {
             inner: UnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER),
             write_locked: UnsafeCell::new(false),
+            num_readers: AtomicUsize::new(0),
         }
     }
     #[inline]
@@ -54,23 +57,31 @@ impl RWLock {
             panic!("rwlock read lock would result in deadlock");
         } else {
             debug_assert_eq!(r, 0);
+            self.num_readers.fetch_add(1, Ordering::Relaxed);
         }
     }
     #[inline]
     pub unsafe fn try_read(&self) -> bool {
         let r = libc::pthread_rwlock_tryrdlock(self.inner.get());
-        if r == 0 && *self.write_locked.get() {
-            self.raw_unlock();
-            false
+        if r == 0 {
+            if *self.write_locked.get() {
+                self.raw_unlock();
+                false
+            } else {
+                self.num_readers.fetch_add(1, Ordering::Relaxed);
+                true
+            }
         } else {
-            r == 0
+            false
         }
     }
     #[inline]
     pub unsafe fn write(&self) {
         let r = libc::pthread_rwlock_wrlock(self.inner.get());
-        // see comments above for why we check for EDEADLK and write_locked
-        if r == libc::EDEADLK || *self.write_locked.get() {
+        // See comments above for why we check for EDEADLK and write_locked. We
+        // also need to check that num_readers is 0.
+        if r == libc::EDEADLK || *self.write_locked.get() ||
+           self.num_readers.load(Ordering::Relaxed) != 0 {
             if r == 0 {
                 self.raw_unlock();
             }
@@ -83,12 +94,14 @@ impl RWLock {
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
         let r = libc::pthread_rwlock_trywrlock(self.inner.get());
-        if r == 0 && *self.write_locked.get() {
-            self.raw_unlock();
-            false
-        } else if r == 0 {
-            *self.write_locked.get() = true;
-            true
+        if r == 0 {
+            if *self.write_locked.get() || self.num_readers.load(Ordering::Relaxed) != 0 {
+                self.raw_unlock();
+                false
+            } else {
+                *self.write_locked.get() = true;
+                true
+            }
         } else {
             false
         }
@@ -101,10 +114,12 @@ impl RWLock {
     #[inline]
     pub unsafe fn read_unlock(&self) {
         debug_assert!(!*self.write_locked.get());
+        self.num_readers.fetch_sub(1, Ordering::Relaxed);
         self.raw_unlock();
     }
     #[inline]
     pub unsafe fn write_unlock(&self) {
+        debug_assert_eq!(self.num_readers.load(Ordering::Relaxed), 0);
         debug_assert!(*self.write_locked.get());
         *self.write_locked.get() = false;
         self.raw_unlock();
