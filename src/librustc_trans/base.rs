@@ -2198,34 +2198,17 @@ pub fn set_link_section(ccx: &CrateContext,
     }
 }
 
-pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
+fn trans_item(ccx: &CrateContext, item: &hir::Item) {
     let _icx = push_ctxt("trans_item");
 
-    let tcx = ccx.tcx();
     match item.node {
-        hir::ItemFn(_, _, _, _, _, _) => {
-            let def_id = tcx.map.local_def_id(item.id);
-            // check for the #[rustc_error] annotation, which forces an
-            // error in trans. This is used to write compile-fail tests
-            // that actually test that compilation succeeds without
-            // reporting an error.
-            if is_entry_fn(ccx.sess(), item.id) {
-                let empty_substs = ccx.empty_substs_for_def_id(def_id);
-                let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
-                create_entry_wrapper(ccx, item.span, llfn);
-                if tcx.has_attr(def_id, "rustc_error") {
-                    tcx.sess.span_fatal(item.span, "compilation successful");
-                }
-            }
-
-            // Function is actually translated in trans_instance
-        }
         hir::ItemEnum(ref enum_definition, ref gens) => {
             if gens.ty_params.is_empty() {
                 // sizes only make sense for non-generic types
                 enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
             }
         }
+        hir::ItemFn(..) |
         hir::ItemImpl(..) |
         hir::ItemStatic(..) => {
             // Don't do anything here. Translation has been moved to
@@ -2235,22 +2218,40 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
     }
 }
 
-pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
-    match *sess.entry_fn.borrow() {
-        Some((entry_id, _)) => node_id == entry_id,
-        None => false,
-    }
-}
+/// Create the `main` function which will initialise the rust runtime and call
+/// users’ main function.
+pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
+    let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {
+        Some((id, span)) => {
+            (ccx.tcx().map.local_def_id(id), span)
+        }
+        None => return,
+    };
 
-/// Create the `main` function which will initialise the rust runtime and call users’ main
-/// function.
-pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
+    // check for the #[rustc_error] annotation, which forces an
+    // error in trans. This is used to write compile-fail tests
+    // that actually test that compilation succeeds without
+    // reporting an error.
+    if ccx.tcx().has_attr(main_def_id, "rustc_error") {
+        ccx.tcx().sess.span_fatal(span, "compilation successful");
+    }
+
+    let instance = Instance::mono(ccx.shared(), main_def_id);
+
+    if !ccx.codegen_unit().items.contains_key(&TransItem::Fn(instance)) {
+        // We want to create the wrapper in the same codegen unit as Rust's main
+        // function.
+        return;
+    }
+
+    let main_llfn = Callee::def(ccx, main_def_id, instance.substs).reify(ccx).val;
+
     let et = ccx.sess().entry_type.get().unwrap();
     match et {
         config::EntryMain => {
-            create_entry_fn(ccx, sp, main_llfn, true);
+            create_entry_fn(ccx, span, main_llfn, true);
         }
-        config::EntryStart => create_entry_fn(ccx, sp, main_llfn, false),
+        config::EntryStart => create_entry_fn(ccx, span, main_llfn, false),
         config::EntryNone => {}    // Do nothing.
     }
 
@@ -2590,12 +2591,10 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
 
-    let (codegen_units, symbol_map) =
-        collect_and_partition_translation_items(&shared_ccx);
+    // Run the translation item collector and partition the collected items into
+    // codegen units.
+    let (codegen_units, symbol_map) = collect_and_partition_translation_items(&shared_ccx);
     let codegen_unit_count = codegen_units.len();
-
-    assert!(tcx.sess.opts.cg.codegen_units == codegen_unit_count ||
-            tcx.sess.opts.debugging_opts.incremental.is_some());
 
     let symbol_map = Rc::new(symbol_map);
 
@@ -2642,34 +2641,38 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         for (trans_item, _) in trans_items {
            trans_item.define(&ccx);
         }
-    }
 
-    {
-        let ccx = crate_context_list.get_ccx(0);
+        // If this codegen unit contains the main function, also create the
+        // wrapper here
+        maybe_create_entry_wrapper(&ccx);
 
-        // Translate all items. See `TransModVisitor` for
-        // details on why we walk in this particular way.
-        {
-            let _icx = push_ctxt("text");
-            intravisit::walk_mod(&mut TransItemsWithinModVisitor { ccx: &ccx }, &krate.module);
-            krate.visit_all_items(&mut TransModVisitor { ccx: &ccx });
-        }
-
-        collector::print_collection_results(ccx.shared());
-
-        symbol_names_test::report_symbol_names(&ccx);
-    }
-
-    for ccx in crate_context_list.iter() {
-        if ccx.sess().opts.debuginfo != NoDebugInfo {
-            debuginfo::finalize(&ccx);
-        }
+        // Run replace-all-uses-with for statics that need it
         for &(old_g, new_g) in ccx.statics_to_rauw().borrow().iter() {
             unsafe {
                 let bitcast = llvm::LLVMConstPointerCast(new_g, llvm::LLVMTypeOf(old_g));
                 llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
                 llvm::LLVMDeleteGlobal(old_g);
             }
+        }
+
+        // Finalize debuginfo
+        if ccx.sess().opts.debuginfo != NoDebugInfo {
+            debuginfo::finalize(&ccx);
+        }
+    }
+
+    collector::print_collection_results(&shared_ccx);
+    symbol_names_test::report_symbol_names(&shared_ccx);
+
+    {
+        let ccx = crate_context_list.get_ccx(0);
+
+        // At this point, we only walk the HIR for running
+        // enum_variant_size_lint(). This should arguably be moved somewhere
+        // else
+        {
+            intravisit::walk_mod(&mut TransItemsWithinModVisitor { ccx: &ccx }, &krate.module);
+            krate.visit_all_items(&mut TransModVisitor { ccx: &ccx });
         }
     }
 
@@ -2696,6 +2699,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
     }
+
     if shared_ccx.sess().count_llvm_insns() {
         for (k, v) in shared_ccx.stats().llvm_insns.borrow().iter() {
             println!("{:7} {}", *v, *k);
@@ -2866,6 +2870,9 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
                                 &inlining_map,
                                 scx.reachable())
     });
+
+    assert!(scx.tcx().sess.opts.cg.codegen_units == codegen_units.len() ||
+            scx.tcx().sess.opts.debugging_opts.incremental.is_some());
 
     if scx.sess().opts.debugging_opts.print_trans_items.is_some() {
         let mut item_to_cgus = HashMap::new();
