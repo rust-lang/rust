@@ -30,7 +30,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use syntax::parse::token;
 use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
-use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 
 #[derive(Copy, Clone)]
 pub struct Cx<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
@@ -38,42 +38,49 @@ pub struct Cx<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     constness: hir::Constness,
 
-    /// True if this MIR can get inlined in other crates.
-    inline: bool
+    /// True if this constant/function needs overflow checks.
+    check_overflow: bool
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                src: MirSource)
                -> Cx<'a, 'gcx, 'tcx> {
-        let (constness, inline) = match src {
+        let constness = match src {
             MirSource::Const(_) |
-            MirSource::Static(..) => (hir::Constness::Const, false),
+            MirSource::Static(..) => hir::Constness::Const,
             MirSource::Fn(id) => {
-                let def_id = infcx.tcx.map.local_def_id(id);
                 let fn_like = FnLikeNode::from_node(infcx.tcx.map.get(id));
                 match fn_like.map(|f| f.kind()) {
-                    Some(FnKind::ItemFn(_, _, _, c, _, _, attrs)) => {
-                        let scheme = infcx.tcx.lookup_item_type(def_id);
-                        let any_types = !scheme.generics.types.is_empty();
-                        (c, any_types || attr::requests_inline(attrs))
-                    }
-                    Some(FnKind::Method(_, m, _, attrs)) => {
-                        let scheme = infcx.tcx.lookup_item_type(def_id);
-                        let any_types = !scheme.generics.types.is_empty();
-                        (m.constness, any_types || attr::requests_inline(attrs))
-                    }
-                    _ => (hir::Constness::NotConst, true)
+                    Some(FnKind::ItemFn(_, _, _, c, _, _, _)) => c,
+                    Some(FnKind::Method(_, m, _, _)) => m.constness,
+                    _ => hir::Constness::NotConst
                 }
             }
             MirSource::Promoted(..) => bug!()
         };
 
+        let attrs = infcx.tcx.map.attrs(src.item_id());
+
+        // Some functions always have overflow checks enabled,
+        // however, they may not get codegen'd, depending on
+        // the settings for the crate they are translated in.
+        let mut check_overflow = attrs.iter().any(|item| {
+            item.check_name("rustc_inherit_overflow_checks")
+        });
+
+        // Respect -Z force-overflow-checks=on and -C debug-assertions.
+        check_overflow |= infcx.tcx.sess.opts.debugging_opts.force_overflow_checks
+               .unwrap_or(infcx.tcx.sess.opts.debug_assertions);
+
+        // Constants and const fn's always need overflow checks.
+        check_overflow |= constness == hir::Constness::Const;
+
         Cx {
             tcx: infcx.tcx,
             infcx: infcx,
             constness: constness,
-            inline: inline
+            check_overflow: check_overflow
         }
     }
 }
@@ -186,8 +193,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         self.tcx
     }
 
-    pub fn may_be_inlined_cross_crate(&self) -> bool {
-        self.inline
+    pub fn check_overflow(&self) -> bool {
+        self.check_overflow
     }
 }
 
