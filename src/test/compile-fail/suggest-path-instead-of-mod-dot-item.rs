@@ -26,51 +26,51 @@ pub mod a {
 fn h1() -> i32 {
     a.I
         //~^ ERROR E0425
-        //~| HELP To reference an item from the `a` module, use `a::I`
+        //~| HELP to reference an item from the `a` module, use `a::I`
 }
 
 fn h2() -> i32 {
     a.g()
         //~^ ERROR E0425
-        //~| HELP To call a function from the `a` module, use `a::g(..)`
+        //~| HELP to call a function from the `a` module, use `a::g(..)`
 }
 
 fn h3() -> i32 {
     a.b.J
         //~^ ERROR E0425
-        //~| HELP To reference an item from the `a` module, use `a::b`
+        //~| HELP to reference an item from the `a` module, use `a::b`
 }
 
 fn h4() -> i32 {
     a::b.J
         //~^ ERROR E0425
-        //~| HELP To reference an item from the `a::b` module, use `a::b::J`
+        //~| HELP to reference an item from the `a::b` module, use `a::b::J`
 }
 
 fn h5() {
     a.b.f();
         //~^ ERROR E0425
-        //~| HELP To reference an item from the `a` module, use `a::b`
+        //~| HELP to reference an item from the `a` module, use `a::b`
     let v = Vec::new();
     v.push(a::b);
         //~^ ERROR E0425
-        //~| HELP Module `a::b` cannot be used as an expression
+        //~| HELP module `a::b` cannot be used as an expression
 }
 
 fn h6() -> i32 {
     a::b.f()
         //~^ ERROR E0425
-        //~| HELP To call a function from the `a::b` module, use `a::b::f(..)`
+        //~| HELP to call a function from the `a::b` module, use `a::b::f(..)`
 }
 
 fn h7() {
     a::b
         //~^ ERROR E0425
-        //~| HELP Module `a::b` cannot be used as an expression
+        //~| HELP module `a::b` cannot be used as an expression
 }
 
 fn h8() -> i32 {
     a::b()
         //~^ ERROR E0425
-        //~| HELP Module `a::b` cannot be used as an expression
+        //~| HELP module `a::b` cannot be used as an expression
 }
