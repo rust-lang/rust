@@ -411,6 +411,9 @@ pub struct EscapeUnicode {
     hex_digit_idx: usize,
 }
 
+// The enum values are ordered so that their representation is the
+// same as the remaining length (besides the hexadecimal digits). This
+// likely makes `len()` a single load from memory) and inline-worth.
 #[derive(Clone, Debug)]
 enum EscapeUnicodeState {
     Done,
