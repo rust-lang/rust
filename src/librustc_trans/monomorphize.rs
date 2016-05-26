@@ -84,18 +84,23 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         monomorphizing.insert(fn_id, depth + 1);
     }
 
-    let symbol = instance.symbol_name(ccx.shared());
+    // Let's see if we can get the symbol name from the symbol_map, so we don't
+    // have to recompute it.
+    let mut sym_data = String::new();
+    let symbol = ccx.symbol_map().get(TransItem::Fn(instance)).unwrap_or_else(|| {
+        sym_data = instance.symbol_name(ccx.shared());
+        &sym_data[..]
+    });
 
     debug!("monomorphize_fn mangled to {}", symbol);
-    assert!(declare::get_defined_value(ccx, &symbol).is_none());
+    assert!(declare::get_defined_value(ccx, symbol).is_none());
 
     // FIXME(nagisa): perhaps needs a more fine grained selection?
-    let lldecl = declare::define_internal_fn(ccx, &symbol, mono_ty);
+    let lldecl = declare::define_internal_fn(ccx, symbol, mono_ty);
     // FIXME(eddyb) Doubt all extern fn should allow unwinding.
     attributes::unwind(lldecl, true);
 
     ccx.instances().borrow_mut().insert(instance, lldecl);
-
 
     // we can only monomorphize things in this crate (or inlined into it)
     let fn_node_id = ccx.tcx().map.as_local_node_id(fn_id).unwrap();

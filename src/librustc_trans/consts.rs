@@ -1013,14 +1013,16 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
         return Datum::new(g, ty, Lvalue::new("static"));
     }
 
-    let sym = instance.symbol_name(ccx.shared());
-
     let g = if let Some(id) = ccx.tcx().map.as_local_node_id(def_id) {
+
         let llty = type_of::type_of(ccx, ty);
         let (g, attrs) = match ccx.tcx().map.get(id) {
             hir_map::NodeItem(&hir::Item {
                 ref attrs, span, node: hir::ItemStatic(..), ..
             }) => {
+                let sym = ccx.symbol_map()
+                             .get(TransItem::Static(id))
+                             .expect("Local statics should always be in the SymbolMap");
                 // Make sure that this is never executed for something inlined.
                 assert!(!ccx.external_srcs().borrow().contains_key(&id));
 
@@ -1028,16 +1030,16 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                                                          .items
                                                          .contains_key(&TransItem::Static(id));
                 if defined_in_current_codegen_unit {
-                    if declare::get_declared_value(ccx, &sym).is_none() {
+                    if declare::get_declared_value(ccx, sym).is_none() {
                         span_bug!(span, "trans: Static not properly pre-defined?");
                     }
                 } else {
-                    if declare::get_declared_value(ccx, &sym).is_some() {
+                    if declare::get_declared_value(ccx, sym).is_some() {
                         span_bug!(span, "trans: Conflicting symbol names for static?");
                     }
                 }
 
-                let g = declare::define_global(ccx, &sym, llty).unwrap();
+                let g = declare::define_global(ccx, sym, llty).unwrap();
 
                 (g, attrs)
             }
@@ -1045,6 +1047,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
             hir_map::NodeForeignItem(&hir::ForeignItem {
                 ref attrs, span, node: hir::ForeignItemStatic(..), ..
             }) => {
+                let sym = instance.symbol_name(ccx.shared());
                 let g = if let Some(name) =
                         attr::first_attr_value_str_by_name(&attrs, "linkage") {
                     // If this is a static with a linkage specified, then we need to handle
@@ -1079,7 +1082,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                         real_name.push_str(&sym);
                         let g2 = declare::define_global(ccx, &real_name, llty).unwrap_or_else(||{
                             ccx.sess().span_fatal(span,
-                                &format!("symbol `{}` is already defined", sym))
+                                &format!("symbol `{}` is already defined", &sym))
                         });
                         llvm::SetLinkage(g2, llvm::InternalLinkage);
                         llvm::LLVMSetInitializer(g2, g1);
@@ -1104,6 +1107,8 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
 
         g
     } else {
+        let sym = instance.symbol_name(ccx.shared());
+
         // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
         // FIXME(nagisa): investigate whether it can be changed into define_global
         let g = declare::declare_global(ccx, &sym, type_of::type_of(ccx, ty));

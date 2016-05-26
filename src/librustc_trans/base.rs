@@ -80,6 +80,7 @@ use meth;
 use mir;
 use monomorphize::{self, Instance};
 use partitioning::{self, PartitioningStrategy, CodegenUnit};
+use symbol_map::SymbolMap;
 use symbol_names_test;
 use trans_item::TransItem;
 use tvec;
@@ -97,6 +98,7 @@ use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 use std::str;
 use std::{i8, i16, i32, i64};
 use syntax_pos::{Span, DUMMY_SP};
@@ -2588,14 +2590,18 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
 
-    let codegen_units = collect_and_partition_translation_items(&shared_ccx);
+    let (codegen_units, symbol_map) =
+        collect_and_partition_translation_items(&shared_ccx);
     let codegen_unit_count = codegen_units.len();
 
     assert!(tcx.sess.opts.cg.codegen_units == codegen_unit_count ||
             tcx.sess.opts.debugging_opts.incremental.is_some());
 
-    let crate_context_list = CrateContextList::new(&shared_ccx, codegen_units);
+    let symbol_map = Rc::new(symbol_map);
 
+    let crate_context_list = CrateContextList::new(&shared_ccx,
+                                                   codegen_units,
+                                                   symbol_map.clone());
     let modules = crate_context_list.iter()
         .map(|ccx| ModuleTranslation {
             name: String::from(&ccx.codegen_unit().name[..]),
@@ -2693,8 +2699,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let sess = shared_ccx.sess();
     let mut reachable_symbols = shared_ccx.reachable().iter().map(|&id| {
         let def_id = shared_ccx.tcx().map.local_def_id(id);
-        Instance::mono(&shared_ccx, def_id).symbol_name(&shared_ccx)
+        symbol_for_def_id(def_id, &shared_ccx, &symbol_map)
     }).collect::<Vec<_>>();
+
     if sess.entry_fn.borrow().is_some() {
         reachable_symbols.push("main".to_string());
     }
@@ -2716,7 +2723,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         reachable_symbols.extend(syms.into_iter().filter(|did| {
             sess.cstore.is_extern_item(shared_ccx.tcx(), *did)
         }).map(|did| {
-            Instance::mono(&shared_ccx, did).symbol_name(&shared_ccx)
+            symbol_for_def_id(did, &shared_ccx, &symbol_map)
         }));
     }
 
@@ -2810,7 +2817,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TransItemsWithinModVisitor<'a, 'tcx> {
 }
 
 fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>)
-                                                     -> Vec<CodegenUnit<'tcx>> {
+                                                     -> (Vec<CodegenUnit<'tcx>>, SymbolMap<'tcx>) {
     let time_passes = scx.sess().time_passes();
 
     let collection_mode = match scx.sess().opts.debugging_opts.print_trans_items {
@@ -2833,9 +2840,12 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         None => TransItemCollectionMode::Lazy
     };
 
-    let (items, inlining_map) = time(time_passes, "translation item collection", || {
-        collector::collect_crate_translation_items(&scx, collection_mode)
+    let (items, inlining_map) =
+        time(time_passes, "translation item collection", || {
+            collector::collect_crate_translation_items(&scx, collection_mode)
     });
+
+    let symbol_map = SymbolMap::build(scx, items.iter().cloned());
 
     let strategy = if scx.sess().opts.debugging_opts.incremental.is_some() {
         PartitioningStrategy::PerModule
@@ -2910,5 +2920,24 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         }
     }
 
-    codegen_units
+    (codegen_units, symbol_map)
+}
+
+fn symbol_for_def_id<'a, 'tcx>(def_id: DefId,
+                               scx: &SharedCrateContext<'a, 'tcx>,
+                               symbol_map: &SymbolMap<'tcx>)
+                               -> String {
+    // Just try to look things up in the symbol map. If nothing's there, we
+    // recompute.
+    if let Some(node_id) = scx.tcx().map.as_local_node_id(def_id) {
+        if let Some(sym) = symbol_map.get(TransItem::Static(node_id)) {
+            return sym.to_owned();
+        }
+    }
+
+    let instance = Instance::mono(scx, def_id);
+
+    symbol_map.get(TransItem::Fn(instance))
+              .map(str::to_owned)
+              .unwrap_or_else(|| instance.symbol_name(scx))
 }

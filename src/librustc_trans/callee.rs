@@ -46,6 +46,7 @@ use intrinsic;
 use machine::llalign_of_min;
 use meth;
 use monomorphize::{self, Instance};
+use trans_item::TransItem;
 use type_::Type;
 use type_of;
 use value::Value;
@@ -536,11 +537,18 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // reference. It also occurs when testing libcore and in some
     // other weird situations. Annoying.
 
-    let sym = instance.symbol_name(ccx.shared());
+    // Let's see if we can get the symbol name from the symbol_map, so we don't
+    // have to recompute it.
+    let mut sym_data = String::new();
+    let sym = ccx.symbol_map().get(TransItem::Fn(instance)).unwrap_or_else(|| {
+        sym_data = instance.symbol_name(ccx.shared());
+        &sym_data[..]
+    });
+
     let llptrty = type_of::type_of(ccx, fn_ptr_ty);
-    let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {
+    let llfn = if let Some(llfn) = declare::get_declared_value(ccx, sym) {
         if let Some(span) = local_item {
-            if declare::get_defined_value(ccx, &sym).is_some() {
+            if declare::get_defined_value(ccx, sym).is_some() {
                 ccx.sess().span_fatal(span,
                     &format!("symbol `{}` is already defined", sym));
             }
@@ -558,7 +566,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             llfn
         }
     } else {
-        let llfn = declare::declare_fn(ccx, &sym, ty);
+        let llfn = declare::declare_fn(ccx, sym, ty);
         assert_eq!(common::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 
