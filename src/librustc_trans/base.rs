@@ -1683,10 +1683,8 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                         // And coerce the temporary into the type we expect.
                         b.pointercast(lltemp, arg.memory_ty(bcx.ccx()).ptr_to())
                     };
-
-                    // FIXME: hacky lol?
                     datum::Datum::new(lltmp, arg_ty,
-                                      datum::Lvalue::new("datum::lvalue_scratch_datum"))
+                                      datum::Lvalue::new("bind_args"))
                 }
             } else {
                 // FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
