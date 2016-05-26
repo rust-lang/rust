@@ -122,6 +122,8 @@ To see a full list of options, run `./configure --help`.
 
 Some common make targets are:
 
+- `make tips` - show useful targets, variables and other tips for working with
+   the build system.
 - `make rustc-stage1` - build up to (and including) the first stage. For most
   cases we don't need to build the stage2 compiler, so we can save time by not
   building it. The stage1 compiler is a fully functioning compiler and
