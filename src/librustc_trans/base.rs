@@ -1660,24 +1660,32 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                     self.schedule_drop_mem(arg_scope_id, llarg, arg_ty, None);
 
                     datum::Datum::new(llarg,
-                                    arg_ty,
-                                    datum::Lvalue::new("FunctionContext::bind_args"))
+                                      arg_ty,
+                                      datum::Lvalue::new("FunctionContext::bind_args"))
                 } else {
-                    unpack_datum!(bcx, datum::lvalue_scratch_datum(bcx, arg_ty, "",
-                                                                   uninit_reason,
-                                                                   arg_scope_id, |bcx, dst| {
-                        debug!("FunctionContext::bind_args: {:?}: {:?}", hir_arg, arg_ty);
+                    let lltmp = if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
+                        let lltemp = alloc_ty(bcx, arg_ty, "");
                         let b = &bcx.build();
-                        if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
-                            let meta = &self.fn_ty.args[idx];
-                            idx += 1;
-                            arg.store_fn_arg(b, &mut llarg_idx, expr::get_dataptr(bcx, dst));
-                            meta.store_fn_arg(b, &mut llarg_idx, expr::get_meta(bcx, dst));
-                        } else {
-                            arg.store_fn_arg(b, &mut llarg_idx, dst);
-                        }
-                        bcx
-                    }))
+                        // we pass fat pointers as two words, but we want to
+                        // represent them internally as a pointer to two words,
+                        // so make an alloca to store them in.
+                        let meta = &self.fn_ty.args[idx];
+                        idx += 1;
+                        arg.store_fn_arg(b, &mut llarg_idx, expr::get_dataptr(bcx, lltemp));
+                        meta.store_fn_arg(b, &mut llarg_idx, expr::get_meta(bcx, lltemp));
+                        lltemp
+                    } else  {
+                        // otherwise, arg is passed by value, so store it into a temporary.
+                        let llarg_ty = arg.cast.unwrap_or(arg.memory_ty(bcx.ccx()));
+                        let lltemp = alloca(bcx, llarg_ty, "");
+                        let b = &bcx.build();
+                        arg.store_fn_arg(b, &mut llarg_idx, lltemp);
+                        // And coerce the temporary into the type we expect.
+                        b.pointercast(lltemp, arg.memory_ty(bcx.ccx()).ptr_to())
+                    };
+                    bcx.fcx.schedule_drop_mem(arg_scope_id, lltmp, arg_ty, None);
+                    datum::Datum::new(lltmp, arg_ty,
+                                      datum::Lvalue::new("bind_args"))
                 }
             } else {
                 // FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
@@ -1712,16 +1720,19 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             };
 
             let pat = &hir_arg.pat;
-            bcx = if let Some(name) = simple_name(pat) {
-                // Generate nicer LLVM for the common case of fn a pattern
-                // like `x: T`
-                set_value_name(arg_datum.val, &bcx.name(name));
-                self.lllocals.borrow_mut().insert(pat.id, arg_datum);
-                bcx
-            } else {
-                // General path. Copy out the values that are used in the
-                // pattern.
-                _match::bind_irrefutable_pat(bcx, pat, arg_datum.match_input(), arg_scope_id)
+            bcx = match simple_name(pat) {
+                // The check for alloca is necessary because above for the immediate argument case
+                // we had to cast. At this point arg_datum is not an alloca anymore and thus
+                // breaks debuginfo if we allow this optimisation.
+                Some(name)
+                if unsafe { llvm::LLVMIsAAllocaInst(arg_datum.val) != ::std::ptr::null_mut() } => {
+                    // Generate nicer LLVM for the common case of fn a pattern
+                    // like `x: T`
+                    set_value_name(arg_datum.val, &bcx.name(name));
+                    self.lllocals.borrow_mut().insert(pat.id, arg_datum);
+                    bcx
+                },
+                _ => _match::bind_irrefutable_pat(bcx, pat, arg_datum.match_input(), arg_scope_id)
             };
             debuginfo::create_argument_metadata(bcx, hir_arg);
         }
