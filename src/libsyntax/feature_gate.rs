@@ -997,6 +997,9 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             ast::ExprKind::Try(..) => {
                 gate_feature_post!(&self, question_mark, e.span, "the `?` operator is not stable");
             }
+            ast::ExprKind::InPlace(..) => {
+                gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
+            }
             _ => {}
         }
         visit::walk_expr(self, e);
