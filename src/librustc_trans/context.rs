@@ -35,6 +35,7 @@ use rustc::ty::subst::{Substs, VecPerParamSpace};
 use rustc::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
 use session::Session;
+use symbol_map::SymbolMap;
 use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap};
 
@@ -171,6 +172,8 @@ pub struct LocalCrateContext<'tcx> {
 
     /// Depth of the current type-of computation - used to bail out
     type_of_depth: Cell<usize>,
+
+    symbol_map: Rc<SymbolMap<'tcx>>,
 }
 
 // Implement DepTrackingMapConfig for `trait_cache`
@@ -197,12 +200,13 @@ pub struct CrateContextList<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
 
     pub fn new(shared_ccx: &'a SharedCrateContext<'a, 'tcx>,
-               codegen_units: Vec<CodegenUnit<'tcx>>)
+               codegen_units: Vec<CodegenUnit<'tcx>>,
+               symbol_map: Rc<SymbolMap<'tcx>>)
                -> CrateContextList<'a, 'tcx> {
         CrateContextList {
             shared: shared_ccx,
             local_ccxs: codegen_units.into_iter().map(|codegen_unit| {
-                LocalCrateContext::new(shared_ccx, codegen_unit)
+                LocalCrateContext::new(shared_ccx, codegen_unit, symbol_map.clone())
             }).collect()
         }
     }
@@ -512,7 +516,8 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
 impl<'tcx> LocalCrateContext<'tcx> {
     fn new<'a>(shared: &SharedCrateContext<'a, 'tcx>,
-               codegen_unit: CodegenUnit<'tcx>)
+               codegen_unit: CodegenUnit<'tcx>,
+               symbol_map: Rc<SymbolMap<'tcx>>)
            -> LocalCrateContext<'tcx> {
         unsafe {
             // Append ".rs" to LLVM module identifier.
@@ -571,6 +576,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 intrinsics: RefCell::new(FnvHashMap()),
                 n_llvm_insns: Cell::new(0),
                 type_of_depth: Cell::new(0),
+                symbol_map: symbol_map,
             };
 
             let (int_type, opaque_vec_type, str_slice_ty, mut local_ccx) = {
@@ -888,6 +894,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn get_mir(&self, def_id: DefId) -> Option<CachedMir<'b, 'tcx>> {
         self.shared.get_mir(def_id)
+    }
+
+    pub fn symbol_map(&self) -> &SymbolMap<'tcx> {
+        &*self.local().symbol_map
     }
 
     pub fn translation_items(&self) -> &RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>> {

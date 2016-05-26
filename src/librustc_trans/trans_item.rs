@@ -17,7 +17,7 @@
 use attributes;
 use base;
 use consts;
-use context::CrateContext;
+use context::{CrateContext, SharedCrateContext};
 use declare;
 use glue::DropGlueKind;
 use llvm;
@@ -64,7 +64,6 @@ impl<'tcx> Hash for TransItem<'tcx> {
     }
 }
 
-
 impl<'a, 'tcx> TransItem<'tcx> {
 
     pub fn define(&self, ccx: &CrateContext<'a, 'tcx>) {
@@ -108,15 +107,20 @@ impl<'a, 'tcx> TransItem<'tcx> {
                self.to_raw_string(),
                ccx.codegen_unit().name);
 
+        let symbol_name = ccx.symbol_map()
+                             .get(*self)
+                             .expect("Name not present in SymbolMap?");
+        debug!("symbol {}", symbol_name);
+
         match *self {
             TransItem::Static(node_id) => {
-                TransItem::predefine_static(ccx, node_id, linkage);
+                TransItem::predefine_static(ccx, node_id, linkage, symbol_name);
             }
             TransItem::Fn(instance) => {
-                TransItem::predefine_fn(ccx, instance, linkage);
+                TransItem::predefine_fn(ccx, instance, linkage, symbol_name);
             }
             TransItem::DropGlue(dg) => {
-                TransItem::predefine_drop_glue(ccx, dg, linkage);
+                TransItem::predefine_drop_glue(ccx, dg, linkage, symbol_name);
             }
         }
 
@@ -128,7 +132,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
     fn predefine_static(ccx: &CrateContext<'a, 'tcx>,
                         node_id: ast::NodeId,
-                        linkage: llvm::Linkage) {
+                        linkage: llvm::Linkage,
+                        symbol_name: &str) {
         let def_id = ccx.tcx().map.local_def_id(node_id);
         let ty = ccx.tcx().lookup_item_type(def_id).ty;
         let llty = type_of::type_of(ccx, ty);
@@ -137,13 +142,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
             hir::map::NodeItem(&hir::Item {
                 span, node: hir::ItemStatic(..), ..
             }) => {
-                let instance = Instance::mono(ccx.shared(), def_id);
-                let sym = instance.symbol_name(ccx.shared());
-                debug!("symbol {}", sym);
-
-                let g = declare::define_global(ccx, &sym, llty).unwrap_or_else(|| {
+                let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
                     ccx.sess().span_fatal(span,
-                        &format!("symbol `{}` is already defined", sym))
+                        &format!("symbol `{}` is already defined", symbol_name))
                 });
 
                 llvm::SetLinkage(g, linkage);
@@ -155,7 +156,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
     fn predefine_fn(ccx: &CrateContext<'a, 'tcx>,
                     instance: Instance<'tcx>,
-                    linkage: llvm::Linkage) {
+                    linkage: llvm::Linkage,
+                    symbol_name: &str) {
         assert!(!instance.substs.types.needs_infer() &&
                 !instance.substs.types.has_param_types());
 
@@ -186,10 +188,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
             hir_map::NodeImplItem(&hir::ImplItem {
                 ref attrs, node: hir::ImplItemKind::Method(..), ..
             }) => {
-                let symbol = instance.symbol_name(ccx.shared());
-                debug!("symbol {}", symbol);
-
-                let lldecl = declare::declare_fn(ccx, &symbol, mono_ty);
+                let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
                 llvm::SetLinkage(lldecl, linkage);
                 attributes::from_fn_attrs(ccx, attrs, lldecl);
                 base::set_link_section(ccx, lldecl, attrs);
@@ -203,7 +202,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
     fn predefine_drop_glue(ccx: &CrateContext<'a, 'tcx>,
                            dg: glue::DropGlueKind<'tcx>,
-                           linkage: llvm::Linkage) {
+                           linkage: llvm::Linkage,
+                           symbol_name: &str) {
         let tcx = ccx.tcx();
         assert_eq!(dg.ty(), glue::get_drop_glue_type(tcx, dg.ty()));
         let t = dg.ty();
@@ -220,19 +220,29 @@ impl<'a, 'tcx> TransItem<'tcx> {
         fn_ty.args[0].original_ty = type_of::type_of(ccx, t).ptr_to();
         let llfnty = fn_ty.llvm_type(ccx);
 
-        let prefix = match dg {
-            DropGlueKind::Ty(_) => "drop",
-            DropGlueKind::TyContents(_) => "drop_contents",
-        };
-
-        let symbol =
-            symbol_names::exported_name_from_type_and_prefix(ccx.shared(), t, prefix);
-        debug!(" symbol: {}", symbol);
-        assert!(declare::get_defined_value(ccx, &symbol).is_none());
-        let llfn = declare::declare_cfn(ccx, &symbol, llfnty);
+        assert!(declare::get_defined_value(ccx, symbol_name).is_none());
+        let llfn = declare::declare_cfn(ccx, symbol_name, llfnty);
+	llvm::SetLinkage(llfn, linkage);
         attributes::set_frame_pointer_elimination(ccx, llfn);
-        llvm::SetLinkage(llfn, linkage);
         ccx.drop_glues().borrow_mut().insert(dg, (llfn, fn_ty));
+    }
+
+    pub fn compute_symbol_name(&self,
+                               scx: &SharedCrateContext<'a, 'tcx>) -> String {
+        match *self {
+            TransItem::Fn(instance) => instance.symbol_name(scx),
+            TransItem::Static(node_id) => {
+                let def_id = scx.tcx().map.local_def_id(node_id);
+                Instance::mono(scx, def_id).symbol_name(scx)
+            }
+            TransItem::DropGlue(dg) => {
+                let prefix = match dg {
+                    DropGlueKind::Ty(_) => "drop",
+                    DropGlueKind::TyContents(_) => "drop_contents",
+                };
+                symbol_names::exported_name_from_type_and_prefix(scx, dg.ty(), prefix)
+            }
+        }
     }
 
     pub fn requests_inline(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
