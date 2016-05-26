@@ -657,7 +657,7 @@ impl Metadata {
     ///
     /// This field may not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
-    #[unstable(feature = "fs_time", issue = "31399")]
+    #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn modified(&self) -> io::Result<SystemTime> {
         self.0.modified().map(FromInner::from_inner)
     }
@@ -675,7 +675,7 @@ impl Metadata {
     ///
     /// This field may not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
-    #[unstable(feature = "fs_time", issue = "31399")]
+    #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         self.0.accessed().map(FromInner::from_inner)
     }
@@ -689,7 +689,7 @@ impl Metadata {
     ///
     /// This field may not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
-    #[unstable(feature = "fs_time", issue = "31399")]
+    #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn created(&self) -> io::Result<SystemTime> {
         self.0.created().map(FromInner::from_inner)
     }

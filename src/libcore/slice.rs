@@ -106,6 +106,10 @@ pub trait SliceExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn binary_search_by<F>(&self, f: F) -> Result<usize, usize>
         where F: FnMut(&Self::Item) -> Ordering;
+    #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
+    fn binary_search_by_key<B, F>(&self, b: &B, f: F) -> Result<usize, usize>
+        where F: FnMut(&Self::Item) -> B,
+              B: Ord;
     #[stable(feature = "core", since = "1.6.0")]
     fn len(&self) -> usize;
     #[stable(feature = "core", since = "1.6.0")]
@@ -157,11 +161,6 @@ pub trait SliceExt {
     fn clone_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Clone;
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     fn copy_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Copy;
-
-    #[unstable(feature = "slice_binary_search_by_key", reason = "recently added", issue = "33018")]
-    fn binary_search_by_key<B, F>(&self, b: &B, f: F) -> Result<usize, usize>
-        where F: FnMut(&Self::Item) -> B,
-              B: Ord;
 }
 
 // Use macros to be generic over const/mut

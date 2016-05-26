@@ -1125,6 +1125,7 @@ impl<I: Iterator> Peekable<I> {
     /// ```
     #[unstable(feature = "peekable_is_empty", issue = "32111")]
     #[inline]
+    #[rustc_deprecated(since = "1.10.0", reason = "replaced by .peek().is_none()")]
     pub fn is_empty(&mut self) -> bool {
         self.peek().is_none()
     }

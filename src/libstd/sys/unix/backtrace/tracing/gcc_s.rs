@@ -12,7 +12,7 @@ use io;
 use io::prelude::*;
 use libc;
 use mem;
-use sync::StaticMutex;
+use sys_common::mutex::Mutex;
 
 use super::super::printing::print;
 use unwind as uw;
@@ -31,24 +31,28 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     // is semi-reasonable in terms of printing anyway, and we know that all
     // I/O done here is blocking I/O, not green I/O, so we don't have to
     // worry about this being a native vs green mutex.
-    static LOCK: StaticMutex = StaticMutex::new();
-    let _g = LOCK.lock();
+    static LOCK: Mutex = Mutex::new();
+    unsafe {
+        LOCK.lock();
 
-    writeln!(w, "stack backtrace:")?;
+        writeln!(w, "stack backtrace:")?;
 
-    let mut cx = Context { writer: w, last_error: None, idx: 0 };
-    return match unsafe {
-        uw::_Unwind_Backtrace(trace_fn,
-                              &mut cx as *mut Context as *mut libc::c_void)
-    } {
-        uw::_URC_NO_REASON => {
-            match cx.last_error {
-                Some(err) => Err(err),
-                None => Ok(())
+        let mut cx = Context { writer: w, last_error: None, idx: 0 };
+        let ret = match {
+            uw::_Unwind_Backtrace(trace_fn,
+                                  &mut cx as *mut Context as *mut libc::c_void)
+        } {
+            uw::_URC_NO_REASON => {
+                match cx.last_error {
+                    Some(err) => Err(err),
+                    None => Ok(())
+                }
             }
-        }
-        _ => Ok(()),
-    };
+            _ => Ok(()),
+        };
+        LOCK.unlock();
+        return ret
+    }
 
     extern fn trace_fn(ctx: *mut uw::_Unwind_Context,
                        arg: *mut libc::c_void) -> uw::_Unwind_Reason_Code {
