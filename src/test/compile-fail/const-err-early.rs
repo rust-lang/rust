@@ -15,8 +15,10 @@ pub const A: i8 = -std::i8::MIN; //~ ERROR attempted to negate with overflow
 pub const B: u8 = 200u8 + 200u8; //~ ERROR attempted to add with overflow
 pub const C: u8 = 200u8 * 4; //~ ERROR attempted to multiply with overflow
 pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR attempted to subtract with overflow
-pub const E: u8 = [5u8][1]; //~ ERROR index out of bounds
+pub const E: u8 = [5u8][1];
+//~^ ERROR index out of bounds: the len is 1 but the index is 1
 
 fn main() {
-    let _e = [6u8][1]; //~ ERROR: array index out of bounds
+    let _e = [6u8][1];
+    //~^ ERROR index out of bounds: the len is 1 but the index is 1
 }

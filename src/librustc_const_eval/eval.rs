@@ -390,7 +390,7 @@ pub enum ErrKind {
     IndexedNonVec,
     IndexNegative,
     IndexNotInt,
-    IndexOutOfBounds,
+    IndexOutOfBounds { len: u64, index: u64 },
     RepeatCountNotNatural,
     RepeatCountNotInt,
 
@@ -441,7 +441,10 @@ impl ConstEvalErr {
             IndexedNonVec => "indexing is only supported for arrays".into_cow(),
             IndexNegative => "indices must be non-negative integers".into_cow(),
             IndexNotInt => "indices must be integers".into_cow(),
-            IndexOutOfBounds => "array index out of bounds".into_cow(),
+            IndexOutOfBounds { len, index } => {
+                format!("index out of bounds: the len is {} but the index is {}",
+                        len, index).into_cow()
+            }
             RepeatCountNotNatural => "repeat count must be a natural number".into_cow(),
             RepeatCountNotInt => "repeat count must be integers".into_cow(),
 
@@ -835,7 +838,9 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
         assert_eq!(idx as usize as u64, idx);
         match arr {
-            Array(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
+            Array(_, n) if idx >= n => {
+                signal!(e, IndexOutOfBounds { len: n, index: idx })
+            }
             Array(v, n) => if let hir::ExprVec(ref v) = tcx.map.expect_expr(v).node {
                 assert_eq!(n as usize as u64, n);
                 eval_const_expr_partial(tcx, &v[idx as usize], ty_hint, fn_args)?
@@ -843,7 +848,9 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 bug!()
             },
 
-            Repeat(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
+            Repeat(_, n) if idx >= n => {
+                signal!(e, IndexOutOfBounds { len: n, index: idx })
+            }
             Repeat(elem, _) => eval_const_expr_partial(
                 tcx,
                 &tcx.map.expect_expr(elem),
@@ -851,7 +858,9 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 fn_args,
             )?,
 
-            ByteStr(ref data) if idx >= data.len() as u64 => signal!(e, IndexOutOfBounds),
+            ByteStr(ref data) if idx >= data.len() as u64 => {
+                signal!(e, IndexOutOfBounds { len: data.len() as u64, index: idx })
+            }
             ByteStr(data) => {
                 Integral(U8(data[idx as usize]))
             },
