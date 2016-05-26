@@ -317,13 +317,8 @@ fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     // #[test] functions
     struct StripTests;
     impl config::CfgFolder for StripTests {
-        fn configure<T: attr::HasAttrs>(&mut self, node: T) -> Option<T> {
-            let strip_node = {
-                let attrs = node.attrs();
-                attr::contains_name(attrs, "test") || attr::contains_name(attrs, "bench")
-            };
-
-            if strip_node { None } else { Some(node) }
+        fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
+            !attr::contains_name(attrs, "test") && !attr::contains_name(attrs, "bench")
         }
     }
 

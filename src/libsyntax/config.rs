@@ -19,9 +19,15 @@ use ptr::P;
 use util::small_vector::SmallVector;
 
 pub trait CfgFolder: fold::Folder {
-    fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T>;
+    fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool;
+    fn process_attrs<T: HasAttrs>(&mut self, node: T) -> T { node }
     fn visit_stmt_or_expr_attrs(&mut self, _attrs: &[ast::Attribute]) {}
-    fn visit_unconfigurable_expr(&mut self, _expr: &ast::Expr) {}
+    fn visit_unremovable_expr(&mut self, _expr: &ast::Expr) {}
+
+    fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
+        let node = self.process_attrs(node);
+        if self.in_cfg(node.attrs()) { Some(node) } else { None }
+    }
 }
 
 /// A folder that strips out items that do not belong in the current
@@ -32,30 +38,6 @@ pub struct StripUnconfigured<'a> {
 }
 
 impl<'a> StripUnconfigured<'a> {
-    // Determine if an item should be translated in the current crate
-    // configuration based on the item's attributes
-    fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
-        attrs.iter().all(|attr| {
-            let mis = match attr.node.value.node {
-                ast::MetaItemKind::List(_, ref mis) if is_cfg(&attr) => mis,
-                _ => return true
-            };
-
-            if mis.len() != 1 {
-                self.diag.emit_error(|diagnostic| {
-                    diagnostic.span_err(attr.span, "expected 1 cfg-pattern");
-                });
-                return true;
-            }
-
-            attr::cfg_matches(self.config, &mis[0], &mut self.diag)
-        })
-    }
-
-    fn process_cfg_attrs(&mut self, attrs: Vec<ast::Attribute>) -> Vec<ast::Attribute> {
-        attrs.into_iter().filter_map(|attr| self.process_cfg_attr(attr)).collect()
-    }
-
     fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Option<ast::Attribute> {
         if !attr.check_name("cfg_attr") {
             return Some(attr);
@@ -92,9 +74,30 @@ impl<'a> StripUnconfigured<'a> {
 }
 
 impl<'a> CfgFolder for StripUnconfigured<'a> {
-    fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
-        let node = node.map_attrs(|attrs| self.process_cfg_attrs(attrs));
-        if self.in_cfg(node.attrs()) { Some(node) } else { None }
+    // Determine if an item should be translated in the current crate
+    // configuration based on the item's attributes
+    fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
+        attrs.iter().all(|attr| {
+            let mis = match attr.node.value.node {
+                ast::MetaItemKind::List(_, ref mis) if is_cfg(&attr) => mis,
+                _ => return true
+            };
+
+            if mis.len() != 1 {
+                self.diag.emit_error(|diagnostic| {
+                    diagnostic.span_err(attr.span, "expected 1 cfg-pattern");
+                });
+                return true;
+            }
+
+            attr::cfg_matches(self.config, &mis[0], &mut self.diag)
+        })
+    }
+
+    fn process_attrs<T: HasAttrs>(&mut self, node: T) -> T {
+        node.map_attrs(|attrs| {
+            attrs.into_iter().filter_map(|attr| self.process_cfg_attr(attr)).collect()
+        })
     }
 
     fn visit_stmt_or_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
@@ -104,7 +107,7 @@ impl<'a> CfgFolder for StripUnconfigured<'a> {
         }
     }
 
-    fn visit_unconfigurable_expr(&mut self, expr: &ast::Expr) {
+    fn visit_unremovable_expr(&mut self, expr: &ast::Expr) {
         if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
             let msg = "removing an expression is not supported in this position";
             self.diag.diag.span_err(attr.span, msg);
@@ -195,7 +198,8 @@ impl<T: CfgFolder> fold::Folder for T {
         //
         // NB: This is intentionally not part of the fold_expr() function
         //     in order for fold_opt_expr() to be able to avoid this check
-        self.visit_unconfigurable_expr(&expr);
+        self.visit_unremovable_expr(&expr);
+        let expr = self.process_attrs(expr);
         fold_expr(self, expr)
     }
 
