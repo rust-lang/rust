@@ -88,6 +88,6 @@ impl cat {
 fn main() {
     self += 1;
     //~^ ERROR: unresolved name `self`
-    //~| HELP: Module
+    //~| HELP: module `self`
     // it's a bug if this suggests a missing `self` as we're not in a method
 }
