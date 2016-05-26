@@ -55,6 +55,8 @@ pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     cached_resume_block: Option<BasicBlock>,
     /// cached block with the RETURN terminator
     cached_return_block: Option<BasicBlock>,
+
+    has_warned_about_xcrate_overflows: bool
 }
 
 struct CFG<'tcx> {
@@ -273,7 +275,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             var_indices: FnvHashMap(),
             unit_temp: None,
             cached_resume_block: None,
-            cached_return_block: None
+            cached_return_block: None,
+            has_warned_about_xcrate_overflows: false
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
@@ -379,9 +382,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn check_overflow(&self) -> bool {
-        self.hir.tcx().sess.opts.debugging_opts.force_overflow_checks.unwrap_or(
-            self.hir.tcx().sess.opts.debug_assertions)
+    pub fn check_overflow(&mut self) -> bool {
+        let check = self.hir.tcx().sess.opts.debugging_opts.force_overflow_checks
+         .unwrap_or(self.hir.tcx().sess.opts.debug_assertions);
+
+        if !check && self.hir.may_be_inlined_cross_crate() {
+            if !self.has_warned_about_xcrate_overflows {
+                self.hir.tcx().sess.span_warn(self.fn_span,
+                    "overflow checks would be missing when used from another crate");
+                self.has_warned_about_xcrate_overflows = true;
+            }
+        }
+
+        check
     }
 }
 
