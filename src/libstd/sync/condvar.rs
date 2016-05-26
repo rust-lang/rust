@@ -72,6 +72,7 @@ impl WaitTimeoutResult {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub struct Condvar { inner: Box<StaticCondvar> }
 
 /// Statically allocated condition variables.
@@ -91,6 +92,11 @@ pub struct Condvar { inner: Box<StaticCondvar> }
 #[unstable(feature = "static_condvar",
            reason = "may be merged with Condvar in the future",
            issue = "27717")]
+#[rustc_deprecated(since = "1.10.0",
+                   reason = "the lazy-static crate suffices for static sync \
+                             primitives and eventually this type shouldn't \
+                             be necessary as `Condvar::new` in a static should \
+                             suffice")]
 pub struct StaticCondvar {
     inner: sys::Condvar,
     mutex: AtomicUsize,
@@ -100,8 +106,15 @@ pub struct StaticCondvar {
 #[unstable(feature = "static_condvar",
            reason = "may be merged with Condvar in the future",
            issue = "27717")]
+#[rustc_deprecated(since = "1.10.0",
+                   reason = "the lazy-static crate suffices for static sync \
+                             primitives and eventually this type shouldn't \
+                             be necessary as `Condvar::new` in a static should \
+                             suffice")]
+#[allow(deprecated)]
 pub const CONDVAR_INIT: StaticCondvar = StaticCondvar::new();
 
+#[allow(deprecated)]
 impl Condvar {
     /// Creates a new condition variable which is ready to be waited on and
     /// notified.
@@ -228,12 +241,22 @@ impl Default for Condvar {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl Drop for Condvar {
     fn drop(&mut self) {
         unsafe { self.inner.inner.destroy() }
     }
 }
 
+#[rustc_deprecated(since = "1.10.0",
+                   reason = "the lazy-static crate suffices for static sync \
+                             primitives and eventually this type shouldn't \
+                             be necessary as `Condvar::new` in a static should \
+                             suffice")]
+#[unstable(feature = "static_condvar",
+           reason = "may be merged with Condvar in the future",
+           issue = "27717")]
+#[allow(deprecated)]
 impl StaticCondvar {
     /// Creates a new condition variable
     #[unstable(feature = "static_condvar",
@@ -392,6 +415,7 @@ impl StaticCondvar {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use prelude::v1::*;
 

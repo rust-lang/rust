@@ -170,10 +170,7 @@
 #![deny(missing_docs)]
 #![cfg_attr(not(stage0), deny(warnings))]
 
-#![feature(box_syntax)]
-#![feature(const_fn)]
 #![feature(staged_api)]
-#![feature(static_mutex)]
 
 use std::cell::RefCell;
 use std::fmt;
@@ -181,9 +178,8 @@ use std::io::{self, Stderr};
 use std::io::prelude::*;
 use std::mem;
 use std::env;
-use std::ptr;
 use std::slice;
-use std::sync::{Once, StaticMutex};
+use std::sync::{Once, Mutex, ONCE_INIT};
 
 use directive::LOG_LEVEL_NAMES;
 
@@ -199,17 +195,12 @@ pub const MAX_LOG_LEVEL: u32 = 255;
 /// The default logging level of a crate if no other is specified.
 const DEFAULT_LOG_LEVEL: u32 = 1;
 
-static LOCK: StaticMutex = StaticMutex::new();
+static mut LOCK: *mut Mutex<(Vec<directive::LogDirective>, Option<String>)> = 0 as *mut _;
 
 /// An unsafe constant that is the maximum logging level of any module
 /// specified. This is the first line of defense to determining whether a
 /// logging statement should be run.
 static mut LOG_LEVEL: u32 = MAX_LOG_LEVEL;
-
-static mut DIRECTIVES: *mut Vec<directive::LogDirective> = ptr::null_mut();
-
-/// Optional filter.
-static mut FILTER: *mut String = ptr::null_mut();
 
 /// Debug log level
 pub const DEBUG: u32 = 4;
@@ -287,14 +278,10 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
     // Test the literal string from args against the current filter, if there
     // is one.
     unsafe {
-        let _g = LOCK.lock();
-        match FILTER as usize {
-            0 => {}
-            n => {
-                let filter = mem::transmute::<_, &String>(n);
-                if !args.to_string().contains(filter) {
-                    return;
-                }
+        let filter = (*LOCK).lock().unwrap();
+        if let Some(ref filter) = filter.1 {
+            if !args.to_string().contains(filter) {
+                return;
             }
         }
     }
@@ -302,10 +289,10 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
     // Completely remove the local logger from TLS in case anyone attempts to
     // frob the slot while we're doing the logging. This will destroy any logger
     // set during logging.
-    let mut logger: Box<Logger + Send> = LOCAL_LOGGER.with(|s| s.borrow_mut().take())
-                                                     .unwrap_or_else(|| {
-                                                         box DefaultLogger { handle: io::stderr() }
-                                                     });
+    let logger = LOCAL_LOGGER.with(|s| s.borrow_mut().take());
+    let mut logger = logger.unwrap_or_else(|| {
+        Box::new(DefaultLogger { handle: io::stderr() })
+    });
     logger.log(&LogRecord {
         level: LogLevel(level),
         args: args,
@@ -363,7 +350,7 @@ pub struct LogLocation {
 /// module's log statement should be emitted or not.
 #[doc(hidden)]
 pub fn mod_enabled(level: u32, module: &str) -> bool {
-    static INIT: Once = Once::new();
+    static INIT: Once = ONCE_INIT;
     INIT.call_once(init);
 
     // It's possible for many threads are in this function, only one of them
@@ -378,10 +365,9 @@ pub fn mod_enabled(level: u32, module: &str) -> bool {
     // This assertion should never get tripped unless we're in an at_exit
     // handler after logging has been torn down and a logging attempt was made.
 
-    let _g = LOCK.lock();
     unsafe {
-        assert!(DIRECTIVES as usize != 0);
-        enabled(level, module, (*DIRECTIVES).iter())
+        let directives = (*LOCK).lock().unwrap();
+        enabled(level, module, directives.0.iter())
     }
 }
 
@@ -422,14 +408,8 @@ fn init() {
     unsafe {
         LOG_LEVEL = max_level;
 
-        assert!(FILTER.is_null());
-        match filter {
-            Some(f) => FILTER = Box::into_raw(box f),
-            None => {}
-        }
-
-        assert!(DIRECTIVES.is_null());
-        DIRECTIVES = Box::into_raw(box directives);
+        assert!(LOCK.is_null());
+        LOCK = Box::into_raw(Box::new(Mutex::new((directives, filter))));
     }
 }
 

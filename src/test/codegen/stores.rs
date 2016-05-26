@@ -26,8 +26,8 @@ pub struct Bytes {
 #[no_mangle]
 #[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 pub fn small_array_alignment(x: &mut [i8; 4], y: [i8; 4]) {
-// CHECK: [[VAR:%[0-9]+]] = bitcast [4 x i8]* %y to i32*
-// CHECK: store i32 %{{.*}}, i32* [[VAR]], align 1
+// CHECK: store i32 %{{.*}}, i32* %{{.*}}, align 1
+// CHECK: [[VAR:%[0-9]+]] = bitcast i32* %{{.*}} to [4 x i8]*
     *x = y;
 }
 
@@ -37,7 +37,7 @@ pub fn small_array_alignment(x: &mut [i8; 4], y: [i8; 4]) {
 #[no_mangle]
 #[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 pub fn small_struct_alignment(x: &mut Bytes, y: Bytes) {
-// CHECK: [[VAR:%[0-9]+]] = bitcast %Bytes* %y to i32*
-// CHECK: store i32 %{{.*}}, i32* [[VAR]], align 1
+// CHECK: store i32 %{{.*}}, i32* %{{.*}}, align 1
+// CHECK: [[VAR:%[0-9]+]] = bitcast i32* %{{.*}} to %Bytes*
     *x = y;
 }

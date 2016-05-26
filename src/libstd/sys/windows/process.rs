@@ -24,7 +24,7 @@ use mem;
 use os::windows::ffi::OsStrExt;
 use path::Path;
 use ptr;
-use sync::StaticMutex;
+use sys::mutex::Mutex;
 use sys::c;
 use sys::fs::{OpenOptions, File};
 use sys::handle::Handle;
@@ -73,6 +73,10 @@ pub struct StdioPipes {
     pub stdin: Option<AnonPipe>,
     pub stdout: Option<AnonPipe>,
     pub stderr: Option<AnonPipe>,
+}
+
+struct DropGuard<'a> {
+    lock: &'a Mutex,
 }
 
 impl Command {
@@ -173,8 +177,8 @@ impl Command {
         //
         // For more information, msdn also has an article about this race:
         // http://support.microsoft.com/kb/315939
-        static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
-        let _lock = CREATE_PROCESS_LOCK.lock();
+        static CREATE_PROCESS_LOCK: Mutex = Mutex::new();
+        let _guard = DropGuard::new(&CREATE_PROCESS_LOCK);
 
         let mut pipes = StdioPipes {
             stdin: None,
@@ -221,6 +225,23 @@ impl fmt::Debug for Command {
             write!(f, " {:?}", arg)?;
         }
         Ok(())
+    }
+}
+
+impl<'a> DropGuard<'a> {
+    fn new(lock: &'a Mutex) -> DropGuard<'a> {
+        unsafe {
+            lock.lock();
+            DropGuard { lock: lock }
+        }
+    }
+}
+
+impl<'a> Drop for DropGuard<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            self.lock.unlock();
+        }
     }
 }
 

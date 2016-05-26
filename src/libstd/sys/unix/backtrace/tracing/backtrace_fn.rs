@@ -18,12 +18,11 @@
 /// simple to use it should be used only on iOS devices as the only viable
 /// option.
 
-use io;
 use io::prelude::*;
+use io;
 use libc;
 use mem;
-use result::Result::Ok;
-use sync::StaticMutex;
+use sys::mutex::Mutex;
 
 use super::super::printing::print;
 
@@ -37,18 +36,21 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     // while it doesn't requires lock for work as everything is
     // local, it still displays much nicer backtraces when a
     // couple of threads panic simultaneously
-    static LOCK: StaticMutex = StaticMutex::new();
-    let _g = LOCK.lock();
+    static LOCK: Mutex = Mutex::new();
+    unsafe {
+        LOCK.lock();
 
-    writeln!(w, "stack backtrace:")?;
-    // 100 lines should be enough
-    const SIZE: usize = 100;
-    let mut buf: [*mut libc::c_void; SIZE] = unsafe { mem::zeroed() };
-    let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE as libc::c_int) as usize};
+        writeln!(w, "stack backtrace:")?;
+        // 100 lines should be enough
+        const SIZE: usize = 100;
+        let mut buf: [*mut libc::c_void; SIZE] = mem::zeroed();
+        let cnt = backtrace(buf.as_mut_ptr(), SIZE as libc::c_int) as usize;
 
-    // skipping the first one as it is write itself
-    for i in 1..cnt {
-        print(w, i as isize, buf[i], buf[i])?
+        // skipping the first one as it is write itself
+        for i in 1..cnt {
+            print(w, i as isize, buf[i], buf[i])?
+        }
+        LOCK.unlock();
     }
     Ok(())
 }

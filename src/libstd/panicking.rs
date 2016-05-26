@@ -27,7 +27,7 @@ use fmt;
 use intrinsics;
 use mem;
 use raw;
-use sync::StaticRwLock;
+use sys_common::rwlock::RWLock;
 use sync::atomic::{AtomicBool, Ordering};
 use sys::stdio::Stderr;
 use sys_common::backtrace;
@@ -69,7 +69,7 @@ enum Hook {
     Custom(*mut (Fn(&PanicInfo) + 'static + Sync + Send)),
 }
 
-static HOOK_LOCK: StaticRwLock = StaticRwLock::new();
+static HOOK_LOCK: RWLock = RWLock::new();
 static mut HOOK: Hook = Hook::Default;
 static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
@@ -90,17 +90,17 @@ static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 /// # Panics
 ///
 /// Panics if called from a panicking thread.
-#[unstable(feature = "panic_handler", issue = "30449")]
+#[stable(feature = "panic_hooks", since = "1.10.0")]
 pub fn set_hook(hook: Box<Fn(&PanicInfo) + 'static + Sync + Send>) {
     if thread::panicking() {
         panic!("cannot modify the panic hook from a panicking thread");
     }
 
     unsafe {
-        let lock = HOOK_LOCK.write();
+        HOOK_LOCK.write();
         let old_hook = HOOK;
         HOOK = Hook::Custom(Box::into_raw(hook));
-        drop(lock);
+        HOOK_LOCK.write_unlock();
 
         if let Hook::Custom(ptr) = old_hook {
             Box::from_raw(ptr);
@@ -115,17 +115,17 @@ pub fn set_hook(hook: Box<Fn(&PanicInfo) + 'static + Sync + Send>) {
 /// # Panics
 ///
 /// Panics if called from a panicking thread.
-#[unstable(feature = "panic_handler", issue = "30449")]
+#[stable(feature = "panic_hooks", since = "1.10.0")]
 pub fn take_hook() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
     if thread::panicking() {
         panic!("cannot modify the panic hook from a panicking thread");
     }
 
     unsafe {
-        let lock = HOOK_LOCK.write();
+        HOOK_LOCK.write();
         let hook = HOOK;
         HOOK = Hook::Default;
-        drop(lock);
+        HOOK_LOCK.write_unlock();
 
         match hook {
             Hook::Default => Box::new(default_hook),
@@ -135,7 +135,7 @@ pub fn take_hook() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
 }
 
 /// A struct providing information about a panic.
-#[unstable(feature = "panic_handler", issue = "30449")]
+#[stable(feature = "panic_hooks", since = "1.10.0")]
 pub struct PanicInfo<'a> {
     payload: &'a (Any + Send),
     location: Location<'a>,
@@ -145,7 +145,7 @@ impl<'a> PanicInfo<'a> {
     /// Returns the payload associated with the panic.
     ///
     /// This will commonly, but not always, be a `&'static str` or `String`.
-    #[unstable(feature = "panic_handler", issue = "30449")]
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn payload(&self) -> &(Any + Send) {
         self.payload
     }
@@ -155,14 +155,14 @@ impl<'a> PanicInfo<'a> {
     ///
     /// This method will currently always return `Some`, but this may change
     /// in future versions.
-    #[unstable(feature = "panic_handler", issue = "30449")]
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn location(&self) -> Option<&Location> {
         Some(&self.location)
     }
 }
 
 /// A struct containing information about the location of a panic.
-#[unstable(feature = "panic_handler", issue = "30449")]
+#[stable(feature = "panic_hooks", since = "1.10.0")]
 pub struct Location<'a> {
     file: &'a str,
     line: u32,
@@ -170,13 +170,13 @@ pub struct Location<'a> {
 
 impl<'a> Location<'a> {
     /// Returns the name of the source file from which the panic originated.
-    #[unstable(feature = "panic_handler", issue = "30449")]
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn file(&self) -> &str {
         self.file
     }
 
     /// Returns the line number from which the panic originated.
-    #[unstable(feature = "panic_handler", issue = "30449")]
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn line(&self) -> u32 {
         self.line
     }
@@ -365,11 +365,12 @@ fn rust_panic_with_hook(msg: Box<Any + Send>,
                 line: line,
             },
         };
-        let _lock = HOOK_LOCK.read();
+        HOOK_LOCK.read();
         match HOOK {
             Hook::Default => default_hook(&info),
             Hook::Custom(ptr) => (*ptr)(&info),
         }
+        HOOK_LOCK.read_unlock();
     }
 
     if panics > 0 {

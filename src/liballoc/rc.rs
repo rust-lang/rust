@@ -720,6 +720,33 @@ impl<T: ?Sized> !marker::Sync for Weak<T> {}
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
+impl<T> Weak<T> {
+    /// Constructs a new `Weak<T>` without an accompanying instance of T.
+    ///
+    /// This allocates memory for T, but does not initialize it. Calling
+    /// Weak<T>::upgrade() on the return value always gives None.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::rc::Weak;
+    ///
+    /// let empty: Weak<i64> = Weak::new();
+    /// ```
+    #[stable(feature = "downgraded_weak", since = "1.10.0")]
+    pub fn new() -> Weak<T> {
+        unsafe {
+            Weak {
+                ptr: Shared::new(Box::into_raw(box RcBox {
+                    strong: Cell::new(0),
+                    weak: Cell::new(1),
+                    value: uninitialized(),
+                })),
+            }
+        }
+    }
+}
+
 impl<T: ?Sized> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
     ///
@@ -823,34 +850,10 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
     }
 }
 
-impl<T> Weak<T> {
-    /// Constructs a new `Weak<T>` without an accompanying instance of T.
-    ///
-    /// This allocates memory for T, but does not initialize it. Calling
-    /// Weak<T>::upgrade() on the return value always gives None.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(downgraded_weak)]
-    ///
-    /// use std::rc::Weak;
-    ///
-    /// let empty: Weak<i64> = Weak::new();
-    /// ```
-    #[unstable(feature = "downgraded_weak",
-               reason = "recently added",
-               issue="30425")]
-    pub fn new() -> Weak<T> {
-        unsafe {
-            Weak {
-                ptr: Shared::new(Box::into_raw(box RcBox {
-                    strong: Cell::new(0),
-                    weak: Cell::new(1),
-                    value: uninitialized(),
-                })),
-            }
-        }
+#[stable(feature = "downgraded_weak", since = "1.10.0")]
+impl<T> Default for Weak<T> {
+    fn default() -> Weak<T> {
+        Weak::new()
     }
 }
 

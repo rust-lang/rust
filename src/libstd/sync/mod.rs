@@ -25,10 +25,13 @@ pub use core::sync::atomic;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::barrier::{Barrier, BarrierWaitResult};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub use self::condvar::{Condvar, StaticCondvar, WaitTimeoutResult, CONDVAR_INIT};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub use self::mutex::MUTEX_INIT;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub use self::mutex::{Mutex, MutexGuard, StaticMutex};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::once::{Once, OnceState, ONCE_INIT};
@@ -37,6 +40,7 @@ pub use sys_common::poison::{PoisonError, TryLockError, TryLockResult, LockResul
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLockReadGuard, RwLockWriteGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub use self::rwlock::{RwLock, StaticRwLock, RW_LOCK_INIT};
 
 pub mod mpsc;
