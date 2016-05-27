@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use target::{Target, TargetOptions};
-use super::apple_ios_base::{opts, Arch};
+use super::apple_ios_base::{Arch, opts};
 
 pub fn target() -> Target {
     Target {
@@ -24,7 +24,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v7,+vfp4,+neon".to_string(),
             max_atomic_width: 64,
-            .. opts(Arch::Armv7s)
-        }
+            ..opts(Arch::Armv7s)
+        },
     }
 }

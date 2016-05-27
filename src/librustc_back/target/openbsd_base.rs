@@ -29,6 +29,6 @@ pub fn opts() -> TargetOptions {
         ),
         position_independent_executables: true,
         exe_allocation_crate: "alloc_system".to_string(),
-        .. Default::default()
+        ..Default::default()
     }
 }

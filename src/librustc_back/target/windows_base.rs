@@ -79,11 +79,9 @@ pub fn opts() -> TargetOptions {
             "-luser32".to_string(),
             "-lkernel32".to_string(),
         ),
-        post_link_objects: vec!(
-            "rsend.o".to_string()
-        ),
+        post_link_objects: vec!["rsend.o".to_string()],
         custom_unwind_resume: true,
 
-        .. Default::default()
+        ..Default::default()
     }
 }

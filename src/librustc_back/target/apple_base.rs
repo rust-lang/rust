@@ -25,12 +25,17 @@ pub fn opts() -> TargetOptions {
     // Here we detect what version is being requested, defaulting to 10.7. ELF
     // TLS is flagged as enabled if it looks to be supported.
     let deployment_target = env::var("MACOSX_DEPLOYMENT_TARGET").ok();
-    let version = deployment_target.as_ref().and_then(|s| {
-        let mut i = s.splitn(2, ".");
-        i.next().and_then(|a| i.next().map(|b| (a, b)))
-    }).and_then(|(a, b)| {
-        a.parse::<u32>().and_then(|a| b.parse::<u32>().map(|b| (a, b))).ok()
-    }).unwrap_or((10, 7));
+    let version = deployment_target.as_ref()
+                                   .and_then(|s| {
+                                       let mut i = s.splitn(2, ".");
+                                       i.next().and_then(|a| i.next().map(|b| (a, b)))
+                                   })
+                                   .and_then(|(a, b)| {
+                                       a.parse::<u32>()
+                                        .and_then(|a| b.parse::<u32>().map(|b| (a, b)))
+                                        .ok()
+                                   })
+                                   .unwrap_or((10, 7));
 
     TargetOptions {
         // OSX has -dead_strip, which doesn't rely on function_sections
@@ -45,6 +50,6 @@ pub fn opts() -> TargetOptions {
         pre_link_args: Vec::new(),
         exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: version >= (10, 7),
-        .. Default::default()
+        ..Default::default()
     }
 }

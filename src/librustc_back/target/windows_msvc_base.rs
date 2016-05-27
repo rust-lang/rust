@@ -61,6 +61,6 @@ pub fn opts() -> TargetOptions {
         ],
         exe_allocation_crate: "alloc_system".to_string(),
 
-        .. Default::default()
+        ..Default::default()
     }
 }
