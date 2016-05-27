@@ -179,7 +179,7 @@ use std::io::prelude::*;
 use std::mem;
 use std::env;
 use std::slice;
-use std::sync::{Once, Mutex, ONCE_INIT};
+use std::sync::{Mutex, ONCE_INIT, Once};
 
 use directive::LOG_LEVEL_NAMES;
 
@@ -290,9 +290,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
     // frob the slot while we're doing the logging. This will destroy any logger
     // set during logging.
     let logger = LOCAL_LOGGER.with(|s| s.borrow_mut().take());
-    let mut logger = logger.unwrap_or_else(|| {
-        Box::new(DefaultLogger { handle: io::stderr() })
-    });
+    let mut logger = logger.unwrap_or_else(|| Box::new(DefaultLogger { handle: io::stderr() }));
     logger.log(&LogRecord {
         level: LogLevel(level),
         args: args,
