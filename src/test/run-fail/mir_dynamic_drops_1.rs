@@ -27,7 +27,7 @@ impl<'a> Drop for Droppable<'a> {
 }
 
 #[rustc_mir]
-fn mir(){
+fn mir() {
     let (mut xv, mut yv) = (false, false);
     let x = Droppable(&mut xv, 1);
     let y = Droppable(&mut yv, 2);

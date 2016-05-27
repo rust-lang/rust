@@ -11,5 +11,6 @@
 // error-pattern:explicit panic
 
 pub fn main() {
-    panic!(); println!("{}", 1);
+    panic!();
+    println!("{}", 1);
 }

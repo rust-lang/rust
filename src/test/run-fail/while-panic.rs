@@ -12,5 +12,10 @@
 
 // error-pattern:giraffe
 fn main() {
-    panic!({ while true { panic!("giraffe") }; "clandestine" });
+    panic!({
+        while true {
+            panic!("giraffe")
+        }
+        "clandestine"
+    });
 }
