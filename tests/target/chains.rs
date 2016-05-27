@@ -151,4 +151,14 @@ fn try_shorthand() {
         .test()
         .0
         .x;
+
+    parameterized(f,
+                  substs,
+                  def_id,
+                  Ns::Value,
+                  &[],
+                  |tcx| tcx.lookup_item_type(def_id).generics)?;
+    fooooooooooooooooooooooooooo()?
+        .bar()?
+        .baaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaz()?;
 }

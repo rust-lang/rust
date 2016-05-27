@@ -179,7 +179,9 @@ pub fn rewrite_chain(expr: &ast::Expr,
         format!("\n{}", indent.to_string(context.config))
     };
 
-    let first_connector = if extend {
+    let first_connector = if extend || subexpr_list.len() == 0 {
+        ""
+    } else if let ast::ExprKind::Try(_) = subexpr_list[0].node {
         ""
     } else {
         &*connector
