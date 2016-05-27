@@ -280,7 +280,7 @@ impl LateLintPass for LoopsPass {
         }
         if let ExprMatch(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
             let pat = &arms[0].pats[0].node;
-            if let (&PatKind::TupleStruct(ref path, Some(ref pat_args)),
+            if let (&PatKind::TupleStruct(ref path, ref pat_args, _),
                     &ExprMethodCall(method_name, _, ref method_args)) = (pat, &match_expr.node) {
                 let iter_expr = &method_args[0];
                 if let Some(lhs_constructor) = path.segments.last() {
@@ -575,7 +575,7 @@ fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, ex
 
 /// Check for the `FOR_KV_MAP` lint.
 fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
-    if let PatKind::Tup(ref pat) = pat.node {
+    if let PatKind::Tuple(ref pat, _) = pat.node {
         if pat.len() == 2 {
             let (pat_span, kind) = match (&pat[0].node, &pat[1].node) {
                 (key, _) if pat_is_wild(key, body) => (&pat[1].span, "values"),

@@ -187,7 +187,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
         match pat.node {
             PatKind::Box(ref pat) |
             PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
-            PatKind::TupleStruct(_, Some(ref pats)) => {
+            PatKind::TupleStruct(_, ref pats, _) => {
                 for pat in pats {
                     bindings_impl(cx, pat, map);
                 }
@@ -205,7 +205,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                     bindings_impl(cx, &pat.node.pat, map);
                 }
             }
-            PatKind::Tup(ref fields) => {
+            PatKind::Tuple(ref fields, _) => {
                 for pat in fields {
                     bindings_impl(cx, pat, map);
                 }
@@ -221,7 +221,6 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                     bindings_impl(cx, pat, map);
                 }
             }
-            PatKind::TupleStruct(..) |
             PatKind::Lit(..) |
             PatKind::QPath(..) |
             PatKind::Range(..) |

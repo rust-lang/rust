@@ -161,7 +161,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
                 }
             }
         }
-        PatKind::Tup(ref inner) => {
+        PatKind::Tuple(ref inner, _) => {
             if let Some(ref init_tup) = *init {
                 if let ExprTup(ref tup) = init_tup.node {
                     for (i, p) in inner.iter().enumerate() {
