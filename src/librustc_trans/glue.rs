@@ -14,6 +14,7 @@
 
 use std;
 
+use attributes;
 use back::symbol_names;
 use llvm;
 use llvm::{ValueRef, get_param};
@@ -272,6 +273,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let fn_nm = symbol_names::internal_name_from_type_and_suffix(ccx, t, suffix);
     assert!(declare::get_defined_value(ccx, &fn_nm).is_none());
     let llfn = declare::declare_cfn(ccx, &fn_nm, llfnty);
+    attributes::set_frame_pointer_elimination(ccx, llfn);
     ccx.available_drop_glues().borrow_mut().insert(g, fn_nm);
     ccx.drop_glues().borrow_mut().insert(g, llfn);
 

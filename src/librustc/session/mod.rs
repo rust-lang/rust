@@ -15,7 +15,7 @@ use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::PanicStrategy;
+use session::config::{DebugInfoLevel, PanicStrategy};
 use ty::tls;
 use util::nodemap::{NodeMap, FnvHashMap};
 use mir::transform as mir_pass;
@@ -313,6 +313,11 @@ impl Session {
     }
     pub fn nonzeroing_move_hints(&self) -> bool {
         self.opts.debugging_opts.enable_nonzeroing_move_hints
+    }
+
+    pub fn must_not_eliminate_frame_pointers(&self) -> bool {
+        self.opts.debuginfo != DebugInfoLevel::NoDebugInfo ||
+        !self.target.target.options.eliminate_frame_pointer
     }
 
     /// Returns the symbol name for the registrar function,
