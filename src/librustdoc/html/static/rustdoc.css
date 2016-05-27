@@ -265,6 +265,10 @@ nav.sub {
 .docblock h2 { font-size: 1.15em; }
 .docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
 
+.docblock {
+    margin-left: 24px;
+}
+
 .content .out-of-band {
     font-size: 23px;
     margin: 0px;
@@ -638,6 +642,21 @@ span.since {
     position: initial;
     font-size: 20px;
     margin-right: 5px;
+}
+
+.enum > .toggle-wrapper > .collapse-toggle, .struct > .toggle-wrapper > .collapse-toggle {
+    left: 0;
+    margin-top: 5px;
+}
+
+.enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock {
+    margin-left: 30px;
+    margin-bottom: 20px;
+    margin-top: 5px;
+}
+
+.enum > .collapsed, .struct > .collapsed {
+    margin-bottom: 25px;
 }
 
 :target > code {
