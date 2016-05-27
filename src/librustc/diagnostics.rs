@@ -525,6 +525,17 @@ call to `mem::forget(v)` in case you want to avoid destructors being called.
 "##,
 
 E0152: r##"
+A lang item was redefined.
+
+Erroneous code example:
+
+```compile_fail
+#![feature(lang_items)]
+
+#[lang = "panic_fmt"]
+struct Foo; // error: duplicate lang item found: `panic_fmt`
+```
+
 Lang items are already implemented in the standard library. Unless you are
 writing a free-standing application (e.g. a kernel), you do not need to provide
 them yourself.
