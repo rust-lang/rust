@@ -438,12 +438,11 @@ This error indicates that the compiler found multiple functions with the
 `#[start]` attribute. This is an error because there must be a unique entry
 point into a Rust program. Example:
 
-
 ```
 #![feature(start)]
 
 #[start]
-fn foo(argc: isize, argv: *const *const u8) -> isize {} // ok!
+fn foo(argc: isize, argv: *const *const u8) -> isize { 0 } // ok!
 ```
 "##,
 
