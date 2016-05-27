@@ -13,9 +13,13 @@ use std::mem;
 use std::__rand::{Rng, thread_rng};
 use std::rc::Rc;
 
-fn square(n: usize) -> usize { n * n }
+fn square(n: usize) -> usize {
+    n * n
+}
 
-fn is_odd(n: &usize) -> bool { *n % 2 == 1 }
+fn is_odd(n: &usize) -> bool {
+    *n % 2 == 1
+}
 
 #[test]
 fn test_from_fn() {
@@ -76,9 +80,9 @@ fn test_is_empty() {
 #[test]
 fn test_len_divzero() {
     type Z = [i8; 0];
-    let v0 : &[Z] = &[];
-    let v1 : &[Z] = &[[]];
-    let v2 : &[Z] = &[[], []];
+    let v0: &[Z] = &[];
+    let v1: &[Z] = &[[]];
+    let v2: &[Z] = &[[], []];
     assert_eq!(mem::size_of::<Z>(), 0);
     assert_eq!(v0.len(), 0);
     assert_eq!(v1.len(), 1);
@@ -295,7 +299,7 @@ fn test_push() {
 
 #[test]
 fn test_truncate() {
-    let mut v: Vec<Box<_>> = vec![box 6,box 5,box 4];
+    let mut v: Vec<Box<_>> = vec![box 6, box 5, box 4];
     v.truncate(1);
     let v = v;
     assert_eq!(v.len(), 1);
@@ -305,7 +309,7 @@ fn test_truncate() {
 
 #[test]
 fn test_clear() {
-    let mut v: Vec<Box<_>> = vec![box 6,box 5,box 4];
+    let mut v: Vec<Box<_>> = vec![box 6, box 5, box 4];
     v.clear();
     assert_eq!(v.len(), 0);
     // If the unsafe block didn't drop things properly, we blow up here.
@@ -320,12 +324,12 @@ fn test_dedup() {
     }
     case(vec![], vec![]);
     case(vec![1], vec![1]);
-    case(vec![1,1], vec![1]);
-    case(vec![1,2,3], vec![1,2,3]);
-    case(vec![1,1,2,3], vec![1,2,3]);
-    case(vec![1,2,2,3], vec![1,2,3]);
-    case(vec![1,2,3,3], vec![1,2,3]);
-    case(vec![1,1,2,2,2,3,3], vec![1,2,3]);
+    case(vec![1, 1], vec![1]);
+    case(vec![1, 2, 3], vec![1, 2, 3]);
+    case(vec![1, 1, 2, 3], vec![1, 2, 3]);
+    case(vec![1, 2, 2, 3], vec![1, 2, 3]);
+    case(vec![1, 2, 3, 3], vec![1, 2, 3]);
+    case(vec![1, 1, 2, 2, 2, 3, 3], vec![1, 2, 3]);
 }
 
 #[test]
@@ -336,10 +340,8 @@ fn test_dedup_unique() {
     v1.dedup();
     let mut v2: Vec<Box<_>> = vec![box 1, box 2, box 3, box 3];
     v2.dedup();
-    /*
-     * If the boxed pointers were leaked or otherwise misused, valgrind
-     * and/or rt should raise errors.
-     */
+    // If the boxed pointers were leaked or otherwise misused, valgrind
+    // and/or rt should raise errors.
 }
 
 #[test]
@@ -350,10 +352,8 @@ fn test_dedup_shared() {
     v1.dedup();
     let mut v2: Vec<Box<_>> = vec![box 1, box 2, box 3, box 3];
     v2.dedup();
-    /*
-     * If the pointers were leaked or otherwise misused, valgrind and/or
-     * rt should raise errors.
-     */
+    // If the pointers were leaked or otherwise misused, valgrind and/or
+    // rt should raise errors.
 }
 
 #[test]
@@ -365,31 +365,31 @@ fn test_retain() {
 
 #[test]
 fn test_binary_search() {
-    assert_eq!([1,2,3,4,5].binary_search(&5).ok(), Some(4));
-    assert_eq!([1,2,3,4,5].binary_search(&4).ok(), Some(3));
-    assert_eq!([1,2,3,4,5].binary_search(&3).ok(), Some(2));
-    assert_eq!([1,2,3,4,5].binary_search(&2).ok(), Some(1));
-    assert_eq!([1,2,3,4,5].binary_search(&1).ok(), Some(0));
+    assert_eq!([1, 2, 3, 4, 5].binary_search(&5).ok(), Some(4));
+    assert_eq!([1, 2, 3, 4, 5].binary_search(&4).ok(), Some(3));
+    assert_eq!([1, 2, 3, 4, 5].binary_search(&3).ok(), Some(2));
+    assert_eq!([1, 2, 3, 4, 5].binary_search(&2).ok(), Some(1));
+    assert_eq!([1, 2, 3, 4, 5].binary_search(&1).ok(), Some(0));
 
-    assert_eq!([2,4,6,8,10].binary_search(&1).ok(), None);
-    assert_eq!([2,4,6,8,10].binary_search(&5).ok(), None);
-    assert_eq!([2,4,6,8,10].binary_search(&4).ok(), Some(1));
-    assert_eq!([2,4,6,8,10].binary_search(&10).ok(), Some(4));
+    assert_eq!([2, 4, 6, 8, 10].binary_search(&1).ok(), None);
+    assert_eq!([2, 4, 6, 8, 10].binary_search(&5).ok(), None);
+    assert_eq!([2, 4, 6, 8, 10].binary_search(&4).ok(), Some(1));
+    assert_eq!([2, 4, 6, 8, 10].binary_search(&10).ok(), Some(4));
 
-    assert_eq!([2,4,6,8].binary_search(&1).ok(), None);
-    assert_eq!([2,4,6,8].binary_search(&5).ok(), None);
-    assert_eq!([2,4,6,8].binary_search(&4).ok(), Some(1));
-    assert_eq!([2,4,6,8].binary_search(&8).ok(), Some(3));
+    assert_eq!([2, 4, 6, 8].binary_search(&1).ok(), None);
+    assert_eq!([2, 4, 6, 8].binary_search(&5).ok(), None);
+    assert_eq!([2, 4, 6, 8].binary_search(&4).ok(), Some(1));
+    assert_eq!([2, 4, 6, 8].binary_search(&8).ok(), Some(3));
 
-    assert_eq!([2,4,6].binary_search(&1).ok(), None);
-    assert_eq!([2,4,6].binary_search(&5).ok(), None);
-    assert_eq!([2,4,6].binary_search(&4).ok(), Some(1));
-    assert_eq!([2,4,6].binary_search(&6).ok(), Some(2));
+    assert_eq!([2, 4, 6].binary_search(&1).ok(), None);
+    assert_eq!([2, 4, 6].binary_search(&5).ok(), None);
+    assert_eq!([2, 4, 6].binary_search(&4).ok(), Some(1));
+    assert_eq!([2, 4, 6].binary_search(&6).ok(), Some(2));
 
-    assert_eq!([2,4].binary_search(&1).ok(), None);
-    assert_eq!([2,4].binary_search(&5).ok(), None);
-    assert_eq!([2,4].binary_search(&2).ok(), Some(0));
-    assert_eq!([2,4].binary_search(&4).ok(), Some(1));
+    assert_eq!([2, 4].binary_search(&1).ok(), None);
+    assert_eq!([2, 4].binary_search(&5).ok(), None);
+    assert_eq!([2, 4].binary_search(&2).ok(), Some(0));
+    assert_eq!([2, 4].binary_search(&4).ok(), Some(1));
 
     assert_eq!([2].binary_search(&1).ok(), None);
     assert_eq!([2].binary_search(&5).ok(), None);
@@ -398,14 +398,14 @@ fn test_binary_search() {
     assert_eq!([].binary_search(&1).ok(), None);
     assert_eq!([].binary_search(&5).ok(), None);
 
-    assert!([1,1,1,1,1].binary_search(&1).ok() != None);
-    assert!([1,1,1,1,2].binary_search(&1).ok() != None);
-    assert!([1,1,1,2,2].binary_search(&1).ok() != None);
-    assert!([1,1,2,2,2].binary_search(&1).ok() != None);
-    assert_eq!([1,2,2,2,2].binary_search(&1).ok(), Some(0));
+    assert!([1, 1, 1, 1, 1].binary_search(&1).ok() != None);
+    assert!([1, 1, 1, 1, 2].binary_search(&1).ok() != None);
+    assert!([1, 1, 1, 2, 2].binary_search(&1).ok() != None);
+    assert!([1, 1, 2, 2, 2].binary_search(&1).ok() != None);
+    assert_eq!([1, 2, 2, 2, 2].binary_search(&1).ok(), Some(0));
 
-    assert_eq!([1,2,3,4,5].binary_search(&6).ok(), None);
-    assert_eq!([1,2,3,4,5].binary_search(&0).ok(), None);
+    assert_eq!([1, 2, 3, 4, 5].binary_search(&6).ok(), None);
+    assert_eq!([1, 2, 3, 4, 5].binary_search(&0).ok(), None);
 }
 
 #[test]
@@ -460,15 +460,17 @@ fn test_sort_stability() {
             // the second item represents which occurrence of that
             // number this element is, i.e. the second elements
             // will occur in sorted order.
-            let mut v: Vec<_> = (0..len).map(|_| {
-                    let n = thread_rng().gen::<usize>() % 10;
-                    counts[n] += 1;
-                    (n, counts[n])
-                }).collect();
+            let mut v: Vec<_> = (0..len)
+                                    .map(|_| {
+                                        let n = thread_rng().gen::<usize>() % 10;
+                                        counts[n] += 1;
+                                        (n, counts[n])
+                                    })
+                                    .collect();
 
             // only sort on the first element, so an unstable sort
             // may mix up the counts.
-            v.sort_by(|&(a,_), &(b,_)| a.cmp(&b));
+            v.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
             // this comparison includes the count (the second item
             // of the tuple), so elements with equal first items
@@ -679,7 +681,7 @@ fn test_rev_iterator() {
 #[test]
 fn test_mut_rev_iterator() {
     let mut xs = [1, 2, 3, 4, 5];
-    for (i,x) in xs.iter_mut().rev().enumerate() {
+    for (i, x) in xs.iter_mut().rev().enumerate() {
         *x += i;
     }
     assert!(xs == [5, 5, 5, 5, 5])
@@ -687,35 +689,32 @@ fn test_mut_rev_iterator() {
 
 #[test]
 fn test_move_iterator() {
-    let xs = vec![1,2,3,4,5];
-    assert_eq!(xs.into_iter().fold(0, |a: usize, b: usize| 10*a + b), 12345);
+    let xs = vec![1, 2, 3, 4, 5];
+    assert_eq!(xs.into_iter().fold(0, |a: usize, b: usize| 10 * a + b),
+               12345);
 }
 
 #[test]
 fn test_move_rev_iterator() {
-    let xs = vec![1,2,3,4,5];
-    assert_eq!(xs.into_iter().rev().fold(0, |a: usize, b: usize| 10*a + b), 54321);
+    let xs = vec![1, 2, 3, 4, 5];
+    assert_eq!(xs.into_iter().rev().fold(0, |a: usize, b: usize| 10 * a + b),
+               54321);
 }
 
 #[test]
 fn test_splitator() {
-    let xs = &[1,2,3,4,5];
+    let xs = &[1, 2, 3, 4, 5];
 
     let splits: &[&[_]] = &[&[1], &[3], &[5]];
-    assert_eq!(xs.split(|x| *x % 2 == 0).collect::<Vec<_>>(),
-               splits);
-    let splits: &[&[_]] = &[&[], &[2,3,4,5]];
-    assert_eq!(xs.split(|x| *x == 1).collect::<Vec<_>>(),
-               splits);
-    let splits: &[&[_]] = &[&[1,2,3,4], &[]];
-    assert_eq!(xs.split(|x| *x == 5).collect::<Vec<_>>(),
-               splits);
-    let splits: &[&[_]] = &[&[1,2,3,4,5]];
-    assert_eq!(xs.split(|x| *x == 10).collect::<Vec<_>>(),
-               splits);
+    assert_eq!(xs.split(|x| *x % 2 == 0).collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[], &[2, 3, 4, 5]];
+    assert_eq!(xs.split(|x| *x == 1).collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[1, 2, 3, 4], &[]];
+    assert_eq!(xs.split(|x| *x == 5).collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[1, 2, 3, 4, 5]];
+    assert_eq!(xs.split(|x| *x == 10).collect::<Vec<_>>(), splits);
     let splits: &[&[_]] = &[&[], &[], &[], &[], &[], &[]];
-    assert_eq!(xs.split(|_| true).collect::<Vec<&[i32]>>(),
-               splits);
+    assert_eq!(xs.split(|_| true).collect::<Vec<&[i32]>>(), splits);
 
     let xs: &[i32] = &[];
     let splits: &[&[i32]] = &[&[]];
@@ -724,17 +723,14 @@ fn test_splitator() {
 
 #[test]
 fn test_splitnator() {
-    let xs = &[1,2,3,4,5];
+    let xs = &[1, 2, 3, 4, 5];
 
-    let splits: &[&[_]] = &[&[1,2,3,4,5]];
-    assert_eq!(xs.splitn(1, |x| *x % 2 == 0).collect::<Vec<_>>(),
-               splits);
-    let splits: &[&[_]] = &[&[1], &[3,4,5]];
-    assert_eq!(xs.splitn(2, |x| *x % 2 == 0).collect::<Vec<_>>(),
-               splits);
-    let splits: &[&[_]] = &[&[], &[], &[], &[4,5]];
-    assert_eq!(xs.splitn(4, |_| true).collect::<Vec<_>>(),
-               splits);
+    let splits: &[&[_]] = &[&[1, 2, 3, 4, 5]];
+    assert_eq!(xs.splitn(1, |x| *x % 2 == 0).collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[1], &[3, 4, 5]];
+    assert_eq!(xs.splitn(2, |x| *x % 2 == 0).collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[], &[], &[], &[4, 5]];
+    assert_eq!(xs.splitn(4, |_| true).collect::<Vec<_>>(), splits);
 
     let xs: &[i32] = &[];
     let splits: &[&[i32]] = &[&[]];
@@ -743,40 +739,34 @@ fn test_splitnator() {
 
 #[test]
 fn test_splitnator_mut() {
-    let xs = &mut [1,2,3,4,5];
+    let xs = &mut [1, 2, 3, 4, 5];
 
-    let splits: &[&mut[_]] = &[&mut [1,2,3,4,5]];
+    let splits: &[&mut [_]] = &[&mut [1, 2, 3, 4, 5]];
     assert_eq!(xs.splitn_mut(1, |x| *x % 2 == 0).collect::<Vec<_>>(),
                splits);
-    let splits: &[&mut[_]] = &[&mut [1], &mut [3,4,5]];
+    let splits: &[&mut [_]] = &[&mut [1], &mut [3, 4, 5]];
     assert_eq!(xs.splitn_mut(2, |x| *x % 2 == 0).collect::<Vec<_>>(),
                splits);
-    let splits: &[&mut[_]] = &[&mut [], &mut [], &mut [], &mut [4,5]];
-    assert_eq!(xs.splitn_mut(4, |_| true).collect::<Vec<_>>(),
-               splits);
+    let splits: &[&mut [_]] = &[&mut [], &mut [], &mut [], &mut [4, 5]];
+    assert_eq!(xs.splitn_mut(4, |_| true).collect::<Vec<_>>(), splits);
 
     let xs: &mut [i32] = &mut [];
-    let splits: &[&mut[i32]] = &[&mut []];
-    assert_eq!(xs.splitn_mut(2, |x| *x == 5).collect::<Vec<_>>(),
-               splits);
+    let splits: &[&mut [i32]] = &[&mut []];
+    assert_eq!(xs.splitn_mut(2, |x| *x == 5).collect::<Vec<_>>(), splits);
 }
 
 #[test]
 fn test_rsplitator() {
-    let xs = &[1,2,3,4,5];
+    let xs = &[1, 2, 3, 4, 5];
 
     let splits: &[&[_]] = &[&[5], &[3], &[1]];
-    assert_eq!(xs.split(|x| *x % 2 == 0).rev().collect::<Vec<_>>(),
-               splits);
-    let splits: &[&[_]] = &[&[2,3,4,5], &[]];
-    assert_eq!(xs.split(|x| *x == 1).rev().collect::<Vec<_>>(),
-               splits);
-    let splits: &[&[_]] = &[&[], &[1,2,3,4]];
-    assert_eq!(xs.split(|x| *x == 5).rev().collect::<Vec<_>>(),
-               splits);
-    let splits: &[&[_]] = &[&[1,2,3,4,5]];
-    assert_eq!(xs.split(|x| *x == 10).rev().collect::<Vec<_>>(),
-               splits);
+    assert_eq!(xs.split(|x| *x % 2 == 0).rev().collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[2, 3, 4, 5], &[]];
+    assert_eq!(xs.split(|x| *x == 1).rev().collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[], &[1, 2, 3, 4]];
+    assert_eq!(xs.split(|x| *x == 5).rev().collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[1, 2, 3, 4, 5]];
+    assert_eq!(xs.split(|x| *x == 10).rev().collect::<Vec<_>>(), splits);
 
     let xs: &[i32] = &[];
     let splits: &[&[i32]] = &[&[]];
@@ -785,19 +775,16 @@ fn test_rsplitator() {
 
 #[test]
 fn test_rsplitnator() {
-    let xs = &[1,2,3,4,5];
+    let xs = &[1, 2, 3, 4, 5];
 
-    let splits: &[&[_]] = &[&[1,2,3,4,5]];
-    assert_eq!(xs.rsplitn(1, |x| *x % 2 == 0).collect::<Vec<_>>(),
-               splits);
-    let splits: &[&[_]] = &[&[5], &[1,2,3]];
-    assert_eq!(xs.rsplitn(2, |x| *x % 2 == 0).collect::<Vec<_>>(),
-               splits);
-    let splits: &[&[_]] = &[&[], &[], &[], &[1,2]];
-    assert_eq!(xs.rsplitn(4, |_| true).collect::<Vec<_>>(),
-               splits);
+    let splits: &[&[_]] = &[&[1, 2, 3, 4, 5]];
+    assert_eq!(xs.rsplitn(1, |x| *x % 2 == 0).collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[5], &[1, 2, 3]];
+    assert_eq!(xs.rsplitn(2, |x| *x % 2 == 0).collect::<Vec<_>>(), splits);
+    let splits: &[&[_]] = &[&[], &[], &[], &[1, 2]];
+    assert_eq!(xs.rsplitn(4, |_| true).collect::<Vec<_>>(), splits);
 
-    let xs: &[i32]  = &[];
+    let xs: &[i32] = &[];
     let splits: &[&[i32]] = &[&[]];
     assert_eq!(xs.rsplitn(2, |x| *x == 5).collect::<Vec<&[i32]>>(), splits);
     assert!(xs.rsplitn(0, |x| *x % 2 == 0).next().is_none());
@@ -805,55 +792,55 @@ fn test_rsplitnator() {
 
 #[test]
 fn test_windowsator() {
-    let v = &[1,2,3,4];
+    let v = &[1, 2, 3, 4];
 
-    let wins: &[&[_]] = &[&[1,2], &[2,3], &[3,4]];
+    let wins: &[&[_]] = &[&[1, 2], &[2, 3], &[3, 4]];
     assert_eq!(v.windows(2).collect::<Vec<_>>(), wins);
 
-    let wins: &[&[_]] = &[&[1,2,3], &[2,3,4]];
+    let wins: &[&[_]] = &[&[1, 2, 3], &[2, 3, 4]];
     assert_eq!(v.windows(3).collect::<Vec<_>>(), wins);
     assert!(v.windows(6).next().is_none());
 
-    let wins: &[&[_]] = &[&[3,4], &[2,3], &[1,2]];
+    let wins: &[&[_]] = &[&[3, 4], &[2, 3], &[1, 2]];
     assert_eq!(v.windows(2).rev().collect::<Vec<&[_]>>(), wins);
 }
 
 #[test]
 #[should_panic]
 fn test_windowsator_0() {
-    let v = &[1,2,3,4];
+    let v = &[1, 2, 3, 4];
     let _it = v.windows(0);
 }
 
 #[test]
 fn test_chunksator() {
-    let v = &[1,2,3,4,5];
+    let v = &[1, 2, 3, 4, 5];
 
     assert_eq!(v.chunks(2).len(), 3);
 
-    let chunks: &[&[_]] = &[&[1,2], &[3,4], &[5]];
+    let chunks: &[&[_]] = &[&[1, 2], &[3, 4], &[5]];
     assert_eq!(v.chunks(2).collect::<Vec<_>>(), chunks);
-    let chunks: &[&[_]] = &[&[1,2,3], &[4,5]];
+    let chunks: &[&[_]] = &[&[1, 2, 3], &[4, 5]];
     assert_eq!(v.chunks(3).collect::<Vec<_>>(), chunks);
-    let chunks: &[&[_]] = &[&[1,2,3,4,5]];
+    let chunks: &[&[_]] = &[&[1, 2, 3, 4, 5]];
     assert_eq!(v.chunks(6).collect::<Vec<_>>(), chunks);
 
-    let chunks: &[&[_]] = &[&[5], &[3,4], &[1,2]];
+    let chunks: &[&[_]] = &[&[5], &[3, 4], &[1, 2]];
     assert_eq!(v.chunks(2).rev().collect::<Vec<_>>(), chunks);
 }
 
 #[test]
 #[should_panic]
 fn test_chunksator_0() {
-    let v = &[1,2,3,4];
+    let v = &[1, 2, 3, 4];
     let _it = v.chunks(0);
 }
 
 #[test]
 fn test_reverse_part() {
-    let mut values = [1,2,3,4,5];
+    let mut values = [1, 2, 3, 4, 5];
     values[1..4].reverse();
-    assert!(values == [1,4,3,2,5]);
+    assert!(values == [1, 4, 3, 2, 5]);
 }
 
 #[test]
@@ -869,16 +856,15 @@ fn test_show() {
     test_show_vec!(empty, "[]");
     test_show_vec!(vec![1], "[1]");
     test_show_vec!(vec![1, 2, 3], "[1, 2, 3]");
-    test_show_vec!(vec![vec![], vec![1], vec![1, 1]],
-                   "[[], [1], [1, 1]]");
+    test_show_vec!(vec![vec![], vec![1], vec![1, 1]], "[[], [1], [1, 1]]");
 
-    let empty_mut: &mut [i32] = &mut[];
+    let empty_mut: &mut [i32] = &mut [];
     test_show_vec!(empty_mut, "[]");
-    let v = &mut[1];
+    let v = &mut [1];
     test_show_vec!(v, "[1]");
-    let v = &mut[1, 2, 3];
+    let v = &mut [1, 2, 3];
     test_show_vec!(v, "[1, 2, 3]");
-    let v: &mut[&mut[_]] = &mut[&mut[], &mut[1], &mut[1, 1]];
+    let v: &mut [&mut [_]] = &mut [&mut [], &mut [1], &mut [1, 1]];
     test_show_vec!(v, "[[], [1], [1, 1]]");
 }
 
@@ -914,7 +900,7 @@ fn test_overflow_does_not_cause_segfault_managed() {
 
 #[test]
 fn test_mut_split_at() {
-    let mut values = [1,2,3,4,5];
+    let mut values = [1, 2, 3, 4, 5];
     {
         let (left, right) = values.split_at_mut(2);
         {
@@ -1021,32 +1007,32 @@ fn test_ends_with() {
 
 #[test]
 fn test_mut_splitator() {
-    let mut xs = [0,1,0,2,3,0,0,4,5,0];
+    let mut xs = [0, 1, 0, 2, 3, 0, 0, 4, 5, 0];
     assert_eq!(xs.split_mut(|x| *x == 0).count(), 6);
     for slice in xs.split_mut(|x| *x == 0) {
         slice.reverse();
     }
-    assert!(xs == [0,1,0,3,2,0,0,5,4,0]);
+    assert!(xs == [0, 1, 0, 3, 2, 0, 0, 5, 4, 0]);
 
-    let mut xs = [0,1,0,2,3,0,0,4,5,0,6,7];
+    let mut xs = [0, 1, 0, 2, 3, 0, 0, 4, 5, 0, 6, 7];
     for slice in xs.split_mut(|x| *x == 0).take(5) {
         slice.reverse();
     }
-    assert!(xs == [0,1,0,3,2,0,0,5,4,0,6,7]);
+    assert!(xs == [0, 1, 0, 3, 2, 0, 0, 5, 4, 0, 6, 7]);
 }
 
 #[test]
 fn test_mut_splitator_rev() {
-    let mut xs = [1,2,0,3,4,0,0,5,6,0];
+    let mut xs = [1, 2, 0, 3, 4, 0, 0, 5, 6, 0];
     for slice in xs.split_mut(|x| *x == 0).rev().take(4) {
         slice.reverse();
     }
-    assert!(xs == [1,2,0,4,3,0,0,6,5,0]);
+    assert!(xs == [1, 2, 0, 4, 3, 0, 0, 6, 5, 0]);
 }
 
 #[test]
 fn test_get_mut() {
-    let mut v = [0,1,2];
+    let mut v = [0, 1, 2];
     assert_eq!(v.get_mut(3), None);
     v.get_mut(1).map(|e| *e = 7);
     assert_eq!(v[1], 7);
@@ -1119,7 +1105,7 @@ fn test_box_slice_clone_panics() {
 
     struct Canary {
         count: Arc<AtomicUsize>,
-        panics: bool
+        panics: bool,
     }
 
     impl Drop for Canary {
@@ -1130,27 +1116,37 @@ fn test_box_slice_clone_panics() {
 
     impl Clone for Canary {
         fn clone(&self) -> Self {
-            if self.panics { panic!() }
+            if self.panics {
+                panic!()
+            }
 
             Canary {
                 count: self.count.clone(),
-                panics: self.panics
+                panics: self.panics,
             }
         }
     }
 
     let drop_count = Arc::new(AtomicUsize::new(0));
-    let canary = Canary { count: drop_count.clone(), panics: false };
-    let panic = Canary { count: drop_count.clone(), panics: true };
+    let canary = Canary {
+        count: drop_count.clone(),
+        panics: false,
+    };
+    let panic = Canary {
+        count: drop_count.clone(),
+        panics: true,
+    };
 
     spawn(move || {
         // When xs is dropped, +5.
-        let xs = vec![canary.clone(), canary.clone(), canary.clone(),
-                      panic, canary].into_boxed_slice();
+        let xs = vec![canary.clone(), canary.clone(), canary.clone(), panic, canary]
+                     .into_boxed_slice();
 
         // When panic is cloned, +3.
         xs.clone();
-    }).join().unwrap_err();
+    })
+        .join()
+        .unwrap_err();
 
     // Total = 8
     assert_eq!(drop_count.load(Ordering::SeqCst), 8);
@@ -1198,7 +1194,9 @@ mod bench {
                 sum += *x;
             }
             // sum == 11806, to stop dead code elimination.
-            if sum == 0 {panic!()}
+            if sum == 0 {
+                panic!()
+            }
         })
     }
 
@@ -1217,8 +1215,7 @@ mod bench {
 
     #[bench]
     fn concat(b: &mut Bencher) {
-        let xss: Vec<Vec<i32>> =
-            (0..100).map(|i| (0..i).collect()).collect();
+        let xss: Vec<Vec<i32>> = (0..100).map(|i| (0..i).collect()).collect();
         b.iter(|| {
             xss.concat();
         });
@@ -1226,11 +1223,8 @@ mod bench {
 
     #[bench]
     fn join(b: &mut Bencher) {
-        let xss: Vec<Vec<i32>> =
-            (0..100).map(|i| (0..i).collect()).collect();
-        b.iter(|| {
-            xss.join(&0)
-        });
+        let xss: Vec<Vec<i32>> = (0..100).map(|i| (0..i).collect()).collect();
+        b.iter(|| xss.join(&0));
     }
 
     #[bench]
@@ -1245,17 +1239,13 @@ mod bench {
     #[bench]
     fn starts_with_same_vector(b: &mut Bencher) {
         let vec: Vec<_> = (0..100).collect();
-        b.iter(|| {
-            vec.starts_with(&vec)
-        })
+        b.iter(|| vec.starts_with(&vec))
     }
 
     #[bench]
     fn starts_with_single_element(b: &mut Bencher) {
         let vec: Vec<_> = vec![0];
-        b.iter(|| {
-            vec.starts_with(&vec)
-        })
+        b.iter(|| vec.starts_with(&vec))
     }
 
     #[bench]
@@ -1263,25 +1253,19 @@ mod bench {
         let vec: Vec<_> = (0..100).collect();
         let mut match_vec: Vec<_> = (0..99).collect();
         match_vec.push(0);
-        b.iter(|| {
-            vec.starts_with(&match_vec)
-        })
+        b.iter(|| vec.starts_with(&match_vec))
     }
 
     #[bench]
     fn ends_with_same_vector(b: &mut Bencher) {
         let vec: Vec<_> = (0..100).collect();
-        b.iter(|| {
-            vec.ends_with(&vec)
-        })
+        b.iter(|| vec.ends_with(&vec))
     }
 
     #[bench]
     fn ends_with_single_element(b: &mut Bencher) {
         let vec: Vec<_> = vec![0];
-        b.iter(|| {
-            vec.ends_with(&vec)
-        })
+        b.iter(|| vec.ends_with(&vec))
     }
 
     #[bench]
@@ -1289,24 +1273,18 @@ mod bench {
         let vec: Vec<_> = (0..100).collect();
         let mut match_vec: Vec<_> = (0..100).collect();
         match_vec[0] = 200;
-        b.iter(|| {
-            vec.starts_with(&match_vec)
-        })
+        b.iter(|| vec.starts_with(&match_vec))
     }
 
     #[bench]
     fn contains_last_element(b: &mut Bencher) {
         let vec: Vec<_> = (0..100).collect();
-        b.iter(|| {
-            vec.contains(&99)
-        })
+        b.iter(|| vec.contains(&99))
     }
 
     #[bench]
     fn zero_1kb_from_elem(b: &mut Bencher) {
-        b.iter(|| {
-            vec![0u8; 1024]
-        });
+        b.iter(|| vec![0u8; 1024]);
     }
 
     #[bench]
@@ -1356,8 +1334,7 @@ mod bench {
             let mut v = vec![(0, 0); 30];
             for _ in 0..100 {
                 let l = v.len();
-                v.insert(rng.gen::<usize>() % (l + 1),
-                         (1, 1));
+                v.insert(rng.gen::<usize>() % (l + 1), (1, 1));
             }
         })
     }
@@ -1418,7 +1395,8 @@ mod bench {
     fn sort_big_random_small(b: &mut Bencher) {
         let mut rng = thread_rng();
         b.iter(|| {
-            let mut v = rng.gen_iter::<BigSortable>().take(5)
+            let mut v = rng.gen_iter::<BigSortable>()
+                           .take(5)
                            .collect::<Vec<BigSortable>>();
             v.sort();
         });
@@ -1429,7 +1407,8 @@ mod bench {
     fn sort_big_random_medium(b: &mut Bencher) {
         let mut rng = thread_rng();
         b.iter(|| {
-            let mut v = rng.gen_iter::<BigSortable>().take(100)
+            let mut v = rng.gen_iter::<BigSortable>()
+                           .take(100)
                            .collect::<Vec<BigSortable>>();
             v.sort();
         });
@@ -1440,7 +1419,8 @@ mod bench {
     fn sort_big_random_large(b: &mut Bencher) {
         let mut rng = thread_rng();
         b.iter(|| {
-            let mut v = rng.gen_iter::<BigSortable>().take(10000)
+            let mut v = rng.gen_iter::<BigSortable>()
+                           .take(10000)
                            .collect::<Vec<BigSortable>>();
             v.sort();
         });
