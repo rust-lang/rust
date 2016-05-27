@@ -15,9 +15,11 @@
 #![allow(unreachable_code)]
 #![allow(unused_variables)]
 
-struct T { t: String }
+struct T {
+    t: String,
+}
 
 fn main() {
     let pth = panic!("bye");
-    let _rs: T = T {t: pth};
+    let _rs: T = T { t: pth };
 }
