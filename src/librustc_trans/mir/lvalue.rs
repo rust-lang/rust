@@ -20,7 +20,6 @@ use common::{self, BlockAndBuilder, CrateContext, C_uint, C_undef};
 use consts;
 use machine;
 use type_of::type_of;
-use mir::drop;
 use Disr;
 
 use std::ptr;
@@ -51,9 +50,6 @@ impl<'tcx> LvalueRef<'tcx> {
     {
         assert!(!ty.has_erasable_regions());
         let lltemp = bcx.with_block(|bcx| base::alloc_ty(bcx, ty, name));
-        if bcx.fcx().type_needs_drop(ty) {
-            drop::drop_fill(bcx, lltemp, ty);
-        }
         LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty))
     }
 

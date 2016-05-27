@@ -26,7 +26,7 @@ use glue;
 use type_::Type;
 use rustc_data_structures::fnv::FnvHashMap;
 
-use super::{MirContext, TempRef, drop};
+use super::{MirContext, TempRef};
 use super::constant::Const;
 use super::lvalue::{LvalueRef, load_fat_ptr};
 use super::operand::OperandRef;
@@ -168,11 +168,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                cleanup_bundle.as_ref());
                     self.bcx(target).at_start(|bcx| {
                         debug_loc.apply_to_bcx(bcx);
-                        drop::drop_fill(bcx, lvalue.llval, ty)
                     });
                 } else {
                     bcx.call(drop_fn, &[llvalue], cleanup_bundle.as_ref());
-                    drop::drop_fill(&bcx, lvalue.llval, ty);
                     funclet_br(bcx, self.llblock(target));
                 }
             }
@@ -215,7 +213,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     let llptr = self.trans_operand(&bcx, &args[0]).immediate();
                     let val = self.trans_operand(&bcx, &args[1]);
                     self.store_operand(&bcx, llptr, val);
-                    self.set_operand_dropped(&bcx, &args[1]);
                     funclet_br(bcx, self.llblock(target));
                     return;
                 }
@@ -226,7 +223,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         this.trans_transmute(&bcx, &args[0], dest);
                     });
 
-                    self.set_operand_dropped(&bcx, &args[0]);
                     funclet_br(bcx, self.llblock(target));
                     return;
                 }
@@ -332,9 +328,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
 
                         if let Some((_, target)) = *destination {
-                            for op in args {
-                                self.set_operand_dropped(&bcx, op);
-                            }
                             funclet_br(bcx, self.llblock(target));
                         } else {
                             // trans_intrinsic_call already used Unreachable.
@@ -363,13 +356,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                cleanup_bundle.as_ref());
                     fn_ty.apply_attrs_callsite(invokeret);
 
-                    landingpad.at_start(|bcx| {
-                        debug_loc.apply_to_bcx(bcx);
-                        for op in args {
-                            self.set_operand_dropped(bcx, op);
-                        }
-                    });
-
                     if destination.is_some() {
                         let ret_bcx = ret_bcx.build();
                         ret_bcx.at_start(|ret_bcx| {
@@ -379,9 +365,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 ty: sig.output.unwrap()
                             };
                             self.store_return(&ret_bcx, ret_dest, fn_ty.ret, op);
-                            for op in args {
-                                self.set_operand_dropped(&ret_bcx, op);
-                            }
                         });
                     }
                 } else {
@@ -393,9 +376,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             ty: sig.output.unwrap()
                         };
                         self.store_return(&bcx, ret_dest, fn_ty.ret, op);
-                        for op in args {
-                            self.set_operand_dropped(&bcx, op);
-                        }
                         funclet_br(bcx, self.llblock(target));
                     } else {
                         // no need to drop args, because the call never returns
