@@ -33,6 +33,7 @@
 #![no_std]
 
 #![feature(core_char_ext)]
+#![feature(decode_utf8)]
 #![feature(lang_items)]
 #![feature(staged_api)]
 #![feature(unicode)]
