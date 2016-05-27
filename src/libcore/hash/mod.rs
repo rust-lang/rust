@@ -38,7 +38,7 @@
 //! ```
 //!
 //! If you need more control over how a value is hashed, you need to implement
-//! the trait `Hash`:
+//! the `Hash` trait:
 //!
 //! ```rust
 //! use std::hash::{Hash, Hasher, SipHasher};
@@ -97,7 +97,33 @@ mod sip;
 /// In other words, if two keys are equal, their hashes should also be equal.
 /// `HashMap` and `HashSet` both rely on this behavior.
 ///
-/// This trait can be used with `#[derive]`.
+/// ## Derivable
+///
+/// This trait can be used with `#[derive]` if all fields implement `Hash`.
+/// When `derive`d, the resulting hash will be the combination of the values
+/// from calling `.hash()` on each field.
+///
+/// ## How can I implement `Hash`?
+///
+/// If you need more control over how a value is hashed, you need to implement
+/// the `Hash` trait:
+///
+/// ```
+/// use std::hash::{Hash, Hasher};
+///
+/// struct Person {
+///     id: u32,
+///     name: String,
+///     phone: u64,
+/// }
+///
+/// impl Hash for Person {
+///     fn hash<H: Hasher>(&self, state: &mut H) {
+///         self.id.hash(state);
+///         self.phone.hash(state);
+///     }
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hash {
     /// Feeds this value into the state given, updating the hasher as necessary.

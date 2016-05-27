@@ -136,6 +136,26 @@ pub trait Unsize<T: ?Sized> {
 /// the trait `Copy` may not be implemented for this type; field `points` does not implement `Copy`
 /// ```
 ///
+/// ## When can my type _not_ be `Copy`?
+///
+/// Some types can't be copied safely. For example, copying `&mut T` would create an aliased
+/// mutable reference, and copying `String` would result in two attempts to free the same buffer.
+///
+/// Generalizing the latter case, any type implementing `Drop` can't be `Copy`, because it's
+/// managing some resource besides its own `size_of::<T>()` bytes.
+///
+/// ## When should my type be `Copy`?
+///
+/// Generally speaking, if your type _can_ implement `Copy`, it should. There's one important thing
+/// to consider though: if you think your type may _not_ be able to implement `Copy` in the future,
+/// then it might be prudent to not implement `Copy`. This is because removing `Copy` is a breaking
+/// change: that second example would fail to compile if we made `Foo` non-`Copy`.
+///
+/// ## Derivable
+///
+/// This trait can be used with `#[derive]` if all of its components implement `Copy` and the type
+/// implements `Clone`. The implementation will copy the bytes of each field using `memcpy`.
+///
 /// ## How can I implement `Copy`?
 ///
 /// There are two ways to implement `Copy` on your type:
@@ -155,25 +175,6 @@ pub trait Unsize<T: ?Sized> {
 ///
 /// There is a small difference between the two: the `derive` strategy will also place a `Copy`
 /// bound on type parameters, which isn't always desired.
-///
-/// ## When can my type _not_ be `Copy`?
-///
-/// Some types can't be copied safely. For example, copying `&mut T` would create an aliased
-/// mutable reference, and copying `String` would result in two attempts to free the same buffer.
-///
-/// Generalizing the latter case, any type implementing `Drop` can't be `Copy`, because it's
-/// managing some resource besides its own `size_of::<T>()` bytes.
-///
-/// ## When should my type be `Copy`?
-///
-/// Generally speaking, if your type _can_ implement `Copy`, it should. There's one important thing
-/// to consider though: if you think your type may _not_ be able to implement `Copy` in the future,
-/// then it might be prudent to not implement `Copy`. This is because removing `Copy` is a breaking
-/// change: that second example would fail to compile if we made `Foo` non-`Copy`.
-///
-/// # Derivable
-///
-/// This trait can be used with `#[derive]`.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
 pub trait Copy : Clone {
