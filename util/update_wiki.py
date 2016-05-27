@@ -59,7 +59,7 @@ def parse_file(d, f):
                     last_comment = []
             if not comment:
                 l = line.strip()
-                m = re.search(r"pub\s+([A-Z_]+)", l)
+                m = re.search(r"pub\s+([A-Z_][A-Z_0-9]*)", l)
 
                 if m:
                     name = m.group(1).lower()
