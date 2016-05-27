@@ -201,7 +201,7 @@ impl<'a, 'tcx: 'a, O> DataflowAnalysis<'a, 'tcx, O>
 pub struct DataflowResults<O>(DataflowState<O>) where O: BitDenotation;
 
 impl<O: BitDenotation> DataflowResults<O> {
-    pub fn sets(&self) -> &AllSets {
+    pub fn sets(&self) -> &AllSets<O::Idx> {
         &self.0.sets
     }
 }

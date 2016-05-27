@@ -207,8 +207,8 @@ enum DropFlagState {
 impl DropFlagState {
     fn value(self) -> bool {
         match self {
-            DropFlagState::Live => true,
-            DropFlagState::Dead => false
+            DropFlagState::Present => true,
+            DropFlagState::Absent => false
         }
     }
 }
