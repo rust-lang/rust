@@ -1365,7 +1365,7 @@ impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
     fn deref(&self) -> &mir::Mir<'tcx> {
         match *self {
             CachedMir::Ref(r) => r,
-            CachedMir::Owned(ref rc) => &rc,
+            CachedMir::Owned(ref rc) => rc,
         }
     }
 }
