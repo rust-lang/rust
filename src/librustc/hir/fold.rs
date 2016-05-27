@@ -923,9 +923,9 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
                              sub.map(|x| folder.fold_pat(x)))
                 }
                 PatKind::Lit(e) => PatKind::Lit(folder.fold_expr(e)),
-                PatKind::TupleStruct(pth, pats) => {
+                PatKind::TupleStruct(pth, pats, ddpos) => {
                     PatKind::TupleStruct(folder.fold_path(pth),
-                            pats.map(|pats| pats.move_map(|x| folder.fold_pat(x))))
+                            pats.move_map(|x| folder.fold_pat(x)), ddpos)
                 }
                 PatKind::Path(pth) => {
                     PatKind::Path(folder.fold_path(pth))
@@ -948,7 +948,9 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
                     });
                     PatKind::Struct(pth, fs, etc)
                 }
-                PatKind::Tup(elts) => PatKind::Tup(elts.move_map(|x| folder.fold_pat(x))),
+                PatKind::Tuple(elts, ddpos) => {
+                    PatKind::Tuple(elts.move_map(|x| folder.fold_pat(x)), ddpos)
+                }
                 PatKind::Box(inner) => PatKind::Box(folder.fold_pat(inner)),
                 PatKind::Ref(inner, mutbl) => PatKind::Ref(folder.fold_pat(inner), mutbl),
                 PatKind::Range(e1, e2) => {
@@ -1009,11 +1011,15 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
             ExprWhile(cond, body, opt_name) => {
                 ExprWhile(folder.fold_expr(cond),
                           folder.fold_block(body),
-                          opt_name.map(|i| folder.fold_name(i)))
+                          opt_name.map(|label| {
+                              respan(folder.new_span(label.span), folder.fold_name(label.node))
+                          }))
             }
             ExprLoop(body, opt_name) => {
                 ExprLoop(folder.fold_block(body),
-                         opt_name.map(|i| folder.fold_name(i)))
+                         opt_name.map(|label| {
+                             respan(folder.new_span(label.span), folder.fold_name(label.node))
+                         }))
             }
             ExprMatch(expr, arms, source) => {
                 ExprMatch(folder.fold_expr(expr),

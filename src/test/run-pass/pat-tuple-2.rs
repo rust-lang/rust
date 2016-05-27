@@ -8,22 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo {
-    Bar(i32),
-    Baz
+#![feature(dotdot_in_tuple_patterns)]
+
+fn tuple() {
+    let x = (1,);
+    match x {
+        (2, ..) => panic!(),
+        (..) => ()
+    }
 }
 
-struct S;
+fn tuple_struct() {
+    struct S(u8);
+
+    let x = S(1);
+    match x {
+        S(2, ..) => panic!(),
+        S(..) => ()
+    }
+}
 
 fn main() {
-    match Foo::Baz {
-        Foo::Bar => {}
-        //~^ ERROR `Foo::Bar` does not name a tuple variant or a tuple struct
-        _ => {}
-    }
-
-    match S {
-        S(()) => {}
-        //~^ ERROR `S` does not name a tuple variant or a tuple struct
-    }
+    tuple();
+    tuple_struct();
 }
