@@ -431,7 +431,6 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
 mod analyze;
 mod block;
 mod constant;
-mod drop;
 mod lvalue;
 mod operand;
 mod rvalue;
