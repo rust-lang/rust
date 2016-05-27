@@ -1351,9 +1351,9 @@ impl<'a> State<'a> {
             hir::ExprIf(ref test, ref blk, ref elseopt) => {
                 self.print_if(&test, &blk, elseopt.as_ref().map(|e| &**e))?;
             }
-            hir::ExprWhile(ref test, ref blk, opt_name) => {
-                if let Some(name) = opt_name {
-                    self.print_name(name)?;
+            hir::ExprWhile(ref test, ref blk, opt_sp_name) => {
+                if let Some(sp_name) = opt_sp_name {
+                    self.print_name(sp_name.node)?;
                     self.word_space(":")?;
                 }
                 self.head("while")?;
@@ -1361,9 +1361,9 @@ impl<'a> State<'a> {
                 space(&mut self.s)?;
                 self.print_block(&blk)?;
             }
-            hir::ExprLoop(ref blk, opt_name) => {
-                if let Some(name) = opt_name {
-                    self.print_name(name)?;
+            hir::ExprLoop(ref blk, opt_sp_name) => {
+                if let Some(sp_name) = opt_sp_name {
+                    self.print_name(sp_name.node)?;
                     self.word_space(":")?;
                 }
                 self.head("loop")?;
