@@ -156,6 +156,16 @@ def main(print_only=False, check=False):
                 collect(lints, deprecated_lints, restriction_lints,
                         os.path.join(root, fn))
 
+    # determine version
+    with open('Cargo.toml') as fp:
+        for line in fp:
+            if line.startswith('version ='):
+                clippy_version = line.split()[2].strip('"')
+                break
+        else:
+            print('Error: version not found in Cargo.toml!')
+            return
+
     if print_only:
         sys.stdout.writelines(gen_table(lints + restriction_lints))
         return
@@ -181,6 +191,19 @@ def main(print_only=False, check=False):
         lambda: ["[`{0}`]: {1}#{0}\n".format(l[1], wiki_link) for l in
                  sorted(lints + restriction_lints + deprecated_lints,
                         key=lambda l: l[1])],
+        replace_start=False, write_back=not check)
+
+    # update version of clippy_lints in Cargo.toml
+    changed |= replace_region(
+        'Cargo.toml', r'# begin automatic update', '# end automatic update',
+        lambda: ['clippy_lints = { version = "%s", path = "clippy_lints" }\n' %
+                 clippy_version],
+        replace_start=False, write_back=not check)
+
+    # update version of clippy_lints in Cargo.toml
+    changed |= replace_region(
+        'clippy_lints/Cargo.toml', r'# begin automatic update', '# end automatic update',
+        lambda: ['version = "%s"\n' % clippy_version],
         replace_start=False, write_back=not check)
 
     # update the `pub mod` list
