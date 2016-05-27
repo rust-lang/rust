@@ -238,15 +238,9 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
         let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
 
-        let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None)
-            .expect("phase_2 returned `None`");
-
-        let krate = driver::assign_node_ids(&sess, krate);
-        let mut defs = ast_map::collect_definitions(&krate);
-        read_local_crates(&sess, &cstore, &defs, &krate, &id, &dep_graph);
-        let (analysis, resolutions, mut hir_forest) = {
-            driver::lower_and_resolve(&sess, &id, &mut defs, &krate,
-                                      &sess.dep_graph, MakeGlobMap::No)
+        let driver::ExpansionResult { defs, analysis, resolutions, mut hir_forest, .. } = {
+            driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None, MakeGlobMap::No)
+                .expect("phase_2 returned `None`")
         };
 
         let arenas = ty::CtxtArenas::new();
