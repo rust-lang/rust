@@ -28,11 +28,12 @@ use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::{get_unstable_features_setting, OutputType};
 use rustc::session::search_paths::{SearchPaths, PathKind};
-use rustc::hir::lowering::{lower_crate, DummyResolver};
 use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
 use rustc_driver::{driver, Compilation};
+use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
+use rustc_resolve::MakeGlobMap;
 use syntax::codemap::CodeMap;
 use syntax::errors;
 use syntax::errors::emitter::ColorConfig;
@@ -93,21 +94,16 @@ pub fn run(input: &str,
     let mut cfg = config::build_configuration(&sess);
     cfg.extend(config::parse_cfgspecs(cfgs.clone()));
     let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
-    let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate,
-                                                     "rustdoc-test", None)
-        .expect("phase_2_configure_and_expand aborted in rustdoc!");
-    let krate = driver::assign_node_ids(&sess, krate);
+    let driver::ExpansionResult { defs, mut hir_forest, .. } = {
+        let make_glob_map = MakeGlobMap::No;
+        phase_2_configure_and_expand(&sess, &cstore, krate, "rustdoc-test", None, make_glob_map)
+            .expect("phase_2_configure_and_expand aborted in rustdoc!")
+    };
+
     let dep_graph = DepGraph::new(false);
-    let defs = hir_map::collect_definitions(&krate);
-
-    let mut dummy_resolver = DummyResolver;
-    let krate = lower_crate(&sess, &krate, &sess, &mut dummy_resolver);
-
-    let opts = scrape_test_config(&krate);
-
+    let opts = scrape_test_config(hir_forest.krate());
     let _ignore = dep_graph.in_ignore();
-    let mut forest = hir_map::Forest::new(krate, &dep_graph);
-    let map = hir_map::map_crate(&mut forest, defs);
+    let map = hir_map::map_crate(&mut hir_forest, defs);
 
     let ctx = core::DocContext {
         map: &map,
