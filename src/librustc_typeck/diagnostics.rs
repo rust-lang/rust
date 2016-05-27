@@ -1168,12 +1168,32 @@ discriminant values so that they fit within the existing type.
 "##,
 
 E0084: r##"
+An unsupported representation was attempted on a zero-variant enum.
+
+Erroneous code example:
+
+```compile_fail
+#[repr(i32)]
+enum NightWatch {} // error: unsupported representation for zero-variant enum
+```
+
 It is impossible to define an integer type to be used to represent zero-variant
 enum values because there are no zero-variant enum values. There is no way to
-construct an instance of the following type using only safe code:
+construct an instance of the following type using only safe code. So you have
+two solutions. Either you add variants in your enum:
 
 ```
-enum Empty {}
+#[repr(i32)]
+enum NightWatch {
+    JohnSnow,
+    Commander,
+}
+```
+
+or you remove the integer represention of your enum:
+
+```
+enum NightWatch {}
 ```
 "##,
 

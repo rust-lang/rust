@@ -2683,7 +2683,10 @@ impl<'a> Parser<'a> {
                     return Ok(TokenTree::Token(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar)));
                 } else {
                     sp = mk_sp(sp.lo, self.span.hi);
-                    self.parse_ident()?
+                    self.parse_ident().unwrap_or_else(|mut e| {
+                        e.emit();
+                        keywords::Invalid.ident()
+                    })
                 }
             }
             token::SubstNt(name) => {
@@ -2788,14 +2791,14 @@ impl<'a> Parser<'a> {
                 let span = Span { hi: close_span.hi, ..pre_span };
 
                 match self.token {
-                    // Correct delmiter.
+                    // Correct delimiter.
                     token::CloseDelim(d) if d == delim => {
                         self.open_braces.pop().unwrap();
 
                         // Parse the close delimiter.
                         self.bump();
                     }
-                    // Incorect delimiter.
+                    // Incorrect delimiter.
                     token::CloseDelim(other) => {
                         let token_str = self.this_token_to_string();
                         let mut err = self.diagnostic().struct_span_err(self.span,
@@ -2810,9 +2813,9 @@ impl<'a> Parser<'a> {
 
                         self.open_braces.pop().unwrap();
 
-                        // If the incorrect delimter matches an earlier opening
+                        // If the incorrect delimiter matches an earlier opening
                         // delimiter, then don't consume it (it can be used to
-                        // close the earlier one)Otherwise, consume it.
+                        // close the earlier one). Otherwise, consume it.
                         // E.g., we try to recover from:
                         // fn foo() {
                         //     bar(baz(
@@ -2826,7 +2829,7 @@ impl<'a> Parser<'a> {
                         // and an error emitted then. Thus we don't pop from
                         // self.open_braces here.
                     },
-                    _ => unreachable!(),
+                    _ => {}
                 }
 
                 Ok(TokenTree::Delimited(span, Rc::new(Delimited {
@@ -2840,7 +2843,7 @@ impl<'a> Parser<'a> {
                 // invariants: the current token is not a left-delimiter,
                 // not an EOF, and not the desired right-delimiter (if
                 // it were, parse_seq_to_before_end would have prevented
-                // reaching this point.
+                // reaching this point).
                 maybe_whole!(deref self, NtTT);
                 match self.token {
                     token::CloseDelim(_) => {
