@@ -35,7 +35,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 use syntax::ast::{Block, Crate, DeclKind};
 use syntax::ast::{ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, PathListItemKind};
-use syntax::ast::{SelfKind, Stmt, StmtKind, TraitItemKind};
+use syntax::ast::{Stmt, StmtKind, TraitItemKind};
 use syntax::ast::{Variant, ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::visit::{self, Visitor};
 
@@ -335,7 +335,7 @@ impl<'b> Resolver<'b> {
                     let (def, ns) = match item.node {
                         TraitItemKind::Const(..) => (Def::AssociatedConst(item_def_id), ValueNS),
                         TraitItemKind::Method(ref sig, _) => {
-                            is_static_method = sig.explicit_self.node == SelfKind::Static;
+                            is_static_method = !sig.decl.has_self();
                             (Def::Method(item_def_id), ValueNS)
                         }
                         TraitItemKind::Type(..) => (Def::AssociatedTy(def_id, item_def_id), TypeNS),

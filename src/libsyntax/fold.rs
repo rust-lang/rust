@@ -179,14 +179,6 @@ pub trait Folder : Sized {
         // fold::noop_fold_mac(_mac, self)
     }
 
-    fn fold_explicit_self(&mut self, es: ExplicitSelf) -> ExplicitSelf {
-        noop_fold_explicit_self(es, self)
-    }
-
-    fn fold_explicit_self_kind(&mut self, es: SelfKind) -> SelfKind {
-        noop_fold_explicit_self_kind(es, self)
-    }
-
     fn fold_lifetime(&mut self, l: Lifetime) -> Lifetime {
         noop_fold_lifetime(l, self)
     }
@@ -383,7 +375,7 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
     t.map(|Ty {id, node, span}| Ty {
         id: fld.new_id(id),
         node: match node {
-            TyKind::Infer => node,
+            TyKind::Infer | TyKind::ImplicitSelf => node,
             TyKind::Vec(ty) => TyKind::Vec(fld.fold_ty(ty)),
             TyKind::Ptr(mt) => TyKind::Ptr(fld.fold_mt(mt)),
             TyKind::Rptr(region, mt) => {
@@ -522,28 +514,6 @@ pub fn noop_fold_attribute<T: Folder>(at: Attribute, fld: &mut T) -> Option<Attr
         span: fld.new_span(span)
     })
 }
-
-pub fn noop_fold_explicit_self_kind<T: Folder>(es: SelfKind, fld: &mut T)
-                                                     -> SelfKind {
-    match es {
-        SelfKind::Static | SelfKind::Value(_) => es,
-        SelfKind::Region(lifetime, m, ident) => {
-            SelfKind::Region(fld.fold_opt_lifetime(lifetime), m, ident)
-        }
-        SelfKind::Explicit(typ, ident) => {
-            SelfKind::Explicit(fld.fold_ty(typ), ident)
-        }
-    }
-}
-
-pub fn noop_fold_explicit_self<T: Folder>(Spanned {span, node}: ExplicitSelf, fld: &mut T)
-                                          -> ExplicitSelf {
-    Spanned {
-        node: fld.fold_explicit_self_kind(node),
-        span: fld.new_span(span)
-    }
-}
-
 
 pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
     Spanned {
@@ -1096,7 +1066,6 @@ pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> Method
     MethodSig {
         generics: folder.fold_generics(sig.generics),
         abi: sig.abi,
-        explicit_self: folder.fold_explicit_self(sig.explicit_self),
         unsafety: sig.unsafety,
         constness: sig.constness,
         decl: folder.fold_fn_decl(sig.decl)

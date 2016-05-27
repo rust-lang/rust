@@ -197,7 +197,7 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
-use syntax::codemap::{self, DUMMY_SP};
+use syntax::codemap::{self, respan, DUMMY_SP};
 use syntax::codemap::Span;
 use syntax::errors::Handler;
 use syntax::util::move_map::MoveMap;
@@ -806,25 +806,21 @@ impl<'a> MethodDef<'a> {
                                trait_: &TraitDef,
                                type_ident: Ident,
                                generics: &Generics)
-        -> (ast::ExplicitSelf, Vec<P<Expr>>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
+        -> (Option<ast::ExplicitSelf>, Vec<P<Expr>>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
 
         let mut self_args = Vec::new();
         let mut nonself_args = Vec::new();
         let mut arg_tys = Vec::new();
         let mut nonstatic = false;
 
-        let ast_explicit_self = match self.explicit_self {
-            Some(ref self_ptr) => {
-                let (self_expr, explicit_self) =
-                    ty::get_explicit_self(cx, trait_.span, self_ptr);
+        let ast_explicit_self = self.explicit_self.as_ref().map(|self_ptr| {
+            let (self_expr, explicit_self) = ty::get_explicit_self(cx, trait_.span, self_ptr);
 
-                self_args.push(self_expr);
-                nonstatic = true;
+            self_args.push(self_expr);
+            nonstatic = true;
 
-                explicit_self
-            }
-            None => codemap::respan(trait_.span, ast::SelfKind::Static),
-        };
+            explicit_self
+        });
 
         for (i, ty) in self.args.iter().enumerate() {
             let ast_ty = ty.to_ty(cx, trait_.span, type_ident, generics);
@@ -857,24 +853,20 @@ impl<'a> MethodDef<'a> {
                      type_ident: Ident,
                      generics: &Generics,
                      abi: Abi,
-                     explicit_self: ast::ExplicitSelf,
+                     explicit_self: Option<ast::ExplicitSelf>,
                      arg_types: Vec<(Ident, P<ast::Ty>)> ,
                      body: P<Expr>) -> ast::ImplItem {
 
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
-        let self_arg = match explicit_self.node {
-            ast::SelfKind::Static => None,
-            // creating fresh self id
-            _ => Some(ast::Arg::from_self(explicit_self.clone(), trait_.span,
-                                          ast::Mutability::Immutable)),
-        };
         let args = {
-            let args = arg_types.into_iter().map(|(name, ty)| {
-                    cx.arg(trait_.span, name, ty)
-                });
-            self_arg.into_iter().chain(args).collect()
+            let self_args = explicit_self.map(|explicit_self| {
+                ast::Arg::from_self(explicit_self, respan(trait_.span, keywords::SelfValue.ident()))
+            });
+            let nonself_args = arg_types.into_iter()
+                                        .map(|(name, ty)| cx.arg(trait_.span, name, ty));
+            self_args.into_iter().chain(nonself_args).collect()
         };
 
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
@@ -900,7 +892,6 @@ impl<'a> MethodDef<'a> {
             node: ast::ImplItemKind::Method(ast::MethodSig {
                 generics: fn_generics,
                 abi: abi,
-                explicit_self: explicit_self,
                 unsafety: unsafety,
                 constness: ast::Constness::NotConst,
                 decl: fn_decl

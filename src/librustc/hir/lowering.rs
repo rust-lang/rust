@@ -273,7 +273,7 @@ impl<'a> LoweringContext<'a> {
         P(hir::Ty {
             id: t.id,
             node: match t.node {
-                Infer => hir::TyInfer,
+                Infer | ImplicitSelf => hir::TyInfer,
                 Vec(ref ty) => hir::TyVec(self.lower_ty(ty)),
                 Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
                 Rptr(ref region, ref mt) => {
@@ -791,23 +791,24 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_method_sig(&mut self, sig: &MethodSig) -> hir::MethodSig {
-        // Check for `self: _` and `self: &_`
-        if let SelfKind::Explicit(ref ty, _) = sig.explicit_self.node {
-            match sig.decl.inputs.get(0).and_then(Arg::to_self).map(|eself| eself.node) {
-                Some(SelfKind::Value(..)) | Some(SelfKind::Region(..)) => {
-                    self.id_assigner.diagnostic().span_err(ty.span,
-                        "the type placeholder `_` is not allowed within types on item signatures");
-                }
-                _ => {}
-            }
-        }
-        hir::MethodSig {
+        let hir_sig = hir::MethodSig {
             generics: self.lower_generics(&sig.generics),
             abi: sig.abi,
             unsafety: self.lower_unsafety(sig.unsafety),
             constness: self.lower_constness(sig.constness),
             decl: self.lower_fn_decl(&sig.decl),
+        };
+        // Check for `self: _` and `self: &_`
+        if let Some(SelfKind::Explicit(..)) = sig.decl.get_self().map(|eself| eself.node) {
+            match hir_sig.decl.get_self().map(|eself| eself.node) {
+                Some(hir::SelfKind::Value(..)) | Some(hir::SelfKind::Region(..)) => {
+                    self.id_assigner.diagnostic().span_err(sig.decl.inputs[0].ty.span,
+                        "the type placeholder `_` is not allowed within types on item signatures");
+                }
+                _ => {}
+            }
         }
+        hir_sig
     }
 
     fn lower_unsafety(&mut self, u: Unsafety) -> hir::Unsafety {
