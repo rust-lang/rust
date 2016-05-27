@@ -7,7 +7,7 @@
 [summary]: #summary
 
 [RFC 505] introduced certain conventions around documenting Rust projects. This
-RFC aguments that one, and a full text of the older one combined with these
+RFC augments that one, and a full text of the older one combined with these
 modfications is provided below.
 
 [RFC 505]: https://github.com/rust-lang/rfcs/blob/master/text/0505-api-comment-conventions.md
@@ -148,7 +148,7 @@ Use backticks (```) to write longer examples, like this:
     x.bar();
     ```
 
-When appropriate, make use of Rustdoc’s modifiers. Annotate triple grave blocks with
+When appropriate, make use of Rustdoc’s modifiers. Annotate triple backtick blocks with
 the appropriate formatting directive.
 
     ```rust
@@ -236,7 +236,7 @@ consistency’s sake.
 [referring-to-types]: #referring-to-types
 
 When talking about a type, use its full name. In other words, if the type is generic,
-say `Option<T>`, not `Option`. An exception to this is lengthy bounds. Write `Cow<'a, B>`
+say `Option<T>`, not `Option`. An exception to this is bounds. Write `Cow<'a, B>`
 rather than `Cow<'a, B> where B: 'a + ToOwned + ?Sized`.
 
 Another possibility is to write in lower case using a more generic term. In other words,
