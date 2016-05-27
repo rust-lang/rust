@@ -419,9 +419,32 @@ fn f() {} // ok!
 "##,
 
 E0138: r##"
+More than one function was declared with the `#[start]` attribute.
+
+Erroneous code example:
+
+```compile_fail
+#![feature(start)]
+
+#[start]
+fn foo(argc: isize, argv: *const *const u8) -> isize {}
+
+#[start]
+fn f(argc: isize, argv: *const *const u8) -> isize {}
+// error: multiple 'start' functions
+```
+
 This error indicates that the compiler found multiple functions with the
 `#[start]` attribute. This is an error because there must be a unique entry
-point into a Rust program.
+point into a Rust program. Example:
+
+
+```
+#![feature(start)]
+
+#[start]
+fn foo(argc: isize, argv: *const *const u8) -> isize {} // ok!
+```
 "##,
 
 // FIXME link this to the relevant turpl chapters for instilling fear of the
