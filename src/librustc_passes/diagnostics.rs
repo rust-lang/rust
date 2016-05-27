@@ -50,11 +50,36 @@ match 5u32 {
 "##,
 
 E0161: r##"
+A value was moved. However, its size was not known at compile time, and only
+values of a known size can be moved.
+
+Erroneous code example:
+
+```compile_fail
+#![feature(box_syntax)]
+
+fn main() {
+    let array: &[isize] = &[1, 2, 3];
+    let _x: Box<[isize]> = box *array;
+    // error: cannot move a value of type [isize]: the size of [isize] cannot
+    //        be statically determined
+}
+```
+
 In Rust, you can only move a value when its size is known at compile time.
 
 To work around this restriction, consider "hiding" the value behind a reference:
 either `&x` or `&mut x`. Since a reference has a fixed size, this lets you move
-it around as usual.
+it around as usual. Example:
+
+```
+#![feature(box_syntax)]
+
+fn main() {
+    let array: &[isize] = &[1, 2, 3];
+    let _x: Box<&[isize]> = box array; // ok!
+}
+```
 "##,
 
 E0265: r##"
