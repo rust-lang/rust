@@ -24,11 +24,6 @@ but it tries to motivate and clarify them.
 # Detailed design
 [design]: #detailed-design
 
-## Content
-[content]: #content
-
-These conventions relate to the contents of the documentation, the words themselves.
-
 ### English
 [english]: #english
 
@@ -39,12 +34,6 @@ when quoting something for emphasis, use a single quote, and put punctuation
 outside the quotes, ‘this’. When quoting something at length, “use double
 quotes and put the punctuation inside of the quote.” Most documentation will
 end up using single quotes, so if you’re not sure, just stick with them.
-
-## Form
-[form]: #form
-
-These conventions relate to the formatting of the documentation, how they
-appear in source code.
 
 ### Using Markdown
 [using-markdown]: #using-markdown
@@ -351,11 +340,6 @@ None.
 
 Below is a combination of RFC 505 + this RFC’s modifications, for convenience.
 
-## Content
-[content]: #content
-
-These conventions relate to the contents of the documentation, the words themselves.
-
 ### Summary sentence
 [summary-sentence]: #summary-sentence
 
@@ -381,12 +365,6 @@ use a single quote, and put punctuation outside the quotes, ‘this’. When
 quoting something at length, “use double quotes and put the punctuation
 inside of the quote.” Most documentation will end up using single quotes,
 so if you’re not sure, just stick with them.
-
-## Form
-[form]: #form
-
-These conventions relate to the formatting of the documentation, how they
-appear in source code.
 
 ### Use line comments
 [use-line-comments]: #use-line-comments
