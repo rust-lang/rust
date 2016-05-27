@@ -318,13 +318,11 @@ fn walk_pattern(cx: &CrateContext,
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
         }
 
-        PatKind::TupleStruct(_, ref sub_pats_opt) => {
+        PatKind::TupleStruct(_, ref sub_pats, _) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
-            if let Some(ref sub_pats) = *sub_pats_opt {
-                for p in sub_pats {
-                    walk_pattern(cx, &p, scope_stack, scope_map);
-                }
+            for p in sub_pats {
+                walk_pattern(cx, &p, scope_stack, scope_map);
             }
         }
 
@@ -343,7 +341,7 @@ fn walk_pattern(cx: &CrateContext,
             }
         }
 
-        PatKind::Tup(ref sub_pats) => {
+        PatKind::Tuple(ref sub_pats, _) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
             for sub_pat in sub_pats {

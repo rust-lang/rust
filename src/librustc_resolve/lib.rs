@@ -67,7 +67,7 @@ use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Pat, PatKind, Path};
-use syntax::ast::{PathSegment, PathParameters, SelfKind, TraitItemKind, TraitRef, Ty, TyKind};
+use syntax::ast::{PathSegment, PathParameters, TraitItemKind, TraitRef, Ty, TyKind};
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
@@ -607,7 +607,7 @@ impl<'a, 'v> Visitor<'v> for Resolver<'a> {
             }
             FnKind::Method(_, sig, _) => {
                 self.visit_generics(&sig.generics);
-                MethodRibKind(sig.explicit_self.node == SelfKind::Static)
+                MethodRibKind(!sig.decl.has_self())
             }
             FnKind::Closure => ClosureRibKind(node_id),
         };
@@ -1676,9 +1676,7 @@ impl<'a> Resolver<'a> {
                                     let type_parameters =
                                         HasTypeParameters(&sig.generics,
                                                           FnSpace,
-                                                          MethodRibKind(
-                                                             sig.explicit_self.node ==
-                                                             SelfKind::Static));
+                                                          MethodRibKind(!sig.decl.has_self()));
                                     this.with_type_parameter_rib(type_parameters, |this| {
                                         visit::walk_trait_item(this, trait_item)
                                     });
@@ -2007,9 +2005,7 @@ impl<'a> Resolver<'a> {
                                     let type_parameters =
                                         HasTypeParameters(&sig.generics,
                                                           FnSpace,
-                                                          MethodRibKind(
-                                                            sig.explicit_self.node ==
-                                                            SelfKind::Static));
+                                                          MethodRibKind(!sig.decl.has_self()));
                                     this.with_type_parameter_rib(type_parameters, |this| {
                                         visit::walk_impl_item(this, impl_item);
                                     });
@@ -2360,7 +2356,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
 
-                PatKind::TupleStruct(ref path, _) | PatKind::Path(ref path) => {
+                PatKind::TupleStruct(ref path, _, _) | PatKind::Path(ref path) => {
                     // This must be an enum variant, struct or const.
                     let resolution = match self.resolve_possibly_assoc_item(pat_id,
                                                                             None,
@@ -3128,7 +3124,7 @@ impl<'a> Resolver<'a> {
 
                     {
                         let rib = this.label_ribs.last_mut().unwrap();
-                        rib.bindings.insert(mtwt::resolve(label), def);
+                        rib.bindings.insert(mtwt::resolve(label.node), def);
                     }
 
                     visit::walk_expr(this, expr);
@@ -3173,7 +3169,7 @@ impl<'a> Resolver<'a> {
                 self.value_ribs.push(Rib::new(NormalRibKind));
                 self.resolve_pattern(pattern, RefutableMode, &mut HashMap::new());
 
-                self.resolve_labeled_block(label, expr.id, block);
+                self.resolve_labeled_block(label.map(|l| l.node), expr.id, block);
 
                 self.value_ribs.pop();
             }
@@ -3183,7 +3179,7 @@ impl<'a> Resolver<'a> {
                 self.value_ribs.push(Rib::new(NormalRibKind));
                 self.resolve_pattern(pattern, LocalIrrefutableMode, &mut HashMap::new());
 
-                self.resolve_labeled_block(label, expr.id, block);
+                self.resolve_labeled_block(label.map(|l| l.node), expr.id, block);
 
                 self.value_ribs.pop();
             }

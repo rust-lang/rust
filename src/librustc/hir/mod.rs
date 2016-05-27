@@ -470,7 +470,7 @@ impl Pat {
             PatKind::Struct(_, ref fields, _) => {
                 fields.iter().all(|field| field.node.pat.walk_(it))
             }
-            PatKind::TupleStruct(_, Some(ref s)) | PatKind::Tup(ref s) => {
+            PatKind::TupleStruct(_, ref s, _) | PatKind::Tuple(ref s, _) => {
                 s.iter().all(|p| p.walk_(it))
             }
             PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
@@ -485,7 +485,6 @@ impl Pat {
             PatKind::Lit(_) |
             PatKind::Range(_, _) |
             PatKind::Ident(_, _, _) |
-            PatKind::TupleStruct(..) |
             PatKind::Path(..) |
             PatKind::QPath(_, _) => {
                 true
@@ -539,9 +538,10 @@ pub enum PatKind {
     /// The `bool` is `true` in the presence of a `..`.
     Struct(Path, HirVec<Spanned<FieldPat>>, bool),
 
-    /// A tuple struct/variant pattern `Variant(x, y, z)`.
-    /// "None" means a `Variant(..)` pattern where we don't bind the fields to names.
-    TupleStruct(Path, Option<HirVec<P<Pat>>>),
+    /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
+    /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
+    /// 0 <= position <= subpats.len()
+    TupleStruct(Path, HirVec<P<Pat>>, Option<usize>),
 
     /// A path pattern.
     /// Such pattern can be resolved to a unit struct/variant or a constant.
@@ -553,8 +553,10 @@ pub enum PatKind {
     /// PatKind::Path, and the resolver will have to sort that out.
     QPath(QSelf, Path),
 
-    /// A tuple pattern `(a, b)`
-    Tup(HirVec<P<Pat>>),
+    /// A tuple pattern `(a, b)`.
+    /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
+    /// 0 <= position <= subpats.len()
+    Tuple(HirVec<P<Pat>>, Option<usize>),
     /// A `box` pattern
     Box(P<Pat>),
     /// A reference pattern, e.g. `&mut (a, b)`
@@ -873,11 +875,11 @@ pub enum Expr_ {
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`
-    ExprWhile(P<Expr>, P<Block>, Option<Name>),
+    ExprWhile(P<Expr>, P<Block>, Option<Spanned<Name>>),
     /// Conditionless loop (can be exited with break, continue, or return)
     ///
     /// `'label: loop { block }`
-    ExprLoop(P<Block>, Option<Name>),
+    ExprLoop(P<Block>, Option<Spanned<Name>>),
     /// A `match` block, with a source that indicates whether or not it is
     /// the result of a desugaring, and if so, which kind.
     ExprMatch(P<Expr>, HirVec<Arm>, MatchSource),
@@ -1175,6 +1177,9 @@ pub struct FnDecl {
 }
 
 impl FnDecl {
+    pub fn get_self(&self) -> Option<ExplicitSelf> {
+        self.inputs.get(0).and_then(Arg::to_self)
+    }
     pub fn has_self(&self) -> bool {
         self.inputs.get(0).map(Arg::is_self).unwrap_or(false)
     }

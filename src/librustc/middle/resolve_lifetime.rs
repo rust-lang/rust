@@ -404,23 +404,23 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
             if let hir::ExprClosure(..) = ex.node {
                 return
             }
-            if let Some(label) = expression_label(ex) {
+            if let Some((label, label_span)) = expression_label(ex) {
                 for &(prior, prior_span) in &self.labels_in_fn[..] {
                     // FIXME (#24278): non-hygienic comparison
                     if label == prior {
                         signal_shadowing_problem(self.sess,
                                                  label,
                                                  original_label(prior_span),
-                                                 shadower_label(ex.span));
+                                                 shadower_label(label_span));
                     }
                 }
 
                 check_if_label_shadows_lifetime(self.sess,
                                                 self.scope,
                                                 label,
-                                                ex.span);
+                                                label_span);
 
-                self.labels_in_fn.push((label, ex.span));
+                self.labels_in_fn.push((label, label_span));
             }
             intravisit::walk_expr(self, ex)
         }
@@ -430,10 +430,11 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
         }
     }
 
-    fn expression_label(ex: &hir::Expr) -> Option<ast::Name> {
+    fn expression_label(ex: &hir::Expr) -> Option<(ast::Name, Span)> {
         match ex.node {
             hir::ExprWhile(_, _, Some(label)) |
-            hir::ExprLoop(_, Some(label)) => Some(label.unhygienize()),
+            hir::ExprLoop(_, Some(label)) => Some((label.node.unhygienize(),
+                                                   label.span)),
             _ => None,
         }
     }

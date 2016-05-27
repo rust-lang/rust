@@ -192,6 +192,10 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
+    fn lower_opt_sp_ident(&mut self, o_id: Option<Spanned<Ident>>) -> Option<Spanned<Name>> {
+        o_id.map(|sp_ident| respan(sp_ident.span, self.lower_ident(sp_ident.node)))
+    }
+
     fn lower_attrs(&mut self, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
         attrs.clone().into()
     }
@@ -269,7 +273,7 @@ impl<'a> LoweringContext<'a> {
         P(hir::Ty {
             id: t.id,
             node: match t.node {
-                Infer => hir::TyInfer,
+                Infer | ImplicitSelf => hir::TyInfer,
                 Vec(ref ty) => hir::TyVec(self.lower_ty(ty)),
                 Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
                 Rptr(ref region, ref mt) => {
@@ -787,23 +791,24 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_method_sig(&mut self, sig: &MethodSig) -> hir::MethodSig {
-        // Check for `self: _` and `self: &_`
-        if let SelfKind::Explicit(ref ty, _) = sig.explicit_self.node {
-            match sig.decl.inputs.get(0).and_then(Arg::to_self).map(|eself| eself.node) {
-                Some(SelfKind::Value(..)) | Some(SelfKind::Region(..)) => {
-                    self.id_assigner.diagnostic().span_err(ty.span,
-                        "the type placeholder `_` is not allowed within types on item signatures");
-                }
-                _ => {}
-            }
-        }
-        hir::MethodSig {
+        let hir_sig = hir::MethodSig {
             generics: self.lower_generics(&sig.generics),
             abi: sig.abi,
             unsafety: self.lower_unsafety(sig.unsafety),
             constness: self.lower_constness(sig.constness),
             decl: self.lower_fn_decl(&sig.decl),
+        };
+        // Check for `self: _` and `self: &_`
+        if let Some(SelfKind::Explicit(..)) = sig.decl.get_self().map(|eself| eself.node) {
+            match hir_sig.decl.get_self().map(|eself| eself.node) {
+                Some(hir::SelfKind::Value(..)) | Some(hir::SelfKind::Region(..)) => {
+                    self.id_assigner.diagnostic().span_err(sig.decl.inputs[0].ty.span,
+                        "the type placeholder `_` is not allowed within types on item signatures");
+                }
+                _ => {}
+            }
         }
+        hir_sig
     }
 
     fn lower_unsafety(&mut self, u: Unsafety) -> hir::Unsafety {
@@ -872,10 +877,10 @@ impl<'a> LoweringContext<'a> {
                     })
                 }
                 PatKind::Lit(ref e) => hir::PatKind::Lit(self.lower_expr(e)),
-                PatKind::TupleStruct(ref pth, ref pats) => {
+                PatKind::TupleStruct(ref pth, ref pats, ddpos) => {
                     hir::PatKind::TupleStruct(self.lower_path(pth),
-                                 pats.as_ref()
-                                     .map(|pats| pats.iter().map(|x| self.lower_pat(x)).collect()))
+                                              pats.iter().map(|x| self.lower_pat(x)).collect(),
+                                              ddpos)
                 }
                 PatKind::Path(ref pth) => {
                     hir::PatKind::Path(self.lower_path(pth))
@@ -903,8 +908,8 @@ impl<'a> LoweringContext<'a> {
                                    .collect();
                     hir::PatKind::Struct(pth, fs, etc)
                 }
-                PatKind::Tup(ref elts) => {
-                    hir::PatKind::Tup(elts.iter().map(|x| self.lower_pat(x)).collect())
+                PatKind::Tuple(ref elts, ddpos) => {
+                    hir::PatKind::Tuple(elts.iter().map(|x| self.lower_pat(x)).collect(), ddpos)
                 }
                 PatKind::Box(ref inner) => hir::PatKind::Box(self.lower_pat(inner)),
                 PatKind::Ref(ref inner, mutbl) => {
@@ -1122,11 +1127,10 @@ impl<'a> LoweringContext<'a> {
                 }
                 ExprKind::While(ref cond, ref body, opt_ident) => {
                     hir::ExprWhile(self.lower_expr(cond), self.lower_block(body),
-                                   opt_ident.map(|ident| self.lower_ident(ident)))
+                                   self.lower_opt_sp_ident(opt_ident))
                 }
                 ExprKind::Loop(ref body, opt_ident) => {
-                    hir::ExprLoop(self.lower_block(body),
-                                  opt_ident.map(|ident| self.lower_ident(ident)))
+                    hir::ExprLoop(self.lower_block(body), self.lower_opt_sp_ident(opt_ident))
                 }
                 ExprKind::Match(ref expr, ref arms) => {
                     hir::ExprMatch(self.lower_expr(expr),
@@ -1243,12 +1247,8 @@ impl<'a> LoweringContext<'a> {
                     };
                     hir::ExprPath(hir_qself, self.lower_path_full(path, rename))
                 }
-                ExprKind::Break(opt_ident) => hir::ExprBreak(opt_ident.map(|sp_ident| {
-                    respan(sp_ident.span, self.lower_ident(sp_ident.node))
-                })),
-                ExprKind::Again(opt_ident) => hir::ExprAgain(opt_ident.map(|sp_ident| {
-                    respan(sp_ident.span, self.lower_ident(sp_ident.node))
-                })),
+                ExprKind::Break(opt_ident) => hir::ExprBreak(self.lower_opt_sp_ident(opt_ident)),
+                ExprKind::Again(opt_ident) => hir::ExprAgain(self.lower_opt_sp_ident(opt_ident)),
                 ExprKind::Ret(ref e) => hir::ExprRet(e.as_ref().map(|x| self.lower_expr(x))),
                 ExprKind::InlineAsm(InlineAsm {
                         ref inputs,
@@ -1422,8 +1422,7 @@ impl<'a> LoweringContext<'a> {
 
                     // `[opt_ident]: loop { ... }`
                     let loop_block = self.block_expr(match_expr);
-                    let loop_expr = hir::ExprLoop(loop_block,
-                                                  opt_ident.map(|ident| self.lower_ident(ident)));
+                    let loop_expr = hir::ExprLoop(loop_block, self.lower_opt_sp_ident(opt_ident));
                     // add attributes to the outer returned expr node
                     let attrs = e.attrs.clone();
                     return P(hir::Expr { id: e.id, node: loop_expr, span: e.span, attrs: attrs });
@@ -1503,8 +1502,7 @@ impl<'a> LoweringContext<'a> {
 
                     // `[opt_ident]: loop { ... }`
                     let loop_block = self.block_expr(match_expr);
-                    let loop_expr = hir::ExprLoop(loop_block,
-                                                  opt_ident.map(|ident| self.lower_ident(ident)));
+                    let loop_expr = hir::ExprLoop(loop_block, self.lower_opt_sp_ident(opt_ident));
                     let loop_expr =
                         P(hir::Expr { id: e.id, node: loop_expr, span: e.span, attrs: None });
 
@@ -1857,7 +1855,7 @@ impl<'a> LoweringContext<'a> {
         let pt = if subpats.is_empty() {
             hir::PatKind::Path(path)
         } else {
-            hir::PatKind::TupleStruct(path, Some(subpats))
+            hir::PatKind::TupleStruct(path, subpats, None)
         };
         let pat = self.pat(span, pt);
         self.resolver.record_resolution(pat.id, def);

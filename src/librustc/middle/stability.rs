@@ -33,6 +33,7 @@ use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 use hir;
 use hir::{Item, Generics, StructField, Variant, PatKind};
 use hir::intravisit::{self, Visitor};
+use hir::pat_util::EnumerateAndAdjustIterator;
 
 use std::mem::replace;
 use std::cmp::Ordering;
@@ -614,10 +615,9 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
     };
     match pat.node {
         // Foo(a, b, c)
-        // A Variant(..) pattern `PatKind::TupleStruct(_, None)` doesn't have to be recursed into.
-        PatKind::TupleStruct(_, Some(ref pat_fields)) => {
-            for (field, struct_field) in pat_fields.iter().zip(&v.fields) {
-                maybe_do_stability_check(tcx, struct_field.did, field.span, cb)
+        PatKind::TupleStruct(_, ref pat_fields, ddpos) => {
+            for (i, field) in pat_fields.iter().enumerate_and_adjust(v.fields.len(), ddpos) {
+                maybe_do_stability_check(tcx, v.fields[i].did, field.span, cb)
             }
         }
         // Foo { a, b, c }
