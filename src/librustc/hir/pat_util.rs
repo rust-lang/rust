@@ -18,8 +18,42 @@ use hir::{self, PatKind};
 use syntax::codemap::{respan, Span, Spanned, DUMMY_SP};
 
 use std::cell::RefCell;
+use std::iter::{Enumerate, ExactSizeIterator};
 
 pub type PatIdMap = FnvHashMap<ast::Name, ast::NodeId>;
+
+pub struct EnumerateAndAdjust<I> {
+    enumerate: Enumerate<I>,
+    gap_pos: usize,
+    gap_len: usize,
+}
+
+impl<I> Iterator for EnumerateAndAdjust<I> where I: Iterator {
+    type Item = (usize, <I as Iterator>::Item);
+
+    fn next(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
+        self.enumerate.next().map(|(i, elem)| {
+            (if i < self.gap_pos { i } else { i + self.gap_len }, elem)
+        })
+    }
+}
+
+pub trait EnumerateAndAdjustIterator {
+    fn enumerate_and_adjust(self, expected_len: usize, gap_pos: Option<usize>)
+        -> EnumerateAndAdjust<Self> where Self: Sized;
+}
+
+impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
+    fn enumerate_and_adjust(self, expected_len: usize, gap_pos: Option<usize>)
+            -> EnumerateAndAdjust<Self> where Self: Sized {
+        let actual_len = self.len();
+        EnumerateAndAdjust {
+            enumerate: self.enumerate(),
+            gap_pos: if let Some(gap_pos) = gap_pos { gap_pos } else { expected_len },
+            gap_len: expected_len - actual_len,
+        }
+    }
+}
 
 // This is used because same-named variables in alternative patterns need to
 // use the NodeId of their namesake in the first pattern.

@@ -876,10 +876,10 @@ impl<'a> LoweringContext<'a> {
                     })
                 }
                 PatKind::Lit(ref e) => hir::PatKind::Lit(self.lower_expr(e)),
-                PatKind::TupleStruct(ref pth, ref pats) => {
+                PatKind::TupleStruct(ref pth, ref pats, ddpos) => {
                     hir::PatKind::TupleStruct(self.lower_path(pth),
-                                 pats.as_ref()
-                                     .map(|pats| pats.iter().map(|x| self.lower_pat(x)).collect()))
+                                              pats.iter().map(|x| self.lower_pat(x)).collect(),
+                                              ddpos)
                 }
                 PatKind::Path(ref pth) => {
                     hir::PatKind::Path(self.lower_path(pth))
@@ -907,8 +907,8 @@ impl<'a> LoweringContext<'a> {
                                    .collect();
                     hir::PatKind::Struct(pth, fs, etc)
                 }
-                PatKind::Tup(ref elts) => {
-                    hir::PatKind::Tup(elts.iter().map(|x| self.lower_pat(x)).collect())
+                PatKind::Tuple(ref elts, ddpos) => {
+                    hir::PatKind::Tuple(elts.iter().map(|x| self.lower_pat(x)).collect(), ddpos)
                 }
                 PatKind::Box(ref inner) => hir::PatKind::Box(self.lower_pat(inner)),
                 PatKind::Ref(ref inner, mutbl) => {
@@ -1854,7 +1854,7 @@ impl<'a> LoweringContext<'a> {
         let pt = if subpats.is_empty() {
             hir::PatKind::Path(path)
         } else {
-            hir::PatKind::TupleStruct(path, Some(subpats))
+            hir::PatKind::TupleStruct(path, subpats, None)
         };
         let pat = self.pat(span, pt);
         self.resolver.record_resolution(pat.id, def);

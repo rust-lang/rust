@@ -8,22 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo {
-    Bar(i32),
-    Baz
-}
-
-struct S;
-
 fn main() {
-    match Foo::Baz {
-        Foo::Bar => {}
-        //~^ ERROR `Foo::Bar` does not name a tuple variant or a tuple struct
-        _ => {}
-    }
-
-    match S {
-        S(()) => {}
-        //~^ ERROR `S` does not name a tuple variant or a tuple struct
+    match 0 {
+        (..) => {} //~ ERROR `..` in tuple patterns is experimental
+        (pat, ..) => {} //~ ERROR `..` in tuple patterns is experimental
+        S(pat, ..) => {} //~ ERROR `..` in tuple struct patterns is experimental
     }
 }

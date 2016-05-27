@@ -1115,9 +1115,9 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
                         sub.map(|x| folder.fold_pat(x)))
             }
             PatKind::Lit(e) => PatKind::Lit(folder.fold_expr(e)),
-            PatKind::TupleStruct(pth, pats) => {
+            PatKind::TupleStruct(pth, pats, ddpos) => {
                 PatKind::TupleStruct(folder.fold_path(pth),
-                        pats.map(|pats| pats.move_map(|x| folder.fold_pat(x))))
+                        pats.move_map(|x| folder.fold_pat(x)), ddpos)
             }
             PatKind::Path(pth) => {
                 PatKind::Path(folder.fold_path(pth))
@@ -1138,7 +1138,9 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
                 });
                 PatKind::Struct(pth, fs, etc)
             }
-            PatKind::Tup(elts) => PatKind::Tup(elts.move_map(|x| folder.fold_pat(x))),
+            PatKind::Tuple(elts, ddpos) => {
+                PatKind::Tuple(elts.move_map(|x| folder.fold_pat(x)), ddpos)
+            }
             PatKind::Box(inner) => PatKind::Box(folder.fold_pat(inner)),
             PatKind::Ref(inner, mutbl) => PatKind::Ref(folder.fold_pat(inner), mutbl),
             PatKind::Range(e1, e2) => {
