@@ -1212,23 +1212,27 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::While(cond, body, opt_ident) => {
                 ExprKind::While(folder.fold_expr(cond),
                           folder.fold_block(body),
-                          opt_ident.map(|i| folder.fold_ident(i)))
+                          opt_ident.map(|label| respan(folder.new_span(label.span),
+                                                       folder.fold_ident(label.node))))
             }
             ExprKind::WhileLet(pat, expr, body, opt_ident) => {
                 ExprKind::WhileLet(folder.fold_pat(pat),
                              folder.fold_expr(expr),
                              folder.fold_block(body),
-                             opt_ident.map(|i| folder.fold_ident(i)))
+                             opt_ident.map(|label| respan(folder.new_span(label.span),
+                                                          folder.fold_ident(label.node))))
             }
             ExprKind::ForLoop(pat, iter, body, opt_ident) => {
                 ExprKind::ForLoop(folder.fold_pat(pat),
                             folder.fold_expr(iter),
                             folder.fold_block(body),
-                            opt_ident.map(|i| folder.fold_ident(i)))
+                            opt_ident.map(|label| respan(folder.new_span(label.span),
+                                                         folder.fold_ident(label.node))))
             }
             ExprKind::Loop(body, opt_ident) => {
                 ExprKind::Loop(folder.fold_block(body),
-                        opt_ident.map(|i| folder.fold_ident(i)))
+                               opt_ident.map(|label| respan(folder.new_span(label.span),
+                                                            folder.fold_ident(label.node))))
             }
             ExprKind::Match(expr, arms) => {
                 ExprKind::Match(folder.fold_expr(expr),

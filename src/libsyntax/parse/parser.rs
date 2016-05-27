@@ -2283,18 +2283,19 @@ impl<'a> Parser<'a> {
                     return self.parse_while_expr(None, lo, attrs);
                 }
                 if self.token.is_lifetime() {
-                    let lifetime = self.get_lifetime();
+                    let label = Spanned { node: self.get_lifetime(),
+                                          span: self.span };
                     let lo = self.span.lo;
                     self.bump();
                     self.expect(&token::Colon)?;
                     if self.eat_keyword(keywords::While) {
-                        return self.parse_while_expr(Some(lifetime), lo, attrs)
+                        return self.parse_while_expr(Some(label), lo, attrs)
                     }
                     if self.eat_keyword(keywords::For) {
-                        return self.parse_for_expr(Some(lifetime), lo, attrs)
+                        return self.parse_for_expr(Some(label), lo, attrs)
                     }
                     if self.eat_keyword(keywords::Loop) {
-                        return self.parse_loop_expr(Some(lifetime), lo, attrs)
+                        return self.parse_loop_expr(Some(label), lo, attrs)
                     }
                     return Err(self.fatal("expected `while`, `for`, or `loop` after a label"))
                 }
@@ -3264,7 +3265,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a 'for' .. 'in' expression ('for' token already eaten)
-    pub fn parse_for_expr(&mut self, opt_ident: Option<ast::Ident>,
+    pub fn parse_for_expr(&mut self, opt_ident: Option<ast::SpannedIdent>,
                           span_lo: BytePos,
                           attrs: ThinAttributes) -> PResult<'a, P<Expr>> {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
@@ -3283,7 +3284,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a 'while' or 'while let' expression ('while' token already eaten)
-    pub fn parse_while_expr(&mut self, opt_ident: Option<ast::Ident>,
+    pub fn parse_while_expr(&mut self, opt_ident: Option<ast::SpannedIdent>,
                             span_lo: BytePos,
                             attrs: ThinAttributes) -> PResult<'a, P<Expr>> {
         if self.token.is_keyword(keywords::Let) {
@@ -3298,7 +3299,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a 'while let' expression ('while' token already eaten)
-    pub fn parse_while_let_expr(&mut self, opt_ident: Option<ast::Ident>,
+    pub fn parse_while_let_expr(&mut self, opt_ident: Option<ast::SpannedIdent>,
                                 span_lo: BytePos,
                                 attrs: ThinAttributes) -> PResult<'a, P<Expr>> {
         self.expect_keyword(keywords::Let)?;
@@ -3312,7 +3313,7 @@ impl<'a> Parser<'a> {
     }
 
     // parse `loop {...}`, `loop` token already eaten
-    pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::Ident>,
+    pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::SpannedIdent>,
                            span_lo: BytePos,
                            attrs: ThinAttributes) -> PResult<'a, P<Expr>> {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
