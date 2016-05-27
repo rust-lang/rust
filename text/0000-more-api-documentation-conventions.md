@@ -138,6 +138,23 @@ rather than `Cow<'a, B> where B: 'a + ToOwned + ?Sized`.
 Another possibility is to write in lower case using a more generic term. In other words,
 ‘string’ can refer to a `String` or an `&str`, and ‘an option’ can be ‘an `Option<T>`’.
 
+### Use parentheses for functions
+[use-parentheses-for-functions]: #use-parentheses-for-functions
+
+When referring to function names, include the `()`s after the name. For example, do this:
+
+```rust
+/// This behavior is similar to the way that `mem::replace()` works.
+```
+
+Not this:
+
+```rust
+/// This behavior is similar to the way that `mem::replace` works.
+```
+
+This helps visually differentiate it in the text.
+
 ### Link all the things
 [link-all-the-things]: #link-all-the-things
 
@@ -149,6 +166,20 @@ Do this yourself with the reference-style syntax, for ease of reading:
 ///
 /// [`String`]: ../string/struct.String.html
 ```
+
+### Module-level vs type-level docs
+[module-level-vs-type-level-docs]: #module-level-vs-type-level-docs
+
+There has often been a tension between module-level and type-level
+documentation. For example, in today's standard library, the various
+`*Cell` docs say, in the pages for each type, to "refer to the module-level
+documentation for more details."
+
+Instead, module-level documentation should show a high-level summary of
+everything in the module, and each type should document itself fully. It is
+okay if there is some small amount of duplication here. Module-level
+documentation should be broad, and not go into a lot of detail, which is left
+to the type's documentation.
 
 ## Example
 [example]: #example
@@ -519,6 +550,23 @@ rather than `Cow<'a, B> where B: 'a + ToOwned + ?Sized`.
 Another possibility is to write in lower case using a more generic term. In other words,
 ‘string’ can refer to a `String` or an `&str`, and ‘an option’ can be ‘an `Option<T>`’.
 
+### Use parentheses for functions
+[use-parentheses-for-functions]: #use-parentheses-for-functions
+
+When referring to function names, include the `()`s after the name. For example, do this:
+
+```rust
+/// This behavior is similar to the way that `mem::replace()` works.
+```
+
+Not this:
+
+```rust
+/// This behavior is similar to the way that `mem::replace` works.
+```
+
+This helps visually differentiate it in the text.
+
 ### Link all the things
 [link-all-the-things]: #link-all-the-things
 
@@ -530,6 +578,20 @@ Do this yourself with the reference-style syntax, for ease of reading:
 ///
 /// [`String`]: ../string/struct.String.html
 ```
+
+### Module-level vs type-level docs
+[module-level-vs-type-level-docs]: #module-level-vs-type-level-docs
+
+There has often been a tension between module-level and type-level
+documentation. For example, in today's standard library, the various
+`*Cell` docs say, in the pages for each type, to "refer to the module-level
+documentation for more details."
+
+Instead, module-level documentation should show a high-level summary of
+everything in the module, and each type should document itself fully. It is
+okay if there is some small amount of duplication here. Module-level
+documentation should be broad, and not go into a lot of detail, which is left
+to the type's documentation.
 
 ## Example
 [example]: #example
