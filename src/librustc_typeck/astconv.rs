@@ -1833,8 +1833,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // lifetime elision, we can determine it in two ways. First (determined
         // here), if self is by-reference, then the implied output region is the
         // region of the self parameter.
-        let explicit_self = decl.inputs.get(0).and_then(hir::Arg::to_self);
-        let (self_ty, explicit_self_category) = match (opt_untransformed_self_ty, explicit_self) {
+        let (self_ty, explicit_self_category) = match (opt_untransformed_self_ty, decl.get_self()) {
             (Some(untransformed_self_ty), Some(explicit_self)) => {
                 let self_type = self.determine_self_type(&rb, untransformed_self_ty,
                                                          &explicit_self);

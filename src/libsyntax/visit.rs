@@ -99,9 +99,6 @@ pub trait Visitor<'v> : Sized {
     fn visit_lifetime_def(&mut self, lifetime: &'v LifetimeDef) {
         walk_lifetime_def(self, lifetime)
     }
-    fn visit_explicit_self(&mut self, es: &'v ExplicitSelf) {
-        walk_explicit_self(self, es)
-    }
     fn visit_mac(&mut self, _mac: &'v Mac) {
         panic!("visit_mac disabled by default");
         // NB: see note about macros above.
@@ -201,24 +198,6 @@ pub fn walk_lifetime_def<'v, V: Visitor<'v>>(visitor: &mut V,
                                               lifetime_def: &'v LifetimeDef) {
     visitor.visit_lifetime(&lifetime_def.lifetime);
     walk_list!(visitor, visit_lifetime, &lifetime_def.bounds);
-}
-
-pub fn walk_explicit_self<'v, V: Visitor<'v>>(visitor: &mut V,
-                                              explicit_self: &'v ExplicitSelf) {
-    match explicit_self.node {
-        SelfKind::Static => {},
-        SelfKind::Value(ident) => {
-            visitor.visit_ident(explicit_self.span, ident)
-        }
-        SelfKind::Region(ref opt_lifetime, _, ident) => {
-            visitor.visit_ident(explicit_self.span, ident);
-            walk_list!(visitor, visit_lifetime, opt_lifetime);
-        }
-        SelfKind::Explicit(ref typ, ident) => {
-            visitor.visit_ident(explicit_self.span, ident);
-            visitor.visit_ty(typ)
-        }
-    }
 }
 
 pub fn walk_poly_trait_ref<'v, V>(visitor: &mut V,
@@ -376,7 +355,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyKind::Typeof(ref expression) => {
             visitor.visit_expr(expression)
         }
-        TyKind::Infer => {}
+        TyKind::Infer | TyKind::ImplicitSelf => {}
         TyKind::Mac(ref mac) => {
             visitor.visit_mac(mac)
         }
@@ -558,7 +537,6 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V,
         }
         FnKind::Method(_, ref sig, _) => {
             visitor.visit_generics(&sig.generics);
-            visitor.visit_explicit_self(&sig.explicit_self);
         }
         FnKind::Closure => {}
     }
@@ -583,7 +561,6 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             walk_list!(visitor, visit_expr, default);
         }
         TraitItemKind::Method(ref sig, None) => {
-            visitor.visit_explicit_self(&sig.explicit_self);
             visitor.visit_generics(&sig.generics);
             walk_fn_decl(visitor, &sig.decl);
         }

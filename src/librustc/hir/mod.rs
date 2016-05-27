@@ -1177,6 +1177,9 @@ pub struct FnDecl {
 }
 
 impl FnDecl {
+    pub fn get_self(&self) -> Option<ExplicitSelf> {
+        self.inputs.get(0).and_then(Arg::to_self)
+    }
     pub fn has_self(&self) -> bool {
         self.inputs.get(0).map(Arg::is_self).unwrap_or(false)
     }
