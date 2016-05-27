@@ -3,9 +3,10 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use rustc::hir::*;
+use rustc::hir::{ExprAddrOf, Expr, MutImmutable};
 use rustc::ty::TyRef;
 use utils::{span_lint, in_macro};
+use rustc::ty::adjustment::AutoAdjustment::AdjustDerefRef;
 
 /// **What it does:** This lint checks for address of operations (`&`) that are going to be dereferenced immediately by the compiler
 ///
@@ -36,13 +37,13 @@ impl LateLintPass for NeedlessBorrow {
         }
         if let ExprAddrOf(MutImmutable, ref inner) = e.node {
             if let TyRef(..) = cx.tcx.expr_ty(inner).sty {
-                let ty = cx.tcx.expr_ty(e);
-                let adj_ty = cx.tcx.expr_ty_adjusted(e);
-                if ty != adj_ty {
-                    span_lint(cx,
-                              NEEDLESS_BORROW,
-                              e.span,
-                              "this expression borrows a reference that is immediately dereferenced by the compiler");
+                if let Some(&AdjustDerefRef(ref deref)) = cx.tcx.tables.borrow().adjustments.get(&e.id) {
+                    if deref.autoderefs > 1 && deref.autoref.is_some() {
+                        span_lint(cx,
+                                  NEEDLESS_BORROW,
+                                  e.span,
+                                  "this expression borrows a reference that is immediately dereferenced by the compiler");
+                    }
                 }
             }
         }

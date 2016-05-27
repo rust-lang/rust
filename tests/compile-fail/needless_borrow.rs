@@ -16,6 +16,7 @@ fn main() {
     let g_val = g(&Vec::new()); // should not error, because `&Vec<T>` derefs to `&[T]`
     let vec = Vec::new();
     let vec_val = g(&vec); // should not error, because `&Vec<T>` derefs to `&[T]`
+    h(&"foo"); // should not error, because the `&&str` is required, due to `&Trait`
 }
 
 fn f<T:Copy>(y: &T) -> T {
@@ -25,3 +26,9 @@ fn f<T:Copy>(y: &T) -> T {
 fn g(y: &[u8]) -> u8 {
     y[0]
 }
+
+trait Trait {}
+
+impl<'a> Trait for &'a str {}
+
+fn h(_: &Trait) {}
