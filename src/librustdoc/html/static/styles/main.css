@@ -30,6 +30,10 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
     background-color: white;
 }
 
+div.stability > em > code {
+    background-color: initial;
+}
+
 .docblock code {
     background-color: #F5F5F5;
 }
