@@ -88,3 +88,18 @@ fn ______________________baz(a: i32)
                                                 arg3: i32)
                                     -> ()> {
 }
+
+pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            path: &hir::Path,
+                            id: ast::NodeId,
+                            cb: &mut FnMut(DefId, Span, &Option<&Stability>, &Option<Depecation>)) {
+}
+
+pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            path: &hir::Path,
+                            id: ast::NodeId,
+                            cb: &mut FnMut(DefId,
+                                           Span,
+                                           &Option<&Stability>,
+                                           &Option<Deprecation>)) {
+}
