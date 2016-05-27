@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::Cow;
 use std::cmp::Ordering;
 
-use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItemKind};
+use itertools::Itertools;
+
+use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItemKind, Path};
 use syntax::codemap::{CodeMap, Span, BytePos};
 use syntax::abi;
 
@@ -66,14 +69,23 @@ pub fn extra_offset(text: &str, offset: Indent) -> usize {
     }
 }
 
-#[inline]
-pub fn format_visibility(vis: &Visibility) -> Option<&'static str> {
+// Uses Cow to avoid allocating in the common cases.
+pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
     match *vis {
-        Visibility::Public => Some("pub "),
-        Visibility::Inherited => Some(""),
-        // FIXME(#970): Handle new visibility types.
-        Visibility::Crate(_) => None,
-        Visibility::Restricted { .. } => None,
+        Visibility::Public => Cow::from("pub "),
+        Visibility::Inherited => Cow::from(""),
+        Visibility::Crate(_) => Cow::from("pub(crate) "),
+        Visibility::Restricted { ref path, .. } => {
+            let Path { global, ref segments, .. } = **path;
+            let prefix = if global {
+                "::"
+            } else {
+                ""
+            };
+            let mut segments_iter = segments.iter().map(|seg| seg.identifier.name.as_str());
+
+            Cow::from(format!("pub({}{}) ", prefix, segments_iter.join("::")))
+        }
     }
 }
 

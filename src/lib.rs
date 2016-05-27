@@ -24,6 +24,7 @@ extern crate unicode_segmentation;
 extern crate regex;
 extern crate diff;
 extern crate term;
+extern crate itertools;
 
 use syntax::ast;
 use syntax::codemap::{mk_sp, CodeMap, Span};

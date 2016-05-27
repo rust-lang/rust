@@ -139,10 +139,7 @@ impl<'a> FmtVisitor<'a> {
             ast::ForeignItemKind::Static(ref ty, is_mutable) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function keywords here.
-                let vis = match format_visibility(&item.vis) {
-                    Some(s) => s,
-                    None => return,
-                };
+                let vis = format_visibility(&item.vis);
                 let mut_str = if is_mutable {
                     "mut "
                 } else {
@@ -305,11 +302,7 @@ impl<'a> FmtVisitor<'a> {
                       enum_def: &ast::EnumDef,
                       generics: &ast::Generics,
                       span: Span) {
-        let header_str = match format_header("enum ", ident, vis) {
-            Some(s) => s,
-            None => return,
-        };
-        self.buffer.push_str(&header_str);
+        self.buffer.push_str(&format_header("enum ", ident, vis));
 
         let enum_snippet = self.snippet(span);
         let body_start = span.lo + BytePos(enum_snippet.find_uncommented("{").unwrap() as u32 + 1);
@@ -453,7 +446,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                                ref self_ty,
                                ref items) = item.node {
         let mut result = String::new();
-        result.push_str(try_opt!(format_visibility(&item.vis)));
+        result.push_str(&*format_visibility(&item.vis));
         result.push_str(format_unsafety(unsafety));
         result.push_str("impl");
 
@@ -593,7 +586,7 @@ pub fn format_struct(context: &RewriteContext,
                      one_line_width: Option<usize>)
                      -> Option<String> {
     match *struct_def {
-        ast::VariantData::Unit(..) => format_unit_struct(item_name, ident, vis),
+        ast::VariantData::Unit(..) => Some(format_unit_struct(item_name, ident, vis)),
         ast::VariantData::Tuple(ref fields, _) => {
             format_tuple_struct(context,
                                 item_name,
@@ -623,7 +616,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
            item.node {
         let mut result = String::new();
         let header = format!("{}{}trait {}",
-                             try_opt!(format_visibility(&item.vis)),
+                             format_visibility(&item.vis),
                              format_unsafety(unsafety),
                              item.ident);
 
@@ -744,14 +737,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
     }
 }
 
-fn format_unit_struct(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> Option<String> {
-    let mut result = String::with_capacity(1024);
-
-    let header_str = try_opt!(format_header(item_name, ident, vis));
-    result.push_str(&header_str);
-    result.push(';');
-
-    Some(result)
+fn format_unit_struct(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> String {
+    format!("{};", format_header(item_name, ident, vis))
 }
 
 fn format_struct_struct(context: &RewriteContext,
@@ -766,7 +753,7 @@ fn format_struct_struct(context: &RewriteContext,
                         -> Option<String> {
     let mut result = String::with_capacity(1024);
 
-    let header_str = try_opt!(format_header(item_name, ident, vis));
+    let header_str = format_header(item_name, ident, vis);
     result.push_str(&header_str);
 
     let body_lo = context.codemap.span_after(span, "{");
@@ -859,7 +846,7 @@ fn format_tuple_struct(context: &RewriteContext,
                        -> Option<String> {
     let mut result = String::with_capacity(1024);
 
-    let header_str = try_opt!(format_header(item_name, ident, vis));
+    let header_str = format_header(item_name, ident, vis);
     result.push_str(&header_str);
 
     // FIXME(#919): don't lose comments on empty tuple structs.
@@ -945,7 +932,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
                           -> Option<String> {
     let mut result = String::new();
 
-    result.push_str(&try_opt!(format_visibility(&vis)));
+    result.push_str(&format_visibility(&vis));
     result.push_str("type ");
     result.push_str(&ident.to_string());
 
@@ -1013,7 +1000,7 @@ impl Rewrite for ast::StructField {
         }
 
         let name = self.ident;
-        let vis = try_opt!(format_visibility(&self.vis));
+        let vis = format_visibility(&self.vis);
         let mut attr_str = try_opt!(self.attrs
             .rewrite(context, context.config.max_width - offset.width(), offset));
         if !attr_str.is_empty() {
@@ -1042,7 +1029,7 @@ pub fn rewrite_static(prefix: &str,
                       context: &RewriteContext)
                       -> Option<String> {
     let prefix = format!("{}{} {}{}: ",
-                         try_opt!(format_visibility(vis)),
+                         format_visibility(vis),
                          prefix,
                          format_mutability(mutability),
                          ident);
@@ -1260,7 +1247,7 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     let mut result = String::with_capacity(1024);
     // Vis unsafety abi.
-    result.push_str(try_opt!(format_visibility(vis)));
+    result.push_str(&*format_visibility(vis));
 
     if let ast::Constness::Const = constness {
         result.push_str("const ");
@@ -1816,8 +1803,8 @@ fn rewrite_where_clause(context: &RewriteContext,
     }
 }
 
-fn format_header(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> Option<String> {
-    Some(format!("{}{}{}", try_opt!(format_visibility(vis)), item_name, ident))
+fn format_header(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> String {
+    format!("{}{}{}", format_visibility(vis), item_name, ident)
 }
 
 fn format_generics(context: &RewriteContext,

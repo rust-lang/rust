@@ -502,9 +502,7 @@ impl<'a> FmtVisitor<'a> {
         let local_file_name = self.codemap.span_to_filename(s);
         let is_internal = local_file_name == self.codemap.span_to_filename(source!(self, m.inner));
 
-        if let Some(vis) = utils::format_visibility(vis) {
-            self.buffer.push_str(vis);
-        }
+        self.buffer.push_str(&*utils::format_visibility(vis));
         self.buffer.push_str("mod ");
         self.buffer.push_str(&ident.to_string());
 
@@ -540,10 +538,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn format_import(&mut self, vis: &ast::Visibility, vp: &ast::ViewPath, span: Span) {
-        let vis = match utils::format_visibility(vis) {
-            Some(s) => s,
-            None => return,
-        };
+        let vis = utils::format_visibility(vis);
         let mut offset = self.block_indent;
         offset.alignment += vis.len() + "use ".len();
         // 1 = ";"
