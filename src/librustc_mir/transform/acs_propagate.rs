@@ -28,6 +28,8 @@
 //! into one, but I can’t seem to get it just right yet, so we do the composing and decomposing
 //! manually here.
 
+use self::AcsLattice::*;
+
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc::mir::repr::*;
 use rustc::mir::visit::{MutVisitor, LvalueContext};
@@ -40,24 +42,48 @@ use pretty;
 
 #[derive(PartialEq, Debug, Eq, Clone)]
 enum Either<'tcx> {
-    Top,
     Lvalue(Lvalue<'tcx>),
     Const(Constant<'tcx>),
 }
 
-impl<'tcx> Lattice for Either<'tcx> {
-    fn bottom() -> Self { unimplemented!() }
-    fn join(&mut self, other: &Self) -> bool {
-        if self == other {
-            false
-        } else {
-            *self = Either::Top;
-            true
-        }
-    }
+#[derive(Debug, Clone)]
+enum AcsLattice<'tcx> {
+    Bottom,
+    Wrap(FnvHashMap<Lvalue<'tcx>, Either<'tcx>>)
 }
 
-type AcsLattice<'a> = FnvHashMap<Lvalue<'a>, Either<'a>>;
+impl<'tcx> Lattice for AcsLattice<'tcx> {
+    fn bottom() -> Self { Bottom }
+    fn join(&mut self, other: &Self) -> bool {
+        let other_map = match *other {
+            Bottom => return false,
+            Wrap(ref map) => map
+        };
+        let self_map = match *self {
+            Bottom => {
+                *self = Wrap(other_map.clone());
+                return true;
+            },
+            Wrap(ref mut map) => map
+        };
+
+        let mut changed = false;
+
+        for (k, v) in other_map {
+            let should_remove = if let Some(cur_v) = self_map.get(k) {
+                cur_v != v
+            } else {
+                false
+            };
+            if should_remove {
+                self_map.remove(k);
+                changed = true;
+            }
+        }
+
+        changed
+    }
+}
 
 pub struct AcsPropagate;
 
@@ -79,33 +105,46 @@ impl<'tcx> MirPass<'tcx> for AcsPropagate {
 
 struct AcsPropagateTransfer;
 
+fn base_lvalue<'a, 'tcx>(mut lval: &'a Lvalue<'tcx>) -> &'a Lvalue<'tcx> {
+    while let &Lvalue::Projection(ref proj) = lval {
+        lval = &proj.base;
+    }
+    lval
+}
+
 impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
     type Lattice = AcsLattice<'tcx>;
 
-    fn stmt(&self, s: &Statement<'tcx>, mut lat: AcsLattice<'tcx>) -> AcsLattice<'tcx> {
+    fn stmt(&self, s: &Statement<'tcx>, lat: AcsLattice<'tcx>) -> AcsLattice<'tcx> {
+        let mut lat_map = match lat {
+            Bottom => FnvHashMap::default(),
+            Wrap(map) => map
+        };
+
         let StatementKind::Assign(ref lval, ref rval) = s.kind;
         if let &Lvalue::Projection(_) = lval {
-            let mut base = lval;
-            while let &Lvalue::Projection(ref proj) = base {
-                base = &proj.base;
-            }
-            lat.insert(base.clone(), Either::Top);
-            return lat;
+            lat_map.remove(base_lvalue(lval));
+            return Wrap(lat_map);
         }
 
         match *rval {
             Rvalue::Use(Operand::Consume(ref nlval)) =>
-                lat.insert(lval.clone(), Either::Lvalue(nlval.clone())),
+                lat_map.insert(lval.clone(), Either::Lvalue(nlval.clone())),
             Rvalue::Use(Operand::Constant(ref c)) =>
-                lat.insert(lval.clone(), Either::Const(c.clone())),
-            _ => lat.insert(lval.clone(), Either::Top)
+                lat_map.insert(lval.clone(), Either::Const(c.clone())),
+            _ => lat_map.remove(lval)
         };
-        lat
+        Wrap(lat_map)
     }
 
     fn term(&self, t: &Terminator<'tcx>, mut lat: AcsLattice<'tcx>) -> Vec<AcsLattice<'tcx>> {
-        if let TerminatorKind::Call { destination: Some((ref dest, _)), .. } = t.kind {
-            lat.insert(dest.clone(), Either::Top);
+        match t.kind {
+            TerminatorKind::Call { .. } |
+            TerminatorKind::Drop { .. } => {
+                // FIXME: Be smarter here by using an alias analysis
+                lat = Wrap(FnvHashMap::default());
+            },
+            _ => { }
         }
 
         // FIXME: this should inspect the terminators and set their known values to constants. Esp.
@@ -122,22 +161,32 @@ struct AliasRewrite;
 impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for AliasRewrite {
     fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
     -> StatementChange<'tcx> {
-        let mut ns = s.clone();
-        let mut vis = RewriteAliasVisitor(&l, false);
-        vis.visit_statement(START_BLOCK, &mut ns);
-        if vis.1 { StatementChange::Statement(ns) } else { StatementChange::None }
+        if let Wrap(ref map) = *l {
+            let mut ns = s.clone();
+            let mut vis = RewriteAliasVisitor(map, false);
+            vis.visit_statement(START_BLOCK, &mut ns);
+            if vis.1 {
+                return StatementChange::Statement(ns);
+            }
+        }
+        StatementChange::None
     }
 
     fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
     -> TerminatorChange<'tcx> {
-        let mut nt = t.clone();
-        let mut vis = RewriteAliasVisitor(&l, false);
-        vis.visit_terminator(START_BLOCK, &mut nt);
-        if vis.1 { TerminatorChange::Terminator(nt) } else { TerminatorChange::None }
+        if let Wrap(ref map) = *l {
+            let mut nt = t.clone();
+            let mut vis = RewriteAliasVisitor(map, false);
+            vis.visit_terminator(START_BLOCK, &mut nt);
+            if vis.1 {
+                return TerminatorChange::Terminator(nt);
+            }
+        }
+        TerminatorChange::None
     }
 }
 
-struct RewriteAliasVisitor<'a, 'tcx: 'a>(&'a AcsLattice<'tcx>, bool);
+struct RewriteAliasVisitor<'a, 'tcx: 'a>(&'a FnvHashMap<Lvalue<'tcx>, Either<'tcx>>, bool);
 impl<'a, 'tcx> MutVisitor<'tcx> for RewriteAliasVisitor<'a, 'tcx> {
     fn visit_lvalue(&mut self, lvalue: &mut Lvalue<'tcx>, context: LvalueContext) {
         match context {
@@ -158,22 +207,32 @@ struct ConstRewrite;
 impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for ConstRewrite {
     fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
     -> StatementChange<'tcx> {
-        let mut ns = s.clone();
-        let mut vis = RewriteConstVisitor(&l, false);
-        vis.visit_statement(START_BLOCK, &mut ns);
-        if vis.1 { StatementChange::Statement(ns) } else { StatementChange::None }
+        if let Wrap(ref map) = *l {
+            let mut ns = s.clone();
+            let mut vis = RewriteConstVisitor(map, false);
+            vis.visit_statement(START_BLOCK, &mut ns);
+            if vis.1 {
+                return StatementChange::Statement(ns);
+            }
+        }
+        StatementChange::None
     }
 
     fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
     -> TerminatorChange<'tcx> {
-        let mut nt = t.clone();
-        let mut vis = RewriteConstVisitor(&l, false);
-        vis.visit_terminator(START_BLOCK, &mut nt);
-        if vis.1 { TerminatorChange::Terminator(nt) } else { TerminatorChange::None }
+        if let Wrap(ref map) = *l {
+            let mut nt = t.clone();
+            let mut vis = RewriteConstVisitor(map, false);
+            vis.visit_terminator(START_BLOCK, &mut nt);
+            if vis.1 {
+                return TerminatorChange::Terminator(nt);
+            }
+        }
+        TerminatorChange::None
     }
 }
 
-struct RewriteConstVisitor<'a, 'tcx: 'a>(&'a AcsLattice<'tcx>, bool);
+struct RewriteConstVisitor<'a, 'tcx: 'a>(&'a FnvHashMap<Lvalue<'tcx>, Either<'tcx>>, bool);
 impl<'a, 'tcx> MutVisitor<'tcx> for RewriteConstVisitor<'a, 'tcx> {
     fn visit_operand(&mut self, op: &mut Operand<'tcx>) {
         // To satisy borrow checker, modify `op` after inspecting it
