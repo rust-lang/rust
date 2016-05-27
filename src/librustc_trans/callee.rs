@@ -381,7 +381,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                                                          bare_fn_ty,
                                                          "fn_pointer_shim");
     let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
-
+    attributes::set_frame_pointer_elimination(ccx, llfn);
     //
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();

@@ -151,6 +151,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 _ => bug!()
             };
             attributes::inline(lldecl, attributes::InlineAttr::Hint);
+            attributes::set_frame_pointer_elimination(ccx, lldecl);
             base::trans_ctor_shim(ccx, fn_node_id, disr, psubsts, lldecl);
         }
 

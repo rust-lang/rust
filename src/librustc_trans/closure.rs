@@ -171,6 +171,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // set an inline hint for all closures
     attributes::inline(llfn, attributes::InlineAttr::Hint);
+    attributes::set_frame_pointer_elimination(ccx, llfn);
 
     debug!("get_or_create_declaration_if_closure(): inserting new \
             closure {:?}: {:?}",
@@ -377,6 +378,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let function_name =
         symbol_names::internal_name_from_type_and_suffix(ccx, llonce_fn_ty, "once_shim");
     let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
+    attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();

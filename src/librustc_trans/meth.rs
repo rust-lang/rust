@@ -10,6 +10,7 @@
 
 use std::rc::Rc;
 
+use attributes;
 use arena::TypedArena;
 use back::symbol_names;
 use llvm::{ValueRef, get_params};
@@ -91,6 +92,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let function_name =
         symbol_names::internal_name_from_type_and_suffix(ccx, method_ty, "object_shim");
     let llfn = declare::define_internal_fn(ccx, &function_name, method_ty);
+    attributes::set_frame_pointer_elimination(ccx, llfn);
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
