@@ -1864,11 +1864,34 @@ fn main<T>() { // error: main function is not allowed to have type parameters
 "##,
 
 E0132: r##"
+A function with the `start` attribute was declared with type parameters.
+
+Erroneous code example:
+
+```compile_fail
+#![feature(start)]
+
+#[start]
+fn f<T>() {}
+```
+
 It is not possible to declare type parameters on a function that has the `start`
-attribute. Such a function must have the following type signature:
+attribute. Such a function must have the following type signature (for more
+information: http://doc.rust-lang.org/stable/book/no-stdlib.html):
 
 ```ignore
 fn(isize, *const *const u8) -> isize;
+```
+
+Example:
+
+```
+#![feature(start)]
+
+#[start]
+fn my_start(argc: isize, argv: *const *const u8) -> isize {
+    0
+}
 ```
 "##,
 
