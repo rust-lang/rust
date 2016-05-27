@@ -1,6 +1,7 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
+#![feature(slice_patterns)]
 
 extern crate rustc_driver;
 extern crate getopts;
@@ -128,10 +129,11 @@ pub fn main() {
         for target in metadata.packages.remove(0).targets {
             let args = std::env::args().skip(2);
             assert_eq!(target.kind.len(), 1);
-            match target.kind[0] {
-                cargo::Kind::dylib => process(std::iter::once("--lib".to_owned()).chain(args), &dep_path, &sys_root),
-                cargo::Kind::bin => process(vec!["--bin".to_owned(), target.name].into_iter().chain(args), &dep_path, &sys_root),
-                // don't process tests
+            match &target.kind[..] {
+                [cargo::Kind::lib] |
+                [cargo::Kind::dylib] => process(std::iter::once("--lib".to_owned()).chain(args), &dep_path, &sys_root),
+                [cargo::Kind::bin] => process(vec!["--bin".to_owned(), target.name].into_iter().chain(args), &dep_path, &sys_root),
+                // don't process tests and other stuff
                 _ => {},
             }
         }
