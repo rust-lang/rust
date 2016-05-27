@@ -8,15 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Number {
-    Zero,
-    One(u32)
-}
+// compile-flags: -Z parse-only
 
 fn main() {
-    let x = Number::Zero;
-    match x {
-        Number::Zero(inside) => {}, //~ ERROR E0024
-        Number::One(inside) => {},
+    match 0 {
+        (.., pat, ..) => {} //~ ERROR `..` can only be used once per tuple or tuple struct pattern
     }
 }

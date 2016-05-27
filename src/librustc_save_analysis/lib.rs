@@ -696,7 +696,7 @@ impl<'v> Visitor<'v> for PathCollector {
                 self.collected_paths.push((p.id, path.clone(),
                                            ast::Mutability::Mutable, recorder::TypeRef));
             }
-            PatKind::TupleStruct(ref path, _) |
+            PatKind::TupleStruct(ref path, _, _) |
             PatKind::Path(ref path) |
             PatKind::QPath(_, ref path) => {
                 self.collected_paths.push((p.id, path.clone(),

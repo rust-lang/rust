@@ -2433,6 +2433,8 @@ The currently implemented features of the reference compiler are:
 * - `abi_vectorcall` - Allows the usage of the vectorcall calling convention
                              (e.g. `extern "vectorcall" func fn_();`)
 
+* - `dotdot_in_tuple_patterns` - Allows `..` in tuple (struct) patterns.
+
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about `#![feature]` directives which enabled
 the new feature (because the directive is no longer necessary). However, if a

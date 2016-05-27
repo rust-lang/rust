@@ -1127,7 +1127,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     // will visit the substructure recursively.
                 }
 
-                PatKind::Wild | PatKind::Tup(..) | PatKind::Box(..) |
+                PatKind::Wild | PatKind::Tuple(..) | PatKind::Box(..) |
                 PatKind::Ref(..) | PatKind::Lit(..) | PatKind::Range(..) |
                 PatKind::Vec(..) => {
                     // Similarly, each of these cases does not
