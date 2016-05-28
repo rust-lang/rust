@@ -1,7 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.70 — TBD
+## 0.0.70 — 2016-05-28
+* Rustup to *rustc 1.10.0-nightly (7bddce693 2016-05-27)*
 * [`invalid_regex`] and [`trivial_regex`] can now warn on `RegexSet::new`,
   `RegexBuilder::new` and byte regexes
 

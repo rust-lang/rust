@@ -828,7 +828,7 @@ pub fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
             let Some(ref loopexpr) = block.expr,
             let ExprMatch(_, ref innerarms, MatchSource::ForLoopDesugar) = loopexpr.node,
             innerarms.len() == 2 && innerarms[0].pats.len() == 1,
-            let PatKind::TupleStruct(_, Some(ref somepats)) = innerarms[0].pats[0].node,
+            let PatKind::TupleStruct(_, ref somepats, _) = innerarms[0].pats[0].node,
             somepats.len() == 1
         ], {
             return Some((&somepats[0],

@@ -101,7 +101,7 @@ fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
         let ExprMatch(_, ref arms, _) = expr.node,
         arms.len() == 1,
         arms[0].pats.len() == 1,
-        let PatKind::Tup(ref pat) = arms[0].pats[0].node,
+        let PatKind::Tuple(ref pat, None) = arms[0].pats[0].node,
         pat.len() == 1,
         let ExprVec(ref exprs) = arms[0].body.node,
         exprs.len() == 1,

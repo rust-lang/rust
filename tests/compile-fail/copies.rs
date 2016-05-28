@@ -1,4 +1,5 @@
 #![feature(plugin, inclusive_range_syntax)]
+#![feature(dotdot_in_tuple_patterns)]
 #![plugin(clippy)]
 
 #![allow(dead_code, no_effect, unnecessary_operation)]
@@ -130,6 +131,34 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
+        if let (1, .., 3) = (1, 2, 3) {}
+    }
+    else { //~ERROR this `if` has identical blocks
+        if let (1, .., 3) = (1, 2, 3) {}
+    }
+
+    if true {
+        if let (1, .., 3) = (1, 2, 3) {}
+    }
+    else {
+        if let (.., 3) = (1, 2, 3) {}
+    }
+
+    if true {
+        if let (1, .., 3) = (1, 2, 3) {}
+    }
+    else {
+        if let (.., 4) = (1, 2, 3) {}
+    }
+
+    if true {
+        if let (1, .., 3) = (1, 2, 3) {}
+    }
+    else {
+        if let (.., 1, 3) = (1, 2, 3) {}
+    }
+
+    if true {
         if let Some(a) = Some(42) {}
     }
     else {
@@ -164,6 +193,18 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         (None, Some(a)) => bar(a), //~ERROR this `match` has identical arm bodies
         _ => (),
     }
+
+    match (Some(42), Some(42)) {
+        (Some(a), ..) => bar(a),
+        (.., Some(a)) => bar(a), //~ERROR this `match` has identical arm bodies
+        _ => (),
+    }
+
+    match (1, 2, 3) {
+        (1, .., 3) => 42,
+        (.., 3) => 42, //~ERROR this `match` has identical arm bodies
+        _ => 0,
+    };
 
     match (Some(42), Some("")) {
         (Some(a), None) => bar(a),

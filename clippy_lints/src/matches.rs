@@ -193,14 +193,13 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
                        (&paths::RESULT, "Ok")];
 
     let path = match arms[1].pats[0].node {
-        PatKind::TupleStruct(ref path, Some(ref inner)) => {
+        PatKind::TupleStruct(ref path, ref inner, _) => {
             // contains any non wildcard patterns? e.g. Err(err)
             if inner.iter().any(|pat| pat.node != PatKind::Wild) {
                 return;
             }
             path.to_string()
         }
-        PatKind::TupleStruct(ref path, None) => path.to_string(),
         PatKind::Ident(BindByValue(MutImmutable), ident, None) => ident.node.to_string(),
         _ => return,
     };
