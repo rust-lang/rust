@@ -162,21 +162,53 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
-                let otherwise = self.cfg.start_new_block();
-                let targets: Vec<_> =
-                    options.iter()
-                           .map(|_| self.cfg.start_new_block())
-                           .chain(Some(otherwise))
-                           .collect();
+                let (targets, term) = match switch_ty.sty {
+                    // If we're matching on boolean we can
+                    // use the If TerminatorKind instead
+                    ty::TyBool => {
+                        assert!(options.len() > 0 && options.len() <= 2);
+
+                        let (true_bb, else_bb) =
+                            (self.cfg.start_new_block(),
+                             self.cfg.start_new_block());
+
+                        let targets = match &options[0] {
+                            &ConstVal::Bool(true) => vec![true_bb, else_bb],
+                            &ConstVal::Bool(false) => vec![else_bb, true_bb],
+                            v => span_bug!(test.span, "expected boolean value but got {:?}", v)
+                        };
+
+                        (targets,
+                         TerminatorKind::If {
+                             cond: Operand::Consume(lvalue.clone()),
+                             targets: (true_bb, else_bb)
+                         })
+
+                    }
+                    _ => {
+                        // The switch may be inexhaustive so we
+                        // add a catch all block
+                        let otherwise = self.cfg.start_new_block();
+                        let targets: Vec<_> =
+                            options.iter()
+                                   .map(|_| self.cfg.start_new_block())
+                                   .chain(Some(otherwise))
+                                   .collect();
+
+                        (targets.clone(),
+                         TerminatorKind::SwitchInt {
+                             discr: lvalue.clone(),
+                             switch_ty: switch_ty,
+                             values: options.clone(),
+                             targets: targets
+                         })
+                    }
+                };
+
                 self.cfg.terminate(block,
                                    scope_id,
                                    test.span,
-                                   TerminatorKind::SwitchInt {
-                                       discr: lvalue.clone(),
-                                       switch_ty: switch_ty,
-                                       values: options.clone(),
-                                       targets: targets.clone(),
-                                   });
+                                   term);
                 targets
             }
 
