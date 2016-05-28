@@ -15,7 +15,7 @@ pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
 
-use attr::ThinAttributes;
+use attr::{ThinAttributes, HasAttrs};
 use codemap::{mk_sp, respan, Span, Spanned, DUMMY_SP, ExpnId};
 use abi::Abi;
 use errors;
@@ -831,13 +831,7 @@ impl StmtKind {
     }
 
     pub fn attrs(&self) -> &[Attribute] {
-        match *self {
-            StmtKind::Decl(ref d, _) => d.attrs(),
-            StmtKind::Expr(ref e, _) |
-            StmtKind::Semi(ref e, _) => e.attrs(),
-            StmtKind::Mac(_, _, Some(ref b)) => b,
-            StmtKind::Mac(_, _, None) => &[],
-        }
+        HasAttrs::attrs(self)
     }
 }
 
@@ -870,10 +864,7 @@ pub struct Local {
 
 impl Local {
     pub fn attrs(&self) -> &[Attribute] {
-        match self.attrs {
-            Some(ref b) => b,
-            None => &[],
-        }
+        HasAttrs::attrs(self)
     }
 }
 
@@ -889,10 +880,7 @@ pub enum DeclKind {
 
 impl Decl {
     pub fn attrs(&self) -> &[Attribute] {
-        match self.node {
-            DeclKind::Local(ref l) => l.attrs(),
-            DeclKind::Item(ref i) => i.attrs(),
-        }
+        HasAttrs::attrs(self)
     }
 }
 
@@ -937,10 +925,7 @@ pub struct Expr {
 
 impl Expr {
     pub fn attrs(&self) -> &[Attribute] {
-        match self.attrs {
-            Some(ref b) => b,
-            None => &[],
-        }
+        HasAttrs::attrs(self)
     }
 }
 
