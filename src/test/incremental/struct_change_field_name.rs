@@ -47,7 +47,7 @@ pub fn use_EmbedX(embed: EmbedX) -> u32 {
     //[cfail2]~^ ERROR attempted access of field `x`
 }
 
-#[rustc_dirty(label="TypeckItemBody", cfg="cfail2")] // FIXME(#33850) should be clean
+#[rustc_clean(label="TypeckItemBody", cfg="cfail2")]
 pub fn use_Y() {
     let x: Y = Y { y: 'c' };
 }

@@ -40,7 +40,7 @@ pub fn use_EmbedX(embed: EmbedX) -> u32 {
     embed.x.x as u32
 }
 
-#[rustc_dirty(label="TypeckItemBody", cfg="rpass2")] // FIXME(#33850) should be clean
+#[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
 pub fn use_Y() {
     let x: Y = Y { y: 'c' };
 }

@@ -946,7 +946,28 @@ impl<'tcx> TraitPredicate<'tcx> {
 
     /// Creates the dep-node for selecting/evaluating this trait reference.
     fn dep_node(&self) -> DepNode<DefId> {
-        DepNode::TraitSelect(self.def_id(), vec![])
+        // Ideally, the dep-node would just have all the input types
+        // in it.  But they are limited to including def-ids. So as an
+        // approximation we include the def-ids for all nominal types
+        // found somewhere. This means that we will e.g. conflate the
+        // dep-nodes for `u32: SomeTrait` and `u64: SomeTrait`, but we
+        // would have distinct dep-nodes for `Vec<u32>: SomeTrait`,
+        // `Rc<u32>: SomeTrait`, and `(Vec<u32>, Rc<u32>): SomeTrait`.
+        // Note that it's always sound to conflate dep-nodes, it jus
+        // leads to more recompilation.
+        let def_ids: Vec<_> =
+            self.input_types()
+                .iter()
+                .flat_map(|t| t.walk())
+                .filter_map(|t| match t.sty {
+                    ty::TyStruct(adt_def, _) |
+                    ty::TyEnum(adt_def, _) =>
+                        Some(adt_def.did),
+                    _ =>
+                        None
+                })
+                .collect();
+        DepNode::TraitSelect(self.def_id(), def_ids)
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {
