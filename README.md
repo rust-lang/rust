@@ -40,6 +40,14 @@ installed alongside rustfmt. To only install rustfmt run
 ```
 cargo install --no-default-features rustfmt
 ```
+## Installing from source
+
+To install from source, first checkout to the tag or branch you want to install, then issue
+```
+cargo install --path  .
+```
+This will install `rustfmt` in your `~/.cargo/bin`. Make sure to add `~/cargo/bin` directory to 
+your PATH variable.
 
 ## Running
 
