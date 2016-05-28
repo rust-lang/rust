@@ -230,6 +230,7 @@ impl<T> BufRead for Cursor<T> where T: AsRef<[u8]> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for Cursor<&'a mut [u8]> {
+    #[inline]
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let pos = cmp::min(self.pos, self.inner.len() as u64);
         let amt = (&mut self.inner[(pos as usize)..]).write(data)?;
@@ -269,6 +270,7 @@ impl Write for Cursor<Vec<u8>> {
 
 #[stable(feature = "cursor_box_slice", since = "1.5.0")]
 impl Write for Cursor<Box<[u8]>> {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let pos = cmp::min(self.pos, self.inner.len() as u64);
         let amt = (&mut self.inner[(pos as usize)..]).write(buf)?;
