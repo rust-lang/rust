@@ -66,8 +66,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
                     // check for multiline code blocks
                     if real_doc.trim_left().starts_with("```") {
                         in_multiline = !in_multiline;
-                    }
-                    if !in_multiline {
+                    } else if !in_multiline {
                         docs.push((real_doc, span));
                     }
                 }
@@ -75,13 +74,13 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
         }
     }
 
-    for (doc, span) in docs {
-        let _ = check_doc(cx, valid_idents, doc, span);
+    if !docs.is_empty() {
+        let _ = check_doc(cx, valid_idents, &docs);
     }
 }
 
 #[allow(while_let_loop)] // #362
-pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Span) -> Result<(), ()> {
+pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span)]) -> Result<(), ()> {
     // In markdown, `_` can be used to emphasize something, or, is a raw `_` depending on context.
     // There really is no markdown specification that would disambiguate this properly. This is
     // what GitHub and Rustdoc do:
@@ -103,12 +102,22 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
     }
 
     #[derive(Clone, Debug)]
+    /// This type is used to iterate through the documentation characters, keeping the span at the
+    /// same time.
     struct Parser<'a> {
-        link: bool,
-        line: &'a str,
-        span: Span,
+        /// First byte of the current potential match
         current_word_begin: usize,
+        /// List of lines and their associated span
+        docs: &'a[(&'a str, Span)],
+        /// Index of the current line we are parsing
+        line: usize,
+        /// Whether we are in a link
+        link: bool,
+        /// Whether we are at the beginning of a line
         new_line: bool,
+        /// Whether we were to the end of a line last time `next` was called
+        reset: bool,
+        /// The position of the current character within the current line
         pos: usize,
     }
 
@@ -117,19 +126,31 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
             self.current_word_begin = self.pos;
         }
 
-        fn peek(&self) -> Option<char> {
-            self.line[self.pos..].chars().next()
+        fn line(&self) -> (&'a str, Span) {
+            self.docs[self.line]
         }
 
+        fn peek(&self) -> Option<char> {
+            self.line().0[self.pos..].chars().next()
+        }
+
+        #[allow(while_let_on_iterator)] // borrowck complains about for
         fn jump_to(&mut self, n: char) -> Result<(), ()> {
-            while let Some(c) = self.next() {
+            while let Some((_, c)) = self.next() {
                 if c == n {
                     self.advance_begin();
                     return Ok(());
                 }
             }
 
-            return Err(());
+            Err(())
+        }
+
+        fn next_line(&mut self) {
+            self.pos = 0;
+            self.current_word_begin = 0;
+            self.line += 1;
+            self.new_line = true;
         }
 
         fn put_back(&mut self, c: char) {
@@ -144,46 +165,64 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
             debug_assert_eq!(end as u32 as usize, end);
             debug_assert_eq!(begin as u32 as usize, begin);
 
-            let mut span = self.span;
+            let (doc, mut span) = self.line();
             span.hi = span.lo + BytePos(end as u32);
             span.lo = span.lo + BytePos(begin as u32);
 
-            (&self.line[begin..end], span)
+            (&doc[begin..end], span)
         }
     }
 
     impl<'a> Iterator for Parser<'a> {
-        type Item = char;
+        type Item = (bool, char);
 
-        fn next(&mut self) -> Option<char> {
-            let mut chars = self.line[self.pos..].chars();
-            let c = chars.next();
+        fn next(&mut self) -> Option<(bool, char)> {
+            while self.line < self.docs.len() {
+                if self.reset {
+                    self.line += 1;
+                    self.reset = false;
+                    self.pos = 0;
+                    self.current_word_begin = 0;
+                }
 
-            if let Some(c) = c {
-                self.pos += c.len_utf8();
-            } else {
-                // TODO: new line
+                let mut chars = self.line().0[self.pos..].chars();
+                let c = chars.next();
+
+                if let Some(c) = c {
+                    self.pos += c.len_utf8();
+                    let new_line = self.new_line;
+                    self.new_line = c == '\n' || (self.new_line && c.is_whitespace());
+                    return Some((new_line, c));
+                } else if self.line == self.docs.len() - 1 {
+                    return None;
+                } else {
+                    self.new_line = true;
+                    self.reset = true;
+                    self.pos += 1;
+                    return Some((true, '\n'));
+                }
             }
 
-            c
+            None
         }
     }
 
     let mut parser = Parser {
-        link: false,
-        line: doc,
-        span: span,
         current_word_begin: 0,
+        docs: docs,
+        line: 0,
+        link: false,
         new_line: true,
+        reset: false,
         pos: 0,
     };
 
     loop {
         match parser.next() {
-            Some(c) => {
+            Some((new_line, c)) => {
                 match c {
                     '#' if new_line => { // don’t warn on titles
-                        try!(parser.jump_to('\n'));
+                        parser.next_line();
                     }
                     '`' => {
                         try!(parser.jump_to('`'));
@@ -191,11 +230,12 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
                     '[' => {
                         // Check for a reference definition `[foo]:` at the beginning of a line
                         let mut link = true;
-                        if parser.new_line {
+
+                        if new_line {
                             let mut lookup_parser = parser.clone();
-                            if let Some(_) = lookup_parser.find(|&c| c == ']') {
-                                if let Some(':') = lookup_parser.next() {
-                                    try!(lookup_parser.jump_to(')'));
+                            if let Some(_) = lookup_parser.find(|&(_, c)| c == ']') {
+                                if let Some((_, ':')) = lookup_parser.next() {
+                                    lookup_parser.next_line();
                                     parser = lookup_parser;
                                     link = false;
                                 }
@@ -219,7 +259,7 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
                         parser.advance_begin();
                     }
                     _ => {
-                        if let Some(c) = parser.find(|&c| !is_path_char(c)) {
+                        if let Some((_, c)) = parser.find(|&(_, c)| !is_path_char(c)) {
                             parser.put_back(c);
                         }
 
@@ -229,7 +269,6 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
                     }
                 }
 
-                parser.new_line = c == '\n' || (parser.new_line && c.is_whitespace());
             }
             None => break,
         }
