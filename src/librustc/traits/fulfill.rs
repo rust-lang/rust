@@ -171,6 +171,8 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         // debug output much nicer to read and so on.
         let obligation = infcx.resolve_type_vars_if_possible(&obligation);
 
+        infcx.obligations_in_snapshot.set(true);
+
         if infcx.tcx.fulfilled_predicates.borrow().check_duplicate(&obligation.predicate)
         {
             return

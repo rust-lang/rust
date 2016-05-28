@@ -411,14 +411,17 @@ pub struct EscapeUnicode {
     hex_digit_idx: usize,
 }
 
+// The enum values are ordered so that their representation is the
+// same as the remaining length (besides the hexadecimal digits). This
+// likely makes `len()` a single load from memory) and inline-worth.
 #[derive(Clone, Debug)]
 enum EscapeUnicodeState {
-    Backslash,
-    Type,
-    LeftBrace,
-    Value,
-    RightBrace,
     Done,
+    RightBrace,
+    Value,
+    LeftBrace,
+    Type,
+    Backslash,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -457,17 +460,15 @@ impl Iterator for EscapeUnicode {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = match self.state {
-            EscapeUnicodeState::Backslash => 5,
-            EscapeUnicodeState::Type => 4,
-            EscapeUnicodeState::LeftBrace => 3,
-            EscapeUnicodeState::Value => 2,
-            EscapeUnicodeState::RightBrace => 1,
-            EscapeUnicodeState::Done => 0,
-        };
-        let n = n + self.hex_digit_idx;
+        let n = self.len();
         (n, Some(n))
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.len()
     }
 
     fn last(self) -> Option<char> {
@@ -479,6 +480,22 @@ impl Iterator for EscapeUnicode {
             EscapeUnicodeState::LeftBrace |
             EscapeUnicodeState::Type |
             EscapeUnicodeState::Backslash => Some('}'),
+        }
+    }
+}
+
+#[stable(feature = "exact_size_escape", since = "1.11.0")]
+impl ExactSizeIterator for EscapeUnicode {
+    #[inline]
+    fn len(&self) -> usize {
+        // The match is a single memory access with no branching
+        self.hex_digit_idx + match self.state {
+            EscapeUnicodeState::Done => 0,
+            EscapeUnicodeState::RightBrace => 1,
+            EscapeUnicodeState::Value => 2,
+            EscapeUnicodeState::LeftBrace => 3,
+            EscapeUnicodeState::Type => 4,
+            EscapeUnicodeState::Backslash => 5,
         }
     }
 }
@@ -498,9 +515,9 @@ pub struct EscapeDefault {
 
 #[derive(Clone, Debug)]
 enum EscapeDefaultState {
-    Backslash(char),
-    Char(char),
     Done,
+    Char(char),
+    Backslash(char),
     Unicode(EscapeUnicode),
 }
 
@@ -523,22 +540,15 @@ impl Iterator for EscapeDefault {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.state {
-            EscapeDefaultState::Char(_) => (1, Some(1)),
-            EscapeDefaultState::Backslash(_) => (2, Some(2)),
-            EscapeDefaultState::Unicode(ref iter) => iter.size_hint(),
-            EscapeDefaultState::Done => (0, Some(0)),
-        }
+        let n = self.len();
+        (n, Some(n))
     }
 
+    #[inline]
     fn count(self) -> usize {
-        match self.state {
-            EscapeDefaultState::Char(_) => 1,
-            EscapeDefaultState::Unicode(iter) => iter.count(),
-            EscapeDefaultState::Done => 0,
-            EscapeDefaultState::Backslash(_) => 2,
-        }
+        self.len()
     }
 
     fn nth(&mut self, n: usize) -> Option<char> {
@@ -574,6 +584,18 @@ impl Iterator for EscapeDefault {
             EscapeDefaultState::Unicode(iter) => iter.last(),
             EscapeDefaultState::Done => None,
             EscapeDefaultState::Backslash(c) | EscapeDefaultState::Char(c) => Some(c),
+        }
+    }
+}
+
+#[stable(feature = "exact_size_escape", since = "1.11.0")]
+impl ExactSizeIterator for EscapeDefault {
+    fn len(&self) -> usize {
+        match self.state {
+            EscapeDefaultState::Done => 0,
+            EscapeDefaultState::Char(_) => 1,
+            EscapeDefaultState::Backslash(_) => 2,
+            EscapeDefaultState::Unicode(ref iter) => iter.len(),
         }
     }
 }

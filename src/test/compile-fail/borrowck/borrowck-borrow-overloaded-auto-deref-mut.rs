@@ -99,7 +99,7 @@ fn assign_field1<'a>(x: Own<Point>) {
 }
 
 fn assign_field2<'a>(x: &'a Own<Point>) {
-    x.y = 3; //~ ERROR cannot assign
+    x.y = 3; //~ ERROR cannot borrow
 }
 
 fn assign_field3<'a>(x: &'a mut Own<Point>) {

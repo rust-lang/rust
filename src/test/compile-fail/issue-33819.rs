@@ -7,16 +7,12 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-#![recursion_limit="2"]
-struct Foo;
-
-impl Foo {
-    fn foo(&self) {}
-}
-
 fn main() {
-    let foo = Foo;
-    let ref_foo = &&Foo;
-    ref_foo.foo(); //~ ERROR E0055
+    let mut op = Some(2);
+    match op {
+        Some(ref v) => { let a = &mut v; },
+        //~^ ERROR:cannot borrow immutable
+        //~| use `ref mut v` here to make mutable
+        None => {},
+    }
 }

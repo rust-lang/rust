@@ -98,6 +98,7 @@ fn foo() {
     let text = make_string(&lines);
     assert_eq!(&text[..], &"
  --> foo.rs:3:2
+  |>
 3 |> \tbar;
   |> \t^^^
 "[1..]);
@@ -130,6 +131,7 @@ fn foo() {
     println!("text=\n{}", text);
     assert_eq!(&text[..], &r#"
  ::: foo.rs
+  |>
 3 |>     vec.push(vec.pop().unwrap());
   |>     ---      ---                - previous borrow ends here
   |>     |        |
@@ -199,12 +201,14 @@ fn bar() {
     // Note that the `|>` remain aligned across both files:
     assert_eq!(&text[..], &r#"
    --> foo.rs:3:14
+    |>
 3   |>     vec.push(vec.pop().unwrap());
     |>     ---      ^^^                - c
     |>     |        |
     |>     |        b
     |>     a
    ::: bar.rs
+    |>
 17  |>     vec.push();
     |>     ---       - f
     |>     |
@@ -249,6 +253,7 @@ fn foo() {
     println!("text=\n{}", text);
     assert_eq!(&text[..], &r#"
    ::: foo.rs
+    |>
 3   |>     let name = find_id(&data, 22).unwrap();
     |>                         ---- immutable borrow begins here
 ...
@@ -288,6 +293,7 @@ fn foo() {
     println!("text=r#\"\n{}\".trim_left()", text);
     assert_eq!(&text[..], &r#"
  ::: foo.rs
+  |>
 3 |>     vec.push(vec.pop().unwrap());
   |>     --------           ------ D
   |>     ||
@@ -324,6 +330,7 @@ fn foo() {
     println!("text=r#\"\n{}\".trim_left()", text);
     assert_eq!(&text[..], &r#"
  ::: foo.rs
+  |>
 3 |>     vec.push(vec.pop().unwrap());
   |>     ---      ---                - previous borrow ends here
   |>     |        |
@@ -362,6 +369,7 @@ fn foo() {
     println!("text=r#\"\n{}\".trim_left()", text);
     assert_eq!(&text[..], &r#"
    ::: foo.rs
+    |>
 4   |>     let mut vec2 = vec;
     |>                    --- `vec` moved here because it has type `collections::vec::Vec<i32>`
 ...
@@ -398,6 +406,7 @@ fn foo() {
     println!("text=&r#\"\n{}\n\"#[1..]", text);
     assert_eq!(text, &r#"
  ::: foo.rs
+  |>
 3 |>     let mut vec = vec![0, 1, 2];
   |>             ---   ---
 4 |>     let mut vec2 = vec;
@@ -429,6 +438,7 @@ impl SomeTrait for () {
     println!("r#\"\n{}\"", text);
     assert_eq!(text, &r#"
  ::: foo.rs
+  |>
 3 |>     fn foo(x: u32) {
   |>     -
 "#[1..]);
@@ -458,6 +468,7 @@ fn span_overlap_label() {
     println!("r#\"\n{}\"", text);
     assert_eq!(text, &r#"
  ::: foo.rs
+  |>
 2 |>     fn foo(x: u32) {
   |>     --------------
   |>     |      |
@@ -492,6 +503,7 @@ fn span_overlap_label2() {
     println!("r#\"\n{}\"", text);
     assert_eq!(text, &r#"
  ::: foo.rs
+  |>
 2 |>     fn foo(x: u32) {
   |>     --------------
   |>     |      |
@@ -537,6 +549,7 @@ fn span_overlap_label3() {
     println!("r#\"\n{}\"", text);
     assert_eq!(text, &r#"
  ::: foo.rs
+  |>
 3 |>        let closure = || {
   |>                      - foo
 4 |>            inner
@@ -577,6 +590,7 @@ fn main() {
     println!("r#\"\n{}\"", text);
     assert_eq!(text, &r#"
   --> foo.rs:11:2
+   |>
 11 |> }
    |>  -
 "#[1..]);
