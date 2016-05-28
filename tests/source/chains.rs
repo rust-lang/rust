@@ -133,3 +133,18 @@ fn try_shorthand() {
                               |tcx| tcx.lookup_item_type(def_id).generics)?;
     fooooooooooooooooooooooooooo()?.bar()?.baaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaz()?;
 }
+
+fn issue_1004() {
+         match *self {
+                ty::ImplOrTraitItem::MethodTraitItem(ref i) => write!(f, "{:?}", i),
+                ty::ImplOrTraitItem::ConstTraitItem(ref i) => write!(f, "{:?}", i),
+                ty::ImplOrTraitItem::TypeTraitItem(ref i) => write!(f, "{:?}", i),
+            }
+            ?;
+
+            ty::tls::with(|tcx| {
+                let tap = ty::Binder(TraitAndProjections(principal, projections));
+                in_binder(f, tcx, &ty::Binder(""), Some(tap))
+            })
+            ?;
+}
