@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// compile-flags: -Z continue-parse-after-error
+fn /// document
+foo() {}
+//~^^ ERROR expected identifier, found `/// document`
 
 fn main() {
-    println!("Hi"); /// hi
-    //~^ ERROR found a documentation comment that doesn't document anything
-    //~| HELP maybe a comment was intended
+    foo();
 }
