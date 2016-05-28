@@ -46,10 +46,10 @@ extern crate log;
 extern crate rustc_back;
 extern crate rustc_const_eval;
 
-pub use rustc::lint as lint;
-pub use rustc::middle as middle;
-pub use rustc::session as session;
-pub use rustc::util as util;
+pub use rustc::lint;
+pub use rustc::middle;
+pub use rustc::session;
+pub use rustc::util;
 
 use session::Session;
 use lint::LintId;
@@ -136,13 +136,24 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                           MissingDebugImplementations,
                           );
 
-    add_lint_group!(sess, "bad_style",
-                    NON_CAMEL_CASE_TYPES, NON_SNAKE_CASE, NON_UPPER_CASE_GLOBALS);
+    add_lint_group!(sess,
+                    "bad_style",
+                    NON_CAMEL_CASE_TYPES,
+                    NON_SNAKE_CASE,
+                    NON_UPPER_CASE_GLOBALS);
 
-    add_lint_group!(sess, "unused",
-                    UNUSED_IMPORTS, UNUSED_VARIABLES, UNUSED_ASSIGNMENTS, DEAD_CODE,
-                    UNUSED_MUT, UNREACHABLE_CODE, UNUSED_MUST_USE,
-                    UNUSED_UNSAFE, PATH_STATEMENTS, UNUSED_ATTRIBUTES);
+    add_lint_group!(sess,
+                    "unused",
+                    UNUSED_IMPORTS,
+                    UNUSED_VARIABLES,
+                    UNUSED_ASSIGNMENTS,
+                    DEAD_CODE,
+                    UNUSED_MUT,
+                    UNREACHABLE_CODE,
+                    UNUSED_MUST_USE,
+                    UNUSED_UNSAFE,
+                    PATH_STATEMENTS,
+                    UNUSED_ATTRIBUTES);
 
     // Guidelines for creating a future incompatibility lint:
     //
@@ -152,7 +163,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     //   and include the full URL.
     // - Later, change lint to error
     // - Eventually, remove lint
-    store.register_future_incompatible(sess, vec![
+    store.register_future_incompatible(sess,
+                                       vec![
         FutureIncompatibleInfo {
             id: LintId::of(PRIVATE_IN_PUBLIC),
             reference: "the explanation for E0446 (`--explain E0446`)",
@@ -209,10 +221,12 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
 
     // Register renamed and removed lints
     store.register_renamed("unknown_features", "unused_features");
-    store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
+    store.register_removed("unsigned_negation",
+                           "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");
     store.register_removed("raw_pointer_derive", "using derive with raw pointers is ok");
     // This was renamed to raw_pointer_derive, which was then removed,
     // so it is also considered removed
-    store.register_removed("raw_pointer_deriving", "using derive with raw pointers is ok");
+    store.register_removed("raw_pointer_deriving",
+                           "using derive with raw pointers is ok");
 }
