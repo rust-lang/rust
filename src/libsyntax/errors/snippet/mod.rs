@@ -478,6 +478,13 @@ impl FileInfo {
                         }],
                         kind: RenderedLineKind::PrimaryFileName,
                     });
+                    output.push(RenderedLine {
+                        text: vec![StyledString {
+                            text: "".to_string(),
+                            style: Style::FileNameStyle,
+                        }],
+                        kind: RenderedLineKind::Annotations,
+                    });
                 }
                 None => {
                     output.push(RenderedLine {
@@ -486,6 +493,13 @@ impl FileInfo {
                             style: Style::FileNameStyle,
                         }],
                         kind: RenderedLineKind::OtherFileName,
+                    });
+                    output.push(RenderedLine {
+                        text: vec![StyledString {
+                            text: "".to_string(),
+                            style: Style::FileNameStyle,
+                        }],
+                        kind: RenderedLineKind::Annotations,
                     });
                 }
             }

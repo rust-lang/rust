@@ -682,6 +682,7 @@ mod test {
         println!("r#\"\n{}\"#", str);
         assert_eq!(str, &r#"
   --> dummy.txt:11:1
+   |>
 11 |>         e-lä-vän
    |> ^
 "#[1..]);
@@ -746,6 +747,7 @@ mod test {
 
         let expect_start = &r#"
  --> dummy.txt:1:6
+  |>
 1 |> _____aaaaaa____bbbbbb__cccccdd_
   |>      ^^^^^^    ^^^^^^  ^^^^^^^
 "#[1..];
@@ -818,6 +820,7 @@ mod test {
 
         let expect0 = &r#"
    --> dummy.txt:5:1
+    |>
 5   |> ccccc
     |> ^
 ...
@@ -830,6 +833,7 @@ mod test {
 
         let expect = &r#"
    --> dummy.txt:1:1
+    |>
 1   |> aaaaa
     |> ^
 ...

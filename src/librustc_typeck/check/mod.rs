@@ -129,6 +129,7 @@ use rustc_back::slice;
 use rustc_const_eval::eval_repeat_count;
 
 mod assoc;
+mod autoderef;
 pub mod dropck;
 pub mod _match;
 pub mod writeback;
@@ -1412,17 +1413,6 @@ impl<'a, 'gcx, 'tcx> RegionScope for FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-/// Whether `autoderef` requires types to resolve.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum UnresolvedTypeAction {
-    /// Produce an error and return `TyError` whenever a type cannot
-    /// be resolved (i.e. it is `TyInfer`).
-    Error,
-    /// Go on without emitting any errors, and return the unresolved
-    /// type. Useful for probing, e.g. in coercions.
-    Ignore
-}
-
 /// Controls whether the arguments are tupled. This is used for the call
 /// operator.
 ///
@@ -2228,120 +2218,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Executes an autoderef loop for the type `t`. At each step, invokes `should_stop`
-    /// to decide whether to terminate the loop. Returns the final type and number of
-    /// derefs that it performed.
-    ///
-    /// Note: this method does not modify the adjustments table. The caller is responsible for
-    /// inserting an AutoAdjustment record into the `self` using one of the suitable methods.
-    pub fn autoderef<'b, E, I, T, F>(&self,
-                                     sp: Span,
-                                     base_ty: Ty<'tcx>,
-                                     maybe_exprs: E,
-                                     unresolved_type_action: UnresolvedTypeAction,
-                                     mut lvalue_pref: LvaluePreference,
-                                     mut should_stop: F)
-                                     -> (Ty<'tcx>, usize, Option<T>)
-        // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
-        where E: Fn() -> I,
-              I: IntoIterator<Item=&'b hir::Expr>,
-              F: FnMut(Ty<'tcx>, usize) -> Option<T>,
-    {
-        debug!("autoderef(base_ty={:?}, lvalue_pref={:?})",
-               base_ty, lvalue_pref);
-
-        let mut t = base_ty;
-        for autoderefs in 0..self.tcx.sess.recursion_limit.get() {
-            let resolved_t = match unresolved_type_action {
-                UnresolvedTypeAction::Error => {
-                    self.structurally_resolved_type(sp, t)
-                }
-                UnresolvedTypeAction::Ignore => {
-                    // We can continue even when the type cannot be resolved
-                    // (i.e. it is an inference variable) because `Ty::builtin_deref`
-                    // and `try_overloaded_deref` both simply return `None`
-                    // in such a case without producing spurious errors.
-                    self.resolve_type_vars_if_possible(&t)
-                }
-            };
-            if resolved_t.references_error() {
-                return (resolved_t, autoderefs, None);
-            }
-
-            match should_stop(resolved_t, autoderefs) {
-                Some(x) => return (resolved_t, autoderefs, Some(x)),
-                None => {}
-            }
-
-            // Otherwise, deref if type is derefable:
-
-            // Super subtle: it might seem as though we should
-            // pass `opt_expr` to `try_overloaded_deref`, so that
-            // the (implicit) autoref of using an overloaded deref
-            // would get added to the adjustment table. However we
-            // do not do that, because it's kind of a
-            // "meta-adjustment" -- instead, we just leave it
-            // unrecorded and know that there "will be" an
-            // autoref. regionck and other bits of the code base,
-            // when they encounter an overloaded autoderef, have
-            // to do some reconstructive surgery. This is a pretty
-            // complex mess that is begging for a proper MIR.
-            let mt = if let Some(mt) = resolved_t.builtin_deref(false, lvalue_pref) {
-                mt
-            } else if let Some(method) = self.try_overloaded_deref(sp, None,
-                                                                   resolved_t, lvalue_pref) {
-                for expr in maybe_exprs() {
-                    let method_call = MethodCall::autoderef(expr.id, autoderefs as u32);
-                    self.tables.borrow_mut().method_map.insert(method_call, method);
-                }
-                self.make_overloaded_lvalue_return_type(method)
-            } else {
-                return (resolved_t, autoderefs, None);
-            };
-
-            t = mt.ty;
-            if mt.mutbl == hir::MutImmutable {
-                lvalue_pref = NoPreference;
-            }
-        }
-
-        // We've reached the recursion limit, error gracefully.
-        span_err!(self.tcx.sess, sp, E0055,
-            "reached the recursion limit while auto-dereferencing {:?}",
-            base_ty);
-        (self.tcx.types.err, 0, None)
-    }
-
-    fn try_overloaded_deref(&self,
-                            span: Span,
-                            base_expr: Option<&hir::Expr>,
-                            base_ty: Ty<'tcx>,
-                            lvalue_pref: LvaluePreference)
-                            -> Option<MethodCallee<'tcx>>
-    {
-        // Try DerefMut first, if preferred.
-        let method = match (lvalue_pref, self.tcx.lang_items.deref_mut_trait()) {
-            (PreferMutLvalue, Some(trait_did)) => {
-                self.lookup_method_in_trait(span, base_expr,
-                                            token::intern("deref_mut"), trait_did,
-                                            base_ty, None)
-            }
-            _ => None
-        };
-
-        // Otherwise, fall back to Deref.
-        let method = match (method, self.tcx.lang_items.deref_trait()) {
-            (None, Some(trait_did)) => {
-                self.lookup_method_in_trait(span, base_expr,
-                                            token::intern("deref"), trait_did,
-                                            base_ty, None)
-            }
-            (method, _) => method
-        };
-
-        method
-    }
-
     /// For the overloaded lvalue expressions (`*x`, `x[3]`), the trait
     /// returns a type of `&T`, but the actual type we assign to the
     /// *expression* is `T`. So this function just peels off the return
@@ -2371,29 +2247,28 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // autoderef that normal method probing does. They could likely be
         // consolidated.
 
-        let (ty, autoderefs, final_mt) = self.autoderef(base_expr.span,
-                                                        base_ty,
-                                                        || Some(base_expr),
-                                                        UnresolvedTypeAction::Error,
-                                                        lvalue_pref,
-                                                        |adj_ty, idx| {
-            self.try_index_step(MethodCall::expr(expr.id), expr, base_expr,
-                                adj_ty, idx, false, lvalue_pref, idx_ty)
-        });
+        let mut autoderef = self.autoderef(base_expr.span, base_ty);
 
-        if final_mt.is_some() {
-            return final_mt;
-        }
+        while let Some((adj_ty, autoderefs)) = autoderef.next() {
+            if let Some(final_mt) = self.try_index_step(
+                MethodCall::expr(expr.id),
+                expr, base_expr, adj_ty, autoderefs,
+                false, lvalue_pref, idx_ty)
+            {
+                autoderef.finalize(lvalue_pref, Some(base_expr));
+                return Some(final_mt);
+            }
 
-        // After we have fully autoderef'd, if the resulting type is [T; n], then
-        // do a final unsized coercion to yield [T].
-        if let ty::TyArray(element_ty, _) = ty.sty {
-            let adjusted_ty = self.tcx.mk_slice(element_ty);
-            self.try_index_step(MethodCall::expr(expr.id), expr, base_expr,
-                                adjusted_ty, autoderefs, true, lvalue_pref, idx_ty)
-        } else {
-            None
+            if let ty::TyArray(element_ty, _) = adj_ty.sty {
+                autoderef.finalize(lvalue_pref, Some(base_expr));
+                let adjusted_ty = self.tcx.mk_slice(element_ty);
+                return self.try_index_step(
+                    MethodCall::expr(expr.id), expr, base_expr,
+                    adjusted_ty, autoderefs, true, lvalue_pref, idx_ty);
+            }
         }
+        autoderef.unambiguous_final_ty();
+        None
     }
 
     /// To type-check `base_expr[index_expr]`, we progressively autoderef
@@ -3034,32 +2909,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let expr_t = self.structurally_resolved_type(expr.span,
                                                      self.expr_ty(base));
         let mut private_candidate = None;
-        let (_, autoderefs, field_ty) = self.autoderef(expr.span,
-                                                       expr_t,
-                                                       || Some(base),
-                                                       UnresolvedTypeAction::Error,
-                                                       lvalue_pref,
-                                                       |base_t, _| {
-                if let ty::TyStruct(base_def, substs) = base_t.sty {
-                    debug!("struct named {:?}",  base_t);
-                    if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
-                        let field_ty = self.field_ty(expr.span, field, substs);
-                        if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
-                            return Some(field_ty);
-                        }
-                        private_candidate = Some((base_def.did, field_ty));
+        let mut autoderef = self.autoderef(expr.span, expr_t);
+        while let Some((base_t, autoderefs)) = autoderef.next() {
+            if let ty::TyStruct(base_def, substs) = base_t.sty {
+                debug!("struct named {:?}",  base_t);
+                if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
+                    let field_ty = self.field_ty(expr.span, field, substs);
+                    if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
+                        autoderef.finalize(lvalue_pref, Some(base));
+                        self.write_ty(expr.id, field_ty);
+                        self.write_autoderef_adjustment(base.id, autoderefs);
+                        return;
                     }
+                    private_candidate = Some((base_def.did, field_ty));
                 }
-                None
-            });
-        match field_ty {
-            Some(field_ty) => {
-                self.write_ty(expr.id, field_ty);
-                self.write_autoderef_adjustment(base.id, autoderefs);
-                return;
             }
-            None => {}
         }
+        autoderef.unambiguous_final_ty();
 
         if let Some((did, field_ty)) = private_candidate {
             let struct_path = self.tcx().item_path_str(did);
@@ -3132,42 +2998,39 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                      self.expr_ty(base));
         let mut private_candidate = None;
         let mut tuple_like = false;
-        let (_, autoderefs, field_ty) = self.autoderef(expr.span,
-                                                       expr_t,
-                                                       || Some(base),
-                                                       UnresolvedTypeAction::Error,
-                                                       lvalue_pref,
-                                                       |base_t, _| {
-                let (base_def, substs) = match base_t.sty {
-                    ty::TyStruct(base_def, substs) => (base_def, substs),
-                    ty::TyTuple(ref v) => {
-                        tuple_like = true;
-                        return if idx.node < v.len() { Some(v[idx.node]) } else { None }
-                    }
-                    _ => return None,
-                };
+        let mut autoderef = self.autoderef(expr.span, expr_t);
+        while let Some((base_t, autoderefs)) = autoderef.next() {
+            let field = match base_t.sty {
+                ty::TyStruct(base_def, substs) => {
+                    tuple_like = base_def.struct_variant().is_tuple_struct();
+                    if !tuple_like { continue }
 
-                tuple_like = base_def.struct_variant().is_tuple_struct();
-                if !tuple_like { return None }
-
-                debug!("tuple struct named {:?}",  base_t);
-                if let Some(field) = base_def.struct_variant().fields.get(idx.node) {
-                    let field_ty = self.field_ty(expr.span, field, substs);
-                    if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
-                        return Some(field_ty);
-                    }
-                    private_candidate = Some((base_def.did, field_ty));
+                    debug!("tuple struct named {:?}",  base_t);
+                    base_def.struct_variant().fields.get(idx.node).and_then(|field| {
+                        let field_ty = self.field_ty(expr.span, field, substs);
+                        private_candidate = Some((base_def.did, field_ty));
+                        if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
+                            Some(field_ty)
+                        } else {
+                            None
+                        }
+                    })
                 }
-                None
-            });
-        match field_ty {
-            Some(field_ty) => {
+                ty::TyTuple(ref v) => {
+                    tuple_like = true;
+                    v.get(idx.node).cloned()
+                }
+                _ => continue
+            };
+
+            if let Some(field_ty) = field {
+                autoderef.finalize(lvalue_pref, Some(base));
                 self.write_ty(expr.id, field_ty);
                 self.write_autoderef_adjustment(base.id, autoderefs);
                 return;
             }
-            None => {}
         }
+        autoderef.unambiguous_final_ty();
 
         if let Some((did, field_ty)) = private_candidate {
             let struct_path = self.tcx().item_path_str(did);

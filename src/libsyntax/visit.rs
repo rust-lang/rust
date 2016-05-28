@@ -233,12 +233,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                     visitor.visit_path(path, item.id);
                 }
                 ViewPathList(ref prefix, ref list) => {
-                    if !list.is_empty() {
-                        for item in list {
-                            visitor.visit_path_list_item(prefix, item)
-                        }
-                    } else {
-                        visitor.visit_path(prefix, item.id);
+                    visitor.visit_path(prefix, item.id);
+                    for item in list {
+                        visitor.visit_path_list_item(prefix, item)
                     }
                 }
             }
@@ -368,12 +365,8 @@ pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
     }
 }
 
-pub fn walk_path_list_item<'v, V: Visitor<'v>>(visitor: &mut V, prefix: &'v Path,
+pub fn walk_path_list_item<'v, V: Visitor<'v>>(visitor: &mut V, _prefix: &'v Path,
                                                item: &'v PathListItem) {
-    for segment in &prefix.segments {
-        visitor.visit_path_segment(prefix.span, segment);
-    }
-
     walk_opt_ident(visitor, item.span, item.node.name());
     walk_opt_ident(visitor, item.span, item.node.rename());
 }

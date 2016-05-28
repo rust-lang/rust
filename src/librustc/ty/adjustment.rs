@@ -235,8 +235,9 @@ impl<'a, 'gcx, 'tcx> ty::TyS<'tcx> {
             None => {
                 span_bug!(
                     expr_span,
-                    "the {}th autoderef failed: {}",
+                    "the {}th autoderef for {} failed: {}",
                     autoderef,
+                    expr_id,
                     adjusted_ty);
             }
         }

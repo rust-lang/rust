@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// rustc-env:RUST_NEW_ERROR_FORMAT
 extern {
     fn write(fildes: i32, buf: *const i8, nbyte: u64) -> i64;
 }
@@ -24,25 +25,16 @@ macro_rules! write {
         unsafe {
             write(stdout, $arr.as_ptr() as *const i8,
                   $arr.len() * size_of($arr[0]));
-            //~^ ERROR mismatched types
-            //~| expected u64, found usize
-            //~| expected type
-            //~| found type
         }
     }}
 }
 
 macro_rules! cast {
-    ($x:expr) => ($x as ()) //~ ERROR non-scalar cast
+    ($x:expr) => ($x as ())
 }
 
 fn main() {
     let hello = ['H', 'e', 'y'];
     write!(hello);
-    //~^ NOTE in this expansion of write!
-    //~| NOTE in this expansion of write!
-    //~| NOTE in this expansion of write!
-
     cast!(2);
-    //~^ NOTE in this expansion of cast!
 }

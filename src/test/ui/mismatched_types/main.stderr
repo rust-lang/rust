@@ -1,5 +1,6 @@
 error: mismatched types [--explain E0308]
   --> $DIR/main.rs:14:18
+   |>
 14 |>     let x: u32 = (
    |>                  ^ expected u32, found ()
 note: expected type `u32`

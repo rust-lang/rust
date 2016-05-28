@@ -276,6 +276,12 @@ fn eu_iterator_specializations() {
             // Check last
             assert_eq!(iter.clone().last(), Some('}'));
 
+            // Check len
+            assert_eq!(iter.len(), len - offset);
+
+            // Check size_hint (= len in ExactSizeIterator)
+            assert_eq!(iter.size_hint(), (iter.len(), Some(iter.len())));
+
             // Check counting
             assert_eq!(iter.clone().count(), len - offset);
 

@@ -207,7 +207,7 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
     debug!("project_and_unify_type(obligation={:?})",
            obligation);
 
-    let Normalized { value: normalized_ty, obligations } =
+    let Normalized { value: normalized_ty, mut obligations } =
         match opt_normalize_projection_type(selcx,
                                             obligation.predicate.projection_ty.clone(),
                                             obligation.cause.clone(),
@@ -224,8 +224,9 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
     let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
     match infcx.eq_types(true, origin, normalized_ty, obligation.predicate.ty) {
         Ok(InferOk { obligations: inferred_obligations, .. }) => {
-            // FIXME(#32730) propagate obligations
+            // FIXME(#32730) once obligations are generated in inference, drop this assertion
             assert!(inferred_obligations.is_empty());
+            obligations.extend(inferred_obligations);
             Ok(Some(obligations))
         },
         Err(err) => Err(MismatchedProjectionTypes { err: err }),
@@ -710,7 +711,8 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
                                               origin,
                                               data_poly_trait_ref,
                                               obligation_poly_trait_ref)
-                        // FIXME(#32730) propagate obligations
+                        // FIXME(#32730) once obligations are propagated from unification in
+                        // inference, drop this assertion
                         .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
                         .is_ok()
                 });
@@ -1047,8 +1049,8 @@ fn confirm_fn_pointer_candidate<'cx, 'gcx, 'tcx>(
     fn_pointer_vtable: VtableFnPointerData<'tcx, PredicateObligation<'tcx>>)
     -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
-    // FIXME(#32730) propagate obligations (fn pointer vtable nested obligations ONLY come from
-    // unification in inference)
+    // FIXME(#32730) drop this assertion once obligations are propagated from inference (fn pointer
+    // vtable nested obligations ONLY come from unification in inference)
     assert!(fn_pointer_vtable.nested.is_empty());
     let fn_type = selcx.infcx().shallow_resolve(fn_pointer_vtable.fn_ty);
     let sig = fn_type.fn_sig();
@@ -1130,13 +1132,14 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
                obligation.predicate.item_name);
 
     let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
-    match infcx.eq_trait_refs(false,
-                              origin,
-                              obligation.predicate.trait_ref.clone(),
-                              projection.projection_ty.trait_ref.clone()) {
+    let obligations = match infcx.eq_trait_refs(false,
+                                                origin,
+                                                obligation.predicate.trait_ref.clone(),
+                                                projection.projection_ty.trait_ref.clone()) {
         Ok(InferOk { obligations, .. }) => {
-            // FIXME(#32730) propagate obligations
+            // FIXME(#32730) once obligations are generated in inference, remove this assertion
             assert!(obligations.is_empty());
+            obligations
         }
         Err(e) => {
             span_bug!(
@@ -1146,9 +1149,9 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
                 projection,
                 e);
         }
-    }
+    };
 
-    (projection.ty, vec!())
+    (projection.ty, obligations)
 }
 
 fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
