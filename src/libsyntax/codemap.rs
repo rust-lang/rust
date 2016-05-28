@@ -1258,31 +1258,6 @@ impl CodeMap {
         return a;
     }
 
-    /// Check if the backtrace `subtrace` contains `suptrace` as a prefix.
-    pub fn more_specific_trace(&self,
-                              mut subtrace: ExpnId,
-                              suptrace: ExpnId)
-                              -> bool {
-        loop {
-            if subtrace == suptrace {
-                return true;
-            }
-
-            let stop = self.with_expn_info(subtrace, |opt_expn_info| {
-                if let Some(expn_info) = opt_expn_info {
-                    subtrace = expn_info.call_site.expn_id;
-                    false
-                } else {
-                    true
-                }
-            });
-
-            if stop {
-                return false;
-            }
-        }
-    }
-
     pub fn record_expansion(&self, expn_info: ExpnInfo) -> ExpnId {
         let mut expansions = self.expansions.borrow_mut();
         expansions.push(expn_info);

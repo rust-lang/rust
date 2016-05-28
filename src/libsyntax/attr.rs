@@ -884,82 +884,109 @@ impl AttributesExt for Vec<Attribute> {
     }
 }
 
+pub trait HasAttrs: Sized {
+    fn attrs(&self) -> &[ast::Attribute];
+    fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self;
+}
+
 /// A cheap way to add Attributes to an AST node.
 pub trait WithAttrs {
     // FIXME: Could be extended to anything IntoIter<Item=Attribute>
     fn with_attrs(self, attrs: ThinAttributes) -> Self;
 }
 
-impl WithAttrs for P<Expr> {
+impl<T: HasAttrs> WithAttrs for T {
     fn with_attrs(self, attrs: ThinAttributes) -> Self {
-        self.map(|mut e| {
-            e.attrs.update(|a| a.append(attrs));
-            e
+        self.map_attrs(|mut orig_attrs| {
+            orig_attrs.extend(attrs.into_attr_vec());
+            orig_attrs
         })
     }
 }
 
-impl WithAttrs for P<Item> {
-    fn with_attrs(self, attrs: ThinAttributes) -> Self {
-        self.map(|Item { ident, attrs: mut ats, id, node, vis, span }| {
-            ats.extend(attrs.into_attr_vec());
-            Item {
-                ident: ident,
-                attrs: ats,
-                id: id,
-                node: node,
-                vis: vis,
-                span: span,
-            }
-        })
+impl HasAttrs for Vec<Attribute> {
+    fn attrs(&self) -> &[Attribute] {
+        &self
+    }
+    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+        f(self)
     }
 }
 
-impl WithAttrs for P<Local> {
-    fn with_attrs(self, attrs: ThinAttributes) -> Self {
-        self.map(|Local { pat, ty, init, id, span, attrs: mut ats }| {
-            ats.update(|a| a.append(attrs));
-            Local {
-                pat: pat,
-                ty: ty,
-                init: init,
-                id: id,
-                span: span,
-                attrs: ats,
-            }
-        })
+impl HasAttrs for ThinAttributes {
+    fn attrs(&self) -> &[Attribute] {
+        self.as_attr_slice()
+    }
+    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+        self.map_thin_attrs(f)
     }
 }
 
-impl WithAttrs for P<Decl> {
-    fn with_attrs(self, attrs: ThinAttributes) -> Self {
-        self.map(|Spanned { span, node }| {
-            Spanned {
-                span: span,
-                node: match node {
-                    DeclKind::Local(local) => DeclKind::Local(local.with_attrs(attrs)),
-                    DeclKind::Item(item) => DeclKind::Item(item.with_attrs(attrs)),
-                }
-            }
-        })
+impl<T: HasAttrs + 'static> HasAttrs for P<T> {
+    fn attrs(&self) -> &[Attribute] {
+        (**self).attrs()
+    }
+    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+        self.map(|t| t.map_attrs(f))
     }
 }
 
-impl WithAttrs for P<Stmt> {
-    fn with_attrs(self, attrs: ThinAttributes) -> Self {
-        self.map(|Spanned { span, node }| {
-            Spanned {
-                span: span,
-                node: match node {
-                    StmtKind::Decl(decl, id) => StmtKind::Decl(decl.with_attrs(attrs), id),
-                    StmtKind::Expr(expr, id) => StmtKind::Expr(expr.with_attrs(attrs), id),
-                    StmtKind::Semi(expr, id) => StmtKind::Semi(expr.with_attrs(attrs), id),
-                    StmtKind::Mac(mac, style, mut ats) => {
-                        ats.update(|a| a.append(attrs));
-                        StmtKind::Mac(mac, style, ats)
-                    }
-                },
-            }
-        })
+impl HasAttrs for DeclKind {
+    fn attrs(&self) -> &[Attribute] {
+        match *self {
+            DeclKind::Local(ref local) => local.attrs(),
+            DeclKind::Item(ref item) => item.attrs(),
+        }
+    }
+
+    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+        match self {
+            DeclKind::Local(local) => DeclKind::Local(local.map_attrs(f)),
+            DeclKind::Item(item) => DeclKind::Item(item.map_attrs(f)),
+        }
     }
 }
+
+impl HasAttrs for StmtKind {
+    fn attrs(&self) -> &[Attribute] {
+        match *self {
+            StmtKind::Decl(ref decl, _) => decl.attrs(),
+            StmtKind::Expr(ref expr, _) | StmtKind::Semi(ref expr, _) => expr.attrs(),
+            StmtKind::Mac(_, _, ref attrs) => attrs.attrs(),
+        }
+    }
+
+    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+        match self {
+            StmtKind::Decl(decl, id) => StmtKind::Decl(decl.map_attrs(f), id),
+            StmtKind::Expr(expr, id) => StmtKind::Expr(expr.map_attrs(f), id),
+            StmtKind::Semi(expr, id) => StmtKind::Semi(expr.map_attrs(f), id),
+            StmtKind::Mac(mac, style, attrs) =>
+                StmtKind::Mac(mac, style, attrs.map_attrs(f)),
+        }
+    }
+}
+
+macro_rules! derive_has_attrs_from_field {
+    ($($ty:path),*) => { derive_has_attrs_from_field!($($ty: .attrs),*); };
+    ($($ty:path : $(.$field:ident)*),*) => { $(
+        impl HasAttrs for $ty {
+            fn attrs(&self) -> &[Attribute] {
+                self $(.$field)* .attrs()
+            }
+
+            fn map_attrs<F>(mut self, f: F) -> Self
+                where F: FnOnce(Vec<Attribute>) -> Vec<Attribute>,
+            {
+                self $(.$field)* = self $(.$field)* .map_attrs(f);
+                self
+            }
+        }
+    )* }
+}
+
+derive_has_attrs_from_field! {
+    Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::ImplItem, ast::TraitItem, ast::Arm
+}
+
+derive_has_attrs_from_field! { Decl: .node, Stmt: .node, ast::Variant: .node.attrs }
