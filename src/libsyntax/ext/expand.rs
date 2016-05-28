@@ -25,7 +25,6 @@ use feature_gate::{self, Features};
 use fold;
 use fold::*;
 use util::move_map::MoveMap;
-use parse;
 use parse::token::{fresh_mark, fresh_name, intern, keywords};
 use ptr::P;
 use util::small_vector::SmallVector;
@@ -1210,24 +1209,6 @@ impl Folder for Marker {
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
 fn mark_tts(tts: &[TokenTree], m: Mrk) -> Vec<TokenTree> {
     noop_fold_tts(tts, &mut Marker{mark:m, expn_id: None})
-}
-
-/// Check that there are no macro invocations left in the AST:
-pub fn check_for_macros(sess: &parse::ParseSess, krate: &ast::Crate) {
-    visit::walk_crate(&mut MacroExterminator{sess:sess}, krate);
-}
-
-/// A visitor that ensures that no macro invocations remain in an AST.
-struct MacroExterminator<'a>{
-    sess: &'a parse::ParseSess
-}
-
-impl<'a, 'v> Visitor<'v> for MacroExterminator<'a> {
-    fn visit_mac(&mut self, mac: &ast::Mac) {
-        self.sess.span_diagnostic.span_bug(mac.span,
-                                           "macro exterminator: expected AST \
-                                           with no macro invocations");
-    }
 }
 
 

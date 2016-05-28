@@ -748,10 +748,6 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                  || syntax::std_inject::maybe_inject_prelude(&sess.parse_sess, krate));
 
     time(time_passes,
-         "checking that all macro invocations are gone",
-         || syntax::ext::expand::check_for_macros(&sess.parse_sess, &krate));
-
-    time(time_passes,
          "checking for inline asm in case the target doesn't support it",
          || no_asm::check_crate(sess, &krate));
 
