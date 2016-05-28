@@ -187,51 +187,49 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                        source_trait_ref: ty::TraitRef<'tcx>,
                                        target_impl: DefId)
                                        -> Result<&'tcx Substs<'tcx>, ()> {
-    infcx.commit_if_ok(|_| {
-        let selcx = &mut SelectionContext::new(&infcx);
-        let target_substs = fresh_type_vars_for_impl(&infcx, DUMMY_SP, target_impl);
-        let (target_trait_ref, obligations) = impl_trait_ref_and_oblig(selcx,
-                                                                       target_impl,
-                                                                       &target_substs);
+    let selcx = &mut SelectionContext::new(&infcx);
+    let target_substs = fresh_type_vars_for_impl(&infcx, DUMMY_SP, target_impl);
+    let (target_trait_ref, obligations) = impl_trait_ref_and_oblig(selcx,
+                                                                   target_impl,
+                                                                   &target_substs);
 
-        // do the impls unify? If not, no specialization.
-        if let Err(_) = infcx.eq_trait_refs(true,
-                                            TypeOrigin::Misc(DUMMY_SP),
-                                            source_trait_ref,
-                                            target_trait_ref) {
-            debug!("fulfill_implication: {:?} does not unify with {:?}",
-                   source_trait_ref,
-                   target_trait_ref);
-            return Err(());
-        }
+    // do the impls unify? If not, no specialization.
+    if let Err(_) = infcx.eq_trait_refs(true,
+                                        TypeOrigin::Misc(DUMMY_SP),
+                                        source_trait_ref,
+                                        target_trait_ref) {
+        debug!("fulfill_implication: {:?} does not unify with {:?}",
+               source_trait_ref,
+               target_trait_ref);
+        return Err(());
+    }
 
-        // attempt to prove all of the predicates for impl2 given those for impl1
-        // (which are packed up in penv)
+    // attempt to prove all of the predicates for impl2 given those for impl1
+    // (which are packed up in penv)
 
-        let mut fulfill_cx = FulfillmentContext::new();
-        for oblig in obligations.into_iter() {
-            fulfill_cx.register_predicate_obligation(&infcx, oblig);
-        }
+    let mut fulfill_cx = FulfillmentContext::new();
+    for oblig in obligations.into_iter() {
+        fulfill_cx.register_predicate_obligation(&infcx, oblig);
+    }
 
-        if let Err(errors) = infcx.drain_fulfillment_cx(&mut fulfill_cx, &()) {
-            // no dice!
-            debug!("fulfill_implication: for impls on {:?} and {:?}, could not fulfill: {:?} given \
-                    {:?}",
-                   source_trait_ref,
-                   target_trait_ref,
-                   errors,
-                   infcx.parameter_environment.caller_bounds);
-            Err(())
-        } else {
-            debug!("fulfill_implication: an impl for {:?} specializes {:?}",
-                   source_trait_ref,
-                   target_trait_ref);
+    if let Err(errors) = infcx.drain_fulfillment_cx(&mut fulfill_cx, &()) {
+        // no dice!
+        debug!("fulfill_implication: for impls on {:?} and {:?}, could not fulfill: {:?} given \
+                {:?}",
+               source_trait_ref,
+               target_trait_ref,
+               errors,
+               infcx.parameter_environment.caller_bounds);
+        Err(())
+    } else {
+        debug!("fulfill_implication: an impl for {:?} specializes {:?}",
+               source_trait_ref,
+               target_trait_ref);
 
-            // Now resolve the *substitution* we built for the target earlier, replacing
-            // the inference variables inside with whatever we got from fulfillment.
-            Ok(infcx.resolve_type_vars_if_possible(&target_substs))
-        }
-    })
+        // Now resolve the *substitution* we built for the target earlier, replacing
+        // the inference variables inside with whatever we got from fulfillment.
+        Ok(infcx.resolve_type_vars_if_possible(&target_substs))
+    }
 }
 
 pub struct SpecializesCache {

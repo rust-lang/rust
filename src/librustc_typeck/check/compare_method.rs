@@ -279,78 +279,63 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // type.
 
         // Compute skolemized form of impl and trait method tys.
-        let impl_fty = tcx.mk_fn_ptr(impl_m.fty);
-        let impl_fty = impl_fty.subst(tcx, impl_to_skol_substs);
-        let trait_fty = tcx.mk_fn_ptr(trait_m.fty);
-        let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
+        let tcx = infcx.tcx;
+        let origin = TypeOrigin::MethodCompatCheck(impl_m_span);
 
-        let err = infcx.commit_if_ok(|snapshot| {
-            let tcx = infcx.tcx;
-            let origin = TypeOrigin::MethodCompatCheck(impl_m_span);
+        let (impl_sig, _) =
+            infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
+                                                            infer::HigherRankedType,
+                                                            &impl_m.fty.sig);
+        let impl_sig =
+            impl_sig.subst(tcx, impl_to_skol_substs);
+        let impl_sig =
+            assoc::normalize_associated_types_in(&infcx,
+                                                 &mut fulfillment_cx,
+                                                 impl_m_span,
+                                                 impl_m_body_id,
+                                                 &impl_sig);
+        let impl_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: impl_m.fty.unsafety,
+            abi: impl_m.fty.abi,
+            sig: ty::Binder(impl_sig)
+        }));
+        debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
-            let (impl_sig, _) =
-                infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
-                                                                infer::HigherRankedType,
-                                                                &impl_m.fty.sig);
-            let impl_sig =
-                impl_sig.subst(tcx, impl_to_skol_substs);
-            let impl_sig =
-                assoc::normalize_associated_types_in(&infcx,
-                                                     &mut fulfillment_cx,
-                                                     impl_m_span,
-                                                     impl_m_body_id,
-                                                     &impl_sig);
-            let impl_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-                unsafety: impl_m.fty.unsafety,
-                abi: impl_m.fty.abi,
-                sig: ty::Binder(impl_sig)
-            }));
-            debug!("compare_impl_method: impl_fty={:?}",
-                   impl_fty);
+        let trait_sig = tcx.liberate_late_bound_regions(
+            infcx.parameter_environment.free_id_outlive,
+            &trait_m.fty.sig);
+        let trait_sig =
+            trait_sig.subst(tcx, &trait_to_skol_substs);
+        let trait_sig =
+            assoc::normalize_associated_types_in(&infcx,
+                                                 &mut fulfillment_cx,
+                                                 impl_m_span,
+                                                 impl_m_body_id,
+                                                 &trait_sig);
+        let trait_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: trait_m.fty.unsafety,
+            abi: trait_m.fty.abi,
+            sig: ty::Binder(trait_sig)
+        }));
 
-            let (trait_sig, skol_map) =
-                infcx.skolemize_late_bound_regions(&trait_m.fty.sig, snapshot);
-            let trait_sig =
-                trait_sig.subst(tcx, &trait_to_skol_substs);
-            let trait_sig =
-                assoc::normalize_associated_types_in(&infcx,
-                                                     &mut fulfillment_cx,
-                                                     impl_m_span,
-                                                     impl_m_body_id,
-                                                     &trait_sig);
-            let trait_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-                unsafety: trait_m.fty.unsafety,
-                abi: trait_m.fty.abi,
-                sig: ty::Binder(trait_sig)
-            }));
+        debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
-            debug!("compare_impl_method: trait_fty={:?}",
+        if let Err(terr) = infcx.sub_types(false, origin, impl_fty, trait_fty) {
+            debug!("sub_types failed: impl ty {:?}, trait ty {:?}",
+                   impl_fty,
                    trait_fty);
-
-            infcx.sub_types(false, origin, impl_fty, trait_fty)?;
-
-            infcx.leak_check(false, &skol_map, snapshot)
-        });
-
-        match err {
-            Ok(()) => { }
-            Err(terr) => {
-                debug!("checking trait method for compatibility: impl ty {:?}, trait ty {:?}",
-                       impl_fty,
-                       trait_fty);
-                span_err!(tcx.sess, impl_m_span, E0053,
-                          "method `{}` has an incompatible type for trait: {}",
-                          trait_m.name,
-                          terr);
-                return;
-            }
+            span_err!(tcx.sess, impl_m_span, E0053,
+                      "method `{}` has an incompatible type for trait: {}",
+                      trait_m.name,
+                      terr);
+            return
         }
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        match fulfillment_cx.select_all_or_error(&infcx) {
-            Err(ref errors) => { infcx.report_fulfillment_errors(errors) }
-            Ok(_) => {}
+        if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
+            infcx.report_fulfillment_errors(errors);
+            return
         }
 
         // Finally, resolve all regions. This catches wily misuses of

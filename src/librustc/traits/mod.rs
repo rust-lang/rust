@@ -31,7 +31,7 @@ pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
 pub use self::fulfill::{FulfillmentContext, GlobalFulfilledPredicates, RegionObligation};
 pub use self::project::{MismatchedProjectionTypes, ProjectionMode};
-pub use self::project::{normalize, Normalized};
+pub use self::project::{normalize, normalize_projection_type, Normalized};
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
 pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};

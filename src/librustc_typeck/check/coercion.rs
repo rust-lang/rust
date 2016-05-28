@@ -60,7 +60,7 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{FnCtxt, UnresolvedTypeAction};
+use check::{FnCtxt};
 
 use rustc::hir;
 use rustc::infer::{Coercion, InferOk, TypeOrigin, TypeTrace};
@@ -220,7 +220,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                                          -> CoerceResult<'tcx>
         // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
         where E: Fn() -> I,
-              I: IntoIterator<Item=&'a hir::Expr> {
+              I: IntoIterator<Item=&'a hir::Expr>
+    {
 
         debug!("coerce_borrowed_pointer(a={:?}, b={:?})", a, b);
 
@@ -240,18 +241,16 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         let span = self.origin.span();
 
-        let lvalue_pref = LvaluePreference::from_mutbl(mt_b.mutbl);
         let mut first_error = None;
         let mut r_borrow_var = None;
-        let (_, autoderefs, success) = self.autoderef(span, a, exprs,
-                                                      UnresolvedTypeAction::Ignore,
-                                                      lvalue_pref,
-                                                      |referent_ty, autoderef|
-        {
-            if autoderef == 0 {
+        let mut autoderef = self.autoderef(span, a);
+        let mut success = None;
+
+        for (referent_ty, autoderefs) in autoderef.by_ref() {
+            if autoderefs == 0 {
                 // Don't let this pass, otherwise it would cause
                 // &T to autoref to &&T.
-                return None;
+                continue
             }
 
             // At this point, we have deref'd `a` to `referent_ty`.  So
@@ -326,7 +325,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             //     and let regionck figure it out.
             let r = if !self.use_lub {
                 r_b // [2] above
-            } else if autoderef == 1 {
+            } else if autoderefs == 1 {
                 r_a // [3] above
             } else {
                 if r_borrow_var.is_none() { // create var lazilly, at most once
@@ -341,29 +340,32 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 mutbl: mt_b.mutbl // [1] above
             });
             match self.unify(derefd_ty_a, b) {
-                Ok(ty) => Some(ty),
+                Ok(ty) => { success = Some((ty, autoderefs)); break },
                 Err(err) => {
                     if first_error.is_none() {
                         first_error = Some(err);
                     }
-                    None
                 }
             }
-        });
+        }
 
         // Extract type or return an error. We return the first error
         // we got, which should be from relating the "base" type
         // (e.g., in example above, the failure from relating `Vec<T>`
         // to the target type), since that should be the least
         // confusing.
-        let ty = match success {
-            Some(ty) => ty,
+        let (ty, autoderefs) = match success {
+            Some(d) => d,
             None => {
                 let err = first_error.expect("coerce_borrowed_pointer had no error");
                 debug!("coerce_borrowed_pointer: failed with err = {:?}", err);
                 return Err(err);
             }
         };
+
+        // This commits the obligations to the fulfillcx. After this succeeds,
+        // this snapshot can't be rolled back.
+        autoderef.finalize(LvaluePreference::from_mutbl(mt_b.mutbl), exprs());
 
         // Now apply the autoref. We have to extract the region out of
         // the final ref type we got.
