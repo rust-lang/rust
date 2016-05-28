@@ -1965,17 +1965,17 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     } else {
         // FIXME: we should be using a derived_id for the Anchors here
         write!(w, "{{\n")?;
-        for t in &types {
+        for ty in &types {
             write!(w, "    ")?;
-            render_assoc_item(w, t, AssocItemLink::Anchor(None))?;
+            render_assoc_item(w, ty, AssocItemLink::Anchor(None), it, Some(t))?;
             write!(w, ";\n")?;
         }
         if !types.is_empty() && !consts.is_empty() {
             w.write_str("\n")?;
         }
-        for t in &consts {
+        for ty in &consts {
             write!(w, "    ")?;
-            render_assoc_item(w, t, AssocItemLink::Anchor(None))?;
+            render_assoc_item(w, ty, AssocItemLink::Anchor(None), it, Some(t))?;
             write!(w, ";\n")?;
         }
         if !consts.is_empty() && !required.is_empty() {
@@ -1983,7 +1983,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &required {
             write!(w, "    ")?;
-            render_assoc_item(w, m, AssocItemLink::Anchor(None))?;
+            render_assoc_item(w, m, AssocItemLink::Anchor(None), it, Some(t))?;
             write!(w, ";\n")?;
         }
         if !required.is_empty() && !provided.is_empty() {
@@ -1991,7 +1991,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &provided {
             write!(w, "    ")?;
-            render_assoc_item(w, m, AssocItemLink::Anchor(None))?;
+            render_assoc_item(w, m, AssocItemLink::Anchor(None), it, Some(t))?;
             write!(w, " {{ ... }}\n")?;
         }
         write!(w, "}}")?;
@@ -2001,16 +2001,17 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Trait documentation
     document(w, cx, it)?;
 
-    fn trait_item(w: &mut fmt::Formatter, cx: &Context, m: &clean::Item, t: &clean::Item)
+    fn trait_item(w: &mut fmt::Formatter, cx: &Context, m: &clean::Item, item: &clean::Item,
+                  t: &clean::Trait)
                   -> fmt::Result {
         let name = m.name.as_ref().unwrap();
         let id = derive_id(format!("{}.{}", shortty(m), name));
         write!(w, "<h3 id='{id}' class='method stab {stab}'><code>",
                id = id,
                stab = m.stability_class())?;
-        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)))?;
+        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), item, Some(t))?;
         write!(w, "</code>")?;
-        render_stability_since(w, m, t)?;
+        render_stability_since(w, m, item)?;
         write!(w, "</h3>")?;
         document(w, cx, m)?;
         Ok(())
@@ -2021,8 +2022,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <h2 id='associated-types'>Associated Types</h2>
             <div class='methods'>
         ")?;
-        for t in &types {
-            trait_item(w, cx, *t, it)?;
+        for ty in &types {
+            trait_item(w, cx, *ty, it, t)?;
         }
         write!(w, "</div>")?;
     }
@@ -2032,8 +2033,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <h2 id='associated-const'>Associated Constants</h2>
             <div class='methods'>
         ")?;
-        for t in &consts {
-            trait_item(w, cx, *t, it)?;
+        for ty in &consts {
+            trait_item(w, cx, *ty, it, t)?;
         }
         write!(w, "</div>")?;
     }
@@ -2045,7 +2046,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <div class='methods'>
         ")?;
         for m in &required {
-            trait_item(w, cx, *m, it)?;
+            trait_item(w, cx, *m, it, t)?;
         }
         write!(w, "</div>")?;
     }
@@ -2055,7 +2056,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <div class='methods'>
         ")?;
         for m in &provided {
-            trait_item(w, cx, *m, it)?;
+            trait_item(w, cx, *m, it, t)?;
         }
         write!(w, "</div>")?;
     }
@@ -2165,7 +2166,9 @@ fn render_stability_since(w: &mut fmt::Formatter,
 
 fn render_assoc_item(w: &mut fmt::Formatter,
                      item: &clean::Item,
-                     link: AssocItemLink) -> fmt::Result {
+                     link: AssocItemLink,
+                     c: &clean::Item,
+                     trait_: Option<&clean::Trait>) -> fmt::Result {
     fn method(w: &mut fmt::Formatter,
               meth: &clean::Item,
               unsafety: hir::Unsafety,
@@ -2173,10 +2176,13 @@ fn render_assoc_item(w: &mut fmt::Formatter,
               abi: abi::Abi,
               g: &clean::Generics,
               d: &clean::FnDecl,
-              link: AssocItemLink)
+              link: AssocItemLink,
+              trait_: Option<&clean::Trait>,
+              item: &clean::Item)
               -> fmt::Result {
         let name = meth.name.as_ref().unwrap();
         let anchor = format!("#{}.{}", shortty(meth), name);
+        let mut d = d.clone();
         let href = match link {
             AssocItemLink::Anchor(Some(ref id)) => format!("#{}", id),
             AssocItemLink::Anchor(None) => anchor,
@@ -2197,6 +2203,69 @@ fn render_assoc_item(w: &mut fmt::Formatter,
             UnstableFeatures::Allow => constness,
             _ => hir::Constness::NotConst
         };
+        if let Some(trait_) = trait_ {
+            if (item.is_struct() || item.is_enum()) &&
+               d.inputs.values.iter().any(|ref x| {
+                match x.type_ {
+                    clean::Type::BorrowedRef { ref type_, .. } => {
+                        match *type_.clone() {
+                            clean::Type::Generic(_) => true,
+                            _ => false,
+                        }
+                    }
+                    clean::Type::Generic(_) => true,
+                    _ => false,
+                }
+            }) {
+                let generics = &trait_.generics;
+                let values = d.inputs.values.clone();
+
+                d.inputs.values = values.iter().map(|ref x| {
+                    let mut new_v = None;
+                    match x.type_ {
+                        clean::Type::BorrowedRef { ref type_, ref mutability, ref lifetime } => {
+                            match *type_.clone() {
+                                clean::Type::Generic(ref name) => {
+                                    for ty in generics.type_params.iter() {
+                                        if &ty.name == name &&
+                                           ty.default == Some(clean::Type::Generic("Self"
+                                                                                   .to_owned())) {
+                                            if let Some(resolved) = item.to_resolved_path() {
+                                                new_v = Some(
+                                                    clean::Type::BorrowedRef {
+                                                        type_: Box::new(resolved),
+                                                        mutability: mutability.clone(),
+                                                        lifetime: lifetime.clone(),
+                                                    });
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }
+                                _ => {},
+                            }
+                        }
+                        clean::Type::Generic(ref name) => {
+                            for ty in generics.type_params.iter() {
+                                if &ty.name == name &&
+                                   ty.default == Some(clean::Type::Generic("Self".to_owned())) {
+                                    if let Some(resolved) = item.to_resolved_path() {
+                                        new_v = Some(resolved);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                    let mut x = (*x).clone();
+                    if let Some(n) = new_v {
+                        x.type_ = n;
+                    }
+                    x
+                }).collect();
+            }
+        }
         write!(w, "{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                ConstnessSpace(vis_constness),
@@ -2205,19 +2274,19 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                href = href,
                name = name,
                generics = *g,
-               decl = Method(d),
+               decl = Method(&d),
                where_clause = WhereClause(g))
     }
     match item.inner {
         clean::StrippedItem(..) => Ok(()),
         clean::TyMethodItem(ref m) => {
             method(w, item, m.unsafety, hir::Constness::NotConst,
-                   m.abi, &m.generics, &m.decl, link)
+                   m.abi, &m.generics, &m.decl, link, trait_, c)
         }
         clean::MethodItem(ref m) => {
             method(w, item, m.unsafety, m.constness,
                    m.abi, &m.generics, &m.decl,
-                   link)
+                   link, trait_, c)
         }
         clean::AssociatedConstItem(ref ty, ref default) => {
             assoc_const(w, item, ty, default.as_ref(), link)
@@ -2481,7 +2550,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         };
         for i in &non_trait {
             render_impl(w, cx, i, AssocItemLink::Anchor(None), render_header,
-                        containing_item.stable_since())?;
+                        containing_item)?;
         }
     }
     if let AssocItemRender::DerefFor { .. } = what {
@@ -2502,7 +2571,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         for i in &manual {
             let did = i.trait_did().unwrap();
             let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
-            render_impl(w, cx, i, assoc_link, true, containing_item.stable_since())?;
+            render_impl(w, cx, i, assoc_link, true, containing_item)?;
         }
         if !derived.is_empty() {
             write!(w, "<h3 id='derived_implementations'>\
@@ -2512,7 +2581,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
                 let did = i.trait_did().unwrap();
                 let assoc_link = AssocItemLink::GotoSource(did,
                                                            &i.inner_impl().provided_trait_methods);
-                render_impl(w, cx, i, assoc_link, true, containing_item.stable_since())?;
+                render_impl(w, cx, i, assoc_link, true, containing_item)?;
             }
         }
     }
@@ -2546,7 +2615,8 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
 // otherwise. If render_header is false, we will avoid rendering static
 // methods, since they are not accessible for the type implementing `Deref`
 fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLink,
-               render_header: bool, outer_version: Option<&str>) -> fmt::Result {
+               render_header: bool, item: &clean::Item) -> fmt::Result {
+    let outer_version = item.stable_since();
     if render_header {
         write!(w, "<h3 class='impl'><span class='in-band'><code>{}</code>", i.inner_impl())?;
         write!(w, "</span><span class='out-of-band'>")?;
@@ -2570,7 +2640,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     fn doctraititem(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
                     link: AssocItemLink, render_static: bool,
                     is_default_item: bool, outer_version: Option<&str>,
-                    trait_: Option<&clean::Trait>) -> fmt::Result {
+                    trait_: Option<&clean::Trait>,
+                    i: &clean::Item) -> fmt::Result {
         let shortty = shortty(item);
         let name = item.name.as_ref().unwrap();
 
@@ -2587,7 +2658,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                     let id = derive_id(format!("{}.{}", shortty, name));
                     write!(w, "<h4 id='{}' class='{}'>", id, shortty)?;
                     write!(w, "<code>")?;
-                    render_assoc_item(w, item, link.anchor(&id))?;
+                    render_assoc_item(w, item, link.anchor(&id), i, trait_)?;
                     write!(w, "</code>")?;
                     render_stability_since_raw(w, item.stable_since(), outer_version)?;
                     write!(w, "</h4>\n")?;
@@ -2649,7 +2720,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     write!(w, "<div class='impl-items'>")?;
     for trait_item in &i.inner_impl().items {
         doctraititem(w, cx, trait_item, link, render_header,
-                     false, outer_version, trait_)?;
+                     false, outer_version, trait_, item)?;
     }
 
     fn render_default_items(w: &mut fmt::Formatter,
@@ -2657,7 +2728,9 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                             t: &clean::Trait,
                             i: &clean::Impl,
                             render_static: bool,
-                            outer_version: Option<&str>) -> fmt::Result {
+                            outer_version: Option<&str>,
+                            trait_: &clean::Trait,
+                            item: &clean::Item) -> fmt::Result {
         for trait_item in &t.items {
             let n = trait_item.name.clone();
             if i.items.iter().find(|m| m.name == n).is_some() {
@@ -2667,7 +2740,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             let assoc_link = AssocItemLink::GotoSource(did, &i.provided_trait_methods);
 
             doctraititem(w, cx, trait_item, assoc_link, render_static, true,
-                         outer_version, None)?;
+                         outer_version, Some(trait_), item)?;
         }
         Ok(())
     }
@@ -2675,7 +2748,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     // If we've implemented a trait, then also emit documentation for all
     // default items which weren't overridden in the implementation block.
     if let Some(t) = trait_ {
-        render_default_items(w, cx, t, &i.inner_impl(), render_header, outer_version)?;
+        render_default_items(w, cx, t, &i.inner_impl(), render_header, outer_version,
+                             &t, item)?;
     }
     write!(w, "</div>")?;
     Ok(())

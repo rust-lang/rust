@@ -766,7 +766,11 @@ impl fmt::Display for clean::ViewListIdent {
 
 impl fmt::Display for clean::TypeBinding {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}={}", self.name, self.ty)
+        if self.name.len() > 0 {
+            write!(f, "{}={}", self.name, self.ty)
+        } else {
+            write!(f, "{}", self.ty)
+        }
     }
 }
 
