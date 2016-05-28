@@ -163,6 +163,11 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // If the number of errors increases, that's also a sign (line
     // `tained_by_errors`) to avoid reporting certain kinds of errors.
     err_count_on_creation: usize,
+
+    // This flag is used for debugging, and is set to true if there are
+    // any obligations set during the current snapshot. In that case, the
+    // snapshot can't be rolled back.
+    pub obligations_in_snapshot: Cell<bool>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -476,7 +481,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             normalize: false,
             projection_mode: ProjectionMode::AnyFinal,
             tainted_by_errors_flag: Cell::new(false),
-            err_count_on_creation: self.sess.err_count()
+            err_count_on_creation: self.sess.err_count(),
+            obligations_in_snapshot: Cell::new(false),
         }
     }
 }
@@ -515,7 +521,8 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             normalize: normalize,
             projection_mode: projection_mode,
             tainted_by_errors_flag: Cell::new(false),
-            err_count_on_creation: tcx.sess.err_count()
+            err_count_on_creation: tcx.sess.err_count(),
+            obligations_in_snapshot: Cell::new(false),
         }))
     }
 }
@@ -542,6 +549,7 @@ pub struct CombinedSnapshot {
     int_snapshot: unify::Snapshot<ty::IntVid>,
     float_snapshot: unify::Snapshot<ty::FloatVid>,
     region_vars_snapshot: RegionSnapshot,
+    obligations_in_snapshot: bool,
 }
 
 /// Helper trait for shortening the lifetimes inside a
@@ -809,11 +817,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot {
+        let obligations_in_snapshot = self.obligations_in_snapshot.get();
+        self.obligations_in_snapshot.set(false);
+
         CombinedSnapshot {
             type_snapshot: self.type_variables.borrow_mut().snapshot(),
             int_snapshot: self.int_unification_table.borrow_mut().snapshot(),
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
             region_vars_snapshot: self.region_vars.start_snapshot(),
+            obligations_in_snapshot: obligations_in_snapshot,
         }
     }
 
@@ -822,7 +834,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let CombinedSnapshot { type_snapshot,
                                int_snapshot,
                                float_snapshot,
-                               region_vars_snapshot } = snapshot;
+                               region_vars_snapshot,
+                               obligations_in_snapshot } = snapshot;
+
+        assert!(!self.obligations_in_snapshot.get());
+        self.obligations_in_snapshot.set(obligations_in_snapshot);
 
         self.type_variables
             .borrow_mut()
@@ -842,7 +858,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let CombinedSnapshot { type_snapshot,
                                int_snapshot,
                                float_snapshot,
-                               region_vars_snapshot } = snapshot;
+                               region_vars_snapshot,
+                               obligations_in_snapshot } = snapshot;
+
+        self.obligations_in_snapshot.set(obligations_in_snapshot);
 
         self.type_variables
             .borrow_mut()
@@ -904,11 +923,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let CombinedSnapshot { type_snapshot,
                                int_snapshot,
                                float_snapshot,
-                               region_vars_snapshot } = self.start_snapshot();
+                               region_vars_snapshot,
+                               obligations_in_snapshot } = self.start_snapshot();
 
         let r = self.commit_if_ok(|_| f());
 
         debug!("commit_regions_if_ok: rolling back everything but regions");
+
+        assert!(!self.obligations_in_snapshot.get());
+        self.obligations_in_snapshot.set(obligations_in_snapshot);
 
         // Roll back any non-region bindings - they should be resolved
         // inside `f`, with, e.g. `resolve_type_vars_if_possible`.

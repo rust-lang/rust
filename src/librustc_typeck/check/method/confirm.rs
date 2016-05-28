@@ -11,11 +11,10 @@
 use super::probe;
 
 use check::{FnCtxt, callee};
-use check::UnresolvedTypeAction;
 use hir::def_id::DefId;
 use rustc::ty::subst::{self};
 use rustc::traits;
-use rustc::ty::{self, NoPreference, PreferMutLvalue, Ty};
+use rustc::ty::{self, LvaluePreference, NoPreference, PreferMutLvalue, Ty};
 use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk, TypeOrigin};
@@ -133,10 +132,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             ty: fty,
             substs: all_substs
         };
-        // If this is an `&mut self` method, bias the receiver
-        // expression towards mutability (this will switch
-        // e.g. `Deref` to `DerefMut` in overloaded derefs and so on).
-        self.fixup_derefs_on_method_receiver_if_necessary(&callee);
+
+        if let Some(hir::MutMutable) = pick.autoref {
+            self.convert_lvalue_derefs_to_mutable();
+        }
 
         callee
     }
@@ -164,22 +163,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             (None, None)
         };
 
-        // Commit the autoderefs by calling `autoderef again, but this
+        // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various tables.
-        let (autoderefd_ty, n, result) = self.autoderef(self.span,
-                                                        unadjusted_self_ty,
-                                                        || Some(self.self_expr),
-                                                        UnresolvedTypeAction::Error,
-                                                        NoPreference,
-                                                        |_, n| {
-            if n == pick.autoderefs {
-                Some(())
-            } else {
-                None
-            }
-        });
+        let mut autoderef = self.autoderef(self.span, unadjusted_self_ty);
+        let (autoderefd_ty, n) = autoderef.nth(pick.autoderefs).unwrap();
         assert_eq!(n, pick.autoderefs);
-        assert_eq!(result, Some(()));
+
+        autoderef.unambiguous_final_ty();
+        autoderef.finalize(LvaluePreference::NoPreference, Some(self.self_expr));
 
         // Write out the final adjustment.
         self.write_adjustment(self.self_expr.id, AdjustDerefRef(AutoDerefRef {
@@ -293,27 +284,21 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // yield an object-type (e.g., `&Object` or `Box<Object>`
         // etc).
 
-        let (_, _, result) = self.fcx.autoderef(self.span,
-                                                self_ty,
-                                                || None,
-                                                UnresolvedTypeAction::Error,
-                                                NoPreference,
-                                                |ty, _| {
-            match ty.sty {
-                ty::TyTrait(ref data) => Some(closure(self, ty, &data)),
-                _ => None,
-            }
-        });
-
-        match result {
-            Some(r) => r,
-            None => {
+        // FIXME: this feels, like, super dubious
+        self.fcx.autoderef(self.span, self_ty)
+            .filter_map(|(ty, _)| {
+                match ty.sty {
+                    ty::TyTrait(ref data) => Some(closure(self, ty, &data)),
+                    _ => None,
+                }
+            })
+            .next()
+            .unwrap_or_else(|| {
                 span_bug!(
                     self.span,
                     "self-type `{}` for ObjectPick never dereferenced to an object",
                     self_ty)
-            }
-        }
+            })
     }
 
     fn instantiate_method_substs(&mut self,
@@ -463,24 +448,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // RECONCILIATION
 
-    /// When we select a method with an `&mut self` receiver, we have to go convert any
+    /// When we select a method with a mutable autoref, we have to go convert any
     /// auto-derefs, indices, etc from `Deref` and `Index` into `DerefMut` and `IndexMut`
     /// respectively.
-    fn fixup_derefs_on_method_receiver_if_necessary(&self,
-                                                    method_callee: &ty::MethodCallee) {
-        let sig = match method_callee.ty.sty {
-            ty::TyFnDef(_, _, ref f) => f.sig.clone(),
-            _ => return,
-        };
-
-        match sig.0.inputs[0].sty {
-            ty::TyRef(_, ty::TypeAndMut {
-                ty: _,
-                mutbl: hir::MutMutable,
-            }) => {}
-            _ => return,
-        }
-
+    fn convert_lvalue_derefs_to_mutable(&self) {
         // Gather up expressions we want to munge.
         let mut exprs = Vec::new();
         exprs.push(self.self_expr);
@@ -495,8 +466,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             }
         }
 
-        debug!("fixup_derefs_on_method_receiver_if_necessary: exprs={:?}",
-               exprs);
+        debug!("convert_lvalue_derefs_to_mutable: exprs={:?}", exprs);
 
         // Fix up autoderefs and derefs.
         for (i, &expr) in exprs.iter().rev().enumerate() {
@@ -509,23 +479,17 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 Some(_) | None => 0,
             };
 
-            debug!("fixup_derefs_on_method_receiver_if_necessary: i={} expr={:?} \
-                                                                  autoderef_count={}",
+            debug!("convert_lvalue_derefs_to_mutable: i={} expr={:?} \
+                                                      autoderef_count={}",
                    i, expr, autoderef_count);
 
             if autoderef_count > 0 {
-                self.autoderef(expr.span,
-                               self.expr_ty(expr),
-                               || Some(expr),
-                               UnresolvedTypeAction::Error,
-                               PreferMutLvalue,
-                               |_, autoderefs| {
-                    if autoderefs == autoderef_count + 1 {
-                        Some(())
-                    } else {
-                        None
-                    }
+                let mut autoderef = self.autoderef(expr.span, self.expr_ty(expr));
+                autoderef.nth(autoderef_count).unwrap_or_else(|| {
+                    span_bug!(expr.span, "expr was deref-able {} times but now isn't?",
+                              autoderef_count);
                 });
+                autoderef.finalize(PreferMutLvalue, Some(expr));
             }
 
             // Don't retry the first one or we might infinite loop!
