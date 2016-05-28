@@ -734,7 +734,10 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     })?;
 
     krate = time(time_passes, "maybe building test harness", || {
-        syntax::test::modify_for_testing(&sess.parse_sess, &sess.opts.cfg, krate, sess.diagnostic())
+        syntax::test::modify_for_testing(&sess.parse_sess,
+                                         sess.opts.test,
+                                         krate,
+                                         sess.diagnostic())
     });
 
     krate = time(time_passes,
