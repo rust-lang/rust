@@ -65,8 +65,8 @@ pub struct Config {
     pub build: String,
     pub host: Vec<String>,
     pub target: Vec<String>,
-    pub rustc: Option<String>,
-    pub cargo: Option<String>,
+    pub rustc: Option<PathBuf>,
+    pub cargo: Option<PathBuf>,
     pub local_rebuild: bool,
 
     // libstd features
@@ -208,8 +208,8 @@ impl Config {
                 config.target.push(target.clone());
             }
         }
-        config.rustc = build.rustc;
-        config.cargo = build.cargo;
+        config.rustc = build.rustc.map(PathBuf::from);
+        config.cargo = build.cargo.map(PathBuf::from);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
 
@@ -378,6 +378,10 @@ impl Config {
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));
+                }
+                "CFG_LOCAL_RUST_ROOT" if value.len() > 0 => {
+                    self.rustc = Some(PathBuf::from(value).join("bin/rustc"));
+                    self.cargo = Some(PathBuf::from(value).join("bin/cargo"));
                 }
                 _ => {}
             }
