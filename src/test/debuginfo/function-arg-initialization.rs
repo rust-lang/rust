@@ -228,7 +228,7 @@
 #![omit_gdb_pretty_printer_section]
 
 fn immediate_args(a: isize, b: bool, c: f64) {
-    println!("") // #break
+    zzz(); // #break
 }
 
 struct BigStruct {
@@ -243,7 +243,7 @@ struct BigStruct {
 }
 
 fn non_immediate_args(a: BigStruct, b: BigStruct) {
-    println!("") // #break
+    zzz(); // #break
 }
 
 fn binding(a: i64, b: u64, c: f64) {
@@ -257,7 +257,7 @@ fn assignment(mut a: u64, b: u64, c: f64) {
 }
 
 fn function_call(x: u64, y: u64, z: f64) {
-    println!("Hi!") // #break
+    zzz(); // #break
 }
 
 fn identifier(x: u64, y: u64, z: f64) -> u64 {
@@ -333,3 +333,5 @@ fn main() {
     while_expr(40, 41, 42);
     loop_expr(43, 44, 45);
 }
+
+fn zzz() {()}
