@@ -159,7 +159,7 @@ ifdef CFG_ENABLE_ORBIT
 endif
 
 ifdef SAVE_TEMPS
-  CFG_RUSTC_FLAGS += --save-temps
+  CFG_RUSTC_FLAGS += -C save-temps
 endif
 ifdef ASM_COMMENTS
   CFG_RUSTC_FLAGS += -Z asm-comments
