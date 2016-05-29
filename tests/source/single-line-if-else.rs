@@ -1,4 +1,4 @@
-// rustfmt-single_line_if_else: true
+// rustfmt-single_line_if_else_max_width: 100
 
 // Format if-else expressions on a single line, when possible.
 

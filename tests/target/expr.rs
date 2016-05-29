@@ -62,11 +62,7 @@ fn foo() -> bool {
             tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3 {
     }
 
-    let test = if true {
-        5
-    } else {
-        3
-    };
+    let test = if true { 5 } else { 3 };
 
     if cond() {
         something();
@@ -92,11 +88,7 @@ fn bar() {
     syntactically_correct(loop {
                               sup('?');
                           },
-                          if cond {
-                              0
-                          } else {
-                              1
-                          });
+                          if cond { 0 } else { 1 });
 
     let third = ..10;
     let infi_range = ..;
@@ -276,4 +268,10 @@ fn ranges() {
 
     // the expr below won't compile for some reason...
     // let a = 0 ... ;
+}
+
+fn if_else() {
+    let exact = diff / (if size == 0 { 1 } else { size });
+
+    let cx = tp1.x + any * radius * if anticlockwise { 1.0 } else { -1.0 };
 }

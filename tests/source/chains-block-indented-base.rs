@@ -1,3 +1,4 @@
+// rustfmt-single_line_if_else_max_width: 0
 // rustfmt-chain_base_indent: Inherit
 // Test chain formatting with block indented base
 

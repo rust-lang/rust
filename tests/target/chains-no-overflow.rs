@@ -1,3 +1,4 @@
+// rustfmt-single_line_if_else_max_width: 0
 // rustfmt-chains_overflow_last: false
 // Test chain formatting without overflowing the last item.
 

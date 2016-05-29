@@ -255,3 +255,20 @@ fn ranges() {
     // the expr below won't compile for some reason...
     // let a = 0 ... ;
 }
+
+fn if_else() {
+  let exact = diff /
+            (if size == 0 {
+    1
+} else {
+    size
+});
+
+            let cx = tp1.x +
+                 any * radius *
+                 if anticlockwise {
+            1.0
+      } else {
+           -1.0
+       };
+}

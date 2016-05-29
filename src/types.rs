@@ -187,11 +187,7 @@ fn rewrite_segment(expr_context: bool,
 
             let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
             let list_lo = context.codemap.span_after(codemap::mk_sp(*span_lo, span_hi), "<");
-            let separator = if expr_context {
-                "::"
-            } else {
-                ""
-            };
+            let separator = if expr_context { "::" } else { "" };
 
             // 1 for <
             let extra_offset = 1 + separator.len();

@@ -354,27 +354,13 @@ fn rewrite_chain_subexpr(expr: &ast::Expr,
         }
         ast::ExprKind::Field(_, ref field) => {
             let s = format!(".{}", field.node);
-            if s.len() <= width {
-                Some(s)
-            } else {
-                None
-            }
+            if s.len() <= width { Some(s) } else { None }
         }
         ast::ExprKind::TupField(_, ref field) => {
             let s = format!(".{}", field.node);
-            if s.len() <= width {
-                Some(s)
-            } else {
-                None
-            }
+            if s.len() <= width { Some(s) } else { None }
         }
-        ast::ExprKind::Try(_) => {
-            if width >= 1 {
-                Some("?".into())
-            } else {
-                None
-            }
-        }
+        ast::ExprKind::Try(_) => if width >= 1 { Some("?".into()) } else { None },
         _ => unreachable!(),
     }
 }

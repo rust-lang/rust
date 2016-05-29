@@ -36,193 +36,210 @@ use syntax::parse::classify;
 
 impl Rewrite for ast::Expr {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        let result = match self.node {
-            ast::ExprKind::Vec(ref expr_vec) => {
-                rewrite_array(expr_vec.iter().map(|e| &**e),
-                              mk_sp(context.codemap.span_after(self.span, "["), self.span.hi),
-                              context,
-                              width,
-                              offset)
-            }
-            ast::ExprKind::Lit(ref l) => {
-                match l.node {
-                    ast::LitKind::Str(_, ast::StrStyle::Cooked) => {
-                        rewrite_string_lit(context, l.span, width, offset)
-                    }
-                    _ => {
-                        wrap_str(context.snippet(self.span),
-                                 context.config.max_width,
-                                 width,
-                                 offset)
-                    }
+        format_expr(self, ExprType::SubExpression, context, width, offset)
+    }
+}
+
+#[derive(PartialEq)]
+enum ExprType {
+    Statement,
+    SubExpression,
+}
+
+fn format_expr(expr: &ast::Expr,
+               expr_type: ExprType,
+               context: &RewriteContext,
+               width: usize,
+               offset: Indent)
+               -> Option<String> {
+    let result = match expr.node {
+        ast::ExprKind::Vec(ref expr_vec) => {
+            rewrite_array(expr_vec.iter().map(|e| &**e),
+                          mk_sp(context.codemap.span_after(expr.span, "["), expr.span.hi),
+                          context,
+                          width,
+                          offset)
+        }
+        ast::ExprKind::Lit(ref l) => {
+            match l.node {
+                ast::LitKind::Str(_, ast::StrStyle::Cooked) => {
+                    rewrite_string_lit(context, l.span, width, offset)
                 }
-            }
-            ast::ExprKind::Call(ref callee, ref args) => {
-                let inner_span = mk_sp(callee.span.hi, self.span.hi);
-                rewrite_call(context, &**callee, args, inner_span, width, offset)
-            }
-            ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, width, offset),
-            ast::ExprKind::Binary(ref op, ref lhs, ref rhs) => {
-                rewrite_binary_op(context, op, lhs, rhs, width, offset)
-            }
-            ast::ExprKind::Unary(ref op, ref subexpr) => {
-                rewrite_unary_op(context, op, subexpr, width, offset)
-            }
-            ast::ExprKind::Struct(ref path, ref fields, ref base) => {
-                rewrite_struct_lit(context,
-                                   path,
-                                   fields,
-                                   base.as_ref().map(|e| &**e),
-                                   self.span,
-                                   width,
-                                   offset)
-            }
-            ast::ExprKind::Tup(ref items) => {
-                rewrite_tuple(context,
-                              items.iter().map(|x| &**x),
-                              self.span,
-                              width,
-                              offset)
-            }
-            ast::ExprKind::While(ref cond, ref block, label) => {
-                Loop::new_while(None, cond, block, label).rewrite(context, width, offset)
-            }
-            ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => {
-                Loop::new_while(Some(pat), cond, block, label).rewrite(context, width, offset)
-            }
-            ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
-                Loop::new_for(pat, cond, block, label).rewrite(context, width, offset)
-            }
-            ast::ExprKind::Loop(ref block, label) => {
-                Loop::new_loop(block, label).rewrite(context, width, offset)
-            }
-            ast::ExprKind::Block(ref block) => block.rewrite(context, width, offset),
-            ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
-                rewrite_if_else(context,
-                                cond,
-                                if_block,
-                                else_block.as_ref().map(|e| &**e),
-                                self.span,
-                                None,
-                                width,
-                                offset,
-                                true)
-            }
-            ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
-                rewrite_if_else(context,
-                                cond,
-                                if_block,
-                                else_block.as_ref().map(|e| &**e),
-                                self.span,
-                                Some(pat),
-                                width,
-                                offset,
-                                true)
-            }
-            ast::ExprKind::Match(ref cond, ref arms) => {
-                rewrite_match(context, cond, arms, width, offset, self.span)
-            }
-            ast::ExprKind::Path(ref qself, ref path) => {
-                rewrite_path(context, true, qself.as_ref(), path, width, offset)
-            }
-            ast::ExprKind::Assign(ref lhs, ref rhs) => {
-                rewrite_assignment(context, lhs, rhs, None, width, offset)
-            }
-            ast::ExprKind::AssignOp(ref op, ref lhs, ref rhs) => {
-                rewrite_assignment(context, lhs, rhs, Some(op), width, offset)
-            }
-            ast::ExprKind::Again(ref opt_ident) => {
-                let id_str = match *opt_ident {
-                    Some(ident) => format!(" {}", ident.node),
-                    None => String::new(),
-                };
-                wrap_str(format!("continue{}", id_str),
-                         context.config.max_width,
-                         width,
-                         offset)
-            }
-            ast::ExprKind::Break(ref opt_ident) => {
-                let id_str = match *opt_ident {
-                    Some(ident) => format!(" {}", ident.node),
-                    None => String::new(),
-                };
-                wrap_str(format!("break{}", id_str),
-                         context.config.max_width,
-                         width,
-                         offset)
-            }
-            ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
-                rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
-            }
-            ast::ExprKind::Try(..) |
-            ast::ExprKind::Field(..) |
-            ast::ExprKind::TupField(..) |
-            ast::ExprKind::MethodCall(..) => rewrite_chain(self, context, width, offset),
-            ast::ExprKind::Mac(ref mac) => {
-                // Failure to rewrite a marco should not imply failure to
-                // rewrite the expression.
-                rewrite_macro(mac, None, context, width, offset).or_else(|| {
-                    wrap_str(context.snippet(self.span),
+                _ => {
+                    wrap_str(context.snippet(expr.span),
                              context.config.max_width,
                              width,
                              offset)
-                })
-            }
-            ast::ExprKind::Ret(None) => {
-                wrap_str("return".to_owned(), context.config.max_width, width, offset)
-            }
-            ast::ExprKind::Ret(Some(ref expr)) => {
-                rewrite_unary_prefix(context, "return ", &**expr, width, offset)
-            }
-            ast::ExprKind::Box(ref expr) => {
-                rewrite_unary_prefix(context, "box ", &**expr, width, offset)
-            }
-            ast::ExprKind::AddrOf(mutability, ref expr) => {
-                rewrite_expr_addrof(context, mutability, expr, width, offset)
-            }
-            ast::ExprKind::Cast(ref expr, ref ty) => {
-                rewrite_pair(&**expr, &**ty, "", " as ", "", context, width, offset)
-            }
-            ast::ExprKind::Type(ref expr, ref ty) => {
-                rewrite_pair(&**expr, &**ty, "", ": ", "", context, width, offset)
-            }
-            ast::ExprKind::Index(ref expr, ref index) => {
-                rewrite_pair(&**expr, &**index, "", "[", "]", context, width, offset)
-            }
-            ast::ExprKind::Repeat(ref expr, ref repeats) => {
-                rewrite_pair(&**expr, &**repeats, "[", "; ", "]", context, width, offset)
-            }
-            ast::ExprKind::Range(ref lhs, ref rhs, limits) => {
-                let delim = match limits {
-                    ast::RangeLimits::HalfOpen => "..",
-                    ast::RangeLimits::Closed => "...",
-                };
-
-                match (lhs.as_ref().map(|x| &**x), rhs.as_ref().map(|x| &**x)) {
-                    (Some(ref lhs), Some(ref rhs)) => {
-                        rewrite_pair(&**lhs, &**rhs, "", delim, "", context, width, offset)
-                    }
-                    (None, Some(ref rhs)) => {
-                        rewrite_unary_prefix(context, delim, &**rhs, width, offset)
-                    }
-                    (Some(ref lhs), None) => {
-                        rewrite_unary_suffix(context, delim, &**lhs, width, offset)
-                    }
-                    (None, None) => wrap_str(delim.into(), context.config.max_width, width, offset),
                 }
             }
-            // We do not format these expressions yet, but they should still
-            // satisfy our width restrictions.
-            ast::ExprKind::InPlace(..) |
-            ast::ExprKind::InlineAsm(..) => {
-                wrap_str(context.snippet(self.span),
+        }
+        ast::ExprKind::Call(ref callee, ref args) => {
+            let inner_span = mk_sp(callee.span.hi, expr.span.hi);
+            rewrite_call(context, &**callee, args, inner_span, width, offset)
+        }
+        ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, width, offset),
+        ast::ExprKind::Binary(ref op, ref lhs, ref rhs) => {
+            rewrite_binary_op(context, op, lhs, rhs, width, offset)
+        }
+        ast::ExprKind::Unary(ref op, ref subexpr) => {
+            rewrite_unary_op(context, op, subexpr, width, offset)
+        }
+        ast::ExprKind::Struct(ref path, ref fields, ref base) => {
+            rewrite_struct_lit(context,
+                               path,
+                               fields,
+                               base.as_ref().map(|e| &**e),
+                               expr.span,
+                               width,
+                               offset)
+        }
+        ast::ExprKind::Tup(ref items) => {
+            rewrite_tuple(context,
+                          items.iter().map(|x| &**x),
+                          expr.span,
+                          width,
+                          offset)
+        }
+        ast::ExprKind::While(ref cond, ref block, label) => {
+            Loop::new_while(None, cond, block, label).rewrite(context, width, offset)
+        }
+        ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => {
+            Loop::new_while(Some(pat), cond, block, label).rewrite(context, width, offset)
+        }
+        ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
+            Loop::new_for(pat, cond, block, label).rewrite(context, width, offset)
+        }
+        ast::ExprKind::Loop(ref block, label) => {
+            Loop::new_loop(block, label).rewrite(context, width, offset)
+        }
+        ast::ExprKind::Block(ref block) => block.rewrite(context, width, offset),
+        ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
+            rewrite_if_else(context,
+                            cond,
+                            expr_type,
+                            if_block,
+                            else_block.as_ref().map(|e| &**e),
+                            expr.span,
+                            None,
+                            width,
+                            offset,
+                            true)
+        }
+        ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
+            rewrite_if_else(context,
+                            cond,
+                            expr_type,
+                            if_block,
+                            else_block.as_ref().map(|e| &**e),
+                            expr.span,
+                            Some(pat),
+                            width,
+                            offset,
+                            true)
+        }
+        ast::ExprKind::Match(ref cond, ref arms) => {
+            rewrite_match(context, cond, arms, width, offset, expr.span)
+        }
+        ast::ExprKind::Path(ref qself, ref path) => {
+            rewrite_path(context, true, qself.as_ref(), path, width, offset)
+        }
+        ast::ExprKind::Assign(ref lhs, ref rhs) => {
+            rewrite_assignment(context, lhs, rhs, None, width, offset)
+        }
+        ast::ExprKind::AssignOp(ref op, ref lhs, ref rhs) => {
+            rewrite_assignment(context, lhs, rhs, Some(op), width, offset)
+        }
+        ast::ExprKind::Again(ref opt_ident) => {
+            let id_str = match *opt_ident {
+                Some(ident) => format!(" {}", ident.node),
+                None => String::new(),
+            };
+            wrap_str(format!("continue{}", id_str),
+                     context.config.max_width,
+                     width,
+                     offset)
+        }
+        ast::ExprKind::Break(ref opt_ident) => {
+            let id_str = match *opt_ident {
+                Some(ident) => format!(" {}", ident.node),
+                None => String::new(),
+            };
+            wrap_str(format!("break{}", id_str),
+                     context.config.max_width,
+                     width,
+                     offset)
+        }
+        ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
+            rewrite_closure(capture, fn_decl, body, expr.span, context, width, offset)
+        }
+        ast::ExprKind::Try(..) |
+        ast::ExprKind::Field(..) |
+        ast::ExprKind::TupField(..) |
+        ast::ExprKind::MethodCall(..) => rewrite_chain(expr, context, width, offset),
+        ast::ExprKind::Mac(ref mac) => {
+            // Failure to rewrite a marco should not imply failure to
+            // rewrite the expression.
+            rewrite_macro(mac, None, context, width, offset).or_else(|| {
+                wrap_str(context.snippet(expr.span),
                          context.config.max_width,
                          width,
                          offset)
+            })
+        }
+        ast::ExprKind::Ret(None) => {
+            wrap_str("return".to_owned(), context.config.max_width, width, offset)
+        }
+        ast::ExprKind::Ret(Some(ref expr)) => {
+            rewrite_unary_prefix(context, "return ", &**expr, width, offset)
+        }
+        ast::ExprKind::Box(ref expr) => {
+            rewrite_unary_prefix(context, "box ", &**expr, width, offset)
+        }
+        ast::ExprKind::AddrOf(mutability, ref expr) => {
+            rewrite_expr_addrof(context, mutability, expr, width, offset)
+        }
+        ast::ExprKind::Cast(ref expr, ref ty) => {
+            rewrite_pair(&**expr, &**ty, "", " as ", "", context, width, offset)
+        }
+        ast::ExprKind::Type(ref expr, ref ty) => {
+            rewrite_pair(&**expr, &**ty, "", ": ", "", context, width, offset)
+        }
+        ast::ExprKind::Index(ref expr, ref index) => {
+            rewrite_pair(&**expr, &**index, "", "[", "]", context, width, offset)
+        }
+        ast::ExprKind::Repeat(ref expr, ref repeats) => {
+            rewrite_pair(&**expr, &**repeats, "[", "; ", "]", context, width, offset)
+        }
+        ast::ExprKind::Range(ref lhs, ref rhs, limits) => {
+            let delim = match limits {
+                ast::RangeLimits::HalfOpen => "..",
+                ast::RangeLimits::Closed => "...",
+            };
+
+            match (lhs.as_ref().map(|x| &**x), rhs.as_ref().map(|x| &**x)) {
+                (Some(ref lhs), Some(ref rhs)) => {
+                    rewrite_pair(&**lhs, &**rhs, "", delim, "", context, width, offset)
+                }
+                (None, Some(ref rhs)) => {
+                    rewrite_unary_prefix(context, delim, &**rhs, width, offset)
+                }
+                (Some(ref lhs), None) => {
+                    rewrite_unary_suffix(context, delim, &**lhs, width, offset)
+                }
+                (None, None) => wrap_str(delim.into(), context.config.max_width, width, offset),
             }
-        };
-        result.and_then(|res| recover_comment_removed(res, self.span, context, width, offset))
-    }
+        }
+        // We do not format these expressions yet, but they should still
+        // satisfy our width restrictions.
+        ast::ExprKind::InPlace(..) |
+        ast::ExprKind::InlineAsm(..) => {
+            wrap_str(context.snippet(expr.span),
+                     context.config.max_width,
+                     width,
+                     offset)
+        }
+    };
+    result.and_then(|res| recover_comment_removed(res, expr.span, context, width, offset))
 }
 
 pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
@@ -470,11 +487,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
 }
 
 fn and_one_line(x: Option<String>) -> Option<String> {
-    x.and_then(|x| if x.contains('\n') {
-        None
-    } else {
-        Some(x)
-    })
+    x.and_then(|x| if x.contains('\n') { None } else { Some(x) })
 }
 
 fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
@@ -560,15 +573,13 @@ impl Rewrite for ast::Stmt {
             }
             ast::StmtKind::Expr(ref ex, _) |
             ast::StmtKind::Semi(ref ex, _) => {
-                let suffix = if semicolon_for_stmt(self) {
-                    ";"
-                } else {
-                    ""
-                };
+                let suffix = if semicolon_for_stmt(self) { ";" } else { "" };
 
-                ex.rewrite(context,
-                             context.config.max_width - offset.width() - suffix.len(),
-                             offset)
+                format_expr(ex,
+                            ExprType::Statement,
+                            context,
+                            context.config.max_width - offset.width() - suffix.len(),
+                            offset)
                     .map(|s| s + suffix)
             }
             ast::StmtKind::Mac(..) => None,
@@ -704,6 +715,7 @@ fn extract_comment(span: Span,
 // treated as an if-let-else expression.
 fn rewrite_if_else(context: &RewriteContext,
                    cond: &ast::Expr,
+                   expr_type: ExprType,
                    if_block: &ast::Block,
                    else_block_opt: Option<&ast::Expr>,
                    span: Span,
@@ -726,10 +738,12 @@ fn rewrite_if_else(context: &RewriteContext,
                                                     offset + 3));
 
     // Try to format if-else on single line.
-    if allow_single_line && context.config.single_line_if_else {
+    if expr_type == ExprType::SubExpression && allow_single_line &&
+       context.config.single_line_if_else_max_width > 0 {
         let trial = single_line_if_else(context, &pat_expr_string, if_block, else_block_opt, width);
 
-        if trial.is_some() {
+        if trial.is_some() &&
+           trial.as_ref().unwrap().len() <= context.config.single_line_if_else_max_width {
             return trial;
         }
     }
@@ -766,6 +780,7 @@ fn rewrite_if_else(context: &RewriteContext,
             ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref next_else_block) => {
                 rewrite_if_else(context,
                                 cond,
+                                expr_type,
                                 if_block,
                                 next_else_block.as_ref().map(|e| &**e),
                                 mk_sp(else_block.span.lo, span.hi),
@@ -777,6 +792,7 @@ fn rewrite_if_else(context: &RewriteContext,
             ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
                 rewrite_if_else(context,
                                 cond,
+                                expr_type,
                                 if_block,
                                 next_else_block.as_ref().map(|e| &**e),
                                 mk_sp(else_block.span.lo, span.hi),
@@ -1248,11 +1264,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
 
     // The expression may (partionally) fit on the current line.
     if width > extra_offset + 1 {
-        let spacer = if pat.is_some() {
-            " "
-        } else {
-            ""
-        };
+        let spacer = if pat.is_some() { " " } else { "" };
 
         let expr_rewrite = expr.rewrite(context,
                                         width - extra_offset - spacer.len(),

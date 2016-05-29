@@ -1,3 +1,4 @@
+// rustfmt-single_line_if_else_max_width: 0
 // rustfmt-wrap_comments: true
 // rustfmt-hard_tabs: true
 

@@ -77,11 +77,7 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
         Visibility::Crate(_) => Cow::from("pub(crate) "),
         Visibility::Restricted { ref path, .. } => {
             let Path { global, ref segments, .. } = **path;
-            let prefix = if global {
-                "::"
-            } else {
-                ""
-            };
+            let prefix = if global { "::" } else { "" };
             let mut segments_iter = segments.iter().map(|seg| seg.identifier.name.as_str());
 
             Cow::from(format!("pub({}{}) ", prefix, segments_iter.join("::")))

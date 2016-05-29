@@ -111,11 +111,7 @@ pub fn rewrite_use_list(width: usize,
     }
 
     // 2 = ::
-    let path_separation_w = if !path_str.is_empty() {
-        2
-    } else {
-        0
-    };
+    let path_separation_w = if !path_str.is_empty() { 2 } else { 0 };
     // 1 = {
     let supp_indent = path_str.len() + path_separation_w + 1;
     // 1 = }
@@ -140,11 +136,7 @@ pub fn rewrite_use_list(width: usize,
     // potentially move "self" to the front of the vector without touching
     // the rest of the items.
     let has_self = move_self_to_front(&mut items);
-    let first_index = if has_self {
-        0
-    } else {
-        1
-    };
+    let first_index = if has_self { 0 } else { 1 };
 
     if context.config.reorder_imports {
         items[1..].sort_by(|a, b| a.item.cmp(&b.item));
