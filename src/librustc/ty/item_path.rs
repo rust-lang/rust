@@ -13,6 +13,7 @@ use middle::cstore::LOCAL_CRATE;
 use hir::def_id::{DefId, CRATE_DEF_INDEX};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
+use syntax::parse::token;
 
 use std::cell::Cell;
 
@@ -138,7 +139,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            cur_path.push(self.sess.cstore.item_name(cur_def));
+            cur_path.push(self.sess.cstore.opt_item_name(cur_def).unwrap_or_else(||
+                token::intern("<unnamed>")));
             match visible_parent_map.get(&cur_def) {
                 Some(&def) => cur_def = def,
                 None => return false,

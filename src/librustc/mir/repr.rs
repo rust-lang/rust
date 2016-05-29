@@ -942,7 +942,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         ppaux::parameterized(fmt, substs, variant_def.did,
                                              ppaux::Ns::Value, &[],
                                              |tcx| {
-                            tcx.lookup_item_type(variant_def.did).generics
+                            Some(tcx.lookup_item_type(variant_def.did).generics)
                         })?;
 
                         match variant_def.kind() {
@@ -1034,8 +1034,9 @@ impl<'tcx> Debug for Literal<'tcx> {
         use self::Literal::*;
         match *self {
             Item { def_id, substs } => {
-                ppaux::parameterized(fmt, substs, def_id, ppaux::Ns::Value, &[],
-                                     |tcx| tcx.lookup_item_type(def_id).generics)
+                ppaux::parameterized(
+                    fmt, substs, def_id, ppaux::Ns::Value, &[],
+                    |tcx| Some(tcx.lookup_item_type(def_id).generics))
             }
             Value { ref value } => {
                 write!(fmt, "const ")?;
