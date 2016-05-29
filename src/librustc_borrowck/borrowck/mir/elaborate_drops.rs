@@ -998,9 +998,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             continue
                         }
                         TerminatorKind::DropAndReplace { .. } => {
-                            // this contains the consume of the source and
+                            // this contains the move of the source and
                             // the initialization of the destination. We
-                            // only want the latter
+                            // only want the former - the latter is handled
+                            // by the elaboration code and must be done
+                            // *after* the destination is dropped.
                             assert!(self.patch.is_patched(bb));
                             allow_initializations = false;
                         }

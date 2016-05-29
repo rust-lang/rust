@@ -8,11 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::RefCell;
+#![feature(rustc_attrs)]
+
+use std::cell::{Cell, RefCell};
+use std::panic;
+use std::usize;
+
+struct InjectedFailure;
 
 struct Allocator {
     data: RefCell<Vec<bool>>,
+    failing_op: usize,
+    cur_ops: Cell<usize>,
 }
+
+impl panic::UnwindSafe for Allocator {}
+impl panic::RefUnwindSafe for Allocator {}
 
 impl Drop for Allocator {
     fn drop(&mut self) {
@@ -24,8 +35,20 @@ impl Drop for Allocator {
 }
 
 impl Allocator {
-    fn new() -> Self { Allocator { data: RefCell::new(vec![]) } }
+    fn new(failing_op: usize) -> Self {
+        Allocator {
+            failing_op: failing_op,
+            cur_ops: Cell::new(0),
+            data: RefCell::new(vec![])
+        }
+    }
     fn alloc(&self) -> Ptr {
+        self.cur_ops.set(self.cur_ops.get() + 1);
+
+        if self.cur_ops.get() == self.failing_op {
+            panic!(InjectedFailure);
+        }
+
         let mut data = self.data.borrow_mut();
         let addr = data.len();
         data.push(true);
@@ -42,9 +65,16 @@ impl<'a> Drop for Ptr<'a> {
             }
             ref mut d => *d = false
         }
+
+        self.1.cur_ops.set(self.1.cur_ops.get()+1);
+
+        if self.1.cur_ops.get() == self.1.failing_op {
+            panic!(InjectedFailure);
+        }
     }
 }
 
+#[rustc_mir]
 fn dynamic_init(a: &Allocator, c: bool) {
     let _x;
     if c {
@@ -52,15 +82,17 @@ fn dynamic_init(a: &Allocator, c: bool) {
     }
 }
 
-fn dynamic_drop(a: &Allocator, c: bool) -> Option<Ptr> {
+#[rustc_mir]
+fn dynamic_drop(a: &Allocator, c: bool) {
     let x = a.alloc();
     if c {
         Some(x)
     } else {
         None
-    }
+    };
 }
 
+#[rustc_mir]
 fn assignment2(a: &Allocator, c0: bool, c1: bool) {
     let mut _v = a.alloc();
     let mut _w = a.alloc();
@@ -73,6 +105,7 @@ fn assignment2(a: &Allocator, c0: bool, c1: bool) {
     }
 }
 
+#[rustc_mir]
 fn assignment1(a: &Allocator, c0: bool) {
     let mut _v = a.alloc();
     let mut _w = a.alloc();
@@ -82,19 +115,42 @@ fn assignment1(a: &Allocator, c0: bool) {
     _v = _w;
 }
 
+fn run_test<F>(mut f: F)
+    where F: FnMut(&Allocator)
+{
+    let first_alloc = Allocator::new(usize::MAX);
+    f(&first_alloc);
+
+    for failing_op in 1..first_alloc.cur_ops.get()+1 {
+        let alloc = Allocator::new(failing_op);
+        let alloc = &alloc;
+        let f = panic::AssertUnwindSafe(&mut f);
+        let result = panic::catch_unwind(move || {
+            f.0(alloc);
+        });
+        match result {
+            Ok(..) => panic!("test executed {} ops but now {}",
+                             first_alloc.cur_ops.get(), alloc.cur_ops.get()),
+            Err(e) => {
+                if e.downcast_ref::<InjectedFailure>().is_none() {
+                    panic::resume_unwind(e);
+                }
+            }
+        }
+    }
+}
 
 fn main() {
-    let a = Allocator::new();
-    dynamic_init(&a, false);
-    dynamic_init(&a, true);
-    dynamic_drop(&a, false);
-    dynamic_drop(&a, true);
+    run_test(|a| dynamic_init(a, false));
+    run_test(|a| dynamic_init(a, true));
+    run_test(|a| dynamic_drop(a, false));
+    run_test(|a| dynamic_drop(a, true));
 
-    assignment2(&a, false, false);
-    assignment2(&a, false, true);
-    assignment2(&a, true, false);
-    assignment2(&a, true, true);
+    run_test(|a| assignment2(a, false, false));
+    run_test(|a| assignment2(a, false, true));
+    run_test(|a| assignment2(a, true, false));
+    run_test(|a| assignment2(a, true, true));
 
-    assignment1(&a, false);
-    assignment1(&a, true);
+    run_test(|a| assignment1(a, false));
+    run_test(|a| assignment1(a, true));
 }

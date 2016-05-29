@@ -13,7 +13,9 @@
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc::mir::repr as mir;
+use rustc::mir::repr::TerminatorKind;
 use rustc::mir::visit::{Visitor, LvalueContext};
+use rustc_mir::traversal;
 use common::{self, Block, BlockAndBuilder};
 use super::rvalue;
 
@@ -133,4 +135,105 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
 
         self.super_lvalue(lvalue, context);
     }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum CleanupKind {
+    NotCleanup,
+    Funclet,
+    Internal { funclet: mir::BasicBlock }
+}
+
+pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
+                                mir: &mir::Mir<'tcx>)
+                                -> Vec<CleanupKind>
+{
+    fn discover_masters<'tcx>(result: &mut [CleanupKind], mir: &mir::Mir<'tcx>) {
+        for bb in mir.all_basic_blocks() {
+            let data = mir.basic_block_data(bb);
+            match data.terminator().kind {
+                TerminatorKind::Goto { .. } |
+                TerminatorKind::Resume |
+                TerminatorKind::Return |
+                TerminatorKind::If { .. } |
+                TerminatorKind::Switch { .. } |
+                TerminatorKind::SwitchInt { .. } => {
+                    /* nothing to do */
+                }
+                TerminatorKind::Call { cleanup: unwind, .. } |
+                TerminatorKind::DropAndReplace { unwind, .. } |
+                TerminatorKind::Drop { unwind, .. } => {
+                    if let Some(unwind) = unwind {
+                        debug!("cleanup_kinds: {:?}/{:?} registering {:?} as funclet",
+                               bb, data, unwind);
+                        result[unwind.index()] = CleanupKind::Funclet;
+                    }
+                }
+            }
+        }
+    }
+
+    fn propagate<'tcx>(result: &mut [CleanupKind], mir: &mir::Mir<'tcx>) {
+        let mut funclet_succs : Vec<_> =
+            mir.all_basic_blocks().iter().map(|_| None).collect();
+
+        let mut set_successor = |funclet: mir::BasicBlock, succ| {
+            match funclet_succs[funclet.index()] {
+                ref mut s @ None => {
+                    debug!("set_successor: updating successor of {:?} to {:?}",
+                           funclet, succ);
+                    *s = Some(succ);
+                },
+                Some(s) => if s != succ {
+                    span_bug!(mir.span, "funclet {:?} has 2 parents - {:?} and {:?}",
+                              funclet, s, succ);
+                }
+            }
+        };
+
+        for (bb, data) in traversal::reverse_postorder(mir) {
+            let funclet = match result[bb.index()] {
+                CleanupKind::NotCleanup => continue,
+                CleanupKind::Funclet => bb,
+                CleanupKind::Internal { funclet } => funclet,
+            };
+
+            debug!("cleanup_kinds: {:?}/{:?}/{:?} propagating funclet {:?}",
+                   bb, data, result[bb.index()], funclet);
+
+            for &succ in data.terminator().successors().iter() {
+                let kind = result[succ.index()];
+                debug!("cleanup_kinds: propagating {:?} to {:?}/{:?}",
+                       funclet, succ, kind);
+                match kind {
+                    CleanupKind::NotCleanup => {
+                        result[succ.index()] = CleanupKind::Internal { funclet: funclet };
+                    }
+                    CleanupKind::Funclet => {
+                        set_successor(funclet, succ);
+                    }
+                    CleanupKind::Internal { funclet: succ_funclet } => {
+                        if funclet != succ_funclet {
+                            // `succ` has 2 different funclet going into it, so it must
+                            // be a funclet by itself.
+
+                            debug!("promoting {:?} to a funclet and updating {:?}", succ,
+                                   succ_funclet);
+                            result[succ.index()] = CleanupKind::Funclet;
+                            set_successor(succ_funclet, succ);
+                            set_successor(funclet, succ);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let mut result : Vec<_> =
+        mir.all_basic_blocks().iter().map(|_| CleanupKind::NotCleanup).collect();
+
+    discover_masters(&mut result, mir);
+    propagate(&mut result, mir);
+    debug!("cleanup_kinds: result={:?}", result);
+    result
 }
