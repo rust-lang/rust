@@ -38,7 +38,7 @@ pub mod external_data;
 pub mod span_utils;
 
 use rustc::hir;
-use rustc::hir::map::NodeItem;
+use rustc::hir::map::{Node, NodeItem};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
@@ -391,7 +391,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
         match expr.node {
             ast::ExprKind::Field(ref sub_ex, ident) => {
-                let hir_node = self.tcx.map.expect_expr(sub_ex.id);
+                let hir_node = match self.tcx.map.find(sub_ex.id) {
+                    Some(Node::NodeExpr(expr)) => expr,
+                    _ => {
+                        debug!("Missing or weird node for sub-expression {} in {:?}",
+                               sub_ex.id, expr);
+                        return None;
+                    }
+                };
                 match self.tcx.expr_ty_adjusted(&hir_node).sty {
                     ty::TyStruct(def, _) => {
                         let f = def.struct_variant().field_named(ident.node.name);
@@ -411,7 +418,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprKind::Struct(ref path, _, _) => {
-                let hir_node = self.tcx.map.expect_expr(expr.id);
                 match self.tcx.expr_ty_adjusted(&hir_node).sty {
                     ty::TyStruct(def, _) => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
