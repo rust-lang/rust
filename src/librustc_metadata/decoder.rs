@@ -285,12 +285,17 @@ fn item_trait_ref<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: 
 }
 
 fn item_name(intr: &IdentInterner, item: rbml::Doc) -> ast::Name {
-    let name = reader::get_doc(item, tag_paths_data_name);
-    let string = name.as_str_slice();
-    match intr.find(string) {
-        None => token::intern(string),
-        Some(val) => val,
-    }
+    maybe_item_name(intr, item).expect("no item in item_name")
+}
+
+fn maybe_item_name(intr: &IdentInterner, item: rbml::Doc) -> Option<ast::Name> {
+    reader::maybe_get_doc(item, tag_paths_data_name).map(|name| {
+        let string = name.as_str_slice();
+        match intr.find(string) {
+            None => token::intern(string),
+            Some(val) => val,
+        }
+    })
 }
 
 fn family_to_variant_kind<'tcx>(family: Family) -> Option<ty::VariantKind> {
@@ -790,6 +795,11 @@ pub fn each_top_level_item_of_crate<F, G>(intr: Rc<IdentInterner>,
 
 pub fn get_item_name(intr: &IdentInterner, cdata: Cmd, id: DefIndex) -> ast::Name {
     item_name(intr, cdata.lookup_item(id))
+}
+
+pub fn maybe_get_item_name(intr: &IdentInterner, cdata: Cmd, id: DefIndex)
+                         -> Option<ast::Name> {
+    maybe_item_name(intr, cdata.lookup_item(id))
 }
 
 pub fn maybe_get_item_ast<'a, 'tcx>(cdata: Cmd, tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefIndex)
