@@ -17,7 +17,7 @@
 
 use core::{isize, usize};
 #[cfg(not(test))]
-use core::intrinsics::{size_of, min_align_of};
+use core::intrinsics::{min_align_of, size_of};
 
 #[allow(improper_ctypes)]
 extern "C" {
