@@ -76,6 +76,8 @@ Not-a-Number (NaN) values cannot be compared for equality and hence can never
 match the input to a match expression. So, the following will not compile:
 
 ```compile_fail
+#![deny(illegal_floating_point_constant_pattern)]
+
 const NAN: f32 = 0.0 / 0.0;
 
 let number = 0.1f32;
@@ -160,7 +162,7 @@ let Some(y) = x;
 If you encounter this error you probably need to use a `match` or `if let` to
 deal with the possibility of failure. Example:
 
-```compile_fail
+```
 let x = Some(1);
 
 match x {
