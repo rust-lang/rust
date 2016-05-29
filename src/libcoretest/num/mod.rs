@@ -44,18 +44,18 @@ pub fn test_num<T>(ten: T, two: T) where
      + Rem<Output=T> + Debug
      + Copy
 {
-    assert_eq!(ten.add(two),  ten + two);
-    assert_eq!(ten.sub(two),  ten - two);
-    assert_eq!(ten.mul(two),  ten * two);
-    assert_eq!(ten.div(two),  ten / two);
-    assert_eq!(ten.rem(two),  ten % two);
+    assert_eq!(ten.add(two), ten + two);
+    assert_eq!(ten.sub(two), ten - two);
+    assert_eq!(ten.mul(two), ten * two);
+    assert_eq!(ten.div(two), ten / two);
+    assert_eq!(ten.rem(two), ten % two);
 }
 
 #[test]
 fn from_str_issue7588() {
-    let u : Option<u8> = u8::from_str_radix("1000", 10).ok();
+    let u: Option<u8> = u8::from_str_radix("1000", 10).ok();
     assert_eq!(u, None);
-    let s : Option<i16> = i16::from_str_radix("80000", 10).ok();
+    let s: Option<i16> = i16::from_str_radix("80000", 10).ok();
     assert_eq!(s, None);
 }
 
@@ -97,7 +97,8 @@ fn test_int_from_str_overflow() {
 #[test]
 fn test_leading_plus() {
     assert_eq!("+127".parse::<u8>().ok(), Some(127));
-    assert_eq!("+9223372036854775807".parse::<i64>().ok(), Some(9223372036854775807));
+    assert_eq!("+9223372036854775807".parse::<i64>().ok(),
+               Some(9223372036854775807));
 }
 
 #[test]

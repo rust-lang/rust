@@ -39,7 +39,8 @@ fn test_estimate_scaling_factor() {
     assert_almost_eq!(estimate_scaling_factor(10 * 1048576 / 1000000, -20), -5);
     assert_almost_eq!(estimate_scaling_factor(10 * 1048576 / 1000000 + 1, -20), -4);
     assert_almost_eq!(estimate_scaling_factor(100 * 1048576 / 1000000, -20), -4);
-    assert_almost_eq!(estimate_scaling_factor(100 * 1048576 / 1000000 + 1, -20), -3);
+    assert_almost_eq!(estimate_scaling_factor(100 * 1048576 / 1000000 + 1, -20),
+                      -3);
     assert_almost_eq!(estimate_scaling_factor(1048575, -20), 0);
     assert_almost_eq!(estimate_scaling_factor(1048576, -20), 0);
     assert_almost_eq!(estimate_scaling_factor(1048577, -20), 1);
@@ -58,4 +59,3 @@ fn test_estimate_scaling_factor() {
         assert_almost_eq!(estimate_scaling_factor(1, i as i16), expected as i16);
     }
 }
-

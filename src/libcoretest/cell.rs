@@ -214,7 +214,9 @@ fn as_unsafe_cell() {
     assert_eq!(1, unsafe { *c1.as_unsafe_cell().get() });
 
     let c2: Cell<usize> = Cell::new(0);
-    unsafe { *c2.as_unsafe_cell().get() = 1; }
+    unsafe {
+        *c2.as_unsafe_cell().get() = 1;
+    }
     assert_eq!(1, c2.get());
 
     let r1: RefCell<usize> = RefCell::new(0);
@@ -222,7 +224,9 @@ fn as_unsafe_cell() {
     assert_eq!(1, unsafe { *r1.as_unsafe_cell().get() });
 
     let r2: RefCell<usize> = RefCell::new(0);
-    unsafe { *r2.as_unsafe_cell().get() = 1; }
+    unsafe {
+        *r2.as_unsafe_cell().get() = 1;
+    }
     assert_eq!(1, *r2.borrow());
 }
 
@@ -279,5 +283,3 @@ fn refcell_ref_coercion() {
         assert_eq!(&*coerced, comp);
     }
 }
-
-

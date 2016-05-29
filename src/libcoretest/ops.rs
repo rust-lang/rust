@@ -14,18 +14,17 @@ use core::ops::{Range, RangeFull, RangeFrom, RangeTo};
 // Overhead of dtors
 
 struct HasDtor {
-    _x: isize
+    _x: isize,
 }
 
 impl Drop for HasDtor {
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) {}
 }
 
 #[bench]
 fn alloc_obj_with_dtor(b: &mut Bencher) {
     b.iter(|| {
-        HasDtor { _x : 10 };
+        HasDtor { _x: 10 };
     })
 }
 
@@ -33,7 +32,10 @@ fn alloc_obj_with_dtor(b: &mut Bencher) {
 
 #[test]
 fn test_range() {
-    let r = Range { start: 2, end: 10 };
+    let r = Range {
+        start: 2,
+        end: 10,
+    };
     let mut count = 0;
     for (i, ri) in r.enumerate() {
         assert!(ri == i + 2);

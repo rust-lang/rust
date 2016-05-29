@@ -18,12 +18,16 @@ fn test_cached_power() {
     assert_eq!(CACHED_POW10.first().unwrap().1, CACHED_POW10_FIRST_E);
     assert_eq!(CACHED_POW10.last().unwrap().1, CACHED_POW10_LAST_E);
 
-    for e in -1137..961 { // full range for f64
+    for e in -1137..961 {
+        // full range for f64
         let low = ALPHA - e - 64;
         let high = GAMMA - e - 64;
         let (_k, cached) = cached_power(low, high);
         assert!(low <= cached.e && cached.e <= high,
-                "cached_power({}, {}) = {:?} is incorrect", low, high, cached);
+                "cached_power({}, {}) = {:?} is incorrect",
+                low,
+                high,
+                cached);
     }
 }
 
@@ -53,7 +57,8 @@ fn shortest_random_equivalence_test() {
     f32_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, 10_000);
 }
 
-#[test] #[ignore] // it is too expensive
+#[test]
+#[ignore] // it is too expensive
 fn shortest_f32_exhaustive_equivalence_test() {
     // it is hard to directly test the optimality of the output, but we can at least test if
     // two different algorithms agree to each other.
@@ -66,13 +71,13 @@ fn shortest_f32_exhaustive_equivalence_test() {
     f32_exhaustive_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS);
 }
 
-#[test] #[ignore] // it is too expensive
+#[test]
+#[ignore] // it is too expensive
 fn shortest_f64_hard_random_equivalence_test() {
     // this again probably has to use appropriate rustc flags.
 
     use core::num::flt2dec::strategy::dragon::format_shortest as fallback;
-    f64_random_equivalence_test(format_shortest_opt, fallback,
-                                         MAX_SIG_DIGITS, 100_000_000);
+    f64_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, 100_000_000);
 }
 
 #[test]
@@ -90,7 +95,9 @@ fn exact_f32_random_equivalence_test() {
     use core::num::flt2dec::strategy::dragon::format_exact as fallback;
     for k in 1..21 {
         f32_random_equivalence_test(|d, buf| format_exact_opt(d, buf, i16::MIN),
-                                             |d, buf| fallback(d, buf, i16::MIN), k, 1_000);
+                                    |d, buf| fallback(d, buf, i16::MIN),
+                                    k,
+                                    1_000);
     }
 }
 
@@ -99,7 +106,9 @@ fn exact_f64_random_equivalence_test() {
     use core::num::flt2dec::strategy::dragon::format_exact as fallback;
     for k in 1..21 {
         f64_random_equivalence_test(|d, buf| format_exact_opt(d, buf, i16::MIN),
-                                             |d, buf| fallback(d, buf, i16::MIN), k, 1_000);
+                                    |d, buf| fallback(d, buf, i16::MIN),
+                                    k,
+                                    1_000);
     }
 }
 
@@ -178,4 +187,3 @@ fn test_to_exact_exp_str() {
 fn test_to_exact_fixed_str() {
     to_exact_fixed_str_test(format_exact);
 }
-

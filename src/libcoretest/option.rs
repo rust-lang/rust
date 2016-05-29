@@ -40,11 +40,11 @@ fn test_get_resource() {
     use core::cell::RefCell;
 
     struct R {
-       i: Rc<RefCell<isize>>,
+        i: Rc<RefCell<isize>>,
     }
 
-        impl Drop for R {
-       fn drop(&mut self) {
+    impl Drop for R {
+        fn drop(&mut self) {
             let ii = &*self.i;
             let i = *ii.borrow();
             *ii.borrow_mut() = i + 1;
@@ -52,9 +52,7 @@ fn test_get_resource() {
     }
 
     fn r(i: Rc<RefCell<isize>>) -> R {
-        R {
-            i: i
-        }
+        R { i: i }
     }
 
     let i = Rc::new(RefCell::new(0));
@@ -78,7 +76,8 @@ fn test_option_dance() {
     assert!(y.is_none());
 }
 
-#[test] #[should_panic]
+#[test]
+#[should_panic]
 fn test_option_too_much_dance() {
     struct A;
     let mut y = Some(A);
@@ -218,7 +217,7 @@ fn test_mut_iter() {
 fn test_ord() {
     let small = Some(1.0f64);
     let big = Some(5.0f64);
-    let nan = Some(0.0f64/0.0);
+    let nan = Some(0.0f64 / 0.0);
     assert!(!(nan < big));
     assert!(!(nan > big));
     assert!(small < big);
@@ -234,14 +233,21 @@ fn test_collect() {
     let v: Option<Vec<isize>> = (0..3).map(|x| Some(x)).collect();
     assert!(v == Some(vec![0, 1, 2]));
 
-    let v: Option<Vec<isize>> = (0..3).map(|x| {
-        if x > 1 { None } else { Some(x) }
-    }).collect();
+    let v: Option<Vec<isize>> = (0..3)
+                                    .map(|x| {
+                                        if x > 1 {
+                                            None
+                                        } else {
+                                            Some(x)
+                                        }
+                                    })
+                                    .collect();
     assert!(v == None);
 
     // test that it does not take more elements than it needs
-    let mut functions: [Box<Fn() -> Option<()>>; 3] =
-        [box || Some(()), box || None, box || panic!()];
+    let mut functions: [Box<Fn() -> Option<()>>; 3] = [box || Some(()),
+                                                       box || None,
+                                                       box || panic!()];
 
     let v: Option<Vec<()>> = functions.iter_mut().map(|f| (*f)()).collect();
 
