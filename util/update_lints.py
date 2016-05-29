@@ -58,9 +58,9 @@ def collect(lints, deprecated_lints, restriction_lints, fn):
         # remove \-newline escapes from description string
         desc = nl_escape_re.sub('', match.group('desc'))
         restriction_lints.append((os.path.splitext(os.path.basename(fn))[0],
-                                match.group('name').lower(),
-                                "allow",
-                                desc.replace('\\"', '"')))
+                                  match.group('name').lower(),
+                                  "allow",
+                                  desc.replace('\\"', '"')))
 
 
 def gen_table(lints, link=None):
@@ -99,6 +99,7 @@ def gen_deprecated(lints):
 
     for lint in lints:
         yield '    store.register_removed("%s", "%s");\n' % (lint[1], lint[2])
+
 
 def replace_region(fn, region_start, region_end, callback,
                    replace_start=True, write_back=True):
@@ -155,6 +156,16 @@ def main(print_only=False, check=False):
                 collect(lints, deprecated_lints, restriction_lints,
                         os.path.join(root, fn))
 
+    # determine version
+    with open('Cargo.toml') as fp:
+        for line in fp:
+            if line.startswith('version ='):
+                clippy_version = line.split()[2].strip('"')
+                break
+        else:
+            print('Error: version not found in Cargo.toml!')
+            return
+
     if print_only:
         sys.stdout.writelines(gen_table(lints + restriction_lints))
         return
@@ -168,8 +179,8 @@ def main(print_only=False, check=False):
     changed |= replace_region(
         'README.md',
         r'^There are \d+ lints included in this crate:', "",
-        lambda: ['There are %d lints included in this crate:\n' % (len(lints)
-            + len(restriction_lints))],
+        lambda: ['There are %d lints included in this crate:\n' %
+                 (len(lints) + len(restriction_lints))],
         write_back=not check)
 
     # update the links in the CHANGELOG
@@ -180,6 +191,19 @@ def main(print_only=False, check=False):
         lambda: ["[`{0}`]: {1}#{0}\n".format(l[1], wiki_link) for l in
                  sorted(lints + restriction_lints + deprecated_lints,
                         key=lambda l: l[1])],
+        replace_start=False, write_back=not check)
+
+    # update version of clippy_lints in Cargo.toml
+    changed |= replace_region(
+        'Cargo.toml', r'# begin automatic update', '# end automatic update',
+        lambda: ['clippy_lints = { version = "%s", path = "clippy_lints" }\n' %
+                 clippy_version],
+        replace_start=False, write_back=not check)
+
+    # update version of clippy_lints in Cargo.toml
+    changed |= replace_region(
+        'clippy_lints/Cargo.toml', r'# begin automatic update', '# end automatic update',
+        lambda: ['version = "%s"\n' % clippy_version],
         replace_start=False, write_back=not check)
 
     # update the `pub mod` list
@@ -196,10 +220,10 @@ def main(print_only=False, check=False):
 
     # same for "deprecated" lint collection
     changed |= replace_region(
-            'clippy_lints/src/lib.rs', r'let mut store', r'end deprecated lints',
-            lambda: gen_deprecated(deprecated_lints),
-            replace_start=False,
-            write_back=not check)
+        'clippy_lints/src/lib.rs', r'let mut store', r'end deprecated lints',
+        lambda: gen_deprecated(deprecated_lints),
+        replace_start=False,
+        write_back=not check)
 
     # same for "clippy_pedantic" lint collection
     changed |= replace_region(
