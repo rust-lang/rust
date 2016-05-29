@@ -60,5 +60,3 @@ fn main() {
     //~ TRANS_ITEM fn generic_functions::foo3[0]<char, (), ()>
     let _ = foo3('v', (), ());
 }
-
-//~ TRANS_ITEM drop-glue i8

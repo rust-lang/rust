@@ -56,5 +56,3 @@ fn main()
     //~ TRANS_ITEM fn cgu_export_trait_method::{{impl}}[0]::without_default_impl_generic[0]<bool>
     let _: (char, bool) = Trait::without_default_impl_generic(false);
 }
-
-//~ TRANS_ITEM drop-glue i8
