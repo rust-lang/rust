@@ -533,6 +533,69 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn check_iscleanup(&mut self, mir: &Mir<'tcx>, block: &BasicBlockData<'tcx>)
+    {
+        let is_cleanup = block.is_cleanup;
+        self.last_span = block.terminator().span;
+        match block.terminator().kind {
+            TerminatorKind::Goto { target } =>
+                self.assert_iscleanup(mir, block, target, is_cleanup),
+            TerminatorKind::If { targets: (on_true, on_false), .. } => {
+                self.assert_iscleanup(mir, block, on_true, is_cleanup);
+                self.assert_iscleanup(mir, block, on_false, is_cleanup);
+            }
+            TerminatorKind::Switch { ref targets, .. } |
+            TerminatorKind::SwitchInt { ref targets, .. } => {
+                for target in targets {
+                    self.assert_iscleanup(mir, block, *target, is_cleanup);
+                }
+            }
+            TerminatorKind::Resume => {
+                if !is_cleanup {
+                    span_mirbug!(self, block, "resume on non-cleanup block!")
+                }
+            }
+            TerminatorKind::Return => {
+                if is_cleanup {
+                    span_mirbug!(self, block, "return on cleanup block")
+                }
+            }
+            TerminatorKind::Drop { target, unwind, .. } |
+            TerminatorKind::DropAndReplace { target, unwind, .. } => {
+                self.assert_iscleanup(mir, block, target, is_cleanup);
+                if let Some(unwind) = unwind {
+                    if is_cleanup {
+                        span_mirbug!(self, block, "unwind on cleanup block")
+                    }
+                    self.assert_iscleanup(mir, block, unwind, true);
+                }
+            }
+            TerminatorKind::Call { ref destination, cleanup, .. } => {
+                if let &Some((_, target)) = destination {
+                    self.assert_iscleanup(mir, block, target, is_cleanup);
+                }
+                if let Some(cleanup) = cleanup {
+                    if is_cleanup {
+                        span_mirbug!(self, block, "cleanup on cleanup block")
+                    }
+                    self.assert_iscleanup(mir, block, cleanup, true);
+                }
+            }
+        }
+    }
+
+    fn assert_iscleanup(&mut self,
+                        mir: &Mir<'tcx>,
+                        ctxt: &fmt::Debug,
+                        bb: BasicBlock,
+                        iscleanuppad: bool)
+    {
+        if mir.basic_block_data(bb).is_cleanup != iscleanuppad {
+            span_mirbug!(self, ctxt, "cleanuppad mismatch: {:?} should be {:?}",
+                         bb, iscleanuppad);
+        }
+    }
+
     fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
         self.last_span = mir.span;
         debug!("run_on_mir: {:?}", mir.span);
@@ -544,9 +607,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.check_stmt(mir, stmt);
             }
 
-            if let Some(ref terminator) = block.terminator {
-                self.check_terminator(mir, terminator);
-            }
+            self.check_terminator(mir, block.terminator());
+            self.check_iscleanup(mir, block);
         }
     }
 
