@@ -440,9 +440,15 @@ actual:\n\
 
                 cmds = cmds.replace("run", "continue");
 
+                let tool_path = match self.config.android_cross_path.to_str() {
+                    Some(x) => x.to_owned(),
+                    None => self.fatal("cannot find android cross path")
+                };
+
                 // write debugger script
                 let mut script_str = String::with_capacity(2048);
                 script_str.push_str(&format!("set charset {}\n", Self::charset()));
+                script_str.push_str(&format!("set sysroot {}\n", tool_path));
                 script_str.push_str(&format!("file {}\n", exe_file.to_str().unwrap()));
                 script_str.push_str("target remote :5039\n");
                 script_str.push_str(&format!("set solib-search-path \
@@ -514,11 +520,6 @@ actual:\n\
                         break
                     }
                 }
-
-                let tool_path = match self.config.android_cross_path.to_str() {
-                    Some(x) => x.to_owned(),
-                    None => self.fatal("cannot find android cross path")
-                };
 
                 let debugger_script = self.make_out_name("debugger.script");
                 // FIXME (#9639): This needs to handle non-utf8 paths
