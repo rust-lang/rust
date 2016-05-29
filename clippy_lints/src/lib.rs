@@ -80,6 +80,7 @@ pub mod identity_op;
 pub mod if_not_else;
 pub mod items_after_statements;
 pub mod len_zero;
+pub mod let_if_seq;
 pub mod lifetimes;
 pub mod loops;
 pub mod map_clone;
@@ -246,6 +247,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box mem_forget::MemForget);
     reg.register_late_lint_pass(box arithmetic::Arithmetic::default());
     reg.register_late_lint_pass(box assign_ops::AssignOps);
+    reg.register_late_lint_pass(box let_if_seq::LetIfSeq);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -318,6 +320,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         identity_op::IDENTITY_OP,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
+        let_if_seq::USELESS_LET_IF_SEQ,
         lifetimes::NEEDLESS_LIFETIMES,
         lifetimes::UNUSED_LIFETIMES,
         loops::EMPTY_LOOP,
