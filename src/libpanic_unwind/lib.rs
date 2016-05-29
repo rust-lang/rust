@@ -82,11 +82,11 @@ mod windows;
 // hairy and tightly coupled, for more information see the compiler's
 // implementation of this.
 #[no_mangle]
-pub unsafe extern fn __rust_maybe_catch_panic(f: fn(*mut u8),
-                                              data: *mut u8,
-                                              data_ptr: *mut usize,
-                                              vtable_ptr: *mut usize)
-                                              -> u32 {
+pub unsafe extern "C" fn __rust_maybe_catch_panic(f: fn(*mut u8),
+                                                  data: *mut u8,
+                                                  data_ptr: *mut usize,
+                                                  vtable_ptr: *mut usize)
+                                                  -> u32 {
     let mut payload = imp::payload();
     if intrinsics::try(f, data, &mut payload as *mut _ as *mut _) == 0 {
         0
@@ -101,7 +101,7 @@ pub unsafe extern fn __rust_maybe_catch_panic(f: fn(*mut u8),
 // Entry point for raising an exception, just delegates to the platform-specific
 // implementation.
 #[no_mangle]
-pub unsafe extern fn __rust_start_panic(data: usize, vtable: usize) -> u32 {
+pub unsafe extern "C" fn __rust_start_panic(data: usize, vtable: usize) -> u32 {
     imp::panic(mem::transmute(raw::TraitObject {
         data: data as *mut (),
         vtable: vtable as *mut (),
