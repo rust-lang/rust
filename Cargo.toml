@@ -30,7 +30,7 @@ toml = "0.1"
 unicode-normalization = "0.1"
 quine-mc_cluskey = "0.2.2"
 # begin automatic update
-clippy_lints = { version = "0.0.69", path = "clippy_lints" }
+clippy_lints = { version = "0.0.70", path = "clippy_lints" }
 # end automatic update
 
 [dev-dependencies]
