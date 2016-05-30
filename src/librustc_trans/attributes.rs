@@ -11,7 +11,6 @@
 
 use libc::c_uint;
 use llvm::{self, ValueRef};
-use session::config::NoDebugInfo;
 pub use syntax::attr::InlineAttr;
 use syntax::ast;
 use context::CrateContext;
@@ -74,25 +73,28 @@ pub fn naked(val: ValueRef, is_naked: bool) {
     }
 }
 
+pub fn set_frame_pointer_elimination(ccx: &CrateContext, llfn: ValueRef) {
+    // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a
+    // parameter.
+    if ccx.sess().must_not_eliminate_frame_pointers() {
+        unsafe {
+            let attr = "no-frame-pointer-elim\0".as_ptr() as *const _;
+            let val = "true\0".as_ptr() as *const _;
+            llvm::LLVMAddFunctionAttrStringValue(llfn,
+                                                 llvm::FunctionIndex as c_uint,
+                                                 attr,
+                                                 val);
+        }
+    }
+}
+
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
 pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
     use syntax::attr::*;
     inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), attrs));
 
-    // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a
-    // parameter.
-    let no_fp_elim = (ccx.sess().opts.debuginfo != NoDebugInfo) ||
-                     !ccx.sess().target.target.options.eliminate_frame_pointer;
-    if no_fp_elim {
-        unsafe {
-            let attr = "no-frame-pointer-elim\0".as_ptr() as *const _;
-            let val = "true\0".as_ptr() as *const _;
-            llvm::LLVMAddFunctionAttrStringValue(llfn,
-                                                 llvm::FunctionIndex as c_uint,
-                                                 attr, val);
-        }
-    }
+    set_frame_pointer_elimination(ccx, llfn);
 
     for attr in attrs {
         if attr.check_name("cold") {
