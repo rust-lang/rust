@@ -47,10 +47,10 @@ use core::f64;
 use core::intrinsics;
 use core::marker::PhantomData;
 
-pub use isaac::{IsaacRng, Isaac64Rng};
+pub use isaac::{Isaac64Rng, IsaacRng};
 pub use chacha::ChaChaRng;
 
-use distributions::{Range, IndependentSample};
+use distributions::{IndependentSample, Range};
 use distributions::range::SampleRange;
 
 #[cfg(test)]
@@ -67,7 +67,7 @@ mod rand_impls;
 // depend on libstd.  This will go away when librand is integrated
 // into libstd.
 #[doc(hidden)]
-trait FloatMath : Sized {
+trait FloatMath: Sized {
     fn exp(self) -> Self;
     fn ln(self) -> Self;
     fn sqrt(self) -> Self;
@@ -102,14 +102,14 @@ impl FloatMath for f64 {
 
 /// A type that can be randomly generated using an `Rng`.
 #[doc(hidden)]
-pub trait Rand : Sized {
+pub trait Rand: Sized {
     /// Generates a random instance of this type using the specified source of
     /// randomness.
     fn rand<R: Rng>(rng: &mut R) -> Self;
 }
 
 /// A random number generator.
-pub trait Rng : Sized {
+pub trait Rng: Sized {
     /// Return the next random u32.
     ///
     /// This rarely needs to be called directly, prefer `r.gen()` to

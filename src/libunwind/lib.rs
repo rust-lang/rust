@@ -27,4 +27,3 @@ extern crate libc;
 mod libunwind;
 #[cfg(not(target_env = "msvc"))]
 pub use libunwind::*;
-
