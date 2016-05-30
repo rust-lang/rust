@@ -656,7 +656,7 @@ fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         None
     } else {
         map = FnvHashMap();
-        pat_util::pat_bindings(&cx.tcx.def_map, &arm.pats[0], |_, p_id, _, path| {
+        pat_util::pat_bindings(&arm.pats[0], |_, p_id, _, path| {
             map.insert(path.node, p_id);
         });
         Some(&map)

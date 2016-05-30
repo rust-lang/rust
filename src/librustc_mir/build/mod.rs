@@ -14,7 +14,6 @@ use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc::hir;
-use rustc::hir::pat_util::pat_is_binding;
 use std::ops::{Index, IndexMut};
 use syntax::abi::Abi;
 use syntax::ast;
@@ -221,7 +220,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 by_ref: by_ref
             };
             if let Some(hir::map::NodeLocal(pat)) = tcx.map.find(fv.def.var_id()) {
-                if let hir::PatKind::Ident(_, ref ident, _) = pat.node {
+                if let hir::PatKind::Binding(_, ref ident, _) = pat.node {
                     decl.debug_name = ident.node;
                 }
             }
@@ -333,10 +332,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             let mut name = keywords::Invalid.name();
             if let Some(pat) = pattern {
-                if let hir::PatKind::Ident(_, ref ident, _) = pat.node {
-                    if pat_is_binding(&self.hir.tcx().def_map.borrow(), pat) {
-                        name = ident.node;
-                    }
+                if let hir::PatKind::Binding(_, ref ident, _) = pat.node {
+                    name = ident.node;
                 }
             }
 

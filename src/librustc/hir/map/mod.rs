@@ -561,7 +561,7 @@ impl<'ast> Map<'ast> {
             NodeVariant(v) => v.node.name,
             NodeLifetime(lt) => lt.name,
             NodeTyParam(tp) => tp.name,
-            NodeLocal(&Pat { node: PatKind::Ident(_,l,_), .. }) => l.node,
+            NodeLocal(&Pat { node: PatKind::Binding(_,l,_), .. }) => l.node,
             NodeStructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }

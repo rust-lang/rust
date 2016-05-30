@@ -1716,7 +1716,7 @@ impl<'a> State<'a> {
         // is that it doesn't matter
         match pat.node {
             PatKind::Wild => word(&mut self.s, "_")?,
-            PatKind::Ident(binding_mode, ref path1, ref sub) => {
+            PatKind::Binding(binding_mode, ref path1, ref sub) => {
                 match binding_mode {
                     hir::BindByRef(mutbl) => {
                         self.word_nbsp("ref")?;
@@ -2170,7 +2170,7 @@ impl<'a> State<'a> {
                 if let Some(eself) = input.to_self() {
                     self.print_explicit_self(&eself)?;
                 } else {
-                    let invalid = if let PatKind::Ident(_, name, _) = input.pat.node {
+                    let invalid = if let PatKind::Binding(_, name, _) = input.pat.node {
                         name.node == keywords::Invalid.name()
                     } else {
                         false

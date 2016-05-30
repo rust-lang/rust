@@ -616,14 +616,10 @@ pub enum PatKind {
     /// Represents a wildcard pattern (`_`)
     Wild,
 
-    /// A `PatKind::Ident` may either be a new bound variable,
-    /// or a unit struct/variant pattern, or a const pattern (in the last two cases
-    /// the third field must be `None`).
-    ///
-    /// In the unit or const pattern case, the parser can't determine
-    /// which it is. The resolver determines this, and
-    /// records this pattern's `NodeId` in an auxiliary
-    /// set (of "PatIdents that refer to unit patterns or constants").
+    /// A `PatKind::Ident` may either be a new bound variable (`ref mut binding @ OPT_SUBPATTERN`),
+    /// or a unit struct/variant pattern, or a const pattern (in the last two cases the third
+    /// field must be `None`). Disambiguation cannot be done with parser alone, so it happens
+    /// during name resolution.
     Ident(BindingMode, SpannedIdent, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.

@@ -752,13 +752,9 @@ fn resolve_arm(visitor: &mut RegionResolutionVisitor, arm: &hir::Arm) {
 fn resolve_pat(visitor: &mut RegionResolutionVisitor, pat: &hir::Pat) {
     visitor.new_node_extent(pat.id);
 
-    // If this is a binding (or maybe a binding, I'm too lazy to check
-    // the def map) then record the lifetime of that binding.
-    match pat.node {
-        PatKind::Ident(..) => {
-            record_var_lifetime(visitor, pat.id, pat.span);
-        }
-        _ => { }
+    // If this is a binding then record the lifetime of that binding.
+    if let PatKind::Binding(..) = pat.node {
+        record_var_lifetime(visitor, pat.id, pat.span);
     }
 
     intravisit::walk_pat(visitor, pat);
@@ -958,7 +954,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
     ///        | box P&
     fn is_binding_pat(pat: &hir::Pat) -> bool {
         match pat.node {
-            PatKind::Ident(hir::BindByRef(_), _, _) => true,
+            PatKind::Binding(hir::BindByRef(_), _, _) => true,
 
             PatKind::Struct(_, ref field_pats, _) => {
                 field_pats.iter().any(|fp| is_binding_pat(&fp.node.pat))
