@@ -2251,18 +2251,22 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }).peekable();
     if let doctree::Plain = s.struct_type {
         if fields.peek().is_some() {
-            write!(w, "<h2 class='fields'>Fields</h2>\n<table>")?;
+            write!(w, "<h2 class='fields'>Fields</h2>\n<dl>")?;
             for field in fields {
-                write!(w, "<tr class='stab {stab}'>
-                             <td id='{shortty}.{name}'>\
-                               <code>{name}</code></td><td>",
+                write!(w, "<dt class='stab {stab}' id='{shortty}.{name}'>\
+                             <code>{name}",
                        shortty = ItemType::StructField,
                        stab = field.stability_class(),
                        name = field.name.as_ref().unwrap())?;
+                if let clean::StructFieldItem(ref ty) = field.inner {
+                    write!(w, ": {}</code></dt><dd>", ty)?;
+                } else {
+                    write!(w, "</code></dt><dd>")?;
+                }
                 document(w, cx, field)?;
-                write!(w, "</td></tr>")?;
+                write!(w, "</dd>")?;
             }
-            write!(w, "</table>")?;
+            write!(w, "</dl>")?;
         }
     }
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
@@ -2340,18 +2344,22 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                     }
                 });
                 write!(w, "<h3 class='fields'>Fields</h3>\n
-                           <table>")?;
+                           <dl>")?;
                 for field in fields {
-                    write!(w, "<tr><td \
-                               id='{shortty}.{v}.field.{f}'>\
-                               <code>{f}</code></td><td>",
+                    write!(w, "<dt id='{shortty}.{v}.field.{f}'>\
+                                 <code>{f}",
                            shortty = ItemType::Variant,
                            v = variant.name.as_ref().unwrap(),
                            f = field.name.as_ref().unwrap())?;
+                    if let clean::StructFieldItem(ref ty) = field.inner {
+                        write!(w, ": {}</code></dt><dd>", ty)?;
+                    } else {
+                        write!(w, "</code></dt><dd>")?;
+                    }
                     document(w, cx, field)?;
-                    write!(w, "</td></tr>")?;
+                    write!(w, "</dd>")?;
                 }
-                write!(w, "</table>")?;
+                write!(w, "</dl>")?;
             }
             write!(w, "</td><td>")?;
             render_stability_since(w, variant, it)?;
