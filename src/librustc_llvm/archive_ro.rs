@@ -18,7 +18,9 @@ use std::path::Path;
 use std::slice;
 use std::str;
 
-pub struct ArchiveRO { ptr: ArchiveRef }
+pub struct ArchiveRO {
+    ptr: ArchiveRef,
+}
 
 pub struct Iter<'a> {
     archive: &'a ArchiveRO,
@@ -61,11 +63,16 @@ impl ArchiveRO {
         }
     }
 
-    pub fn raw(&self) -> ArchiveRef { self.ptr }
+    pub fn raw(&self) -> ArchiveRef {
+        self.ptr
+    }
 
     pub fn iter(&self) -> Iter {
         unsafe {
-            Iter { ptr: ::LLVMRustArchiveIteratorNew(self.ptr), archive: self }
+            Iter {
+                ptr: ::LLVMRustArchiveIteratorNew(self.ptr),
+                archive: self,
+            }
         }
     }
 }
@@ -86,7 +93,10 @@ impl<'a> Iterator for Iter<'a> {
         if ptr.is_null() {
             ::last_error().map(Err)
         } else {
-            Some(Ok(Child { ptr: ptr, _data: marker::PhantomData }))
+            Some(Ok(Child {
+                ptr: ptr,
+                _data: marker::PhantomData,
+            }))
         }
     }
 }
@@ -107,8 +117,7 @@ impl<'a> Child<'a> {
             if name_ptr.is_null() {
                 None
             } else {
-                let name = slice::from_raw_parts(name_ptr as *const u8,
-                                                 name_len as usize);
+                let name = slice::from_raw_parts(name_ptr as *const u8, name_len as usize);
                 str::from_utf8(name).ok().map(|s| s.trim())
             }
         }
@@ -125,11 +134,15 @@ impl<'a> Child<'a> {
         }
     }
 
-    pub fn raw(&self) -> ::ArchiveChildRef { self.ptr }
+    pub fn raw(&self) -> ::ArchiveChildRef {
+        self.ptr
+    }
 }
 
 impl<'a> Drop for Child<'a> {
     fn drop(&mut self) {
-        unsafe { ::LLVMRustArchiveChildFree(self.ptr); }
+        unsafe {
+            ::LLVMRustArchiveChildFree(self.ptr);
+        }
     }
 }

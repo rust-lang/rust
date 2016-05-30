@@ -16,7 +16,7 @@ pub use self::Diagnostic::*;
 use libc::{c_char, c_uint};
 use std::ptr;
 
-use {ValueRef, TwineRef, DebugLocRef, DiagnosticInfoRef};
+use {DebugLocRef, DiagnosticInfoRef, TwineRef, ValueRef};
 
 #[derive(Copy, Clone)]
 pub enum OptimizationDiagnosticKind {
@@ -46,8 +46,9 @@ pub struct OptimizationDiagnostic {
 }
 
 impl OptimizationDiagnostic {
-    unsafe fn unpack(kind: OptimizationDiagnosticKind, di: DiagnosticInfoRef)
-            -> OptimizationDiagnostic {
+    unsafe fn unpack(kind: OptimizationDiagnosticKind,
+                     di: DiagnosticInfoRef)
+                     -> OptimizationDiagnostic {
 
         let mut opt = OptimizationDiagnostic {
             kind: kind,
@@ -58,10 +59,10 @@ impl OptimizationDiagnostic {
         };
 
         super::LLVMUnpackOptimizationDiagnostic(di,
-            &mut opt.pass_name,
-            &mut opt.function,
-            &mut opt.debug_loc,
-            &mut opt.message);
+                                                &mut opt.pass_name,
+                                                &mut opt.function,
+                                                &mut opt.debug_loc,
+                                                &mut opt.message);
 
         opt
     }
@@ -75,8 +76,7 @@ pub struct InlineAsmDiagnostic {
 }
 
 impl InlineAsmDiagnostic {
-    unsafe fn unpack(di: DiagnosticInfoRef)
-            -> InlineAsmDiagnostic {
+    unsafe fn unpack(di: DiagnosticInfoRef) -> InlineAsmDiagnostic {
 
         let mut opt = InlineAsmDiagnostic {
             cookie: 0,
@@ -85,9 +85,9 @@ impl InlineAsmDiagnostic {
         };
 
         super::LLVMUnpackInlineAsmDiagnostic(di,
-            &mut opt.cookie,
-            &mut opt.message,
-            &mut opt.instruction);
+                                             &mut opt.cookie,
+                                             &mut opt.message,
+                                             &mut opt.instruction);
 
         opt
     }
@@ -106,22 +106,25 @@ impl Diagnostic {
         let kind = super::LLVMGetDiagInfoKind(di);
 
         match kind {
-            super::DK_InlineAsm
-                => InlineAsm(InlineAsmDiagnostic::unpack(di)),
+            super::DK_InlineAsm => InlineAsm(InlineAsmDiagnostic::unpack(di)),
 
-            super::DK_OptimizationRemark
-                => Optimization(OptimizationDiagnostic::unpack(OptimizationRemark, di)),
+            super::DK_OptimizationRemark => {
+                Optimization(OptimizationDiagnostic::unpack(OptimizationRemark, di))
+            }
 
-            super::DK_OptimizationRemarkMissed
-                => Optimization(OptimizationDiagnostic::unpack(OptimizationMissed, di)),
+            super::DK_OptimizationRemarkMissed => {
+                Optimization(OptimizationDiagnostic::unpack(OptimizationMissed, di))
+            }
 
-            super::DK_OptimizationRemarkAnalysis
-                => Optimization(OptimizationDiagnostic::unpack(OptimizationAnalysis, di)),
+            super::DK_OptimizationRemarkAnalysis => {
+                Optimization(OptimizationDiagnostic::unpack(OptimizationAnalysis, di))
+            }
 
-            super::DK_OptimizationFailure
-                => Optimization(OptimizationDiagnostic::unpack(OptimizationFailure, di)),
+            super::DK_OptimizationFailure => {
+                Optimization(OptimizationDiagnostic::unpack(OptimizationFailure, di))
+            }
 
-            _ => UnknownDiagnostic(di)
+            _ => UnknownDiagnostic(di),
         }
     }
 }
