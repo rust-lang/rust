@@ -116,7 +116,6 @@ impl<'a> FmtVisitor<'a> {
                                               indent,
                                               item.ident,
                                               fn_decl,
-                                              None,
                                               generics,
                                               ast::Unsafety::Normal,
                                               ast::Constness::NotConst,
@@ -169,7 +168,6 @@ impl<'a> FmtVisitor<'a> {
                       indent: Indent,
                       ident: ast::Ident,
                       fd: &ast::FnDecl,
-                      explicit_self: Option<&ast::ExplicitSelf>,
                       generics: &ast::Generics,
                       unsafety: ast::Unsafety,
                       constness: ast::Constness,
@@ -189,7 +187,6 @@ impl<'a> FmtVisitor<'a> {
                                                                          indent,
                                                                          ident,
                                                                          fd,
-                                                                         explicit_self,
                                                                          generics,
                                                                          unsafety,
                                                                          constness,
@@ -234,7 +231,6 @@ impl<'a> FmtVisitor<'a> {
                                                        indent,
                                                        ident,
                                                        &sig.decl,
-                                                       Some(&sig.explicit_self),
                                                        &sig.generics,
                                                        sig.unsafety,
                                                        sig.constness,
@@ -1129,7 +1125,7 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
                          context: &RewriteContext)
                          -> Option<String> {
     match explicit_self.node {
-        ast::SelfKind::Region(lt, m, _) => {
+        ast::SelfKind::Region(lt, m) => {
             let mut_str = format_mutability(m);
             match lt {
                 Some(ref l) => {
@@ -1155,7 +1151,6 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
 
             Some(format!("{}self", format_mutability(mutability)))
         }
-        _ => None,
     }
 }
 
@@ -1229,7 +1224,6 @@ fn rewrite_fn_base(context: &RewriteContext,
                    indent: Indent,
                    ident: ast::Ident,
                    fd: &ast::FnDecl,
-                   explicit_self: Option<&ast::ExplicitSelf>,
                    generics: &ast::Generics,
                    unsafety: ast::Unsafety,
                    constness: ast::Constness,
@@ -1328,7 +1322,7 @@ fn rewrite_fn_base(context: &RewriteContext,
                           span_for_return(&fd.output).lo);
     let arg_str = try_opt!(rewrite_args(context,
                                         &fd.inputs,
-                                        explicit_self,
+                                        fd.get_self().as_ref(),
                                         one_line_budget,
                                         multi_line_budget,
                                         indent,

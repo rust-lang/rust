@@ -581,7 +581,7 @@ impl Rewrite for ast::Stmt {
 struct Loop<'a> {
     cond: Option<&'a ast::Expr>,
     block: &'a ast::Block,
-    label: Option<ast::Ident>,
+    label: Option<ast::SpannedIdent>,
     pat: Option<&'a ast::Pat>,
     keyword: &'a str,
     matcher: &'a str,
@@ -589,7 +589,7 @@ struct Loop<'a> {
 }
 
 impl<'a> Loop<'a> {
-    fn new_loop(block: &'a ast::Block, label: Option<ast::Ident>) -> Loop<'a> {
+    fn new_loop(block: &'a ast::Block, label: Option<ast::SpannedIdent>) -> Loop<'a> {
         Loop {
             cond: None,
             block: block,
@@ -604,7 +604,7 @@ impl<'a> Loop<'a> {
     fn new_while(pat: Option<&'a ast::Pat>,
                  cond: &'a ast::Expr,
                  block: &'a ast::Block,
-                 label: Option<ast::Ident>)
+                 label: Option<ast::SpannedIdent>)
                  -> Loop<'a> {
         Loop {
             cond: Some(cond),
@@ -623,7 +623,7 @@ impl<'a> Loop<'a> {
     fn new_for(pat: &'a ast::Pat,
                cond: &'a ast::Expr,
                block: &'a ast::Block,
-               label: Option<ast::Ident>)
+               label: Option<ast::SpannedIdent>)
                -> Loop<'a> {
         Loop {
             cond: Some(cond),
@@ -676,9 +676,9 @@ impl<'a> Rewrite for Loop<'a> {
     }
 }
 
-fn rewrite_label(label: Option<ast::Ident>) -> String {
+fn rewrite_label(label: Option<ast::SpannedIdent>) -> String {
     match label {
-        Some(ident) => format!("{}: ", ident),
+        Some(ident) => format!("{}: ", ident.node),
         None => "".to_owned(),
     }
 }

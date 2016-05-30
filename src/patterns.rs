@@ -59,7 +59,11 @@ impl Rewrite for Pat {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, width, offset)
             }
-            PatKind::Tup(ref items) => {
+            // FIXME(#1021): Handle `..` in tuple / tuple struct patterns (RFC 1492)
+            PatKind::Tuple(ref items, dotdot_pos) => {
+                if dotdot_pos.is_some() {
+                    return None;
+                }
                 rewrite_tuple(context,
                               items.iter().map(|x| &**x),
                               self.span,
@@ -67,11 +71,13 @@ impl Rewrite for Pat {
                               offset)
             }
             PatKind::Path(ref path) => rewrite_path(context, true, None, path, width, offset),
-            PatKind::TupleStruct(ref path, ref pat_vec) => {
+            PatKind::TupleStruct(ref path, ref pat_vec, dotdot_pos) => {
                 let path_str = try_opt!(rewrite_path(context, true, None, path, width, offset));
 
-                match *pat_vec {
-                    Some(ref pat_vec) => {
+                // FIXME(#1021): Handle `..` in tuple / tuple struct patterns (RFC 1492)
+                match dotdot_pos {
+                    Some(_) => Some(format!("{}(..)", path_str)),
+                    None => {
                         if pat_vec.is_empty() {
                             Some(path_str)
                         } else {
@@ -95,7 +101,6 @@ impl Rewrite for Pat {
                                                                    context.config))))
                         }
                     }
-                    None => Some(format!("{}(..)", path_str)),
                 }
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, width, offset),
