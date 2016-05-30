@@ -72,7 +72,7 @@
 use boxed::Box;
 
 use core::sync::atomic;
-use core::sync::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
+use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
 use core::fmt;
 use core::cmp::Ordering;
@@ -85,7 +85,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 use core::marker::Unsize;
 use core::hash::{Hash, Hasher};
-use core::{usize, isize};
+use core::{isize, usize};
 use core::convert::From;
 use heap::deallocate;
 
@@ -608,11 +608,13 @@ impl<T> Weak<T> {
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     pub fn new() -> Weak<T> {
         unsafe {
-            Weak { ptr: Shared::new(Box::into_raw(box ArcInner {
-                strong: atomic::AtomicUsize::new(0),
-                weak: atomic::AtomicUsize::new(1),
-                data: uninitialized(),
-            }))}
+            Weak {
+                ptr: Shared::new(Box::into_raw(box ArcInner {
+                    strong: atomic::AtomicUsize::new(0),
+                    weak: atomic::AtomicUsize::new(1),
+                    data: uninitialized(),
+                })),
+            }
         }
     }
 }
@@ -655,7 +657,9 @@ impl<T: ?Sized> Weak<T> {
 
             // See comments in `Arc::clone` for why we do this (for `mem::forget`).
             if n > MAX_REFCOUNT {
-                unsafe { abort(); }
+                unsafe {
+                    abort();
+                }
             }
 
             // Relaxed is valid for the same reason it is on Arc's Clone impl
@@ -946,7 +950,7 @@ mod tests {
     use std::mem::drop;
     use std::ops::Drop;
     use std::option::Option;
-    use std::option::Option::{Some, None};
+    use std::option::Option::{None, Some};
     use std::sync::atomic;
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
     use std::thread;
