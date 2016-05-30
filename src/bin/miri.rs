@@ -5,6 +5,9 @@ extern crate getopts;
 extern crate miri;
 extern crate rustc;
 extern crate rustc_driver;
+extern crate env_logger;
+extern crate log_settings;
+extern crate log;
 
 use miri::interpreter;
 use rustc::session::Session;
@@ -31,6 +34,27 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
 
 #[miri_run]
 fn main() {
+    init_logger();
     let args: Vec<String> = std::env::args().collect();
     rustc_driver::run_compiler(&args, &mut MiriCompilerCalls);
+}
+
+#[miri_run]
+fn init_logger() {
+    let format = |record: &log::LogRecord| {
+        // prepend spaces to indent the final string
+        let indentation = log_settings::settings().indentation;
+        let spaces = "                                  ";
+        let indentation = &spaces[..std::cmp::min(indentation, spaces.len())];
+        format!("{} -{} {}", record.level(), indentation, record.args())
+    };
+
+    let mut builder = env_logger::LogBuilder::new();
+    builder.format(format).filter(None, log::LogLevelFilter::Info);
+
+    if std::env::var("RUST_LOG").is_ok() {
+        builder.parse(&std::env::var("RUST_LOG").unwrap());
+    }
+
+    builder.init().unwrap();
 }
