@@ -80,7 +80,7 @@ impl Memory {
     pub fn reallocate(&mut self, ptr: Pointer, new_size: usize) -> EvalResult<()> {
         if ptr.offset != 0 {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
-            panic!()
+            return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
 
         let alloc = self.get_mut(ptr.alloc_id)?;
@@ -90,7 +90,7 @@ impl Memory {
             alloc.bytes.extend(iter::repeat(0).take(amount));
             alloc.undef_mask.grow(amount, false);
         } else if size > new_size {
-            unimplemented!()
+            return Err(EvalError::Unimplemented(format!("unimplemented allocation relocation")));
             // alloc.bytes.truncate(new_size);
             // alloc.undef_mask.len = new_size;
             // TODO: potentially remove relocations
@@ -103,7 +103,7 @@ impl Memory {
     pub fn deallocate(&mut self, ptr: Pointer) -> EvalResult<()> {
         if ptr.offset != 0 {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
-            panic!()
+            return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
 
         if self.alloc_map.remove(&ptr.alloc_id).is_none() {

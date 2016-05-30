@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fmt;
+use rustc::mir::repr as mir;
 
 #[derive(Clone, Debug)]
 pub enum EvalError {
@@ -11,6 +12,8 @@ pub enum EvalError {
     ReadBytesAsPointer,
     InvalidPointerMath,
     ReadUndefBytes,
+    InvalidBoolOp(mir::BinOp),
+    Unimplemented(String),
 }
 
 pub type EvalResult<T> = Result<T, EvalError>;
@@ -34,6 +37,9 @@ impl Error for EvalError {
                 "attempted to do math or a comparison on pointers into different allocations",
             EvalError::ReadUndefBytes =>
                 "attempted to read undefined bytes",
+            EvalError::InvalidBoolOp(_) =>
+                "invalid boolean operation",
+            EvalError::Unimplemented(ref msg) => msg,
         }
     }
 

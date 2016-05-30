@@ -74,8 +74,7 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResul
                 BitOr => l | r,
                 BitXor => l ^ r,
                 BitAnd => l & r,
-                Add | Sub | Mul | Div | Rem | Shl | Shr =>
-                    panic!("invalid binary operation on booleans: {:?}", bin_op),
+                Add | Sub | Mul | Div | Rem | Shl | Shr => return Err(EvalError::InvalidBoolOp(bin_op)),
             })
         }
 
@@ -99,33 +98,33 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResul
                 Le => Bool(l <= r),
                 Gt => Bool(l > r),
                 Ge => Bool(l >= r),
-                _ => unimplemented!(),
+                _ => return Err(EvalError::Unimplemented(format!("unimplemented ptr op: {:?}", bin_op))),
             }
         }
 
-        _ => unimplemented!(),
+        (l, r) => return Err(EvalError::Unimplemented(format!("unimplemented binary op: {:?}, {:?}, {:?}", l, r, bin_op))),
     };
 
     Ok(val)
 }
 
-pub fn unary_op(un_op: mir::UnOp, val: PrimVal) -> PrimVal {
+pub fn unary_op(un_op: mir::UnOp, val: PrimVal) -> EvalResult<PrimVal> {
     use rustc::mir::repr::UnOp::*;
     use self::PrimVal::*;
     match (un_op, val) {
-        (Not, Bool(b)) => Bool(!b),
-        (Not, I8(n))  => I8(!n),
-        (Neg, I8(n))  => I8(-n),
-        (Not, I16(n)) => I16(!n),
-        (Neg, I16(n)) => I16(-n),
-        (Not, I32(n)) => I32(!n),
-        (Neg, I32(n)) => I32(-n),
-        (Not, I64(n)) => I64(!n),
-        (Neg, I64(n)) => I64(-n),
-        (Not, U8(n))  => U8(!n),
-        (Not, U16(n)) => U16(!n),
-        (Not, U32(n)) => U32(!n),
-        (Not, U64(n)) => U64(!n),
-        _ => unimplemented!(),
+        (Not, Bool(b)) => Ok(Bool(!b)),
+        (Not, I8(n))  => Ok(I8(!n)),
+        (Neg, I8(n))  => Ok(I8(-n)),
+        (Not, I16(n)) => Ok(I16(!n)),
+        (Neg, I16(n)) => Ok(I16(-n)),
+        (Not, I32(n)) => Ok(I32(!n)),
+        (Neg, I32(n)) => Ok(I32(-n)),
+        (Not, I64(n)) => Ok(I64(!n)),
+        (Neg, I64(n)) => Ok(I64(-n)),
+        (Not, U8(n))  => Ok(U8(!n)),
+        (Not, U16(n)) => Ok(U16(!n)),
+        (Not, U32(n)) => Ok(U32(!n)),
+        (Not, U64(n)) => Ok(U64(!n)),
+        _ => Err(EvalError::Unimplemented(format!("unimplemented unary op: {:?}, {:?}", un_op, val))),
     }
 }
