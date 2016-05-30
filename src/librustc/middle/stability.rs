@@ -26,7 +26,7 @@ use syntax::parse::token::InternedString;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
-use syntax::feature_gate::{GateIssue, emit_feature_err};
+use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
 use syntax::attr::{self, Stability, Deprecation, AttrMetaMethods};
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
@@ -37,6 +37,7 @@ use hir::pat_util::EnumerateAndAdjustIterator;
 
 use std::mem::replace;
 use std::cmp::Ordering;
+use std::ops::Deref;
 
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Copy, Debug, Eq, Hash)]
 pub enum StabilityLevel {
@@ -322,7 +323,7 @@ impl<'a, 'tcx> Index<'tcx> {
 /// features and possibly prints errors. Returns a list of all
 /// features used.
 pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                          -> FnvHashMap<InternedString, StabilityLevel> {
+                                          -> FnvHashMap<InternedString, attr::StabilityLevel> {
     let _task = tcx.dep_graph.in_task(DepNode::StabilityCheck);
     let ref active_lib_features = tcx.sess.features.borrow().declared_lib_features;
 
@@ -343,7 +344,7 @@ pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 struct Checker<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     active_features: FnvHashSet<InternedString>,
-    used_features: FnvHashMap<InternedString, StabilityLevel>,
+    used_features: FnvHashMap<InternedString, attr::StabilityLevel>,
     // Within a block where feature gate checking can be skipped.
     in_skip_block: u32,
 }
@@ -367,7 +368,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         match *stab {
             Some(&Stability { level: attr::Unstable {ref reason, issue}, ref feature, .. }) => {
-                self.used_features.insert(feature.clone(), Unstable);
+                self.used_features.insert(feature.clone(),
+                                          attr::Unstable { reason: reason.clone(), issue: issue });
 
                 if !self.active_features.contains(feature) {
                     let msg = match *reason {
@@ -380,7 +382,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 }
             }
             Some(&Stability { ref level, ref feature, .. }) => {
-                self.used_features.insert(feature.clone(), StabilityLevel::from_attr_level(level));
+                self.used_features.insert(feature.clone(), level.clone());
 
                 // Stable APIs are always ok to call and deprecated APIs are
                 // handled by a lint.
@@ -716,28 +718,32 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features(sess: &Session,
                                        lib_features_used: &FnvHashMap<InternedString,
-                                                                      StabilityLevel>) {
+                                                                      attr::StabilityLevel>) {
     let ref declared_lib_features = sess.features.borrow().declared_lib_features;
     let mut remaining_lib_features: FnvHashMap<InternedString, Span>
         = declared_lib_features.clone().into_iter().collect();
 
-    let stable_msg = "this feature is stable. attribute no longer needed";
+    fn format_stable_since_msg(version: &str) -> String {
+        format!("this feature has been stable since {}. Attribute no longer needed", version)
+    }
 
-    for &span in &sess.features.borrow().declared_stable_lang_features {
+    for &(ref stable_lang_feature, span) in &sess.features.borrow().declared_stable_lang_features {
+        let version = find_lang_feature_accepted_version(stable_lang_feature.deref())
+            .expect("unexpectedly couldn't find version feature was stabilized");
         sess.add_lint(lint::builtin::STABLE_FEATURES,
                       ast::CRATE_NODE_ID,
                       span,
-                      stable_msg.to_string());
+                      format_stable_since_msg(version));
     }
 
     for (used_lib_feature, level) in lib_features_used {
         match remaining_lib_features.remove(used_lib_feature) {
             Some(span) => {
-                if *level == Stable {
+                if let &attr::StabilityLevel::Stable { since: ref version } = level {
                     sess.add_lint(lint::builtin::STABLE_FEATURES,
                                   ast::CRATE_NODE_ID,
                                   span,
-                                  stable_msg.to_string());
+                                  format_stable_since_msg(version.deref()));
                 }
             }
             None => ( /* used but undeclared, handled during the previous ast visit */ )
