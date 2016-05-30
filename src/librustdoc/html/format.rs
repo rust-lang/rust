@@ -111,27 +111,27 @@ impl fmt::Display for clean::Generics {
 
         for (i, life) in self.lifetimes.iter().enumerate() {
             if i > 0 {
-                f.write_str(", ")?;
+                f.write_str(",&nbsp;")?;
             }
             write!(f, "{}", *life)?;
         }
 
         if !self.type_params.is_empty() {
             if !self.lifetimes.is_empty() {
-                f.write_str(", ")?;
+                f.write_str(",&nbsp;")?;
             }
             for (i, tp) in self.type_params.iter().enumerate() {
                 if i > 0 {
-                    f.write_str(", ")?
+                    f.write_str(",&nbsp;")?
                 }
                 f.write_str(&tp.name)?;
 
                 if !tp.bounds.is_empty() {
-                    write!(f, ": {}", TyParamBounds(&tp.bounds))?;
+                    write!(f, ":&nbsp;{}", TyParamBounds(&tp.bounds))?;
                 }
 
                 match tp.default {
-                    Some(ref ty) => { write!(f, " = {}", ty)?; },
+                    Some(ref ty) => { write!(f, "&nbsp;=&nbsp;{}", ty)?; },
                     None => {}
                 };
             }
@@ -229,21 +229,21 @@ impl fmt::Display for clean::PathParameters {
                     let mut comma = false;
                     for lifetime in lifetimes {
                         if comma {
-                            f.write_str(", ")?;
+                            f.write_str(",&nbsp;")?;
                         }
                         comma = true;
                         write!(f, "{}", *lifetime)?;
                     }
                     for ty in types {
                         if comma {
-                            f.write_str(", ")?;
+                            f.write_str(",&nbsp;")?;
                         }
                         comma = true;
                         write!(f, "{}", *ty)?;
                     }
                     for binding in bindings {
                         if comma {
-                            f.write_str(", ")?;
+                            f.write_str(",&nbsp;")?;
                         }
                         comma = true;
                         write!(f, "{}", *binding)?;

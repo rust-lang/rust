@@ -117,6 +117,7 @@ from xml.etree import cElementTree as ET
 from htmlentitydefs import entitydefs
 entitydefs['larrb'] = u'\u21e4'
 entitydefs['rarrb'] = u'\u21e5'
+entitydefs['nbsp'] = ' '
 
 # "void elements" (no closing tag) from the HTML Standard section 12.1.2
 VOID_ELEMENTS = set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen',
