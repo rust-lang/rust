@@ -1034,7 +1034,9 @@ impl<T: Ord> IntoIterator for BinaryHeap<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a BinaryHeap<T> where T: Ord {
+impl<'a, T> IntoIterator for &'a BinaryHeap<T>
+    where T: Ord
+{
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 

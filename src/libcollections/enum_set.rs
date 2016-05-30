@@ -21,7 +21,7 @@
 use core::marker;
 use core::fmt;
 use core::iter::FromIterator;
-use core::ops::{Sub, BitOr, BitAnd, BitXor};
+use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
 // FIXME(contentions): implement union family of methods? (general design may be
 // wrong here)
@@ -275,7 +275,8 @@ impl<E: CLike> FromIterator<E> for EnumSet<E> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike
+impl<'a, E> IntoIterator for &'a EnumSet<E>
+    where E: CLike
 {
     type Item = E;
     type IntoIter = Iter<E>;

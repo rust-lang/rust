@@ -15,7 +15,7 @@
 //! Range syntax.
 
 use core::option::Option::{self, None, Some};
-use core::ops::{RangeFull, Range, RangeTo, RangeFrom};
+use core::ops::{Range, RangeFrom, RangeFull, RangeTo};
 
 /// **RangeArgument** is implemented by Rust's built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b` or `c..d`.

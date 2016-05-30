@@ -21,7 +21,7 @@
 
 use core::str as core_str;
 use core::str::pattern::Pattern;
-use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
+use core::str::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
 use core::mem;
 use rustc_unicode::str::{UnicodeStr, Utf16Encoder};
 
@@ -37,21 +37,21 @@ use boxed::Box;
 pub use core::str::{FromStr, Utf8Error};
 #[allow(deprecated)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{Lines, LinesAny, CharRange};
+pub use core::str::{CharRange, Lines, LinesAny};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{Split, RSplit};
+pub use core::str::{RSplit, Split};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{SplitN, RSplitN};
+pub use core::str::{RSplitN, SplitN};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{SplitTerminator, RSplitTerminator};
+pub use core::str::{RSplitTerminator, SplitTerminator};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Matches, RMatches};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{MatchIndices, RMatchIndices};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
+pub use core::str::{Bytes, CharIndices, Chars, from_utf8};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{from_utf8_unchecked, ParseBoolError};
+pub use core::str::{ParseBoolError, from_utf8_unchecked};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use rustc_unicode::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1897,7 +1897,7 @@ impl str {
         }
 
         fn case_ignoreable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
-            use rustc_unicode::derived_property::{Cased, Case_Ignorable};
+            use rustc_unicode::derived_property::{Case_Ignorable, Cased};
             match iter.skip_while(|&c| Case_Ignorable(c)).next() {
                 Some(c) => Cased(c),
                 None => false,

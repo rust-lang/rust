@@ -24,7 +24,7 @@
 use alloc::boxed::{Box, IntermediateBox};
 use core::cmp::Ordering;
 use core::fmt;
-use core::hash::{Hasher, Hash};
+use core::hash::{Hash, Hasher};
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::{BoxPlace, InPlace, Place, Placer};
@@ -696,7 +696,10 @@ impl<T> LinkedList<T> {
                reason = "method name and placement protocol are subject to change",
                issue = "30172")]
     pub fn front_place(&mut self) -> FrontPlace<T> {
-        FrontPlace { list: self, node: IntermediateBox::make_place() }
+        FrontPlace {
+            list: self,
+            node: IntermediateBox::make_place(),
+        }
     }
 
     /// Returns a place for insertion at the back of the list.
@@ -721,7 +724,10 @@ impl<T> LinkedList<T> {
                reason = "method name and placement protocol are subject to change",
                issue = "30172")]
     pub fn back_place(&mut self) -> BackPlace<T> {
-        BackPlace { list: self, node: IntermediateBox::make_place() }
+        BackPlace {
+            list: self,
+            node: IntermediateBox::make_place(),
+        }
     }
 }
 
@@ -986,7 +992,7 @@ impl<A> Extend<A> for LinkedList<A> {
 }
 
 impl<I: IntoIterator> SpecExtend<I> for LinkedList<I::Item> {
-    default fn spec_extend(&mut self, iter: I) {
+    fn spec_extend(&mut self, iter: I) {
         for elt in iter {
             self.push_back(elt);
         }
@@ -1157,17 +1163,23 @@ impl<'a, T> InPlace<T> for BackPlace<'a, T> {
 // Ensure that `LinkedList` and its read-only iterators are covariant in their type parameters.
 #[allow(dead_code)]
 fn assert_covariance() {
-    fn a<'a>(x: LinkedList<&'static str>) -> LinkedList<&'a str> { x }
-    fn b<'i, 'a>(x: Iter<'i, &'static str>) -> Iter<'i, &'a str> { x }
-    fn c<'a>(x: IntoIter<&'static str>) -> IntoIter<&'a str> { x }
+    fn a<'a>(x: LinkedList<&'static str>) -> LinkedList<&'a str> {
+        x
+    }
+    fn b<'i, 'a>(x: Iter<'i, &'static str>) -> Iter<'i, &'a str> {
+        x
+    }
+    fn c<'a>(x: IntoIter<&'static str>) -> IntoIter<&'a str> {
+        x
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::clone::Clone;
-    use std::iter::{Iterator, IntoIterator, Extend};
-    use std::option::Option::{self, Some, None};
-    use std::__rand::{thread_rng, Rng};
+    use std::iter::{Extend, IntoIterator, Iterator};
+    use std::option::Option::{self, None, Some};
+    use std::__rand::{Rng, thread_rng};
     use std::thread;
     use std::vec::Vec;
 
