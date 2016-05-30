@@ -618,7 +618,9 @@ impl<'b> Clone for BorrowRef<'b> {
         // Since this Ref exists, we know the borrow flag
         // is not set to WRITING.
         let borrow = self.borrow.get();
-        debug_assert!(borrow != WRITING && borrow != UNUSED);
+        debug_assert!(borrow != UNUSED);
+        // Prevent the borrow counter from overflowing.
+        assert!(borrow != WRITING);
         self.borrow.set(borrow + 1);
         BorrowRef { borrow: self.borrow }
     }
