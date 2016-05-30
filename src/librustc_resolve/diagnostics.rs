@@ -21,7 +21,7 @@ variable declarations and expression statements.
 
 Here is an example that demonstrates the error:
 
-```compile_fail
+```ignore
 fn f() {
     // Variable declaration before import
     let x = 0;
