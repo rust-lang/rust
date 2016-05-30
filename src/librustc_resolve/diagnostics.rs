@@ -1029,6 +1029,32 @@ struct Bar2; // ok!
 ```
 "##,
 
+E0429: r##"
+To import a namespace itself in addition to some of its members, the `self`
+keyword may appear in a brace-enclosed list as the last segment in a `use`
+declaration. However, `self` cannot be used alone, without the brace
+syntax.
+
+Example of erroneous code:
+
+```compile_fail
+use std::fmt::self; // error: `self` imports are only allowed within a { } list
+```
+
+If you only want to import the namespace, do so directly:
+
+```
+use std::fmt;
+```
+
+If you also want to import members in the same statement, you may use the brace
+syntax:
+
+```
+use std::fmt::{self, Debug};
+```
+"##,
+
 E0430: r##"
 The `self` import appears more than once in the list. Erroneous code example:
 
@@ -1235,5 +1261,4 @@ register_diagnostics! {
     E0420, // is not an associated const
     E0421, // unresolved associated const
     E0427, // cannot use `ref` binding mode with ...
-    E0429, // `self` imports are only allowed within a { } list
 }
