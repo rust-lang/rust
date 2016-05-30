@@ -1030,10 +1030,8 @@ struct Bar2; // ok!
 "##,
 
 E0429: r##"
-To import a namespace itself in addition to some of its members, the `self`
-keyword may appear in a brace-enclosed list as the last segment in a `use`
-declaration. However, `self` cannot be used alone, without the brace
-syntax.
+The `self` keyword cannot appear alone as the last segment in a `use`
+declaration.
 
 Example of erroneous code:
 
@@ -1041,17 +1039,17 @@ Example of erroneous code:
 use std::fmt::self; // error: `self` imports are only allowed within a { } list
 ```
 
+To use a namespace itself in addition to some of its members, `self` may appear
+as part of a brace-enclosed list of imports:
+
+```
+use std::fmt::{self, Debug};
+```
+
 If you only want to import the namespace, do so directly:
 
 ```
 use std::fmt;
-```
-
-If you also want to import members in the same statement, you may use the brace
-syntax:
-
-```
-use std::fmt::{self, Debug};
 ```
 "##,
 
