@@ -139,11 +139,7 @@ impl<'a> FmtVisitor<'a> {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function keywords here.
                 let vis = format_visibility(&item.vis);
-                let mut_str = if is_mutable {
-                    "mut "
-                } else {
-                    ""
-                };
+                let mut_str = if is_mutable { "mut " } else { "" };
                 let prefix = format!("{}static {}{}: ", vis, mut_str, item.ident);
                 let offset = self.block_indent + prefix.len();
                 // 1 = ;
@@ -261,11 +257,7 @@ impl<'a> FmtVisitor<'a> {
         if self.config.fn_single_line && is_simple_block_stmt(block, codemap) {
             let rewrite = {
                 if let Some(ref e) = block.expr {
-                    let suffix = if semicolon_for_expr(e) {
-                        ";"
-                    } else {
-                        ""
-                    };
+                    let suffix = if semicolon_for_expr(e) { ";" } else { "" };
 
                     e.rewrite(&self.get_context(),
                                  self.config.max_width - self.block_indent.width(),
@@ -1274,11 +1266,7 @@ fn rewrite_fn_base(context: &RewriteContext,
         .rewrite(&context, context.config.max_width - indent.width(), indent));
 
     let multi_line_ret_str = ret_str.contains('\n');
-    let ret_str_len = if multi_line_ret_str {
-        0
-    } else {
-        ret_str.len()
-    };
+    let ret_str_len = if multi_line_ret_str { 0 } else { ret_str.len() };
 
     // Args.
     let (mut one_line_budget, mut multi_line_budget, mut arg_indent) =

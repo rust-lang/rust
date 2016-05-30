@@ -381,7 +381,9 @@ create_config! {
     chain_indent: BlockIndentStyle, BlockIndentStyle::Tabbed, "Indentation of chain";
     chains_overflow_last: bool, true, "Allow last call in method chain to break the line";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
-    single_line_if_else: bool, false, "Put else on same line as closing brace for if statements";
+    single_line_if_else_max_width: usize, 50, "Maximum line length for single line if-else \
+                                                expressions. A value of zero means always break \
+                                                if-else expressions.";
     format_strings: bool, true, "Format string literals where necessary";
     force_format_strings: bool, false, "Always format string literals";
     take_source_hints: bool, true, "Retain some formatting characteristics from the source code";

@@ -18,7 +18,7 @@ fn main() {
     };
 
     let loooooooooooooong_name = |field| {
-        // TODO(#27): format comments.
+        // format comments.
         if field.node.attrs.len() > 0 {
             field.node.attrs[0].span.lo
         } else {
@@ -26,18 +26,12 @@ fn main() {
         }
     };
 
-    let block_me = |field| if true_story() {
-        1
-    } else {
-        2
-    };
-
     let unblock_me = |trivial| closure();
 
     let empty = |arg| {};
 
     let simple = |arg| {
-        // TODO(#27): comment formatting
+        // comment formatting
         foo(arg)
     };
 

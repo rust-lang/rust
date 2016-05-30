@@ -126,11 +126,7 @@ impl Rewrite for Pat {
             PatKind::Struct(ref path, ref fields, elipses) => {
                 let path = try_opt!(rewrite_path(context, true, None, path, width, offset));
 
-                let (elipses_str, terminator) = if elipses {
-                    (", ..", "..")
-                } else {
-                    ("", "}")
-                };
+                let (elipses_str, terminator) = if elipses { (", ..", "..") } else { ("", "}") };
 
                 // 5 = `{` plus space before and after plus `}` plus space before.
                 let budget = try_opt!(width.checked_sub(path.len() + 5 + elipses_str.len()));

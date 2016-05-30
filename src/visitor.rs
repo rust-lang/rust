@@ -77,11 +77,7 @@ impl<'a> FmtVisitor<'a> {
         // Check if this block has braces.
         let snippet = self.snippet(b.span);
         let has_braces = snippet.starts_with("{") || snippet.starts_with("unsafe");
-        let brace_compensation = if has_braces {
-            BytePos(1)
-        } else {
-            BytePos(0)
-        };
+        let brace_compensation = if has_braces { BytePos(1) } else { BytePos(0) };
 
         self.last_pos = self.last_pos + brace_compensation;
         self.block_indent = self.block_indent.block_indent(self.config);
