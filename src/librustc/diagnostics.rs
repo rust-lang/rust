@@ -20,6 +20,8 @@ remainder of a zero divisor) in a static or constant expression. Erroneous
 code example:
 
 ```compile_fail
+#[deny(const_err)]
+
 const X: i32 = 42 / 0;
 // error: attempted to divide by zero in a constant expression
 ```
@@ -66,7 +68,7 @@ this restriction.
 
 This happens when a trait has a method like the following:
 
-```compile_fail
+```
 trait Trait {
     fn foo(&self) -> Self;
 }
@@ -364,6 +366,18 @@ type X = u32; // ok!
 "##,
 
 E0133: r##"
+Unsafe code was used outside of an unsafe function or block.
+
+Erroneous code example:
+
+```compile_fail
+unsafe fn f() { return; } // This is the unsafe code
+
+fn main() {
+    f(); // error: call to unsafe function requires unsafe function or block
+}
+```
+
 Using unsafe functionality is potentially dangerous and disallowed by safety
 checks. Examples:
 
@@ -378,7 +392,7 @@ unsafe instructions with an `unsafe` block. For instance:
 unsafe fn f() { return; }
 
 fn main() {
-    unsafe { f(); }
+    unsafe { f(); } // ok!
 }
 ```
 
@@ -392,15 +406,58 @@ function `main()`. If there are multiple such functions, please rename one.
 "##,
 
 E0137: r##"
+More than one function was declared with the `#[main]` attribute.
+
+Erroneous code example:
+
+```compile_fail
+#![feature(main)]
+
+#[main]
+fn foo() {}
+
+#[main]
+fn f() {} // error: multiple functions with a #[main] attribute
+```
+
 This error indicates that the compiler found multiple functions with the
 `#[main]` attribute. This is an error because there must be a unique entry
-point into a Rust program.
+point into a Rust program. Example:
+
+```
+#![feature(main)]
+
+#[main]
+fn f() {} // ok!
+```
 "##,
 
 E0138: r##"
+More than one function was declared with the `#[start]` attribute.
+
+Erroneous code example:
+
+```compile_fail
+#![feature(start)]
+
+#[start]
+fn foo(argc: isize, argv: *const *const u8) -> isize {}
+
+#[start]
+fn f(argc: isize, argv: *const *const u8) -> isize {}
+// error: multiple 'start' functions
+```
+
 This error indicates that the compiler found multiple functions with the
 `#[start]` attribute. This is an error because there must be a unique entry
-point into a Rust program.
+point into a Rust program. Example:
+
+```
+#![feature(start)]
+
+#[start]
+fn foo(argc: isize, argv: *const *const u8) -> isize { 0 } // ok!
+```
 "##,
 
 // FIXME link this to the relevant turpl chapters for instilling fear of the
@@ -481,6 +538,17 @@ call to `mem::forget(v)` in case you want to avoid destructors being called.
 "##,
 
 E0152: r##"
+A lang item was redefined.
+
+Erroneous code example:
+
+```compile_fail
+#![feature(lang_items)]
+
+#[lang = "panic_fmt"]
+struct Foo; // error: duplicate lang item found: `panic_fmt`
+```
+
 Lang items are already implemented in the standard library. Unless you are
 writing a free-standing application (e.g. a kernel), you do not need to provide
 them yourself.
