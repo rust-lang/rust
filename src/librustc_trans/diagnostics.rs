@@ -15,7 +15,7 @@ register_long_diagnostics! {
 E0510: r##"
 `return_address` was used in an invalid context. Erroneous code example:
 
-```compile_fail
+```ignore
 #![feature(intrinsics)]
 
 extern "rust-intrinsic" {
@@ -54,7 +54,7 @@ E0511: r##"
 Invalid monomorphization of an intrinsic function was used. Erroneous code
 example:
 
-```compile_fail
+```ignore
 #![feature(platform_intrinsics)]
 
 extern "platform-intrinsic" {
