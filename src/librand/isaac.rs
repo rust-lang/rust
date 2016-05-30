@@ -16,7 +16,7 @@ use core::slice;
 use core::iter::repeat;
 use core::num::Wrapping as w;
 
-use {Rng, SeedableRng, Rand};
+use {Rand, Rng, SeedableRng};
 
 type w32 = w<u32>;
 type w64 = w<u64>;
@@ -591,14 +591,15 @@ mod tests {
     use std::prelude::v1::*;
 
     use {Rng, SeedableRng};
-    use super::{IsaacRng, Isaac64Rng};
+    use super::{Isaac64Rng, IsaacRng};
 
     #[test]
     fn test_rng_32_rand_seeded() {
         let s = ::test::rng().gen_iter::<u32>().take(256).collect::<Vec<u32>>();
         let mut ra: IsaacRng = SeedableRng::from_seed(&s[..]);
         let mut rb: IsaacRng = SeedableRng::from_seed(&s[..]);
-        assert!(ra.gen_ascii_chars().take(100)
+        assert!(ra.gen_ascii_chars()
+                  .take(100)
                   .eq(rb.gen_ascii_chars().take(100)));
     }
     #[test]
@@ -606,7 +607,8 @@ mod tests {
         let s = ::test::rng().gen_iter::<u64>().take(256).collect::<Vec<u64>>();
         let mut ra: Isaac64Rng = SeedableRng::from_seed(&s[..]);
         let mut rb: Isaac64Rng = SeedableRng::from_seed(&s[..]);
-        assert!(ra.gen_ascii_chars().take(100)
+        assert!(ra.gen_ascii_chars()
+                  .take(100)
                   .eq(rb.gen_ascii_chars().take(100)));
     }
 
@@ -615,7 +617,8 @@ mod tests {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
-        assert!(ra.gen_ascii_chars().take(100)
+        assert!(ra.gen_ascii_chars()
+                  .take(100)
                   .eq(rb.gen_ascii_chars().take(100)));
     }
     #[test]
@@ -623,7 +626,8 @@ mod tests {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
-        assert!(ra.gen_ascii_chars().take(100)
+        assert!(ra.gen_ascii_chars()
+                  .take(100)
                   .eq(rb.gen_ascii_chars().take(100)));
     }
 

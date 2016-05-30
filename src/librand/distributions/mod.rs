@@ -22,11 +22,11 @@ use core::num::Float;
 
 use core::marker::PhantomData;
 
-use {Rng, Rand};
+use {Rand, Rng};
 
 pub use self::range::Range;
-pub use self::gamma::{Gamma, ChiSquared, FisherF, StudentT};
-pub use self::normal::{Normal, LogNormal};
+pub use self::gamma::{ChiSquared, FisherF, Gamma, StudentT};
+pub use self::normal::{LogNormal, Normal};
 pub use self::exponential::Exp;
 
 pub mod range;
@@ -266,8 +266,8 @@ fn ziggurat<R: Rng, P, Z>(rng: &mut R,
 
 #[cfg(test)]
 mod tests {
-    use {Rng, Rand};
-    use super::{RandSample, WeightedChoice, Weighted, Sample, IndependentSample};
+    use {Rand, Rng};
+    use super::{IndependentSample, RandSample, Sample, Weighted, WeightedChoice};
 
     #[derive(PartialEq, Debug)]
     struct ConstRand(usize);

@@ -16,9 +16,9 @@ use self::ChiSquaredRepr::*;
 #[cfg(not(test))] // only necessary for no_std
 use FloatMath;
 
-use {Rng, Open01};
+use {Open01, Rng};
 use super::normal::StandardNormal;
-use super::{IndependentSample, Sample, Exp};
+use super::{Exp, IndependentSample, Sample};
 
 /// The Gamma distribution `Gamma(shape, scale)` distribution.
 ///
@@ -291,8 +291,8 @@ impl IndependentSample<f64> for StudentT {
 
 #[cfg(test)]
 mod tests {
-    use distributions::{Sample, IndependentSample};
-    use super::{ChiSquared, StudentT, FisherF};
+    use distributions::{IndependentSample, Sample};
+    use super::{ChiSquared, FisherF, StudentT};
 
     #[test]
     fn test_chi_squared_one() {
