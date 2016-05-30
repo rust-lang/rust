@@ -201,7 +201,7 @@ use syntax::codemap::{self, respan, DUMMY_SP};
 use syntax::codemap::Span;
 use syntax::errors::Handler;
 use syntax::util::move_map::MoveMap;
-use syntax::parse::token::{intern, keywords, InternedString};
+use syntax::parse::token::{keywords, InternedString};
 use syntax::ptr::P;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
@@ -1420,31 +1420,13 @@ impl<'a> MethodDef<'a> {
 
 // general helper methods.
 impl<'a> TraitDef<'a> {
-    fn set_expn_info(&self,
-                     cx: &mut ExtCtxt,
-                     mut to_set: Span) -> Span {
-        let trait_name = match self.path.path.last() {
-            None => cx.span_bug(self.span, "trait with empty path in generic `derive`"),
-            Some(name) => *name
-        };
-        to_set.expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
-            call_site: to_set,
-            callee: codemap::NameAndSpan {
-                format: codemap::MacroAttribute(intern(&format!("derive({})", trait_name))),
-                span: Some(self.span),
-                allow_internal_unstable: false,
-            }
-        });
-        to_set
-    }
-
     fn summarise_struct(&self,
                         cx: &mut ExtCtxt,
                         struct_def: &VariantData) -> StaticFields {
         let mut named_idents = Vec::new();
         let mut just_spans = Vec::new();
         for field in struct_def.fields(){
-            let sp = self.set_expn_info(cx, field.span);
+            let sp = Span { expn_id: self.span.expn_id, ..field.span };
             match field.ident {
                 Some(ident) => named_idents.push((ident, sp)),
                 _ => just_spans.push(sp),
@@ -1486,7 +1468,7 @@ impl<'a> TraitDef<'a> {
         let mut paths = Vec::new();
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
-            let sp = self.set_expn_info(cx, struct_field.span);
+            let sp = Span { expn_id: self.span.expn_id, ..struct_field.span };
             let ident = cx.ident_of(&format!("{}_{}", prefix, i));
             paths.push(codemap::Spanned{span: sp, node: ident});
             let val = cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)));
