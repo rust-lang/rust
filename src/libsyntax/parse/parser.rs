@@ -2440,6 +2440,13 @@ impl<'a> Parser<'a> {
                             err.cancel();
                             let msg = format!("expected expression, found {}",
                                               self.this_token_descr());
+                            if self.token == token::Token::Eof {
+                                let help = format!("{} in this context refers \
+                                                   to the end of the macro invocation",
+                                                   self.this_token_descr());
+                                return Err(self.span_fatal_help(
+                                    self.span, &msg, &help));
+                            }
                             return Err(self.fatal(&msg));
                         }
                     }
