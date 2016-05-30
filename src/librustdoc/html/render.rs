@@ -2243,26 +2243,24 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     write!(w, "</pre>")?;
 
     document(w, cx, it)?;
-    let mut fields = s.fields.iter().filter(|f| {
+    let mut fields = s.fields.iter().filter_map(|f| {
         match f.inner {
-            clean::StructFieldItem(..) => true,
-            _ => false,
+            clean::StructFieldItem(ref ty) => Some((f, ty)),
+            _ => None,
         }
     }).peekable();
     if let doctree::Plain = s.struct_type {
         if fields.peek().is_some() {
-            write!(w, "<h2 class='fields'>Fields</h2>\n<table>")?;
-            for field in fields {
-                write!(w, "<tr class='stab {stab}'>
-                             <td id='{shortty}.{name}'>\
-                               <code>{name}</code></td><td>",
+            write!(w, "<h2 class='fields'>Fields</h2>")?;
+            for (field, ty) in fields {
+                write!(w, "<span id='{shortty}.{name}'><code>{name}: {ty}</code></span>
+                           <span class='stab {stab}'></span>",
                        shortty = ItemType::StructField,
                        stab = field.stability_class(),
-                       name = field.name.as_ref().unwrap())?;
+                       name = field.name.as_ref().unwrap(),
+                       ty = ty)?;
                 document(w, cx, field)?;
-                write!(w, "</td></tr>")?;
             }
-            write!(w, "</table>")?;
         }
     }
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
@@ -2292,7 +2290,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                             write!(w, "{}(", name)?;
                             for (i, ty) in tys.iter().enumerate() {
                                 if i > 0 {
-                                    write!(w, ", ")?
+                                    write!(w, ",&nbsp;")?
                                 }
                                 write!(w, "{}", *ty)?;
                             }
@@ -2324,40 +2322,47 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
     document(w, cx, it)?;
     if !e.variants.is_empty() {
-        write!(w, "<h2 class='variants'>Variants</h2>\n<table class='variants_table'>")?;
+        write!(w, "<h2 class='variants'>Variants</h2>\n")?;
         for variant in &e.variants {
-            write!(w, "<tr><td id='{shortty}.{name}'><code>{name}</code></td><td>",
+            write!(w, "<span id='{shortty}.{name}' class='variant'><code>{name}",
                    shortty = ItemType::Variant,
                    name = variant.name.as_ref().unwrap())?;
+            if let clean::VariantItem(ref var) = variant.inner {
+                if let clean::TupleVariant(ref tys) = var.kind {
+                    write!(w, "(")?;
+                    for (i, ty) in tys.iter().enumerate() {
+                        if i > 0 {
+                            write!(w, ",&nbsp;")?;
+                        }
+                        write!(w, "{}", *ty)?;
+                    }
+                    write!(w, ")")?;
+                }
+            }
+            write!(w, "</code></span>")?;
             document(w, cx, variant)?;
 
             use clean::{Variant, StructVariant};
             if let clean::VariantItem( Variant { kind: StructVariant(ref s) } ) = variant.inner {
-                let fields = s.fields.iter().filter(|f| {
-                    match f.inner {
-                        clean::StructFieldItem(..) => true,
-                        _ => false,
-                    }
-                });
                 write!(w, "<h3 class='fields'>Fields</h3>\n
                            <table>")?;
-                for field in fields {
-                    write!(w, "<tr><td \
-                               id='{shortty}.{v}.field.{f}'>\
-                               <code>{f}</code></td><td>",
-                           shortty = ItemType::Variant,
-                           v = variant.name.as_ref().unwrap(),
-                           f = field.name.as_ref().unwrap())?;
-                    document(w, cx, field)?;
-                    write!(w, "</td></tr>")?;
+                for field in &s.fields {
+                    use clean::StructFieldItem;
+                    if let StructFieldItem(ref ty) = field.inner {
+                        write!(w, "<tr><td \
+                                   id='variant.{v}.field.{f}'>\
+                                   <code>{f}:&nbsp;{t}</code></td><td>",
+                               v = variant.name.as_ref().unwrap(),
+                               f = field.name.as_ref().unwrap(),
+                               t = *ty)?;
+                        document(w, cx, field)?;
+                        write!(w, "</td></tr>")?;
+                    }
                 }
                 write!(w, "</table>")?;
             }
-            write!(w, "</td><td>")?;
             render_stability_since(w, variant, it)?;
-            write!(w, "</td></tr>")?;
         }
-        write!(w, "</table>")?;
     }
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)?;
     Ok(())
