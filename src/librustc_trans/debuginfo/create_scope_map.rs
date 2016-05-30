@@ -42,16 +42,13 @@ pub fn create_scope_map(cx: &CrateContext,
                         fn_ast_id: ast::NodeId)
                         -> NodeMap<DIScope> {
     let mut scope_map = NodeMap();
-
-    let def_map = &cx.tcx().def_map;
-
     let mut scope_stack = vec!(ScopeStackEntry { scope_metadata: fn_metadata, name: None });
     scope_map.insert(fn_ast_id, fn_metadata);
 
     // Push argument identifiers onto the stack so arguments integrate nicely
     // with variable shadowing.
     for arg in args {
-        pat_util::pat_bindings(def_map, &arg.pat, |_, node_id, _, path1| {
+        pat_util::pat_bindings(&arg.pat, |_, node_id, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
                                                name: Some(path1.node.unhygienize()) });
             scope_map.insert(node_id, fn_metadata);
@@ -235,76 +232,66 @@ fn walk_pattern(cx: &CrateContext,
                 pat: &hir::Pat,
                 scope_stack: &mut Vec<ScopeStackEntry> ,
                 scope_map: &mut NodeMap<DIScope>) {
-
-    let def_map = &cx.tcx().def_map;
-
     // Unfortunately, we cannot just use pat_util::pat_bindings() or
     // ast_util::walk_pat() here because we have to visit *all* nodes in
     // order to put them into the scope map. The above functions don't do that.
     match pat.node {
-        PatKind::Ident(_, ref path1, ref sub_pat_opt) => {
+        PatKind::Binding(_, ref path1, ref sub_pat_opt) => {
+            // LLVM does not properly generate 'DW_AT_start_scope' fields
+            // for variable DIEs. For this reason we have to introduce
+            // an artificial scope at bindings whenever a variable with
+            // the same name is declared in *any* parent scope.
+            //
+            // Otherwise the following error occurs:
+            //
+            // let x = 10;
+            //
+            // do_something(); // 'gdb print x' correctly prints 10
+            //
+            // {
+            //     do_something(); // 'gdb print x' prints 0, because it
+            //                     // already reads the uninitialized 'x'
+            //                     // from the next line...
+            //     let x = 100;
+            //     do_something(); // 'gdb print x' correctly prints 100
+            // }
 
-            // Check if this is a binding. If so we need to put it on the
-            // scope stack and maybe introduce an artificial scope
-            if pat_util::pat_is_binding(&def_map.borrow(), &pat) {
+            // Is there already a binding with that name?
+            // N.B.: this comparison must be UNhygienic... because
+            // gdb knows nothing about the context, so any two
+            // variables with the same name will cause the problem.
+            let name = path1.node.unhygienize();
+            let need_new_scope = scope_stack
+                .iter()
+                .any(|entry| entry.name == Some(name));
 
-                let name = path1.node.unhygienize();
+            if need_new_scope {
+                // Create a new lexical scope and push it onto the stack
+                let loc = span_start(cx, pat.span);
+                let file_metadata = file_metadata(cx, &loc.file.name);
+                let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
-                // LLVM does not properly generate 'DW_AT_start_scope' fields
-                // for variable DIEs. For this reason we have to introduce
-                // an artificial scope at bindings whenever a variable with
-                // the same name is declared in *any* parent scope.
-                //
-                // Otherwise the following error occurs:
-                //
-                // let x = 10;
-                //
-                // do_something(); // 'gdb print x' correctly prints 10
-                //
-                // {
-                //     do_something(); // 'gdb print x' prints 0, because it
-                //                     // already reads the uninitialized 'x'
-                //                     // from the next line...
-                //     let x = 100;
-                //     do_something(); // 'gdb print x' correctly prints 100
-                // }
+                let scope_metadata = unsafe {
+                    llvm::LLVMDIBuilderCreateLexicalBlock(
+                        DIB(cx),
+                        parent_scope,
+                        file_metadata,
+                        loc.line as c_uint,
+                        loc.col.to_usize() as c_uint)
+                };
 
-                // Is there already a binding with that name?
-                // N.B.: this comparison must be UNhygienic... because
-                // gdb knows nothing about the context, so any two
-                // variables with the same name will cause the problem.
-                let need_new_scope = scope_stack
-                    .iter()
-                    .any(|entry| entry.name == Some(name));
+                scope_stack.push(ScopeStackEntry {
+                    scope_metadata: scope_metadata,
+                    name: Some(name)
+                });
 
-                if need_new_scope {
-                    // Create a new lexical scope and push it onto the stack
-                    let loc = span_start(cx, pat.span);
-                    let file_metadata = file_metadata(cx, &loc.file.name);
-                    let parent_scope = scope_stack.last().unwrap().scope_metadata;
-
-                    let scope_metadata = unsafe {
-                        llvm::LLVMDIBuilderCreateLexicalBlock(
-                            DIB(cx),
-                            parent_scope,
-                            file_metadata,
-                            loc.line as c_uint,
-                            loc.col.to_usize() as c_uint)
-                    };
-
-                    scope_stack.push(ScopeStackEntry {
-                        scope_metadata: scope_metadata,
-                        name: Some(name)
-                    });
-
-                } else {
-                    // Push a new entry anyway so the name can be found
-                    let prev_metadata = scope_stack.last().unwrap().scope_metadata;
-                    scope_stack.push(ScopeStackEntry {
-                        scope_metadata: prev_metadata,
-                        name: Some(name)
-                    });
-                }
+            } else {
+                // Push a new entry anyway so the name can be found
+                let prev_metadata = scope_stack.last().unwrap().scope_metadata;
+                scope_stack.push(ScopeStackEntry {
+                    scope_metadata: prev_metadata,
+                    name: Some(name)
+                });
             }
 
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);

@@ -380,9 +380,7 @@ fn visit_fn(ir: &mut IrMaps,
     debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps);
 
     for arg in &decl.inputs {
-        pat_util::pat_bindings(&ir.tcx.def_map,
-                               &arg.pat,
-                               |_bm, arg_id, _x, path1| {
+        pat_util::pat_bindings(&arg.pat, |_bm, arg_id, _x, path1| {
             debug!("adding argument {}", arg_id);
             let name = path1.node;
             fn_maps.add_variable(Arg(arg_id, name));
@@ -415,7 +413,7 @@ fn visit_fn(ir: &mut IrMaps,
 }
 
 fn visit_local(ir: &mut IrMaps, local: &hir::Local) {
-    pat_util::pat_bindings(&ir.tcx.def_map, &local.pat, |_, p_id, sp, path1| {
+    pat_util::pat_bindings(&local.pat, |_, p_id, sp, path1| {
         debug!("adding local variable {}", p_id);
         let name = path1.node;
         ir.add_live_node_for_node(p_id, VarDefNode(sp));
@@ -429,7 +427,7 @@ fn visit_local(ir: &mut IrMaps, local: &hir::Local) {
 
 fn visit_arm(ir: &mut IrMaps, arm: &hir::Arm) {
     for pat in &arm.pats {
-        pat_util::pat_bindings(&ir.tcx.def_map, &pat, |bm, p_id, sp, path1| {
+        pat_util::pat_bindings(&pat, |bm, p_id, sp, path1| {
             debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
             let name = path1.node;
@@ -589,7 +587,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn pat_bindings<F>(&mut self, pat: &hir::Pat, mut f: F) where
         F: FnMut(&mut Liveness<'a, 'tcx>, LiveNode, Variable, Span, NodeId),
     {
-        pat_util::pat_bindings(&self.ir.tcx.def_map, pat, |_bm, p_id, sp, _n| {
+        pat_util::pat_bindings(pat, |_bm, p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
             let var = self.variable(p_id, sp);
             f(self, ln, var, sp, p_id);
@@ -1567,9 +1565,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn warn_about_unused_args(&self, decl: &hir::FnDecl, entry_ln: LiveNode) {
         for arg in &decl.inputs {
-            pat_util::pat_bindings(&self.ir.tcx.def_map,
-                                   &arg.pat,
-                                   |_bm, p_id, sp, path1| {
+            pat_util::pat_bindings(&arg.pat, |_bm, p_id, sp, path1| {
                 let var = self.variable(p_id, sp);
                 // Ignore unused self.
                 let name = path1.node;

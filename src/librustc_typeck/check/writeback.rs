@@ -15,7 +15,6 @@ use self::ResolveReason::*;
 
 use check::FnCtxt;
 use hir::def_id::DefId;
-use hir::pat_util;
 use rustc::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{TypeFolder,TypeFoldable};
@@ -29,7 +28,7 @@ use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 use rustc::hir::print::pat_to_string;
 use rustc::hir::intravisit::{self, Visitor};
-use rustc::hir;
+use rustc::hir::{self, PatKind};
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point functions
@@ -54,9 +53,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             wbcx.visit_pat(&arg.pat);
 
             // Privacy needs the type for the whole pattern, not just each binding
-            if !pat_util::pat_is_binding(&self.tcx.def_map.borrow(), &arg.pat) {
-                wbcx.visit_node_id(ResolvingPattern(arg.pat.span),
-                                   arg.pat.id);
+            if let PatKind::Binding(..) = arg.pat.node {} else {
+                wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.pat.id);
             }
         }
         wbcx.visit_upvar_borrow_map();

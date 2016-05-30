@@ -866,14 +866,16 @@ impl<'a> LoweringContext<'a> {
                 PatKind::Wild => hir::PatKind::Wild,
                 PatKind::Ident(ref binding_mode, pth1, ref sub) => {
                     self.with_parent_def(p.id, |this| {
-                        let name = match this.resolver.get_resolution(p.id).map(|d| d.full_def()) {
-                            // Only pattern bindings are renamed
-                            None | Some(Def::Local(..)) => this.lower_ident(pth1.node),
-                            _ => pth1.node.name,
-                        };
-                        hir::PatKind::Ident(this.lower_binding_mode(binding_mode),
-                                            respan(pth1.span, name),
-                                            sub.as_ref().map(|x| this.lower_pat(x)))
+                        match this.resolver.get_resolution(p.id).map(|d| d.full_def()) {
+                            // `None` can occur in body-less function signatures
+                            None | Some(Def::Local(..)) => {
+                                hir::PatKind::Binding(this.lower_binding_mode(binding_mode),
+                                                      respan(pth1.span,
+                                                             this.lower_ident(pth1.node)),
+                                                      sub.as_ref().map(|x| this.lower_pat(x)))
+                            }
+                            _ => hir::PatKind::Path(hir::Path::from_name(pth1.span, pth1.node.name))
+                        }
                     })
                 }
                 PatKind::Lit(ref e) => hir::PatKind::Lit(self.lower_expr(e)),
@@ -1868,7 +1870,7 @@ impl<'a> LoweringContext<'a> {
 
     fn pat_ident_binding_mode(&mut self, span: Span, name: Name, bm: hir::BindingMode)
                               -> P<hir::Pat> {
-        let pat_ident = hir::PatKind::Ident(bm,
+        let pat_ident = hir::PatKind::Binding(bm,
                                             Spanned {
                                                 span: span,
                                                 node: name,

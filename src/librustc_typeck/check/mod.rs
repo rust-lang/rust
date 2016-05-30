@@ -573,19 +573,17 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
-        if let PatKind::Ident(_, ref path1, _) = p.node {
-            if pat_util::pat_is_binding(&self.fcx.tcx.def_map.borrow(), p) {
-                let var_ty = self.assign(p.span, p.id, None);
+        if let PatKind::Binding(_, ref path1, _) = p.node {
+            let var_ty = self.assign(p.span, p.id, None);
 
-                self.fcx.require_type_is_sized(var_ty, p.span,
-                                               traits::VariableType(p.id));
+            self.fcx.require_type_is_sized(var_ty, p.span,
+                                           traits::VariableType(p.id));
 
-                debug!("Pattern binding {} is assigned to {} with type {:?}",
-                       path1.node,
-                       self.fcx.ty_to_string(
-                           self.fcx.locals.borrow().get(&p.id).unwrap().clone()),
-                       var_ty);
-            }
+            debug!("Pattern binding {} is assigned to {} with type {:?}",
+                   path1.node,
+                   self.fcx.ty_to_string(
+                       self.fcx.locals.borrow().get(&p.id).unwrap().clone()),
+                   var_ty);
         }
         intravisit::walk_pat(self, p);
     }
@@ -633,8 +631,6 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             body: &'gcx hir::Block)
                             -> FnCtxt<'a, 'gcx, 'tcx>
 {
-    let tcx = inherited.tcx;
-
     let arg_tys = &fn_sig.inputs;
     let ret_ty = fn_sig.output;
 
@@ -670,19 +666,15 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             fcx.register_old_wf_obligation(arg_ty, input.ty.span, traits::MiscObligation);
 
             // Create type variables for each argument.
-            pat_util::pat_bindings(
-                &tcx.def_map,
-                &input.pat,
-                |_bm, pat_id, sp, _path| {
-                    let var_ty = visit.assign(sp, pat_id, None);
-                    fcx.require_type_is_sized(var_ty, sp,
-                                              traits::VariableType(pat_id));
-                });
+            pat_util::pat_bindings(&input.pat, |_bm, pat_id, sp, _path| {
+                let var_ty = visit.assign(sp, pat_id, None);
+                fcx.require_type_is_sized(var_ty, sp, traits::VariableType(pat_id));
+            });
 
             // Check the pattern.
             let pcx = PatCtxt {
                 fcx: &fcx,
-                map: pat_id_map(&tcx.def_map, &input.pat),
+                map: pat_id_map(&input.pat),
             };
             pcx.check_pat(&input.pat, *arg_ty);
         }
@@ -3797,8 +3789,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_decl_local(&self, local: &'gcx hir::Local)  {
-        let tcx = self.tcx;
-
         let t = self.local_ty(local.span, local.id);
         self.write_ty(local.id, t);
 
@@ -3812,7 +3802,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let pcx = PatCtxt {
             fcx: self,
-            map: pat_id_map(&tcx.def_map, &local.pat),
+            map: pat_id_map(&local.pat),
         };
         pcx.check_pat(&local.pat, t);
         let pat_ty = self.node_ty(local.pat.id);

@@ -43,7 +43,7 @@ impl UnusedMut {
 
         let mut mutables = FnvHashMap();
         for p in pats {
-            pat_util::pat_bindings(&cx.tcx.def_map, p, |mode, id, _, path1| {
+            pat_util::pat_bindings(p, |mode, id, _, path1| {
                 let name = path1.node;
                 if let hir::BindByValue(hir::MutMutable) = mode {
                     if !name.as_str().starts_with("_") {
