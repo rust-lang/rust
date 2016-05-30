@@ -1338,10 +1338,10 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// // one possible implementation of walking a directory only visiting files
 /// fn visit_dirs(dir: &Path, cb: &Fn(&DirEntry)) -> io::Result<()> {
-///     if try!(fs::metadata(dir)).is_dir() {
+///     if dir.is_dir() {
 ///         for entry in try!(fs::read_dir(dir)) {
 ///             let entry = try!(entry);
-///             if try!(fs::metadata(entry.path())).is_dir() {
+///             if try!(entry.file_type()).is_dir() {
 ///                 try!(visit_dirs(&entry.path(), cb));
 ///             } else {
 ///                 cb(&entry);

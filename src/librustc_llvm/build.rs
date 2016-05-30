@@ -21,20 +21,25 @@ fn main() {
     println!("cargo:rustc-cfg=cargobuild");
 
     let target = env::var("TARGET").unwrap();
-    let llvm_config = env::var_os("LLVM_CONFIG").map(PathBuf::from)
-                           .unwrap_or_else(|| {
-        match env::var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
-            Some(dir) => {
-                let to_test = dir.parent().unwrap().parent().unwrap()
-                                 .join(&target).join("llvm/bin/llvm-config");
-                if Command::new(&to_test).output().is_ok() {
-                    return to_test
-                }
-            }
-            None => {}
-        }
-        PathBuf::from("llvm-config")
-    });
+    let llvm_config = env::var_os("LLVM_CONFIG")
+                          .map(PathBuf::from)
+                          .unwrap_or_else(|| {
+                              match env::var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
+                                  Some(dir) => {
+                                      let to_test = dir.parent()
+                                                       .unwrap()
+                                                       .parent()
+                                                       .unwrap()
+                                                       .join(&target)
+                                                       .join("llvm/bin/llvm-config");
+                                      if Command::new(&to_test).output().is_ok() {
+                                          return to_test;
+                                      }
+                                  }
+                                  None => {}
+                              }
+                              PathBuf::from("llvm-config")
+                          });
 
     println!("cargo:rerun-if-changed={}", llvm_config.display());
 
@@ -63,20 +68,22 @@ fn main() {
     let host = env::var("HOST").unwrap();
     let is_crossed = target != host;
 
-    let optional_components = ["x86", "arm", "aarch64", "mips", "powerpc",
-                               "pnacl"];
+    let optional_components = ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl"];
 
     // FIXME: surely we don't need all these components, right? Stuff like mcjit
     //        or interpreter the compiler itself never uses.
-    let required_components = &["ipo", "bitreader", "bitwriter", "linker",
-                                "asmparser", "mcjit", "interpreter",
+    let required_components = &["ipo",
+                                "bitreader",
+                                "bitwriter",
+                                "linker",
+                                "asmparser",
+                                "mcjit",
+                                "interpreter",
                                 "instrumentation"];
 
     let components = output(Command::new(&llvm_config).arg("--components"));
     let mut components = components.split_whitespace().collect::<Vec<_>>();
-    components.retain(|c| {
-        optional_components.contains(c) || required_components.contains(c)
-    });
+    components.retain(|c| optional_components.contains(c) || required_components.contains(c));
 
     for component in required_components {
         if !components.contains(component) {
@@ -96,7 +103,7 @@ fn main() {
     for flag in cxxflags.split_whitespace() {
         // Ignore flags like `-m64` when we're doing a cross build
         if is_crossed && flag.starts_with("-m") {
-            continue
+            continue;
         }
         cfg.flag(flag);
     }
@@ -131,7 +138,7 @@ fn main() {
         } else if lib.starts_with("-") {
             &lib[1..]
         } else {
-            continue
+            continue;
         };
 
         // Don't need or want this library, but LLVM's CMake build system
@@ -140,10 +147,14 @@ fn main() {
         // library and it otherwise may just pull in extra dependencies on
         // libedit which we don't want
         if name == "LLVMLineEditor" {
-            continue
+            continue;
         }
 
-        let kind = if name.starts_with("LLVM") {"static"} else {"dylib"};
+        let kind = if name.starts_with("LLVM") {
+            "static"
+        } else {
+            "dylib"
+        };
         println!("cargo:rustc-link-lib={}={}", kind, name);
     }
 
