@@ -1365,7 +1365,7 @@ impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
     fn deref(&self) -> &mir::Mir<'tcx> {
         match *self {
             CachedMir::Ref(r) => r,
-            CachedMir::Owned(ref rc) => &rc,
+            CachedMir::Owned(ref rc) => rc,
         }
     }
 }
@@ -1422,12 +1422,16 @@ pub fn interpret_start_points<'a, 'tcx>(
             if attr.check_name("miri_run") {
                 let item = tcx.map.expect_item(id);
 
-                println!("Interpreting: {}", item.name);
+                if TRACE_EXECUTION {
+                    println!("Interpreting: {}", item.name);
+                }
 
                 let mut gecx = GlobalEvalContext::new(tcx, mir_map);
                 let mut fecx = FnEvalContext::new(&mut gecx);
                 match fecx.call_nested(mir) {
-                    Ok(Some(return_ptr)) => fecx.memory.dump(return_ptr.alloc_id),
+                    Ok(Some(return_ptr)) => if TRACE_EXECUTION {
+                        fecx.memory.dump(return_ptr.alloc_id);
+                    },
                     Ok(None) => println!("(diverging function returned)"),
                     Err(_e) => {
                         // TODO(solson): Detect whether the error was already reported or not.
@@ -1435,7 +1439,9 @@ pub fn interpret_start_points<'a, 'tcx>(
                     }
                 }
 
-                println!("");
+                if TRACE_EXECUTION {
+                    println!("");
+                }
             }
         }
     }
