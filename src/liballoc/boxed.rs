@@ -64,7 +64,7 @@ use core::hash::{self, Hash};
 use core::marker::{self, Unsize};
 use core::mem;
 use core::ops::{CoerceUnsized, Deref, DerefMut};
-use core::ops::{Placer, Boxed, Place, InPlace, BoxPlace};
+use core::ops::{BoxPlace, Boxed, InPlace, Place, Placer};
 use core::ptr::{self, Unique};
 use core::raw::TraitObject;
 use core::convert::From;
@@ -535,7 +535,8 @@ pub trait FnBox<A> {
 
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when Box<FnOnce> becomes usable", issue = "28796")]
-impl<A, F> FnBox<A> for F where F: FnOnce<A>
+impl<A, F> FnBox<A> for F
+    where F: FnOnce<A>
 {
     type Output = F::Output;
 
