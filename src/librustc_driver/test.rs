@@ -29,6 +29,7 @@ use rustc_metadata::cstore::CStore;
 use rustc_metadata::creader::read_local_crates;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
+use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -134,12 +135,12 @@ fn test_env<F>(source_string: &str,
 
     // run just enough stuff to build a tcx:
     let lang_items = lang_items::collect_language_items(&sess, &ast_map);
-    let named_region_map = resolve_lifetime::krate(&sess, &ast_map, &resolutions.def_map.borrow());
+    let named_region_map = resolve_lifetime::krate(&sess, &ast_map, &resolutions.def_map);
     let region_map = region::resolve_crate(&sess, &ast_map);
     let index = stability::Index::new(&ast_map);
     TyCtxt::create_and_enter(&sess,
                              &arenas,
-                             resolutions.def_map,
+                             RefCell::new(resolutions.def_map),
                              named_region_map.unwrap(),
                              ast_map,
                              resolutions.freevars,
