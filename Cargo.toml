@@ -9,6 +9,10 @@ version = "0.1.0"
 [[bin]]
 doc = false
 name = "miri"
+test = false
+
+[lib]
+test = false
 
 [dependencies]
 byteorder = "0.4.2"
