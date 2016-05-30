@@ -588,6 +588,7 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::Mac(..) |
             ast::TyKind::Typeof(..) => unreachable!(),
+            ast::TyKind::ImplicitSelf => Some(String::from("")),
         }
     }
 }
