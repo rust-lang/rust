@@ -38,7 +38,7 @@ pub enum _Unwind_State {
     _US_UNWIND_FRAME_RESUME = 2,
     _US_ACTION_MASK = 3,
     _US_FORCE_UNWIND = 8,
-    _US_END_OF_STACK = 16
+    _US_END_OF_STACK = 16,
 }
 
 #[repr(C)]
@@ -59,9 +59,8 @@ pub type _Unwind_Exception_Class = u64;
 
 pub type _Unwind_Word = libc::uintptr_t;
 
-pub type _Unwind_Trace_Fn =
-        extern fn(ctx: *mut _Unwind_Context,
-                  arg: *mut libc::c_void) -> _Unwind_Reason_Code;
+pub type _Unwind_Trace_Fn = extern "C" fn(ctx: *mut _Unwind_Context, arg: *mut libc::c_void)
+                                          -> _Unwind_Reason_Code;
 
 #[cfg(target_arch = "x86")]
 pub const unwinder_private_data_size: usize = 5;
@@ -97,9 +96,8 @@ pub struct _Unwind_Exception {
 
 pub enum _Unwind_Context {}
 
-pub type _Unwind_Exception_Cleanup_Fn =
-        extern "C" fn(unwind_code: _Unwind_Reason_Code,
-                      exception: *mut _Unwind_Exception);
+pub type _Unwind_Exception_Cleanup_Fn = extern "C" fn(unwind_code: _Unwind_Reason_Code,
+                                                      exception: *mut _Unwind_Exception);
 
 #[cfg_attr(any(all(target_os = "linux", not(target_env = "musl")),
                target_os = "freebsd",
@@ -127,20 +125,18 @@ pub type _Unwind_Exception_Cleanup_Fn =
 #[cfg_attr(all(target_os = "windows", target_env = "gnu"),
            link(name = "gcc_eh"))]
 #[cfg(not(cargobuild))]
-extern {}
+extern "C" {}
 
-extern {
+extern "C" {
     // iOS on armv7 uses SjLj exceptions and requires to link
     // against corresponding routine (..._SjLj_...)
     #[cfg(not(all(target_os = "ios", target_arch = "arm")))]
     #[unwind]
-    pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception)
-                                  -> _Unwind_Reason_Code;
+    pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
 
     #[cfg(all(target_os = "ios", target_arch = "arm"))]
     #[unwind]
-    fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception)
-                                   -> _Unwind_Reason_Code;
+    fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
 
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
 
@@ -151,19 +147,18 @@ extern {
     #[cfg(not(all(target_os = "ios", target_arch = "arm")))]
     pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
                              trace_argument: *mut libc::c_void)
-                -> _Unwind_Reason_Code;
+                             -> _Unwind_Reason_Code;
 
     // available since GCC 4.2.0, should be fine for our purpose
     #[cfg(all(not(all(target_os = "android", target_arch = "arm")),
               not(all(target_os = "linux", target_arch = "arm"))))]
     pub fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
                              ip_before_insn: *mut libc::c_int)
-                -> libc::uintptr_t;
+                             -> libc::uintptr_t;
 
     #[cfg(all(not(target_os = "android"),
               not(all(target_os = "linux", target_arch = "arm"))))]
-    pub fn _Unwind_FindEnclosingFunction(pc: *mut libc::c_void)
-        -> *mut libc::c_void;
+    pub fn _Unwind_FindEnclosingFunction(pc: *mut libc::c_void) -> *mut libc::c_void;
 }
 
 // ... and now we just providing access to SjLj counterspart
@@ -171,8 +166,7 @@ extern {
 // (see also comment above regarding _Unwind_RaiseException)
 #[cfg(all(target_os = "ios", target_arch = "arm"))]
 #[inline]
-pub unsafe fn _Unwind_RaiseException(exc: *mut _Unwind_Exception)
-                                     -> _Unwind_Reason_Code {
+pub unsafe fn _Unwind_RaiseException(exc: *mut _Unwind_Exception) -> _Unwind_Reason_Code {
     _Unwind_SjLj_RaiseException(exc)
 }
 
@@ -207,18 +201,20 @@ pub unsafe fn _Unwind_GetIP(ctx: *mut _Unwind_Context) -> libc::uintptr_t {
     }
 
     type _Unwind_Word = libc::c_uint;
-    extern {
+    extern "C" {
         fn _Unwind_VRS_Get(ctx: *mut _Unwind_Context,
                            klass: _Unwind_VRS_RegClass,
                            word: _Unwind_Word,
                            repr: _Unwind_VRS_DataRepresentation,
                            data: *mut libc::c_void)
-            -> _Unwind_VRS_Result;
+                           -> _Unwind_VRS_Result;
     }
 
     let mut val: _Unwind_Word = 0;
     let ptr = &mut val as *mut _Unwind_Word;
-    let _ = _Unwind_VRS_Get(ctx, _Unwind_VRS_RegClass::_UVRSC_CORE, 15,
+    let _ = _Unwind_VRS_Get(ctx,
+                            _Unwind_VRS_RegClass::_UVRSC_CORE,
+                            15,
                             _Unwind_VRS_DataRepresentation::_UVRSD_UINT32,
                             ptr as *mut libc::c_void);
     (val & !1) as libc::uintptr_t
@@ -230,8 +226,7 @@ pub unsafe fn _Unwind_GetIP(ctx: *mut _Unwind_Context) -> libc::uintptr_t {
           all(target_os = "linux", target_arch = "arm")))]
 pub unsafe fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
                                 ip_before_insn: *mut libc::c_int)
-    -> libc::uintptr_t
-{
+                                -> libc::uintptr_t {
     *ip_before_insn = 0;
     _Unwind_GetIP(ctx)
 }
@@ -240,8 +235,6 @@ pub unsafe fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
 // a no-op
 #[cfg(any(target_os = "android",
           all(target_os = "linux", target_arch = "arm")))]
-pub unsafe fn _Unwind_FindEnclosingFunction(pc: *mut libc::c_void)
-    -> *mut libc::c_void
-{
+pub unsafe fn _Unwind_FindEnclosingFunction(pc: *mut libc::c_void) -> *mut libc::c_void {
     pc
 }

@@ -153,7 +153,7 @@ structure that is currently uninitialized.
 
 For example, this can happen when a drop has taken place:
 
-```compile_fail
+```ignore
 struct Foo {
     a: u32,
 }
