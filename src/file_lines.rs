@@ -181,7 +181,8 @@ impl JsonSpan {
 // for `FileLines`, so it will just panic instead.
 impl rustc_serialize::Decodable for FileLines {
     fn decode<D: rustc_serialize::Decoder>(_: &mut D) -> Result<Self, D::Error> {
-        unimplemented!();
+        panic!("FileLines cannot be deserialized from a project rustfmt.toml file: please \
+                specify it via the `--file-lines` option instead");
     }
 }
 
