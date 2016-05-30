@@ -366,6 +366,18 @@ type X = u32; // ok!
 "##,
 
 E0133: r##"
+Unsafe code was used outside of an unsafe function or block.
+
+Erroneous code example:
+
+```compile_fail
+unsafe fn f() { return; } // This is the unsafe code
+
+fn main() {
+    f(); // error: call to unsafe function requires unsafe function or block
+}
+```
+
 Using unsafe functionality is potentially dangerous and disallowed by safety
 checks. Examples:
 
@@ -380,7 +392,7 @@ unsafe instructions with an `unsafe` block. For instance:
 unsafe fn f() { return; }
 
 fn main() {
-    unsafe { f(); }
+    unsafe { f(); } // ok!
 }
 ```
 
