@@ -63,7 +63,7 @@ use syntax_ext;
 
 #[derive(Clone)]
 pub struct Resolutions {
-    pub def_map: RefCell<DefMap>,
+    pub def_map: DefMap,
     pub freevars: FreevarMap,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
@@ -818,7 +818,7 @@ pub fn lower_and_resolve<'a>(sess: &Session,
             name: &id,
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
         }, Resolutions {
-            def_map: RefCell::new(resolver.def_map),
+            def_map: resolver.def_map,
             freevars: resolver.freevars,
             trait_map: resolver.trait_map,
             maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
@@ -866,7 +866,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                 "lifetime resolution",
                                 || middle::resolve_lifetime::krate(sess,
                                                                    &hir_map,
-                                                                   &resolutions.def_map.borrow()))?;
+                                                                   &resolutions.def_map))?;
 
     time(time_passes,
          "looking for entry point",
@@ -886,14 +886,14 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     time(time_passes,
               "static item recursion checking",
-              || static_recursion::check_crate(sess, &resolutions.def_map.borrow(), &hir_map))?;
+              || static_recursion::check_crate(sess, &resolutions.def_map, &hir_map))?;
 
     let index = stability::Index::new(&hir_map);
 
     let trait_map = resolutions.trait_map;
     TyCtxt::create_and_enter(sess,
                              arenas,
-                             resolutions.def_map,
+                             RefCell::new(resolutions.def_map),
                              named_region_map,
                              hir_map,
                              resolutions.freevars,
