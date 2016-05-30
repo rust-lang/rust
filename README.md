@@ -77,8 +77,8 @@ If you want to restrict reformatting to specific sets of lines, you can
 use the `--file-lines` option. Its argument is a JSON array of objects
 with `file` and `range` properties, where `file` is a file name, and
 `range` is an array representing a range of lines like `[7,13]`. Ranges
-are inclusive of both end points. Specifying an empty array will result in
-no files being formatted. For example,
+are 1-based and inclusive of both end points. Specifying an empty array
+will result in no files being formatted. For example,
 
 ```
 rustfmt --file-lines '[
