@@ -18,7 +18,7 @@ use syntax::diagnostics;
 use std::path::PathBuf;
 use std::process::Command;
 
-mod cargo;
+use clippy_lints::utils::cargo;
 
 struct ClippyCompilerCalls(RustcDefaultCalls);
 
@@ -122,9 +122,7 @@ pub fn main() {
     };
 
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
-        let output = std::process::Command::new("cargo").args(&["metadata", "--no-deps"]).output().expect("could not run `cargo metadata`");
-        let stdout = std::str::from_utf8(&output.stdout).expect("`cargo metadata` output is not utf8");
-        let mut metadata: cargo::Metadata = rustc_serialize::json::decode(stdout).expect("`cargo metadata` output is not valid json");
+        let mut metadata = cargo::metadata().expect("could not obtain cargo metadata");
         assert_eq!(metadata.version, 1);
         for target in metadata.packages.remove(0).targets {
             let args = std::env::args().skip(2);

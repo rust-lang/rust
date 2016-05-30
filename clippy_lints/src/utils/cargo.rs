@@ -1,4 +1,8 @@
 use std::collections::HashMap;
+use std::process::Command;
+use std::str::{from_utf8, Utf8Error};
+use std::io;
+use rustc_serialize::json;
 
 #[derive(RustcDecodable, Debug)]
 pub struct Metadata {
@@ -9,11 +13,11 @@ pub struct Metadata {
 
 #[derive(RustcDecodable, Debug)]
 pub struct Package {
-    name: String,
-    version: String,
+    pub name: String,
+    pub version: String,
     id: String,
     source: Option<()>,
-    dependencies: Vec<Dependency>,
+    pub dependencies: Vec<Dependency>,
     pub targets: Vec<Target>,
     features: HashMap<String, Vec<String>>,
     manifest_path: String,
@@ -21,9 +25,9 @@ pub struct Package {
 
 #[derive(RustcDecodable, Debug)]
 pub struct Dependency {
-    name: String,
+    pub name: String,
     source: Option<String>,
-    req: String,
+    pub req: String,
     kind: Option<String>,
     optional: bool,
     uses_default_features: bool,
@@ -45,4 +49,27 @@ pub struct Target {
     pub name: String,
     pub kind: Vec<Kind>,
     src_path: String,
+}
+
+#[derive(Debug)]
+pub enum Error {
+    Io(io::Error),
+    Utf8(Utf8Error),
+    Json(json::DecoderError),
+}
+
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Self { Error::Io(err) }
+}
+impl From<Utf8Error> for Error {
+    fn from(err: Utf8Error) -> Self { Error::Utf8(err) }
+}
+impl From<json::DecoderError> for Error {
+    fn from(err: json::DecoderError) -> Self { Error::Json(err) }
+}
+
+pub fn metadata() -> Result<Metadata, Error> {
+    let output = Command::new("cargo").args(&["metadata", "--no-deps"]).output()?;
+    let stdout = from_utf8(&output.stdout)?;
+    Ok(json::decode(stdout)?)
 }
