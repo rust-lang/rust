@@ -554,7 +554,6 @@ fn slice_index_order_fail(index: usize, end: usize) -> ! {
     panic!("slice index starts at {} but ends at {}", index, end);
 }
 
-// FIXME implement indexing with inclusive ranges
 
 /// Implements slicing with syntax `&self[begin .. end]`.
 ///
@@ -622,7 +621,7 @@ impl<T> ops::Index<ops::RangeFrom<usize>> for [T] {
 
 /// Implements slicing with syntax `&self[..]`.
 ///
-/// Returns a slice of the whole slice. This operation can not panic.
+/// Returns a slice of the whole slice. This operation cannot panic.
 ///
 /// Equivalent to `&self[0 .. self.len()]`
 #[stable(feature = "rust1", since = "1.0.0")]
