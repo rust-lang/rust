@@ -27,3 +27,10 @@ env_logger = "0.3"
 getopts = "0.2"
 itertools = "0.4.15"
 multimap = "0.3"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.11"
+
+[target.'cfg(windows)'.dependencies]
+kernel32-sys = "0.2.2"
+winapi = "0.2.7"
