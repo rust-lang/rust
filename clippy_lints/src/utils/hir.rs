@@ -148,6 +148,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&PatKind::Binding(ref lb, ref li, ref lp), &PatKind::Binding(ref rb, ref ri, ref rp)) => {
                 lb == rb && li.node.as_str() == ri.node.as_str() && both(lp, rp, |l, r| self.eq_pat(l, r))
             }
+            (&PatKind::Path(ref l), &PatKind::Path(ref r)) => self.eq_path(l, r),
             (&PatKind::Lit(ref l), &PatKind::Lit(ref r)) => self.eq_expr(l, r),
             (&PatKind::QPath(ref ls, ref lp), &PatKind::QPath(ref rs, ref rp)) => {
                 self.eq_qself(ls, rs) && self.eq_path(lp, rp)
