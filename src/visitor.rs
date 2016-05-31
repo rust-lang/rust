@@ -141,7 +141,8 @@ impl<'a> FmtVisitor<'a> {
                 fd: &ast::FnDecl,
                 b: &ast::Block,
                 s: Span,
-                _: ast::NodeId) {
+                _: ast::NodeId,
+                defaultness: ast::Defaultness) {
         let indent = self.block_indent;
         let rewrite = match fk {
             visit::FnKind::ItemFn(ident, ref generics, unsafety, constness, abi, vis) => {
@@ -151,6 +152,7 @@ impl<'a> FmtVisitor<'a> {
                                 generics,
                                 unsafety,
                                 constness,
+                                defaultness,
                                 abi,
                                 vis,
                                 codemap::mk_sp(s.lo, b.span.lo),
@@ -163,6 +165,7 @@ impl<'a> FmtVisitor<'a> {
                                 &sig.generics,
                                 sig.unsafety,
                                 sig.constness,
+                                defaultness,
                                 sig.abi,
                                 vis.unwrap_or(&ast::Visibility::Inherited),
                                 codemap::mk_sp(s.lo, b.span.lo),
@@ -332,7 +335,8 @@ impl<'a> FmtVisitor<'a> {
                               decl,
                               body,
                               item.span,
-                              item.id)
+                              item.id,
+                              ast::Defaultness::Final)
             }
             ast::ItemKind::Ty(ref ty, ref generics) => {
                 let rewrite = rewrite_type_alias(&self.get_context(),
@@ -373,7 +377,8 @@ impl<'a> FmtVisitor<'a> {
                               &sig.decl,
                               &body,
                               ti.span,
-                              ti.id);
+                              ti.id,
+                              ast::Defaultness::Final);
             }
             ast::TraitItemKind::Type(ref type_param_bounds, _) => {
                 let rewrite = rewrite_associated_type(ti.ident,
@@ -397,7 +402,8 @@ impl<'a> FmtVisitor<'a> {
                               &sig.decl,
                               body,
                               ii.span,
-                              ii.id);
+                              ii.id,
+                              ii.defaultness);
             }
             ast::ImplItemKind::Const(ref ty, ref expr) => {
                 let rewrite = rewrite_static("const",

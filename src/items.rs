@@ -120,6 +120,7 @@ impl<'a> FmtVisitor<'a> {
                                               generics,
                                               ast::Unsafety::Normal,
                                               ast::Constness::NotConst,
+                                              ast::Defaultness::Final,
                                               // These are not actually rust functions,
                                               // but we format them as such.
                                               abi::Abi::Rust,
@@ -168,6 +169,7 @@ impl<'a> FmtVisitor<'a> {
                       generics: &ast::Generics,
                       unsafety: ast::Unsafety,
                       constness: ast::Constness,
+                      defaultness: ast::Defaultness,
                       abi: abi::Abi,
                       vis: &ast::Visibility,
                       span: Span,
@@ -187,6 +189,7 @@ impl<'a> FmtVisitor<'a> {
                                                                          generics,
                                                                          unsafety,
                                                                          constness,
+                                                                         defaultness,
                                                                          abi,
                                                                          vis,
                                                                          span,
@@ -231,6 +234,7 @@ impl<'a> FmtVisitor<'a> {
                                                        &sig.generics,
                                                        sig.unsafety,
                                                        sig.constness,
+                                                       ast::Defaultness::Final,
                                                        sig.abi,
                                                        &ast::Visibility::Inherited,
                                                        span,
@@ -1220,6 +1224,7 @@ fn rewrite_fn_base(context: &RewriteContext,
                    generics: &ast::Generics,
                    unsafety: ast::Unsafety,
                    constness: ast::Constness,
+                   defaultness: ast::Defaultness,
                    abi: abi::Abi,
                    vis: &ast::Visibility,
                    span: Span,
@@ -1235,6 +1240,10 @@ fn rewrite_fn_base(context: &RewriteContext,
     let mut result = String::with_capacity(1024);
     // Vis unsafety abi.
     result.push_str(&*format_visibility(vis));
+
+    if let ast::Defaultness::Default = defaultness {
+        result.push_str("default ");
+    }
 
     if let ast::Constness::Const = constness {
         result.push_str("const ");
