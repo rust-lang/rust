@@ -692,7 +692,11 @@ fn link_natively(sess: &Session,
             info!("linker stdout:\n{}", escape_string(&prog.stdout[..]));
         },
         Err(e) => {
-            sess.fatal(&format!("could not exec the linker `{}`: {}", pname, e));
+            // Trying to diagnose https://github.com/rust-lang/rust/issues/33844
+            sess.struct_err(&format!("could not exec the linker `{}`: {}", pname, e))
+                .note(&format!("{:?}", &cmd))
+                .emit();
+            sess.abort_if_errors();
         }
     }
 
