@@ -1,6 +1,7 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
+#![feature(slice_patterns)]
 
 extern crate rustc_driver;
 extern crate getopts;
@@ -8,6 +9,7 @@ extern crate rustc;
 extern crate syntax;
 extern crate rustc_plugin;
 extern crate clippy_lints;
+extern crate rustc_serialize;
 
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 use rustc::session::{config, Session};
@@ -15,6 +17,8 @@ use rustc::session::config::{Input, ErrorOutputType};
 use syntax::diagnostics;
 use std::path::PathBuf;
 use std::process::Command;
+
+use clippy_lints::utils::cargo;
 
 struct ClippyCompilerCalls(RustcDefaultCalls);
 
@@ -118,16 +122,18 @@ pub fn main() {
     };
 
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
-        let args = wrap_args(std::env::args().skip(2), dep_path, sys_root);
-        let path = std::env::current_exe().expect("current executable path invalid");
-        let exit_status = std::process::Command::new("cargo")
-            .args(&args)
-            .env("RUSTC", path)
-            .spawn().expect("could not run cargo")
-            .wait().expect("failed to wait for cargo?");
-
-        if let Some(code) = exit_status.code() {
-            std::process::exit(code);
+        let mut metadata = cargo::metadata().expect("could not obtain cargo metadata");
+        assert_eq!(metadata.version, 1);
+        for target in metadata.packages.remove(0).targets {
+            let args = std::env::args().skip(2);
+            assert_eq!(target.kind.len(), 1);
+            match &target.kind[..] {
+                [cargo::Kind::lib] |
+                [cargo::Kind::dylib] => process(std::iter::once("--lib".to_owned()).chain(args), &dep_path, &sys_root),
+                [cargo::Kind::bin] => process(vec!["--bin".to_owned(), target.name].into_iter().chain(args), &dep_path, &sys_root),
+                // don't process tests and other stuff
+                _ => {},
+            }
         }
     } else {
         let args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
@@ -145,7 +151,7 @@ pub fn main() {
     }
 }
 
-fn wrap_args<P, I>(old_args: I, dep_path: P, sysroot: String) -> Vec<String>
+fn process<P, I>(old_args: I, dep_path: P, sysroot: &str)
     where P: AsRef<Path>, I: Iterator<Item=String> {
 
     let mut args = vec!["rustc".to_owned()];
@@ -161,7 +167,17 @@ fn wrap_args<P, I>(old_args: I, dep_path: P, sysroot: String) -> Vec<String>
     args.push("-L".to_owned());
     args.push(dep_path.as_ref().to_string_lossy().into_owned());
     args.push(String::from("--sysroot"));
-    args.push(sysroot);
+    args.push(sysroot.to_owned());
     args.push("-Zno-trans".to_owned());
-    args
+
+    let path = std::env::current_exe().expect("current executable path invalid");
+    let exit_status = std::process::Command::new("cargo")
+        .args(&args)
+        .env("RUSTC", path)
+        .spawn().expect("could not run cargo")
+        .wait().expect("failed to wait for cargo?");
+
+    if let Some(code) = exit_status.code() {
+        std::process::exit(code);
+    }
 }

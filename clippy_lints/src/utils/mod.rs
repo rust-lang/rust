@@ -23,6 +23,7 @@ pub mod conf;
 mod hir;
 pub mod paths;
 pub use self::hir::{SpanlessEq, SpanlessHash};
+pub mod cargo;
 
 pub type MethodArgs = HirVec<P<Expr>>;
 
