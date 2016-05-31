@@ -112,6 +112,31 @@ fn base_lvalue<'a, 'tcx>(mut lval: &'a Lvalue<'tcx>) -> &'a Lvalue<'tcx> {
     lval
 }
 
+fn invalidate<'tcx>(map: &mut FnvHashMap<Lvalue<'tcx>, Either<'tcx>>, lval: &Lvalue<'tcx>) {
+    map.remove(lval);
+
+    let mut repl = None;
+
+    for (k, v) in &mut *map {
+        if let Either::Lvalue(ref mut nlval) = *v {
+            if nlval == lval {
+                match repl {
+                    None => {
+                        repl = Some(k.clone())
+                    },
+                    Some(ref r) => {
+                        *nlval = r.clone();
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(repl) = repl {
+        map.remove(&repl);
+    }
+}
+
 impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
     type Lattice = AcsLattice<'tcx>;
 
@@ -122,17 +147,20 @@ impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
         };
 
         let StatementKind::Assign(ref lval, ref rval) = s.kind;
+        invalidate(&mut lat_map, base_lvalue(lval));
+
         if let &Lvalue::Projection(_) = lval {
-            lat_map.remove(base_lvalue(lval));
             return Wrap(lat_map);
         }
 
         match *rval {
-            Rvalue::Use(Operand::Consume(ref nlval)) =>
-                lat_map.insert(lval.clone(), Either::Lvalue(nlval.clone())),
-            Rvalue::Use(Operand::Constant(ref c)) =>
-                lat_map.insert(lval.clone(), Either::Const(c.clone())),
-            _ => lat_map.remove(lval)
+            Rvalue::Use(Operand::Consume(ref nlval)) => {
+                lat_map.insert(lval.clone(), Either::Lvalue(nlval.clone()));
+            },
+            Rvalue::Use(Operand::Constant(ref c)) => {
+                lat_map.insert(lval.clone(), Either::Const(c.clone()));
+            },
+            _ => { }
         };
         Wrap(lat_map)
     }
@@ -190,13 +218,13 @@ struct RewriteAliasVisitor<'a, 'tcx: 'a>(&'a FnvHashMap<Lvalue<'tcx>, Either<'tc
 impl<'a, 'tcx> MutVisitor<'tcx> for RewriteAliasVisitor<'a, 'tcx> {
     fn visit_lvalue(&mut self, lvalue: &mut Lvalue<'tcx>, context: LvalueContext) {
         match context {
-            LvalueContext::Store | LvalueContext::Call => {}
-            _ => {
+            LvalueContext::Consume => {
                 if let Some(&Either::Lvalue(ref nlval)) = self.0.get(lvalue) {
                     self.1 = true;
                     *lvalue = nlval.clone();
                 }
-            }
+            },
+            _ => { }
         }
         self.super_lvalue(lvalue, context);
     }
