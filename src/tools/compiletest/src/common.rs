@@ -35,21 +35,21 @@ impl FromStr for Mode {
     type Err = ();
     fn from_str(s: &str) -> Result<Mode, ()> {
         match s {
-          "compile-fail" => Ok(CompileFail),
-          "parse-fail" => Ok(ParseFail),
-          "run-fail" => Ok(RunFail),
-          "run-pass" => Ok(RunPass),
-          "run-pass-valgrind" => Ok(RunPassValgrind),
-          "pretty" => Ok(Pretty),
-          "debuginfo-lldb" => Ok(DebugInfoLldb),
-          "debuginfo-gdb" => Ok(DebugInfoGdb),
-          "codegen" => Ok(Codegen),
-          "rustdoc" => Ok(Rustdoc),
-          "codegen-units" => Ok(CodegenUnits),
-          "incremental" => Ok(Incremental),
-          "run-make" => Ok(RunMake),
-          "ui" => Ok(Ui),
-          _ => Err(()),
+            "compile-fail" => Ok(CompileFail),
+            "parse-fail" => Ok(ParseFail),
+            "run-fail" => Ok(RunFail),
+            "run-pass" => Ok(RunPass),
+            "run-pass-valgrind" => Ok(RunPassValgrind),
+            "pretty" => Ok(Pretty),
+            "debuginfo-lldb" => Ok(DebugInfoLldb),
+            "debuginfo-gdb" => Ok(DebugInfoGdb),
+            "codegen" => Ok(Codegen),
+            "rustdoc" => Ok(Rustdoc),
+            "codegen-units" => Ok(CodegenUnits),
+            "incremental" => Ok(Incremental),
+            "run-make" => Ok(RunMake),
+            "ui" => Ok(Ui),
+            _ => Err(()),
         }
     }
 }
@@ -57,21 +57,22 @@ impl FromStr for Mode {
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(match *self {
-            CompileFail => "compile-fail",
-            ParseFail => "parse-fail",
-            RunFail => "run-fail",
-            RunPass => "run-pass",
-            RunPassValgrind => "run-pass-valgrind",
-            Pretty => "pretty",
-            DebugInfoGdb => "debuginfo-gdb",
-            DebugInfoLldb => "debuginfo-lldb",
-            Codegen => "codegen",
-            Rustdoc => "rustdoc",
-            CodegenUnits => "codegen-units",
-            Incremental => "incremental",
-            RunMake => "run-make",
-            Ui => "ui",
-        }, f)
+                              CompileFail => "compile-fail",
+                              ParseFail => "parse-fail",
+                              RunFail => "run-fail",
+                              RunPass => "run-pass",
+                              RunPassValgrind => "run-pass-valgrind",
+                              Pretty => "pretty",
+                              DebugInfoGdb => "debuginfo-gdb",
+                              DebugInfoLldb => "debuginfo-lldb",
+                              Codegen => "codegen",
+                              Rustdoc => "rustdoc",
+                              CodegenUnits => "codegen-units",
+                              Incremental => "incremental",
+                              RunMake => "run-make",
+                              Ui => "ui",
+                          },
+                          f)
     }
 }
 
