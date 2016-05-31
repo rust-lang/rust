@@ -49,14 +49,11 @@ pub struct Memory {
 }
 
 impl Memory {
-    pub fn new() -> Self {
+    pub fn new(pointer_size: usize) -> Self {
         Memory {
             alloc_map: HashMap::new(),
             next_id: AllocId(0),
-
-            // FIXME(solson): This should work for both 4 and 8, but it currently breaks some things
-            // when set to 4.
-            pointer_size: 8,
+            pointer_size: pointer_size,
         }
     }
 
@@ -183,7 +180,11 @@ impl Memory {
     fn get_bytes_unchecked(&self, ptr: Pointer, size: usize) -> EvalResult<&[u8]> {
         let alloc = self.get(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
-            return Err(EvalError::PointerOutOfBounds);
+            return Err(EvalError::PointerOutOfBounds {
+                offset: ptr.offset,
+                size: size,
+                len: alloc.bytes.len(),
+            });
         }
         Ok(&alloc.bytes[ptr.offset..ptr.offset + size])
     }
@@ -191,7 +192,11 @@ impl Memory {
     fn get_bytes_unchecked_mut(&mut self, ptr: Pointer, size: usize) -> EvalResult<&mut [u8]> {
         let alloc = self.get_mut(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
-            return Err(EvalError::PointerOutOfBounds);
+            return Err(EvalError::PointerOutOfBounds {
+                offset: ptr.offset,
+                size: size,
+                len: alloc.bytes.len(),
+            });
         }
         Ok(&mut alloc.bytes[ptr.offset..ptr.offset + size])
     }

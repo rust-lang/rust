@@ -21,4 +21,9 @@ fn hello_bytes_fat() -> &'static [u8] {
     b"Hello, world!"
 }
 
+#[miri_run]
+fn fat_pointer_on_32_bit() {
+    Some(5).expect("foo");
+}
+
 fn main() {}

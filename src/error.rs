@@ -7,7 +7,11 @@ pub enum EvalError {
     DanglingPointerDeref,
     InvalidBool,
     InvalidDiscriminant,
-    PointerOutOfBounds,
+    PointerOutOfBounds {
+        offset: usize,
+        size: usize,
+        len: usize,
+    },
     ReadPointerAsBytes,
     ReadBytesAsPointer,
     InvalidPointerMath,
@@ -27,7 +31,7 @@ impl Error for EvalError {
                 "invalid boolean value read",
             EvalError::InvalidDiscriminant =>
                 "invalid enum discriminant value read",
-            EvalError::PointerOutOfBounds =>
+            EvalError::PointerOutOfBounds { .. } =>
                 "pointer offset outside bounds of allocation",
             EvalError::ReadPointerAsBytes =>
                 "a raw memory access tried to access part of a pointer value as raw bytes",
@@ -48,6 +52,9 @@ impl Error for EvalError {
 
 impl fmt::Display for EvalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.description())
+        match *self {
+            EvalError::PointerOutOfBounds { offset, size, len } => write!(f, "pointer offset ({} + {}) outside bounds ({}) of allocation", offset, size, len),
+            _ => write!(f, "{}", self.description()),
+        }
     }
 }

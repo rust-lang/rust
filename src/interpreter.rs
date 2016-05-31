@@ -128,7 +128,11 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
             tcx: tcx,
             mir_map: mir_map,
             mir_cache: RefCell::new(DefIdMap()),
-            memory: Memory::new(),
+            memory: Memory::new(tcx.sess
+                                   .target
+                                   .uint_type
+                                   .bit_width()
+                                   .expect("Session::target::uint_type was usize")/8),
             substs_stack: Vec::new(),
             name_stack: Vec::new(),
         }
@@ -1196,23 +1200,25 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<PrimVal> {
         use syntax::ast::{IntTy, UintTy};
-        let val = match ty.sty {
-            ty::TyBool              => PrimVal::Bool(self.memory.read_bool(ptr)?),
-            ty::TyInt(IntTy::I8)    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
-            ty::TyInt(IntTy::I16)   => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
-            ty::TyInt(IntTy::I32)   => PrimVal::I32(self.memory.read_int(ptr, 4)? as i32),
-            ty::TyInt(IntTy::I64)   => PrimVal::I64(self.memory.read_int(ptr, 8)? as i64),
-            ty::TyUint(UintTy::U8)  => PrimVal::U8(self.memory.read_uint(ptr, 1)? as u8),
-            ty::TyUint(UintTy::U16) => PrimVal::U16(self.memory.read_uint(ptr, 2)? as u16),
-            ty::TyUint(UintTy::U32) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
-            ty::TyUint(UintTy::U64) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
+        let val = match (self.memory.pointer_size, &ty.sty) {
+            (_, &ty::TyBool)              => PrimVal::Bool(self.memory.read_bool(ptr)?),
+            (_, &ty::TyInt(IntTy::I8))    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
+            (2, &ty::TyInt(IntTy::Is)) |
+            (_, &ty::TyInt(IntTy::I16))   => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
+            (4, &ty::TyInt(IntTy::Is)) |
+            (_, &ty::TyInt(IntTy::I32))   => PrimVal::I32(self.memory.read_int(ptr, 4)? as i32),
+            (8, &ty::TyInt(IntTy::Is)) |
+            (_, &ty::TyInt(IntTy::I64))   => PrimVal::I64(self.memory.read_int(ptr, 8)? as i64),
+            (_, &ty::TyUint(UintTy::U8))  => PrimVal::U8(self.memory.read_uint(ptr, 1)? as u8),
+            (2, &ty::TyUint(UintTy::Us)) |
+            (_, &ty::TyUint(UintTy::U16)) => PrimVal::U16(self.memory.read_uint(ptr, 2)? as u16),
+            (4, &ty::TyUint(UintTy::Us)) |
+            (_, &ty::TyUint(UintTy::U32)) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
+            (8, &ty::TyUint(UintTy::Us)) |
+            (_, &ty::TyUint(UintTy::U64)) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
 
-            // TODO(solson): Pick the PrimVal dynamically.
-            ty::TyInt(IntTy::Is)   => PrimVal::I64(self.memory.read_isize(ptr)?),
-            ty::TyUint(UintTy::Us) => PrimVal::U64(self.memory.read_usize(ptr)?),
-
-            ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+            (_, &ty::TyRef(_, ty::TypeAndMut { ty, .. })) |
+            (_, &ty::TyRawPtr(ty::TypeAndMut { ty, .. })) => {
                 if self.type_is_sized(ty) {
                     match self.memory.read_ptr(ptr) {
                         Ok(p) => PrimVal::AbstractPtr(p),

@@ -6,7 +6,9 @@ fn overwriting_part_of_relocation_makes_the_rest_undefined() -> i32 {
     let mut p = &42;
     unsafe {
         let ptr: *mut _ = &mut p;
-        *(ptr as *mut u32) = 123;
+        *(ptr as *mut u8) = 123; // if we ever support 8 bit pointers, this is gonna cause
+        // "attempted to interpret some raw bytes as a pointer address" instead of
+        // "attempted to read undefined bytes"
     }
     *p //~ ERROR: attempted to read undefined bytes
 }
@@ -34,7 +36,7 @@ fn undefined_byte_read() -> u8 {
 #[miri_run]
 fn out_of_bounds_read() -> u8 {
     let v: Vec<u8> = vec![1, 2];
-    unsafe { *v.get_unchecked(5) } //~ ERROR: pointer offset outside bounds of allocation
+    unsafe { *v.get_unchecked(5) } //~ ERROR: pointer offset (5 + 1) outside bounds (2) of allocation
 }
 
 #[miri_run]
