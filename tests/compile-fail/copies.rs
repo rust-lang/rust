@@ -173,7 +173,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     let _ = match Some(42) {
         Some(_) => 24,
-        None => 24,
+        None => 24, //~ERROR this `match` has identical arm bodies
     };
 
     let _ = match Some(42) {
