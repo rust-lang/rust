@@ -192,7 +192,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                     bindings_impl(cx, pat, map);
                 }
             }
-            PatKind::Ident(_, ref ident, ref as_pat) => {
+            PatKind::Binding(_, ref ident, ref as_pat) => {
                 if let Entry::Vacant(v) = map.entry(ident.node.as_str()) {
                     v.insert(cx.tcx.pat_ty(pat));
                 }

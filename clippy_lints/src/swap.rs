@@ -63,7 +63,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             let StmtDecl(ref tmp, _) = w[0].node,
             let DeclLocal(ref tmp) = tmp.node,
             let Some(ref tmp_init) = tmp.init,
-            let PatKind::Ident(_, ref tmp_name, None) = tmp.pat.node,
+            let PatKind::Binding(_, ref tmp_name, None) = tmp.pat.node,
 
             // foo() = bar();
             let StmtSemi(ref first, _) = w[1].node,

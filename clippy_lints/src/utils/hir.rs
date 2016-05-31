@@ -145,7 +145,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&PatKind::TupleStruct(ref lp, ref la, ls), &PatKind::TupleStruct(ref rp, ref ra, rs)) => {
                 self.eq_path(lp, rp) && over(la, ra, |l, r| self.eq_pat(l, r)) && ls == rs
             }
-            (&PatKind::Ident(ref lb, ref li, ref lp), &PatKind::Ident(ref rb, ref ri, ref rp)) => {
+            (&PatKind::Binding(ref lb, ref li, ref lp), &PatKind::Binding(ref rb, ref ri, ref rp)) => {
                 lb == rb && li.node.as_str() == ri.node.as_str() && both(lp, rp, |l, r| self.eq_pat(l, r))
             }
             (&PatKind::Lit(ref l), &PatKind::Lit(ref r)) => self.eq_expr(l, r),

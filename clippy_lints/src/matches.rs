@@ -200,7 +200,7 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
             }
             path.to_string()
         }
-        PatKind::Ident(BindByValue(MutImmutable), ident, None) => ident.node.to_string(),
+        PatKind::Binding(BindByValue(MutImmutable), ident, None) => ident.node.to_string(),
         _ => return,
     };
 
