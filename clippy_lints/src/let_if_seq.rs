@@ -65,7 +65,7 @@ impl LateLintPass for LetIfSeq {
                 let Some(expr) = it.peek(),
                 let hir::StmtDecl(ref decl, _) = stmt.node,
                 let hir::DeclLocal(ref decl) = decl.node,
-                let hir::PatKind::Ident(mode, ref name, None) = decl.pat.node,
+                let hir::PatKind::Binding(mode, ref name, None) = decl.pat.node,
                 let Some(def) = cx.tcx.def_map.borrow().get(&decl.pat.id),
                 let hir::StmtExpr(ref if_, _) = expr.node,
                 let hir::ExprIf(ref cond, ref then, ref else_) = if_.node,

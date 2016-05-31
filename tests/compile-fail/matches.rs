@@ -216,6 +216,12 @@ fn overlapping() {
         11 ... 50 => println!("0 ... 10"),
         _ => (),
     }
+    
+    if let None = Some(42) {
+        // nothing
+    } else if let None = Some(42) {
+        // another nothing :-)
+    }
 }
 
 fn main() {

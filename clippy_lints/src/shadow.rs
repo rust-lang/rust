@@ -65,7 +65,7 @@ impl LateLintPass for ShadowPass {
 fn check_fn(cx: &LateContext, decl: &FnDecl, block: &Block) {
     let mut bindings = Vec::new();
     for arg in &decl.inputs {
-        if let PatKind::Ident(_, ident, _) = arg.pat.node {
+        if let PatKind::Binding(_, ident, _) = arg.pat.node {
             bindings.push((ident.node.unhygienize(), ident.span))
         }
     }
@@ -119,7 +119,7 @@ fn is_binding(cx: &LateContext, pat: &Pat) -> bool {
 fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bindings: &mut Vec<(Name, Span)>) {
     // TODO: match more stuff / destructuring
     match pat.node {
-        PatKind::Ident(_, ref ident, ref inner) => {
+        PatKind::Binding(_, ref ident, ref inner) => {
             let name = ident.node.unhygienize();
             if is_binding(cx, pat) {
                 let mut new_binding = true;

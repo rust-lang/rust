@@ -330,7 +330,7 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
 fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
     if let Some(UnsugaredRange { start: Some(ref start), ref end, .. }) = unsugar_range(arg) {
         // the var must be a single name
-        if let PatKind::Ident(_, ref ident, _) = pat.node {
+        if let PatKind::Binding(_, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
                 cx: cx,
                 var: ident.node,
@@ -613,7 +613,7 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
 fn pat_is_wild(pat: &PatKind, body: &Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
-        PatKind::Ident(_, ident, None) if ident.node.as_str().starts_with('_') => {
+        PatKind::Binding(_, ident, None) if ident.node.as_str().starts_with('_') => {
             let mut visitor = UsedVisitor {
                 var: ident.node,
                 used: false,
@@ -884,7 +884,7 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
         // Look for declarations of the variable
         if let DeclLocal(ref local) = decl.node {
             if local.pat.id == self.var_id {
-                if let PatKind::Ident(_, ref ident, _) = local.pat.node {
+                if let PatKind::Binding(_, ref ident, _) = local.pat.node {
                     self.name = Some(ident.node);
 
                     self.state = if let Some(ref init) = local.init {
