@@ -9,8 +9,9 @@
 // except according to those terms.
 
 use Indent;
+use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
-use utils::{CodeMapSpanUtils, wrap_str, format_mutability};
+use utils::{wrap_str, format_mutability};
 use lists::{format_item_list, itemize_list};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 use types::rewrite_path;

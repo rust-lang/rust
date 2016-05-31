@@ -10,6 +10,7 @@
 
 extern crate toml;
 
+use file_lines::FileLines;
 use lists::{SeparatorTactic, ListTactic};
 use std::io::Write;
 
@@ -200,6 +201,12 @@ impl ConfigType for String {
     }
 }
 
+impl ConfigType for FileLines {
+    fn doc_hint() -> String {
+        String::from("<json>")
+    }
+}
+
 pub struct ConfigHelpItem {
     option_name: &'static str,
     doc_string: &'static str,
@@ -327,6 +334,9 @@ macro_rules! create_config {
 create_config! {
     verbose: bool, false, "Use verbose output";
     skip_children: bool, false, "Don't reformat out of line modules";
+    file_lines: FileLines, FileLines::all(),
+        "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
+         via the --file-lines option";
     max_width: usize, 100, "Maximum width of each line";
     ideal_width: usize, 80, "Ideal width of each line";
     tab_spaces: usize, 4, "Number of spaces per tab";

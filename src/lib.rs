@@ -25,6 +25,7 @@ extern crate regex;
 extern crate diff;
 extern crate term;
 extern crate itertools;
+extern crate multimap;
 
 use syntax::ast;
 use syntax::codemap::{mk_sp, CodeMap, Span};
@@ -52,7 +53,9 @@ pub use self::summary::Summary;
 #[macro_use]
 mod utils;
 pub mod config;
+pub mod codemap;
 pub mod filemap;
+pub mod file_lines;
 pub mod visitor;
 mod checkstyle;
 mod items;
@@ -470,6 +473,7 @@ pub fn format_input<T: Write>(input: Input,
     }
 }
 
+#[derive(Debug)]
 pub enum Input {
     File(PathBuf),
     Text(String),

@@ -16,12 +16,13 @@ use std::iter::ExactSizeIterator;
 use std::fmt::Write;
 
 use {Indent, Spanned};
+use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
             DefinitiveListTactic, definitive_tactic, ListItem, format_item_list};
 use string::{StringFormat, rewrite_string};
-use utils::{CodeMapSpanUtils, extra_offset, last_line_width, wrap_str, binary_search,
-            first_line_width, semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr};
+use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
+            semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr};
 use visitor::FmtVisitor;
 use config::{Config, StructLitStyle, MultilineStyle, ElseIfBraceStyle, ControlBraceStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
