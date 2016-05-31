@@ -1,7 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.71 — TBD
+## 0.0.71 — 2016-05-31
+* Rustup to *rustc 1.10.0-nightly (7bddce693 2016-05-27)*
 * New lint: [`useless_let_if_seq`]
 
 ## 0.0.70 — 2016-05-28
