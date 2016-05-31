@@ -88,10 +88,28 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
 pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F)
     where F: Fn(u32) -> String
 {
-    if let Some(t) = term::stdout() {
-        print_diff_fancy(diff, get_section_title, t);
-    } else {
-        print_diff_basic(diff, get_section_title);
+    match term::stdout() {
+        Some(_) if isatty() => print_diff_fancy(diff, get_section_title, term::stdout().unwrap()),
+        _ => print_diff_basic(diff, get_section_title),
+    }
+
+    // isatty shamelessly adapted from cargo.
+    #[cfg(unix)]
+    fn isatty() -> bool {
+        extern crate libc;
+
+        unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+    }
+    #[cfg(windows)]
+    fn isatty() -> bool {
+        extern crate kernel32;
+        extern crate winapi;
+
+        unsafe {
+            let handle = kernel32::GetStdHandle(winapi::winbase::STD_OUTPUT_HANDLE);
+            let mut out = 0;
+            kernel32::GetConsoleMode(handle, &mut out) != 0
+        }
     }
 }
 
