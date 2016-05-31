@@ -168,7 +168,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             statements: vec![],
             terminator: Some(Terminator {
                 span: self.promoted.span,
-                scope: ScopeId::new(0),
+                scope: VisibilityScope::new(0),
                 kind: TerminatorKind::Return
             }),
             is_cleanup: false
@@ -180,7 +180,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let data = self.promoted.basic_blocks.last_mut().unwrap();
         data.statements.push(Statement {
             span: span,
-            scope: ScopeId::new(0),
+            scope: VisibilityScope::new(0),
             kind: StatementKind::Assign(dest, rvalue)
         });
     }
@@ -367,7 +367,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
             source: mir,
             promoted: Mir {
                 basic_blocks: vec![],
-                scopes: vec![ScopeData {
+                visibility_scopes: vec![VisibilityScopeData {
                     span: span,
                     parent_scope: None
                 }],

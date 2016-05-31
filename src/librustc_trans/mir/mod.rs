@@ -266,16 +266,13 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
     let mut idx = 0;
     let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
 
-    // Get the argument scope assuming ScopeId(0) has no parent.
-    let arg_scope = mir.scopes.get(0).and_then(|data| {
-        let scope = scopes[0];
-        if data.parent_scope.is_none() && !scope.is_null() &&
-           bcx.sess().opts.debuginfo == FullDebugInfo {
-            Some(scope)
-        } else {
-            None
-        }
-    });
+    // Get the argument scope, if it exists and if we need it.
+    let arg_scope = scopes[mir::ARGUMENT_VISIBILITY_SCOPE.index()];
+    let arg_scope = if !arg_scope.is_null() && bcx.sess().opts.debuginfo == FullDebugInfo {
+        Some(arg_scope)
+    } else {
+        None
+    };
 
     mir.arg_decls.iter().enumerate().map(|(arg_index, arg_decl)| {
         let arg_ty = bcx.monomorphize(&arg_decl.ty);

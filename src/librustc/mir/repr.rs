@@ -32,9 +32,9 @@ pub struct Mir<'tcx> {
     /// that indexes into this vector.
     pub basic_blocks: Vec<BasicBlockData<'tcx>>,
 
-    /// List of lexical scopes; these are referenced by statements and
-    /// used (eventually) for debuginfo. Indexed by a `ScopeId`.
-    pub scopes: Vec<ScopeData>,
+    /// List of visibility (lexical) scopes; these are referenced by statements
+    /// and used (eventually) for debuginfo. Indexed by a `VisibilityScope`.
+    pub visibility_scopes: Vec<VisibilityScopeData>,
 
     /// Rvalues promoted from this function, such as borrows of constants.
     /// Each of them is the Mir of a constant with the fn's type parameters
@@ -173,7 +173,7 @@ pub struct VarDecl<'tcx> {
     pub ty: Ty<'tcx>,
 
     /// scope in which variable was declared
-    pub scope: ScopeId,
+    pub scope: VisibilityScope,
 
     /// span where variable was declared
     pub span: Span,
@@ -276,7 +276,7 @@ pub struct BasicBlockData<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Terminator<'tcx> {
     pub span: Span,
-    pub scope: ScopeId,
+    pub scope: VisibilityScope,
     pub kind: TerminatorKind<'tcx>
 }
 
@@ -588,7 +588,7 @@ pub enum AssertMessage<'tcx> {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Statement<'tcx> {
     pub span: Span,
-    pub scope: ScopeId,
+    pub scope: VisibilityScope,
     pub kind: StatementKind<'tcx>,
 }
 
@@ -754,29 +754,32 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Scopes
 
-impl Index<ScopeId> for Vec<ScopeData> {
-    type Output = ScopeData;
+impl Index<VisibilityScope> for Vec<VisibilityScopeData> {
+    type Output = VisibilityScopeData;
 
     #[inline]
-    fn index(&self, index: ScopeId) -> &ScopeData {
+    fn index(&self, index: VisibilityScope) -> &VisibilityScopeData {
         &self[index.index()]
     }
 }
 
-impl IndexMut<ScopeId> for Vec<ScopeData> {
+impl IndexMut<VisibilityScope> for Vec<VisibilityScopeData> {
     #[inline]
-    fn index_mut(&mut self, index: ScopeId) -> &mut ScopeData {
+    fn index_mut(&mut self, index: VisibilityScope) -> &mut VisibilityScopeData {
         &mut self[index.index()]
     }
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub struct ScopeId(u32);
+pub struct VisibilityScope(u32);
 
-impl ScopeId {
-    pub fn new(index: usize) -> ScopeId {
+/// The visibility scope all arguments go into.
+pub const ARGUMENT_VISIBILITY_SCOPE: VisibilityScope = VisibilityScope(0);
+
+impl VisibilityScope {
+    pub fn new(index: usize) -> VisibilityScope {
         assert!(index < (u32::MAX as usize));
-        ScopeId(index as u32)
+        VisibilityScope(index as u32)
     }
 
     pub fn index(self) -> usize {
@@ -785,9 +788,9 @@ impl ScopeId {
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct ScopeData {
+pub struct VisibilityScopeData {
     pub span: Span,
-    pub parent_scope: Option<ScopeId>,
+    pub parent_scope: Option<VisibilityScope>,
 }
 
 ///////////////////////////////////////////////////////////////////////////

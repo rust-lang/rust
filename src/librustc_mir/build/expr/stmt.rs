@@ -26,7 +26,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match expr.kind {
             ExprKind::Scope { extent, value } => {
                 let value = this.hir.mirror(value);
-                this.in_scope(extent, block, |this, _| this.stmt_expr(block, value))
+                this.in_scope(extent, block, |this| this.stmt_expr(block, value))
             }
             ExprKind::Assign { lhs, rhs } => {
                 let lhs = this.hir.mirror(lhs);
