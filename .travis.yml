@@ -21,7 +21,7 @@ script:
  - cargo test --features debugging
  - SYSROOT=~/rust cargo install
  - cargo clippy -- -D clippy
- - cd clippy_lints && cargo clippy -- -D clippy
+ - cd clippy_lints && cargo clippy -- -D clippy && cd ..
 
 after_success:
 # only test regex_macros if it compiles
