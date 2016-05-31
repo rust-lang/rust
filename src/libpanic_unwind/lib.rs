@@ -42,8 +42,8 @@
 #![feature(unwind_attributes)]
 #![cfg_attr(target_env = "msvc", feature(raw))]
 
-#![cfg_attr(not(stage0), panic_runtime)]
-#![cfg_attr(not(stage0), feature(panic_runtime))]
+#![panic_runtime]
+#![feature(panic_runtime)]
 
 extern crate alloc;
 extern crate libc;
