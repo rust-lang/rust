@@ -27,9 +27,6 @@
 // Reexport some of our utilities which are expected by other crates.
 pub use panicking::{begin_panic, begin_panic_fmt};
 
-#[cfg(stage0)]
-pub use panicking::begin_panic as begin_unwind;
-
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {

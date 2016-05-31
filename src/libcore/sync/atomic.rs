@@ -88,13 +88,13 @@ use default::Default;
 use fmt;
 
 /// A boolean type which can be safely shared between threads.
-#[cfg(any(stage0, target_has_atomic = "8"))]
+#[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct AtomicBool {
     v: UnsafeCell<u8>,
 }
 
-#[cfg(any(stage0, target_has_atomic = "8"))]
+#[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for AtomicBool {
     fn default() -> Self {
@@ -103,18 +103,18 @@ impl Default for AtomicBool {
 }
 
 // Send is implicitly implemented for AtomicBool.
-#[cfg(any(stage0, target_has_atomic = "8"))]
+#[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Sync for AtomicBool {}
 
 /// A raw pointer type which can be safely shared between threads.
-#[cfg(any(stage0, target_has_atomic = "ptr"))]
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct AtomicPtr<T> {
     p: UnsafeCell<*mut T>,
 }
 
-#[cfg(any(stage0, target_has_atomic = "ptr"))]
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for AtomicPtr<T> {
     fn default() -> AtomicPtr<T> {
@@ -122,10 +122,10 @@ impl<T> Default for AtomicPtr<T> {
     }
 }
 
-#[cfg(any(stage0, target_has_atomic = "ptr"))]
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T> Send for AtomicPtr<T> {}
-#[cfg(any(stage0, target_has_atomic = "ptr"))]
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T> Sync for AtomicPtr<T> {}
 
@@ -167,11 +167,11 @@ pub enum Ordering {
 }
 
 /// An `AtomicBool` initialized to `false`.
-#[cfg(any(stage0, target_has_atomic = "8"))]
+#[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
 
-#[cfg(any(stage0, target_has_atomic = "8"))]
+#[cfg(target_has_atomic = "8")]
 impl AtomicBool {
     /// Creates a new `AtomicBool`.
     ///
@@ -508,7 +508,7 @@ impl AtomicBool {
     }
 }
 
-#[cfg(any(stage0, target_has_atomic = "ptr"))]
+#[cfg(target_has_atomic = "ptr")]
 impl<T> AtomicPtr<T> {
     /// Creates a new `AtomicPtr`.
     ///
@@ -1106,14 +1106,14 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     u64 AtomicU64 ATOMIC_U64_INIT
 }
-#[cfg(any(stage0, target_has_atomic = "ptr"))]
+#[cfg(target_has_atomic = "ptr")]
 atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     isize AtomicIsize ATOMIC_ISIZE_INIT
 }
-#[cfg(any(stage0, target_has_atomic = "ptr"))]
+#[cfg(target_has_atomic = "ptr")]
 atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
@@ -1311,7 +1311,7 @@ pub fn fence(order: Ordering) {
 }
 
 
-#[cfg(any(stage0, target_has_atomic = "8"))]
+#[cfg(target_has_atomic = "8")]
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl fmt::Debug for AtomicBool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1319,7 +1319,7 @@ impl fmt::Debug for AtomicBool {
     }
 }
 
-#[cfg(any(stage0, target_has_atomic = "ptr"))]
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl<T> fmt::Debug for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
