@@ -44,21 +44,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         .collect(),
         };
 
-        // Get the body expressions and their scopes, while declaring bindings.
-        let arm_bodies: Vec<_> = arms.iter().enumerate().map(|(i, arm)| {
-            // Assume that all expressions are wrapped in Scope.
+        // Get the arm bodies and their scopes, while declaring bindings.
+        let arm_bodies: Vec<_> = arms.iter().map(|arm| {
             let body = self.hir.mirror(arm.body.clone());
-            match body.kind {
-                ExprKind::Scope { extent, value } => {
-                    let scope_id = self.push_scope(extent, arm_blocks.blocks[i]);
-                    self.declare_bindings(scope_id, &arm.patterns[0]);
-                    (extent, self.scopes.pop().unwrap(), value)
-                }
-                _ => {
-                    span_bug!(body.span, "arm body is not wrapped in Scope {:?}",
-                              body.kind);
-                }
-            }
+            let scope = self.declare_bindings(None, body.span, &arm.patterns[0]);
+            (body, scope.unwrap_or(self.visibility_scope))
         }).collect();
 
         // assemble a list of candidates: there is one candidate per
@@ -99,63 +89,48 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // all the arm blocks will rejoin here
         let end_block = self.cfg.start_new_block();
 
-        let scope_id = self.innermost_scope_id();
-        for (arm_index, (extent, scope, body)) in arm_bodies.into_iter().enumerate() {
+        let outer_visibility_scope = self.innermost_scope_id();
+        for (arm_index, (body, visibility_scope)) in arm_bodies.into_iter().enumerate() {
             let mut arm_block = arm_blocks.blocks[arm_index];
-            // Re-enter the scope we created the bindings in.
-            self.scopes.push(scope);
+            // Re-enter the visibility scope we created the bindings in.
+            self.visibility_scope = visibility_scope;
             unpack!(arm_block = self.into(destination, arm_block, body));
-            unpack!(arm_block = self.pop_scope(extent, arm_block));
             self.cfg.terminate(arm_block,
-                               scope_id,
+                               outer_visibility_scope,
                                span,
                                TerminatorKind::Goto { target: end_block });
         }
+        self.visibility_scope = outer_visibility_scope;
 
         end_block.unit()
     }
 
     pub fn expr_into_pattern(&mut self,
                              mut block: BasicBlock,
-                             var_scope_id: ScopeId, // lifetime of vars
                              irrefutable_pat: Pattern<'tcx>,
                              initializer: ExprRef<'tcx>)
                              -> BlockAnd<()> {
         // optimize the case of `let x = ...`
         match *irrefutable_pat.kind {
-            PatternKind::Binding { mutability,
-                                   name,
-                                   mode: BindingMode::ByValue,
+            PatternKind::Binding { mode: BindingMode::ByValue,
                                    var,
-                                   ty,
-                                   subpattern: None } => {
-                let index = self.declare_binding(var_scope_id,
-                                                 mutability,
-                                                 name,
-                                                 var,
-                                                 ty,
-                                                 irrefutable_pat.span);
-                let lvalue = Lvalue::Var(index);
+                                   subpattern: None, .. } => {
+                let lvalue = Lvalue::Var(self.var_indices[&var]);
                 return self.into(&lvalue, block, initializer);
             }
             _ => {}
         }
         let lvalue = unpack!(block = self.as_lvalue(block, initializer));
         self.lvalue_into_pattern(block,
-                                 var_scope_id,
                                  irrefutable_pat,
                                  &lvalue)
     }
 
     pub fn lvalue_into_pattern(&mut self,
                                mut block: BasicBlock,
-                               var_scope_id: ScopeId,
                                irrefutable_pat: Pattern<'tcx>,
                                initializer: &Lvalue<'tcx>)
                                -> BlockAnd<()> {
-        // first, creating the bindings
-        self.declare_bindings(var_scope_id, &irrefutable_pat);
-
         // create a dummy candidate
         let mut candidate = Candidate {
             span: irrefutable_pat.span,
@@ -182,32 +157,43 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         block.unit()
     }
 
-    pub fn declare_bindings(&mut self, var_scope_id: ScopeId, pattern: &Pattern<'tcx>) {
+    /// Declares the bindings of the given pattern and returns the visibility scope
+    /// for the bindings in this patterns, if such a scope had to be created.
+    /// NOTE: Declaring the bindings should always be done in their drop scope.
+    pub fn declare_bindings(&mut self,
+                            mut var_scope: Option<VisibilityScope>,
+                            scope_span: Span,
+                            pattern: &Pattern<'tcx>)
+                            -> Option<VisibilityScope> {
         match *pattern.kind {
             PatternKind::Binding { mutability, name, mode: _, var, ty, ref subpattern } => {
-                self.declare_binding(var_scope_id, mutability, name, var, ty, pattern.span);
+                if var_scope.is_none() {
+                    var_scope = Some(self.new_visibility_scope(scope_span));
+                }
+                self.declare_binding(var_scope.unwrap(), mutability, name, var, ty, pattern.span);
                 if let Some(subpattern) = subpattern.as_ref() {
-                    self.declare_bindings(var_scope_id, subpattern);
+                    var_scope = self.declare_bindings(var_scope, scope_span, subpattern);
                 }
             }
             PatternKind::Array { ref prefix, ref slice, ref suffix } |
             PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
                 for subpattern in prefix.iter().chain(slice).chain(suffix) {
-                    self.declare_bindings(var_scope_id, subpattern);
+                    var_scope = self.declare_bindings(var_scope, scope_span, subpattern);
                 }
             }
             PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {
             }
             PatternKind::Deref { ref subpattern } => {
-                self.declare_bindings(var_scope_id, subpattern);
+                var_scope = self.declare_bindings(var_scope, scope_span, subpattern);
             }
             PatternKind::Leaf { ref subpatterns } |
             PatternKind::Variant { ref subpatterns, .. } => {
                 for subpattern in subpatterns {
-                    self.declare_bindings(var_scope_id, &subpattern.pattern);
+                    var_scope = self.declare_bindings(var_scope, scope_span, &subpattern.pattern);
                 }
             }
         }
+        var_scope
     }
 }
 
@@ -635,7 +621,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn declare_binding(&mut self,
-                       var_scope_id: ScopeId,
+                       var_scope_id: VisibilityScope,
                        mutability: Mutability,
                        name: Name,
                        var_id: NodeId,
@@ -655,7 +641,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             span: span,
         });
         let index = index as u32;
-        let extent = self.scope_auxiliary[var_scope_id].extent;
+        let extent = self.extent_of_innermost_scope();
         self.schedule_drop(span, extent, &Lvalue::Var(index), var_ty);
         self.var_indices.insert(var_id, index);
 

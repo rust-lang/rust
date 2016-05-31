@@ -97,9 +97,9 @@ macro_rules! make_mir_visitor {
                 self.super_basic_block_data(block, data);
             }
 
-            fn visit_scope_data(&mut self,
-                                scope_data: & $($mutability)* ScopeData) {
-                self.super_scope_data(scope_data);
+            fn visit_visibility_scope_data(&mut self,
+                                           scope_data: & $($mutability)* VisibilityScopeData) {
+                self.super_visibility_scope_data(scope_data);
             }
 
             fn visit_statement(&mut self,
@@ -236,9 +236,9 @@ macro_rules! make_mir_visitor {
                 self.super_arg_decl(arg_decl);
             }
 
-            fn visit_scope_id(&mut self,
-                              scope_id: & $($mutability)* ScopeId) {
-                self.super_scope_id(scope_id);
+            fn visit_visibility_scope(&mut self,
+                                      scope: & $($mutability)* VisibilityScope) {
+                self.super_visibility_scope(scope);
             }
 
             // The `super_xxx` methods comprise the default behavior and are
@@ -248,7 +248,7 @@ macro_rules! make_mir_visitor {
                          mir: & $($mutability)* Mir<'tcx>) {
                 let Mir {
                     ref $($mutability)* basic_blocks,
-                    ref $($mutability)* scopes,
+                    ref $($mutability)* visibility_scopes,
                     promoted: _, // Visited by passes separately.
                     ref $($mutability)* return_ty,
                     ref $($mutability)* var_decls,
@@ -263,8 +263,8 @@ macro_rules! make_mir_visitor {
                     self.visit_basic_block_data(block, data);
                 }
 
-                for scope in scopes {
-                    self.visit_scope_data(scope);
+                for scope in visibility_scopes {
+                    self.visit_visibility_scope_data(scope);
                 }
 
                 self.visit_fn_output(return_ty);
@@ -302,16 +302,16 @@ macro_rules! make_mir_visitor {
                 }
             }
 
-            fn super_scope_data(&mut self,
-                                scope_data: & $($mutability)* ScopeData) {
-                let ScopeData {
+            fn super_visibility_scope_data(&mut self,
+                                           scope_data: & $($mutability)* VisibilityScopeData) {
+                let VisibilityScopeData {
                     ref $($mutability)* span,
                     ref $($mutability)* parent_scope,
                 } = *scope_data;
 
                 self.visit_span(span);
                 if let Some(ref $($mutability)* parent_scope) = *parent_scope {
-                    self.visit_scope_id(parent_scope);
+                    self.visit_visibility_scope(parent_scope);
                 }
             }
 
@@ -325,7 +325,7 @@ macro_rules! make_mir_visitor {
                 } = *statement;
 
                 self.visit_span(span);
-                self.visit_scope_id(scope);
+                self.visit_visibility_scope(scope);
                 match *kind {
                     StatementKind::Assign(ref $($mutability)* lvalue,
                                           ref $($mutability)* rvalue) => {
@@ -352,7 +352,7 @@ macro_rules! make_mir_visitor {
                 } = *terminator;
 
                 self.visit_span(span);
-                self.visit_scope_id(scope);
+                self.visit_visibility_scope(scope);
                 self.visit_terminator_kind(block, kind);
             }
 
@@ -627,7 +627,7 @@ macro_rules! make_mir_visitor {
                 } = *var_decl;
 
                 self.visit_ty(ty);
-                self.visit_scope_id(scope);
+                self.visit_visibility_scope(scope);
                 self.visit_span(span);
             }
 
@@ -651,8 +651,8 @@ macro_rules! make_mir_visitor {
                 self.visit_ty(ty);
             }
 
-            fn super_scope_id(&mut self,
-                              _scope_id: & $($mutability)* ScopeId) {
+            fn super_visibility_scope(&mut self,
+                                      _scope: & $($mutability)* VisibilityScope) {
             }
 
             fn super_branch(&mut self,

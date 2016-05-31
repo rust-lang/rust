@@ -103,7 +103,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     pub fn push_usize(&mut self,
                       block: BasicBlock,
-                      scope_id: ScopeId,
+                      scope_id: VisibilityScope,
                       span: Span,
                       value: u64)
                       -> Lvalue<'tcx> {

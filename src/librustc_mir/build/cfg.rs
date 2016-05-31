@@ -50,7 +50,7 @@ impl<'tcx> CFG<'tcx> {
 
     pub fn push_assign(&mut self,
                        block: BasicBlock,
-                       scope: ScopeId,
+                       scope: VisibilityScope,
                        span: Span,
                        lvalue: &Lvalue<'tcx>,
                        rvalue: Rvalue<'tcx>) {
@@ -63,7 +63,7 @@ impl<'tcx> CFG<'tcx> {
 
     pub fn push_assign_constant(&mut self,
                                 block: BasicBlock,
-                                scope: ScopeId,
+                                scope: VisibilityScope,
                                 span: Span,
                                 temp: &Lvalue<'tcx>,
                                 constant: Constant<'tcx>) {
@@ -73,7 +73,7 @@ impl<'tcx> CFG<'tcx> {
 
     pub fn push_assign_unit(&mut self,
                             block: BasicBlock,
-                            scope: ScopeId,
+                            scope: VisibilityScope,
                             span: Span,
                             lvalue: &Lvalue<'tcx>) {
         self.push_assign(block, scope, span, lvalue, Rvalue::Aggregate(
@@ -83,7 +83,7 @@ impl<'tcx> CFG<'tcx> {
 
     pub fn terminate(&mut self,
                      block: BasicBlock,
-                     scope: ScopeId,
+                     scope: VisibilityScope,
                      span: Span,
                      kind: TerminatorKind<'tcx>) {
         debug_assert!(self.block_data(block).terminator.is_none(),
