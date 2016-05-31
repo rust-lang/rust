@@ -345,8 +345,8 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             (BiDiv, Constant::Int(l), Some(Constant::Int(r))) => (l / r).ok().map(Constant::Int),
             (BiRem, Constant::Int(l), Some(Constant::Int(r))) => (l % r).ok().map(Constant::Int),
             (BiAnd, Constant::Bool(false), _) => Some(Constant::Bool(false)),
-            (BiAnd, Constant::Bool(true), Some(r)) => Some(r),
             (BiOr, Constant::Bool(true), _) => Some(Constant::Bool(true)),
+            (BiAnd, Constant::Bool(true), Some(r)) |
             (BiOr, Constant::Bool(false), Some(r)) => Some(r),
             (BiBitXor, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l ^ r)),
             (BiBitXor, Constant::Int(l), Some(Constant::Int(r))) => (l ^ r).ok().map(Constant::Int),
