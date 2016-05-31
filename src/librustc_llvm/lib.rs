@@ -104,13 +104,13 @@ pub enum Linkage {
     AvailableExternallyLinkage = 1,
     LinkOnceAnyLinkage = 2,
     LinkOnceODRLinkage = 3,
-    WeakAnyLinkage = 5,
-    WeakODRLinkage = 6,
-    AppendingLinkage = 7,
-    InternalLinkage = 8,
-    PrivateLinkage = 9,
-    ExternalWeakLinkage = 12,
-    CommonLinkage = 14,
+    WeakAnyLinkage = 4,
+    WeakODRLinkage = 5,
+    AppendingLinkage = 6,
+    InternalLinkage = 7,
+    PrivateLinkage = 8,
+    ExternalWeakLinkage = 9,
+    CommonLinkage = 10,
 }
 
 #[repr(C)]
