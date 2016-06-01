@@ -33,7 +33,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Variant { ref adt_def, variant_index: _, subpatterns: _ } => {
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Switch { adt_def: adt_def.clone() },
+                    kind: TestKind::Switch { 
+                        adt_def: adt_def.clone(), 
+                        variants: vec![false; self.hir.num_variants(adt_def)], 
+                    },
                 }
             }
 
@@ -125,15 +128,40 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                        });
                 true
             }
-
+            PatternKind::Variant { .. } => {
+                panic!("you should have called add_cases_to_switch_switch instead!");
+            }
             PatternKind::Range { .. } |
-            PatternKind::Variant { .. } |
             PatternKind::Slice { .. } |
             PatternKind::Array { .. } |
             PatternKind::Wild |
             PatternKind::Binding { .. } |
             PatternKind::Leaf { .. } |
             PatternKind::Deref { .. } => {
+                // don't know how to add these patterns to a switch
+                false
+            }
+        }
+    }
+
+    pub fn add_variants_to_switch<'pat>(&mut self,
+                                     test_lvalue: &Lvalue<'tcx>,
+                                     candidate: &Candidate<'pat, 'tcx>,
+                                     variants: &mut Vec<bool>)
+                                     -> bool
+    {
+        let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {
+            Some(match_pair) => match_pair,
+            _ => { return false; }
+        };
+
+        match *match_pair.pattern.kind {
+            PatternKind::Variant { adt_def: _ , variant_index,  .. } => {
+                // Do I need to look at the PatternKind::Variant subpatterns?
+                variants[variant_index] |= true;
+                true
+            }
+            _ => {
                 // don't know how to add these patterns to a switch
                 false
             }
@@ -148,11 +176,26 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         -> Vec<BasicBlock> {
         let scope_id = self.innermost_scope_id();
         match test.kind {
-            TestKind::Switch { adt_def } => {
+            TestKind::Switch { adt_def, ref variants } => {
                 let num_enum_variants = self.hir.num_variants(adt_def);
-                let target_blocks: Vec<_> =
+                debug!("num_enum_variants: {}", num_enum_variants);
+                debug!("variants.len(): {}", variants.len());
+                debug!("variants: {:?}", variants);
+                let target_blocks: Vec<_> = if variants.into_iter().any(|b| {!b}) {
+                    let otherwise_block = self.cfg.start_new_block();
+                    debug!("basic block: {:?} is an otherwise block!", otherwise_block);
+                    (0..num_enum_variants).map(|i| 
+                        if variants[i] {
+                            self.cfg.start_new_block()
+                        } else {
+                            otherwise_block
+                        }
+                    )
+                    .collect()
+                } else {
                     (0..num_enum_variants).map(|_| self.cfg.start_new_block())
-                                          .collect();
+                                          .collect()
+                };
                 self.cfg.terminate(block, scope_id, test.span, TerminatorKind::Switch {
                     discr: lvalue.clone(),
                     adt_def: adt_def,
@@ -383,7 +426,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match test.kind {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
-            TestKind::Switch { adt_def: tested_adt_def } => {
+            TestKind::Switch { adt_def: tested_adt_def , .. } => {
                 match *match_pair.pattern.kind {
                     PatternKind::Variant { adt_def, variant_index, ref subpatterns } => {
                         assert_eq!(adt_def, tested_adt_def);
