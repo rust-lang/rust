@@ -59,8 +59,8 @@ macro_rules! declare_features {
 
         /// A set of features to be used by later passes.
         pub struct Features {
-            /// spans of #![feature] attrs for stable language features. for error reporting
-            pub declared_stable_lang_features: Vec<Span>,
+            /// #![feature] attrs for stable language features, for error reporting
+            pub declared_stable_lang_features: Vec<(InternedString, Span)>,
             /// #![feature] attrs for non-language (library) features
             pub declared_lib_features: Vec<(InternedString, Span)>,
             $(pub $feature: bool),+
@@ -753,6 +753,10 @@ pub fn check_attribute(attr: &ast::Attribute, handler: &Handler,
     cx.check_attribute(attr, true);
 }
 
+pub fn find_lang_feature_accepted_version(feature: &str) -> Option<&'static str> {
+    ACCEPTED_FEATURES.iter().find(|t| t.0 == feature).map(|t| t.1)
+}
+
 fn find_lang_feature_issue(feature: &str) -> Option<u32> {
     if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.0 == feature) {
         let issue = info.2;
@@ -1191,7 +1195,7 @@ pub fn get_features(span_handler: &Handler, krate: &ast::Crate) -> Features {
                     }
                     else if let Some(&(_, _, _)) = ACCEPTED_FEATURES.iter()
                         .find(|& &(n, _, _)| name == n) {
-                        features.declared_stable_lang_features.push(mi.span);
+                        features.declared_stable_lang_features.push((name, mi.span));
                     } else {
                         features.declared_lib_features.push((name, mi.span));
                     }
