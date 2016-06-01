@@ -135,6 +135,23 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
             name_stack: Vec::new(),
         }
     }
+
+    fn call(&mut self, mir: &mir::Mir<'tcx>) -> EvalResult<Option<Pointer>> {
+        let mut nested_fecx = FnEvalContext::new(self);
+
+        let return_ptr = match mir.return_ty {
+            ty::FnConverging(ty) => {
+                let size = nested_fecx.type_size(ty);
+                Some(nested_fecx.memory.allocate(size))
+            }
+            ty::FnDiverging => None,
+        };
+
+        let substs = nested_fecx.substs();
+        nested_fecx.push_stack_frame(CachedMir::Ref(mir), substs, return_ptr);
+        nested_fecx.run()?;
+        Ok(return_ptr)
+    }
 }
 
 impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
@@ -199,23 +216,6 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         }
 
         Ok(())
-    }
-
-    fn call_nested(&mut self, mir: &mir::Mir<'tcx>) -> EvalResult<Option<Pointer>> {
-        let mut nested_fecx = FnEvalContext::new(self.gecx);
-
-        let return_ptr = match mir.return_ty {
-            ty::FnConverging(ty) => {
-                let size = nested_fecx.type_size(ty);
-                Some(nested_fecx.memory.allocate(size))
-            }
-            ty::FnDiverging => None,
-        };
-
-        let substs = nested_fecx.substs();
-        nested_fecx.push_stack_frame(CachedMir::Ref(mir), substs, return_ptr);
-        nested_fecx.run()?;
-        Ok(return_ptr)
     }
 
     fn push_stack_frame(&mut self, mir: CachedMir<'mir, 'tcx>, substs: &'tcx Substs<'tcx>,
@@ -1002,7 +1002,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                         // values.
                         let current_mir = self.mir();
                         let mir = &current_mir.promoted[index];
-                        self.call_nested(mir).map(Option::unwrap)
+                        self.gecx.call(mir).map(Option::unwrap)
                     }
                 }
             }
@@ -1021,7 +1021,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             Static(def_id) => {
                 // TODO(solson): Mark constants and statics as read-only and cache their values.
                 let mir = self.load_mir(def_id);
-                self.call_nested(&mir)?.unwrap()
+                self.gecx.call(&mir)?.unwrap()
             }
 
             Projection(ref proj) => {
@@ -1426,10 +1426,9 @@ pub fn interpret_start_points<'a, 'tcx>(
                 debug!("Interpreting: {}", item.name);
 
                 let mut gecx = GlobalEvalContext::new(tcx, mir_map);
-                let mut fecx = FnEvalContext::new(&mut gecx);
-                match fecx.call_nested(mir) {
+                match gecx.call(mir) {
                     Ok(Some(return_ptr)) => if log_enabled!(::log::LogLevel::Debug) {
-                        fecx.memory.dump(return_ptr.alloc_id);
+                        gecx.memory.dump(return_ptr.alloc_id);
                     },
                     Ok(None) => warn!("diverging function returned"),
                     Err(_e) => {
