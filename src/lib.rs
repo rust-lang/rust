@@ -12,6 +12,8 @@
 #[macro_use] extern crate rustc;
 extern crate rustc_mir;
 extern crate syntax;
+#[macro_use] extern crate log;
+extern crate log_settings;
 
 // From crates.io.
 extern crate byteorder;

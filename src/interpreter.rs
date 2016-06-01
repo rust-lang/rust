@@ -20,8 +20,6 @@ use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer};
 use primval::{self, PrimVal};
 
-const TRACE_EXECUTION: bool = true;
-
 struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -168,32 +166,24 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         r
     }
 
-    fn log<F>(&self, extra_indent: usize, f: F) where F: FnOnce() {
-        let indent = self.stack.len() + extra_indent;
-        if !TRACE_EXECUTION { return; }
-        for _ in 0..indent { print!("    "); }
-        f();
-        println!("");
-    }
-
     fn run(&mut self) -> EvalResult<()> {
         'outer: while !self.stack.is_empty() {
             let mut current_block = self.frame().next_block;
 
             loop {
-                self.log(0, || print!("// {:?}", current_block));
+                trace!("// {:?}", current_block);
                 let current_mir = self.mir().clone(); // Cloning a reference.
                 let block_data = current_mir.basic_block_data(current_block);
 
                 for stmt in &block_data.statements {
-                    self.log(0, || print!("{:?}", stmt));
+                    trace!("{:?}", stmt);
                     let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
                     let result = self.eval_assignment(lvalue, rvalue);
                     self.maybe_report(stmt.span, result)?;
                 }
 
                 let terminator = block_data.terminator();
-                self.log(0, || print!("{:?}", terminator.kind));
+                trace!("{:?}", terminator.kind);
 
                 let result = self.eval_terminator(terminator);
                 match self.maybe_report(terminator.span, result)? {
@@ -245,6 +235,8 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         let num_args = mir.arg_decls.len();
         let num_vars = mir.var_decls.len();
 
+        ::log_settings::settings().indentation += 1;
+
         self.stack.push(Frame {
             mir: mir.clone(),
             next_block: mir::START_BLOCK,
@@ -256,6 +248,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     }
 
     fn pop_stack_frame(&mut self) {
+        ::log_settings::settings().indentation -= 1;
         let _frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         // TODO(solson): Deallocate local variables.
         self.substs_stack.pop();
@@ -419,10 +412,10 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     fn drop(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<()> {
         if !self.type_needs_drop(ty) {
-            self.log(1, || print!("no need to drop {:?}", ty));
+            debug!("no need to drop {:?}", ty);
             return Ok(());
         }
-        self.log(1, || print!("need to drop {:?}", ty));
+        trace!("-need to drop {:?}", ty);
 
         // TODO(solson): Call user-defined Drop::drop impls.
 
@@ -431,7 +424,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 match self.memory.read_ptr(ptr) {
                     Ok(contents_ptr) => {
                         self.drop(contents_ptr, contents_ty)?;
-                        self.log(1, || print!("deallocating box"));
+                        trace!("-deallocating box");
                         self.memory.deallocate(contents_ptr)?;
                     }
                     Err(EvalError::ReadBytesAsPointer) => {
@@ -1421,31 +1414,28 @@ pub fn interpret_start_points<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir_map: &MirMap<'tcx>,
 ) {
+    let initial_indentation = ::log_settings::settings().indentation;
     for (&id, mir) in &mir_map.map {
         for attr in tcx.map.attrs(id) {
             use syntax::attr::AttrMetaMethods;
             if attr.check_name("miri_run") {
                 let item = tcx.map.expect_item(id);
 
-                if TRACE_EXECUTION {
-                    println!("Interpreting: {}", item.name);
-                }
+                ::log_settings::settings().indentation = initial_indentation;
+
+                debug!("Interpreting: {}", item.name);
 
                 let mut gecx = GlobalEvalContext::new(tcx, mir_map);
                 let mut fecx = FnEvalContext::new(&mut gecx);
                 match fecx.call_nested(mir) {
-                    Ok(Some(return_ptr)) => if TRACE_EXECUTION {
+                    Ok(Some(return_ptr)) => if log_enabled!(::log::LogLevel::Debug) {
                         fecx.memory.dump(return_ptr.alloc_id);
                     },
-                    Ok(None) => println!("(diverging function returned)"),
+                    Ok(None) => warn!("diverging function returned"),
                     Err(_e) => {
                         // TODO(solson): Detect whether the error was already reported or not.
                         // tcx.sess.err(&e.to_string());
                     }
-                }
-
-                if TRACE_EXECUTION {
-                    println!("");
                 }
             }
         }
