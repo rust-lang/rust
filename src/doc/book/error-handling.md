@@ -2205,7 +2205,7 @@ heuristics!
 [3]: ../std/option/enum.Option.html#method.unwrap_or
 [4]: ../std/option/enum.Option.html#method.unwrap_or_else
 [5]: ../std/option/enum.Option.html
-[6]: ../std/result/
+[6]: ../std/result/index.html
 [7]: ../std/result/enum.Result.html#method.unwrap
 [8]: ../std/fmt/trait.Debug.html
 [9]: ../std/primitive.str.html#method.parse
