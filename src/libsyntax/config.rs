@@ -19,27 +19,7 @@ use ptr::P;
 
 use util::small_vector::SmallVector;
 
-pub trait CfgFolder: fold::Folder {
-    // Check if a node with the given attributes is in this configuration.
-    fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool;
-
-    // Update a node before checking if it is in this configuration (used to implement `cfg_attr`).
-    fn process_attrs<T: HasAttrs>(&mut self, node: T) -> T { node }
-
-    // Visit attributes on expression and statements (but not attributes on items in blocks).
-    fn visit_stmt_or_expr_attrs(&mut self, _attrs: &[ast::Attribute]) {}
-
-    // Visit unremovable (non-optional) expressions -- c.f. `fold_expr` vs `fold_opt_expr`.
-    fn visit_unremovable_expr(&mut self, _expr: &ast::Expr) {}
-
-    fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
-        let node = self.process_attrs(node);
-        if self.in_cfg(node.attrs()) { Some(node) } else { None }
-    }
-}
-
-/// A folder that strips out items that do not belong in the current
-/// configuration.
+/// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
     diag: CfgDiagReal<'a, 'a>,
     should_test: bool,
@@ -57,6 +37,17 @@ impl<'a> StripUnconfigured<'a> {
             should_test: should_test,
             diag: CfgDiagReal { diag: diagnostic, feature_gated_cfgs: feature_gated_cfgs },
         }
+    }
+
+    fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
+        let node = self.process_cfg_attrs(node);
+        if self.in_cfg(node.attrs()) { Some(node) } else { None }
+    }
+
+    fn process_cfg_attrs<T: HasAttrs>(&mut self, node: T) -> T {
+        node.map_attrs(|attrs| {
+            attrs.into_iter().filter_map(|attr| self.process_cfg_attr(attr)).collect()
+        })
     }
 
     fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Option<ast::Attribute> {
@@ -92,11 +83,8 @@ impl<'a> StripUnconfigured<'a> {
             None
         }
     }
-}
 
-impl<'a> CfgFolder for StripUnconfigured<'a> {
-    // Determine if an item should be translated in the current crate
-    // configuration based on the item's attributes
+    // Determine if a node with the given attributes should be included in this configuation.
     fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
         attrs.iter().all(|attr| {
             // When not compiling with --test we should not compile the #[test] functions
@@ -120,12 +108,7 @@ impl<'a> CfgFolder for StripUnconfigured<'a> {
         })
     }
 
-    fn process_attrs<T: HasAttrs>(&mut self, node: T) -> T {
-        node.map_attrs(|attrs| {
-            attrs.into_iter().filter_map(|attr| self.process_cfg_attr(attr)).collect()
-        })
-    }
-
+    // Visit attributes on expression and statements (but not attributes on items in blocks).
     fn visit_stmt_or_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
         // flag the offending attributes
         for attr in attrs.iter() {
@@ -133,6 +116,7 @@ impl<'a> CfgFolder for StripUnconfigured<'a> {
         }
     }
 
+    // Visit unremovable (non-optional) expressions -- c.f. `fold_expr` vs `fold_opt_expr`.
     fn visit_unremovable_expr(&mut self, expr: &ast::Expr) {
         if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a) || is_test_or_bench(a)) {
             let msg = "removing an expression is not supported in this position";
@@ -151,7 +135,7 @@ pub fn strip_unconfigured_items(diagnostic: &Handler, krate: ast::Crate, should_
     StripUnconfigured::new(config, should_test, diagnostic, feature_gated_cfgs).fold_crate(krate)
 }
 
-impl<T: CfgFolder> fold::Folder for T {
+impl<'a> fold::Folder for StripUnconfigured<'a> {
     fn fold_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
         ast::ForeignMod {
             abi: foreign_mod.abi,
@@ -212,7 +196,7 @@ impl<T: CfgFolder> fold::Folder for T {
         // NB: This is intentionally not part of the fold_expr() function
         //     in order for fold_opt_expr() to be able to avoid this check
         self.visit_unremovable_expr(&expr);
-        let expr = self.process_attrs(expr);
+        let expr = self.process_cfg_attrs(expr);
         fold_expr(self, expr)
     }
 
@@ -264,7 +248,7 @@ impl<T: CfgFolder> fold::Folder for T {
     }
 }
 
-fn fold_expr<F: CfgFolder>(folder: &mut F, expr: P<ast::Expr>) -> P<ast::Expr> {
+fn fold_expr(folder: &mut StripUnconfigured, expr: P<ast::Expr>) -> P<ast::Expr> {
     expr.map(|ast::Expr {id, span, node, attrs}| {
         fold::noop_fold_expr(ast::Expr {
             id: id,
