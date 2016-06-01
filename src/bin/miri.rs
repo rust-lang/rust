@@ -52,8 +52,8 @@ fn init_logger() {
     let mut builder = env_logger::LogBuilder::new();
     builder.format(format).filter(None, log::LogLevelFilter::Info);
 
-    if std::env::var("RUST_LOG").is_ok() {
-        builder.parse(&std::env::var("RUST_LOG").unwrap());
+    if std::env::var("MIRI_LOG").is_ok() {
+        builder.parse(&std::env::var("MIRI_LOG").unwrap());
     }
 
     builder.init().unwrap();
