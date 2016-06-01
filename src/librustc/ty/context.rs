@@ -665,7 +665,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_and_enter<F, R>(s: &'tcx Session,
                                   arenas: &'tcx CtxtArenas<'tcx>,
-                                  def_map: RefCell<DefMap>,
+                                  def_map: DefMap,
                                   named_region_map: resolve_lifetime::NamedRegionMap,
                                   map: ast_map::Map<'tcx>,
                                   freevars: FreevarMap,
@@ -693,7 +693,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             item_variance_map: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             variance_computed: Cell::new(false),
             sess: s,
-            def_map: def_map,
+            def_map: RefCell::new(def_map),
             tables: RefCell::new(Tables::empty()),
             impl_trait_refs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
