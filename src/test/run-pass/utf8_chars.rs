@@ -23,8 +23,6 @@ pub fn main() {
     assert_eq!(s.chars().count(), 4);
     assert_eq!(schs.len(), 4);
     assert_eq!(schs.iter().cloned().collect::<String>(), s);
-    assert_eq!(s.char_at(0), 'e');
-    assert_eq!(s.char_at(1), 'é');
 
     assert!((str::from_utf8(s.as_bytes()).is_ok()));
     // invalid prefix

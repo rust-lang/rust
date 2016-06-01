@@ -55,7 +55,6 @@ pub struct Command {
     cwd: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
-    session_leader: bool,
     saw_nul: bool,
     closures: Vec<Box<FnMut() -> io::Result<()> + Send + Sync>>,
     stdin: Option<Stdio>,
@@ -105,7 +104,6 @@ impl Command {
             cwd: None,
             uid: None,
             gid: None,
-            session_leader: false,
             saw_nul: saw_nul,
             closures: Vec::new(),
             stdin: None,
@@ -196,9 +194,6 @@ impl Command {
     }
     pub fn gid(&mut self, id: gid_t) {
         self.gid = Some(id);
-    }
-    pub fn session_leader(&mut self, session_leader: bool) {
-        self.session_leader = session_leader;
     }
 
     pub fn before_exec(&mut self,
@@ -366,12 +361,6 @@ impl Command {
             let _ = libc::setgroups(0, ptr::null());
 
             t!(cvt(libc::setuid(u as uid_t)));
-        }
-        if self.session_leader {
-            // Don't check the error of setsid because it fails if we're the
-            // process leader already. We just forked so it shouldn't return
-            // error, but ignore it anyway.
-            let _ = libc::setsid();
         }
         if let Some(ref cwd) = self.cwd {
             t!(cvt(libc::chdir(cwd.as_ptr())));

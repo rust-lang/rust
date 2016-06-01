@@ -143,13 +143,6 @@ impl Instant {
         self.0.sub_instant(&earlier.0)
     }
 
-    /// Deprecated, renamed to `duration_since`
-    #[unstable(feature = "time2_old", issue = "29866")]
-    #[rustc_deprecated(since = "1.8.0", reason = "renamed to duration_since")]
-    pub fn duration_from_earlier(&self, earlier: Instant) -> Duration {
-        self.0.sub_instant(&earlier.0)
-    }
-
     /// Returns the amount of time elapsed since this instant was created.
     ///
     /// # Panics
@@ -232,14 +225,6 @@ impl SystemTime {
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn duration_since(&self, earlier: SystemTime)
                           -> Result<Duration, SystemTimeError> {
-        self.0.sub_time(&earlier.0).map_err(SystemTimeError)
-    }
-
-    /// Deprecated, renamed to `duration_since`
-    #[unstable(feature = "time2_old", issue = "29866")]
-    #[rustc_deprecated(since = "1.8.0", reason = "renamed to duration_since")]
-    pub fn duration_from_earlier(&self, earlier: SystemTime)
-                                 -> Result<Duration, SystemTimeError> {
         self.0.sub_time(&earlier.0).map_err(SystemTimeError)
     }
 

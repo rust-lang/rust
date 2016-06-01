@@ -468,42 +468,6 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
             }
         })
     }
-
-    /// Transform this guard to hold a sub-borrow of the original data.
-    ///
-    /// Applies the supplied closure to the data, returning a new lock
-    /// guard referencing the borrow returned by the closure.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # #![feature(guard_map)]
-    /// # use std::sync::{RwLockReadGuard, RwLock};
-    /// let x = RwLock::new(vec![1, 2]);
-    ///
-    /// let y = RwLockReadGuard::map(x.read().unwrap(), |v| &v[0]);
-    /// assert_eq!(*y, 1);
-    /// ```
-    #[unstable(feature = "guard_map",
-               reason = "recently added, needs RFC for stabilization,
-                         questionable interaction with Condvar",
-               issue = "27746")]
-    #[rustc_deprecated(since = "1.8.0",
-                       reason = "unsound on Mutex because of Condvar and \
-                                 RwLock may also with to be used with Condvar \
-                                 one day")]
-    pub fn map<U: ?Sized, F>(this: Self, cb: F) -> RwLockReadGuard<'rwlock, U>
-        where F: FnOnce(&T) -> &U
-    {
-        let new = RwLockReadGuard {
-            __lock: this.__lock,
-            __data: cb(this.__data)
-        };
-
-        mem::forget(this);
-
-        new
-    }
 }
 
 #[allow(deprecated)]
@@ -517,57 +481,6 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
                 __poison: guard,
             }
         })
-    }
-
-    /// Transform this guard to hold a sub-borrow of the original data.
-    ///
-    /// Applies the supplied closure to the data, returning a new lock
-    /// guard referencing the borrow returned by the closure.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # #![feature(guard_map)]
-    /// # use std::sync::{RwLockWriteGuard, RwLock};
-    /// let x = RwLock::new(vec![1, 2]);
-    ///
-    /// {
-    ///     let mut y = RwLockWriteGuard::map(x.write().unwrap(), |v| &mut v[0]);
-    ///     assert_eq!(*y, 1);
-    ///
-    ///     *y = 10;
-    /// }
-    ///
-    /// assert_eq!(&**x.read().unwrap(), &[10, 2]);
-    /// ```
-    #[unstable(feature = "guard_map",
-               reason = "recently added, needs RFC for stabilization,
-                         questionable interaction with Condvar",
-               issue = "27746")]
-    #[rustc_deprecated(since = "1.8.0",
-                       reason = "unsound on Mutex because of Condvar and \
-                                 RwLock may also with to be used with Condvar \
-                                 one day")]
-    pub fn map<U: ?Sized, F>(this: Self, cb: F) -> RwLockWriteGuard<'rwlock, U>
-        where F: FnOnce(&mut T) -> &mut U
-    {
-        // Compute the new data while still owning the original lock
-        // in order to correctly poison if the callback panics.
-        let data = unsafe { ptr::read(&this.__data) };
-        let new_data = cb(data);
-
-        // We don't want to unlock the lock by running the destructor of the
-        // original lock, so just read the fields we need and forget it.
-        let (poison, lock) = unsafe {
-            (ptr::read(&this.__poison), ptr::read(&this.__lock))
-        };
-        mem::forget(this);
-
-        RwLockWriteGuard {
-            __lock: lock,
-            __data: new_data,
-            __poison: poison
-        }
     }
 }
 
@@ -619,7 +532,7 @@ mod tests {
     use rand::{self, Rng};
     use sync::mpsc::channel;
     use thread;
-    use sync::{Arc, RwLock, StaticRwLock, TryLockError, RwLockWriteGuard};
+    use sync::{Arc, RwLock, StaticRwLock, TryLockError};
     use sync::atomic::{AtomicUsize, Ordering};
 
     #[derive(Eq, PartialEq, Debug)]
@@ -867,20 +780,4 @@ mod tests {
             Ok(x) => panic!("get_mut of poisoned RwLock is Ok: {:?}", x),
         }
     }
-
-    #[test]
-    fn test_rwlock_write_map_poison() {
-        let rwlock = Arc::new(RwLock::new(vec![1, 2]));
-        let rwlock2 = rwlock.clone();
-
-        thread::spawn(move || {
-            let _ = RwLockWriteGuard::map::<usize, _>(rwlock2.write().unwrap(), |_| panic!());
-        }).join().unwrap_err();
-
-        match rwlock.read() {
-            Ok(r) => panic!("Read lock on poisioned RwLock is Ok: {:?}", &*r),
-            Err(_) => {}
-        };
-    }
 }
-
