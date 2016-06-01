@@ -20,7 +20,7 @@ use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer};
 use primval::{self, PrimVal};
 
-mod iterator;
+mod stepper;
 
 struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
@@ -186,9 +186,9 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     }
 
     fn run(&mut self) -> EvalResult<()> {
-        let mut stepper = iterator::Stepper::new(self);
+        let mut stepper = stepper::Stepper::new(self);
         'outer: loop {
-            use self::iterator::Event::*;
+            use self::stepper::Event::*;
             trace!("// {:?}", stepper.block());
 
             loop {
