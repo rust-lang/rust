@@ -202,6 +202,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(HR_LIFETIME_IN_ASSOC_TYPE),
             reference: "issue #33685 <https://github.com/rust-lang/rust/issues/33685>",
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(LIFETIME_UNDERSCORE),
+            reference: "RFC 1177 <https://github.com/rust-lang/rfcs/pull/1177>",
+        },
         ]);
 
     // We have one lint pass defined specially

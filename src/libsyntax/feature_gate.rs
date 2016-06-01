@@ -956,22 +956,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         visit::walk_item(self, i);
     }
 
-    fn visit_variant_data(&mut self, s: &'v ast::VariantData, _: ast::Ident,
-                          _: &'v ast::Generics, _: ast::NodeId, span: Span) {
-        if s.fields().is_empty() {
-            if s.is_tuple() {
-                self.context.span_handler.struct_span_err(span, "empty tuple structs and enum \
-                                                                 variants are not allowed, use \
-                                                                 unit structs and enum variants \
-                                                                 instead")
-                                         .span_help(span, "remove trailing `()` to make a unit \
-                                                           struct or unit enum variant")
-                                         .emit();
-            }
-        }
-        visit::walk_struct_def(self, s)
-    }
-
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
         let links_to_llvm = match attr::first_attr_value_str_by_name(&i.attrs,
                                                                      "link_name") {
@@ -1142,22 +1126,12 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     fn visit_vis(&mut self, vis: &'v ast::Visibility) {
         let span = match *vis {
             ast::Visibility::Crate(span) => span,
-            ast::Visibility::Restricted { ref path, .. } => {
-                // Check for type parameters
-                let found_param = path.segments.iter().any(|segment| {
-                    !segment.parameters.types().is_empty() ||
-                    !segment.parameters.lifetimes().is_empty() ||
-                    !segment.parameters.bindings().is_empty()
-                });
-                if found_param {
-                    self.context.span_handler.span_err(path.span, "type or lifetime parameters \
-                                                                   in visibility path");
-                }
-                path.span
-            }
+            ast::Visibility::Restricted { ref path, .. } => path.span,
             _ => return,
         };
         gate_feature_post!(&self, pub_restricted, span, "`pub(restricted)` syntax is experimental");
+
+        visit::walk_vis(self, vis)
     }
 }
 

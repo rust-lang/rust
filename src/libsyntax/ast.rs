@@ -1903,6 +1903,16 @@ pub enum ViewPath_ {
     ViewPathList(Path, Vec<PathListItem>)
 }
 
+impl ViewPath_ {
+    pub fn path(&self) -> &Path {
+        match *self {
+            ViewPathSimple(_, ref path) |
+            ViewPathGlob (ref path) |
+            ViewPathList(ref path, _) => path
+        }
+    }
+}
+
 /// Meta-data associated with an item
 pub type Attribute = Spanned<Attribute_>;
 

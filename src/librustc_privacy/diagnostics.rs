@@ -115,46 +115,6 @@ pub enum Foo {
 ```
 "##,
 
-E0449: r##"
-A visibility qualifier was used when it was unnecessary. Erroneous code
-examples:
-
-```compile_fail
-struct Bar;
-
-trait Foo {
-    fn foo();
-}
-
-pub impl Bar {} // error: unnecessary visibility qualifier
-
-pub impl Foo for Bar { // error: unnecessary visibility qualifier
-    pub fn foo() {} // error: unnecessary visibility qualifier
-}
-```
-
-To fix this error, please remove the visibility qualifier when it is not
-required. Example:
-
-```ignore
-struct Bar;
-
-trait Foo {
-    fn foo();
-}
-
-// Directly implemented methods share the visibility of the type itself,
-// so `pub` is unnecessary here
-impl Bar {}
-
-// Trait methods share the visibility of the trait, so `pub` is
-// unnecessary in either case
-pub impl Foo for Bar {
-    pub fn foo() {}
-}
-```
-"##,
-
 E0450: r##"
 A tuple constructor was invoked while some of its fields are private. Erroneous
 code example:

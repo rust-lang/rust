@@ -9,6 +9,5 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-log = { path = "../liblog" }
 rustc = { path = "../librustc" }
 syntax = { path = "../libsyntax" }
