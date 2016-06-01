@@ -59,11 +59,7 @@ fn naked_recursive() {
     // CHECK: call void @naked_empty()
     naked_empty();
     // CHECK: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_return()
-    naked_with_args(
-        // CHECK: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}} %{{[0-9]+}})
-        naked_with_args_and_return(
-            // CHECK: call void @naked_with_args(i{{[0-9]+}} %{{[0-9]+}})
-            naked_with_return()
-        )
-    );
+    naked_with_args(// CHECK: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}} %{{[0-9]+}})
+                    naked_with_args_and_return(// CHECK: call void @naked_with_args(i{{[0-9]+}} %{{[0-9]+}})
+                                               naked_with_return()));
 }

@@ -19,7 +19,7 @@ pub static VAR1: u32 = 1;
 
 pub enum E {
     A(u32),
-    B(f32)
+    B(f32),
 }
 
 // CHECK: @VAR2 = constant {{.*}} { i32 0, i32 666, {{.*}} }, section ".test_two"

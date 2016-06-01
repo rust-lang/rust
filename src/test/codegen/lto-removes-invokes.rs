@@ -20,8 +20,8 @@ fn main() {
 fn foo() {
     let _a = Box::new(3);
     bar();
-// CHECK-LABEL: foo
-// CHECK: call {{.*}} void @bar
+    // CHECK-LABEL: foo
+    // CHECK: call {{.*}} void @bar
 }
 
 #[inline(never)]

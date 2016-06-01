@@ -15,12 +15,14 @@
 use std::marker::PhantomData;
 
 
-struct Zst { phantom: PhantomData<Zst> }
+struct Zst {
+    phantom: PhantomData<Zst>,
+}
 
 // CHECK-LABEL: @mir
 #[no_mangle]
 #[rustc_mir]
-fn mir(){
+fn mir() {
     // CHECK-NOT: getelementptr
     // CHECK-NOT: store{{.*}}undef
     let x = Zst { phantom: PhantomData };

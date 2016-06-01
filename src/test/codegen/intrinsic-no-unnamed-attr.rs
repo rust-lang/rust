@@ -18,5 +18,7 @@ extern "rust-intrinsic" {
 // CHECK: @llvm.sqrt.f32(float) #{{[0-9]*}}
 
 fn main() {
-    unsafe { sqrtf32(0.0f32); }
+    unsafe {
+        sqrtf32(0.0f32);
+    }
 }

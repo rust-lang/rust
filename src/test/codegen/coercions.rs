@@ -19,7 +19,7 @@ static X: i32 = 5;
 // CHECK-NOT: alloca
 #[no_mangle]
 #[rustc_no_mir] // FIXME #27840 MIR has different codegen.
-pub fn raw_ptr_to_raw_ptr_noop() -> *const i32{
+pub fn raw_ptr_to_raw_ptr_noop() -> *const i32 {
     &X as *const i32
 }
 
