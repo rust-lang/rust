@@ -44,9 +44,11 @@ fn init_logger() {
     let format = |record: &log::LogRecord| {
         // prepend spaces to indent the final string
         let indentation = log_settings::settings().indentation;
-        let spaces = "    |    |    |    |    |    |    |    |    |";
-        let indentation = &spaces[..std::cmp::min(indentation, 44)];
-        format!("{}:{}|{} {}", record.level(), record.location().module_path(), indentation, record.args())
+        let spaces = "                                        ";
+        let depth = indentation / spaces.len();
+        let indentation = indentation % spaces.len();
+        let indentation = &spaces[..indentation];
+        format!("{}:{}{:2}{} {}", record.level(), record.location().module_path(), depth, indentation, record.args())
     };
 
     let mut builder = env_logger::LogBuilder::new();
