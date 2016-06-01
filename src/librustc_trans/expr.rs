@@ -1978,7 +1978,7 @@ fn auto_ref<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Compute final type. Note that we are loose with the region and
     // mutability, since those things don't matter in trans.
     let referent_ty = lv_datum.ty;
-    let ptr_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReStatic), referent_ty);
+    let ptr_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReErased), referent_ty);
 
     // Construct the resulting datum. The right datum to return here would be an Lvalue datum,
     // because there is cleanup scheduled and the datum doesn't own the data, but for thin pointers

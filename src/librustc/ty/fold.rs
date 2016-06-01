@@ -421,12 +421,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         collector.regions
     }
 
-    /// Replace any late-bound regions bound in `value` with `'static`. Useful in trans but also
+    /// Replace any late-bound regions bound in `value` with `'erased`. Useful in trans but also
     /// method lookup and a few other places where precise region relationships are not required.
     pub fn erase_late_bound_regions<T>(self, value: &Binder<T>) -> T
         where T : TypeFoldable<'tcx>
     {
-        self.replace_late_bound_regions(value, |_| ty::ReStatic).0
+        self.replace_late_bound_regions(value, |_| ty::ReErased).0
     }
 
     /// Rewrite any late-bound regions so that they are anonymous.  Region numbers are
@@ -547,15 +547,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             fn fold_region(&mut self, r: ty::Region) -> ty::Region {
                 // because late-bound regions affect subtyping, we can't
                 // erase the bound/free distinction, but we can replace
-                // all free regions with 'static.
+                // all free regions with 'erased.
                 //
                 // Note that we *CAN* replace early-bound regions -- the
                 // type system never "sees" those, they get substituted
-                // away. In trans, they will always be erased to 'static
+                // away. In trans, they will always be erased to 'erased
                 // whenever a substitution occurs.
                 match r {
                     ty::ReLateBound(..) => r,
-                    _ => ty::ReStatic
+                    _ => ty::ReErased
                 }
             }
         }
@@ -651,7 +651,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
             // does this represent a region that cannot be named
             // in a global way? used in fulfillment caching.
             match r {
-                ty::ReStatic | ty::ReEmpty => {}
+                ty::ReStatic | ty::ReEmpty | ty::ReErased => {}
                 _ => return true,
             }
         }

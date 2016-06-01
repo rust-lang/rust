@@ -369,7 +369,8 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     ty::ReLateBound(..) |
                     ty::ReEarlyBound(..) |
                     ty::ReVar(..) |
-                    ty::ReSkolemized(..) => {
+                    ty::ReSkolemized(..) |
+                    ty::ReErased => {
                         span_bug!(
                             cmt.span,
                             "invalid borrow lifetime: {:?}",

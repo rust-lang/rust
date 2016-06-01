@@ -25,7 +25,7 @@ use rustc_data_structures::unify::{self, UnificationTable};
 use middle::free_region::FreeRegionMap;
 use ty::{self, Ty, TyCtxt};
 use ty::{BoundRegion, Region, RegionVid};
-use ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound};
+use ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound, ReErased};
 use ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
 
 use std::cell::{Cell, RefCell};
@@ -918,8 +918,10 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             (ReLateBound(..), _) |
             (_, ReLateBound(..)) |
             (ReEarlyBound(..), _) |
-            (_, ReEarlyBound(..)) => {
-                bug!("cannot relate bound region: LUB({:?}, {:?})", a, b);
+            (_, ReEarlyBound(..)) |
+            (ReErased, _) |
+            (_, ReErased) => {
+                bug!("cannot relate region: LUB({:?}, {:?})", a, b);
             }
 
             (ReStatic, _) | (_, ReStatic) => {
