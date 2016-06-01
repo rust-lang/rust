@@ -88,6 +88,7 @@ use expr::rewrite_call;
 use config::BlockIndentStyle;
 use macros::convert_try_mac;
 
+use std::iter;
 use syntax::{ast, ptr};
 use syntax::codemap::{mk_sp, Span};
 
@@ -98,6 +99,12 @@ pub fn rewrite_chain(expr: &ast::Expr,
                      -> Option<String> {
     let total_span = expr.span;
     let (parent, subexpr_list) = make_subexpr_list(expr, context);
+
+    // Bail out if the chain is just try sugar, i.e., an expression followed by
+    // any number of `?`s.
+    if chain_only_try(&subexpr_list) {
+        return rewrite_try(&parent, subexpr_list.len(), context, width, offset);
+    }
 
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
     let parent_block_indent = chain_base_indent(context, offset);
@@ -194,6 +201,27 @@ pub fn rewrite_chain(expr: &ast::Expr,
              context.config.max_width,
              width,
              offset)
+}
+
+// True if the chain is only `?`s.
+fn chain_only_try(exprs: &[ast::Expr]) -> bool {
+    exprs.iter().all(|e| if let ast::ExprKind::Try(_) = e.node {
+        true
+    } else {
+        false
+    })
+}
+
+pub fn rewrite_try(expr: &ast::Expr,
+                   try_count: usize,
+                   context: &RewriteContext,
+                   width: usize,
+                   offset: Indent)
+                   -> Option<String> {
+    let sub_expr = try_opt!(expr.rewrite(context, width - try_count, offset));
+    Some(format!("{}{}",
+                 sub_expr,
+                 iter::repeat("?").take(try_count).collect::<String>()))
 }
 
 fn join_rewrites(rewrites: &[String], subexps: &[ast::Expr], connector: &str) -> String {
