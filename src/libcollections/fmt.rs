@@ -8,19 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities for formatting and printing strings
+//! Utilities for formatting and printing `String`s
 //!
 //! This module contains the runtime support for the `format!` syntax extension.
 //! This macro is implemented in the compiler to emit calls to this module in
-//! order to format arguments at runtime into strings and streams.
+//! order to format arguments at runtime into strings.
 //!
 //! # Usage
 //!
 //! The `format!` macro is intended to be familiar to those coming from C's
-//! printf/fprintf functions or Python's `str.format` function. In its current
-//! revision, the `format!` macro returns a `String` type which is the result of
-//! the formatting. In the future it will also be able to pass in a stream to
-//! format arguments directly while performing minimal allocations.
+//! printf/fprintf functions or Python's `str.format` function.
 //!
 //! Some examples of the `format!` extension are:
 //!

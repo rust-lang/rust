@@ -44,7 +44,6 @@ use super::Compilation;
 
 use serialize::json;
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsString, OsStr};
@@ -893,7 +892,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     let trait_map = resolutions.trait_map;
     TyCtxt::create_and_enter(sess,
                              arenas,
-                             RefCell::new(resolutions.def_map),
+                             resolutions.def_map,
                              named_region_map,
                              hir_map,
                              resolutions.freevars,

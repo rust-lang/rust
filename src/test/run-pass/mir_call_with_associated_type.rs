@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Make sure that "bare sequences" don't ICE in follow checking
+#![feature(rustc_attrs)]
 
-// pretty-expanded FIXME #23616
-
-macro_rules! bare {
-    $($id:expr),+ => ( $($id)+ )
+trait Trait {
+    type Type;
 }
 
-fn main() { }
+impl<'a> Trait for &'a () {
+    type Type = u32;
+}
+
+#[rustc_mir]
+fn foo<'a>(t: <&'a () as Trait>::Type) -> <&'a () as Trait>::Type {
+    t
+}
+
+#[rustc_mir]
+fn main() {
+    assert_eq!(foo(4), 4);
+}
