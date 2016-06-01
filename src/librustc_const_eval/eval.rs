@@ -621,18 +621,19 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match (eval_const_expr_partial(tcx, &a, ty_hint, fn_args)?,
                eval_const_expr_partial(tcx, &b, b_ty, fn_args)?) {
           (Float(a), Float(b)) => {
+            use std::cmp::Ordering::*;
             match op.node {
-              hir::BiAdd => Float(a + b),
-              hir::BiSub => Float(a - b),
-              hir::BiMul => Float(a * b),
-              hir::BiDiv => Float(a / b),
-              hir::BiRem => Float(a % b),
-              hir::BiEq => Bool(a == b),
-              hir::BiLt => Bool(a < b),
-              hir::BiLe => Bool(a <= b),
-              hir::BiNe => Bool(a != b),
-              hir::BiGe => Bool(a >= b),
-              hir::BiGt => Bool(a > b),
+              hir::BiAdd => Float(math!(e, a + b)),
+              hir::BiSub => Float(math!(e, a - b)),
+              hir::BiMul => Float(math!(e, a * b)),
+              hir::BiDiv => Float(math!(e, a / b)),
+              hir::BiRem => Float(math!(e, a % b)),
+              hir::BiEq => Bool(math!(e, a.try_cmp(b)) == Equal),
+              hir::BiLt => Bool(math!(e, a.try_cmp(b)) == Less),
+              hir::BiLe => Bool(math!(e, a.try_cmp(b)) != Greater),
+              hir::BiNe => Bool(math!(e, a.try_cmp(b)) != Equal),
+              hir::BiGe => Bool(math!(e, a.try_cmp(b)) != Less),
+              hir::BiGt => Bool(math!(e, a.try_cmp(b)) == Greater),
               _ => signal!(e, InvalidOpForFloats(op.node)),
             }
           }
@@ -1078,13 +1079,13 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstInt, ty: ty::
             }
         },
         ty::TyFloat(ast::FloatTy::F64) => match val.erase_type() {
-            Infer(u) => Ok(Float(u as f64)),
-            InferSigned(i) => Ok(Float(i as f64)),
+            Infer(u) => Ok(Float(F64(u as f64))),
+            InferSigned(i) => Ok(Float(F64(i as f64))),
             _ => bug!("ConstInt::erase_type returned something other than Infer/InferSigned"),
         },
         ty::TyFloat(ast::FloatTy::F32) => match val.erase_type() {
-            Infer(u) => Ok(Float(u as f32 as f64)),
-            InferSigned(i) => Ok(Float(i as f32 as f64)),
+            Infer(u) => Ok(Float(F32(u as f32))),
+            InferSigned(i) => Ok(Float(F32(i as f32))),
             _ => bug!("ConstInt::erase_type returned something other than Infer/InferSigned"),
         },
         ty::TyRawPtr(_) => Err(ErrKind::UnimplementedConstVal("casting an address to a raw ptr")),
@@ -1097,13 +1098,35 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstInt, ty: ty::
     }
 }
 
-fn cast_const_float<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: f64, ty: ty::Ty) -> CastResult {
+fn cast_const_float<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              val: ConstFloat,
+                              ty: ty::Ty) -> CastResult {
     match ty.sty {
-        ty::TyInt(_) if f >= 0.0 => cast_const_int(tcx, Infer(f as u64), ty),
-        ty::TyInt(_) => cast_const_int(tcx, InferSigned(f as i64), ty),
-        ty::TyUint(_) if f >= 0.0 => cast_const_int(tcx, Infer(f as u64), ty),
-        ty::TyFloat(ast::FloatTy::F64) => Ok(Float(f)),
-        ty::TyFloat(ast::FloatTy::F32) => Ok(Float(f as f32 as f64)),
+        ty::TyInt(_) | ty::TyUint(_) => {
+            let i = match val {
+                F32(f) if f >= 0.0 => Infer(f as u64),
+                FInfer { f64: f, .. } |
+                F64(f) if f >= 0.0 => Infer(f as u64),
+
+                F32(f) => InferSigned(f as i64),
+                FInfer { f64: f, .. } |
+                F64(f) => InferSigned(f as i64)
+            };
+
+            if let (InferSigned(_), &ty::TyUint(_)) = (i, &ty.sty) {
+                return Err(CannotCast);
+            }
+
+            cast_const_int(tcx, i, ty)
+        }
+        ty::TyFloat(ast::FloatTy::F64) => Ok(Float(F64(match val {
+            F32(f) => f as f64,
+            FInfer { f64: f, .. } | F64(f) => f
+        }))),
+        ty::TyFloat(ast::FloatTy::F32) => Ok(Float(F32(match val {
+            F64(f) => f as f32,
+            FInfer { f32: f, .. } | F32(f) => f
+        }))),
         _ => Err(CannotCast),
     }
 }
@@ -1161,33 +1184,43 @@ fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
             infer(Infer(n), tcx, &ty::TyUint(ity)).map(Integral)
         },
 
-        LitKind::Float(ref n, _) |
+        LitKind::Float(ref n, fty) => {
+            Ok(Float(parse_float(n, Some(fty), span)))
+        }
         LitKind::FloatUnsuffixed(ref n) => {
-            if let Ok(x) = n.parse::<f64>() {
-                Ok(Float(x))
-            } else {
-                // FIXME(#31407) this is only necessary because float parsing is buggy
-                span_bug!(span, "could not evaluate float literal (see issue #31407)");
-            }
+            let fty_hint = match ty_hint.map(|t| &t.sty) {
+                Some(&ty::TyFloat(fty)) => Some(fty),
+                _ => None
+            };
+            Ok(Float(parse_float(n, fty_hint, span)))
         }
         LitKind::Bool(b) => Ok(Bool(b)),
         LitKind::Char(c) => Ok(Char(c)),
     }
 }
 
+fn parse_float(num: &str, fty_hint: Option<ast::FloatTy>, span: Span) -> ConstFloat {
+    let val = match fty_hint {
+        Some(ast::FloatTy::F32) => num.parse::<f32>().map(F32),
+        Some(ast::FloatTy::F64) => num.parse::<f64>().map(F64),
+        None => {
+            num.parse::<f32>().and_then(|f32| {
+                num.parse::<f64>().map(|f64| {
+                    FInfer { f32: f32, f64: f64 }
+                })
+            })
+        }
+    };
+    val.unwrap_or_else(|_| {
+        // FIXME(#31407) this is only necessary because float parsing is buggy
+        span_bug!(span, "could not evaluate float literal (see issue #31407)");
+    })
+}
+
 pub fn compare_const_vals(a: &ConstVal, b: &ConstVal) -> Option<Ordering> {
     match (a, b) {
         (&Integral(a), &Integral(b)) => a.try_cmp(b).ok(),
-        (&Float(a), &Float(b)) => {
-            // This is pretty bad but it is the existing behavior.
-            Some(if a == b {
-                Ordering::Equal
-            } else if a < b {
-                Ordering::Less
-            } else {
-                Ordering::Greater
-            })
-        }
+        (&Float(a), &Float(b)) => a.try_cmp(b).ok(),
         (&Str(ref a), &Str(ref b)) => Some(a.cmp(b)),
         (&Bool(a), &Bool(b)) => Some(a.cmp(&b)),
         (&ByteStr(ref a), &ByteStr(ref b)) => Some(a.cmp(b)),

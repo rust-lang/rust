@@ -12,6 +12,7 @@ use llvm::{self, ValueRef};
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval::ErrKind;
 use rustc_const_math::ConstInt::*;
+use rustc_const_math::ConstFloat::*;
 use rustc_const_math::ConstMathErr;
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
@@ -63,7 +64,9 @@ impl<'tcx> Const<'tcx> {
                              -> Const<'tcx> {
         let llty = type_of::type_of(ccx, ty);
         let val = match cv {
-            ConstVal::Float(v) => C_floating_f64(v, llty),
+            ConstVal::Float(F32(v)) => C_floating_f64(v as f64, llty),
+            ConstVal::Float(F64(v)) => C_floating_f64(v, llty),
+            ConstVal::Float(FInfer {..}) => bug!("MIR must not use `{:?}`", cv),
             ConstVal::Bool(v) => C_bool(ccx, v),
             ConstVal::Integral(I8(v)) => C_integral(Type::i8(ccx), v as u64, true),
             ConstVal::Integral(I16(v)) => C_integral(Type::i16(ccx), v as u64, true),
@@ -81,14 +84,14 @@ impl<'tcx> Const<'tcx> {
                 let u = v.as_u64(ccx.tcx().sess.target.uint_type);
                 C_integral(Type::int(ccx), u, false)
             },
-            ConstVal::Integral(Infer(v)) => C_integral(llty, v as u64, false),
-            ConstVal::Integral(InferSigned(v)) => C_integral(llty, v as u64, true),
+            ConstVal::Integral(Infer(_)) |
+            ConstVal::Integral(InferSigned(_)) => bug!("MIR must not use `{:?}`", cv),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
             ConstVal::Struct(_) | ConstVal::Tuple(_) |
             ConstVal::Array(..) | ConstVal::Repeat(..) |
             ConstVal::Function(_) => {
-                bug!("MIR must not use {:?} (which refers to a local ID)", cv)
+                bug!("MIR must not use `{:?}` (which refers to a local ID)", cv)
             }
             ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
             ConstVal::Dummy => bug!(),

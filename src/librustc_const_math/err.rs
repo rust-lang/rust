@@ -45,17 +45,17 @@ impl ConstMathErr {
         use self::Op::*;
         match *self {
             NotInRange => "inferred value out of range",
-            CmpBetweenUnequalTypes => "compared two integrals of different types",
-            UnequalTypes(Add) => "tried to add two integrals of different types",
-            UnequalTypes(Sub) => "tried to subtract two integrals of different types",
-            UnequalTypes(Mul) => "tried to multiply two integrals of different types",
-            UnequalTypes(Div) => "tried to divide two integrals of different types",
+            CmpBetweenUnequalTypes => "compared two values of different types",
+            UnequalTypes(Add) => "tried to add two values of different types",
+            UnequalTypes(Sub) => "tried to subtract two values of different types",
+            UnequalTypes(Mul) => "tried to multiply two values of different types",
+            UnequalTypes(Div) => "tried to divide two values of different types",
             UnequalTypes(Rem) => {
-                "tried to calculate the remainder of two integrals of different types"
+                "tried to calculate the remainder of two values of different types"
             },
-            UnequalTypes(BitAnd) => "tried to bitand two integrals of different types",
-            UnequalTypes(BitOr) => "tried to bitor two integrals of different types",
-            UnequalTypes(BitXor) => "tried to xor two integrals of different types",
+            UnequalTypes(BitAnd) => "tried to bitand two values of different types",
+            UnequalTypes(BitOr) => "tried to bitor two values of different types",
+            UnequalTypes(BitXor) => "tried to xor two values of different types",
             UnequalTypes(_) => unreachable!(),
             Overflow(Add) => "attempted to add with overflow",
             Overflow(Sub) => "attempted to subtract with overflow",
