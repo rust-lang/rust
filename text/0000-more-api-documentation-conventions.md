@@ -722,5 +722,3 @@ pub fn ref_slice<T>(opt: &Option<T>) -> &[T] {
 }
 ```
 
-## Formatting
-
