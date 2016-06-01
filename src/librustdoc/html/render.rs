@@ -1369,7 +1369,9 @@ impl Context {
             self.render_redirect_pages = self.maybe_ignore_item(&item);
         }
 
-        if item.is_mod() {
+        if item.attrs.list("doc").has_word("hidden") {
+            Ok(())
+        } else if item.is_mod() {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
             let name = item.name.as_ref().unwrap().to_string();

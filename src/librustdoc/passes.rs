@@ -37,10 +37,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
                     debug!("found one in strip_hidden; removing");
                     // use a dedicated hidden item for given item type if any
                     match i.inner {
-                        clean::StructFieldItem(..) | clean::ModuleItem(..) => {
-                            return Strip(i).fold()
-                        }
-                        _ => return None,
+                        _ => return Strip(i).fold(),
                     }
                 } else {
                     self.retained.insert(i.def_id);
