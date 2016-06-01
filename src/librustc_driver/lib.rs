@@ -210,10 +210,26 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
     let codemap = Rc::new(CodeMap::with_file_loader(loader));
     let sess = session::build_session_with_codemap(sopts,
                                                    &dep_graph,
-                                                   input_file_path,
+                                                   input_file_path.clone(),
                                                    descriptions,
                                                    cstore.clone(),
                                                    codemap);
+
+    match input_file_path {
+        Some(ifile) => {
+            // This isn't used later in the compilation process, it's only used to check for
+            // overwrites of the source file.
+            if driver::build_output_filenames(&input, &odir, &ofile, &[], &sess)
+                .is_path_used(&ifile) && !sess.opts.will_create_output_file() {
+                sess.err(&format!(
+                    "the input file \"{}\" would be overwritten by the generated executable",
+                    ifile.display()));
+                return (Err(1), Some(sess));
+            }
+        },
+        None => (),
+    }
+
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let mut cfg = config::build_configuration(&sess, cfg);
     target_features::add_configuration(&mut cfg, &sess);
