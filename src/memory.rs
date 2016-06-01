@@ -49,14 +49,12 @@ pub struct Memory {
 }
 
 impl Memory {
-    pub fn new() -> Self {
+    // FIXME: pass tcx.data_layout (This would also allow it to use primitive type alignments to diagnose unaligned memory accesses.)
+    pub fn new(pointer_size: usize) -> Self {
         Memory {
             alloc_map: HashMap::new(),
             next_id: AllocId(0),
-
-            // FIXME(solson): This should work for both 4 and 8, but it currently breaks some things
-            // when set to 4.
-            pointer_size: 8,
+            pointer_size: pointer_size,
         }
     }
 
@@ -80,7 +78,7 @@ impl Memory {
     pub fn reallocate(&mut self, ptr: Pointer, new_size: usize) -> EvalResult<()> {
         if ptr.offset != 0 {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
-            panic!()
+            return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
 
         let alloc = self.get_mut(ptr.alloc_id)?;
@@ -90,7 +88,7 @@ impl Memory {
             alloc.bytes.extend(iter::repeat(0).take(amount));
             alloc.undef_mask.grow(amount, false);
         } else if size > new_size {
-            unimplemented!()
+            return Err(EvalError::Unimplemented(format!("unimplemented allocation relocation")));
             // alloc.bytes.truncate(new_size);
             // alloc.undef_mask.len = new_size;
             // TODO: potentially remove relocations
@@ -103,7 +101,7 @@ impl Memory {
     pub fn deallocate(&mut self, ptr: Pointer) -> EvalResult<()> {
         if ptr.offset != 0 {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
-            panic!()
+            return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
 
         if self.alloc_map.remove(&ptr.alloc_id).is_none() {
@@ -183,7 +181,11 @@ impl Memory {
     fn get_bytes_unchecked(&self, ptr: Pointer, size: usize) -> EvalResult<&[u8]> {
         let alloc = self.get(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
-            return Err(EvalError::PointerOutOfBounds);
+            return Err(EvalError::PointerOutOfBounds {
+                ptr: ptr,
+                size: size,
+                allocation_size: alloc.bytes.len(),
+            });
         }
         Ok(&alloc.bytes[ptr.offset..ptr.offset + size])
     }
@@ -191,7 +193,11 @@ impl Memory {
     fn get_bytes_unchecked_mut(&mut self, ptr: Pointer, size: usize) -> EvalResult<&mut [u8]> {
         let alloc = self.get_mut(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
-            return Err(EvalError::PointerOutOfBounds);
+            return Err(EvalError::PointerOutOfBounds {
+                ptr: ptr,
+                size: size,
+                allocation_size: alloc.bytes.len(),
+            });
         }
         Ok(&mut alloc.bytes[ptr.offset..ptr.offset + size])
     }

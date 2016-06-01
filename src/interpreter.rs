@@ -128,7 +128,11 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
             tcx: tcx,
             mir_map: mir_map,
             mir_cache: RefCell::new(DefIdMap()),
-            memory: Memory::new(),
+            memory: Memory::new(tcx.sess
+                                   .target
+                                   .uint_type
+                                   .bit_width()
+                                   .expect("Session::target::uint_type was usize")/8),
             substs_stack: Vec::new(),
             name_stack: Vec::new(),
         }
@@ -392,11 +396,11 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                 TerminatorTarget::Call
                             }
 
-                            abi => panic!("can't handle function with {:?} ABI", abi),
+                            abi => return Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", abi))),
                         }
                     }
 
-                    _ => panic!("can't handle callee of type {:?}", func_ty),
+                    _ => return Err(EvalError::Unimplemented(format!("can't handle callee of type {:?}", func_ty))),
                 }
             }
 
@@ -470,7 +474,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             }
 
             StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-                let offset = self.nonnull_offset(adt_ty, nndiscr, discrfield);
+                let offset = self.nonnull_offset(adt_ty, nndiscr, discrfield)?;
                 let nonnull = adt_ptr.offset(offset.bytes() as isize);
                 self.read_nonnull_discriminant_value(nonnull, nndiscr)?
             }
@@ -620,7 +624,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                             self.memory.write_uint(dest, n * elem_size, dest_size)?;
                         }
 
-                        _ => panic!("unimplemented: size_of_val::<{:?}>", ty),
+                        _ => return Err(EvalError::Unimplemented(format!("unimplemented: size_of_val::<{:?}>", ty))),
                     }
                 }
             }
@@ -631,7 +635,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             }
             "uninit" => self.memory.mark_definedness(dest, dest_size, false)?,
 
-            name => panic!("can't handle intrinsic: {}", name),
+            name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),
         }
 
         // Since we pushed no stack frame, the main loop will act
@@ -693,7 +697,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 self.memory.write_int(dest, result, dest_size)?;
             }
 
-            _ => panic!("can't call C ABI function: {}", link_name),
+            _ => return Err(EvalError::Unimplemented(format!("can't call C ABI function: {}", link_name))),
         }
 
         // Since we pushed no stack frame, the main loop will act
@@ -748,7 +752,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 let ptr = self.eval_operand(operand)?;
                 let ty = self.operand_ty(operand);
                 let val = self.read_primval(ptr, ty)?;
-                self.memory.write_primval(dest, primval::unary_op(un_op, val))?;
+                self.memory.write_primval(dest, primval::unary_op(un_op, val)?)?;
             }
 
             Aggregate(ref kind, ref operands) => {
@@ -809,7 +813,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                 try!(self.assign_fields(dest, offsets, operands));
                             } else {
                                 assert_eq!(operands.len(), 0);
-                                let offset = self.nonnull_offset(dest_ty, nndiscr, discrfield);
+                                let offset = self.nonnull_offset(dest_ty, nndiscr, discrfield)?;
                                 let dest = dest.offset(offset.bytes() as isize);
                                 try!(self.memory.write_isize(dest, 0));
                             }
@@ -834,8 +838,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                         }
                     }
 
-                    _ => panic!("can't handle destination layout {:?} when assigning {:?}",
-                                dest_layout, kind),
+                    _ => return Err(EvalError::Unimplemented(format!("can't handle destination layout {:?} when assigning {:?}", dest_layout, kind))),
                 }
             }
 
@@ -904,7 +907,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                 self.memory.write_usize(len_ptr, length as u64)?;
                             }
 
-                            _ => panic!("can't handle cast: {:?}", rvalue),
+                            _ => return Err(EvalError::Unimplemented(format!("can't handle cast: {:?}", rvalue))),
                         }
                     }
 
@@ -914,7 +917,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                         self.memory.copy(src, dest, size)?;
                     }
 
-                    _ => panic!("can't handle cast: {:?}", rvalue),
+                    _ => return Err(EvalError::Unimplemented(format!("can't handle cast: {:?}", rvalue))),
                 }
             }
 
@@ -925,7 +928,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(())
     }
 
-    fn nonnull_offset(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> Size {
+    fn nonnull_offset(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> EvalResult<Size> {
         // Skip the constant 0 at the start meant for LLVM GEP.
         let mut path = discrfield.iter().skip(1).map(|&i| i as usize);
 
@@ -946,49 +949,49 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         self.field_path_offset(inner_ty, path)
     }
 
-    fn field_path_offset<I: Iterator<Item = usize>>(&self, mut ty: Ty<'tcx>, path: I) -> Size {
+    fn field_path_offset<I: Iterator<Item = usize>>(&self, mut ty: Ty<'tcx>, path: I) -> EvalResult<Size> {
         let mut offset = Size::from_bytes(0);
 
         // Skip the initial 0 intended for LLVM GEP.
         for field_index in path {
-            let field_offset = self.get_field_offset(ty, field_index);
-            ty = self.get_field_ty(ty, field_index);
+            let field_offset = self.get_field_offset(ty, field_index)?;
+            ty = self.get_field_ty(ty, field_index)?;
             offset = offset.checked_add(field_offset, &self.tcx.data_layout).unwrap();
         }
 
-        offset
+        Ok(offset)
     }
 
-    fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> Ty<'tcx> {
+    fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<Ty<'tcx>> {
         match ty.sty {
             ty::TyStruct(adt_def, substs) => {
-                adt_def.struct_variant().fields[field_index].ty(self.tcx, substs)
+                Ok(adt_def.struct_variant().fields[field_index].ty(self.tcx, substs))
             }
 
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
             ty::TyBox(ty) => {
                 assert_eq!(field_index, 0);
-                ty
+                Ok(ty)
             }
-            _ => panic!("can't handle type: {:?}", ty),
+            _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}", ty))),
         }
     }
 
-    fn get_field_offset(&self, ty: Ty<'tcx>, field_index: usize) -> Size {
+    fn get_field_offset(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<Size> {
         let layout = self.type_layout(ty);
 
         use rustc::ty::layout::Layout::*;
         match *layout {
             Univariant { .. } => {
                 assert_eq!(field_index, 0);
-                Size::from_bytes(0)
+                Ok(Size::from_bytes(0))
             }
             FatPointer { .. } => {
                 let bytes = layout::FAT_PTR_ADDR * self.memory.pointer_size;
-                Size::from_bytes(bytes as u64)
+                Ok(Size::from_bytes(bytes as u64))
             }
-            _ => panic!("can't handle type: {:?}, with layout: {:?}", ty, layout),
+            _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, with layout: {:?}", ty, layout))),
         }
     }
 
@@ -1197,23 +1200,25 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<PrimVal> {
         use syntax::ast::{IntTy, UintTy};
-        let val = match ty.sty {
-            ty::TyBool              => PrimVal::Bool(self.memory.read_bool(ptr)?),
-            ty::TyInt(IntTy::I8)    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
-            ty::TyInt(IntTy::I16)   => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
-            ty::TyInt(IntTy::I32)   => PrimVal::I32(self.memory.read_int(ptr, 4)? as i32),
-            ty::TyInt(IntTy::I64)   => PrimVal::I64(self.memory.read_int(ptr, 8)? as i64),
-            ty::TyUint(UintTy::U8)  => PrimVal::U8(self.memory.read_uint(ptr, 1)? as u8),
-            ty::TyUint(UintTy::U16) => PrimVal::U16(self.memory.read_uint(ptr, 2)? as u16),
-            ty::TyUint(UintTy::U32) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
-            ty::TyUint(UintTy::U64) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
+        let val = match (self.memory.pointer_size, &ty.sty) {
+            (_, &ty::TyBool)              => PrimVal::Bool(self.memory.read_bool(ptr)?),
+            (_, &ty::TyInt(IntTy::I8))    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
+            (2, &ty::TyInt(IntTy::Is)) |
+            (_, &ty::TyInt(IntTy::I16))   => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
+            (4, &ty::TyInt(IntTy::Is)) |
+            (_, &ty::TyInt(IntTy::I32))   => PrimVal::I32(self.memory.read_int(ptr, 4)? as i32),
+            (8, &ty::TyInt(IntTy::Is)) |
+            (_, &ty::TyInt(IntTy::I64))   => PrimVal::I64(self.memory.read_int(ptr, 8)? as i64),
+            (_, &ty::TyUint(UintTy::U8))  => PrimVal::U8(self.memory.read_uint(ptr, 1)? as u8),
+            (2, &ty::TyUint(UintTy::Us)) |
+            (_, &ty::TyUint(UintTy::U16)) => PrimVal::U16(self.memory.read_uint(ptr, 2)? as u16),
+            (4, &ty::TyUint(UintTy::Us)) |
+            (_, &ty::TyUint(UintTy::U32)) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
+            (8, &ty::TyUint(UintTy::Us)) |
+            (_, &ty::TyUint(UintTy::U64)) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
 
-            // TODO(solson): Pick the PrimVal dynamically.
-            ty::TyInt(IntTy::Is)   => PrimVal::I64(self.memory.read_isize(ptr)?),
-            ty::TyUint(UintTy::Us) => PrimVal::U64(self.memory.read_usize(ptr)?),
-
-            ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+            (_, &ty::TyRef(_, ty::TypeAndMut { ty, .. })) |
+            (_, &ty::TyRawPtr(ty::TypeAndMut { ty, .. })) => {
                 if self.type_is_sized(ty) {
                     match self.memory.read_ptr(ptr) {
                         Ok(p) => PrimVal::AbstractPtr(p),
@@ -1223,7 +1228,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                         Err(e) => return Err(e),
                     }
                 } else {
-                    panic!("unimplemented: primitive read of fat pointer type: {:?}", ty);
+                    return Err(EvalError::Unimplemented(format!("unimplemented: primitive read of fat pointer type: {:?}", ty)));
                 }
             }
 
