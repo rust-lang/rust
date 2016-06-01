@@ -118,10 +118,6 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.cx.infcx.tcx
     }
 
-    fn infcx(&self) -> &'a InferCtxt<'a, 'gcx, 'tcx> {
-        self.cx.infcx
-    }
-
     fn sanitize_type(&mut self, parent: &fmt::Debug, ty: Ty<'tcx>) -> Ty<'tcx> {
         if ty.needs_infer() || ty.has_escaping_regions() || ty.references_error() {
             span_mirbug_and_err!(self, parent, "bad type {:?}", ty)
@@ -292,29 +288,10 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         };
 
         if let Some(field) = variant.fields.get(field.index()) {
-            Ok(self.normalize(field.ty(tcx, substs)))
+            Ok(self.cx.normalize(&field.ty(tcx, substs)))
         } else {
             Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
         }
-    }
-
-    fn normalize(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let infcx = self.infcx();
-        let mut selcx = traits::SelectionContext::new(infcx);
-        let cause = traits::ObligationCause::misc(self.last_span, 0);
-        let traits::Normalized { value: ty, obligations } =
-            traits::normalize(&mut selcx, cause, &ty);
-
-        debug!("normalize: ty={:?} obligations={:?}",
-               ty,
-               obligations);
-
-        let mut fulfill_cx = &mut self.cx.fulfillment_cx;
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(infcx, obligation);
-        }
-
-        ty
     }
 }
 
@@ -373,7 +350,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn check_terminator(&self,
+    fn check_terminator(&mut self,
                         mir: &Mir<'tcx>,
                         term: &Terminator<'tcx>) {
         debug!("check_terminator: {:?}", term);
@@ -431,6 +408,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     }
                 };
                 let sig = tcx.erase_late_bound_regions(&func_ty.sig);
+                let sig = self.normalize(&sig);
                 self.check_call_dest(mir, term, &sig, destination);
 
                 if self.is_box_free(func) {
@@ -556,6 +534,27 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.check_terminator(mir, terminator);
             }
         }
+    }
+
+
+    fn normalize<T>(&mut self, value: &T) -> T
+        where T: fmt::Debug + TypeFoldable<'tcx>
+    {
+        let mut selcx = traits::SelectionContext::new(self.infcx);
+        let cause = traits::ObligationCause::misc(self.last_span, 0);
+        let traits::Normalized { value, obligations } =
+            traits::normalize(&mut selcx, cause, value);
+
+        debug!("normalize: value={:?} obligations={:?}",
+               value,
+               obligations);
+
+        let mut fulfill_cx = &mut self.fulfillment_cx;
+        for obligation in obligations {
+            fulfill_cx.register_predicate_obligation(self.infcx, obligation);
+        }
+
+        value
     }
 
     fn verify_obligations(&mut self, mir: &Mir<'tcx>) {
