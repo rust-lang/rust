@@ -108,14 +108,15 @@ def run(args, verbose=False):
 
 def stage0_data(rust_root):
     nightlies = os.path.join(rust_root, "src/stage0.txt")
+    data = {}
     with open(nightlies, 'r') as nightlies:
-        data = {}
-        for line in nightlies.read().split("\n"):
+        for line in nightlies:
+            line = line.rstrip()  # Strip newline character, '\n'
             if line.startswith("#") or line == '':
                 continue
             a, b = line.split(": ", 1)
             data[a] = b
-        return data
+    return data
 
 class RustBuild:
     def download_stage0(self):
@@ -246,7 +247,7 @@ class RustBuild:
                  env)
 
     def run(self, args, env):
-        proc = subprocess.Popen(args, env = env)
+        proc = subprocess.Popen(args, env=env)
         ret = proc.wait()
         if ret != 0:
             sys.exit(ret)
@@ -261,20 +262,19 @@ class RustBuild:
         try:
             ostype = subprocess.check_output(['uname', '-s']).strip()
             cputype = subprocess.check_output(['uname', '-m']).strip()
-        except FileNotFoundError:
+        except subprocess.CalledProcessError:
             if sys.platform == 'win32':
                 return 'x86_64-pc-windows-msvc'
-            else:
-                err = "uname not found"
-                if self.verbose:
-                    raise Exception(err)
-                sys.exit(err)
+            err = "uname not found"
+            if self.verbose:
+                raise Exception(err)
+            sys.exit(err)
 
         # Darwin's `uname -s` lies and always returns i386. We have to use
         # sysctl instead.
         if ostype == 'Darwin' and cputype == 'i686':
             sysctl = subprocess.check_output(['sysctl', 'hw.optional.x86_64'])
-            if sysctl.contains(': 1'):
+            if ': 1' in sysctl:
                 cputype = 'x86_64'
 
         # The goal here is to come up with the same triple as LLVM would,
