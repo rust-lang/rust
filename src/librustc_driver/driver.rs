@@ -582,6 +582,7 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
         sess.track_errors(|| {
             syntax::config::strip_unconfigured_items(sess.diagnostic(),
                                                      krate,
+                                                     sess.opts.test,
                                                      &mut feature_gated_cfgs)
         })
     })?;
@@ -692,6 +693,7 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
             features: Some(&features),
             recursion_limit: sess.recursion_limit.get(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
+            should_test: sess.opts.test,
         };
         let mut loader = macro_import::MacroLoader::new(sess, &cstore, crate_name);
         let mut ecx = syntax::ext::base::ExtCtxt::new(&sess.parse_sess,
