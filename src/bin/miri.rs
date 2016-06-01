@@ -45,13 +45,11 @@ fn init_logger() {
     let format = |record: &log::LogRecord| {
         // prepend spaces to indent the final string
         let indentation = log_settings::settings().indentation;
-        let depth = indentation / NSPACES;
-        let indentation = indentation % NSPACES;
-        format!("{lvl}:{module}{depth:2}{indent:<indentation$}{text}",
+        format!("{lvl}:{module}{depth:2}{indent:<indentation$} {text}",
             lvl = record.level(),
             module = record.location().module_path(),
-            depth = depth,
-            indentation = indentation,
+            depth = indentation / NSPACES,
+            indentation = indentation % NSPACES,
             indent = "",
             text = record.args())
     };
