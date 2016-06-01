@@ -348,7 +348,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             let region = |state: &mut SipHasher, r: ty::Region| {
                 match r {
-                    ty::ReStatic => {}
+                    ty::ReStatic | ty::ReErased => {}
                     ty::ReLateBound(db, ty::BrAnon(i)) => {
                         db.hash(state);
                         i.hash(state);

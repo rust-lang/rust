@@ -382,7 +382,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     // Don't copy data to do a deref+ref
                     // (i.e., skip the last auto-deref).
                     llconst = addr_of(cx, llconst, type_of::align_of(cx, ty), "autoref");
-                    ty = cx.tcx().mk_imm_ref(cx.tcx().mk_region(ty::ReStatic), ty);
+                    ty = cx.tcx().mk_imm_ref(cx.tcx().mk_region(ty::ReErased), ty);
                 }
             } else if adj.autoderefs > 0 {
                 let (dv, dt) = const_deref(cx, llconst, ty);

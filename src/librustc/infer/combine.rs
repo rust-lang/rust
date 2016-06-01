@@ -337,8 +337,10 @@ impl<'cx, 'gcx, 'tcx> ty::fold::TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         match r {
-            // Never make variables for regions bound within the type itself.
-            ty::ReLateBound(..) => { return r; }
+            // Never make variables for regions bound within the type itself,
+            // nor for erased regions.
+            ty::ReLateBound(..) |
+            ty::ReErased => { return r; }
 
             // Early-bound regions should really have been substituted away before
             // we get to this point.

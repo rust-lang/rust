@@ -221,12 +221,9 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 assert_eq!(self.next(), '|');
                 ty::ReScope(scope)
             }
-            't' => {
-                ty::ReStatic
-            }
-            'e' => {
-                ty::ReStatic
-            }
+            't' => ty::ReStatic,
+            'e' => ty::ReEmpty,
+            'E' => ty::ReErased,
             _ => bug!("parse_region: bad input")
         }
     }

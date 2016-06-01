@@ -328,7 +328,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     };
 
     let bare_fn_ty_maybe_ref = if is_by_ref {
-        tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), bare_fn_ty)
+        tcx.mk_imm_ref(tcx.mk_region(ty::ReErased), bare_fn_ty)
     } else {
         bare_fn_ty
     };
