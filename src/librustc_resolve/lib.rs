@@ -2422,13 +2422,16 @@ impl<'a> Resolver<'a> {
                                 }
                             }
                         }
-                    } else if let Err(false) = self.resolve_path(pat_id, &path, 0, ValueNS) {
-                        resolve_error(
-                            self,
-                            path.span,
-                            ResolutionError::UnresolvedEnumVariantStructOrConst(
-                                &path.segments.last().unwrap().identifier.name.as_str())
-                        );
+                    } else {
+                        if let Err(false) = self.resolve_path(pat_id, &path, 0, ValueNS) {
+                            // No error has been reported, so we need to do this ourselves.
+                            resolve_error(
+                                self,
+                                path.span,
+                                ResolutionError::UnresolvedEnumVariantStructOrConst(
+                                    &path.segments.last().unwrap().identifier.name.as_str())
+                            );
+                        }
                         self.record_def(pattern.id, err_path_resolution());
                     }
                     visit::walk_path(self, path);
