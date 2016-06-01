@@ -21,37 +21,26 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 
-#[macro_use] extern crate log;
+extern crate rustc;
 #[macro_use] extern crate syntax;
 
-#[macro_use] extern crate rustc;
+use rustc::dep_graph::DepNode;
+use rustc::hir::{self, PatKind};
+use rustc::hir::def::{self, Def};
+use rustc::hir::def_id::DefId;
+use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::pat_util::EnumerateAndAdjustIterator;
+use rustc::lint;
+use rustc::middle::privacy::{AccessLevel, AccessLevels};
+use rustc::ty::{self, TyCtxt};
+use rustc::util::nodemap::NodeSet;
+use syntax::ast;
+use syntax::codemap::Span;
 
 use std::cmp;
 use std::mem::replace;
 
-use rustc::hir::{self, PatKind};
-use rustc::hir::intravisit::{self, Visitor};
-use rustc::hir::pat_util::EnumerateAndAdjustIterator;
-use rustc::dep_graph::DepNode;
-use rustc::lint;
-use rustc::hir::def::{self, Def};
-use rustc::hir::def_id::DefId;
-use rustc::middle::privacy::{AccessLevel, AccessLevels};
-use rustc::ty::{self, TyCtxt};
-use rustc::util::nodemap::NodeSet;
-use rustc::hir::map as ast_map;
-
-use syntax::ast;
-use syntax::codemap::Span;
-
 pub mod diagnostics;
-
-type Context<'a, 'tcx> = (&'a ty::MethodMap<'tcx>, &'a def::ExportMap);
-
-/// Result of a checking operation - None => no errors were found. Some => an
-/// error and contains the span and message for reporting that error and
-/// optionally the same for a note about the error.
-type CheckResult = Option<(Span, String, Option<(Span, String)>)>;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// The embargo visitor, used to determine the exports of the ast
@@ -433,7 +422,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             hir::ExprMethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
                 let method = self.tcx.tables.borrow().method_map[&method_call];
-                debug!("(privacy checking) checking impl method");
                 self.check_method(expr.span, method.def_id);
             }
             hir::ExprStruct(..) => {
@@ -518,74 +506,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// The privacy sanity check visitor, ensures unnecessary visibility isn't here
-////////////////////////////////////////////////////////////////////////////////
-
-struct SanePrivacyVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-}
-
-impl<'a, 'tcx, 'v> Visitor<'v> for SanePrivacyVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
-        self.check_sane_privacy(item);
-        intravisit::walk_item(self, item);
-    }
-}
-
-impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
-    /// Validate that items that shouldn't have visibility qualifiers don't have them.
-    /// Such qualifiers can be set by syntax extensions even if the parser doesn't allow them,
-    /// so we check things like variant fields too.
-    fn check_sane_privacy(&self, item: &hir::Item) {
-        let check_inherited = |sp, vis: &hir::Visibility, note: &str| {
-            if *vis != hir::Inherited {
-                let mut err = struct_span_err!(self.tcx.sess, sp, E0449,
-                                               "unnecessary visibility qualifier");
-                if !note.is_empty() {
-                    err.span_note(sp, note);
-                }
-                err.emit();
-            }
-        };
-
-        match item.node {
-            hir::ItemImpl(_, _, _, Some(..), _, ref impl_items) => {
-                check_inherited(item.span, &item.vis,
-                                "visibility qualifiers have no effect on trait impls");
-                for impl_item in impl_items {
-                    check_inherited(impl_item.span, &impl_item.vis,
-                                    "visibility qualifiers have no effect on trait impl items");
-                }
-            }
-            hir::ItemImpl(_, _, _, None, _, _) => {
-                check_inherited(item.span, &item.vis,
-                                "place qualifiers on individual methods instead");
-            }
-            hir::ItemDefaultImpl(..) => {
-                check_inherited(item.span, &item.vis,
-                                "visibility qualifiers have no effect on trait impls");
-            }
-            hir::ItemForeignMod(..) => {
-                check_inherited(item.span, &item.vis,
-                                "place qualifiers on individual functions instead");
-            }
-            hir::ItemEnum(ref def, _) => {
-                for variant in &def.variants {
-                    for field in variant.node.data.fields() {
-                        check_inherited(field.span, &field.vis,
-                                        "visibility qualifiers have no effect on variant fields");
-                    }
-                }
-            }
-            hir::ItemStruct(..) | hir::ItemTrait(..) |
-            hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
-            hir::ItemMod(..) | hir::ItemExternCrate(..) |
-            hir::ItemUse(..) | hir::ItemTy(..) => {}
-        }
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 /// Obsolete visitors for checking for private items in public interfaces.
 /// These visitors are supposed to be kept in frozen state and produce an
@@ -626,7 +546,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             // .. and it corresponds to a private type in the AST (this returns
             // None for type parameters)
             match self.tcx.map.find(node_id) {
-                Some(ast_map::NodeItem(ref item)) => item.vis != hir::Public,
+                Some(hir::map::NodeItem(ref item)) => item.vis != hir::Public,
                 Some(_) | None => false,
             }
         } else {
@@ -860,7 +780,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
         // any `visit_ty`'s will be called on things that are in
         // public signatures, i.e. things that we're interested in for
         // this visitor.
-        debug!("VisiblePrivateTypesVisitor entering item {:?}", item);
         intravisit::walk_item(self, item);
     }
 
@@ -892,7 +811,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
     }
 
     fn visit_ty(&mut self, t: &hir::Ty) {
-        debug!("VisiblePrivateTypesVisitor checking ty {:?}", t);
         if let hir::TyPath(..) = t.node {
             if self.path_is_private_type(t.id) {
                 self.old_error_set.insert(t.id);
@@ -1176,10 +1094,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let _task = tcx.dep_graph.in_task(DepNode::Privacy);
 
     let krate = tcx.map.krate();
-
-    // Sanity check to make sure that all privacy usage is reasonable.
-    let mut visitor = SanePrivacyVisitor { tcx: tcx };
-    krate.visit_all_items(&mut visitor);
 
     // Use the parent map to check the privacy of everything
     let mut visitor = PrivacyVisitor {

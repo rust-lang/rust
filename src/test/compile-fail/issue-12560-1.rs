@@ -21,5 +21,5 @@ enum Foo {
 }
 
 fn main() {
-    println!("{}", match Bar { Bar => 1, Baz => 2, Bazar => 3 })
+    println!("{}", match Bar { Bar => 1, Baz => 2, Bazar => 3 }) //~ ERROR unresolved name `Bar`
 }

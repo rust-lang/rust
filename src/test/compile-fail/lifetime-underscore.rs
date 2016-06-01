@@ -8,19 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(pub_restricted)]
+#![deny(lifetime_underscore)]
 
-macro_rules! m {
-    ($p: path) => (pub($p) struct Z;)
+fn _f<'_>() //~ ERROR invalid lifetime name `'_`
+//~^ WARN this was previously accepted
+    -> &'_ u8 //~ ERROR invalid lifetime name `'_`
+    //~^ WARN this was previously accepted
+{
+    panic!();
 }
 
-struct S<T>(T);
-m!{ S<u8> } //~ ERROR type or lifetime parameters in visibility path
-//~^ ERROR failed to resolve module path. Not a module `S`
-
-mod foo {
-    struct S(pub(foo<T>) ()); //~ ERROR type or lifetime parameters in visibility path
-    //~^ ERROR type name `T` is undefined or not in scope
+fn main() {
+    '_: loop { //~ ERROR invalid label name `'_`
+    //~^ WARN this was previously accepted
+        break '_ //~ ERROR invalid label name `'_`
+        //~^ WARN this was previously accepted
+    }
 }
-
-fn main() {}
