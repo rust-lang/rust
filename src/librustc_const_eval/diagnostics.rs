@@ -384,18 +384,19 @@ let irr = Irrefutable(0);
 
 // This fails to compile because the match is irrefutable.
 while let Irrefutable(x) = irr {
-    ...
+    // ...
 }
+```
 
 Try this instead:
 
-```
+```no_run
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
 loop {
     let Irrefutable(x) = irr;
-    ...
+    // ...
 }
 ```
 "##,
