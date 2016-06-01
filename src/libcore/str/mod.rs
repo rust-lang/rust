@@ -17,7 +17,7 @@
 use self::pattern::Pattern;
 use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 
-use char::{self, CharExt};
+use char;
 use clone::Clone;
 use convert::AsRef;
 use default::Default;
@@ -1664,40 +1664,6 @@ pub trait StrExt {
         where P::Searcher: ReverseSearcher<'a>;
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
     fn is_char_boundary(&self, index: usize) -> bool;
-    #[unstable(feature = "str_char",
-               reason = "often replaced by char_indices, this method may \
-                         be removed in favor of just char_at() or eventually \
-                         removed altogether",
-               issue = "27754")]
-    #[rustc_deprecated(reason = "use slicing plus chars() plus len_utf8",
-                       since = "1.9.0")]
-    fn char_range_at(&self, start: usize) -> CharRange;
-    #[unstable(feature = "str_char",
-               reason = "often replaced by char_indices, this method may \
-                         be removed in favor of just char_at_reverse() or \
-                         eventually removed altogether",
-               issue = "27754")]
-    #[rustc_deprecated(reason = "use slicing plus chars().rev() plus len_utf8",
-                       since = "1.9.0")]
-    fn char_range_at_reverse(&self, start: usize) -> CharRange;
-    #[unstable(feature = "str_char",
-               reason = "frequently replaced by the chars() iterator, this \
-                         method may be removed or possibly renamed in the \
-                         future; it is normally replaced by chars/char_indices \
-                         iterators or by getting the first char from a \
-                         subslice",
-               issue = "27754")]
-    #[rustc_deprecated(reason = "use slicing plus chars()",
-                       since = "1.9.0")]
-    fn char_at(&self, i: usize) -> char;
-    #[unstable(feature = "str_char",
-               reason = "see char_at for more details, but reverse semantics \
-                         are also somewhat unclear, especially with which \
-                         cases generate panics",
-               issue = "27754")]
-    #[rustc_deprecated(reason = "use slicing plus chars().rev()",
-                       since = "1.9.0")]
-    fn char_at_reverse(&self, i: usize) -> char;
     #[stable(feature = "core", since = "1.6.0")]
     fn as_bytes(&self) -> &[u8];
     #[stable(feature = "core", since = "1.6.0")]
@@ -1710,14 +1676,6 @@ pub trait StrExt {
     fn split_at(&self, mid: usize) -> (&str, &str);
     #[stable(feature = "core", since = "1.6.0")]
     fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str);
-    #[unstable(feature = "str_char",
-               reason = "awaiting conventions about shifting and slices and \
-                         may not be warranted with the existence of the chars \
-                         and/or char_indices iterators",
-               issue = "27754")]
-    #[rustc_deprecated(reason = "use chars() plus Chars::as_str",
-                       since = "1.9.0")]
-    fn slice_shift_char(&self) -> Option<(char, &str)>;
     #[stable(feature = "core", since = "1.6.0")]
     fn as_ptr(&self) -> *const u8;
     #[stable(feature = "core", since = "1.6.0")]
@@ -1947,55 +1905,6 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn char_range_at(&self, i: usize) -> CharRange {
-        let (c, n) = char_range_at_raw(self.as_bytes(), i);
-        CharRange { ch: unsafe { char::from_u32_unchecked(c) }, next: n }
-    }
-
-    #[inline]
-    fn char_range_at_reverse(&self, start: usize) -> CharRange {
-        let mut prev = start;
-
-        prev = prev.saturating_sub(1);
-        if self.as_bytes()[prev] < 128 {
-            return CharRange{ch: self.as_bytes()[prev] as char, next: prev}
-        }
-
-        // Multibyte case is a fn to allow char_range_at_reverse to inline cleanly
-        fn multibyte_char_range_at_reverse(s: &str, mut i: usize) -> CharRange {
-            // while there is a previous byte == 10......
-            while i > 0 && s.as_bytes()[i] & !CONT_MASK == TAG_CONT_U8 {
-                i -= 1;
-            }
-
-            let first= s.as_bytes()[i];
-            let w = UTF8_CHAR_WIDTH[first as usize];
-            assert!(w != 0);
-
-            let mut val = utf8_first_byte(first, w as u32);
-            val = utf8_acc_cont_byte(val, s.as_bytes()[i + 1]);
-            if w > 2 { val = utf8_acc_cont_byte(val, s.as_bytes()[i + 2]); }
-            if w > 3 { val = utf8_acc_cont_byte(val, s.as_bytes()[i + 3]); }
-
-            CharRange {ch: unsafe { char::from_u32_unchecked(val) }, next: i}
-        }
-
-        multibyte_char_range_at_reverse(self, prev)
-    }
-
-    #[inline]
-    #[allow(deprecated)]
-    fn char_at(&self, i: usize) -> char {
-        self.char_range_at(i).ch
-    }
-
-    #[inline]
-    #[allow(deprecated)]
-    fn char_at_reverse(&self, i: usize) -> char {
-        self.char_range_at_reverse(i).ch
-    }
-
-    #[inline]
     fn as_bytes(&self) -> &[u8] {
         unsafe { mem::transmute(self) }
     }
@@ -2042,18 +1951,6 @@ impl StrExt for str {
     }
 
     #[inline]
-    #[allow(deprecated)]
-    fn slice_shift_char(&self) -> Option<(char, &str)> {
-        if self.is_empty() {
-            None
-        } else {
-            let ch = self.char_at(0);
-            let next_s = unsafe { self.slice_unchecked(ch.len_utf8(), self.len()) };
-            Some((ch, next_s))
-        }
-    }
-
-    #[inline]
     fn as_ptr(&self) -> *const u8 {
         self as *const str as *const u8
     }
@@ -2076,31 +1973,6 @@ impl AsRef<[u8]> for str {
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
     }
-}
-
-/// Pluck a code point out of a UTF-8-like byte slice and return the
-/// index of the next code point.
-#[inline]
-fn char_range_at_raw(bytes: &[u8], i: usize) -> (u32, usize) {
-    if bytes[i] < 128 {
-        return (bytes[i] as u32, i + 1);
-    }
-
-    // Multibyte case is a fn to allow char_range_at to inline cleanly
-    fn multibyte_char_range_at(bytes: &[u8], i: usize) -> (u32, usize) {
-        let first = bytes[i];
-        let w = UTF8_CHAR_WIDTH[first as usize];
-        assert!(w != 0);
-
-        let mut val = utf8_first_byte(first, w as u32);
-        val = utf8_acc_cont_byte(val, bytes[i + 1]);
-        if w > 2 { val = utf8_acc_cont_byte(val, bytes[i + 2]); }
-        if w > 3 { val = utf8_acc_cont_byte(val, bytes[i + 3]); }
-
-        (val, i + w as usize)
-    }
-
-    multibyte_char_range_at(bytes, i)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

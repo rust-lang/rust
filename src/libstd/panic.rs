@@ -25,21 +25,7 @@ use thread::Result;
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use panicking::{take_hook, set_hook, PanicInfo, Location};
 
-///
-#[rustc_deprecated(since = "1.9.0", reason = "renamed to set_hook")]
-#[unstable(feature = "panic_handler", reason = "awaiting feedback", issue = "30449")]
-pub fn set_handler<F>(handler: F) where F: Fn(&PanicInfo) + 'static + Sync + Send {
-    set_hook(Box::new(handler))
-}
-
-///
-#[rustc_deprecated(since = "1.9.0", reason = "renamed to take_hook")]
-#[unstable(feature = "panic_handler", reason = "awaiting feedback", issue = "30449")]
-pub fn take_handler() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
-    take_hook()
-}
-
-/// A marker trait which represents "unwind safe" types in Rust.
+/// A marker trait which represents "panic safe" types in Rust.
 ///
 /// This trait is implemented by default for many types and behaves similarly in
 /// terms of inference of implementation to the `Send` and `Sync` traits. The
@@ -116,14 +102,6 @@ pub fn take_handler() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
 #[rustc_on_unimplemented = "the type {Self} may not be safely transferred \
                             across an unwind boundary"]
 pub trait UnwindSafe {}
-
-/// Deprecated, renamed to UnwindSafe
-#[unstable(feature = "recover", reason = "awaiting feedback", issue = "27719")]
-#[rustc_deprecated(reason = "renamed to `UnwindSafe`", since = "1.9.0")]
-pub trait RecoverSafe {}
-#[unstable(feature = "recover", reason = "awaiting feedback", issue = "27719")]
-#[allow(deprecated)]
-impl<T: UnwindSafe> RecoverSafe for T {}
 
 /// A marker trait representing types where a shared reference is considered
 /// unwind safe.
@@ -202,11 +180,6 @@ pub struct AssertUnwindSafe<T>(
     pub T
 );
 
-/// Deprecated, renamed to `AssertUnwindSafe`
-#[unstable(feature = "recover", issue = "27719")]
-#[rustc_deprecated(reason = "renamed to `AssertUnwindSafe`", since = "1.9.0")]
-pub struct AssertRecoverSafe<T>(pub T);
-
 // Implementations of the `UnwindSafe` trait:
 //
 // * By default everything is unwind safe
@@ -234,9 +207,6 @@ impl<T: ?Sized> UnwindSafe for Mutex<T> {}
 impl<T: ?Sized> UnwindSafe for RwLock<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T> UnwindSafe for AssertUnwindSafe<T> {}
-#[unstable(feature = "recover", issue = "27719")]
-#[allow(deprecated)]
-impl<T> UnwindSafe for AssertRecoverSafe<T> {}
 
 // not covered via the Shared impl above b/c the inner contents use
 // Cell/AtomicUsize, but the usage here is unwind safe so we can lift the
@@ -256,9 +226,6 @@ impl RefUnwindSafe for .. {}
 impl<T: ?Sized> !RefUnwindSafe for UnsafeCell<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T> RefUnwindSafe for AssertUnwindSafe<T> {}
-#[unstable(feature = "recover", issue = "27719")]
-#[allow(deprecated)]
-impl<T> RefUnwindSafe for AssertRecoverSafe<T> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T> Deref for AssertUnwindSafe<T> {
@@ -278,53 +245,6 @@ impl<T> DerefMut for AssertUnwindSafe<T> {
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<R, F: FnOnce() -> R> FnOnce<()> for AssertUnwindSafe<F> {
-    type Output = R;
-
-    extern "rust-call" fn call_once(self, _args: ()) -> R {
-        (self.0)()
-    }
-}
-
-#[allow(deprecated)]
-impl<T> AssertRecoverSafe<T> {
-    /// Creates a new `AssertRecoverSafe` wrapper around the provided type.
-    #[unstable(feature = "recover", reason = "awaiting feedback", issue = "27719")]
-    #[rustc_deprecated(reason = "the type's field is now public, construct it directly",
-                       since = "1.9.0")]
-    pub fn new(t: T) -> AssertRecoverSafe<T> {
-        AssertRecoverSafe(t)
-    }
-
-    /// Consumes the `AssertRecoverSafe`, returning the wrapped value.
-    #[unstable(feature = "recover", reason = "awaiting feedback", issue = "27719")]
-    #[rustc_deprecated(reason = "the type's field is now public, access it directly",
-                       since = "1.9.0")]
-    pub fn into_inner(self) -> T {
-        self.0
-    }
-}
-
-#[unstable(feature = "recover", issue = "27719")]
-#[allow(deprecated)]
-impl<T> Deref for AssertRecoverSafe<T> {
-    type Target = T;
-
-    fn deref(&self) -> &T {
-        &self.0
-    }
-}
-
-#[unstable(feature = "recover", issue = "27719")]
-#[allow(deprecated)]
-impl<T> DerefMut for AssertRecoverSafe<T> {
-    fn deref_mut(&mut self) -> &mut T {
-        &mut self.0
-    }
-}
-
-#[unstable(feature = "recover", issue = "27719")]
-#[allow(deprecated)]
-impl<R, F: FnOnce() -> R> FnOnce<()> for AssertRecoverSafe<F> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, _args: ()) -> R {
@@ -388,13 +308,6 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
     }
 }
 
-/// Deprecated, renamed to `catch_unwind`
-#[unstable(feature = "recover", reason = "awaiting feedback", issue = "27719")]
-#[rustc_deprecated(reason = "renamed to `catch_unwind`", since = "1.9.0")]
-pub fn recover<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
-    catch_unwind(f)
-}
-
 /// Triggers a panic without invoking the panic hook.
 ///
 /// This is designed to be used in conjunction with `catch_unwind` to, for
@@ -423,11 +336,4 @@ pub fn recover<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 #[stable(feature = "resume_unwind", since = "1.9.0")]
 pub fn resume_unwind(payload: Box<Any + Send>) -> ! {
     panicking::rust_panic(payload)
-}
-
-/// Deprecated, use resume_unwind instead
-#[unstable(feature = "panic_propagate", reason = "awaiting feedback", issue = "30752")]
-#[rustc_deprecated(reason = "renamed to `resume_unwind`", since = "1.9.0")]
-pub fn propagate(payload: Box<Any + Send>) -> ! {
-    resume_unwind(payload)
 }

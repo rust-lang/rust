@@ -694,40 +694,6 @@ impl<'b, T: ?Sized> Ref<'b, T> {
             borrow: orig.borrow,
         }
     }
-
-    /// Make a new `Ref` for an optional component of the borrowed data, e.g. an
-    /// enum variant.
-    ///
-    /// The `RefCell` is already immutably borrowed, so this cannot fail.
-    ///
-    /// This is an associated function that needs to be used as
-    /// `Ref::filter_map(...)`.  A method would interfere with methods of the
-    /// same name on the contents of a `RefCell` used through `Deref`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # #![feature(cell_extras)]
-    /// use std::cell::{RefCell, Ref};
-    ///
-    /// let c = RefCell::new(Ok(5));
-    /// let b1: Ref<Result<u32, ()>> = c.borrow();
-    /// let b2: Ref<u32> = Ref::filter_map(b1, |o| o.as_ref().ok()).unwrap();
-    /// assert_eq!(*b2, 5)
-    /// ```
-    #[unstable(feature = "cell_extras", reason = "recently added",
-               issue = "27746")]
-    #[rustc_deprecated(since = "1.8.0", reason = "can be built on `Ref::map`: \
-        https://crates.io/crates/ref_filter_map")]
-    #[inline]
-    pub fn filter_map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Option<Ref<'b, U>>
-        where F: FnOnce(&T) -> Option<&U>
-    {
-        f(orig.value).map(move |new| Ref {
-            value: new,
-            borrow: orig.borrow,
-        })
-    }
 }
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
@@ -766,47 +732,6 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
             value: f(orig.value),
             borrow: orig.borrow,
         }
-    }
-
-    /// Make a new `RefMut` for an optional component of the borrowed data, e.g.
-    /// an enum variant.
-    ///
-    /// The `RefCell` is already mutably borrowed, so this cannot fail.
-    ///
-    /// This is an associated function that needs to be used as
-    /// `RefMut::filter_map(...)`.  A method would interfere with methods of the
-    /// same name on the contents of a `RefCell` used through `Deref`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # #![feature(cell_extras)]
-    /// use std::cell::{RefCell, RefMut};
-    ///
-    /// let c = RefCell::new(Ok(5));
-    /// {
-    ///     let b1: RefMut<Result<u32, ()>> = c.borrow_mut();
-    ///     let mut b2: RefMut<u32> = RefMut::filter_map(b1, |o| {
-    ///         o.as_mut().ok()
-    ///     }).unwrap();
-    ///     assert_eq!(*b2, 5);
-    ///     *b2 = 42;
-    /// }
-    /// assert_eq!(*c.borrow(), Ok(42));
-    /// ```
-    #[unstable(feature = "cell_extras", reason = "recently added",
-               issue = "27746")]
-    #[rustc_deprecated(since = "1.8.0", reason = "can be built on `RefMut::map`: \
-        https://crates.io/crates/ref_filter_map")]
-    #[inline]
-    pub fn filter_map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> Option<RefMut<'b, U>>
-        where F: FnOnce(&mut T) -> Option<&mut U>
-    {
-        let RefMut { value, borrow } = orig;
-        f(value).map(move |new| RefMut {
-            value: new,
-            borrow: borrow,
-        })
     }
 }
 
