@@ -36,7 +36,7 @@ fn undefined_byte_read() -> u8 {
 #[miri_run]
 fn out_of_bounds_read() -> u8 {
     let v: Vec<u8> = vec![1, 2];
-    unsafe { *v.get_unchecked(5) } //~ ERROR: pointer offset (5 + 1) outside bounds (2) of allocation
+    unsafe { *v.get_unchecked(5) } //~ ERROR: memory access of 5..6 outside bounds of allocation 11 which has size 2
 }
 
 #[miri_run]

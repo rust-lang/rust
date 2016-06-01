@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fmt;
 use rustc::mir::repr as mir;
+use memory::Pointer;
 
 #[derive(Clone, Debug)]
 pub enum EvalError {
@@ -8,9 +9,9 @@ pub enum EvalError {
     InvalidBool,
     InvalidDiscriminant,
     PointerOutOfBounds {
-        offset: usize,
+        ptr: Pointer,
         size: usize,
-        len: usize,
+        allocation_size: usize,
     },
     ReadPointerAsBytes,
     ReadBytesAsPointer,
@@ -53,7 +54,10 @@ impl Error for EvalError {
 impl fmt::Display for EvalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            EvalError::PointerOutOfBounds { offset, size, len } => write!(f, "pointer offset ({} + {}) outside bounds ({}) of allocation", offset, size, len),
+            EvalError::PointerOutOfBounds { ptr, size, allocation_size } => {
+                write!(f, "memory access of {}..{} outside bounds of allocation {} which has size {}",
+                       ptr.offset, ptr.offset + size, ptr.alloc_id, allocation_size)
+            },
             _ => write!(f, "{}", self.description()),
         }
     }

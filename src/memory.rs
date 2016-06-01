@@ -181,9 +181,9 @@ impl Memory {
         let alloc = self.get(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
             return Err(EvalError::PointerOutOfBounds {
-                offset: ptr.offset,
+                ptr: ptr,
                 size: size,
-                len: alloc.bytes.len(),
+                allocation_size: alloc.bytes.len(),
             });
         }
         Ok(&alloc.bytes[ptr.offset..ptr.offset + size])
@@ -193,9 +193,9 @@ impl Memory {
         let alloc = self.get_mut(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
             return Err(EvalError::PointerOutOfBounds {
-                offset: ptr.offset,
+                ptr: ptr,
                 size: size,
-                len: alloc.bytes.len(),
+                allocation_size: alloc.bytes.len(),
             });
         }
         Ok(&mut alloc.bytes[ptr.offset..ptr.offset + size])
