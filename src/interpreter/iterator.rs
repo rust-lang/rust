@@ -30,7 +30,9 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             process: Self::dummy,
         }
     }
+
     fn dummy(&mut self) -> EvalResult<()> { Ok(()) }
+
     fn statement(&mut self) -> EvalResult<()> {
         let block_data = self.mir.basic_block_data(self.block);
         let stmt = &block_data.statements[self.stmt];
@@ -40,6 +42,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         self.stmt += 1;
         Ok(())
     }
+
     fn terminator(&mut self) -> EvalResult<()> {
         self.stmt = 0;
         let term = {
@@ -67,6 +70,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         }
         Ok(())
     }
+
     pub fn step<'step>(&'step mut self) -> EvalResult<Event<'step, 'tcx>> {
         (self.process)(self)?;
 
@@ -86,6 +90,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         self.process = Self::terminator;
         Ok(Event::Terminator(basic_block.terminator()))
     }
+    
     pub fn block(&self) -> mir::BasicBlock {
         self.block
     }
