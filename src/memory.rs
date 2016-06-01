@@ -49,6 +49,7 @@ pub struct Memory {
 }
 
 impl Memory {
+    // FIXME: pass tcx.data_layout (This would also allow it to use primitive type alignments to diagnose unaligned memory accesses.)
     pub fn new(pointer_size: usize) -> Self {
         Memory {
             alloc_map: HashMap::new(),
