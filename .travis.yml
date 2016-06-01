@@ -1,6 +1,7 @@
 language: generic
 sudo: required
-dist: trusty
+services:
+  - docker
 
 # LLVM takes awhile to check out and otherwise we'll manage the submodules in
 # our configure script, so disable auto submodule management.
@@ -8,15 +9,15 @@ git:
   submodules: false
 
 before_install:
-  - echo 0 | sudo tee /proc/sys/net/ipv6/conf/lo/disable_ipv6
-  - echo 'deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.7 main' | sudo tee -a /etc/apt/sources.list
-  - echo 'deb-src http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.7 main' | sudo tee -a /etc/apt/sources.list
-  - sudo apt-get update
-  - sudo apt-get --force-yes install curl make g++ python2.7 git zlib1g-dev libedit-dev llvm-3.7-tools
+  - docker build -t rust -f src/etc/Dockerfile src/etc
 
 script:
-  - ./configure --llvm-root=/usr/lib/llvm-3.7
-  - make tidy && make check-notidy -j4
+  - docker run -v `pwd`:/build rust
+    sh -c "
+      ./configure --llvm-root=/usr/lib/llvm-3.7 &&
+      make tidy &&
+      make check-notidy -j4
+    "
 
 # Real testing happens on http://buildbot.rust-lang.org/
 #
