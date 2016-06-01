@@ -982,7 +982,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 use rustc::mir::repr::Literal::*;
                 match *literal {
                     Value { ref value } => Ok(self.const_to_ptr(value)?),
-                    Item { .. } => Err(EvalError::Unimplemented(format!("function pointers are unimplemented"))),
+                    Item { .. } => Err(EvalError::Unimplemented(format!("literal items (e.g. mentions of function items) are unimplemented"))),
                     Promoted { index } => {
                         // TODO(solson): Mark constants and statics as read-only and cache their
                         // values.

@@ -1,7 +1,7 @@
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
-//error-pattern:function pointers are unimplemented
+//error-pattern:literal items (e.g. mentions of function items) are unimplemented
 
 static mut X: usize = 5;
 
