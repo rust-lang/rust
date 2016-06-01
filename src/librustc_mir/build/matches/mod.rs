@@ -15,6 +15,7 @@
 
 use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{AdtDef, Ty};
 use rustc::mir::repr::*;
@@ -266,7 +267,7 @@ enum TestKind<'tcx> {
     // test the branches of enum
     Switch {
         adt_def: AdtDef<'tcx>,
-        variants: Vec<bool>,
+        variants: BitVector,
     },
 
     // test the branches of enum
