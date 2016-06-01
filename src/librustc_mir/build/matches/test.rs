@@ -19,6 +19,7 @@ use build::Builder;
 use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
@@ -35,7 +36,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     span: match_pair.pattern.span,
                     kind: TestKind::Switch { 
                         adt_def: adt_def.clone(), 
-                        variants: vec![false; self.hir.num_variants(adt_def)], 
+                        variants: BitVector::new(self.hir.num_variants(adt_def)),
                     },
                 }
             }
@@ -129,7 +130,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 true
             }
             PatternKind::Variant { .. } => {
-                panic!("you should have called add_cases_to_switch_switch instead!");
+                panic!("you should have called add_variants_to_switch instead!");
             }
             PatternKind::Range { .. } |
             PatternKind::Slice { .. } |
@@ -145,10 +146,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn add_variants_to_switch<'pat>(&mut self,
-                                     test_lvalue: &Lvalue<'tcx>,
-                                     candidate: &Candidate<'pat, 'tcx>,
-                                     variants: &mut Vec<bool>)
-                                     -> bool
+                                        test_lvalue: &Lvalue<'tcx>,
+                                        candidate: &Candidate<'pat, 'tcx>,
+                                        variants: &mut BitVector)
+                                        -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {
             Some(match_pair) => match_pair,
@@ -157,8 +158,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         match *match_pair.pattern.kind {
             PatternKind::Variant { adt_def: _ , variant_index,  .. } => {
-                // Do I need to look at the PatternKind::Variant subpatterns?
-                variants[variant_index] |= true;
+                // We have a pattern testing for variant `variant_index`
+                // set the corresponding index to true
+                variants.insert(variant_index);
                 true
             }
             _ => {
@@ -178,24 +180,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
                 let num_enum_variants = self.hir.num_variants(adt_def);
-                debug!("num_enum_variants: {}", num_enum_variants);
-                debug!("variants.len(): {}", variants.len());
-                debug!("variants: {:?}", variants);
-                let target_blocks: Vec<_> = if variants.into_iter().any(|b| {!b}) {
-                    let otherwise_block = self.cfg.start_new_block();
-                    debug!("basic block: {:?} is an otherwise block!", otherwise_block);
-                    (0..num_enum_variants).map(|i| 
-                        if variants[i] {
-                            self.cfg.start_new_block()
-                        } else {
-                            otherwise_block
+                let mut otherwise_block = None;
+                let target_blocks: Vec<_> = (0..num_enum_variants).map(|i| {
+                    if variants.contains(i) {
+                        self.cfg.start_new_block()
+                    } else {
+                        if otherwise_block.is_none() {
+                            otherwise_block = Some(self.cfg.start_new_block());
                         }
-                    )
-                    .collect()
-                } else {
-                    (0..num_enum_variants).map(|_| self.cfg.start_new_block())
-                                          .collect()
-                };
+                        otherwise_block.unwrap()
+                    }
+                }).collect();
+                debug!("num_enum_variants: {}, num tested variants: {}, variants: {:?}",
+                       num_enum_variants, variants.iter().count(), variants);
                 self.cfg.terminate(block, scope_id, test.span, TerminatorKind::Switch {
                     discr: lvalue.clone(),
                     adt_def: adt_def,

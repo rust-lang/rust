@@ -11,7 +11,7 @@
 use std::iter::FromIterator;
 
 /// A very simple BitVector type.
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BitVector {
     data: Vec<u64>,
 }
