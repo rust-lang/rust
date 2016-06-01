@@ -1,5 +1,5 @@
 <footer><p>
-Copyright &copy; 2011-2015 The Rust Project Developers. Licensed under the
+Copyright &copy; 2011 The Rust Project Developers. Licensed under the
 <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>
 or the <a href="https://opensource.org/licenses/MIT">MIT license</a>, at your option.
 </p><p>
