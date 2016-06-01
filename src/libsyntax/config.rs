@@ -134,7 +134,7 @@ impl<'a> CfgFolder for StripUnconfigured<'a> {
     }
 
     fn visit_unremovable_expr(&mut self, expr: &ast::Expr) {
-        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
+        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a) || is_test_or_bench(a)) {
             let msg = "removing an expression is not supported in this position";
             self.diag.diag.span_err(attr.span, msg);
         }
