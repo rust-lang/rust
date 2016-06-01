@@ -354,7 +354,7 @@ fn unwrap_or_0(opt: Option<&u8>) -> u8 {
 /// UTF-8-like encoding).
 #[unstable(feature = "str_internals", issue = "0")]
 #[inline]
-pub fn next_code_point(bytes: &mut slice::Iter<u8>) -> Option<u32> {
+pub fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> Option<u32> {
     // Decode UTF-8
     let x = match bytes.next() {
         None => return None,
@@ -388,7 +388,8 @@ pub fn next_code_point(bytes: &mut slice::Iter<u8>) -> Option<u32> {
 /// Reads the last code point out of a byte iterator (assuming a
 /// UTF-8-like encoding).
 #[inline]
-fn next_code_point_reverse(bytes: &mut slice::Iter<u8>) -> Option<u32> {
+fn next_code_point_reverse<'a,
+                           I: DoubleEndedIterator<Item = &'a u8>>(bytes: &mut I) -> Option<u32> {
     // Decode UTF-8
     let w = match bytes.next_back() {
         None => return None,
