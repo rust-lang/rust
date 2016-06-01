@@ -1382,7 +1382,6 @@ mod tests {
     }
 
     #[test]
-    #[rustc_no_mir] // FIXME #27840 MIR NAN ends up negative.
     fn test_integer_decode() {
         assert_eq!(3.14159265359f32.integer_decode(), (13176795, -22, 1));
         assert_eq!((-8573.5918555f32).integer_decode(), (8779358, -10, -1));
@@ -1391,7 +1390,11 @@ mod tests {
         assert_eq!((-0f32).integer_decode(), (0, -150, -1));
         assert_eq!(INFINITY.integer_decode(), (8388608, 105, 1));
         assert_eq!(NEG_INFINITY.integer_decode(), (8388608, 105, -1));
-        assert_eq!(NAN.integer_decode(), (12582912, 105, 1));
+
+        // Ignore the "sign" (quiet / signalling flag) of NAN.
+        // It can vary between runtime operations and LLVM folding.
+        let (nan_m, nan_e, _nan_s) = NAN.integer_decode();
+        assert_eq!((nan_m, nan_e), (12582912, 105));
     }
 
     #[test]
