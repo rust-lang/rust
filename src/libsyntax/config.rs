@@ -42,16 +42,19 @@ pub trait CfgFolder: fold::Folder {
 /// configuration.
 pub struct StripUnconfigured<'a> {
     diag: CfgDiagReal<'a, 'a>,
+    should_test: bool,
     config: &'a ast::CrateConfig,
 }
 
 impl<'a> StripUnconfigured<'a> {
     pub fn new(config: &'a ast::CrateConfig,
+               should_test: bool,
                diagnostic: &'a Handler,
                feature_gated_cfgs: &'a mut Vec<GatedCfgAttr>)
                -> Self {
         StripUnconfigured {
             config: config,
+            should_test: should_test,
             diag: CfgDiagReal { diag: diagnostic, feature_gated_cfgs: feature_gated_cfgs },
         }
     }
@@ -96,6 +99,11 @@ impl<'a> CfgFolder for StripUnconfigured<'a> {
     // configuration based on the item's attributes
     fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
         attrs.iter().all(|attr| {
+            // When not compiling with --test we should not compile the #[test] functions
+            if !self.should_test && is_test_or_bench(attr) {
+                return false;
+            }
+
             let mis = match attr.node.value.node {
                 ast::MetaItemKind::List(_, ref mis) if is_cfg(&attr) => mis,
                 _ => return true
@@ -135,12 +143,12 @@ impl<'a> CfgFolder for StripUnconfigured<'a> {
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
-pub fn strip_unconfigured_items(diagnostic: &Handler, krate: ast::Crate,
+pub fn strip_unconfigured_items(diagnostic: &Handler, krate: ast::Crate, should_test: bool,
                                 feature_gated_cfgs: &mut Vec<GatedCfgAttr>)
                                 -> ast::Crate
 {
     let config = &krate.config.clone();
-    StripUnconfigured::new(config, diagnostic, feature_gated_cfgs).fold_crate(krate)
+    StripUnconfigured::new(config, should_test, diagnostic, feature_gated_cfgs).fold_crate(krate)
 }
 
 impl<T: CfgFolder> fold::Folder for T {
@@ -276,6 +284,10 @@ fn fold_expr<F: CfgFolder>(folder: &mut F, expr: P<ast::Expr>) -> P<ast::Expr> {
 
 fn is_cfg(attr: &ast::Attribute) -> bool {
     attr.check_name("cfg")
+}
+
+fn is_test_or_bench(attr: &ast::Attribute) -> bool {
+    attr.check_name("test") || attr.check_name("bench")
 }
 
 pub trait CfgDiag {
