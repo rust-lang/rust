@@ -9,8 +9,15 @@
 Refine the unguarded-escape-hatch from [RFC 1238][] (nonparametric
 dropck) so that instead of a single attribute side-stepping *all*
 dropck constraints for a type's destructor, we instead have a more
-focused attribute that specifies exactly which type and/or lifetime
+focused system that specifies exactly which type and/or lifetime
 parameters the destructor is guaranteed not to access.
+
+Specifically, this RFC proposes adding the capability to attach
+attributes to the binding sites for generic parameters (i.e. lifetime
+and type paramters). Atop that capability, this RFC proposes adding a
+`#[may_dangle]` attribute that indicates that a given lifetime or type
+holds data that must not be accessed during the dynamic extent of that
+`drop` invocation.
 
 [RFC 1238]: https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
 [RFC 769]: https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md
@@ -130,33 +137,127 @@ storage for [cyclic graph structures][dropck_legal_cycles.rs]).
 # Detailed design
 [detailed design]: #detailed-design
 
- 1. Add a new fine-grained attribute, `unsafe_destructor_blind_to`
-    (which this RFC will sometimes call the "eyepatch", since it does
-    not make dropck totally blind; just blind on one "side").
+ 1. Add the ability to attach attributes to syntax that binds formal
+    lifetime or type parmeters. For the purposes of this RFC, the only
+    place in the syntax that requires such attributes are `impl`
+    blocks, as in `impl Drop for Type { ... }`
 
- 2. Remove `unsafe_destructor_blind_to_params`, since all uses of it
-    should be expressible via `unsafe_destructor_blind_to` (once that
-    has been completely implemented).
+ 2. Add a new fine-grained attribute, `may_dangle`, which is attached
+    to the binding sites for lifetime or type parameters on an `Drop`
+    implementation.
+    This RFC will sometimes call this attribute the "eyepatch",
+    since it does
+    not make dropck totally blind; just blind on one "side".
+ 
+ 3. Add a new requirement that any `Drop` implementation that uses the
+    `#[may_dangle]` attribute must be declared as an `unsafe impl`.
+    This reflects the fact that such `Drop` implementations have
+    an additional constraint on their behavior (namely that they cannot
+    access certain kinds of data) that will not be verified by the
+    compiler and thus must be verified by the programmer.
+
+ 4. Remove `unsafe_destructor_blind_to_params`, since all uses of it
+    should be expressible via `#[may_dangle]`.
+
+## Attributes on lifetime or type parameters
+
+This is a simple extension to the syntax.
+
+Constructions like the following will now become legal.
+
+Example of eyepatch attribute on a single type parameter:
+```rust
+unsafe impl<'a, #[may_dangle] X, Y> Drop for Foo<'a, X, Y> {
+    ...
+}
+```
+
+Example of eyepatch attribute on a lifetime parameter:
+```rust
+unsafe impl<#[may_dangle] 'a, X, Y> Drop for Bar<'a, X, Y> {
+    ...
+}
+```
+
+Example of eyepatch attribute on multiple parameters:
+```rust
+unsafe impl<#[may_dangle] 'a, X, #[may_dangle] Y> Drop for Baz<'a, X, Y> {
+    ...
+}
+```
+
+These attributes are only written next to the formal binding
+sites for the generic parameters. The *usage* sites, points
+which refer back to the parameters, continue to disallow the use
+of attributes.
+
+So while this is legal syntax:
+
+```rust
+unsafe impl<'a, #[may_dangle] X, Y> Drop for Foo<'a, X, Y> {
+    ...
+}
+```
+
+the follow would be illegal syntax (at least for now):
+
+```rust
+unsafe impl<'a, X, Y> Drop for Foo<'a, #[may_dangle] X, Y> {
+    ...
+}
+```
+
 
 ## The "eyepatch" attribute
 
-Add a new attribute, `unsafe_destructor_blind_to(ARG)` (the "eyepatch").
+Add a new attribute, `#[may_dangle]` (the "eyepatch").
 
 The eyepatch is similar to `unsafe_destructor_blind_to_params`: it is
-attached to the destructor<sup>[1](#footnote1)</sup>, and it is meant
+part of the `Drop` implementation, and it is meant
 to assert that a destructor is guaranteed not to access certain kinds
 of data accessible via `self`.
 
-The main difference is that the eyepatch has a single required
-parameter, `ARG`. This is the place where you specify exactly *what*
+The main difference is that the eyepatch is applied to a single
+generic parameter: `#[may_dangle] ARG`.
+This specifies exactly *what*
 the destructor is blind to (i.e., what will dropck treat as
 inaccessible from the destructor for this type).
 
-There are two things one can put the `ARG` for a given eyepatch: one
-of the type parameters for the type, or one of the lifetime parameters
-for the type.<sup>[2](#footnote2)</sup>
+There are two things one can supply as the `ARG` for a given eyepatch: 
+one of the type parameters for the type,
+or one of the lifetime parameters
+for the type.
 
-### Examples stolen from the Rustonomicon
+When used on a type, e.g. `#[may_dangle] T`, the programmer is
+asserting the only uses of values of that type will be to move or drop
+them. Thus, no fields will be accessed nor methods called on values of
+such a type (apart from any access performed by the destructor for the
+type when the values are dropped). This ensures that no dangling
+references (such as when `T` is instantiated with `&'a u32`) are ever
+accessed in the scenario where `'a` has the same lifetime as the value
+being currently destroyed (and thus the precise order of destruction
+between the two is unknown to the compiler).
+
+When used on a lifetime, e.g. `#[may_dangle] 'a`, the programmer is
+asserting that no data behind a reference of lifetime `'a` will be
+accessed by the destructor. Thus, no fields will be accessed nor
+methods called on values of type `&'a Struct`, ensuring that again no
+dangling references are ever accessed by the destructor.
+
+## Require `unsafe` on Drop implementations using the eyepatch
+
+The final detail is to add an additional check to the compiler
+to ensure that any use of `#[may_dangle]` on a `Drop` implementation
+imposes a requirement that that implementation block use
+`unsafe impl`.<sup>[2](#footnote1)</sup>
+
+This reflects the fact that use of `#[may_dangle]` is a
+programmer-provided assertion about the behavior of the `Drop`
+implementation that must be valided manually by the programmer.
+It is analogous to other uses of `unsafe impl` (apart from the
+fact that the `Drop` trait itself is not an `unsafe trait`).
+
+### Examples adapted from the Rustonomicon
 
 [nomicon dropck]: https://doc.rust-lang.org/nightly/nomicon/dropck.html
 
@@ -169,8 +270,7 @@ Example of eyepatch on a lifetime parameter::
 ```rust
 struct InspectorA<'a>(&'a u8, &'static str);
 
-impl<'a> Drop for InspectorA<'a> {
-    #[unsafe_destructor_blind_to('a)]
+unsafe impl<#[may_dangle] 'a> Drop for InspectorA<'a> {
     fn drop(&mut self) {
         println!("InspectorA(_, {}) knows when *not* to inspect.", self.1);
     }
@@ -184,8 +284,7 @@ use std::fmt;
 
 struct InspectorB<T: fmt::Display>(T, &'static str);
 
-impl<T: fmt::Display> Drop for InspectorB<T> {
-    #[unsafe_destructor_blind_to(T)]
+unsafe impl<#[may_dangle] T: fmt::Display> Drop for InspectorB<T> {
     fn drop(&mut self) {
         println!("InspectorB(_, {}) knows when *not* to inspect.", self.1);
     }
@@ -202,8 +301,7 @@ To generalize `RawVec` from the [motivation](#motivation) with an
 code), we would now write:
 
 ```rust
-impl<T, A:Allocator> Drop for RawVec<T, A> {
-    #[unsafe_destructor_blind_to(T)]
+unsafe impl<#[may_dangle]T, A:Allocator> Drop for RawVec<T, A> {
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     fn drop(&mut self) {
         [... free memory using self.alloc ...]
@@ -211,7 +309,7 @@ impl<T, A:Allocator> Drop for RawVec<T, A> {
 }
 ```
 
-The use of `unsafe_destructor_blind_to(T)` here asserts that even
+The use of `#[may_dangle] T` here asserts that even
 though the destructor may access borrowed data through `A` (and thus
 dropck must impose drop-ordering constraints for lifetimes occurring
 in the type of `A`), the developer is guaranteeing that no access to
@@ -232,9 +330,7 @@ If we wanted to generalize this type a bit, we might write:
 ```rust
 struct InspectorC<'a,'b,'c>(&'a str, &'b str, &'c str);
 
-impl<'a,'b,'c> Drop for InspectorC<'a,'b,'c> {
-    #[unsafe_destructor_blind_to('a)]
-    #[unsafe_destructor_blind_to('c)]
+unsafe impl<#[may_dangle] 'a, 'b, #[may_dangle] 'c> Drop for InspectorC<'a,'b,'c> {
     fn drop(&mut self) {
         println!("InspectorA(_, {}, _) knows when *not* to inspect.", self.1);
     }
@@ -319,7 +415,7 @@ including when `D` == `InspectorC<'a,'name,'c>`).
 [prototype]: #prototype
 
 pnkfelix has implemented a proof-of-concept
-[implementation][pnkfelix prototype] of this feature.
+[implementation][pnkfelix prototype] of the `#[may_dangle]` attribute.
 It uses the substitution machinery we already have in the compiler
 to express the semantics above.
 
@@ -329,20 +425,15 @@ Here we note a few limitations of the current prototype. These
 limitations are *not* being proposed as part of the specification of
 the feature.
 
-<a name="footnote1">1.</a> The eyepatch is not attached to the
-destructor in the current [prototype][pnkfelix prototype]; it is
-instead attached to the `struct`/`enum` definition itself.
-
-<a name="footnote2">2.</a> The eyepatch is only able to accept a type
-parameter, not a lifetime, in the current
-[prototype][pnkfelix prototype]; it is instead attached to the
-`struct`/`enum` definition itself.
+<a name="footnote1">2.</a> The compiler does not yet enforce (or even
+allow) the use of `unsafe impl` for `Drop` implementations that use
+the `#[may_dangle]` attribute.
 
 Fixing the above limitations should just be a matter of engineering,
 not a fundamental hurdle to overcome in the feature's design in the
 context of the language.
 
-[pnkfelix prototype]: https://github.com/pnkfelix/rust/commits/fsk-nonparam-blind-to-indiv
+[pnkfelix prototype]: https://github.com/pnkfelix/rust/commits/dropck-eyepatch
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -359,81 +450,10 @@ could check the assertions being made by the programmer, rather than
 trusting them. (pnkfelix has some thoughts on this, which are mostly
 reflected in what he wrote in the [RFC 1238 alternatives][].)
 
-## Attributes lack hygiene
-[attributes-lack-hygiene]: #attributes-lack-hygiene
-
-As noted by arielb1, putting type parameter identifiers into attributes
-is not likely to play well with macro hygiene.
-
-Here is a concrete example:
-
-```rust
-struct Yell2<A:Debug,B:Debug>(A, B);
-
-macro_rules! make_yell2a {
-    ($A:ident, $B:ident) => {
-        impl<$A:Debug,$B:Debug> Drop for Yell2<$A,$B> {
-            #[unsafe_destructor_blind_to(???)]  // <----
-            fn drop(&mut self) {
-                println!("Yell1(_, {:?})", self.1);
-            }
-        }
-    }
-}
-
-make_yell2a!(X, Y);
-```
-
-Here is the issue: In the above, what does one put in for the `???` to
-say that we are blind to the first type parameter to `Yell2`?
-`#[unsafe_destructor_blind_to(A)` would be nonsense, becauase in the instantiation of the macro, `$A` will be mapped to the identifier `X`.  so perhaps we should write it is blind to `X` -- but to me one big point of macro hygiene is that a macro definition should not have to build in knowledge of the identifiers chosen at the usage site, and this is the opposite of that.
-
-(I don't think `#[unsafe_destructor_blind_to($A)` works, because our attribute system operates at the same meta-level that macros operate at , but I would be happy to be proven wrong.)
-
-----
-
-Despite my somewhat dire attitude above, I don't think this is a significant problem in the short term. This sort of macro is probably rare, and the combination of this macro with UGEH is doubly so. You cannot define a destructor multiple times for the same type, so it seems weird to me to abstract this code construction at this particular level.
-
-
 [RFC 1238 alternatives]: https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md#continue-supporting-parametricity
 
 # Alternatives
 [alternatives]: #alternatives
-
-## unsafe_destructor_blind_to(T1, T2, ...)
-
-The eyepatch could take multiple arguments, rather than requiring a
-distinct instance of the attribute for each parameter that we are
-blind to.
-
-However, I think that each usage of the attribute needs to be
-considered, since it represents a separate "attack vector" where
-unsoundness can be introduced, and therefore it deserves more than
-just a comma and a space added to the program text when it is added.
-
-(I only weakly support the latter position; it is obviously easy
-to support this form if that is deemed desirable.)
-
-## Use a blacklist not a whitelist
-[blacklist-not-whitelist]: #use-a-blacklist-not-a-whitelist
-
-The `unsafe_destructor_blind_to` attribute acts as a whitelist of
-parameters that we are telling dropck to ignore in its analysis
-of this destructor.
-
-We could instead add a way to list the lifetimes and/or
-type-expressions (e.g. parameters, projections from parameters) that
-the destructor may access (and thus treat that list as a blacklist of
-parameters that dropck needs to *include* in its analysis).
-
-arielb1 first suggested this as an attribute form
-[here][blacklist attribute], but then provided a different formulation
-of the idea by expressing it as a [`where`-clause][blacklist where] on
-the `fn drop` method (which is what I will show in the next section).
-
-[blacklist attribute]: https://github.com/rust-lang/rfcs/pull/1327#issuecomment-149302743
-
-[blacklist where]: https://github.com/rust-lang/rfcs/pull/1327#issuecomment-149329351
 
 ## Make dropck "see again" via (focused) where-clauses
 
@@ -480,10 +500,8 @@ avoids a number of problems that the eyepatch attribute has.
 
 Advantages of fn-drop-with-where-clauses:
 
-  * It completely sidesteps the [hygiene issue][attributes-lack-hygiene].
-
-  * If the eyepatch attribute is to be limited to identifiers (type
-    parameters) and lifetimes, then this approach is more expressive,
+  * Since the eyepatch attribute is to be limited to type and lifetime
+    parameters, this approach is more expressive,
     since it would allow one to put type-projections into the
     constraints.
 
@@ -542,7 +560,7 @@ this RFC rather than waiting for a sound compiler analysis):
     to write that `T` is parametric (e.g. `T: ?Special` in the [RFC 1238 alternatives]).
     Even then, we would still need the compiler changes suggested by this RFC,
     and at that point hopefully the task would be for the programmer to mechanically
-    replace occurrences of `#[unsafe_destructor_blind_to(T)` with `T: ?Special`
+    replace occurrences of `#[may_dangle] T` with `T: ?Special`
     (and then see if the library builds).
 
     In other words, I see the form suggested by this RFC as being a step *towards*
@@ -557,11 +575,6 @@ If we do nothing, then we cannot add `Vec<T, A:Allocator>` soundly.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
-
-Is there any issue with writing `'a` in an attribute like
-`#[unsafe_destructor_blind_to('a)]`?  (The prototype, as mentioned
-[above](#footnote2), does not currently accept lifetime parameter
-inputs, so I do not know the answer off hand.
 
 Is the definition of the drop-check rule sound with this `patched(D)`
 variant?  (We have not proven any previous variation of the rule
