@@ -20,6 +20,8 @@ use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer};
 use primval::{self, PrimVal};
 
+mod iterator;
+
 struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -184,38 +186,22 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     }
 
     fn run(&mut self) -> EvalResult<()> {
-        'outer: while !self.stack.is_empty() {
-            let mut current_block = self.frame().next_block;
-            let current_mir = self.mir();
+        let mut stepper = iterator::Stepper::new(self);
+        'outer: loop {
+            use self::iterator::Event::*;
+            trace!("// {:?}", stepper.block());
 
             loop {
-                trace!("// {:?}", current_block);
-                let block_data = current_mir.basic_block_data(current_block);
-
-                for stmt in &block_data.statements {
-                    trace!("{:?}", stmt);
-                    let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-                    let result = self.eval_assignment(lvalue, rvalue);
-                    self.maybe_report(stmt.span, result)?;
-                }
-
-                let terminator = block_data.terminator();
-                trace!("{:?}", terminator.kind);
-
-                let result = self.eval_terminator(terminator);
-                match self.maybe_report(terminator.span, result)? {
-                    TerminatorTarget::Block(block) => current_block = block,
-                    TerminatorTarget::Return => {
-                        self.pop_stack_frame();
-                        self.name_stack.pop();
+                match stepper.step()? {
+                    Assignment(statement) => trace!("{:?}", statement),
+                    Terminator(terminator) => {
+                        trace!("{:?}", terminator.kind);
                         continue 'outer;
-                    }
-                    TerminatorTarget::Call => continue 'outer,
+                    },
+                    Done => return Ok(()),
                 }
             }
         }
-
-        Ok(())
     }
 
     fn push_stack_frame(&mut self, mir: CachedMir<'mir, 'tcx>, substs: &'tcx Substs<'tcx>,
