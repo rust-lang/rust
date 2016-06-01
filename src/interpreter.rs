@@ -186,10 +186,10 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     fn run(&mut self) -> EvalResult<()> {
         'outer: while !self.stack.is_empty() {
             let mut current_block = self.frame().next_block;
+            let current_mir = self.mir();
 
             loop {
                 trace!("// {:?}", current_block);
-                let current_mir = self.mir().clone(); // Cloning a reference.
                 let block_data = current_mir.basic_block_data(current_block);
 
                 for stmt in &block_data.statements {
