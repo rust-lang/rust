@@ -20,6 +20,8 @@ use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer};
 use primval::{self, PrimVal};
 
+use std::collections::HashMap;
+
 mod stepper;
 
 struct GlobalEvalContext<'a, 'tcx: 'a> {
@@ -45,6 +47,9 @@ struct GlobalEvalContext<'a, 'tcx: 'a> {
     ///   * Function DefIds and Substs to print proper substituted function names.
     ///   * Spans pointing to specific function calls in the source.
     name_stack: Vec<(DefId, &'tcx Substs<'tcx>, codemap::Span)>,
+
+    /// Precomputed statics and constants
+    statics: DefIdMap<Pointer>,
 }
 
 struct FnEvalContext<'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> {
@@ -88,6 +93,9 @@ struct Frame<'a, 'tcx: 'a> {
 
     /// The offset of the first temporary in `self.locals`.
     temp_offset: usize,
+
+    /// List of precomputed promoted constants
+    promoted: HashMap<usize, Pointer>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -122,6 +130,13 @@ enum TerminatorTarget {
     Return,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+enum ConstantId {
+    Promoted { index: usize },
+    Static { def_id: DefId },
+}
+
+
 impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
         GlobalEvalContext {
@@ -135,10 +150,11 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
                                    .expect("Session::target::uint_type was usize")/8),
             substs_stack: Vec::new(),
             name_stack: Vec::new(),
+            statics: DefIdMap(),
         }
     }
 
-    fn call(&mut self, mir: &mir::Mir<'tcx>) -> EvalResult<Option<Pointer>> {
+    fn call(&mut self, mir: &mir::Mir<'tcx>, def_id: DefId) -> EvalResult<Option<Pointer>> {
         let mut nested_fecx = FnEvalContext::new(self);
 
         let return_ptr = match mir.return_ty {
@@ -150,6 +166,7 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
         };
 
         let substs = nested_fecx.substs();
+        nested_fecx.name_stack.push((def_id, substs, mir.span));
         nested_fecx.push_stack_frame(CachedMir::Ref(mir), substs, return_ptr);
         nested_fecx.run()?;
         Ok(return_ptr)
@@ -193,9 +210,9 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
             loop {
                 match stepper.step()? {
-                    Assignment(statement) => trace!("{:?}", statement),
-                    Terminator(terminator) => {
-                        trace!("{:?}", terminator.kind);
+                    Assignment => trace!("{:?}", stepper.stmt()),
+                    Terminator => {
+                        trace!("{:?}", stepper.term().kind);
                         continue 'outer;
                     },
                     Done => return Ok(()),
@@ -230,6 +247,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             locals: locals,
             var_offset: num_args,
             temp_offset: num_args + num_vars,
+            promoted: HashMap::new(),
         });
     }
 
@@ -983,13 +1001,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 match *literal {
                     Value { ref value } => Ok(self.const_to_ptr(value)?),
                     Item { .. } => Err(EvalError::Unimplemented(format!("literal items (e.g. mentions of function items) are unimplemented"))),
-                    Promoted { index } => {
-                        // TODO(solson): Mark constants and statics as read-only and cache their
-                        // values.
-                        let current_mir = self.mir();
-                        let mir = &current_mir.promoted[index];
-                        self.gecx.call(mir).map(Option::unwrap)
-                    }
+                    Promoted { index } => Ok(*self.frame().promoted.get(&index).expect("a promoted constant hasn't been precomputed")),
                 }
             }
         }
@@ -1004,11 +1016,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             Var(i) => self.frame().locals[self.frame().var_offset + i as usize],
             Temp(i) => self.frame().locals[self.frame().temp_offset + i as usize],
 
-            Static(def_id) => {
-                // TODO(solson): Mark constants and statics as read-only and cache their values.
-                let mir = self.load_mir(def_id);
-                self.gecx.call(&mir)?.unwrap()
-            }
+            Static(def_id) => *self.gecx.statics.get(&def_id).expect("static should have been cached"),
 
             Projection(ref proj) => {
                 let base = self.eval_lvalue(&proj.base)?;
@@ -1412,7 +1420,7 @@ pub fn interpret_start_points<'a, 'tcx>(
                 debug!("Interpreting: {}", item.name);
 
                 let mut gecx = GlobalEvalContext::new(tcx, mir_map);
-                match gecx.call(mir) {
+                match gecx.call(mir, tcx.map.local_def_id(id)) {
                     Ok(Some(return_ptr)) => if log_enabled!(::log::LogLevel::Debug) {
                         gecx.memory.dump(return_ptr.alloc_id);
                     },
