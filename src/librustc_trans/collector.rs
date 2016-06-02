@@ -205,6 +205,7 @@ use rustc::mir::visit::Visitor as MirVisitor;
 use syntax::abi::Abi;
 use errors;
 use syntax_pos::DUMMY_SP;
+use syntax::ast::NodeId;
 use base::custom_coerce_unsize_info;
 use context::SharedCrateContext;
 use common::{fulfill_obligation, normalize_and_test_predicates, type_is_sized};
@@ -349,17 +350,14 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
                 || format!("Could not find MIR for static: {:?}", def_id));
 
             let empty_substs = scx.empty_substs_for_def_id(def_id);
-            let mut visitor = MirNeighborCollector {
+            let visitor = MirNeighborCollector {
                 scx: scx,
                 mir: &mir,
                 output: &mut neighbors,
                 param_substs: empty_substs
             };
 
-            visitor.visit_mir(&mir);
-            for promoted in &mir.promoted {
-                visitor.visit_mir(promoted);
-            }
+            visit_mir_and_promoted(visitor, &mir);
         }
         TransItem::Fn(instance) => {
             // Keep track of the monomorphization recursion depth
@@ -372,17 +370,14 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
             let mir = errors::expect(scx.sess().diagnostic(), scx.get_mir(instance.def),
                 || format!("Could not find MIR for function: {}", instance));
 
-            let mut visitor = MirNeighborCollector {
+            let visitor = MirNeighborCollector {
                 scx: scx,
                 mir: &mir,
                 output: &mut neighbors,
                 param_substs: instance.substs
             };
 
-            visitor.visit_mir(&mir);
-            for promoted in &mir.promoted {
-                visitor.visit_mir(promoted);
-            }
+            visit_mir_and_promoted(visitor, &mir);
         }
     }
 
@@ -467,17 +462,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                                        &substs.func_substs);
                 let concrete_substs = self.scx.tcx().erase_regions(&concrete_substs);
 
-                let mut visitor = MirNeighborCollector {
+                let visitor = MirNeighborCollector {
                     scx: self.scx,
                     mir: &mir,
                     output: self.output,
                     param_substs: concrete_substs
                 };
 
-                visitor.visit_mir(&mir);
-                for promoted in &mir.promoted {
-                    visitor.visit_mir(promoted);
-                }
+                visit_mir_and_promoted(visitor, &mir);
             }
             // When doing an cast from a regular pointer to a fat pointer, we
             // have to instantiate all methods of the trait being cast to, so we
@@ -1087,7 +1079,6 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemTy(..)          |
             hir::ItemDefaultImpl(..) |
             hir::ItemTrait(..)       |
-            hir::ItemConst(..)       |
             hir::ItemMod(..)         => {
                 // Nothing to do, just keep recursing...
             }
@@ -1123,6 +1114,12 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                        def_id_to_string(self.scx.tcx(),
                                         self.scx.tcx().map.local_def_id(item.id)));
                 self.output.push(TransItem::Static(item.id));
+            }
+            hir::ItemConst(..) => {
+                debug!("RootCollector: ItemConst({})",
+                       def_id_to_string(self.scx.tcx(),
+                                        self.scx.tcx().map.local_def_id(item.id)));
+                add_roots_for_const_item(self.scx, item.id, self.output);
             }
             hir::ItemFn(_, _, _, _, ref generics, _) => {
                 if !generics.is_type_parameterized() {
@@ -1240,6 +1237,38 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _ => {
             bug!()
         }
+    }
+}
+
+// There are no translation items for constants themselves but their
+// initializers might still contain something that produces translation items,
+// such as cast that introduce a new vtable.
+fn add_roots_for_const_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+                                      const_item_node_id: NodeId,
+                                      output: &mut Vec<TransItem<'tcx>>)
+{
+    let def_id = scx.tcx().map.local_def_id(const_item_node_id);
+
+    // Scan the MIR in order to find function calls, closures, and
+    // drop-glue
+    let mir = errors::expect(scx.sess().diagnostic(), scx.get_mir(def_id),
+        || format!("Could not find MIR for const: {:?}", def_id));
+
+    let empty_substs = scx.empty_substs_for_def_id(def_id);
+    let visitor = MirNeighborCollector {
+        scx: scx,
+        mir: &mir,
+        output: output,
+        param_substs: empty_substs
+    };
+
+    visit_mir_and_promoted(visitor, &mir);
+}
+
+fn visit_mir_and_promoted<'tcx, V: MirVisitor<'tcx>>(mut visitor: V, mir: &mir::Mir<'tcx>) {
+    visitor.visit_mir(&mir);
+    for promoted in &mir.promoted {
+        visitor.visit_mir(promoted);
     }
 }
 
