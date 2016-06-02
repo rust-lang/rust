@@ -29,8 +29,8 @@ use dep_graph::DepNode;
 use middle::privacy::AccessLevels;
 use ty::TyCtxt;
 use session::{config, early_error, Session};
-use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass};
-use lint::{EarlyLintPassObject, LateLintPass, LateLintPassObject};
+use lint::{Level, LevelSource, Lint, LintId, LintPass};
+use lint::{EarlyLintPassObject, LateLintPassObject};
 use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
 use lint::builtin;
 use util::nodemap::FnvHashMap;
@@ -1060,38 +1060,6 @@ impl<'a, 'tcx> IdVisitingOperation for LateContext<'a, 'tcx> {
             for (lint_id, span, msg) in lints {
                 self.span_lint(lint_id.lint, span, &msg[..])
             }
-        }
-    }
-}
-
-// This lint pass is defined here because it touches parts of the `LateContext`
-// that we don't want to expose. It records the lint level at certain AST
-// nodes, so that the variant size difference check in trans can call
-// `raw_emit_lint`.
-
-pub struct GatherNodeLevels;
-
-impl LintPass for GatherNodeLevels {
-    fn get_lints(&self) -> LintArray {
-        lint_array!()
-    }
-}
-
-impl LateLintPass for GatherNodeLevels {
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        match it.node {
-            hir::ItemEnum(..) => {
-                let lint_id = LintId::of(builtin::VARIANT_SIZE_DIFFERENCES);
-                let lvlsrc = cx.lints.get_level_source(lint_id);
-                match lvlsrc {
-                    (lvl, _) if lvl != Allow => {
-                        cx.node_levels.borrow_mut()
-                            .insert((it.id, lint_id), lvlsrc);
-                    },
-                    _ => { }
-                }
-            },
-            _ => { }
         }
     }
 }

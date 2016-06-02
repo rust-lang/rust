@@ -304,9 +304,6 @@ impl Session {
     pub fn unstable_options(&self) -> bool {
         self.opts.debugging_opts.unstable_options
     }
-    pub fn print_enum_sizes(&self) -> bool {
-        self.opts.debugging_opts.print_enum_sizes
-    }
     pub fn nonzeroing_move_hints(&self) -> bool {
         self.opts.debugging_opts.enable_nonzeroing_move_hints
     }

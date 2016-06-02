@@ -13,6 +13,8 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::layout::{Layout, Primitive};
+use rustc::traits::ProjectionMode;
 use middle::const_val::ConstVal;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
@@ -75,6 +77,12 @@ declare_lint! {
     EXCEEDING_BITSHIFTS,
     Deny,
     "shift exceeds the type's number of bits"
+}
+
+declare_lint! {
+    VARIANT_SIZE_DIFFERENCES,
+    Allow,
+    "detects enums with widely varying variant sizes"
 }
 
 #[derive(Copy, Clone)]
@@ -670,6 +678,66 @@ impl LateLintPass for ImproperCTypes {
                         hir::ForeignItemStatic(ref ty, _) => {
                             vis.check_foreign_static(ni.id, ty.span);
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub struct VariantSizeDifferences;
+
+impl LintPass for VariantSizeDifferences {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(VARIANT_SIZE_DIFFERENCES)
+    }
+}
+
+impl LateLintPass for VariantSizeDifferences {
+    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+        if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
+            if gens.ty_params.is_empty() {  // sizes only make sense for non-generic types
+                let mut sizes = vec![];
+                let t = cx.tcx.node_id_to_type(it.id);
+                let layout = cx.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+                    t.layout(&infcx).unwrap_or_else(|e| {
+                        bug!("failed to get layout for `{}`: {}", t, e)
+                    })
+                });
+
+                if let Layout::General { ref variants, ref size, discr, .. } = *layout {
+                    let discr_size = Primitive::Int(discr).size(&cx.tcx.data_layout).bytes();
+
+                    debug!("enum `{}` is {} bytes large", t, size.bytes());
+
+                    for (variant, variant_layout) in enum_definition.variants.iter().zip(variants) {
+                        // Subtract the size of the enum discriminant
+                        let bytes = variant_layout.min_size().bytes().saturating_sub(discr_size);
+                        sizes.push(bytes);
+
+                        debug!("- variant `{}` is {} bytes large", variant.node.name, bytes);
+                    }
+
+                    let (largest, slargest, largest_index) = sizes.iter()
+                                                                  .enumerate()
+                                                                  .fold((0, 0, 0),
+                        |(l, s, li), (idx, &size)|
+                            if size > l {
+                                (size, l, idx)
+                            } else if size > s {
+                                (l, size, li)
+                            } else {
+                                (l, s, li)
+                            }
+                    );
+
+                    // we only warn if the largest variant is at least thrice as large as
+                    // the second-largest.
+                    if largest > slargest * 3 && slargest > 0 {
+                        cx.span_lint(VARIANT_SIZE_DIFFERENCES,
+                                     enum_definition.variants[largest_index].span,
+                                     &format!("enum variant is more than three times larger \
+                                               ({} bytes) than the next largest", largest));
                     }
                 }
             }
