@@ -1,4 +1,4 @@
-#![feature(custom_attribute)]
+#![feature(custom_attribute, const_fn)]
 #![allow(dead_code, unused_attributes)]
 
 #[miri_run]
@@ -31,6 +31,15 @@ fn call_generic() -> (i16, bool) {
 #[miri_run]
 fn cross_crate_fn_call() -> i64 {
     if 1i32.is_positive() { 1 } else { 0 }
+}
+
+const fn foo(i: i64) -> i64 { *&i + 1 }
+
+#[miri_run]
+fn const_fn_call() -> i64 {
+    let x = 5 + foo(5);
+    assert_eq!(x, 11);
+    x
 }
 
 #[miri_run]
