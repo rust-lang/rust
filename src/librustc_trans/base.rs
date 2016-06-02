@@ -2667,9 +2667,10 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     {
         let ccx = crate_context_list.get_ccx(0);
 
+        // FIXME: #34018
         // At this point, we only walk the HIR for running
         // enum_variant_size_lint(). This should arguably be moved somewhere
-        // else
+        // else.
         {
             intravisit::walk_mod(&mut TransItemsWithinModVisitor { ccx: &ccx }, &krate.module);
             krate.visit_all_items(&mut TransModVisitor { ccx: &ccx });

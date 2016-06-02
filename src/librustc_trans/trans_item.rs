@@ -222,7 +222,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         assert!(declare::get_defined_value(ccx, symbol_name).is_none());
         let llfn = declare::declare_cfn(ccx, symbol_name, llfnty);
-	llvm::SetLinkage(llfn, linkage);
+        llvm::SetLinkage(llfn, linkage);
         attributes::set_frame_pointer_elimination(ccx, llfn);
         ccx.drop_glues().borrow_mut().insert(dg, (llfn, fn_ty));
     }
