@@ -195,7 +195,7 @@ impl FromInner<AnonPipe> for ChildStderr {
 ///                      .arg("-c")
 ///                      .arg("echo hello")
 ///                      .output()
-///                      .expect("failed to execute proces");
+///                      .expect("failed to execute process");
 ///
 /// let hello = output.stdout;
 /// ```
