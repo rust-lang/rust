@@ -144,7 +144,7 @@ use std::sync::atomic::{self, AtomicUsize, Ordering};
 
 #[naked]
 #[cfg(target_arch="x86")]
-unsafe fn isr_3() {
+unsafe extern "C" fn isr_3() {
     asm!("pushad
           call increment_breakpoint_count
           popad
@@ -159,7 +159,7 @@ pub fn increment_breakpoint_count() {
     bp_count.fetch_add(1, Ordering::Relaxed);
 }
 
-fn register_isr(vector: u8, handler: fn() -> ()) { /* ... */ }
+fn register_isr(vector: u8, handler: unsafe extern "C" fn() -> ()) { /* ... */ }
 
 fn main() {
     register_isr(3, isr_3);
