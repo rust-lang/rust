@@ -842,19 +842,187 @@ impl<K: Ord, V> BTreeMap<K, V> {
             // Check if right-most child is underfull.
             let mut last_edge = internal.last_edge();
             let right_child_len = last_edge.reborrow().descend().len();
-            if right_child_len < node::CAPACITY / 2 {
+            if right_child_len < node::MIN_LEN {
                 // We need to steal.
                 let mut last_kv = match last_edge.left_kv() {
                     Ok(left) => left,
                     Err(_) => unreachable!(),
                 };
-                last_kv.bulk_steal_left(node::CAPACITY/2 - right_child_len);
+                last_kv.bulk_steal_left(node::MIN_LEN - right_child_len);
                 last_edge = last_kv.right_edge();
             }
 
             // Go further down.
             cur_node = last_edge.descend();
         }
+    }
+
+    /// Splits the collection into two at the given key. Returns everything after the given key,
+    /// including the key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btree_split_off)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(17, "d");
+    /// a.insert(41, "e");
+    ///
+    /// let b = a.split_off(&3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 3);
+    ///
+    /// assert_eq!(a[&1], "a");
+    /// assert_eq!(a[&2], "b");
+    ///
+    /// assert_eq!(b[&3], "c");
+    /// assert_eq!(b[&17], "d");
+    /// assert_eq!(b[&41], "e");
+    /// ```
+    #[unstable(feature = "btree_split_off",
+               reason = "recently added as part of collections reform 2",
+               issue = "19986")]
+    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self where K: Borrow<Q> {
+        if self.is_empty() {
+            return Self::new();
+        }
+
+        let total_num = self.len();
+
+        let mut right = Self::new();
+        for _ in 0..(self.root.as_ref().height()) {
+            right.root.push_level();
+        }
+
+        {
+            let mut left_node = self.root.as_mut();
+            let mut right_node = right.root.as_mut();
+
+            loop {
+                let mut split_edge = match search::search_node(left_node, key) {
+                    // key is going to the right tree
+                    Found(handle) => handle.left_edge(),
+                    GoDown(handle) => handle
+                };
+
+                split_edge.move_suffix(&mut right_node);
+
+                match (split_edge.force(), right_node.force()) {
+                    (Internal(edge), Internal(node)) => {
+                        left_node = edge.descend();
+                        right_node = node.first_edge().descend();
+                    }
+                    (Leaf(_), Leaf(_)) => { break; },
+                    _ => { unreachable!(); }
+                }
+            }
+        }
+
+        self.fix_right_border();
+        right.fix_left_border();
+
+        if self.root.as_ref().height() < right.root.as_ref().height() {
+            self.recalc_length();
+            right.length = total_num - self.len();
+        } else {
+            right.recalc_length();
+            self.length = total_num - right.len();
+        }
+
+        right
+    }
+
+    /// Calculates the number of elements if it is incorrect.
+    fn recalc_length(&mut self) {
+        fn dfs<K, V>(node: NodeRef<marker::Immut, K, V, marker::LeafOrInternal>) -> usize {
+            let mut res = node.len();
+
+            if let Internal(node) = node.force() {
+                let mut edge = node.first_edge();
+                loop {
+                    res += dfs(edge.reborrow().descend());
+                    match edge.right_kv() {
+                        Ok(right_kv) => { edge = right_kv.right_edge(); },
+                        Err(_) => { break; }
+                    }
+                }
+            }
+
+            res
+        }
+
+        self.length = dfs(self.root.as_ref());
+    }
+
+    /// Removes empty levels on the top.
+    fn fix_top(&mut self) {
+        loop {
+            {
+                let node = self.root.as_ref();
+                if node.height() == 0 || node.len() > 0 {
+                    break;
+                }
+            }
+            self.root.pop_level();
+        }
+    }
+
+    fn fix_right_border(&mut self) {
+        self.fix_top();
+
+        {
+            let mut cur_node = self.root.as_mut();
+
+            while let Internal(node) = cur_node.force() {
+                let mut last_kv = node.last_kv();
+
+                if last_kv.can_merge() {
+                    cur_node = last_kv.merge().descend();
+                } else {
+                    let right_len = last_kv.reborrow().right_edge().descend().len();
+                    // `MINLEN + 1` to avoid readjust if merge happens on the next level.
+                    if right_len < node::MIN_LEN + 1 {
+                        last_kv.bulk_steal_left(node::MIN_LEN + 1 - right_len);
+                    }
+                    cur_node = last_kv.right_edge().descend();
+                }
+            }
+        }
+
+        self.fix_top();
+    }
+
+    /// The symmetric clone of `fix_right_border`.
+    fn fix_left_border(&mut self) {
+        self.fix_top();
+
+        {
+            let mut cur_node = self.root.as_mut();
+
+            while let Internal(node) = cur_node.force() {
+                let mut first_kv = node.first_kv();
+
+                if first_kv.can_merge() {
+                    cur_node = first_kv.merge().descend();
+                } else {
+                    let left_len = first_kv.reborrow().left_edge().descend().len();
+                    if left_len < node::MIN_LEN + 1 {
+                        first_kv.bulk_steal_right(node::MIN_LEN + 1 - left_len);
+                    }
+                    cur_node = first_kv.left_edge().descend();
+                }
+            }
+        }
+
+        self.fix_top();
     }
 }
 

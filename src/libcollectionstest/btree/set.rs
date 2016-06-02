@@ -10,6 +10,9 @@
 
 use std::collections::BTreeSet;
 
+use std::iter::FromIterator;
+use super::DeterministicRng;
+
 #[test]
 fn test_clone_eq() {
   let mut m = BTreeSet::new();
@@ -288,4 +291,49 @@ fn test_append() {
     assert_eq!(a.contains(&3), true);
     assert_eq!(a.contains(&4), true);
     assert_eq!(a.contains(&5), true);
+}
+
+fn rand_data(len: usize) -> Vec<u32> {
+    let mut rng = DeterministicRng::new();
+    Vec::from_iter(
+        (0..len).map(|_| rng.next())
+    )
+}
+
+#[test]
+fn test_split_off_empty_right() {
+    let mut data = rand_data(173);
+
+    let mut set = BTreeSet::from_iter(data.clone());
+    let right = set.split_off(&(data.iter().max().unwrap() + 1));
+
+    data.sort();
+    assert!(set.into_iter().eq(data));
+    assert!(right.into_iter().eq(None));
+}
+
+#[test]
+fn test_split_off_empty_left() {
+    let mut data = rand_data(314);
+
+    let mut set = BTreeSet::from_iter(data.clone());
+    let right = set.split_off(data.iter().min().unwrap());
+
+    data.sort();
+    assert!(set.into_iter().eq(None));
+    assert!(right.into_iter().eq(data));
+}
+
+#[test]
+fn test_split_off_large_random_sorted() {
+    let mut data = rand_data(1529);
+    // special case with maximum height.
+    data.sort();
+
+    let mut set = BTreeSet::from_iter(data.clone());
+    let key = data[data.len() / 2];
+    let right = set.split_off(&key);
+
+    assert!(set.into_iter().eq(data.clone().into_iter().filter(|x| *x < key)));
+    assert!(right.into_iter().eq(data.into_iter().filter(|x| *x >= key)));
 }
