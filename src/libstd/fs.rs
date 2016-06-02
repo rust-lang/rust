@@ -32,6 +32,8 @@ use time::SystemTime;
 /// it was opened with. Files also implement `Seek` to alter the logical cursor
 /// that the file contains internally.
 ///
+/// Files are automatically closed when they go out of scope.
+///
 /// # Examples
 ///
 /// ```no_run
