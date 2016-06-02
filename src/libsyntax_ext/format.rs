@@ -50,7 +50,8 @@ struct Context<'a, 'b:'a> {
     /// Named expressions are resolved early, and are appended to the end of
     /// argument expressions.
     args: Vec<P<ast::Expr>>,
-    arg_types: Vec<Vec<ArgumentType>>,
+    arg_types: Vec<Vec<usize>>,
+    arg_unique_types: Vec<Vec<ArgumentType>>,
     /// Map from named arguments to their resolved indices.
     names: HashMap<String, usize>,
 
@@ -69,7 +70,7 @@ struct Context<'a, 'b:'a> {
     /// corresponding to each positional argument, and number of references
     /// consumed so far for each argument, to facilitate correct `Position`
     /// mapping in `trans_piece`.
-    arg_index_map: Vec<usize>,
+    arg_index_map: Vec<Vec<usize>>,
 
     count_args_index_offset: usize,
 
@@ -234,7 +235,17 @@ impl<'a, 'b> Context<'a, 'b> {
                 }
                 match ty {
                     Placeholder(_) => {
-                        self.arg_types[arg].push(ty);
+                        // record every (position, type) combination only once
+                        let ref mut seen_ty = self.arg_unique_types[arg];
+                        let i = match seen_ty.iter().position(|x| *x == ty) {
+                            Some(i) => i,
+                            None => {
+                                let i = seen_ty.len();
+                                seen_ty.push(ty);
+                                i
+                            }
+                        };
+                        self.arg_types[arg].push(i);
                     }
                     Count => {
                         match self.count_positions.entry(arg) {
@@ -274,8 +285,13 @@ impl<'a, 'b> Context<'a, 'b> {
 
         // Generate mapping for positional args
         for i in 0..args_len {
-            self.arg_index_map.push(sofar);
-            sofar += self.arg_types[i].len();
+            let ref arg_types = self.arg_types[i];
+            let mut arg_offsets = Vec::with_capacity(arg_types.len());
+            for offset in arg_types {
+                arg_offsets.push(sofar + *offset);
+            }
+            self.arg_index_map.push(arg_offsets);
+            sofar += self.arg_unique_types[i].len();
         }
 
         // Record starting index for counts, which appear just
@@ -355,12 +371,13 @@ impl<'a, 'b> Context<'a, 'b> {
                         parse::ArgumentIs(i) => {
                             // Map to index in final generated argument array
                             // in case of multiple types specified
-                            let arg_idx = if self.args.len() > i {
-                                let arg_idx = self.arg_index_map[i] + arg_index_consumed[i];
-                                arg_index_consumed[i] += 1;
-                                arg_idx
-                            } else {
-                                0 // error already emitted elsewhere
+                            let arg_idx = match arg_index_consumed.get_mut(i) {
+                                None => 0, // error already emitted elsewhere
+                                Some(offset) => {
+                                    let arg_idx = self.arg_index_map[i][*offset];
+                                    *offset += 1;
+                                    arg_idx
+                                }
                             };
                             pos("At", Some(arg_idx))
                         }
@@ -490,7 +507,7 @@ impl<'a, 'b> Context<'a, 'b> {
         for (i, e) in self.args.into_iter().enumerate() {
             let name = self.ecx.ident_of(&format!("__arg{}", i));
             pats.push(self.ecx.pat_ident(DUMMY_SP, name));
-            for ref arg_ty in self.arg_types[i].iter() {
+            for ref arg_ty in self.arg_unique_types[i].iter() {
                 locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty,
                                                 self.ecx.expr_ident(e.span, name)));
             }
@@ -626,6 +643,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     names: HashMap<String, usize>)
                                     -> P<ast::Expr> {
     let arg_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
+    let arg_unique_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
     let macsp = ecx.call_site();
     // Expand the format literal so that efmt.span will have a backtrace. This
     // is essential for locating a bug when the format literal is generated in
@@ -635,6 +653,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         ecx: ecx,
         args: args,
         arg_types: arg_types,
+        arg_unique_types: arg_unique_types,
         names: names,
         curarg: 0,
         arg_index_map: Vec::new(),
