@@ -152,5 +152,5 @@ API documentation][vec].
 [box]: ../std/boxed/index.html
 [generic]: generics.html
 [panic]: concurrency.html#panics
-[get]: http://doc.rust-lang.org/std/vec/struct.Vec.html#method.get
-[get_mut]: http://doc.rust-lang.org/std/vec/struct.Vec.html#method.get_mut
+[get]: ../std/vec/struct.Vec.html#method.get
+[get_mut]: ../std/vec/struct.Vec.html#method.get_mut

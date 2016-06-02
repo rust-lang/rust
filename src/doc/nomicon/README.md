@@ -35,4 +35,4 @@ exception-safety, pointer aliasing, memory models, and even some type-theory.
 We will also be spending a lot of time talking about the different kinds
 of safety and guarantees.
 
-[trpl]: ../book/
+[trpl]: ../book/index.html
