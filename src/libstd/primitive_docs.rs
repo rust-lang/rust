@@ -28,7 +28,7 @@
 /// ```
 ///
 /// [`assert!`]: macro.assert!.html
-/// [`if` conditionals]: ../book/if.html
+/// [`if`]: ../book/if.html
 /// [`BitAnd`]: ops/trait.BitAnd.html
 /// [`BitOr`]: ops/trait.BitOr.html
 /// [`Not`]: ops/trait.Not.html
