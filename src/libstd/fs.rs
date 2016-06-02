@@ -32,6 +32,8 @@ use time::SystemTime;
 /// it was opened with. Files also implement `Seek` to alter the logical cursor
 /// that the file contains internally.
 ///
+/// Files are automatically closed when they go out of scope.
+///
 /// # Examples
 ///
 /// ```no_run
@@ -1341,8 +1343,9 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     if dir.is_dir() {
 ///         for entry in try!(fs::read_dir(dir)) {
 ///             let entry = try!(entry);
-///             if try!(entry.file_type()).is_dir() {
-///                 try!(visit_dirs(&entry.path(), cb));
+///             let path = entry.path();
+///             if path.is_dir() {
+///                 try!(visit_dirs(&path, cb));
 ///             } else {
 ///                 cb(&entry);
 ///             }
