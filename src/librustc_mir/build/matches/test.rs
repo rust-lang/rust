@@ -34,8 +34,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Variant { ref adt_def, variant_index: _, subpatterns: _ } => {
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Switch { 
-                        adt_def: adt_def.clone(), 
+                    kind: TestKind::Switch {
+                        adt_def: adt_def.clone(),
                         variants: BitVector::new(self.hir.num_variants(adt_def)),
                     },
                 }
