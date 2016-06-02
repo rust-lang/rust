@@ -95,12 +95,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub VARIANT_SIZE_DIFFERENCES,
-    Allow,
-    "detects enums with widely varying variant sizes"
-}
-
-declare_lint! {
     pub FAT_PTR_TRANSMUTES,
     Allow,
     "detects transmutes of fat pointers"
@@ -230,7 +224,6 @@ impl LintPass for HardwiredLints {
             UNUSED_FEATURES,
             STABLE_FEATURES,
             UNKNOWN_CRATE_TYPES,
-            VARIANT_SIZE_DIFFERENCES,
             FAT_PTR_TRANSMUTES,
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
