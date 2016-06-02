@@ -580,6 +580,43 @@ impl<T: Ord> BTreeSet<T> {
     pub fn append(&mut self, other: &mut Self) {
         self.map.append(&mut other.map);
     }
+
+    /// Splits the collection into two at the given key. Returns everything after the given key,
+    /// including the key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btree_split_off)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(17, "d");
+    /// a.insert(41, "e");
+    ///
+    /// let b = a.split_off(&3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 3);
+    ///
+    /// assert_eq!(a[&1], "a");
+    /// assert_eq!(a[&2], "b");
+    ///
+    /// assert_eq!(b[&3], "c");
+    /// assert_eq!(b[&17], "d");
+    /// assert_eq!(b[&41], "e");
+    /// ```
+    #[unstable(feature = "btree_split_off",
+               reason = "recently added as part of collections reform 2",
+               issue = "19986")]
+    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self where T: Borrow<Q> {
+        BTreeSet { map: self.map.split_off(key) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
