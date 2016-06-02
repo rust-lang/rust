@@ -11,13 +11,15 @@
 use context::SharedCrateContext;
 use monomorphize::Instance;
 use rustc::ty::TyCtxt;
+use std::borrow::Cow;
 use syntax::codemap::Span;
 use trans_item::TransItem;
 use util::nodemap::FnvHashMap;
 
-
 // In the SymbolMap we collect the symbol names of all translation items of
-// the current crate.
+// the current crate. This map exists as a performance optimization. Symbol
+// names of translation items are deterministic and fully defined by the item.
+// Thus they could also always be recomputed if needed.
 
 pub struct SymbolMap<'tcx> {
     index: FnvHashMap<TransItem<'tcx>, (usize, usize)>,
@@ -111,5 +113,16 @@ impl<'tcx> SymbolMap<'tcx> {
         self.index.get(&trans_item).map(|&(start_index, end_index)| {
             &self.arena[start_index .. end_index]
         })
+    }
+
+    pub fn get_or_compute<'map, 'scx>(&'map self,
+                                      scx: &SharedCrateContext<'scx, 'tcx>,
+                                      trans_item: TransItem<'tcx>)
+                                      -> Cow<'map, str> {
+        if let Some(sym) = self.get(trans_item) {
+            Cow::from(sym)
+        } else {
+            Cow::from(trans_item.compute_symbol_name(scx))
+        }
     }
 }

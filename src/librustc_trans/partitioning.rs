@@ -154,8 +154,7 @@ impl<'tcx> CodegenUnit<'tcx> {
 
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
-        items.as_mut_slice().sort_by(|&(trans_item1, _), &(trans_item2, _)| {
-
+        items.sort_by(|&(trans_item1, _), &(trans_item2, _)| {
             let node_id1 = local_node_id(tcx, trans_item1);
             let node_id2 = local_node_id(tcx, trans_item2);
 
@@ -165,6 +164,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                     let symbol_name2 = symbol_map.get(trans_item2).unwrap();
                     symbol_name1.cmp(symbol_name2)
                 }
+                // In the following two cases we can avoid looking up the symbol
                 (None, Some(_)) => Ordering::Less,
                 (Some(_), None) => Ordering::Greater,
                 (Some(node_id1), Some(node_id2)) => {
@@ -241,7 +241,7 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Finally, sort by codegen unit name, so that we get deterministic results
     let mut result = post_inlining.0;
-    result.as_mut_slice().sort_by(|cgu1, cgu2| {
+    result.sort_by(|cgu1, cgu2| {
         (&cgu1.name[..]).cmp(&cgu2.name[..])
     });
 
@@ -348,7 +348,7 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
     // translation items in a given unit. This could be improved on.
     while codegen_units.len() > target_cgu_count {
         // Sort small cgus to the back
-        codegen_units.as_mut_slice().sort_by_key(|cgu| -(cgu.items.len() as i64));
+        codegen_units.sort_by_key(|cgu| -(cgu.items.len() as i64));
         let smallest = codegen_units.pop().unwrap();
         let second_smallest = codegen_units.last_mut().unwrap();
 

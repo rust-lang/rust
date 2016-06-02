@@ -235,7 +235,8 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let g = g.map_ty(|t| get_drop_glue_type(ccx.tcx(), t));
     match ccx.drop_glues().borrow().get(&g) {
         Some(&(glue, _)) => glue,
-        None => { bug!("Could not find drop glue for {:?} -- {} -- {}",
+        None => { bug!("Could not find drop glue for {:?} -- {} -- {}. \
+                        It should have be instantiated during the pre-definition phase",
                        g,
                        TransItem::DropGlue(g).to_raw_string(),
                        ccx.codegen_unit().name) }
