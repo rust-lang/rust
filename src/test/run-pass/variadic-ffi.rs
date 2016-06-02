@@ -8,60 +8,39 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-msvc -- sprintf isn't a symbol in msvcrt? maybe a #define?
-
-#![feature(libc, std_misc)]
-
-extern crate libc;
-
-use std::ffi::{CStr, CString};
-use libc::{c_char, c_int};
-
-
+#[link(name = "rust_test_helpers")]
 extern {
-    fn sprintf(s: *mut c_char, format: *const c_char, ...) -> c_int;
-}
-
-unsafe fn check<T, F>(expected: &str, f: F) where F: FnOnce(*mut c_char) -> T {
-    let mut x = [0 as c_char; 50];
-    f(&mut x[0] as *mut c_char);
-    assert_eq!(expected.as_bytes(), CStr::from_ptr(x.as_ptr()).to_bytes());
+    fn rust_interesting_average(_: u64, ...) -> f64;
 }
 
 pub fn main() {
-
+    // Call without variadic arguments
     unsafe {
-        // Call with just the named parameter
-        let c = CString::new(&b"Hello World\n"[..]).unwrap();
-        check("Hello World\n", |s| sprintf(s, c.as_ptr()));
-
-        // Call with variable number of arguments
-        let c = CString::new(&b"%d %f %c %s\n"[..]).unwrap();
-        check("42 42.500000 a %d %f %c %s\n\n", |s| {
-            sprintf(s, c.as_ptr(), 42, 42.5f64, 'a' as c_int, c.as_ptr());
-        });
-
-        // Make a function pointer
-        let x: unsafe extern fn(*mut c_char, *const c_char, ...) -> c_int = sprintf;
-
-        // A function that takes a function pointer
-        unsafe fn call(fp: unsafe extern fn(*mut c_char, *const c_char, ...) -> c_int) {
-            // Call with just the named parameter
-            let c = CString::new(&b"Hello World\n"[..]).unwrap();
-            check("Hello World\n", |s| fp(s, c.as_ptr()));
-
-            // Call with variable number of arguments
-            let c = CString::new(&b"%d %f %c %s\n"[..]).unwrap();
-            check("42 42.500000 a %d %f %c %s\n\n", |s| {
-                fp(s, c.as_ptr(), 42, 42.5f64, 'a' as c_int, c.as_ptr());
-            });
-        }
-
-        // Pass sprintf directly
-        call(sprintf);
-
-        // Pass sprintf indirectly
-        call(x);
+        assert!(rust_interesting_average(0).is_nan());
     }
 
+    // Call with direct arguments
+    unsafe {
+        assert_eq!(rust_interesting_average(1, 10i64, 10.0f64) as i64, 20);
+    }
+
+    // Call with named arguments, variable number of them
+    let (x1, x2, x3, x4) = (10i64, 10.0f64, 20i64, 20.0f64);
+    unsafe {
+        assert_eq!(rust_interesting_average(2, x1, x2, x3, x4) as i64, 30);
+    }
+
+    // A function that takes a function pointer
+    unsafe fn call(fp: unsafe extern fn(u64, ...) -> f64) {
+        let (x1, x2, x3, x4) = (10i64, 10.0f64, 20i64, 20.0f64);
+        assert_eq!(fp(2, x1, x2, x3, x4) as i64, 30);
+    }
+
+    unsafe {
+        call(rust_interesting_average);
+
+        // Make a function pointer, pass indirectly
+        let x: unsafe extern fn(u64, ...) -> f64 = rust_interesting_average;
+        call(x);
+    }
 }
