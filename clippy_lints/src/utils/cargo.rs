@@ -16,7 +16,7 @@ pub struct Package {
     pub name: String,
     pub version: String,
     id: String,
-    source: Option<()>,
+    source: Option<String>,
     pub dependencies: Vec<Dependency>,
     pub targets: Vec<Target>,
     features: HashMap<String, Vec<String>>,
@@ -31,23 +31,14 @@ pub struct Dependency {
     kind: Option<String>,
     optional: bool,
     uses_default_features: bool,
-    features: Vec<HashMap<String, String>>,
+    features: Vec<String>,
     target: Option<()>,
-}
-
-#[allow(non_camel_case_types)]
-#[derive(RustcDecodable, Debug)]
-pub enum Kind {
-    dylib,
-    test,
-    bin,
-    lib,
 }
 
 #[derive(RustcDecodable, Debug)]
 pub struct Target {
     pub name: String,
-    pub kind: Vec<Kind>,
+    pub kind: Vec<String>,
     src_path: String,
 }
 
