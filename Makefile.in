@@ -62,6 +62,8 @@
 #   * tidy - Basic style check, show highest rustc error code and
 #     the status of language and lib features
 #   * rustc-stage$(stage) - Only build up to a specific stage
+#   * $host/stage1/bin/rustc - Only build stage1 rustc, not libstd. For further
+#     information see "Rust recipes for build system success" below.
 #
 # Then mix in some of these environment variables to harness the
 # ultimate power of The Rust Build System.
@@ -92,6 +94,15 @@
 #
 #     // Modifying libstd? Use this command to run unit tests just on your change
 #     make check-stage1-std NO_REBUILD=1 NO_BENCH=1
+#
+#     // Modifying just rustc?
+#     // Compile rustc+libstd once
+#     make rustc-stage1
+#     // From now on use this command to rebuild just rustc and reuse the previously built libstd
+#     // $host is a target triple, eg. x86_64-unknown-linux-gnu
+#     // The resulting binary is located at $host/stage1/bin/rustc.
+#     // If there are any issues with libstd recompile it with the command above.
+#     make $host/stage1/bin/rustc
 #
 #     // Added a run-pass test? Use this to test running your test
 #     make check-stage1-rpass TESTNAME=my-shiny-new-test
