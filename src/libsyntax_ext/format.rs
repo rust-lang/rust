@@ -45,12 +45,22 @@ struct Context<'a, 'b:'a> {
     /// The span of the format string literal.
     fmtsp: Span,
 
-    /// Parsed argument expressions and the types that we've found so far for
-    /// them.
+    /// List of parsed argument expressions.
     /// Named expressions are resolved early, and are appended to the end of
     /// argument expressions.
+    ///
+    /// Example showing the various data structures in motion:
+    ///
+    /// * Original: `"{foo:o} {:o} {foo:x} {0:x} {1:o} {:x} {1:x} {0:o}"`
+    /// * Implicit argument resolution: `"{foo:o} {0:o} {foo:x} {0:x} {1:o} {1:x} {1:x} {0:o}"`
+    /// * Name resolution: `"{2:o} {0:o} {2:x} {0:x} {1:o} {1:x} {1:x} {0:o}"`
+    /// * `arg_types` (in JSON): `[[0, 1, 0], [0, 1, 1], [0, 1]]`
+    /// * `arg_unique_types` (in simplified JSON): `[["o", "x"], ["o", "x"], ["o", "x"]]`
+    /// * `names` (in JSON): `{"foo": 2}`
     args: Vec<P<ast::Expr>>,
+    /// Placeholder slot numbers indexed by argument.
     arg_types: Vec<Vec<usize>>,
+    /// Unique format specs seen for each argument.
     arg_unique_types: Vec<Vec<ArgumentType>>,
     /// Map from named arguments to their resolved indices.
     names: HashMap<String, usize>,
@@ -69,13 +79,31 @@ struct Context<'a, 'b:'a> {
     /// final generated static argument array. We record the starting indices
     /// corresponding to each positional argument, and number of references
     /// consumed so far for each argument, to facilitate correct `Position`
-    /// mapping in `trans_piece`.
+    /// mapping in `trans_piece`. In effect this can be seen as a "flattened"
+    /// version of `arg_unique_types`.
+    ///
+    /// Again with the example described above in docstring for `args`:
+    ///
+    /// * `arg_index_map` (in JSON): `[[0, 1, 0], [2, 3, 3], [4, 5]]`
     arg_index_map: Vec<Vec<usize>>,
 
+    /// Starting offset of count argument slots.
     count_args_index_offset: usize,
 
+    /// Count argument slots and tracking data structures.
+    /// Count arguments are separately tracked for de-duplication in case
+    /// multiple references are made to one argument. For example, in this
+    /// format string:
+    ///
+    /// * Original: `"{:.*} {:.foo$} {1:.*} {:.0$}"`
+    /// * Implicit argument resolution: `"{1:.0$} {2:.foo$} {1:.3$} {4:.0$}"`
+    /// * Name resolution: `"{1:.0$} {2:.5$} {1:.3$} {4:.0$}"`
+    /// * `count_positions` (in JSON): `{0: 0, 5: 1, 3: 2}`
+    /// * `count_args`: `vec![Exact(0), Exact(5), Exact(3)]`
     count_args: Vec<Position>,
+    /// Relative slot numbers for count arguments.
     count_positions: HashMap<usize, usize>,
+    /// Number of count slots assigned.
     count_positions_count: usize,
 
     /// Current position of the implicit positional arg pointer, as if it
@@ -160,6 +188,8 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
 
 impl<'a, 'b> Context<'a, 'b> {
     fn resolve_name_inplace(&self, p: &mut parse::Piece) {
+        // NOTE: the `unwrap_or` branch is needed in case of invalid format
+        // arguments, e.g. `format_args!("{foo}")`.
         let lookup = |s| *self.names.get(s).unwrap_or(&0);
 
         match *p {
@@ -178,9 +208,9 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    /// Verifies one piece of a parse string. All errors are not emitted as
-    /// fatal so we can continue giving errors about this and possibly other
-    /// format strings.
+    /// Verifies one piece of a parse string, and remembers it if valid.
+    /// All errors are not emitted as fatal so we can continue giving errors
+    /// about this and possibly other format strings.
     fn verify_piece(&mut self, p: &parse::Piece) {
         match *p {
             parse::String(..) => {}
@@ -223,6 +253,8 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
+    /// Actually verifies and tracks a given format placeholder
+    /// (a.k.a. argument).
     fn verify_arg_type(&mut self, arg: Position, ty: ArgumentType) {
         match arg {
             Exact(arg) => {
@@ -276,14 +308,15 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    // NOTE: Keep the ordering the same as `into_expr`'s expansion would do!
+    /// Builds the mapping between format placeholders and argument objects.
     fn build_index_map(&mut self) {
+        // NOTE: Keep the ordering the same as `into_expr`'s expansion would do!
         let args_len = self.args.len();
         self.arg_index_map.reserve(args_len);
 
         let mut sofar = 0usize;
 
-        // Generate mapping for positional args
+        // Map the arguments
         for i in 0..args_len {
             let ref arg_types = self.arg_types[i];
             let mut arg_offsets = Vec::with_capacity(arg_types.len());
@@ -294,8 +327,7 @@ impl<'a, 'b> Context<'a, 'b> {
             sofar += self.arg_unique_types[i].len();
         }
 
-        // Record starting index for counts, which appear just
-        // after the positional args
+        // Record starting index for counts, which appear just after arguments
         self.count_args_index_offset = sofar;
     }
 
@@ -471,8 +503,8 @@ impl<'a, 'b> Context<'a, 'b> {
         ecx.expr_block(ecx.block(sp, vec![stmt, ecx.stmt_expr(ecx.expr_ident(sp, name))]))
     }
 
-    /// Actually builds the expression which the iformat! block will be expanded
-    /// to
+    /// Actually builds the expression which the format_args! block will be
+    /// expanded to
     fn into_expr(mut self) -> P<ast::Expr> {
         let mut locals = Vec::new();
         let mut counts = Vec::new();
@@ -642,6 +674,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     args: Vec<P<ast::Expr>>,
                                     names: HashMap<String, usize>)
                                     -> P<ast::Expr> {
+    // NOTE: this verbose way of initializing `Vec<Vec<ArgumentType>>` is because
+    // `ArgumentType` does not derive `Clone`.
     let arg_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
     let arg_unique_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
     let macsp = ecx.call_site();
