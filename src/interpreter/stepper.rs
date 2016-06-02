@@ -115,7 +115,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 self.fncx.frame_mut().promoted.insert(index, return_ptr);
                 let substs = self.fncx.substs();
                 // FIXME: somehow encode that this is a promoted constant's frame
-                println!("{}, {}, {}", self.fncx.stack.len(), self.fncx.name_stack.len(), self.fncx.substs_stack.len());
                 let def_id = self.fncx.name_stack.last().unwrap().0;
                 self.fncx.name_stack.push((def_id, substs, span));
                 self.fncx.push_stack_frame(CachedMir::Owned(Rc::new(mir)), substs, Some(return_ptr));
