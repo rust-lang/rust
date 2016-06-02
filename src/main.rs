@@ -126,13 +126,14 @@ pub fn main() {
         assert_eq!(metadata.version, 1);
         for target in metadata.packages.remove(0).targets {
             let args = std::env::args().skip(2);
-            assert_eq!(target.kind.len(), 1);
-            match &target.kind[..] {
-                [cargo::Kind::lib] |
-                [cargo::Kind::dylib] => process(std::iter::once("--lib".to_owned()).chain(args), &dep_path, &sys_root),
-                [cargo::Kind::bin] => process(vec!["--bin".to_owned(), target.name].into_iter().chain(args), &dep_path, &sys_root),
-                // don't process tests and other stuff
-                _ => {},
+            if let Some(first) = target.kind.get(0) {
+                if target.kind.len() > 1 || first.ends_with("lib") {
+                    process(std::iter::once("--lib".to_owned()).chain(args), &dep_path, &sys_root);
+                } else if first == "bin" {
+                    process(vec!["--bin".to_owned(), target.name].into_iter().chain(args), &dep_path, &sys_root);
+                }
+            } else {
+                panic!("badly formatted cargo metadata: target::kind is an empty array");
             }
         }
     } else {
