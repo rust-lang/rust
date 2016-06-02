@@ -491,11 +491,11 @@ pub use core::fmt::rt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Formatter, Result, Write};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{Octal, Binary};
+pub use core::fmt::{Binary, Octal};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{Display, Debug};
+pub use core::fmt::{Debug, Display};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{LowerHex, UpperHex, Pointer};
+pub use core::fmt::{LowerHex, Pointer, UpperHex};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{LowerExp, UpperExp};
 #[stable(feature = "rust1", since = "1.0.0")]

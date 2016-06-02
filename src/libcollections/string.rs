@@ -62,12 +62,12 @@ use core::mem;
 use core::ops::{self, Add, Index, IndexMut};
 use core::ptr;
 use core::str::pattern::Pattern;
-use rustc_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use rustc_unicode::char::{REPLACEMENT_CHARACTER, decode_utf16};
 use rustc_unicode::str as unicode_str;
 
 use borrow::{Cow, ToOwned};
 use range::RangeArgument;
-use str::{self, FromStr, Utf8Error, Chars};
+use str::{self, Chars, FromStr, Utf8Error};
 use vec::Vec;
 use boxed::Box;
 
