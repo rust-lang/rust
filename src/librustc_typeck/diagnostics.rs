@@ -2040,6 +2040,7 @@ impl Foo for Bar {
     // the trait
     fn foo(&self) {}
 }
+```
 "##,
 
 E0186: r##"
