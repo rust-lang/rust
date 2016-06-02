@@ -69,7 +69,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             },
             TerminatorTarget::Return => {
                 self.fncx.pop_stack_frame();
-                self.fncx.name_stack.pop();
                 self.stmt.pop();
                 assert!(self.constants.last().unwrap().is_empty());
                 self.constants.pop();
@@ -115,9 +114,8 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 self.fncx.frame_mut().promoted.insert(index, return_ptr);
                 let substs = self.fncx.substs();
                 // FIXME: somehow encode that this is a promoted constant's frame
-                let def_id = self.fncx.name_stack.last().unwrap().0;
-                self.fncx.name_stack.push((def_id, substs, span));
-                self.fncx.push_stack_frame(CachedMir::Owned(Rc::new(mir)), substs, Some(return_ptr));
+                let def_id = self.fncx.frame().def_id;
+                self.fncx.push_stack_frame(def_id, span, CachedMir::Owned(Rc::new(mir)), substs, Some(return_ptr));
                 self.stmt.push(0);
                 self.constants.push(Vec::new());
                 self.block = self.fncx.frame().next_block;
@@ -129,8 +127,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 let return_ptr = self.alloc(mir.return_ty);
                 self.fncx.gecx.statics.insert(def_id, return_ptr);
                 let substs = self.fncx.tcx.mk_substs(subst::Substs::empty());
-                self.fncx.name_stack.push((def_id, substs, span));
-                self.fncx.push_stack_frame(mir, substs, Some(return_ptr));
+                self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
                 self.stmt.push(0);
                 self.constants.push(Vec::new());
                 self.block = self.fncx.frame().next_block;

@@ -37,17 +37,6 @@ struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The virtual memory system.
     memory: Memory,
 
-    /// Another stack containing the type substitutions for the current function invocation. It
-    /// exists separately from `stack` because it must contain the `Substs` for a function while
-    /// *creating* the `Frame` for that same function.
-    substs_stack: Vec<&'tcx Substs<'tcx>>,
-
-    // TODO(solson): Merge with `substs_stack`. Also try restructuring `Frame` to accomodate.
-    /// A stack of the things necessary to print good strack traces:
-    ///   * Function DefIds and Substs to print proper substituted function names.
-    ///   * Spans pointing to specific function calls in the source.
-    name_stack: Vec<(DefId, &'tcx Substs<'tcx>, codemap::Span)>,
-
     /// Precomputed statics and constants
     statics: DefIdMap<Pointer>,
 }
@@ -74,6 +63,15 @@ impl<'a, 'b, 'mir, 'tcx> DerefMut for FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
 /// A stack frame.
 struct Frame<'a, 'tcx: 'a> {
+    /// The def_id of the current function
+    def_id: DefId,
+
+    /// The span of the call site
+    span: codemap::Span,
+
+    /// type substitutions for the current function invocation
+    substs: &'tcx Substs<'tcx>,
+
     /// The MIR for the function called on this frame.
     mir: CachedMir<'a, 'tcx>,
 
@@ -148,15 +146,16 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
                                    .uint_type
                                    .bit_width()
                                    .expect("Session::target::uint_type was usize")/8),
-            substs_stack: Vec::new(),
-            name_stack: Vec::new(),
             statics: DefIdMap(),
         }
     }
 
     fn call(&mut self, mir: &mir::Mir<'tcx>, def_id: DefId) -> EvalResult<Option<Pointer>> {
+        let substs = self.tcx.mk_substs(subst::Substs::empty());
+
         let mut nested_fecx = FnEvalContext::new(self);
 
+        nested_fecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, None);
         let return_ptr = match mir.return_ty {
             ty::FnConverging(ty) => {
                 let size = nested_fecx.type_size(ty);
@@ -164,10 +163,8 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
             }
             ty::FnDiverging => None,
         };
+        nested_fecx.frame_mut().return_ptr = return_ptr;
 
-        let substs = nested_fecx.substs();
-        nested_fecx.name_stack.push((def_id, substs, mir.span));
-        nested_fecx.push_stack_frame(CachedMir::Ref(mir), substs, return_ptr);
         nested_fecx.run()?;
         Ok(return_ptr)
     }
@@ -184,7 +181,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     fn maybe_report<T>(&self, span: codemap::Span, r: EvalResult<T>) -> EvalResult<T> {
         if let Err(ref e) = r {
             let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
-            for &(def_id, substs, span) in self.name_stack.iter().rev() {
+            for &Frame{ def_id, substs, span, .. } in self.stack.iter().rev() {
                 // FIXME(solson): Find a way to do this without this Display impl hack.
                 use rustc::util::ppaux;
                 use std::fmt;
@@ -221,19 +218,12 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         }
     }
 
-    fn push_stack_frame(&mut self, mir: CachedMir<'mir, 'tcx>, substs: &'tcx Substs<'tcx>,
+    fn push_stack_frame(&mut self, def_id: DefId, span: codemap::Span, mir: CachedMir<'mir, 'tcx>, substs: &'tcx Substs<'tcx>,
         return_ptr: Option<Pointer>)
     {
-        self.substs_stack.push(substs);
-
         let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
         let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
-
-        let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
-            let size = self.type_size(ty);
-            self.memory.allocate(size)
-        }).collect();
 
         let num_args = mir.arg_decls.len();
         let num_vars = mir.var_decls.len();
@@ -244,18 +234,27 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             mir: mir.clone(),
             next_block: mir::START_BLOCK,
             return_ptr: return_ptr,
-            locals: locals,
+            locals: Vec::new(),
             var_offset: num_args,
             temp_offset: num_args + num_vars,
             promoted: HashMap::new(),
+            span: span,
+            def_id: def_id,
+            substs: substs,
         });
+
+        let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
+            let size = self.type_size(ty);
+            self.memory.allocate(size)
+        }).collect();
+
+        self.frame_mut().locals = locals;
     }
 
     fn pop_stack_frame(&mut self) {
         ::log_settings::settings().indentation -= 1;
         let _frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         // TODO(solson): Deallocate local variables.
-        self.substs_stack.pop();
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>)
@@ -382,8 +381,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                 }
 
                                 let mir = self.load_mir(resolved_def_id);
-                                self.name_stack.push((def_id, substs, terminator.span));
-                                self.push_stack_frame(mir, resolved_substs, return_ptr);
+                                self.push_stack_frame(def_id, terminator.span, mir, resolved_substs, return_ptr);
 
                                 for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
                                     let dest = self.frame().locals[i];
@@ -1237,7 +1235,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     }
 
     fn substs(&self) -> &'tcx Substs<'tcx> {
-        self.substs_stack.last().cloned().unwrap_or_else(|| self.tcx.mk_substs(Substs::empty()))
+        self.frame().substs
     }
 
     fn load_mir(&self, def_id: DefId) -> CachedMir<'mir, 'tcx> {
