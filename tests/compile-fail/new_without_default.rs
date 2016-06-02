@@ -4,35 +4,35 @@
 #![allow(dead_code)]
 #![deny(new_without_default, new_without_default_derive)]
 
-struct Foo;
+pub struct Foo;
 
 impl Foo {
-    fn new() -> Foo { Foo } //~ERROR: you should consider deriving a `Default` implementation for `Foo`
+    pub fn new() -> Foo { Foo } //~ERROR: you should consider deriving a `Default` implementation for `Foo`
 }
 
-struct Bar;
+pub struct Bar;
 
 impl Bar {
-    fn new() -> Self { Bar } //~ERROR: you should consider deriving a `Default` implementation for `Bar`
+    pub fn new() -> Self { Bar } //~ERROR: you should consider deriving a `Default` implementation for `Bar`
 }
 
-struct Ok;
+pub struct Ok;
 
 impl Ok {
-    fn new() -> Self { Ok }
+    pub fn new() -> Self { Ok }
 }
 
 impl Default for Ok {
     fn default() -> Self { Ok }
 }
 
-struct Params;
+pub struct Params;
 
 impl Params {
-    fn new(_: u32) -> Self { Params }
+    pub fn new(_: u32) -> Self { Params }
 }
 
-struct GenericsOk<T> {
+pub struct GenericsOk<T> {
     bar: T,
 }
 
@@ -41,10 +41,10 @@ impl<U> Default for GenericsOk<U> {
 }
 
 impl<'c, V> GenericsOk<V> {
-    fn new() -> GenericsOk<V> { unimplemented!() }
+    pub fn new() -> GenericsOk<V> { unimplemented!() }
 }
 
-struct LtOk<'a> {
+pub struct LtOk<'a> {
     foo: &'a bool,
 }
 
@@ -53,15 +53,21 @@ impl<'b> Default for LtOk<'b> {
 }
 
 impl<'c> LtOk<'c> {
-    fn new() -> LtOk<'c> { unimplemented!() }
+    pub fn new() -> LtOk<'c> { unimplemented!() }
 }
 
-struct LtKo<'a> {
+pub struct LtKo<'a> {
     foo: &'a bool,
 }
 
 impl<'c> LtKo<'c> {
-    fn new() -> LtKo<'c> { unimplemented!() } //~ERROR: you should consider adding a `Default` implementation for
+    pub fn new() -> LtKo<'c> { unimplemented!() } //~ERROR: you should consider adding a `Default` implementation for
+}
+
+struct Private;
+
+impl Private {
+    fn new() -> Private { unimplemented!() } // We don't lint private items
 }
 
 fn main() {}
