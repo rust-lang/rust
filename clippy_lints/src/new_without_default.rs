@@ -95,7 +95,11 @@ impl LateLintPass for NewWithoutDefault {
             return;
         }
 
-        if let FnKind::Method(name, _, _, _) = kind {
+        if let FnKind::Method(name, ref sig, _, _) = kind {
+            if sig.constness == hir::Constness::Const {
+                // can't be implemented by default
+                return;
+            }
             if decl.inputs.is_empty() && name.as_str() == "new" &&
                     cx.access_levels.is_reachable(id) {
                 let self_ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(
