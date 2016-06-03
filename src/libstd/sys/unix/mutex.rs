@@ -30,6 +30,39 @@ impl Mutex {
         Mutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) }
     }
     #[inline]
+    pub unsafe fn init(&mut self) {
+        // Issue #33770
+        //
+        // A pthread mutex initialized with PTHREAD_MUTEX_INITIALIZER will have
+        // a type of PTHREAD_MUTEX_DEFAULT, which has undefined behavior if you
+        // try to re-lock it from the same thread when you already hold a lock.
+        //
+        // In practice, glibc takes advantage of this undefined behavior to
+        // implement hardware lock elision, which uses hardware transactional
+        // memory to avoid acquiring the lock. While a transaction is in
+        // progress, the lock appears to be unlocked. This isn't a problem for
+        // other threads since the transactional memory will abort if a conflict
+        // is detected, however no abort is generated if re-locking from the
+        // same thread.
+        //
+        // Since locking the same mutex twice will result in two aliasing &mut
+        // references, we instead create the mutex with type
+        // PTHREAD_MUTEX_NORMAL which is guaranteed to deadlock if we try to
+        // re-lock it from the same thread, thus avoiding undefined behavior.
+        //
+        // We can't do anything for StaticMutex, but that type is deprecated
+        // anyways.
+        let mut attr: libc::pthread_mutexattr_t = mem::uninitialized();
+        let r = libc::pthread_mutexattr_init(&mut attr);
+        debug_assert_eq!(r, 0);
+        let r = libc::pthread_mutexattr_settype(&mut attr, libc::PTHREAD_MUTEX_NORMAL);
+        debug_assert_eq!(r, 0);
+        let r = libc::pthread_mutex_init(self.inner.get(), &attr);
+        debug_assert_eq!(r, 0);
+        let r = libc::pthread_mutexattr_destroy(&mut attr);
+        debug_assert_eq!(r, 0);
+    }
+    #[inline]
     pub unsafe fn lock(&self) {
         let r = libc::pthread_mutex_lock(self.inner.get());
         debug_assert_eq!(r, 0);
