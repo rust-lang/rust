@@ -88,6 +88,14 @@ impl PathResolution {
             depth: depth,
         }
     }
+
+    pub fn kind_name(&self) -> &'static str {
+        if self.depth != 0 {
+            "associated item"
+        } else {
+            self.base_def.kind_name()
+        }
+    }
 }
 
 // Definition mapping
@@ -161,8 +169,8 @@ impl Def {
             Def::Struct(..) => "struct",
             Def::Trait(..) => "trait",
             Def::Method(..) => "method",
-            Def::Const(..) => "const",
-            Def::AssociatedConst(..) => "associated const",
+            Def::Const(..) => "constant",
+            Def::AssociatedConst(..) => "associated constant",
             Def::TyParam(..) => "type parameter",
             Def::PrimTy(..) => "builtin type",
             Def::Local(..) => "local variable",

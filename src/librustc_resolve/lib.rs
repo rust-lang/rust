@@ -31,7 +31,6 @@ extern crate arena;
 #[macro_use]
 extern crate rustc;
 
-use self::PatternBindingMode::*;
 use self::Namespace::*;
 use self::ResolveResult::*;
 use self::FallbackSuggestion::*;
@@ -40,7 +39,6 @@ use self::RibKind::*;
 use self::UseLexicalScopeFlag::*;
 use self::ModulePrefixResult::*;
 use self::AssocItemResolveResult::*;
-use self::BareIdentifierPatternResolution::*;
 use self::ParentLink::*;
 
 use rustc::hir::map::Definitions;
@@ -66,8 +64,8 @@ use syntax::visit::{self, FnKind, Visitor};
 use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
-use syntax::ast::{Local, Pat, PatKind, Path};
-use syntax::ast::{PathSegment, PathParameters, TraitItemKind, TraitRef, Ty, TyKind};
+use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
+use syntax::ast::{PathSegment, PathParameters, QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
@@ -123,24 +121,10 @@ enum ResolutionError<'a> {
     SelfUsedOutsideImplOrTrait,
     /// error E0412: use of undeclared
     UseOfUndeclared(&'a str, &'a str, SuggestedCandidates),
-    /// error E0413: cannot be named the same as an enum variant or unit-like struct in scope
-    DeclarationShadowsEnumVariantOrUnitLikeStruct(Name),
-    /// error E0414: only irrefutable patterns allowed here
-    ConstantForIrrefutableBinding(Name, &'a NameBinding<'a>),
     /// error E0415: identifier is bound more than once in this parameter list
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
     /// error E0416: identifier is bound more than once in the same pattern
     IdentifierBoundMoreThanOnceInSamePattern(&'a str),
-    /// error E0417: static variables cannot be referenced in a pattern
-    StaticVariableReference(&'a NameBinding<'a>),
-    /// error E0418: is not an enum variant, struct or const
-    NotAnEnumVariantStructOrConst(&'a str),
-    /// error E0419: unresolved enum variant, struct or const
-    UnresolvedEnumVariantStructOrConst(&'a str),
-    /// error E0420: is not an associated const
-    NotAnAssociatedConst(&'a str),
-    /// error E0421: unresolved associated const
-    UnresolvedAssociatedConst(&'a str),
     /// error E0422: does not name a struct
     DoesNotNameAStruct(&'a str),
     /// error E0423: is a struct variant name, but this expression uses it like a function name
@@ -158,8 +142,6 @@ enum ResolutionError<'a> {
     },
     /// error E0426: use of undeclared label
     UndeclaredLabel(&'a str),
-    /// error E0427: cannot use `ref` binding mode with ...
-    CannotUseRefBindingModeWith(&'a str),
     /// error E0429: `self` imports are only allowed within a { } list
     SelfImportsOnlyAllowedWithin,
     /// error E0430: `self` import can only appear once in the list
@@ -174,6 +156,12 @@ enum ResolutionError<'a> {
     CannotCaptureDynamicEnvironmentInFnItem,
     /// error E0435: attempt to use a non-constant value in a constant
     AttemptToUseNonConstantValueInConstant,
+    /// error E0418: X bindings cannot shadow Ys
+    BindingShadowsSomethingUnacceptable(&'a str, &'a str, Name),
+    /// error E0419: unresolved pattern path kind `name`
+    PatPathUnresolved(&'a str, &'a Path),
+    /// error E0420: expected pattern path kind, found another pattern path kind
+    PatPathUnexpected(&'a str, &'a str, &'a Path),
 }
 
 /// Context of where `ResolutionError::UnresolvedName` arose.
@@ -306,28 +294,6 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err.span_label(span, &format!("undefined or not in scope"));
             err
         }
-        ResolutionError::DeclarationShadowsEnumVariantOrUnitLikeStruct(name) => {
-            let mut err = struct_span_err!(resolver.session,
-                             span,
-                             E0413,
-                             "`{}` cannot be named the same as an enum variant \
-                              or unit-like struct in scope",
-                             name);
-            err.span_label(span,
-                &format!("has same name as enum variant or unit-like struct"));
-            err
-        }
-        ResolutionError::ConstantForIrrefutableBinding(name, binding) => {
-            let mut err = struct_span_err!(resolver.session,
-                                           span,
-                                           E0414,
-                                       "let variables cannot be named the same as const variables");
-            err.span_label(span,
-                           &format!("cannot be named the same as a const variable"));
-            let participle = if binding.is_import() { "imported" } else { "defined" };
-            err.span_label(binding.span, &format!("a constant `{}` is {} here", name, participle));
-            err
-        }
         ResolutionError::IdentifierBoundMoreThanOnceInParameterList(identifier) => {
             let mut err = struct_span_err!(resolver.session,
                              span,
@@ -345,47 +311,6 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              identifier);
             err.span_label(span, &format!("used in a pattern more than once"));
             err
-        }
-        ResolutionError::StaticVariableReference(binding) => {
-            let mut err = struct_span_err!(resolver.session,
-                                           span,
-                                           E0417,
-                                           "static variables cannot be referenced in a \
-                                            pattern, use a `const` instead");
-            err.span_label(span, &format!("static variable used in pattern"));
-            if binding.span != codemap::DUMMY_SP {
-                let participle = if binding.is_import() { "imported" } else { "defined" };
-                err.span_label(binding.span, &format!("static variable {} here", participle));
-            }
-            err
-        }
-        ResolutionError::NotAnEnumVariantStructOrConst(name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0418,
-                             "`{}` is not an enum variant, struct or const",
-                             name)
-        }
-        ResolutionError::UnresolvedEnumVariantStructOrConst(name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0419,
-                             "unresolved enum variant, struct or const `{}`",
-                             name)
-        }
-        ResolutionError::NotAnAssociatedConst(name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0420,
-                             "`{}` is not an associated const",
-                             name)
-        }
-        ResolutionError::UnresolvedAssociatedConst(name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0421,
-                             "unresolved associated const `{}`",
-                             name)
         }
         ResolutionError::DoesNotNameAStruct(name) => {
             struct_span_err!(resolver.session,
@@ -455,13 +380,6 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "use of undeclared label `{}`",
                              name)
         }
-        ResolutionError::CannotUseRefBindingModeWith(descr) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0427,
-                             "cannot use `ref` binding mode with {}",
-                             descr)
-        }
         ResolutionError::SelfImportsOnlyAllowedWithin => {
             struct_span_err!(resolver.session,
                              span,
@@ -506,6 +424,37 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              E0435,
                              "attempt to use a non-constant value in a constant")
         }
+        ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, shadows_what, name) => {
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0418,
+                                           "{}s cannot shadow {}s", what_binding, shadows_what);
+            err.span_label(span, &format!("cannot be named the same as a {}", shadows_what));
+            if let Some(binding) = resolver.current_module
+                                           .resolve_name_in_lexical_scope(name, ValueNS) {
+                let participle = if binding.is_import() { "imported" } else { "defined" };
+                err.span_label(binding.span, &format!("a {} `{}` is {} here",
+                                                      shadows_what, name, participle));
+            }
+            err
+        }
+        ResolutionError::PatPathUnresolved(expected_what, path) => {
+            struct_span_err!(resolver.session,
+                             span,
+                             E0419,
+                             "unresolved {} `{}`",
+                             expected_what,
+                             path.segments.last().unwrap().identifier)
+        }
+        ResolutionError::PatPathUnexpected(expected_what, found_what, path) => {
+            struct_span_err!(resolver.session,
+                             span,
+                             E0420,
+                             "expected {}, found {} `{}`",
+                             expected_what,
+                             found_what,
+                             path.segments.last().unwrap().identifier)
+        }
     }
 }
 
@@ -518,11 +467,33 @@ struct BindingInfo {
 // Map from the name in a pattern to its binding mode.
 type BindingMap = HashMap<Name, BindingInfo>;
 
-#[derive(Copy, Clone, PartialEq)]
-enum PatternBindingMode {
-    RefutableMode,
-    LocalIrrefutableMode,
-    ArgumentIrrefutableMode,
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum PatternSource {
+    Match,
+    IfLet,
+    WhileLet,
+    Let,
+    For,
+    FnParam,
+}
+
+impl PatternSource {
+    fn is_refutable(self) -> bool {
+        match self {
+            PatternSource::Match | PatternSource::IfLet | PatternSource::WhileLet => true,
+            PatternSource::Let | PatternSource::For | PatternSource::FnParam  => false,
+        }
+    }
+    fn descr(self) -> &'static str {
+        match self {
+            PatternSource::Match => "match binding",
+            PatternSource::IfLet => "if let binding",
+            PatternSource::WhileLet => "while let binding",
+            PatternSource::Let => "let binding",
+            PatternSource::For => "for binding",
+            PatternSource::FnParam => "function parameter",
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -707,13 +678,6 @@ enum AssocItemResolveResult {
     TypecheckRequired,
     /// We should have been able to resolve the associated item.
     ResolveAttempt(Option<PathResolution>),
-}
-
-#[derive(Copy, Clone)]
-enum BareIdentifierPatternResolution<'a> {
-    FoundStructOrEnumVariant(Def),
-    FoundConst(&'a NameBinding<'a>, Name),
-    BareIdentifierPatternUnresolved,
 }
 
 /// One local scope.
@@ -1814,7 +1778,7 @@ impl<'a> Resolver<'a> {
         // Add each argument to the rib.
         let mut bindings_list = HashMap::new();
         for argument in &declaration.inputs {
-            self.resolve_pattern(&argument.pat, ArgumentIrrefutableMode, &mut bindings_list);
+            self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
 
             self.visit_ty(&argument.ty);
 
@@ -2055,7 +2019,7 @@ impl<'a> Resolver<'a> {
         walk_list!(self, visit_expr, &local.init);
 
         // Resolve the pattern.
-        self.resolve_pattern(&local.pat, LocalIrrefutableMode, &mut HashMap::new());
+        self.resolve_pattern(&local.pat, PatternSource::Let, &mut HashMap::new());
     }
 
     // build a map from pattern identifiers to binding-info's.
@@ -2124,7 +2088,7 @@ impl<'a> Resolver<'a> {
 
         let mut bindings_list = HashMap::new();
         for pattern in &arm.pats {
-            self.resolve_pattern(&pattern, RefutableMode, &mut bindings_list);
+            self.resolve_pattern(&pattern, PatternSource::Match, &mut bindings_list);
         }
 
         // This has to happen *after* we determine which
@@ -2183,10 +2147,18 @@ impl<'a> Resolver<'a> {
                 // This is a path in the type namespace. Walk through scopes
                 // looking for it.
                 if let Some(def) = resolution {
-                    // Write the result into the def map.
-                    debug!("(resolving type) writing resolution for `{}` (id {}) = {:?}",
-                           path_names_to_string(path, 0), ty.id, def);
-                    self.record_def(ty.id, def);
+                    match def.base_def {
+                        Def::Mod(..) => {
+                            self.session.span_err(path.span, "expected type, found module");
+                            self.record_def(ty.id, err_path_resolution());
+                        }
+                        _ => {
+                            // Write the result into the def map.
+                            debug!("(resolving type) writing resolution for `{}` (id {}) = {:?}",
+                                   path_names_to_string(path, 0), ty.id, def);
+                            self.record_def(ty.id, def);
+                        }
+                    }
                 } else {
                     self.record_def(ty.id, err_path_resolution());
 
@@ -2246,312 +2218,230 @@ impl<'a> Resolver<'a> {
         visit::walk_ty(self, ty);
     }
 
-    fn resolve_pattern(&mut self,
-                       pattern: &Pat,
-                       mode: PatternBindingMode,
-                       // Maps idents to the node ID for the (outermost)
-                       // pattern that binds them
-                       bindings_list: &mut HashMap<Name, NodeId>) {
-        let pat_id = pattern.id;
-        pattern.walk(&mut |pattern| {
-            match pattern.node {
-                PatKind::Ident(binding_mode, ref path1, ref at_rhs) => {
-                    // The meaning of PatKind::Ident with no type parameters
-                    // depends on whether an enum variant or unit-like struct
-                    // with that name is in scope. The probing lookup has to
-                    // be careful not to emit spurious errors. Only matching
-                    // patterns (match) can match nullary variants or
-                    // unit-like structs. For binding patterns (let
-                    // and the LHS of @-patterns), matching such a value is
-                    // simply disallowed (since it's rarely what you want).
-                    let const_ok = mode == RefutableMode && at_rhs.is_none();
+    fn fresh_binding(&mut self,
+                     ident: &ast::SpannedIdent,
+                     pat_id: NodeId,
+                     outer_pat_id: NodeId,
+                     pat_src: PatternSource,
+                     bindings_list: &mut HashMap<Name, NodeId>)
+                     -> PathResolution {
+        // Add the binding to the local ribs, if it
+        // doesn't already exist in the bindings list. (We
+        // must not add it if it's in the bindings list
+        // because that breaks the assumptions later
+        // passes make about or-patterns.)
+        let renamed = mtwt::resolve(ident.node);
+        let def = match bindings_list.get(&renamed).cloned() {
+            Some(id) if id == outer_pat_id => {
+                // `Variant(a, a)`, error
+                resolve_error(
+                    self,
+                    ident.span,
+                    ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(
+                        &ident.node.name.as_str())
+                );
+                Def::Err
+            }
+            Some(..) if pat_src == PatternSource::FnParam => {
+                // `fn f(a: u8, a: u8)`, error
+                resolve_error(
+                    self,
+                    ident.span,
+                    ResolutionError::IdentifierBoundMoreThanOnceInParameterList(
+                        &ident.node.name.as_str())
+                );
+                Def::Err
+            }
+            Some(..) if pat_src == PatternSource::Match => {
+                // `Varian1(a) | Varian2(a)`, ok
+                Def::Local(self.definitions.local_def_id(pat_id), pat_id)
+            }
+            Some(..) => {
+                span_bug!(ident.span, "two bindings with the same name from \
+                                       unexpected pattern source {:?}", pat_src);
+            }
+            None => {
+                // A completely fresh binding, add to the lists
+                bindings_list.insert(renamed, outer_pat_id);
+                let def = Def::Local(self.definitions.local_def_id(pat_id), pat_id);
+                self.value_ribs.last_mut().unwrap().bindings.insert(renamed, def);
+                def
+            }
+        };
 
-                    let ident = path1.node;
-                    let renamed = mtwt::resolve(ident);
+        PathResolution { base_def: def, depth: 0 }
+    }
 
-                    match self.resolve_bare_identifier_pattern(ident, pattern.span) {
-                        FoundStructOrEnumVariant(def) if const_ok => {
-                            debug!("(resolving pattern) resolving `{}` to struct or enum variant",
-                                   renamed);
-
-                            self.enforce_default_binding_mode(pattern,
-                                                              binding_mode,
-                                                              "an enum variant");
-                            self.record_def(pattern.id,
-                                            PathResolution {
-                                                base_def: def,
-                                                depth: 0,
-                                            });
-                        }
-                        FoundStructOrEnumVariant(..) => {
-                            resolve_error(
-                                self,
-                                pattern.span,
-                                ResolutionError::DeclarationShadowsEnumVariantOrUnitLikeStruct(
-                                    renamed)
-                            );
-                            self.record_def(pattern.id, err_path_resolution());
-                        }
-                        FoundConst(binding, _) if const_ok => {
-                            debug!("(resolving pattern) resolving `{}` to constant", renamed);
-
-                            self.enforce_default_binding_mode(pattern, binding_mode, "a constant");
-                            self.record_def(pattern.id,
-                                            PathResolution {
-                                                base_def: binding.def().unwrap(),
-                                                depth: 0,
-                                            });
-                        }
-                        FoundConst(binding, name) => {
-                            resolve_error(
-                                self,
-                                pattern.span,
-                                ResolutionError::ConstantForIrrefutableBinding(name, binding)
-                            );
-                            self.record_def(pattern.id, err_path_resolution());
-                        }
-                        BareIdentifierPatternUnresolved => {
-                            debug!("(resolving pattern) binding `{}`", renamed);
-
-                            let def_id = self.definitions.local_def_id(pattern.id);
-                            let def = Def::Local(def_id, pattern.id);
-
-                            // Record the definition so that later passes
-                            // will be able to distinguish variants from
-                            // locals in patterns.
-
-                            self.record_def(pattern.id,
-                                            PathResolution {
-                                                base_def: def,
-                                                depth: 0,
-                                            });
-
-                            // Add the binding to the local ribs, if it
-                            // doesn't already exist in the bindings list. (We
-                            // must not add it if it's in the bindings list
-                            // because that breaks the assumptions later
-                            // passes make about or-patterns.)
-                            if !bindings_list.contains_key(&renamed) {
-                                let this = &mut *self;
-                                let last_rib = this.value_ribs.last_mut().unwrap();
-                                last_rib.bindings.insert(renamed, def);
-                                bindings_list.insert(renamed, pat_id);
-                            } else if mode == ArgumentIrrefutableMode &&
-                               bindings_list.contains_key(&renamed) {
-                                // Forbid duplicate bindings in the same
-                                // parameter list.
-                                resolve_error(
-                                    self,
-                                    pattern.span,
-                                    ResolutionError::IdentifierBoundMoreThanOnceInParameterList(
-                                        &ident.name.as_str())
-                                );
-                            } else if bindings_list.get(&renamed) == Some(&pat_id) {
-                                // Then this is a duplicate variable in the
-                                // same disjunction, which is an error.
-                                resolve_error(
-                                    self,
-                                    pattern.span,
-                                    ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(
-                                        &ident.name.as_str())
-                                );
-                            }
-                            // Else, not bound in the same pattern: do
-                            // nothing.
-                        }
-                    }
-                }
-
-                PatKind::TupleStruct(ref path, _, _) | PatKind::Path(ref path) => {
-                    // This must be an enum variant, struct or const.
-                    let resolution = match self.resolve_possibly_assoc_item(pat_id,
-                                                                            None,
-                                                                            path,
-                                                                            ValueNS) {
-                        // The below shouldn't happen because all
-                        // qualified paths should be in PatKind::QPath.
-                        TypecheckRequired =>
-                            span_bug!(path.span,
-                                      "resolve_possibly_assoc_item claimed that a path \
-                                       in PatKind::Path or PatKind::TupleStruct \
-                                       requires typecheck to resolve, but qualified \
-                                       paths should be PatKind::QPath"),
-                        ResolveAttempt(resolution) => resolution,
-                    };
-                    if let Some(path_res) = resolution {
-                        match path_res.base_def {
-                            Def::Struct(..) if path_res.depth == 0 => {
-                                self.record_def(pattern.id, path_res);
-                            }
-                            Def::Variant(..) | Def::Const(..) => {
-                                self.record_def(pattern.id, path_res);
-                            }
-                            Def::Static(..) => {
-                                let segments = &path.segments;
-                                let binding = if path.global {
-                                    self.resolve_crate_relative_path(path.span, segments, ValueNS)
-                                } else {
-                                    self.resolve_module_relative_path(path.span, segments, ValueNS)
-                                }.unwrap();
-
-                                let error = ResolutionError::StaticVariableReference(binding);
-                                resolve_error(self, path.span, error);
-                                self.record_def(pattern.id, err_path_resolution());
-                            }
-                            _ => {
-                                // If anything ends up here entirely resolved,
-                                // it's an error. If anything ends up here
-                                // partially resolved, that's OK, because it may
-                                // be a `T::CONST` that typeck will resolve.
-                                if path_res.depth == 0 {
-                                    resolve_error(
-                                        self,
-                                        path.span,
-                                        ResolutionError::NotAnEnumVariantStructOrConst(
-                                            &path.segments
-                                                 .last()
-                                                 .unwrap()
-                                                 .identifier
-                                                 .name
-                                                 .as_str())
-                                    );
-                                    self.record_def(pattern.id, err_path_resolution());
-                                } else {
-                                    let const_name = path.segments
-                                                         .last()
-                                                         .unwrap()
-                                                         .identifier
-                                                         .name;
-                                    let traits = self.get_traits_containing_item(const_name);
-                                    self.trait_map.insert(pattern.id, traits);
-                                    self.record_def(pattern.id, path_res);
-                                }
-                            }
-                        }
-                    } else {
-                        if let Err(false) = self.resolve_path(pat_id, &path, 0, ValueNS) {
-                            // No error has been reported, so we need to do this ourselves.
+    fn resolve_pattern_path<ExpectedFn>(&mut self,
+                            pat_id: NodeId,
+                            qself: Option<&QSelf>,
+                            path: &Path,
+                            namespace: Namespace,
+                            expected_fn: ExpectedFn,
+                            expected_what: &'static str)
+        where ExpectedFn: FnOnce(Def) -> bool
+    {
+        let resolution = match self.resolve_possibly_assoc_item(pat_id, qself, path, namespace) {
+            ResolveAttempt(resolution) => {
+                if let Some(resolution) = resolution {
+                    if resolution.depth == 0 {
+                        if expected_fn(resolution.base_def) {
+                            resolution
+                        } else {
                             resolve_error(
                                 self,
                                 path.span,
-                                ResolutionError::UnresolvedEnumVariantStructOrConst(
-                                    &path.segments.last().unwrap().identifier.name.as_str())
+                                ResolutionError::PatPathUnexpected(expected_what,
+                                                                   resolution.kind_name(), path)
                             );
+                            err_path_resolution()
                         }
-                        self.record_def(pattern.id, err_path_resolution());
+                    } else {
+                        // Not fully resolved associated item `T::A::B::C` or
+                        // `<T as Tr>::A::B::C`. If `C` should be resolved in value
+                        // namespace then it needs to be added to the trait map.
+                        if namespace == ValueNS {
+                            let item_name = path.segments.last().unwrap().identifier.name;
+                            let traits = self.get_traits_containing_item(item_name);
+                            self.trait_map.insert(pat_id, traits);
+                        }
+                        resolution
                     }
-                    visit::walk_path(self, path);
+                } else {
+                    if let Err(false) = self.resolve_path(pat_id, path, 0, namespace) {
+                        resolve_error(
+                            self,
+                            path.span,
+                            ResolutionError::PatPathUnresolved(expected_what, path)
+                        );
+                    }
+                    err_path_resolution()
+                }
+            }
+            TypecheckRequired => {
+                // `<T>::A::B::C`, resolves exclusively during typechecking.
+                // If `C` should be resolved in value namespace then it needs
+                // to be added to the trait map.
+                if namespace == ValueNS {
+                    let item_name = path.segments.last().unwrap().identifier.name;
+                    let traits = self.get_traits_containing_item(item_name);
+                    self.trait_map.insert(pat_id, traits);
+                }
+                return;
+            }
+        };
+
+        self.record_def(pat_id, resolution);
+    }
+
+    fn resolve_pattern(&mut self,
+                       pat: &Pat,
+                       pat_src: PatternSource,
+                       // Maps idents to the node ID for the
+                       // outermost pattern that binds them.
+                       bindings_list: &mut HashMap<Name, NodeId>) {
+        // Visit all direct subpatterns of this pattern with the same PatternBindingMode.
+        let outer_pat_id = pat.id;
+        pat.walk(&mut |pat| {
+            match pat.node {
+                PatKind::Ident(bmode, ref ident, ref opt_pat) => {
+                    // First try to resolve the identifier as some existing
+                    // entity, then fall back to a fresh binding.
+                    let resolution = if let Ok(resolution) = self.resolve_path(pat.id,
+                                &Path::from_ident(ident.span, ident.node), 0, ValueNS) {
+                        let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
+                                             bmode != BindingMode::ByValue(Mutability::Immutable);
+                        match resolution.base_def {
+                            // Def::Err => {
+                            //     // Just pass it through, the error is already
+                            //     // reported if it was necessary.
+                            //     resolution
+                            // }
+                            Def::Struct(..) | Def::Variant(..) |
+                            Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
+                                // A constant, unit variant, etc pattern.
+                                resolution
+                            }
+                            Def::Struct(..) | Def::Variant(..) |
+                            Def::Const(..) | Def::AssociatedConst(..) | Def::Static(..) => {
+                                // A fresh binding that shadows something unacceptable.
+                                resolve_error(
+                                    self,
+                                    ident.span,
+                                    ResolutionError::BindingShadowsSomethingUnacceptable(
+                                        pat_src.descr(), resolution.kind_name(), ident.node.name)
+                                );
+                                err_path_resolution()
+                            }
+                            Def::Local(..) | Def::Upvar(..) | Def::Fn(..) | Def::Err => {
+                                // These entities are explicitly allowed
+                                // to be shadowed by fresh bindings.
+                                self.fresh_binding(ident, pat.id, outer_pat_id,
+                                                   pat_src, bindings_list)
+                            }
+                            def => {
+                                span_bug!(ident.span, "unexpected definition for an \
+                                                       identifier in pattern {:?}", def);
+                            }
+                        }
+                    } else {
+                        // Fall back to a fresh binding.
+                        self.fresh_binding(ident, pat.id, outer_pat_id, pat_src, bindings_list)
+                    };
+
+                    self.record_def(pat.id, resolution);
+                }
+
+                PatKind::TupleStruct(ref path, _, _) => {
+                    self.resolve_pattern_path(pat.id, None, path, ValueNS, |def| {
+                        match def {
+                            Def::Struct(..) | Def::Variant(..) | Def::Err => true,
+                            _ => false,
+                        }
+                    }, "variant or struct");
+                }
+
+                PatKind::Path(ref path) => {
+                    self.resolve_pattern_path(pat.id, None, path, ValueNS, |def| {
+                        match def {
+                            Def::Struct(..) | Def::Variant(..) |
+                            Def::Const(..) | Def::AssociatedConst(..) | Def::Err => true,
+                            _ => false,
+                        }
+                    }, "variant, struct or constant");
                 }
 
                 PatKind::QPath(ref qself, ref path) => {
-                    // Associated constants only.
-                    let resolution = match self.resolve_possibly_assoc_item(pat_id,
-                                                                            Some(qself),
-                                                                            path,
-                                                                            ValueNS) {
-                        TypecheckRequired => {
-                            // All `<T>::CONST` should end up here, and will
-                            // require use of the trait map to resolve
-                            // during typechecking.
-                            let const_name = path.segments
-                                                 .last()
-                                                 .unwrap()
-                                                 .identifier
-                                                 .name;
-                            let traits = self.get_traits_containing_item(const_name);
-                            self.trait_map.insert(pattern.id, traits);
-                            visit::walk_pat(self, pattern);
-                            return true;
+                    self.resolve_pattern_path(pat.id, Some(qself), path, ValueNS, |def| {
+                        match def {
+                            Def::AssociatedConst(..) | Def::Err => true,
+                            _ => false,
                         }
-                        ResolveAttempt(resolution) => resolution,
-                    };
-                    if let Some(path_res) = resolution {
-                        match path_res.base_def {
-                            // All `<T as Trait>::CONST` should end up here, and
-                            // have the trait already selected.
-                            Def::AssociatedConst(..) => {
-                                self.record_def(pattern.id, path_res);
-                            }
-                            _ => {
-                                resolve_error(
-                                    self,
-                                    path.span,
-                                    ResolutionError::NotAnAssociatedConst(
-                                        &path.segments.last().unwrap().identifier.name.as_str()
-                                    )
-                                );
-                                self.record_def(pattern.id, err_path_resolution());
-                            }
-                        }
-                    } else {
-                        resolve_error(self,
-                                      path.span,
-                                      ResolutionError::UnresolvedAssociatedConst(&path.segments
-                                                                                      .last()
-                                                                                      .unwrap()
-                                                                                      .identifier
-                                                                                      .name
-                                                                                      .as_str()));
-                        self.record_def(pattern.id, err_path_resolution());
-                    }
-                    visit::walk_pat(self, pattern);
+                    }, "associated constant");
                 }
 
                 PatKind::Struct(ref path, _, _) => {
-                    match self.resolve_path(pat_id, path, 0, TypeNS) {
-                        Ok(definition) => {
-                            self.record_def(pattern.id, definition);
+                    self.resolve_pattern_path(pat.id, None, path, TypeNS, |def| {
+                        match def {
+                            Def::Struct(..) | Def::Variant(..) |
+                            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::Err => true,
+                            _ => false,
                         }
-                        Err(true) => self.record_def(pattern.id, err_path_resolution()),
-                        Err(false) => {
-                            resolve_error(
-                                self,
-                                path.span,
-                                ResolutionError::DoesNotNameAStruct(
-                                    &path_names_to_string(path, 0))
-                            );
-                            self.record_def(pattern.id, err_path_resolution());
-                        }
-                    }
-                    visit::walk_path(self, path);
+                    }, "variant, struct or type alias");
                 }
 
-                PatKind::Lit(_) | PatKind::Range(..) => {
-                    visit::walk_pat(self, pattern);
-                }
-
-                _ => {
-                    // Nothing to do.
-                }
+                _ => {}
             }
             true
         });
-    }
 
-    fn resolve_bare_identifier_pattern(&mut self, ident: ast::Ident, span: Span)
-                                       -> BareIdentifierPatternResolution<'a> {
-        let binding = match self.resolve_ident_in_lexical_scope(ident, ValueNS, true) {
-            Some(LexicalScopeBinding::Item(binding)) => binding,
-            _ => return BareIdentifierPatternUnresolved,
-        };
-        let def = binding.def().unwrap();
-
-        match def {
-            Def::Variant(..) | Def::Struct(..) => FoundStructOrEnumVariant(def),
-            Def::Const(..) | Def::AssociatedConst(..) => FoundConst(binding, ident.name),
-            Def::Static(..) => {
-                let error = ResolutionError::StaticVariableReference(binding);
-                resolve_error(self, span, error);
-                BareIdentifierPatternUnresolved
-            }
-            _ => BareIdentifierPatternUnresolved,
-        }
+        visit::walk_pat(self, pat);
     }
 
     /// Handles paths that may refer to associated items
     fn resolve_possibly_assoc_item(&mut self,
                                    id: NodeId,
-                                   maybe_qself: Option<&ast::QSelf>,
+                                   maybe_qself: Option<&QSelf>,
                                    path: &Path,
                                    namespace: Namespace)
                                    -> AssocItemResolveResult {
@@ -2579,12 +2469,13 @@ impl<'a> Resolver<'a> {
                 break;
             }
             self.with_no_errors(|this| {
-                resolution = this.resolve_path(id, path, depth, TypeNS).ok();
+                let partial_resolution = this.resolve_path(id, path, depth, TypeNS).ok();
+                if let Some(Def::Mod(..)) = partial_resolution.map(|r| r.base_def) {
+                    // Modules cannot have associated items
+                } else {
+                    resolution = partial_resolution;
+                }
             });
-        }
-        if let Some(Def::Mod(_)) = resolution.map(|r| r.base_def) {
-            // A module is not a valid type or value.
-            resolution = None;
         }
         ResolveAttempt(resolution)
     }
@@ -3171,7 +3062,7 @@ impl<'a> Resolver<'a> {
                 self.visit_expr(subexpression);
 
                 self.value_ribs.push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, RefutableMode, &mut HashMap::new());
+                self.resolve_pattern(pattern, PatternSource::IfLet, &mut HashMap::new());
                 self.visit_block(if_block);
                 self.value_ribs.pop();
 
@@ -3181,7 +3072,7 @@ impl<'a> Resolver<'a> {
             ExprKind::WhileLet(ref pattern, ref subexpression, ref block, label) => {
                 self.visit_expr(subexpression);
                 self.value_ribs.push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, RefutableMode, &mut HashMap::new());
+                self.resolve_pattern(pattern, PatternSource::WhileLet, &mut HashMap::new());
 
                 self.resolve_labeled_block(label.map(|l| l.node), expr.id, block);
 
@@ -3191,7 +3082,7 @@ impl<'a> Resolver<'a> {
             ExprKind::ForLoop(ref pattern, ref subexpression, ref block, label) => {
                 self.visit_expr(subexpression);
                 self.value_ribs.push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, LocalIrrefutableMode, &mut HashMap::new());
+                self.resolve_pattern(pattern, PatternSource::For, &mut HashMap::new());
 
                 self.resolve_labeled_block(label.map(|l| l.node), expr.id, block);
 
@@ -3408,20 +3299,6 @@ impl<'a> Resolver<'a> {
         debug!("(recording def) recording {:?} for {}", resolution, node_id);
         if let Some(prev_res) = self.def_map.insert(node_id, resolution) {
             panic!("path resolved multiple times ({:?} before, {:?} now)", prev_res, resolution);
-        }
-    }
-
-    fn enforce_default_binding_mode(&mut self,
-                                    pat: &Pat,
-                                    pat_binding_mode: BindingMode,
-                                    descr: &str) {
-        match pat_binding_mode {
-            BindingMode::ByValue(_) => {}
-            BindingMode::ByRef(..) => {
-                resolve_error(self,
-                              pat.span,
-                              ResolutionError::CannotUseRefBindingModeWith(descr));
-            }
         }
     }
 

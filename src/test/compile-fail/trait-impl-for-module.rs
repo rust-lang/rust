@@ -14,7 +14,7 @@ mod a {
 trait A {
 }
 
-impl A for a { //~ ERROR type name `a` is undefined or not in scope
+impl A for a { //~ ERROR expected type, found module
 }
 
 fn main() {

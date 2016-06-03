@@ -20,7 +20,7 @@ fn main() {
     // instead of spitting out a custom error about some identifier collisions
     // (we should allow shadowing)
     match 4 {
-        a => {} //~ ERROR static variables cannot be referenced in a pattern
+        a => {} //~ ERROR match bindings cannot shadow statics
         _ => {}
     }
 }
@@ -44,7 +44,7 @@ fn mutable_statics() {
     match (Foo { bar: Some(Direction::North), baz: NewBool(true) }) {
         Foo { bar: None, baz: NewBool(true) } => (),
         STATIC_MUT_FOO => (),
-        //~^ ERROR static variables cannot be referenced in a pattern
+        //~^ ERROR match bindings cannot shadow statics
         Foo { bar: Some(Direction::South), .. } => (),
         Foo { bar: Some(EAST), .. } => (),
         Foo { bar: Some(Direction::North), baz: NewBool(true) } => (),

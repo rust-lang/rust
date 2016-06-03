@@ -9,21 +9,21 @@
 // except according to those terms.
 
 static foo: i32 = 0;
-//~^ NOTE static variable defined here
+//~^ NOTE a static `foo` is defined here
 
 fn bar(foo: i32) {}
-//~^ ERROR static variables cannot be referenced in a pattern, use a `const` instead
-//~| static variable used in pattern
+//~^ ERROR function parameters cannot shadow statics
+//~| cannot be named the same as a static
 
 mod submod {
     pub static answer: i32 = 42;
 }
 
 use self::submod::answer;
-//~^ NOTE static variable imported here
+//~^ NOTE a static `answer` is imported here
 
 fn question(answer: i32) {}
-//~^ ERROR static variables cannot be referenced in a pattern, use a `const` instead
-//~| static variable used in pattern
+//~^ ERROR function parameters cannot shadow statics
+//~| cannot be named the same as a static
 fn main() {
 }

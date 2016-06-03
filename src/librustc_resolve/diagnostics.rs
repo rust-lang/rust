@@ -842,32 +842,6 @@ match 0 {
 ```
 "##,
 
-E0419: r##"
-An unknown enum variant, struct or const was used. Example of erroneous code:
-
-```compile_fail
-match 0 {
-    Something::Foo => {} // error: unresolved enum variant, struct
-                         //        or const `Foo`
-}
-```
-
-Please verify you didn't misspell it and the enum variant, struct or const has
-been declared and imported into scope. Example:
-
-```
-enum Something {
-    Foo,
-    NotFoo,
-}
-
-match Something::NotFoo {
-    Something::Foo => {} // ok!
-    _ => {}
-}
-```
-"##,
-
 E0422: r##"
 You are trying to use an identifier that is either undefined or not a struct.
 For instance:
@@ -1247,16 +1221,11 @@ impl Foo for i32 {}
 }
 
 register_diagnostics! {
-//  E0153, unused error code
-//  E0157, unused error code
     E0254, // import conflicts with imported crate in this module
-//  E0257,
-//  E0258,
     E0402, // cannot use an outer type parameter in this context
     E0406, // undeclared associated type
-//  E0410, merged into 408
-    E0418, // is not an enum variant, struct or const
-    E0420, // is not an associated const
-    E0421, // unresolved associated const
+    E0418, // X bindings cannot shadow Ys
+    E0419, // unresolved pattern path kind `name`
+    E0420, // expected pattern path kind, found another pattern path kind
     E0427, // cannot use `ref` binding mode with ...
 }

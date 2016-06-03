@@ -12,10 +12,10 @@
 
 extern crate issue_17718_const_privacy as other;
 
-use a::B; //~ ERROR: const `B` is private
+use a::B; //~ ERROR: constant `B` is private
 use other::{
     FOO,
-    BAR, //~ ERROR: const `BAR` is private
+    BAR, //~ ERROR: constant `BAR` is private
     FOO2,
 };
 
