@@ -694,7 +694,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         targets: variant_drops
                     });
 
-                self.drop_flag_test_block(c, c.is_cleanup, switch_block)
+                self.drop_flag_test_block(c, switch_block)
             }
         }
     }
@@ -749,7 +749,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             );
         }
 
-        self.drop_flag_test_block(c, c.is_cleanup, drop_block)
+        self.drop_flag_test_block(c, drop_block)
     }
 
     /// Create a simple conditional drop.
@@ -764,7 +764,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let drop_bb = self.drop_block(c);
         self.drop_flags_for_drop(c, drop_bb);
 
-        self.drop_flag_test_block(c, c.is_cleanup, drop_bb)
+        self.drop_flag_test_block(c, drop_bb)
     }
 
     fn new_block<'a>(&mut self,
@@ -791,22 +791,30 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn drop_flag_test_block<'a>(&mut self,
                                 c: &DropCtxt<'a, 'tcx>,
-                                is_cleanup: bool,
                                 on_set: BasicBlock)
-                                -> BasicBlock
+                                -> BasicBlock {
+        self.drop_flag_test_block_with_succ(c, c.is_cleanup, on_set, c.succ)
+    }
+
+    fn drop_flag_test_block_with_succ<'a>(&mut self,
+                                          c: &DropCtxt<'a, 'tcx>,
+                                          is_cleanup: bool,
+                                          on_set: BasicBlock,
+                                          on_unset: BasicBlock)
+                                          -> BasicBlock
     {
         let (maybe_live, maybe_dead) = c.init_data.state(c.path);
         debug!("drop_flag_test_block({:?},{:?},{:?}) - {:?}",
                c, is_cleanup, on_set, (maybe_live, maybe_dead));
 
         match (maybe_live, maybe_dead) {
-            (false, _) => c.succ,
+            (false, _) => on_unset,
             (true, false) => on_set,
             (true, true) => {
                 let flag = self.drop_flag(c.path).unwrap();
                 self.new_block(c, is_cleanup, TerminatorKind::If {
                     cond: Operand::Consume(flag),
-                    targets: (on_set, c.succ)
+                    targets: (on_set, on_unset)
                 })
             }
         }
@@ -841,7 +849,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         is_cleanup: bool
     ) -> BasicBlock {
         let block = self.unelaborated_free_block(c, ty, target, is_cleanup);
-        self.drop_flag_test_block(c, is_cleanup, block)
+        self.drop_flag_test_block_with_succ(c, is_cleanup, block, target)
     }
 
     fn unelaborated_free_block<'a>(
