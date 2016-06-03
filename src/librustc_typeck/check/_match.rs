@@ -150,24 +150,20 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                 self.demand_eqtype(pat.span, expected, lhs_ty);
             }
             PatKind::Path(..) if pat_is_resolved_const(&tcx.def_map.borrow(), pat) => {
-                if let Some(pat_def) = tcx.def_map.borrow().get(&pat.id) {
-                    let const_did = pat_def.def_id();
-                    let const_scheme = tcx.lookup_item_type(const_did);
-                    assert!(const_scheme.generics.is_empty());
-                    let const_ty = self.instantiate_type_scheme(pat.span,
-                                                                &Substs::empty(),
-                                                                &const_scheme.ty);
-                    self.write_ty(pat.id, const_ty);
+                let const_did = tcx.expect_def(pat.id).def_id();
+                let const_scheme = tcx.lookup_item_type(const_did);
+                assert!(const_scheme.generics.is_empty());
+                let const_ty = self.instantiate_type_scheme(pat.span,
+                                                            &Substs::empty(),
+                                                            &const_scheme.ty);
+                self.write_ty(pat.id, const_ty);
 
-                    // FIXME(#20489) -- we should limit the types here to scalars or something!
+                // FIXME(#20489) -- we should limit the types here to scalars or something!
 
-                    // As with PatKind::Lit, what we really want here is that there
-                    // exist a LUB, but for the cases that can occur, subtype
-                    // is good enough.
-                    self.demand_suptype(pat.span, expected, const_ty);
-                } else {
-                    self.write_error(pat.id);
-                }
+                // As with PatKind::Lit, what we really want here is that there
+                // exist a LUB, but for the cases that can occur, subtype
+                // is good enough.
+                self.demand_suptype(pat.span, expected, const_ty);
             }
             PatKind::Binding(bm, ref path, ref sub) => {
                 let typ = self.local_ty(pat.span, pat.id);
@@ -217,18 +213,12 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
             }
             PatKind::QPath(ref qself, ref path) => {
                 let self_ty = self.to_ty(&qself.ty);
-                let path_res = if let Some(&d) = tcx.def_map.borrow().get(&pat.id) {
-                    if d.base_def == Def::Err {
-                        self.set_tainted_by_errors();
-                        self.write_error(pat.id);
-                        return;
-                    }
-                    d
-                } else {
-                    debug!("unbound path {:?}", pat);
+                let path_res = tcx.expect_resolution(pat.id);
+                if path_res.base_def == Def::Err {
+                    self.set_tainted_by_errors();
                     self.write_error(pat.id);
                     return;
-                };
+                }
                 if let Some((opt_ty, segments, def)) =
                         self.resolve_ty_and_def_ufcs(path_res, Some(self_ty),
                                                      path, pat.span, pat.id) {
@@ -582,7 +572,7 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                             etc: bool, expected: Ty<'tcx>) {
         let tcx = self.tcx;
 
-        let def = tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
+        let def = tcx.expect_def(pat.id);
         let variant = match self.def_struct_variant(def, path.span) {
             Some((_, variant)) => variant,
             None => {
@@ -623,18 +613,16 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
         // Typecheck the path.
         let tcx = self.tcx;
 
-        let path_res = match tcx.def_map.borrow().get(&pat.id) {
-            Some(&path_res) if path_res.base_def != Def::Err => path_res,
-            _ => {
-                self.set_tainted_by_errors();
-                self.write_error(pat.id);
+        let path_res = tcx.expect_resolution(pat.id);
+        if path_res.base_def == Def::Err {
+            self.set_tainted_by_errors();
+            self.write_error(pat.id);
 
-                for pat in subpats {
-                    self.check_pat(&pat, tcx.types.err);
-                }
-                return;
+            for pat in subpats {
+                self.check_pat(&pat, tcx.types.err);
             }
-        };
+            return;
+        }
 
         let (opt_ty, segments, def) = match self.resolve_ty_and_def_ufcs(path_res,
                                                                          None, path,

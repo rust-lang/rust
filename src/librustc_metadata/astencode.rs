@@ -719,7 +719,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     debug!("Encoding side tables for id {}", id);
 
-    if let Some(def) = tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
+    if let Some(def) = tcx.expect_def_or_none(id) {
         rbml_w.tag(c::tag_table_def, |rbml_w| {
             rbml_w.id(id);
             def.encode(rbml_w).unwrap();
@@ -1133,10 +1133,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                 match value {
                     c::tag_table_def => {
                         let def = decode_def(dcx, val_dsr);
-                        dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution {
-                            base_def: def,
-                            depth: 0
-                        });
+                        dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution::new(def));
                     }
                     c::tag_table_node_type => {
                         let ty = val_dsr.read_ty(dcx);

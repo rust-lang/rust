@@ -222,7 +222,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let tcx = self.tcx;
                     if let Some(pr) = tcx.def_map.borrow().get(&expr.id) {
                         if pr.depth == 0 && pr.base_def != Def::Err {
-                            if let Some(span) = tcx.map.span_if_local(pr.def_id()) {
+                            if let Some(span) = tcx.map.span_if_local(pr.base_def.def_id()) {
                                 err.span_note(span, "defined here");
                             }
                         }

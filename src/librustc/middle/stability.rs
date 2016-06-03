@@ -494,7 +494,7 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // individually as it's possible to have a stable trait with unstable
         // items.
         hir::ItemImpl(_, _, _, Some(ref t), _, ref impl_items) => {
-            let trait_did = tcx.def_map.borrow().get(&t.ref_id).unwrap().def_id();
+            let trait_did = tcx.expect_def(t.ref_id).def_id();
             let trait_items = tcx.trait_items(trait_did);
 
             for impl_item in impl_items {
@@ -580,7 +580,8 @@ pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             cb: &mut FnMut(DefId, Span,
                                            &Option<&Stability>,
                                            &Option<Deprecation>)) {
-    match tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
+    // Paths in import prefixes may have no resolution.
+    match tcx.expect_def_or_none(id) {
         Some(Def::PrimTy(..)) => {}
         Some(Def::SelfTy(..)) => {}
         Some(def) => {
@@ -595,12 +596,11 @@ pub fn check_path_list_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       cb: &mut FnMut(DefId, Span,
                                                      &Option<&Stability>,
                                                      &Option<Deprecation>)) {
-    match tcx.def_map.borrow().get(&item.node.id()).map(|d| d.full_def()) {
-        Some(Def::PrimTy(..)) => {}
-        Some(def) => {
+    match tcx.expect_def(item.node.id()) {
+        Def::PrimTy(..) => {}
+        def => {
             maybe_do_stability_check(tcx, def.def_id(), item.span, cb);
         }
-        None => {}
     }
 }
 

@@ -1081,7 +1081,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
     }
 
     fn record_resolution(&mut self, id: NodeId, def: Def) {
-        self.def_map.insert(id, PathResolution { base_def: def, depth: 0 });
+        self.def_map.insert(id, PathResolution::new(def));
     }
 
     fn definitions(&mut self) -> Option<&mut Definitions> {
@@ -1674,7 +1674,7 @@ impl<'a> Resolver<'a> {
                                                                    TypeNS) {
                                 Ok(binding) => {
                                     let def = binding.def().unwrap();
-                                    self.record_def(item.id, PathResolution::new(def, 0));
+                                    self.record_def(item.id, PathResolution::new(def));
                                 }
                                 Err(true) => self.record_def(item.id, err_path_resolution()),
                                 Err(false) => {
@@ -2239,15 +2239,19 @@ impl<'a> Resolver<'a> {
                                        unexpected pattern source {:?}", pat_src);
             }
             None => {
-                // A completely fresh binding, add to the lists
-                bindings_list.insert(renamed, outer_pat_id);
+                // A completely fresh binding, add to the lists.
+                // FIXME: Later stages are not ready to deal with `Def::Err` here yet, so
+                // define `Invalid` bindings as `Def::Local`, just don't add them to the lists.
                 let def = Def::Local(self.definitions.local_def_id(pat_id), pat_id);
-                self.value_ribs.last_mut().unwrap().bindings.insert(renamed, def);
+                if ident.node.name != keywords::Invalid.name() {
+                    bindings_list.insert(renamed, outer_pat_id);
+                    self.value_ribs.last_mut().unwrap().bindings.insert(renamed, def);
+                }
                 def
             }
         };
 
-        PathResolution { base_def: def, depth: 0 }
+        PathResolution::new(def)
     }
 
     fn resolve_pattern_path<ExpectedFn>(&mut self,
@@ -2316,11 +2320,6 @@ impl<'a> Resolver<'a> {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
                                              bmode != BindingMode::ByValue(Mutability::Immutable);
                         match resolution.base_def {
-                            // Def::Err => {
-                            //     // Just pass it through, the error is already
-                            //     // reported if it was necessary.
-                            //     resolution
-                            // }
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
                                 // A constant, unit variant, etc pattern.
@@ -2417,7 +2416,7 @@ impl<'a> Resolver<'a> {
                     // FIXME: Create some fake resolution that can't possibly be a type.
                     return Some(PathResolution {
                         base_def: Def::Mod(self.definitions.local_def_id(ast::CRATE_NODE_ID)),
-                        depth: path.segments.len()
+                        depth: path.segments.len(),
                     });
                 }
                 max_assoc_types = path.segments.len() - qself.position;
@@ -2457,7 +2456,7 @@ impl<'a> Resolver<'a> {
         let span = path.span;
         let segments = &path.segments[..path.segments.len() - path_depth];
 
-        let mk_res = |def| PathResolution::new(def, path_depth);
+        let mk_res = |def| PathResolution { base_def: def, depth: path_depth };
 
         if path.global {
             let binding = self.resolve_crate_relative_path(span, segments, namespace);
@@ -2725,19 +2724,18 @@ impl<'a> Resolver<'a> {
 
         if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
             // Look for a field with the same name in the current self_type.
-            match self.def_map.get(&node_id).map(|d| d.full_def()) {
-                Some(Def::Enum(did)) |
-                Some(Def::TyAlias(did)) |
-                Some(Def::Struct(did)) |
-                Some(Def::Variant(_, did)) => match self.structs.get(&did) {
-                    None => {}
-                    Some(fields) => {
-                        if fields.iter().any(|&field_name| name == field_name) {
-                            return Field;
+            if let Some(resolution) = self.def_map.get(&node_id) {
+                match resolution.base_def {
+                    Def::Enum(did) | Def::TyAlias(did) |
+                    Def::Struct(did) | Def::Variant(_, did) if resolution.depth == 0 => {
+                        if let Some(fields) = self.structs.get(&did) {
+                            if fields.iter().any(|&field_name| name == field_name) {
+                                return Field;
+                            }
                         }
                     }
-                },
-                _ => {} // Self type didn't resolve properly
+                    _ => {}
+                }
             }
         }
 
@@ -3000,11 +2998,7 @@ impl<'a> Resolver<'a> {
                     }
                     Some(def @ Def::Label(_)) => {
                         // Since this def is a label, it is never read.
-                        self.record_def(expr.id,
-                                        PathResolution {
-                                            base_def: def,
-                                            depth: 0,
-                                        })
+                        self.record_def(expr.id, PathResolution::new(def))
                     }
                     Some(_) => {
                         span_bug!(expr.span, "label wasn't mapped to a label def!")
@@ -3271,11 +3265,11 @@ impl<'a> Resolver<'a> {
         };
 
         let segments: Vec<_> = path.segments.iter().map(|seg| seg.identifier.name).collect();
+        let mut path_resolution = err_path_resolution();
         let vis = match self.resolve_module_path(&segments, DontUseLexicalScope, path.span) {
             Success(module) => {
                 let def = module.def.unwrap();
-                let path_resolution = PathResolution { base_def: def, depth: 0 };
-                self.def_map.insert(id, path_resolution);
+                path_resolution = PathResolution::new(def);
                 ty::Visibility::Restricted(self.definitions.as_local_node_id(def.def_id()).unwrap())
             }
             Failed(Some((span, msg))) => {
@@ -3287,6 +3281,7 @@ impl<'a> Resolver<'a> {
                 ty::Visibility::Public
             }
         };
+        self.def_map.insert(id, path_resolution);
         if !self.is_accessible(vis) {
             let msg = format!("visibilities can only be restricted to ancestor modules");
             self.session.span_err(path.span, &msg);
@@ -3487,12 +3482,8 @@ fn module_to_string(module: Module) -> String {
 }
 
 fn err_path_resolution() -> PathResolution {
-    PathResolution {
-        base_def: Def::Err,
-        depth: 0,
-    }
+    PathResolution::new(Def::Err)
 }
-
 
 #[derive(PartialEq,Copy, Clone)]
 pub enum MakeGlobMap {
