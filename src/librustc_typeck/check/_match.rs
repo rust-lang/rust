@@ -151,7 +151,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // is good enough.
                 self.demand_suptype(pat.span, expected, const_ty);
             }
-            PatKind::Binding(bm, ref path, ref sub) => {
+            PatKind::Binding(bm, _, ref sub) => {
                 let typ = self.local_ty(pat.span, pat.id);
                 match bm {
                     hir::BindByRef(mutbl) => {
@@ -180,7 +180,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // if there are multiple arms, make sure they all agree on
                 // what the type of the binding `x` ought to be
-                match tcx.def_map.borrow()[&pat.id].full_def() {
+                match tcx.expect_def(pat.id) {
                     Def::Err => {}
                     Def::Local(_, var_id) => {
                         if var_id != pat.id {

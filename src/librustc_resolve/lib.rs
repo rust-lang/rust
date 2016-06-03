@@ -155,11 +155,11 @@ enum ResolutionError<'a> {
     CannotCaptureDynamicEnvironmentInFnItem,
     /// error E0435: attempt to use a non-constant value in a constant
     AttemptToUseNonConstantValueInConstant,
-    /// error E0418: X bindings cannot shadow Ys
+    /// error E0530: X bindings cannot shadow Ys
     BindingShadowsSomethingUnacceptable(&'a str, &'a str, Name),
-    /// error E0419: unresolved pattern path kind `name`
+    /// error E0531: unresolved pattern path kind `name`
     PatPathUnresolved(&'a str, &'a Path),
-    /// error E0420: expected pattern path kind, found another pattern path kind
+    /// error E0532: expected pattern path kind, found another pattern path kind
     PatPathUnexpected(&'a str, &'a str, &'a Path),
 }
 
@@ -426,11 +426,10 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
         ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, shadows_what, name) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
-                                           E0418,
+                                           E0530,
                                            "{}s cannot shadow {}s", what_binding, shadows_what);
             err.span_label(span, &format!("cannot be named the same as a {}", shadows_what));
-            if let Some(binding) = resolver.current_module
-                                           .resolve_name_in_lexical_scope(name, ValueNS) {
+            if let Success(binding) = resolver.current_module.resolve_name(name, ValueNS, true) {
                 let participle = if binding.is_import() { "imported" } else { "defined" };
                 err.span_label(binding.span, &format!("a {} `{}` is {} here",
                                                       shadows_what, name, participle));
@@ -440,7 +439,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
         ResolutionError::PatPathUnresolved(expected_what, path) => {
             struct_span_err!(resolver.session,
                              span,
-                             E0419,
+                             E0531,
                              "unresolved {} `{}`",
                              expected_what,
                              path.segments.last().unwrap().identifier)
@@ -448,7 +447,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
         ResolutionError::PatPathUnexpected(expected_what, found_what, path) => {
             struct_span_err!(resolver.session,
                              span,
-                             E0420,
+                             E0532,
                              "expected {}, found {} `{}`",
                              expected_what,
                              found_what,
@@ -2201,15 +2200,15 @@ impl<'a> Resolver<'a> {
                      pat_id: NodeId,
                      outer_pat_id: NodeId,
                      pat_src: PatternSource,
-                     bindings_list: &mut HashMap<Name, NodeId>)
+                     bindings: &mut HashMap<Name, NodeId>)
                      -> PathResolution {
         // Add the binding to the local ribs, if it
-        // doesn't already exist in the bindings list. (We
-        // must not add it if it's in the bindings list
+        // doesn't already exist in the bindings map. (We
+        // must not add it if it's in the bindings map
         // because that breaks the assumptions later
         // passes make about or-patterns.)
         let renamed = mtwt::resolve(ident.node);
-        let def = match bindings_list.get(&renamed).cloned() {
+        let def = match bindings.get(&renamed).cloned() {
             Some(id) if id == outer_pat_id => {
                 // `Variant(a, a)`, error
                 resolve_error(
@@ -2231,8 +2230,9 @@ impl<'a> Resolver<'a> {
                 Def::Err
             }
             Some(..) if pat_src == PatternSource::Match => {
-                // `Varian1(a) | Varian2(a)`, ok
-                Def::Local(self.definitions.local_def_id(pat_id), pat_id)
+                // `Variant1(a) | Variant2(a)`, ok
+                // Reuse definition from the first `a`.
+                self.value_ribs.last_mut().unwrap().bindings[&renamed]
             }
             Some(..) => {
                 span_bug!(ident.span, "two bindings with the same name from \
@@ -2244,7 +2244,7 @@ impl<'a> Resolver<'a> {
                 // define `Invalid` bindings as `Def::Local`, just don't add them to the lists.
                 let def = Def::Local(self.definitions.local_def_id(pat_id), pat_id);
                 if ident.node.name != keywords::Invalid.name() {
-                    bindings_list.insert(renamed, outer_pat_id);
+                    bindings.insert(renamed, outer_pat_id);
                     self.value_ribs.last_mut().unwrap().bindings.insert(renamed, def);
                 }
                 def
@@ -2255,12 +2255,12 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_pattern_path<ExpectedFn>(&mut self,
-                            pat_id: NodeId,
-                            qself: Option<&QSelf>,
-                            path: &Path,
-                            namespace: Namespace,
-                            expected_fn: ExpectedFn,
-                            expected_what: &'static str)
+                                        pat_id: NodeId,
+                                        qself: Option<&QSelf>,
+                                        path: &Path,
+                                        namespace: Namespace,
+                                        expected_fn: ExpectedFn,
+                                        expected_what: &str)
         where ExpectedFn: FnOnce(Def) -> bool
     {
         let resolution = if let Some(resolution) = self.resolve_possibly_assoc_item(pat_id,
@@ -2307,8 +2307,8 @@ impl<'a> Resolver<'a> {
                        pat_src: PatternSource,
                        // Maps idents to the node ID for the
                        // outermost pattern that binds them.
-                       bindings_list: &mut HashMap<Name, NodeId>) {
-        // Visit all direct subpatterns of this pattern with the same PatternBindingMode.
+                       bindings: &mut HashMap<Name, NodeId>) {
+        // Visit all direct subpatterns of this pattern.
         let outer_pat_id = pat.id;
         pat.walk(&mut |pat| {
             match pat.node {
@@ -2340,7 +2340,7 @@ impl<'a> Resolver<'a> {
                                 // These entities are explicitly allowed
                                 // to be shadowed by fresh bindings.
                                 self.fresh_binding(ident, pat.id, outer_pat_id,
-                                                   pat_src, bindings_list)
+                                                   pat_src, bindings)
                             }
                             def => {
                                 span_bug!(ident.span, "unexpected definition for an \
@@ -2349,7 +2349,7 @@ impl<'a> Resolver<'a> {
                         }
                     } else {
                         // Fall back to a fresh binding.
-                        self.fresh_binding(ident, pat.id, outer_pat_id, pat_src, bindings_list)
+                        self.fresh_binding(ident, pat.id, outer_pat_id, pat_src, bindings)
                     };
 
                     self.record_def(pat.id, resolution);
