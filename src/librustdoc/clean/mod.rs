@@ -2631,7 +2631,7 @@ fn resolve_type(cx: &DocContext,
             };
         }
     };
-    let def = tcx.def_map.borrow().get(&id).expect("unresolved id not in defmap").full_def();
+    let def = tcx.expect_def(id);
     debug!("resolve_type: def={:?}", def);
 
     let is_generic = match def {
@@ -2700,7 +2700,7 @@ fn resolve_use_source(cx: &DocContext, path: Path, id: ast::NodeId) -> ImportSou
 
 fn resolve_def(cx: &DocContext, id: ast::NodeId) -> Option<DefId> {
     cx.tcx_opt().and_then(|tcx| {
-        tcx.def_map.borrow().get(&id).map(|d| register_def(cx, d.full_def()))
+        tcx.expect_def_or_none(id).map(|def| register_def(cx, def))
     })
 }
 

@@ -245,8 +245,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
         if let PatKind::Binding(hir::BindByValue(hir::MutImmutable), name, None) = p.node {
             let pat_ty = cx.tcx.pat_ty(p);
             if let ty::TyEnum(edef, _) = pat_ty.sty {
-                let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
-                if let Some(Def::Local(..)) = def {
+                if let Def::Local(..) = cx.tcx.expect_def(p.id) {
                     if edef.variants.iter().any(|variant|
                         variant.name == name.node.unhygienize()
                             && variant.kind() == VariantKind::Unit
@@ -492,9 +491,8 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
         return match pat.node {
             PatKind::Path(..) | PatKind::QPath(..) => {
-                let def = self.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def());
-                match def {
-                    Some(Def::AssociatedConst(did)) | Some(Def::Const(did)) => {
+                match self.tcx.expect_def(pat.id) {
+                    Def::AssociatedConst(did) | Def::Const(did) => {
                         let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
                         if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, did, substs) {
                             match const_expr_to_pat(self.tcx, const_expr, pat.id, pat.span) {
@@ -788,7 +786,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
     let pat = raw_pat(p);
     match pat.node {
         PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) =>
-            match cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def() {
+            match cx.tcx.expect_def(pat.id) {
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat.span, "const pattern should've \
                                          been rewritten"),
@@ -903,21 +901,19 @@ pub fn specialize<'a, 'b, 'tcx>(
             Some(vec![dummy_pat; arity]),
 
         PatKind::Path(..) => {
-            let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
-            match def {
+            match cx.tcx.expect_def(pat_id) {
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
                 Def::Variant(_, id) if *constructor != Variant(id) => None,
                 Def::Variant(..) | Def::Struct(..) => Some(Vec::new()),
-                _ => span_bug!(pat_span, "specialize: unexpected \
+                def => span_bug!(pat_span, "specialize: unexpected \
                                           definition {:?}", def),
             }
         }
 
         PatKind::TupleStruct(_, ref args, ddpos) => {
-            let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
-            match def {
+            match cx.tcx.expect_def(pat_id) {
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
@@ -944,10 +940,9 @@ pub fn specialize<'a, 'b, 'tcx>(
         }
 
         PatKind::Struct(_, ref pattern_fields, _) => {
-            let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
             let adt = cx.tcx.node_id_to_type(pat_id).ty_adt_def().unwrap();
             let variant = constructor.variant_for_adt(adt);
-            let def_variant = adt.variant_of_def(def);
+            let def_variant = adt.variant_of_def(cx.tcx.expect_def(pat_id));
             if variant.did == def_variant.did {
                 Some(variant.fields.iter().map(|sf| {
                     match pattern_fields.iter().find(|f| f.node.name == sf.name) {

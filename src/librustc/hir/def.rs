@@ -67,26 +67,16 @@ pub struct PathResolution {
 }
 
 impl PathResolution {
+    pub fn new(def: Def) -> PathResolution {
+        PathResolution { base_def: def, depth: 0 }
+    }
+
     /// Get the definition, if fully resolved, otherwise panic.
     pub fn full_def(&self) -> Def {
         if self.depth != 0 {
             bug!("path not fully resolved: {:?}", self);
         }
         self.base_def
-    }
-
-    /// Get the DefId, if fully resolved, otherwise panic.
-    pub fn def_id(&self) -> DefId {
-        self.full_def().def_id()
-    }
-
-    pub fn new(base_def: Def,
-               depth: usize)
-               -> PathResolution {
-        PathResolution {
-            base_def: base_def,
-            depth: depth,
-        }
     }
 
     pub fn kind_name(&self) -> &'static str {

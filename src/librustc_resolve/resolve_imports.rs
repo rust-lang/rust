@@ -598,7 +598,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             Some(def) => def,
             None => value_result.success().and_then(NameBinding::def).unwrap(),
         };
-        let path_resolution = PathResolution { base_def: def, depth: 0 };
+        let path_resolution = PathResolution::new(def);
         self.resolver.def_map.insert(directive.id, path_resolution);
 
         debug!("(resolving single import) successfully resolved import");
@@ -644,7 +644,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         // Record the destination of this import
         if let Some(did) = target_module.def_id() {
-            let resolution = PathResolution { base_def: Def::Mod(did), depth: 0 };
+            let resolution = PathResolution::new(Def::Mod(did));
             self.resolver.def_map.insert(directive.id, resolution);
         }
 

@@ -657,9 +657,8 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 ConstantValue(ConstantExpr(&l), debug_loc)
             }
             PatKind::Path(..) | PatKind::TupleStruct(..) | PatKind::Struct(..) => {
-                let opt_def = tcx.def_map.borrow().get(&cur.id).map(|d| d.full_def());
-                match opt_def {
-                    Some(Def::Variant(enum_id, var_id)) => {
+                match tcx.expect_def(cur.id) {
+                    Def::Variant(enum_id, var_id) => {
                         let variant = tcx.lookup_adt_def(enum_id).variant_with_id(var_id);
                         Variant(Disr::from(variant.disr_val),
                                 adt::represent_node(bcx, cur.id),
@@ -796,7 +795,7 @@ fn any_irrefutable_adt_pat(tcx: TyCtxt, m: &[Match], col: usize) -> bool {
         match pat.node {
             PatKind::Tuple(..) => true,
             PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) => {
-                match tcx.def_map.borrow().get(&pat.id).unwrap().full_def() {
+                match tcx.expect_def(pat.id) {
                     Def::Struct(..) | Def::TyAlias(..) => true,
                     _ => false,
                 }
@@ -1444,19 +1443,19 @@ pub fn trans_match<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// Checks whether the binding in `discr` is assigned to anywhere in the expression `body`
 fn is_discr_reassigned(bcx: Block, discr: &hir::Expr, body: &hir::Expr) -> bool {
     let (vid, field) = match discr.node {
-        hir::ExprPath(..) => match bcx.def(discr.id) {
+        hir::ExprPath(..) => match bcx.tcx().expect_def(discr.id) {
             Def::Local(_, vid) | Def::Upvar(_, vid, _, _) => (vid, None),
             _ => return false
         },
         hir::ExprField(ref base, field) => {
-            let vid = match bcx.tcx().def_map.borrow().get(&base.id).map(|d| d.full_def()) {
+            let vid = match bcx.tcx().expect_def_or_none(base.id) {
                 Some(Def::Local(_, vid)) | Some(Def::Upvar(_, vid, _, _)) => vid,
                 _ => return false
             };
             (vid, Some(mc::NamedField(field.node)))
         },
         hir::ExprTupField(ref base, field) => {
-            let vid = match bcx.tcx().def_map.borrow().get(&base.id).map(|d| d.full_def()) {
+            let vid = match bcx.tcx().expect_def_or_none(base.id) {
                 Some(Def::Local(_, vid)) | Some(Def::Upvar(_, vid, _, _)) => vid,
                 _ => return false
             };
@@ -1835,9 +1834,8 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         PatKind::TupleStruct(_, ref sub_pats, ddpos) => {
-            let opt_def = bcx.tcx().def_map.borrow().get(&pat.id).map(|d| d.full_def());
-            match opt_def {
-                Some(Def::Variant(enum_id, var_id)) => {
+            match bcx.tcx().expect_def(pat.id) {
+                Def::Variant(enum_id, var_id) => {
                     let repr = adt::represent_node(bcx, pat.id);
                     let vinfo = ccx.tcx().lookup_adt_def(enum_id).variant_with_id(var_id);
                     let args = extract_variant_args(bcx,
@@ -1853,7 +1851,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             cleanup_scope);
                     }
                 }
-                Some(Def::Struct(..)) => {
+                Def::Struct(..) => {
                     let expected_len = match *ccx.tcx().pat_ty(&pat) {
                         ty::TyS{sty: ty::TyStruct(adt_def, _), ..} => {
                             adt_def.struct_variant().fields.len()

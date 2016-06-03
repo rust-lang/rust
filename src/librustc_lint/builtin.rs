@@ -157,20 +157,11 @@ impl LintPass for NonShorthandFieldPatterns {
 
 impl LateLintPass for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext, pat: &hir::Pat) {
-        let def_map = cx.tcx.def_map.borrow();
-        if let PatKind::Struct(_, ref v, _) = pat.node {
-            let field_pats = v.iter().filter(|fieldpat| {
-                if fieldpat.node.is_shorthand {
-                    return false;
-                }
-                let def = def_map.get(&fieldpat.node.pat.id).map(|d| d.full_def());
-                if let Some(def_id) = cx.tcx.map.opt_local_def_id(fieldpat.node.pat.id) {
-                    def == Some(Def::Local(def_id, fieldpat.node.pat.id))
-                } else {
-                    false
-                }
-            });
+        if let PatKind::Struct(_, ref field_pats, _) = pat.node {
             for fieldpat in field_pats {
+                if fieldpat.node.is_shorthand {
+                    continue;
+                }
                 if let PatKind::Binding(_, ident, None) = fieldpat.node.pat.node {
                     if ident.node.unhygienize() == fieldpat.node.name {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
@@ -377,7 +368,7 @@ impl LateLintPass for MissingDoc {
             hir::ItemImpl(_, _, _, Some(ref trait_ref), _, ref impl_items) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
-                let real_trait = cx.tcx.trait_ref_to_def_id(trait_ref);
+                let real_trait = cx.tcx.expect_def(trait_ref.ref_id).def_id();
                 if let Some(node_id) = cx.tcx.map.as_local_node_id(real_trait) {
                     match cx.tcx.map.find(node_id) {
                         Some(hir_map::NodeItem(item)) => if item.vis == hir::Visibility::Inherited {
@@ -780,11 +771,9 @@ impl LateLintPass for UnconditionalRecursion {
                                   id: ast::NodeId) -> bool {
             match tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
-                    tcx.def_map
-                       .borrow()
-                       .get(&callee.id)
-                       .map_or(false,
-                               |def| def.def_id() == tcx.map.local_def_id(fn_id))
+                    tcx.expect_def_or_none(callee.id).map_or(false, |def| {
+                        def.def_id() == tcx.map.local_def_id(fn_id)
+                    })
                 }
                 _ => false
             }
@@ -820,7 +809,9 @@ impl LateLintPass for UnconditionalRecursion {
             // Check for calls to methods via explicit paths (e.g. `T::method()`).
             match tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
-                    match tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def()) {
+                    // The callee is an arbitrary expression,
+                    // it doesn't necessarily have a definition.
+                    match tcx.expect_def_or_none(callee.id) {
                         Some(Def::Method(def_id)) => {
                             let item_substs = tcx.node_id_item_substs(callee.id);
                             method_call_refers_to_method(
@@ -1057,7 +1048,7 @@ impl LateLintPass for MutableTransmutes {
                 hir::ExprPath(..) => (),
                 _ => return None
             }
-            if let Def::Fn(did) = cx.tcx.resolve_expr(expr) {
+            if let Def::Fn(did) = cx.tcx.expect_def(expr.id) {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }

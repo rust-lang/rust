@@ -85,8 +85,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
             PatKind::Path(..) | PatKind::QPath(..)
                 if pat_is_resolved_const(&self.cx.tcx.def_map.borrow(), pat) =>
             {
-                let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
-                match def {
+                match self.cx.tcx.expect_def(pat.id) {
                     Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                         let tcx = self.cx.tcx.global_tcx();
                         let substs = Some(self.cx.tcx.node_id_item_substs(pat.id).substs);
@@ -111,7 +110,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                             }
                         }
                     }
-                    _ =>
+                    def =>
                         span_bug!(
                             pat.span,
                             "def not a constant: {:?}",
@@ -219,8 +218,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                     ty::TyStruct(adt_def, _) | ty::TyEnum(adt_def, _) => adt_def,
                     _ => span_bug!(pat.span, "tuple struct pattern not applied to struct or enum"),
                 };
-                let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
-                let variant_def = adt_def.variant_of_def(def);
+                let variant_def = adt_def.variant_of_def(self.cx.tcx.expect_def(pat.id));
 
                 let subpatterns =
                         subpatterns.iter()
@@ -243,9 +241,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                             "struct pattern not applied to struct or enum");
                     }
                 };
-
-                let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
-                let variant_def = adt_def.variant_of_def(def);
+                let variant_def = adt_def.variant_of_def(self.cx.tcx.expect_def(pat.id));
 
                 let subpatterns =
                     fields.iter()
@@ -324,8 +320,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                        pat: &hir::Pat,
                        subpatterns: Vec<FieldPattern<'tcx>>)
                        -> PatternKind<'tcx> {
-        let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
-        match def {
+        match self.cx.tcx.expect_def(pat.id) {
             Def::Variant(enum_id, variant_id) => {
                 let adt_def = self.cx.tcx.lookup_adt_def(enum_id);
                 if adt_def.variants.len() > 1 {
@@ -343,7 +338,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 PatternKind::Leaf { subpatterns: subpatterns }
             }
 
-            _ => {
+            def => {
                 span_bug!(pat.span, "inappropriate def for pattern: {:?}", def);
             }
         }

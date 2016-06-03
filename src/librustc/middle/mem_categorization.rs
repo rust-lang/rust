@@ -517,8 +517,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           hir::ExprPath(..) => {
-            let def = self.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
-            self.cat_def(expr.id, expr.span, expr_ty, def)
+            self.cat_def(expr.id, expr.span, expr_ty, self.tcx().expect_def(expr.id))
           }
 
           hir::ExprType(ref e, _) => {
@@ -1106,12 +1105,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         (*op)(self, cmt.clone(), pat);
 
+        // This function can be used during region checking when not all paths are fully
+        // resolved. Partially resolved paths in patterns can only legally refer to
+        // associated constants which don't require categorization.
         let opt_def = if let Some(path_res) = self.tcx().def_map.borrow().get(&pat.id) {
             if path_res.depth != 0 || path_res.base_def == Def::Err {
-                // Since patterns can be associated constants
-                // which are resolved during typeck, we might have
-                // some unresolved patterns reaching this stage
-                // without aborting
                 return Err(());
             }
             Some(path_res.full_def())

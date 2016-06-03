@@ -102,7 +102,7 @@ use rustc::ty::util::{Representability, IntTypeExt};
 use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
 use session::{Session, CompileResult};
-use {CrateCtxt, lookup_full_def};
+use CrateCtxt;
 use TypeAndSubsts;
 use lint;
 use util::common::{block_query, ErrorReported, indenter, loop_query};
@@ -3158,7 +3158,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
 
         // Find the relevant variant
-        let def = lookup_full_def(tcx, path.span, expr.id);
+        let def = tcx.expect_def(expr.id);
         if def == Def::Err {
             self.set_tainted_by_errors();
             self.check_struct_fields_on_error(expr.id, fields, base_expr);
@@ -3350,12 +3350,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   self.to_ty(&qself.ty)
               });
 
-              let path_res = if let Some(&d) = tcx.def_map.borrow().get(&id) {
-                  d
-              } else {
-                  span_bug!(expr.span, "unbound path {:?}", expr)
-              };
-
+              let path_res = tcx.expect_resolution(id);
               if let Some((opt_ty, segments, def)) =
                       self.resolve_ty_and_def_ufcs(path_res, opt_self_ty, path,
                                                    expr.span, expr.id) {
@@ -3746,10 +3741,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             if let Some(def) = def {
                 // Write back the new resolution.
-                self.tcx().def_map.borrow_mut().insert(node_id, def::PathResolution {
-                    base_def: def,
-                    depth: 0,
-                });
+                self.tcx().def_map.borrow_mut().insert(node_id, def::PathResolution::new(def));
                 Some((Some(ty), slice::ref_slice(item_segment), def))
             } else {
                 self.write_error(node_id);
@@ -4556,7 +4548,7 @@ pub fn may_break(tcx: TyCtxt, id: ast::NodeId, b: &hir::Block) -> bool {
     // <id> nested anywhere inside the loop?
     (block_query(b, |e| {
         if let hir::ExprBreak(Some(_)) = e.node {
-            lookup_full_def(tcx, e.span, e.id) == Def::Label(id)
+            tcx.expect_def(e.id) == Def::Label(id)
         } else {
             false
         }
