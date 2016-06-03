@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:use_from_trait_xc.rs
-
-extern crate use_from_trait_xc;
-pub use use_from_trait_xc::Trait;
+const C: u8 = 0; //~ NOTE a constant `C` is defined here
 
 fn main() {
-    match () {
-        Trait { x: 42 } => () //~ ERROR expected variant, struct or type alias, found trait `Trait`
-        //~^ ERROR `Trait` does not name a struct or a struct variant
+    match 1u8 {
+        mut C => {} //~ ERROR match bindings cannot shadow constants
+        //~^ NOTE cannot be named the same as a constant
+        _ => {}
     }
 }
