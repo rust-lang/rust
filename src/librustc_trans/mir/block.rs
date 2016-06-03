@@ -19,11 +19,11 @@ use base;
 use build;
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
 use common::{self, Block, BlockAndBuilder, LandingPad};
-use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
+use common::{C_bool, C_str_slice, C_struct, C_u32, C_uint, C_undef};
 use consts;
 use debuginfo::DebugLoc;
 use Disr;
-use machine::{llalign_of_min, llbitsize_of_real};
+use machine::{llalign_of_min, llbitsize_of_real, llsize_of_store};
 use meth;
 use type_of;
 use glue;
@@ -38,6 +38,8 @@ use super::constant::Const;
 use super::lvalue::{LvalueRef, load_fat_ptr};
 use super::operand::OperandRef;
 use super::operand::OperandValue::*;
+
+use std::cmp;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
@@ -852,7 +854,43 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         match dest {
             Nothing => (),
-            Store(dst) => ret_ty.store(bcx, op.immediate(), dst),
+            Store(dst) => {
+                if let Some(llcast_ty) = ret_ty.cast {
+                    let ccx = bcx.ccx();
+                    // The actual return type is a struct, but the ABI
+                    // adaptation code has cast it into some scalar type.  The
+                    // code that follows is the only reliable way I have
+                    // found to do a transform like i64 -> {i32,i32}.
+                    // Basically we dump the data onto the stack then memcpy it.
+                    //
+                    // Other approaches I tried:
+                    // - Casting rust ret pointer to the foreign type and using Store
+                    //   is (a) unsafe if size of foreign type > size of rust type and
+                    //   (b) runs afoul of strict aliasing rules, yielding invalid
+                    //   assembly under -O (specifically, the store gets removed).
+                    // - Truncating foreign type to correct integral type and then
+                    //   bitcasting to the struct type yields invalid cast errors.
+
+                    // We instead thus allocate some scratch space...
+                    let llscratch = bcx.alloca(llcast_ty, "fn_ret_cast");
+                    bcx.with_block(|bcx| base::call_lifetime_start(bcx, llscratch));
+
+                    // ...where we first store the value...
+                    bcx.store(op.immediate(), llscratch);
+
+                    // ...and then memcpy it to the intended destination.
+                    base::call_memcpy(bcx,
+                                      bcx.pointercast(dst, Type::i8p(ccx)),
+                                      bcx.pointercast(llscratch, Type::i8p(ccx)),
+                                      C_uint(ccx, llsize_of_store(ccx, ret_ty.original_ty)),
+                                      cmp::min(llalign_of_min(ccx, ret_ty.original_ty),
+                                               llalign_of_min(ccx, llcast_ty)) as u32);
+
+                    bcx.with_block(|bcx| base::call_lifetime_end(bcx, llscratch));
+                } else {
+                    ret_ty.store(bcx, op.immediate(), dst);
+                }
+            }
             IndirectOperand(tmp, idx) => {
                 let op = self.trans_load(bcx, tmp, op.ty);
                 self.temps[idx as usize] = TempRef::Operand(Some(op));
