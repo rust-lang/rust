@@ -1723,12 +1723,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
                 let path_res = if let Some(&d) = tcx.def_map.borrow().get(&ast_ty.id) {
                     d
-                } else if let Some(hir::QSelf { position: 0, .. }) = *maybe_qself {
-                    // Create some fake resolution that can't possibly be a type.
-                    def::PathResolution {
-                        base_def: Def::Mod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
-                        depth: path.segments.len()
-                    }
                 } else {
                     span_bug!(ast_ty.span, "unbound path {:?}", ast_ty)
                 };

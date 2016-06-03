@@ -3352,13 +3352,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
               let path_res = if let Some(&d) = tcx.def_map.borrow().get(&id) {
                   d
-              } else if let Some(hir::QSelf { position: 0, .. }) = *maybe_qself {
-                    // Create some fake resolution that can't possibly be a type.
-                    def::PathResolution {
-                        base_def: Def::Mod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
-                        depth: path.segments.len()
-                    }
-                } else {
+              } else {
                   span_bug!(expr.span, "unbound path {:?}", expr)
               };
 

@@ -1238,7 +1238,7 @@ impl<'a> LoweringContext<'a> {
                             position: position,
                         }
                     });
-                    let rename = if path.segments.len() == 1 {
+                    let rename = if qself.is_none() && path.segments.len() == 1 {
                         // Only local variables are renamed
                         match self.resolver.get_resolution(e.id).map(|d| d.full_def()) {
                             Some(Def::Local(..)) | Some(Def::Upvar(..)) => true,

@@ -38,7 +38,6 @@ use self::TypeParameters::*;
 use self::RibKind::*;
 use self::UseLexicalScopeFlag::*;
 use self::ModulePrefixResult::*;
-use self::AssocItemResolveResult::*;
 use self::ParentLink::*;
 
 use rustc::hir::map::Definitions;
@@ -669,15 +668,6 @@ enum UseLexicalScopeFlag {
 enum ModulePrefixResult<'a> {
     NoPrefixFound,
     PrefixFound(Module<'a>, usize),
-}
-
-#[derive(Copy, Clone)]
-enum AssocItemResolveResult {
-    /// Syntax such as `<T>::item`, which can't be resolved until type
-    /// checking.
-    TypecheckRequired,
-    /// We should have been able to resolve the associated item.
-    ResolveAttempt(Option<PathResolution>),
 }
 
 /// One local scope.
@@ -2131,24 +2121,12 @@ impl<'a> Resolver<'a> {
     fn resolve_type(&mut self, ty: &Ty) {
         match ty.node {
             TyKind::Path(ref maybe_qself, ref path) => {
-                let resolution = match self.resolve_possibly_assoc_item(ty.id,
-                                                                        maybe_qself.as_ref(),
-                                                                        path,
-                                                                        TypeNS) {
-                    // `<T>::a::b::c` is resolved by typeck alone.
-                    TypecheckRequired => {
-                        // Resolve embedded types.
-                        visit::walk_ty(self, ty);
-                        return;
-                    }
-                    ResolveAttempt(resolution) => resolution,
-                };
-
                 // This is a path in the type namespace. Walk through scopes
                 // looking for it.
-                if let Some(def) = resolution {
+                if let Some(def) = self.resolve_possibly_assoc_item(ty.id, maybe_qself.as_ref(),
+                                                                    path, TypeNS) {
                     match def.base_def {
-                        Def::Mod(..) => {
+                        Def::Mod(..) if def.depth == 0 => {
                             self.session.span_err(path.span, "expected type, found module");
                             self.record_def(ty.id, err_path_resolution());
                         }
@@ -2281,54 +2259,40 @@ impl<'a> Resolver<'a> {
                             expected_what: &'static str)
         where ExpectedFn: FnOnce(Def) -> bool
     {
-        let resolution = match self.resolve_possibly_assoc_item(pat_id, qself, path, namespace) {
-            ResolveAttempt(resolution) => {
-                if let Some(resolution) = resolution {
-                    if resolution.depth == 0 {
-                        if expected_fn(resolution.base_def) {
-                            resolution
-                        } else {
-                            resolve_error(
-                                self,
-                                path.span,
-                                ResolutionError::PatPathUnexpected(expected_what,
-                                                                   resolution.kind_name(), path)
-                            );
-                            err_path_resolution()
-                        }
-                    } else {
-                        // Not fully resolved associated item `T::A::B::C` or
-                        // `<T as Tr>::A::B::C`. If `C` should be resolved in value
-                        // namespace then it needs to be added to the trait map.
-                        if namespace == ValueNS {
-                            let item_name = path.segments.last().unwrap().identifier.name;
-                            let traits = self.get_traits_containing_item(item_name);
-                            self.trait_map.insert(pat_id, traits);
-                        }
-                        resolution
-                    }
+        let resolution = if let Some(resolution) = self.resolve_possibly_assoc_item(pat_id,
+                                                                        qself, path, namespace) {
+            if resolution.depth == 0 {
+                if expected_fn(resolution.base_def) {
+                    resolution
                 } else {
-                    if let Err(false) = self.resolve_path(pat_id, path, 0, namespace) {
-                        resolve_error(
-                            self,
-                            path.span,
-                            ResolutionError::PatPathUnresolved(expected_what, path)
-                        );
-                    }
+                    resolve_error(
+                        self,
+                        path.span,
+                        ResolutionError::PatPathUnexpected(expected_what,
+                                                           resolution.kind_name(), path)
+                    );
                     err_path_resolution()
                 }
-            }
-            TypecheckRequired => {
-                // `<T>::A::B::C`, resolves exclusively during typechecking.
-                // If `C` should be resolved in value namespace then it needs
-                // to be added to the trait map.
+            } else {
+                // Not fully resolved associated item `T::A::B` or `<T as Tr>::A::B`
+                // or `<T>::A::B`. If `B` should be resolved in value namespace then
+                // it needs to be added to the trait map.
                 if namespace == ValueNS {
                     let item_name = path.segments.last().unwrap().identifier.name;
                     let traits = self.get_traits_containing_item(item_name);
                     self.trait_map.insert(pat_id, traits);
                 }
-                return;
+                resolution
             }
+        } else {
+            if let Err(false) = self.resolve_path(pat_id, path, 0, namespace) {
+                resolve_error(
+                    self,
+                    path.span,
+                    ResolutionError::PatPathUnresolved(expected_what, path)
+                );
+            }
+            err_path_resolution()
         };
 
         self.record_def(pat_id, resolution);
@@ -2444,13 +2408,17 @@ impl<'a> Resolver<'a> {
                                    maybe_qself: Option<&QSelf>,
                                    path: &Path,
                                    namespace: Namespace)
-                                   -> AssocItemResolveResult {
+                                   -> Option<PathResolution> {
         let max_assoc_types;
 
         match maybe_qself {
             Some(qself) => {
                 if qself.position == 0 {
-                    return TypecheckRequired;
+                    // FIXME: Create some fake resolution that can't possibly be a type.
+                    return Some(PathResolution {
+                        base_def: Def::Mod(self.definitions.local_def_id(ast::CRATE_NODE_ID)),
+                        depth: path.segments.len()
+                    });
                 }
                 max_assoc_types = path.segments.len() - qself.position;
                 // Make sure the trait is valid.
@@ -2477,7 +2445,7 @@ impl<'a> Resolver<'a> {
                 }
             });
         }
-        ResolveAttempt(resolution)
+        resolution
     }
 
     /// Skips `path_depth` trailing segments, which is also reflected in the
@@ -2826,24 +2794,10 @@ impl<'a> Resolver<'a> {
         // Next, resolve the node.
         match expr.node {
             ExprKind::Path(ref maybe_qself, ref path) => {
-                let resolution = match self.resolve_possibly_assoc_item(expr.id,
-                                                                        maybe_qself.as_ref(),
-                                                                        path,
-                                                                        ValueNS) {
-                    // `<T>::a::b::c` is resolved by typeck alone.
-                    TypecheckRequired => {
-                        let method_name = path.segments.last().unwrap().identifier.name;
-                        let traits = self.get_traits_containing_item(method_name);
-                        self.trait_map.insert(expr.id, traits);
-                        visit::walk_expr(self, expr);
-                        return;
-                    }
-                    ResolveAttempt(resolution) => resolution,
-                };
-
                 // This is a local path in the value namespace. Walk through
                 // scopes looking for it.
-                if let Some(path_res) = resolution {
+                if let Some(path_res) = self.resolve_possibly_assoc_item(expr.id,
+                                                            maybe_qself.as_ref(), path, ValueNS) {
                     // Check if struct variant
                     let is_struct_variant = if let Def::Variant(_, variant_id) = path_res.base_def {
                         self.structs.contains_key(&variant_id)
