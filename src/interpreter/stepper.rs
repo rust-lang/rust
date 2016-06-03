@@ -24,8 +24,6 @@ pub struct Stepper<'fncx, 'a: 'fncx, 'b: 'a + 'mir, 'mir: 'fncx, 'tcx: 'b>{
     fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>,
     mir: CachedMir<'mir, 'tcx>,
     process: fn (&mut Stepper<'fncx, 'a, 'b, 'mir, 'tcx>) -> EvalResult<()>,
-    // a stack of constants
-    constants: Vec<Vec<(ConstantId<'tcx>, Span, Pointer, CachedMir<'mir, 'tcx>)>>,
 }
 
 impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx> {
@@ -34,7 +32,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             mir: fncx.mir(),
             fncx: fncx,
             process: Self::dummy,
-            constants: vec![Vec::new()],
         }
     }
 
@@ -62,37 +59,33 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         match term {
             TerminatorTarget::Block => {},
             TerminatorTarget::Return => {
+                assert!(self.fncx.frame().constants.is_empty());
                 self.fncx.pop_stack_frame();
-                assert!(self.constants.last().unwrap().is_empty());
-                self.constants.pop();
                 if !self.fncx.stack.is_empty() {
                     self.mir = self.fncx.mir();
                 }
             },
             TerminatorTarget::Call => {
                 self.mir = self.fncx.mir();
-                self.constants.push(Vec::new());
             },
         }
         Ok(())
     }
 
     fn constant(&mut self) -> EvalResult<()> {
-        match self.constants.last_mut().unwrap().pop() {
+        match self.fncx.frame_mut().constants.pop() {
             Some((ConstantId::Promoted { index }, span, return_ptr, mir)) => {
                 trace!("adding promoted constant {}, {:?}", index, span);
                 let substs = self.fncx.substs();
                 // FIXME: somehow encode that this is a promoted constant's frame
                 let def_id = self.fncx.frame().def_id;
                 self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
-                self.constants.push(Vec::new());
                 self.mir = self.fncx.mir();
             },
             Some((ConstantId::Static { def_id, substs }, span, return_ptr, mir)) => {
                 trace!("adding static {:?}, {:?}", def_id, span);
                 self.fncx.gecx.statics.insert(def_id, return_ptr);
                 self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
-                self.constants.push(Vec::new());
                 self.mir = self.fncx.mir();
             },
             None => unreachable!(),
@@ -109,7 +102,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             return Ok(Event::Done);
         }
 
-        if !self.constants.last().unwrap().is_empty() {
+        if !self.fncx.frame().constants.is_empty() {
             self.process = Self::constant;
             return Ok(Event::Constant);
         }
@@ -119,14 +112,13 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         let basic_block = self.mir.basic_block_data(block);
 
         if let Some(ref stmt) = basic_block.statements.get(stmt) {
-            assert!(self.constants.last().unwrap().is_empty());
+            assert!(self.fncx.frame().constants.is_empty());
             ConstantExtractor {
-                constants: &mut self.constants.last_mut().unwrap(),
                 span: stmt.span,
                 fncx: self.fncx,
                 mir: &self.mir,
             }.visit_statement(block, stmt);
-            if self.constants.last().unwrap().is_empty() {
+            if self.fncx.frame().constants.is_empty() {
                 self.process = Self::statement;
                 return Ok(Event::Assignment);
             } else {
@@ -137,12 +129,11 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
 
         let terminator = basic_block.terminator();
         ConstantExtractor {
-            constants: &mut self.constants.last_mut().unwrap(),
             span: terminator.span,
             fncx: self.fncx,
             mir: &self.mir,
         }.visit_terminator(block, terminator);
-        if self.constants.last().unwrap().is_empty() {
+        if self.fncx.frame().constants.is_empty() {
             self.process = Self::terminator;
             Ok(Event::Terminator)
         } else {
@@ -167,7 +158,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
 }
 
 struct ConstantExtractor<'a: 'c, 'b: 'a + 'mir + 'c, 'c, 'mir: 'c, 'tcx: 'a + 'b + 'c> {
-    constants: &'c mut Vec<(ConstantId<'tcx>, Span, Pointer, CachedMir<'mir, 'tcx>)>,
     span: Span,
     mir: &'c mir::Mir<'tcx>,
     fncx: &'c mut FnEvalContext<'a, 'b, 'mir, 'tcx>,
@@ -184,7 +174,7 @@ impl<'a, 'b, 'c, 'mir, 'tcx> ConstantExtractor<'a, 'b, 'c, 'mir, 'tcx> {
         };
         let mir = self.fncx.load_mir(def_id);
         let ptr = self.fncx.alloc_ret_ptr(mir.return_ty).expect("there's no such thing as an unreachable static");
-        self.constants.push((cid, span, ptr, mir));
+        self.fncx.frame_mut().constants.push((cid, span, ptr, mir));
     }
 }
 
@@ -211,7 +201,7 @@ impl<'a, 'b, 'c, 'mir, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'c, 'mi
                 let return_ptr = self.fncx.alloc_ret_ptr(return_ty).expect("there's no such thing as an unreachable static");
                 self.fncx.frame_mut().promoted.insert(index, return_ptr);
                 let mir = CachedMir::Owned(Rc::new(mir));
-                self.constants.push((ConstantId::Promoted { index: index }, constant.span, return_ptr, mir));
+                self.fncx.frame_mut().constants.push((ConstantId::Promoted { index: index }, constant.span, return_ptr, mir));
             }
         }
     }
