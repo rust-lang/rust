@@ -204,10 +204,14 @@ impl<T> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> Mutex<T> {
-        Mutex {
+        let mut m = Mutex {
             inner: box StaticMutex::new(),
             data: UnsafeCell::new(t),
+        };
+        unsafe {
+            m.inner.lock.init();
         }
+        m
     }
 }
 

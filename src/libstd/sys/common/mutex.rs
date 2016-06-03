@@ -27,6 +27,12 @@ impl Mutex {
     /// first used with any of the functions below.
     pub const fn new() -> Mutex { Mutex(imp::Mutex::new()) }
 
+    /// Prepare the mutex for use.
+    ///
+    /// This should be called once the mutex is at a stable memory address.
+    #[inline]
+    pub unsafe fn init(&mut self) { self.0.init() }
+
     /// Locks the mutex blocking the current thread until it is available.
     ///
     /// Behavior is undefined if the mutex has been moved between this and any
