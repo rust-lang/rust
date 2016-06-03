@@ -22,8 +22,6 @@ pub enum Event {
 
 pub struct Stepper<'fncx, 'a: 'fncx, 'b: 'a + 'mir, 'mir: 'fncx, 'tcx: 'b>{
     fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>,
-    // a stack of statement positions
-    stmt: Vec<usize>,
     mir: CachedMir<'mir, 'tcx>,
     process: fn (&mut Stepper<'fncx, 'a, 'b, 'mir, 'tcx>) -> EvalResult<()>,
     // a stack of constants
@@ -35,7 +33,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         Stepper {
             mir: fncx.mir(),
             fncx: fncx,
-            stmt: vec![0],
             process: Self::dummy,
             constants: vec![Vec::new()],
         }
@@ -45,16 +42,17 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
 
     fn statement(&mut self) -> EvalResult<()> {
         let block_data = self.mir.basic_block_data(self.fncx.frame().next_block);
-        let stmt = &block_data.statements[*self.stmt.last().unwrap()];
+        let stmt = &block_data.statements[self.fncx.frame().stmt];
         let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
         let result = self.fncx.eval_assignment(lvalue, rvalue);
         self.fncx.maybe_report(stmt.span, result)?;
-        *self.stmt.last_mut().unwrap() += 1;
+        self.fncx.frame_mut().stmt += 1;
         Ok(())
     }
 
     fn terminator(&mut self) -> EvalResult<()> {
-        *self.stmt.last_mut().unwrap() = 0;
+        // after a terminator we go to a new block
+        self.fncx.frame_mut().stmt = 0;
         let term = {
             let block_data = self.mir.basic_block_data(self.fncx.frame().next_block);
             let terminator = block_data.terminator();
@@ -65,7 +63,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             TerminatorTarget::Block => {},
             TerminatorTarget::Return => {
                 self.fncx.pop_stack_frame();
-                self.stmt.pop();
                 assert!(self.constants.last().unwrap().is_empty());
                 self.constants.pop();
                 if !self.fncx.stack.is_empty() {
@@ -74,7 +71,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             },
             TerminatorTarget::Call => {
                 self.mir = self.fncx.mir();
-                self.stmt.push(0);
                 self.constants.push(Vec::new());
             },
         }
@@ -89,7 +85,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 // FIXME: somehow encode that this is a promoted constant's frame
                 let def_id = self.fncx.frame().def_id;
                 self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
-                self.stmt.push(0);
                 self.constants.push(Vec::new());
                 self.mir = self.fncx.mir();
             },
@@ -97,7 +92,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 trace!("adding static {:?}, {:?}", def_id, span);
                 self.fncx.gecx.statics.insert(def_id, return_ptr);
                 self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
-                self.stmt.push(0);
                 self.constants.push(Vec::new());
                 self.mir = self.fncx.mir();
             },
@@ -121,9 +115,10 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         }
 
         let block = self.fncx.frame().next_block;
+        let stmt = self.fncx.frame().stmt;
         let basic_block = self.mir.basic_block_data(block);
 
-        if let Some(ref stmt) = basic_block.statements.get(*self.stmt.last().unwrap()) {
+        if let Some(ref stmt) = basic_block.statements.get(stmt) {
             assert!(self.constants.last().unwrap().is_empty());
             ConstantExtractor {
                 constants: &mut self.constants.last_mut().unwrap(),
@@ -158,7 +153,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
 
     /// returns the statement that will be processed next
     pub fn stmt(&self) -> &mir::Statement {
-        &self.fncx.basic_block().statements[*self.stmt.last().unwrap()]
+        &self.fncx.basic_block().statements[self.fncx.frame().stmt]
     }
 
     /// returns the terminator of the current block

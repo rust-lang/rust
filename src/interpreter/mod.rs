@@ -94,6 +94,9 @@ struct Frame<'a, 'tcx: 'a> {
 
     /// List of precomputed promoted constants
     promoted: HashMap<usize, Pointer>,
+
+    /// The index of the currently evaluated statment
+    stmt: usize,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -246,6 +249,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             span: span,
             def_id: def_id,
             substs: substs,
+            stmt: 0,
         });
 
         let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
