@@ -30,7 +30,7 @@ def get(url, path, verbose=False):
         download(sha_path, sha_url, verbose)
         download(temp_path, url, verbose)
         verify(temp_path, sha_path, verbose)
-        print("moving " + temp_path + " to " + path)
+        print("moving {} to {}".format(temp_path, path))
         shutil.move(temp_path, path)
     finally:
         delete_if_present(sha_path)
@@ -44,7 +44,7 @@ def delete_if_present(path):
 
 
 def download(path, url, verbose):
-    print("downloading " + url + " to " + path)
+    print("downloading {} to {}".format(url, path))
     # see http://serverfault.com/questions/301128/how-to-download
     if sys.platform == 'win32':
         run(["PowerShell.exe", "/nologo", "-Command",
@@ -133,20 +133,20 @@ class RustBuild:
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
             channel = self.stage0_rustc_channel()
-            filename = "rust-std-" + channel + "-" + self.build + ".tar.gz"
+            filename = "rust-std-{}-{}.tar.gz".format(channel, self.build)
             url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
-                get(url + "/" + filename, tarball, verbose=self.verbose)
+                get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
             unpack(tarball, self.bin_root(),
                    match="rust-std-" + self.build,
                    verbose=self.verbose)
 
-            filename = "rustc-" + channel + "-" + self.build + ".tar.gz"
+            filename = "rustc-{}-{}.tar.gz".format(channel, self.build)
             url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
-                get(url + "/" + filename, tarball, verbose=self.verbose)
+                get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
             unpack(tarball, self.bin_root(), match="rustc", verbose=self.verbose)
             with open(self.rustc_stamp(), 'w') as f:
                 f.write(self.stage0_rustc_date())
@@ -154,11 +154,11 @@ class RustBuild:
         if self.cargo().startswith(self.bin_root()) and \
            (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
             channel = self.stage0_cargo_channel()
-            filename = "cargo-" + channel + "-" + self.build + ".tar.gz"
+            filename = "cargo-{}-{}.tar.gz".format(channel, self.build)
             url = "https://static.rust-lang.org/cargo-dist/" + self.stage0_cargo_date()
             tarball = os.path.join(cargo_cache, filename)
             if not os.path.exists(tarball):
-                get(url + "/" + filename, tarball, verbose=self.verbose)
+                get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
             unpack(tarball, self.bin_root(), match="cargo", verbose=self.verbose)
             with open(self.cargo_stamp(), 'w') as f:
                 f.write(self.stage0_cargo_date())
@@ -335,7 +335,7 @@ class RustBuild:
                 raise ValueError(err)
             sys.exit(err)
 
-        return cputype + '-' + ostype
+        return "{}-{}".format(cputype, ostype)
 
 def main():
     parser = argparse.ArgumentParser(description='Build rust')
