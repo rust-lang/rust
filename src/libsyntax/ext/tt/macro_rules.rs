@@ -27,7 +27,6 @@ use util::small_vector::SmallVector;
 use std::cell::RefCell;
 use std::collections::{HashMap};
 use std::collections::hash_map::{Entry};
-use std::rc::Rc;
 
 struct ParserAnyMacro<'a> {
     parser: RefCell<Parser<'a>>,
@@ -246,26 +245,25 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     // These spans won't matter, anyways
     let match_lhs_tok = MatchNt(lhs_nm, token::str_to_ident("tt"));
     let match_rhs_tok = MatchNt(rhs_nm, token::str_to_ident("tt"));
-    let argument_gram = vec!(
-        TokenTree::Sequence(DUMMY_SP,
-                   Rc::new(ast::SequenceRepetition {
-                       tts: vec![
-                           TokenTree::Token(DUMMY_SP, match_lhs_tok),
-                           TokenTree::Token(DUMMY_SP, token::FatArrow),
-                           TokenTree::Token(DUMMY_SP, match_rhs_tok)],
-                       separator: Some(token::Semi),
-                       op: ast::KleeneOp::OneOrMore,
-                       num_captures: 2
-                   })),
-        //to phase into semicolon-termination instead of
-        //semicolon-separation
-        TokenTree::Sequence(DUMMY_SP,
-                   Rc::new(ast::SequenceRepetition {
-                       tts: vec![TokenTree::Token(DUMMY_SP, token::Semi)],
-                       separator: None,
-                       op: ast::KleeneOp::ZeroOrMore,
-                       num_captures: 0
-                   })));
+    let argument_gram = vec![
+        TokenTree::Sequence(DUMMY_SP, ast::SequenceRepetition {
+            tts: vec![
+                TokenTree::Token(DUMMY_SP, match_lhs_tok),
+                TokenTree::Token(DUMMY_SP, token::FatArrow),
+                TokenTree::Token(DUMMY_SP, match_rhs_tok)
+            ],
+            separator: Some(token::Semi),
+            op: ast::KleeneOp::OneOrMore,
+            num_captures: 2,
+        }),
+        // to phase into semicolon-termination instead of semicolon-separation
+        TokenTree::Sequence(DUMMY_SP, ast::SequenceRepetition {
+            tts: vec![TokenTree::Token(DUMMY_SP, token::Semi)],
+            separator: None,
+            op: ast::KleeneOp::ZeroOrMore,
+            num_captures: 0,
+        }),
+    ];
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
