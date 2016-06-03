@@ -37,8 +37,8 @@ struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The virtual memory system.
     memory: Memory,
 
-    /// Precomputed statics and constants
-    statics: DefIdMap<Pointer>,
+    /// Precomputed statics, constants and promoteds
+    statics: HashMap<ConstantId<'tcx>, Pointer>,
 }
 
 struct FnEvalContext<'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> {
@@ -92,9 +92,6 @@ struct Frame<'a, 'tcx: 'a> {
     /// The offset of the first temporary in `self.locals`.
     temp_offset: usize,
 
-    /// List of precomputed promoted constants
-    promoted: HashMap<usize, Pointer>,
-
     /// The index of the currently evaluated statment
     stmt: usize,
 
@@ -136,8 +133,26 @@ enum TerminatorTarget {
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 enum ConstantId<'tcx> {
-    Promoted { index: usize },
+    Promoted { def_id: DefId, substs: &'tcx Substs<'tcx>, index: usize },
     Static { def_id: DefId, substs: &'tcx Substs<'tcx> },
+}
+
+impl<'tcx> ConstantId<'tcx> {
+    fn substs(&self) -> &'tcx Substs<'tcx> {
+        use self::ConstantId::*;
+        match *self {
+            Promoted { substs, .. } |
+            Static { substs, .. } => substs
+        }
+    }
+
+    fn def_id(&self) -> DefId {
+        use self::ConstantId::*;
+        match *self {
+            Promoted { def_id, .. } |
+            Static { def_id, .. } => def_id,
+        }
+    }
 }
 
 
@@ -152,7 +167,7 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
                                    .uint_type
                                    .bit_width()
                                    .expect("Session::target::uint_type was usize")/8),
-            statics: DefIdMap(),
+            statics: HashMap::new(),
         }
     }
 
@@ -248,7 +263,6 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             locals: Vec::new(),
             var_offset: num_args,
             temp_offset: num_args + num_vars,
-            promoted: HashMap::new(),
             span: span,
             def_id: def_id,
             substs: substs,
@@ -1025,10 +1039,18 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                         if item_ty.ty.is_fn() {
                             Err(EvalError::Unimplemented("unimplemented: mentions of function items".to_string()))
                         } else {
-                            Ok(*self.statics.get(&def_id).expect("static should have been cached (rvalue)"))
+                            let cid = ConstantId::Static{ def_id: def_id, substs: substs };
+                            Ok(*self.statics.get(&cid).expect("static should have been cached (rvalue)"))
                         }
                     },
-                    Promoted { index } => Ok(*self.frame().promoted.get(&index).expect("a promoted constant hasn't been precomputed")),
+                    Promoted { index } => {
+                        let cid = ConstantId::Promoted {
+                            def_id: self.frame().def_id,
+                            substs: self.substs(),
+                            index: index,
+                        };
+                        Ok(*self.statics.get(&cid).expect("a promoted constant hasn't been precomputed"))
+                    },
                 }
             }
         }
@@ -1043,7 +1065,11 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             Var(i) => self.frame().locals[self.frame().var_offset + i as usize],
             Temp(i) => self.frame().locals[self.frame().temp_offset + i as usize],
 
-            Static(def_id) => *self.gecx.statics.get(&def_id).expect("static should have been cached (lvalue)"),
+            Static(def_id) => {
+                let substs = self.tcx.mk_substs(subst::Substs::empty());
+                let cid = ConstantId::Static{ def_id: def_id, substs: substs };
+                *self.gecx.statics.get(&cid).expect("static should have been cached (lvalue)")
+            },
 
             Projection(ref proj) => {
                 let base = self.eval_lvalue(&proj.base)?;

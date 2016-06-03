@@ -10,7 +10,6 @@ use rustc::ty::subst::{self, Subst};
 use rustc::hir::def_id::DefId;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use syntax::codemap::Span;
-use memory::Pointer;
 use std::rc::Rc;
 
 pub enum Event {
@@ -73,23 +72,11 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
     }
 
     fn constant(&mut self) -> EvalResult<()> {
-        match self.fncx.frame_mut().constants.pop() {
-            Some((ConstantId::Promoted { index }, span, return_ptr, mir)) => {
-                trace!("adding promoted constant {}, {:?}", index, span);
-                let substs = self.fncx.substs();
-                // FIXME: somehow encode that this is a promoted constant's frame
-                let def_id = self.fncx.frame().def_id;
-                self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
-                self.mir = self.fncx.mir();
-            },
-            Some((ConstantId::Static { def_id, substs }, span, return_ptr, mir)) => {
-                trace!("adding static {:?}, {:?}", def_id, span);
-                self.fncx.gecx.statics.insert(def_id, return_ptr);
-                self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
-                self.mir = self.fncx.mir();
-            },
-            None => unreachable!(),
-        }
+        let (cid, span, return_ptr, mir) = self.fncx.frame_mut().constants.pop().expect("state machine broken");
+        let def_id = cid.def_id();
+        let substs = cid.substs();
+        self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
+        self.mir = self.fncx.mir();
         Ok(())
     }
 
@@ -164,16 +151,17 @@ struct ConstantExtractor<'a: 'c, 'b: 'a + 'mir + 'c, 'c, 'mir: 'c, 'tcx: 'a + 'b
 }
 
 impl<'a, 'b, 'c, 'mir, 'tcx> ConstantExtractor<'a, 'b, 'c, 'mir, 'tcx> {
-    fn constant(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span) {
-        if self.fncx.gecx.statics.contains_key(&def_id) {
-            return;
-        }
+    fn static_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span) {
         let cid = ConstantId::Static {
             def_id: def_id,
             substs: substs,
         };
+        if self.fncx.gecx.statics.contains_key(&cid) {
+            return;
+        }
         let mir = self.fncx.load_mir(def_id);
         let ptr = self.fncx.alloc_ret_ptr(mir.return_ty).expect("there's no such thing as an unreachable static");
+        self.fncx.statics.insert(cid.clone(), ptr);
         self.fncx.frame_mut().constants.push((cid, span, ptr, mir));
     }
 }
@@ -189,19 +177,24 @@ impl<'a, 'b, 'c, 'mir, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'c, 'mi
                 if item_ty.ty.is_fn() {
                     // unimplemented
                 } else {
-                    self.constant(def_id, substs, constant.span);
+                    self.static_item(def_id, substs, constant.span);
                 }
             },
             mir::Literal::Promoted { index } => {
-                if self.fncx.frame().promoted.contains_key(&index) {
+                let cid = ConstantId::Promoted {
+                    def_id: self.fncx.frame().def_id,
+                    substs: self.fncx.substs(),
+                    index: index,
+                };
+                if self.fncx.statics.contains_key(&cid) {
                     return;
                 }
                 let mir = self.mir.promoted[index].clone();
                 let return_ty = mir.return_ty;
                 let return_ptr = self.fncx.alloc_ret_ptr(return_ty).expect("there's no such thing as an unreachable static");
-                self.fncx.frame_mut().promoted.insert(index, return_ptr);
                 let mir = CachedMir::Owned(Rc::new(mir));
-                self.fncx.frame_mut().constants.push((ConstantId::Promoted { index: index }, constant.span, return_ptr, mir));
+                self.fncx.statics.insert(cid.clone(), return_ptr);
+                self.fncx.frame_mut().constants.push((cid, constant.span, return_ptr, mir));
             }
         }
     }
@@ -211,7 +204,7 @@ impl<'a, 'b, 'c, 'mir, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'c, 'mi
         if let mir::Lvalue::Static(def_id) = *lvalue {
             let substs = self.fncx.tcx.mk_substs(subst::Substs::empty());
             let span = self.span;
-            self.constant(def_id, substs, span);
+            self.static_item(def_id, substs, span);
         }
     }
 }
