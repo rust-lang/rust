@@ -153,7 +153,8 @@ enum ResolutionError<'a> {
         message: &'a str,
         context: UnresolvedNameContext<'a>,
         is_static_method: bool,
-        is_field: bool
+        is_field: bool,
+        def: Def,
     },
     /// error E0426: use of undeclared label
     UndeclaredLabel(&'a str),
@@ -413,7 +414,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              argument is missing?")
         }
         ResolutionError::UnresolvedName { path, message: msg, context, is_static_method,
-                                          is_field } => {
+                                          is_field, def } => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0425,
@@ -430,19 +431,20 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                 UnresolvedNameContext::PathIsMod(parent) => {
                     err.help(&match parent.map(|parent| &parent.node) {
                         Some(&ExprKind::Field(_, ident)) => {
-                            format!("To reference an item from the `{module}` module, \
+                            format!("to reference an item from the `{module}` module, \
                                      use `{module}::{ident}`",
                                     module = path,
                                     ident = ident.node)
                         }
                         Some(&ExprKind::MethodCall(ident, _, _)) => {
-                            format!("To call a function from the `{module}` module, \
+                            format!("to call a function from the `{module}` module, \
                                      use `{module}::{ident}(..)`",
                                     module = path,
                                     ident = ident.node)
                         }
                         _ => {
-                            format!("Module `{module}` cannot be used as an expression",
+                            format!("{def} `{module}` cannot be used as an expression",
+                                    def = def.kind_name(),
                                     module = path)
                         }
                     });
@@ -1113,7 +1115,8 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
                         message: "",
                         context: UnresolvedNameContext::Other,
                         is_static_method: false,
-                        is_field: false
+                        is_field: false,
+                        def: Def::Err,
                     };
                 resolve_error(self, path.span, error);
                 Def::Err
@@ -3063,6 +3066,7 @@ impl<'a> Resolver<'a> {
                                 };
 
                                 let mut context =  UnresolvedNameContext::Other;
+                                let mut def = Def::Err;
                                 if !msg.is_empty() {
                                     msg = format!(". Did you mean {}?", msg);
                                 } else {
@@ -3075,7 +3079,10 @@ impl<'a> Resolver<'a> {
                                     match self.resolve_module_path(&name_path[..],
                                                                    UseLexicalScope,
                                                                    expr.span) {
-                                        Success(_) => {
+                                        Success(e) => {
+                                            if let Some(def_type) = e.def {
+                                                def = def_type;
+                                            }
                                             context = UnresolvedNameContext::PathIsMod(parent);
                                         },
                                         _ => {},
@@ -3090,6 +3097,7 @@ impl<'a> Resolver<'a> {
                                                   context: context,
                                                   is_static_method: method_scope && is_static,
                                                   is_field: is_field,
+                                                  def: def,
                                               });
                             }
                         }
