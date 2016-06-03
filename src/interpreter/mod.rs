@@ -75,7 +75,7 @@ struct Frame<'a, 'tcx: 'a> {
     /// The MIR for the function called on this frame.
     mir: CachedMir<'a, 'tcx>,
 
-    /// The block this frame will execute when a function call returns back to this frame.
+    /// The block that is currently executed (or will be executed after the above call stacks return)
     next_block: mir::BasicBlock,
 
     /// A pointer for writing the return value of the current call if it's not a diverging call.
