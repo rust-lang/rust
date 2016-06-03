@@ -1,4 +1,4 @@
-#![feature(plugin)]
+#![feature(plugin, const_fn)]
 #![plugin(clippy)]
 
 #![allow(dead_code)]
@@ -70,4 +70,9 @@ impl Private {
     fn new() -> Private { unimplemented!() } // We don't lint private items
 }
 
+struct Const;
+
+impl Const {
+    pub const fn new() -> Const { Const } // const fns can't be implemented via Default
+}
 fn main() {}
