@@ -395,8 +395,8 @@ fn it_works() {
 ```
 
 This looks similar to our previous tests, but slightly different. We now have
-an `extern crate adder` at the top. This is because the tests in the `tests`
-directory are an entirely separate crate, and so we need to import our library.
+an `extern crate adder` at the top. This is because each test in the `tests`
+directory is an entirely separate crate, and so we need to import our library.
 This is also why `tests` is a suitable place to write integration-style tests:
 they use the library like any other consumer of it would.
 
@@ -428,6 +428,11 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 
 Now we have three sections: our previous test is also run, as well as our new
 one.
+
+Cargo will ignore files in subdirectories of the `tests/` directory.
+Therefore shared modules in integrations tests are possible.
+For example `tests/common/mod.rs` is not seperatly compiled by cargo but can 
+be imported in every test with `mod common;`
 
 That's all there is to the `tests` directory. The `tests` module isn't needed
 here, since the whole thing is focused on tests.
