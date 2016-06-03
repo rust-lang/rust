@@ -94,15 +94,15 @@ pub fn compile_input(sess: &Session,
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
     let (outputs, trans) = {
-        let (outputs, expanded_crate, id) = {
-            let krate = match phase_1_parse_input(sess, cfg, input) {
-                Ok(krate) => krate,
-                Err(mut parse_error) => {
-                    parse_error.emit();
-                    return Err(1);
-                }
-            };
+        let krate = match phase_1_parse_input(sess, cfg, input) {
+            Ok(krate) => krate,
+            Err(mut parse_error) => {
+                parse_error.emit();
+                return Err(1);
+            }
+        };
 
+        let krate = {
             let mut compile_state = CompileState::state_after_parse(input,
                                                                     sess,
                                                                     outdir,
@@ -113,17 +113,15 @@ pub fn compile_input(sess: &Session,
                                     sess,
                                     compile_state,
                                     Ok(()));
-            let krate = compile_state.krate.unwrap();
 
-            let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
-            let id = link::find_crate_name(Some(sess), &krate.attrs, input);
-            let expanded_crate = phase_2_configure_and_expand(sess,
-                                                              &cstore,
-                                                              krate,
-                                                              &id,
-                                                              addl_plugins)?;
+            compile_state.krate.unwrap()
+        };
 
-            (outputs, expanded_crate, id)
+        let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
+        let id = link::find_crate_name(Some(sess), &krate.attrs, input);
+        let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
+            let make_glob_map = control.make_glob_map;
+            phase_2_configure_and_expand(sess, &cstore, krate, &id, addl_plugins, make_glob_map)?
         };
 
         controller_entry_point!(after_expand,
@@ -150,42 +148,12 @@ pub fn compile_input(sess: &Session,
                                                                      &id),
                                 Ok(()));
 
-        let expanded_crate = assign_node_ids(sess, expanded_crate);
-
-        // Collect defintions for def ids.
-        let mut defs = time(sess.time_passes(),
-                            "collecting defs",
-                            || hir_map::collect_definitions(&expanded_crate));
-
-        time(sess.time_passes(),
-             "external crate/lib resolution",
-             || read_local_crates(sess, &cstore, &defs, &expanded_crate, &id, &sess.dep_graph));
-
-        time(sess.time_passes(),
-             "early lint checks",
-             || lint::check_ast_crate(sess, &expanded_crate));
-
-        time(sess.time_passes(),
-             "AST validation",
-             || ast_validation::check_crate(sess, &expanded_crate));
-
-        let (analysis, resolutions, mut hir_forest) = {
-            lower_and_resolve(sess, &id, &mut defs, &expanded_crate,
-                              &sess.dep_graph, control.make_glob_map)
-        };
-
-        // Discard MTWT tables that aren't required past lowering to HIR.
-        if !keep_mtwt_tables(sess) {
-            syntax::ext::mtwt::clear_tables();
-        }
-
         let arenas = ty::CtxtArenas::new();
 
         // Construct the HIR map
-        let hir_forest = &mut hir_forest;
         let hir_map = time(sess.time_passes(),
                            "indexing hir",
-                           move || hir_map::map_crate(hir_forest, defs));
+                           || hir_map::map_crate(&mut hir_forest, defs));
 
         {
             let _ignore = hir_map.dep_graph.in_ignore();
@@ -577,19 +545,28 @@ fn count_nodes(krate: &ast::Crate) -> usize {
 // For continuing compilation after a parsed crate has been
 // modified
 
+pub struct ExpansionResult<'a> {
+    pub expanded_crate: ast::Crate,
+    pub defs: hir_map::Definitions,
+    pub analysis: ty::CrateAnalysis<'a>,
+    pub resolutions: Resolutions,
+    pub hir_forest: hir_map::Forest,
+}
+
 /// Run the "early phases" of the compiler: initial `cfg` processing,
 /// loading compiler plugins (including those from `addl_plugins`),
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
-/// harness if one is to be provided and injection of a dependency on the
-/// standard library and prelude.
+/// harness if one is to be provided, injection of a dependency on the
+/// standard library and prelude, and name resolution.
 ///
 /// Returns `None` if we're aborting after handling -W help.
-pub fn phase_2_configure_and_expand(sess: &Session,
-                                    cstore: &CStore,
-                                    mut krate: ast::Crate,
-                                    crate_name: &str,
-                                    addl_plugins: Option<Vec<String>>)
-                                    -> Result<ast::Crate, usize> {
+pub fn phase_2_configure_and_expand<'a>(sess: &Session,
+                                        cstore: &CStore,
+                                        mut krate: ast::Crate,
+                                        crate_name: &'a str,
+                                        addl_plugins: Option<Vec<String>>,
+                                        make_glob_map: resolve::MakeGlobMap)
+                                        -> Result<ExpansionResult<'a>, usize> {
     let time_passes = sess.time_passes();
 
     // strip before anything else because crate metadata may use #[cfg_attr]
@@ -748,10 +725,6 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                  || syntax::std_inject::maybe_inject_prelude(&sess.parse_sess, krate));
 
     time(time_passes,
-         "checking that all macro invocations are gone",
-         || syntax::ext::expand::check_for_macros(&sess.parse_sess, &krate));
-
-    time(time_passes,
          "checking for inline asm in case the target doesn't support it",
          || no_asm::check_crate(sess, &krate));
 
@@ -771,7 +744,39 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         println!("Post-expansion node count: {}", count_nodes(&krate));
     }
 
-    Ok(krate)
+    krate = assign_node_ids(sess, krate);
+
+    // Collect defintions for def ids.
+    let mut defs =
+        time(sess.time_passes(), "collecting defs", || hir_map::collect_definitions(&krate));
+
+    time(sess.time_passes(),
+         "external crate/lib resolution",
+         || read_local_crates(sess, &cstore, &defs, &krate, crate_name, &sess.dep_graph));
+
+    time(sess.time_passes(),
+         "early lint checks",
+         || lint::check_ast_crate(sess, &krate));
+
+    time(sess.time_passes(),
+         "AST validation",
+         || ast_validation::check_crate(sess, &krate));
+
+    let (analysis, resolutions, hir_forest) =
+        lower_and_resolve(sess, crate_name, &mut defs, &krate, &sess.dep_graph, make_glob_map);
+
+    // Discard MTWT tables that aren't required past lowering to HIR.
+    if !keep_mtwt_tables(sess) {
+        syntax::ext::mtwt::clear_tables();
+    }
+
+    Ok(ExpansionResult {
+        expanded_crate: krate,
+        defs: defs,
+        analysis: analysis,
+        resolutions: resolutions,
+        hir_forest: hir_forest
+    })
 }
 
 pub fn assign_node_ids(sess: &Session, krate: ast::Crate) -> ast::Crate {
