@@ -6,13 +6,15 @@ use super::{
 };
 use error::EvalResult;
 use rustc::mir::repr as mir;
-use rustc::ty::{self, subst};
-use rustc::mir::visit::Visitor;
+use rustc::ty::subst::{self, Subst};
+use rustc::hir::def_id::DefId;
+use rustc::mir::visit::{Visitor, LvalueContext};
 use syntax::codemap::Span;
 use memory::Pointer;
 use std::rc::Rc;
 
 pub enum Event {
+    Constant,
     Assignment,
     Terminator,
     Done,
@@ -26,21 +28,19 @@ pub struct Stepper<'fncx, 'a: 'fncx, 'b: 'a + 'mir, 'mir: 'fncx, 'tcx: 'b>{
     mir: CachedMir<'mir, 'tcx>,
     process: fn (&mut Stepper<'fncx, 'a, 'b, 'mir, 'tcx>) -> EvalResult<()>,
     // a stack of constants
-    constants: Vec<Vec<(ConstantId, Span)>>,
+    constants: Vec<Vec<(ConstantId<'tcx>, Span, Pointer, CachedMir<'mir, 'tcx>)>>,
 }
 
 impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx> {
     pub(super) fn new(fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>) -> Self {
-        let mut stepper = Stepper {
+        Stepper {
             block: fncx.frame().next_block,
             mir: fncx.mir(),
             fncx: fncx,
             stmt: vec![0],
             process: Self::dummy,
-            constants: Vec::new(),
-        };
-        stepper.extract_constants();
-        stepper
+            constants: vec![Vec::new()],
+        }
     }
 
     fn dummy(&mut self) -> EvalResult<()> { Ok(()) }
@@ -81,20 +81,37 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 self.block = self.fncx.frame().next_block;
                 self.mir = self.fncx.mir();
                 self.stmt.push(0);
-                self.extract_constants();
+                self.constants.push(Vec::new());
             },
         }
         Ok(())
     }
 
-    fn alloc(&mut self, ty: ty::FnOutput<'tcx>) -> Pointer {
-        match ty {
-            ty::FnConverging(ty) => {
-                let size = self.fncx.type_size(ty);
-                self.fncx.memory.allocate(size)
-            }
-            ty::FnDiverging => panic!("there's no such thing as an unreachable static"),
+    fn constant(&mut self) -> EvalResult<()> {
+        match self.constants.last_mut().unwrap().pop() {
+            Some((ConstantId::Promoted { index }, span, return_ptr, mir)) => {
+                trace!("adding promoted constant {}, {:?}", index, span);
+                let substs = self.fncx.substs();
+                // FIXME: somehow encode that this is a promoted constant's frame
+                let def_id = self.fncx.frame().def_id;
+                self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
+                self.stmt.push(0);
+                self.constants.push(Vec::new());
+                self.block = self.fncx.frame().next_block;
+                self.mir = self.fncx.mir();
+            },
+            Some((ConstantId::Static { def_id, substs }, span, return_ptr, mir)) => {
+                trace!("adding static {:?}, {:?}", def_id, span);
+                self.fncx.gecx.statics.insert(def_id, return_ptr);
+                self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
+                self.stmt.push(0);
+                self.constants.push(Vec::new());
+                self.block = self.fncx.frame().next_block;
+                self.mir = self.fncx.mir();
+            },
+            None => unreachable!(),
         }
+        Ok(())
     }
 
     pub fn step(&mut self) -> EvalResult<Event> {
@@ -106,45 +123,44 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             return Ok(Event::Done);
         }
 
-        match self.constants.last_mut().unwrap().pop() {
-            Some((ConstantId::Promoted { index }, span)) => {
-                trace!("adding promoted constant {}", index);
-                let mir = self.mir.promoted[index].clone();
-                let return_ptr = self.alloc(mir.return_ty);
-                self.fncx.frame_mut().promoted.insert(index, return_ptr);
-                let substs = self.fncx.substs();
-                // FIXME: somehow encode that this is a promoted constant's frame
-                let def_id = self.fncx.frame().def_id;
-                self.fncx.push_stack_frame(def_id, span, CachedMir::Owned(Rc::new(mir)), substs, Some(return_ptr));
-                self.stmt.push(0);
-                self.constants.push(Vec::new());
-                self.block = self.fncx.frame().next_block;
-                self.mir = self.fncx.mir();
-            },
-            Some((ConstantId::Static { def_id }, span)) => {
-                trace!("adding static {:?}", def_id);
-                let mir = self.fncx.load_mir(def_id);
-                let return_ptr = self.alloc(mir.return_ty);
-                self.fncx.gecx.statics.insert(def_id, return_ptr);
-                let substs = self.fncx.tcx.mk_substs(subst::Substs::empty());
-                self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
-                self.stmt.push(0);
-                self.constants.push(Vec::new());
-                self.block = self.fncx.frame().next_block;
-                self.mir = self.fncx.mir();
-            },
-            None => {},
+        if !self.constants.last().unwrap().is_empty() {
+            self.process = Self::constant;
+            return Ok(Event::Constant);
         }
 
         let basic_block = self.mir.basic_block_data(self.block);
 
-        if basic_block.statements.len() > *self.stmt.last().unwrap() {
-            self.process = Self::statement;
-            return Ok(Event::Assignment);
+        if let Some(ref stmt) = basic_block.statements.get(*self.stmt.last().unwrap()) {
+            assert!(self.constants.last().unwrap().is_empty());
+            ConstantExtractor {
+                constants: &mut self.constants.last_mut().unwrap(),
+                span: stmt.span,
+                fncx: self.fncx,
+                mir: &self.mir,
+            }.visit_statement(self.block, stmt);
+            if self.constants.last().unwrap().is_empty() {
+                self.process = Self::statement;
+                return Ok(Event::Assignment);
+            } else {
+                self.process = Self::constant;
+                return Ok(Event::Constant);
+            }
         }
 
-        self.process = Self::terminator;
-        Ok(Event::Terminator)
+        let terminator = basic_block.terminator();
+        ConstantExtractor {
+            constants: &mut self.constants.last_mut().unwrap(),
+            span: terminator.span,
+            fncx: self.fncx,
+            mir: &self.mir,
+        }.visit_terminator(self.block, terminator);
+        if self.constants.last().unwrap().is_empty() {
+            self.process = Self::terminator;
+            Ok(Event::Terminator)
+        } else {
+            self.process = Self::constant;
+            return Ok(Event::Constant);
+        }
     }
 
     /// returns the basic block index of the currently processed block
@@ -163,37 +179,64 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         let block_data = self.mir.basic_block_data(self.block);
         block_data.terminator()
     }
+}
 
-    fn extract_constants(&mut self) {
-        let mut extractor = ConstantExtractor {
-            constants: Vec::new(),
+struct ConstantExtractor<'a: 'c, 'b: 'a + 'mir + 'c, 'c, 'mir: 'c, 'tcx: 'a + 'b + 'c> {
+    constants: &'c mut Vec<(ConstantId<'tcx>, Span, Pointer, CachedMir<'mir, 'tcx>)>,
+    span: Span,
+    mir: &'c mir::Mir<'tcx>,
+    fncx: &'c mut FnEvalContext<'a, 'b, 'mir, 'tcx>,
+}
+
+impl<'a, 'b, 'c, 'mir, 'tcx> ConstantExtractor<'a, 'b, 'c, 'mir, 'tcx> {
+    fn constant(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span) {
+        if self.fncx.gecx.statics.contains_key(&def_id) {
+            return;
+        }
+        let cid = ConstantId::Static {
+            def_id: def_id,
+            substs: substs,
         };
-        extractor.visit_mir(&self.mir);
-        self.constants.push(extractor.constants);
+        let mir = self.fncx.load_mir(def_id);
+        let ptr = self.fncx.alloc_ret_ptr(mir.return_ty).expect("there's no such thing as an unreachable static");
+        self.constants.push((cid, span, ptr, mir));
     }
 }
 
-struct ConstantExtractor {
-    constants: Vec<(ConstantId, Span)>,
-}
-
-impl<'tcx> Visitor<'tcx> for ConstantExtractor {
+impl<'a, 'b, 'c, 'mir, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'c, 'mir, 'tcx> {
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>) {
         self.super_constant(constant);
         match constant.literal {
             // already computed by rustc
             mir::Literal::Value { .. } => {}
-            mir::Literal::Item { .. } => {}, // FIXME: unimplemented
+            mir::Literal::Item { def_id, substs } => {
+                let item_ty = self.fncx.tcx.lookup_item_type(def_id).subst(self.fncx.tcx, substs);
+                if item_ty.ty.is_fn() {
+                    // unimplemented
+                } else {
+                    self.constant(def_id, substs, constant.span);
+                }
+            },
             mir::Literal::Promoted { index } => {
-                self.constants.push((ConstantId::Promoted { index: index }, constant.span));
+                if self.fncx.frame().promoted.contains_key(&index) {
+                    return;
+                }
+                let mir = self.mir.promoted[index].clone();
+                let return_ty = mir.return_ty;
+                let return_ptr = self.fncx.alloc_ret_ptr(return_ty).expect("there's no such thing as an unreachable static");
+                self.fncx.frame_mut().promoted.insert(index, return_ptr);
+                let mir = CachedMir::Owned(Rc::new(mir));
+                self.constants.push((ConstantId::Promoted { index: index }, constant.span, return_ptr, mir));
             }
         }
     }
 
-    fn visit_statement(&mut self, block: mir::BasicBlock, stmt: &mir::Statement<'tcx>) {
-        self.super_statement(block, stmt);
-        if let mir::StatementKind::Assign(mir::Lvalue::Static(def_id), _) = stmt.kind {
-            self.constants.push((ConstantId::Static { def_id: def_id }, stmt.span));
+    fn visit_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>, context: LvalueContext) {
+        self.super_lvalue(lvalue, context);
+        if let mir::Lvalue::Static(def_id) = *lvalue {
+            let substs = self.fncx.tcx.mk_substs(subst::Substs::empty());
+            let span = self.span;
+            self.constant(def_id, substs, span);
         }
     }
 }

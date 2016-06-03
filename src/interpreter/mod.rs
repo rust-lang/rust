@@ -129,9 +129,9 @@ enum TerminatorTarget {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-enum ConstantId {
+enum ConstantId<'tcx> {
     Promoted { index: usize },
-    Static { def_id: DefId },
+    Static { def_id: DefId, substs: &'tcx Substs<'tcx> },
 }
 
 
@@ -156,13 +156,7 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
         let mut nested_fecx = FnEvalContext::new(self);
 
         nested_fecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, None);
-        let return_ptr = match mir.return_ty {
-            ty::FnConverging(ty) => {
-                let size = nested_fecx.type_size(ty);
-                Some(nested_fecx.memory.allocate(size))
-            }
-            ty::FnDiverging => None,
-        };
+        let return_ptr = nested_fecx.alloc_ret_ptr(mir.return_ty);
         nested_fecx.frame_mut().return_ptr = return_ptr;
 
         nested_fecx.run()?;
@@ -175,6 +169,16 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         FnEvalContext {
             gecx: gecx,
             stack: Vec::new(),
+        }
+    }
+
+    fn alloc_ret_ptr(&mut self, ty: ty::FnOutput<'tcx>) -> Option<Pointer> {
+        match ty {
+            ty::FnConverging(ty) => {
+                let size = self.type_size(ty);
+                Some(self.memory.allocate(size))
+            }
+            ty::FnDiverging => None,
         }
     }
 
@@ -207,6 +211,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
             loop {
                 match stepper.step()? {
+                    Constant => trace!("next statement requires the computation of a constant"),
                     Assignment => trace!("{:?}", stepper.stmt()),
                     Terminator => {
                         trace!("{:?}", stepper.term().kind);
@@ -998,7 +1003,14 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 use rustc::mir::repr::Literal::*;
                 match *literal {
                     Value { ref value } => Ok(self.const_to_ptr(value)?),
-                    Item { .. } => Err(EvalError::Unimplemented(format!("literal items (e.g. mentions of function items) are unimplemented"))),
+                    Item { def_id, substs } => {
+                        let item_ty = self.tcx.lookup_item_type(def_id).subst(self.tcx, substs);
+                        if item_ty.ty.is_fn() {
+                            Err(EvalError::Unimplemented("unimplemented: mentions of function items".to_string()))
+                        } else {
+                            Ok(*self.statics.get(&def_id).expect("static should have been cached (rvalue)"))
+                        }
+                    },
                     Promoted { index } => Ok(*self.frame().promoted.get(&index).expect("a promoted constant hasn't been precomputed")),
                 }
             }
@@ -1014,7 +1026,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             Var(i) => self.frame().locals[self.frame().var_offset + i as usize],
             Temp(i) => self.frame().locals[self.frame().temp_offset + i as usize],
 
-            Static(def_id) => *self.gecx.statics.get(&def_id).expect("static should have been cached"),
+            Static(def_id) => *self.gecx.statics.get(&def_id).expect("static should have been cached (lvalue)"),
 
             Projection(ref proj) => {
                 let base = self.eval_lvalue(&proj.base)?;

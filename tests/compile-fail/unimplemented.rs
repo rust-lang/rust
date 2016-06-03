@@ -1,7 +1,7 @@
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
-//error-pattern:static should have been cached
+//error-pattern:unimplemented: mentions of function items
 
 
 #[miri_run]
