@@ -122,7 +122,6 @@ impl<T> Queue<T> {
             if !next.is_null() {
                 *self.tail.get() = next;
                 assert!((*tail).value.is_none());
-                assert!((*next).value.is_some());
                 let ret = (*next).value.take().unwrap();
                 let _: Box<Node<T>> = Box::from_raw(tail);
                 return Data(ret);
