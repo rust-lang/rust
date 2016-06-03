@@ -22,7 +22,6 @@ pub enum Event {
 
 pub struct Stepper<'fncx, 'a: 'fncx, 'b: 'a + 'mir, 'mir: 'fncx, 'tcx: 'b>{
     fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>,
-    block: mir::BasicBlock,
     // a stack of statement positions
     stmt: Vec<usize>,
     mir: CachedMir<'mir, 'tcx>,
@@ -34,7 +33,6 @@ pub struct Stepper<'fncx, 'a: 'fncx, 'b: 'a + 'mir, 'mir: 'fncx, 'tcx: 'b>{
 impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx> {
     pub(super) fn new(fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>) -> Self {
         Stepper {
-            block: fncx.frame().next_block,
             mir: fncx.mir(),
             fncx: fncx,
             stmt: vec![0],
@@ -46,7 +44,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
     fn dummy(&mut self) -> EvalResult<()> { Ok(()) }
 
     fn statement(&mut self) -> EvalResult<()> {
-        let block_data = self.mir.basic_block_data(self.block);
+        let block_data = self.mir.basic_block_data(self.fncx.frame().next_block);
         let stmt = &block_data.statements[*self.stmt.last().unwrap()];
         let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
         let result = self.fncx.eval_assignment(lvalue, rvalue);
@@ -58,27 +56,23 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
     fn terminator(&mut self) -> EvalResult<()> {
         *self.stmt.last_mut().unwrap() = 0;
         let term = {
-            let block_data = self.mir.basic_block_data(self.block);
+            let block_data = self.mir.basic_block_data(self.fncx.frame().next_block);
             let terminator = block_data.terminator();
             let result = self.fncx.eval_terminator(terminator);
             self.fncx.maybe_report(terminator.span, result)?
         };
         match term {
-            TerminatorTarget::Block(block) => {
-                self.block = block;
-            },
+            TerminatorTarget::Block => {},
             TerminatorTarget::Return => {
                 self.fncx.pop_stack_frame();
                 self.stmt.pop();
                 assert!(self.constants.last().unwrap().is_empty());
                 self.constants.pop();
                 if !self.fncx.stack.is_empty() {
-                    self.block = self.fncx.frame().next_block;
                     self.mir = self.fncx.mir();
                 }
             },
             TerminatorTarget::Call => {
-                self.block = self.fncx.frame().next_block;
                 self.mir = self.fncx.mir();
                 self.stmt.push(0);
                 self.constants.push(Vec::new());
@@ -97,7 +91,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
                 self.stmt.push(0);
                 self.constants.push(Vec::new());
-                self.block = self.fncx.frame().next_block;
                 self.mir = self.fncx.mir();
             },
             Some((ConstantId::Static { def_id, substs }, span, return_ptr, mir)) => {
@@ -106,7 +99,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
                 self.stmt.push(0);
                 self.constants.push(Vec::new());
-                self.block = self.fncx.frame().next_block;
                 self.mir = self.fncx.mir();
             },
             None => unreachable!(),
@@ -128,7 +120,8 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             return Ok(Event::Constant);
         }
 
-        let basic_block = self.mir.basic_block_data(self.block);
+        let block = self.fncx.frame().next_block;
+        let basic_block = self.mir.basic_block_data(block);
 
         if let Some(ref stmt) = basic_block.statements.get(*self.stmt.last().unwrap()) {
             assert!(self.constants.last().unwrap().is_empty());
@@ -137,7 +130,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 span: stmt.span,
                 fncx: self.fncx,
                 mir: &self.mir,
-            }.visit_statement(self.block, stmt);
+            }.visit_statement(block, stmt);
             if self.constants.last().unwrap().is_empty() {
                 self.process = Self::statement;
                 return Ok(Event::Assignment);
@@ -153,7 +146,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             span: terminator.span,
             fncx: self.fncx,
             mir: &self.mir,
-        }.visit_terminator(self.block, terminator);
+        }.visit_terminator(block, terminator);
         if self.constants.last().unwrap().is_empty() {
             self.process = Self::terminator;
             Ok(Event::Terminator)
@@ -163,21 +156,18 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         }
     }
 
-    /// returns the basic block index of the currently processed block
-    pub fn block(&self) -> mir::BasicBlock {
-        self.block
-    }
-
     /// returns the statement that will be processed next
     pub fn stmt(&self) -> &mir::Statement {
-        let block_data = self.mir.basic_block_data(self.block);
-        &block_data.statements[*self.stmt.last().unwrap()]
+        &self.fncx.basic_block().statements[*self.stmt.last().unwrap()]
     }
 
     /// returns the terminator of the current block
     pub fn term(&self) -> &mir::Terminator {
-        let block_data = self.mir.basic_block_data(self.block);
-        block_data.terminator()
+        self.fncx.basic_block().terminator()
+    }
+
+    pub fn block(&self) -> mir::BasicBlock {
+        self.fncx.frame().next_block
     }
 }
 

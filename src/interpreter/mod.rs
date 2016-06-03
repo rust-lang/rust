@@ -118,8 +118,8 @@ enum CachedMir<'mir, 'tcx: 'mir> {
 
 /// Represents the action to be taken in the main loop as a result of executing a terminator.
 enum TerminatorTarget {
-    /// Make a local jump to the given block.
-    Block(mir::BasicBlock),
+    /// Make a local jump to the next block
+    Block,
 
     /// Start executing from the new current frame. (For function calls.)
     Call,
@@ -268,12 +268,16 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         let target = match terminator.kind {
             Return => TerminatorTarget::Return,
 
-            Goto { target } => TerminatorTarget::Block(target),
+            Goto { target } => {
+                self.frame_mut().next_block = target;
+                TerminatorTarget::Block
+            },
 
             If { ref cond, targets: (then_target, else_target) } => {
                 let cond_ptr = self.eval_operand(cond)?;
                 let cond_val = self.memory.read_bool(cond_ptr)?;
-                TerminatorTarget::Block(if cond_val { then_target } else { else_target })
+                self.frame_mut().next_block = if cond_val { then_target } else { else_target };
+                TerminatorTarget::Block
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
@@ -296,7 +300,8 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     }
                 }
 
-                TerminatorTarget::Block(target_block)
+                self.frame_mut().next_block = target_block;
+                TerminatorTarget::Block
             }
 
             Switch { ref discr, ref targets, adt_def } => {
@@ -307,7 +312,10 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     .position(|v| discr_val == v.disr_val.to_u64_unchecked());
 
                 match matching {
-                    Some(i) => TerminatorTarget::Block(targets[i]),
+                    Some(i) => {
+                        self.frame_mut().next_block = targets[i];
+                        TerminatorTarget::Block
+                    },
                     None => return Err(EvalError::InvalidDiscriminant),
                 }
             }
@@ -408,7 +416,8 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 let ptr = self.eval_lvalue(value)?.to_ptr();
                 let ty = self.lvalue_ty(value);
                 self.drop(ptr, ty)?;
-                TerminatorTarget::Block(target)
+                self.frame_mut().next_block = target;
+                TerminatorTarget::Block
             }
 
             Resume => unimplemented!(),
@@ -1236,6 +1245,11 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     fn frame(&self) -> &Frame<'mir, 'tcx> {
         self.stack.last().expect("no call frames exist")
+    }
+
+    fn basic_block(&self) -> &mir::BasicBlockData<'tcx> {
+        let frame = self.frame();
+        frame.mir.basic_block_data(frame.next_block)
     }
 
     fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx> {
