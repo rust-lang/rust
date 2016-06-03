@@ -584,7 +584,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
         hir::ExprStruct(..) => {
-            if v.tcx.expect_def(e.id).def_id() == v.tcx.lang_items.unsafe_cell_type().unwrap() {
+            // unsafe_cell_type doesn't necessarily exist with no_core
+            if Some(v.tcx.expect_def(e.id).def_id()) == v.tcx.lang_items.unsafe_cell_type() {
                 v.add_qualif(ConstQualif::MUTABLE_MEM);
             }
         }
