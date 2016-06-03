@@ -380,8 +380,9 @@ the `tests` directory.
 
 # The `tests` directory
 
-To write an integration test, let's make a `tests` directory, and
-put a `tests/lib.rs` file inside, with this as its contents:
+Each file in `tests/*.rs` directory is treated as individual crate.
+So, to write an integration test, let's make a `tests` directory, and
+put a `tests/integration_test.rs` file inside, with this as its contents:
 
 ```rust,ignore
 extern crate adder;
