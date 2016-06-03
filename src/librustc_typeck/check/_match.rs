@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def::{self, Def};
+use hir::def::Def;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use hir::pat_util::{PatIdMap, pat_id_map};
 use hir::pat_util::{EnumerateAndAdjustIterator, pat_is_resolved_const};
@@ -224,13 +224,6 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                         return;
                     }
                     d
-                } else if qself.position == 0 {
-                    // This is just a sentinel for finish_resolving_def_to_ty.
-                    let sentinel = self.tcx.map.local_def_id(ast::CRATE_NODE_ID);
-                    def::PathResolution {
-                        base_def: Def::Mod(sentinel),
-                        depth: path.segments.len()
-                    }
                 } else {
                     debug!("unbound path {:?}", pat);
                     self.write_error(pat.id);
