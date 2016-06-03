@@ -1695,10 +1695,12 @@ fn trans_scalar_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 // refinement types would obviate the need for this
+#[derive(Clone, Copy)]
 enum lazy_binop_ty {
     lazy_and,
     lazy_or,
 }
+
 
 fn trans_lazy_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 binop_expr: &hir::Expr,
@@ -1715,6 +1717,17 @@ fn trans_lazy_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     if past_lhs.unreachable.get() {
         return immediate_rvalue_bcx(past_lhs, lhs, binop_ty).to_expr_datumblock();
+    }
+
+    // If the rhs can never be reached, don't generate code for it.
+    if let Some(cond_val) = const_to_opt_uint(lhs) {
+        match (cond_val, op) {
+            (0, lazy_and) |
+            (1, lazy_or)  => {
+                return immediate_rvalue_bcx(past_lhs, lhs, binop_ty).to_expr_datumblock();
+            }
+            _ => { /* continue */ }
+        }
     }
 
     let join = fcx.new_id_block("join", binop_expr.id);
