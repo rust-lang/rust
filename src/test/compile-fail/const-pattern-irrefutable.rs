@@ -19,10 +19,10 @@ use foo::d; //~ NOTE is imported here
 const a: u8 = 2; //~ NOTE is defined here
 
 fn main() {
-    let a = 4; //~ ERROR let variables cannot
-               //~^ NOTE cannot be named the same as a const variable
-    let c = 4; //~ ERROR let variables cannot
-               //~^ NOTE cannot be named the same as a const variable
-    let d = 4; //~ ERROR let variables cannot
-               //~^ NOTE cannot be named the same as a const variable
+    let a = 4; //~ ERROR let bindings cannot shadow constants
+               //~^ NOTE cannot be named the same as a constant
+    let c = 4; //~ ERROR let bindings cannot shadow constants
+               //~^ NOTE cannot be named the same as a constant
+    let d = 4; //~ ERROR let bindings cannot shadow constants
+               //~^ NOTE cannot be named the same as a constant
 }
