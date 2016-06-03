@@ -69,6 +69,11 @@ impl LateLintPass for LetIfSeq {
                 let Some(def) = cx.tcx.def_map.borrow().get(&decl.pat.id),
                 let hir::StmtExpr(ref if_, _) = expr.node,
                 let hir::ExprIf(ref cond, ref then, ref else_) = if_.node,
+                {
+                    let mut v = UsedVisitor { cx: cx, id: def.def_id(), used: false };
+                    hir::intravisit::walk_expr(&mut v, cond);
+                    !v.used
+                },
                 let Some(value) = check_assign(cx, def.def_id(), then),
             ], {
                 let span = codemap::mk_sp(stmt.span.lo, if_.span.hi);
@@ -163,13 +168,13 @@ fn check_assign<'e>(cx: &LateContext, decl: hir::def_id::DefId, block: &'e hir::
 
         for s in block.stmts.iter().take(block.stmts.len()-1) {
             hir::intravisit::walk_stmt(&mut v, s);
+
+            if v.used {
+                return None;
+            }
         }
 
-        return if v.used {
-            None
-        } else {
-            Some(value)
-        };
+        return Some(value);
     }}
 
     None

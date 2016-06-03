@@ -6,6 +6,14 @@
 
 fn f() -> bool { true }
 
+fn issue975() -> String {
+    let mut udn = "dummy".to_string();
+    if udn.starts_with("uuid:") {
+        udn = String::from(&udn[5..]);
+    }
+    udn
+}
+
 fn early_return() -> u8 {
     // FIXME: we could extend the lint to include such cases:
     let foo;
@@ -21,6 +29,7 @@ fn early_return() -> u8 {
 
 fn main() {
     early_return();
+    issue975();
 
     let mut foo = 0;
     //~^ ERROR `if _ { .. } else { .. }` is an expression
