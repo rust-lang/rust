@@ -3,18 +3,25 @@ sudo: required
 services:
   - docker
 
-# LLVM takes awhile to check out and otherwise we'll manage the submodules in
-# our configure script, so disable auto submodule management.
+# LLVM takes awhile to check out and otherwise we'll manage the submodules
+# ourselves, so disable auto submodule management.
 git:
   submodules: false
 
+# We want to mount source directory read-only to test out-of-tree build.
+# This means configure can't manage submodules, so we do it here.
 before_install:
+  - git submodule init
+  - git submodule deinit src/llvm
+  - git submodule update
   - docker build -t rust -f src/etc/Dockerfile src/etc
 
 script:
-  - docker run -v `pwd`:/build rust
+  - docker run -v `pwd`:/src:ro rust
     sh -c "
-      ./configure --llvm-root=/usr/lib/llvm-3.7 &&
+      /src/configure
+        --llvm-root=/usr/lib/llvm-3.7
+        --disable-manage-submodules &&
       make tidy &&
       make check-notidy -j4
     "
