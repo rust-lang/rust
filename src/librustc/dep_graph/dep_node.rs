@@ -10,7 +10,16 @@
 
 use std::fmt::Debug;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+macro_rules! try_opt {
+    ($e:expr) => (
+        match $e {
+            Some(r) => r,
+            None => return None,
+        }
+    )
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum DepNode<D: Clone + Debug> {
     // The `D` type is "how definitions are identified".
     // During compilation, it is always `DefId`, but when serializing
@@ -116,7 +125,7 @@ pub enum DepNode<D: Clone + Debug> {
     // which would yield an overly conservative dep-graph.
     TraitItems(D),
     ReprHints(D),
-    TraitSelect(D),
+    TraitSelect(D, Vec<D>),
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -212,7 +221,11 @@ impl<D: Clone + Debug> DepNode<D> {
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),
-            TraitSelect(ref d) => op(d).map(TraitSelect),
+            TraitSelect(ref d, ref type_ds) => {
+                let d = try_opt!(op(d));
+                let type_ds = try_opt!(type_ds.iter().map(|d| op(d)).collect());
+                Some(TraitSelect(d, type_ds))
+            }
         }
     }
 }

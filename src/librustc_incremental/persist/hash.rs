@@ -39,8 +39,8 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    pub fn hash(&mut self, dep_node: DepNode<DefId>) -> Option<u64> {
-        match dep_node {
+    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<u64> {
+        match *dep_node {
             // HIR nodes (which always come from our crate) are an input:
             DepNode::Hir(def_id) => {
                 assert!(def_id.is_local());

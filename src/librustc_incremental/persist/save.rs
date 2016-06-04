@@ -99,7 +99,7 @@ pub fn encode_dep_graph<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
         query.nodes()
              .into_iter()
              .filter_map(|dep_node| {
-                 hcx.hash(dep_node)
+                 hcx.hash(&dep_node)
                     .map(|hash| {
                         let node = builder.map(dep_node);
                         SerializedHash { node: node, hash: hash }
@@ -147,7 +147,7 @@ pub fn encode_metadata_hashes<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
         let meta_data_def_ids =
             query.nodes()
                  .into_iter()
-                 .filter_map(|dep_node| match dep_node {
+                 .filter_map(|dep_node| match *dep_node {
                      DepNode::MetaData(def_id) if def_id.is_local() => Some(def_id),
                      _ => None,
                  });
@@ -165,8 +165,8 @@ pub fn encode_metadata_hashes<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
                 let dep_node = DepNode::MetaData(def_id);
                 let mut state = SipHasher::new();
                 debug!("save: computing metadata hash for {:?}", dep_node);
-                for node in query.transitive_predecessors(dep_node) {
-                    if let Some(hash) = hcx.hash(node) {
+                for node in query.transitive_predecessors(&dep_node) {
+                    if let Some(hash) = hcx.hash(&node) {
                         debug!("save: predecessor {:?} has hash {}", node, hash);
                         state.write_u64(hash.to_le());
                     } else {

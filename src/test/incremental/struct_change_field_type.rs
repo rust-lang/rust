@@ -8,24 +8,46 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:a.rs
-// revisions:rpass1 rpass2 rpass3
+// Test incremental compilation tracking where we change nothing
+// in between revisions (hashing should be stable).
+
+// revisions:rpass1 rpass2
 
 #![feature(rustc_attrs)]
 
-extern crate a;
+#[cfg(rpass1)]
+pub struct X {
+    pub x: u32
+}
+
+#[cfg(rpass2)]
+pub struct X {
+    pub x: i32
+}
+
+pub struct EmbedX {
+    x: X
+}
+
+pub struct Y {
+    pub y: char
+}
 
 #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
-#[rustc_clean(label="TypeckItemBody", cfg="rpass3")]
 pub fn use_X() -> u32 {
-    let x: a::X = 22;
-    x as u32
+    let x: X = X { x: 22 };
+    x.x as u32
+}
+
+#[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+pub fn use_EmbedX(x: EmbedX) -> u32 {
+    let x: X = X { x: 22 };
+    x.x as u32
 }
 
 #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
-#[rustc_clean(label="TypeckItemBody", cfg="rpass3")]
 pub fn use_Y() {
-    let x: a::Y = 'c';
+    let x: Y = Y { y: 'c' };
 }
 
 pub fn main() { }
