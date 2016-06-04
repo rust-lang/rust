@@ -12,6 +12,8 @@
 /// Markdown is _weird_. I mean _really weird_.  This \_ is ok. So is `_`. But not Foo::some_fun
 //~^ ERROR: you should put `Foo::some_fun` between ticks
 /// which should be reported only once despite being __doubly bad__.
+/// Here be ::is::a::global:path.
+//~^ ERROR: you should put `is::a::global:path` between ticks
 /// be_sure_we_got_to_the_end_of_it
 //~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
 fn foo_bar() {
@@ -66,18 +68,18 @@ fn test_units() {
 //~^ ERROR: you should put `foo_ℝ` between ticks
 /// foo_💣
 /// foo_❤️
-/// [ßdummy textß][foo_ß]
-/// [ℝdummy textℝ][foo_ℝ]
-/// [💣dummy tex💣t][foo_💣]
-/// [❤️dummy text❤️][foo_❤️]
-/// [ßdummy textß](foo_ß)
-/// [ℝdummy textℝ](foo_ℝ)
-/// [💣dummy tex💣t](foo_💣)
-/// [❤️dummy text❤️](foo_❤️)
-/// [foo_ß]: dummy text
-/// [foo_ℝ]: dummy text
-/// [foo_💣]: dummy text
-/// [foo_❤️]: dummy text
+/// [ßdummy textß][foo_1ß]
+/// [ℝdummy textℝ][foo_2ℝ]
+/// [💣dummy tex💣t][foo3_💣]
+/// [❤️dummy text❤️][foo_4❤️]
+/// [ßdummy textß](foo_5ß)
+/// [ℝdummy textℝ](foo_6ℝ)
+/// [💣dummy tex💣t](fo7o_💣)
+/// [❤️dummy text❤️](foo_8❤️)
+/// [foo1_ß]: dummy text
+/// [foo2_ℝ]: dummy text
+/// [foo3_💣]: dummy text
+/// [foo4_❤️]: dummy text
 /// be_sure_we_got_to_the_end_of_it
 //~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
 fn test_unicode() {
@@ -140,4 +142,11 @@ fn issue900() {
 /// be_sure_we_got_to_the_end_of_it
 //~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
 fn issue883() {
+}
+
+/// `foo_bar
+/// baz_quz`
+/// [foo
+/// bar](https://doc.rust-lang.org/stable/std/iter/trait.IteratorFooBar.html)
+fn multiline() {
 }
