@@ -953,7 +953,7 @@ impl<'tcx> TraitPredicate<'tcx> {
         // dep-nodes for `u32: SomeTrait` and `u64: SomeTrait`, but we
         // would have distinct dep-nodes for `Vec<u32>: SomeTrait`,
         // `Rc<u32>: SomeTrait`, and `(Vec<u32>, Rc<u32>): SomeTrait`.
-        // Note that it's always sound to conflate dep-nodes, it jus
+        // Note that it's always sound to conflate dep-nodes, it just
         // leads to more recompilation.
         let def_ids: Vec<_> =
             self.input_types()
