@@ -3,6 +3,7 @@
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
 
+
 # Summary
 [summary]: #summary
 
@@ -13,7 +14,7 @@ One of the major goals of Rust's development process is *stability without stagn
 
 At present, new language features are often documented *only* in the RFCs which propose them and the associated announcement blog posts. Moreover, as features change, the existing official language documentation (the Rust Book, Rust by Example, and the language reference) can increasingly grow outdated.
 
-Although the Rust Book and Rust by Example are kept relatively up to date, [the reference is not][home-to-reference]:
+Although the Rust Book and Rust by Example are kept relatively up to date, [the reference is not][home-to-reference] (on which see also the [addendum] to this RFC):
 
 > While Rust does not have a specification, the reference tries to describe its working in detail. *It tends to be out of date.* (emphasis mine)
 
@@ -75,12 +76,40 @@ One of the main reasons not to adopt this approach, that it might block features
 
 The basic decision has led to a substantial improvement in the currency of the documentation (which is now updated the same day as a new version is released). Moreover, it has spurred ongoing development of better tooling around documentation to manage these releases. Finally, at least in the RFC author's estimation, it has also led to a substantial increase in the overall quality of that documentation, possibly as a consequence of increasing the community involvement in the documentation process (including the formation of a documentation subteam).
 
+
 # Detailed design
 [design]: #detailed-design
 
-The basic process of developing new language features will remain unchanged from today, with the addition of a straightforward requirement that they be properly documented before being merged to stable.
+The basic process of developing new language features will remain largely the same as today. The changes are two additions:
 
-## Language features
+- a new section in the RFC, "How do we teach this?" modeled on Ember's updated RFC process
+- a new requirement that the changes themselves be properly documented before being merged to stable
+
+## New RFC section: "How do we teach this?"
+[new-rfc-section]: #new-rfc-section-how-do-we-teach-this
+
+Following the example of Ember.js, we will add a new section to the RFC, just after **Detailed design**, titled **How do we teach this?** The section should to explain what changes need to be made to documentation, and if the feature substantially changes what would be considered the "best" way to solve a problem or is a fairly mainstream issue, discuss how it might be incorporated into _The Rust Programming Language_ and/or _Rust by Example_.
+
+Here is the Ember RFC section, with suggested substitutions:
+
+> # How We Teach This
+> What names and terminology work best for these concepts and why? How is this idea best presented? As a continuation of existing ~~Ember~~ **Rust** patterns, or as a wholly new one?
+>
+> Would the acceptance of this proposal mean ~~Ember guides~~ **_The Rust Programing Language_, _Rust by Example_, or the Rust Reference** must be re-organized or altered? Does it change how ~~Ember~~ **Rust** is taught to new users at any level?
+>
+> How should this feature be introduced and taught to existing ~~Ember~~ **Rust** users?
+
+We may also find it valuable to add other, more Rust-specific (or programming language- rather than framework-specific) verbiage there.
+
+For a great example of this in practice, see the (currently open) [Ember RFC: Module Unification], which includes several sections discussing conventions, tooling, concepts, and impacts on testing.
+
+[Ember RFC: Module Unification]: https://github.com/dgeb/rfcs/blob/module-unification/text/0000-module-unification.md#how-we-teach-this
+
+## Review before stabilization
+
+Changes will now be reviewed for changes to the documentation prior to being merged.
+
+### Language features
 [language-features]: #language-features
 
 In the case of language features, this will be a manual process, involving updates to the `reference.md` file. (It may at some point be sensible to break up the Reference file for easier maintenance; that is left aside as orthogonal to this discussion.)
@@ -95,10 +124,40 @@ This need not be especially long, but it should be long enough for ordinary user
 
 When the core team discusses whether to stabilize a feature in a given release, the reference material will now be a part of that decision. Once the feature *and* reference material are complete, it will be merged normally, and the pull request will simply include the reference material as well as the new feature.
 
-## Standard library
+### Standard library
 [std]: #standard-library
 
 In the case of the standard library, this could conceivably be managed by setting the `#[forbid(missing_docs)]` attribute on the library roots. In lieu of that, manual code review and general discipline should continue to serve. However, if automated tools *can* be employed here, they should.
+
+
+# How do we teach this?
+
+Since this RFC promotes including this section, it includes it itself. (RFCs, unlike Rust `struct` or `enum` types, may be freely self-referential. No boxing required.)
+
+To be most effective, this will involve some changes both at a process and core-team level, and at a community level.
+
+From the process and core team side of things:
+
+1. The RFC template should be updated to include the new section for teaching.
+2. The RFC process description in the [RFCs README], specifically by including "fail to include a plan for documenting the feature" in the list of possible problems in "Submit a pull request step" in [What the process is].
+3. A blog post discussing the new process should be written discussing why we are making this change to the process, and especially explaining both the current problems and the benefits of making the change.
+4. The core team should make documentation and teachability of new features *equally* high priority with the features themselves, and communicate this clearly in discussion of the features. (Core team members are already very good about including this in considerations of language design; this simply makes this an explicit goal of discussions around RFCs.)
+
+[RFCs README]: https://github.com/rust-lang/rfcs/blob/master/README.md
+[What the process is]: https://github.com/rust-lang/rfcs/blob/master/README.md#what-the-process-is
+
+This is also an opportunity to allow/enable non-core-team members with less experience to contribute more actively to _The Rust Programming Language_, _Rust by Example_, and the Rust Reference.
+
+1. We should write issues for feature documentation, and flag them as approachable entry points for new users.
+2. We can use the more complicated language reference issues as points for mentoring developers interested in contributing to the compiler. Helping document a complex language feature may be a useful on-ramp for working on the compiler itself.
+3. We may find it useful to form a documentation subteam (under the leadership of the relevant core team representative), similar to what Ember has done, which is responsible for shepherding these changes along.
+
+    Whether such a team is formalized or not, the goal would be for the community to take up a greater degree of responsibility for the state of the documentation, rather than it falling entirely on the shoulders of a single core team member. (Having a dedicated core team member focused solely on docs is *wonderful*, but it means we can sometimes leave it all to just one person, and Rust has far too much going on for any individual to manage on their own.)
+
+    (See the [addendum] below, as well.)
+
+At a "messaging" level, we should continue to emphasize that *documentation is just as valuable as code*. For example (and there are many other similar opportunities): in addition to highlighting new language features in the release notes for each version, we might highlight any part of the documentation which saw substantial improvement in the release.
+
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -113,8 +172,15 @@ Finally, this may delay landing features on stable. However, all the points rais
 
 For Rust to attain its goal of *stability without stagnation*, its documentation must also be stable and not stagnant.
 
+
 # Alternatives
 [alternatives]: #alternatives
+
+- **Embrace the documentation, but do not include "How do we teach this?" section in new RFCs.**
+
+    This still gives us most of the benefits (and was in fact the original form of the proposal), and does not place a new burden on RFC authors to make sure that knowing how to *teach* something is part of any new language or standard library feature.
+
+    On the other hand, thinking about the impact on teaching should further improve consideration of the general ergonomics of a proposed feature. If something cannot be *taught* well, it's likely the design needs further refinement.
 
 - **No change; leave RFCs as canonical documentation.**
 
@@ -151,3 +217,11 @@ For Rust to attain its goal of *stability without stagnation*, its documentation
 - Given that the reference is out of date, does it need to be brought up to date before beginning enforcement of this policy?
 - For the standard library, once it migrates to a crates structure, should it simply include the `#[forbid(missing_docs)]` attribute on all crates to set this as a build error?
 - Is a documentation subteam, _a la_ the one used by Ember, worth creating?
+
+
+# Addendum: The state of the reference
+[addendum]: #addendum-the-state-of-the-reference
+
+Related to some of the above discussion about the current state of the reference: it may be worth creating a "strike team" to invest a couple months working on the reference: updating it, organizing it, and improving its presentation. (A single web page with *all* of this content is difficult to navigate at best.) This can proceed in parallel with the documentation of new features. It is probably a necessity for this proposal to be particularly effective in the long term.
+
+Once the reference is up to date, the nucleus responsible for that work may either disband or possibly (depending on the core team's evaluation of the necessity of it and the interest of the "strike team" members) become the basis of a new documentation subteam.
