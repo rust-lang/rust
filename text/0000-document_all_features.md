@@ -14,7 +14,7 @@ One of the major goals of Rust's development process is *stability without stagn
 
 At present, new language features are often documented *only* in the RFCs which propose them and the associated announcement blog posts. Moreover, as features change, the existing official language documentation (the Rust Book, Rust by Example, and the language reference) can increasingly grow outdated.
 
-Although the Rust Book and Rust by Example are kept relatively up to date, [the reference is not][home-to-reference] (on which see also the [addendum] to this RFC):
+Although the Rust Book and Rust by Example are kept relatively up to date, [the reference is not][home-to-reference]:
 
 > While Rust does not have a specification, the reference tries to describe its working in detail. *It tends to be out of date.* (emphasis mine)
 
@@ -124,6 +124,20 @@ This need not be especially long, but it should be long enough for ordinary user
 
 When the core team discusses whether to stabilize a feature in a given release, the reference material will now be a part of that decision. Once the feature *and* reference material are complete, it will be merged normally, and the pull request will simply include the reference material as well as the new feature.
 
+Given the current state of the reference, this may need to proceed in two steps:
+
+#### The current state of the reference.
+
+Since the reference is currently fairly out of date in a number of areas, it may be worth creating a "strike team" to invest a couple months working on the reference: updating it, organizing it, and improving its presentation. (A single web page with *all* of this content is difficult to navigate at best.) This can proceed in parallel with the documentation of new features. It is probably a necessity for this proposal to be particularly effective in the long term.
+
+Once the reference is up to date, the nucleus responsible for that work may either disband or possibly (depending on the core team's evaluation of the necessity of it and the interest of the "strike team" members) become the basis of a new documentation subteam.
+
+Updating the reference could proceed stepwise:
+
+1. Begin by adding an appendix in the reference with links to all accepted RFCs which have been implemented but are not yet referenced in the documentation.
+2. As the reference material is written for each of those RFC features, it can be removed from that appendix.
+
+
 ### Standard library
 [std]: #standard-library
 
@@ -153,8 +167,6 @@ This is also an opportunity to allow/enable non-core-team members with less expe
 3. We may find it useful to form a documentation subteam (under the leadership of the relevant core team representative), similar to what Ember has done, which is responsible for shepherding these changes along.
 
     Whether such a team is formalized or not, the goal would be for the community to take up a greater degree of responsibility for the state of the documentation, rather than it falling entirely on the shoulders of a single core team member. (Having a dedicated core team member focused solely on docs is *wonderful*, but it means we can sometimes leave it all to just one person, and Rust has far too much going on for any individual to manage on their own.)
-
-    (See the [addendum] below, as well.)
 
 At a "messaging" level, we should continue to emphasize that *documentation is just as valuable as code*. For example (and there are many other similar opportunities): in addition to highlighting new language features in the release notes for each version, we might highlight any part of the documentation which saw substantial improvement in the release.
 
@@ -217,11 +229,3 @@ For Rust to attain its goal of *stability without stagnation*, its documentation
 - Given that the reference is out of date, does it need to be brought up to date before beginning enforcement of this policy?
 - For the standard library, once it migrates to a crates structure, should it simply include the `#[forbid(missing_docs)]` attribute on all crates to set this as a build error?
 - Is a documentation subteam, _a la_ the one used by Ember, worth creating?
-
-
-# Addendum: The state of the reference
-[addendum]: #addendum-the-state-of-the-reference
-
-Related to some of the above discussion about the current state of the reference: it may be worth creating a "strike team" to invest a couple months working on the reference: updating it, organizing it, and improving its presentation. (A single web page with *all* of this content is difficult to navigate at best.) This can proceed in parallel with the documentation of new features. It is probably a necessity for this proposal to be particularly effective in the long term.
-
-Once the reference is up to date, the nucleus responsible for that work may either disband or possibly (depending on the core team's evaluation of the necessity of it and the interest of the "strike team" members) become the basis of a new documentation subteam.
