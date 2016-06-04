@@ -10,7 +10,7 @@
 
 // ignore-pretty : (#23623) problems when  ending with // comments
 
-// error-pattern:thread '<main>' panicked at 'arithmetic operation overflowed'
+// error-pattern:thread 'main' panicked at 'arithmetic operation overflowed'
 // compile-flags: -C debug-assertions
 
 

@@ -134,7 +134,7 @@ $ ldd example
         not a dynamic executable
 $ ./example
 hi!
-thread '<main>' panicked at 'failed', example.rs:1
+thread 'main' panicked at 'failed', example.rs:1
 ```
 
 Success! This binary can be copied to almost any Linux machine with the same

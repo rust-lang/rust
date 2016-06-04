@@ -81,7 +81,7 @@ fn main() {
 If you try running this code, the program will crash with a message like this:
 
 ```text
-thread '<main>' panicked at 'Invalid number: 11', src/bin/panic-simple.rs:5
+thread 'main' panicked at 'Invalid number: 11', src/bin/panic-simple.rs:5
 ```
 
 Here's another example that is slightly less contrived. A program that accepts
@@ -498,7 +498,7 @@ At this point, you should be skeptical of calling `unwrap`. For example, if
 the string doesn't parse as a number, you'll get a panic:
 
 ```text
-thread '<main>' panicked at 'called `Result::unwrap()` on an `Err` value: ParseIntError { kind: InvalidDigit }', /home/rustbuild/src/rust-buildbot/slave/beta-dist-rustc-linux/build/src/libcore/result.rs:729
+thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: ParseIntError { kind: InvalidDigit }', /home/rustbuild/src/rust-buildbot/slave/beta-dist-rustc-linux/build/src/libcore/result.rs:729
 ```
 
 This is rather unsightly, and if this happened inside a library you're

@@ -163,7 +163,7 @@ let hachi = &dog[0..2];
 with this error:
 
 ```text
-thread '<main>' panicked at 'index 0 and/or 2 in `忠犬ハチ公` do not lie on
+thread 'main' panicked at 'index 0 and/or 2 in `忠犬ハチ公` do not lie on
 character boundary'
 ```
 
