@@ -64,7 +64,6 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
-use middle::resolve_lifetime;
 use middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::{eval_const_expr_partial, ConstEvalErr};
@@ -1745,14 +1744,16 @@ fn add_unsized_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
 /// the lifetimes that are declared. For fns or methods, we have to
 /// screen out those that do not appear in any where-clauses etc using
 /// `resolve_lifetime::early_bound_lifetimes`.
-fn early_bound_lifetimes_from_generics(space: ParamSpace,
-                                       ast_generics: &hir::Generics)
-                                       -> Vec<hir::LifetimeDef>
+fn early_bound_lifetimes_from_generics<'a, 'tcx, 'hir>(
+    ccx: &CrateCtxt<'a, 'tcx>,
+    ast_generics: &'hir hir::Generics)
+    -> Vec<&'hir hir::LifetimeDef>
 {
-    match space {
-        SelfSpace | TypeSpace => ast_generics.lifetimes.to_vec(),
-        FnSpace => resolve_lifetime::early_bound_lifetimes(ast_generics),
-    }
+    ast_generics
+        .lifetimes
+        .iter()
+        .filter(|l| !ccx.tcx.named_region_map.late_bound.contains_key(&l.lifetime.id))
+        .collect()
 }
 
 fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
@@ -1781,7 +1782,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     // Collect the region predicates that were declared inline as
     // well. In the case of parameters declared on a fn or method, we
     // have to be careful to only iterate over early-bound regions.
-    let early_lifetimes = early_bound_lifetimes_from_generics(space, ast_generics);
+    let early_lifetimes = early_bound_lifetimes_from_generics(ccx, ast_generics);
     for (index, param) in early_lifetimes.iter().enumerate() {
         let index = index as u32;
         let region =
@@ -1864,7 +1865,7 @@ fn ty_generics<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let tcx = ccx.tcx;
     let mut result = base_generics.clone();
 
-    let early_lifetimes = early_bound_lifetimes_from_generics(space, ast_generics);
+    let early_lifetimes = early_bound_lifetimes_from_generics(ccx, ast_generics);
     for (i, l) in early_lifetimes.iter().enumerate() {
         let bounds = l.bounds.iter()
                              .map(|l| ast_region_to_region(tcx, l))

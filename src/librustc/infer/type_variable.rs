@@ -178,7 +178,9 @@ impl<'tcx> TypeVariableTable<'tcx> {
             value: Bounded { relations: vec![], default: default },
             diverging: diverging
         });
-        ty::TyVid { index: index as u32 }
+        let v = ty::TyVid { index: index as u32 };
+        debug!("new_var() -> {:?}", v);
+        v
     }
 
     pub fn root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
@@ -219,6 +221,17 @@ impl<'tcx> TypeVariableTable<'tcx> {
     }
 
     pub fn rollback_to(&mut self, s: Snapshot) {
+        debug!("rollback_to{:?}", {
+            for action in self.values.actions_since_snapshot(&s.snapshot) {
+                match *action {
+                    sv::UndoLog::NewElem(index) => {
+                        debug!("inference variable _#{}t popped", index)
+                    }
+                    _ => { }
+                }
+            }
+        });
+
         self.values.rollback_to(s.snapshot);
         self.eq_relations.rollback_to(s.eq_snapshot);
     }

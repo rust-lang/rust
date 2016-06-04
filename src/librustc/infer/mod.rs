@@ -45,6 +45,7 @@ use syntax::errors::DiagnosticBuilder;
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 
 use self::combine::CombineFields;
+use self::higher_ranked::HrMatchResult;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::unify_key::ToType;
 
@@ -63,6 +64,7 @@ pub mod sub;
 pub mod type_variable;
 pub mod unify_key;
 
+#[must_use]
 pub struct InferOk<'tcx, T> {
     pub value: T,
     pub obligations: PredicateObligations<'tcx>,
@@ -103,6 +105,12 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
     pub tables: InferTables<'a, 'gcx, 'tcx>,
+
+    // Cache for projections. This cache is snapshotted along with the
+    // infcx.
+    //
+    // Public so that `traits::project` can use it.
+    pub projection_cache: RefCell<traits::ProjectionCache<'tcx>>,
 
     // We instantiate UnificationTable with bounds<Ty> because the
     // types that might instantiate a general type variable have an
@@ -477,6 +485,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             parameter_environment: param_env,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
+            projection_cache: RefCell::new(traits::ProjectionCache::new()),
             reported_trait_errors: RefCell::new(FnvHashSet()),
             normalize: false,
             projection_mode: ProjectionMode::AnyFinal,
@@ -510,6 +519,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         global_tcx.enter_local(arenas, |tcx| f(InferCtxt {
             tcx: tcx,
             tables: tables,
+            projection_cache: RefCell::new(traits::ProjectionCache::new()),
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
@@ -538,13 +548,14 @@ impl<T> ExpectedFound<T> {
 }
 
 impl<'tcx, T> InferOk<'tcx, T> {
-    fn unit(self) -> InferOk<'tcx, ()> {
+    pub fn unit(self) -> InferOk<'tcx, ()> {
         InferOk { value: (), obligations: self.obligations }
     }
 }
 
 #[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot {
+    projection_cache_snapshot: traits::ProjectionCacheSnapshot,
     type_snapshot: type_variable::Snapshot,
     int_snapshot: unify::Snapshot<ty::IntVid>,
     float_snapshot: unify::Snapshot<ty::FloatVid>,
@@ -643,6 +654,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                             -> T::Lifted
         where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
     {
+        debug!("drain_fulfillment_cx_or_panic()");
+
         let when = "resolving bounds after type-checking";
         let v = match self.drain_fulfillment_cx(fulfill_cx, result) {
             Ok(v) => v,
@@ -817,10 +830,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot {
+        debug!("start_snapshot()");
+
         let obligations_in_snapshot = self.obligations_in_snapshot.get();
         self.obligations_in_snapshot.set(false);
 
         CombinedSnapshot {
+            projection_cache_snapshot: self.projection_cache.borrow_mut().snapshot(),
             type_snapshot: self.type_variables.borrow_mut().snapshot(),
             int_snapshot: self.int_unification_table.borrow_mut().snapshot(),
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
@@ -831,7 +847,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot) {
         debug!("rollback_to(cause={})", cause);
-        let CombinedSnapshot { type_snapshot,
+        let CombinedSnapshot { projection_cache_snapshot,
+                               type_snapshot,
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
@@ -840,6 +857,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         assert!(!self.obligations_in_snapshot.get());
         self.obligations_in_snapshot.set(obligations_in_snapshot);
 
+        self.projection_cache
+            .borrow_mut()
+            .rollback_to(projection_cache_snapshot);
         self.type_variables
             .borrow_mut()
             .rollback_to(type_snapshot);
@@ -854,8 +874,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn commit_from(&self, snapshot: CombinedSnapshot) {
-        debug!("commit_from!");
-        let CombinedSnapshot { type_snapshot,
+        debug!("commit_from()");
+        let CombinedSnapshot { projection_cache_snapshot,
+                               type_snapshot,
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
@@ -863,6 +884,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.obligations_in_snapshot.set(obligations_in_snapshot);
 
+        self.projection_cache
+            .borrow_mut()
+            .commit(projection_cache_snapshot);
         self.type_variables
             .borrow_mut()
             .commit(type_snapshot);
@@ -920,7 +944,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         F: FnOnce() -> Result<T, E>
     {
         debug!("commit_regions_if_ok()");
-        let CombinedSnapshot { type_snapshot,
+        let CombinedSnapshot { projection_cache_snapshot,
+                               type_snapshot,
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
@@ -935,6 +960,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         // Roll back any non-region bindings - they should be resolved
         // inside `f`, with, e.g. `resolve_type_vars_if_possible`.
+        self.projection_cache
+            .borrow_mut()
+            .rollback_to(projection_cache_snapshot);
         self.type_variables
             .borrow_mut()
             .rollback_to(type_snapshot);
@@ -1076,7 +1104,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = TypeOrigin::EquatePredicate(span);
             let eqty_ok = self.eq_types(false, origin, a, b)?;
-            self.leak_check(false, &skol_map, snapshot).map(|_| eqty_ok.unit())
+            self.leak_check(false, span, &skol_map, snapshot)?;
+            self.pop_skolemized(skol_map, snapshot);
+            Ok(eqty_ok.unit())
         })
     }
 
@@ -1090,7 +1120,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = RelateRegionParamBound(span);
             self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-            self.leak_check(false, &skol_map, snapshot)
+            self.leak_check(false, span, &skol_map, snapshot)?;
+            Ok(self.pop_skolemized(skol_map, snapshot))
         })
     }
 
@@ -1567,6 +1598,40 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.replace_late_bound_regions(
             value,
             |br| self.next_region_var(LateBoundRegion(span, br, lbrct)))
+    }
+
+    /// Given a higher-ranked projection predicate like:
+    ///
+    ///     for<'a> <T as Fn<&'a u32>>::Output = &'a u32
+    ///
+    /// and a target trait-ref like:
+    ///
+    ///     <T as Fn<&'x u32>>
+    ///
+    /// find a substitution `S` for the higher-ranked regions (here,
+    /// `['a => 'x]`) such that the predicate matches the trait-ref,
+    /// and then return the value (here, `&'a u32`) but with the
+    /// substitution applied (hence, `&'x u32`).
+    ///
+    /// See `higher_ranked_match` in `higher_ranked/mod.rs` for more
+    /// details.
+    pub fn match_poly_projection_predicate(&self,
+                                           origin: TypeOrigin,
+                                           match_a: ty::PolyProjectionPredicate<'tcx>,
+                                           match_b: ty::TraitRef<'tcx>)
+                                           -> InferResult<'tcx, HrMatchResult<Ty<'tcx>>>
+    {
+        let span = origin.span();
+        let match_trait_ref = match_a.skip_binder().projection_ty.trait_ref;
+        let trace = TypeTrace {
+            origin: origin,
+            values: TraitRefs(ExpectedFound::new(true, match_trait_ref, match_b))
+        };
+
+        let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref, p.ty));
+        let combine = self.combine_fields(true, trace);
+        let result = combine.higher_ranked_match(span, &match_pair, &match_b)?;
+        Ok(InferOk { value: result, obligations: combine.obligations })
     }
 
     /// See `verify_generic_bound` method in `region_inference`

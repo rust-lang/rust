@@ -1061,7 +1061,7 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     let trait_ref = tcx.erase_regions(&trait_ref);
 
     scx.trait_cache().memoize(trait_ref, || {
-        debug!("trans fulfill_obligation: trait_ref={:?} def_id={:?}",
+        debug!("trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
                trait_ref, trait_ref.def_id());
 
         // Do the initial selection for the obligation. This yields the
@@ -1096,11 +1096,14 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                 }
             };
 
+            debug!("fulfill_obligation: selection={:?}", selection);
+
             // Currently, we use a fulfillment context to completely resolve
             // all nested obligations. This is because they can inform the
             // inference of the impl's type parameters.
             let mut fulfill_cx = traits::FulfillmentContext::new();
             let vtable = selection.map(|predicate| {
+                debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
                 fulfill_cx.register_predicate_obligation(&infcx, predicate);
             });
             let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);

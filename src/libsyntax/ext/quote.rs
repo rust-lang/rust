@@ -422,7 +422,7 @@ pub fn expand_quote_expr<'cx>(cx: &'cx mut ExtCtxt,
     base::MacEager::expr(expanded)
 }
 
-pub fn expand_quote_item<'cx>(cx: &mut ExtCtxt,
+pub fn expand_quote_item<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
                               tts: &[TokenTree])
                               -> Box<base::MacResult+'cx> {
