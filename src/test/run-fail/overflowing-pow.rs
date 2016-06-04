@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:thread '<main>' panicked at 'arithmetic operation overflowed'
+// error-pattern:thread 'main' panicked at 'arithmetic operation overflowed'
 // compile-flags: -C debug-assertions
 
 fn main() {

@@ -10,7 +10,7 @@
 
 // ignore-pretty : (#23623) problems when  ending with // comments
 
-// error-pattern:thread '<main>' panicked at 'shift operation overflowed'
+// error-pattern:thread 'main' panicked at 'shift operation overflowed'
 // compile-flags: -C debug-assertions
 
 #![warn(exceeding_bitshifts)]

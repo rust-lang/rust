@@ -806,7 +806,7 @@ You guessed: 59
 You win!
 Please input your guess.
 quit
-thread '<main>' panicked at 'Please type a number!'
+thread 'main' panicked at 'Please type a number!'
 ```
 
 Ha! `quit` actually quits. As does any other non-number input. Well, this is
