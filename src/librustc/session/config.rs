@@ -756,7 +756,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "dump MIR state at various points in translation"),
     dump_mir_dir: Option<String> = (None, parse_opt_string,
           "the directory the MIR is dumped into"),
-    orbit: bool = (false, parse_bool,
+    orbit: bool = (true, parse_bool,
           "get MIR where it belongs - everywhere; most importantly, in orbit"),
 }
 
