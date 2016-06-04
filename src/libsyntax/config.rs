@@ -166,14 +166,6 @@ impl<T: CfgFolder> fold::Folder for T {
         };
 
         let item = match item {
-            ast::ItemKind::Impl(u, o, a, b, c, items) => {
-                let items = items.into_iter().filter_map(|item| self.configure(item)).collect();
-                ast::ItemKind::Impl(u, o, a, b, c, items)
-            }
-            ast::ItemKind::Trait(u, a, b, items) => {
-                let items = items.into_iter().filter_map(|item| self.configure(item)).collect();
-                ast::ItemKind::Trait(u, a, b, items)
-            }
             ast::ItemKind::Struct(def, generics) => {
                 ast::ItemKind::Struct(fold_struct(self, def), generics)
             }
@@ -242,7 +234,17 @@ impl<T: CfgFolder> fold::Folder for T {
     }
 
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
-        self.configure(item).map(|item| SmallVector::one(item.map(|i| self.fold_item_simple(i))))
+        self.configure(item).map(|item| fold::noop_fold_item(item, self))
+                            .unwrap_or(SmallVector::zero())
+    }
+
+    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVector<ast::ImplItem> {
+        self.configure(item).map(|item| fold::noop_fold_impl_item(item, self))
+                            .unwrap_or(SmallVector::zero())
+    }
+
+    fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVector<ast::TraitItem> {
+        self.configure(item).map(|item| fold::noop_fold_trait_item(item, self))
                             .unwrap_or(SmallVector::zero())
     }
 }
