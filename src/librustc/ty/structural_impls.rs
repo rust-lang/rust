@@ -827,7 +827,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::RegionParameterDef {
             def_id: self.def_id,
             space: self.space,
             index: self.index,
-            bounds: self.bounds.fold_with(folder)
+            bounds: self.bounds.fold_with(folder),
         }
     }
 

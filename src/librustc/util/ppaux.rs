@@ -261,7 +261,7 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
     let new_value = tcx.replace_late_bound_regions(&value, |br| {
         let _ = start_or_continue(f, "for<", ", ");
         ty::ReLateBound(ty::DebruijnIndex::new(1), match br {
-            ty::BrNamed(_, name) => {
+            ty::BrNamed(_, name, _) => {
                 let _ = write!(f, "{}", name);
                 br
             }
@@ -270,7 +270,9 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
             ty::BrEnv => {
                 let name = token::intern("'r");
                 let _ = write!(f, "{}", name);
-                ty::BrNamed(tcx.map.local_def_id(CRATE_NODE_ID), name)
+                ty::BrNamed(tcx.map.local_def_id(CRATE_NODE_ID),
+                            name,
+                            ty::Issue32330::WontChange)
             }
         })
     }).0;
@@ -485,7 +487,7 @@ impl fmt::Display for ty::BoundRegion {
         }
 
         match *self {
-            BrNamed(_, name) => write!(f, "{}", name),
+            BrNamed(_, name, _) => write!(f, "{}", name),
             BrAnon(_) | BrFresh(_) | BrEnv => Ok(())
         }
     }
@@ -496,8 +498,9 @@ impl fmt::Debug for ty::BoundRegion {
         match *self {
             BrAnon(n) => write!(f, "BrAnon({:?})", n),
             BrFresh(n) => write!(f, "BrFresh({:?})", n),
-            BrNamed(did, name) => {
-                write!(f, "BrNamed({:?}:{:?}, {:?})", did.krate, did.index, name)
+            BrNamed(did, name, issue32330) => {
+                write!(f, "BrNamed({:?}:{:?}, {:?}, {:?})",
+                       did.krate, did.index, name, issue32330)
             }
             BrEnv => "BrEnv".fmt(f),
         }

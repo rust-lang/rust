@@ -58,7 +58,7 @@ pub enum BoundRegion {
     ///
     /// The def-id is needed to distinguish free regions in
     /// the event of shadowing.
-    BrNamed(DefId, Name),
+    BrNamed(DefId, Name, Issue32330),
 
     /// Fresh bound identifiers created during GLB computations.
     BrFresh(u32),
@@ -66,6 +66,25 @@ pub enum BoundRegion {
     // Anonymous region for the implicit env pointer parameter
     // to a closure
     BrEnv
+}
+
+/// True if this late-bound region is unconstrained, and hence will
+/// become early-bound once #32330 is fixed.
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash,
+         RustcEncodable, RustcDecodable)]
+pub enum Issue32330 {
+    WontChange,
+
+    /// this region will change from late-bound to early-bound once
+    /// #32330 is fixed.
+    WillChange {
+        /// fn where is region declared
+        fn_def_id: DefId,
+
+        /// name of region; duplicates the info in BrNamed but convenient
+        /// to have it here, and this code is only temporary
+        region_name: ast::Name,
+    }
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -697,7 +716,7 @@ pub struct EarlyBoundRegion {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TyVid {
-    pub index: u32
+    pub index: u32,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]

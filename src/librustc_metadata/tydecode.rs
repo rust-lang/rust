@@ -158,8 +158,21 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             '[' => {
                 let def = self.parse_def();
-                let name = token::intern(&self.parse_str(']'));
-                ty::BrNamed(def, name)
+                let name = token::intern(&self.parse_str('|'));
+                let issue32330 = match self.next() {
+                    'n' => {
+                        assert_eq!(self.next(), ']');
+                        ty::Issue32330::WontChange
+                    }
+                    'y' => {
+                        ty::Issue32330::WillChange {
+                            fn_def_id: self.parse_def(),
+                            region_name: token::intern(&self.parse_str(']')),
+                        }
+                    }
+                    c => panic!("expected n or y not {}", c)
+                };
+                ty::BrNamed(def, name, issue32330)
             }
             'f' => {
                 let id = self.parse_u32();
@@ -623,7 +636,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             def_id: def_id,
             space: space,
             index: index,
-            bounds: bounds
+            bounds: bounds,
         }
     }
 

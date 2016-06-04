@@ -60,6 +60,7 @@ pub use self::sty::{ClosureTy, InferTy, ParamTy, ProjectionTy, TraitTy};
 pub use self::sty::{ClosureSubsts, TypeAndMut};
 pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
+pub use self::sty::Issue32330;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::FnOutput::*;
@@ -514,19 +515,20 @@ bitflags! {
         const HAS_SELF           = 1 << 1,
         const HAS_TY_INFER       = 1 << 2,
         const HAS_RE_INFER       = 1 << 3,
-        const HAS_RE_EARLY_BOUND = 1 << 4,
-        const HAS_FREE_REGIONS   = 1 << 5,
-        const HAS_TY_ERR         = 1 << 6,
-        const HAS_PROJECTION     = 1 << 7,
-        const HAS_TY_CLOSURE     = 1 << 8,
+        const HAS_RE_SKOL        = 1 << 4,
+        const HAS_RE_EARLY_BOUND = 1 << 5,
+        const HAS_FREE_REGIONS   = 1 << 6,
+        const HAS_TY_ERR         = 1 << 7,
+        const HAS_PROJECTION     = 1 << 8,
+        const HAS_TY_CLOSURE     = 1 << 9,
 
         // true if there are "names" of types and regions and so forth
         // that are local to a particular fn
-        const HAS_LOCAL_NAMES   = 1 << 9,
+        const HAS_LOCAL_NAMES    = 1 << 10,
 
         // Present if the type belongs in a local type context.
         // Only set for TyInfer other than Fresh.
-        const KEEP_IN_LOCAL_TCX = 1 << 10,
+        const KEEP_IN_LOCAL_TCX  = 1 << 11,
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
@@ -739,7 +741,8 @@ impl RegionParameterDef {
         })
     }
     pub fn to_bound_region(&self) -> ty::BoundRegion {
-        ty::BoundRegion::BrNamed(self.def_id, self.name)
+        // this is an early bound region, so unaffected by #32330
+        ty::BoundRegion::BrNamed(self.def_id, self.name, Issue32330::WontChange)
     }
 }
 
@@ -1013,7 +1016,7 @@ pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, ty::R
 /// equality between arbitrary types. Processing an instance of Form
 /// #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
     pub ty: Ty<'tcx>,
@@ -2855,7 +2858,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         for def in generics.regions.as_slice() {
             let region =
                 ReFree(FreeRegion { scope: free_id_outlive,
-                                    bound_region: BrNamed(def.def_id, def.name) });
+                                    bound_region: def.to_bound_region() });
             debug!("push_region_params {:?}", region);
             regions.push(def.space, region);
         }

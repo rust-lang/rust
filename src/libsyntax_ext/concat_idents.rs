@@ -17,7 +17,7 @@ use syntax::parse::token;
 use syntax::parse::token::str_to_ident;
 use syntax::ptr::P;
 
-pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
+pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
                               -> Box<base::MacResult+'cx> {
     if !cx.ecfg.enable_concat_idents() {
         feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,

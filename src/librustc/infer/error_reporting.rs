@@ -77,6 +77,7 @@ use hir::map as ast_map;
 use hir;
 use hir::print as pprust;
 
+use lint;
 use hir::def::Def;
 use hir::def_id::DefId;
 use infer::{self, TypeOrigin};
@@ -1017,6 +1018,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let (fn_decl, generics) = rebuilder.rebuild();
         self.give_expl_lifetime_param(err, &fn_decl, unsafety, constness, name, &generics, span);
     }
+
+    pub fn issue_32330_warnings(&self, span: Span, issue32330s: &[ty::Issue32330]) {
+        for issue32330 in issue32330s {
+            match *issue32330 {
+                ty::Issue32330::WontChange => { }
+                ty::Issue32330::WillChange { fn_def_id, region_name } => {
+                    self.tcx.sess.add_lint(
+                        lint::builtin::HR_LIFETIME_IN_ASSOC_TYPE,
+                        ast::CRATE_NODE_ID,
+                        span,
+                        format!("lifetime parameter `{0}` declared on fn `{1}` \
+                                 appears only in the return type, \
+                                 but here is required to be higher-ranked, \
+                                 which means that `{0}` must appear in both \
+                                 argument and return types",
+                                region_name,
+                                self.tcx.item_path_str(fn_def_id)));
+                }
+            }
+        }
+    }
 }
 
 struct RebuildPathInfo<'a> {
@@ -1129,7 +1151,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 ty::BrAnon(i) => {
                     anon_nums.insert(i);
                 }
-                ty::BrNamed(_, name) => {
+                ty::BrNamed(_, name, _) => {
                     region_names.insert(name);
                 }
                 _ => ()
@@ -1143,7 +1165,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
         for sr in self.same_regions {
             for br in &sr.regions {
                 match *br {
-                    ty::BrNamed(_, name) => {
+                    ty::BrNamed(_, name, _) => {
                         all_region_names.insert(name);
                     }
                     _ => ()
@@ -1923,3 +1945,4 @@ fn name_to_dummy_lifetime(name: ast::Name) -> hir::Lifetime {
                     span: codemap::DUMMY_SP,
                     name: name }
 }
+
