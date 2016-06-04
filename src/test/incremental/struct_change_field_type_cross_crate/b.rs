@@ -9,23 +9,28 @@
 // except according to those terms.
 
 // aux-build:a.rs
-// revisions:rpass1 rpass2 rpass3
+// revisions:rpass1 rpass2
 
 #![feature(rustc_attrs)]
 
 extern crate a;
 
+use a::*;
+
 #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
-#[rustc_clean(label="TypeckItemBody", cfg="rpass3")]
 pub fn use_X() -> u32 {
-    let x: a::X = 22;
-    x as u32
+    let x: X = X { x: 22 };
+    x.x as u32
+}
+
+#[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+pub fn use_EmbedX(embed: EmbedX) -> u32 {
+    embed.x.x as u32
 }
 
 #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
-#[rustc_clean(label="TypeckItemBody", cfg="rpass3")]
 pub fn use_Y() {
-    let x: a::Y = 'c';
+    let x: Y = Y { y: 'c' };
 }
 
 pub fn main() { }
