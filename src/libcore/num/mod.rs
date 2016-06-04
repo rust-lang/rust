@@ -1176,6 +1176,15 @@ impl i64 {
         intrinsics::mul_with_overflow }
 }
 
+#[cfg(target_pointer_width = "16")]
+#[lang = "isize"]
+impl isize {
+    int_impl! { i16, u16, 16,
+        intrinsics::add_with_overflow,
+        intrinsics::sub_with_overflow,
+        intrinsics::mul_with_overflow }
+}
+
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
@@ -2188,6 +2197,18 @@ impl u64 {
         intrinsics::mul_with_overflow }
 }
 
+#[cfg(target_pointer_width = "16")]
+#[lang = "usize"]
+impl usize {
+    uint_impl! { u16, 16,
+        intrinsics::ctpop,
+        intrinsics::ctlz,
+        intrinsics::cttz,
+        intrinsics::bswap,
+        intrinsics::add_with_overflow,
+        intrinsics::sub_with_overflow,
+        intrinsics::mul_with_overflow }
+}
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {

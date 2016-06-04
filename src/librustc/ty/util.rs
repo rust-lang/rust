@@ -62,6 +62,7 @@ impl IntTypeExt for attr::IntType {
             SignedInt(ast::IntTy::I32)   => ConstInt::I32(0),
             SignedInt(ast::IntTy::I64)   => ConstInt::I64(0),
             SignedInt(ast::IntTy::Is) => match tcx.sess.target.int_type {
+                ast::IntTy::I16 => ConstInt::Isize(ConstIsize::Is16(0)),
                 ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32(0)),
                 ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64(0)),
                 _ => bug!(),
@@ -71,6 +72,7 @@ impl IntTypeExt for attr::IntType {
             UnsignedInt(ast::UintTy::U32) => ConstInt::U32(0),
             UnsignedInt(ast::UintTy::U64) => ConstInt::U64(0),
             UnsignedInt(ast::UintTy::Us) => match tcx.sess.target.uint_type {
+                ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16(0)),
                 ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32(0)),
                 ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64(0)),
                 _ => bug!(),
