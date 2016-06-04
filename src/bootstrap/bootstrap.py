@@ -182,13 +182,13 @@ class RustBuild:
         return os.path.join(self.bin_root(), '.cargo-stamp')
 
     def rustc_out_of_date(self):
-        if not os.path.exists(self.rustc_stamp()):
+        if not os.path.exists(self.rustc_stamp()) or self.clean:
             return True
         with open(self.rustc_stamp(), 'r') as f:
             return self.stage0_rustc_date() != f.read()
 
     def cargo_out_of_date(self):
-        if not os.path.exists(self.cargo_stamp()):
+        if not os.path.exists(self.cargo_stamp()) or self.clean:
             return True
         with open(self.cargo_stamp(), 'r') as f:
             return self.stage0_cargo_date() != f.read()
@@ -235,8 +235,11 @@ class RustBuild:
             return ''
 
     def build_bootstrap(self):
+        build_dir = os.path.join(self.build_dir, "bootstrap")
+        if self.clean and os.path.exists(build_dir):
+            shutil.rmtree(build_dir)
         env = os.environ.copy()
-        env["CARGO_TARGET_DIR"] = os.path.join(self.build_dir, "bootstrap")
+        env["CARGO_TARGET_DIR"] = build_dir
         env["RUSTC"] = self.rustc()
         env["LD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib")
         env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib")
@@ -340,6 +343,7 @@ class RustBuild:
 def main():
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
+    parser.add_argument('--clean', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
 
     args = [a for a in sys.argv if a != '-h']
@@ -352,6 +356,7 @@ def main():
     rb.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
     rb.build_dir = os.path.join(os.getcwd(), "build")
     rb.verbose = args.verbose
+    rb.clean = args.clean
 
     try:
         with open(args.config or 'config.toml') as config:
