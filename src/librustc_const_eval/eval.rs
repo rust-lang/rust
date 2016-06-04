@@ -583,6 +583,9 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     (&LitKind::Int(n, Unsuffixed), Some(&ty::TyInt(IntTy::Is))) |
                     (&LitKind::Int(n, Signed(IntTy::Is)), _) => {
                         match tcx.sess.target.int_type {
+                            IntTy::I16 => if n == I16_OVERFLOW {
+                                return Ok(Integral(Isize(Is16(::std::i16::MIN))));
+                            },
                             IntTy::I32 => if n == I32_OVERFLOW {
                                 return Ok(Integral(Isize(Is32(::std::i32::MIN))));
                             },

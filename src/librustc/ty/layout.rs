@@ -170,6 +170,7 @@ impl TargetDataLayout {
     /// address space on 64-bit ARMv8 and x86_64.
     pub fn obj_size_bound(&self) -> u64 {
         match self.pointer_size.bits() {
+            16 => 1 << 15,
             32 => 1 << 31,
             64 => 1 << 47,
             bits => bug!("obj_size_bound: unknown pointer bit size {}", bits)
@@ -178,6 +179,7 @@ impl TargetDataLayout {
 
     pub fn ptr_sized_integer(&self) -> Integer {
         match self.pointer_size.bits() {
+            16 => I16,
             32 => I32,
             64 => I64,
             bits => bug!("ptr_sized_integer: unknown pointer bit size {}", bits)

@@ -292,6 +292,12 @@ wrapping_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 mod shift_max {
     #![allow(non_upper_case_globals)]
 
+    #[cfg(target_pointer_width = "16")]
+    mod platform {
+        pub const usize: u32 = super::u16;
+        pub const isize: u32 = super::i16;
+    }
+
     #[cfg(target_pointer_width = "32")]
     mod platform {
         pub const usize: u32 = super::u32;

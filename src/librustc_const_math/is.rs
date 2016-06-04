@@ -15,6 +15,7 @@ use super::err::*;
 /// Anything else is an error. This invariant is checked at several locations
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, Hash, Eq, PartialEq)]
 pub enum ConstIsize {
+    Is16(i16),
     Is32(i32),
     Is64(i64),
 }
@@ -23,6 +24,7 @@ pub use self::ConstIsize::*;
 impl ConstIsize {
     pub fn as_i64(self, target_int_ty: ast::IntTy) -> i64 {
         match (self, target_int_ty) {
+            (Is16(i), ast::IntTy::I16) => i as i64,
             (Is32(i), ast::IntTy::I32) => i as i64,
             (Is64(i), ast::IntTy::I64) => i,
             _ => panic!("got invalid isize size for target"),
@@ -30,6 +32,8 @@ impl ConstIsize {
     }
     pub fn new(i: i64, target_int_ty: ast::IntTy) -> Result<Self, ConstMathErr> {
         match target_int_ty {
+            ast::IntTy::I16 if i as i16 as i64 == i => Ok(Is16(i as i16)),
+            ast::IntTy::I16 => Err(LitOutOfRange(ast::IntTy::Is)),
             ast::IntTy::I32 if i as i32 as i64 == i => Ok(Is32(i as i32)),
             ast::IntTy::I32 => Err(LitOutOfRange(ast::IntTy::Is)),
             ast::IntTy::I64 => Ok(Is64(i)),
