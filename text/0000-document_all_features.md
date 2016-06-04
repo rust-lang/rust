@@ -152,10 +152,10 @@ To be most effective, this will involve some changes both at a process and core-
 
 From the process and core team side of things:
 
-1. The RFC template should be updated to include the new section for teaching.
-2. The RFC process description in the [RFCs README], specifically by including "fail to include a plan for documenting the feature" in the list of possible problems in "Submit a pull request step" in [What the process is].
-3. A blog post discussing the new process should be written discussing why we are making this change to the process, and especially explaining both the current problems and the benefits of making the change.
-4. The core team should make documentation and teachability of new features *equally* high priority with the features themselves, and communicate this clearly in discussion of the features. (Core team members are already very good about including this in considerations of language design; this simply makes this an explicit goal of discussions around RFCs.)
+1. Update the RFC template to include the new section for teaching.
+2. Update the RFC process description in the [RFCs README], specifically by including "fail to include a plan for documenting the feature" in the list of possible problems in "Submit a pull request step" in [What the process is].
+3. Write a blog post discussing the new process should be written discussing why we are making this change to the process, and especially explaining both the current problems and the benefits of making the change.
+4. Make documentation and teachability of new features *equally* high priority with the features themselves, and communicate this clearly in discussion of the features. (Core team members are already very good about including this in considerations of language design; this simply makes this an explicit goal of discussions around RFCs.)
 
 [RFCs README]: https://github.com/rust-lang/rfcs/blob/master/README.md
 [What the process is]: https://github.com/rust-lang/rfcs/blob/master/README.md#what-the-process-is
