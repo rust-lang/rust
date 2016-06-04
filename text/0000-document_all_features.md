@@ -118,22 +118,30 @@ For Rust to attain its goal of *stability without stagnation*, its documentation
 
 - **No change; leave RFCs as canonical documentation.**
 
-	This approach can take (at least) two forms:
+    This approach can take (at least) two forms:
 
-	1. We can leave things as they are, where the RFC and surrounding discussion form the primary point of documentation for newer-than-1.0 language features. As part of that, we could just link more prominently to the RFC repository and describe the process from the documentation pages.
-	2. We could automatically render the text of the RFCs into part of the documentation used on the site (via submodules and the existing tooling around Markdown documents used for Rust documentation).
+    1. We can leave things as they are, where the RFC and surrounding discussion form the primary point of documentation for newer-than-1.0 language features. As part of that, we could just link more prominently to the RFC repository and describe the process from the documentation pages.
+    2. We could automatically render the text of the RFCs into part of the documentation used on the site (via submodules and the existing tooling around Markdown documents used for Rust documentation).
 
-	However, for all the reasons highlighted above in [**Motivation: The Current Situation**][current-situation], RFCs and their associated threads are *not* a good canonical source of information on language features.
+    However, for all the reasons highlighted above in [**Motivation: The Current Situation**][current-situation], RFCs and their associated threads are *not* a good canonical source of information on language features.
 
 - **Add a rule for the standard library but not for language features.**
-	
-	This would basically just turn the _status quo_ into an official policy. It has all the same drawbacks as no change at all, but with the possible benefit of enabling automated checks on standard library documentation.
+
+    This would basically just turn the _status quo_ into an official policy. It has all the same drawbacks as no change at all, but with the possible benefit of enabling automated checks on standard library documentation.
 
 - **Add a rule for language features but not for the standard library.**
-	
-	The standard library is in much better shape, in no small part because of the ease of writing inline documentation for new modules. Adding a formal rule may not be necessary if good habits are already in place.
 
-	On the other hand, having a formal policy would not seem to *hurt* anything here; it would simply formalize what is already happening (and perhaps, via linting attributes, make it easy to spot when it has failed).
+    The standard library is in much better shape, in no small part because of the ease of writing inline documentation for new modules. Adding a formal rule may not be necessary if good habits are already in place.
+
+    On the other hand, having a formal policy would not seem to *hurt* anything here; it would simply formalize what is already happening (and perhaps, via linting attributes, make it easy to spot when it has failed).
+
+- **Eliminate the reference entirely.**
+
+    Since the reference is already substantially out of date, it might make sense to stop presenting it publicly at all, at least until such a time as it has been completely reworked and updated.
+
+    The main upside to this is the reality that an outdated and inaccurate reference may be worse than no reference at all, as it may substantially mislead Rust users.
+
+    The main downside, of course, is that this would leave very large swaths of the language basically without *any* documentation, and even more of it only documented in RFCs than is the case today.
 
 
 # Unresolved questions
