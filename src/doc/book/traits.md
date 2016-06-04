@@ -297,7 +297,7 @@ What’s that mean? Check out the chapter on [trait objects][to] for more detail
 
 # Multiple trait bounds
 
-You’ve seen that you can bound a generic type parameter with a trait:
+You’ve seen that you can bind a generic type parameter with a trait:
 
 ```rust
 fn foo<T: Clone>(x: T) {
