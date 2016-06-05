@@ -17,7 +17,7 @@ use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::{DebugInfoLevel, PanicStrategy};
 use ty::tls;
-use util::nodemap::{NodeMap, FnvHashMap};
+use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
 use mir::transform as mir_pass;
 
 use syntax::ast::{NodeId, NodeIdAssigner, Name};
@@ -70,6 +70,10 @@ pub struct Session {
     pub working_dir: PathBuf,
     pub lint_store: RefCell<lint::LintStore>,
     pub lints: RefCell<NodeMap<Vec<(lint::LintId, Span, String)>>>,
+    /// Set of (span, message) tuples tracking lint (sub)diagnostics that have
+    /// been set once, but should not be set again, in order to avoid
+    /// redundantly verbose output.
+    pub one_time_diagnostics: RefCell<FnvHashSet<(Span, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub mir_passes: RefCell<mir_pass::Passes>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
@@ -523,6 +527,7 @@ pub fn build_session_(sopts: config::Options,
         working_dir: env::current_dir().unwrap(),
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(NodeMap()),
+        one_time_diagnostics: RefCell::new(FnvHashSet()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
         mir_passes: RefCell::new(mir_pass::Passes::new()),
         plugin_attributes: RefCell::new(Vec::new()),

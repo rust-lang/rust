@@ -462,7 +462,13 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
 
     if let Some(span) = def {
         let explanation = "lint level defined here";
-        err.span_note(span, &explanation);
+        let span_explanation = (span, explanation.to_owned());
+        let already_noted: bool = sess.one_time_diagnostics.borrow()
+            .contains(&span_explanation);
+        if !already_noted {
+            err.span_note(span, explanation);
+            sess.one_time_diagnostics.borrow_mut().insert(span_explanation);
+        }
     }
 
     err
