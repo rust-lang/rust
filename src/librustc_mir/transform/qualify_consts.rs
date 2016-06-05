@@ -25,6 +25,7 @@ use rustc::ty::cast::CastTy;
 use rustc::mir::repr::*;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::transform::{Pass, MirMapPass, MirSource};
+use rustc::mir::traversal::{self, ReversePostorder};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::util::nodemap::DefIdMap;
 use syntax::abi::Abi;
@@ -35,7 +36,6 @@ use std::collections::hash_map::Entry;
 use std::fmt;
 
 use build::Location;
-use traversal::{self, ReversePostorder};
 
 use super::promote_consts::{self, Candidate, TempState};
 

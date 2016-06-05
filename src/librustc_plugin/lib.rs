@@ -70,7 +70,6 @@
 extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_metadata;
-extern crate rustc_mir;
 
 pub use self::registry::Registry;
 
