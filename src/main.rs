@@ -71,7 +71,13 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
                 registry.args_hidden = Some(Vec::new());
                 clippy_lints::register_plugins(&mut registry);
 
-                let rustc_plugin::registry::Registry { early_lint_passes, late_lint_passes, lint_groups, llvm_passes, attributes, mir_passes, .. } = registry;
+                let rustc_plugin::registry::Registry { early_lint_passes,
+                                                       late_lint_passes,
+                                                       lint_groups,
+                                                       llvm_passes,
+                                                       attributes,
+                                                       mir_passes,
+                                                       .. } = registry;
                 let sess = &state.session;
                 let mut ls = sess.lint_store.borrow_mut();
                 for pass in early_lint_passes {
@@ -111,14 +117,18 @@ pub fn main() {
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
     let sys_root = match (home, toolchain) {
         (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
-        _ => option_env!("SYSROOT").map(|s| s.to_owned())
-                                   .or(Command::new("rustc").arg("--print")
-                                                            .arg("sysroot")
-                                                            .output().ok()
-                                                            .and_then(|out| String::from_utf8(out.stdout).ok())
-                                                            .map(|s| s.trim().to_owned())
-                                                            )
-                .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust"),
+        _ => {
+            option_env!("SYSROOT")
+                .map(|s| s.to_owned())
+                .or(Command::new("rustc")
+                    .arg("--print")
+                    .arg("sysroot")
+                    .output()
+                    .ok()
+                    .and_then(|out| String::from_utf8(out.stdout).ok())
+                    .map(|s| s.trim().to_owned()))
+                .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust")
+        }
     };
 
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
@@ -160,7 +170,9 @@ pub fn main() {
 }
 
 fn process<P, I>(old_args: I, dep_path: P, sysroot: &str) -> Result<(), i32>
-    where P: AsRef<Path>, I: Iterator<Item=String> {
+    where P: AsRef<Path>,
+          I: Iterator<Item = String>
+{
 
     let mut args = vec!["rustc".to_owned()];
 

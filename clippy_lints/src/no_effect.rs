@@ -130,7 +130,9 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         Expr_::ExprTupField(ref inner, _) |
         Expr_::ExprAddrOf(_, ref inner) |
         Expr_::ExprBox(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
-        Expr_::ExprStruct(_, ref fields, ref base) => Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect()),
+        Expr_::ExprStruct(_, ref fields, ref base) => {
+            Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
+        }
         Expr_::ExprCall(ref callee, ref args) => {
             match cx.tcx.def_map.borrow().get(&callee.id).map(PathResolution::full_def) {
                 Some(Def::Struct(..)) |
@@ -140,11 +142,13 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         }
         Expr_::ExprBlock(ref block) => {
             if block.stmts.is_empty() {
-                block.expr.as_ref().and_then(|e| match block.rules {
-                    BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) => None,
-                    BlockCheckMode::DefaultBlock => Some(vec![&**e]),
-                    // in case of compiler-inserted signaling blocks
-                    _ => reduce_expression(cx, e),
+                block.expr.as_ref().and_then(|e| {
+                    match block.rules {
+                        BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) => None,
+                        BlockCheckMode::DefaultBlock => Some(vec![&**e]),
+                        // in case of compiler-inserted signaling blocks
+                        _ => reduce_expression(cx, e),
+                    }
                 })
             } else {
                 None

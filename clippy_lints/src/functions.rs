@@ -42,7 +42,8 @@ impl LintPass for Functions {
 }
 
 impl LateLintPass for Functions {
-    fn check_fn(&mut self, cx: &LateContext, _: intravisit::FnKind, decl: &hir::FnDecl, _: &hir::Block, span: Span, nodeid: ast::NodeId) {
+    fn check_fn(&mut self, cx: &LateContext, _: intravisit::FnKind, decl: &hir::FnDecl, _: &hir::Block, span: Span,
+                nodeid: ast::NodeId) {
         use rustc::hir::map::Node::*;
 
         if let Some(NodeItem(ref item)) = cx.tcx.map.find(cx.tcx.map.get_parent_node(nodeid)) {

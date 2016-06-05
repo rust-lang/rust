@@ -143,9 +143,7 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
         }
     }
 
-    let mut apb = AbsolutePathBuffer {
-        names: vec![],
-    };
+    let mut apb = AbsolutePathBuffer { names: vec![] };
 
     cx.tcx.push_item_path(&mut apb, def_id);
 
@@ -763,7 +761,8 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
                     end: None,
                     limits: RangeLimits::HalfOpen,
                 })
-            } else if match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY_STD) || match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY) {
+            } else if match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY_STD) ||
+               match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY) {
                 Some(UnsugaredRange {
                     start: get_field("start", fields),
                     end: get_field("end", fields),

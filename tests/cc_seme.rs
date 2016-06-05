@@ -14,7 +14,10 @@ struct Test {
 
 fn main() {
     use Baz::*;
-    let x = Test { t: Some(0), b: One };
+    let x = Test {
+        t: Some(0),
+        b: One,
+    };
 
     match x {
         Test { t: Some(_), b: One } => unreachable!(),

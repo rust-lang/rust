@@ -35,7 +35,7 @@ impl LateLintPass for NegMultiply {
                 (&ExprUnary(..), &ExprUnary(..)) => (),
                 (&ExprUnary(UnNeg, ref lit), _) => check_mul(cx, e.span, lit, r),
                 (_, &ExprUnary(UnNeg, ref lit)) => check_mul(cx, e.span, lit, l),
-                _ => ()
+                _ => (),
             }
         }
     }

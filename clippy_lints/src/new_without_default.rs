@@ -100,10 +100,10 @@ impl LateLintPass for NewWithoutDefault {
                 // can't be implemented by default
                 return;
             }
-            if decl.inputs.is_empty() && name.as_str() == "new" &&
-                    cx.access_levels.is_reachable(id) {
-                let self_ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(
-                    cx.tcx.map.get_parent(id))).ty;
+            if decl.inputs.is_empty() && name.as_str() == "new" && cx.access_levels.is_reachable(id) {
+                let self_ty = cx.tcx
+                    .lookup_item_type(cx.tcx.map.local_def_id(cx.tcx.map.get_parent(id)))
+                    .ty;
                 if_let_chain!{[
                     self_ty.walk_shallow().next().is_none(), // implements_trait does not work with generics
                     let Some(ret_ty) = return_ty(cx, id),
@@ -143,11 +143,11 @@ fn can_derive_default<'t, 'c>(ty: ty::Ty<'t>, cx: &LateContext<'c, 't>, default_
             for field in adt_def.all_fields() {
                 let f_ty = field.ty(cx.tcx, substs);
                 if !implements_trait(cx, f_ty, default_trait_id, Vec::new()) {
-                    return false
+                    return false;
                 }
             }
             true
-        },
-        _ => false
+        }
+        _ => false,
     }
 }

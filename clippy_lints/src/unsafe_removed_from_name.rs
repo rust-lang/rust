@@ -45,7 +45,7 @@ impl LateLintPass for UnsafeNameRemoval {
                         *name,
                         cx, &item.span
                         );
-                },
+                }
                 ViewPath_::ViewPathList(_, ref path_list_items) => {
                     for path_list_item in path_list_items.iter() {
                         let plid = path_list_item.node;
@@ -53,7 +53,7 @@ impl LateLintPass for UnsafeNameRemoval {
                             unsafe_to_safe_check(name, rename, cx, &item.span);
                         };
                     }
-                },
+                }
                 ViewPath_::ViewPathGlob(_) => {}
             }
         }
@@ -64,11 +64,10 @@ fn unsafe_to_safe_check(old_name: Name, new_name: Name, cx: &LateContext, span: 
     let old_str = old_name.as_str();
     let new_str = new_name.as_str();
     if contains_unsafe(&old_str) && !contains_unsafe(&new_str) {
-        span_lint(
-            cx,
-            UNSAFE_REMOVED_FROM_NAME,
-            *span,
-            &format!(
+        span_lint(cx,
+                  UNSAFE_REMOVED_FROM_NAME,
+                  *span,
+                  &format!(
                 "removed \"unsafe\" from the name of `{}` in use as `{}`",
                 old_str,
                 new_str

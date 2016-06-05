@@ -125,7 +125,7 @@ impl LateLintPass for RegexPass {
 fn str_span(base: Span, s: &str, c: usize) -> Span {
     let mut si = s.char_indices().skip(c);
 
-    match (si.next(), si.next())  {
+    match (si.next(), si.next()) {
         (Some((l, _)), Some((h, _))) => {
             Span {
                 lo: base.lo + BytePos(l as u32),
@@ -193,7 +193,9 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
             match builder.parse(r) {
                 Ok(r) => {
                     if let Some(repl) = is_trivial_regex(&r) {
-                        span_help_and_lint(cx, TRIVIAL_REGEX, expr.span,
+                        span_help_and_lint(cx,
+                                           TRIVIAL_REGEX,
+                                           expr.span,
                                            "trivial regex",
                                            &format!("consider using {}", repl));
                     }
@@ -211,7 +213,9 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
         match builder.parse(&r) {
             Ok(r) => {
                 if let Some(repl) = is_trivial_regex(&r) {
-                    span_help_and_lint(cx, TRIVIAL_REGEX, expr.span,
+                    span_help_and_lint(cx,
+                                       TRIVIAL_REGEX,
+                                       expr.span,
                                        "trivial regex",
                                        &format!("consider using {}", repl));
                 }
