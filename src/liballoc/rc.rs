@@ -271,7 +271,7 @@ impl<T> Rc<T> {
 }
 
 impl<T: ?Sized> Rc<T> {
-    /// Downgrades the `Rc<T>` to a `Weak<T>` reference.
+    /// Creates a new `Weak<T>` reference from this value.
     ///
     /// # Examples
     ///
