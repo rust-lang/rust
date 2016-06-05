@@ -90,8 +90,9 @@
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(unsize)]
+#![feature(fn_traits)]
 
-#![cfg_attr(not(test), feature(raw, fn_traits, placement_new_protocol))]
+#![cfg_attr(not(test), feature(raw, placement_new_protocol))]
 #![cfg_attr(test, feature(test, box_heap))]
 
 // Allow testing this library

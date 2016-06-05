@@ -693,6 +693,34 @@ impl<T: ?Sized> fmt::Pointer for Rc<T> {
     }
 }
 
+#[stable(feature = "fn_smart_ptr", since = "1.11.0")]
+impl<I, F: ?Sized> Fn<I> for Rc<F>
+    where F: Fn<I>
+{
+    extern "rust-call" fn call(&self, args: I) -> Self::Output {
+        (&**self).call(args)
+    }
+}
+
+#[stable(feature = "fn_smart_ptr", since = "1.11.0")]
+impl<I, F: ?Sized> FnMut<I> for Rc<F>
+    where F: Fn<I>
+{
+    extern "rust-call" fn call_mut(&mut self, args: I) -> Self::Output {
+        self.call(args)
+    }
+}
+
+#[stable(feature = "fn_smart_ptr", since = "1.11.0")]
+impl<I, F: ?Sized> FnOnce<I> for Rc<F>
+    where F: Fn<I>
+{
+    type Output = F::Output;
+    extern "rust-call" fn call_once(self, args: I) -> Self::Output {
+        self.call(args)
+    }
+}
+
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Rc<T> {
     fn from(t: T) -> Self {
@@ -1135,6 +1163,12 @@ mod tests {
     fn test_show() {
         let foo = Rc::new(75);
         assert_eq!(format!("{:?}", foo), "75");
+    }
+
+    #[test]
+    fn test_fn() {
+        let f = Rc::new(|i: i32| -> i32 { i + 1 });
+        assert_eq!(Some(1).map(f), Some(2));
     }
 
     #[test]
