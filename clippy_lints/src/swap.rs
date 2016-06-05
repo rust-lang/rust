@@ -1,7 +1,8 @@
-use rustc::lint::*;
 use rustc::hir::*;
+use rustc::lint::*;
+use rustc::ty;
 use syntax::codemap::mk_sp;
-use utils::{differing_macro_contexts, snippet_opt, span_lint_and_then, SpanlessEq};
+use utils::{differing_macro_contexts, match_type, paths, snippet, snippet_opt, span_lint_and_then, walk_ptrs_ty, SpanlessEq};
 
 /// **What it does:** This lints manual swapping.
 ///
@@ -79,10 +80,40 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             SpanlessEq::new(cx).ignore_fn().eq_expr(tmp_init, lhs1),
             SpanlessEq::new(cx).ignore_fn().eq_expr(rhs1, lhs2)
         ], {
-            let (what, lhs, rhs) = if let (Some(first), Some(second)) = (snippet_opt(cx, lhs1.span), snippet_opt(cx, rhs1.span)) {
-                (format!(" `{}` and `{}`", first, second), first, second)
+            fn check_for_slice<'a>(cx: &LateContext, lhs1: &'a Expr, lhs2: &'a Expr) -> Option<(&'a Expr, &'a Expr, &'a Expr)> {
+                if let ExprIndex(ref lhs1, ref idx1) = lhs1.node {
+                    if let ExprIndex(ref lhs2, ref idx2) = lhs2.node {
+                        if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
+                            let ty = walk_ptrs_ty(cx.tcx.expr_ty(lhs1));
+
+                            if matches!(ty.sty, ty::TySlice(_)) ||
+                                matches!(ty.sty, ty::TyArray(_, _)) ||
+                                match_type(cx, ty, &paths::VEC) ||
+                                match_type(cx, ty, &paths::VEC_DEQUE) {
+                                    return Some((lhs1, idx1, idx2));
+                            }
+                        }
+                    }
+                }
+
+                None
+            }
+
+            let (replace, what, sugg) = if let Some((slice, idx1, idx2)) = check_for_slice(cx, lhs1, lhs2) {
+                if let Some(slice) = snippet_opt(cx, slice.span) {
+                    (false,
+                     format!(" elements of `{}`", slice),
+                     format!("{}.swap({}, {})",slice,  snippet(cx, idx1.span, ".."), snippet(cx, idx2.span, "..")))
+                } else {
+                    (false, "".to_owned(), "".to_owned())
+                }
             } else {
-                ("".to_owned(), "".to_owned(), "".to_owned())
+                 if let (Some(first), Some(second)) = (snippet_opt(cx, lhs1.span), snippet_opt(cx, rhs1.span)) {
+                    (true, format!(" `{}` and `{}`", first, second),
+                     format!("std::mem::swap(&mut {}, &mut {})", first, second))
+                } else {
+                    (true, "".to_owned(), "".to_owned())
+                }
             };
 
             let span = mk_sp(w[0].span.lo, second.span.hi);
@@ -92,10 +123,12 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                                span,
                                &format!("this looks like you are swapping{} manually", what),
                                |db| {
-                                   if !what.is_empty() {
-                                       db.span_suggestion(span, "try",
-                                                          format!("std::mem::swap(&mut {}, &mut {})", lhs, rhs));
-                                       db.note("or maybe you should use `std::mem::replace`?");
+                                   if !sugg.is_empty() {
+                                       db.span_suggestion(span, "try", sugg);
+
+                                       if replace {
+                                           db.note("or maybe you should use `std::mem::replace`?");
+                                       }
                                    }
                                });
         }}
