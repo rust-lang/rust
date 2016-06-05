@@ -199,7 +199,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 let base_ty = self.lvalue_ty(lvalue);
                                 let llbasety = type_of::type_of(bcx.ccx(), base_ty).ptr_to();
                                 let llbase = bcx.pointercast(llbase, llbasety);
-                                (bcx.pointercast(llbase, llbasety), ptr::null_mut())
+                                (llbase, ptr::null_mut())
                             }
                             ty::TySlice(..) => {
                                 assert!(tr_base.llextra != ptr::null_mut());

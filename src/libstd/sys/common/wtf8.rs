@@ -568,7 +568,7 @@ impl Wtf8 {
             return None
         }
         if self.bytes[len-3] == 0xed &&
-            self.bytes[len-2] > 0xa0 &&
+            self.bytes[len-2] >= 0xa0 &&
             self.bytes[len-2] <= 0xaf
         {
             Some(decode_surrogate(self.bytes[len-2], self.bytes[len-1]))
@@ -583,11 +583,11 @@ impl Wtf8 {
         if len < 3 {
             return None
         }
-        if self.bytes[len-3] == 0xed &&
-            self.bytes[len-2] > 0xb0 &&
-            self.bytes[len-2] <= 0xbf
+        if self.bytes[0] == 0xed &&
+            self.bytes[1] >= 0xb0 &&
+            self.bytes[1] <= 0xbf
         {
-            Some(decode_surrogate(self.bytes[len-2], self.bytes[len-1]))
+            Some(decode_surrogate(self.bytes[1], self.bytes[2]))
         } else {
             None
         }
