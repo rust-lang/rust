@@ -1,7 +1,7 @@
 extern crate compiletest_rs as compiletest;
 
 use std::path::PathBuf;
-use std::env::{var, temp_dir};
+use std::env::{set_var, var, temp_dir};
 
 fn run_mode(dir: &'static str, mode: &'static str) {
     let mut config = compiletest::default_config();
@@ -23,9 +23,14 @@ fn run_mode(dir: &'static str, mode: &'static str) {
     compiletest::run_tests(&config);
 }
 
+fn prepare_env() {
+    set_var("CLIPPY_DISABLE_WIKI_LINKS", "true");
+}
+
 #[test]
 #[cfg(not(feature = "test-regex_macros"))]
 fn compile_test() {
+    prepare_env();
     run_mode("run-pass", "run-pass");
     run_mode("compile-fail", "compile-fail");
 }
@@ -33,6 +38,7 @@ fn compile_test() {
 #[test]
 #[cfg(feature = "test-regex_macros")]
 fn compile_test() {
+    prepare_env();
     run_mode("run-pass-regex_macros", "run-pass");
     run_mode("compile-fail-regex_macros", "compile-fail");
 }

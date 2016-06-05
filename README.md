@@ -318,6 +318,9 @@ You can also specify the path to the configuration file with:
 #![plugin(clippy(conf_file="path/to/clippy's/configuration"))]
 ```
 
+To deactivate the “for further information visit *wiki-link*” message you can
+define the `CLIPPY_DISABLE_WIKI_LINKS` environment variable.
+
 ## Link with clippy service
 
 `clippy-service` is a rust web initiative providing `rust-clippy` as a web service.
