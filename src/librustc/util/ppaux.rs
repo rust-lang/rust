@@ -69,15 +69,12 @@ pub enum Ns {
     Value
 }
 
-fn number_of_supplied_defaults<'a, 'gcx, 'tcx, GG>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                   substs: &subst::Substs,
-                                                   space: subst::ParamSpace,
-                                                   get_generics: GG)
-                                                   -> usize
-    where GG: FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> ty::Generics<'tcx>
+fn number_of_supplied_defaults<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                               substs: &subst::Substs,
+                                               space: subst::ParamSpace,
+                                               generics: ty::Generics<'tcx>)
+                                               -> usize
 {
-    let generics = get_generics(tcx);
-
     let has_self = substs.self_ty().is_some();
     let ty_params = generics.types.get_slice(space);
     let tps = substs.types.get_slice(space);
@@ -115,7 +112,8 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
                          projections: &[ty::ProjectionPredicate],
                          get_generics: GG)
                          -> fmt::Result
-    where GG: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> ty::Generics<'tcx>
+    where GG: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>)
+                                         -> Option<ty::Generics<'tcx>>
 {
     if let (Ns::Value, Some(self_ty)) = (ns, substs.self_ty()) {
         write!(f, "<{} as ", self_ty)?;
@@ -176,13 +174,12 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
     let num_supplied_defaults = if verbose {
         0
     } else {
-        // It is important to execute this conditionally, only if -Z
-        // verbose is false. Otherwise, debug logs can sometimes cause
-        // ICEs trying to fetch the generics early in the pipeline. This
-        // is kind of a hacky workaround in that -Z verbose is required to
-        // avoid those ICEs.
         ty::tls::with(|tcx| {
-            number_of_supplied_defaults(tcx, substs, subst::TypeSpace, get_generics)
+            if let Some(generics) = get_generics(tcx) {
+                number_of_supplied_defaults(tcx, substs, subst::TypeSpace, generics)
+            } else {
+                0
+            }
         })
     };
 
@@ -312,7 +309,7 @@ impl<'tcx> fmt::Display for TraitAndProjections<'tcx> {
                       trait_ref.def_id,
                       Ns::Type,
                       projection_bounds,
-                      |tcx| tcx.lookup_trait_def(trait_ref.def_id).generics.clone())
+                      |tcx| Some(tcx.lookup_trait_def(trait_ref.def_id).generics.clone()))
     }
 }
 
@@ -814,7 +811,7 @@ impl fmt::Display for ty::Binder<ty::OutlivesPredicate<ty::Region, ty::Region>> 
 impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         parameterized(f, self.substs, self.def_id, Ns::Type, &[],
-                      |tcx| tcx.lookup_trait_def(self.def_id).generics.clone())
+                      |tcx| Some(tcx.lookup_trait_def(self.def_id).generics.clone()))
     }
 }
 
@@ -866,8 +863,9 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 }
 
                 write!(f, "{} {{", bare_fn.sig.0)?;
-                parameterized(f, substs, def_id, Ns::Value, &[],
-                              |tcx| tcx.lookup_item_type(def_id).generics)?;
+                parameterized(
+                    f, substs, def_id, Ns::Value, &[],
+                    |tcx| tcx.opt_lookup_item_type(def_id).map(|t| t.generics))?;
                 write!(f, "}}")
             }
             TyFnPtr(ref bare_fn) => {
@@ -890,8 +888,12 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                           !tcx.tcache.borrow().contains_key(&def.did) {
                         write!(f, "{}<..>", tcx.item_path_str(def.did))
                     } else {
-                        parameterized(f, substs, def.did, Ns::Type, &[],
-                                      |tcx| tcx.lookup_item_type(def.did).generics)
+                        parameterized(
+                            f, substs, def.did, Ns::Type, &[],
+                            |tcx| {
+                                tcx.opt_lookup_item_type(def.did).
+                                    map(|t| t.generics)
+                            })
                     }
                 })
             }

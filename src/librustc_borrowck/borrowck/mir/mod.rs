@@ -24,8 +24,10 @@ use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 
 mod abs_domain;
+pub mod elaborate_drops;
 mod dataflow;
 mod gather_moves;
+mod patch;
 // mod graphviz;
 
 use self::dataflow::{BitDenotation};
@@ -34,7 +36,7 @@ use self::dataflow::{Dataflow, DataflowAnalysis, DataflowResults};
 use self::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use self::dataflow::{DefinitelyInitializedLvals};
 use self::gather_moves::{MoveData, MovePathIndex, Location};
-use self::gather_moves::{MovePathContent};
+use self::gather_moves::{MovePathContent, MovePathData};
 
 fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<P<MetaItem>> {
     for attr in attrs {
@@ -202,6 +204,37 @@ enum DropFlagState {
     Absent, // i.e. deinitialized or "moved"
 }
 
+impl DropFlagState {
+    fn value(self) -> bool {
+        match self {
+            DropFlagState::Present => true,
+            DropFlagState::Absent => false
+        }
+    }
+}
+
+fn move_path_children_matching<'tcx, F>(move_paths: &MovePathData<'tcx>,
+                                        path: MovePathIndex,
+                                        mut cond: F)
+                                        -> Option<MovePathIndex>
+    where F: FnMut(&repr::LvalueProjection<'tcx>) -> bool
+{
+    let mut next_child = move_paths[path].first_child;
+    while let Some(child_index) = next_child {
+        match move_paths[child_index].content {
+            MovePathContent::Lvalue(repr::Lvalue::Projection(ref proj)) => {
+                if cond(proj) {
+                    return Some(child_index)
+                }
+            }
+            _ => {}
+        }
+        next_child = move_paths[child_index].next_sibling;
+    }
+
+    None
+}
+
 fn on_all_children_bits<'a, 'tcx, F>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
@@ -309,15 +342,23 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
         Some(stmt) => match stmt.kind {
             repr::StatementKind::Assign(ref lvalue, _) => {
                 debug!("drop_flag_effects: assignment {:?}", stmt);
-                on_all_children_bits(tcx, mir, move_data,
+                 on_all_children_bits(tcx, mir, move_data,
                                      move_data.rev_lookup.find(lvalue),
                                      |moi| callback(moi, DropFlagState::Present))
             }
         },
         None => {
-            // terminator - no move-ins except for function return edge
-            let term = bb.terminator();
-            debug!("drop_flag_effects: terminator {:?}", term);
+            debug!("drop_flag_effects: replace {:?}", bb.terminator());
+            match bb.terminator().kind {
+                repr::TerminatorKind::DropAndReplace { ref location, .. } => {
+                    on_all_children_bits(tcx, mir, move_data,
+                                         move_data.rev_lookup.find(location),
+                                         |moi| callback(moi, DropFlagState::Present))
+                }
+                _ => {
+                    // other terminators do not contain move-ins
+                }
+            }
         }
     }
 }

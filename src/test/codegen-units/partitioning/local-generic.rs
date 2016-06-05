@@ -56,5 +56,3 @@ mod mod2 {
         let _ = generic("abc");
     }
 }
-
-//~ TRANS_ITEM drop-glue i8

@@ -330,9 +330,17 @@ pub enum TerminatorKind<'tcx> {
 
     /// Drop the Lvalue
     Drop {
-        value: Lvalue<'tcx>,
+        location: Lvalue<'tcx>,
         target: BasicBlock,
         unwind: Option<BasicBlock>
+    },
+
+    /// Drop the Lvalue and assign the new value over it
+    DropAndReplace {
+        location: Lvalue<'tcx>,
+        value: Operand<'tcx>,
+        target: BasicBlock,
+        unwind: Option<BasicBlock>,
     },
 
     /// Block ends with a call of a converging function
@@ -373,8 +381,14 @@ impl<'tcx> TerminatorKind<'tcx> {
                 slice::ref_slice(t).into_cow(),
             Call { destination: None, cleanup: Some(ref c), .. } => slice::ref_slice(c).into_cow(),
             Call { destination: None, cleanup: None, .. } => (&[]).into_cow(),
-            Drop { target, unwind: Some(unwind), .. } => vec![target, unwind].into_cow(),
-            Drop { ref target, .. } => slice::ref_slice(target).into_cow(),
+            DropAndReplace { target, unwind: Some(unwind), .. } |
+            Drop { target, unwind: Some(unwind), .. } => {
+                vec![target, unwind].into_cow()
+            }
+            DropAndReplace { ref target, unwind: None, .. } |
+            Drop { ref target, unwind: None, .. } => {
+                slice::ref_slice(target).into_cow()
+            }
         }
     }
 
@@ -393,8 +407,12 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { destination: Some((_, ref mut t)), cleanup: None, .. } => vec![t],
             Call { destination: None, cleanup: Some(ref mut c), .. } => vec![c],
             Call { destination: None, cleanup: None, .. } => vec![],
+            DropAndReplace { ref mut target, unwind: Some(ref mut unwind), .. } |
             Drop { ref mut target, unwind: Some(ref mut unwind), .. } => vec![target, unwind],
-            Drop { ref mut target, .. } => vec![target]
+            DropAndReplace { ref mut target, unwind: None, .. } |
+            Drop { ref mut target, unwind: None, .. } => {
+                vec![target]
+            }
         }
     }
 }
@@ -461,7 +479,9 @@ impl<'tcx> TerminatorKind<'tcx> {
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Return => write!(fmt, "return"),
             Resume => write!(fmt, "resume"),
-            Drop { ref value, .. } => write!(fmt, "drop({:?})", value),
+            Drop { ref location, .. } => write!(fmt, "drop({:?})", location),
+            DropAndReplace { ref location, ref value, .. } =>
+                write!(fmt, "replace({:?} <- {:?})", location, value),
             Call { ref func, ref args, ref destination, .. } => {
                 if let Some((ref destination, _)) = *destination {
                     write!(fmt, "{:?} = ", destination)?;
@@ -506,8 +526,12 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { destination: Some(_), cleanup: None, .. } => vec!["return".into_cow()],
             Call { destination: None, cleanup: Some(_), .. } => vec!["unwind".into_cow()],
             Call { destination: None, cleanup: None, .. } => vec![],
+            DropAndReplace { unwind: None, .. } |
             Drop { unwind: None, .. } => vec!["return".into_cow()],
-            Drop { .. } => vec!["return".into_cow(), "unwind".into_cow()],
+            DropAndReplace { unwind: Some(_), .. } |
+            Drop { unwind: Some(_), .. } => {
+                vec!["return".into_cow(), "unwind".into_cow()]
+            }
         }
     }
 }
@@ -918,7 +942,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         ppaux::parameterized(fmt, substs, variant_def.did,
                                              ppaux::Ns::Value, &[],
                                              |tcx| {
-                            tcx.lookup_item_type(variant_def.did).generics
+                            Some(tcx.lookup_item_type(variant_def.did).generics)
                         })?;
 
                         match variant_def.kind() {
@@ -1010,8 +1034,9 @@ impl<'tcx> Debug for Literal<'tcx> {
         use self::Literal::*;
         match *self {
             Item { def_id, substs } => {
-                ppaux::parameterized(fmt, substs, def_id, ppaux::Ns::Value, &[],
-                                     |tcx| tcx.lookup_item_type(def_id).generics)
+                ppaux::parameterized(
+                    fmt, substs, def_id, ppaux::Ns::Value, &[],
+                    |tcx| Some(tcx.lookup_item_type(def_id).generics))
             }
             Value { ref value } => {
                 write!(fmt, "const ")?;

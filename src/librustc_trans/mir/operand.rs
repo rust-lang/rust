@@ -15,12 +15,11 @@ use base;
 use common::{self, Block, BlockAndBuilder};
 use datum;
 use value::Value;
-use glue;
 
 use std::fmt;
 
 use super::lvalue::load_fat_ptr;
-use super::{MirContext, TempRef, drop};
+use super::{MirContext, TempRef};
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -176,31 +175,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             OperandValue::Immediate(s) => base::store_ty(bcx, s, lldest, operand.ty),
             OperandValue::FatPtr(data, extra) => {
                 base::store_fat_ptr(bcx, data, extra, lldest, operand.ty);
-            }
-        }
-    }
-
-    pub fn set_operand_dropped(&mut self,
-                               bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                               operand: &mir::Operand<'tcx>) {
-        match *operand {
-            mir::Operand::Constant(_) => return,
-            mir::Operand::Consume(ref lvalue) => {
-                if let mir::Lvalue::Temp(idx) = *lvalue {
-                    if let TempRef::Operand(..) = self.temps[idx as usize] {
-                        // All lvalues which have an associated drop are promoted to an alloca
-                        // beforehand. If this is an operand, it is safe to say this is never
-                        // dropped and there’s no reason for us to zero this out at all.
-                        return
-                    }
-                }
-                let lvalue = self.trans_lvalue(bcx, lvalue);
-                let ty = lvalue.ty.to_ty(bcx.tcx());
-                if !glue::type_needs_drop(bcx.tcx(), ty) {
-                    return
-                } else {
-                    drop::drop_fill(bcx, lvalue.llval, ty);
-                }
             }
         }
     }

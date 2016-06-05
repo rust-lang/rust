@@ -1037,7 +1037,12 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
         passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
         passes.push_pass(box mir::transform::erase_regions::EraseRegions);
-        passes.push_pass(box mir::transform::break_cleanup_edges::BreakCleanupEdges);
+        passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
+        passes.push_pass(box borrowck::ElaborateDrops);
+        passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
+        passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg);
+        passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
+        passes.push_pass(box mir::transform::dump_mir::DumpMir("pre_trans"));
         passes.run_passes(tcx, &mut mir_map);
     });
 

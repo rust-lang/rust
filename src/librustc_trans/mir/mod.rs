@@ -73,6 +73,13 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     /// A `Block` for each MIR `BasicBlock`
     blocks: Vec<Block<'bcx, 'tcx>>,
 
+    /// The funclet status of each basic block
+    cleanup_kinds: Vec<analyze::CleanupKind>,
+
+    /// This stores the landing-pad block for a given BB, computed lazily on GNU
+    /// and eagerly on MSVC.
+    landing_pads: Vec<Option<Block<'bcx, 'tcx>>>,
+
     /// Cached unreachable block
     unreachable_block: Option<Block<'bcx, 'tcx>>,
 
@@ -139,8 +146,9 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
     // Analyze the temps to determine which must be lvalues
     // FIXME
-    let lvalue_temps = bcx.with_block(|bcx| {
-      analyze::lvalue_temps(bcx, &mir)
+    let (lvalue_temps, cleanup_kinds) = bcx.with_block(|bcx| {
+        (analyze::lvalue_temps(bcx, &mir),
+         analyze::cleanup_kinds(bcx, &mir))
     });
 
     // Compute debuginfo scopes from MIR scopes.
@@ -206,6 +214,8 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         llpersonalityslot: None,
         blocks: block_bcxs,
         unreachable_block: None,
+        cleanup_kinds: cleanup_kinds,
+        landing_pads: mir_blocks.iter().map(|_| None).collect(),
         vars: vars,
         temps: temps,
         args: args,
@@ -214,7 +224,14 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
     let mut visited = BitVector::new(mir_blocks.len());
 
-    let rpo = traversal::reverse_postorder(&mir);
+    let mut rpo = traversal::reverse_postorder(&mir);
+
+    // Prepare each block for translation.
+    for (bb, _) in rpo.by_ref() {
+        mircx.init_cpad(bb);
+    }
+    rpo.reset();
+
     // Translate the body of each block using reverse postorder
     for (bb, _) in rpo {
         visited.insert(bb.index());
@@ -228,8 +245,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         let block = BasicBlock(block.llbb);
         // Unreachable block
         if !visited.contains(bb.index()) {
-            block.delete();
-        } else if block.pred_iter().count() == 0 {
+            debug!("trans_mir: block {:?} was not visited", bb);
             block.delete();
         }
     }
@@ -431,7 +447,6 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
 mod analyze;
 mod block;
 mod constant;
-mod drop;
 mod lvalue;
 mod operand;
 mod rvalue;

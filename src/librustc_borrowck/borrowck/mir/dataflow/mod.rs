@@ -200,6 +200,12 @@ impl<'a, 'tcx: 'a, O> DataflowAnalysis<'a, 'tcx, O>
 
 pub struct DataflowResults<O>(DataflowState<O>) where O: BitDenotation;
 
+impl<O: BitDenotation> DataflowResults<O> {
+    pub fn sets(&self) -> &AllSets<O::Idx> {
+        &self.0.sets
+    }
+}
+
 // FIXME: This type shouldn't be public, but the graphviz::MirWithFlowState trait
 // references it in a method signature. Look into using `pub(crate)` to address this.
 pub struct DataflowState<O: BitDenotation>
@@ -444,10 +450,17 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
             repr::TerminatorKind::Return |
             repr::TerminatorKind::Resume => {}
             repr::TerminatorKind::Goto { ref target } |
-            repr::TerminatorKind::Drop { ref target, value: _, unwind: None } => {
+            repr::TerminatorKind::Drop { ref target, location: _, unwind: None } |
+
+            repr::TerminatorKind::DropAndReplace {
+                ref target, value: _, location: _, unwind: None
+            } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
             }
-            repr::TerminatorKind::Drop { ref target, value: _, unwind: Some(ref unwind) } => {
+            repr::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
+            repr::TerminatorKind::DropAndReplace {
+                ref target, value: _, location: _, unwind: Some(ref unwind)
+            } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
                 self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
             }
