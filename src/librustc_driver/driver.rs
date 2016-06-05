@@ -669,12 +669,24 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
         // dependent dlls. Note that this uses cfg!(windows) as opposed to
         // targ_cfg because syntax extensions are always loaded for the host
         // compiler, not for the target.
-        let mut _old_path = OsString::new();
+        //
+        // This is somewhat of an inherently racy operation, however, as
+        // multiple threads calling this function could possibly continue
+        // extending PATH far beyond what it should. To solve this for now we
+        // just don't add any new elements to PATH which are already there
+        // within PATH. This is basically a targeted fix at #17360 for rustdoc
+        // which runs rustc in parallel but has been seen (#33844) to cause
+        // problems with PATH becoming too long.
+        let mut old_path = OsString::new();
         if cfg!(windows) {
-            _old_path = env::var_os("PATH").unwrap_or(_old_path);
+            old_path = env::var_os("PATH").unwrap_or(old_path);
             let mut new_path = sess.host_filesearch(PathKind::All)
                                    .get_dylib_search_paths();
-            new_path.extend(env::split_paths(&_old_path));
+            for path in env::split_paths(&old_path) {
+                if !new_path.contains(&path) {
+                    new_path.push(path);
+                }
+            }
             env::set_var("PATH", &env::join_paths(new_path).unwrap());
         }
         let features = sess.features.borrow();
@@ -694,7 +706,7 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
                                                                    syntax_exts,
                                                                    krate);
         if cfg!(windows) {
-            env::set_var("PATH", &_old_path);
+            env::set_var("PATH", &old_path);
         }
         *sess.available_macros.borrow_mut() = macro_names;
         ret
