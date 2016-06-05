@@ -651,21 +651,27 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     };
 
     let mut parser = parse::Parser::new(&fmt);
+    let mut pieces = vec![];
 
     loop {
         match parser.next() {
             Some(piece) => {
                 if !parser.errors.is_empty() { break }
                 cx.verify_piece(&piece);
-                if let Some(piece) = cx.trans_piece(&piece) {
-                    let s = cx.trans_literal_string();
-                    cx.str_pieces.push(s);
-                    cx.pieces.push(piece);
-                }
+                pieces.push(piece);
             }
             None => break
         }
     }
+
+    for piece in pieces {
+        if let Some(piece) = cx.trans_piece(&piece) {
+            let s = cx.trans_literal_string();
+            cx.str_pieces.push(s);
+            cx.pieces.push(piece);
+        }
+    }
+
     if !parser.errors.is_empty() {
         cx.ecx.span_err(cx.fmtsp, &format!("invalid format string: {}",
                                           parser.errors.remove(0)));
