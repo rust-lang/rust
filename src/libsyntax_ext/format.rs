@@ -46,15 +46,12 @@ struct Context<'a, 'b:'a> {
 
     /// Parsed argument expressions and the types that we've found so far for
     /// them.
+    /// Named expressions are resolved early, and are appended to the end of
+    /// argument expressions.
     args: Vec<P<ast::Expr>>,
     arg_types: Vec<Option<ArgumentType>>,
-    /// Parsed named expressions and the types that we've found for them so far.
-    /// Note that we keep a side-array of the ordering of the named arguments
-    /// found to be sure that we can translate them in the same order that they
-    /// were declared in.
-    names: HashMap<String, P<ast::Expr>>,
-    name_types: HashMap<String, ArgumentType>,
-    name_ordering: Vec<String>,
+    /// Map from named arguments to their resolved indices.
+    names: HashMap<String, usize>,
 
     /// The latest consecutive literal strings, or empty if there weren't any.
     literal: String,
@@ -65,8 +62,6 @@ struct Context<'a, 'b:'a> {
     str_pieces: Vec<P<ast::Expr>>,
     /// Stays `true` if all formatting parameters are default (as in "{}{}").
     all_pieces_simple: bool,
-
-    name_positions: HashMap<String, usize>,
 
     /// Current position of the implicit positional arg pointer, as if it
     /// still existed in this phase of processing.
@@ -80,15 +75,12 @@ struct Context<'a, 'b:'a> {
 ///
 /// If parsing succeeds, the return value is:
 /// ```ignore
-/// Some((fmtstr, unnamed arguments, ordering of named arguments,
-///       named arguments))
+/// Some((fmtstr, parsed arguments, index map for named arguments))
 /// ```
 fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
-              -> Option<(P<ast::Expr>, Vec<P<ast::Expr>>, Vec<String>,
-                         HashMap<String, P<ast::Expr>>)> {
-    let mut args = Vec::new();
-    let mut names = HashMap::<String, P<ast::Expr>>::new();
-    let mut order = Vec::new();
+              -> Option<(P<ast::Expr>, Vec<P<ast::Expr>>, HashMap<String, usize>)> {
+    let mut args = Vec::<P<ast::Expr>>::new();
+    let mut names = HashMap::<String, usize>::new();
 
     let mut p = ecx.new_parser_from_tts(tts);
 
@@ -132,20 +124,45 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
                 ecx.struct_span_err(e.span,
                                     &format!("duplicate argument named `{}`",
                                              name))
-                    .span_note(prev.span, "previously here")
+                    .span_note(args[*prev].span, "previously here")
                     .emit();
                 continue;
             }
-            order.push(name.to_string());
-            names.insert(name.to_string(), e);
+
+            // Resolve names into slots early.
+            // Since all the positional args are already seen at this point
+            // if the input is valid, we can simply append to the positional
+            // args. And remember the names.
+            let slot = args.len();
+            names.insert(name.to_string(), slot);
+            args.push(e);
         } else {
             args.push(panictry!(p.parse_expr()));
         }
     }
-    Some((fmtstr, args, order, names))
+    Some((fmtstr, args, names))
 }
 
 impl<'a, 'b> Context<'a, 'b> {
+    fn resolve_name_inplace(&self, p: &mut parse::Piece) {
+        let lookup = |s| *self.names.get(s).unwrap_or(&0);
+
+        match *p {
+            parse::String(_) => {}
+            parse::NextArgument(ref mut arg) => {
+                if let parse::ArgumentNamed(s) = arg.position {
+                    arg.position = parse::ArgumentIs(lookup(s));
+                }
+                if let parse::CountIsName(s) = arg.format.width {
+                    arg.format.width = parse::CountIsParam(lookup(s));
+                }
+                if let parse::CountIsName(s) = arg.format.precision {
+                    arg.format.precision = parse::CountIsParam(lookup(s));
+                }
+            }
+        }
+    }
+
     /// Verifies one piece of a parse string. All errors are not emitted as
     /// fatal so we can continue giving errors about this and possibly other
     /// format strings.
@@ -214,24 +231,16 @@ impl<'a, 'b> Context<'a, 'b> {
             }
 
             Named(name) => {
-                let span = match self.names.get(&name) {
-                    Some(e) => e.span,
+                let idx = match self.names.get(&name) {
+                    Some(e) => *e,
                     None => {
                         let msg = format!("there is no argument named `{}`", name);
                         self.ecx.span_err(self.fmtsp, &msg[..]);
                         return;
                     }
                 };
-                self.verify_same(span, &ty, self.name_types.get(&name));
-                if !self.name_types.contains_key(&name) {
-                    self.name_types.insert(name.clone(), ty);
-                }
-                // Assign this named argument a slot in the arguments array if
-                // it hasn't already been assigned a slot.
-                if !self.name_positions.contains_key(&name) {
-                    let slot = self.name_positions.len();
-                    self.name_positions.insert(name, slot);
-                }
+                // Treat as positional arg.
+                self.verify_arg_type(Exact(idx), ty)
             }
         }
     }
@@ -301,14 +310,8 @@ impl<'a, 'b> Context<'a, 'b> {
                 count("Param", Some(self.ecx.expr_usize(sp, i)))
             }
             parse::CountImplied => count("Implied", None),
-            parse::CountIsName(n) => {
-                let i = match self.name_positions.get(n) {
-                    Some(&i) => i,
-                    None => 0, // error already emitted elsewhere
-                };
-                let i = i + self.args.len();
-                count("Param", Some(self.ecx.expr_usize(sp, i)))
-            }
+            // should never be the case, names are already resolved
+            parse::CountIsName(_) => panic!("should never happen"),
         }
     }
 
@@ -348,16 +351,9 @@ impl<'a, 'b> Context<'a, 'b> {
                     match arg.position {
                         parse::ArgumentIs(i) => pos("At", Some(i)),
 
-                        // Named arguments are converted to positional arguments
-                        // at the end of the list of arguments
-                        parse::ArgumentNamed(n) => {
-                            let i = match self.name_positions.get(n) {
-                                Some(&i) => i,
-                                None => 0, // error already emitted elsewhere
-                            };
-                            let i = i + self.args.len();
-                            pos("At", Some(i))
-                        }
+                        // should never be the case, because names are already
+                        // resolved.
+                        parse::ArgumentNamed(_) => panic!("should never happen"),
                     }
                 };
 
@@ -448,7 +444,6 @@ impl<'a, 'b> Context<'a, 'b> {
     /// to
     fn into_expr(mut self) -> P<ast::Expr> {
         let mut locals = Vec::new();
-        let mut names = vec![None; self.name_positions.len()];
         let mut pats = Vec::new();
         let mut heads = Vec::new();
 
@@ -485,29 +480,11 @@ impl<'a, 'b> Context<'a, 'b> {
                                             self.ecx.expr_ident(e.span, name)));
             heads.push(self.ecx.expr_addr_of(e.span, e));
         }
-        for name in &self.name_ordering {
-            let e = match self.names.remove(name) {
-                Some(e) => e,
-                None => continue
-            };
-            let arg_ty = match self.name_types.get(name) {
-                Some(ty) => ty,
-                None => continue
-            };
-
-            let lname = self.ecx.ident_of(&format!("__arg{}",
-                                                  *name));
-            pats.push(self.ecx.pat_ident(DUMMY_SP, lname));
-            names[*self.name_positions.get(name).unwrap()] =
-                Some(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty,
-                                         self.ecx.expr_ident(e.span, lname)));
-            heads.push(self.ecx.expr_addr_of(e.span, e));
-        }
 
         // Now create a vector containing all the arguments
-        let args = locals.into_iter().chain(names.into_iter().map(|a| a.unwrap()));
+        let args = locals.into_iter().collect();
 
-        let args_array = self.ecx.expr_vec(self.fmtsp, args.collect());
+        let args_array = self.ecx.expr_vec(self.fmtsp, args);
 
         // Constructs an AST equivalent to:
         //
@@ -605,9 +582,9 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt, sp: Span,
                                -> Box<base::MacResult+'cx> {
 
     match parse_args(ecx, sp, tts) {
-        Some((efmt, args, order, names)) => {
+        Some((efmt, args, names)) => {
             MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt,
-                                                      args, order, names))
+                                                      args, names))
         }
         None => DummyResult::expr(sp)
     }
@@ -618,8 +595,7 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt, sp: Span,
 pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     efmt: P<ast::Expr>,
                                     args: Vec<P<ast::Expr>>,
-                                    name_ordering: Vec<String>,
-                                    names: HashMap<String, P<ast::Expr>>)
+                                    names: HashMap<String, usize>)
                                     -> P<ast::Expr> {
     let arg_types: Vec<_> = (0..args.len()).map(|_| None).collect();
     let macsp = ecx.call_site();
@@ -632,9 +608,6 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         args: args,
         arg_types: arg_types,
         names: names,
-        name_positions: HashMap::new(),
-        name_types: HashMap::new(),
-        name_ordering: name_ordering,
         curarg: 0,
         literal: String::new(),
         pieces: Vec::new(),
@@ -655,9 +628,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
 
     loop {
         match parser.next() {
-            Some(piece) => {
+            Some(mut piece) => {
                 if !parser.errors.is_empty() { break }
                 cx.verify_piece(&piece);
+                cx.resolve_name_inplace(&mut piece);
                 pieces.push(piece);
             }
             None => break
@@ -683,14 +657,17 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     }
 
     // Make sure that all arguments were used and all arguments have types.
+    let num_pos_args = cx.args.len() - cx.names.len();
     for (i, ty) in cx.arg_types.iter().enumerate() {
         if ty.is_none() {
-            cx.ecx.span_err(cx.args[i].span, "argument never used");
-        }
-    }
-    for (name, e) in &cx.names {
-        if !cx.name_types.contains_key(name) {
-            cx.ecx.span_err(e.span, "named argument never used");
+            let msg = if i >= num_pos_args {
+                // named argument
+                "named argument never used"
+            } else {
+                // positional argument
+                "argument never used"
+            };
+            cx.ecx.span_err(cx.args[i].span, msg);
         }
     }
 
