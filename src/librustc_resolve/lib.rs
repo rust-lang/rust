@@ -788,7 +788,7 @@ pub struct ModuleS<'a> {
     resolutions: RefCell<HashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
     unresolved_imports: RefCell<Vec<&'a ImportDirective<'a>>>,
 
-    prelude: RefCell<Option<Module<'a>>>,
+    no_implicit_prelude: Cell<bool>,
 
     glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective<'a>)>>,
     globs: RefCell<Vec<&'a ImportDirective<'a>>>,
@@ -817,7 +817,7 @@ impl<'a> ModuleS<'a> {
             extern_crate_id: None,
             resolutions: RefCell::new(HashMap::new()),
             unresolved_imports: RefCell::new(Vec::new()),
-            prelude: RefCell::new(None),
+            no_implicit_prelude: Cell::new(false),
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
@@ -980,6 +980,8 @@ pub struct Resolver<'a> {
     definitions: &'a mut Definitions,
 
     graph_root: Module<'a>,
+
+    prelude: Option<Module<'a>>,
 
     trait_item_map: FnvHashMap<(Name, DefId), bool /* is static method? */>,
 
@@ -1170,6 +1172,7 @@ impl<'a> Resolver<'a> {
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
             graph_root: graph_root,
+            prelude: None,
 
             trait_item_map: FnvHashMap(),
             structs: FnvHashMap(),
@@ -1453,10 +1456,13 @@ impl<'a> Resolver<'a> {
 
                 // We can only see through anonymous modules
                 if module.def.is_some() {
-                    return module.prelude.borrow().and_then(|module| {
-                        module.resolve_name(name, ns, false)
-                              .success().map(LexicalScopeBinding::Item)
-                    });
+                    return match self.prelude {
+                        Some(prelude) if !module.no_implicit_prelude.get() => {
+                            prelude.resolve_name(name, ns, false).success()
+                                   .map(LexicalScopeBinding::Item)
+                        }
+                        _ => None,
+                    };
                 }
             }
         }
@@ -3261,7 +3267,7 @@ impl<'a> Resolver<'a> {
         let mut search_module = self.current_module;
         loop {
             // Look for trait children.
-            let mut search_in_module = |module: Module<'a>| {
+            let mut search_in_module = |this: &mut Self, module: Module<'a>| {
                 let mut traits = module.traits.borrow_mut();
                 if traits.is_none() {
                     let mut collected_traits = Vec::new();
@@ -3276,23 +3282,25 @@ impl<'a> Resolver<'a> {
 
                 for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
                     let trait_def_id = binding.def().unwrap().def_id();
-                    if self.trait_item_map.contains_key(&(name, trait_def_id)) {
+                    if this.trait_item_map.contains_key(&(name, trait_def_id)) {
                         let mut import_id = None;
                         if let NameBindingKind::Import { directive, .. } = binding.kind {
                             let id = directive.id;
-                            self.maybe_unused_trait_imports.insert(id);
+                            this.maybe_unused_trait_imports.insert(id);
                             import_id = Some(id);
                         }
                         add_trait_info(&mut found_traits, trait_def_id, import_id, name);
-                        self.record_use(trait_name, binding);
+                        this.record_use(trait_name, binding);
                     }
                 }
             };
-            search_in_module(search_module);
+            search_in_module(self, search_module);
 
             match search_module.parent_link {
                 NoParentLink | ModuleParentLink(..) => {
-                    search_module.prelude.borrow().map(search_in_module);
+                    if !search_module.no_implicit_prelude.get() {
+                        self.prelude.map(|prelude| search_in_module(self, prelude));
+                    }
                     break;
                 }
                 BlockParentLink(parent_module, _) => {

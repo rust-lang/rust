@@ -624,7 +624,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.resolver.populate_module_if_necessary(target_module);
 
         if let GlobImport { is_prelude: true } = directive.subclass {
-            *module_.prelude.borrow_mut() = Some(target_module);
+            self.resolver.prelude = Some(target_module);
             return Success(());
         }
 
