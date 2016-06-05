@@ -99,8 +99,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             },
             mir::Lvalue::Arg(index) => self.args[index as usize],
             mir::Lvalue::Static(def_id) => {
-                let const_ty = self.mir.lvalue_ty(tcx, lvalue);
-                LvalueRef::new_sized(consts::get_static(ccx, def_id).val, const_ty)
+                let const_ty = self.lvalue_ty(lvalue);
+                LvalueRef::new_sized(consts::get_static(ccx, def_id).val,
+                                     LvalueTy::from_ty(const_ty))
             },
             mir::Lvalue::ReturnPointer => {
                 let llval = if !fcx.fn_ty.ret.is_ignore() {
@@ -195,7 +196,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             ty::TyArray(..) => {
                                 // must cast the lvalue pointer type to the new
                                 // array type (*[%_; new_len]).
-                                let base_ty = self.mir.lvalue_ty(tcx, lvalue).to_ty(tcx);
+                                let base_ty = self.lvalue_ty(lvalue);
                                 let llbasety = type_of::type_of(bcx.ccx(), base_ty).ptr_to();
                                 let llbase = bcx.pointercast(llbase, llbasety);
                                 (bcx.pointercast(llbase, llbasety), ptr::null_mut())
@@ -236,27 +237,23 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 match self.temps[idx as usize] {
                     TempRef::Lvalue(lvalue) => f(self, lvalue),
                     TempRef::Operand(None) => {
-                        let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), lvalue);
-                        let lvalue_ty = bcx.monomorphize(&lvalue_ty);
+                        let lvalue_ty = self.lvalue_ty(lvalue);
                         let lvalue = LvalueRef::alloca(bcx,
-                                                       lvalue_ty.to_ty(bcx.tcx()),
+                                                       lvalue_ty,
                                                        "lvalue_temp");
                         let ret = f(self, lvalue);
-                        let op = self.trans_load(bcx, lvalue.llval, lvalue_ty.to_ty(bcx.tcx()));
+                        let op = self.trans_load(bcx, lvalue.llval, lvalue_ty);
                         self.temps[idx as usize] = TempRef::Operand(Some(op));
                         ret
                     }
                     TempRef::Operand(Some(_)) => {
-                        let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), lvalue);
-                        let lvalue_ty = bcx.monomorphize(&lvalue_ty);
-
                         // See comments in TempRef::new_operand as to why
                         // we always have Some in a ZST TempRef::Operand.
-                        let ty = lvalue_ty.to_ty(bcx.tcx());
+                        let ty = self.lvalue_ty(lvalue);
                         if common::type_is_zero_size(bcx.ccx(), ty) {
                             // Pass an undef pointer as no stores can actually occur.
                             let llptr = C_undef(type_of(bcx.ccx(), ty).ptr_to());
-                            f(self, LvalueRef::new_sized(llptr, lvalue_ty))
+                            f(self, LvalueRef::new_sized(llptr, LvalueTy::from_ty(ty)))
                         } else {
                             bug!("Lvalue temp already set");
                         }
@@ -289,5 +286,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         } else {
             llindex
         }
+    }
+
+    pub fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
+        let tcx = self.fcx.ccx.tcx();
+        let lvalue_ty = self.mir.lvalue_ty(tcx, lvalue);
+        self.fcx.monomorphize(&lvalue_ty.to_ty(tcx))
     }
 }
