@@ -15,7 +15,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut, Range};
 use bitslice::{BitSlice, Word};
-use bitslice::{bitwise, Union, Subtract};
+use bitslice::{Subtract, Union, bitwise};
 
 /// Represents some newtyped `usize` wrapper.
 ///
@@ -37,7 +37,10 @@ pub struct IdxSetBuf<T: Idx> {
 
 impl<T: Idx> Clone for IdxSetBuf<T> {
     fn clone(&self) -> Self {
-        IdxSetBuf { _pd: PhantomData, bits: self.bits.clone() }
+        IdxSetBuf {
+            _pd: PhantomData,
+            bits: self.bits.clone(),
+        }
     }
 }
 
@@ -59,11 +62,15 @@ pub struct IdxSet<T: Idx> {
 }
 
 impl<T: Idx> fmt::Debug for IdxSetBuf<T> {
-    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result { self.bits.fmt(w) }
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        self.bits.fmt(w)
+    }
 }
 
 impl<T: Idx> fmt::Debug for IdxSet<T> {
-    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result { self.bits.fmt(w) }
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        self.bits.fmt(w)
+    }
 }
 
 impl<T: Idx> IdxSetBuf<T> {
