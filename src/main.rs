@@ -115,20 +115,19 @@ pub fn main() {
 
     let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-    let sys_root = match (home, toolchain) {
-        (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
-        _ => {
-            option_env!("SYSROOT")
-                .map(|s| s.to_owned())
-                .or(Command::new("rustc")
-                    .arg("--print")
-                    .arg("sysroot")
-                    .output()
-                    .ok()
-                    .and_then(|out| String::from_utf8(out.stdout).ok())
-                    .map(|s| s.trim().to_owned()))
-                .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust")
-        }
+    let sys_root = if let (Some(home), Some(toolchain)) = (home, toolchain) {
+        format!("{}/toolchains/{}", home, toolchain)
+    } else {
+        option_env!("SYSROOT")
+            .map(|s| s.to_owned())
+            .or(Command::new("rustc")
+                .arg("--print")
+                .arg("sysroot")
+                .output()
+                .ok()
+                .and_then(|out| String::from_utf8(out.stdout).ok())
+                .map(|s| s.trim().to_owned()))
+            .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust")
     };
 
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
