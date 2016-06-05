@@ -30,13 +30,13 @@
 
 use core::char::CharExt as C;
 use core::fmt;
-use tables::{derived_property, property, general_category, conversions};
+use tables::{conversions, derived_property, general_category, property};
 
 // stable reexports
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::char::{MAX, from_u32, from_u32_unchecked, from_digit};
+pub use core::char::{MAX, from_digit, from_u32, from_u32_unchecked};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::char::{EscapeUnicode, EscapeDefault, EncodeUtf8, EncodeUtf16};
+pub use core::char::{EncodeUtf16, EncodeUtf8, EscapeDefault, EscapeUnicode};
 
 // unstable reexports
 #[unstable(feature = "unicode", issue = "27783")]
@@ -808,16 +808,18 @@ pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::Into
 }
 
 #[stable(feature = "decode_utf16", since = "1.9.0")]
-impl<I: Iterator<Item=u16>> Iterator for DecodeUtf16<I> {
+impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
     type Item = Result<char, DecodeUtf16Error>;
 
     fn next(&mut self) -> Option<Result<char, DecodeUtf16Error>> {
         let u = match self.buf.take() {
             Some(buf) => buf,
-            None => match self.iter.next() {
-                Some(u) => u,
-                None => return None,
-            },
+            None => {
+                match self.iter.next() {
+                    Some(u) => u,
+                    None => return None,
+                }
+            }
         };
 
         if u < 0xD800 || 0xDFFF < u {
