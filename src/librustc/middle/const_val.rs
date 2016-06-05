@@ -17,6 +17,8 @@ use std::mem::transmute;
 use rustc_const_math::*;
 use self::ConstVal::*;
 
+use std::collections::BTreeMap;
+
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum ConstVal {
     Float(f64),
@@ -24,11 +26,13 @@ pub enum ConstVal {
     Str(InternedString),
     ByteStr(Rc<Vec<u8>>),
     Bool(bool),
-    Struct(ast::NodeId),
-    Tuple(ast::NodeId),
+    Struct(DefId, BTreeMap<ast::Name, ConstVal>),
+    /// Tuple or Tuple structs
+    Tuple(Option<DefId>, Vec<ConstVal>),
+    /// A function pointer
     Function(DefId),
-    Array(ast::NodeId, u64),
-    Repeat(ast::NodeId, u64),
+    Array(Vec<ConstVal>),
+    Repeat(Box<ConstVal>, u64),
     Char(char),
     /// A value that only occurs in case `eval_const_expr` reported an error. You should never
     /// handle this case. Its sole purpose is to allow more errors to be reported instead of
@@ -44,11 +48,26 @@ impl hash::Hash for ConstVal {
             Str(ref a) => a.hash(state),
             ByteStr(ref a) => a.hash(state),
             Bool(a) => a.hash(state),
-            Struct(a) => a.hash(state),
-            Tuple(a) => a.hash(state),
+            Struct(did, ref tree) => {
+                did.hash(state);
+                for (name, val) in tree {
+                    name.hash(state);
+                    val.hash(state);
+                }
+            },
+            Tuple(did, ref v) => {
+                did.hash(state);
+                for elem in v {
+                    elem.hash(state);
+                }
+            },
             Function(a) => a.hash(state),
-            Array(a, n) => { a.hash(state); n.hash(state) },
-            Repeat(a, n) => { a.hash(state); n.hash(state) },
+            Array(ref v) => {
+                for elem in v {
+                    elem.hash(state);
+                }
+            }
+            Repeat(ref a, n) => { a.hash(state); n.hash(state) },
             Char(c) => c.hash(state),
             Dummy => ().hash(state),
         }
@@ -67,11 +86,11 @@ impl PartialEq for ConstVal {
             (&Str(ref a), &Str(ref b)) => a == b,
             (&ByteStr(ref a), &ByteStr(ref b)) => a == b,
             (&Bool(a), &Bool(b)) => a == b,
-            (&Struct(a), &Struct(b)) => a == b,
-            (&Tuple(a), &Tuple(b)) => a == b,
+            (&Struct(a_did, ref a), &Struct(b_did, ref b)) => (a == b) && (a_did == b_did),
+            (&Tuple(ref a_did, ref a), &Tuple(ref b_did, ref b)) => (a == b) && (a_did == b_did),
             (&Function(a), &Function(b)) => a == b,
-            (&Array(a, an), &Array(b, bn)) => (a == b) && (an == bn),
-            (&Repeat(a, an), &Repeat(b, bn)) => (a == b) && (an == bn),
+            (&Array(ref a), &Array(ref b)) => a == b,
+            (&Repeat(ref a, an), &Repeat(ref b, bn)) => (a == b) && (an == bn),
             (&Char(a), &Char(b)) => a == b,
             (&Dummy, &Dummy) => true, // FIXME: should this be false?
             _ => false,
@@ -89,8 +108,8 @@ impl ConstVal {
             Str(_) => "string literal",
             ByteStr(_) => "byte string literal",
             Bool(_) => "boolean",
-            Struct(_) => "struct",
-            Tuple(_) => "tuple",
+            Struct(..) => "struct",
+            Tuple(..) => "tuple",
             Function(_) => "function definition",
             Array(..) => "array",
             Repeat(..) => "repeat",

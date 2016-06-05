@@ -17,8 +17,7 @@ enum Cake {
 use Cake::*;
 
 const BOO: (Cake, Cake) = (Marmor, BlackForest);
-//~^ ERROR: constant evaluation error: unimplemented constant expression: enum variants [E0471]
-const FOO: Cake = BOO.1;
+const FOO: Cake = BOO.1; //~ERROR could not evaluate referenced constant
 
 const fn foo() -> Cake {
     Marmor //~ ERROR: constant evaluation error: unimplemented constant expression: enum variants

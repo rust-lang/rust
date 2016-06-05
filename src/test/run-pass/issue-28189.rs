@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S<T>(T) where [T; (||{}, 1).1]: Copy;
+struct S<T>(T) where [T; ((), 1).1]: Copy;
 
 fn main() {
 

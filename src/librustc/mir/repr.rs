@@ -22,7 +22,7 @@ use std::borrow::{Cow};
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
 use std::ops::{Index, IndexMut};
-use syntax::ast::{self, Name};
+use syntax::ast::Name;
 use syntax::codemap::Span;
 
 /// Lowered representation of a single function.
@@ -1065,15 +1065,46 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
         }
         Bool(b) => write!(fmt, "{:?}", b),
         Function(def_id) => write!(fmt, "{}", item_path_str(def_id)),
-        Struct(node_id) | Tuple(node_id) | Array(node_id, _) | Repeat(node_id, _) =>
-            write!(fmt, "{}", node_to_string(node_id)),
+        Struct(def_id, ref tree) => {
+            write!(fmt, "{}", item_path_str(def_id))?;
+            if !tree.is_empty() {
+                write!(fmt, "{{")?;
+                for (name, val) in tree {
+                    write!(fmt, "{}:", name)?;
+                    fmt_const_val(fmt, val)?;
+                    write!(fmt, ",")?;
+                }
+                write!(fmt, "}}")?;
+            }
+            Ok(())
+        },
+        Tuple(def_id, ref v) => {
+            if let Some(def_id) = def_id {
+                write!(fmt, "{}", item_path_str(def_id))?;
+            }
+            write!(fmt, "(")?;
+            for val in v {
+                fmt_const_val(fmt, val)?;
+                write!(fmt, ",")?;
+            }
+            write!(fmt, ")")
+        },
+        Array(ref v) => {
+            write!(fmt, "[")?;
+            for val in v {
+                fmt_const_val(fmt, val)?;
+                write!(fmt, ",")?;
+            }
+            write!(fmt, "]")
+        },
+        Repeat(ref v, n) => {
+            write!(fmt, "[")?;
+            fmt_const_val(fmt, v)?;
+            write!(fmt, ";{}]", n)
+        },
         Char(c) => write!(fmt, "{:?}", c),
         Dummy => bug!(),
     }
-}
-
-fn node_to_string(node_id: ast::NodeId) -> String {
-    ty::tls::with(|tcx| tcx.map.node_to_user_string(node_id))
 }
 
 fn item_path_str(def_id: DefId) -> String {

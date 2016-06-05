@@ -41,6 +41,7 @@ use syntax::attr::IntType;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
+use std::collections::BTreeMap;
 
 use rustc_const_math::*;
 
@@ -409,9 +410,11 @@ pub enum ErrKind {
     IntermediateUnsignedNegative,
     /// Expected, Got
     TypeMismatch(String, ConstInt),
-    BadType(ConstVal),
+    /// target type, got value
+    BadType(String, ConstVal),
     ErroneousReferencedConstant(Box<ConstEvalErr>),
     CharCast(ConstInt),
+    Aggregate(Vec<ConstEvalErr>),
 }
 
 impl From<ConstMathErr> for ErrKind {
@@ -470,11 +473,12 @@ impl ConstEvalErr {
                 format!("mismatched types: expected `{}`, found `{}`",
                         expected, got.description()).into_cow()
             },
-            BadType(ref i) => format!("value of wrong type: {:?}", i).into_cow(),
+            BadType(ref ty, ref i) => format!("expected `{}`, found `{:?}`", ty, i).into_cow(),
             ErroneousReferencedConstant(_) => "could not evaluate referenced constant".into_cow(),
             CharCast(ref got) => {
                 format!("only `u8` can be cast as `char`, not `{}`", got.description()).into_cow()
             },
+            Aggregate(ref v) => format!("evaluation of {} fields failed", v.len()).into_cow(),
         }
     }
 }
@@ -773,9 +777,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       signal!(e, UnimplementedConstVal("enum variants"));
                   }
               }
-              Def::Struct(..) => {
-                  ConstVal::Struct(e.id)
-              }
+              Def::Struct(did) => Struct(did, BTreeMap::new()),
               Def::Local(_, id) => {
                   debug!("Def::Local({:?}): {:?}", id, fn_args);
                   if let Some(val) = fn_args.and_then(|args| args.get(&id)) {
@@ -793,7 +795,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           let callee_val = eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args)?;
           let did = match callee_val {
               Function(did) => did,
-              Struct(_) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
+              Struct(..) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
               callee => signal!(e, CallOn(callee)),
           };
           let (decl, result) = if let Some(fn_like) = lookup_const_fn_by_id(tcx, did) {
@@ -801,7 +803,6 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           } else {
               signal!(e, NonConstPath)
           };
-          let result = result.as_ref().expect("const fn has no result expression");
           assert_eq!(decl.inputs.len(), args.len());
 
           let mut call_args = NodeMap();
@@ -818,7 +819,11 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               assert!(old.is_none());
           }
           debug!("const call({:?})", call_args);
-          eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
+          if let &Some(ref result) = result {
+              eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
+          } else {
+              Tuple(None, Vec::new())
+          }
       },
       hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety, lit.span) {
           Ok(val) => val,
@@ -827,12 +832,46 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => eval_const_expr_partial(tcx, &expr, ty_hint, fn_args)?,
-            None => signal!(e, UnimplementedConstVal("empty block")),
+            None => Tuple(None, Vec::new()), // unit value
         }
       }
       hir::ExprType(ref e, _) => eval_const_expr_partial(tcx, &e, ty_hint, fn_args)?,
-      hir::ExprTup(_) => Tuple(e.id),
-      hir::ExprStruct(..) => Struct(e.id),
+      hir::ExprTup(ref v) => {
+          let mut fields = Vec::with_capacity(v.len());
+          let mut errors = Vec::new();
+          for field in v {
+              match eval_const_expr_partial(tcx, field, ty_hint.erase_hint(), fn_args) {
+                  Ok(v) => fields.push(v),
+                  Err(e) => errors.push(e),
+              }
+          }
+          if !errors.is_empty() {
+              signal!(e, Aggregate(errors));
+          }
+          assert_eq!(fields.len(), v.len());
+          Tuple(None, fields)
+      },
+      hir::ExprStruct(_, _, Some(_)) => signal!(e, UnimplementedConstVal("struct base")),
+      hir::ExprStruct(_, ref fields, None) => {
+          let def_id = match tcx.def_map.borrow().get(&e.id).map(|def| def.full_def()) {
+              Some(Def::Struct(def_id)) => def_id,
+              Some(Def::Variant(..)) => signal!(e, UnimplementedConstVal("enums")),
+              _ => signal!(e, NonConstPath),
+          };
+          let mut new_fields = BTreeMap::new();
+          let mut errors = Vec::new();
+          for field in fields {
+              match eval_const_expr_partial(tcx, &field.expr, ty_hint.erase_hint(), fn_args) {
+                  Ok(f_val) => assert!(new_fields.insert(field.name.node, f_val).is_none()),
+                  Err(e) => errors.push(e),
+              }
+          }
+          if !errors.is_empty() {
+              signal!(e, Aggregate(errors));
+          }
+          assert_eq!(new_fields.len(), fields.len());
+          Struct(def_id, new_fields)
+      },
       hir::ExprIndex(ref arr, ref idx) => {
         if !tcx.sess.features.borrow().const_indexing {
             signal!(e, IndexOpFeatureGated);
@@ -847,21 +886,11 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
         assert_eq!(idx as usize as u64, idx);
         match arr {
-            Array(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
-            Array(v, n) => if let hir::ExprVec(ref v) = tcx.map.expect_expr(v).node {
-                assert_eq!(n as usize as u64, n);
-                eval_const_expr_partial(tcx, &v[idx as usize], ty_hint, fn_args)?
-            } else {
-                bug!()
-            },
+            Array(ref v) if idx as usize >= v.len() => signal!(e, IndexOutOfBounds),
+            Array(ref v) => v[idx as usize].clone(),
 
             Repeat(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
-            Repeat(elem, _) => eval_const_expr_partial(
-                tcx,
-                &tcx.map.expect_expr(elem),
-                ty_hint,
-                fn_args,
-            )?,
+            Repeat(elem, _) => *elem,
 
             ByteStr(ref data) if idx >= data.len() as u64 => signal!(e, IndexOutOfBounds),
             ByteStr(data) => {
@@ -874,11 +903,30 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             _ => signal!(e, IndexedNonVec),
         }
       }
-      hir::ExprVec(ref v) => Array(e.id, v.len() as u64),
-      hir::ExprRepeat(_, ref n) => {
+      hir::ExprVec(ref v) => {
+          let mut elems = Vec::with_capacity(v.len());
+          let mut errors = Vec::new();
+          for elem in v {
+              match eval_const_expr_partial(tcx, elem, ty_hint.erase_hint(), fn_args) {
+                  Ok(elem) => elems.push(elem),
+                  Err(e) => errors.push(e),
+              }
+          }
+          if !errors.is_empty() {
+              signal!(e, Aggregate(errors));
+          }
+          assert_eq!(elems.len(), v.len());
+          Array(elems)
+      },
+      hir::ExprRepeat(ref elem, ref n) => {
           let len_hint = ty_hint.checked_or(tcx.types.usize);
+          let val_hint = match ty_hint {
+              ExprTypeChecked => ExprTypeChecked,
+              UncheckedExprNoHint => UncheckedExprNoHint,
+              UncheckedExprHint(ty) => UncheckedExprHint(ty.sequence_element_type(tcx)),
+          };
           Repeat(
-              e.id,
+              box eval_const_expr_partial(tcx, elem, val_hint, fn_args)?,
               match eval_const_expr_partial(tcx, &n, len_hint, fn_args)? {
                   Integral(Usize(i)) => i.as_u64(tcx.sess.target.uint_type),
                   Integral(_) => signal!(e, RepeatCountNotNatural),
@@ -888,40 +936,24 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
       },
       hir::ExprTupField(ref base, index) => {
         let base_hint = ty_hint.erase_hint();
-        let c = eval_const_expr_partial(tcx, base, base_hint, fn_args)?;
-        if let Tuple(tup_id) = c {
-            if let hir::ExprTup(ref fields) = tcx.map.expect_expr(tup_id).node {
-                if index.node < fields.len() {
-                    eval_const_expr_partial(tcx, &fields[index.node], ty_hint, fn_args)?
-                } else {
-                    signal!(e, TupleIndexOutOfBounds);
-                }
-            } else {
-                bug!()
-            }
-        } else {
-            signal!(base, ExpectedConstTuple);
+        match eval_const_expr_partial(tcx, base, base_hint, fn_args)? {
+            Tuple(_, ref v) if index.node >= v.len() => signal!(e, TupleIndexOutOfBounds),
+            Tuple(_, v) => v[index.node as usize].clone(),
+            _ => signal!(base, ExpectedConstTuple),
         }
       }
       hir::ExprField(ref base, field_name) => {
         let base_hint = ty_hint.erase_hint();
         // Get the base expression if it is a struct and it is constant
-        let c = eval_const_expr_partial(tcx, base, base_hint, fn_args)?;
-        if let Struct(struct_id) = c {
-            if let hir::ExprStruct(_, ref fields, _) = tcx.map.expect_expr(struct_id).node {
-                // Check that the given field exists and evaluate it
-                // if the idents are compared run-pass/issue-19244 fails
-                if let Some(f) = fields.iter().find(|f| f.name.node
-                                                     == field_name.node) {
-                    eval_const_expr_partial(tcx, &f.expr, ty_hint, fn_args)?
+        match eval_const_expr_partial(tcx, base, base_hint, fn_args)? {
+            Struct(_, fields) => {
+                if let Some(f) = fields.get(&field_name.node) {
+                    f.clone()
                 } else {
                     signal!(e, MissingStructField);
                 }
-            } else {
-                bug!()
-            }
-        } else {
-            signal!(base, ExpectedConstStruct);
+            },
+            _ => signal!(base, ExpectedConstStruct),
         }
       }
       hir::ExprAddrOf(..) => signal!(e, UnimplementedConstVal("address operator")),
@@ -998,7 +1030,8 @@ fn infer<'a, 'tcx>(i: ConstInt,
             let int_ty = tcx.enum_repr_type(hints.iter().next());
             infer(i, tcx, &int_ty.to_ty(tcx).sty)
         },
-        (_, i) => Err(BadType(ConstVal::Integral(i))),
+        (&ty::TyParam(_), i) => Ok(i),
+        (ty, i) => Err(BadType(ty.to_string(), ConstVal::Integral(i))),
     }
 }
 

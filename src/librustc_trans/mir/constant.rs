@@ -17,14 +17,14 @@ use rustc::infer::TransNormalize;
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc::traits;
-use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable, TyStruct, TyTuple};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::Substs;
 use {abi, adt, base, Disr};
 use callee::Callee;
 use common::{self, BlockAndBuilder, CrateContext, const_get_elt, val_ty};
 use common::{C_array, C_bool, C_bytes, C_floating_f64, C_integral};
-use common::{C_null, C_struct, C_str_slice, C_undef, C_uint};
+use common::{C_null, C_struct, C_str_slice, C_undef, C_uint, C_vector};
 use consts::{self, ConstEvalFailure, TrueConst, to_const_int};
 use monomorphize::{self, Instance};
 use type_of;
@@ -82,10 +82,66 @@ impl<'tcx> Const<'tcx> {
             },
             ConstVal::Integral(Infer(v)) => C_integral(llty, v as u64, false),
             ConstVal::Integral(InferSigned(v)) => C_integral(llty, v as u64, true),
-            ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
+            ConstVal::Str(v) => C_str_slice(ccx, v),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
-            ConstVal::Struct(_) | ConstVal::Tuple(_) |
-            ConstVal::Array(..) | ConstVal::Repeat(..) |
+            ConstVal::Struct(did, mut field_values) => {
+                let repr = adt::represent_type(ccx, ty);
+                let substs = match ty.sty {
+                    TyStruct(_, substs) => substs,
+                    _ => bug!(),
+                };
+                let mut trans_fields = Vec::with_capacity(field_values.len());
+                let adt_def = ty.ty_adt_def().unwrap().struct_variant();
+                assert_eq!(adt_def.did, did);
+                for field in &adt_def.fields {
+                    if let Some(value) = field_values.remove(&field.name) {
+                        let field_ty = field.ty(ccx.tcx(), substs);
+                        let value = Self::from_constval(ccx, value, field_ty);
+                        trans_fields.push(value.llval);
+                    } else {
+                        bug!("trans knows struct fields that const doesn't");
+                    }
+                }
+                // FIXME: check that all elements of `field_values` have been translated
+                if ty.is_simd() {
+                    C_vector(&trans_fields)
+                } else {
+                    adt::trans_const(ccx, &*repr, adt_def.disr_val.into(), &trans_fields)
+                }
+            },
+            ConstVal::Tuple(Some(_), _) => unimplemented!(),
+            ConstVal::Tuple(None, field_values) => {
+                let repr = adt::represent_type(ccx, ty);
+                let field_types = match ty.sty {
+                    TyTuple(types) => types,
+                    _ => bug!(),
+                };
+                let mut trans_fields = Vec::with_capacity(field_values.len());
+                for (f_val, f_ty) in field_values.into_iter().zip(field_types) {
+                    let value = Self::from_constval(ccx, f_val, f_ty);
+                    trans_fields.push(value.llval);
+                }
+                if ty.is_simd() {
+                    C_vector(&trans_fields)
+                } else {
+                    adt::trans_const(ccx, &*repr, Disr(0), &trans_fields)
+                }
+            },
+            ConstVal::Repeat(val, n) => {
+                let val_ty = ty.sequence_element_type(ccx.tcx());
+                let ll_val_ty = type_of::type_of(ccx, val_ty);
+                assert_eq!(n as usize as u64, n);
+                let trans_fields = vec![Self::from_constval(ccx, *val, val_ty).llval; n as usize];
+                C_array(ll_val_ty, &trans_fields)
+            },
+            ConstVal::Array(vals) => {
+                let val_ty = ty.sequence_element_type(ccx.tcx());
+                let ll_val_ty = type_of::type_of(ccx, val_ty);
+                let trans_fields = vals.into_iter()
+                                       .map(|val| Self::from_constval(ccx, val, val_ty).llval)
+                                       .collect::<Vec<_>>();
+                C_array(ll_val_ty, &trans_fields)
+            },
             ConstVal::Function(_) => {
                 bug!("MIR must not use {:?} (which refers to a local ID)", cv)
             }
