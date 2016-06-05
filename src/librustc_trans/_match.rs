@@ -505,14 +505,16 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                                           val: MatchInput,
                                           mut e: F)
                                           -> Vec<Match<'a, 'p, 'blk, 'tcx>> where
-    F: FnMut(&[&'p hir::Pat]) -> Option<Vec<&'p hir::Pat>>,
+    F: FnMut(&[(&'p hir::Pat, Option<Ty<'tcx>>)])
+             -> Option<Vec<(&'p hir::Pat, Option<Ty<'tcx>>)>>,
 {
     debug!("enter_match(bcx={}, m={:?}, col={}, val={:?})",
            bcx.to_str(), m, col, val);
     let _indenter = indenter();
 
     m.iter().filter_map(|br| {
-        e(&br.pats).map(|pats| {
+        let pats : Vec<_> = br.pats.iter().map(|p| (*p, None)).collect();
+        e(&pats).map(|pats| {
             let this = br.pats[col];
             let mut bound_ptrs = br.bound_ptrs.clone();
             match this.node {
@@ -530,7 +532,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                 _ => {}
             }
             Match {
-                pats: pats,
+                pats: pats.into_iter().map(|p| p.0).collect(),
                 data: br.data,
                 bound_ptrs: bound_ptrs,
                 pat_renaming_map: br.pat_renaming_map,
@@ -550,7 +552,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Collect all of the matches that can match against anything.
     enter_match(bcx, m, col, val, |pats| {
-        match pats[col].node {
+        match pats[col].0.node {
             PatKind::Binding(..) | PatKind::Wild => {
                 let mut r = pats[..col].to_vec();
                 r.extend_from_slice(&pats[col + 1..]);
