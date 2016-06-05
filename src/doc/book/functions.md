@@ -249,7 +249,7 @@ stack backtrace:
 If you need to override an already set `RUST_BACKTRACE`, 
 in cases when you cannot just unset the variable, 
 then set it to `0` to avoid getting a backtrace. 
-Any other value(even no value at all) turns on backtrace.
+Any other value (even no value at all) turns on backtrace.
 
 ```text
 $ export RUST_BACKTRACE=1
