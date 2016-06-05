@@ -106,6 +106,7 @@ pub mod mir {
     pub mod tcx;
     pub mod visit;
     pub mod transform;
+    pub mod traversal;
     pub mod mir_map;
 }
 
