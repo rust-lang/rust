@@ -32,7 +32,6 @@ use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
 use rustc::hir;
 use rustc::hir::intravisit::{self, FnKind, Visitor};
-use rustc::hir::map::blocks::FnLikeNode;
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -116,20 +115,7 @@ impl<'a, 'gcx, 'tcx> CxBuilder<'a, 'gcx, 'tcx> {
     {
         let src = self.src;
         let mir = self.infcx.enter(|infcx| {
-            let constness = match src {
-                MirSource::Const(_) |
-                MirSource::Static(..) => hir::Constness::Const,
-                MirSource::Fn(id) => {
-                    let fn_like = FnLikeNode::from_node(infcx.tcx.map.get(id));
-                    match fn_like.map(|f| f.kind()) {
-                        Some(FnKind::ItemFn(_, _, _, c, _, _, _)) => c,
-                        Some(FnKind::Method(_, m, _, _)) => m.constness,
-                        _ => hir::Constness::NotConst
-                    }
-                }
-                MirSource::Promoted(..) => bug!()
-            };
-            let (mut mir, scope_auxiliary) = f(Cx::new(&infcx, constness));
+            let (mut mir, scope_auxiliary) = f(Cx::new(&infcx, src));
 
             // Convert the Mir to global types.
             let mut globalizer = GlobalizeMir {

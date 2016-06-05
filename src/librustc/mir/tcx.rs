@@ -183,6 +183,13 @@ impl<'a, 'gcx, 'tcx> Mir<'tcx> {
                 let rhs_ty = self.operand_ty(tcx, rhs);
                 Some(self.binop_ty(tcx, op, lhs_ty, rhs_ty))
             }
+            Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+                let lhs_ty = self.operand_ty(tcx, lhs);
+                let rhs_ty = self.operand_ty(tcx, rhs);
+                let ty = self.binop_ty(tcx, op, lhs_ty, rhs_ty);
+                let ty = tcx.mk_tup(vec![ty, tcx.types.bool]);
+                Some(ty)
+            }
             Rvalue::UnaryOp(_, ref operand) => {
                 Some(self.operand_ty(tcx, operand))
             }

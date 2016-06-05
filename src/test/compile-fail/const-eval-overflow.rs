@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
 #![allow(unused_imports)]
 
 // Note: the relevant lint pass here runs before some of the constant
@@ -104,7 +103,6 @@ const VALS_U64: (u64, u64, u64, u64) =
      //~^ ERROR attempted to multiply with overflow
      );
 
-#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     foo(VALS_I8);
     foo(VALS_I16);

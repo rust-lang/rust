@@ -66,15 +66,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                                            idx.clone(),
                                                            Operand::Consume(len.clone())));
 
-                let (success, failure) = (this.cfg.start_new_block(), this.cfg.start_new_block());
-                this.cfg.terminate(block,
-                                   scope_id,
-                                   expr_span,
-                                   TerminatorKind::If {
-                                       cond: Operand::Consume(lt),
-                                       targets: (success, failure),
-                                   });
-                this.panic_bounds_check(failure, idx.clone(), Operand::Consume(len), expr_span);
+                let msg = AssertMessage::BoundsCheck {
+                    len: Operand::Consume(len),
+                    index: idx.clone()
+                };
+                let success = this.assert(block, Operand::Consume(lt), true,
+                                          msg, expr_span);
                 success.and(slice.index(idx))
             }
             ExprKind::SelfRef => {

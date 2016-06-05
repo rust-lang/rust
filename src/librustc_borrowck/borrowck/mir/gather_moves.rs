@@ -595,7 +595,8 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                             bb_ctxt.on_operand(SK::Repeat, operand, source),
                         Rvalue::Cast(ref _kind, ref operand, ref _ty) =>
                             bb_ctxt.on_operand(SK::Cast, operand, source),
-                        Rvalue::BinaryOp(ref _binop, ref operand1, ref operand2) => {
+                        Rvalue::BinaryOp(ref _binop, ref operand1, ref operand2) |
+                        Rvalue::CheckedBinaryOp(ref _binop, ref operand1, ref operand2) => {
                             bb_ctxt.on_operand(SK::BinaryOp, operand1, source);
                             bb_ctxt.on_operand(SK::BinaryOp, operand2, source);
                         }
@@ -660,6 +661,22 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                 let source = Location { block: bb,
                                         index: bb_data.statements.len() };
                 bb_ctxt.on_operand(SK::If, cond, source);
+            }
+
+            TerminatorKind::Assert {
+                ref cond, expected: _,
+                ref msg, target: _, cleanup: _
+            } => {
+                // The `cond` is always of (copyable) type `bool`,
+                // so there will never be anything to move.
+                let _ = cond;
+                match *msg {
+                    AssertMessage:: BoundsCheck { ref len, ref index } => {
+                        // Same for the usize length and index in bounds-checking.
+                        let _ = (len, index);
+                    }
+                    AssertMessage::Math(_) => {}
+                }
             }
 
             TerminatorKind::SwitchInt { switch_ty: _, values: _, targets: _, ref discr } |

@@ -63,6 +63,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // only affects weird things like `x += {x += 1; x}`
                 // -- is that equal to `x + (x + 1)` or `2*(x+1)`?
 
+                let lhs = this.hir.mirror(lhs);
+                let lhs_ty = lhs.ty;
+
                 // As above, RTL.
                 let rhs = unpack!(block = this.as_operand(block, rhs));
                 let lhs = unpack!(block = this.as_lvalue(block, lhs));
@@ -70,10 +73,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // we don't have to drop prior contents or anything
                 // because AssignOp is only legal for Copy types
                 // (overloaded ops should be desugared into a call).
-                this.cfg.push_assign(block, scope_id, expr_span, &lhs,
-                                     Rvalue::BinaryOp(op,
-                                                      Operand::Consume(lhs.clone()),
-                                                      rhs));
+                let result = unpack!(block = this.build_binary_op(block, op, expr_span, lhs_ty,
+                                                  Operand::Consume(lhs.clone()), rhs));
+                this.cfg.push_assign(block, scope_id, expr_span, &lhs, result);
 
                 block.unit()
             }

@@ -9,7 +9,8 @@
 // except according to those terms.
 
 const FOO: &'static[u32] = &[1, 2, 3];
-const BAR: u32 = FOO[5]; //~ ERROR array index out of bounds
+const BAR: u32 = FOO[5];
+//~^ ERROR index out of bounds: the len is 3 but the index is 5
 
 fn main() {
     let _ = BAR;

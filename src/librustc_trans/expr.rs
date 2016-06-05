@@ -2220,6 +2220,8 @@ impl OverflowOpViaIntrinsic {
                                         rhs: ValueRef,
                                         binop_debug_loc: DebugLoc)
                                         -> (Block<'blk, 'tcx>, ValueRef) {
+        use rustc_const_math::{ConstMathErr, Op};
+
         let llfn = self.to_intrinsic(bcx, lhs_t);
 
         let val = Call(bcx, llfn, &[lhs, rhs], binop_debug_loc);
@@ -2230,13 +2232,19 @@ impl OverflowOpViaIntrinsic {
                         binop_debug_loc);
 
         let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
-        Call(bcx, expect, &[cond, C_integral(Type::i1(bcx.ccx()), 0, false)],
-             binop_debug_loc);
+        let expected = Call(bcx, expect, &[cond, C_bool(bcx.ccx(), false)],
+                            binop_debug_loc);
+
+        let op = match *self {
+            OverflowOpViaIntrinsic::Add => Op::Add,
+            OverflowOpViaIntrinsic::Sub => Op::Sub,
+            OverflowOpViaIntrinsic::Mul => Op::Mul
+        };
 
         let bcx =
-            base::with_cond(bcx, cond, |bcx|
+            base::with_cond(bcx, expected, |bcx|
                 controlflow::trans_fail(bcx, info,
-                    InternedString::new("arithmetic operation overflowed")));
+                    InternedString::new(ConstMathErr::Overflow(op).description())));
 
         (bcx, result)
     }
@@ -2252,6 +2260,8 @@ impl OverflowOpViaInputCheck {
                                           binop_debug_loc: DebugLoc)
                                           -> (Block<'blk, 'tcx>, ValueRef)
     {
+        use rustc_const_math::{ConstMathErr, Op};
+
         let lhs_llty = val_ty(lhs);
         let rhs_llty = val_ty(rhs);
 
@@ -2266,16 +2276,16 @@ impl OverflowOpViaInputCheck {
 
         let outer_bits = And(bcx, rhs, invert_mask, binop_debug_loc);
         let cond = build_nonzero_check(bcx, outer_bits, binop_debug_loc);
-        let result = match *self {
+        let (result, op) = match *self {
             OverflowOpViaInputCheck::Shl =>
-                build_unchecked_lshift(bcx, lhs, rhs, binop_debug_loc),
+                (build_unchecked_lshift(bcx, lhs, rhs, binop_debug_loc), Op::Shl),
             OverflowOpViaInputCheck::Shr =>
-                build_unchecked_rshift(bcx, lhs_t, lhs, rhs, binop_debug_loc),
+                (build_unchecked_rshift(bcx, lhs_t, lhs, rhs, binop_debug_loc), Op::Shr)
         };
         let bcx =
             base::with_cond(bcx, cond, |bcx|
                 controlflow::trans_fail(bcx, info,
-                    InternedString::new("shift operation overflowed")));
+                    InternedString::new(ConstMathErr::Overflow(op).description())));
 
         (bcx, result)
     }

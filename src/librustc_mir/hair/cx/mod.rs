@@ -17,32 +17,70 @@
 
 use hair::*;
 use rustc::mir::repr::*;
+use rustc::mir::transform::MirSource;
 
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval as const_eval;
 use rustc::hir::def_id::DefId;
+use rustc::hir::intravisit::FnKind;
+use rustc::hir::map::blocks::FnLikeNode;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use syntax::parse::token;
 use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
+use syntax::attr::AttrMetaMethods;
 
 #[derive(Copy, Clone)]
 pub struct Cx<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    constness: hir::Constness
+    constness: hir::Constness,
+
+    /// True if this constant/function needs overflow checks.
+    check_overflow: bool
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               constness: hir::Constness)
+               src: MirSource)
                -> Cx<'a, 'gcx, 'tcx> {
+        let constness = match src {
+            MirSource::Const(_) |
+            MirSource::Static(..) => hir::Constness::Const,
+            MirSource::Fn(id) => {
+                let fn_like = FnLikeNode::from_node(infcx.tcx.map.get(id));
+                match fn_like.map(|f| f.kind()) {
+                    Some(FnKind::ItemFn(_, _, _, c, _, _, _)) => c,
+                    Some(FnKind::Method(_, m, _, _)) => m.constness,
+                    _ => hir::Constness::NotConst
+                }
+            }
+            MirSource::Promoted(..) => bug!()
+        };
+
+        let attrs = infcx.tcx.map.attrs(src.item_id());
+
+        // Some functions always have overflow checks enabled,
+        // however, they may not get codegen'd, depending on
+        // the settings for the crate they are translated in.
+        let mut check_overflow = attrs.iter().any(|item| {
+            item.check_name("rustc_inherit_overflow_checks")
+        });
+
+        // Respect -Z force-overflow-checks=on and -C debug-assertions.
+        check_overflow |= infcx.tcx.sess.opts.debugging_opts.force_overflow_checks
+               .unwrap_or(infcx.tcx.sess.opts.debug_assertions);
+
+        // Constants and const fn's always need overflow checks.
+        check_overflow |= constness == hir::Constness::Const;
+
         Cx {
             tcx: infcx.tcx,
             infcx: infcx,
             constness: constness,
+            check_overflow: check_overflow
         }
     }
 }
@@ -153,6 +191,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
+    }
+
+    pub fn check_overflow(&self) -> bool {
+        self.check_overflow
     }
 }
 
