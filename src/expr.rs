@@ -725,6 +725,14 @@ fn rewrite_if_else(context: &RewriteContext,
                    offset: Indent,
                    allow_single_line: bool)
                    -> Option<String> {
+    let (budget, indent) = if !allow_single_line {
+        // We are part of an if-elseif-else chain. Our constraints are tightened.
+        // 7 = "} else" .len()
+        (try_opt!(width.checked_sub(7)), offset + 7)
+    } else {
+        (width, offset)
+    };
+
     // 3 = "if ", 2 = " {"
     let pat_penalty = match context.config.else_if_brace_style {
         ElseIfBraceStyle::AlwaysNextLine => 3,
@@ -735,8 +743,8 @@ fn rewrite_if_else(context: &RewriteContext,
                                                     cond,
                                                     "let ",
                                                     " =",
-                                                    try_opt!(width.checked_sub(pat_penalty)),
-                                                    offset + 3));
+                                                    try_opt!(budget.checked_sub(pat_penalty)),
+                                                    indent + 3));
 
     // Try to format if-else on single line.
     if expr_type == ExprType::SubExpression && allow_single_line &&
@@ -778,6 +786,8 @@ fn rewrite_if_else(context: &RewriteContext,
         let rewrite = match else_block.node {
             // If the else expression is another if-else expression, prevent it
             // from being formatted on a single line.
+            // Note how we're passing the original width and offset, as the
+            // cost of "else" should not cascade.
             ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref next_else_block) => {
                 rewrite_if_else(context,
                                 cond,
