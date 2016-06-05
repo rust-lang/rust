@@ -70,9 +70,7 @@ impl LintPass for Derive {
 
 impl LateLintPass for Derive {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
-        if_let_chain! {[
-            let ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node
-        ], {
+        if let ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node {
             let ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(item.id)).ty;
             let is_automatically_derived = item.attrs.iter().any(is_automatically_derived);
 
@@ -81,7 +79,7 @@ impl LateLintPass for Derive {
             if !is_automatically_derived {
                 check_copy_clone(cx, item, trait_ref, ty);
             }
-        }}
+        }
     }
 }
 

@@ -42,6 +42,9 @@ extern crate rustc_plugin;
 extern crate rustc_const_eval;
 extern crate rustc_const_math;
 
+#[macro_use]
+extern crate matches as matches_macro;
+
 macro_rules! declare_restriction_lint {
     { pub $name:tt, $description:tt } => {
         declare_lint! { pub $name, Allow, $description }
