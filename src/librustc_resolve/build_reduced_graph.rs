@@ -27,7 +27,7 @@ use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::ty::{self, VariantKind};
 
 use syntax::ast::Name;
-use syntax::attr::AttrMetaMethods;
+use syntax::attr;
 use syntax::parse::token;
 use syntax::codemap::{Span, DUMMY_SP};
 
@@ -57,6 +57,9 @@ impl<'a> ToNameBinding<'a> for (Def, Span, ty::Visibility) {
 impl<'b> Resolver<'b> {
     /// Constructs the reduced graph for the entire crate.
     pub fn build_reduced_graph(&mut self, krate: &Crate) {
+        let no_implicit_prelude = attr::contains_name(&krate.attrs, "no_implicit_prelude");
+        self.graph_root.no_implicit_prelude.set(no_implicit_prelude);
+
         let mut visitor = BuildReducedGraphVisitor {
             parent: self.graph_root,
             resolver: self,
@@ -128,7 +131,7 @@ impl<'b> Resolver<'b> {
                 };
 
                 // Build up the import directives.
-                let is_prelude = item.attrs.iter().any(|attr| attr.name() == "prelude_import");
+                let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
 
                 match view_path.node {
                     ViewPathSimple(binding, ref full_path) => {
@@ -221,6 +224,10 @@ impl<'b> Resolver<'b> {
                 let parent_link = ModuleParentLink(parent, name);
                 let def = Def::Mod(self.definitions.local_def_id(item.id));
                 let module = self.new_module(parent_link, Some(def), false);
+                module.no_implicit_prelude.set({
+                    parent.no_implicit_prelude.get() ||
+                        attr::contains_name(&item.attrs, "no_implicit_prelude")
+                });
                 self.define(parent, name, TypeNS, (module, sp, vis));
                 self.module_map.insert(item.id, module);
                 *parent_ref = module;
