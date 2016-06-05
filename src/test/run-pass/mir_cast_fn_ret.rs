@@ -10,15 +10,25 @@
 
 #![feature(rustc_attrs)]
 
-pub extern "C" fn foo() -> (u8, u8, u8) {
+pub extern "C" fn tuple2() -> (u16, u8) {
+    (1, 2)
+}
+
+pub extern "C" fn tuple3() -> (u8, u8, u8) {
     (1, 2, 3)
 }
 
 #[rustc_mir]
-pub fn bar() -> u8 {
-    foo().2
+pub fn test2() -> u8 {
+    tuple2().1
+}
+
+#[rustc_mir]
+pub fn test3() -> u8 {
+    tuple3().2
 }
 
 fn main() {
-    assert_eq!(bar(), 3);
+    assert_eq!(test2(), 2);
+    assert_eq!(test3(), 3);
 }
