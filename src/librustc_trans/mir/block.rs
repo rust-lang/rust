@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
+use rustc_const_eval::ErrKind;
 use rustc::middle::lang_items;
 use rustc::ty;
 use rustc::mir::repr as mir;
@@ -222,29 +223,26 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let const_cond = common::const_to_opt_uint(cond).map(|c| c == 1);
 
                 // Don't translate the panic block if success if known.
-                let lltarget = self.llblock(target);
                 if const_cond == Some(expected) {
-                    funclet_br(bcx, lltarget);
+                    funclet_br(self, bcx, target);
                     return;
                 }
 
-                if const_cond == Some(!expected) {
-                    // Do nothing to end up with an unconditional panic.
-                } else {
-                    // Pass the condition through llvm.expect for branch hinting.
-                    let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
-                    let cond = bcx.call(expect, &[cond, C_bool(bcx.ccx(), expected)], None);
+                // Pass the condition through llvm.expect for branch hinting.
+                let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
+                let cond = bcx.call(expect, &[cond, C_bool(bcx.ccx(), expected)], None);
 
-                    // Create the failure block and the conditional branch to it.
-                    // After this point, bcx is the block for the call to panic.
-                    let panic_block = self.fcx.new_block("panic", None);
-                    if expected {
-                        bcx.cond_br(cond, lltarget, panic_block.llbb);
-                    } else {
-                        bcx.cond_br(cond, panic_block.llbb, lltarget);
-                    }
-                    bcx = panic_block.build();
+                // Create the failure block and the conditional branch to it.
+                let lltarget = llblock(self, target);
+                let panic_block = self.fcx.new_block("panic", None);
+                if expected {
+                    bcx.cond_br(cond, lltarget, panic_block.llbb);
+                } else {
+                    bcx.cond_br(cond, panic_block.llbb, lltarget);
                 }
+
+                // After this point, bcx is the block for the call to panic.
+                bcx = panic_block.build();
 
                 // Get the location information.
                 let loc = bcx.sess().codemap().lookup_char_pos(terminator.span.lo);
@@ -253,10 +251,19 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let line = C_u32(bcx.ccx(), loc.line as u32);
 
                 // Put together the arguments to the panic entry point.
-                let (lang_item, args) = match *msg {
+                let (lang_item, args, const_err) = match *msg {
                     mir::AssertMessage::BoundsCheck { ref len, ref index } => {
-                        let len = self.trans_operand(&mut bcx, len);
-                        let index = self.trans_operand(&mut bcx, index);
+                        let len = self.trans_operand(&mut bcx, len).immediate();
+                        let index = self.trans_operand(&mut bcx, index).immediate();
+
+                        let const_err = common::const_to_opt_uint(len).and_then(|len| {
+                            common::const_to_opt_uint(index).map(|index| {
+                                ErrKind::IndexOutOfBounds {
+                                    len: len,
+                                    index: index
+                                }
+                            })
+                        });
 
                         let file_line = C_struct(bcx.ccx(), &[filename, line], false);
                         let align = llalign_of_min(bcx.ccx(), common::val_ty(file_line));
@@ -265,7 +272,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                         align,
                                                         "panic_bounds_check_loc");
                         (lang_items::PanicBoundsCheckFnLangItem,
-                         vec![file_line, index.immediate(), len.immediate()])
+                         vec![file_line, index, len],
+                         const_err)
                     }
                     mir::AssertMessage::Math(ref err) => {
                         let msg_str = token::intern_and_get_ident(err.description());
@@ -278,9 +286,22 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                             msg_file_line,
                                                             align,
                                                             "panic_loc");
-                        (lang_items::PanicFnLangItem, vec![msg_file_line])
+                        (lang_items::PanicFnLangItem,
+                         vec![msg_file_line],
+                         Some(ErrKind::Math(err.clone())))
                     }
                 };
+
+                // If we know we always panic, and the error message
+                // is also constant, then we can produce a warning.
+                if const_cond == Some(!expected) {
+                    if let Some(err) = const_err {
+                        let _ = consts::const_err(bcx.ccx(),
+                                                  terminator.span,
+                                                  Err::<(), _>(err),
+                                                  consts::TrueConst::No);
+                    }
+                }
 
                 // Obtain the panic entry point.
                 let def_id = common::langcall(bcx.tcx(), Some(terminator.span), "", lang_item);
@@ -290,15 +311,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 // Translate the actual panic invoke/call.
                 if let Some(unwind) = cleanup {
-                    let uwbcx = self.bcx(unwind);
-                    let unwind = self.make_landing_pad(uwbcx);
                     bcx.invoke(llfn,
                                &args,
                                self.unreachable_block().llbb,
-                               unwind.llbb(),
-                               cleanup_bundle.as_ref());
+                               llblock(self, unwind),
+                               cleanup_bundle);
                 } else {
-                    bcx.call(llfn, &args, cleanup_bundle.as_ref());
+                    bcx.call(llfn, &args, cleanup_bundle);
                     bcx.unreachable();
                 }
             }

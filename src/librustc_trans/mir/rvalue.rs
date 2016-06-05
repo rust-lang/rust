@@ -27,6 +27,7 @@ use value::Value;
 use Disr;
 
 use super::MirContext;
+use super::constant::const_scalar_checked_binop;
 use super::operand::{OperandRef, OperandValue};
 use super::lvalue::{LvalueRef, get_dataptr, get_meta};
 
@@ -586,6 +587,17 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         if !bcx.ccx().check_overflow() {
             let val = self.trans_scalar_binop(bcx, op, lhs, rhs, input_ty);
             return OperandValue::Pair(val, C_bool(bcx.ccx(), false));
+        }
+
+        // First try performing the operation on constants, which
+        // will only succeed if both operands are constant.
+        // This is necessary to determine when an overflow Assert
+        // will always panic at runtime, and produce a warning.
+        match const_scalar_checked_binop(bcx.tcx(), op, lhs, rhs, input_ty) {
+            Some((val, of)) => {
+                return OperandValue::Pair(val, C_bool(bcx.ccx(), of));
+            }
+            None => {}
         }
 
         let (val, of) = match op {
