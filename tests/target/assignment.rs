@@ -16,3 +16,13 @@ fn main() {
     single_line_fit = 5;
     single_lit_fit >>= 10;
 }
+
+fn break_meee() {
+    {
+        (block_start, block_size, margin_block_start, margin_block_end) =
+            match (block_start, block_end, block_size) {
+                x => 1,
+                _ => 2,
+            };
+    }
+}
