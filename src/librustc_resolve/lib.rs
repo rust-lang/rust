@@ -126,7 +126,7 @@ enum ResolutionError<'a> {
     /// error E0413: cannot be named the same as an enum variant or unit-like struct in scope
     DeclarationShadowsEnumVariantOrUnitLikeStruct(Name),
     /// error E0414: only irrefutable patterns allowed here
-    ConstantForIrrefutableBinding(Name),
+    ConstantForIrrefutableBinding(Name, &'a NameBinding<'a>),
     /// error E0415: identifier is bound more than once in this parameter list
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
     /// error E0416: identifier is bound more than once in the same pattern
@@ -317,19 +317,15 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                 &format!("has same name as enum variant or unit-like struct"));
             err
         }
-        ResolutionError::ConstantForIrrefutableBinding(name) => {
+        ResolutionError::ConstantForIrrefutableBinding(name, binding) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0414,
                                        "let variables cannot be named the same as const variables");
             err.span_label(span,
                            &format!("cannot be named the same as a const variable"));
-            if let Some(binding) = resolver.current_module
-                                           .resolve_name_in_lexical_scope(name, ValueNS) {
-                let participle = if binding.is_import() { "imported" } else { "defined" };
-                err.span_label(binding.span, &format!("a constant `{}` is {} here",
-                               name, participle));
-            }
+            let participle = if binding.is_import() { "imported" } else { "defined" };
+            err.span_label(binding.span, &format!("a constant `{}` is {} here", name, participle));
             err
         }
         ResolutionError::IdentifierBoundMoreThanOnceInParameterList(identifier) => {
@@ -714,9 +710,9 @@ enum AssocItemResolveResult {
 }
 
 #[derive(Copy, Clone)]
-enum BareIdentifierPatternResolution {
+enum BareIdentifierPatternResolution<'a> {
     FoundStructOrEnumVariant(Def),
-    FoundConst(Def, Name),
+    FoundConst(&'a NameBinding<'a>, Name),
     BareIdentifierPatternUnresolved,
 }
 
@@ -1456,7 +1452,12 @@ impl<'a> Resolver<'a> {
                 }
 
                 // We can only see through anonymous modules
-                if module.def.is_some() { return None; }
+                if module.def.is_some() {
+                    return module.prelude.borrow().and_then(|module| {
+                        module.resolve_name(name, ns, false)
+                              .success().map(LexicalScopeBinding::Item)
+                    });
+                }
             }
         }
 
@@ -1543,11 +1544,7 @@ impl<'a> Resolver<'a> {
         debug!("(resolving name in module) resolving `{}` in `{}`", name, module_to_string(module));
 
         self.populate_module_if_necessary(module);
-        match use_lexical_scope {
-            true => module.resolve_name_in_lexical_scope(name, namespace)
-                          .map(Success).unwrap_or(Failed(None)),
-            false => module.resolve_name(name, namespace, false),
-        }.and_then(|binding| {
+        module.resolve_name(name, namespace, use_lexical_scope).and_then(|binding| {
             if record_used {
                 if let NameBindingKind::Import { directive, .. } = binding.kind {
                     self.used_imports.insert((directive.id, namespace));
@@ -2289,21 +2286,21 @@ impl<'a> Resolver<'a> {
                             );
                             self.record_def(pattern.id, err_path_resolution());
                         }
-                        FoundConst(def, _) if const_ok => {
+                        FoundConst(binding, _) if const_ok => {
                             debug!("(resolving pattern) resolving `{}` to constant", renamed);
 
                             self.enforce_default_binding_mode(pattern, binding_mode, "a constant");
                             self.record_def(pattern.id,
                                             PathResolution {
-                                                base_def: def,
+                                                base_def: binding.def().unwrap(),
                                                 depth: 0,
                                             });
                         }
-                        FoundConst(_, name) => {
+                        FoundConst(binding, name) => {
                             resolve_error(
                                 self,
                                 pattern.span,
-                                ResolutionError::ConstantForIrrefutableBinding(name)
+                                ResolutionError::ConstantForIrrefutableBinding(name, binding)
                             );
                             self.record_def(pattern.id, err_path_resolution());
                         }
@@ -2526,7 +2523,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_bare_identifier_pattern(&mut self, ident: ast::Ident, span: Span)
-                                       -> BareIdentifierPatternResolution {
+                                       -> BareIdentifierPatternResolution<'a> {
         let binding = match self.resolve_ident_in_lexical_scope(ident, ValueNS, true) {
             Some(LexicalScopeBinding::Item(binding)) => binding,
             _ => return BareIdentifierPatternUnresolved,
@@ -2535,7 +2532,7 @@ impl<'a> Resolver<'a> {
 
         match def {
             Def::Variant(..) | Def::Struct(..) => FoundStructOrEnumVariant(def),
-            Def::Const(..) | Def::AssociatedConst(..) => FoundConst(def, ident.name),
+            Def::Const(..) | Def::AssociatedConst(..) => FoundConst(binding, ident.name),
             Def::Static(..) => {
                 let error = ResolutionError::StaticVariableReference(binding);
                 resolve_error(self, span, error);
