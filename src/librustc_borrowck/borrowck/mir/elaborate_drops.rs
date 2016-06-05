@@ -327,12 +327,30 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let data = self.mir.basic_block_data(bb);
         let terminator = data.terminator();
 
-        let unwind = Some(unwind.unwrap_or_else(|| {
-            // we can't use the resume block directly, because we
-            // may want to add a drop flag write.
-            self.jump_to_resume_block(terminator.scope,
-                                      terminator.span)
-        }));
+        let assign = Statement {
+            kind: StatementKind::Assign(location.clone(), Rvalue::Use(value.clone())),
+            span: terminator.span,
+            scope: terminator.scope
+        };
+
+        let unwind = unwind.unwrap_or(self.patch.resume_block());
+        let unwind = self.patch.new_block(BasicBlockData {
+            statements: vec![assign.clone()],
+            terminator: Some(Terminator {
+                kind: TerminatorKind::Goto { target: unwind },
+                ..*terminator
+            }),
+            is_cleanup: true
+        });
+
+        let target = self.patch.new_block(BasicBlockData {
+            statements: vec![assign],
+            terminator: Some(Terminator {
+                kind: TerminatorKind::Goto { target: target },
+                ..*terminator
+            }),
+            is_cleanup: data.is_cleanup,
+        });
 
         if !self.lvalue_is_tracked(location) {
             // drop and replace behind a pointer/array/whatever. The location
@@ -341,7 +359,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             self.patch.patch_terminator(bb, TerminatorKind::Drop {
                 location: location.clone(),
                 target: target,
-                unwind: unwind
+                unwind: Some(unwind)
             });
         } else {
             debug!("elaborate_drop_and_replace({:?}) - tracked", terminator);
@@ -356,23 +374,14 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 lvalue: location,
                 path: path,
                 succ: target,
-                unwind: unwind
+                unwind: Some(unwind)
             }, bb);
             on_all_children_bits(self.tcx, self.mir, self.move_data(), path, |child| {
                 self.set_drop_flag(Location { block: target, index: 0 },
                                    child, DropFlagState::Present);
-                if let Some(unwind) = unwind {
-                    self.set_drop_flag(Location { block: unwind, index: 0 },
-                                       child, DropFlagState::Present);
-                }
+                self.set_drop_flag(Location { block: unwind, index: 0 },
+                                   child, DropFlagState::Present);
             });
-        }
-
-        self.patch.add_assign(Location { block: target, index: 0 },
-                              location.clone(), Rvalue::Use(value.clone()));
-        if let Some(unwind) = unwind {
-            self.patch.add_assign(Location { block: unwind, index: 0 },
-                                  location.clone(), Rvalue::Use(value.clone()));
         }
     }
 
@@ -826,19 +835,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             target: c.succ,
             unwind: c.unwind
         })
-    }
-
-    fn jump_to_resume_block<'a>(&mut self, scope: ScopeId, span: Span) -> BasicBlock {
-        let resume_block = self.patch.resume_block();
-        self.patch.new_block(BasicBlockData {
-            statements: vec![],
-            terminator: Some(Terminator {
-                scope: scope, span: span, kind: TerminatorKind::Goto {
-                    target: resume_block
-                }
-            }),
-            is_cleanup: true
-       })
     }
 
     fn box_free_block<'a>(

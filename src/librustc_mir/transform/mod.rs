@@ -13,6 +13,7 @@ pub mod simplify_cfg;
 pub mod erase_regions;
 pub mod no_landing_pads;
 pub mod type_check;
-pub mod break_cleanup_edges;
+pub mod add_call_guards;
 pub mod promote_consts;
 pub mod qualify_consts;
+pub mod dump_mir;
