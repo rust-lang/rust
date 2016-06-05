@@ -10,29 +10,27 @@ fn main() {
     let d: bool = unimplemented!();
     let e: bool = unimplemented!();
     let _ = a && b || a; //~ ERROR this boolean expression contains a logic bug
-    //~| HELP for further information visit
     //~| HELP this expression can be optimized out
     //~| HELP it would look like the following
     //~| SUGGESTION let _ = a;
     let _ = !(a && b);
     let _ = !true; //~ ERROR this boolean expression can be simplified
-    //~| HELP for further information visit
+    //~| HELP try
     //~| SUGGESTION let _ = false;
     let _ = !false; //~ ERROR this boolean expression can be simplified
-    //~| HELP for further information visit
+    //~| HELP try
     //~| SUGGESTION let _ = true;
     let _ = !!a; //~ ERROR this boolean expression can be simplified
-    //~| HELP for further information visit
+    //~| HELP try
     //~| SUGGESTION let _ = a;
 
     let _ = false && a; //~ ERROR this boolean expression contains a logic bug
-    //~| HELP for further information visit
     //~| HELP this expression can be optimized out
     //~| HELP it would look like the following
     //~| SUGGESTION let _ = false;
 
     let _ = false || a; //~ ERROR this boolean expression can be simplified
-    //~| HELP for further information visit
+    //~| HELP try
     //~| SUGGESTION let _ = a;
 
     // don't lint on cfgs
@@ -43,7 +41,7 @@ fn main() {
     let _ = !(a && b || c);
 
     let _ = !(!a && b); //~ ERROR this boolean expression can be simplified
-    //~| HELP for further information visit
+    //~| HELP try
     //~| SUGGESTION let _ = !b || a;
 }
 
@@ -55,32 +53,29 @@ fn equality_stuff() {
     let d: i32 = unimplemented!();
     let e: i32 = unimplemented!();
     let _ = a == b && a != b; //~ ERROR this boolean expression contains a logic bug
-    //~| HELP for further information visit
     //~| HELP this expression can be optimized out
     //~| HELP it would look like the following
     //~| SUGGESTION let _ = false;
     let _ = a == b && c == 5 && a == b; //~ ERROR this boolean expression can be simplified
-    //~| HELP for further information visit
+    //~| HELP try
     //~| SUGGESTION let _ = a == b && c == 5;
     let _ = a == b && c == 5 && b == a; //~ ERROR this boolean expression can be simplified
-    //~| HELP for further information visit
+    //~| HELP try
     //~| SUGGESTION let _ = a == b && c == 5;
     //~| HELP try
     //~| SUGGESTION let _ = !(c != 5 || a != b);
     let _ = a < b && a >= b; //~ ERROR this boolean expression contains a logic bug
-    //~| HELP for further information visit
     //~| HELP this expression can be optimized out
     //~| HELP it would look like the following
     //~| SUGGESTION let _ = false;
     let _ = a > b && a <= b; //~ ERROR this boolean expression contains a logic bug
-    //~| HELP for further information visit
     //~| HELP this expression can be optimized out
     //~| HELP it would look like the following
     //~| SUGGESTION let _ = false;
     let _ = a > b && a == b;
 
     let _ = a != b || !(a != b || c == d); //~ ERROR this boolean expression can be simplified
-    //~| HELP for further information visit
+    //~| HELP try
     //~| SUGGESTION let _ = c != d || a != b;
     //~| HELP try
     //~| SUGGESTION let _ = !(a == b && c == d);

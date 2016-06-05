@@ -10,6 +10,7 @@ use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty;
 use std::borrow::Cow;
+use std::env;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
@@ -473,8 +474,10 @@ impl<'a> Deref for DiagnosticWrapper<'a> {
 
 impl<'a> DiagnosticWrapper<'a> {
     fn wiki_link(&mut self, lint: &'static Lint) {
-        self.help(&format!("for further information visit https://github.com/Manishearth/rust-clippy/wiki#{}",
-                           lint.name_lower()));
+        if env::var("CLIPPY_DISABLE_WIKI_LINKS").is_err() {
+            self.help(&format!("for further information visit https://github.com/Manishearth/rust-clippy/wiki#{}",
+                               lint.name_lower()));
+        }
     }
 }
 
