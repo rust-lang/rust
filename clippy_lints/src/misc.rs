@@ -189,11 +189,7 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
 }
 
 fn is_float(cx: &LateContext, expr: &Expr) -> bool {
-    if let ty::TyFloat(_) = walk_ptrs_ty(cx.tcx.expr_ty(expr)).sty {
-        true
-    } else {
-        false
-    }
+    matches!(walk_ptrs_ty(cx.tcx.expr_ty(expr)).sty, ty::TyFloat(_))
 }
 
 /// **What it does:** This lint checks for conversions to owned values just for the sake of a comparison.
@@ -283,11 +279,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
 
 fn is_str_arg(cx: &LateContext, args: &[P<Expr>]) -> bool {
     args.len() == 1 &&
-    if let ty::TyStr = walk_ptrs_ty(cx.tcx.expr_ty(&args[0])).sty {
-        true
-    } else {
-        false
-    }
+        matches!(walk_ptrs_ty(cx.tcx.expr_ty(&args[0])).sty, ty::TyStr)
 }
 
 /// **What it does:** This lint checks for getting the remainder of a division by one.
@@ -449,10 +441,7 @@ fn is_used(cx: &LateContext, expr: &Expr) -> bool {
 fn in_attributes_expansion(cx: &LateContext, expr: &Expr) -> bool {
     cx.sess().codemap().with_expn_info(expr.span.expn_id, |info_opt| {
         info_opt.map_or(false, |info| {
-            match info.callee.format {
-                ExpnFormat::MacroAttribute(_) => true,
-                _ => false,
-            }
+            matches!(info.callee.format, ExpnFormat::MacroAttribute(_))
         })
     })
 }

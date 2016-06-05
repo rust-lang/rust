@@ -1023,11 +1023,7 @@ impl OutType {
             (&OutType::Bool, &hir::Return(ref ty)) if is_bool(ty) => true,
             (&OutType::Any, &hir::Return(ref ty)) if ty.node != hir::TyTup(vec![].into()) => true,
             (&OutType::Ref, &hir::Return(ref ty)) => {
-                if let hir::TyRptr(_, _) = ty.node {
-                    true
-                } else {
-                    false
-                }
+                matches!(ty.node, hir::TyRptr(_, _))
             }
             _ => false,
         }
@@ -1036,11 +1032,10 @@ impl OutType {
 
 fn is_bool(ty: &hir::Ty) -> bool {
     if let hir::TyPath(None, ref p) = ty.node {
-        if match_path(p, &["bool"]) {
-            return true;
-        }
+        match_path(p, &["bool"])
+    } else {
+        false
     }
-    false
 }
 
 fn is_copy<'a, 'ctx>(cx: &LateContext<'a, 'ctx>, ty: ty::Ty<'ctx>, item: &hir::Item) -> bool {

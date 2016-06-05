@@ -47,10 +47,7 @@ impl<'v> Visitor<'v> for ExVisitor<'v> {
             let complex = {
                 if block.stmts.is_empty() {
                     if let Some(ref ex) = block.expr {
-                        match ex.node {
-                            ExprBlock(_) => true,
-                            _ => false,
-                        }
+                        matches!(ex.node, ExprBlock(_))
                     } else {
                         false
                     }
