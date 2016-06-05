@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Zforce-overflow-checks=on
+
 // these errors are not actually "const_err", they occur in trans/consts
 // and are unconditional warnings that can't be denied or allowed
 

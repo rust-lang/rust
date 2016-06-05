@@ -270,6 +270,11 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     fn trans(&mut self) -> Result<Const<'tcx>, ConstEvalFailure> {
         let tcx = self.ccx.tcx();
         let mut bb = mir::START_BLOCK;
+
+        // Make sure to evaluate all statemenets to
+        // report as many errors as we possibly can.
+        let mut failure = Ok(());
+
         loop {
             let data = self.mir.basic_block_data(bb);
             for statement in &data.statements {
@@ -277,8 +282,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::StatementKind::Assign(ref dest, ref rvalue) => {
                         let ty = self.mir.lvalue_ty(tcx, dest);
                         let ty = self.monomorphize(&ty).to_ty(tcx);
-                        let value = self.const_rvalue(rvalue, ty, statement.span)?;
-                        self.store(dest, value, statement.span);
+                        match self.const_rvalue(rvalue, ty, statement.span) {
+                            Ok(value) => self.store(dest, value, statement.span),
+                            Err(err) => if failure.is_ok() { failure = Err(err); }
+                        }
                     }
                 }
             }
@@ -289,6 +296,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 mir::TerminatorKind::Drop { target, .. } | // No dropping.
                 mir::TerminatorKind::Goto { target } => target,
                 mir::TerminatorKind::Return => {
+                    failure?;
                     return Ok(self.return_value.unwrap_or_else(|| {
                         span_bug!(span, "no returned value in constant");
                     }))
@@ -311,7 +319,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                 ErrKind::Math(err.clone())
                             }
                         };
-                        consts::const_err(self.ccx, span, Err(err), TrueConst::Yes)?;
+                        match consts::const_err(self.ccx, span, Err(err), TrueConst::Yes) {
+                            Ok(()) => {}
+                            Err(err) => if failure.is_ok() { failure = Err(err); }
+                        }
                     }
                     target
                 }
@@ -327,15 +338,21 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                        func, fn_ty)
                     };
 
-                    let args = args.iter().map(|arg| {
-                        self.const_operand(arg, span)
-                    }).collect::<Result<Vec<_>, _>>()?;
-                    let value = MirConstContext::trans_def(self.ccx, instance, args)?;
+                    let mut const_args = Vec::with_capacity(args.len());
+                    for arg in args {
+                        match self.const_operand(arg, span) {
+                            Ok(arg) => const_args.push(arg),
+                            Err(err) => if failure.is_ok() { failure = Err(err); }
+                        }
+                    }
                     if let Some((ref dest, target)) = *destination {
-                        self.store(dest, value, span);
+                        match MirConstContext::trans_def(self.ccx, instance, const_args) {
+                            Ok(value) => self.store(dest, value, span),
+                            Err(err) => if failure.is_ok() { failure = Err(err); }
+                        }
                         target
                     } else {
-                        span_bug!(span, "diverging {:?} in constant", terminator.kind)
+                        span_bug!(span, "diverging {:?} in constant", terminator.kind);
                     }
                 }
                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
@@ -425,8 +442,16 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         } else {
                             span_bug!(span, "index is not an integer-constant expression")
                         };
-                        (Base::Value(const_get_elt(base.llval, &[iv as u32])),
-                         ptr::null_mut())
+
+                        // Produce an undef instead of a LLVM assertion on OOB.
+                        let len = common::const_to_uint(tr_base.len(self.ccx));
+                        let llelem = if iv < len {
+                            const_get_elt(base.llval, &[iv as u32])
+                        } else {
+                            C_undef(type_of::type_of(self.ccx, projected_ty))
+                        };
+
+                        (Base::Value(llelem), ptr::null_mut())
                     }
                     _ => span_bug!(span, "{:?} in constant", projection.elem)
                 };
@@ -497,9 +522,17 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             }
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
-                let fields = operands.iter().map(|operand| {
-                    Ok(self.const_operand(operand, span)?.llval)
-                }).collect::<Result<Vec<_>, _>>()?;
+                // Make sure to evaluate all operands to
+                // report as many errors as we possibly can.
+                let mut fields = Vec::with_capacity(operands.len());
+                let mut failure = Ok(());
+                for operand in operands {
+                    match self.const_operand(operand, span) {
+                        Ok(val) => fields.push(val.llval),
+                        Err(err) => if failure.is_ok() { failure = Err(err); }
+                    }
+                }
+                failure?;
 
                 // FIXME Shouldn't need to manually trigger closure instantiations.
                 if let mir::AggregateKind::Closure(def_id, substs) = *kind {
