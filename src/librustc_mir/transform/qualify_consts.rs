@@ -332,61 +332,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    /// Returns true if the block ends in a bounds check branch, i.e.:
-    /// len = Len(array);
-    /// cond = Lt(idx, len);
-    /// if cond {
-    ///     ...
-    /// } else {
-    ///     loc = (...);
-    ///     loc_ref = &loc;
-    ///     panic_bounds_check(loc_ref, idx, len);
-    /// }
-    fn is_bounds_check(&self, bb: BasicBlock,
-                       cond_op: &Operand<'tcx>,
-                       if_else: BasicBlock) -> bool {
-        use rustc::mir::repr::Lvalue::*;
-        use rustc::mir::repr::Operand::Consume;
-        use rustc::mir::repr::Rvalue::*;
-        use rustc::mir::repr::StatementKind::*;
-        use rustc::mir::repr::TerminatorKind::*;
-
-        let stmts = &self.mir[bb].statements;
-        let stmts_panic = &self.mir[if_else].statements;
-        if stmts.len() < 2 || stmts_panic.len() != 2 {
-            return false;
-        }
-
-        let all = (&stmts[stmts.len() - 2].kind,
-                   &stmts[stmts.len() - 1].kind,
-                   cond_op,
-                   &stmts_panic[0].kind,
-                   &stmts_panic[1].kind,
-                   &self.mir[if_else].terminator().kind);
-        match all {
-            (&Assign(Temp(len), Len(_)),
-             &Assign(Temp(cond), BinaryOp(BinOp::Lt, ref idx, Consume(Temp(len2)))),
-             /* if */ &Consume(Temp(cond2)), /* {...} else */
-             &Assign(Temp(loc), Aggregate(..)),
-             &Assign(Temp(loc_ref), Ref(_, _, Temp(loc2))),
-             &Call {
-                func: Operand::Constant(Constant {
-                    literal: Literal::Item { def_id, .. }, ..
-                }),
-                ref args,
-                destination: None,
-                ..
-            }) => {
-                len == len2 && cond == cond2 && loc == loc2 &&
-                args[0] == Consume(Temp(loc_ref)) &&
-                args[1] == *idx &&
-                args[2] == Consume(Temp(len)) &&
-                Some(def_id) == self.tcx.lang_items.panic_bounds_check_fn()
-            }
-            _ => false
-        }
-    }
-
     /// Qualify a whole const, static initializer or const fn.
     fn qualify_const(&mut self) -> Qualif {
         let mir = self.mir;
@@ -402,6 +347,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::Goto { target } |
                 // Drops are considered noops.
                 TerminatorKind::Drop { target, .. } |
+                TerminatorKind::Assert { target, .. } |
                 TerminatorKind::Call { destination: Some((_, target)), .. } => {
                     Some(target)
                 }
@@ -411,15 +357,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                     return Qualif::empty();
                 }
 
-                // Need to allow bounds checking branches.
-                TerminatorKind::If { ref cond, targets: (if_true, if_else) } => {
-                    if self.is_bounds_check(bb, cond, if_else) {
-                        Some(if_true)
-                    } else {
-                        None
-                    }
-                }
-
+                TerminatorKind::If {..} |
                 TerminatorKind::Switch {..} |
                 TerminatorKind::SwitchInt {..} |
                 TerminatorKind::DropAndReplace { .. } |
@@ -630,6 +568,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Use(_) |
             Rvalue::Repeat(..) |
             Rvalue::UnaryOp(..) |
+            Rvalue::CheckedBinaryOp(..) |
             Rvalue::Cast(CastKind::ReifyFnPointer, _, _) |
             Rvalue::Cast(CastKind::UnsafeFnPointer, _, _) |
             Rvalue::Cast(CastKind::Unsize, _, _) => {}

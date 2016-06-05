@@ -12,9 +12,14 @@
 //! kind of thing.
 
 use build::Builder;
-use rustc::ty::Ty;
+
+use rustc_const_math::{ConstInt, ConstUsize, ConstIsize};
+use rustc::middle::const_val::ConstVal;
+use rustc::ty::{self, Ty};
+
 use rustc::mir::repr::*;
 use std::u32;
+use syntax::ast;
 use syntax::codemap::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -48,6 +53,53 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     pub fn unit_rvalue(&mut self) -> Rvalue<'tcx> {
         Rvalue::Aggregate(AggregateKind::Tuple, vec![])
+    }
+
+    // Returns a zero literal operand for the appropriate type, works for
+    // bool, char, integers and floats.
+    pub fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
+        let literal = match ty.sty {
+            ty::TyBool => {
+                self.hir.false_literal()
+            }
+            ty::TyChar => Literal::Value { value: ConstVal::Char('\0') },
+            ty::TyUint(ity) => {
+                let val = match ity {
+                    ast::UintTy::U8  => ConstInt::U8(0),
+                    ast::UintTy::U16 => ConstInt::U16(0),
+                    ast::UintTy::U32 => ConstInt::U32(0),
+                    ast::UintTy::U64 => ConstInt::U64(0),
+                    ast::UintTy::Us => {
+                        let uint_ty = self.hir.tcx().sess.target.uint_type;
+                        let val = ConstUsize::new(0, uint_ty).unwrap();
+                        ConstInt::Usize(val)
+                    }
+                };
+
+                Literal::Value { value: ConstVal::Integral(val) }
+            }
+            ty::TyInt(ity) => {
+                let val = match ity {
+                    ast::IntTy::I8  => ConstInt::I8(0),
+                    ast::IntTy::I16 => ConstInt::I16(0),
+                    ast::IntTy::I32 => ConstInt::I32(0),
+                    ast::IntTy::I64 => ConstInt::I64(0),
+                    ast::IntTy::Is => {
+                        let int_ty = self.hir.tcx().sess.target.int_type;
+                        let val = ConstIsize::new(0, int_ty).unwrap();
+                        ConstInt::Isize(val)
+                    }
+                };
+
+                Literal::Value { value: ConstVal::Integral(val) }
+            }
+            ty::TyFloat(_) => Literal::Value { value: ConstVal::Float(0.0) },
+            _ => {
+                span_bug!(span, "Invalid type for zero_literal: `{:?}`", ty)
+            }
+        };
+
+        self.literal_operand(span, ty, literal)
     }
 
     pub fn push_usize(&mut self,

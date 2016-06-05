@@ -13,12 +13,12 @@ use rustc::ty::Ty;
 use rustc::mir::repr as mir;
 use base;
 use common::{self, Block, BlockAndBuilder};
-use datum;
 use value::Value;
+use type_of;
+use type_::Type;
 
 use std::fmt;
 
-use super::lvalue::load_fat_ptr;
 use super::{MirContext, TempRef};
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -31,9 +31,8 @@ pub enum OperandValue {
     Ref(ValueRef),
     /// A single LLVM value.
     Immediate(ValueRef),
-    /// A fat pointer. The first ValueRef is the data and the second
-    /// is the extra.
-    FatPtr(ValueRef, ValueRef)
+    /// A pair of immediate LLVM values. Used by fat pointers too.
+    Pair(ValueRef, ValueRef)
 }
 
 /// An `OperandRef` is an "SSA" reference to a Rust value, along with
@@ -64,15 +63,15 @@ impl<'tcx> fmt::Debug for OperandRef<'tcx> {
                 write!(f, "OperandRef(Immediate({:?}) @ {:?})",
                        Value(i), self.ty)
             }
-            OperandValue::FatPtr(a, d) => {
-                write!(f, "OperandRef(FatPtr({:?}, {:?}) @ {:?})",
-                       Value(a), Value(d), self.ty)
+            OperandValue::Pair(a, b) => {
+                write!(f, "OperandRef(Pair({:?}, {:?}) @ {:?})",
+                       Value(a), Value(b), self.ty)
             }
         }
     }
 }
 
-impl<'tcx> OperandRef<'tcx> {
+impl<'bcx, 'tcx> OperandRef<'tcx> {
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
     pub fn immediate(self) -> ValueRef {
@@ -80,6 +79,54 @@ impl<'tcx> OperandRef<'tcx> {
             OperandValue::Immediate(s) => s,
             _ => bug!()
         }
+    }
+
+    /// If this operand is a Pair, we return an
+    /// Immediate aggregate with the two values.
+    pub fn pack_if_pair(mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>)
+                        -> OperandRef<'tcx> {
+        if let OperandValue::Pair(a, b) = self.val {
+            // Reconstruct the immediate aggregate.
+            let llty = type_of::type_of(bcx.ccx(), self.ty);
+            let mut llpair = common::C_undef(llty);
+            let elems = [a, b];
+            for i in 0..2 {
+                let mut elem = elems[i];
+                // Extend boolean i1's to i8.
+                if common::val_ty(elem) == Type::i1(bcx.ccx()) {
+                    elem = bcx.zext(elem, Type::i8(bcx.ccx()));
+                }
+                llpair = bcx.insert_value(llpair, elem, i);
+            }
+            self.val = OperandValue::Immediate(llpair);
+        }
+        self
+    }
+
+    /// If this operand is a pair in an Immediate,
+    /// we return a Pair with the two halves.
+    pub fn unpack_if_pair(mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>)
+                          -> OperandRef<'tcx> {
+        if let OperandValue::Immediate(llval) = self.val {
+            // Deconstruct the immediate aggregate.
+            if common::type_is_imm_pair(bcx.ccx(), self.ty) {
+                let mut a = bcx.extract_value(llval, 0);
+                let mut b = bcx.extract_value(llval, 1);
+
+                let pair_fields = common::type_pair_fields(bcx.ccx(), self.ty);
+                if let Some([a_ty, b_ty]) = pair_fields {
+                    if a_ty.is_bool() {
+                        a = bcx.trunc(a, Type::i1(bcx.ccx()));
+                    }
+                    if b_ty.is_bool() {
+                        b = bcx.trunc(b, Type::i1(bcx.ccx()));
+                    }
+                }
+
+                self.val = OperandValue::Pair(a, b);
+            }
+        }
+        self
     }
 }
 
@@ -92,15 +139,24 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     {
         debug!("trans_load: {:?} @ {:?}", Value(llval), ty);
 
-        let val = match datum::appropriate_rvalue_mode(bcx.ccx(), ty) {
-            datum::ByValue => {
-                OperandValue::Immediate(base::load_ty_builder(bcx, llval, ty))
-            }
-            datum::ByRef if common::type_is_fat_ptr(bcx.tcx(), ty) => {
-                let (lldata, llextra) = load_fat_ptr(bcx, llval);
-                OperandValue::FatPtr(lldata, llextra)
-            }
-            datum::ByRef => OperandValue::Ref(llval)
+        let val = if common::type_is_imm_pair(bcx.ccx(), ty) {
+            let a_ptr = bcx.struct_gep(llval, 0);
+            let b_ptr = bcx.struct_gep(llval, 1);
+
+            // This is None only for fat pointers, which don't
+            // need any special load-time behavior anyway.
+            let pair_fields = common::type_pair_fields(bcx.ccx(), ty);
+            let (a, b) = if let Some([a_ty, b_ty]) = pair_fields {
+                (base::load_ty_builder(bcx, a_ptr, a_ty),
+                 base::load_ty_builder(bcx, b_ptr, b_ty))
+            } else {
+                (bcx.load(a_ptr), bcx.load(b_ptr))
+            };
+            OperandValue::Pair(a, b)
+        } else if common::type_is_immediate(bcx.ccx(), ty) {
+            OperandValue::Immediate(base::load_ty_builder(bcx, llval, ty))
+        } else {
+            OperandValue::Ref(llval)
         };
 
         OperandRef { val: val, ty: ty }
@@ -127,6 +183,26 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                         TempRef::Lvalue(..) => {
                             // use path below
+                        }
+                    }
+                }
+
+                // Moves out of pair fields are trivial.
+                if let &mir::Lvalue::Projection(ref proj) = lvalue {
+                    if let mir::Lvalue::Temp(index) = proj.base {
+                        let temp_ref = &self.temps[index as usize];
+                        if let &TempRef::Operand(Some(o)) = temp_ref {
+                            match (o.val, &proj.elem) {
+                                (OperandValue::Pair(a, b),
+                                 &mir::ProjectionElem::Field(ref f, ty)) => {
+                                    let llval = [a, b][f.index()];
+                                    return OperandRef {
+                                        val: OperandValue::Immediate(llval),
+                                        ty: bcx.monomorphize(&ty)
+                                    };
+                                }
+                                _ => {}
+                            }
                         }
                     }
                 }
@@ -173,8 +249,12 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         match operand.val {
             OperandValue::Ref(r) => base::memcpy_ty(bcx, lldest, r, operand.ty),
             OperandValue::Immediate(s) => base::store_ty(bcx, s, lldest, operand.ty),
-            OperandValue::FatPtr(data, extra) => {
-                base::store_fat_ptr(bcx, data, extra, lldest, operand.ty);
+            OperandValue::Pair(a, b) => {
+                use build::*;
+                let a = base::from_immediate(bcx, a);
+                let b = base::from_immediate(bcx, b);
+                Store(bcx, a, StructGEP(bcx, lldest, 0));
+                Store(bcx, b, StructGEP(bcx, lldest, 1));
             }
         }
     }

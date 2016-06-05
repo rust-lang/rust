@@ -12,8 +12,6 @@
 
 // error-pattern:attempted to divide by zero
 
-#![feature(rustc_attrs)]
-#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     let y = 0;
     let _z = 1 / y;

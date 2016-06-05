@@ -39,6 +39,8 @@ pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
             // in an ValueRef without an alloca.
             assert!(common::type_is_immediate(bcx.ccx(), ty) ||
                     common::type_is_fat_ptr(bcx.tcx(), ty));
+        } else if common::type_is_imm_pair(bcx.ccx(), ty) {
+            // We allow pairs and uses of any of their 2 fields.
         } else {
             // These sorts of types require an alloca. Note that
             // type_is_immediate() may *still* be true, particularly
@@ -111,6 +113,21 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
                     context: LvalueContext) {
         debug!("visit_lvalue(lvalue={:?}, context={:?})", lvalue, context);
 
+        // Allow uses of projections of immediate pair fields.
+        if let mir::Lvalue::Projection(ref proj) = *lvalue {
+            if let mir::Lvalue::Temp(index) = proj.base {
+                let ty = self.mir.temp_decls[index as usize].ty;
+                let ty = self.bcx.monomorphize(&ty);
+                if common::type_is_imm_pair(self.bcx.ccx(), ty) {
+                    if let mir::ProjectionElem::Field(..) = proj.elem {
+                        if let LvalueContext::Consume = context {
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
         match *lvalue {
             mir::Lvalue::Temp(index) => {
                 match context {
@@ -161,6 +178,7 @@ pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
                     /* nothing to do */
                 }
                 TerminatorKind::Call { cleanup: unwind, .. } |
+                TerminatorKind::Assert { cleanup: unwind, .. } |
                 TerminatorKind::DropAndReplace { unwind, .. } |
                 TerminatorKind::Drop { unwind, .. } => {
                     if let Some(unwind) = unwind {

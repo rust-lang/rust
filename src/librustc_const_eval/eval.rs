@@ -380,12 +380,6 @@ pub enum ErrKind {
     NotOn(ConstVal),
     CallOn(ConstVal),
 
-    DivideByZero,
-    DivideWithOverflow,
-    ModuloByZero,
-    ModuloWithOverflow,
-    ShiftLeftWithOverflow,
-    ShiftRightWithOverflow,
     MissingStructField,
     NonConstPath,
     UnimplementedConstVal(&'static str),
@@ -396,7 +390,7 @@ pub enum ErrKind {
     IndexedNonVec,
     IndexNegative,
     IndexNotInt,
-    IndexOutOfBounds,
+    IndexOutOfBounds { len: u64, index: u64 },
     RepeatCountNotNatural,
     RepeatCountNotInt,
 
@@ -436,12 +430,6 @@ impl ConstEvalErr {
             NotOn(ref const_val) => format!("not on {}", const_val.description()).into_cow(),
             CallOn(ref const_val) => format!("call on {}", const_val.description()).into_cow(),
 
-            DivideByZero         => "attempted to divide by zero".into_cow(),
-            DivideWithOverflow   => "attempted to divide with overflow".into_cow(),
-            ModuloByZero         => "attempted remainder with a divisor of zero".into_cow(),
-            ModuloWithOverflow   => "attempted remainder with overflow".into_cow(),
-            ShiftLeftWithOverflow => "attempted left shift with overflow".into_cow(),
-            ShiftRightWithOverflow => "attempted right shift with overflow".into_cow(),
             MissingStructField  => "nonexistent struct field".into_cow(),
             NonConstPath        => "non-constant path in constant expression".into_cow(),
             UnimplementedConstVal(what) =>
@@ -453,7 +441,10 @@ impl ConstEvalErr {
             IndexedNonVec => "indexing is only supported for arrays".into_cow(),
             IndexNegative => "indices must be non-negative integers".into_cow(),
             IndexNotInt => "indices must be integers".into_cow(),
-            IndexOutOfBounds => "array index out of bounds".into_cow(),
+            IndexOutOfBounds { len, index } => {
+                format!("index out of bounds: the len is {} but the index is {}",
+                        len, index).into_cow()
+            }
             RepeatCountNotNatural => "repeat count must be a natural number".into_cow(),
             RepeatCountNotInt => "repeat count must be integers".into_cow(),
 
@@ -847,7 +838,9 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
         assert_eq!(idx as usize as u64, idx);
         match arr {
-            Array(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
+            Array(_, n) if idx >= n => {
+                signal!(e, IndexOutOfBounds { len: n, index: idx })
+            }
             Array(v, n) => if let hir::ExprVec(ref v) = tcx.map.expect_expr(v).node {
                 assert_eq!(n as usize as u64, n);
                 eval_const_expr_partial(tcx, &v[idx as usize], ty_hint, fn_args)?
@@ -855,7 +848,9 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 bug!()
             },
 
-            Repeat(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
+            Repeat(_, n) if idx >= n => {
+                signal!(e, IndexOutOfBounds { len: n, index: idx })
+            }
             Repeat(elem, _) => eval_const_expr_partial(
                 tcx,
                 &tcx.map.expect_expr(elem),
@@ -863,14 +858,13 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 fn_args,
             )?,
 
-            ByteStr(ref data) if idx >= data.len() as u64 => signal!(e, IndexOutOfBounds),
+            ByteStr(ref data) if idx >= data.len() as u64 => {
+                signal!(e, IndexOutOfBounds { len: data.len() as u64, index: idx })
+            }
             ByteStr(data) => {
                 Integral(U8(data[idx as usize]))
             },
 
-            Str(ref s) if idx as usize >= s.len() => signal!(e, IndexOutOfBounds),
-            // FIXME: return a const char
-            Str(_) => signal!(e, UnimplementedConstVal("indexing into str")),
             _ => signal!(e, IndexedNonVec),
         }
       }

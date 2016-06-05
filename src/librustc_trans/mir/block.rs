@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
+use rustc_const_eval::ErrKind;
+use rustc::middle::lang_items;
 use rustc::ty;
 use rustc::mir::repr as mir;
 use abi::{Abi, FnType, ArgType};
@@ -16,22 +18,28 @@ use adt;
 use base;
 use build;
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
-use common::{self, type_is_fat_ptr, Block, BlockAndBuilder, LandingPad, C_undef};
+use common::{self, Block, BlockAndBuilder, LandingPad};
+use common::{C_bool, C_str_slice, C_struct, C_u32, C_uint, C_undef};
+use consts;
 use debuginfo::DebugLoc;
 use Disr;
-use machine::{llalign_of_min, llbitsize_of_real};
+use machine::{llalign_of_min, llbitsize_of_real, llsize_of_store};
 use meth;
 use type_of;
 use glue;
 use type_::Type;
+
 use rustc_data_structures::fnv::FnvHashMap;
+use syntax::parse::token;
 
 use super::{MirContext, TempRef};
 use super::analyze::CleanupKind;
 use super::constant::Const;
 use super::lvalue::{LvalueRef, load_fat_ptr};
 use super::operand::OperandRef;
-use super::operand::OperandValue::{self, FatPtr, Immediate, Ref};
+use super::operand::OperandValue::*;
+
+use std::cmp;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
@@ -212,6 +220,110 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 }
             }
 
+            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
+                let cond = self.trans_operand(&bcx, cond).immediate();
+                let const_cond = common::const_to_opt_uint(cond).map(|c| c == 1);
+
+                // Don't translate the panic block if success if known.
+                if const_cond == Some(expected) {
+                    funclet_br(self, bcx, target);
+                    return;
+                }
+
+                // Pass the condition through llvm.expect for branch hinting.
+                let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
+                let cond = bcx.call(expect, &[cond, C_bool(bcx.ccx(), expected)], None);
+
+                // Create the failure block and the conditional branch to it.
+                let lltarget = llblock(self, target);
+                let panic_block = self.fcx.new_block("panic", None);
+                if expected {
+                    bcx.cond_br(cond, lltarget, panic_block.llbb);
+                } else {
+                    bcx.cond_br(cond, panic_block.llbb, lltarget);
+                }
+
+                // After this point, bcx is the block for the call to panic.
+                bcx = panic_block.build();
+
+                // Get the location information.
+                let loc = bcx.sess().codemap().lookup_char_pos(terminator.span.lo);
+                let filename = token::intern_and_get_ident(&loc.file.name);
+                let filename = C_str_slice(bcx.ccx(), filename);
+                let line = C_u32(bcx.ccx(), loc.line as u32);
+
+                // Put together the arguments to the panic entry point.
+                let (lang_item, args, const_err) = match *msg {
+                    mir::AssertMessage::BoundsCheck { ref len, ref index } => {
+                        let len = self.trans_operand(&mut bcx, len).immediate();
+                        let index = self.trans_operand(&mut bcx, index).immediate();
+
+                        let const_err = common::const_to_opt_uint(len).and_then(|len| {
+                            common::const_to_opt_uint(index).map(|index| {
+                                ErrKind::IndexOutOfBounds {
+                                    len: len,
+                                    index: index
+                                }
+                            })
+                        });
+
+                        let file_line = C_struct(bcx.ccx(), &[filename, line], false);
+                        let align = llalign_of_min(bcx.ccx(), common::val_ty(file_line));
+                        let file_line = consts::addr_of(bcx.ccx(),
+                                                        file_line,
+                                                        align,
+                                                        "panic_bounds_check_loc");
+                        (lang_items::PanicBoundsCheckFnLangItem,
+                         vec![file_line, index, len],
+                         const_err)
+                    }
+                    mir::AssertMessage::Math(ref err) => {
+                        let msg_str = token::intern_and_get_ident(err.description());
+                        let msg_str = C_str_slice(bcx.ccx(), msg_str);
+                        let msg_file_line = C_struct(bcx.ccx(),
+                                                     &[msg_str, filename, line],
+                                                     false);
+                        let align = llalign_of_min(bcx.ccx(), common::val_ty(msg_file_line));
+                        let msg_file_line = consts::addr_of(bcx.ccx(),
+                                                            msg_file_line,
+                                                            align,
+                                                            "panic_loc");
+                        (lang_items::PanicFnLangItem,
+                         vec![msg_file_line],
+                         Some(ErrKind::Math(err.clone())))
+                    }
+                };
+
+                // If we know we always panic, and the error message
+                // is also constant, then we can produce a warning.
+                if const_cond == Some(!expected) {
+                    if let Some(err) = const_err {
+                        let _ = consts::const_err(bcx.ccx(),
+                                                  terminator.span,
+                                                  Err::<(), _>(err),
+                                                  consts::TrueConst::No);
+                    }
+                }
+
+                // Obtain the panic entry point.
+                let def_id = common::langcall(bcx.tcx(), Some(terminator.span), "", lang_item);
+                let callee = Callee::def(bcx.ccx(), def_id,
+                    bcx.ccx().empty_substs_for_def_id(def_id));
+                let llfn = callee.reify(bcx.ccx()).val;
+
+                // Translate the actual panic invoke/call.
+                if let Some(unwind) = cleanup {
+                    bcx.invoke(llfn,
+                               &args,
+                               self.unreachable_block().llbb,
+                               llblock(self, unwind),
+                               cleanup_bundle);
+                } else {
+                    bcx.call(llfn, &args, cleanup_bundle);
+                    bcx.unreachable();
+                }
+            }
+
             mir::TerminatorKind::DropAndReplace { .. } => {
                 bug!("undesugared DropAndReplace in trans: {:?}", data);
             }
@@ -319,8 +431,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                     }
 
-                    let val = self.trans_operand(&bcx, arg).val;
-                    self.trans_argument(&bcx, val, &mut llargs, &fn_ty,
+                    let op = self.trans_operand(&bcx, arg);
+                    self.trans_argument(&bcx, op, &mut llargs, &fn_ty,
                                         &mut idx, &mut callee.data);
                 }
                 if let Some(tup) = untuple {
@@ -358,7 +470,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
                             // Make a fake operand for store_return
                             let op = OperandRef {
-                                val: OperandValue::Ref(dst),
+                                val: Ref(dst),
                                 ty: sig.output.unwrap()
                             };
                             self.store_return(&bcx, ret_dest, fn_ty.ret, op);
@@ -396,7 +508,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         ret_bcx.at_start(|ret_bcx| {
                             debug_loc.apply_to_bcx(ret_bcx);
                             let op = OperandRef {
-                                val: OperandValue::Immediate(invokeret),
+                                val: Immediate(invokeret),
                                 ty: sig.output.unwrap()
                             };
                             self.store_return(&ret_bcx, ret_dest, fn_ty.ret, op);
@@ -407,7 +519,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     fn_ty.apply_attrs_callsite(llret);
                     if let Some((_, target)) = *destination {
                         let op = OperandRef {
-                            val: OperandValue::Immediate(llret),
+                            val: Immediate(llret),
                             ty: sig.output.unwrap()
                         };
                         self.store_return(&bcx, ret_dest, fn_ty.ret, op);
@@ -422,25 +534,36 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
     fn trans_argument(&mut self,
                       bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                      val: OperandValue,
+                      mut op: OperandRef<'tcx>,
                       llargs: &mut Vec<ValueRef>,
                       fn_ty: &FnType,
                       next_idx: &mut usize,
                       callee: &mut CalleeData) {
-        // Treat the values in a fat pointer separately.
-        if let FatPtr(ptr, meta) = val {
-            if *next_idx == 0 {
-                if let Virtual(idx) = *callee {
-                    let llfn = bcx.with_block(|bcx| {
-                        meth::get_virtual_method(bcx, meta, idx)
-                    });
-                    let llty = fn_ty.llvm_type(bcx.ccx()).ptr_to();
-                    *callee = Fn(bcx.pointercast(llfn, llty));
+        if let Pair(a, b) = op.val {
+            // Treat the values in a fat pointer separately.
+            if common::type_is_fat_ptr(bcx.tcx(), op.ty) {
+                let (ptr, meta) = (a, b);
+                if *next_idx == 0 {
+                    if let Virtual(idx) = *callee {
+                        let llfn = bcx.with_block(|bcx| {
+                            meth::get_virtual_method(bcx, meta, idx)
+                        });
+                        let llty = fn_ty.llvm_type(bcx.ccx()).ptr_to();
+                        *callee = Fn(bcx.pointercast(llfn, llty));
+                    }
                 }
+
+                let imm_op = |x| OperandRef {
+                    val: Immediate(x),
+                    // We won't be checking the type again.
+                    ty: bcx.tcx().types.err
+                };
+                self.trans_argument(bcx, imm_op(ptr), llargs, fn_ty, next_idx, callee);
+                self.trans_argument(bcx, imm_op(meta), llargs, fn_ty, next_idx, callee);
+                return;
             }
-            self.trans_argument(bcx, Immediate(ptr), llargs, fn_ty, next_idx, callee);
-            self.trans_argument(bcx, Immediate(meta), llargs, fn_ty, next_idx, callee);
-            return;
+
+            op = op.pack_if_pair(bcx);
         }
 
         let arg = &fn_ty.args[*next_idx];
@@ -456,7 +579,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
 
         // Force by-ref if we have to load through a cast pointer.
-        let (mut llval, by_ref) = match val {
+        let (mut llval, by_ref) = match op.val {
             Immediate(llval) if arg.is_indirect() || arg.cast.is_some() => {
                 let llscratch = build::AllocaFcx(bcx.fcx(), arg.original_ty, "arg");
                 bcx.store(llval, llscratch);
@@ -464,7 +587,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
             Immediate(llval) => (llval, false),
             Ref(llval) => (llval, true),
-            FatPtr(_, _) => bug!("fat pointers handled above")
+            Pair(..) => bug!("pairs handled above")
         };
 
         if by_ref && !arg.is_indirect() {
@@ -511,12 +634,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     let ptr = adt::trans_field_ptr_builder(bcx, &base_repr, base, Disr(0), n);
                     let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
                         let (lldata, llextra) = load_fat_ptr(bcx, ptr);
-                        FatPtr(lldata, llextra)
+                        Pair(lldata, llextra)
                     } else {
                         // trans_argument will load this if it needs to
                         Ref(ptr)
                     };
-                    self.trans_argument(bcx, val, llargs, fn_ty, next_idx, callee);
+                    let op = OperandRef {
+                        val: val,
+                        ty: ty
+                    };
+                    self.trans_argument(bcx, op, llargs, fn_ty, next_idx, callee);
                 }
 
             }
@@ -528,11 +655,29 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         elem = bcx.trunc(elem, Type::i1(bcx.ccx()));
                     }
                     // If the tuple is immediate, the elements are as well
-                    let val = Immediate(elem);
-                    self.trans_argument(bcx, val, llargs, fn_ty, next_idx, callee);
+                    let op = OperandRef {
+                        val: Immediate(elem),
+                        ty: ty
+                    };
+                    self.trans_argument(bcx, op, llargs, fn_ty, next_idx, callee);
                 }
             }
-            FatPtr(_, _) => bug!("tuple is a fat pointer?!")
+            Pair(a, b) => {
+                let elems = [a, b];
+                for (n, &ty) in arg_types.iter().enumerate() {
+                    let mut elem = elems[n];
+                    // Truncate bools to i1, if needed
+                    if ty.is_bool() && common::val_ty(elem) != Type::i1(bcx.ccx()) {
+                        elem = bcx.trunc(elem, Type::i1(bcx.ccx()));
+                    }
+                    // Pair is always made up of immediates
+                    let op = OperandRef {
+                        val: Immediate(elem),
+                        ty: ty
+                    };
+                    self.trans_argument(bcx, op, llargs, fn_ty, next_idx, callee);
+                }
+            }
         }
 
     }
@@ -688,7 +833,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let f = Callee::def(bcx.ccx(), def_id, substs);
                 let datum = f.reify(bcx.ccx());
                 val = OperandRef {
-                    val: OperandValue::Immediate(datum.val),
+                    val: Immediate(datum.val),
                     ty: datum.ty
                 };
             }
@@ -707,29 +852,74 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     op: OperandRef<'tcx>) {
         use self::ReturnDest::*;
 
-        match dest {
-            Nothing => (),
-            Store(dst) => ret_ty.store(bcx, op.immediate(), dst),
+        // Handle the simple cases that don't require casts, first.
+        let llcast_ty = match dest {
+            Nothing => return,
+            Store(dst) => {
+                if let Some(llcast_ty) = ret_ty.cast {
+                    llcast_ty
+                } else {
+                    ret_ty.store(bcx, op.immediate(), dst);
+                    return;
+                }
+            }
             IndirectOperand(tmp, idx) => {
                 let op = self.trans_load(bcx, tmp, op.ty);
                 self.temps[idx as usize] = TempRef::Operand(Some(op));
+                return;
             }
             DirectOperand(idx) => {
-                let op = if type_is_fat_ptr(bcx.tcx(), op.ty) {
-                    let llval = op.immediate();
-                    let ptr = bcx.extract_value(llval, 0);
-                    let meta = bcx.extract_value(llval, 1);
-
-                    OperandRef {
-                        val: OperandValue::FatPtr(ptr, meta),
-                        ty: op.ty
-                    }
+                if let Some(llcast_ty) = ret_ty.cast {
+                    llcast_ty
                 } else {
-                    op
-                };
+                    let op = op.unpack_if_pair(bcx);
+                    self.temps[idx as usize] = TempRef::Operand(Some(op));
+                    return;
+                }
+            }
+        };
+
+        // The actual return type is a struct, but the ABI
+        // adaptation code has cast it into some scalar type.  The
+        // code that follows is the only reliable way I have
+        // found to do a transform like i64 -> {i32,i32}.
+        // Basically we dump the data onto the stack then memcpy it.
+        //
+        // Other approaches I tried:
+        // - Casting rust ret pointer to the foreign type and using Store
+        //   is (a) unsafe if size of foreign type > size of rust type and
+        //   (b) runs afoul of strict aliasing rules, yielding invalid
+        //   assembly under -O (specifically, the store gets removed).
+        // - Truncating foreign type to correct integral type and then
+        //   bitcasting to the struct type yields invalid cast errors.
+
+        // We instead thus allocate some scratch space...
+        let llscratch = bcx.alloca(llcast_ty, "fn_ret_cast");
+        bcx.with_block(|bcx| base::call_lifetime_start(bcx, llscratch));
+
+        // ...where we first store the value...
+        bcx.store(op.immediate(), llscratch);
+
+        let ccx = bcx.ccx();
+        match dest {
+            Store(dst) => {
+                // ...and then memcpy it to the intended destination.
+                base::call_memcpy(bcx,
+                                  bcx.pointercast(dst, Type::i8p(ccx)),
+                                  bcx.pointercast(llscratch, Type::i8p(ccx)),
+                                  C_uint(ccx, llsize_of_store(ccx, ret_ty.original_ty)),
+                                  cmp::min(llalign_of_min(ccx, ret_ty.original_ty),
+                                           llalign_of_min(ccx, llcast_ty)) as u32);
+            }
+            DirectOperand(idx) => {
+                let llptr = bcx.pointercast(llscratch, ret_ty.original_ty.ptr_to());
+                let op = self.trans_load(bcx, llptr, op.ty);
                 self.temps[idx as usize] = TempRef::Operand(Some(op));
             }
+            Nothing | IndirectOperand(_, _) => bug!()
         }
+
+        bcx.with_block(|bcx| base::call_lifetime_end(bcx, llscratch));
     }
 }
 

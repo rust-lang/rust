@@ -716,7 +716,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             if iv >= len {
                 // FIXME #3170: report this earlier on in the const-eval
                 // pass. Reporting here is a bit late.
-                const_err(cx, e.span, Err(ErrKind::IndexOutOfBounds), trueconst)?;
+                const_err(cx, e.span, Err(ErrKind::IndexOutOfBounds {
+                    len: len,
+                    index: iv
+                }), trueconst)?;
                 C_undef(val_ty(arr).element_type())
             } else {
                 const_get_elt(arr, &[iv as c_uint])

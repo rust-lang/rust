@@ -172,6 +172,7 @@ pub trait Iterator {
     /// assert_eq!(a.iter().count(), 5);
     /// ```
     #[inline]
+    #[rustc_inherit_overflow_checks]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn count(self) -> usize where Self: Sized {
         // Might overflow.

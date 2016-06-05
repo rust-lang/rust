@@ -10,14 +10,12 @@
 
 // ignore-pretty : (#23623) problems when  ending with // comments
 
-// error-pattern:thread 'main' panicked at 'shift operation overflowed'
+// error-pattern:thread 'main' panicked at 'attempted to shift right with overflow'
 // compile-flags: -C debug-assertions
 
 #![warn(exceeding_bitshifts)]
 #![feature(const_indexing)]
 
-#![feature(rustc_attrs)]
-#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     let _n = 1i64 >> [64][0];
 }

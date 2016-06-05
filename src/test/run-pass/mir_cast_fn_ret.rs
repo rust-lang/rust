@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty : (#23623) problems when  ending with // comments
+#![feature(rustc_attrs)]
 
-// error-pattern:thread 'main' panicked at 'attempted to multiply with overflow'
-// compile-flags: -C debug-assertions
+pub extern "C" fn tuple2() -> (u16, u8) {
+    (1, 2)
+}
+
+pub extern "C" fn tuple3() -> (u8, u8, u8) {
+    (1, 2, 3)
+}
+
+#[rustc_mir]
+pub fn test2() -> u8 {
+    tuple2().1
+}
+
+#[rustc_mir]
+pub fn test3() -> u8 {
+    tuple3().2
+}
 
 fn main() {
-    let x = 200u8 * 4;
+    assert_eq!(test2(), 2);
+    assert_eq!(test3(), 3);
 }
