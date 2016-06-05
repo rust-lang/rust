@@ -191,6 +191,12 @@ fn check(cache: &mut Cache,
         // exist! If it doesn't then we register and print an error.
         if path.exists() {
             if path.is_dir() {
+                // Links to directories show as directory listings when viewing
+                // the docs offline so it's best to avoid them.
+                *errors = true;
+                let pretty_path = path.strip_prefix(root).unwrap_or(&path);
+                println!("{}:{}: directory link - {}", pretty_file.display(),
+                         i + 1, pretty_path.display());
                 return;
             }
             let res = load_file(cache, root, path.clone(), FromRedirect(false));
