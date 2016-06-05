@@ -142,6 +142,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_item_name(&self.intr, &cdata, def.index)
     }
 
+    fn opt_item_name(&self, def: DefId) -> Option<ast::Name> {
+        self.dep_graph.read(DepNode::MetaData(def));
+        let cdata = self.get_crate_data(def.krate);
+        decoder::maybe_get_item_name(&self.intr, &cdata, def.index)
+    }
 
     fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>
     {

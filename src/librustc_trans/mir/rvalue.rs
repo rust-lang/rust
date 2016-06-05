@@ -25,7 +25,6 @@ use type_of;
 use tvec;
 use value::Value;
 use Disr;
-use glue;
 
 use super::MirContext;
 use super::operand::{OperandRef, OperandValue};
@@ -48,7 +47,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                // FIXME: consider not copying constants through stack. (fixable by translating
                // constants into OperandValue::Ref, why don’t we do that yet if we don’t?)
                self.store_operand(&bcx, dest.llval, tr_operand);
-               self.set_operand_dropped(&bcx, operand);
                bcx
            }
 
@@ -92,7 +90,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                     }
                 });
-                self.set_operand_dropped(&bcx, source);
                 bcx
             }
 
@@ -107,7 +104,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         block
                     })
                 });
-                self.set_operand_dropped(&bcx, elem);
                 bcx
             }
 
@@ -128,7 +124,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                                             val, disr, i);
                                 self.store_operand(&bcx, lldest_i, op);
                             }
-                            self.set_operand_dropped(&bcx, operand);
                         }
                     },
                     _ => {
@@ -167,7 +162,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 let dest = bcx.gepi(dest.llval, &[0, i]);
                                 self.store_operand(&bcx, dest, op);
                             }
-                            self.set_operand_dropped(&bcx, operand);
                         }
                     }
                 }
@@ -209,9 +203,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     asm::trans_inline_asm(bcx, asm, outputs, input_vals);
                 });
 
-                for input in inputs {
-                    self.set_operand_dropped(&bcx, input);
-                }
                 bcx
             }
 
@@ -269,7 +260,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 //   &'a fmt::Debug+Send => &'a fmt::Debug,
                                 // So we need to pointercast the base to ensure
                                 // the types match up.
-                                self.set_operand_dropped(&bcx, source);
                                 let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx(), cast_ty);
                                 let lldata = bcx.pointercast(lldata, llcast_ty);
                                 OperandValue::FatPtr(lldata, llextra)
@@ -280,7 +270,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                     base::unsize_thin_ptr(bcx, lldata,
                                                           operand.ty, cast_ty)
                                 });
-                                self.set_operand_dropped(&bcx, source);
                                 OperandValue::FatPtr(lldata, llextra)
                             }
                             OperandValue::Ref(_) => {
@@ -569,8 +558,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 }
 
-pub fn rvalue_creates_operand<'bcx, 'tcx>(mir: &mir::Mir<'tcx>,
-                                          bcx: &BlockAndBuilder<'bcx, 'tcx>,
+pub fn rvalue_creates_operand<'bcx, 'tcx>(_mir: &mir::Mir<'tcx>,
+                                          _bcx: &BlockAndBuilder<'bcx, 'tcx>,
                                           rvalue: &mir::Rvalue<'tcx>) -> bool {
     match *rvalue {
         mir::Rvalue::Ref(..) |
@@ -578,21 +567,14 @@ pub fn rvalue_creates_operand<'bcx, 'tcx>(mir: &mir::Mir<'tcx>,
         mir::Rvalue::Cast(..) | // (*)
         mir::Rvalue::BinaryOp(..) |
         mir::Rvalue::UnaryOp(..) |
-        mir::Rvalue::Box(..) =>
+        mir::Rvalue::Box(..) |
+        mir::Rvalue::Use(..) =>
             true,
         mir::Rvalue::Repeat(..) |
         mir::Rvalue::Aggregate(..) |
         mir::Rvalue::Slice { .. } |
         mir::Rvalue::InlineAsm { .. } =>
             false,
-        mir::Rvalue::Use(ref operand) => {
-            let ty = mir.operand_ty(bcx.tcx(), operand);
-            let ty = bcx.monomorphize(&ty);
-            // Types that don't need dropping can just be an operand,
-            // this allows temporary lvalues, used as rvalues, to
-            // avoid a stack slot when it's unnecessary
-            !glue::type_needs_drop(bcx.tcx(), ty)
-        }
     }
 
     // (*) this is only true if the type is suitable

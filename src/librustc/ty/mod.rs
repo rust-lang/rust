@@ -2503,6 +2503,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             || self.sess.cstore.item_type(self.global_tcx(), did))
     }
 
+    pub fn opt_lookup_item_type(self, did: DefId) -> Option<TypeScheme<'gcx>> {
+        if let Some(scheme) = self.tcache.borrow_mut().get(&did) {
+            return Some(scheme.clone());
+        }
+
+        if did.krate == LOCAL_CRATE {
+            None
+        } else {
+            Some(self.sess.cstore.item_type(self.global_tcx(), did))
+        }
+    }
+
     /// Given the did of a trait, returns its canonical trait ref.
     pub fn lookup_trait_def(self, did: DefId) -> &'gcx TraitDef<'gcx> {
         lookup_locally_or_in_crate_store(

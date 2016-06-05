@@ -624,6 +624,24 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             value.trans_normalize(&infcx)
         })
     }
+
+    pub fn normalize_associated_type_in_env<T>(
+        self, value: &T, env: &'a ty::ParameterEnvironment<'tcx>
+    ) -> T
+        where T: TransNormalize<'tcx>
+    {
+        debug!("normalize_associated_type_in_env(t={:?})", value);
+
+        let value = self.erase_regions(value);
+
+        if !value.has_projection_types() {
+            return value;
+        }
+
+        self.infer_ctxt(None, Some(env.clone()), ProjectionMode::Any).enter(|infcx| {
+            value.trans_normalize(&infcx)
+       })
+    }
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {

@@ -422,6 +422,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
                 TerminatorKind::Switch {..} |
                 TerminatorKind::SwitchInt {..} |
+                TerminatorKind::DropAndReplace { .. } |
                 TerminatorKind::Resume => None,
 
                 TerminatorKind::Return => {

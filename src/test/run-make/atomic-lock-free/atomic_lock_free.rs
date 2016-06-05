@@ -18,6 +18,8 @@ extern "rust-intrinsic" {
 
 #[lang = "sized"]
 trait Sized {}
+#[lang = "copy"]
+trait Copy {}
 
 #[cfg(target_has_atomic = "8")]
 pub unsafe fn atomic_u8(x: *mut u8) {

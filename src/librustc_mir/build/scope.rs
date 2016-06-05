@@ -139,7 +139,7 @@ struct DropData<'tcx> {
     span: Span,
 
     /// lvalue to drop
-    value: Lvalue<'tcx>,
+    location: Lvalue<'tcx>,
 
     /// The cached block for the cleanups-on-diverge path. This block
     /// contains code to run the current drop and all the preceding
@@ -402,7 +402,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // the drop that comes before it in the vector.
                 scope.drops.push(DropData {
                     span: span,
-                    value: lvalue.clone(),
+                    location: lvalue.clone(),
                     cached_block: None
                 });
                 return;
@@ -497,7 +497,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn build_drop(&mut self,
                       block: BasicBlock,
                       span: Span,
-                      value: Lvalue<'tcx>,
+                      location: Lvalue<'tcx>,
                       ty: Ty<'tcx>) -> BlockAnd<()> {
         if !self.hir.needs_drop(ty) {
             return block.unit();
@@ -509,13 +509,34 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                            scope_id,
                            span,
                            TerminatorKind::Drop {
-                               value: value,
+                               location: location,
                                target: next_target,
                                unwind: diverge_target,
                            });
         next_target.unit()
     }
 
+
+
+    pub fn build_drop_and_replace(&mut self,
+                                  block: BasicBlock,
+                                  span: Span,
+                                  location: Lvalue<'tcx>,
+                                  value: Operand<'tcx>) -> BlockAnd<()> {
+        let scope_id = self.innermost_scope_id();
+        let next_target = self.cfg.start_new_block();
+        let diverge_target = self.diverge_cleanup();
+        self.cfg.terminate(block,
+                           scope_id,
+                           span,
+                           TerminatorKind::DropAndReplace {
+                               location: location,
+                               value: value,
+                               target: next_target,
+                               unwind: diverge_target,
+                           });
+        next_target.unit()
+    }
 
     // Panicking
     // =========
@@ -653,7 +674,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
         });
         let next = cfg.start_new_block();
         cfg.terminate(block, scope.id, drop_data.span, TerminatorKind::Drop {
-            value: drop_data.value.clone(),
+            location: drop_data.location.clone(),
             target: next,
             unwind: on_diverge
         });
@@ -709,7 +730,7 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                           scope.id,
                           drop_data.span,
                           TerminatorKind::Drop {
-                              value: drop_data.value.clone(),
+                              location: drop_data.location.clone(),
                               target: target,
                               unwind: None
                           });

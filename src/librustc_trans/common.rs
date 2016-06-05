@@ -577,6 +577,15 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         self.lpad.get()
     }
 
+    pub fn set_lpad_ref(&self, lpad: Option<&'blk LandingPad>) {
+        // FIXME: use an IVar?
+        self.lpad.set(lpad);
+    }
+
+    pub fn set_lpad(&self, lpad: Option<LandingPad>) {
+        self.set_lpad_ref(lpad.map(|p| &*self.fcx().lpad_arena.alloc(p)))
+    }
+
     pub fn mir(&self) -> CachedMir<'blk, 'tcx> {
         self.fcx.mir()
     }
@@ -716,7 +725,16 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
     }
 
     pub fn set_lpad(&self, lpad: Option<LandingPad>) {
-        self.bcx.lpad.set(lpad.map(|p| &*self.fcx().lpad_arena.alloc(p)))
+        self.bcx.set_lpad(lpad)
+    }
+
+    pub fn set_lpad_ref(&self, lpad: Option<&'blk LandingPad>) {
+        // FIXME: use an IVar?
+        self.bcx.set_lpad_ref(lpad);
+    }
+
+    pub fn lpad(&self) -> Option<&'blk LandingPad> {
+        self.bcx.lpad()
     }
 }
 
@@ -760,6 +778,10 @@ impl LandingPad {
 
     pub fn bundle(&self) -> Option<&OperandBundleDef> {
         self.operand.as_ref()
+    }
+
+    pub fn cleanuppad(&self) -> Option<ValueRef> {
+        self.cleanuppad
     }
 }
 

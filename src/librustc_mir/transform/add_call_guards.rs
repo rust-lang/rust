@@ -12,13 +12,11 @@ use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 
-use rustc_data_structures::bitvec::BitVector;
-
 use pretty;
 
 use traversal;
 
-pub struct BreakCleanupEdges;
+pub struct AddCallGuards;
 
 /**
  * Breaks outgoing critical edges for call terminators in the MIR.
@@ -40,7 +38,7 @@ pub struct BreakCleanupEdges;
  *
  */
 
-impl<'tcx> MirPass<'tcx> for BreakCleanupEdges {
+impl<'tcx> MirPass<'tcx> for AddCallGuards {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         let mut pred_count = vec![0u32; mir.basic_blocks.len()];
 
@@ -53,9 +51,6 @@ impl<'tcx> MirPass<'tcx> for BreakCleanupEdges {
             }
         }
 
-        let cleanup_map : BitVector = mir.basic_blocks
-            .iter().map(|bb| bb.is_cleanup).collect();
-
         // We need a place to store the new blocks generated
         let mut new_blocks = Vec::new();
 
@@ -65,30 +60,31 @@ impl<'tcx> MirPass<'tcx> for BreakCleanupEdges {
         for &bb in &bbs {
             let data = mir.basic_block_data_mut(bb);
 
-            if let Some(ref mut term) = data.terminator {
-                if term_is_invoke(term) {
-                    let term_span = term.span;
-                    let term_scope = term.scope;
-                    let succs = term.successors_mut();
-                    for tgt in succs {
-                        let num_preds = pred_count[tgt.index()];
-                        if num_preds > 1 {
-                            // It's a critical edge, break it
-                            let goto = Terminator {
-                                span: term_span,
-                                scope: term_scope,
-                                kind: TerminatorKind::Goto { target: *tgt }
-                            };
-                            let mut data = BasicBlockData::new(Some(goto));
-                            data.is_cleanup = cleanup_map.contains(tgt.index());
+            match data.terminator {
+                Some(Terminator {
+                    kind: TerminatorKind::Call {
+                        destination: Some((_, ref mut destination)),
+                        cleanup: Some(_),
+                        ..
+                    }, span, scope
+                }) if pred_count[destination.index()] > 1 => {
+                    // It's a critical edge, break it
+                    let call_guard = BasicBlockData {
+                        statements: vec![],
+                        is_cleanup: data.is_cleanup,
+                        terminator: Some(Terminator {
+                            span: span,
+                            scope: scope,
+                            kind: TerminatorKind::Goto { target: *destination }
+                        })
+                    };
 
-                            // Get the index it will be when inserted into the MIR
-                            let idx = cur_len + new_blocks.len();
-                            new_blocks.push(data);
-                            *tgt = BasicBlock::new(idx);
-                        }
-                    }
+                    // Get the index it will be when inserted into the MIR
+                    let idx = cur_len + new_blocks.len();
+                    new_blocks.push(call_guard);
+                    *destination = BasicBlock::new(idx);
                 }
+                _ => {}
             }
         }
 
@@ -99,13 +95,4 @@ impl<'tcx> MirPass<'tcx> for BreakCleanupEdges {
     }
 }
 
-impl Pass for BreakCleanupEdges {}
-
-// Returns true if the terminator is a call that would use an invoke in LLVM.
-fn term_is_invoke(term: &Terminator) -> bool {
-    match term.kind {
-        TerminatorKind::Call { cleanup: Some(_), .. } |
-        TerminatorKind::Drop { unwind: Some(_), .. } => true,
-        _ => false
-    }
-}
+impl Pass for AddCallGuards {}
