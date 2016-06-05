@@ -23,15 +23,17 @@ use util::nodemap::DefIdMap;
 use lint;
 
 pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut overlap = OverlapChecker { tcx: tcx,
-                                       default_impls: DefIdMap() };
+    let mut overlap = OverlapChecker {
+        tcx: tcx,
+        default_impls: DefIdMap(),
+    };
 
     // this secondary walk specifically checks for some other cases,
     // like defaulted traits, for which additional overlap rules exist
     tcx.visit_all_items_in_krate(DepNode::CoherenceOverlapCheckSpecial, &mut overlap);
 }
 
-struct OverlapChecker<'cx, 'tcx:'cx> {
+struct OverlapChecker<'cx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'tcx, 'tcx>,
 
     // maps from a trait def-id to an impl id
@@ -41,14 +43,17 @@ struct OverlapChecker<'cx, 'tcx:'cx> {
 impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
     fn check_for_common_items_in_impls(&self, impl1: DefId, impl2: DefId) {
         #[derive(Copy, Clone, PartialEq)]
-        enum Namespace { Type, Value }
+        enum Namespace {
+            Type,
+            Value,
+        }
 
         fn name_and_namespace<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         item: &ty::ImplOrTraitItemId)
-                                        -> (ast::Name, Namespace)
-        {
+                                        -> (ast::Name, Namespace) {
             let name = tcx.impl_or_trait_item(item.def_id()).name();
-            (name, match *item {
+            (name,
+             match *item {
                 ty::TypeTraitItemId(..) => Namespace::Type,
                 ty::ConstTraitItemId(..) => Namespace::Value,
                 ty::MethodTraitItemId(..) => Namespace::Value,
@@ -79,11 +84,11 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         let inherent_impls = self.tcx.inherent_impls.borrow();
         let impls = match inherent_impls.get(&ty_def_id) {
             Some(impls) => impls,
-            None => return
+            None => return,
         };
 
         for (i, &impl1_def_id) in impls.iter().enumerate() {
-            for &impl2_def_id in &impls[(i+1)..] {
+            for &impl2_def_id in &impls[(i + 1)..] {
                 self.tcx.infer_ctxt(None, None, ProjectionMode::Topmost).enter(|infcx| {
                     if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
                         self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
@@ -94,7 +99,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
+impl<'cx, 'tcx, 'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
             hir::ItemEnum(..) | hir::ItemStruct(..) => {
@@ -116,7 +121,8 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                         self.tcx.span_of_impl(impl_def_id).unwrap(), E0521,
                         "redundant default implementations of trait `{}`:",
                         trait_ref);
-                    err.span_note(self.tcx.span_of_impl(self.tcx.map.local_def_id(prev_id))
+                    err.span_note(self.tcx
+                                      .span_of_impl(self.tcx.map.local_def_id(prev_id))
                                       .unwrap(),
                                   "redundant implementation is here:");
                     err.emit();
@@ -127,8 +133,9 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
 
-                let _task = self.tcx.dep_graph.in_task(
-                    DepNode::CoherenceOverlapCheck(trait_def_id));
+                let _task = self.tcx
+                                .dep_graph
+                                .in_task(DepNode::CoherenceOverlapCheck(trait_def_id));
 
                 let def = self.tcx.lookup_trait_def(trait_def_id);
 
@@ -137,20 +144,21 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
 
                 // insertion failed due to overlap
                 if let Err(overlap) = insert_result {
-                    let mut err = struct_span_err!(
-                        self.tcx.sess, self.tcx.span_of_impl(impl_def_id).unwrap(), E0119,
-                        "conflicting implementations of trait `{}`{}:",
-                        overlap.trait_desc,
-                        overlap.self_desc.map_or(String::new(),
-                                                 |ty| format!(" for type `{}`", ty)));
+                    let mut err = struct_span_err!(self.tcx.sess,
+                                                   self.tcx.span_of_impl(impl_def_id).unwrap(),
+                                                   E0119,
+                                                   "conflicting implementations of trait `{}`{}:",
+                                                   overlap.trait_desc,
+                                                   overlap.self_desc.map_or(String::new(), |ty| {
+                                                       format!(" for type `{}`", ty)
+                                                   }));
 
                     match self.tcx.span_of_impl(overlap.with_impl) {
                         Ok(span) => {
                             err.span_note(span, "conflicting implementation is here:");
                         }
                         Err(cname) => {
-                            err.note(&format!("conflicting implementation in crate `{}`",
-                                              cname));
+                            err.note(&format!("conflicting implementation in crate `{}`", cname));
                         }
                     }
 
@@ -171,7 +179,9 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                         let mut supertrait_def_ids =
                             traits::supertrait_def_ids(self.tcx, data.principal_def_id());
                         if supertrait_def_ids.any(|d| d == trait_def_id) {
-                            span_err!(self.tcx.sess, item.span, E0371,
+                            span_err!(self.tcx.sess,
+                                      item.span,
+                                      E0371,
                                       "the object type `{}` automatically \
                                        implements the trait `{}`",
                                       trait_ref.self_ty(),

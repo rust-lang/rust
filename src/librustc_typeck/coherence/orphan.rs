@@ -26,14 +26,16 @@ pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.visit_all_items_in_krate(DepNode::CoherenceOrphanCheck, &mut orphan);
 }
 
-struct OrphanChecker<'cx, 'tcx:'cx> {
-    tcx: TyCtxt<'cx, 'tcx, 'tcx>
+struct OrphanChecker<'cx, 'tcx: 'cx> {
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
 }
 
 impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     fn check_def_id(&self, item: &hir::Item, def_id: DefId) {
         if def_id.krate != LOCAL_CRATE {
-            span_err!(self.tcx.sess, item.span, E0116,
+            span_err!(self.tcx.sess,
+                      item.span,
+                      E0116,
                       "cannot define inherent `impl` for a type outside of the \
                        crate where the type is defined; define and implement \
                        a trait or new type instead");
@@ -47,7 +49,9 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                             ty: &str,
                             span: Span) {
         match lang_def_id {
-            Some(lang_def_id) if lang_def_id == impl_def_id => { /* OK */ },
+            Some(lang_def_id) if lang_def_id == impl_def_id => {
+                // OK
+            }
             _ => {
                 struct_span_err!(self.tcx.sess, span, E0390,
                           "only a single inherent implementation marked with `#[lang = \"{}\"]` \
@@ -226,18 +230,21 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
                 match traits::orphan_check(self.tcx, def_id) {
-                    Ok(()) => { }
+                    Ok(()) => {}
                     Err(traits::OrphanCheckErr::NoLocalInputType) => {
-                        span_err!(
-                            self.tcx.sess, item.span, E0117,
-                            "the impl does not reference any \
+                        span_err!(self.tcx.sess,
+                                  item.span,
+                                  E0117,
+                                  "the impl does not reference any \
                              types defined in this crate; \
                              only traits defined in the current crate can be \
                              implemented for arbitrary types");
                         return;
                     }
                     Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
-                        span_err!(self.tcx.sess, item.span, E0210,
+                        span_err!(self.tcx.sess,
+                                  item.span,
+                                  E0210,
                                   "type parameter `{}` must be used as the type parameter for \
                                    some local type (e.g. `MyStruct<T>`); only traits defined in \
                                    the current crate can be implemented for a type parameter",
@@ -283,18 +290,13 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                        trait_ref,
                        trait_def_id,
                        self.tcx.trait_has_default_impl(trait_def_id));
-                if
-                    self.tcx.trait_has_default_impl(trait_def_id) &&
-                    trait_def_id.krate != LOCAL_CRATE
-                {
+                if self.tcx.trait_has_default_impl(trait_def_id) &&
+                   trait_def_id.krate != LOCAL_CRATE {
                     let self_ty = trait_ref.self_ty();
                     let opt_self_def_id = match self_ty.sty {
-                        ty::TyStruct(self_def, _) | ty::TyEnum(self_def, _) =>
-                            Some(self_def.did),
-                        ty::TyBox(..) =>
-                            self.tcx.lang_items.owned_box(),
-                        _ =>
-                            None
+                        ty::TyStruct(self_def, _) | ty::TyEnum(self_def, _) => Some(self_def.did),
+                        ty::TyBox(..) => self.tcx.lang_items.owned_box(),
+                        _ => None,
                     };
 
                     let msg = match opt_self_def_id {
@@ -306,20 +308,18 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                             if self_def_id.is_local() {
                                 None
                             } else {
-                                Some(format!(
-                                    "cross-crate traits with a default impl, like `{}`, \
+                                Some(format!("cross-crate traits with a default impl, like `{}`, \
                                      can only be implemented for a struct/enum type \
                                      defined in the current crate",
-                                    self.tcx.item_path_str(trait_def_id)))
+                                             self.tcx.item_path_str(trait_def_id)))
                             }
                         }
                         _ => {
-                            Some(format!(
-                                "cross-crate traits with a default impl, like `{}`, \
+                            Some(format!("cross-crate traits with a default impl, like `{}`, \
                                  can only be implemented for a struct/enum type, \
                                  not `{}`",
-                                self.tcx.item_path_str(trait_def_id),
-                                self_ty))
+                                         self.tcx.item_path_str(trait_def_id),
+                                         self_ty))
                         }
                     };
 
@@ -331,12 +331,16 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
 
                 // Disallow *all* explicit impls of `Sized` and `Unsize` for now.
                 if Some(trait_def_id) == self.tcx.lang_items.sized_trait() {
-                    span_err!(self.tcx.sess, item.span, E0322,
+                    span_err!(self.tcx.sess,
+                              item.span,
+                              E0322,
                               "explicit impls for the `Sized` trait are not permitted");
                     return;
                 }
                 if Some(trait_def_id) == self.tcx.lang_items.unsize_trait() {
-                    span_err!(self.tcx.sess, item.span, E0328,
+                    span_err!(self.tcx.sess,
+                              item.span,
+                              E0328,
                               "explicit impls for the `Unsize` trait are not permitted");
                     return;
                 }
@@ -347,7 +351,9 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                        self.tcx.map.node_to_string(item.id));
                 let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
                 if trait_ref.def_id.krate != LOCAL_CRATE {
-                    span_err!(self.tcx.sess, item.span, E0318,
+                    span_err!(self.tcx.sess,
+                              item.span,
+                              E0318,
                               "cannot create default implementations for traits outside the \
                                crate they're defined in; define a new trait instead");
                     return;
@@ -360,7 +366,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
+impl<'cx, 'tcx, 'v> intravisit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         self.check_item(item);
     }
