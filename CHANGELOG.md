@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.73 — 2016-06-05
+* Fix false positives in [`useless_let_if_seq`]
+
 ## 0.0.72 — 2016-06-04
 * Fix false positives in [`useless_let_if_seq`]
 

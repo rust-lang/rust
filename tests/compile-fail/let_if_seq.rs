@@ -5,6 +5,27 @@
 #![deny(useless_let_if_seq)]
 
 fn f() -> bool { true }
+fn g(x: i32) -> i32 { x + 1 }
+
+fn issue985() -> i32 {
+    let mut x = 42;
+    if f() {
+        x = g(x);
+    }
+
+    x
+}
+
+fn issue985_alt() -> i32 {
+    let mut x = 42;
+    if f() {
+        f();
+    } else {
+        x = g(x);
+    }
+
+    x
+}
 
 fn issue975() -> String {
     let mut udn = "dummy".to_string();
@@ -30,6 +51,8 @@ fn early_return() -> u8 {
 fn main() {
     early_return();
     issue975();
+    issue985();
+    issue985_alt();
 
     let mut foo = 0;
     //~^ ERROR `if _ { .. } else { .. }` is an expression
