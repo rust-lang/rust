@@ -10,7 +10,7 @@ fn x(y: &i32) -> i32 {
 fn main() {
     let a = 5;
     let b = x(&a);
-    let c = x(&&a); //~ ERROR: needless_borrow
+    let c = x(&&a); //~ ERROR: this expression borrows a reference that is immediately dereferenced by the compiler
     let s = &String::from("hi");
     let s_ident = f(&s); // should not error, because `&String` implements Copy, but `String` does not
     let g_val = g(&Vec::new()); // should not error, because `&Vec<T>` derefs to `&[T]`

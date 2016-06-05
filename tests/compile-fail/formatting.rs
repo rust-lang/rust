@@ -11,24 +11,32 @@ fn foo() -> bool { true }
 fn main() {
     // weird `else if` formatting:
     if foo() {
-    } if foo() { //~ERROR this looks like an `else if` but the `else` is missing
+    } if foo() {
+    //~^ ERROR this looks like an `else if` but the `else` is missing
+    //~| NOTE add the missing `else` or
     }
 
     let _ = {
         if foo() {
-        } if foo() { //~ERROR this looks like an `else if` but the `else` is missing
+        } if foo() {
+        //~^ ERROR this looks like an `else if` but the `else` is missing
+        //~| NOTE add the missing `else` or
         }
         else {
         }
     };
 
     if foo() {
-    } else //~ERROR this is an `else if` but the formatting might hide it
+    } else
+    //~^ ERROR this is an `else if` but the formatting might hide it
+    //~| NOTE remove the `else` or
     if foo() { // the span of the above error should continue here
     }
 
     if foo() {
-    } //~ERROR this is an `else if` but the formatting might hide it
+    }
+    //~^ ERROR this is an `else if` but the formatting might hide it
+    //~| NOTE remove the `else` or
     else
     if foo() { // the span of the above error should continue here
     }

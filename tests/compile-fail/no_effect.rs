@@ -62,7 +62,7 @@ fn main() {
     //~|SUGGESTION get_number();
     Struct { ..get_struct() }; //~ERROR statement can be reduced
     //~^HELP replace it with
-    //~|SUGGESTION get_number();
+    //~|SUGGESTION get_struct();
     Enum::Tuple(get_number()); //~ERROR statement can be reduced
     //~^HELP replace it with
     //~|SUGGESTION get_number();
@@ -74,7 +74,7 @@ fn main() {
     //~|SUGGESTION 5;get_number();
     *&get_number(); //~ERROR statement can be reduced
     //~^HELP replace it with
-    //~|SUGGESTION &get_number();
+    //~|SUGGESTION get_number();
     &get_number(); //~ERROR statement can be reduced
     //~^HELP replace it with
     //~|SUGGESTION get_number();
