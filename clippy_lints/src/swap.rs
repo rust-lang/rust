@@ -85,7 +85,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                 ("".to_owned(), "".to_owned(), "".to_owned())
             };
 
-            let span = mk_sp(tmp.span.lo, second.span.hi);
+            let span = mk_sp(w[0].span.lo, second.span.hi);
 
             span_lint_and_then(cx,
                                MANUAL_SWAP,
