@@ -2239,12 +2239,7 @@ pub struct Impl {
     pub trait_: Option<Type>,
     pub for_: Type,
     pub items: Vec<Item>,
-    pub derived: bool,
     pub polarity: Option<ImplPolarity>,
-}
-
-fn detect_derived<M: AttrMetaMethods>(attrs: &[M]) -> bool {
-    attr::contains_name(attrs, "automatically_derived")
 }
 
 impl Clean<Vec<Item>> for doctree::Impl {
@@ -2283,7 +2278,6 @@ impl Clean<Vec<Item>> for doctree::Impl {
                 trait_: trait_,
                 for_: self.for_.clean(cx),
                 items: items,
-                derived: detect_derived(&self.attrs),
                 polarity: Some(self.polarity.clean(cx)),
             }),
         });
