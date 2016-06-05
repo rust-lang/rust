@@ -15,6 +15,7 @@
 
 use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{AdtDef, Ty};
 use rustc::mir::repr::*;
@@ -266,6 +267,7 @@ enum TestKind<'tcx> {
     // test the branches of enum
     Switch {
         adt_def: AdtDef<'tcx>,
+        variants: BitVector,
     },
 
     // test the branches of enum
@@ -391,9 +393,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn join_otherwise_blocks(&mut self,
                              span: Span,
-                             otherwise: Vec<BasicBlock>)
+                             mut otherwise: Vec<BasicBlock>)
                              -> BasicBlock
     {
+        otherwise.sort();
+        otherwise.dedup(); // variant switches can introduce duplicate target blocks
         let scope_id = self.innermost_scope_id();
         if otherwise.len() == 1 {
             otherwise[0]
@@ -502,6 +506,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                 }
             }
+            TestKind::Switch { adt_def: _, ref mut variants} => {
+                for candidate in candidates.iter() {
+                    if !self.add_variants_to_switch(&match_pair.lvalue,
+                                                    candidate,
+                                                    variants) {
+                        break;
+                    }
+                }
+            }
             _ => { }
         }
 
@@ -525,6 +538,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                                           &mut target_candidates))
                       .count();
         assert!(tested_candidates > 0); // at least the last candidate ought to be tested
+        debug!("tested_candidates: {}", tested_candidates);
+        debug!("untested_candidates: {}", candidates.len() - tested_candidates);
 
         // For each outcome of test, process the candidates that still
         // apply. Collect a list of blocks where control flow will
