@@ -976,11 +976,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         time(time_passes, "MIR passes", || {
             let mut passes = sess.mir_passes.borrow_mut();
             // Push all the built-in passes.
-            passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
+            passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("initial"));
             passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);
             passes.push_pass(box mir::transform::type_check::TypeckMir);
-            passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg);
-            passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
+            passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("qualify-consts"));
             // And run everything.
             passes.run_passes(tcx, &mut mir_map);
         });
@@ -1047,14 +1046,18 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     time(time_passes, "Prepare MIR codegen passes", || {
         let mut passes = ::rustc::mir::transform::Passes::new();
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
-        passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
+        passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("no-landing-pads"));
+
         passes.push_pass(box mir::transform::erase_regions::EraseRegions);
+
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box borrowck::ElaborateDrops);
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
-        passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg);
+        passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("elaborate-drops"));
+
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box mir::transform::dump_mir::DumpMir("pre_trans"));
+
         passes.run_passes(tcx, &mut mir_map);
     });
 
