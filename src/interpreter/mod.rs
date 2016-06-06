@@ -317,6 +317,26 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
             vtable => unreachable!("resolved vtable bad vtable {:?} in trans", vtable),
         }
     }
+
+    fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
+        match self.tcx.map.as_local_node_id(def_id) {
+            Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
+            None => {
+                let mut mir_cache = self.mir_cache.borrow_mut();
+                if let Some(mir) = mir_cache.get(&def_id) {
+                    return CachedMir::Owned(mir.clone());
+                }
+
+                let cs = &self.tcx.sess.cstore;
+                let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
+                    panic!("no mir for {:?}", def_id);
+                });
+                let cached = Rc::new(mir);
+                mir_cache.insert(def_id, cached.clone());
+                CachedMir::Owned(cached)
+            }
+        }
+    }
 }
 
 impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
@@ -1429,30 +1449,6 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     fn mir(&self) -> CachedMir<'mir, 'tcx> {
         self.frame().mir.clone()
-    }
-
-    fn substs(&self) -> &'tcx Substs<'tcx> {
-        self.frame().substs
-    }
-
-    fn load_mir(&self, def_id: DefId) -> CachedMir<'mir, 'tcx> {
-        match self.tcx.map.as_local_node_id(def_id) {
-            Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
-            None => {
-                let mut mir_cache = self.mir_cache.borrow_mut();
-                if let Some(mir) = mir_cache.get(&def_id) {
-                    return CachedMir::Owned(mir.clone());
-                }
-
-                let cs = &self.tcx.sess.cstore;
-                let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
-                    panic!("no mir for {:?}", def_id);
-                });
-                let cached = Rc::new(mir);
-                mir_cache.insert(def_id, cached.clone());
-                CachedMir::Owned(cached)
-            }
-        }
     }
 }
 
