@@ -88,7 +88,7 @@ impl Memory {
             alloc.bytes.extend(iter::repeat(0).take(amount));
             alloc.undef_mask.grow(amount, false);
         } else if size > new_size {
-            return Err(EvalError::Unimplemented(format!("unimplemented allocation relocation")));
+            return Err(EvalError::Unimplemented(format!("unimplemented allocation relocation (from {} to {})", size, new_size)));
             // alloc.bytes.truncate(new_size);
             // alloc.undef_mask.len = new_size;
             // TODO: potentially remove relocations

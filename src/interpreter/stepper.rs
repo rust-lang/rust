@@ -129,7 +129,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             Ok(Event::Terminator)
         } else {
             self.process = Self::constant;
-            return Ok(Event::Constant);
+            Ok(Event::Constant)
         }
     }
 
