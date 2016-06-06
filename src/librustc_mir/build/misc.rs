@@ -56,7 +56,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     // Returns a zero literal operand for the appropriate type, works for
-    // bool, char, integers and floats.
+    // bool, char and integers.
     pub fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = match ty.sty {
             ty::TyBool => {
@@ -93,7 +93,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 Literal::Value { value: ConstVal::Integral(val) }
             }
-            ty::TyFloat(_) => Literal::Value { value: ConstVal::Float(0.0) },
             _ => {
                 span_bug!(span, "Invalid type for zero_literal: `{:?}`", ty)
             }
