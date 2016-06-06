@@ -8,6 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! A pass that removes various redundancies in the CFG. It should be
+//! called after every significant CFG modification to tidy things
+//! up.
+//!
+//! This pass must also be run before any analysis passes because it removes
+//! dead blocks, and some of these can be ill-typed.
+//!
+//! The cause of that is that typeck lets most blocks whose end is not
+//! reachable have an arbitrary return type, rather than having the
+//! usual () return type (as a note, typeck's notion of reachability
+//! is in fact slightly weaker than MIR CFG reachability - see #31617).
+//!
+//! A standard example of the situation is:
+//! ```rust
+//!   fn example() {
+//!       let _a: char = { return; };
+//!   }
+//! ```
+//!
+//! Here the block (`{ return; }`) has the return type `char`,
+//! rather than `()`, but the MIR we naively generate still contains
+//! the `_a = ()` write in the unreachable block "after" the return.
+
+
 use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::TyCtxt;
@@ -17,30 +41,29 @@ use rustc::mir::traversal;
 use pretty;
 use std::mem;
 
-use super::remove_dead_blocks::RemoveDeadBlocks;
+pub struct SimplifyCfg<'a> { label: &'a str }
 
-pub struct SimplifyCfg;
-
-impl SimplifyCfg {
-    pub fn new() -> SimplifyCfg {
-        SimplifyCfg
+impl<'a> SimplifyCfg<'a> {
+    pub fn new(label: &'a str) -> Self {
+        SimplifyCfg { label: label }
     }
 }
 
-impl<'tcx> MirPass<'tcx> for SimplifyCfg {
+impl<'l, 'tcx> MirPass<'tcx> for SimplifyCfg<'l> {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
+        pretty::dump_mir(tcx, "simplify_cfg", &format!("{}-before", self.label), src, mir, None);
         simplify_branches(mir);
-        RemoveDeadBlocks.run_pass(tcx, src, mir);
+        remove_dead_blocks(mir);
         merge_consecutive_blocks(mir);
-        RemoveDeadBlocks.run_pass(tcx, src, mir);
-        pretty::dump_mir(tcx, "simplify_cfg", &0, src, mir, None);
+        remove_dead_blocks(mir);
+        pretty::dump_mir(tcx, "simplify_cfg", &format!("{}-after", self.label), src, mir, None);
 
         // FIXME: Should probably be moved into some kind of pass manager
         mir.basic_blocks.shrink_to_fit();
     }
 }
 
-impl Pass for SimplifyCfg {}
+impl<'l> Pass for SimplifyCfg<'l> {}
 
 fn merge_consecutive_blocks(mir: &mut Mir) {
     // Build the precedecessor map for the MIR
@@ -199,6 +222,34 @@ fn simplify_branches(mir: &mut Mir) {
 
         if !changed {
             break;
+        }
+    }
+}
+
+fn remove_dead_blocks(mir: &mut Mir) {
+    let mut seen = BitVector::new(mir.basic_blocks.len());
+    for (bb, _) in traversal::preorder(mir) {
+        seen.insert(bb.index());
+    }
+
+    let num_blocks = mir.basic_blocks.len();
+
+    let mut replacements: Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
+    let mut used_blocks = 0;
+    for alive_index in seen.iter() {
+        replacements[alive_index] = BasicBlock::new(used_blocks);
+        if alive_index != used_blocks {
+            // Swap the next alive block data with the current available slot. Since alive_index is
+            // non-decreasing this is a valid operation.
+            mir.basic_blocks.swap(alive_index, used_blocks);
+        }
+        used_blocks += 1;
+    }
+    mir.basic_blocks.truncate(used_blocks);
+
+    for bb in mir.all_basic_blocks() {
+        for target in mir.basic_block_data_mut(bb).terminator_mut().successors_mut() {
+            *target = replacements[target.index()];
         }
     }
 }
