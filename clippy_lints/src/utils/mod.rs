@@ -30,16 +30,13 @@ pub type MethodArgs = HirVec<P<Expr>>;
 
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///
-///     if_let_chain! {
-///         [
-///             let Some(y) = x,
-///             y.len() == 2,
-///             let Some(z) = y,
-///         ],
-///         {
-///             block
-///         }
-///     }
+///     if_let_chain! {[
+///         let Some(y) = x,
+///         y.len() == 2,
+///         let Some(z) = y,
+///     ], {
+///         block
+///     }}
 ///
 /// becomes
 ///
@@ -323,14 +320,13 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
 
 /// Checks if a `let` decl is from a `for` loop desugaring.
 pub fn is_from_for_desugar(decl: &Decl) -> bool {
-    if_let_chain! {
-        [
-            let DeclLocal(ref loc) = decl.node,
-            let Some(ref expr) = loc.init,
-            let ExprMatch(_, _, MatchSource::ForLoopDesugar) = expr.node
-        ],
-        { return true; }
-    };
+    if_let_chain! {[
+        let DeclLocal(ref loc) = decl.node,
+        let Some(ref expr) = loc.init,
+        let ExprMatch(_, _, MatchSource::ForLoopDesugar) = expr.node
+    ], {
+        return true;
+    }}
     false
 }
 
@@ -821,23 +817,21 @@ pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty
 /// Recover the essential nodes of a desugared for loop:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`.
 pub fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
-    if_let_chain! {
-        [
-            let ExprMatch(ref iterexpr, ref arms, _) = expr.node,
-            let ExprCall(_, ref iterargs) = iterexpr.node,
-            iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none(),
-            let ExprLoop(ref block, _) = arms[0].body.node,
-            block.stmts.is_empty(),
-            let Some(ref loopexpr) = block.expr,
-            let ExprMatch(_, ref innerarms, MatchSource::ForLoopDesugar) = loopexpr.node,
-            innerarms.len() == 2 && innerarms[0].pats.len() == 1,
-            let PatKind::TupleStruct(_, ref somepats, _) = innerarms[0].pats[0].node,
-            somepats.len() == 1
-        ], {
-            return Some((&somepats[0],
-                         &iterargs[0],
-                         &innerarms[0].body));
-        }
-    }
+    if_let_chain! {[
+        let ExprMatch(ref iterexpr, ref arms, _) = expr.node,
+        let ExprCall(_, ref iterargs) = iterexpr.node,
+        iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none(),
+        let ExprLoop(ref block, _) = arms[0].body.node,
+        block.stmts.is_empty(),
+        let Some(ref loopexpr) = block.expr,
+        let ExprMatch(_, ref innerarms, MatchSource::ForLoopDesugar) = loopexpr.node,
+        innerarms.len() == 2 && innerarms[0].pats.len() == 1,
+        let PatKind::TupleStruct(_, ref somepats, _) = innerarms[0].pats[0].node,
+        somepats.len() == 1
+    ], {
+        return Some((&somepats[0],
+                     &iterargs[0],
+                     &innerarms[0].body));
+    }}
     None
 }

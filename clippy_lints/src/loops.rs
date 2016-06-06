@@ -667,30 +667,28 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
         if let ExprPath(None, ref path) = expr.node {
             if path.segments.len() == 1 && path.segments[0].name == self.var {
                 // we are referencing our variable! now check if it's as an index
-                if_let_chain! {
-                    [
-                        let Some(parexpr) = get_parent_expr(self.cx, expr),
-                        let ExprIndex(ref seqexpr, _) = parexpr.node,
-                        let ExprPath(None, ref seqvar) = seqexpr.node,
-                        seqvar.segments.len() == 1
-                    ], {
-                        let def_map = self.cx.tcx.def_map.borrow();
-                        if let Some(def) = def_map.get(&seqexpr.id) {
-                            match def.base_def {
-                                Def::Local(..) | Def::Upvar(..) => {
-                                    let extent = self.cx.tcx.region_maps.var_scope(def.base_def.var_id());
-                                    self.indexed.insert(seqvar.segments[0].name, Some(extent));
-                                    return;  // no need to walk further
-                                }
-                                Def::Static(..) | Def::Const(..) => {
-                                    self.indexed.insert(seqvar.segments[0].name, None);
-                                    return;  // no need to walk further
-                                }
-                                _ => (),
+                if_let_chain! {[
+                    let Some(parexpr) = get_parent_expr(self.cx, expr),
+                    let ExprIndex(ref seqexpr, _) = parexpr.node,
+                    let ExprPath(None, ref seqvar) = seqexpr.node,
+                    seqvar.segments.len() == 1
+                ], {
+                    let def_map = self.cx.tcx.def_map.borrow();
+                    if let Some(def) = def_map.get(&seqexpr.id) {
+                        match def.base_def {
+                            Def::Local(..) | Def::Upvar(..) => {
+                                let extent = self.cx.tcx.region_maps.var_scope(def.base_def.var_id());
+                                self.indexed.insert(seqvar.segments[0].name, Some(extent));
+                                return;  // no need to walk further
                             }
+                            Def::Static(..) | Def::Const(..) => {
+                                self.indexed.insert(seqvar.segments[0].name, None);
+                                return;  // no need to walk further
+                            }
+                            _ => (),
                         }
                     }
-                }
+                }}
                 // we are not indexing anything, record that
                 self.nonindex = true;
                 return;

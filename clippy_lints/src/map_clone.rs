@@ -27,8 +27,7 @@ impl LateLintPass for MapClonePass {
             if name.node.as_str() == "map" && args.len() == 2 {
                 match args[1].node {
                     ExprClosure(_, ref decl, ref blk, _) => {
-                        if_let_chain! {
-                            [
+                        if_let_chain! {[
                             // just one expression in the closure
                             blk.stmts.is_empty(),
                             let Some(ref closure_expr) = blk.expr,
@@ -37,32 +36,31 @@ impl LateLintPass for MapClonePass {
                             let Some(arg_ident) = get_arg_name(&*decl.inputs[0].pat),
                             // the method is being called on a known type (option or iterator)
                             let Some(type_name) = get_type_name(cx, expr, &args[0])
-                            ], {
-                                // look for derefs, for .map(|x| *x)
-                                if only_derefs(cx, &*closure_expr, arg_ident) &&
-                                    // .cloned() only removes one level of indirection, don't lint on more
-                                    walk_ptrs_ty_depth(cx.tcx.pat_ty(&*decl.inputs[0].pat)).1 == 1
+                        ], {
+                            // look for derefs, for .map(|x| *x)
+                            if only_derefs(cx, &*closure_expr, arg_ident) &&
+                                // .cloned() only removes one level of indirection, don't lint on more
+                                walk_ptrs_ty_depth(cx.tcx.pat_ty(&*decl.inputs[0].pat)).1 == 1
+                            {
+                                span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
+                                    "you seem to be using .map() to clone the contents of an {}, consider \
+                                    using `.cloned()`", type_name),
+                                    &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
+                            }
+                            // explicit clone() calls ( .map(|x| x.clone()) )
+                            else if let ExprMethodCall(clone_call, _, ref clone_args) = closure_expr.node {
+                                if clone_call.node.as_str() == "clone" &&
+                                    clone_args.len() == 1 &&
+                                    match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
+                                    expr_eq_name(&clone_args[0], arg_ident)
                                 {
                                     span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
                                         "you seem to be using .map() to clone the contents of an {}, consider \
                                         using `.cloned()`", type_name),
                                         &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
                                 }
-                                // explicit clone() calls ( .map(|x| x.clone()) )
-                                else if let ExprMethodCall(clone_call, _, ref clone_args) = closure_expr.node {
-                                    if clone_call.node.as_str() == "clone" &&
-                                        clone_args.len() == 1 &&
-                                        match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
-                                        expr_eq_name(&clone_args[0], arg_ident)
-                                    {
-                                        span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
-                                            "you seem to be using .map() to clone the contents of an {}, consider \
-                                            using `.cloned()`", type_name),
-                                            &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
-                                    }
-                                }
                             }
-                        }
+                        }}
                     }
                     ExprPath(_, ref path) => {
                         if match_path(path, &paths::CLONE) {

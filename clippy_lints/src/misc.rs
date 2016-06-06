@@ -55,33 +55,31 @@ impl LateLintPass for TopLevelRefPass {
         }
     }
     fn check_stmt(&mut self, cx: &LateContext, s: &Stmt) {
-        if_let_chain! {
-            [
+        if_let_chain! {[
             let StmtDecl(ref d, _) = s.node,
             let DeclLocal(ref l) = d.node,
             let PatKind::Binding(BindByRef(_), i, None) = l.pat.node,
             let Some(ref init) = l.init
-            ], {
-                let tyopt = if let Some(ref ty) = l.ty {
-                    format!(": {}", snippet(cx, ty.span, "_"))
-                } else {
-                    "".to_owned()
-                };
-                span_lint_and_then(cx,
-                    TOPLEVEL_REF_ARG,
-                    l.pat.span,
-                    "`ref` on an entire `let` pattern is discouraged, take a reference with & instead",
-                    |db| {
-                        db.span_suggestion(s.span,
-                                           "try",
-                                           format!("let {}{} = &{};",
-                                                   snippet(cx, i.span, "_"),
-                                                   tyopt,
-                                                   snippet(cx, init.span, "_")));
-                    }
-                );
-            }
-        };
+        ], {
+            let tyopt = if let Some(ref ty) = l.ty {
+                format!(": {}", snippet(cx, ty.span, "_"))
+            } else {
+                "".to_owned()
+            };
+            span_lint_and_then(cx,
+                TOPLEVEL_REF_ARG,
+                l.pat.span,
+                "`ref` on an entire `let` pattern is discouraged, take a reference with & instead",
+                |db| {
+                    db.span_suggestion(s.span,
+                                       "try",
+                                       format!("let {}{} = &{};",
+                                               snippet(cx, i.span, "_"),
+                                               tyopt,
+                                               snippet(cx, init.span, "_")));
+                }
+            );
+        }}
     }
 }
 

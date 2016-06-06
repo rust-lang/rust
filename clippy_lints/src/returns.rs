@@ -89,19 +89,17 @@ impl ReturnPass {
     // Check for "let x = EXPR; x"
     fn check_let_return(&mut self, cx: &EarlyContext, block: &Block) {
         // we need both a let-binding stmt and an expr
-        if_let_chain! {
-            [
-                let Some(stmt) = block.stmts.last(),
-                let Some(ref retexpr) = block.expr,
-                let StmtKind::Decl(ref decl, _) = stmt.node,
-                let DeclKind::Local(ref local) = decl.node,
-                local.ty.is_none(),
-                let Some(ref initexpr) = local.init,
-                let PatKind::Ident(_, Spanned { node: id, .. }, _) = local.pat.node,
-                let ExprKind::Path(_, ref path) = retexpr.node,
-                match_path_ast(path, &[&id.name.as_str()]),
-                !in_external_macro(cx, initexpr.span),
-            ], {
+        if_let_chain! {[
+            let Some(stmt) = block.stmts.last(),
+            let Some(ref retexpr) = block.expr,
+            let StmtKind::Decl(ref decl, _) = stmt.node,
+            let DeclKind::Local(ref local) = decl.node,
+            let Some(ref initexpr) = local.init,
+            let PatKind::Ident(_, Spanned { node: id, .. }, _) = local.pat.node,
+            let ExprKind::Path(_, ref path) = retexpr.node,
+            match_path_ast(path, &[&id.name.as_str()]),
+            !in_external_macro(cx, initexpr.span),
+        ], {
                 span_note_and_lint(cx,
                                    LET_AND_RETURN,
                                    retexpr.span,
@@ -109,8 +107,7 @@ impl ReturnPass {
                                    Consider returning the expression directly.",
                                    initexpr.span,
                                    "this expression can be directly returned");
-            }
-        }
+        }}
     }
 }
 

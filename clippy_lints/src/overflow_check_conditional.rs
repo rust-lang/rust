@@ -26,14 +26,14 @@ impl LateLintPass for OverflowCheckConditional {
     // a + b < a, a > a + b, a < a - b, a - b > a
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_let_chain! {[
-        let Expr_::ExprBinary(ref op, ref first, ref second) = expr.node,
-        let Expr_::ExprBinary(ref op2, ref ident1, ref ident2) = first.node,
-        let Expr_::ExprPath(_,ref path1) = ident1.node,
-        let Expr_::ExprPath(_, ref path2) = ident2.node,
-        let Expr_::ExprPath(_, ref path3) = second.node,
-        &path1.segments[0] == &path3.segments[0] || &path2.segments[0] == &path3.segments[0],
-        cx.tcx.expr_ty(ident1).is_integral(),
-        cx.tcx.expr_ty(ident2).is_integral()
+            let Expr_::ExprBinary(ref op, ref first, ref second) = expr.node,
+            let Expr_::ExprBinary(ref op2, ref ident1, ref ident2) = first.node,
+            let Expr_::ExprPath(_,ref path1) = ident1.node,
+            let Expr_::ExprPath(_, ref path2) = ident2.node,
+            let Expr_::ExprPath(_, ref path3) = second.node,
+            &path1.segments[0] == &path3.segments[0] || &path2.segments[0] == &path3.segments[0],
+            cx.tcx.expr_ty(ident1).is_integral(),
+            cx.tcx.expr_ty(ident2).is_integral()
         ], {
             if let BinOp_::BiLt = op.node {
                 if let BinOp_::BiAdd = op2.node {
@@ -48,14 +48,14 @@ impl LateLintPass for OverflowCheckConditional {
         }}
 
         if_let_chain! {[
-        let Expr_::ExprBinary(ref op, ref first, ref second) = expr.node,
-        let Expr_::ExprBinary(ref op2, ref ident1, ref ident2) = second.node,
-        let Expr_::ExprPath(_,ref path1) = ident1.node,
-        let Expr_::ExprPath(_, ref path2) = ident2.node,
-        let Expr_::ExprPath(_, ref path3) = first.node,
-        &path1.segments[0] == &path3.segments[0] || &path2.segments[0] == &path3.segments[0],
-        cx.tcx.expr_ty(ident1).is_integral(),
-        cx.tcx.expr_ty(ident2).is_integral()
+            let Expr_::ExprBinary(ref op, ref first, ref second) = expr.node,
+            let Expr_::ExprBinary(ref op2, ref ident1, ref ident2) = second.node,
+            let Expr_::ExprPath(_,ref path1) = ident1.node,
+            let Expr_::ExprPath(_, ref path2) = ident2.node,
+            let Expr_::ExprPath(_, ref path3) = first.node,
+            &path1.segments[0] == &path3.segments[0] || &path2.segments[0] == &path3.segments[0],
+            cx.tcx.expr_ty(ident1).is_integral(),
+            cx.tcx.expr_ty(ident2).is_integral()
         ], {
             if let BinOp_::BiGt = op.node {
                 if let BinOp_::BiAdd = op2.node {
