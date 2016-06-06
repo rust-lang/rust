@@ -62,11 +62,11 @@ This exact idea has been adopted by the Ember community after their somewhat bum
 
 [@davidgoli]: https://github.com/emberjs/rfcs/pull/56#issuecomment-114635962
 
-The Ember core team agreed, and embraced the principle outlined in [this comment][guarav0]:
+The Ember core team agreed, and embraced the principle outlined in [this comment][@guarav0]:
 
 > No version shall be released until guides and versioned API documentation is ready. This will allow newcomers the ability to understand the latest release. ([@guarav0])
 
-[guarav0]: https://github.com/emberjs/rfcs/pull/56#issuecomment-114339423
+[@guarav0]: https://github.com/emberjs/rfcs/pull/56#issuecomment-114339423
 
 One of the main reasons not to adopt this approach, that it might block features from landing as soon as they otherwise might, was [addressed][@eccegordo] in that discussion as well:
 
