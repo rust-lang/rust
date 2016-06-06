@@ -32,11 +32,13 @@
 
 extern crate serialize as rustc_serialize; // used by deriving
 
+mod float;
 mod int;
 mod us;
 mod is;
 mod err;
 
+pub use float::*;
 pub use int::*;
 pub use us::*;
 pub use is::*;
