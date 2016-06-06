@@ -133,12 +133,13 @@ probe() {
 }
 
 probe_need() {
-    local V=$1
     probe $*
+    local V=$1
+    shift
     eval VV=\$$V
     if [ -z "$VV" ]
     then
-        err "needed, but unable to find any of: $*"
+        err "$V needed, but unable to find any of: $*"
     fi
 }
 
@@ -725,7 +726,7 @@ if [ -n "$CFG_ENABLE_ORBIT" ]; then putvar CFG_ENABLE_ORBIT; fi
 
 step_msg "looking for build programs"
 
-probe_need CFG_CURLORWGET  curl wget
+probe_need CFG_CURL curl
 if [ -z "$CFG_PYTHON_PROVIDED" ]; then
     probe_need CFG_PYTHON      python2.7 python2 python
 fi
