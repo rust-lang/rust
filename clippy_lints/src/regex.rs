@@ -104,13 +104,11 @@ impl LateLintPass for RegexPass {
             let Some(def) = cx.tcx.def_map.borrow().get(&fun.id),
         ], {
             let def_id = def.def_id();
-            if match_def_path(cx, def_id, &paths::REGEX_NEW) {
+            if match_def_path(cx, def_id, &paths::REGEX_NEW) ||
+               match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
                 check_regex(cx, &args[0], true);
-            } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_NEW) {
-                check_regex(cx, &args[0], false);
-            } else if match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
-                check_regex(cx, &args[0], true);
-            } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
+            } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_NEW) ||
+               match_def_path(cx, def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
                 check_regex(cx, &args[0], false);
             } else if match_def_path(cx, def_id, &paths::REGEX_SET_NEW) {
                 check_set(cx, &args[0], true);
