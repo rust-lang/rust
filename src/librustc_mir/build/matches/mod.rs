@@ -432,17 +432,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// apply to. The classical example involves wildcards:
     ///
     /// ```rust,ignore
-    /// match (x, y) {
-    ///     (true, _) => true,      // (0)
-    ///     (_, true) => true,      // (1)
-    ///     (false, false) => false // (2)
+    /// match (x, y, z) {
+    ///     (true, _, true) => true,    // (0)
+    ///     (_, true, _) => true,       // (1)
+    ///     (false, false, _) => false, // (2)
+    ///     (true, _, false) => false,  // (3)
     /// }
     /// ```
     ///
     /// In that case, after we test on `x`, there are 2 overlapping candidate
     /// sets:
     ///
-    /// - If the outcome is that `x` is true, candidates 0 and 2
+    /// - If the outcome is that `x` is true, candidates 0, 1, and 3
     /// - If the outcome is that `x` is false, candidates 1 and 2
     ///
     /// Here, the traditional "decision tree" method would generate 2
@@ -481,11 +482,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// ```
     ///
     /// Here we first test the match-pair `x @ "foo"`, which is an `Eq` test.
-    /// It might seem that we would end up with 2 disjoint candidate sets,
-    /// consisting of the first candidate or the other 3, but our algorithm
-    /// doesn't reason about "foo" being distinct from the other constants,
-    /// it considers to latter arms to potentially match after both outcomes,
-    /// which obviously leads to an exponential amount of tests.
+    ///
+    /// It might seem that we would end up with 2 disjoint candidate
+    /// sets, consisting of the first candidate or the other 3, but our
+    /// algorithm doesn't reason about "foo" being distinct from the other
+    /// constants; it considers the latter arms to potentially match after
+    /// both outcomes, which obviously leads to an exponential amount
+    /// of tests.
+    ///
     /// To avoid these kinds of problems, our algorithm tries to ensure
     /// the amount of generated tests is linear. When we do a k-way test,
     /// we return an additional "unmatched" set alongside the obvious `k`

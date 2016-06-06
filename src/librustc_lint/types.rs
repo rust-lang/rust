@@ -16,6 +16,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use middle::const_val::ConstVal;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
+use util::common::slice_pat;
 use util::nodemap::{FnvHashSet};
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -459,8 +460,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 // Check for a repr() attribute to specify the size of the
                 // discriminant.
                 let repr_hints = cx.lookup_repr_hints(def.did);
-                match &**repr_hints {
-                    [] => {
+                match slice_pat(&&**repr_hints) {
+                    &[] => {
                         // Special-case types like `Option<extern fn()>`.
                         if !is_repr_nullable_ptr(cx, def, substs) {
                             return FfiUnsafe(
@@ -470,7 +471,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                  the type")
                         }
                     }
-                    [ref hint] => {
+                    &[ref hint] => {
                         if !hint.is_ffi_safe() {
                             // FIXME: This shouldn't be reachable: we should check
                             // this earlier.
