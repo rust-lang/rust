@@ -1055,9 +1055,10 @@ pub fn rewrite_associated_type(ident: ast::Ident,
 
     let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
         let bounds: &[_] = &ty_param_bounds;
-        let bound_str = bounds.iter()
-            .filter_map(|ty_bound| ty_bound.rewrite(context, context.config.max_width, indent))
-            .join(" + ");
+        let bound_str = try_opt!(bounds.iter()
+            .map(|ty_bound| ty_bound.rewrite(context, context.config.max_width, indent))
+            .intersperse(Some(" + ".to_string()))
+            .collect::<Option<String>>());
         if bounds.len() > 0 {
             format!(": {}", bound_str)
         } else {
@@ -1700,9 +1701,10 @@ fn rewrite_trait_bounds(context: &RewriteContext,
         return Some(String::new());
     }
 
-    let bound_str = bounds.iter()
-        .filter_map(|ty_bound| ty_bound.rewrite(&context, width, indent))
-        .join(" + ");
+    let bound_str = try_opt!(bounds.iter()
+        .map(|ty_bound| ty_bound.rewrite(&context, width, indent))
+        .intersperse(Some(" + ".to_string()))
+        .collect::<Option<String>>());
 
     let mut result = String::new();
     result.push_str(": ");
