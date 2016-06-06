@@ -19,7 +19,7 @@ use syntax::parse::token::keywords;
 pub fn expand_trace_macros(cx: &mut ExtCtxt,
                            sp: Span,
                            tt: &[TokenTree])
-                           -> Box<base::MacResult+'static> {
+                           -> Box<base::MacResult + 'static> {
     if !cx.ecfg.enable_trace_macros() {
         feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
                                        "trace_macros",
