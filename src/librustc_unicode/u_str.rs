@@ -144,7 +144,9 @@ impl<I> Utf16Encoder<I> {
     }
 }
 
-impl<I> Iterator for Utf16Encoder<I> where I: Iterator<Item=char> {
+impl<I> Iterator for Utf16Encoder<I>
+    where I: Iterator<Item = char>
+{
     type Item = u16;
 
     #[inline]
