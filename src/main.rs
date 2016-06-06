@@ -185,7 +185,6 @@ fn process<P, I>(old_args: I, dep_path: P, sysroot: &str) -> Result<(), i32>
     if exit_status.success() {
         Ok(())
     } else {
-        use std::os::unix::process::ExitStatusExt;
-        Err(exit_status.code().or(exit_status.signal()).unwrap_or(-1))
+        Err(exit_status.code().unwrap_or(-1))
     }
 }
