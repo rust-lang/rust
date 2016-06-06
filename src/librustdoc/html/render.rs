@@ -1818,7 +1818,10 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         }
     }
 
-    write!(w, "</table>")
+    if curty.is_some() {
+        write!(w, "</table>")?;
+    }
+    Ok(())
 }
 
 fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<String> {
