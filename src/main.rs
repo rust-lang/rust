@@ -128,9 +128,13 @@ pub fn main() {
             let args = std::env::args().skip(2);
             if let Some(first) = target.kind.get(0) {
                 if target.kind.len() > 1 || first.ends_with("lib") {
-                    process(std::iter::once("--lib".to_owned()).chain(args), &dep_path, &sys_root);
+                    if let Err(code) = process(std::iter::once("--lib".to_owned()).chain(args), &dep_path, &sys_root) {
+                        std::process::exit(code);
+                    }
                 } else if first == "bin" {
-                    process(vec!["--bin".to_owned(), target.name].into_iter().chain(args), &dep_path, &sys_root);
+                    if let Err(code) = process(vec!["--bin".to_owned(), target.name].into_iter().chain(args), &dep_path, &sys_root) {
+                        std::process::exit(code);
+                    }
                 }
             } else {
                 panic!("badly formatted cargo metadata: target::kind is an empty array");
@@ -152,7 +156,7 @@ pub fn main() {
     }
 }
 
-fn process<P, I>(old_args: I, dep_path: P, sysroot: &str)
+fn process<P, I>(old_args: I, dep_path: P, sysroot: &str) -> Result<(), i32>
     where P: AsRef<Path>, I: Iterator<Item=String> {
 
     let mut args = vec!["rustc".to_owned()];
@@ -178,7 +182,9 @@ fn process<P, I>(old_args: I, dep_path: P, sysroot: &str)
         .spawn().expect("could not run cargo")
         .wait().expect("failed to wait for cargo?");
 
-    if let Some(code) = exit_status.code() {
-        std::process::exit(code);
+    if exit_status.success() {
+        Ok(())
+    } else {
+        Err(exit_status.code().unwrap_or(-1))
     }
 }

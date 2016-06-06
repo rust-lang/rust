@@ -32,7 +32,7 @@ pub struct Dependency {
     optional: bool,
     uses_default_features: bool,
     features: Vec<String>,
-    target: Option<()>,
+    target: Option<String>,
 }
 
 #[derive(RustcDecodable, Debug)]
