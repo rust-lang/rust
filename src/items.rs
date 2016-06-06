@@ -21,6 +21,7 @@ use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, FnArgLayoutStyle};
+use itertools::Itertools;
 
 use syntax::{ast, abi, ptr, codemap};
 use syntax::codemap::{Span, BytePos, mk_sp};
@@ -1056,7 +1057,6 @@ pub fn rewrite_associated_type(ident: ast::Ident,
         let bounds: &[_] = &ty_param_bounds;
         let bound_str = bounds.iter()
             .filter_map(|ty_bound| ty_bound.rewrite(context, context.config.max_width, indent))
-            .collect::<Vec<String>>()
             .join(" + ");
         if bounds.len() > 0 {
             format!(": {}", bound_str)
@@ -1702,7 +1702,6 @@ fn rewrite_trait_bounds(context: &RewriteContext,
 
     let bound_str = bounds.iter()
         .filter_map(|ty_bound| ty_bound.rewrite(&context, width, indent))
-        .collect::<Vec<String>>()
         .join(" + ");
 
     let mut result = String::new();

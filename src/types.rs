@@ -23,6 +23,7 @@ use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, format_mutability, wrap_str};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 use config::TypeDensity;
+use itertools::Itertools;
 
 // Does not wrap on simple segments.
 pub fn rewrite_path(context: &RewriteContext,
@@ -331,8 +332,9 @@ impl Rewrite for ast::WherePredicate {
                                                                               width,
                                                                               offset)
                                                                })
-                                                               .collect::<Option<Vec<_>>>())
-                                           .join(", ");
+                                                               .intersperse(Some(", ".to_string()))
+                                                               .collect::<Option<String>>());
+
                     // 8 = "for<> : ".len()
                     let used_width = lifetime_str.len() + type_str.len() + 8;
                     let budget = try_opt!(width.checked_sub(used_width));
@@ -342,8 +344,8 @@ impl Rewrite for ast::WherePredicate {
                                                                          budget,
                                                                          offset + used_width)
                                                     })
-                                                    .collect::<Option<Vec<_>>>())
-                                         .join(" + ");
+                                                    .intersperse(Some(" + ".to_string()))
+                                                    .collect::<Option<String>>());
 
                     format!("for<{}> {}: {}", lifetime_str, type_str, bounds_str)
                 } else {
@@ -356,8 +358,8 @@ impl Rewrite for ast::WherePredicate {
                                                                          budget,
                                                                          offset + used_width)
                                                     })
-                                                    .collect::<Option<Vec<_>>>())
-                                         .join(" + ");
+                                                    .intersperse(Some(" + ".to_string()))
+                                                    .collect::<Option<String>>());
 
                     format!("{}: {}", type_str, bounds_str)
                 }
@@ -450,10 +452,10 @@ impl Rewrite for ast::TyParam {
             result.push_str(": ");
 
             let bounds = try_opt!(self.bounds
-                    .iter()
-                    .map(|ty_bound| ty_bound.rewrite(context, width, offset))
-                    .collect::<Option<Vec<_>>>())
-                .join(" + ");
+                .iter()
+                .map(|ty_bound| ty_bound.rewrite(context, width, offset))
+                .intersperse(Some(" + ".to_string()))
+                .collect::<Option<String>>());
 
             result.push_str(&bounds);
         }
@@ -477,10 +479,11 @@ impl Rewrite for ast::PolyTraitRef {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         if !self.bound_lifetimes.is_empty() {
             let lifetime_str = try_opt!(self.bound_lifetimes
-                    .iter()
-                    .map(|lt| lt.rewrite(context, width, offset))
-                    .collect::<Option<Vec<_>>>())
-                .join(", ");
+                .iter()
+                .map(|lt| lt.rewrite(context, width, offset))
+                .intersperse(Some(", ".to_string()))
+                .collect::<Option<String>>());
+
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
             let max_path_width = try_opt!(width.checked_sub(extra_offset));
@@ -604,10 +607,10 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
         // This doesn't work out so nicely for mutliline situation with lots of
         // rightward drift. If that is a problem, we could use the list stuff.
         result.push_str(&try_opt!(bare_fn.lifetimes
-                .iter()
-                .map(|l| l.rewrite(context, try_opt!(width.checked_sub(6)), offset + 4))
-                .collect::<Option<Vec<_>>>())
-            .join(", "));
+            .iter()
+            .map(|l| l.rewrite(context, try_opt!(width.checked_sub(6)), offset + 4))
+            .intersperse(Some(", ".to_string()))
+            .collect::<Option<String>>()));
         result.push_str("> ");
     }
 
