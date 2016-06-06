@@ -20,6 +20,7 @@ use std::iter::repeat;
 
 use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::util::common::slice_pat;
 use syntax::abi::Abi;
 use rustc::hir;
 
@@ -474,9 +475,9 @@ impl fmt::Display for clean::Type {
                        decl.decl)
             }
             clean::Tuple(ref typs) => {
-                match &**typs {
-                    [] => primitive_link(f, clean::PrimitiveTuple, "()"),
-                    [ref one] => {
+                match slice_pat(&&**typs) {
+                    &[] => primitive_link(f, clean::PrimitiveTuple, "()"),
+                    &[ref one] => {
                         primitive_link(f, clean::PrimitiveTuple, "(")?;
                         write!(f, "{},", one)?;
                         primitive_link(f, clean::PrimitiveTuple, ")")
