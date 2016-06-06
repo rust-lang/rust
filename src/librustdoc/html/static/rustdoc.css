@@ -409,8 +409,8 @@ a {
 
 .content span.enum, .content a.enum, .block a.current.enum { color: #5e9766; }
 .content span.struct, .content a.struct, .block a.current.struct { color: #df3600; }
-.content a.type { color: #e57300; }
-.content a.macro { color: #068000; }
+.content span.type, .content a.type, .block a.current.type { color: #e57300; }
+.content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
 .block a.current.crate { font-weight: 500; }
 
 .search-input {
@@ -453,7 +453,7 @@ a {
 .content .search-results td:first-child { padding-right: 0; }
 .content .search-results td:first-child a { padding-right: 10px; }
 
-tr.result span.primitive::after { content: ' (primitive type)'; font-style: italic; }
+tr.result span.primitive::after { content: ' (primitive type)'; font-style: italic; color: black}
 
 body.blur > :not(#help) {
     filter: blur(8px);

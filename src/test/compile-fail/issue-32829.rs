@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
+// error-pattern: calls in statics are limited
+
+static S : u64 = { { panic!("foo"); 0 } };
 
 fn main() {
-    // Remove this whenever snapshots and rustbuild nightlies are synced.
-    println!("cargo:rustc-cfg=cargobuild");
-    println!("cargo:rerun-if-changed=build.rs")
+    println!("{:?}", S);
 }

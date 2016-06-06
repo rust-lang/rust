@@ -1029,6 +1029,30 @@ struct Bar2; // ok!
 ```
 "##,
 
+E0429: r##"
+The `self` keyword cannot appear alone as the last segment in a `use`
+declaration.
+
+Example of erroneous code:
+
+```compile_fail
+use std::fmt::self; // error: `self` imports are only allowed within a { } list
+```
+
+To use a namespace itself in addition to some of its members, `self` may appear
+as part of a brace-enclosed list of imports:
+
+```
+use std::fmt::{self, Debug};
+```
+
+If you only want to import the namespace, do so directly:
+
+```
+use std::fmt;
+```
+"##,
+
 E0430: r##"
 The `self` import appears more than once in the list. Erroneous code example:
 
@@ -1235,5 +1259,4 @@ register_diagnostics! {
     E0420, // is not an associated const
     E0421, // unresolved associated const
     E0427, // cannot use `ref` binding mode with ...
-    E0429, // `self` imports are only allowed within a { } list
 }
