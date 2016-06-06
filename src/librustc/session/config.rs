@@ -112,7 +112,6 @@ pub struct Options {
     // with additional crate configurations during the compile process
     pub crate_types: Vec<CrateType>,
 
-    pub gc: bool,
     pub optimize: OptLevel,
     pub debug_assertions: bool,
     pub debuginfo: DebugInfoLevel,
@@ -242,7 +241,6 @@ pub fn host_triple() -> &'static str {
 pub fn basic_options() -> Options {
     Options {
         crate_types: Vec::new(),
-        gc: false,
         optimize: OptLevel::No,
         debuginfo: NoDebugInfo,
         lint_opts: Vec::new(),
@@ -632,14 +630,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "omit landing pads for unwinding"),
     debug_llvm: bool = (false, parse_bool,
         "enable debug output from LLVM"),
-    count_type_sizes: bool = (false, parse_bool,
-        "count the sizes of aggregate types"),
     meta_stats: bool = (false, parse_bool,
         "gather metadata statistics"),
     print_link_args: bool = (false, parse_bool,
         "print the arguments passed to the linker"),
-    gc: bool = (false, parse_bool,
-        "garbage collect shared data (experimental)"),
     print_llvm_passes: bool = (false, parse_bool,
         "prints the llvm optimization passes being run"),
     ast_json: bool = (false, parse_bool,
@@ -1189,7 +1183,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
     };
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
-    let gc = debugging_opts.gc;
     let debuginfo = if matches.opt_present("g") {
         if cg.debuginfo.is_some() {
             early_error(error_format, "-g and -C debuginfo both provided");
@@ -1272,7 +1265,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     Options {
         crate_types: crate_types,
-        gc: gc,
         optimize: opt_level,
         debuginfo: debuginfo,
         lint_opts: lint_opts,
