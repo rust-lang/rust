@@ -1,17 +1,16 @@
 // error-pattern:cargo-clippy
 
-#![feature(type_macros)]
-#![feature(plugin_registrar, box_syntax)]
-#![feature(rustc_private, collections)]
-#![feature(iter_arith)]
+#![feature(box_syntax)]
+#![feature(collections)]
 #![feature(custom_attribute)]
-#![feature(slice_patterns)]
+#![feature(iter_arith)]
 #![feature(question_mark)]
+#![feature(rustc_private)]
+#![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
-#![allow(indexing_slicing, shadow_reuse, unknown_lints)]
+#![feature(type_macros)]
 
-extern crate rustc_driver;
-extern crate getopts;
+#![allow(indexing_slicing, shadow_reuse, unknown_lints)]
 
 #[macro_use]
 extern crate syntax;

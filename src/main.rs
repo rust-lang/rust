@@ -1,7 +1,6 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-#![feature(slice_patterns)]
 
 extern crate rustc_driver;
 extern crate getopts;
@@ -9,7 +8,6 @@ extern crate rustc;
 extern crate syntax;
 extern crate rustc_plugin;
 extern crate clippy_lints;
-extern crate rustc_serialize;
 
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 use rustc::session::{config, Session};
