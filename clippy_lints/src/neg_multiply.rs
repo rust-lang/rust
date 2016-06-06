@@ -49,7 +49,7 @@ fn check_mul(cx: &LateContext, span: Span, lit: &Expr, exp: &Expr) {
         val == 1,
         cx.tcx.expr_ty(exp).is_integral()
     ], {
-        span_lint(cx, 
+        span_lint(cx,
                   NEG_MULTIPLY,
                   span,
                   "Negation by multiplying with -1");
