@@ -31,7 +31,7 @@
 
 extern crate libc;
 
-use libc::{c_void, size_t, c_int};
+use libc::{c_int, c_void, size_t};
 use std::fmt;
 use std::ops::Deref;
 use std::ptr::Unique;
@@ -76,9 +76,9 @@ impl Drop for Bytes {
 
 #[link(name = "miniz", kind = "static")]
 #[cfg(not(cargobuild))]
-extern {}
+extern "C" {}
 
-extern {
+extern "C" {
     /// Raw miniz compression function.
     fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
                                   src_buf_len: size_t,
@@ -154,8 +154,8 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> Result<Bytes, Error> {
 #[cfg(test)]
 mod tests {
     #![allow(deprecated)]
-    use super::{inflate_bytes, deflate_bytes};
-    use std::__rand::{thread_rng, Rng};
+    use super::{deflate_bytes, inflate_bytes};
+    use std::__rand::{Rng, thread_rng};
 
     #[test]
     fn test_flate_round_trip() {
