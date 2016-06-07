@@ -34,8 +34,7 @@ use build::*;
 use cleanup;
 use cleanup::CleanupMethods;
 use closure;
-use common::{self, Block, Result, CrateContext, FunctionContext};
-use common::{C_uint, C_undef};
+use common::{self, Block, Result, CrateContext, FunctionContext, C_undef};
 use consts;
 use datum::*;
 use debuginfo::DebugLoc;
@@ -44,7 +43,7 @@ use expr;
 use glue;
 use inline;
 use intrinsic;
-use machine::{llalign_of_min, llsize_of_store};
+use machine::llalign_of_min;
 use meth;
 use monomorphize::{self, Instance};
 use type_::Type;
@@ -57,8 +56,6 @@ use rustc::hir;
 use syntax::codemap::DUMMY_SP;
 use syntax::errors;
 use syntax::ptr::P;
-
-use std::cmp;
 
 #[derive(Debug)]
 pub enum CalleeData {
@@ -689,49 +686,16 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let (llret, mut bcx) = base::invoke(bcx, llfn, &llargs, debug_loc);
     if !bcx.unreachable.get() {
         fn_ty.apply_attrs_callsite(llret);
-    }
 
-    // If the function we just called does not use an outpointer,
-    // store the result into the rust outpointer. Cast the outpointer
-    // type to match because some ABIs will use a different type than
-    // the Rust type. e.g., a {u32,u32} struct could be returned as
-    // u64.
-    if !fn_ty.ret.is_ignore() && !fn_ty.ret.is_indirect() {
-        if let Some(llforeign_ret_ty) = fn_ty.ret.cast {
-            let llrust_ret_ty = fn_ty.ret.original_ty;
-            let llretslot = opt_llretslot.unwrap();
-
-            // The actual return type is a struct, but the ABI
-            // adaptation code has cast it into some scalar type.  The
-            // code that follows is the only reliable way I have
-            // found to do a transform like i64 -> {i32,i32}.
-            // Basically we dump the data onto the stack then memcpy it.
-            //
-            // Other approaches I tried:
-            // - Casting rust ret pointer to the foreign type and using Store
-            //   is (a) unsafe if size of foreign type > size of rust type and
-            //   (b) runs afoul of strict aliasing rules, yielding invalid
-            //   assembly under -O (specifically, the store gets removed).
-            // - Truncating foreign type to correct integral type and then
-            //   bitcasting to the struct type yields invalid cast errors.
-            let llscratch = base::alloca(bcx, llforeign_ret_ty, "__cast");
-            base::call_lifetime_start(bcx, llscratch);
-            Store(bcx, llret, llscratch);
-            let llscratch_i8 = PointerCast(bcx, llscratch, Type::i8(ccx).ptr_to());
-            let llretptr_i8 = PointerCast(bcx, llretslot, Type::i8(ccx).ptr_to());
-            let llrust_size = llsize_of_store(ccx, llrust_ret_ty);
-            let llforeign_align = llalign_of_min(ccx, llforeign_ret_ty);
-            let llrust_align = llalign_of_min(ccx, llrust_ret_ty);
-            let llalign = cmp::min(llforeign_align, llrust_align);
-            debug!("llrust_size={}", llrust_size);
-
-            if !bcx.unreachable.get() {
-                base::call_memcpy(&B(bcx), llretptr_i8, llscratch_i8,
-                                  C_uint(ccx, llrust_size), llalign as u32);
+        // If the function we just called does not use an outpointer,
+        // store the result into the rust outpointer. Cast the outpointer
+        // type to match because some ABIs will use a different type than
+        // the Rust type. e.g., a {u32,u32} struct could be returned as
+        // u64.
+        if !fn_ty.ret.is_indirect() {
+            if let Some(llretslot) = opt_llretslot {
+                fn_ty.ret.store(&bcx.build(), llret, llretslot);
             }
-            base::call_lifetime_end(bcx, llscratch);
-        } else if let Some(llretslot) = opt_llretslot {
-            base::store_ty(bcx, llret, llretslot, output.unwrap());
         }
     }
 

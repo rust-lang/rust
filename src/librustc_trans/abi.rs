@@ -10,8 +10,8 @@
 
 use llvm::{self, ValueRef};
 use base;
-use builder::Builder;
-use common::{type_is_fat_ptr, BlockAndBuilder};
+use build::AllocaFcx;
+use common::{type_is_fat_ptr, BlockAndBuilder, C_uint};
 use context::CrateContext;
 use cabi_x86;
 use cabi_x86_64;
@@ -22,7 +22,7 @@ use cabi_powerpc;
 use cabi_powerpc64;
 use cabi_mips;
 use cabi_asmjs;
-use machine::{llalign_of_min, llsize_of, llsize_of_real};
+use machine::{llalign_of_min, llsize_of, llsize_of_real, llsize_of_store};
 use type_::Type;
 use type_of;
 
@@ -30,6 +30,7 @@ use rustc::hir;
 use rustc::ty::{self, Ty};
 
 use libc::c_uint;
+use std::cmp;
 
 pub use syntax::abi::Abi;
 pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
@@ -150,26 +151,63 @@ impl ArgType {
     /// lvalue for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    pub fn store(&self, b: &Builder, mut val: ValueRef, dst: ValueRef) {
+    pub fn store(&self, bcx: &BlockAndBuilder, mut val: ValueRef, dst: ValueRef) {
         if self.is_ignore() {
             return;
         }
+        let ccx = bcx.ccx();
         if self.is_indirect() {
-            let llsz = llsize_of(b.ccx, self.ty);
-            let llalign = llalign_of_min(b.ccx, self.ty);
-            base::call_memcpy(b, dst, val, llsz, llalign as u32);
+            let llsz = llsize_of(ccx, self.ty);
+            let llalign = llalign_of_min(ccx, self.ty);
+            base::call_memcpy(bcx, dst, val, llsz, llalign as u32);
         } else if let Some(ty) = self.cast {
-            let cast_dst = b.pointercast(dst, ty.ptr_to());
-            let store = b.store(val, cast_dst);
-            let llalign = llalign_of_min(b.ccx, self.ty);
-            unsafe {
-                llvm::LLVMSetAlignment(store, llalign);
+            // FIXME(eddyb): Figure out when the simpler Store is safe, clang
+            // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
+            let can_store_through_cast_ptr = false;
+            if can_store_through_cast_ptr {
+                let cast_dst = bcx.pointercast(dst, ty.ptr_to());
+                let store = bcx.store(val, cast_dst);
+                let llalign = llalign_of_min(ccx, self.ty);
+                unsafe {
+                    llvm::LLVMSetAlignment(store, llalign);
+                }
+            } else {
+                // The actual return type is a struct, but the ABI
+                // adaptation code has cast it into some scalar type.  The
+                // code that follows is the only reliable way I have
+                // found to do a transform like i64 -> {i32,i32}.
+                // Basically we dump the data onto the stack then memcpy it.
+                //
+                // Other approaches I tried:
+                // - Casting rust ret pointer to the foreign type and using Store
+                //   is (a) unsafe if size of foreign type > size of rust type and
+                //   (b) runs afoul of strict aliasing rules, yielding invalid
+                //   assembly under -O (specifically, the store gets removed).
+                // - Truncating foreign type to correct integral type and then
+                //   bitcasting to the struct type yields invalid cast errors.
+
+                // We instead thus allocate some scratch space...
+                let llscratch = AllocaFcx(bcx.fcx(), ty, "abi_cast");
+                base::Lifetime::Start.call(bcx, llscratch);
+
+                // ...where we first store the value...
+                bcx.store(val, llscratch);
+
+                // ...and then memcpy it to the intended destination.
+                base::call_memcpy(bcx,
+                                  bcx.pointercast(dst, Type::i8p(ccx)),
+                                  bcx.pointercast(llscratch, Type::i8p(ccx)),
+                                  C_uint(ccx, llsize_of_store(ccx, self.ty)),
+                                  cmp::min(llalign_of_min(ccx, self.ty),
+                                           llalign_of_min(ccx, ty)) as u32);
+
+                base::Lifetime::End.call(bcx, llscratch);
             }
         } else {
-            if self.original_ty == Type::i1(b.ccx) {
-                val = b.zext(val, Type::i8(b.ccx));
+            if self.original_ty == Type::i1(ccx) {
+                val = bcx.zext(val, Type::i8(ccx));
             }
-            b.store(val, dst);
+            bcx.store(val, dst);
         }
     }
 
