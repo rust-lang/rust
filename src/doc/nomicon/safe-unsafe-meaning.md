@@ -4,17 +4,13 @@ What's the relationship between Safe Rust and Unsafe Rust? How do they
 interact?
 
 The separation between Safe Rust and Unsafe Rust is controlled with the
-`unsafe` keyword, which acts as a sort of *foreign function interface*
-from one to the other. This boundary is why we can say Safe Rust is a
-safe language: all the unsafe parts are kept exclusively behind the FFI
-boundary, *just like any other safe language*. Best of all, because Safe
-Rust is a subset of Unsafe Rust, the two can be cleanly intermixed,
-without headers, runtimes, or any other FFI boilerplate.
+`unsafe` keyword, which acts as an interface from one to the other. This is
+why we can say Safe Rust is a safe language: all the unsafe parts are kept
+exclusively behind the boundary.
 
-The `unsafe` keyword has dual purposes: to declare the existence of
-contracts the compiler can't check, and to declare that the adherence
-of some code to those contracts has been checked by the programmer,
-and the code can therefore be trusted.
+The `unsafe` keyword has two uses: to declare the existence of contracts the
+compiler can't check, and to declare that the adherence of some code to
+those contracts has been checked by the programmer.
 
 You can use `unsafe` to indicate the existence of unchecked contracts on
 _functions_ and on _trait declarations_. On functions, `unsafe` means that
