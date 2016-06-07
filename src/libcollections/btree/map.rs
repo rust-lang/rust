@@ -584,7 +584,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(a[&5], "f");
     /// ```
     #[unstable(feature = "btree_append", reason = "recently added as part of collections reform 2",
-               issue = "19986")]
+               issue = "34152")]
     pub fn append(&mut self, other: &mut Self) {
         // Do we have to append anything at all?
         if other.len() == 0 {
@@ -938,7 +938,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[unstable(feature = "btree_split_off",
                reason = "recently added as part of collections reform 2",
-               issue = "19986")]
+               issue = "34152")]
     pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
         where K: Borrow<Q>
     {

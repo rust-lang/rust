@@ -576,7 +576,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert!(a.contains(&5));
     /// ```
     #[unstable(feature = "btree_append", reason = "recently added as part of collections reform 2",
-               issue = "19986")]
+               issue = "34152")]
     pub fn append(&mut self, other: &mut Self) {
         self.map.append(&mut other.map);
     }
@@ -613,7 +613,7 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[unstable(feature = "btree_split_off",
                reason = "recently added as part of collections reform 2",
-               issue = "19986")]
+               issue = "34152")]
     pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self where T: Borrow<Q> {
         BTreeSet { map: self.map.split_off(key) }
     }
