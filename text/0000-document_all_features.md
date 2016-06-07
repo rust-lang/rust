@@ -83,6 +83,7 @@ The basic decision has led to a substantial improvement in the currency of the d
 The basic process of developing new language features will remain largely the same as today. The changes are two additions:
 
 - a new section in the RFC, "How do we teach this?" modeled on Ember's updated RFC process
+
 - a new requirement that the changes themselves be properly documented before being merged to stable
 
 ## New RFC section: "How do we teach this?"
@@ -135,13 +136,35 @@ Once the reference is up to date, the nucleus responsible for that work may eith
 Updating the reference could proceed stepwise:
 
 1. Begin by adding an appendix in the reference with links to all accepted RFCs which have been implemented but are not yet referenced in the documentation.
-2. As the reference material is written for each of those RFC features, it can be removed from that appendix.
 
+2. As the reference material is written for each of those RFC features, it can be removed from that appendix.
 
 ### Standard library
 [std]: #standard-library
 
 In the case of the standard library, this could conceivably be managed by setting the `#[forbid(missing_docs)]` attribute on the library roots. In lieu of that, manual code review and general discipline should continue to serve. However, if automated tools *can* be employed here, they should.
+
+
+## Add an "Edit" link
+[edit-link]: #add-an-edit-link
+
+To support its own change, the Ember team added an "edit this" icon to the top of every page in the guides (and plans to do so for the API documentation, pending infrastructure changes to support that). Each of _The Rust Programming Language_, _Rust by Example_, and the Rust Reference should do the same.
+
+Making a similar change has some downsides (see below under [**Drawbacks**][drawbacks]), but it has two major upsides:
+
+1. It gives users an obvious action to fix typos. Speaking from personal experience, it can be difficult to find where a given documentation or book page exists in the Rust repository. Even with the drawbacks noted below, this would substantially smooth the process of making e.g. a small typo fix for first-time readers of _The Rust Programming Language_. Making the first contribution easy makes further contributions much more likely.
+
+2. It sends a quiet but real signal that the docs are up for editing. This makes it likelier that people will edit them!
+
+### Optional: Support with infrastructure change
+[edit-link-infrastructure]: #optional-support-with-infrastructure-change
+
+The links to edit the documentation could track against the release branch instead of against `master`. (Fixes to documentation would be analogous to bugfix releases in this sense.) Targeting the pull-request automatically would be straightforward. However, see below under [**Drawbacks**][drawbacks].
+
+## Optional: Visually Distinguish Nightly
+[distinguish-nightly]: #optional-visually-distinguish-nightly
+
+It might be useful to visually distinguish the documentation for nightly Rust as being unstable and subject to change, even simply by setting a different default theme on _The Rust Programming Language_ book for nightly Rust.
 
 
 # How do we teach this?
@@ -153,8 +176,11 @@ To be most effective, this will involve some changes both at a process and core-
 From the process and core team side of things:
 
 1. Update the RFC template to include the new section for teaching.
+
 2. Update the RFC process description in the [RFCs README], specifically by including "fail to include a plan for documenting the feature" in the list of possible problems in "Submit a pull request step" in [What the process is].
+
 3. Write a blog post discussing the new process should be written discussing why we are making this change to the process, and especially explaining both the current problems and the benefits of making the change.
+
 4. Make documentation and teachability of new features *equally* high priority with the features themselves, and communicate this clearly in discussion of the features. (Core team members are already very good about including this in considerations of language design; this simply makes this an explicit goal of discussions around RFCs.)
 
 [RFCs README]: https://github.com/rust-lang/rfcs/blob/master/README.md
@@ -163,10 +189,12 @@ From the process and core team side of things:
 This is also an opportunity to allow/enable non-core-team members with less experience to contribute more actively to _The Rust Programming Language_, _Rust by Example_, and the Rust Reference.
 
 1. We should write issues for feature documentation, and flag them as approachable entry points for new users.
-2. We can use the more complicated language reference issues as points for mentoring developers interested in contributing to the compiler. Helping document a complex language feature may be a useful on-ramp for working on the compiler itself.
-3. We may find it useful to form a documentation subteam (under the leadership of the relevant core team representative), similar to what Ember has done, which is responsible for shepherding these changes along.
 
-    Whether such a team is formalized or not, the goal would be for the community to take up a greater degree of responsibility for the state of the documentation, rather than it falling entirely on the shoulders of a single core team member. (Having a dedicated core team member focused solely on docs is *wonderful*, but it means we can sometimes leave it all to just one person, and Rust has far too much going on for any individual to manage on their own.)
+2. We can use the more complicated language reference issues as points for mentoring developers interested in contributing to the compiler. Helping document a complex language feature may be a useful on-ramp for working on the compiler itself.
+
+3. ~~We may find it useful to form~~ We are already forming a documentation subteam (under the leadership of the relevant core team representative), similar to what Ember has done, which will be responsible for shepherding these changes along.
+
+    ~~Whether such a team is formalized or not,~~ Even with such a team in place, a major goal remains encouraging the community to take up a greater degree of responsibility for the state of the documentation, rather than it falling entirely on the shoulders of a single core team member or even the docs team. (Having a dedicated core team member focused solely on docs is *wonderful*, but it means we can sometimes leave it all to just one person, and Rust has far too much going on for any individual to manage on their own.)
 
 At a "messaging" level, we should continue to emphasize that *documentation is just as valuable as code*. For example (and there are many other similar opportunities): in addition to highlighting new language features in the release notes for each version, we might highlight any part of the documentation which saw substantial improvement in the release.
 
@@ -174,19 +202,46 @@ At a "messaging" level, we should continue to emphasize that *documentation is j
 # Drawbacks
 [drawbacks]: #drawbacks
 
-The largest drawback at present is that the language reference is *already* quite out of date. It may take substantial work to get it up to date so that new changes can be landed appropriately. (Arguably, however, this should be done regardless, since the language reference is an important part of the language ecosystem.)
+1. The largest drawback at present is that the language reference is *already* quite out of date. It may take substantial work to get it up to date so that new changes can be landed appropriately. (Arguably, however, this should be done regardless, since the language reference is an important part of the language ecosystem.)
 
-Another potential issue is that some sections of the reference are particularly thorny and must be handled with considerable care (e.g. lifetimes). Although in general it would not be necessary for the author of the new language feature to write all the documentation, considerable extra care and oversight would need to be in place for these sections.
+2. Another potential issue is that some sections of the reference are particularly thorny and must be handled with considerable care (e.g. lifetimes). Although in general it would not be necessary for the author of the new language feature to write all the documentation, considerable extra care and oversight would need to be in place for these sections.
 
-Finally, this may delay landing features on stable. However, all the points raised in [**Precedent**][precedent] on this apply, especially:
+3. This may delay landing features on stable. However, all the points raised in [**Precedent**][precedent] on this apply, especially:
 
-> We can't get the great new toys unless everybody can enjoy the toys. ([@eccegordo])
+    > We can't get the great new toys unless everybody can enjoy the toys. ([@eccegordo])
 
-For Rust to attain its goal of *stability without stagnation*, its documentation must also be stable and not stagnant.
+    For Rust to attain its goal of *stability without stagnation*, its documentation must also be stable and not stagnant.
+
+4. If the forthcoming docs team is unable to provide significant support for the core team member responsible for documentation, and perhaps equally if the rest of the community does not also increase involvement, this will simply not work. No individual can manage all of these docs alone.
+
+5. Specific to the suggestion to [**Add an "edit" link**][edit-link]:
+
+    - If the specific page is in flux (e.g. being rewritten, broken into pieces, etc.), then a link to edit `master` will be confusing.
+    - In addition, when users *have* made edits, it may take some time before it appears, and thus users may be confused when attempting to make edits and finding that the relevant editss have already been made.
+    - Some pages users attempt to edit are *likely* to have different documentation in them than the existing pages, to account for inbound changes for feature additions to the language!
+
+    Two notes, however:
+
+    1. Even facing the same issues, the Ember team has found it useful to have the link, as it enables basically any user of a sufficient comfort level with GitHub to fix basic typos or logic errors.
+    2. This concern primarily impacts _The Rust Programming Language_. Both in its current state and in the event of an eventual revamp (at least: after such a revamp finished), the Rust Reference is far less likely to see pages removed or moved.
+
+    Finally, while infrastructure changes could be made in support of a more "targeted" editing experience, doing so would substantially increase the triage work required for the docs. It would also entail extra work "porting" the changes back to `master`. Additionally, because the language itself does not currently "bugfix" releases, this would substantially alter the workflow for dealing with releases in general.
+
+6. Specific to the suggestion to [**Visually Distinguish Nightly**][distinguish-nightly]:
+
+    This requires at least some infrastructure investment. Making the change apply to the Reference as well as to the two books would entail the maintenance of further CSS. This might be acceptable if documentation teams are sufficiently motivated and engaged, but it means that if not very carefully designed up front, any changes to the documentation theme will basically require double CSS changes; they will also require double the *design* efforts.
 
 
 # Alternatives
 [alternatives]: #alternatives
+
+- **Just add the "How do we teach this?" section.**
+
+    Of all the alternatives, this is the easiest (and probably the best). It does not substantially change the state with regard to the documentation, and even having the section in the RFC does not mean that it will end up added to the docs, as evidence by the [`#[deprecated]` RFC][RFC 1270], which included as part of its text:
+
+    > The language reference will be extended to describe this feature as outlined in this RFC. Authors shall be advised to leave their users enough time to react before removing a deprecated item.
+
+    This is not a small downside by any stretch—but adding the section to the RFC will still have all the secondary benefits noted above, and it probably at least somewhat increases the likelihood that new features do get documented.
 
 - **Embrace the documentation, but do not include "How do we teach this?" section in new RFCs.**
 
@@ -222,9 +277,12 @@ For Rust to attain its goal of *stability without stagnation*, its documentation
     The main downside, of course, is that this would leave very large swaths of the language basically without *any* documentation, and even more of it only documented in RFCs than is the case today.
 
 
+[RFC 1270]: https://github.com/rust-lang/rfcs/pull/1270
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
+- How do we clearly distinguish between features on nightly, beta, and stable Rust—in the reference especially, but also in the book?
 - How will the requirement for documentation in the reference be enforced?
 - Given that the reference is out of date, does it need to be brought up to date before beginning enforcement of this policy?
 - For the standard library, once it migrates to a crates structure, should it simply include the `#[forbid(missing_docs)]` attribute on all crates to set this as a build error?
