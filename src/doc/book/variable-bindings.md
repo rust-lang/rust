@@ -241,7 +241,10 @@ println!("{}", x); // Prints "42"
 Shadowing and mutable bindings may appear as two sides of the same coin, but
 they are two distinct concepts that can't always be used interchangeably. For
 one, shadowing enables us to rebind a name to a value of a different type. It
-is also possible to change the mutability of a binding.
+is also possible to change the mutability of a binding. Note that shadowing a 
+name does not alter or destroy the value it was bound to, and the value will
+continue to exist until it goes out of scope, even if it is no longer accessible
+by any means.
 
 ```rust
 let mut x: i32 = 1;
