@@ -1043,7 +1043,7 @@ pub fn with_cond<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>, val: ValueRef, f: F) -> 
     next_cx
 }
 
-enum Lifetime { Start, End }
+pub enum Lifetime { Start, End }
 
 // If LLVM lifetime intrinsic support is enabled (i.e. optimizations
 // on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
@@ -1080,24 +1080,25 @@ fn core_lifetime_emit<'blk, 'tcx, F>(ccx: &'blk CrateContext<'blk, 'tcx>,
     emit(ccx, size, lifetime_intrinsic)
 }
 
-pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
-    core_lifetime_emit(cx.ccx(), ptr, Lifetime::Start, |ccx, size, lifetime_start| {
-        let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
-        Call(cx,
-             lifetime_start,
-             &[C_u64(ccx, size), ptr],
-             DebugLoc::None);
-    })
+impl Lifetime {
+    pub fn call(self, b: &Builder, ptr: ValueRef) {
+        core_lifetime_emit(b.ccx, ptr, self, |ccx, size, lifetime_intrinsic| {
+            let ptr = b.pointercast(ptr, Type::i8p(ccx));
+            b.call(lifetime_intrinsic, &[C_u64(ccx, size), ptr], None);
+        });
+    }
 }
 
-pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
-    core_lifetime_emit(cx.ccx(), ptr, Lifetime::End, |ccx, size, lifetime_end| {
-        let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
-        Call(cx,
-             lifetime_end,
-             &[C_u64(ccx, size), ptr],
-             DebugLoc::None);
-    })
+pub fn call_lifetime_start(bcx: Block, ptr: ValueRef) {
+    if !bcx.unreachable.get() {
+        Lifetime::Start.call(&bcx.build(), ptr);
+    }
+}
+
+pub fn call_lifetime_end(bcx: Block, ptr: ValueRef) {
+    if !bcx.unreachable.get() {
+        Lifetime::End.call(&bcx.build(), ptr);
+    }
 }
 
 // Generates code for resumption of unwind at the end of a landing pad.
@@ -1664,29 +1665,21 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                                       arg_ty,
                                       datum::Lvalue::new("FunctionContext::bind_args"))
                 } else {
-                    let lltmp = if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
-                        let lltemp = alloc_ty(bcx, arg_ty, "");
+                    unpack_datum!(bcx, datum::lvalue_scratch_datum(bcx, arg_ty, "",
+                                                                   uninit_reason,
+                                                                   arg_scope_id, |bcx, dst| {
+                        debug!("FunctionContext::bind_args: {:?}: {:?}", hir_arg, arg_ty);
                         let b = &bcx.build();
-                        // we pass fat pointers as two words, but we want to
-                        // represent them internally as a pointer to two words,
-                        // so make an alloca to store them in.
-                        let meta = &self.fn_ty.args[idx];
-                        idx += 1;
-                        arg.store_fn_arg(b, &mut llarg_idx, expr::get_dataptr(bcx, lltemp));
-                        meta.store_fn_arg(b, &mut llarg_idx, expr::get_meta(bcx, lltemp));
-                        lltemp
-                    } else  {
-                        // otherwise, arg is passed by value, so store it into a temporary.
-                        let llarg_ty = arg.cast.unwrap_or(arg.memory_ty(bcx.ccx()));
-                        let lltemp = alloca(bcx, llarg_ty, "");
-                        let b = &bcx.build();
-                        arg.store_fn_arg(b, &mut llarg_idx, lltemp);
-                        // And coerce the temporary into the type we expect.
-                        b.pointercast(lltemp, arg.memory_ty(bcx.ccx()).ptr_to())
-                    };
-                    bcx.fcx.schedule_drop_mem(arg_scope_id, lltmp, arg_ty, None);
-                    datum::Datum::new(lltmp, arg_ty,
-                                      datum::Lvalue::new("bind_args"))
+                        if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
+                            let meta = &self.fn_ty.args[idx];
+                            idx += 1;
+                            arg.store_fn_arg(b, &mut llarg_idx, expr::get_dataptr(bcx, dst));
+                            meta.store_fn_arg(b, &mut llarg_idx, expr::get_meta(bcx, dst));
+                        } else {
+                            arg.store_fn_arg(b, &mut llarg_idx, dst);
+                        }
+                        bcx
+                    }))
                 }
             } else {
                 // FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
@@ -1721,19 +1714,16 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             };
 
             let pat = &hir_arg.pat;
-            bcx = match simple_name(pat) {
-                // The check for alloca is necessary because above for the immediate argument case
-                // we had to cast. At this point arg_datum is not an alloca anymore and thus
-                // breaks debuginfo if we allow this optimisation.
-                Some(name)
-                if unsafe { llvm::LLVMIsAAllocaInst(arg_datum.val) != ::std::ptr::null_mut() } => {
-                    // Generate nicer LLVM for the common case of fn a pattern
-                    // like `x: T`
-                    set_value_name(arg_datum.val, &bcx.name(name));
-                    self.lllocals.borrow_mut().insert(pat.id, arg_datum);
-                    bcx
-                },
-                _ => _match::bind_irrefutable_pat(bcx, pat, arg_datum.match_input(), arg_scope_id)
+            bcx = if let Some(name) = simple_name(pat) {
+                // Generate nicer LLVM for the common case of fn a pattern
+                // like `x: T`
+                set_value_name(arg_datum.val, &bcx.name(name));
+                self.lllocals.borrow_mut().insert(pat.id, arg_datum);
+                bcx
+            } else {
+                // General path. Copy out the values that are used in the
+                // pattern.
+                _match::bind_irrefutable_pat(bcx, pat, arg_datum.match_input(), arg_scope_id)
             };
             debuginfo::create_argument_metadata(bcx, hir_arg);
         }
