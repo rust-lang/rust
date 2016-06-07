@@ -9,16 +9,16 @@
 // except according to those terms.
 
 enum Sexpression {
-  Num(()),
-  Cons(&'static mut Sexpression)
+    Num(()),
+    Cons(&'static mut Sexpression)
 }
 
-fn causes_ice(mut l: &mut Sexpression)
-{
+fn causes_ice(mut l: &mut Sexpression) {
     loop { match l {
         &mut Sexpression::Num(ref mut n) => {},
-        &mut Sexpression::Cons(ref mut expr) => {
-            l = &mut **expr;
+        &mut Sexpression::Cons(ref mut expr) => { //~ ERROR cannot borrow `l.0` as mutable more than once at a time [E0499]
+            //~| ERROR cannot borrow `l.0` as mutable more than once at a time [E0499]
+            l = &mut **expr; //~ ERROR cannot assign to `l` because it is borrowed [E0506]
         }
     }}
 }
