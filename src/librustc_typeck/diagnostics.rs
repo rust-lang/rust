@@ -1185,7 +1185,7 @@ two solutions. Either you add variants in your enum:
 ```
 #[repr(i32)]
 enum NightWatch {
-    JohnSnow,
+    JonSnow,
     Commander,
 }
 ```
