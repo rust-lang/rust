@@ -35,7 +35,7 @@ clippy_lints = { version = "0.0.74", path = "clippy_lints" }
 rustc-serialize = "0.3"
 
 [dev-dependencies]
-compiletest_rs = "0.1.0"
+compiletest_rs = "0.2.0"
 lazy_static = "0.1.15"
 regex = "0.1.56"
 
