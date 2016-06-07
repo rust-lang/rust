@@ -309,10 +309,24 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
                     (**tt).clone()
                 }
                 _ => cx.span_bug(def.span, "wrong-structured lhs")
-            }).collect()
+            }).collect::<Vec<_>>()
         }
         _ => cx.span_bug(def.span, "wrong-structured lhs")
     };
+
+    'a: for (i, lhs) in lhses.iter().enumerate() {
+        for lhs_ in lhses[i + 1 ..].iter() {
+            if !check_lhs_firsts(cx, lhs, lhs_) {
+                cx.struct_span_err(def.span, "macro is not future-proof")
+                    .span_help(lhs.get_span(), "parsing of this arm is ambiguous...")
+                    .span_help(lhs_.get_span(), "with the parsing of this arm.")
+                    .help("the behaviour of this macro might change in the future")
+                    .emit();
+                valid = false;
+                break 'a;
+            }
+        }
+    }
 
     let rhses = match **argument_map.get(&rhs_nm.name).unwrap() {
         MatchedSeq(ref s, _) => {
@@ -337,6 +351,362 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     });
 
     NormalTT(exp, Some(def.span), def.allow_internal_unstable)
+}
+
+fn check_lhs_firsts(cx: &ExtCtxt, lhs: &TokenTree, lhs_: &TokenTree) -> bool {
+    match (lhs, lhs_) {
+        (&TokenTree::Delimited(_, ref tta),
+         &TokenTree::Delimited(_, ref ttb)) =>
+            check_matcher_firsts(cx, &tta.tts, &ttb.tts),
+        _ => cx.span_bug(lhs.get_span(), "malformed macro lhs")
+    }
+}
+
+fn match_same_input(ma: &TokenTree, mb: &TokenTree) -> bool {
+    match (ma, mb) {
+        (&TokenTree::Token(_, MatchNt(_, nta)),
+         &TokenTree::Token(_, MatchNt(_, ntb))) =>
+            nta == ntb,
+        // FIXME: must we descend into Interpolated TTs here?
+        (&TokenTree::Token(_, ref toka),
+         &TokenTree::Token(_, ref tokb)) =>
+            toka == tokb,
+        (&TokenTree::Delimited(_, ref delima),
+         &TokenTree::Delimited(_, ref delimb)) => {
+            delima.delim == delimb.delim &&
+            delima.tts.iter().zip(delimb.tts.iter())
+                .all(|(ref t1, ref t2)| match_same_input(t1, t2))
+        }
+        (&TokenTree::Sequence(_, ref seqa),
+         &TokenTree::Sequence(_, ref seqb)) => {
+            seqa.separator == seqb.separator &&
+            seqa.op == seqb.op &&
+            seqa.tts.iter().zip(seqb.tts.iter())
+                .all(|(ref t1, ref t2)| match_same_input(t1, t2))
+        }
+        _ => false
+    }
+}
+
+// assumes that tok != MatchNt
+fn nt_first_set_contains(nt: ast::Ident, tok: &Token) -> bool {
+    use parse::token::BinOpToken::*;
+    use parse::token::DelimToken::*;
+    match &nt.name.as_str() as &str {
+        "tt" => true,
+        "ident" => match *tok {
+            Ident(_) => true,
+            _ => false
+        },
+        "meta" => match *tok {
+            Ident(_) => true,
+            _ => false
+        },
+        "path" => match *tok {
+            ModSep |
+            Ident(_) => true,
+            _ => false
+        },
+        "ty" => match *tok {
+            AndAnd |
+            BinOp(And) |
+            OpenDelim(Paren) |
+            OpenDelim(Bracket) |
+            BinOp(Star) |
+            ModSep |
+            BinOp(Shl) |
+            Lt |
+            Underscore |
+            Ident(_) => true,
+            _ => false
+        },
+        "expr" => match *tok {
+            BinOp(And) |
+            AndAnd |
+            Not |
+            BinOp(Star) |
+            BinOp(Minus) |
+            OpenDelim(_) |
+            DotDot |
+            ModSep |
+            BinOp(Shl) |
+            Lt |
+            Lifetime(_) |
+            BinOp(Or) |
+            OrOr |
+            Ident(_) |
+            Literal(..) => true,
+            _ => false
+        },
+        "pat" => match *tok {
+            AndAnd |
+            BinOp(And) |
+            OpenDelim(Paren) |
+            OpenDelim(Bracket) |
+            BinOp(Minus) |
+            ModSep |
+            BinOp(Shl) |
+            Lt|
+            Underscore |
+            Ident(_) |
+            Literal(..) => true,
+            _ => false
+        },
+        "stmt" => match *tok {
+            BinOp(And) |
+            AndAnd |
+            Not |
+            BinOp(Star) |
+            BinOp(Minus) |
+            Pound |
+            OpenDelim(_) |
+            DotDot |
+            ModSep |
+            Semi |
+            BinOp(Shl) |
+            Lt |
+            Lifetime(_) |
+            BinOp(Or) |
+            OrOr |
+            Ident(_) |
+            Literal(..) => true,
+            _ => false
+        },
+        "block" => match *tok {
+            OpenDelim(Brace) => true,
+            _ => false
+        },
+        "item" => match *tok {
+            ModSep |
+            Ident(_) => true,
+            _ => false
+        },
+        _ => panic!("unknown NT")
+    }
+}
+
+fn nt_first_disjoints(nt1: ast::Ident, nt2: ast::Ident) -> bool {
+    use parse::token::DelimToken::*;
+    match (&nt1.name.as_str() as &str, &nt2.name.as_str() as &str) {
+        ("block", _) => !nt_first_set_contains(nt2, &OpenDelim(Brace)),
+        (_, "block") => !nt_first_set_contains(nt1, &OpenDelim(Brace)),
+        // all the others can contain Ident
+        _ => false
+    }
+}
+
+fn first_set_contains(set: &TokenSet, tok: &Token) -> bool {
+    for &(_, ref t) in set.tokens.iter() {
+        match (t, tok) {
+            (&MatchNt(_, nt1), &MatchNt(_, nt2)) =>
+                if !nt_first_disjoints(nt1, nt2) { return true },
+            (&MatchNt(_, nt), tok) | (tok, &MatchNt(_, nt)) =>
+                if nt_first_set_contains(nt, tok) { return true },
+            (t1, t2) => if t1 == t2 { return true }
+        }
+    }
+    return false
+}
+
+fn token_of(tt: &TokenTree) -> Token {
+    use tokenstream::TokenTree::*;
+    match tt {
+        &Delimited(_, ref delim) => OpenDelim(delim.delim.clone()),
+        &Token(_, ref tok) => tok.clone(),
+        &Sequence(..) => panic!("unexpected seq")
+    }
+}
+
+#[allow(unused_variables)]
+fn first_sets_disjoints(ma: &TokenTree, mb: &TokenTree,
+                        first_a: &FirstSets, first_b: &FirstSets) -> bool {
+    use tokenstream::TokenTree::*;
+    match (ma, mb) {
+        (&Token(_, MatchNt(_, nta)),
+         &Token(_, MatchNt(_, ntb))) => nt_first_disjoints(nta, ntb),
+
+        (&Token(_, MatchNt(_, nt)), &Token(_, ref tok)) |
+        (&Token(_, ref tok), &Token(_, MatchNt(_, nt))) =>
+            !nt_first_set_contains(nt, tok),
+
+        (&Token(_, MatchNt(_, nt)), &Delimited(_, ref delim)) |
+        (&Delimited(_, ref delim), &Token(_, MatchNt(_, nt))) =>
+            !nt_first_set_contains(nt, &OpenDelim(delim.delim.clone())),
+
+        (&Sequence(ref spa, _), &Sequence(ref spb, _)) => {
+            match (first_a.first.get(spa), first_b.first.get(spb)) {
+                (Some(&Some(ref seta)), Some(&Some(ref setb))) => {
+                    for &(_, ref tok) in setb.tokens.iter() {
+                        if first_set_contains(seta, tok) {
+                            return false
+                        }
+                    }
+                    true
+                }
+                _ => panic!("no FIRST set for sequence")
+            }
+        }
+
+        (&Sequence(ref sp, _), ref tok) => {
+            match first_a.first.get(sp) {
+                Some(&Some(ref set)) => !first_set_contains(set, &token_of(tok)),
+                _ => panic!("no FIRST set for sequence")
+            }
+        }
+
+        (ref tok, &Sequence(ref sp, _)) => {
+            match first_b.first.get(sp) {
+                Some(&Some(ref set)) => !first_set_contains(set, &token_of(tok)),
+                _ => panic!("no FIRST set for sequence")
+            }
+        }
+
+        (&Token(_, ref t1), &Token(_, ref t2)) =>
+            t1 != t2,
+
+        (&Token(_, ref t), &Delimited(_, ref delim)) |
+        (&Delimited(_, ref delim), &Token(_, ref t)) =>
+            t != &OpenDelim(delim.delim.clone()),
+
+        (&Delimited(_, ref d1), &Delimited(_, ref d2)) =>
+            d1.delim != d2.delim
+    }
+}
+
+fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree]) -> bool {
+    let mut need_disambiguation = false;
+
+    // first compute the FIRST sets. FIRST sets for tokens, delimited TTs and NT
+    // matchers are fixed, this will compute the FIRST sets for all sequence TTs
+    // that appear in the matcher. Note that if a sequence starts with a matcher,
+    // for ex. $e:expr, its FIRST set will be the singleton { MatchNt(expr) }.
+    // This is okay because none of our matchable NTs can be empty.
+    let firsts_a = FirstSets::new(ma);
+    let firsts_b = FirstSets::new(mb);
+
+    // analyse until one of the cases happen:
+    // * we find an obvious disambiguation, that is a proof that all inputs that
+    //   matches A will never match B or vice-versa
+    // * we find a case that is too complex to handle and reject it
+    // * we reach the end of the macro
+    for (ta, tb) in ma.iter().zip(mb.iter()) {
+        if match_same_input(ta, tb) {
+            continue;
+        }
+
+        if first_sets_disjoints(&ta, &tb, &firsts_a, &firsts_b) {
+            // accept the macro
+            return true
+        }
+
+        // i.e. A or B is either a repeated sequence or a NT matcher that is
+        // not tt, ident, or block (that is, either A or B could match several
+        // token trees), we cannot know where we should continue the analysis.
+        match (ta, tb) {
+            (&TokenTree::Sequence(_, _), _) |
+            (_, &TokenTree::Sequence(_, _)) => return false,
+
+            (&TokenTree::Token(_, MatchNt(_, nta)),
+             &TokenTree::Token(_, MatchNt(_, ntb))) =>
+                if !(nt_is_single_tt(nta) && nt_is_single_tt(ntb)) {
+                    return false
+                },
+
+            (&TokenTree::Token(_, MatchNt(_, nt)), _) |
+            (_ ,&TokenTree::Token(_, MatchNt(_, nt))) =>
+                if !nt_is_single_tt(nt) { return false },
+
+            _ => ()
+        }
+
+        // A and B always both match a single TT
+        match (ta, tb) {
+            (&TokenTree::Sequence(_, _), _) |
+            (_, &TokenTree::Sequence(_, _)) =>
+                // cannot happen since sequences are not always a single-TT
+                cx.bug("unexpeceted seq"),
+
+            (&TokenTree::Token(_, MatchNt(_, nt)), _) |
+            (_ ,&TokenTree::Token(_, MatchNt(_, nt)))
+                if nt.name.as_str() == "tt" =>
+                // this is okay for now, either A will always have priority,
+                // either B will always be unreachable. but search for errors
+                // further
+                continue,
+
+            (&TokenTree::Token(_, MatchNt(_, _)),
+             &TokenTree::Token(_, MatchNt(_, _))) =>
+                // this case cannot happen. the only NTs that are a single-TT
+                // and that are not tt are ident and block, that do not share any
+                // FIRST token.
+                cx.bug("unexpected NT vs. NT"),
+
+            (&TokenTree::Token(_, MatchNt(_, nt)), &TokenTree::Token(_, Ident(_))) |
+            (&TokenTree::Token(_, Ident(_)), &TokenTree::Token(_, MatchNt(_, nt))) =>
+                if nt.name.as_str() == "ident" {
+                    // NT ident vs token ident. it's the same as with tt:
+                    // either A is included, either B is unreachable
+                    continue
+                } else {
+                    // the only possible NT here is ident because the only token in
+                    // the FIRST set of block is {, and { is not seen as a token but
+                    // as the beginning of a Delim
+                    // the only possible token is thus an hardcoded identifier or
+                    // keyword. so the only possible case of NT vs. Token is the
+                    // the case above.
+                    cx.bug("unexpeceted NT vs. Token")
+                },
+
+            (&TokenTree::Token(_, MatchNt(_, nt)), &TokenTree::Delimited(_, ref delim)) |
+            (&TokenTree::Delimited(_, ref delim), &TokenTree::Token(_, MatchNt(_, nt))) =>
+                if nt.name.as_str() == "block"
+                && delim.delim == token::DelimToken::Brace {
+                    // we cannot say much here. we cannot look inside. we
+                    // can just hope we will find an obvious disambiguation later
+                    need_disambiguation = true;
+                    continue
+                } else {
+                    // again, the other possibilites do not share any FIRST token
+                    cx.bug("unexpeceted NT vs. Delim")
+                },
+
+            (&TokenTree::Delimited(..), &TokenTree::Delimited(..)) => {
+                // they have the same delim. as above.
+                // FIXME: we could search for disambiguation *inside* the
+                // delimited TTs
+                need_disambiguation = true;
+                continue
+            }
+
+            // cannot happen. either they're the same token or their FIRST sets
+            // are disjoint.
+            (&TokenTree::Token(..), &TokenTree::Token(..)) |
+            (&TokenTree::Token(..), &TokenTree::Delimited(..)) |
+            (&TokenTree::Delimited(..), &TokenTree::Token(..)) =>
+                cx.bug("unexpected Token vs. Token")
+        }
+    }
+
+    // now we are at the end of one arm:
+    if need_disambiguation {
+        // we couldn't find any. we cannot say anything about those arms.
+        // reject conservatively.
+        // FIXME: if we are not at the end of the other arm, and that the other
+        // arm cannot derive empty, I think we could accept...?
+        false
+    } else {
+        // either A is strictly included in B and the other inputs that match B
+        // will never match A, or B is included in or equal to A, which means
+        // it's unreachable. this is not our problem. accept.
+        true
+    }
+}
+
+fn nt_is_single_tt(nt: ast::Ident) -> bool {
+    match &nt.name.as_str() as &str {
+        "block" | "ident" | "tt" => true,
+        _ => false
+    }
 }
 
 fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &TokenTree) -> bool {
