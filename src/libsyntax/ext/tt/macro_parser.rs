@@ -513,7 +513,7 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> PResult<'a, Non
         "tt" => {
             p.quote_depth += 1; //but in theory, non-quoted tts might be useful
             let res: ::parse::PResult<'a, _> = p.parse_token_tree();
-            let res = token::NtTT(P(try!(res)));
+            let res = token::NtTT(P(res?));
             p.quote_depth -= 1;
             return Ok(res);
         }
@@ -522,18 +522,18 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> PResult<'a, Non
     // check at the beginning and the parser checks after each bump
     p.check_unknown_macro_variable();
     match name {
-        "item" => match try!(p.parse_item()) {
+        "item" => match p.parse_item()? {
             Some(i) => Ok(token::NtItem(i)),
             None => Err(p.fatal("expected an item keyword"))
         },
-        "block" => Ok(token::NtBlock(try!(p.parse_block()))),
-        "stmt" => match try!(p.parse_stmt()) {
+        "block" => Ok(token::NtBlock(p.parse_block()?)),
+        "stmt" => match p.parse_stmt()? {
             Some(s) => Ok(token::NtStmt(P(s))),
             None => Err(p.fatal("expected a statement"))
         },
-        "pat" => Ok(token::NtPat(try!(p.parse_pat()))),
-        "expr" => Ok(token::NtExpr(try!(p.parse_expr()))),
-        "ty" => Ok(token::NtTy(try!(p.parse_ty()))),
+        "pat" => Ok(token::NtPat(p.parse_pat()?)),
+        "expr" => Ok(token::NtExpr(p.parse_expr()?)),
+        "ty" => Ok(token::NtTy(p.parse_ty()?)),
         // this could be handled like a token, since it is one
         "ident" => match p.token {
             token::Ident(sn) => {
@@ -545,8 +545,8 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> PResult<'a, Non
                 Err(p.fatal(&format!("expected ident, found {}", &token_str[..])))
             }
         },
-        "path" => Ok(token::NtPath(Box::new(try!(p.parse_path(PathStyle::Type))))),
-        "meta" => Ok(token::NtMeta(try!(p.parse_meta_item()))),
+        "path" => Ok(token::NtPath(Box::new(p.parse_path(PathStyle::Type)?))),
+        "meta" => Ok(token::NtMeta(p.parse_meta_item()?)),
         // this is not supposed to happen, since it has been checked
         // when compiling the macro.
         _ => p.span_bug(sp, "invalid fragment specifier")

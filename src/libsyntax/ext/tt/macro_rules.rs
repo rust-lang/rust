@@ -218,7 +218,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                 })
             }
             Failure(diag) => {
-                let sp = diag.span().primary_span();
+                let sp = diag.span.primary_span();
                 let mut new_diag = Some(diag);
                 if let Some(sp) = sp {
                     if sp.lo >= best_fail_spot.lo {
@@ -238,11 +238,9 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
     match best_fail_diag {
         None => cx.span_bug(sp, "internal error: ran no matchers"),
         Some(mut diag) => {
-            let mut span = diag.span().clone();
-            for span in span.primary_spans_mut() {
+            for span in diag.span.primary_spans_mut() {
                 *span = span.substitute_dummy(sp);
             }
-            diag.set_span(span);
             diag.emit();
             panic!(FatalError);
         }
@@ -302,11 +300,9 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
                                    &argument_gram) {
         Success(m) => m,
         Failure(mut diag) => {
-            let mut span = diag.span().clone();
-            for span in span.primary_spans_mut() {
+            for span in diag.span.primary_spans_mut() {
                 *span = span.substitute_dummy(def.span);
             }
-            diag.set_span(span);
             diag.emit();
             panic!(FatalError);
         }
