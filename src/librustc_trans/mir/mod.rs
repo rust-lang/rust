@@ -112,6 +112,12 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     scopes: Vec<DIScope>
 }
 
+impl<'blk, 'tcx> MirContext<'blk, 'tcx> {
+    pub fn debug_loc(&self, source_info: mir::SourceInfo) -> DebugLoc {
+        DebugLoc::ScopeAt(self.scopes[source_info.scope.index()], source_info.span)
+    }
+}
+
 enum TempRef<'tcx> {
     Lvalue(LvalueRef<'tcx>),
     Operand(Option<OperandRef<'tcx>>),
@@ -161,12 +167,12 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                             .map(|(mty, decl)| {
         let lvalue = LvalueRef::alloca(&bcx, mty, &decl.name.as_str());
 
-        let scope = scopes[decl.scope.index()];
+        let scope = scopes[decl.source_info.scope.index()];
         if !scope.is_null() && bcx.sess().opts.debuginfo == FullDebugInfo {
             bcx.with_block(|bcx| {
                 declare_local(bcx, decl.name, mty, scope,
                               VariableAccess::DirectVariable { alloca: lvalue.llval },
-                              VariableKind::LocalVariable, decl.span);
+                              VariableKind::LocalVariable, decl.source_info.span);
             });
         }
 

@@ -89,18 +89,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // all the arm blocks will rejoin here
         let end_block = self.cfg.start_new_block();
 
-        let outer_visibility_scope = self.innermost_scope_id();
+        let outer_source_info = self.source_info(span);
         for (arm_index, (body, visibility_scope)) in arm_bodies.into_iter().enumerate() {
             let mut arm_block = arm_blocks.blocks[arm_index];
             // Re-enter the visibility scope we created the bindings in.
             self.visibility_scope = visibility_scope;
             unpack!(arm_block = self.into(destination, arm_block, body));
-            self.cfg.terminate(arm_block,
-                               outer_visibility_scope,
-                               span,
+            self.cfg.terminate(arm_block, outer_source_info,
                                TerminatorKind::Goto { target: end_block });
         }
-        self.visibility_scope = outer_visibility_scope;
+        self.visibility_scope = outer_source_info.scope;
 
         end_block.unit()
     }
@@ -170,7 +168,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if var_scope.is_none() {
                     var_scope = Some(self.new_visibility_scope(scope_span));
                 }
-                self.declare_binding(var_scope.unwrap(), mutability, name, var, ty, pattern.span);
+                let source_info = SourceInfo {
+                    span: pattern.span,
+                    scope: var_scope.unwrap()
+                };
+                self.declare_binding(source_info, mutability, name, var, ty);
                 if let Some(subpattern) = subpattern.as_ref() {
                     var_scope = self.declare_bindings(var_scope, scope_span, subpattern);
                 }
@@ -382,17 +384,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                              mut otherwise: Vec<BasicBlock>)
                              -> BasicBlock
     {
+        let source_info = self.source_info(span);
         otherwise.sort();
         otherwise.dedup(); // variant switches can introduce duplicate target blocks
-        let scope_id = self.innermost_scope_id();
         if otherwise.len() == 1 {
             otherwise[0]
         } else {
             let join_block = self.cfg.start_new_block();
             for block in otherwise {
-                self.cfg.terminate(block,
-                                   scope_id,
-                                   span,
+                self.cfg.terminate(block, source_info,
                                    TerminatorKind::Goto { target: join_block });
             }
             join_block
@@ -571,24 +571,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let arm_block = arm_blocks.blocks[candidate.arm_index];
 
-        let scope_id = self.innermost_scope_id();
         if let Some(guard) = candidate.guard {
             // the block to branch to if the guard fails; if there is no
             // guard, this block is simply unreachable
             let guard = self.hir.mirror(guard);
-            let guard_span = guard.span;
+            let source_info = self.source_info(guard.span);
             let cond = unpack!(block = self.as_operand(block, guard));
             let otherwise = self.cfg.start_new_block();
-            self.cfg.terminate(block,
-                               scope_id,
-                               guard_span,
+            self.cfg.terminate(block, source_info,
                                TerminatorKind::If { cond: cond,
                                                     targets: (arm_block, otherwise)});
             Some(otherwise)
         } else {
-            self.cfg.terminate(block,
-                               scope_id,
-                               candidate.span,
+            let source_info = self.source_info(candidate.span);
+            self.cfg.terminate(block, source_info,
                                TerminatorKind::Goto { target: arm_block });
             None
         }
@@ -614,35 +610,33 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     Rvalue::Ref(region, borrow_kind, binding.source),
             };
 
-            let scope_id = self.innermost_scope_id();
-            self.cfg.push_assign(block, scope_id, binding.span,
+            let source_info = self.source_info(binding.span);
+            self.cfg.push_assign(block, source_info,
                                  &Lvalue::Var(var_index), rvalue);
         }
     }
 
     fn declare_binding(&mut self,
-                       var_scope_id: VisibilityScope,
+                       source_info: SourceInfo,
                        mutability: Mutability,
                        name: Name,
                        var_id: NodeId,
-                       var_ty: Ty<'tcx>,
-                       span: Span)
+                       var_ty: Ty<'tcx>)
                        -> u32
     {
-        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, var_scope_id={:?}, span={:?})",
-               var_id, name, var_ty, var_scope_id, span);
+        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, source_info={:?})",
+               var_id, name, var_ty, source_info);
 
         let index = self.var_decls.len();
         self.var_decls.push(VarDecl::<'tcx> {
-            scope: var_scope_id,
+            source_info: source_info,
             mutability: mutability,
             name: name,
             ty: var_ty.clone(),
-            span: span,
         });
         let index = index as u32;
         let extent = self.extent_of_innermost_scope();
-        self.schedule_drop(span, extent, &Lvalue::Var(index), var_ty);
+        self.schedule_drop(source_info.span, extent, &Lvalue::Var(index), var_ty);
         self.var_indices.insert(var_id, index);
 
         debug!("declare_binding: index={:?}", index);

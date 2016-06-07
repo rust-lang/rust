@@ -100,6 +100,18 @@ impl<'tcx> IndexMut<BasicBlock> for Mir<'tcx> {
     }
 }
 
+/// Grouped information about the source code origin of a MIR entity.
+/// Intended to be inspected by diagnostics and debuginfo.
+/// Most passes can work with it as a whole, within a single function.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+pub struct SourceInfo {
+    /// Source span for the AST pertaining to this MIR entity.
+    pub span: Span,
+
+    /// The lexical visibility scope, i.e. which bindings can be seen.
+    pub scope: VisibilityScope
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Mutability and borrow kinds
 
@@ -172,11 +184,8 @@ pub struct VarDecl<'tcx> {
     /// type inferred for this variable (`let x: ty = ...`)
     pub ty: Ty<'tcx>,
 
-    /// scope in which variable was declared
-    pub scope: VisibilityScope,
-
-    /// span where variable was declared
-    pub span: Span,
+    /// source information (span, scope, etc.) for the declaration
+    pub source_info: SourceInfo,
 }
 
 /// A "temp" is a temporary that we place on the stack. They are
@@ -275,8 +284,7 @@ pub struct BasicBlockData<'tcx> {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Terminator<'tcx> {
-    pub span: Span,
-    pub scope: VisibilityScope,
+    pub source_info: SourceInfo,
     pub kind: TerminatorKind<'tcx>
 }
 
@@ -587,8 +595,7 @@ pub enum AssertMessage<'tcx> {
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Statement<'tcx> {
-    pub span: Span,
-    pub scope: VisibilityScope,
+    pub source_info: SourceInfo,
     pub kind: StatementKind<'tcx>,
 }
 

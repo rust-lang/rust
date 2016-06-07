@@ -65,8 +65,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 from_end: suffix_len,
             };
             let temp = self.temp(slice.ty.clone()); // no need to schedule drop, temp is always copy
-            let scope_id = self.innermost_scope_id();
-            self.cfg.push_assign(block, scope_id, slice.span, &temp, rvalue);
+            let source_info = self.source_info(slice.span);
+            self.cfg.push_assign(block, source_info, &temp, rvalue);
             match_pairs.push(MatchPair::new(temp, slice));
         }
 

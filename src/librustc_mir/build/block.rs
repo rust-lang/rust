@@ -83,8 +83,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 unpack!(block = this.into(destination, block, expr));
             } else if dest_is_unit {
                 // FIXME(#31472)
-                let scope_id = this.innermost_scope_id();
-                this.cfg.push_assign_unit(block, scope_id, span, destination);
+                let source_info = this.source_info(span);
+                this.cfg.push_assign_unit(block, source_info, destination);
             }
             // Finally, we pop all the let scopes before exiting out from the scope of block
             // itself.
