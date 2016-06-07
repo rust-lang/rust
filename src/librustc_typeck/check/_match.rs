@@ -345,9 +345,20 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                     ty::TySlice(inner_ty) => (inner_ty, expected_ty),
                     _ => {
                         if !expected_ty.references_error() {
-                            span_err!(tcx.sess, pat.span, E0529,
-                                      "expected an array or slice, found `{}`",
-                                      expected_ty);
+                            let mut err = struct_span_err!(
+                                tcx.sess, pat.span, E0529,
+                                "expected an array or slice, found `{}`",
+                                expected_ty);
+                            if let ty::TyRef(_, ty::TypeAndMut { mutbl: _, ty }) = expected_ty.sty {
+                                match ty.sty {
+                                    ty::TyArray(..) | ty::TySlice(..) => {
+                                        err.help("the semantics of slice patterns changed \
+                                                  recently; see issue #23121");
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            err.emit();
                         }
                         (tcx.types.err, tcx.types.err)
                     }
