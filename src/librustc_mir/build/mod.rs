@@ -200,11 +200,11 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
             builder.args_and_body(block, return_ty, arguments, arg_extent, ast_block)
         }));
 
-        let visibility_scope = builder.visibility_scope;
+        let source_info = builder.source_info(span);
         let return_block = builder.return_block();
-        builder.cfg.terminate(block, visibility_scope, span,
+        builder.cfg.terminate(block, source_info,
                               TerminatorKind::Goto { target: return_block });
-        builder.cfg.terminate(return_block, visibility_scope, span,
+        builder.cfg.terminate(return_block, source_info,
                               TerminatorKind::Return);
         return_block.and(arg_decls)
     }));
@@ -260,11 +260,11 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
         let expr = builder.hir.mirror(ast_expr);
         unpack!(block = builder.into(&Lvalue::ReturnPointer, block, expr));
 
-        let visibility_scope = builder.visibility_scope;
+        let source_info = builder.source_info(span);
         let return_block = builder.return_block();
-        builder.cfg.terminate(block, visibility_scope, span,
+        builder.cfg.terminate(block, source_info,
                               TerminatorKind::Goto { target: return_block });
-        builder.cfg.terminate(return_block, visibility_scope, span,
+        builder.cfg.terminate(return_block, source_info,
                               TerminatorKind::Return);
 
         return_block.unit()

@@ -18,7 +18,6 @@ use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
 use syntax::ast::NodeId;
-use syntax::codemap::Span;
 
 const INDENT: &'static str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -180,7 +179,7 @@ fn write_basic_block(tcx: TyCtxt,
         writeln!(w, "{0:1$} // {2}",
                  indented_mir,
                  ALIGN,
-                 comment(tcx, statement.scope, statement.span))?;
+                 comment(tcx, statement.source_info))?;
 
         current_location.statement_index += 1;
     }
@@ -190,12 +189,12 @@ fn write_basic_block(tcx: TyCtxt,
     writeln!(w, "{0:1$} // {2}",
              indented_terminator,
              ALIGN,
-             comment(tcx, data.terminator().scope, data.terminator().span))?;
+             comment(tcx, data.terminator().source_info))?;
 
     writeln!(w, "{}}}\n", INDENT)
 }
 
-fn comment(tcx: TyCtxt, scope: VisibilityScope, span: Span) -> String {
+fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {
     format!("scope {} at {}", scope.index(), tcx.sess.codemap().span_to_string(span))
 }
 
@@ -221,7 +220,7 @@ fn write_scope_tree(tcx: TyCtxt,
         // User variable types (including the user's name in a comment).
         for (i, var) in mir.var_decls.iter().enumerate() {
             // Skip if not declared in this scope.
-            if var.scope != child {
+            if var.source_info.scope != child {
                 continue;
             }
 
@@ -242,7 +241,7 @@ fn write_scope_tree(tcx: TyCtxt,
                      indented_var,
                      ALIGN,
                      var.name,
-                     comment(tcx, var.scope, var.span))?;
+                     comment(tcx, var.source_info))?;
         }
 
         write_scope_tree(tcx, mir, scope_tree, w, child, depth + 1)?;

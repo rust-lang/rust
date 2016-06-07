@@ -281,12 +281,13 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
         loop {
             let data = self.mir.basic_block_data(bb);
             for statement in &data.statements {
+                let span = statement.source_info.span;
                 match statement.kind {
                     mir::StatementKind::Assign(ref dest, ref rvalue) => {
                         let ty = self.mir.lvalue_ty(tcx, dest);
                         let ty = self.monomorphize(&ty).to_ty(tcx);
-                        match self.const_rvalue(rvalue, ty, statement.span) {
-                            Ok(value) => self.store(dest, value, statement.span),
+                        match self.const_rvalue(rvalue, ty, span) {
+                            Ok(value) => self.store(dest, value, span),
                             Err(err) => if failure.is_ok() { failure = Err(err); }
                         }
                     }
@@ -294,7 +295,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             }
 
             let terminator = data.terminator();
-            let span = terminator.span;
+            let span = terminator.source_info.span;
             bb = match terminator.kind {
                 mir::TerminatorKind::Drop { target, .. } | // No dropping.
                 mir::TerminatorKind::Goto { target } => target,

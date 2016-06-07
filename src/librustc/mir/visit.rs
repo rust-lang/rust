@@ -186,6 +186,11 @@ macro_rules! make_mir_visitor {
                 self.super_span(span);
             }
 
+            fn visit_source_info(&mut self,
+                                 source_info: & $($mutability)* SourceInfo) {
+                self.super_source_info(source_info);
+            }
+
             fn visit_fn_output(&mut self,
                                fn_output: & $($mutability)* FnOutput<'tcx>) {
                 self.super_fn_output(fn_output);
@@ -319,13 +324,11 @@ macro_rules! make_mir_visitor {
                                block: BasicBlock,
                                statement: & $($mutability)* Statement<'tcx>) {
                 let Statement {
-                    ref $($mutability)* span,
-                    ref $($mutability)* scope,
+                    ref $($mutability)* source_info,
                     ref $($mutability)* kind,
                 } = *statement;
 
-                self.visit_span(span);
-                self.visit_visibility_scope(scope);
+                self.visit_source_info(source_info);
                 match *kind {
                     StatementKind::Assign(ref $($mutability)* lvalue,
                                           ref $($mutability)* rvalue) => {
@@ -346,13 +349,11 @@ macro_rules! make_mir_visitor {
                                 block: BasicBlock,
                                 terminator: &$($mutability)* Terminator<'tcx>) {
                 let Terminator {
-                    ref $($mutability)* span,
-                    ref $($mutability)* scope,
+                    ref $($mutability)* source_info,
                     ref $($mutability)* kind,
                 } = *terminator;
 
-                self.visit_span(span);
-                self.visit_visibility_scope(scope);
+                self.visit_source_info(source_info);
                 self.visit_terminator_kind(block, kind);
             }
 
@@ -622,13 +623,11 @@ macro_rules! make_mir_visitor {
                     mutability: _,
                     name: _,
                     ref $($mutability)* ty,
-                    ref $($mutability)* scope,
-                    ref $($mutability)* span,
+                    ref $($mutability)* source_info,
                 } = *var_decl;
 
                 self.visit_ty(ty);
-                self.visit_visibility_scope(scope);
-                self.visit_span(span);
+                self.visit_source_info(source_info);
             }
 
             fn super_temp_decl(&mut self,
@@ -705,6 +704,16 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_span(&mut self, _span: & $($mutability)* Span) {
+            }
+
+            fn super_source_info(&mut self, source_info: & $($mutability)* SourceInfo) {
+                let SourceInfo {
+                    ref $($mutability)* span,
+                    ref $($mutability)* scope,
+                } = *source_info;
+
+                self.visit_span(span);
+                self.visit_visibility_scope(scope);
             }
 
             fn super_fn_output(&mut self, fn_output: & $($mutability)* FnOutput<'tcx>) {

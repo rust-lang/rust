@@ -10,7 +10,6 @@
 
 use rustc::mir::repr as mir;
 use common::{self, BlockAndBuilder};
-use debuginfo::DebugLoc;
 
 use super::MirContext;
 use super::TempRef;
@@ -22,8 +21,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                            -> BlockAndBuilder<'bcx, 'tcx> {
         debug!("trans_statement(statement={:?})", statement);
 
-        let debug_loc = DebugLoc::ScopeAt(self.scopes[statement.scope.index()],
-                                          statement.span);
+        let debug_loc = self.debug_loc(statement.source_info);
         debug_loc.apply_to_bcx(&bcx);
         debug_loc.apply(bcx.fcx());
         match statement.kind {
@@ -46,7 +44,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 let ty = bcx.monomorphize(&ty.to_ty(bcx.tcx()));
 
                                 if !common::type_is_zero_size(bcx.ccx(), ty) {
-                                    span_bug!(statement.span,
+                                    span_bug!(statement.source_info.span,
                                               "operand {:?} already assigned",
                                               rvalue);
                                 } else {
