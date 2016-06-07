@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use rustc_data_structures::bitvec::BitVector;
-use rustc::middle::const_val::ConstVal;
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
