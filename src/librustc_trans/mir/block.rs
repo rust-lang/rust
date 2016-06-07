@@ -894,8 +894,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         //   bitcasting to the struct type yields invalid cast errors.
 
         // We instead thus allocate some scratch space...
-        let llscratch = bcx.alloca(llcast_ty, "fn_ret_cast");
-        bcx.with_block(|bcx| base::call_lifetime_start(bcx, llscratch));
+        let llscratch = bcx.with_block(|bcx| {
+            let alloca = base::alloca(bcx, llcast_ty, "fn_ret_cast");
+            base::call_lifetime_start(bcx, alloca);
+            alloca
+        });
 
         // ...where we first store the value...
         bcx.store(op.immediate(), llscratch);

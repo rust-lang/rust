@@ -124,7 +124,12 @@ impl<'tcx> TempRef<'tcx> {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
             // we need something in the operand.
-            let val = OperandValue::Immediate(common::C_nil(ccx));
+            let nil = common::C_nil(ccx);
+            let val = if common::type_is_imm_pair(ccx, ty) {
+                OperandValue::Pair(nil, nil)
+            } else {
+                OperandValue::Immediate(nil)
+            };
             let op = OperandRef {
                 val: val,
                 ty: ty
