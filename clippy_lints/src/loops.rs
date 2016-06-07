@@ -446,7 +446,7 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                                        expr.span,
                                        "this range is empty so this for loop will never run",
                                        |db| {
-                                           db.span_suggestion(expr.span,
+                                           db.span_suggestion(arg.span,
                                                               "consider using the following if \
                                                                you are attempting to iterate \
                                                                over this range in reverse",
