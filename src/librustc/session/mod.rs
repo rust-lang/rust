@@ -284,9 +284,6 @@ impl Session {
     pub fn count_llvm_insns(&self) -> bool {
         self.opts.debugging_opts.count_llvm_insns
     }
-    pub fn count_type_sizes(&self) -> bool {
-        self.opts.debugging_opts.count_type_sizes
-    }
     pub fn time_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.time_llvm_passes
     }
