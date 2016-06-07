@@ -1,4 +1,4 @@
-- Feature Name: rust_new_error_format
+- Feature Name: default_and_expanded_errors_for_rustc
 - Start Date: 2016-06-07
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
