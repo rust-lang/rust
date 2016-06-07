@@ -67,15 +67,8 @@ impl<'l, 'tcx> MirPass<'tcx> for SimplifyCfg<'l> {
 impl<'l> Pass for SimplifyCfg<'l> {}
 
 fn merge_consecutive_blocks(mir: &mut Mir) {
-    // Build the precedecessor map for the MIR
-    let mut pred_count = IndexVec::from_elem(0u32, mir.basic_blocks());
-    for (_, data) in traversal::preorder(mir) {
-        if let Some(ref term) = data.terminator {
-            for &tgt in term.successors().iter() {
-                pred_count[tgt] += 1;
-            }
-        }
-    }
+    let mut pred_count: IndexVec<_, _> =
+        mir.predecessors().iter().map(|ps| ps.len()).collect();
 
     loop {
         let mut changed = false;
