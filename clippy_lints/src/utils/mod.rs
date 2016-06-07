@@ -813,3 +813,12 @@ pub fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
     }}
     None
 }
+
+/// Return whether the given type is an `unsafe` function.
+pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
+    match ty.sty {
+        ty::TyFnDef(_, _, ref f) |
+        ty::TyFnPtr(ref f) => f.unsafety == Unsafety::Unsafe,
+        _ => false,
+    }
+}
