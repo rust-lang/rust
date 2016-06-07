@@ -245,7 +245,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let def_did = def.def_id();
 
         let use_attrs = tcx.map.attrs(id).clean(self.cx);
-        let is_no_inline = use_attrs.list("doc").has_word("no_inline");
+        // Don't inline doc(hidden) imports so they can be stripped at a later stage.
+        let is_no_inline = use_attrs.list("doc").has_word("no_inline") ||
+                           use_attrs.list("doc").has_word("hidden");
 
         // For cross-crate impl inlining we need to know whether items are
         // reachable in documentation - a previously nonreachable item can be
