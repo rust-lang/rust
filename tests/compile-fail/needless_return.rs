@@ -23,26 +23,41 @@ fn test_no_semicolon() -> bool {
 
 fn test_if_block() -> bool {
     if true {
-        return true;       //~ERROR unneeded return statement
+        return true;
+        //~^ ERROR unneeded return statement
+        //~| HELP remove `return` as shown
+        //~| SUGGESTION true
     } else {
-        return false;      //~ERROR unneeded return statement
+        return false;
+        //~^ ERROR unneeded return statement
+        //~| HELP remove `return` as shown
+        //~| SUGGESTION false
     }
 }
 
 fn test_match(x: bool) -> bool {
     match x {
         true => {
-            return false;  //~ERROR unneeded return statement
+            return false;
+            //~^ ERROR unneeded return statement
+            //~| HELP remove `return` as shown
+            //~| SUGGESTION false
         }
         false => {
-            return true;   //~ERROR unneeded return statement
+            return true;
+            //~^ ERROR unneeded return statement
+            //~| HELP remove `return` as shown
+            //~| SUGGESTION true
         }
     }
 }
 
 fn test_closure() {
     let _ = || {
-        return true;       //~ERROR unneeded return statement
+        return true;
+        //~^ ERROR unneeded return statement
+        //~| HELP remove `return` as shown
+        //~| SUGGESTION true
     };
 }
 

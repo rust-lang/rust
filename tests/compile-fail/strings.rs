@@ -63,8 +63,11 @@ fn main() {
     add_assign_only();
     both();
 
-    // the add is only caught for String
+    // the add is only caught for `String`
     let mut x = 1;
-    x = x + 1; //~ WARN assign_op_pattern
+    ; x = x + 1;
+    //~^ WARN assign_op_pattern
+    //~| HELP replace
+    //~| SUGGESTION ; x += 1;
     assert_eq!(2, x);
 }
