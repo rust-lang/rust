@@ -20,4 +20,4 @@ fn main() {
     let pointer = other;
     pointer();
 }
-extern fn other() {}
+extern "C" fn other() {}

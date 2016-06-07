@@ -17,9 +17,14 @@ struct Parser<'i: 't, 't>(&'i u8, &'t u8);
 
 impl<'i, 't> Parser<'i, 't> {
     fn parse_nested_block<F, T>(&mut self, parse: F) -> Result<T, ()>
-        where for<'tt> F: FnOnce(&mut Parser<'i, 'tt>) -> T { panic!() }
+        where for<'tt> F: FnOnce(&mut Parser<'i, 'tt>) -> T
+    {
+        panic!()
+    }
 
-    fn expect_exhausted(&mut self) -> Result<(), ()> { Ok(()) }
+    fn expect_exhausted(&mut self) -> Result<(), ()> {
+        Ok(())
+    }
 }
 
 fn main() {
