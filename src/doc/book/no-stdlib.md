@@ -12,9 +12,26 @@ don’t want to use the standard library via an attribute: `#![no_std]`.
 > `#![no_std]`](using-rust-without-the-standard-library.html)
 
 Obviously there's more to life than just libraries: one can use
-`#[no_std]` with an executable, controlling the entry point is
-possible in two ways: the `#[start]` attribute, or overriding the
-default shim for the C `main` function with your own.
+`#[no_std]` with an executable.
+
+### Using libc
+
+In order to build a `#[no_std]` executable we will need libc as a dependency. We can specify
+this using our `Cargo.toml` file:
+
+```toml
+[dependencies]
+libc = { version = "0.2.11", default-features = false }
+```
+
+Note that the default features have been disabled. This is a critical step -
+**the default features of libc include the standard library and so must be
+disabled.**
+
+### Writing an executable without stdlib
+
+Controlling the entry point is possible in two ways: the `#[start]` attribute,
+or overriding the default shim for the C `main` function with your own.
 
 The function marked `#[start]` is passed the command line parameters
 in the same format as C:
@@ -45,9 +62,6 @@ fn start(_argc: isize, _argv: *const *const u8) -> isize {
 # // fn main() {} tricked you, rustdoc!
 ```
 
-> Note: Ensure that you are not including the default features with libc. Otherwise you will
-> implicitly use libstd.
-
 To override the compiler-inserted `main` shim, one has to disable it
 with `#![no_main]` and then create the appropriate symbol with the
 correct ABI and the correct name, which requires overriding the
@@ -74,7 +88,6 @@ pub extern fn main(argc: i32, argv: *const *const u8) -> i32 {
 # #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 # // fn main() {} tricked you, rustdoc!
 ```
-
 
 The compiler currently makes a few assumptions about symbols which are available
 in the executable to call. Normally these functions are provided by the standard
