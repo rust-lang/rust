@@ -148,28 +148,36 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
             write!(f, "{}", cont)
         }
     };
-    let print_region = |f: &mut fmt::Formatter, region: &ty::Region| -> _ {
-        if verbose {
-            write!(f, "{:?}", region)
-        } else {
-            let s = region.to_string();
-            if s.is_empty() {
-                // This happens when the value of the region
-                // parameter is not easily serialized. This may be
-                // because the user omitted it in the first place,
-                // or because it refers to some block in the code,
-                // etc. I'm not sure how best to serialize this.
-                write!(f, "'_")
+
+    let print_regions = |f: &mut fmt::Formatter, start: &str, regions: &[ty::Region]| {
+        // Don't print any regions if they're all erased.
+        if regions.iter().all(|r| *r == ty::ReErased) {
+            return Ok(());
+        }
+
+        for region in regions {
+            start_or_continue(f, start, ", ")?;
+            if verbose {
+                write!(f, "{:?}", region)?;
             } else {
-                write!(f, "{}", s)
+                let s = region.to_string();
+                if s.is_empty() {
+                    // This happens when the value of the region
+                    // parameter is not easily serialized. This may be
+                    // because the user omitted it in the first place,
+                    // or because it refers to some block in the code,
+                    // etc. I'm not sure how best to serialize this.
+                    write!(f, "'_")?;
+                } else {
+                    write!(f, "{}", s)?;
+                }
             }
         }
+
+        Ok(())
     };
 
-    for region in substs.regions.get_slice(subst::TypeSpace) {
-        start_or_continue(f, "<", ", ")?;
-        print_region(f, region)?;
-    }
+    print_regions(f, "<", substs.regions.get_slice(subst::TypeSpace))?;
 
     let num_supplied_defaults = if verbose {
         0
@@ -211,10 +219,7 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
             write!(f, "::{}", item_name)?;
         }
 
-        for region in substs.regions.get_slice(subst::FnSpace) {
-            start_or_continue(f, "::<", ", ")?;
-            print_region(f, region)?;
-        }
+        print_regions(f, "::<", substs.regions.get_slice(subst::FnSpace))?;
 
         // FIXME: consider being smart with defaults here too
         for ty in substs.types.get_slice(subst::FnSpace) {
@@ -536,7 +541,9 @@ impl fmt::Debug for ty::Region {
                 write!(f, "ReSkolemized({}, {:?})", id.index, bound_region)
             }
 
-            ty::ReEmpty => write!(f, "ReEmpty")
+            ty::ReEmpty => write!(f, "ReEmpty"),
+
+            ty::ReErased => write!(f, "ReErased")
         }
     }
 }
@@ -600,7 +607,8 @@ impl fmt::Display for ty::Region {
                 write!(f, "{}", br)
             }
             ty::ReScope(_) |
-            ty::ReVar(_) => Ok(()),
+            ty::ReVar(_) |
+            ty::ReErased => Ok(()),
             ty::ReStatic => write!(f, "'static"),
             ty::ReEmpty => write!(f, "'<empty>"),
         }

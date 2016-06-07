@@ -715,7 +715,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let tr_lvalue = self.const_lvalue(lvalue, span)?;
 
                 let ty = tr_lvalue.ty;
-                let ref_ty = tcx.mk_ref(tcx.mk_region(ty::ReStatic),
+                let ref_ty = tcx.mk_ref(tcx.mk_region(ty::ReErased),
                     ty::TypeAndMut { ty: ty, mutbl: bk.to_mutbl_lossy() });
 
                 let base = match tr_lvalue.base {

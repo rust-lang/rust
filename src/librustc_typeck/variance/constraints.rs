@@ -520,7 +520,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::ReFree(..) | ty::ReScope(..) | ty::ReVar(..) |
-            ty::ReSkolemized(..) | ty::ReEmpty => {
+            ty::ReSkolemized(..) | ty::ReEmpty | ty::ReErased => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
                 bug!("unexpected region encountered in variance \

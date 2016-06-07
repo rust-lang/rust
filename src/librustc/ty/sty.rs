@@ -705,6 +705,9 @@ pub enum Region {
     /// The only way to get an instance of ReEmpty is to have a region
     /// variable with no constraints.
     ReEmpty,
+
+    /// Erased region, used by trait selection, in MIR and during trans.
+    ReErased,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]

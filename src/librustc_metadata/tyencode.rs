@@ -283,6 +283,9 @@ pub fn enc_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, r: ty::Region) {
         ty::ReEmpty => {
             write!(w, "e");
         }
+        ty::ReErased => {
+            write!(w, "E");
+        }
         ty::ReVar(_) | ty::ReSkolemized(..) => {
             // these should not crop up after typeck
             bug!("cannot encode region variables");

@@ -495,7 +495,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         assert!(scheme.generics.types.is_empty());
         self.tcx().mk_substs(
             Substs::new(VecPerParamSpace::empty(),
-                        scheme.generics.regions.map(|_| ty::ReStatic)))
+                        scheme.generics.regions.map(|_| ty::ReErased)))
     }
 
     pub fn symbol_hasher(&self) -> &RefCell<Sha256> {

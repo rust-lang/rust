@@ -271,7 +271,7 @@ pub fn get_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // the method may have some early-bound lifetimes, add
             // regions for those
             let num_dummy_regions = trait_method_type.generics.regions.len(FnSpace);
-            let dummy_regions = vec![ty::ReStatic; num_dummy_regions];
+            let dummy_regions = vec![ty::ReErased; num_dummy_regions];
             let method_substs = substs.clone()
                                       .with_method(vec![], dummy_regions);
             let method_substs = tcx.mk_substs(method_substs);

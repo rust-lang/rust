@@ -187,7 +187,7 @@ impl FlagComputation {
             }
             ty::ReLateBound(debruijn, _) => { self.add_depth(debruijn.depth); }
             ty::ReEarlyBound(..) => { self.add_flags(TypeFlags::HAS_RE_EARLY_BOUND); }
-            ty::ReStatic => {}
+            ty::ReStatic | ty::ReErased => {}
             _ => { self.add_flags(TypeFlags::HAS_FREE_REGIONS); }
         }
 
