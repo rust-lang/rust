@@ -20,11 +20,14 @@ use rustc_back::slice;
 use hir::InlineAsm;
 use std::ascii;
 use std::borrow::{Cow};
+use std::cell::Ref;
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
 use std::ops::{Index, IndexMut};
 use syntax::ast::{self, Name};
 use syntax::codemap::Span;
+
+use super::cache::Cache;
 
 macro_rules! newtype_index {
     ($name:ident, $debug_name:expr) => (
@@ -88,6 +91,9 @@ pub struct Mir<'tcx> {
 
     /// A span representing this MIR, for error reporting
     pub span: Span,
+
+    /// A cache for various calculations
+    cache: Cache
 }
 
 /// where execution begins
@@ -113,7 +119,8 @@ impl<'tcx> Mir<'tcx> {
             arg_decls: arg_decls,
             temp_decls: temp_decls,
             upvar_decls: upvar_decls,
-            span: span
+            span: span,
+            cache: Cache::new()
         }
     }
 
@@ -124,7 +131,18 @@ impl<'tcx> Mir<'tcx> {
 
     #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        self.cache.invalidate();
         &mut self.basic_blocks
+    }
+
+    #[inline]
+    pub fn predecessors(&self) -> Ref<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+        self.cache.predecessors(self)
+    }
+
+    #[inline]
+    pub fn predecessors_for(&self, bb: BasicBlock) -> Ref<Vec<BasicBlock>> {
+        Ref::map(self.predecessors(), |p| &p[bb])
     }
 }
 

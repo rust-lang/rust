@@ -102,6 +102,7 @@ pub mod middle {
 }
 
 pub mod mir {
+    mod cache;
     pub mod repr;
     pub mod tcx;
     pub mod visit;
