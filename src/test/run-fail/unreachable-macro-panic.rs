@@ -9,4 +9,6 @@
 // except according to those terms.
 
 // error-pattern:internal error: entered unreachable code
-fn main() { unreachable!() }
+fn main() {
+    unreachable!()
+}

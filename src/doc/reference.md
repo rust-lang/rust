@@ -1983,6 +1983,7 @@ macro scope.
 
 ### Miscellaneous attributes
 
+- `deprecated` - mark the item as deprecated; the full attribute is `#[deprecated(since = "crate version", note = "...")`, where both arguments are optional.
 - `export_name` - on statics and functions, this determines the name of the
   exported symbol.
 - `link_section` - on statics and functions, this specifies the section of the
@@ -2425,8 +2426,6 @@ The currently implemented features of the reference compiler are:
 
 * - `stmt_expr_attributes` - Allows attributes on expressions and
                              non-item statements.
-
-* - `deprecated` - Allows using the `#[deprecated]` attribute.
 
 * - `type_ascription` - Allows type ascription expressions `expr: Type`.
 

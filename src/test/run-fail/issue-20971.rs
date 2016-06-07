@@ -19,16 +19,13 @@ pub trait Parser {
 
 impl Parser for () {
     type Input = ();
-    fn parse(&mut self, input: ()) {
-
-    }
+    fn parse(&mut self, input: ()) {}
 }
 
-pub fn many() -> Box<Parser<Input=<() as Parser>::Input> + 'static> {
+pub fn many() -> Box<Parser<Input = <() as Parser>::Input> + 'static> {
     panic!("Hello, world!")
 }
 
 fn main() {
-    many()
-        .parse(());
+    many().parse(());
 }
