@@ -128,7 +128,7 @@ mod imp {
     pub const NAME1: [u8; 7] = [b'.', b'P', b'E', b'A', b'_', b'K', 0];
     pub const NAME2: [u8; 7] = [b'.', b'P', b'E', b'A', b'X', 0, 0];
 
-    extern {
+    extern "C" {
         pub static __ImageBase: u8;
     }
 
@@ -186,10 +186,7 @@ static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
 
 static mut CATCHABLE_TYPE_ARRAY: _CatchableTypeArray = _CatchableTypeArray {
     nCatchableTypes: 2,
-    arrayOfCatchableTypes: [
-        ptr!(0),
-        ptr!(0),
-    ],
+    arrayOfCatchableTypes: [ptr!(0), ptr!(0)],
 };
 
 static mut CATCHABLE_TYPE1: _CatchableType = _CatchableType {
@@ -216,7 +213,7 @@ static mut CATCHABLE_TYPE2: _CatchableType = _CatchableType {
     copy_function: ptr!(0),
 };
 
-extern {
+extern "C" {
     // The leading `\x01` byte here is actually a magical signal to LLVM to
     // *not* apply any other mangling like prefixing with a `_` character.
     //
