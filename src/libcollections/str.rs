@@ -1404,8 +1404,8 @@ impl str {
     /// Returns a string slice with all prefixes and suffixes that match a
     /// pattern repeatedly removed.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines
-    /// if a character matches.
+    /// The pattern can be a [`char`] or a closure that determines if a
+    /// character matches.
     ///
     /// [`char`]: primitive.char.html
     ///
