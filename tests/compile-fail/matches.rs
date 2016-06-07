@@ -100,28 +100,43 @@ fn single_match_know_enum() {
 fn match_bool() {
     let test: bool = true;
 
-    match test {  //~ ERROR you seem to be trying to match on a boolean expression
+    match test {
+    //~^ ERROR you seem to be trying to match on a boolean expression
+    //~| HELP try
+    //~| SUGGESTION if test { 0 } else { 42 };
         true => 0,
         false => 42,
     };
 
     let option = 1;
-    match option == 1 {  //~ ERROR you seem to be trying to match on a boolean expression
+    match option == 1 {
+    //~^ ERROR you seem to be trying to match on a boolean expression
+    //~| HELP try
+    //~| SUGGESTION if option == 1 { 1 } else { 0 };
         true => 1,
         false => 0,
     };
 
-    match test { //~ ERROR you seem to be trying to match on a boolean expression
+    match test {
+    //~^ ERROR you seem to be trying to match on a boolean expression
+    //~| HELP try
+    //~^^ SUGGESTION if !test { println!("Noooo!"); };
         true => (),
         false => { println!("Noooo!"); }
     };
 
-    match test { //~ ERROR you seem to be trying to match on a boolean expression
+    match test {
+    //~^ ERROR you seem to be trying to match on a boolean expression
+    //~| HELP try
+    //~^^ SUGGESTION if !test { println!("Noooo!"); };
         false => { println!("Noooo!"); }
         _ => (),
     };
 
-    match test { //~ ERROR you seem to be trying to match on a boolean expression
+    match test {
+    //~^ ERROR you seem to be trying to match on a boolean expression
+    //~| HELP try
+    //~| SUGGESTION if test { println!("Yes!"); } else { println!("Noooo!"); };
         false => { println!("Noooo!"); }
         true => { println!("Yes!"); }
     };
@@ -216,7 +231,7 @@ fn overlapping() {
         11 ... 50 => println!("0 ... 10"),
         _ => (),
     }
-    
+
     if let None = Some(42) {
         // nothing
     } else if let None = Some(42) {

@@ -290,11 +290,15 @@ impl LateLintPass for LoopsPass {
                        !is_iterator_used_after_while_let(cx, iter_expr) {
                         let iterator = snippet(cx, method_args[0].span, "_");
                         let loop_var = snippet(cx, pat_args[0].span, "_");
-                        span_help_and_lint(cx,
+                        span_lint_and_then(cx,
                                            WHILE_LET_ON_ITERATOR,
                                            expr.span,
                                            "this loop could be written as a `for` loop",
-                                           &format!("try\nfor {} in {} {{...}}", loop_var, iterator));
+                                           |db| {
+                        db.span_suggestion(expr.span,
+                                           "try",
+                                           format!("for {} in {} {{ .. }}", loop_var, iterator));
+                        });
                     }
                 }
             }
@@ -598,7 +602,7 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
                                    |db| {
                                        db.span_suggestion(expr.span,
                                                           "use the corresponding method",
-                                                          format!("for {} in {}.{}() {{...}}",
+                                                          format!("for {} in {}.{}() {{ .. }}",
                                                                   snippet(cx, *pat_span, ".."),
                                                                   snippet(cx, arg_span, ".."),
                                                                   kind));

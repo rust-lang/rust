@@ -5,13 +5,19 @@
 fn main() {
     let x = "hello";
     let y = "world";
-    if x == "hello" { //~ERROR this if statement can be collapsed
+    if x == "hello" {
+    //~^ ERROR this if statement can be collapsed
+    //~| HELP try
+    //~| SUGGESTION if x == "hello" && y == "world" {
         if y == "world" {
             println!("Hello world!");
         }
     }
 
-    if x == "hello" || x == "world" { //~ERROR this if statement can be collapsed
+    if x == "hello" || x == "world" {
+    //~^ ERROR this if statement can be collapsed
+    //~| HELP try
+    //~| SUGGESTION if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
         if y == "world" || y == "hello" {
             println!("Hello world!");
         }

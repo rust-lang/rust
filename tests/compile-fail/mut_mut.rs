@@ -40,5 +40,4 @@ fn main() {
 
     let mut z = mut_ptr!(&mut 3u32);
     //~^ NOTE in this expansion of mut_ptr!
-    //~| NOTE in this expansion of mut_ptr!
 }
