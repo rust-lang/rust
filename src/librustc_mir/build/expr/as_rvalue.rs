@@ -14,6 +14,7 @@ use std;
 
 use rustc_const_math::{ConstMathErr, Op};
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::indexed_vec::Idx;
 
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::{Category, RvalueFunc};

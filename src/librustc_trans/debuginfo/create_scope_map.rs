@@ -26,6 +26,7 @@ use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap};
 
 use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::hir::{self, PatKind};
 
 // This procedure builds the *scope map* for a given function, which maps any
@@ -69,9 +70,9 @@ pub fn create_scope_map(cx: &CrateContext,
 
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
-pub fn create_mir_scopes(fcx: &FunctionContext) -> Vec<DIScope> {
+pub fn create_mir_scopes(fcx: &FunctionContext) -> IndexVec<VisibilityScope, DIScope> {
     let mir = fcx.mir.clone().expect("create_mir_scopes: missing MIR for fn");
-    let mut scopes = vec![ptr::null_mut(); mir.visibility_scopes.len()];
+    let mut scopes = IndexVec::from_elem(ptr::null_mut(), &mir.visibility_scopes);
 
     let fn_metadata = match fcx.debug_context {
         FunctionDebugContext::RegularContext(box ref data) => data.fn_metadata,
@@ -101,23 +102,22 @@ fn make_mir_scope(ccx: &CrateContext,
                   has_variables: &BitVector,
                   fn_metadata: DISubprogram,
                   scope: VisibilityScope,
-                  scopes: &mut [DIScope]) {
-    let idx = scope.index();
-    if !scopes[idx].is_null() {
+                  scopes: &mut IndexVec<VisibilityScope, DIScope>) {
+    if !scopes[scope].is_null() {
         return;
     }
 
     let scope_data = &mir.visibility_scopes[scope];
     let parent_scope = if let Some(parent) = scope_data.parent_scope {
         make_mir_scope(ccx, mir, has_variables, fn_metadata, parent, scopes);
-        scopes[parent.index()]
+        scopes[parent]
     } else {
         // The root is the function itself.
-        scopes[idx] = fn_metadata;
+        scopes[scope] = fn_metadata;
         return;
     };
 
-    if !has_variables.contains(idx) {
+    if !has_variables.contains(scope.index()) {
         // Do not create a DIScope if there are no variables
         // defined in this MIR Scope, to avoid debuginfo bloat.
 
@@ -125,14 +125,14 @@ fn make_mir_scope(ccx: &CrateContext,
         // our parent is the root, because we might want to
         // put arguments in the root and not have shadowing.
         if parent_scope != fn_metadata {
-            scopes[idx] = parent_scope;
+            scopes[scope] = parent_scope;
             return;
         }
     }
 
     let loc = span_start(ccx, scope_data.span);
     let file_metadata = file_metadata(ccx, &loc.file.name);
-    scopes[idx] = unsafe {
+    scopes[scope] = unsafe {
         llvm::LLVMDIBuilderCreateLexicalBlock(
             DIB(ccx),
             parent_scope,

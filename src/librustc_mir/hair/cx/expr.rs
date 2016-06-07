@@ -10,6 +10,7 @@
 
 use hair::*;
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc_const_math::ConstInt;
 use hair::cx::Cx;
 use hair::cx::block;

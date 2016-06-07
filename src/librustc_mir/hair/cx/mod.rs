@@ -21,6 +21,7 @@ use rustc::mir::transform::MirSource;
 
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval as const_eval;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::map::blocks::FnLikeNode;

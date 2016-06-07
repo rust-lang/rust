@@ -15,6 +15,8 @@ use build::expr::category::Category;
 use hair::*;
 use rustc::mir::repr::*;
 
+use rustc_data_structures::indexed_vec::Idx;
+
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, yielding an lvalue that we can move from etc.
     pub fn as_lvalue<M>(&mut self,
@@ -75,7 +77,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 success.and(slice.index(idx))
             }
             ExprKind::SelfRef => {
-                block.and(Lvalue::Arg(0))
+                block.and(Lvalue::Arg(Arg::new(0)))
             }
             ExprKind::VarRef { id } => {
                 let index = this.var_indices[&id];

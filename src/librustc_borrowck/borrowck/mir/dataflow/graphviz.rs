@@ -12,6 +12,7 @@
 
 use syntax::ast::NodeId;
 use rustc::mir::repr::{BasicBlock, Mir};
+use rustc_data_structures::indexed_vec::Idx;
 
 use dot;
 use dot::IntoCow;
@@ -27,7 +28,7 @@ use std::path::Path;
 use super::super::MoveDataParamEnv;
 use super::super::MirBorrowckCtxtPreDataflow;
 use bitslice::bits_to_string;
-use indexed_set::{Idx, IdxSet};
+use indexed_set::{IdxSet};
 use super::{BitDenotation, DataflowState};
 
 impl<O: BitDenotation> DataflowState<O> {

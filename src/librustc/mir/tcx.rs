@@ -154,11 +154,11 @@ impl<'a, 'gcx, 'tcx> Mir<'tcx> {
     {
         match *lvalue {
             Lvalue::Var(index) =>
-                LvalueTy::Ty { ty: self.var_decls[index as usize].ty },
+                LvalueTy::Ty { ty: self.var_decls[index].ty },
             Lvalue::Temp(index) =>
-                LvalueTy::Ty { ty: self.temp_decls[index as usize].ty },
+                LvalueTy::Ty { ty: self.temp_decls[index].ty },
             Lvalue::Arg(index) =>
-                LvalueTy::Ty { ty: self.arg_decls[index as usize].ty },
+                LvalueTy::Ty { ty: self.arg_decls[index].ty },
             Lvalue::Static(def_id) =>
                 LvalueTy::Ty { ty: tcx.lookup_item_type(def_id).ty },
             Lvalue::ReturnPointer =>

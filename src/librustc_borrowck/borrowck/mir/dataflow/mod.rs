@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc_data_structures::indexed_vec::Idx;
+
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::{self, Mir};
 
@@ -21,7 +23,7 @@ use super::MirBorrowckCtxtPreDataflow;
 use super::MoveDataParamEnv;
 
 use bitslice::{bitwise, BitwiseOperator};
-use indexed_set::{Idx, IdxSet, IdxSetBuf};
+use indexed_set::{IdxSet, IdxSetBuf};
 
 pub use self::sanity_check::sanity_check_via_rustc_peek;
 pub use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};

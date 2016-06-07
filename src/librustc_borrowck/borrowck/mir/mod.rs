@@ -298,8 +298,8 @@ fn drop_flag_effects_for_function_entry<'a, 'tcx, F>(
     where F: FnMut(MovePathIndex, DropFlagState)
 {
     let move_data = &ctxt.move_data;
-    for i in 0..(mir.arg_decls.len() as u32) {
-        let lvalue = repr::Lvalue::Arg(i);
+    for (arg, _) in mir.arg_decls.iter_enumerated() {
+        let lvalue = repr::Lvalue::Arg(arg);
         let move_path_index = move_data.rev_lookup.find(&lvalue);
         on_all_children_bits(tcx, mir, move_data,
                              move_path_index,

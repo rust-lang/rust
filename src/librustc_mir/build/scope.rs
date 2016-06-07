@@ -96,6 +96,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token::intern_and_get_ident;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_math::ConstInt;
+use rustc_data_structures::indexed_vec::Idx;
 
 pub struct Scope<'tcx> {
     /// the scope-id within the scope_auxiliary
@@ -264,7 +265,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// wrapper maybe preferable.
     pub fn push_scope(&mut self, extent: CodeExtent, entry: BasicBlock) {
         debug!("push_scope({:?})", extent);
-        let id = ScopeId::new(self.scope_auxiliary.vec.len());
+        let id = ScopeId::new(self.scope_auxiliary.len());
         let vis_scope = self.visibility_scope;
         self.scopes.push(Scope {
             id: id,
@@ -274,7 +275,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             free: None,
             cached_block: None,
         });
-        self.scope_auxiliary.vec.push(ScopeAuxiliary {
+        self.scope_auxiliary.push(ScopeAuxiliary {
             extent: extent,
             dom: self.cfg.current_location(entry),
             postdoms: vec![]

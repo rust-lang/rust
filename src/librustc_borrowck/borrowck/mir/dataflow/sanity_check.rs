@@ -14,6 +14,7 @@ use syntax::codemap::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::repr::{self, Mir};
+use rustc_data_structures::indexed_vec::Idx;
 
 use super::super::gather_moves::{MovePathIndex};
 use super::super::MoveDataParamEnv;
