@@ -12,7 +12,7 @@
 #![allow(dead_code)]
 #![cfg(windows)]
 
-use libc::{c_void, c_ulong, c_long, c_ulonglong};
+use libc::{c_long, c_ulong, c_ulonglong, c_void};
 
 pub type DWORD = c_ulong;
 pub type LONG = c_long;
@@ -25,8 +25,7 @@ pub const EXCEPTION_UNWINDING: DWORD = 0x2;        // Unwind is in progress
 pub const EXCEPTION_EXIT_UNWIND: DWORD = 0x4;      // Exit unwind is in progress
 pub const EXCEPTION_TARGET_UNWIND: DWORD = 0x20;   // Target unwind in progress
 pub const EXCEPTION_COLLIDED_UNWIND: DWORD = 0x40; // Collided exception handler call
-pub const EXCEPTION_UNWIND: DWORD = EXCEPTION_UNWINDING |
-                                    EXCEPTION_EXIT_UNWIND |
+pub const EXCEPTION_UNWIND: DWORD = EXCEPTION_UNWINDING | EXCEPTION_EXIT_UNWIND |
                                     EXCEPTION_TARGET_UNWIND |
                                     EXCEPTION_COLLIDED_UNWIND;
 
@@ -37,7 +36,7 @@ pub struct EXCEPTION_RECORD {
     pub ExceptionRecord: *mut EXCEPTION_RECORD,
     pub ExceptionAddress: LPVOID,
     pub NumberParameters: DWORD,
-    pub ExceptionInformation: [LPVOID; EXCEPTION_MAXIMUM_PARAMETERS]
+    pub ExceptionInformation: [LPVOID; EXCEPTION_MAXIMUM_PARAMETERS],
 }
 
 #[repr(C)]
@@ -75,7 +74,7 @@ pub enum EXCEPTION_DISPOSITION {
     ExceptionContinueExecution,
     ExceptionContinueSearch,
     ExceptionNestedException,
-    ExceptionCollidedUnwind
+    ExceptionCollidedUnwind,
 }
 pub use self::EXCEPTION_DISPOSITION::*;
 
@@ -93,6 +92,5 @@ extern "system" {
                        OriginalContext: *const CONTEXT,
                        HistoryTable: *const UNWIND_HISTORY_TABLE);
     #[unwind]
-    pub fn _CxxThrowException(pExceptionObject: *mut c_void,
-                              pThrowInfo: *mut u8);
+    pub fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8);
 }
