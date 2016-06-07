@@ -200,11 +200,17 @@ fn main() {
     }
 
     // testing that the empty range lint folds constants
-    for i in 10..5+4 { //~ERROR this range is empty so this for loop will never run
+    for i in 10..5+4 {
+    //~^ ERROR this range is empty so this for loop will never run
+    //~| HELP if you are attempting to iterate over this range in reverse
+    //~| SUGGESTION for i in (5+4..10).rev() {
         println!("{}", i);
     }
 
-    for i in (5+2)..(3-1) { //~ERROR this range is empty so this for loop will never run
+    for i in (5+2)..(3-1) {
+    //~^ ERROR this range is empty so this for loop will never run
+    //~| HELP if you are attempting to iterate over this range in reverse
+    //~| SUGGESTION for i in ((3-1)..(5+2)).rev() {
         println!("{}", i);
     }
 

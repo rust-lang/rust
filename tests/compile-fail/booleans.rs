@@ -52,29 +52,37 @@ fn equality_stuff() {
     let c: i32 = unimplemented!();
     let d: i32 = unimplemented!();
     let e: i32 = unimplemented!();
-    let _ = a == b && a != b; //~ ERROR this boolean expression contains a logic bug
+    let _ = a == b && a != b;
+    //~^ ERROR this boolean expression contains a logic bug
     //~| HELP this expression can be optimized out
     //~| HELP it would look like the following
     //~| SUGGESTION let _ = false;
-    let _ = a == b && c == 5 && a == b; //~ ERROR this boolean expression can be simplified
-    //~| HELP try
-    //~| SUGGESTION let _ = a == b && c == 5;
-    let _ = a == b && c == 5 && b == a; //~ ERROR this boolean expression can be simplified
+    let _ = a == b && c == 5 && a == b;
+    //~^ ERROR this boolean expression can be simplified
     //~| HELP try
     //~| SUGGESTION let _ = a == b && c == 5;
     //~| HELP try
     //~| SUGGESTION let _ = !(c != 5 || a != b);
-    let _ = a < b && a >= b; //~ ERROR this boolean expression contains a logic bug
+    let _ = a == b && c == 5 && b == a;
+    //~^ ERROR this boolean expression can be simplified
+    //~| HELP try
+    //~| SUGGESTION let _ = a == b && c == 5;
+    //~| HELP try
+    //~| SUGGESTION let _ = !(c != 5 || a != b);
+    let _ = a < b && a >= b;
+    //~^ ERROR this boolean expression contains a logic bug
     //~| HELP this expression can be optimized out
     //~| HELP it would look like the following
     //~| SUGGESTION let _ = false;
-    let _ = a > b && a <= b; //~ ERROR this boolean expression contains a logic bug
+    let _ = a > b && a <= b;
+    //~^ ERROR this boolean expression contains a logic bug
     //~| HELP this expression can be optimized out
     //~| HELP it would look like the following
     //~| SUGGESTION let _ = false;
     let _ = a > b && a == b;
 
-    let _ = a != b || !(a != b || c == d); //~ ERROR this boolean expression can be simplified
+    let _ = a != b || !(a != b || c == d);
+    //~^ ERROR this boolean expression can be simplified
     //~| HELP try
     //~| SUGGESTION let _ = c != d || a != b;
     //~| HELP try

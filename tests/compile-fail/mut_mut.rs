@@ -38,5 +38,6 @@ fn main() {
         ***y + **x;
     }
 
-    let mut z = mut_ptr!(&mut 3u32); //~ NOTE in this expansion of mut_ptr!
+    let mut z = mut_ptr!(&mut 3u32);
+    //~^ NOTE in this expansion of mut_ptr!
 }

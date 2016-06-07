@@ -290,11 +290,15 @@ impl LateLintPass for LoopsPass {
                        !is_iterator_used_after_while_let(cx, iter_expr) {
                         let iterator = snippet(cx, method_args[0].span, "_");
                         let loop_var = snippet(cx, pat_args[0].span, "_");
-                        span_help_and_lint(cx,
+                        span_lint_and_then(cx,
                                            WHILE_LET_ON_ITERATOR,
                                            expr.span,
                                            "this loop could be written as a `for` loop",
-                                           &format!("try\nfor {} in {} {{...}}", loop_var, iterator));
+                                           |db| {
+                        db.span_suggestion(expr.span,
+                                           "try",
+                                           format!("for {} in {} {{ .. }}", loop_var, iterator));
+                        });
                     }
                 }
             }
@@ -446,11 +450,11 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                                        expr.span,
                                        "this range is empty so this for loop will never run",
                                        |db| {
-                                           db.span_suggestion(expr.span,
+                                           db.span_suggestion(arg.span,
                                                               "consider using the following if \
                                                                you are attempting to iterate \
                                                                over this range in reverse",
-                                                              format!("({}..{}).rev()` ", end_snippet, start_snippet));
+                                                              format!("({}..{}).rev()", end_snippet, start_snippet));
                                        });
                 } else if eq && limits != ast::RangeLimits::Closed {
                     // if they are equal, it's also problematic - this loop
@@ -598,7 +602,7 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
                                    |db| {
                                        db.span_suggestion(expr.span,
                                                           "use the corresponding method",
-                                                          format!("for {} in {}.{}() {{...}}",
+                                                          format!("for {} in {}.{}() {{ .. }}",
                                                                   snippet(cx, *pat_span, ".."),
                                                                   snippet(cx, arg_span, ".."),
                                                                   kind));

@@ -8,15 +8,33 @@ fn main() {
 
     let u: u32 = 42;
 
-    u <= 0; //~ERROR this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
-    u <= Z; //~ERROR this comparison involving
-    u < Z; //~ERROR this comparison involving
-    Z >= u; //~ERROR this comparison involving
-    Z > u; //~ERROR this comparison involving
-    u > std::u32::MAX; //~ERROR this comparison involving
-    u >= std::u32::MAX; //~ERROR this comparison involving
-    std::u32::MAX < u; //~ERROR this comparison involving
-    std::u32::MAX <= u; //~ERROR this comparison involving
+    u <= 0;
+    //~^ ERROR this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
+    //~| HELP using u == 0 instead
+    u <= Z;
+    //~^ ERROR this comparison involving
+    //~| HELP using u == Z instead
+    u < Z;
+    //~^ ERROR this comparison involving
+    //~| HELP comparison is always false
+    Z >= u;
+    //~^ ERROR this comparison involving
+    //~| HELP using Z == u instead
+    Z > u;
+    //~^ ERROR this comparison involving
+    //~| HELP comparison is always false
+    u > std::u32::MAX;
+    //~^ ERROR this comparison involving
+    //~| HELP comparison is always false
+    u >= std::u32::MAX;
+    //~^ ERROR this comparison involving
+    //~| HELP using u == std::u32::MAX instead
+    std::u32::MAX < u;
+    //~^ ERROR this comparison involving
+    //~| HELP comparison is always false
+    std::u32::MAX <= u;
+    //~^ ERROR this comparison involving
+    //~| HELP using std::u32::MAX == u instead
 
     1-1 > u;
         //~^ ERROR this comparison involving
@@ -29,13 +47,23 @@ fn main() {
         //~| HELP because 12 - 2*6 is the minimum value for this type, the case where the two sides are not equal never occurs, consider using u == 12 - 2*6 instead
 
     let i: i8 = 0;
-    i < -127 - 1; //~ERROR this comparison involving
-    std::i8::MAX >= i; //~ERROR this comparison involving
-    3-7 < std::i32::MIN; //~ERROR this comparison involving
+    i < -127 - 1;
+    //~^ ERROR this comparison involving
+    //~| HELP comparison is always false
+    std::i8::MAX >= i;
+    //~^ ERROR this comparison involving
+    //~| HELP comparison is always true
+    3-7 < std::i32::MIN;
+    //~^ ERROR this comparison involving
+    //~| HELP comparison is always false
 
     let b = false;
-    b >= true; //~ERROR this comparison involving
-    false > b; //~ERROR this comparison involving
+    b >= true;
+    //~^ ERROR this comparison involving
+    //~| HELP using b == true instead
+    false > b;
+    //~^ ERROR this comparison involving
+    //~| HELP comparison is always false
 
     u > 0; // ok
 

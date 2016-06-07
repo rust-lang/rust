@@ -57,12 +57,12 @@ fn main() {
     //~| SUGGESTION std::mem::swap(&mut a, &mut b);
     //~| NOTE or maybe you should use `std::mem::replace`?
 
-    let t = a;
+    ; let t = a;
     a = b;
     b = t;
     //~^^^ ERROR this looks like you are swapping `a` and `b` manually
     //~| HELP try
-    //~| SUGGESTION std::mem::swap(&mut a, &mut b);
+    //~| SUGGESTION ; std::mem::swap(&mut a, &mut b);
     //~| NOTE or maybe you should use `std::mem::replace`?
 
     let mut c = Foo(42);
@@ -74,11 +74,11 @@ fn main() {
     //~| SUGGESTION std::mem::swap(&mut c.0, &mut a);
     //~| NOTE or maybe you should use `std::mem::replace`?
 
-    let t = c.0;
+    ; let t = c.0;
     c.0 = a;
     a = t;
     //~^^^ ERROR this looks like you are swapping `c.0` and `a` manually
     //~| HELP try
-    //~| SUGGESTION std::mem::swap(&mut c.0, &mut a);
+    //~| SUGGESTION ; std::mem::swap(&mut c.0, &mut a);
     //~| NOTE or maybe you should use `std::mem::replace`?
 }

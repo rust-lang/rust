@@ -6,13 +6,13 @@
 
 fn test() -> i32 {
     let _y = 0; // no warning
-    let x = 5;   //~NOTE
+    let x = 5;   //~NOTE this expression can be directly returned
     x            //~ERROR returning the result of a let binding
 }
 
 fn test_inner() -> i32 {
     if true {
-        let x = 5;
+        let x = 5;   //~NOTE this expression can be directly returned
         x            //~ERROR returning the result of a let binding
     } else {
         0
