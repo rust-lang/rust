@@ -89,7 +89,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
 
     pub fn erase_regions(self) -> Substs<'tcx> {
         let Substs { types, regions } = self;
-        let regions = regions.map(|_| ty::ReStatic);
+        let regions = regions.map(|_| ty::ReErased);
         Substs { types: types, regions: regions }
     }
 

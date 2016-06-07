@@ -23,7 +23,7 @@
 //! error messages or in any other form. Freshening is only really useful as an internal detail.
 //!
 //! __An important detail concerning regions.__ The freshener also replaces *all* regions with
-//! 'static. The reason behind this is that, in general, we do not take region relationships into
+//! 'erased. The reason behind this is that, in general, we do not take region relationships into
 //! account when making type-overloaded decisions. This is important because of the design of the
 //! region inferencer, which is not based on unification but rather on accumulating and then
 //! solving a set of constraints. In contrast, the type inferencer assigns a value to each type
@@ -96,9 +96,10 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::ReScope(_) |
             ty::ReVar(_) |
             ty::ReSkolemized(..) |
-            ty::ReEmpty => {
-                // replace all free regions with 'static
-                ty::ReStatic
+            ty::ReEmpty |
+            ty::ReErased => {
+                // replace all free regions with 'erased
+                ty::ReErased
             }
         }
     }

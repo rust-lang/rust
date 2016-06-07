@@ -123,10 +123,10 @@ fn get_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            -> Ty<'tcx> {
     match tcx.closure_kind(closure_id) {
         ty::ClosureKind::Fn => {
-            tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), fn_ty)
+            tcx.mk_imm_ref(tcx.mk_region(ty::ReErased), fn_ty)
         }
         ty::ClosureKind::FnMut => {
-            tcx.mk_mut_ref(tcx.mk_region(ty::ReStatic), fn_ty)
+            tcx.mk_mut_ref(tcx.mk_region(ty::ReErased), fn_ty)
         }
         ty::ClosureKind::FnOnce => fn_ty,
     }
@@ -344,7 +344,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Find a version of the closure type. Substitute static for the
     // region since it doesn't really matter.
     let closure_ty = tcx.mk_closure_from_closure_substs(closure_def_id, substs);
-    let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), closure_ty);
+    let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReErased), closure_ty);
 
     // Make a version with the type of by-ref closure.
     let ty::ClosureTy { unsafety, abi, mut sig } =

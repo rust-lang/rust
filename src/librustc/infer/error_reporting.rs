@@ -216,7 +216,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             //
             // We shouldn't really be having unification failures with ReVar
             // and ReLateBound though.
-            ty::ReSkolemized(..) | ty::ReVar(_) | ty::ReLateBound(..) => {
+            ty::ReSkolemized(..) |
+            ty::ReVar(_) |
+            ty::ReLateBound(..) |
+            ty::ReErased => {
                 (format!("lifetime {:?}", region), None)
             }
         };

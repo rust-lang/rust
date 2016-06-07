@@ -976,7 +976,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         // In general, during probing we erase regions. See
         // `impl_self_ty()` for an explanation.
-        let region = tcx.mk_region(ty::ReStatic);
+        let region = tcx.mk_region(ty::ReErased);
 
         // Search through mutabilities in order to find one where pick works:
         [hir::MutImmutable, hir::MutMutable].iter().filter_map(|&m| {
@@ -1240,7 +1240,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             let method_regions =
                 method.generics.regions.get_slice(subst::FnSpace)
                 .iter()
-                .map(|_| ty::ReStatic)
+                .map(|_| ty::ReErased)
                 .collect();
 
             placeholder = (*substs).clone().with_method(Vec::new(), method_regions);
@@ -1276,7 +1276,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         let region_placeholders =
             impl_pty.generics.regions.map(
-                |_| ty::ReStatic); // see erase_late_bound_regions() for an expl of why 'static
+                |_| ty::ReErased); // see erase_late_bound_regions() for an expl of why 'erased
 
         let substs = subst::Substs::new(type_vars, region_placeholders);
         (impl_pty.ty, substs)
