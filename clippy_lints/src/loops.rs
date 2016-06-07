@@ -450,7 +450,7 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                                                               "consider using the following if \
                                                                you are attempting to iterate \
                                                                over this range in reverse",
-                                                              format!("({}..{}).rev()` ", end_snippet, start_snippet));
+                                                              format!("({}..{}).rev()", end_snippet, start_snippet));
                                        });
                 } else if eq && limits != ast::RangeLimits::Closed {
                     // if they are equal, it's also problematic - this loop
