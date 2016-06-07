@@ -108,7 +108,8 @@ root.
 There are large number of options accepted by this script to alter the
 configuration used later in the build process. Some options to note:
 
-- `--enable-debug` - Build a debug version of the compiler (disables optimizations)
+- `--enable-debug` - Build a debug version of the compiler (disables optimizations,
+    which speeds up compilation of stage1 rustc)
 - `--enable-optimize` - Enable optimizations (can be used with `--enable-debug`
     to make a debug build with optimizations)
 - `--disable-valgrind-rpass` - Don't run tests with valgrind
@@ -128,6 +129,12 @@ Some common make targets are:
   cases we don't need to build the stage2 compiler, so we can save time by not
   building it. The stage1 compiler is a fully functioning compiler and
   (probably) will be enough to determine if your change works as expected.
+- `make $host/stage1/bin/rustc` - Where $host is a target triple like x86_64-unknown-linux-gnu.
+  This will build just rustc, without libstd. This is the fastest way to recompile after
+  you changed only rustc source code. Note however that the resulting rustc binary
+  won't have a stdlib to link against by default. You can build libstd once with
+  `make rustc-stage1`, rustc will pick it up afterwards. libstd is only guaranteed to
+  work if recompiled, so if there are any issues recompile it.
 - `make check` - build the full compiler & run all tests (takes a while). This
   is what gets run by the continuous integration system against your pull
   request. You should run this before submitting to make sure your tests pass
