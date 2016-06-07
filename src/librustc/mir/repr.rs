@@ -55,7 +55,7 @@ macro_rules! newtype_index {
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
-    pub basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 
     /// List of visibility (lexical) scopes; these are referenced by statements
     /// and used (eventually) for debuginfo. Indexed by a `VisibilityScope`.
@@ -94,18 +94,37 @@ pub struct Mir<'tcx> {
 pub const START_BLOCK: BasicBlock = BasicBlock(0);
 
 impl<'tcx> Mir<'tcx> {
-    pub fn all_basic_blocks(&self) -> Vec<BasicBlock> {
-        (0..self.basic_blocks.len())
-            .map(|i| BasicBlock::new(i))
-            .collect()
+    pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+               visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
+               promoted: IndexVec<Promoted, Mir<'tcx>>,
+               return_ty: FnOutput<'tcx>,
+               var_decls: IndexVec<Var, VarDecl<'tcx>>,
+               arg_decls: IndexVec<Arg, ArgDecl<'tcx>>,
+               temp_decls: IndexVec<Temp, TempDecl<'tcx>>,
+               upvar_decls: Vec<UpvarDecl>,
+               span: Span) -> Self
+    {
+        Mir {
+            basic_blocks: basic_blocks,
+            visibility_scopes: visibility_scopes,
+            promoted: promoted,
+            return_ty: return_ty,
+            var_decls: var_decls,
+            arg_decls: arg_decls,
+            temp_decls: temp_decls,
+            upvar_decls: upvar_decls,
+            span: span
+        }
     }
 
-    pub fn basic_block_data(&self, bb: BasicBlock) -> &BasicBlockData<'tcx> {
-        &self.basic_blocks[bb]
+    #[inline]
+    pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        &self.basic_blocks
     }
 
-    pub fn basic_block_data_mut(&mut self, bb: BasicBlock) -> &mut BasicBlockData<'tcx> {
-        &mut self.basic_blocks[bb]
+    #[inline]
+    pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        &mut self.basic_blocks
     }
 }
 
@@ -114,14 +133,14 @@ impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
 
     #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
-        self.basic_block_data(index)
+        &self.basic_blocks()[index]
     }
 }
 
 impl<'tcx> IndexMut<BasicBlock> for Mir<'tcx> {
     #[inline]
     fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
-        self.basic_block_data_mut(index)
+        &mut self.basic_blocks_mut()[index]
     }
 }
 

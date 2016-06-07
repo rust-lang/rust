@@ -34,12 +34,12 @@ where W: Write, I: Iterator<Item=(&'a NodeId, &'a Mir<'a>)> {
         write_graph_label(tcx, nodeid, mir, w)?;
 
         // Nodes
-        for block in mir.all_basic_blocks() {
+        for (block, _) in mir.basic_blocks().iter_enumerated() {
             write_node(block, mir, w)?;
         }
 
         // Edges
-        for source in mir.all_basic_blocks() {
+        for (source, _) in mir.basic_blocks().iter_enumerated() {
             write_edges(source, mir, w)?;
         }
         writeln!(w, "}}")?
@@ -63,7 +63,7 @@ pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
     where INIT: Fn(&mut W) -> io::Result<()>,
           FINI: Fn(&mut W) -> io::Result<()>
 {
-    let data = mir.basic_block_data(block);
+    let data = &mir[block];
 
     write!(w, r#"<table border="0" cellborder="1" cellspacing="0">"#)?;
 
@@ -107,7 +107,7 @@ fn write_node<W: Write>(block: BasicBlock, mir: &Mir, w: &mut W) -> io::Result<(
 
 /// Write graphviz DOT edges with labels between the given basic block and all of its successors.
 fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result<()> {
-    let terminator = &mir.basic_block_data(source).terminator();
+    let terminator = mir[source].terminator();
     let labels = terminator.kind.fmt_successor_labels();
 
     for (&target, label) in terminator.successors().iter().zip(labels) {

@@ -168,8 +168,7 @@ pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
 {
     fn discover_masters<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
                               mir: &mir::Mir<'tcx>) {
-        for bb in mir.all_basic_blocks() {
-            let data = mir.basic_block_data(bb);
+        for (bb, data) in mir.basic_blocks().iter_enumerated() {
             match data.terminator().kind {
                 TerminatorKind::Goto { .. } |
                 TerminatorKind::Resume |
@@ -195,7 +194,7 @@ pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
 
     fn propagate<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
                        mir: &mir::Mir<'tcx>) {
-        let mut funclet_succs = IndexVec::from_elem(None, &mir.basic_blocks);
+        let mut funclet_succs = IndexVec::from_elem(None, mir.basic_blocks());
 
         let mut set_successor = |funclet: mir::BasicBlock, succ| {
             match funclet_succs[funclet] {
@@ -249,7 +248,7 @@ pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
         }
     }
 
-    let mut result = IndexVec::from_elem(CleanupKind::NotCleanup, &mir.basic_blocks);
+    let mut result = IndexVec::from_elem(CleanupKind::NotCleanup, mir.basic_blocks());
 
     discover_masters(&mut result, mir);
     propagate(&mut result, mir);

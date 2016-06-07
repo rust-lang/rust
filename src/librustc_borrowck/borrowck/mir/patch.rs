@@ -28,7 +28,7 @@ pub struct MirPatch<'tcx> {
 impl<'tcx> MirPatch<'tcx> {
     pub fn new(mir: &Mir<'tcx>) -> Self {
         let mut result = MirPatch {
-            patch_map: IndexVec::from_elem(None, &mir.basic_blocks),
+            patch_map: IndexVec::from_elem(None, mir.basic_blocks()),
             new_blocks: vec![],
             new_temps: vec![],
             new_statements: vec![],
@@ -43,13 +43,12 @@ impl<'tcx> MirPatch<'tcx> {
 
         let mut resume_block = None;
         let mut resume_stmt_block = None;
-        for block in mir.all_basic_blocks() {
-            let data = mir.basic_block_data(block);
-            if let TerminatorKind::Resume = data.terminator().kind {
-                if data.statements.len() > 0 {
-                    resume_stmt_block = Some(block);
+        for (bb, block) in mir.basic_blocks().iter_enumerated() {
+            if let TerminatorKind::Resume = block.terminator().kind {
+                if block.statements.len() > 0 {
+                    resume_stmt_block = Some(bb);
                 } else {
-                    resume_block = Some(block);
+                    resume_block = Some(bb);
                 }
                 break
             }
@@ -84,9 +83,9 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn terminator_loc(&self, mir: &Mir<'tcx>, bb: BasicBlock) -> Location {
-        let offset = match bb.index().checked_sub(mir.basic_blocks.len()) {
+        let offset = match bb.index().checked_sub(mir.basic_blocks().len()) {
             Some(index) => self.new_blocks[index].statements.len(),
-            None => mir.basic_block_data(bb).statements.len()
+            None => mir[bb].statements.len()
         };
         Location {
             block: bb,
@@ -128,13 +127,13 @@ impl<'tcx> MirPatch<'tcx> {
         debug!("MirPatch: {:?} new temps, starting from index {}: {:?}",
                self.new_temps.len(), mir.temp_decls.len(), self.new_temps);
         debug!("MirPatch: {} new blocks, starting from index {}",
-               self.new_blocks.len(), mir.basic_blocks.len());
-        mir.basic_blocks.extend(self.new_blocks);
+               self.new_blocks.len(), mir.basic_blocks().len());
+        mir.basic_blocks_mut().extend(self.new_blocks);
         mir.temp_decls.extend(self.new_temps);
         for (src, patch) in self.patch_map.into_iter_enumerated() {
             if let Some(patch) = patch {
                 debug!("MirPatch: patching block {:?}", src);
-                mir.basic_blocks[src].terminator_mut().kind = patch;
+                mir[src].terminator_mut().kind = patch;
             }
         }
 
@@ -152,9 +151,9 @@ impl<'tcx> MirPatch<'tcx> {
                    stmt, loc, delta);
             loc.index += delta;
             let source_info = Self::source_info_for_index(
-                mir.basic_block_data(loc.block), loc
+                &mir[loc.block], loc
             );
-            mir.basic_block_data_mut(loc.block).statements.insert(
+            mir[loc.block].statements.insert(
                 loc.index, Statement {
                     source_info: source_info,
                     kind: stmt
@@ -171,9 +170,9 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn source_info_for_location(&self, mir: &Mir, loc: Location) -> SourceInfo {
-        let data = match loc.block.index().checked_sub(mir.basic_blocks.len()) {
+        let data = match loc.block.index().checked_sub(mir.basic_blocks().len()) {
             Some(new) => &self.new_blocks[new],
-            None => mir.basic_block_data(loc.block)
+            None => &mir[loc.block]
         };
         Self::source_info_for_index(data, loc)
     }

@@ -135,9 +135,9 @@ pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               -> io::Result<()> {
     let annotations = scope_entry_exit_annotations(auxiliary);
     write_mir_intro(tcx, src, mir, w)?;
-    for block in mir.all_basic_blocks() {
+    for block in mir.basic_blocks().indices() {
         write_basic_block(tcx, block, mir, w, &annotations)?;
-        if block.index() + 1 != mir.basic_blocks.len() {
+        if block.index() + 1 != mir.basic_blocks().len() {
             writeln!(w, "")?;
         }
     }
@@ -153,7 +153,7 @@ fn write_basic_block(tcx: TyCtxt,
                      w: &mut Write,
                      annotations: &FnvHashMap<Location, Vec<Annotation>>)
                      -> io::Result<()> {
-    let data = mir.basic_block_data(block);
+    let data = &mir[block];
 
     // Basic block label at the top.
     writeln!(w, "{}{:?}: {{", INDENT, block)?;

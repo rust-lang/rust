@@ -43,7 +43,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
         let mut bcx = self.bcx(bb);
         let mir = self.mir.clone();
-        let data = mir.basic_block_data(bb);
+        let data = &mir[bb];
 
         debug!("trans_block({:?}={:?})", bb, data);
 
@@ -725,7 +725,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
     pub fn init_cpad(&mut self, bb: mir::BasicBlock) {
         let bcx = self.bcx(bb);
-        let data = self.mir.basic_block_data(bb);
+        let data = &self.mir[bb];
         debug!("init_cpad({:?})", data);
 
         match self.cleanup_kinds[bb] {

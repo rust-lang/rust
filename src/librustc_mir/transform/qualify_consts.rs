@@ -337,7 +337,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     fn qualify_const(&mut self) -> Qualif {
         let mir = self.mir;
 
-        let mut seen_blocks = BitVector::new(mir.basic_blocks.len());
+        let mut seen_blocks = BitVector::new(mir.basic_blocks().len());
         let mut bb = START_BLOCK;
         loop {
             seen_blocks.insert(bb.index());
@@ -367,12 +367,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::Return => {
                     // Check for unused values. This usually means
                     // there are extra statements in the AST.
-                    for (i, _) in mir.temp_decls.iter_enumerated() {
-                        if self.temp_qualif[i].is_none() {
+                    for temp in mir.temp_decls.indices() {
+                        if self.temp_qualif[temp].is_none() {
                             continue;
                         }
 
-                        let state = self.temp_promotion_state[i];
+                        let state = self.temp_promotion_state[temp];
                         if let TempState::Defined { location, uses: 0 } = state {
                             let data = &mir[location.block];
                             let stmt_idx = location.statement_index;

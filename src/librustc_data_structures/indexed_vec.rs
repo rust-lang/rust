@@ -11,7 +11,7 @@
 use std::iter::{self, FromIterator};
 use std::slice;
 use std::marker::PhantomData;
-use std::ops::{Index, IndexMut};
+use std::ops::{Index, IndexMut, Range};
 use std::fmt;
 use std::vec;
 
@@ -116,6 +116,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
+    pub fn indices(&self) -> iter::Map<Range<usize>, IntoIdx<I>> {
+        (0..self.len()).map(IntoIdx { _marker: PhantomData })
+    }
+
+    #[inline]
     pub fn iter_mut(&mut self) -> slice::IterMut<T> {
         self.raw.iter_mut()
     }
@@ -205,5 +210,19 @@ impl<I: Idx, T> FnOnce<((usize, T),)> for IntoIdx<I> {
 impl<I: Idx, T> FnMut<((usize, T),)> for IntoIdx<I> {
     extern "rust-call" fn call_mut(&mut self, ((n, t),): ((usize, T),)) -> Self::Output {
         (I::new(n), t)
+    }
+}
+
+impl<I: Idx> FnOnce<(usize,)> for IntoIdx<I> {
+    type Output = I;
+
+    extern "rust-call" fn call_once(self, (n,): (usize,)) -> Self::Output {
+        I::new(n)
+    }
+}
+
+impl<I: Idx> FnMut<(usize,)> for IntoIdx<I> {
+    extern "rust-call" fn call_mut(&mut self, (n,): (usize,)) -> Self::Output {
+        I::new(n)
     }
 }

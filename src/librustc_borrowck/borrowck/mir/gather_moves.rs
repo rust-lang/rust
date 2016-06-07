@@ -519,9 +519,9 @@ enum StmtKind {
 fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveData<'tcx> {
     use self::StmtKind as SK;
 
-    let bbs = mir.all_basic_blocks();
-    let mut moves = Vec::with_capacity(bbs.len());
-    let mut loc_map: Vec<_> = iter::repeat(Vec::new()).take(bbs.len()).collect();
+    let bb_count = mir.basic_blocks().len();
+    let mut moves = vec![];
+    let mut loc_map: Vec<_> = iter::repeat(Vec::new()).take(bb_count).collect();
     let mut path_map = Vec::new();
 
     // this is mutable only because we will move it to and fro' the
@@ -541,22 +541,21 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
     assert!(mir.var_decls.len() <= ::std::u32::MAX as usize);
     assert!(mir.arg_decls.len() <= ::std::u32::MAX as usize);
     assert!(mir.temp_decls.len() <= ::std::u32::MAX as usize);
-    for (var, _) in mir.var_decls.iter_enumerated() {
+    for var in mir.var_decls.indices() {
         let path_idx = builder.move_path_for(&Lvalue::Var(var));
         path_map.fill_to(path_idx.index());
     }
-    for (arg, _) in mir.arg_decls.iter_enumerated() {
+    for arg in mir.arg_decls.indices() {
         let path_idx = builder.move_path_for(&Lvalue::Arg(arg));
         path_map.fill_to(path_idx.index());
     }
-    for (temp, _) in mir.temp_decls.iter_enumerated() {
+    for temp in mir.temp_decls.indices() {
         let path_idx = builder.move_path_for(&Lvalue::Temp(temp));
         path_map.fill_to(path_idx.index());
     }
 
-    for bb in bbs {
+    for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
         let loc_map_bb = &mut loc_map[bb.index()];
-        let bb_data = mir.basic_block_data(bb);
 
         debug_assert!(loc_map_bb.len() == 0);
         let len = bb_data.statements.len();

@@ -295,17 +295,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
         }
 
-        (Mir {
-            basic_blocks: self.cfg.basic_blocks,
-            visibility_scopes: self.visibility_scopes,
-            promoted: IndexVec::new(),
-            var_decls: self.var_decls,
-            arg_decls: arg_decls,
-            temp_decls: self.temp_decls,
-            upvar_decls: upvar_decls,
-            return_ty: return_ty,
-            span: self.fn_span
-        }, self.scope_auxiliary)
+        (Mir::new(self.cfg.basic_blocks,
+                  self.visibility_scopes,
+                  IndexVec::new(),
+                  return_ty,
+                  self.var_decls,
+                  arg_decls,
+                  self.temp_decls,
+                  upvar_decls,
+                  self.fn_span
+        ), self.scope_auxiliary)
     }
 
     fn args_and_body<A>(&mut self,
