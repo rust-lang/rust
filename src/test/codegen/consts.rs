@@ -27,7 +27,6 @@
 // CHECK: @const{{[0-9]+}} = {{.*}}, align 4
 
 #[derive(Copy, Clone)]
-
 // repr(i16) is required for the {low,high}_align_const test
 #[repr(i16)]
 pub enum E<A, B> {
@@ -42,7 +41,7 @@ pub static STATIC: E<i16, i32> = E::A(0);
 #[no_mangle]
 #[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 pub fn static_enum_const() -> E<i16, i32> {
-   STATIC
+    STATIC
 }
 
 // CHECK-LABEL: @inline_enum_const
@@ -56,8 +55,8 @@ pub fn inline_enum_const() -> E<i8, i16> {
 #[no_mangle]
 #[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 pub fn low_align_const() -> E<i16, [i16; 3]> {
-// Check that low_align_const and high_align_const use the same constant
-// CHECK: call void @llvm.memcpy.{{.*}}(i8* %{{[0-9]+}}, i8* {{.*}} [[LOW_HIGH:@const[0-9]+]]
+    // Check that low_align_const and high_align_const use the same constant
+    // CHECK: call void @llvm.memcpy.{{.*}}(i8* %{{[0-9]+}}, i8* {{.*}} [[LOW_HIGH:@const[0-9]+]]
     E::A(0)
 }
 
@@ -65,7 +64,7 @@ pub fn low_align_const() -> E<i16, [i16; 3]> {
 #[no_mangle]
 #[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 pub fn high_align_const() -> E<i16, i32> {
-// Check that low_align_const and high_align_const use the same constant
-// CHECK: call void @llvm.memcpy.{{.*}}(i8* %{{[0-9]}}, i8* {{.*}} [[LOW_HIGH]]
+    // Check that low_align_const and high_align_const use the same constant
+    // CHECK: call void @llvm.memcpy.{{.*}}(i8* %{{[0-9]}}, i8* {{.*}} [[LOW_HIGH]]
     E::A(0)
 }
