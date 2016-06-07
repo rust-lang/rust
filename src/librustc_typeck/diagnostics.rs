@@ -1174,7 +1174,7 @@ Erroneous code example:
 
 ```compile_fail
 #[repr(i32)]
-enum NightWatch {} // error: unsupported representation for zero-variant enum
+enum NightsWatch {} // error: unsupported representation for zero-variant enum
 ```
 
 It is impossible to define an integer type to be used to represent zero-variant
@@ -1184,8 +1184,8 @@ two solutions. Either you add variants in your enum:
 
 ```
 #[repr(i32)]
-enum NightWatch {
-    JohnSnow,
+enum NightsWatch {
+    JonSnow,
     Commander,
 }
 ```
@@ -1193,7 +1193,7 @@ enum NightWatch {
 or you remove the integer represention of your enum:
 
 ```
-enum NightWatch {}
+enum NightsWatch {}
 ```
 "##,
 
