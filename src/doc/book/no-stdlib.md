@@ -45,6 +45,9 @@ fn start(_argc: isize, _argv: *const *const u8) -> isize {
 # // fn main() {} tricked you, rustdoc!
 ```
 
+> Note: Ensure that you are not including the default features with libc. Otherwise you will
+> implicitly use libstd.
+
 To override the compiler-inserted `main` shim, one has to disable it
 with `#![no_main]` and then create the appropriate symbol with the
 correct ABI and the correct name, which requires overriding the
