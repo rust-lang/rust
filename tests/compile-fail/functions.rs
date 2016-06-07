@@ -36,6 +36,10 @@ impl Foo for Bar {
     fn ptr(p: *const u8) {
         println!("{}", unsafe { *p });
         //~^ ERROR: this public function dereferences a raw pointer but is not marked `unsafe`
+        println!("{:?}", unsafe { p.as_ref() });
+        //~^ ERROR: this public function dereferences a raw pointer but is not marked `unsafe`
+        unsafe { std::ptr::read(p) };
+        //~^ ERROR: this public function dereferences a raw pointer but is not marked `unsafe`
     }
 }
 
@@ -50,6 +54,8 @@ pub fn public(p: *const u8) {
     //~^ ERROR: this public function dereferences a raw pointer but is not marked `unsafe`
     println!("{:?}", unsafe { p.as_ref() });
     //~^ ERROR: this public function dereferences a raw pointer but is not marked `unsafe`
+    unsafe { std::ptr::read(p) };
+    //~^ ERROR: this public function dereferences a raw pointer but is not marked `unsafe`
 }
 
 impl Bar {
@@ -61,6 +67,8 @@ impl Bar {
         println!("{}", unsafe { *p });
         //~^ ERROR: this public function dereferences a raw pointer but is not marked `unsafe`
         println!("{:?}", unsafe { p.as_ref() });
+        //~^ ERROR: this public function dereferences a raw pointer but is not marked `unsafe`
+        unsafe { std::ptr::read(p) };
         //~^ ERROR: this public function dereferences a raw pointer but is not marked `unsafe`
     }
 

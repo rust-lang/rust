@@ -88,7 +88,7 @@ impl LateLintPass for Functions {
             self.check_arg_number(cx, decl, span);
         }
 
-        self.check_raw_ptr(cx, unsafety, decl, block, span, nodeid);
+        self.check_raw_ptr(cx, unsafety, decl, block, nodeid);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
@@ -96,7 +96,7 @@ impl LateLintPass for Functions {
             self.check_arg_number(cx, &sig.decl, item.span);
 
             if let Some(ref block) = *block {
-                self.check_raw_ptr(cx, sig.unsafety, &sig.decl, block, item.span, item.id);
+                self.check_raw_ptr(cx, sig.unsafety, &sig.decl, block, item.id);
             }
         }
     }
@@ -113,7 +113,7 @@ impl Functions {
         }
     }
 
-    fn check_raw_ptr(&self, cx: &LateContext, unsafety: hir::Unsafety, decl: &hir::FnDecl, block: &hir::Block, span: Span, nodeid: ast::NodeId) {
+    fn check_raw_ptr(&self, cx: &LateContext, unsafety: hir::Unsafety, decl: &hir::FnDecl, block: &hir::Block, nodeid: ast::NodeId) {
         if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(nodeid) {
             let raw_ptrs = decl.inputs.iter().filter_map(|arg| raw_ptr_arg(cx, arg)).collect::<HashSet<_>>();
 
@@ -144,32 +144,43 @@ struct DerefVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for DerefVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'v hir::Expr) {
-        let ptr = match expr.node {
-            hir::ExprUnary(hir::UnDeref, ref ptr) => Some(ptr),
+        match expr.node {
+            hir::ExprCall(ref f, ref args) => {
+                let ty = self.cx.tcx.expr_ty(f);
+
+                if type_is_unsafe_function(ty) {
+                    for arg in args {
+                        self.check_arg(arg);
+                    }
+                }
+            }
             hir::ExprMethodCall(_, _, ref args) => {
                 let method_call = ty::MethodCall::expr(expr.id);
                 let base_type = self.cx.tcx.tables.borrow().method_map[&method_call].ty;
 
                 if type_is_unsafe_function(base_type) {
-                    Some(&args[0])
-                } else {
-                    None
+                    for arg in args {
+                        self.check_arg(arg);
+                    }
                 }
             }
-            _ => None,
-        };
-
-        if let Some(ptr) = ptr {
-            if let Some(def) = self.cx.tcx.def_map.borrow().get(&ptr.id) {
-                if self.ptrs.contains(&def.def_id()) {
-                    span_lint(self.cx,
-                              NOT_UNSAFE_PTR_ARG_DEREF,
-                              ptr.span,
-                              "this public function dereferences a raw pointer but is not marked `unsafe`");
-                }
-            }
+            hir::ExprUnary(hir::UnDeref, ref ptr) => self.check_arg(ptr),
+            _ => (),
         }
 
         hir::intravisit::walk_expr(self, expr);
+    }
+}
+
+impl<'a, 'tcx: 'a> DerefVisitor<'a, 'tcx> {
+    fn check_arg(&self, ptr: &hir::Expr) {
+        if let Some(def) = self.cx.tcx.def_map.borrow().get(&ptr.id) {
+            if self.ptrs.contains(&def.def_id()) {
+                span_lint(self.cx,
+                          NOT_UNSAFE_PTR_ARG_DEREF,
+                          ptr.span,
+                          "this public function dereferences a raw pointer but is not marked `unsafe`");
+            }
+        }
     }
 }
