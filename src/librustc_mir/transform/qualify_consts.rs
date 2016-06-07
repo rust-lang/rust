@@ -15,6 +15,7 @@
 //! diagnostics as to why a constant rvalue wasn't promoted.
 
 use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::FnKind;
@@ -141,12 +142,12 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     param_env: ty::ParameterEnvironment<'tcx>,
     qualif_map: &'a mut DefIdMap<Qualif>,
     mir_map: Option<&'a MirMap<'tcx>>,
-    temp_qualif: Vec<Option<Qualif>>,
+    temp_qualif: IndexVec<Temp, Option<Qualif>>,
     return_qualif: Option<Qualif>,
     qualif: Qualif,
     const_fn_arg_vars: BitVector,
     location: Location,
-    temp_promotion_state: Vec<TempState>,
+    temp_promotion_state: IndexVec<Temp, TempState>,
     promotion_candidates: Vec<Candidate>
 }
 
@@ -172,7 +173,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             param_env: param_env,
             qualif_map: qualif_map,
             mir_map: mir_map,
-            temp_qualif: vec![None; mir.temp_decls.len()],
+            temp_qualif: IndexVec::from_elem(None, &mir.temp_decls),
             return_qualif: None,
             qualif: Qualif::empty(),
             const_fn_arg_vars: BitVector::new(mir.var_decls.len()),
@@ -301,22 +302,22 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         // Only handle promotable temps in non-const functions.
         if self.mode == Mode::Fn {
             if let Lvalue::Temp(index) = *dest {
-                if self.temp_promotion_state[index as usize].is_promotable() {
-                    store(&mut self.temp_qualif[index as usize]);
+                if self.temp_promotion_state[index].is_promotable() {
+                    store(&mut self.temp_qualif[index]);
                 }
             }
             return;
         }
 
         match *dest {
-            Lvalue::Temp(index) => store(&mut self.temp_qualif[index as usize]),
+            Lvalue::Temp(index) => store(&mut self.temp_qualif[index]),
             Lvalue::ReturnPointer => store(&mut self.return_qualif),
 
             Lvalue::Projection(box Projection {
                 base: Lvalue::Temp(index),
                 elem: ProjectionElem::Deref
-            }) if self.mir.temp_decls[index as usize].ty.is_unique()
-               && self.temp_qualif[index as usize].map_or(false, |qualif| {
+            }) if self.mir.temp_decls[index].ty.is_unique()
+               && self.temp_qualif[index].map_or(false, |qualif| {
                     qualif.intersects(Qualif::NOT_CONST)
                }) => {
                 // Part of `box expr`, we should've errored
@@ -366,7 +367,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::Return => {
                     // Check for unused values. This usually means
                     // there are extra statements in the AST.
-                    for i in 0..mir.temp_decls.len() {
+                    for (i, _) in mir.temp_decls.iter_enumerated() {
                         if self.temp_qualif[i].is_none() {
                             continue;
                         }
@@ -393,7 +394,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                     self.qualif = Qualif::NOT_CONST;
                     for index in 0..mir.var_decls.len() {
                         if !self.const_fn_arg_vars.contains(index) {
-                            self.assign(&Lvalue::Var(index as u32));
+                            self.assign(&Lvalue::Var(Var::new(index)));
                         }
                     }
 
@@ -448,11 +449,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 self.add(Qualif::NOT_CONST);
             }
             Lvalue::Temp(index) => {
-                if !self.temp_promotion_state[index as usize].is_promotable() {
+                if !self.temp_promotion_state[index].is_promotable() {
                     self.add(Qualif::NOT_PROMOTABLE);
                 }
 
-                if let Some(qualif) = self.temp_qualif[index as usize] {
+                if let Some(qualif) = self.temp_qualif[index] {
                     self.add(qualif);
                 } else {
                     self.not_const();
@@ -822,7 +823,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
         // Check the allowed const fn argument forms.
         if let (Mode::ConstFn, &Lvalue::Var(index)) = (self.mode, dest) {
-            if self.const_fn_arg_vars.insert(index as usize) {
+            if self.const_fn_arg_vars.insert(index.index()) {
                 // Direct use of an argument is permitted.
                 if let Rvalue::Use(Operand::Consume(Lvalue::Arg(_))) = *rvalue {
                     return;
@@ -830,7 +831,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 // Avoid a generic error for other uses of arguments.
                 if self.qualif.intersects(Qualif::FN_ARGUMENT) {
-                    let decl = &self.mir.var_decls[index as usize];
+                    let decl = &self.mir.var_decls[index];
                     span_err!(self.tcx.sess, decl.source_info.span, E0022,
                               "arguments of constant functions can only \
                                be immutable by-value bindings");

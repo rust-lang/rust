@@ -667,25 +667,23 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                        name: Name,
                        var_id: NodeId,
                        var_ty: Ty<'tcx>)
-                       -> u32
+                       -> Var
     {
         debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, source_info={:?})",
                var_id, name, var_ty, source_info);
 
-        let index = self.var_decls.len();
-        self.var_decls.push(VarDecl::<'tcx> {
+        let var = self.var_decls.push(VarDecl::<'tcx> {
             source_info: source_info,
             mutability: mutability,
             name: name,
             ty: var_ty.clone(),
         });
-        let index = index as u32;
         let extent = self.extent_of_innermost_scope();
-        self.schedule_drop(source_info.span, extent, &Lvalue::Var(index), var_ty);
-        self.var_indices.insert(var_id, index);
+        self.schedule_drop(source_info.span, extent, &Lvalue::Var(var), var_ty);
+        self.var_indices.insert(var_id, var);
 
-        debug!("declare_binding: index={:?}", index);
+        debug!("declare_binding: var={:?}", var);
 
-        index
+        var
     }
 }

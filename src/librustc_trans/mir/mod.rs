@@ -30,6 +30,7 @@ use std::rc::Rc;
 use basic_block::BasicBlock;
 
 use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 pub use self::constant::trans_static_initializer;
 
@@ -71,20 +72,20 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     llpersonalityslot: Option<ValueRef>,
 
     /// A `Block` for each MIR `BasicBlock`
-    blocks: Vec<Block<'bcx, 'tcx>>,
+    blocks: IndexVec<mir::BasicBlock, Block<'bcx, 'tcx>>,
 
     /// The funclet status of each basic block
-    cleanup_kinds: Vec<analyze::CleanupKind>,
+    cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
     /// and eagerly on MSVC.
-    landing_pads: Vec<Option<Block<'bcx, 'tcx>>>,
+    landing_pads: IndexVec<mir::BasicBlock, Option<Block<'bcx, 'tcx>>>,
 
     /// Cached unreachable block
     unreachable_block: Option<Block<'bcx, 'tcx>>,
 
     /// An LLVM alloca for each MIR `VarDecl`
-    vars: Vec<LvalueRef<'tcx>>,
+    vars: IndexVec<mir::Var, LvalueRef<'tcx>>,
 
     /// The location where each MIR `TempDecl` is stored. This is
     /// usually an `LvalueRef` representing an alloca, but not always:
@@ -101,20 +102,20 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     ///
     /// Avoiding allocs can also be important for certain intrinsics,
     /// notably `expect`.
-    temps: Vec<TempRef<'tcx>>,
+    temps: IndexVec<mir::Temp, TempRef<'tcx>>,
 
     /// The arguments to the function; as args are lvalues, these are
     /// always indirect, though we try to avoid creating an alloca
     /// when we can (and just reuse the pointer the caller provided).
-    args: Vec<LvalueRef<'tcx>>,
+    args: IndexVec<mir::Arg, LvalueRef<'tcx>>,
 
     /// Debug information for MIR scopes.
-    scopes: Vec<DIScope>
+    scopes: IndexVec<mir::VisibilityScope, DIScope>
 }
 
 impl<'blk, 'tcx> MirContext<'blk, 'tcx> {
     pub fn debug_loc(&self, source_info: mir::SourceInfo) -> DebugLoc {
-        DebugLoc::ScopeAt(self.scopes[source_info.scope.index()], source_info.span)
+        DebugLoc::ScopeAt(self.scopes[source_info.scope], source_info.span)
     }
 }
 
@@ -173,7 +174,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                             .map(|(mty, decl)| {
         let lvalue = LvalueRef::alloca(&bcx, mty, &decl.name.as_str());
 
-        let scope = scopes[decl.source_info.scope.index()];
+        let scope = scopes[decl.source_info.scope];
         if !scope.is_null() && bcx.sess().opts.debuginfo == FullDebugInfo {
             bcx.with_block(|bcx| {
                 declare_local(bcx, decl.name, mty, scope,
@@ -200,9 +201,9 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                               .collect();
 
     // Allocate a `Block` for every basic block
-    let block_bcxs: Vec<Block<'blk,'tcx>> =
+    let block_bcxs: IndexVec<mir::BasicBlock, Block<'blk,'tcx>> =
         mir_blocks.iter()
-                  .map(|&bb|{
+                  .map(|&bb| {
                       if bb == mir::START_BLOCK {
                           fcx.new_block("start", None)
                       } else {
@@ -212,7 +213,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                   .collect();
 
     // Branch to the START block
-    let start_bcx = block_bcxs[mir::START_BLOCK.index()];
+    let start_bcx = block_bcxs[mir::START_BLOCK];
     bcx.br(start_bcx.llbb);
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
@@ -253,7 +254,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     // Remove blocks that haven't been visited, or have no
     // predecessors.
     for &bb in &mir_blocks {
-        let block = mircx.blocks[bb.index()];
+        let block = mircx.blocks[bb];
         let block = BasicBlock(block.llbb);
         // Unreachable block
         if !visited.contains(bb.index()) {
@@ -271,15 +272,15 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 /// indirect.
 fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                               mir: &mir::Mir<'tcx>,
-                              scopes: &[DIScope])
-                              -> Vec<LvalueRef<'tcx>> {
+                              scopes: &IndexVec<mir::VisibilityScope, DIScope>)
+                              -> IndexVec<mir::Arg, LvalueRef<'tcx>> {
     let fcx = bcx.fcx();
     let tcx = bcx.tcx();
     let mut idx = 0;
     let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
 
     // Get the argument scope, if it exists and if we need it.
-    let arg_scope = scopes[mir::ARGUMENT_VISIBILITY_SCOPE.index()];
+    let arg_scope = scopes[mir::ARGUMENT_VISIBILITY_SCOPE];
     let arg_scope = if !arg_scope.is_null() && bcx.sess().opts.debuginfo == FullDebugInfo {
         Some(arg_scope)
     } else {

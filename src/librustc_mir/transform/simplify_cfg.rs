@@ -33,6 +33,7 @@
 
 
 use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
@@ -59,7 +60,7 @@ impl<'l, 'tcx> MirPass<'tcx> for SimplifyCfg<'l> {
         pretty::dump_mir(tcx, "simplify_cfg", &format!("{}-after", self.label), src, mir, None);
 
         // FIXME: Should probably be moved into some kind of pass manager
-        mir.basic_blocks.shrink_to_fit();
+        mir.basic_blocks.raw.shrink_to_fit();
     }
 }
 
@@ -67,11 +68,11 @@ impl<'l> Pass for SimplifyCfg<'l> {}
 
 fn merge_consecutive_blocks(mir: &mut Mir) {
     // Build the precedecessor map for the MIR
-    let mut pred_count = vec![0u32; mir.basic_blocks.len()];
+    let mut pred_count = IndexVec::from_elem(0u32, &mir.basic_blocks);
     for (_, data) in traversal::preorder(mir) {
         if let Some(ref term) = data.terminator {
             for &tgt in term.successors().iter() {
-                pred_count[tgt.index()] += 1;
+                pred_count[tgt] += 1;
             }
         }
     }
@@ -100,10 +101,10 @@ fn merge_consecutive_blocks(mir: &mut Mir) {
                         TerminatorKind::Goto { target: new_target } if num_insts == 0 => {
                             inner_change = true;
                             terminator.kind = TerminatorKind::Goto { target: new_target };
-                            pred_count[target.index()] -= 1;
-                            pred_count[new_target.index()] += 1;
+                            pred_count[target] -= 1;
+                            pred_count[new_target] += 1;
                         }
-                        _ if pred_count[target.index()] == 1 => {
+                        _ if pred_count[target] == 1 => {
                             inner_change = true;
                             let mut stmts = Vec::new();
                             {
@@ -126,8 +127,8 @@ fn merge_consecutive_blocks(mir: &mut Mir) {
                     };
                     if *target != new_target {
                         inner_change = true;
-                        pred_count[target.index()] -= 1;
-                        pred_count[new_target.index()] += 1;
+                        pred_count[*target] -= 1;
+                        pred_count[new_target] += 1;
                         *target = new_target;
                     }
                 }
@@ -234,18 +235,18 @@ fn remove_dead_blocks(mir: &mut Mir) {
 
     let num_blocks = mir.basic_blocks.len();
 
-    let mut replacements: Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
+    let mut replacements : Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
     let mut used_blocks = 0;
     for alive_index in seen.iter() {
         replacements[alive_index] = BasicBlock::new(used_blocks);
         if alive_index != used_blocks {
             // Swap the next alive block data with the current available slot. Since alive_index is
             // non-decreasing this is a valid operation.
-            mir.basic_blocks.swap(alive_index, used_blocks);
+            mir.basic_blocks.raw.swap(alive_index, used_blocks);
         }
         used_blocks += 1;
     }
-    mir.basic_blocks.truncate(used_blocks);
+    mir.basic_blocks.raw.truncate(used_blocks);
 
     for bb in mir.all_basic_blocks() {
         for target in mir.basic_block_data_mut(bb).terminator_mut().successors_mut() {

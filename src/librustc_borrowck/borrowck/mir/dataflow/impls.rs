@@ -10,6 +10,7 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::{self, Mir};
+use rustc_data_structures::indexed_vec::Idx;
 
 use super::super::gather_moves::{Location};
 use super::super::gather_moves::{MoveOutIndex, MovePathIndex};
@@ -23,7 +24,7 @@ use super::{BitDenotation, BlockSets, DataflowOperator};
 
 use bitslice::BitSlice; // adds set_bit/get_bit to &[usize] bitvector rep.
 use bitslice::{BitwiseOperator};
-use indexed_set::{Idx, IdxSet};
+use indexed_set::{IdxSet};
 
 // Dataflow analyses are built upon some interpretation of the
 // bitvectors attached to each basic block, represented via a
@@ -451,7 +452,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                                      move_data,
                                      move_path_index,
                                      |mpi| for moi in &path_map[mpi] {
-                                         assert!(moi.idx() < bits_per_block);
+                                         assert!(moi.index() < bits_per_block);
                                          sets.kill_set.add(&moi);
                                      });
             }
@@ -472,7 +473,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                term, loc, &loc_map[loc]);
         let bits_per_block = self.bits_per_block(ctxt);
         for move_index in &loc_map[loc] {
-            assert!(move_index.idx() < bits_per_block);
+            assert!(move_index.index() < bits_per_block);
             zero_to_one(sets.gen_set.words_mut(), *move_index);
         }
     }
@@ -493,14 +494,14 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                              move_data,
                              move_path_index,
                              |mpi| for moi in &path_map[mpi] {
-                                 assert!(moi.idx() < bits_per_block);
+                                 assert!(moi.index() < bits_per_block);
                                  in_out.remove(&moi);
                              });
     }
 }
 
 fn zero_to_one(bitvec: &mut [usize], move_index: MoveOutIndex) {
-    let retval = bitvec.set_bit(move_index.idx());
+    let retval = bitvec.set_bit(move_index.index());
     assert!(retval);
 }
 

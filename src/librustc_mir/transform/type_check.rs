@@ -24,6 +24,8 @@ use rustc::mir::visit::{self, Visitor};
 use std::fmt;
 use syntax::codemap::{Span, DUMMY_SP};
 
+use rustc_data_structures::indexed_vec::Idx;
+
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
         $context.tcx().sess.span_warn(
@@ -129,11 +131,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn sanitize_lvalue(&mut self, lvalue: &Lvalue<'tcx>) -> LvalueTy<'tcx> {
         debug!("sanitize_lvalue: {:?}", lvalue);
         match *lvalue {
-            Lvalue::Var(index) => LvalueTy::Ty { ty: self.mir.var_decls[index as usize].ty },
-            Lvalue::Temp(index) =>
-                LvalueTy::Ty { ty: self.mir.temp_decls[index as usize].ty },
-            Lvalue::Arg(index) =>
-                LvalueTy::Ty { ty: self.mir.arg_decls[index as usize].ty },
+            Lvalue::Var(index) => LvalueTy::Ty { ty: self.mir.var_decls[index].ty },
+            Lvalue::Temp(index) => LvalueTy::Ty { ty: self.mir.temp_decls[index].ty },
+            Lvalue::Arg(index) => LvalueTy::Ty { ty: self.mir.arg_decls[index].ty },
             Lvalue::Static(def_id) =>
                 LvalueTy::Ty { ty: self.tcx().lookup_item_type(def_id).ty },
             Lvalue::ReturnPointer => {

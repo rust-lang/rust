@@ -22,6 +22,7 @@ use rustc::mir::transform::{Pass, MirPass, MirSource};
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items;
 use rustc::util::nodemap::FnvHashMap;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc_mir::pretty;
 use syntax::codemap::Span;
 
@@ -118,7 +119,7 @@ struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
     env: &'a MoveDataParamEnv<'tcx>,
     flow_inits: DataflowResults<MaybeInitializedLvals<'a, 'tcx>>,
     flow_uninits:  DataflowResults<MaybeUninitializedLvals<'a, 'tcx>>,
-    drop_flags: FnvHashMap<MovePathIndex, u32>,
+    drop_flags: FnvHashMap<MovePathIndex, Temp>,
     patch: MirPatch<'tcx>,
 }
 
