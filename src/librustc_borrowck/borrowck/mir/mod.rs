@@ -111,7 +111,7 @@ pub fn borrowck_mir<'a, 'tcx: 'a>(
         flow_uninits: flow_uninits,
     };
 
-    for bb in mir.all_basic_blocks() {
+    for bb in mir.basic_blocks().indices() {
         mbcx.process_basic_block(bb);
     }
 
@@ -180,8 +180,8 @@ pub struct MirBorrowckCtxt<'b, 'a: 'b, 'tcx: 'a> {
 
 impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
     fn process_basic_block(&mut self, bb: BasicBlock) {
-        let &BasicBlockData { ref statements, ref terminator, is_cleanup: _ } =
-            self.mir.basic_block_data(bb);
+        let BasicBlockData { ref statements, ref terminator, is_cleanup: _ } =
+            self.mir[bb];
         for stmt in statements {
             self.process_statement(bb, stmt);
         }
@@ -337,8 +337,8 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
                              |moi| callback(moi, DropFlagState::Absent))
     }
 
-    let bb = mir.basic_block_data(loc.block);
-    match bb.statements.get(loc.index) {
+    let block = &mir[loc.block];
+    match block.statements.get(loc.index) {
         Some(stmt) => match stmt.kind {
             repr::StatementKind::Assign(ref lvalue, _) => {
                 debug!("drop_flag_effects: assignment {:?}", stmt);
@@ -348,8 +348,8 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
             }
         },
         None => {
-            debug!("drop_flag_effects: replace {:?}", bb.terminator());
-            match bb.terminator().kind {
+            debug!("drop_flag_effects: replace {:?}", block.terminator());
+            match block.terminator().kind {
                 repr::TerminatorKind::DropAndReplace { ref location, .. } => {
                     on_all_children_bits(tcx, mir, move_data,
                                          move_data.rev_lookup.find(location),

@@ -155,8 +155,6 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let bcx = fcx.init(false, None).build();
     let mir = bcx.mir();
 
-    let mir_blocks = mir.all_basic_blocks();
-
     // Analyze the temps to determine which must be lvalues
     // FIXME
     let (lvalue_temps, cleanup_kinds) = bcx.with_block(|bcx| {
@@ -202,15 +200,13 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
     // Allocate a `Block` for every basic block
     let block_bcxs: IndexVec<mir::BasicBlock, Block<'blk,'tcx>> =
-        mir_blocks.iter()
-                  .map(|&bb| {
-                      if bb == mir::START_BLOCK {
-                          fcx.new_block("start", None)
-                      } else {
-                          fcx.new_block(&format!("{:?}", bb), None)
-                      }
-                  })
-                  .collect();
+        mir.basic_blocks().indices().map(|bb| {
+            if bb == mir::START_BLOCK {
+                fcx.new_block("start", None)
+            } else {
+                fcx.new_block(&format!("{:?}", bb), None)
+            }
+        }).collect();
 
     // Branch to the START block
     let start_bcx = block_bcxs[mir::START_BLOCK];
@@ -228,14 +224,14 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         blocks: block_bcxs,
         unreachable_block: None,
         cleanup_kinds: cleanup_kinds,
-        landing_pads: mir_blocks.iter().map(|_| None).collect(),
+        landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
         vars: vars,
         temps: temps,
         args: args,
         scopes: scopes
     };
 
-    let mut visited = BitVector::new(mir_blocks.len());
+    let mut visited = BitVector::new(mir.basic_blocks().len());
 
     let mut rpo = traversal::reverse_postorder(&mir);
 
@@ -253,7 +249,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
     // Remove blocks that haven't been visited, or have no
     // predecessors.
-    for &bb in &mir_blocks {
+    for bb in mir.basic_blocks().indices() {
         let block = mircx.blocks[bb];
         let block = BasicBlock(block.llbb);
         // Unreachable block

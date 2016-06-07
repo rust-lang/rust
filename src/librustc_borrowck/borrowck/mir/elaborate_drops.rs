@@ -225,8 +225,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn collect_drop_flags(&mut self)
     {
-        for bb in self.mir.all_basic_blocks() {
-            let data = self.mir.basic_block_data(bb);
+        for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             let terminator = data.terminator();
             let location = match terminator.kind {
                 TerminatorKind::Drop { ref location, .. } |
@@ -262,8 +261,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn elaborate_drops(&mut self)
     {
-        for bb in self.mir.all_basic_blocks() {
-            let data = self.mir.basic_block_data(bb);
+        for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             let loc = Location { block: bb, index: data.statements.len() };
             let terminator = data.terminator();
 
@@ -323,7 +321,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         unwind: Option<BasicBlock>)
     {
         let bb = loc.block;
-        let data = self.mir.basic_block_data(bb);
+        let data = &self.mir[bb];
         let terminator = data.terminator();
 
         let assign = Statement {
@@ -942,8 +940,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn drop_flags_for_fn_rets(&mut self) {
-        for bb in self.mir.all_basic_blocks() {
-            let data = self.mir.basic_block_data(bb);
+        for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             if let TerminatorKind::Call {
                 destination: Some((ref lv, tgt)), cleanup: Some(_), ..
             } = data.terminator().kind {
@@ -975,8 +972,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         // drop flags by themselves, to avoid the drop flags being
         // clobbered before they are read.
 
-        for bb in self.mir.all_basic_blocks() {
-            let data = self.mir.basic_block_data(bb);
+        for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             debug!("drop_flags_for_locs({:?})", data);
             for i in 0..(data.statements.len()+1) {
                 debug!("drop_flag_for_locs: stmt {}", i);

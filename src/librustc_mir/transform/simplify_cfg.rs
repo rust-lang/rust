@@ -60,7 +60,7 @@ impl<'l, 'tcx> MirPass<'tcx> for SimplifyCfg<'l> {
         pretty::dump_mir(tcx, "simplify_cfg", &format!("{}-after", self.label), src, mir, None);
 
         // FIXME: Should probably be moved into some kind of pass manager
-        mir.basic_blocks.raw.shrink_to_fit();
+        mir.basic_blocks_mut().raw.shrink_to_fit();
     }
 }
 
@@ -68,7 +68,7 @@ impl<'l> Pass for SimplifyCfg<'l> {}
 
 fn merge_consecutive_blocks(mir: &mut Mir) {
     // Build the precedecessor map for the MIR
-    let mut pred_count = IndexVec::from_elem(0u32, &mir.basic_blocks);
+    let mut pred_count = IndexVec::from_elem(0u32, mir.basic_blocks());
     for (_, data) in traversal::preorder(mir) {
         if let Some(ref term) = data.terminator {
             for &tgt in term.successors().iter() {
@@ -79,12 +79,11 @@ fn merge_consecutive_blocks(mir: &mut Mir) {
 
     loop {
         let mut changed = false;
-        let mut seen = BitVector::new(mir.basic_blocks.len());
+        let mut seen = BitVector::new(mir.basic_blocks().len());
         let mut worklist = vec![START_BLOCK];
         while let Some(bb) = worklist.pop() {
             // Temporarily take ownership of the terminator we're modifying to keep borrowck happy
-            let mut terminator = mir.basic_block_data_mut(bb).terminator.take()
-                .expect("invalid terminator state");
+            let mut terminator = mir[bb].terminator.take().expect("invalid terminator state");
 
             // See if we can merge the target block into this one
             loop {
@@ -96,8 +95,8 @@ fn merge_consecutive_blocks(mir: &mut Mir) {
                         break;
                     }
 
-                    let num_insts = mir.basic_block_data(target).statements.len();
-                    match mir.basic_block_data(target).terminator().kind {
+                    let num_insts = mir[target].statements.len();
+                    match mir[target].terminator().kind {
                         TerminatorKind::Goto { target: new_target } if num_insts == 0 => {
                             inner_change = true;
                             terminator.kind = TerminatorKind::Goto { target: new_target };
@@ -108,12 +107,12 @@ fn merge_consecutive_blocks(mir: &mut Mir) {
                             inner_change = true;
                             let mut stmts = Vec::new();
                             {
-                                let target_data = mir.basic_block_data_mut(target);
+                                let target_data = &mut mir[target];
                                 mem::swap(&mut stmts, &mut target_data.statements);
                                 mem::swap(&mut terminator, target_data.terminator_mut());
                             }
 
-                            mir.basic_block_data_mut(bb).statements.append(&mut stmts);
+                            mir[bb].statements.append(&mut stmts);
                         }
                         _ => {}
                     };
@@ -122,7 +121,7 @@ fn merge_consecutive_blocks(mir: &mut Mir) {
                 for target in terminator.successors_mut() {
                     let new_target = match final_target(mir, *target) {
                         Some(new_target) => new_target,
-                        None if mir.basic_block_data(bb).statements.is_empty() => bb,
+                        None if mir[bb].statements.is_empty() => bb,
                         None => continue
                     };
                     if *target != new_target {
@@ -139,9 +138,9 @@ fn merge_consecutive_blocks(mir: &mut Mir) {
                 }
             }
 
-            mir.basic_block_data_mut(bb).terminator = Some(terminator);
+            mir[bb].terminator = Some(terminator);
 
-            for succ in mir.basic_block_data(bb).terminator().successors().iter() {
+            for succ in mir[bb].terminator().successors().iter() {
                 if seen.insert(succ.index()) {
                     worklist.push(*succ);
                 }
@@ -159,11 +158,11 @@ fn final_target(mir: &Mir, mut target: BasicBlock) -> Option<BasicBlock> {
     // Keep track of already seen blocks to detect loops
     let mut seen: Vec<BasicBlock> = Vec::with_capacity(8);
 
-    while mir.basic_block_data(target).statements.is_empty() {
+    while mir[target].statements.is_empty() {
         // NB -- terminator may have been swapped with `None` in
         // merge_consecutive_blocks, in which case we have a cycle and just want
         // to stop
-        match mir.basic_block_data(target).terminator {
+        match mir[target].terminator {
             Some(Terminator { kind: TerminatorKind::Goto { target: next }, .. }) =>  {
                 if seen.contains(&next) {
                     return None;
@@ -182,8 +181,7 @@ fn simplify_branches(mir: &mut Mir) {
     loop {
         let mut changed = false;
 
-        for bb in mir.all_basic_blocks() {
-            let basic_block = mir.basic_block_data_mut(bb);
+        for (_, basic_block) in mir.basic_blocks_mut().iter_enumerated_mut() {
             let mut terminator = basic_block.terminator_mut();
             terminator.kind = match terminator.kind {
                 TerminatorKind::If { ref targets, .. } if targets.0 == targets.1 => {
@@ -228,13 +226,14 @@ fn simplify_branches(mir: &mut Mir) {
 }
 
 fn remove_dead_blocks(mir: &mut Mir) {
-    let mut seen = BitVector::new(mir.basic_blocks.len());
+    let mut seen = BitVector::new(mir.basic_blocks().len());
     for (bb, _) in traversal::preorder(mir) {
         seen.insert(bb.index());
     }
 
-    let num_blocks = mir.basic_blocks.len();
+    let basic_blocks = mir.basic_blocks_mut();
 
+    let num_blocks = basic_blocks.len();
     let mut replacements : Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
     let mut used_blocks = 0;
     for alive_index in seen.iter() {
@@ -242,14 +241,14 @@ fn remove_dead_blocks(mir: &mut Mir) {
         if alive_index != used_blocks {
             // Swap the next alive block data with the current available slot. Since alive_index is
             // non-decreasing this is a valid operation.
-            mir.basic_blocks.raw.swap(alive_index, used_blocks);
+            basic_blocks.raw.swap(alive_index, used_blocks);
         }
         used_blocks += 1;
     }
-    mir.basic_blocks.raw.truncate(used_blocks);
+    basic_blocks.raw.truncate(used_blocks);
 
-    for bb in mir.all_basic_blocks() {
-        for target in mir.basic_block_data_mut(bb).terminator_mut().successors_mut() {
+    for block in basic_blocks {
+        for target in block.terminator_mut().successors_mut() {
             *target = replacements[target.index()];
         }
     }

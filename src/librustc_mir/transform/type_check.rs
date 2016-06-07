@@ -626,7 +626,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         bb: BasicBlock,
                         iscleanuppad: bool)
     {
-        if mir.basic_block_data(bb).is_cleanup != iscleanuppad {
+        if mir[bb].is_cleanup != iscleanuppad {
             span_mirbug!(self, ctxt, "cleanuppad mismatch: {:?} should be {:?}",
                          bb, iscleanuppad);
         }
@@ -635,7 +635,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
         self.last_span = mir.span;
         debug!("run_on_mir: {:?}", mir.span);
-        for block in &mir.basic_blocks {
+        for block in mir.basic_blocks() {
             for stmt in &block.statements {
                 if stmt.source_info.span != DUMMY_SP {
                     self.last_span = stmt.source_info.span;

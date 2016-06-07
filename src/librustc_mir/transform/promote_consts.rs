@@ -163,11 +163,12 @@ struct Promoter<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
     fn new_block(&mut self) -> BasicBlock {
-        self.promoted.basic_blocks.push(BasicBlockData {
+        let span = self.promoted.span;
+        self.promoted.basic_blocks_mut().push(BasicBlockData {
             statements: vec![],
             terminator: Some(Terminator {
                 source_info: SourceInfo {
-                    span: self.promoted.span,
+                    span: span,
                     scope: ARGUMENT_VISIBILITY_SCOPE
                 },
                 kind: TerminatorKind::Return
@@ -177,8 +178,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn assign(&mut self, dest: Lvalue<'tcx>, rvalue: Rvalue<'tcx>, span: Span) {
-        let last = self.promoted.basic_blocks.last().unwrap();
-        let data = &mut self.promoted.basic_blocks[last];
+        let last = self.promoted.basic_blocks().last().unwrap();
+        let data = &mut self.promoted[last];
         data.statements.push(Statement {
             source_info: SourceInfo {
                 span: span,
@@ -268,7 +269,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         if stmt_idx < no_stmts {
             self.assign(Lvalue::Temp(new_temp), rvalue.unwrap(), source_info.span);
         } else {
-            let last = self.promoted.basic_blocks.last().unwrap();
+            let last = self.promoted.basic_blocks().last().unwrap();
             let new_target = self.new_block();
             let mut call = call.unwrap();
             match call {
@@ -277,7 +278,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 }
                 _ => bug!()
             }
-            let terminator = &mut self.promoted.basic_blocks[last].terminator_mut();
+            let terminator = self.promoted[last].terminator_mut();
             terminator.source_info.span = source_info.span;
             terminator.kind = call;
         }
@@ -365,20 +366,20 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
 
         let mut promoter = Promoter {
             source: mir,
-            promoted: Mir {
-                basic_blocks: IndexVec::new(),
-                visibility_scopes: Some(VisibilityScopeData {
+            promoted: Mir::new(
+                IndexVec::new(),
+                Some(VisibilityScopeData {
                     span: span,
                     parent_scope: None
                 }).into_iter().collect(),
-                promoted: IndexVec::new(),
-                return_ty: ty::FnConverging(ty),
-                var_decls: IndexVec::new(),
-                arg_decls: IndexVec::new(),
-                temp_decls: IndexVec::new(),
-                upvar_decls: vec![],
-                span: span
-            },
+                IndexVec::new(),
+                ty::FnConverging(ty),
+                IndexVec::new(),
+                IndexVec::new(),
+                IndexVec::new(),
+                vec![],
+                span
+            ),
             temps: &mut temps,
             keep_original: false
         };
@@ -388,7 +389,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
 
     // Eliminate assignments to, and drops of promoted temps.
     let promoted = |index: Temp| temps[index] == TempState::PromotedOut;
-    for block in &mut mir.basic_blocks {
+    for block in mir.basic_blocks_mut() {
         block.statements.retain(|statement| {
             match statement.kind {
                 StatementKind::Assign(Lvalue::Temp(index), _) => {

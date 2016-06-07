@@ -426,7 +426,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                         bb: repr::BasicBlock,
                         idx: usize) {
         let (tcx, mir, move_data) = (self.tcx, self.mir, &ctxt.move_data);
-        let stmt = &mir.basic_block_data(bb).statements[idx];
+        let stmt = &mir[bb].statements[idx];
         let loc_map = &move_data.loc_map;
         let path_map = &move_data.path_map;
         let rev_lookup = &move_data.rev_lookup;
@@ -466,7 +466,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                          statements_len: usize)
     {
         let (mir, move_data) = (self.mir, &ctxt.move_data);
-        let term = mir.basic_block_data(bb).terminator.as_ref().unwrap();
+        let term = mir[bb].terminator();
         let loc_map = &move_data.loc_map;
         let loc = Location { block: bb, index: statements_len };
         debug!("terminator {:?} at loc {:?} moves out of move_indexes {:?}",
