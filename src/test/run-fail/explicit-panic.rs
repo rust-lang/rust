@@ -12,4 +12,6 @@
 
 
 // error-pattern:explicit
-fn main() { panic!(); }
+fn main() {
+    panic!();
+}

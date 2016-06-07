@@ -10,6 +10,10 @@
 
 // error-pattern:explicit panic
 
-fn f() -> ! { panic!() }
+fn f() -> ! {
+    panic!()
+}
 
-fn main() { f(); }
+fn main() {
+    f();
+}
