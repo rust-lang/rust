@@ -228,10 +228,10 @@ fn deref_kind(t: Ty, context: DerefKindContext) -> McResult<deref_kind> {
             Ok(deref_interior(InteriorField(PositionalField(0))))
         }
 
-        ty::TyArray(_, _) | ty::TySlice(_) | ty::TyStr => {
+        ty::TyArray(_, _) | ty::TySlice(_) => {
             // no deref of indexed content without supplying InteriorOffsetKind
             if let Some(context) = context {
-                Ok(deref_interior(InteriorElement(context, element_kind(t))))
+                Ok(deref_interior(InteriorElement(context, ElementKind::VecElement)))
             } else {
                 Err(())
             }
@@ -981,18 +981,19 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let method_call = ty::MethodCall::expr(elt.id());
         let method_ty = self.infcx.node_method_ty(method_call);
 
-        let element_ty = match method_ty {
+        let (element_ty, element_kind) = match method_ty {
             Some(method_ty) => {
                 let ref_ty = self.overloaded_method_return_ty(method_ty);
                 base_cmt = self.cat_rvalue_node(elt.id(), elt.span(), ref_ty);
 
                 // FIXME(#20649) -- why are we using the `self_ty` as the element type...?
                 let self_ty = method_ty.fn_sig().input(0);
-                self.tcx().no_late_bound_regions(&self_ty).unwrap()
+                (self.tcx().no_late_bound_regions(&self_ty).unwrap(),
+                 ElementKind::OtherElement)
             }
             None => {
                 match base_cmt.ty.builtin_index() {
-                    Some(ty) => ty,
+                    Some(ty) => (ty, ElementKind::VecElement),
                     None => {
                         return Err(());
                     }
@@ -1000,65 +1001,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
         };
 
-        let m = base_cmt.mutbl.inherit();
-        let ret = interior(elt, base_cmt.clone(), base_cmt.ty,
-                           m, context, element_ty);
+        let interior_elem = InteriorElement(context, element_kind);
+        let ret =
+            self.cat_imm_interior(elt, base_cmt.clone(), element_ty, interior_elem);
         debug!("cat_index ret {:?}", ret);
         return Ok(ret);
-
-        fn interior<'tcx, N: ast_node>(elt: &N,
-                                       of_cmt: cmt<'tcx>,
-                                       vec_ty: Ty<'tcx>,
-                                       mutbl: MutabilityCategory,
-                                       context: InteriorOffsetKind,
-                                       element_ty: Ty<'tcx>) -> cmt<'tcx>
-        {
-            let interior_elem = InteriorElement(context, element_kind(vec_ty));
-            Rc::new(cmt_ {
-                id:elt.id(),
-                span:elt.span(),
-                cat:Categorization::Interior(of_cmt, interior_elem),
-                mutbl:mutbl,
-                ty:element_ty,
-                note: NoteNone
-            })
-        }
-    }
-
-    // Takes either a vec or a reference to a vec and returns the cmt for the
-    // underlying vec.
-    fn deref_vec<N:ast_node>(&self,
-                             elt: &N,
-                             base_cmt: cmt<'tcx>,
-                             context: InteriorOffsetKind)
-                             -> McResult<cmt<'tcx>>
-    {
-        let ret = match deref_kind(base_cmt.ty, Some(context))? {
-            deref_ptr(ptr) => {
-                // for unique ptrs, we inherit mutability from the
-                // owning reference.
-                let m = MutabilityCategory::from_pointer_kind(base_cmt.mutbl, ptr);
-
-                // the deref is explicit in the resulting cmt
-                Rc::new(cmt_ {
-                    id:elt.id(),
-                    span:elt.span(),
-                    cat:Categorization::Deref(base_cmt.clone(), 0, ptr),
-                    mutbl:m,
-                    ty: match base_cmt.ty.builtin_deref(false, ty::NoPreference) {
-                        Some(mt) => mt.ty,
-                        None => bug!("Found non-derefable type")
-                    },
-                    note: NoteNone
-                })
-            }
-
-            deref_interior(_) => {
-                base_cmt
-            }
-        };
-        debug!("deref_vec ret {:?}", ret);
-        Ok(ret)
     }
 
     pub fn cat_imm_interior<N:ast_node>(&self,
@@ -1282,8 +1229,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
           PatKind::Vec(ref before, ref slice, ref after) => {
               let context = InteriorOffsetKind::Pattern;
-              let vec_cmt = self.deref_vec(pat, cmt, context)?;
-              let elt_cmt = self.cat_index(pat, vec_cmt, context)?;
+              let elt_cmt = self.cat_index(pat, cmt, context)?;
               for before_pat in before {
                   self.cat_pattern_(elt_cmt.clone(), &before_pat, op)?;
               }
@@ -1578,18 +1524,6 @@ impl fmt::Debug for InteriorKind {
             InteriorField(PositionalField(i)) => write!(f, "#{}", i),
             InteriorElement(..) => write!(f, "[]"),
         }
-    }
-}
-
-fn element_kind(t: Ty) -> ElementKind {
-    match t.sty {
-        ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
-        ty::TyBox(ty) => match ty.sty {
-            ty::TySlice(_) => VecElement,
-            _ => OtherElement
-        },
-        ty::TyArray(..) | ty::TySlice(_) => VecElement,
-        _ => OtherElement
     }
 }
 
