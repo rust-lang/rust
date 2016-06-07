@@ -1418,6 +1418,17 @@ impl FromIterator<String> for String {
     }
 }
 
+#[stable(feature = "extend_display", since = "1.11.0")]
+impl<T: fmt::Display> Extend<T> for String {
+    default fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        use fmt::Write;
+        for d in iter {
+            let _ = write!(self, "{}", d);
+        }
+    }
+}
+
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<char> for String {
     fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
