@@ -32,11 +32,11 @@ use windows as c;
 const ETYPE: c::DWORD = 0b1110_u32 << 28;
 const MAGIC: c::DWORD = 0x525354; // "RST"
 
-const RUST_PANIC: c::DWORD  = ETYPE | (1 << 24) | MAGIC;
+const RUST_PANIC: c::DWORD = ETYPE | (1 << 24) | MAGIC;
 
 #[repr(C)]
 struct PanicData {
-    data: Box<Any + Send>
+    data: Box<Any + Send>,
 }
 
 pub unsafe fn panic(data: Box<Any + Send>) -> u32 {
@@ -82,30 +82,29 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send> {
 
 #[lang = "eh_personality_catch"]
 #[cfg(not(test))]
-unsafe extern fn rust_eh_personality_catch(
-    exceptionRecord: *mut c::EXCEPTION_RECORD,
-    establisherFrame: c::LPVOID,
-    contextRecord: *mut c::CONTEXT,
-    dispatcherContext: *mut c::DISPATCHER_CONTEXT
-) -> c::EXCEPTION_DISPOSITION
-{
-    rust_eh_personality(exceptionRecord, establisherFrame,
-                        contextRecord, dispatcherContext)
+unsafe extern "C" fn rust_eh_personality_catch(exceptionRecord: *mut c::EXCEPTION_RECORD,
+                                               establisherFrame: c::LPVOID,
+                                               contextRecord: *mut c::CONTEXT,
+                                               dispatcherContext: *mut c::DISPATCHER_CONTEXT)
+                                               -> c::EXCEPTION_DISPOSITION {
+    rust_eh_personality(exceptionRecord,
+                        establisherFrame,
+                        contextRecord,
+                        dispatcherContext)
 }
 
 #[lang = "eh_personality"]
 #[cfg(not(test))]
-unsafe extern fn rust_eh_personality(
-    exceptionRecord: *mut c::EXCEPTION_RECORD,
-    establisherFrame: c::LPVOID,
-    contextRecord: *mut c::CONTEXT,
-    dispatcherContext: *mut c::DISPATCHER_CONTEXT
-) -> c::EXCEPTION_DISPOSITION
-{
+unsafe extern "C" fn rust_eh_personality(exceptionRecord: *mut c::EXCEPTION_RECORD,
+                                         establisherFrame: c::LPVOID,
+                                         contextRecord: *mut c::CONTEXT,
+                                         dispatcherContext: *mut c::DISPATCHER_CONTEXT)
+                                         -> c::EXCEPTION_DISPOSITION {
     let er = &*exceptionRecord;
     let dc = &*dispatcherContext;
 
-    if er.ExceptionFlags & c::EXCEPTION_UNWIND == 0 { // we are in the dispatch phase
+    if er.ExceptionFlags & c::EXCEPTION_UNWIND == 0 {
+        // we are in the dispatch phase
         if er.ExceptionCode == RUST_PANIC {
             if let Some(lpad) = find_landing_pad(dc) {
                 c::RtlUnwindEx(establisherFrame,
@@ -122,7 +121,7 @@ unsafe extern fn rust_eh_personality(
 
 #[lang = "eh_unwind_resume"]
 #[unwind]
-unsafe extern fn rust_eh_unwind_resume(panic_ctx: c::LPVOID) -> ! {
+unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: c::LPVOID) -> ! {
     let params = [panic_ctx as c::ULONG_PTR];
     c::RaiseException(RUST_PANIC,
                       c::EXCEPTION_NONCONTINUABLE,
@@ -136,7 +135,7 @@ unsafe fn find_landing_pad(dc: &c::DISPATCHER_CONTEXT) -> Option<usize> {
         ip: dc.ControlPc as usize,
         func_start: dc.ImageBase as usize + (*dc.FunctionEntry).BeginAddress as usize,
         text_start: dc.ImageBase as usize,
-        data_start: 0
+        data_start: 0,
     };
     eh::find_landing_pad(dc.HandlerData, &eh_ctx)
 }

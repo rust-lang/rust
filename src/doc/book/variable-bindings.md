@@ -37,8 +37,8 @@ of our minds as we go forward.
 Rust is a statically typed language, which means that we specify our types up
 front, and they’re checked at compile time. So why does our first example
 compile? Well, Rust has this thing called ‘type inference’. If it can figure
-out what the type of something is, Rust doesn’t require you to actually type it
-out.
+out what the type of something is, Rust doesn’t require you to explicitly type
+it out.
 
 We can add the type if we want to, though. Types come after a colon (`:`):
 
@@ -159,8 +159,9 @@ error: aborting due to previous error
 Could not compile `hello_world`.
 ```
 
-Rust will not let us use a value that has not been initialized. Next, let’s
-talk about this stuff we've added to `println!`.
+Rust will not let us use a value that has not been initialized.
+
+Let take a minute to talk about this stuff we've added to `println!`.
 
 If you include two curly braces (`{}`, some call them moustaches...) in your
 string to print, Rust will interpret this as a request to interpolate some sort
@@ -222,8 +223,8 @@ To learn more, run the command again with --verbose.
 ```
 
 Additionally, variable bindings can be shadowed. This means that a later
-variable binding with the same name as another binding, that's currently in
-scope, will override the previous binding.
+variable binding with the same name as another binding that is currently in
+scope will override the previous binding.
 
 ```rust
 let x: i32 = 8;
@@ -240,7 +241,10 @@ println!("{}", x); // Prints "42"
 Shadowing and mutable bindings may appear as two sides of the same coin, but
 they are two distinct concepts that can't always be used interchangeably. For
 one, shadowing enables us to rebind a name to a value of a different type. It
-is also possible to change the mutability of a binding.
+is also possible to change the mutability of a binding. Note that shadowing a 
+name does not alter or destroy the value it was bound to, and the value will
+continue to exist until it goes out of scope, even if it is no longer accessible
+by any means.
 
 ```rust
 let mut x: i32 = 1;

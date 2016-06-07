@@ -79,8 +79,8 @@ pub unsafe fn panic(data: Box<Any + Send>) -> u32 {
     let exception_param = Box::into_raw(exception) as *mut uw::_Unwind_Exception;
     return uw::_Unwind_RaiseException(exception_param) as u32;
 
-    extern fn exception_cleanup(_unwind_code: uw::_Unwind_Reason_Code,
-                                exception: *mut uw::_Unwind_Exception) {
+    extern "C" fn exception_cleanup(_unwind_code: uw::_Unwind_Reason_Code,
+                                    exception: *mut uw::_Unwind_Exception) {
         unsafe {
             let _: Box<Exception> = Box::from_raw(exception as *mut Exception);
         }
@@ -130,50 +130,41 @@ pub mod eabi {
     use unwind as uw;
     use libc::c_int;
 
-    extern {
+    extern "C" {
         fn __gcc_personality_v0(version: c_int,
                                 actions: uw::_Unwind_Action,
                                 exception_class: uw::_Unwind_Exception_Class,
                                 ue_header: *mut uw::_Unwind_Exception,
                                 context: *mut uw::_Unwind_Context)
-            -> uw::_Unwind_Reason_Code;
+                                -> uw::_Unwind_Reason_Code;
     }
 
     #[lang = "eh_personality"]
     #[no_mangle]
-    extern fn rust_eh_personality(
-        version: c_int,
-        actions: uw::_Unwind_Action,
-        exception_class: uw::_Unwind_Exception_Class,
-        ue_header: *mut uw::_Unwind_Exception,
-        context: *mut uw::_Unwind_Context
-    ) -> uw::_Unwind_Reason_Code
-    {
-        unsafe {
-            __gcc_personality_v0(version, actions, exception_class, ue_header,
-                                 context)
-        }
+    extern "C" fn rust_eh_personality(version: c_int,
+                                      actions: uw::_Unwind_Action,
+                                      exception_class: uw::_Unwind_Exception_Class,
+                                      ue_header: *mut uw::_Unwind_Exception,
+                                      context: *mut uw::_Unwind_Context)
+                                      -> uw::_Unwind_Reason_Code {
+        unsafe { __gcc_personality_v0(version, actions, exception_class, ue_header, context) }
     }
 
     #[lang = "eh_personality_catch"]
     #[no_mangle]
-    pub extern fn rust_eh_personality_catch(
-        version: c_int,
-        actions: uw::_Unwind_Action,
-        exception_class: uw::_Unwind_Exception_Class,
-        ue_header: *mut uw::_Unwind_Exception,
-        context: *mut uw::_Unwind_Context
-    ) -> uw::_Unwind_Reason_Code
-    {
+    pub extern "C" fn rust_eh_personality_catch(version: c_int,
+                                                actions: uw::_Unwind_Action,
+                                                exception_class: uw::_Unwind_Exception_Class,
+                                                ue_header: *mut uw::_Unwind_Exception,
+                                                context: *mut uw::_Unwind_Context)
+                                                -> uw::_Unwind_Reason_Code {
 
-        if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 { // search phase
+        if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 {
+            // search phase
             uw::_URC_HANDLER_FOUND // catch!
-        }
-        else { // cleanup phase
-            unsafe {
-                __gcc_personality_v0(version, actions, exception_class, ue_header,
-                                     context)
-            }
+        } else {
+            // cleanup phase
+            unsafe { __gcc_personality_v0(version, actions, exception_class, ue_header, context) }
         }
     }
 }
@@ -186,49 +177,40 @@ pub mod eabi {
     use unwind as uw;
     use libc::c_int;
 
-    extern {
+    extern "C" {
         fn __gcc_personality_sj0(version: c_int,
-                                actions: uw::_Unwind_Action,
-                                exception_class: uw::_Unwind_Exception_Class,
-                                ue_header: *mut uw::_Unwind_Exception,
-                                context: *mut uw::_Unwind_Context)
-            -> uw::_Unwind_Reason_Code;
+                                 actions: uw::_Unwind_Action,
+                                 exception_class: uw::_Unwind_Exception_Class,
+                                 ue_header: *mut uw::_Unwind_Exception,
+                                 context: *mut uw::_Unwind_Context)
+                                 -> uw::_Unwind_Reason_Code;
     }
 
     #[lang = "eh_personality"]
     #[no_mangle]
-    pub extern fn rust_eh_personality(
-        version: c_int,
-        actions: uw::_Unwind_Action,
-        exception_class: uw::_Unwind_Exception_Class,
-        ue_header: *mut uw::_Unwind_Exception,
-        context: *mut uw::_Unwind_Context
-    ) -> uw::_Unwind_Reason_Code
-    {
-        unsafe {
-            __gcc_personality_sj0(version, actions, exception_class, ue_header,
-                                  context)
-        }
+    pub extern "C" fn rust_eh_personality(version: c_int,
+                                          actions: uw::_Unwind_Action,
+                                          exception_class: uw::_Unwind_Exception_Class,
+                                          ue_header: *mut uw::_Unwind_Exception,
+                                          context: *mut uw::_Unwind_Context)
+                                          -> uw::_Unwind_Reason_Code {
+        unsafe { __gcc_personality_sj0(version, actions, exception_class, ue_header, context) }
     }
 
     #[lang = "eh_personality_catch"]
     #[no_mangle]
-    pub extern fn rust_eh_personality_catch(
-        version: c_int,
-        actions: uw::_Unwind_Action,
-        exception_class: uw::_Unwind_Exception_Class,
-        ue_header: *mut uw::_Unwind_Exception,
-        context: *mut uw::_Unwind_Context
-    ) -> uw::_Unwind_Reason_Code
-    {
-        if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 { // search phase
+    pub extern "C" fn rust_eh_personality_catch(version: c_int,
+                                                actions: uw::_Unwind_Action,
+                                                exception_class: uw::_Unwind_Exception_Class,
+                                                ue_header: *mut uw::_Unwind_Exception,
+                                                context: *mut uw::_Unwind_Context)
+                                                -> uw::_Unwind_Reason_Code {
+        if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 {
+            // search phase
             uw::_URC_HANDLER_FOUND // catch!
-        }
-        else { // cleanup phase
-            unsafe {
-                __gcc_personality_sj0(version, actions, exception_class, ue_header,
-                                      context)
-            }
+        } else {
+            // cleanup phase
+            unsafe { __gcc_personality_sj0(version, actions, exception_class, ue_header, context) }
         }
     }
 }
@@ -241,47 +223,40 @@ pub mod eabi {
     use unwind as uw;
     use libc::c_int;
 
-    extern {
+    extern "C" {
         fn __gcc_personality_v0(state: uw::_Unwind_State,
                                 ue_header: *mut uw::_Unwind_Exception,
                                 context: *mut uw::_Unwind_Context)
-            -> uw::_Unwind_Reason_Code;
+                                -> uw::_Unwind_Reason_Code;
     }
 
     #[lang = "eh_personality"]
     #[no_mangle]
-    extern fn rust_eh_personality(
-        state: uw::_Unwind_State,
-        ue_header: *mut uw::_Unwind_Exception,
-        context: *mut uw::_Unwind_Context
-    ) -> uw::_Unwind_Reason_Code
-    {
-        unsafe {
-            __gcc_personality_v0(state, ue_header, context)
-        }
+    extern "C" fn rust_eh_personality(state: uw::_Unwind_State,
+                                      ue_header: *mut uw::_Unwind_Exception,
+                                      context: *mut uw::_Unwind_Context)
+                                      -> uw::_Unwind_Reason_Code {
+        unsafe { __gcc_personality_v0(state, ue_header, context) }
     }
 
     #[lang = "eh_personality_catch"]
     #[no_mangle]
-    pub extern fn rust_eh_personality_catch(
-        state: uw::_Unwind_State,
-        ue_header: *mut uw::_Unwind_Exception,
-        context: *mut uw::_Unwind_Context
-    ) -> uw::_Unwind_Reason_Code
-    {
+    pub extern "C" fn rust_eh_personality_catch(state: uw::_Unwind_State,
+                                                ue_header: *mut uw::_Unwind_Exception,
+                                                context: *mut uw::_Unwind_Context)
+                                                -> uw::_Unwind_Reason_Code {
         // Backtraces on ARM will call the personality routine with
         // state == _US_VIRTUAL_UNWIND_FRAME | _US_FORCE_UNWIND. In those cases
         // we want to continue unwinding the stack, otherwise all our backtraces
         // would end at __rust_try.
-        if (state as c_int & uw::_US_ACTION_MASK as c_int)
-                           == uw::_US_VIRTUAL_UNWIND_FRAME as c_int
-               && (state as c_int & uw::_US_FORCE_UNWIND as c_int) == 0 { // search phase
+        if (state as c_int & uw::_US_ACTION_MASK as c_int) ==
+           uw::_US_VIRTUAL_UNWIND_FRAME as c_int &&
+           (state as c_int & uw::_US_FORCE_UNWIND as c_int) == 0 {
+            // search phase
             uw::_URC_HANDLER_FOUND // catch!
-        }
-        else { // cleanup phase
-            unsafe {
-                __gcc_personality_v0(state, ue_header, context)
-            }
+        } else {
+            // cleanup phase
+            unsafe { __gcc_personality_v0(state, ue_header, context) }
         }
     }
 }
@@ -290,7 +265,7 @@ pub mod eabi {
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
 #[lang = "eh_unwind_resume"]
 #[unwind]
-unsafe extern fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
+unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
     uw::_Unwind_Resume(panic_ctx as *mut uw::_Unwind_Exception);
 }
 
@@ -314,22 +289,21 @@ unsafe extern fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
 pub mod eh_frame_registry {
     #[link(name = "gcc_eh")]
     #[cfg(not(cargobuild))]
-    extern {}
+    extern "C" {}
 
-    extern {
+    extern "C" {
         fn __register_frame_info(eh_frame_begin: *const u8, object: *mut u8);
         fn __deregister_frame_info(eh_frame_begin: *const u8, object: *mut u8);
     }
 
     #[no_mangle]
-    pub unsafe extern fn rust_eh_register_frames(eh_frame_begin: *const u8,
-                                                 object: *mut u8) {
+    pub unsafe extern "C" fn rust_eh_register_frames(eh_frame_begin: *const u8, object: *mut u8) {
         __register_frame_info(eh_frame_begin, object);
     }
 
     #[no_mangle]
-    pub  unsafe extern fn rust_eh_unregister_frames(eh_frame_begin: *const u8,
-                                                   object: *mut u8) {
+    pub unsafe extern "C" fn rust_eh_unregister_frames(eh_frame_begin: *const u8,
+                                                       object: *mut u8) {
         __deregister_frame_info(eh_frame_begin, object);
     }
 }

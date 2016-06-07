@@ -554,7 +554,7 @@ td.summary-column {
 pre.rust .kw { color: #8959A8; }
 pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
 pre.rust .number, pre.rust .string { color: #718C00; }
-pre.rust .self, pre.rust .boolval, pre.rust .prelude-val,
+pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
 pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }

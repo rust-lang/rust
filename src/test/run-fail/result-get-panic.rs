@@ -13,5 +13,5 @@
 use std::result::Result::Err;
 
 fn main() {
-    println!("{}", Err::<isize,String>("kitty".to_string()).unwrap());
+    println!("{}", Err::<isize, String>("kitty".to_string()).unwrap());
 }
