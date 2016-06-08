@@ -46,6 +46,7 @@ fn test_emphasis() {
 /// 32kib 32Mib 32Gib 32Tib 32Pib 32Eib
 /// 32kB 32MB 32GB 32TB 32PB 32EB
 /// 32kb 32Mb 32Gb 32Tb 32Pb 32Eb
+/// NaN
 /// be_sure_we_got_to_the_end_of_it
 //~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
 fn test_units() {
