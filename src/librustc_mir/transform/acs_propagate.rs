@@ -168,7 +168,8 @@ impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
     fn term(&self, t: &Terminator<'tcx>, mut lat: AcsLattice<'tcx>) -> Vec<AcsLattice<'tcx>> {
         match t.kind {
             TerminatorKind::Call { .. } |
-            TerminatorKind::Drop { .. } => {
+            TerminatorKind::Drop { .. } |
+            TerminatorKind::DropAndReplace { .. } => {
                 // FIXME: Be smarter here by using an alias analysis
                 lat = Wrap(FnvHashMap::default());
             },
