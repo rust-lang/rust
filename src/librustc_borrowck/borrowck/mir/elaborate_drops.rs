@@ -23,7 +23,6 @@ use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items;
 use rustc::util::nodemap::FnvHashMap;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_mir::pretty;
 use syntax::codemap::Span;
 
 use std::fmt;
@@ -66,13 +65,13 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 patch: MirPatch::new(mir),
             }.elaborate()
         };
-        pretty::dump_mir(tcx, "elaborate_drops", &0, src, mir, None);
         elaborate_patch.apply(mir);
-        pretty::dump_mir(tcx, "elaborate_drops", &1, src, mir, None);
     }
 }
 
-impl Pass for ElaborateDrops {}
+impl Pass for ElaborateDrops {
+    fn name(&self) -> &str { "elaborate-drops" }
+}
 
 struct InitializationData {
     live: IdxSetBuf<MovePathIndex>,

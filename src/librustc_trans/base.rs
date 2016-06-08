@@ -1844,7 +1844,10 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         attributes::emit_uwtable(llfndecl, true);
     }
 
-    debug!("trans_closure(..., {})", instance);
+    // this is an info! to allow collecting monomorphization statistics
+    // and to allow finding the last function before LLVM aborts from
+    // release builds.
+    info!("trans_closure(..., {})", instance);
 
     let fn_ty = FnType::new(ccx, abi, sig, &[]);
 
