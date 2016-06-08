@@ -11,7 +11,8 @@ enum FakeCallType2 {
 }
 
 enum Foo {
-    cFoo, cBar,
+    cFoo, //~ ERROR: Variant name ends with the enum's name
+    cBar,
 }
 
 enum BadCallType { //~ ERROR: All variants have the same prefix: `CallType`
@@ -66,6 +67,14 @@ enum Seallll { //~ ERROR: All variants have the same prefix: `With`
 enum NonCaps { //~ ERROR: All variants have the same prefix: `Prefix`
     Prefix的,
     PrefixCake,
+}
+
+enum Stuff {
+    BadStuff, //~ ERROR: Variant name ends with the enum's name
+}
+
+enum Food {
+    FoodGood, //~ ERROR: Variant name starts with the enum's name
 }
 
 fn main() {}

@@ -3,7 +3,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::parse::token::InternedString;
-use utils::span_help_and_lint;
+use utils::{span_help_and_lint, span_lint};
 use utils::{camel_case_from, camel_case_until};
 
 /// **What it does:** Warns on enum variants that are prefixed or suffixed by the same characters
@@ -30,12 +30,14 @@ fn var2str(var: &Variant) -> InternedString {
     var.node.name.name.as_str()
 }
 
+/// Returns the number of chars that match from the start
 fn partial_match(pre: &str, name: &str) -> usize {
     let mut name_iter = name.chars();
     let _ = name_iter.next_back(); // make sure the name is never fully matched
     pre.chars().zip(name_iter).take_while(|&(l, r)| l == r).count()
 }
 
+/// Returns the number of chars that match from the end
 fn partial_rmatch(post: &str, name: &str) -> usize {
     let mut name_iter = name.chars();
     let _ = name_iter.next(); // make sure the name is never fully matched
@@ -46,7 +48,20 @@ impl EarlyLintPass for EnumVariantNames {
     // FIXME: #600
     #[allow(while_let_on_iterator)]
     fn check_item(&mut self, cx: &EarlyContext, item: &Item) {
+        let item_name = item.ident.name.as_str();
+        let item_name_chars = item_name.chars().count();
         if let ItemKind::Enum(ref def, _) = item.node {
+            for var in &def.variants {
+                let name = var2str(var);
+                let matching = partial_match(&item_name, &name);
+                let rmatching = partial_rmatch(&item_name, &name);
+                if matching == item_name_chars {
+                    span_lint(cx, ENUM_VARIANT_NAMES, var.span, "Variant name starts with the enum's name");
+                }
+                if rmatching == item_name_chars {
+                    span_lint(cx, ENUM_VARIANT_NAMES, var.span, "Variant name ends with the enum's name");
+                }
+            }
             if def.variants.len() < 2 {
                 return;
             }
