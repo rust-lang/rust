@@ -28,7 +28,10 @@ use rustc_plugin::Registry;
 
 struct Pass;
 
-impl transform::Pass for Pass {}
+impl transform::Pass for Pass {
+    fn name(&self) -> &str { "dummy-mir-pass" }
+}
+
 impl<'tcx> MirPass<'tcx> for Pass {
     fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>,
                     _: MirSource, mir: &mut Mir<'tcx>) {

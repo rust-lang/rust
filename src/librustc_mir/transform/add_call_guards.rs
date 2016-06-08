@@ -82,4 +82,6 @@ impl<'tcx> MirPass<'tcx> for AddCallGuards {
     }
 }
 
-impl Pass for AddCallGuards {}
+impl Pass for AddCallGuards {
+    fn name(&self) -> &str { "add-call-guards" }
+}

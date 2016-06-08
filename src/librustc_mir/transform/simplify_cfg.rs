@@ -39,7 +39,8 @@ use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::traversal;
-use pretty;
+
+use std::fmt;
 use std::mem;
 
 pub struct SimplifyCfg<'a> { label: &'a str }
@@ -51,20 +52,23 @@ impl<'a> SimplifyCfg<'a> {
 }
 
 impl<'l, 'tcx> MirPass<'tcx> for SimplifyCfg<'l> {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
-        pretty::dump_mir(tcx, "simplify_cfg", &format!("{}-before", self.label), src, mir, None);
+    fn run_pass<'a>(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
         simplify_branches(mir);
         remove_dead_blocks(mir);
         merge_consecutive_blocks(mir);
         remove_dead_blocks(mir);
-        pretty::dump_mir(tcx, "simplify_cfg", &format!("{}-after", self.label), src, mir, None);
 
         // FIXME: Should probably be moved into some kind of pass manager
         mir.basic_blocks_mut().raw.shrink_to_fit();
     }
 }
 
-impl<'l> Pass for SimplifyCfg<'l> {}
+impl<'l> Pass for SimplifyCfg<'l> {
+    fn name(&self) -> &str { "simplify-cfg" }
+    fn disambiguator<'a>(&'a self) -> Option<Box<fmt::Display+'a>> {
+        Some(Box::new(self.label))
+    }
+}
 
 fn merge_consecutive_blocks(mir: &mut Mir) {
     let mut pred_count: IndexVec<_, _> =
