@@ -121,8 +121,25 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             ref attrs, node: hir::MethodTraitItem(
                 hir::MethodSig { .. }, Some(_)), ..
         }) => {
-            attributes::from_fn_attrs(ccx, attrs, lldecl);
-            llvm::SetLinkage(lldecl, llvm::ExternalLinkage);
+            let trans_item = TransItem::Fn(instance);
+
+            if ccx.shared().translation_items().borrow().contains_key(&trans_item) {
+                attributes::from_fn_attrs(ccx, attrs, lldecl);
+                llvm::SetLinkage(lldecl, llvm::ExternalLinkage);
+            } else {
+                // FIXME: #34151
+                // Normally, getting here would indicate a bug in trans::collector,
+                // since it seems to have missed a translation item. When we are
+                // translating with non-MIR based trans, however, the results of
+                // the collector are not entirely reliable since it bases its
+                // analysis on MIR. Thus, we'll instantiate the missing function
+                // privately in this codegen unit, so that things keep working.
+                ccx.stats().n_fallback_instantiations.set(ccx.stats()
+                                                             .n_fallback_instantiations
+                                                             .get() + 1);
+                trans_item.predefine(ccx, llvm::PrivateLinkage);
+                trans_item.define(ccx);
+            }
         }
 
         hir_map::NodeVariant(_) | hir_map::NodeStructCtor(_) => {

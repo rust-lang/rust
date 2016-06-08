@@ -517,11 +517,11 @@ fn single_codegen_unit<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     if reachable.contains(&node_id) {
                         llvm::ExternalLinkage
                     } else {
-                        llvm::InternalLinkage
+                        llvm::PrivateLinkage
                     }
                 }
                 TransItem::DropGlue(_) => {
-                    llvm::InternalLinkage
+                    llvm::PrivateLinkage
                 }
                 TransItem::Fn(instance) => {
                     if trans_item.is_generic_fn() ||

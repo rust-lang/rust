@@ -234,13 +234,34 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 g: DropGlueKind<'tcx>) -> ValueRef {
     let g = g.map_ty(|t| get_drop_glue_type(ccx.tcx(), t));
     match ccx.drop_glues().borrow().get(&g) {
-        Some(&(glue, _)) => glue,
-        None => { bug!("Could not find drop glue for {:?} -- {} -- {}. \
-                        It should have be instantiated during the pre-definition phase",
-                       g,
-                       TransItem::DropGlue(g).to_raw_string(),
-                       ccx.codegen_unit().name) }
+        Some(&(glue, _)) => return glue,
+        None => {
+            debug!("Could not find drop glue for {:?} -- {} -- {}. \
+                    Falling back to on-demand instantiation.",
+                    g,
+                    TransItem::DropGlue(g).to_raw_string(),
+                    ccx.codegen_unit().name);
+
+            ccx.stats().n_fallback_instantiations.set(ccx.stats()
+                                                         .n_fallback_instantiations
+                                                         .get() + 1);
+        }
     }
+
+    // FIXME: #34151
+    // Normally, getting here would indicate a bug in trans::collector,
+    // since it seems to have missed a translation item. When we are
+    // translating with non-MIR-based trans, however, the results of the
+    // collector are not entirely reliable since it bases its analysis
+    // on MIR. Thus, we'll instantiate the missing function on demand in
+    // this codegen unit, so that things keep working.
+
+    TransItem::DropGlue(g).predefine(ccx, llvm::LinkOnceODRLinkage);
+    TransItem::DropGlue(g).define(ccx);
+
+    // Now that we made sure that the glue function is in ccx.drop_glues,
+    // give it another try
+    get_drop_glue_core(ccx, g)
 }
 
 pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,

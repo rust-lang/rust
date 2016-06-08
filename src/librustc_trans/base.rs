@@ -2684,6 +2684,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         println!("n_null_glues: {}", stats.n_null_glues.get());
         println!("n_real_glues: {}", stats.n_real_glues.get());
 
+        println!("n_fallback_instantiations: {}", stats.n_fallback_instantiations.get());
+
         println!("n_fns: {}", stats.n_fns.get());
         println!("n_monos: {}", stats.n_monos.get());
         println!("n_inlines: {}", stats.n_inlines.get());
@@ -2875,6 +2877,14 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
     assert!(scx.tcx().sess.opts.cg.codegen_units == codegen_units.len() ||
             scx.tcx().sess.opts.debugging_opts.incremental.is_some());
 
+    {
+        let mut ccx_map = scx.translation_items().borrow_mut();
+
+        for trans_item in items.iter().cloned() {
+            ccx_map.insert(trans_item, TransItemState::PredictedButNotGenerated);
+        }
+    }
+
     if scx.sess().opts.debugging_opts.print_trans_items.is_some() {
         let mut item_to_cgus = HashMap::new();
 
@@ -2925,12 +2935,6 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
 
         for item in item_keys {
             println!("TRANS_ITEM {}", item);
-        }
-
-        let mut ccx_map = scx.translation_items().borrow_mut();
-
-        for cgi in items {
-            ccx_map.insert(cgi, TransItemState::PredictedButNotGenerated);
         }
     }
 
