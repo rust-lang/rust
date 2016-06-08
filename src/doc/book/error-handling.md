@@ -1829,7 +1829,7 @@ use std::error::Error;
 
 fn search<P: AsRef<Path>>
          (file_path: P, city: &str)
-         -> Result<Vec<PopulationCount>, Box<Error+Send+Sync>> {
+         -> Result<Vec<PopulationCount>, Box<Error>> {
     let mut found = vec![];
     let file = try!(File::open(file_path));
     let mut rdr = csv::Reader::from_reader(file);
@@ -1858,20 +1858,17 @@ Instead of `x.unwrap()`, we now have `try!(x)`. Since our function returns a
 `Result<T, E>`, the `try!` macro will return early from the function if an
 error occurs.
 
-There is one big gotcha in this code: we used `Box<Error + Send + Sync>`
-instead of `Box<Error>`. We did this so we could convert a plain string to an
-error type. We need these extra bounds so that we can use the
-[corresponding `From`
-impls](../std/convert/trait.From.html):
+At the end of `search` we also convert a plain string to an error type 
+by using the [corresponding `From` impls](../std/convert/trait.From.html):
 
 ```rust,ignore
 // We are making use of this impl in the code above, since we call `From::from`
 // on a `&'static str`.
-impl<'a, 'b> From<&'b str> for Box<Error + Send + Sync + 'a>
+impl<'a> From<&'a str> for Box<Error>
 
 // But this is also useful when you need to allocate a new string for an
 // error message, usually with `format!`.
-impl From<String> for Box<Error + Send + Sync>
+impl From<String> for Box<Error>
 ```
 
 Since `search` now returns a `Result<T, E>`, `main` should use case analysis
@@ -1964,7 +1961,7 @@ use std::io;
 
 fn search<P: AsRef<Path>>
          (file_path: &Option<P>, city: &str)
-         -> Result<Vec<PopulationCount>, Box<Error+Send+Sync>> {
+         -> Result<Vec<PopulationCount>, Box<Error>> {
     let mut found = vec![];
     let input: Box<io::Read> = match *file_path {
         None => Box::new(io::stdin()),
@@ -2175,9 +2172,8 @@ heuristics!
   `unwrap`. Be warned: if it winds up in someone else's hands, don't be
   surprised if they are agitated by poor error messages!
 * If you're writing a quick 'n' dirty program and feel ashamed about panicking
-  anyway, then use either a `String` or a `Box<Error + Send + Sync>` for your
-  error type (the `Box<Error + Send + Sync>` type is because of the
-  [available `From` impls](../std/convert/trait.From.html)).
+  anyway, then use either a `String` or a `Box<Error>` for your
+  error type.
 * Otherwise, in a program, define your own error types with appropriate
   [`From`](../std/convert/trait.From.html)
   and
