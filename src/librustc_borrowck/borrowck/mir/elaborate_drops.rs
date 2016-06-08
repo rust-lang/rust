@@ -124,8 +124,7 @@ struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
 
 #[derive(Copy, Clone, Debug)]
 struct DropCtxt<'a, 'tcx: 'a> {
-    span: Span,
-    scope: ScopeId,
+    source_info: SourceInfo,
     is_cleanup: bool,
 
     init_data: &'a InitializationData,
@@ -273,8 +272,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                     let init_data = self.initialization_data_at(loc);
                     let path = self.move_data().rev_lookup.find(location);
                     self.elaborate_drop(&DropCtxt {
-                        span: terminator.span,
-                        scope: terminator.scope,
+                        source_info: terminator.source_info,
                         is_cleanup: data.is_cleanup,
                         init_data: &init_data,
                         lvalue: location,
@@ -329,8 +327,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
         let assign = Statement {
             kind: StatementKind::Assign(location.clone(), Rvalue::Use(value.clone())),
-            span: terminator.span,
-            scope: terminator.scope
+            source_info: terminator.source_info
         };
 
         let unwind = unwind.unwrap_or(self.patch.resume_block());
@@ -367,8 +364,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             let path = self.move_data().rev_lookup.find(location);
 
             self.elaborate_drop(&DropCtxt {
-                span: terminator.span,
-                scope: terminator.scope,
+                source_info: terminator.source_info,
                 is_cleanup: data.is_cleanup,
                 init_data: &init_data,
                 lvalue: location,
@@ -513,8 +509,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                     debug!("drop_ladder: for std field {} ({:?})", i, lv);
 
                     self.elaborated_drop_block(&DropCtxt {
-                        span: c.span,
-                        scope: c.scope,
+                        source_info: c.source_info,
                         is_cleanup: is_cleanup,
                         init_data: c.init_data,
                         lvalue: lv,
@@ -527,8 +522,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                     debug!("drop_ladder: for rest field {} ({:?})", i, lv);
 
                     let blk = self.complete_drop(&DropCtxt {
-                        span: c.span,
-                        scope: c.scope,
+                        source_info: c.source_info,
                         is_cleanup: is_cleanup,
                         init_data: c.init_data,
                         lvalue: lv,
@@ -785,7 +779,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         self.patch.new_block(BasicBlockData {
             statements: vec![],
             terminator: Some(Terminator {
-                scope: c.scope, span: c.span, kind: k
+                source_info: c.source_info, kind: k
             }),
             is_cleanup: is_cleanup
         })
@@ -858,11 +852,10 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let mut statements = vec![];
         if let Some(&flag) = self.drop_flags.get(&c.path) {
             statements.push(Statement {
-                span: c.span,
-                scope: c.scope,
+                source_info: c.source_info,
                 kind: StatementKind::Assign(
                     Lvalue::Temp(flag),
-                    self.constant_bool(c.span, false)
+                    self.constant_bool(c.source_info.span, false)
                 )
             });
         }
@@ -880,9 +873,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         self.patch.new_block(BasicBlockData {
             statements: statements,
             terminator: Some(Terminator {
-                scope: c.scope, span: c.span, kind: TerminatorKind::Call {
+                source_info: c.source_info, kind: TerminatorKind::Call {
                     func: Operand::Constant(Constant {
-                        span: c.span,
+                        span: c.source_info.span,
                         ty: fty,
                         literal: Literal::Item {
                             def_id: free_func,
@@ -910,7 +903,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             ty::TyStruct(def, _) | ty::TyEnum(def, _) => {
                 if def.has_dtor() {
                     self.tcx.sess.span_warn(
-                        c.span,
+                        c.source_info.span,
                         &format!("dataflow bug??? moving out of type with dtor {:?}",
                                  c));
                     true
@@ -932,7 +925,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn set_drop_flag(&mut self, loc: Location, path: MovePathIndex, val: DropFlagState) {
         if let Some(&flag) = self.drop_flags.get(&path) {
-            let span = self.patch.context_for_location(self.mir, loc).0;
+            let span = self.patch.source_info_for_location(self.mir, loc).span;
             let val = self.constant_bool(span, val.value());
             self.patch.add_assign(loc, Lvalue::Temp(flag), val);
         }
@@ -940,7 +933,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn drop_flags_on_init(&mut self) {
         let loc = Location { block: START_BLOCK, index: 0 };
-        let span = self.patch.context_for_location(self.mir, loc).0;
+        let span = self.patch.source_info_for_location(self.mir, loc).span;
         let false_ = self.constant_bool(span, false);
         for flag in self.drop_flags.values() {
             self.patch.add_assign(loc, Lvalue::Temp(*flag), false_.clone());

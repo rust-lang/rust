@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use build::{Location, ScopeAuxiliaryVec};
+use build::{Location, ScopeAuxiliaryVec, ScopeId};
 use rustc::hir;
 use rustc::mir::repr::*;
 use rustc::mir::transform::MirSource;
@@ -18,7 +18,6 @@ use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
 use syntax::ast::NodeId;
-use syntax::codemap::Span;
 
 const INDENT: &'static str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -139,19 +138,10 @@ pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.all_basic_blocks() {
         write_basic_block(tcx, block, mir, w, &annotations)?;
+        if block.index() + 1 != mir.basic_blocks.len() {
+            writeln!(w, "")?;
+        }
     }
-
-    // construct a scope tree and write it out
-    let mut scope_tree: FnvHashMap<Option<ScopeId>, Vec<ScopeId>> = FnvHashMap();
-    for (index, scope_data) in mir.scopes.iter().enumerate() {
-        scope_tree.entry(scope_data.parent_scope)
-                  .or_insert(vec![])
-                  .push(ScopeId::new(index));
-    }
-
-    writeln!(w, "{}scope tree:", INDENT)?;
-    write_scope_tree(tcx, mir, auxiliary, &scope_tree, w, None, 1, false)?;
-    writeln!(w, "")?;
 
     writeln!(w, "}}")?;
     Ok(())
@@ -189,7 +179,7 @@ fn write_basic_block(tcx: TyCtxt,
         writeln!(w, "{0:1$} // {2}",
                  indented_mir,
                  ALIGN,
-                 comment(tcx, statement.scope, statement.span))?;
+                 comment(tcx, statement.source_info))?;
 
         current_location.statement_index += 1;
     }
@@ -199,71 +189,64 @@ fn write_basic_block(tcx: TyCtxt,
     writeln!(w, "{0:1$} // {2}",
              indented_terminator,
              ALIGN,
-             comment(tcx, data.terminator().scope, data.terminator().span))?;
+             comment(tcx, data.terminator().source_info))?;
 
     writeln!(w, "{}}}\n", INDENT)
 }
 
-fn comment(tcx: TyCtxt, scope: ScopeId, span: Span) -> String {
+fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {
     format!("scope {} at {}", scope.index(), tcx.sess.codemap().span_to_string(span))
 }
 
 fn write_scope_tree(tcx: TyCtxt,
                     mir: &Mir,
-                    auxiliary: Option<&ScopeAuxiliaryVec>,
-                    scope_tree: &FnvHashMap<Option<ScopeId>, Vec<ScopeId>>,
+                    scope_tree: &FnvHashMap<VisibilityScope, Vec<VisibilityScope>>,
                     w: &mut Write,
-                    parent: Option<ScopeId>,
-                    depth: usize,
-                    same_line: bool)
+                    parent: VisibilityScope,
+                    depth: usize)
                     -> io::Result<()> {
-    let indent = if same_line {
-        0
-    } else {
-        depth * INDENT.len()
-    };
+    let indent = depth * INDENT.len();
 
     let children = match scope_tree.get(&parent) {
         Some(childs) => childs,
         None => return Ok(()),
     };
 
-    for (index, &child) in children.iter().enumerate() {
-        if index == 0 && same_line {
-            // We know we're going to output a scope, so prefix it with a space to separate it from
-            // the previous scopes on this line
-            write!(w, " ")?;
+    for &child in children {
+        let data = &mir.visibility_scopes[child];
+        assert_eq!(data.parent_scope, Some(parent));
+        writeln!(w, "{0:1$}scope {2} {{", "", indent, child.index())?;
+
+        // User variable types (including the user's name in a comment).
+        for (i, var) in mir.var_decls.iter().enumerate() {
+            // Skip if not declared in this scope.
+            if var.source_info.scope != child {
+                continue;
+            }
+
+            let mut_str = if var.mutability == Mutability::Mut {
+                "mut "
+            } else {
+                ""
+            };
+
+            let indent = indent + INDENT.len();
+            let indented_var = format!("{0:1$}let {2}{3:?}: {4};",
+                                       INDENT,
+                                       indent,
+                                       mut_str,
+                                       Lvalue::Var(i as u32),
+                                       var.ty);
+            writeln!(w, "{0:1$} // \"{2}\" in {3}",
+                     indented_var,
+                     ALIGN,
+                     var.name,
+                     comment(tcx, var.source_info))?;
         }
 
-        let data = &mir.scopes[child];
-        assert_eq!(data.parent_scope, parent);
-        write!(w, "{0:1$}{2}", "", indent, child.index())?;
+        write_scope_tree(tcx, mir, scope_tree, w, child, depth + 1)?;
 
-        let indent = indent + INDENT.len();
-
-        if let Some(auxiliary) = auxiliary {
-            let extent = auxiliary[child].extent;
-            let data = tcx.region_maps.code_extent_data(extent);
-            writeln!(w, "{0:1$}Extent: {2:?}", "", indent, data)?;
-        }
-
-        let child_count = scope_tree.get(&Some(child)).map(Vec::len).unwrap_or(0);
-        if child_count < 2 {
-            // Skip the braces when there's no or only a single subscope
-            write_scope_tree(tcx, mir, auxiliary, scope_tree, w,
-                             Some(child), depth, true)?;
-        } else {
-            // 2 or more child scopes? Put them in braces and on new lines.
-            writeln!(w, " {{")?;
-            write_scope_tree(tcx, mir, auxiliary, scope_tree, w,
-                             Some(child), depth + 1, false)?;
-
-            write!(w, "\n{0:1$}}}", "", depth * INDENT.len())?;
-        }
-
-        if !same_line && index + 1 < children.len() {
-            writeln!(w, "")?;
-        }
+        writeln!(w, "{0:1$}}}", "", depth * INDENT.len())?;
     }
 
     Ok(())
@@ -278,7 +261,23 @@ fn write_mir_intro<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              -> io::Result<()> {
     write_mir_sig(tcx, src, mir, w)?;
     writeln!(w, " {{")?;
-    write_mir_decls(tcx, mir, w)
+
+    // construct a scope tree and write it out
+    let mut scope_tree: FnvHashMap<VisibilityScope, Vec<VisibilityScope>> = FnvHashMap();
+    for (index, scope_data) in mir.visibility_scopes.iter().enumerate() {
+        if let Some(parent) = scope_data.parent_scope {
+            scope_tree.entry(parent)
+                      .or_insert(vec![])
+                      .push(VisibilityScope::new(index));
+        } else {
+            // Only the argument scope has no parent, because it's the root.
+            assert_eq!(index, ARGUMENT_VISIBILITY_SCOPE.index());
+        }
+    }
+
+    write_scope_tree(tcx, mir, &scope_tree, w, ARGUMENT_VISIBILITY_SCOPE, 1)?;
+
+    write_mir_decls(mir, w)
 }
 
 fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
@@ -318,29 +317,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
     }
 }
 
-fn write_mir_decls(tcx: TyCtxt, mir: &Mir, w: &mut Write)
-                   -> io::Result<()>
-{
-    // User variable types (including the user's name in a comment).
-    for (i, var) in mir.var_decls.iter().enumerate() {
-        let mut_str = if var.mutability == Mutability::Mut {
-            "mut "
-        } else {
-            ""
-        };
-
-        let indented_var = format!("{}let {}{:?}: {};",
-                                   INDENT,
-                                   mut_str,
-                                   Lvalue::Var(i as u32),
-                                   var.ty);
-        writeln!(w, "{0:1$} // \"{2}\" in {3}",
-                 indented_var,
-                 ALIGN,
-                 var.name,
-                 comment(tcx, var.scope, var.span))?;
-    }
-
+fn write_mir_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
     // Compiler-introduced temporary types.
     for (i, temp) in mir.temp_decls.iter().enumerate() {
         writeln!(w, "{}let mut {:?}: {};", INDENT, Lvalue::Temp(i as u32), temp.ty)?;

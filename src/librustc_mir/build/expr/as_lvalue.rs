@@ -34,11 +34,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         debug!("expr_as_lvalue(block={:?}, expr={:?})", block, expr);
 
         let this = self;
-        let scope_id = this.innermost_scope_id();
         let expr_span = expr.span;
+        let source_info = this.source_info(expr_span);
         match expr.kind {
             ExprKind::Scope { extent, value } => {
-                this.in_scope(extent, block, |this, _| this.as_lvalue(block, value))
+                this.in_scope(extent, block, |this| this.as_lvalue(block, value))
             }
             ExprKind::Field { lhs, name } => {
                 let lvalue = unpack!(block = this.as_lvalue(block, lhs));
@@ -59,9 +59,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 // bounds check:
                 let (len, lt) = (this.temp(usize_ty.clone()), this.temp(bool_ty));
-                this.cfg.push_assign(block, scope_id, expr_span, // len = len(slice)
+                this.cfg.push_assign(block, source_info, // len = len(slice)
                                      &len, Rvalue::Len(slice.clone()));
-                this.cfg.push_assign(block, scope_id, expr_span, // lt = idx < len
+                this.cfg.push_assign(block, source_info, // lt = idx < len
                                      &lt, Rvalue::BinaryOp(BinOp::Lt,
                                                            idx.clone(),
                                                            Operand::Consume(len.clone())));

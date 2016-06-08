@@ -103,16 +103,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     pub fn push_usize(&mut self,
                       block: BasicBlock,
-                      scope_id: ScopeId,
-                      span: Span,
+                      source_info: SourceInfo,
                       value: u64)
                       -> Lvalue<'tcx> {
         let usize_ty = self.hir.usize_ty();
         let temp = self.temp(usize_ty);
         self.cfg.push_assign_constant(
-            block, scope_id, span, &temp,
+            block, source_info, &temp,
             Constant {
-                span: span,
+                span: source_info.span,
                 ty: self.hir.usize_ty(),
                 literal: self.hir.usize_literal(value),
             });

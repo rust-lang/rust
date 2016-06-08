@@ -551,7 +551,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn check_iscleanup(&mut self, mir: &Mir<'tcx>, block: &BasicBlockData<'tcx>)
     {
         let is_cleanup = block.is_cleanup;
-        self.last_span = block.terminator().span;
+        self.last_span = block.terminator().source_info.span;
         match block.terminator().kind {
             TerminatorKind::Goto { target } =>
                 self.assert_iscleanup(mir, block, target, is_cleanup),
@@ -617,8 +617,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         debug!("run_on_mir: {:?}", mir.span);
         for block in &mir.basic_blocks {
             for stmt in &block.statements {
-                if stmt.span != DUMMY_SP {
-                    self.last_span = stmt.span;
+                if stmt.source_info.span != DUMMY_SP {
+                    self.last_span = stmt.source_info.span;
                 }
                 self.check_stmt(mir, stmt);
             }

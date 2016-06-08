@@ -86,7 +86,7 @@ should go to.
 
 */
 
-use build::{BlockAnd, BlockAndExtension, Builder, CFG, ScopeAuxiliary};
+use build::{BlockAnd, BlockAndExtension, Builder, CFG, ScopeAuxiliary, ScopeId};
 use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
 use rustc::ty::subst::{Substs, Subst, VecPerParamSpace};
@@ -98,8 +98,11 @@ use rustc::middle::const_val::ConstVal;
 use rustc_const_math::ConstInt;
 
 pub struct Scope<'tcx> {
-    /// the scope-id within the scope_datas
+    /// the scope-id within the scope_auxiliary
     id: ScopeId,
+
+    /// The visibility scope this scope was created in.
+    visibility_scope: VisibilityScope,
 
     /// the extent of this scope within source code; also stored in
     /// `ScopeAuxiliary`, but kept here for convenience
@@ -204,6 +207,14 @@ impl<'tcx> Scope<'tcx> {
             None
         }
     }
+
+    /// Given a span and this scope's visibility scope, make a SourceInfo.
+    fn source_info(&self, span: Span) -> SourceInfo {
+        SourceInfo {
+            span: span,
+            scope: self.visibility_scope
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -237,11 +248,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
     pub fn in_scope<F, R>(&mut self, extent: CodeExtent, mut block: BasicBlock, f: F) -> BlockAnd<R>
-        where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>, ScopeId) -> BlockAnd<R>
+        where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
-        let id = self.push_scope(extent, block);
-        let rv = unpack!(block = f(self, id));
+        self.push_scope(extent, block);
+        let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(extent, block));
         debug!("in_scope: exiting extent={:?} block={:?}", extent, block);
         block.and(rv)
@@ -251,17 +262,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
     /// wrapper maybe preferable.
-    pub fn push_scope(&mut self, extent: CodeExtent, entry: BasicBlock) -> ScopeId {
+    pub fn push_scope(&mut self, extent: CodeExtent, entry: BasicBlock) {
         debug!("push_scope({:?})", extent);
-        let parent_id = self.scopes.last().map(|s| s.id);
-        let id = ScopeId::new(self.scope_datas.len());
-        let tcx = self.hir.tcx();
-        self.scope_datas.push(ScopeData {
-            span: extent.span(&tcx.region_maps, &tcx.map).unwrap_or(DUMMY_SP),
-            parent_scope: parent_id,
-        });
+        let id = ScopeId::new(self.scope_auxiliary.vec.len());
+        let vis_scope = self.visibility_scope;
         self.scopes.push(Scope {
             id: id,
+            visibility_scope: vis_scope,
             extent: extent,
             drops: vec![],
             free: None,
@@ -272,7 +279,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             dom: self.cfg.current_location(entry),
             postdoms: vec![]
         });
-        id
     }
 
     /// Pops a scope, which should have extent `extent`, adding any
@@ -320,7 +326,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             if let Some(ref free_data) = scope.free {
                 let next = self.cfg.start_new_block();
                 let free = build_free(self.hir.tcx(), &tmp, free_data, next);
-                self.cfg.terminate(block, scope.id, span, free);
+                self.cfg.terminate(block, scope.source_info(span), free);
                 block = next;
             }
             self.scope_auxiliary[scope.id]
@@ -334,9 +340,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                             .next()
                                             .unwrap();
         self.cfg.terminate(block,
-                           scope.id,
-                           span,
+                           scope.source_info(span),
                            TerminatorKind::Goto { target: target });
+    }
+
+    /// Creates a new visibility scope, nested in the current one.
+    pub fn new_visibility_scope(&mut self, span: Span) -> VisibilityScope {
+        let parent = self.visibility_scope;
+        let scope = VisibilityScope::new(self.visibility_scopes.len());
+        self.visibility_scopes.push(VisibilityScopeData {
+            span: span,
+            parent_scope: Some(parent),
+        });
+        scope
     }
 
     // Finding scopes
@@ -363,8 +379,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }.unwrap_or_else(|| span_bug!(span, "no enclosing loop scope found?"))
     }
 
-    pub fn innermost_scope_id(&self) -> ScopeId {
-        self.scopes.last().map(|scope| scope.id).unwrap()
+    /// Given a span and the current visibility scope, make a SourceInfo.
+    pub fn source_info(&self, span: Span) -> SourceInfo {
+        SourceInfo {
+            span: span,
+            scope: self.visibility_scope
+        }
     }
 
     pub fn extent_of_innermost_scope(&self) -> CodeExtent {
@@ -481,7 +501,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             target
         } else {
             let resumeblk = cfg.start_new_cleanup_block();
-            cfg.terminate(resumeblk, scopes[0].id, self.fn_span, TerminatorKind::Resume);
+            cfg.terminate(resumeblk,
+                          scopes[0].source_info(self.fn_span),
+                          TerminatorKind::Resume);
             *cached_resume_block = Some(resumeblk);
             resumeblk
         };
@@ -502,12 +524,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         if !self.hir.needs_drop(ty) {
             return block.unit();
         }
-        let scope_id = self.innermost_scope_id();
+        let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
         let diverge_target = self.diverge_cleanup();
-        self.cfg.terminate(block,
-                           scope_id,
-                           span,
+        self.cfg.terminate(block, source_info,
                            TerminatorKind::Drop {
                                location: location,
                                target: next_target,
@@ -522,12 +542,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                   span: Span,
                                   location: Lvalue<'tcx>,
                                   value: Operand<'tcx>) -> BlockAnd<()> {
-        let scope_id = self.innermost_scope_id();
+        let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
         let diverge_target = self.diverge_cleanup();
-        self.cfg.terminate(block,
-                           scope_id,
-                           span,
+        self.cfg.terminate(block, source_info,
                            TerminatorKind::DropAndReplace {
                                location: location,
                                value: value,
@@ -562,18 +580,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let elems = vec![Operand::Constant(message),
                          Operand::Constant(file),
                          Operand::Constant(line)];
-        let scope_id = self.innermost_scope_id();
+        let source_info = self.source_info(span);
         // FIXME: We should have this as a constant, rather than a stack variable (to not pollute
         // icache with cold branch code), however to achieve that we either have to rely on rvalue
         // promotion or have some way, in MIR, to create constants.
-        self.cfg.push_assign(block, scope_id, span, &tuple, // [1]
+        self.cfg.push_assign(block, source_info, &tuple, // [1]
                              Rvalue::Aggregate(AggregateKind::Tuple, elems));
         // [1] tuple = (message_arg, file_arg, line_arg);
         // FIXME: is this region really correct here?
-        self.cfg.push_assign(block, scope_id, span, &tuple_ref, // tuple_ref = &tuple;
+        self.cfg.push_assign(block, source_info, &tuple_ref, // tuple_ref = &tuple;
                              Rvalue::Ref(region, BorrowKind::Shared, tuple));
         let cleanup = self.diverge_cleanup();
-        self.cfg.terminate(block, scope_id, span, TerminatorKind::Call {
+        self.cfg.terminate(block, source_info, TerminatorKind::Call {
             func: Operand::Constant(func),
             args: vec![Operand::Consume(tuple_ref)],
             cleanup: cleanup,
@@ -590,12 +608,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                   msg: AssertMessage<'tcx>,
                   span: Span)
                   -> BasicBlock {
-        let scope_id = self.innermost_scope_id();
+        let source_info = self.source_info(span);
 
         let success_block = self.cfg.start_new_block();
         let cleanup = self.diverge_cleanup();
 
-        self.cfg.terminate(block, scope_id, span,
+        self.cfg.terminate(block, source_info,
                            TerminatorKind::Assert {
                                cond: cond,
                                expected: expected,
@@ -658,7 +676,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
             earlier_scopes.iter().rev().flat_map(|s| s.cached_block()).next()
         });
         let next = cfg.start_new_block();
-        cfg.terminate(block, scope.id, drop_data.span, TerminatorKind::Drop {
+        cfg.terminate(block, scope.source_info(drop_data.span), TerminatorKind::Drop {
             location: drop_data.location.clone(),
             target: next,
             unwind: on_diverge
@@ -688,15 +706,19 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // remainder. If everything is cached, we'll just walk right to
     // left reading the cached results but never created anything.
 
+    let visibility_scope = scope.visibility_scope;
+    let source_info = |span| SourceInfo {
+        span: span,
+        scope: visibility_scope
+    };
+
     // Next, build up any free.
     if let Some(ref mut free_data) = scope.free {
         target = if let Some(cached_block) = free_data.cached_block {
             cached_block
         } else {
             let into = cfg.start_new_cleanup_block();
-            cfg.terminate(into,
-                          scope.id,
-                          free_data.span,
+            cfg.terminate(into, source_info(free_data.span),
                           build_free(tcx, unit_temp, free_data, target));
             free_data.cached_block = Some(into);
             into
@@ -711,9 +733,7 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             cached_block
         } else {
             let block = cfg.start_new_cleanup_block();
-            cfg.terminate(block,
-                          scope.id,
-                          drop_data.span,
+            cfg.terminate(block, source_info(drop_data.span),
                           TerminatorKind::Drop {
                               location: drop_data.location.clone(),
                               target: target,
