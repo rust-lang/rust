@@ -78,12 +78,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // branch to the appropriate arm block
         let otherwise = self.match_candidates(span, &mut arm_blocks, candidates, block);
 
-        // because all matches are exhaustive, in principle we expect
-        // an empty vector to be returned here, but the algorithm is
-        // not entirely precise
         if !otherwise.is_empty() {
-            let join_block = self.join_otherwise_blocks(span, otherwise);
-            self.panic(join_block, "something about matches algorithm not being precise", span);
+            // All matches are exhaustive. However, because some matches
+            // only have exponentially-large exhaustive decision trees, we
+            // sometimes generate an inexhaustive decision tree.
+            //
+            // In that case, the inexhaustive tips of the decision tree
+            // can't be reached - terminate them with an `unreachable`.
+            let source_info = self.source_info(span);
+
+            for block in otherwise {
+                self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+            }
         }
 
         // all the arm blocks will rejoin here

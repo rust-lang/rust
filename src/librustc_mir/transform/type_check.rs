@@ -379,6 +379,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             TerminatorKind::Goto { .. } |
             TerminatorKind::Resume |
             TerminatorKind::Return |
+            TerminatorKind::Unreachable |
             TerminatorKind::Drop { .. } => {
                 // no checks needed for these
             }
@@ -595,6 +596,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     span_mirbug!(self, block, "return on cleanup block")
                 }
             }
+            TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. } |
             TerminatorKind::DropAndReplace { target, unwind, .. } |
             TerminatorKind::Assert { target, cleanup: unwind, .. } => {

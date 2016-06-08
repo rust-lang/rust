@@ -621,7 +621,9 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
 
         debug!("gather_moves({:?})", bb_data.terminator());
         match bb_data.terminator().kind {
-            TerminatorKind::Goto { target: _ } | TerminatorKind::Resume => { }
+            TerminatorKind::Goto { target: _ } |
+            TerminatorKind::Resume |
+            TerminatorKind::Unreachable => { }
 
             TerminatorKind::Return => {
                 let source = Location { block: bb,
