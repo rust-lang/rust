@@ -65,6 +65,14 @@ impl Annotatable {
         }
     }
 
+    pub fn node_id(&self) -> ast::NodeId {
+        match *self {
+            Annotatable::Item(ref i) => i.id,
+            Annotatable::TraitItem(ref i) => i.id,
+            Annotatable::ImplItem(ref i) => i.id,
+        }
+    }
+
     pub fn expect_item(self) -> P<ast::Item> {
         match self {
             Annotatable::Item(i) => i,
@@ -146,6 +154,32 @@ impl<F> MultiItemModifier for F
               item: Annotatable)
               -> Annotatable {
         (*self)(ecx, span, meta_item, item)
+    }
+}
+
+pub trait ItemRenovator {
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              span: Span,
+              meta_item: &ast::MetaItem,
+              item: Annotatable,
+              push: &mut FnMut(Annotatable));
+}
+
+impl<F> ItemRenovator for F
+    where F : Fn(&mut ExtCtxt,
+                 Span,
+                 &ast::MetaItem,
+                 Annotatable,
+                 &mut FnMut(Annotatable))
+{
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              sp: Span,
+              meta_item: &ast::MetaItem,
+              item: Annotatable,
+              push: &mut FnMut(Annotatable)) {
+        (*self)(ecx, sp, meta_item, item, push)
     }
 }
 
@@ -419,12 +453,24 @@ pub enum SyntaxExtension {
     /// in-place. More flexible version than Modifier.
     MultiModifier(Box<MultiItemModifier + 'static>),
 
+    /// A syntax extension that is attached to an item, modifying it in
+    /// place *and* creating new items based upon it.
+    ///
+    /// It can be thought of as the union of `MultiDecorator` and `MultiModifier`.
+    ///
+    /// Renovators must push *all* of the items they wish to preserve
+    /// and create. This includes the original item they are given.
+    ///
+    /// This allows renovators to remove the original item as well as
+    /// create new items if it is desired.
+    Renovator(Box<ItemRenovator + 'static>),
+
     /// A normal, function-like syntax extension.
     ///
     /// `bytes!` is a `NormalTT`.
     ///
     /// The `bool` dictates whether the contents of the macro can
-    /// directly use `#[unstable]` things (true == yes).
+    /// directly use `#[unstable]` things (`true` == yes).
     NormalTT(Box<TTMacroExpander + 'static>, Option<Span>, bool),
 
     /// A function-like syntax extension that has an extra ident before

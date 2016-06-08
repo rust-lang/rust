@@ -16,7 +16,7 @@ use rustc::session::Session;
 use rustc::mir::transform::MirMapPass;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
-use syntax::ext::base::{IdentTT, MultiModifier, MultiDecorator};
+use syntax::ext::base::{IdentTT, MultiModifier, MultiDecorator, Renovator};
 use syntax::ext::base::{MacroExpanderFn, MacroRulesTT};
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -112,6 +112,7 @@ impl<'a> Registry<'a> {
             }
             MultiDecorator(ext) => MultiDecorator(ext),
             MultiModifier(ext) => MultiModifier(ext),
+            Renovator(ext) => Renovator(ext),
             MacroRulesTT => {
                 self.sess.err("plugin tried to register a new MacroRulesTT");
                 return;

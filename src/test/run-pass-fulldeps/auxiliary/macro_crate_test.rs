@@ -39,6 +39,14 @@ pub fn plugin_registrar(reg: &mut Registry) {
         token::intern("duplicate"),
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         MultiDecorator(Box::new(expand_duplicate)));
+    reg.register_syntax_extension(
+        token::intern("remove"),
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+        Renovator(Box::new(expand_remove)));
+    reg.register_syntax_extension(
+        token::intern("spawn"),
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+        Renovator(Box::new(expand_spawn)));
 }
 
 fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
@@ -138,4 +146,46 @@ fn expand_duplicate(cx: &mut ExtCtxt,
     }
 }
 
+fn expand_remove(cx: &mut ExtCtxt,
+                 sp: Span,
+                 meta_item: &MetaItem,
+                 mut item: Annotatable,
+                 push: &mut FnMut(Annotatable))
+{
+    // eat the item
+}
+
+fn expand_spawn(cx: &mut ExtCtxt,
+                sp: Span,
+                meta_item: &MetaItem,
+                mut item: Annotatable,
+                push: &mut FnMut(Annotatable))
+{
+    // Keep original item around
+    push(item.clone());
+
+    match item {
+        Annotatable::Item(item) => {
+            let base_name = item.ident.name.as_str().to_owned();
+
+            for i in 0..5 {
+                let new_name = format!("{}{}", base_name, i);
+
+                let new_ident = ast::Ident {
+                    name: token::intern(&new_name),
+                    ..item.ident
+                };
+
+                // Duplicate the item but with a number on the end of the name.
+                push(Annotatable::Item(P(Item {
+                    ident: new_ident,
+                    ..(*item).clone()
+                })));
+            }
+        },
+        _ => unimplemented!(),
+    }
+}
+
 pub fn foo() {}
+pub fn main() { }

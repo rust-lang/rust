@@ -33,6 +33,25 @@ impl Qux for i32 {
 
 impl Qux for u8 {}
 
+#[remove]
+struct TypeToBeRemoved
+{
+    foo: NonexistentType,
+    bar: Baz,
+}
+
+#[spawn]
+struct Baz {
+    n: u32,
+}
+
+struct Bar;
+
+impl Bar
+{
+    fn new() -> Self { Bar }
+}
+
 pub fn main() {
     assert_eq!(1, make_a_1!());
     assert_eq!(2, exported_macro!());
@@ -44,6 +63,9 @@ pub fn main() {
     assert_eq!(x.foo(), 42);
     let x = 10u8;
     assert_eq!(x.foo(), 0);
+
+    let a = Baz4 { n: 15 };
+    assert_eq!(a.n, 15);
 }
 
 fn test<T: PartialEq+Clone>(_: Option<T>) {}

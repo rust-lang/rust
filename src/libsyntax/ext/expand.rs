@@ -302,7 +302,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                 None
             }
 
-            MultiDecorator(..) | MultiModifier(..) => {
+            Renovator(..) | MultiDecorator(..) | MultiModifier(..) => {
                 fld.cx.span_err(path.span,
                                 &format!("`{}` can only be used in attributes", extname));
                 None
@@ -718,10 +718,19 @@ impl<'a> Folder for PatIdentRenamer<'a> {
     }
 }
 
-fn expand_annotatable(a: Annotatable,
+fn expand_annotatable(original_item: Annotatable,
                       fld: &mut MacroExpander)
                       -> SmallVector<Annotatable> {
-    let a = expand_item_multi_modifier(a, fld);
+    let a = expand_item_multi_modifier(original_item, fld);
+
+    let mut renovated_items = expand_renovators(a.clone(), fld);
+
+    // Take the original item out (if any).
+    let a = if let Some(index) = renovated_items.iter().position(|i| is_original_item(i, &a)) {
+        renovated_items.remove(index)
+    } else {
+        return SmallVector::zero(); // The renovator ate the item.
+    };
 
     let mut decorator_items = SmallVector::zero();
     let mut new_attrs = Vec::new();
@@ -789,7 +798,9 @@ fn expand_annotatable(a: Annotatable,
         }
     };
 
+    new_items.extend(renovated_items.into_iter());
     new_items.push_all(decorator_items);
+
     new_items
 }
 
@@ -857,6 +868,90 @@ fn expand_decorators(a: Annotatable,
             _ => new_attrs.push((*attr).clone()),
         }
     }
+}
+
+fn is_original_item(item: &Annotatable, original: &Annotatable) -> bool {
+    item.node_id() == original.node_id()
+}
+
+fn expand_renovators(original_item: Annotatable,
+                     fld: &mut MacroExpander) -> Vec<Annotatable>
+{
+    let mut items = Vec::new();
+    items.push(original_item.clone());
+
+    let mut processed_attributes: Vec<ast::Attribute> = Vec::new();
+
+    'main_loop: loop {
+        let item_idx = items.iter().position(|i| is_original_item(i, &original_item));
+
+        let item = if let Some(idx) = item_idx {
+            items.remove(idx)
+        } else {
+            break 'main_loop;
+        };
+
+        // Find the first unprocessed attribute.
+        let attr = if let Some(attr) = item.attrs().iter().cloned().
+            find(|i| !processed_attributes.iter().any(|pi| i == pi)) {
+            attr
+        } else {
+            items.push(item); // put the item back.
+            break 'main_loop;
+        };
+
+        processed_attributes.push(attr.clone());
+
+        let macro_name = intern(&attr.name());
+
+        match fld.cx.syntax_env.find(macro_name) {
+            Some(rc) => match *rc {
+                Renovator(ref dec) => {
+                    attr::mark_used(&attr);
+
+                    fld.cx.bt_push(ExpnInfo {
+                        call_site: attr.span,
+                        callee: NameAndSpan {
+                            format: MacroAttribute(macro_name),
+                            span: Some(attr.span),
+                            // attributes can do whatever they like,
+                            // for now.
+                            allow_internal_unstable: true,
+                        }
+                    });
+
+                    let mut new_items: SmallVector<Annotatable> = SmallVector::zero();
+                    dec.expand(fld.cx,
+                               attr.span,
+                               &attr.node.value,
+                               item,
+                               &mut |ann| new_items.push(ann));
+
+                    let new_items = new_items.into_iter().map(|item| {
+                        // Remove all attributes that are already processed.
+                        let attrs: Vec<_> = item.attrs().iter().cloned().
+                            filter(|a| processed_attributes.iter().any(|pa| pa == a)).collect();
+
+                        item.fold_attrs(attrs)
+                    });
+
+                    for new_item in new_items {
+                        if is_original_item(&new_item, &original_item) {
+                            items.push(new_item);
+                        } else {
+                            items.extend(expand_annotatable(new_item, fld).into_iter());
+                        }
+                    }
+
+                    fld.cx.bt_pop();
+                },
+                _ => items.push(item.clone()),
+            },
+            _ => items.push(item.clone()),
+        }
+    }
+
+    items
 }
 
 fn expand_item_multi_modifier(mut it: Annotatable,
