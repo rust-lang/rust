@@ -129,29 +129,17 @@ enum TerminatorTarget {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-enum ConstantId<'tcx> {
-    Promoted { def_id: DefId, substs: &'tcx Substs<'tcx>, index: usize },
-    Static { def_id: DefId, substs: &'tcx Substs<'tcx> },
+struct ConstantId<'tcx> {
+    def_id: DefId,
+    substs: &'tcx Substs<'tcx>,
+    kind: ConstantKind,
 }
 
-impl<'tcx> ConstantId<'tcx> {
-    fn substs(&self) -> &'tcx Substs<'tcx> {
-        use self::ConstantId::*;
-        match *self {
-            Promoted { substs, .. } |
-            Static { substs, .. } => substs
-        }
-    }
-
-    fn def_id(&self) -> DefId {
-        use self::ConstantId::*;
-        match *self {
-            Promoted { def_id, .. } |
-            Static { def_id, .. } => def_id,
-        }
-    }
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+enum ConstantKind {
+    Promoted(usize),
+    Static,
 }
-
 
 impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
@@ -1208,15 +1196,19 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                         if item_ty.ty.is_fn() {
                             Err(EvalError::Unimplemented("unimplemented: mentions of function items".to_string()))
                         } else {
-                            let cid = ConstantId::Static{ def_id: def_id, substs: substs };
+                            let cid = ConstantId {
+                                def_id: def_id,
+                                substs: substs,
+                                kind: ConstantKind::Static,
+                            };
                             Ok(*self.statics.get(&cid).expect("static should have been cached (rvalue)"))
                         }
                     },
                     Promoted { index } => {
-                        let cid = ConstantId::Promoted {
+                        let cid = ConstantId {
                             def_id: self.frame().def_id,
                             substs: self.substs(),
-                            index: index,
+                            kind: ConstantKind::Promoted(index),
                         };
                         Ok(*self.statics.get(&cid).expect("a promoted constant hasn't been precomputed"))
                     },
@@ -1236,7 +1228,11 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
             Static(def_id) => {
                 let substs = self.tcx.mk_substs(subst::Substs::empty());
-                let cid = ConstantId::Static{ def_id: def_id, substs: substs };
+                let cid = ConstantId {
+                    def_id: def_id,
+                    substs: substs,
+                    kind: ConstantKind::Static,
+                };
                 *self.gecx.statics.get(&cid).expect("static should have been cached (lvalue)")
             },
 

@@ -4,6 +4,7 @@ use super::{
     TerminatorTarget,
     ConstantId,
     GlobalEvalContext,
+    ConstantKind,
 };
 use error::EvalResult;
 use rustc::mir::repr as mir;
@@ -123,10 +124,8 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
     fn extract_constants<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F) -> EvalResult<()> {
         assert!(!self.constants.is_empty());
         for (cid, span, return_ptr, mir) in self.constants.drain(..) {
-            let def_id = cid.def_id();
-            let substs = cid.substs();
             f(Event::Constant);
-            self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
+            self.fncx.push_stack_frame(cid.def_id, span, mir, cid.substs, Some(return_ptr));
         }
         self.step(f)
     }
@@ -143,9 +142,10 @@ struct ConstantExtractor<'a, 'b: 'mir, 'mir: 'a, 'tcx: 'b> {
 
 impl<'a, 'b, 'mir, 'tcx> ConstantExtractor<'a, 'b, 'mir, 'tcx> {
     fn static_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span) {
-        let cid = ConstantId::Static {
+        let cid = ConstantId {
             def_id: def_id,
             substs: substs,
+            kind: ConstantKind::Static,
         };
         if self.gecx.statics.contains_key(&cid) {
             return;
@@ -172,17 +172,17 @@ impl<'a, 'b, 'mir, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'mir, 'tcx>
                 }
             },
             mir::Literal::Promoted { index } => {
-                let cid = ConstantId::Promoted {
+                let cid = ConstantId {
                     def_id: self.def_id,
                     substs: self.substs,
-                    index: index,
+                    kind: ConstantKind::Promoted(index),
                 };
                 if self.gecx.statics.contains_key(&cid) {
                     return;
                 }
                 let mir = self.mir.promoted[index].clone();
                 let return_ty = mir.return_ty;
-                let return_ptr = self.gecx.alloc_ret_ptr(return_ty, cid.substs()).expect("there's no such thing as an unreachable static");
+                let return_ptr = self.gecx.alloc_ret_ptr(return_ty, cid.substs).expect("there's no such thing as an unreachable static");
                 let mir = CachedMir::Owned(Rc::new(mir));
                 self.gecx.statics.insert(cid.clone(), return_ptr);
                 self.constants.push((cid, constant.span, return_ptr, mir));
