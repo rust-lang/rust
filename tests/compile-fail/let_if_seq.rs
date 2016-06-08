@@ -98,6 +98,15 @@ fn main() {
         toto = 2;
     }
 
+    // found in libcore, the inner if is not a statement but the block's expr
+    let mut ch = b'x';
+    if f() {
+        ch = b'*';
+        if f() {
+            ch = b'?';
+        }
+    }
+
     // baz needs to be mut
     let mut baz = 0;
     //~^ ERROR `if _ { .. } else { .. }` is an expression
