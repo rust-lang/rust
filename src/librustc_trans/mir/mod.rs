@@ -16,7 +16,7 @@ use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
 use session::config::FullDebugInfo;
 use base;
-use common::{self, Block, BlockAndBuilder, CrateContext, FunctionContext};
+use common::{self, Block, BlockAndBuilder, CrateContext, FunctionContext, C_null};
 use debuginfo::{self, declare_local, DebugLoc, VariableAccess, VariableKind};
 use machine;
 use type_of;
@@ -130,11 +130,12 @@ impl<'tcx> TempRef<'tcx> {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
             // we need something in the operand.
-            let nil = common::C_nil(ccx);
+            let llty = type_of::type_of(ccx, ty);
             let val = if common::type_is_imm_pair(ccx, ty) {
-                OperandValue::Pair(nil, nil)
+                let fields = llty.field_types();
+                OperandValue::Pair(C_null(fields[0]), C_null(fields[1]))
             } else {
-                OperandValue::Immediate(nil)
+                OperandValue::Immediate(C_null(llty))
             };
             let op = OperandRef {
                 val: val,
