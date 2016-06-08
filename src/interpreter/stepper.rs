@@ -22,14 +22,12 @@ pub enum Event {
 
 pub struct Stepper<'fncx, 'a: 'fncx, 'b: 'a + 'mir, 'mir: 'fncx, 'tcx: 'b>{
     fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>,
-    mir: CachedMir<'mir, 'tcx>,
     process: fn (&mut Stepper<'fncx, 'a, 'b, 'mir, 'tcx>) -> EvalResult<()>,
 }
 
 impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx> {
     pub(super) fn new(fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>) -> Self {
         Stepper {
-            mir: fncx.mir(),
             fncx: fncx,
             process: Self::dummy,
         }
@@ -38,7 +36,8 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
     fn dummy(&mut self) -> EvalResult<()> { Ok(()) }
 
     fn statement(&mut self) -> EvalResult<()> {
-        let block_data = self.mir.basic_block_data(self.fncx.frame().next_block);
+        let mir = self.fncx.mir();
+        let block_data = mir.basic_block_data(self.fncx.frame().next_block);
         let stmt = &block_data.statements[self.fncx.frame().stmt];
         let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
         let result = self.fncx.eval_assignment(lvalue, rvalue);
@@ -51,7 +50,8 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         // after a terminator we go to a new block
         self.fncx.frame_mut().stmt = 0;
         let term = {
-            let block_data = self.mir.basic_block_data(self.fncx.frame().next_block);
+            let mir = self.fncx.mir();
+            let block_data = mir.basic_block_data(self.fncx.frame().next_block);
             let terminator = block_data.terminator();
             let result = self.fncx.eval_terminator(terminator);
             self.fncx.maybe_report(terminator.span, result)?
@@ -61,13 +61,8 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             TerminatorTarget::Return => {
                 assert!(self.fncx.frame().constants.is_empty());
                 self.fncx.pop_stack_frame();
-                if !self.fncx.stack.is_empty() {
-                    self.mir = self.fncx.mir();
-                }
             },
-            TerminatorTarget::Call => {
-                self.mir = self.fncx.mir();
-            },
+            TerminatorTarget::Call => {},
         }
         Ok(())
     }
@@ -77,7 +72,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         let def_id = cid.def_id();
         let substs = cid.substs();
         self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
-        self.mir = self.fncx.mir();
         Ok(())
     }
 
@@ -97,13 +91,13 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
 
         let block = self.fncx.frame().next_block;
         let stmt = self.fncx.frame().stmt;
-        let basic_block = self.mir.basic_block_data(block);
+        let mir = self.fncx.mir();
+        let basic_block = mir.basic_block_data(block);
 
         if let Some(ref stmt) = basic_block.statements.get(stmt) {
             assert!(self.fncx.frame().constants.is_empty());
             ConstantExtractor {
                 span: stmt.span,
-                mir: &self.mir,
                 gecx: self.fncx.gecx,
                 frame: self.fncx.stack.last_mut().expect("stack empty"),
             }.visit_statement(block, stmt);
@@ -120,7 +114,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         assert!(self.fncx.frame().constants.is_empty());
         ConstantExtractor {
             span: terminator.span,
-            mir: &self.mir,
             gecx: self.fncx.gecx,
             frame: self.fncx.stack.last_mut().expect("stack empty"),
         }.visit_terminator(block, terminator);
@@ -150,7 +143,6 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
 
 struct ConstantExtractor<'a, 'b: 'mir, 'mir: 'a, 'tcx: 'b> {
     span: Span,
-    mir: &'a CachedMir<'mir, 'tcx>,
     frame: &'a mut Frame<'mir, 'tcx>,
     gecx: &'a mut GlobalEvalContext<'b, 'tcx>,
 }
@@ -194,7 +186,7 @@ impl<'a, 'b, 'mir, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'mir, 'tcx>
                 if self.gecx.statics.contains_key(&cid) {
                     return;
                 }
-                let mir = self.mir.promoted[index].clone();
+                let mir = self.frame.mir.promoted[index].clone();
                 let return_ty = mir.return_ty;
                 let return_ptr = self.gecx.alloc_ret_ptr(return_ty, cid.substs()).expect("there's no such thing as an unreachable static");
                 let mir = CachedMir::Owned(Rc::new(mir));
