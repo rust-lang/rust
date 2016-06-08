@@ -379,6 +379,12 @@ impl LateLintPass for Pass {
                     lint_map_unwrap_or_else(cx, expr, arglists[0], arglists[1]);
                 } else if let Some(arglists) = method_chain_args(expr, &["filter", "next"]) {
                     lint_filter_next(cx, expr, arglists[0]);
+                } else if let Some(arglists) = method_chain_args(expr, &["filter", "map"]) {
+                    lint_filter_map(cx, expr, arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["filter", "flat_map"]) {
+                    lint_filter_flat_map(cx, expr, arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["filter_map", "flat_map"]) {
+                    lint_filter_map_flat_map(cx, expr, arglists[0], arglists[1]);
                 } else if let Some(arglists) = method_chain_args(expr, &["find", "is_some"]) {
                     lint_search_is_some(cx, expr, "find", arglists[0], arglists[1]);
                 } else if let Some(arglists) = method_chain_args(expr, &["position", "is_some"]) {
@@ -831,6 +837,39 @@ fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &MethodArgs
         } else {
             span_lint(cx, FILTER_NEXT, expr.span, msg);
         }
+    }
+}
+
+// Type of MethodArgs is potentially a Vec
+/// lint use of `filter().map() for Iterators`
+fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
+    // lint if caller of `.filter().map()` is an Iterator
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+        let msg = "called `filter(p).map(q)` on an Iterator. This is more succinctly expressed by calling `.filter_map(..)` \
+                   instead.";
+        span_lint(cx, FILTER_NEXT, expr.span, msg);
+    }
+}
+
+// Type of MethodArgs is potentially a Vec
+/// lint use of `filter().flat_map() for Iterators`
+fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
+    // lint if caller of `.filter().flat_map()` is an Iterator
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+        let msg = "called `filter(p).flat_map(q)` on an Iterator. This is more succinctly expressed by calling `.flat_map(..)` \
+                   and filtering by returning an empty Iterator.";
+        span_lint(cx, FILTER_NEXT, expr.span, msg);
+    }
+}
+
+// Type of MethodArgs is potentially a Vec
+/// lint use of `filter_map().flat_map() for Iterators`
+fn lint_filter_map_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
+    // lint if caller of `.filter_map().flat_map()` is an Iterator
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+        let msg = "called `filter(p).flat_map(q)` on an Iterator. This is more succinctly expressed by calling `.flat_map(..)` \
+                   and filtering by returning an empty Iterator.";
+        span_lint(cx, FILTER_NEXT, expr.span, msg);
     }
 }
 
