@@ -143,46 +143,52 @@ where T: Transfer<'tcx>,
     queue.insert(START_BLOCK.index());
 
     fixpoint(cfg, Direction::Forward, |bb, fact, cfg| {
-        let new_graph = cfg.start_new_block();
         let mut fact = fact.clone();
         let mut changed = false;
         // Swap out the vector of old statements for a duration of statement inspection.
-        let old_statements = ::std::mem::replace(&mut cfg[bb].statements, Vec::new());
-        for stmt in &old_statements {
+        let mut statements = ::std::mem::replace(&mut cfg[bb].statements, Vec::new());
+
+        // FIXME(#25477): This could be implemented much more cleanly with `retain_mut`
+        let num_statements = statements.len();
+        let mut num_removed = 0;
+        for stmt_idx in 0..num_statements {
             // Given a fact and statement produce a new fact and optionally a replacement
             // graph.
-            match rewrite.stmt(&stmt, &fact, cfg) {
-                StatementChange::None => {
-                    fact = transfer.stmt(stmt, fact);
-                    cfg.push(new_graph, stmt.clone());
-                }
-                StatementChange::Remove => changed = true,
-                StatementChange::Statement(stmt) => {
+            match rewrite.stmt(&statements[stmt_idx], &fact, cfg) {
+                StatementChange::None => {}
+                StatementChange::Remove => {
                     changed = true;
-                    fact = transfer.stmt(&stmt, fact);
-                    cfg.push(new_graph, stmt);
+                    num_removed += 1;
+                    continue;
+                }
+                StatementChange::Statement(new_stmt) => {
+                    changed = true;
+                    fact = transfer.stmt(&new_stmt, fact);
+                    statements[stmt_idx] = new_stmt;
                 }
             }
+            statements.swap(stmt_idx - num_removed, stmt_idx);
         }
+        statements.truncate(num_statements - num_removed);
+
         // Swap the statements back in.
-        cfg[bb].statements = old_statements;
+        cfg[bb].statements = statements;
 
         // Handle the terminator replacement and transfer.
         let terminator = cfg[bb].terminator.take().unwrap();
         let repl = rewrite.term(&terminator, &fact, cfg);
         match repl {
             TerminatorChange::None => {
-                cfg[new_graph].terminator = Some(terminator.clone());
+                cfg[bb].terminator = Some(terminator)
             }
-            TerminatorChange::Terminator(t) => {
+            TerminatorChange::Terminator(new_terminator) => {
                 changed = true;
-                cfg[new_graph].terminator = Some(t);
+                cfg[bb].terminator = Some(new_terminator);
             }
         }
-        let new_facts = transfer.term(cfg[new_graph].terminator(), fact);
-        cfg[bb].terminator = Some(terminator);
+        let new_facts = transfer.term(cfg[bb].terminator(), fact);
 
-        (if changed { Some(new_graph) } else { None }, new_facts)
+        (changed, new_facts)
     }, &mut queue, fs)
 }
 
@@ -323,7 +329,7 @@ fn fixpoint<'tcx, F: Lattice, BF>(original_cfg: &CFG<'tcx>,
                                   mut init_facts: Facts<F>) -> (CFG<'tcx>, Facts<F>)
 // TODO: we probably want to pass in a list of basicblocks as successors (predecessors in backward
 // fixpoing) and let BF return just a list of F.
-where BF: Fn(BasicBlock, &F, &mut CFG<'tcx>) -> (Option<BasicBlock>, Vec<F>),
+where BF: Fn(BasicBlock, &F, &mut CFG<'tcx>) -> (bool, Vec<F>),
       // ^~ This function given a single block and fact before it optionally produces a replacement
       // graph (if not, the original block is the “replacement graph”) for the block and a list of
       // facts for arbitrary blocks (most likely for the blocks in the replacement graph and blocks
@@ -338,15 +344,10 @@ where BF: Fn(BasicBlock, &F, &mut CFG<'tcx>) -> (Option<BasicBlock>, Vec<F>),
         to_visit.remove(block);
         let block = BasicBlock::new(block);
 
-        let (new_target, new_facts) = {
+        let (_changed, new_facts) = {
             let fact = &mut init_facts[block];
             f(block, fact, &mut cfg)
         };
-
-        // First of all, we merge in the replacement graph, if any.
-        if let Some(replacement_bb) = new_target {
-            cfg.swap(replacement_bb, block);
-        }
 
         // Then we record the facts in the correct direction.
         match direction {
