@@ -14,16 +14,18 @@ use syntax::codemap::Span;
 use std::rc::Rc;
 use memory::Pointer;
 
-pub enum Event {
+pub enum Event<'a, 'tcx: 'a> {
+    Block(mir::BasicBlock),
+    Return,
+    Call,
     Constant,
-    Assignment,
-    Terminator,
+    Assignment(&'a mir::Statement<'tcx>),
+    Terminator(&'a mir::Terminator<'tcx>),
     Done,
 }
 
 pub struct Stepper<'fncx, 'a: 'fncx, 'b: 'a + 'mir, 'mir: 'fncx, 'tcx: 'b>{
     fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>,
-    process: fn (&mut Stepper<'fncx, 'a, 'b, 'mir, 'tcx>) -> EvalResult<()>,
 
     // a cache of the constants to be computed before the next statement/terminator
     // this is an optimization, so we don't have to allocate a new vector for every statement
@@ -34,17 +36,15 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
     pub(super) fn new(fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>) -> Self {
         Stepper {
             fncx: fncx,
-            process: Self::dummy,
             constants: Vec::new(),
         }
     }
 
-    fn dummy(&mut self) -> EvalResult<()> { Ok(()) }
-
-    fn statement(&mut self) -> EvalResult<()> {
+    fn statement<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F) -> EvalResult<()> {
         let mir = self.fncx.mir();
         let block_data = mir.basic_block_data(self.fncx.frame().next_block);
         let stmt = &block_data.statements[self.fncx.frame().stmt];
+        f(Event::Assignment(stmt));
         let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
         let result = self.fncx.eval_assignment(lvalue, rvalue);
         self.fncx.maybe_report(result)?;
@@ -52,33 +52,33 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         Ok(())
     }
 
-    fn terminator(&mut self) -> EvalResult<()> {
+    fn terminator<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F) -> EvalResult<()> {
         // after a terminator we go to a new block
         self.fncx.frame_mut().stmt = 0;
         let term = {
             let mir = self.fncx.mir();
             let block_data = mir.basic_block_data(self.fncx.frame().next_block);
             let terminator = block_data.terminator();
+            f(Event::Terminator(terminator));
             let result = self.fncx.eval_terminator(terminator);
             self.fncx.maybe_report(result)?
         };
         match term {
-            TerminatorTarget::Block => {},
+            TerminatorTarget::Block => f(Event::Block(self.fncx.frame().next_block)),
             TerminatorTarget::Return => {
+                f(Event::Return);
                 self.fncx.pop_stack_frame();
             },
-            TerminatorTarget::Call => {},
+            TerminatorTarget::Call => f(Event::Call),
         }
         Ok(())
     }
 
-    pub fn step(&mut self) -> EvalResult<Event> {
-        (self.process)(self)?;
-
+    // returns true as long as there are more things to do
+    pub fn step<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F) -> EvalResult<()> {
         if self.fncx.stack.is_empty() {
-            // fuse the iterator
-            self.process = Self::dummy;
-            return Ok(Event::Done);
+            f(Event::Done);
+            return Ok(());
         }
 
         let block = self.fncx.frame().next_block;
@@ -97,12 +97,9 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 mir: &mir,
             }.visit_statement(block, stmt);
             if self.constants.is_empty() {
-                self.process = Self::statement;
-                return Ok(Event::Assignment);
+                return self.statement(f);
             } else {
-                self.process = Self::statement;
-                self.extract_constants();
-                return Ok(Event::Constant);
+                return self.extract_constants(f);
             }
         }
 
@@ -117,36 +114,21 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             mir: &mir,
         }.visit_terminator(block, terminator);
         if self.constants.is_empty() {
-            self.process = Self::terminator;
-            Ok(Event::Terminator)
+            self.terminator(f)
         } else {
-            self.process = Self::statement;
-            self.extract_constants();
-            Ok(Event::Constant)
+            self.extract_constants(f)
         }
     }
 
-    fn extract_constants(&mut self) {
+    fn extract_constants<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F) -> EvalResult<()> {
         assert!(!self.constants.is_empty());
         for (cid, span, return_ptr, mir) in self.constants.drain(..) {
             let def_id = cid.def_id();
             let substs = cid.substs();
+            f(Event::Constant);
             self.fncx.push_stack_frame(def_id, span, mir, substs, Some(return_ptr));
         }
-    }
-
-    /// returns the statement that will be processed next
-    pub fn stmt(&self) -> &mir::Statement {
-        &self.fncx.basic_block().statements[self.fncx.frame().stmt]
-    }
-
-    /// returns the terminator of the current block
-    pub fn term(&self) -> &mir::Terminator {
-        self.fncx.basic_block().terminator()
-    }
-
-    pub fn block(&self) -> mir::BasicBlock {
-        self.fncx.frame().next_block
+        self.step(f)
     }
 }
 

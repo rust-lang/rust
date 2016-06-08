@@ -400,22 +400,18 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     fn run(&mut self) -> EvalResult<()> {
         let mut stepper = stepper::Stepper::new(self);
-        'outer: loop {
+        let mut done = false;
+        while !done {
             use self::stepper::Event::*;
-            trace!("// {:?}", stepper.block());
-
-            loop {
-                match stepper.step()? {
-                    Constant => trace!("computing a constant"),
-                    Assignment => trace!("{:?}", stepper.stmt()),
-                    Terminator => {
-                        trace!("{:?}", stepper.term().kind);
-                        continue 'outer;
-                    },
-                    Done => return Ok(()),
-                }
-            }
+            stepper.step(|event| match event {
+                Block(b) => trace!("// {:?}", b),
+                Assignment(a) => trace!("{:?}", a),
+                Terminator(t) => trace!("{:?}", t.kind),
+                Done => done = true,
+                _ => {},
+            })?;
         }
+        Ok(())
     }
 
     fn push_stack_frame(&mut self, def_id: DefId, span: codemap::Span, mir: CachedMir<'mir, 'tcx>, substs: &'tcx Substs<'tcx>,
