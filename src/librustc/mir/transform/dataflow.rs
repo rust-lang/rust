@@ -316,7 +316,7 @@ enum Direction {
 /// The fixpoint function is the engine of this whole thing. Important part of it is the `f: BF`
 /// callback. This for each basic block and its facts has to produce a replacement graph and a
 /// bunch of facts which are to be joined with the facts in the graph elsewhere.
-fn fixpoint<'tcx, F: Lattice, BF>(cfg: &CFG<'tcx>,
+fn fixpoint<'tcx, F: Lattice, BF>(original_cfg: &CFG<'tcx>,
                                   direction: Direction,
                                   f: BF,
                                   to_visit: &mut BitVector,
@@ -332,7 +332,7 @@ where BF: Fn(BasicBlock, &F, &mut CFG<'tcx>) -> (Option<BasicBlock>, Vec<F>),
       // Invariant:
       // * None of the already existing blocks in CFG may be modified;
 {
-    let mut cfg = cfg.clone();
+    let mut cfg = original_cfg.clone();
 
     while let Some(block) = to_visit.iter().next() {
         to_visit.remove(block);
@@ -351,12 +351,18 @@ where BF: Fn(BasicBlock, &F, &mut CFG<'tcx>) -> (Option<BasicBlock>, Vec<F>),
         // Then we record the facts in the correct direction.
         match direction {
             Direction::Forward => {
+                let mut changed_targets = vec![];
+
                 for (f, &target) in new_facts.into_iter()
                                              .zip(cfg[block].terminator().successors().iter()) {
-                    let facts_changed = Lattice::join(&mut init_facts[target], &f);
-                    if facts_changed {
-                        to_visit.insert(target.index());
+                    if Lattice::join(&mut init_facts[target], &f) {
+                        changed_targets.push(target);
                     }
+                }
+
+                for target in changed_targets {
+                    to_visit.insert(target.index());
+                    cfg[target].clone_from(&original_cfg[target]);
                 }
             }
             // Direction::Backward => unimplemented!()
