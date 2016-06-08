@@ -30,17 +30,6 @@ fn var2str(var: &Variant) -> InternedString {
     var.node.name.name.as_str()
 }
 
-// FIXME: waiting for https://github.com/rust-lang/rust/pull/31700
-// fn partial_match(pre: &str, name: &str) -> usize {
-//    // skip(1) to ensure that the prefix never takes the whole variant name
-//     pre.chars().zip(name.chars().rev().skip(1).rev()).take_while(|&(l, r)| l == r).count()
-// }
-//
-// fn partial_rmatch(post: &str, name: &str) -> usize {
-//     // skip(1) to ensure that the postfix never takes the whole variant name
-//     post.chars().rev().zip(name.chars().skip(1).rev()).take_while(|&(l, r)| l == r).count()
-// }
-
 fn partial_match(pre: &str, name: &str) -> usize {
     let mut name_iter = name.chars();
     let _ = name_iter.next_back(); // make sure the name is never fully matched
