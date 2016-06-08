@@ -14,7 +14,7 @@ use std::rc::Rc;
 use std::{iter, mem};
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::{self, DUMMY_SP, Span};
+use syntax::codemap::{self, DUMMY_SP};
 
 use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer};
@@ -94,9 +94,6 @@ struct Frame<'a, 'tcx: 'a> {
 
     /// The index of the currently evaluated statment
     stmt: usize,
-
-    // Constants that need to be evaluated before the next statement can be evaluated
-    constants: Vec<(ConstantId<'tcx>, Span, Pointer, CachedMir<'a, 'tcx>)>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -409,7 +406,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
             loop {
                 match stepper.step()? {
-                    Constant => trace!("next statement requires the computation of a constant"),
+                    Constant => trace!("computing a constant"),
                     Assignment => trace!("{:?}", stepper.stmt()),
                     Terminator => {
                         trace!("{:?}", stepper.term().kind);
@@ -444,7 +441,6 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             def_id: def_id,
             substs: substs,
             stmt: 0,
-            constants: Vec::new(),
         });
 
         let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
