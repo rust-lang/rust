@@ -1,3 +1,13 @@
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use mir::repr as mir;
 use mir::cfg::CFG;
 use mir::repr::{BasicBlock, START_BLOCK};
@@ -205,7 +215,10 @@ where T: Transfer<'tcx>,
 //
 // impl<'tcx, P> MirPass<'tcx> for ForwardDataflow<P>
 // where P: DataflowPass<'tcx> {
-//     fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut mir::Mir<'tcx>) {
+//     fn run_pass<'a>(&mut self,
+//                    _: TyCtxt<'a, 'tcx, 'tcx>,
+//                    _: MirSource,
+//                    mir: &mut mir::Mir<'tcx>) {
 //         let facts: Facts<<P as DataflowPass<'tcx>>::Lattice> =
 //             Facts::new(<P as DataflowPass<'tcx>>::input_fact());
 //         let (new_cfg, _) = self.arf_body(&mir.cfg, facts, mir::START_BLOCK);
@@ -230,12 +243,17 @@ where T: Transfer<'tcx>,
 //
 // impl<'tcx, P> MirPass<'tcx> for BackwardDataflow<P>
 // where P: DataflowPass<'tcx> {
-//     fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut mir::Mir<'tcx>) {
+//     fn run_pass<'a>(&mut self,
+//                     _: TyCtxt<'a, 'tcx, 'tcx>,
+//                     _: MirSource,
+//                     mir: &mut mir::Mir<'tcx>) {
 //         let mut facts: Facts<<P as DataflowPass<'tcx>>::Lattice> =
 //             Facts::new(<P as DataflowPass<'tcx>>::input_fact());
-//         // The desired effect here is that we should begin flowing from the blocks which terminate
+//         // The desired effect here is that we should begin flowing from the blocks which
+//         // terminate
 //         // the control flow (return, resume, calls of diverging functions, non-terminating loops
-//         // etc), but finding them all is a pain, so we just get the list of graph nodes postorder
+//         // etc), but finding them all is a pain, so we just get the list of graph nodes
+//         // postorder
 //         // and inspect them all! Perhaps not very effective, but certainly correct.
 //         let start_at = postorder(mir).filter(|&(_, d)| !d.is_cleanup).map(|(bb, _)| {
 //             facts.put(bb, <P as DataflowPass<'tcx>>::Lattice::bottom());
@@ -249,26 +267,29 @@ where T: Transfer<'tcx>,
 // impl<'tcx, P> BackwardDataflow<P>
 // where P: DataflowPass<'tcx> {
 //     fn arb_body(&self, cfg: &CFG<'tcx>,
-//                 facts: Facts<<P as DataflowPass<'tcx>>::Lattice>, mut map: HashMap<BasicBlock, ()>)
+//                 facts: Facts<<P as DataflowPass<'tcx>>::Lattice>,
+//                 mut map: HashMap<BasicBlock, ()>)
 //     -> (CFG<'tcx>, Facts<<P as DataflowPass<'tcx>>::Lattice>){
 //         fixpoint(cfg, Direction::Backward, |bb, fact, cfg| {
 //             let new_graph = cfg.start_new_block();
 //             let mut fact = fact.clone();
-//             // This is a reverse thing so we inspect the terminator first and statements in reverse
-//             // order later.
+//             // This is a reverse thing so we inspect the terminator first and statements
+//             // in reverse order later.
 //             //
 //             // Handle the terminator replacement and transfer.
 //             let terminator = ::std::mem::replace(&mut cfg[bb].terminator, None).unwrap();
 //             let repl = P::rewrite_term(&terminator, &fact, cfg);
-//             // TODO: this really needs to get factored out
+//             // FIXME: this really needs to get factored out
 //             let mut new_facts = match repl {
 //                 TerminatorReplacement::Terminator(t) => {
 //                     cfg[new_graph].terminator = Some(t);
 //                     P::transfer_term(cfg[new_graph].terminator(), fact)
 //                 }
 //                 TerminatorReplacement::Graph(from, _) => {
-//                     // FIXME: a more optimal approach would be to copy the from to the tail of our
-//                     // new_graph. (1 less extra block). However there’s a problem with inspecting
+//                     // FIXME: a more optimal approach would be to copy the from to the tail of
+//                     // our
+//                     // new_graph. (1 less extra block). However there’s a problem with
+//                     // inspecting
 //                     // the statements of the merged block, because we just did the statements
 //                     // for this block already.
 //                     cfg.terminate(new_graph, terminator.scope, terminator.span,
@@ -327,13 +348,13 @@ fn fixpoint<'tcx, F: Lattice, BF>(original_cfg: &CFG<'tcx>,
                                   f: BF,
                                   to_visit: &mut BitVector,
                                   mut init_facts: Facts<F>) -> (CFG<'tcx>, Facts<F>)
-// TODO: we probably want to pass in a list of basicblocks as successors (predecessors in backward
-// fixpoing) and let BF return just a list of F.
+// FIXME: we probably want to pass in a list of basicblocks as successors (predecessors in
+// backward fixpoint) and let BF return just a list of F.
 where BF: Fn(BasicBlock, &F, &mut CFG<'tcx>) -> (bool, Vec<F>),
       // ^~ This function given a single block and fact before it optionally produces a replacement
-      // graph (if not, the original block is the “replacement graph”) for the block and a list of
-      // facts for arbitrary blocks (most likely for the blocks in the replacement graph and blocks
-      // into which data flows from the replacement graph)
+      // graph (if not, the original block is the “replacement graph”) for the block and a
+      // list of facts for arbitrary blocks (most likely for the blocks in the replacement graph
+      // and blocks into which data flows from the replacement graph)
       //
       // Invariant:
       // * None of the already existing blocks in CFG may be modified;
