@@ -57,7 +57,6 @@ impl<'l, 'tcx> MirPass<'tcx> for SimplifyBranches<'l> {
 }
 
 impl<'l> Pass for SimplifyBranches<'l> {
-    fn name(&self) -> &str { "simplify-branches" }
     fn disambiguator<'a>(&'a self) -> Option<Box<fmt::Display+'a>> {
         Some(Box::new(self.label))
     }

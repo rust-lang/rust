@@ -76,7 +76,9 @@ pub trait Pass {
     fn dep_node(&self, def_id: DefId) -> DepNode<DefId> {
         DepNode::MirPass(def_id)
     }
-    fn name(&self) -> &str;
+    fn name(&self) -> &str {
+        unsafe { ::std::intrinsics::type_name::<Self>() }
+    }
     fn disambiguator<'a>(&'a self) -> Option<Box<fmt::Display+'a>> { None }
 }
 

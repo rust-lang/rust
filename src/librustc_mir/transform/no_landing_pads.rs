@@ -50,6 +50,4 @@ impl<'tcx> MirPass<'tcx> for NoLandingPads {
     }
 }
 
-impl Pass for NoLandingPads {
-    fn name(&self) -> &str { "no-landing-pads" }
-}
+impl Pass for NoLandingPads {}
