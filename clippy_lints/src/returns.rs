@@ -3,7 +3,7 @@ use syntax::ast::*;
 use syntax::codemap::{Span, Spanned};
 use syntax::visit::FnKind;
 
-use utils::{span_lint, span_lint_and_then, snippet_opt, match_path_ast, in_external_macro};
+use utils::{span_note_and_lint, span_lint_and_then, snippet_opt, match_path_ast, in_external_macro};
 
 /// **What it does:** This lint checks for return statements at the end of a block.
 ///
@@ -95,27 +95,21 @@ impl ReturnPass {
                 let Some(ref retexpr) = block.expr,
                 let StmtKind::Decl(ref decl, _) = stmt.node,
                 let DeclKind::Local(ref local) = decl.node,
+                local.ty.is_none(),
                 let Some(ref initexpr) = local.init,
                 let PatKind::Ident(_, Spanned { node: id, .. }, _) = local.pat.node,
                 let ExprKind::Path(_, ref path) = retexpr.node,
-                match_path_ast(path, &[&id.name.as_str()])
+                match_path_ast(path, &[&id.name.as_str()]),
+                !in_external_macro(cx, initexpr.span),
             ], {
-                self.emit_let_lint(cx, retexpr.span, initexpr.span);
+                span_note_and_lint(cx,
+                                   LET_AND_RETURN,
+                                   retexpr.span,
+                                   "returning the result of a let binding from a block. \
+                                   Consider returning the expression directly.",
+                                   initexpr.span,
+                                   "this expression can be directly returned");
             }
-        }
-    }
-
-    fn emit_let_lint(&mut self, cx: &EarlyContext, lint_span: Span, note_span: Span) {
-        if in_external_macro(cx, note_span) {
-            return;
-        }
-        let mut db = span_lint(cx,
-                               LET_AND_RETURN,
-                               lint_span,
-                               "returning the result of a let binding from a block. Consider returning the \
-                                expression directly.");
-        if cx.current_level(LET_AND_RETURN) != Level::Allow {
-            db.span_note(note_span, "this expression can be directly returned");
         }
     }
 }
