@@ -6,6 +6,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
+use rustc_const_math::ConstFloat;
 use syntax::codemap::{Span, Spanned, ExpnFormat};
 use syntax::ptr::P;
 use utils::{
@@ -182,7 +183,26 @@ impl LateLintPass for FloatCmp {
 fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
     let res = eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None);
     if let Ok(ConstVal::Float(val)) = res {
-        val == 0.0 || val == ::std::f64::INFINITY || val == ::std::f64::NEG_INFINITY
+        use std::cmp::Ordering;
+
+        let zero = ConstFloat::FInfer {
+            f32: 0.0,
+            f64: 0.0,
+        };
+
+        let infinity = ConstFloat::FInfer {
+            f32: ::std::f32::INFINITY,
+            f64: ::std::f64::INFINITY,
+        };
+
+        let neg_infinity = ConstFloat::FInfer {
+            f32: ::std::f32::NEG_INFINITY,
+            f64: ::std::f64::NEG_INFINITY,
+        };
+
+        val.try_cmp(zero) == Ok(Ordering::Equal)
+            || val.try_cmp(infinity) == Ok(Ordering::Equal)
+            || val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
     } else {
         false
     }
