@@ -129,8 +129,14 @@ enum TerminatorTarget {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+/// Uniquely identifies a specific constant or static
 struct ConstantId<'tcx> {
+    /// the def id of the constant/static or in case of promoteds, the def id of the function they belong to
     def_id: DefId,
+    /// In case of statics and constants this is `Substs::empty()`, so only promoteds and associated
+    /// constants actually have something useful here. We could special case statics and constants,
+    /// but that would only require more branching when working with constants, and not bring any
+    /// real benefits.
     substs: &'tcx Substs<'tcx>,
     kind: ConstantKind,
 }
@@ -138,7 +144,8 @@ struct ConstantId<'tcx> {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 enum ConstantKind {
     Promoted(usize),
-    Static,
+    /// Statics, constants and associated constants
+    Global,
 }
 
 impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
@@ -1199,7 +1206,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                             let cid = ConstantId {
                                 def_id: def_id,
                                 substs: substs,
-                                kind: ConstantKind::Static,
+                                kind: ConstantKind::Global,
                             };
                             Ok(*self.statics.get(&cid).expect("static should have been cached (rvalue)"))
                         }
@@ -1231,7 +1238,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 let cid = ConstantId {
                     def_id: def_id,
                     substs: substs,
-                    kind: ConstantKind::Static,
+                    kind: ConstantKind::Global,
                 };
                 *self.gecx.statics.get(&cid).expect("static should have been cached (lvalue)")
             },

@@ -145,7 +145,7 @@ impl<'a, 'b, 'mir, 'tcx> ConstantExtractor<'a, 'b, 'mir, 'tcx> {
         let cid = ConstantId {
             def_id: def_id,
             substs: substs,
-            kind: ConstantKind::Static,
+            kind: ConstantKind::Global,
         };
         if self.gecx.statics.contains_key(&cid) {
             return;
