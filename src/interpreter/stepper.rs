@@ -41,10 +41,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         }
     }
 
-    fn statement<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F) -> EvalResult<()> {
-        let mir = self.fncx.mir();
-        let block_data = mir.basic_block_data(self.fncx.frame().next_block);
-        let stmt = &block_data.statements[self.fncx.frame().stmt];
+    fn statement<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F, stmt: &mir::Statement<'tcx>) -> EvalResult<()> {
         f(Event::Assignment(stmt));
         let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
         let result = self.fncx.eval_assignment(lvalue, rvalue);
@@ -53,13 +50,10 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         Ok(())
     }
 
-    fn terminator<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F) -> EvalResult<()> {
+    fn terminator<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F, terminator: &mir::Terminator<'tcx>) -> EvalResult<()> {
         // after a terminator we go to a new block
         self.fncx.frame_mut().stmt = 0;
         let term = {
-            let mir = self.fncx.mir();
-            let block_data = mir.basic_block_data(self.fncx.frame().next_block);
-            let terminator = block_data.terminator();
             f(Event::Terminator(terminator));
             let result = self.fncx.eval_terminator(terminator);
             self.fncx.maybe_report(result)?
@@ -98,7 +92,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 mir: &mir,
             }.visit_statement(block, stmt);
             if self.constants.is_empty() {
-                return self.statement(f);
+                return self.statement(f, stmt);
             } else {
                 return self.extract_constants(f);
             }
@@ -115,7 +109,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             mir: &mir,
         }.visit_terminator(block, terminator);
         if self.constants.is_empty() {
-            self.terminator(f)
+            self.terminator(f, terminator)
         } else {
             self.extract_constants(f)
         }
@@ -133,6 +127,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
 
 struct ConstantExtractor<'a, 'b: 'mir, 'mir: 'a, 'tcx: 'b> {
     span: Span,
+    // FIXME: directly push the new stackframes instead of doing this intermediate caching
     constants: &'a mut Vec<(ConstantId<'tcx>, Span, Pointer, CachedMir<'mir, 'tcx>)>,
     gecx: &'a mut GlobalEvalContext<'b, 'tcx>,
     mir: &'a mir::Mir<'tcx>,
