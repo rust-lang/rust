@@ -170,8 +170,8 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
         Ok(return_ptr)
     }
 
-    fn alloc_ret_ptr(&mut self, ty: ty::FnOutput<'tcx>, substs: &'tcx Substs<'tcx>) -> Option<Pointer> {
-        match ty {
+    fn alloc_ret_ptr(&mut self, output_ty: ty::FnOutput<'tcx>, substs: &'tcx Substs<'tcx>) -> Option<Pointer> {
+        match output_ty {
             ty::FnConverging(ty) => {
                 let size = self.type_size(ty, substs);
                 Some(self.memory.allocate(size))
