@@ -28,12 +28,10 @@
 //! into one, but I can’t seem to get it just right yet, so we do the composing and decomposing
 //! manually here.
 
-use self::AcsLattice::*;
-
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc::mir::repr::*;
 use rustc::mir::visit::{MutVisitor, LvalueContext};
-use rustc::mir::transform::lattice::Lattice;
+use rustc::mir::transform::lattice::{Lattice, WBottom};
 use rustc::mir::transform::dataflow::*;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
 use rustc::ty::TyCtxt;
@@ -47,36 +45,23 @@ enum Either<'tcx> {
 }
 
 #[derive(Debug, Clone)]
-enum AcsLattice<'tcx> {
-    Bottom,
-    Wrap(FnvHashMap<Lvalue<'tcx>, Either<'tcx>>)
+struct AcsLattice<'tcx> {
+    known_values: FnvHashMap<Lvalue<'tcx>, Either<'tcx>>
 }
 
 impl<'tcx> Lattice for AcsLattice<'tcx> {
-    fn bottom() -> Self { Bottom }
+    fn bottom() -> Self { unimplemented!() }
     fn join(&mut self, other: &Self) -> bool {
-        let other_map = match *other {
-            Bottom => return false,
-            Wrap(ref map) => map
-        };
-        let self_map = match *self {
-            Bottom => {
-                *self = Wrap(other_map.clone());
-                return true;
-            },
-            Wrap(ref mut map) => map
-        };
-
         let mut changed = false;
 
-        for (k, v) in other_map {
-            let should_remove = if let Some(cur_v) = self_map.get(k) {
+        for (k, v) in &other.known_values {
+            let should_remove = if let Some(cur_v) = self.known_values.get(k) {
                 cur_v != v
             } else {
                 false
             };
             if should_remove {
-                self_map.remove(k);
+                self.known_values.remove(k);
                 changed = true;
             }
         }
@@ -138,19 +123,21 @@ fn invalidate<'tcx>(map: &mut FnvHashMap<Lvalue<'tcx>, Either<'tcx>>, lval: &Lva
 }
 
 impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
-    type Lattice = AcsLattice<'tcx>;
+    type Lattice = WBottom<AcsLattice<'tcx>>;
 
-    fn stmt(&self, s: &Statement<'tcx>, lat: AcsLattice<'tcx>) -> AcsLattice<'tcx> {
+    fn stmt(&self, s: &Statement<'tcx>, lat: WBottom<AcsLattice<'tcx>>) -> WBottom<AcsLattice<'tcx>> {
         let mut lat_map = match lat {
-            Bottom => FnvHashMap::default(),
-            Wrap(map) => map
+            WBottom::Bottom => FnvHashMap::default(),
+            WBottom::Value(lat) => lat.known_values
         };
 
         let StatementKind::Assign(ref lval, ref rval) = s.kind;
         invalidate(&mut lat_map, base_lvalue(lval));
 
         if let &Lvalue::Projection(_) = lval {
-            return Wrap(lat_map);
+            return WBottom::Value(AcsLattice {
+                known_values: lat_map
+            });
         }
 
         match *rval {
@@ -162,16 +149,21 @@ impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
             },
             _ => { }
         };
-        Wrap(lat_map)
+
+        WBottom::Value(AcsLattice {
+            known_values: lat_map
+        })
     }
 
-    fn term(&self, t: &Terminator<'tcx>, mut lat: AcsLattice<'tcx>) -> Vec<AcsLattice<'tcx>> {
+    fn term(&self, t: &Terminator<'tcx>, mut lat: WBottom<AcsLattice<'tcx>>) -> Vec<WBottom<AcsLattice<'tcx>>> {
         match t.kind {
             TerminatorKind::Call { .. } |
             TerminatorKind::Drop { .. } |
             TerminatorKind::DropAndReplace { .. } => {
                 // FIXME: Be smarter here by using an alias analysis
-                lat = Wrap(FnvHashMap::default());
+                lat = WBottom::Value(AcsLattice {
+                    known_values: FnvHashMap::default()
+                });
             },
             _ => { }
         }
@@ -187,12 +179,12 @@ impl<'tcx> Transfer<'tcx> for AcsPropagateTransfer {
 
 struct AliasRewrite;
 
-impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for AliasRewrite {
-    fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
+impl<'tcx> Rewrite<'tcx, WBottom<AcsLattice<'tcx>>> for AliasRewrite {
+    fn stmt(&self, s: &Statement<'tcx>, l: &WBottom<AcsLattice<'tcx>>, _: &mut CFG<'tcx>)
     -> StatementChange<'tcx> {
-        if let Wrap(ref map) = *l {
+        if let &WBottom::Value(ref lat) = l {
             let mut ns = s.clone();
-            let mut vis = RewriteAliasVisitor(map, false);
+            let mut vis = RewriteAliasVisitor(&lat.known_values, false);
             vis.visit_statement(START_BLOCK, &mut ns);
             if vis.1 {
                 return StatementChange::Statement(ns);
@@ -201,11 +193,11 @@ impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for AliasRewrite {
         StatementChange::None
     }
 
-    fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
+    fn term(&self, t: &Terminator<'tcx>, l: &WBottom<AcsLattice<'tcx>>, _: &mut CFG<'tcx>)
     -> TerminatorChange<'tcx> {
-        if let Wrap(ref map) = *l {
+        if let &WBottom::Value(ref lat) = l {
             let mut nt = t.clone();
-            let mut vis = RewriteAliasVisitor(map, false);
+            let mut vis = RewriteAliasVisitor(&lat.known_values, false);
             vis.visit_terminator(START_BLOCK, &mut nt);
             if vis.1 {
                 return TerminatorChange::Terminator(nt);
@@ -233,12 +225,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RewriteAliasVisitor<'a, 'tcx> {
 
 struct ConstRewrite;
 
-impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for ConstRewrite {
-    fn stmt(&self, s: &Statement<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
+impl<'tcx> Rewrite<'tcx, WBottom<AcsLattice<'tcx>>> for ConstRewrite {
+    fn stmt(&self, s: &Statement<'tcx>, l: &WBottom<AcsLattice<'tcx>>, _: &mut CFG<'tcx>)
     -> StatementChange<'tcx> {
-        if let Wrap(ref map) = *l {
+        if let &WBottom::Value(ref lat) = l {
             let mut ns = s.clone();
-            let mut vis = RewriteConstVisitor(map, false);
+            let mut vis = RewriteConstVisitor(&lat.known_values, false);
             vis.visit_statement(START_BLOCK, &mut ns);
             if vis.1 {
                 return StatementChange::Statement(ns);
@@ -247,11 +239,11 @@ impl<'tcx> Rewrite<'tcx, AcsLattice<'tcx>> for ConstRewrite {
         StatementChange::None
     }
 
-    fn term(&self, t: &Terminator<'tcx>, l: &AcsLattice<'tcx>, _: &mut CFG<'tcx>)
+    fn term(&self, t: &Terminator<'tcx>, l: &WBottom<AcsLattice<'tcx>>, _: &mut CFG<'tcx>)
     -> TerminatorChange<'tcx> {
-        if let Wrap(ref map) = *l {
+        if let &WBottom::Value(ref lat) = l {
             let mut nt = t.clone();
-            let mut vis = RewriteConstVisitor(map, false);
+            let mut vis = RewriteConstVisitor(&lat.known_values, false);
             vis.visit_terminator(START_BLOCK, &mut nt);
             if vis.1 {
                 return TerminatorChange::Terminator(nt);
