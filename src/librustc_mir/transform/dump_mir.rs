@@ -70,6 +70,4 @@ impl<'tcx> MirPassHook<'tcx> for DumpMir {
     }
 }
 
-impl<'b> Pass for DumpMir {
-    fn name(&self) -> &str { "dump-mir" }
-}
+impl<'b> Pass for DumpMir {}

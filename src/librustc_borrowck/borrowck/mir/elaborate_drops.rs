@@ -69,9 +69,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
     }
 }
 
-impl Pass for ElaborateDrops {
-    fn name(&self) -> &str { "elaborate-drops" }
-}
+impl Pass for ElaborateDrops {}
 
 struct InitializationData {
     live: IdxSetBuf<MovePathIndex>,
