@@ -108,19 +108,19 @@ impl<'a, 'tcx> TransItem<'tcx> {
                ccx.codegen_unit().name);
 
         let symbol_name = ccx.symbol_map()
-                             .get(*self)
-                             .expect("Name not present in SymbolMap?");
-        debug!("symbol {}", symbol_name);
+                             .get_or_compute(ccx.shared(), *self);
+
+        debug!("symbol {}", &symbol_name);
 
         match *self {
             TransItem::Static(node_id) => {
-                TransItem::predefine_static(ccx, node_id, linkage, symbol_name);
+                TransItem::predefine_static(ccx, node_id, linkage, &symbol_name);
             }
             TransItem::Fn(instance) => {
-                TransItem::predefine_fn(ccx, instance, linkage, symbol_name);
+                TransItem::predefine_fn(ccx, instance, linkage, &symbol_name);
             }
             TransItem::DropGlue(dg) => {
-                TransItem::predefine_drop_glue(ccx, dg, linkage, symbol_name);
+                TransItem::predefine_drop_glue(ccx, dg, linkage, &symbol_name);
             }
         }
 
