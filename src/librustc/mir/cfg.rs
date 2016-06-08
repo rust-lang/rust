@@ -59,8 +59,19 @@ impl<'tcx> CFG<'tcx> {
 
 
     pub fn swap(&mut self, b1: BasicBlock, b2: BasicBlock) {
-        // TODO: find all the branches to b2 from subgraph starting at b2 and replace them with b1.
-        self.basic_blocks.swap(b1.index(), b2.index());
+        if b1 != b2 {
+            for idx in 0..self.len() {
+                let bb = BasicBlock::new(idx);
+                for target in self.successors_mut(bb) {
+                    if *target == b1 {
+                        *target = b2;
+                    } else if *target == b2 {
+                        *target = b1;
+                    }
+                }
+            }
+            self.basic_blocks.swap(b1.index(), b2.index());
+        }
     }
 
     pub fn start_new_block(&mut self) -> BasicBlock {
