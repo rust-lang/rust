@@ -34,14 +34,11 @@
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc::middle::const_val::ConstVal;
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::traversal;
-
 use std::fmt;
-use std::mem;
 
 pub struct SimplifyCfg<'a> { label: &'a str }
 
@@ -53,9 +50,7 @@ impl<'a> SimplifyCfg<'a> {
 
 impl<'l, 'tcx> MirPass<'tcx> for SimplifyCfg<'l> {
     fn run_pass<'a>(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
-        simplify_branches(mir);
-        remove_dead_blocks(mir);
-        merge_consecutive_blocks(mir);
+        CfgSimplifier::new(mir).simplify();
         remove_dead_blocks(mir);
 
         // FIXME: Should probably be moved into some kind of pass manager
@@ -70,155 +65,155 @@ impl<'l> Pass for SimplifyCfg<'l> {
     }
 }
 
-fn merge_consecutive_blocks(mir: &mut Mir) {
-    let mut pred_count: IndexVec<_, _> =
-        mir.predecessors().iter().map(|ps| ps.len()).collect();
-
-    loop {
-        let mut changed = false;
-        let mut seen = BitVector::new(mir.basic_blocks().len());
-        let mut worklist = vec![START_BLOCK];
-        while let Some(bb) = worklist.pop() {
-            // Temporarily take ownership of the terminator we're modifying to keep borrowck happy
-            let mut terminator = mir[bb].terminator.take().expect("invalid terminator state");
-
-            // See if we can merge the target block into this one
-            loop {
-                let mut inner_change = false;
-
-                if let TerminatorKind::Goto { target } = terminator.kind {
-                    // Don't bother trying to merge a block into itself
-                    if target == bb {
-                        break;
-                    }
-
-                    let num_insts = mir[target].statements.len();
-                    match mir[target].terminator().kind {
-                        TerminatorKind::Goto { target: new_target } if num_insts == 0 => {
-                            inner_change = true;
-                            terminator.kind = TerminatorKind::Goto { target: new_target };
-                            pred_count[target] -= 1;
-                            pred_count[new_target] += 1;
-                        }
-                        _ if pred_count[target] == 1 => {
-                            inner_change = true;
-                            let mut stmts = Vec::new();
-                            {
-                                let target_data = &mut mir[target];
-                                mem::swap(&mut stmts, &mut target_data.statements);
-                                mem::swap(&mut terminator, target_data.terminator_mut());
-                            }
-
-                            mir[bb].statements.append(&mut stmts);
-                        }
-                        _ => {}
-                    };
-                }
-
-                for target in terminator.successors_mut() {
-                    let new_target = match final_target(mir, *target) {
-                        Some(new_target) => new_target,
-                        None if mir[bb].statements.is_empty() => bb,
-                        None => continue
-                    };
-                    if *target != new_target {
-                        inner_change = true;
-                        pred_count[*target] -= 1;
-                        pred_count[new_target] += 1;
-                        *target = new_target;
-                    }
-                }
-
-                changed |= inner_change;
-                if !inner_change {
-                    break;
-                }
-            }
-
-            mir[bb].terminator = Some(terminator);
-
-            for succ in mir[bb].terminator().successors().iter() {
-                if seen.insert(succ.index()) {
-                    worklist.push(*succ);
-                }
-            }
-        }
-
-        if !changed {
-            break;
-        }
-    }
+pub struct CfgSimplifier<'a, 'tcx: 'a> {
+    basic_blocks: &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    pred_count: IndexVec<BasicBlock, u32>
 }
 
-// Find the target at the end of the jump chain, return None if there is a loop
-fn final_target(mir: &Mir, mut target: BasicBlock) -> Option<BasicBlock> {
-    // Keep track of already seen blocks to detect loops
-    let mut seen: Vec<BasicBlock> = Vec::with_capacity(8);
+impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
+    fn new(mir: &'a mut Mir<'tcx>) -> Self {
+        let mut pred_count = IndexVec::from_elem(0u32, mir.basic_blocks());
 
-    while mir[target].statements.is_empty() {
-        // NB -- terminator may have been swapped with `None` in
-        // merge_consecutive_blocks, in which case we have a cycle and just want
-        // to stop
-        match mir[target].terminator {
-            Some(Terminator { kind: TerminatorKind::Goto { target: next }, .. }) =>  {
-                if seen.contains(&next) {
-                    return None;
+        // we can't use mir.predecessors() here because that counts
+        // dead blocks, which we don't want to.
+        for (_, data) in traversal::preorder(mir) {
+            if let Some(ref term) = data.terminator {
+                for &tgt in term.successors().iter() {
+                    pred_count[tgt] += 1;
                 }
-                seen.push(next);
-                target = next;
             }
-            _ => break
+        }
+
+        let basic_blocks = mir.basic_blocks_mut();
+
+        CfgSimplifier {
+            basic_blocks: basic_blocks,
+            pred_count: pred_count
         }
     }
 
-    Some(target)
-}
+    fn simplify(mut self) {
+        loop {
+            let mut changed = false;
 
-fn simplify_branches(mir: &mut Mir) {
-    loop {
-        let mut changed = false;
-
-        for (_, basic_block) in mir.basic_blocks_mut().iter_enumerated_mut() {
-            let mut terminator = basic_block.terminator_mut();
-            terminator.kind = match terminator.kind {
-                TerminatorKind::If { ref targets, .. } if targets.0 == targets.1 => {
-                    changed = true;
-                    TerminatorKind::Goto { target: targets.0 }
+            for bb in (0..self.basic_blocks.len()).map(BasicBlock::new) {
+                if self.pred_count[bb] == 0 {
+                    continue
                 }
 
-                TerminatorKind::If { ref targets, cond: Operand::Constant(Constant {
-                    literal: Literal::Value {
-                        value: ConstVal::Bool(cond)
-                    }, ..
-                }) } => {
-                    changed = true;
-                    if cond {
-                        TerminatorKind::Goto { target: targets.0 }
-                    } else {
-                        TerminatorKind::Goto { target: targets.1 }
-                    }
+                debug!("simplifying {:?}", bb);
+
+                let mut terminator = self.basic_blocks[bb].terminator.take()
+                    .expect("invalid terminator state");
+
+                for successor in terminator.successors_mut() {
+                    self.collapse_goto_chain(successor, &mut changed);
                 }
 
-                TerminatorKind::Assert { target, cond: Operand::Constant(Constant {
-                    literal: Literal::Value {
-                        value: ConstVal::Bool(cond)
-                    }, ..
-                }), expected, .. } if cond == expected => {
-                    changed = true;
-                    TerminatorKind::Goto { target: target }
+                let mut new_stmts = vec![];
+                let mut inner_changed = true;
+                while inner_changed {
+                    inner_changed = false;
+                    inner_changed |= self.simplify_branch(&mut terminator);
+                    inner_changed |= self.merge_successor(&mut new_stmts, &mut terminator);
+                    changed |= inner_changed;
                 }
 
-                TerminatorKind::SwitchInt { ref targets, .. } if targets.len() == 1 => {
-                    changed = true;
-                    TerminatorKind::Goto { target: targets[0] }
-                }
-                _ => continue
+                self.basic_blocks[bb].statements.extend(new_stmts);
+                self.basic_blocks[bb].terminator = Some(terminator);
+
+                changed |= inner_changed;
             }
-        }
 
-        if !changed {
-            break;
+            if !changed { break }
         }
+    }
+
+    // Collapse a goto chain starting from `start`
+    fn collapse_goto_chain(&mut self, start: &mut BasicBlock, changed: &mut bool) {
+        let mut terminator = match self.basic_blocks[*start] {
+            BasicBlockData {
+                ref statements,
+                terminator: ref mut terminator @ Some(Terminator {
+                    kind: TerminatorKind::Goto { .. }, ..
+                }), ..
+            } if statements.is_empty() => terminator.take(),
+            // if `terminator` is None, this means we are in a loop. In that
+            // case, let all the loop collapse to its entry.
+            _ => return
+        };
+
+        let target = match terminator {
+            Some(Terminator { kind: TerminatorKind::Goto { ref mut target }, .. }) => {
+                self.collapse_goto_chain(target, changed);
+                *target
+            }
+            _ => unreachable!()
+        };
+        self.basic_blocks[*start].terminator = terminator;
+
+        debug!("collapsing goto chain from {:?} to {:?}", *start, target);
+
+        *changed |= *start != target;
+        self.pred_count[target] += 1;
+        self.pred_count[*start] -= 1;
+        *start = target;
+    }
+
+    // merge a block with 1 `goto` predecessor to its parent
+    fn merge_successor(&mut self,
+                       new_stmts: &mut Vec<Statement<'tcx>>,
+                       terminator: &mut Terminator<'tcx>)
+                       -> bool
+    {
+        let target = match terminator.kind {
+            TerminatorKind::Goto { target }
+                if self.pred_count[target] == 1
+                => target,
+            _ => return false
+        };
+
+        debug!("merging block {:?} into {:?}", target, terminator);
+        *terminator = match self.basic_blocks[target].terminator.take() {
+            Some(terminator) => terminator,
+            None => {
+                // unreachable loop - this should not be possible, as we
+                // don't strand blocks, but handle it correctly.
+                return false
+            }
+        };
+        new_stmts.extend(self.basic_blocks[target].statements.drain(..));
+        self.pred_count[target] = 0;
+
+        true
+    }
+
+    // turn a branch with all successors identical to a goto
+    fn simplify_branch(&mut self, terminator: &mut Terminator<'tcx>) -> bool {
+        match terminator.kind {
+            TerminatorKind::If { .. } |
+            TerminatorKind::Switch { .. } |
+            TerminatorKind::SwitchInt { .. } => {},
+            _ => return false
+        };
+
+        let first_succ = {
+            let successors = terminator.successors();
+            if let Some(&first_succ) = terminator.successors().get(0) {
+                if successors.iter().all(|s| *s == first_succ) {
+                    self.pred_count[first_succ] -= (successors.len()-1) as u32;
+                    first_succ
+                } else {
+                    return false
+                }
+            } else {
+                return false
+            }
+        };
+
+        debug!("simplifying branch {:?}", terminator);
+        terminator.kind = TerminatorKind::Goto { target: first_succ };
+        true
     }
 }
 
