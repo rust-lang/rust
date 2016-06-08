@@ -173,15 +173,149 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
 
     fn call(&mut self, mir: &mir::Mir<'tcx>, def_id: DefId) -> EvalResult<Option<Pointer>> {
         let substs = self.tcx.mk_substs(subst::Substs::empty());
+        let return_ptr = self.alloc_ret_ptr(mir.return_ty, substs);
 
         let mut nested_fecx = FnEvalContext::new(self);
 
         nested_fecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, None);
-        let return_ptr = nested_fecx.alloc_ret_ptr(mir.return_ty);
+
         nested_fecx.frame_mut().return_ptr = return_ptr;
 
         nested_fecx.run()?;
         Ok(return_ptr)
+    }
+
+    fn alloc_ret_ptr(&mut self, ty: ty::FnOutput<'tcx>, substs: &'tcx Substs<'tcx>) -> Option<Pointer> {
+        match ty {
+            ty::FnConverging(ty) => {
+                let size = self.type_size(ty, substs);
+                Some(self.memory.allocate(size))
+            }
+            ty::FnDiverging => None,
+        }
+    }
+    // TODO(solson): Try making const_to_primval instead.
+    fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<Pointer> {
+        use rustc::middle::const_val::ConstVal::*;
+        match *const_val {
+            Float(_f) => unimplemented!(),
+            Integral(int) => {
+                // TODO(solson): Check int constant type.
+                let ptr = self.memory.allocate(8);
+                self.memory.write_uint(ptr, int.to_u64_unchecked(), 8)?;
+                Ok(ptr)
+            }
+            Str(ref s) => {
+                let psize = self.memory.pointer_size;
+                let static_ptr = self.memory.allocate(s.len());
+                let ptr = self.memory.allocate(psize * 2);
+                self.memory.write_bytes(static_ptr, s.as_bytes())?;
+                self.memory.write_ptr(ptr, static_ptr)?;
+                self.memory.write_usize(ptr.offset(psize as isize), s.len() as u64)?;
+                Ok(ptr)
+            }
+            ByteStr(ref bs) => {
+                let psize = self.memory.pointer_size;
+                let static_ptr = self.memory.allocate(bs.len());
+                let ptr = self.memory.allocate(psize);
+                self.memory.write_bytes(static_ptr, bs)?;
+                self.memory.write_ptr(ptr, static_ptr)?;
+                Ok(ptr)
+            }
+            Bool(b) => {
+                let ptr = self.memory.allocate(1);
+                self.memory.write_bool(ptr, b)?;
+                Ok(ptr)
+            }
+            Char(_c)          => unimplemented!(),
+            Struct(_node_id)  => unimplemented!(),
+            Tuple(_node_id)   => unimplemented!(),
+            Function(_def_id) => unimplemented!(),
+            Array(_, _)       => unimplemented!(),
+            Repeat(_, _)      => unimplemented!(),
+            Dummy             => unimplemented!(),
+        }
+    }
+
+    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
+        self.tcx.type_needs_drop_given_env(ty, &self.tcx.empty_parameter_environment())
+    }
+
+    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
+        ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
+    }
+
+    fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
+        // Do the initial selection for the obligation. This yields the shallow result we are
+        // looking for -- that is, what specific impl.
+        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+            let mut selcx = traits::SelectionContext::new(&infcx);
+
+            let obligation = traits::Obligation::new(
+                traits::ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID),
+                trait_ref.to_poly_trait_predicate(),
+            );
+            let selection = selcx.select(&obligation).unwrap().unwrap();
+
+            // Currently, we use a fulfillment context to completely resolve all nested obligations.
+            // This is because they can inform the inference of the impl's type parameters.
+            let mut fulfill_cx = traits::FulfillmentContext::new();
+            let vtable = selection.map(|predicate| {
+                fulfill_cx.register_predicate_obligation(&infcx, predicate);
+            });
+            infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &vtable)
+        })
+    }
+
+    /// Trait method, which has to be resolved to an impl method.
+    pub fn trait_method(
+        &self,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>
+    ) -> (DefId, &'tcx Substs<'tcx>) {
+        let method_item = self.tcx.impl_or_trait_item(def_id);
+        let trait_id = method_item.container().id();
+        let trait_ref = ty::Binder(substs.to_trait_ref(self.tcx, trait_id));
+        match self.fulfill_obligation(trait_ref) {
+            traits::VtableImpl(vtable_impl) => {
+                let impl_did = vtable_impl.impl_def_id;
+                let mname = self.tcx.item_name(def_id);
+                // Create a concatenated set of substitutions which includes those from the impl
+                // and those from the method:
+                let impl_substs = vtable_impl.substs.with_method_from(substs);
+                let substs = self.tcx.mk_substs(impl_substs);
+                let mth = get_impl_method(self.tcx, impl_did, substs, mname);
+
+                (mth.method.def_id, mth.substs)
+            }
+
+            traits::VtableClosure(vtable_closure) =>
+                (vtable_closure.closure_def_id, vtable_closure.substs.func_substs),
+
+            traits::VtableFnPointer(_fn_ty) => {
+                let _trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+                unimplemented!()
+                // let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, fn_ty);
+
+                // let method_ty = def_ty(tcx, def_id, substs);
+                // let fn_ptr_ty = match method_ty.sty {
+                //     ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
+                //     _ => unreachable!("expected fn item type, found {}",
+                //                       method_ty)
+                // };
+                // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
+            }
+
+            traits::VtableObject(ref _data) => {
+                unimplemented!()
+                // Callee {
+                //     data: Virtual(traits::get_vtable_index_of_object_method(
+                //                   tcx, data, def_id)),
+                //                   ty: def_ty(tcx, def_id, substs)
+                // }
+            }
+            vtable => unreachable!("resolved vtable bad vtable {:?} in trans", vtable),
+        }
     }
 }
 
@@ -193,33 +327,36 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         }
     }
 
-    fn alloc_ret_ptr(&mut self, ty: ty::FnOutput<'tcx>) -> Option<Pointer> {
-        match ty {
-            ty::FnConverging(ty) => {
-                let size = self.type_size(ty);
-                Some(self.memory.allocate(size))
+    #[inline(never)]
+    #[cold]
+    fn report(&self, e: &EvalError) {
+        let stmt = self.frame().stmt;
+        let block = self.basic_block();
+        let span = if stmt < block.statements.len() {
+            block.statements[stmt].span
+        } else {
+            block.terminator().span
+        };
+        let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
+        for &Frame{ def_id, substs, span, .. } in self.stack.iter().rev() {
+            // FIXME(solson): Find a way to do this without this Display impl hack.
+            use rustc::util::ppaux;
+            use std::fmt;
+            struct Instance<'tcx>(DefId, &'tcx Substs<'tcx>);
+            impl<'tcx> fmt::Display for Instance<'tcx> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[],
+                        |tcx| tcx.lookup_item_type(self.0).generics)
+                }
             }
-            ty::FnDiverging => None,
+            err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
         }
+        err.emit();
     }
 
-    fn maybe_report<T>(&self, span: codemap::Span, r: EvalResult<T>) -> EvalResult<T> {
+    fn maybe_report<T>(&self, r: EvalResult<T>) -> EvalResult<T> {
         if let Err(ref e) = r {
-            let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
-            for &Frame{ def_id, substs, span, .. } in self.stack.iter().rev() {
-                // FIXME(solson): Find a way to do this without this Display impl hack.
-                use rustc::util::ppaux;
-                use std::fmt;
-                struct Instance<'tcx>(DefId, &'tcx Substs<'tcx>);
-                impl<'tcx> fmt::Display for Instance<'tcx> {
-                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                        ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[],
-                            |tcx| tcx.lookup_item_type(self.0).generics)
-                    }
-                }
-                err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
-            }
-            err.emit();
+            self.report(e);
         }
         r
     }
@@ -1315,79 +1452,6 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 mir_cache.insert(def_id, cached.clone());
                 CachedMir::Owned(cached)
             }
-        }
-    }
-
-    fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
-        // Do the initial selection for the obligation. This yields the shallow result we are
-        // looking for -- that is, what specific impl.
-        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
-            let mut selcx = traits::SelectionContext::new(&infcx);
-
-            let obligation = traits::Obligation::new(
-                traits::ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID),
-                trait_ref.to_poly_trait_predicate(),
-            );
-            let selection = selcx.select(&obligation).unwrap().unwrap();
-
-            // Currently, we use a fulfillment context to completely resolve all nested obligations.
-            // This is because they can inform the inference of the impl's type parameters.
-            let mut fulfill_cx = traits::FulfillmentContext::new();
-            let vtable = selection.map(|predicate| {
-                fulfill_cx.register_predicate_obligation(&infcx, predicate);
-            });
-            infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &vtable)
-        })
-    }
-
-    /// Trait method, which has to be resolved to an impl method.
-    pub fn trait_method(
-        &self,
-        def_id: DefId,
-        substs: &'tcx Substs<'tcx>
-    ) -> (DefId, &'tcx Substs<'tcx>) {
-        let method_item = self.tcx.impl_or_trait_item(def_id);
-        let trait_id = method_item.container().id();
-        let trait_ref = ty::Binder(substs.to_trait_ref(self.tcx, trait_id));
-        match self.fulfill_obligation(trait_ref) {
-            traits::VtableImpl(vtable_impl) => {
-                let impl_did = vtable_impl.impl_def_id;
-                let mname = self.tcx.item_name(def_id);
-                // Create a concatenated set of substitutions which includes those from the impl
-                // and those from the method:
-                let impl_substs = vtable_impl.substs.with_method_from(substs);
-                let substs = self.tcx.mk_substs(impl_substs);
-                let mth = get_impl_method(self.tcx, impl_did, substs, mname);
-
-                (mth.method.def_id, mth.substs)
-            }
-
-            traits::VtableClosure(vtable_closure) =>
-                (vtable_closure.closure_def_id, vtable_closure.substs.func_substs),
-
-            traits::VtableFnPointer(_fn_ty) => {
-                let _trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
-                unimplemented!()
-                // let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, fn_ty);
-
-                // let method_ty = def_ty(tcx, def_id, substs);
-                // let fn_ptr_ty = match method_ty.sty {
-                //     ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
-                //     _ => unreachable!("expected fn item type, found {}",
-                //                       method_ty)
-                // };
-                // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
-            }
-
-            traits::VtableObject(ref _data) => {
-                unimplemented!()
-                // Callee {
-                //     data: Virtual(traits::get_vtable_index_of_object_method(
-                //                   tcx, data, def_id)),
-                //                   ty: def_ty(tcx, def_id, substs)
-                // }
-            }
-            vtable => unreachable!("resolved vtable bad vtable {:?} in trans", vtable),
         }
     }
 }
