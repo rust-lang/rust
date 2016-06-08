@@ -362,7 +362,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::Switch {..} |
                 TerminatorKind::SwitchInt {..} |
                 TerminatorKind::DropAndReplace { .. } |
-                TerminatorKind::Resume => None,
+                TerminatorKind::Resume |
+                TerminatorKind::Unreachable => None,
 
                 TerminatorKind::Return => {
                     // Check for unused values. This usually means

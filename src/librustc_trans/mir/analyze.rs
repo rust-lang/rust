@@ -173,6 +173,7 @@ pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
                 TerminatorKind::Goto { .. } |
                 TerminatorKind::Resume |
                 TerminatorKind::Return |
+                TerminatorKind::Unreachable |
                 TerminatorKind::If { .. } |
                 TerminatorKind::Switch { .. } |
                 TerminatorKind::SwitchInt { .. } => {

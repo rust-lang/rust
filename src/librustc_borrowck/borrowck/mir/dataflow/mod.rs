@@ -449,7 +449,8 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
     {
         match bb_data.terminator().kind {
             repr::TerminatorKind::Return |
-            repr::TerminatorKind::Resume => {}
+            repr::TerminatorKind::Resume |
+            repr::TerminatorKind::Unreachable => {}
             repr::TerminatorKind::Goto { ref target } |
             repr::TerminatorKind::Assert { ref target, cleanup: None, .. } |
             repr::TerminatorKind::Drop { ref target, location: _, unwind: None } |
