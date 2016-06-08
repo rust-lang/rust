@@ -151,7 +151,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            terminator: &'a Option<repr::Terminator<'tcx>>)
                            -> Option<(&'a [repr::Operand<'tcx>], Span)> {
-    if let Some(repr::Terminator { ref kind, span, .. }) = *terminator {
+    if let Some(repr::Terminator { ref kind, source_info, .. }) = *terminator {
         if let repr::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind
         {
             if let repr::Operand::Constant(ref func) = *oper
@@ -161,7 +161,7 @@ fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let name = tcx.item_name(def_id);
                     if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
                         if name.as_str() == "rustc_peek" {
-                            return Some((args, span));
+                            return Some((args, source_info.span));
                         }
                     }
                 }

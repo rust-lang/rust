@@ -41,12 +41,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         debug!("expr_as_rvalue(block={:?}, expr={:?})", block, expr);
 
         let this = self;
-        let scope_id = this.innermost_scope_id();
         let expr_span = expr.span;
+        let source_info = this.source_info(expr_span);
 
         match expr.kind {
             ExprKind::Scope { extent, value } => {
-                this.in_scope(extent, block, |this, _| this.as_rvalue(block, value))
+                this.in_scope(extent, block, |this| this.as_rvalue(block, value))
             }
             ExprKind::InlineAsm { asm, outputs, inputs } => {
                 let outputs = outputs.into_iter().map(|output| {
@@ -86,7 +86,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let minval = this.minval_literal(expr_span, expr.ty);
                     let is_min = this.temp(bool_ty);
 
-                    this.cfg.push_assign(block, scope_id, expr_span, &is_min,
+                    this.cfg.push_assign(block, source_info, &is_min,
                                          Rvalue::BinaryOp(BinOp::Eq, arg.clone(), minval));
 
                     let err = ConstMathErr::Overflow(Op::Neg);
@@ -99,8 +99,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let value = this.hir.mirror(value);
                 let result = this.temp(expr.ty);
                 // to start, malloc some memory of suitable type (thus far, uninitialized):
-                this.cfg.push_assign(block, scope_id, expr_span, &result, Rvalue::Box(value.ty));
-                this.in_scope(value_extents, block, |this, _| {
+                this.cfg.push_assign(block, source_info, &result, Rvalue::Box(value.ty));
+                this.in_scope(value_extents, block, |this| {
                     // schedule a shallow free of that memory, lest we unwind:
                     this.schedule_box_free(expr_span, value_extents, &result, value.ty);
                     // initialize the box contents:
@@ -245,13 +245,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn build_binary_op(&mut self, mut block: BasicBlock,
                            op: BinOp, span: Span, ty: ty::Ty<'tcx>,
                            lhs: Operand<'tcx>, rhs: Operand<'tcx>) -> BlockAnd<Rvalue<'tcx>> {
-        let scope_id = self.innermost_scope_id();
+        let source_info = self.source_info(span);
         let bool_ty = self.hir.bool_ty();
         if self.hir.check_overflow() && op.is_checkable() && ty.is_integral() {
             let result_tup = self.hir.tcx().mk_tup(vec![ty, bool_ty]);
             let result_value = self.temp(result_tup);
 
-            self.cfg.push_assign(block, scope_id, span,
+            self.cfg.push_assign(block, source_info,
                                  &result_value, Rvalue::CheckedBinaryOp(op,
                                                                         lhs,
                                                                         rhs));
@@ -292,7 +292,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Check for / 0
                 let is_zero = self.temp(bool_ty);
                 let zero = self.zero_literal(span, ty);
-                self.cfg.push_assign(block, scope_id, span, &is_zero,
+                self.cfg.push_assign(block, source_info, &is_zero,
                                      Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), zero));
 
                 block = self.assert(block, Operand::Consume(is_zero), false,
@@ -310,14 +310,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                     // this does (rhs == -1) & (lhs == MIN). It could short-circuit instead
 
-                    self.cfg.push_assign(block, scope_id, span, &is_neg_1,
+                    self.cfg.push_assign(block, source_info, &is_neg_1,
                                          Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), neg_1));
-                    self.cfg.push_assign(block, scope_id, span, &is_min,
+                    self.cfg.push_assign(block, source_info, &is_min,
                                          Rvalue::BinaryOp(BinOp::Eq, lhs.clone(), min));
 
                     let is_neg_1 = Operand::Consume(is_neg_1);
                     let is_min = Operand::Consume(is_min);
-                    self.cfg.push_assign(block, scope_id, span, &of,
+                    self.cfg.push_assign(block, source_info, &of,
                                          Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min));
 
                     block = self.assert(block, Operand::Consume(of), false,

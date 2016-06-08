@@ -247,11 +247,10 @@
 // lldb-command:continue
 
 #![allow(dead_code, unused_assignments, unused_variables)]
-#![feature(omit_gdb_pretty_printer_section, rustc_attrs)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 #[no_stack_check]
-#[rustc_no_mir] // FIXME(#32949) MIR debuginfo shadows arguments with uninit vars.
 fn immediate_args(a: isize, b: bool, c: f64) {
     println!("");
 }
@@ -268,51 +267,43 @@ struct BigStruct {
 }
 
 #[no_stack_check]
-#[rustc_no_mir] // FIXME(#32949) MIR debuginfo shadows arguments with uninit vars.
 fn non_immediate_args(a: BigStruct, b: BigStruct) {
     println!("");
 }
 
 #[no_stack_check]
-#[rustc_no_mir] // FIXME(#32949) MIR debuginfo shadows arguments with uninit vars.
 fn binding(a: i64, b: u64, c: f64) {
     let x = 0;
     println!("");
 }
 
 #[no_stack_check]
-#[rustc_no_mir] // FIXME(#32949) MIR debuginfo shadows arguments with uninit vars.
 fn assignment(mut a: u64, b: u64, c: f64) {
     a = b;
     println!("");
 }
 
 #[no_stack_check]
-#[rustc_no_mir] // FIXME(#32949) MIR debuginfo shadows arguments with uninit vars.
 fn function_call(x: u64, y: u64, z: f64) {
     println!("Hi!")
 }
 
 #[no_stack_check]
-#[rustc_no_mir] // FIXME(#32949) MIR debuginfo shadows arguments with uninit vars.
 fn identifier(x: u64, y: u64, z: f64) -> u64 {
     x
 }
 
 #[no_stack_check]
-#[rustc_no_mir] // FIXME(#32949) MIR debuginfo shadows arguments with uninit vars.
 fn return_expr(x: u64, y: u64, z: f64) -> u64 {
     return x;
 }
 
 #[no_stack_check]
-#[rustc_no_mir] // FIXME(#32949) MIR debuginfo shadows arguments with uninit vars.
 fn arithmetic_expr(x: u64, y: u64, z: f64) -> u64 {
     x + y
 }
 
 #[no_stack_check]
-#[rustc_no_mir] // FIXME(#32949) MIR debuginfo shadows arguments with uninit vars.
 fn if_expr(x: u64, y: u64, z: f64) -> u64 {
     if x + y < 1000 {
         x
@@ -322,7 +313,6 @@ fn if_expr(x: u64, y: u64, z: f64) -> u64 {
 }
 
 #[no_stack_check]
-#[rustc_no_mir] // FIXME(#32949) MIR debuginfo shadows arguments with uninit vars.
 fn while_expr(mut x: u64, y: u64, z: u64) -> u64 {
     while x + y < 1000 {
         x += z
@@ -331,7 +321,6 @@ fn while_expr(mut x: u64, y: u64, z: u64) -> u64 {
 }
 
 #[no_stack_check]
-#[rustc_no_mir] // FIXME(#32949) MIR debuginfo shadows arguments with uninit vars.
 fn loop_expr(mut x: u64, y: u64, z: u64) -> u64 {
     loop {
         x += z;

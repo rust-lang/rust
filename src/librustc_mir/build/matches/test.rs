@@ -176,7 +176,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         lvalue: &Lvalue<'tcx>,
                         test: &Test<'tcx>)
                         -> Vec<BasicBlock> {
-        let scope_id = self.innermost_scope_id();
+        let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
                 let num_enum_variants = self.hir.num_variants(adt_def);
@@ -193,7 +193,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }).collect();
                 debug!("num_enum_variants: {}, num tested variants: {}, variants: {:?}",
                        num_enum_variants, variants.iter().count(), variants);
-                self.cfg.terminate(block, scope_id, test.span, TerminatorKind::Switch {
+                self.cfg.terminate(block, source_info, TerminatorKind::Switch {
                     discr: lvalue.clone(),
                     adt_def: adt_def,
                     targets: target_blocks.clone()
@@ -245,10 +245,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                self.cfg.terminate(block,
-                                   scope_id,
-                                   test.span,
-                                   term);
+                self.cfg.terminate(block, source_info, term);
                 targets
             }
 
@@ -265,7 +262,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         if let ty::TyArray(_, _) = mt.ty.sty {
                             ty = tcx.mk_imm_ref(region, tcx.mk_slice(tcx.types.u8));
                             let val_slice = self.temp(ty);
-                            self.cfg.push_assign(block, scope_id, test.span, &val_slice,
+                            self.cfg.push_assign(block, source_info, &val_slice,
                                                  Rvalue::Cast(CastKind::Unsize, val, ty));
                             val = Operand::Consume(val_slice);
                         }
@@ -280,7 +277,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     });
 
                     let slice = self.temp(ty);
-                    self.cfg.push_assign(block, scope_id, test.span, &slice,
+                    self.cfg.push_assign(block, source_info, &slice,
                                          Rvalue::Cast(CastKind::Unsize, array, ty));
                     Operand::Consume(slice)
                 } else {
@@ -301,7 +298,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let eq_result = self.temp(bool_ty);
                     let eq_block = self.cfg.start_new_block();
                     let cleanup = self.diverge_cleanup();
-                    self.cfg.terminate(block, scope_id, test.span, TerminatorKind::Call {
+                    self.cfg.terminate(block, source_info, TerminatorKind::Call {
                         func: Operand::Constant(Constant {
                             span: test.span,
                             ty: mty,
@@ -314,7 +311,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                     // check the result
                     let block = self.cfg.start_new_block();
-                    self.cfg.terminate(eq_block, scope_id, test.span, TerminatorKind::If {
+                    self.cfg.terminate(eq_block, source_info, TerminatorKind::If {
                         cond: Operand::Consume(eq_result),
                         targets: (block, fail),
                     });
@@ -344,17 +341,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let (actual, result) = (self.temp(usize_ty), self.temp(bool_ty));
 
                 // actual = len(lvalue)
-                self.cfg.push_assign(block, scope_id, test.span,
+                self.cfg.push_assign(block, source_info,
                                      &actual, Rvalue::Len(lvalue.clone()));
 
                 // expected = <N>
-                let expected = self.push_usize(block, scope_id, test.span, len);
+                let expected = self.push_usize(block, source_info, len);
 
                 // result = actual == expected OR result = actual < expected
-                self.cfg.push_assign(block,
-                                     scope_id,
-                                     test.span,
-                                     &result,
+                self.cfg.push_assign(block, source_info, &result,
                                      Rvalue::BinaryOp(op,
                                                       Operand::Consume(actual),
                                                       Operand::Consume(expected)));
@@ -362,7 +356,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // branch based on result
                 let target_blocks: Vec<_> = vec![self.cfg.start_new_block(),
                                                  self.cfg.start_new_block()];
-                self.cfg.terminate(block, scope_id, test.span, TerminatorKind::If {
+                self.cfg.terminate(block, source_info, TerminatorKind::If {
                     cond: Operand::Consume(result),
                     targets: (target_blocks[0], target_blocks[1])
                 });
@@ -383,13 +377,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let result = self.temp(bool_ty);
 
         // result = op(left, right)
-        let scope_id = self.innermost_scope_id();
-        self.cfg.push_assign(block, scope_id, span, &result,
+        let source_info = self.source_info(span);
+        self.cfg.push_assign(block, source_info, &result,
                              Rvalue::BinaryOp(op, left, right));
 
         // branch based on result
         let target_block = self.cfg.start_new_block();
-        self.cfg.terminate(block, scope_id, span, TerminatorKind::If {
+        self.cfg.terminate(block, source_info, TerminatorKind::If {
             cond: Operand::Consume(result),
             targets: (target_block, fail_block)
         });

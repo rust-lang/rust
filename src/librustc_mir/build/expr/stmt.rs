@@ -20,18 +20,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn stmt_expr(&mut self, mut block: BasicBlock, expr: Expr<'tcx>) -> BlockAnd<()> {
         let this = self;
         let expr_span = expr.span;
-        let scope_id = this.innermost_scope_id();
+        let source_info = this.source_info(expr.span);
         // Handle a number of expressions that don't need a destination at all. This
         // avoids needing a mountain of temporary `()` variables.
         match expr.kind {
             ExprKind::Scope { extent, value } => {
                 let value = this.hir.mirror(value);
-                this.in_scope(extent, block, |this, _| this.stmt_expr(block, value))
+                this.in_scope(extent, block, |this| this.stmt_expr(block, value))
             }
             ExprKind::Assign { lhs, rhs } => {
                 let lhs = this.hir.mirror(lhs);
                 let rhs = this.hir.mirror(rhs);
-                let scope_id = this.innermost_scope_id();
                 let lhs_span = lhs.span;
 
                 // Note: we evaluate assignments right-to-left. This
@@ -50,7 +49,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 } else {
                     let rhs = unpack!(block = this.as_rvalue(block, rhs));
                     let lhs = unpack!(block = this.as_lvalue(block, lhs));
-                    this.cfg.push_assign(block, scope_id, expr_span, &lhs, rhs);
+                    this.cfg.push_assign(block, source_info, &lhs, rhs);
                     block.unit()
                 }
             }
@@ -75,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // (overloaded ops should be desugared into a call).
                 let result = unpack!(block = this.build_binary_op(block, op, expr_span, lhs_ty,
                                                   Operand::Consume(lhs.clone()), rhs));
-                this.cfg.push_assign(block, scope_id, expr_span, &lhs, result);
+                this.cfg.push_assign(block, source_info, &lhs, result);
 
                 block.unit()
             }
@@ -93,8 +92,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block = match value {
                     Some(value) => unpack!(this.into(&Lvalue::ReturnPointer, block, value)),
                     None => {
-                        this.cfg.push_assign_unit(block, scope_id,
-                                                  expr_span, &Lvalue::ReturnPointer);
+                        this.cfg.push_assign_unit(block, source_info, &Lvalue::ReturnPointer);
                         block
                     }
                 };
@@ -104,7 +102,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.cfg.start_new_block().unit()
             }
             _ => {
-                let expr_span = expr.span;
                 let expr_ty = expr.ty;
                 let temp = this.temp(expr.ty.clone());
                 unpack!(block = this.into(&temp, block, expr));

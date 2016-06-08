@@ -15,6 +15,7 @@ use rustc::mir::repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc::hir;
 use std::ops::{Index, IndexMut};
+use std::u32;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -43,7 +44,8 @@ pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     /// the vector of all scopes that we have created thus far;
     /// we track this for debuginfo later
-    scope_datas: Vec<ScopeData>,
+    visibility_scopes: Vec<VisibilityScopeData>,
+    visibility_scope: VisibilityScope,
 
     var_decls: Vec<VarDecl<'tcx>>,
     var_indices: FnvHashMap<ast::NodeId, u32>,
@@ -59,6 +61,20 @@ pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 struct CFG<'tcx> {
     basic_blocks: Vec<BasicBlockData<'tcx>>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct ScopeId(u32);
+
+impl ScopeId {
+    pub fn new(index: usize) -> ScopeId {
+        assert!(index < (u32::MAX as usize));
+        ScopeId(index as u32)
+    }
+
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
 }
 
 /// For each scope, we track the extent (from the HIR) and a
@@ -179,17 +195,16 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         tcx.region_maps.lookup_code_extent(
             CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body_id });
     let mut block = START_BLOCK;
-    let mut arg_decls = unpack!(block = builder.in_scope(call_site_extent, block,
-                                                         |builder, call_site_scope_id| {
-        let arg_decls = unpack!(block = builder.in_scope(arg_extent, block,
-                                                         |builder, arg_scope_id| {
-            builder.args_and_body(block, return_ty, arguments, arg_scope_id, ast_block)
+    let mut arg_decls = unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
+        let arg_decls = unpack!(block = builder.in_scope(arg_extent, block, |builder| {
+            builder.args_and_body(block, return_ty, arguments, arg_extent, ast_block)
         }));
 
+        let source_info = builder.source_info(span);
         let return_block = builder.return_block();
-        builder.cfg.terminate(block, call_site_scope_id, span,
+        builder.cfg.terminate(block, source_info,
                               TerminatorKind::Goto { target: return_block });
-        builder.cfg.terminate(return_block, call_site_scope_id, span,
+        builder.cfg.terminate(return_block, source_info,
                               TerminatorKind::Return);
         return_block.and(arg_decls)
     }));
@@ -241,14 +256,15 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
 
     let extent = ROOT_CODE_EXTENT;
     let mut block = START_BLOCK;
-    let _ = builder.in_scope(extent, block, |builder, call_site_scope_id| {
+    let _ = builder.in_scope(extent, block, |builder| {
         let expr = builder.hir.mirror(ast_expr);
         unpack!(block = builder.into(&Lvalue::ReturnPointer, block, expr));
 
+        let source_info = builder.source_info(span);
         let return_block = builder.return_block();
-        builder.cfg.terminate(block, call_site_scope_id, span,
+        builder.cfg.terminate(block, source_info,
                               TerminatorKind::Goto { target: return_block });
-        builder.cfg.terminate(return_block, call_site_scope_id, span,
+        builder.cfg.terminate(return_block, source_info,
                               TerminatorKind::Return);
 
         return_block.unit()
@@ -265,7 +281,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             cfg: CFG { basic_blocks: vec![] },
             fn_span: span,
             scopes: vec![],
-            scope_datas: vec![],
+            visibility_scopes: vec![],
+            visibility_scope: ARGUMENT_VISIBILITY_SCOPE,
             scope_auxiliary: ScopeAuxiliaryVec { vec: vec![] },
             loop_scopes: vec![],
             temp_decls: vec![],
@@ -277,6 +294,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
+        assert_eq!(builder.new_visibility_scope(span), ARGUMENT_VISIBILITY_SCOPE);
+        builder.visibility_scopes[ARGUMENT_VISIBILITY_SCOPE].parent_scope = None;
 
         builder
     }
@@ -294,7 +313,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         (Mir {
             basic_blocks: self.cfg.basic_blocks,
-            scopes: self.scope_datas,
+            visibility_scopes: self.visibility_scopes,
             promoted: vec![],
             var_decls: self.var_decls,
             arg_decls: arg_decls,
@@ -309,24 +328,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         mut block: BasicBlock,
                         return_ty: ty::FnOutput<'tcx>,
                         arguments: A,
-                        argument_scope_id: ScopeId,
+                        argument_extent: CodeExtent,
                         ast_block: &'gcx hir::Block)
                         -> BlockAnd<Vec<ArgDecl<'tcx>>>
         where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
     {
         // to start, translate the argument patterns and collect the argument types.
+        let mut scope = None;
         let arg_decls = arguments.enumerate().map(|(index, (ty, pattern))| {
             let lvalue = Lvalue::Arg(index as u32);
             if let Some(pattern) = pattern {
                 let pattern = self.hir.irrefutable_pat(pattern);
-                unpack!(block = self.lvalue_into_pattern(block,
-                                                         argument_scope_id,
-                                                         pattern,
-                                                         &lvalue));
+                scope = self.declare_bindings(scope, ast_block.span, &pattern);
+                unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
             }
 
             // Make sure we drop (parts of) the argument even when not matched on.
-            let argument_extent = self.scope_auxiliary[argument_scope_id].extent;
             self.schedule_drop(pattern.as_ref().map_or(ast_block.span, |pat| pat.span),
                                argument_extent, &lvalue, ty);
 
@@ -343,6 +360,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 debug_name: name
             }
         }).collect();
+
+        // Enter the argument pattern bindings visibility scope, if it exists.
+        if let Some(visibility_scope) = scope {
+            self.visibility_scope = visibility_scope;
+        }
 
         // FIXME(#32959): temporary hack for the issue at hand
         let return_is_unit = if let ty::FnConverging(t) = return_ty {

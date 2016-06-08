@@ -11,7 +11,6 @@
 use super::gather_moves::Location;
 use rustc::ty::Ty;
 use rustc::mir::repr::*;
-use syntax::codemap::Span;
 
 use std::iter;
 use std::u32;
@@ -62,8 +61,10 @@ impl<'tcx> MirPatch<'tcx> {
             result.new_block(BasicBlockData {
                 statements: vec![],
                 terminator: Some(Terminator {
-                    span: mir.span,
-                    scope: ScopeId::new(0),
+                    source_info: SourceInfo {
+                        span: mir.span,
+                        scope: ARGUMENT_VISIBILITY_SCOPE
+                    },
                     kind: TerminatorKind::Resume
                 }),
                 is_cleanup: true
@@ -154,31 +155,30 @@ impl<'tcx> MirPatch<'tcx> {
             debug!("MirPatch: adding statement {:?} at loc {:?}+{}",
                    stmt, loc, delta);
             loc.index += delta;
-            let (span, scope) = Self::context_for_index(
+            let source_info = Self::source_info_for_index(
                 mir.basic_block_data(loc.block), loc
             );
             mir.basic_block_data_mut(loc.block).statements.insert(
                 loc.index, Statement {
-                    span: span,
-                    scope: scope,
+                    source_info: source_info,
                     kind: stmt
                 });
             delta += 1;
         }
     }
 
-    pub fn context_for_index(data: &BasicBlockData, loc: Location) -> (Span, ScopeId) {
+    pub fn source_info_for_index(data: &BasicBlockData, loc: Location) -> SourceInfo {
         match data.statements.get(loc.index) {
-            Some(stmt) => (stmt.span, stmt.scope),
-            None => (data.terminator().span, data.terminator().scope)
+            Some(stmt) => stmt.source_info,
+            None => data.terminator().source_info
         }
     }
 
-    pub fn context_for_location(&self, mir: &Mir, loc: Location) -> (Span, ScopeId) {
+    pub fn source_info_for_location(&self, mir: &Mir, loc: Location) -> SourceInfo {
         let data = match loc.block.index().checked_sub(mir.basic_blocks.len()) {
             Some(new) => &self.new_blocks[new],
             None => mir.basic_block_data(loc.block)
         };
-        Self::context_for_index(data, loc)
+        Self::source_info_for_index(data, loc)
     }
 }

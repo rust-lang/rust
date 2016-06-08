@@ -106,8 +106,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let terminator = data.terminator();
         debug!("trans_block: terminator: {:?}", terminator);
 
-        let debug_loc = DebugLoc::ScopeAt(self.scopes[terminator.scope.index()],
-                                          terminator.span);
+        let span = terminator.source_info.span;
+        let debug_loc = self.debug_loc(terminator.source_info);
         debug_loc.apply_to_bcx(&bcx);
         debug_loc.apply(bcx.fcx());
         match terminator.kind {
@@ -245,7 +245,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 bcx = panic_block.build();
 
                 // Get the location information.
-                let loc = bcx.sess().codemap().lookup_char_pos(terminator.span.lo);
+                let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
                 let filename = token::intern_and_get_ident(&loc.file.name);
                 let filename = C_str_slice(bcx.ccx(), filename);
                 let line = C_u32(bcx.ccx(), loc.line as u32);
@@ -296,15 +296,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // is also constant, then we can produce a warning.
                 if const_cond == Some(!expected) {
                     if let Some(err) = const_err {
-                        let _ = consts::const_err(bcx.ccx(),
-                                                  terminator.span,
+                        let _ = consts::const_err(bcx.ccx(), span,
                                                   Err::<(), _>(err),
                                                   consts::TrueConst::No);
                     }
                 }
 
                 // Obtain the panic entry point.
-                let def_id = common::langcall(bcx.tcx(), Some(terminator.span), "", lang_item);
+                let def_id = common::langcall(bcx.tcx(), Some(span), "", lang_item);
                 let callee = Callee::def(bcx.ccx(), def_id,
                     bcx.ccx().empty_substs_for_def_id(def_id));
                 let llfn = callee.reify(bcx.ccx()).val;
@@ -417,8 +416,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     if is_shuffle && idx == 2 {
                         match *arg {
                             mir::Operand::Consume(_) => {
-                                span_bug!(terminator.span,
-                                          "shuffle indices must be constant");
+                                span_bug!(span, "shuffle indices must be constant");
                             }
                             mir::Operand::Constant(ref constant) => {
                                 let val = self.trans_constant(&bcx, constant);
