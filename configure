@@ -609,7 +609,7 @@ opt dist-host-only 0 "only install bins for the host architecture"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
 opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
 opt rustbuild 0 "use the rust and cargo based build system"
-opt orbit 0 "get MIR where it belongs - everywhere; most importantly, in orbit"
+opt orbit 1 "get MIR where it belongs - everywhere; most importantly, in orbit"
 opt codegen-tests 1 "run the src/test/codegen tests"
 opt option-checking 1 "complain about unrecognized options in this configure script"
 opt ninja 0 "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)"
@@ -733,7 +733,7 @@ if [ -n "$CFG_ENABLE_DEBUG_ASSERTIONS" ]; then putvar CFG_ENABLE_DEBUG_ASSERTION
 if [ -n "$CFG_ENABLE_DEBUGINFO" ]; then putvar CFG_ENABLE_DEBUGINFO; fi
 if [ -n "$CFG_ENABLE_DEBUG_JEMALLOC" ]; then putvar CFG_ENABLE_DEBUG_JEMALLOC; fi
 
-if [ -n "$CFG_ENABLE_ORBIT" ]; then putvar CFG_ENABLE_ORBIT; fi
+if [ -n "$CFG_DISABLE_ORBIT" ]; then putvar CFG_DISABLE_ORBIT; fi
 
 step_msg "looking for build programs"
 
