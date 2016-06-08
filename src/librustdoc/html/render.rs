@@ -1120,7 +1120,9 @@ impl DocFolder for Cache {
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TypedefItem(..) | clean::TraitItem(..) |
             clean::FunctionItem(..) | clean::ModuleItem(..) |
-            clean::ForeignFunctionItem(..) if !self.stripped_mod => {
+            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
+            clean::ConstantItem(..) | clean::StaticItem(..)
+            if !self.stripped_mod => {
                 // Reexported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
                 // however, that a reexported item doesn't show up in the
