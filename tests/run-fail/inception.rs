@@ -1,4 +1,4 @@
-// error-pattern:no mir for DefId
+// error-pattern:no mir for `env_logger/
 
 use std::env;
 use std::process::{Command, Output};

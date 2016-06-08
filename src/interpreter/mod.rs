@@ -282,6 +282,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
+        use rustc_trans::back::symbol_names::def_id_to_string;
         match self.tcx.map.as_local_node_id(def_id) {
             Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
             None => {
@@ -292,7 +293,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let cs = &self.tcx.sess.cstore;
                 let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
-                    panic!("no mir for {:?}", def_id);
+                    panic!("no mir for `{}`", def_id_to_string(self.tcx, def_id));
                 });
                 let cached = Rc::new(mir);
                 mir_cache.insert(def_id, cached.clone());
