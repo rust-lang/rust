@@ -723,11 +723,7 @@ fn expand_annotatable(a: Annotatable,
                       -> SmallVector<Annotatable> {
     let a = expand_item_multi_modifier(a, fld);
 
-    let mut decorator_items = SmallVector::zero();
-    let mut new_attrs = Vec::new();
-    expand_decorators(a.clone(), fld, &mut decorator_items, &mut new_attrs);
-
-    let mut new_items: SmallVector<Annotatable> = match a {
+    let new_items: SmallVector<Annotatable> = match a {
         Annotatable::Item(it) => match it.node {
             ast::ItemKind::Mac(..) => {
                 let new_items: SmallVector<P<ast::Item>> = it.and_then(|it| match it.node {
@@ -745,7 +741,7 @@ fn expand_annotatable(a: Annotatable,
                 if valid_ident {
                     fld.cx.mod_push(it.ident);
                 }
-                let macro_use = contains_macro_use(fld, &new_attrs[..]);
+                let macro_use = contains_macro_use(fld, &it.attrs);
                 let result = with_exts_frame!(fld.cx.syntax_env,
                                               macro_use,
                                               noop_fold_item(it, fld));
@@ -754,13 +750,7 @@ fn expand_annotatable(a: Annotatable,
                 }
                 result.into_iter().map(|i| Annotatable::Item(i)).collect()
             },
-            _ => {
-                let it = P(ast::Item {
-                    attrs: new_attrs,
-                    ..(*it).clone()
-                });
-                noop_fold_item(it, fld).into_iter().map(|i| Annotatable::Item(i)).collect()
-            }
+            _ => noop_fold_item(it, fld).into_iter().map(|i| Annotatable::Item(i)).collect(),
         },
 
         Annotatable::TraitItem(it) => match it.node {
@@ -789,6 +779,17 @@ fn expand_annotatable(a: Annotatable,
         }
     };
 
+    new_items.into_iter().flat_map(|a| decorate(a, fld)).collect()
+}
+
+fn decorate(a: Annotatable, fld: &mut MacroExpander) -> SmallVector<Annotatable> {
+    let mut decorator_items = SmallVector::zero();
+    let mut new_attrs = Vec::new();
+    expand_decorators(a.clone(), fld, &mut decorator_items, &mut new_attrs);
+    let decorator_items =
+        decorator_items.into_iter().flat_map(|a| expand_annotatable(a, fld)).collect();
+
+    let mut new_items = SmallVector::one(a.fold_attrs(new_attrs));
     new_items.push_all(decorator_items);
     new_items
 }
