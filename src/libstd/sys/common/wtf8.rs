@@ -560,20 +560,15 @@ impl Wtf8 {
         }
     }
 
-    // FIXME(stage0): use slice patterns after snapshot
     #[inline]
     fn final_lead_surrogate(&self) -> Option<u16> {
         let len = self.len();
         if len < 3 {
             return None
         }
-        if self.bytes[len-3] == 0xed &&
-            self.bytes[len-2] >= 0xa0 &&
-            self.bytes[len-2] <= 0xaf
-        {
-            Some(decode_surrogate(self.bytes[len-2], self.bytes[len-1]))
-        } else {
-            None
+        match ::slice_pat(&&self.bytes[(len - 3)..]) {
+            &[0xED, b2 @ 0xA0...0xAF, b3] => Some(decode_surrogate(b2, b3)),
+            _ => None
         }
     }
 
@@ -583,13 +578,9 @@ impl Wtf8 {
         if len < 3 {
             return None
         }
-        if self.bytes[0] == 0xed &&
-            self.bytes[1] >= 0xb0 &&
-            self.bytes[1] <= 0xbf
-        {
-            Some(decode_surrogate(self.bytes[1], self.bytes[2]))
-        } else {
-            None
+        match ::slice_pat(&&self.bytes[..3]) {
+            &[0xED, b2 @ 0xB0...0xBF, b3] => Some(decode_surrogate(b2, b3)),
+            _ => None
         }
     }
 }
