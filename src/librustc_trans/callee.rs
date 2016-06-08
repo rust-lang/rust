@@ -303,7 +303,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let tcx = ccx.tcx();
 
     // Normalize the type for better caching.
-    let bare_fn_ty = tcx.erase_regions(&bare_fn_ty);
+    let bare_fn_ty = tcx.normalize_associated_type(&bare_fn_ty);
 
     // If this is an impl of `Fn` or `FnMut` trait, the receiver is `&self`.
     let is_by_ref = match closure_kind {
@@ -469,7 +469,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Should be either intra-crate or inlined.
         assert_eq!(def_id.krate, LOCAL_CRATE);
 
-        let substs = tcx.mk_substs(substs.clone().erase_regions());
+        let substs = tcx.normalize_associated_type(&substs);
         let (val, fn_ty) = monomorphize::monomorphic_fn(ccx, def_id, substs);
         let fn_ptr_ty = match fn_ty.sty {
             ty::TyFnDef(_, _, fty) => {
