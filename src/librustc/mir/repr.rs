@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub use mir::cfg::*;
+
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
@@ -30,7 +32,7 @@ use syntax::codemap::Span;
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
-    pub basic_blocks: Vec<BasicBlockData<'tcx>>,
+    pub cfg: CFG<'tcx>,
 
     /// List of lexical scopes; these are referenced by statements and
     /// used (eventually) for debuginfo. Indexed by a `ScopeId`.
@@ -70,17 +72,17 @@ pub const START_BLOCK: BasicBlock = BasicBlock(0);
 
 impl<'tcx> Mir<'tcx> {
     pub fn all_basic_blocks(&self) -> Vec<BasicBlock> {
-        (0..self.basic_blocks.len())
+        (0..self.cfg.len())
             .map(|i| BasicBlock::new(i))
             .collect()
     }
 
     pub fn basic_block_data(&self, bb: BasicBlock) -> &BasicBlockData<'tcx> {
-        &self.basic_blocks[bb.index()]
+        &self.cfg[bb]
     }
 
     pub fn basic_block_data_mut(&mut self, bb: BasicBlock) -> &mut BasicBlockData<'tcx> {
-        &mut self.basic_blocks[bb.index()]
+        &mut self.cfg[bb]
     }
 }
 
@@ -611,7 +613,7 @@ impl<'tcx> Debug for Statement<'tcx> {
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Lvalue<'tcx> {
     /// local variable declared by the user
     Var(u32),
@@ -796,7 +798,7 @@ pub struct ScopeData {
 /// These are values that can appear inside an rvalue (or an index
 /// lvalue). They are intentionally limited to prevent rvalues from
 /// being nested in one another.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Operand<'tcx> {
     Consume(Lvalue<'tcx>),
     Constant(Constant<'tcx>),

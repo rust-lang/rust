@@ -14,6 +14,7 @@ use llvm::debuginfo::DIScope;
 use rustc::ty;
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
+use rustc::mir::traversal;
 use session::config::FullDebugInfo;
 use base;
 use common::{self, Block, BlockAndBuilder, CrateContext, FunctionContext};
@@ -34,7 +35,6 @@ use rustc_data_structures::bitvec::BitVector;
 pub use self::constant::trans_static_initializer;
 
 use self::lvalue::{LvalueRef, get_dataptr, get_meta};
-use rustc_mir::traversal;
 
 use self::operand::{OperandRef, OperandValue};
 

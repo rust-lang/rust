@@ -42,7 +42,7 @@ pub struct RemoveDeadBlocks;
 impl<'tcx> MirPass<'tcx> for RemoveDeadBlocks {
     fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>,
                     _: MirSource, mir: &mut Mir<'tcx>) {
-        let mut seen = BitVector::new(mir.basic_blocks.len());
+        let mut seen = BitVector::new(mir.cfg.basic_blocks.len());
         // This block is always required.
         seen.insert(START_BLOCK.index());
 
@@ -63,7 +63,7 @@ impl Pass for RemoveDeadBlocks {}
 
 /// Mass removal of basic blocks to keep the ID-remapping cheap.
 fn retain_basic_blocks(mir: &mut Mir, keep: &BitVector) {
-    let num_blocks = mir.basic_blocks.len();
+    let num_blocks = mir.cfg.basic_blocks.len();
 
     let mut replacements: Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
     let mut used_blocks = 0;
@@ -72,11 +72,11 @@ fn retain_basic_blocks(mir: &mut Mir, keep: &BitVector) {
         if alive_index != used_blocks {
             // Swap the next alive block data with the current available slot. Since alive_index is
             // non-decreasing this is a valid operation.
-            mir.basic_blocks.swap(alive_index, used_blocks);
+            mir.cfg.basic_blocks.swap(alive_index, used_blocks);
         }
         used_blocks += 1;
     }
-    mir.basic_blocks.truncate(used_blocks);
+    mir.cfg.basic_blocks.truncate(used_blocks);
 
     for bb in mir.all_basic_blocks() {
         for target in mir.basic_block_data_mut(bb).terminator_mut().successors_mut() {

@@ -9,16 +9,14 @@
 // except according to those terms.
 
 use rustc_data_structures::bitvec::BitVector;
-use rustc::middle::const_val::ConstVal;
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::traversal;
 use pretty;
 use std::mem;
 
 use super::remove_dead_blocks::RemoveDeadBlocks;
-
-use traversal;
 
 pub struct SimplifyCfg;
 
@@ -30,14 +28,13 @@ impl SimplifyCfg {
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
-        simplify_branches(mir);
         RemoveDeadBlocks.run_pass(tcx, src, mir);
         merge_consecutive_blocks(mir);
         RemoveDeadBlocks.run_pass(tcx, src, mir);
         pretty::dump_mir(tcx, "simplify_cfg", &0, src, mir, None);
 
         // FIXME: Should probably be moved into some kind of pass manager
-        mir.basic_blocks.shrink_to_fit();
+        mir.cfg.basic_blocks.shrink_to_fit();
     }
 }
 
@@ -45,7 +42,7 @@ impl Pass for SimplifyCfg {}
 
 fn merge_consecutive_blocks(mir: &mut Mir) {
     // Build the precedecessor map for the MIR
-    let mut pred_count = vec![0u32; mir.basic_blocks.len()];
+    let mut pred_count = vec![0u32; mir.cfg.basic_blocks.len()];
     for (_, data) in traversal::preorder(mir) {
         if let Some(ref term) = data.terminator {
             for &tgt in term.successors().iter() {
@@ -56,7 +53,7 @@ fn merge_consecutive_blocks(mir: &mut Mir) {
 
     loop {
         let mut changed = false;
-        let mut seen = BitVector::new(mir.basic_blocks.len());
+        let mut seen = BitVector::new(mir.cfg.basic_blocks.len());
         let mut worklist = vec![START_BLOCK];
         while let Some(bb) = worklist.pop() {
             // Temporarily take ownership of the terminator we're modifying to keep borrowck happy
@@ -153,53 +150,4 @@ fn final_target(mir: &Mir, mut target: BasicBlock) -> Option<BasicBlock> {
     }
 
     Some(target)
-}
-
-fn simplify_branches(mir: &mut Mir) {
-    loop {
-        let mut changed = false;
-
-        for bb in mir.all_basic_blocks() {
-            let basic_block = mir.basic_block_data_mut(bb);
-            let mut terminator = basic_block.terminator_mut();
-            terminator.kind = match terminator.kind {
-                TerminatorKind::If { ref targets, .. } if targets.0 == targets.1 => {
-                    changed = true;
-                    TerminatorKind::Goto { target: targets.0 }
-                }
-
-                TerminatorKind::If { ref targets, cond: Operand::Constant(Constant {
-                    literal: Literal::Value {
-                        value: ConstVal::Bool(cond)
-                    }, ..
-                }) } => {
-                    changed = true;
-                    if cond {
-                        TerminatorKind::Goto { target: targets.0 }
-                    } else {
-                        TerminatorKind::Goto { target: targets.1 }
-                    }
-                }
-
-                TerminatorKind::Assert { target, cond: Operand::Constant(Constant {
-                    literal: Literal::Value {
-                        value: ConstVal::Bool(cond)
-                    }, ..
-                }), expected, .. } if cond == expected => {
-                    changed = true;
-                    TerminatorKind::Goto { target: target }
-                }
-
-                TerminatorKind::SwitchInt { ref targets, .. } if targets.len() == 1 => {
-                    changed = true;
-                    TerminatorKind::Goto { target: targets[0] }
-                }
-                _ => continue
-            }
-        }
-
-        if !changed {
-            break;
-        }
-    }
 }
