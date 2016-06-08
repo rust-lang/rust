@@ -317,12 +317,12 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     'a: for (i, lhs) in lhses.iter().enumerate() {
         for lhs_ in lhses[i + 1 ..].iter() {
             if !check_lhs_firsts(cx, lhs, lhs_) {
-                cx.struct_span_err(def.span, "macro is not future-proof")
+                cx.struct_span_warn(def.span, "macro is not future-proof")
                     .span_help(lhs.get_span(), "parsing of this arm is ambiguous...")
                     .span_help(lhs_.get_span(), "with the parsing of this arm.")
                     .help("the behaviour of this macro might change in the future")
                     .emit();
-                valid = false;
+                //valid = false;
                 break 'a;
             }
         }
