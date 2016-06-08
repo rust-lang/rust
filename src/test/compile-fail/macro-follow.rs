@@ -12,9 +12,9 @@
 
 // FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), Ident(in)}
 macro_rules! follow_pat {
-    ($p:pat ()) => {};       //~WARN  `$p:pat` is followed by `(`
-    ($p:pat []) => {};       //~WARN  `$p:pat` is followed by `[`
-    ($p:pat {}) => {};       //~WARN  `$p:pat` is followed by `{`
+    ($p:pat ()) => {};       //~ERROR  `$p:pat` is followed by `(`
+    ($p:pat []) => {};       //~ERROR  `$p:pat` is followed by `[`
+    ($p:pat {}) => {};       //~ERROR  `$p:pat` is followed by `{`
     ($p:pat :) => {};        //~ERROR `$p:pat` is followed by `:`
     ($p:pat >) => {};        //~ERROR `$p:pat` is followed by `>`
     ($p:pat +) => {};        //~ERROR `$p:pat` is followed by `+`
@@ -32,9 +32,9 @@ macro_rules! follow_pat {
 }
 // FOLLOW(expr) = {FatArrow, Comma, Semicolon}
 macro_rules! follow_expr {
-    ($e:expr ()) => {};       //~WARN  `$e:expr` is followed by `(`
-    ($e:expr []) => {};       //~WARN  `$e:expr` is followed by `[`
-    ($e:expr {}) => {};       //~WARN  `$e:expr` is followed by `{`
+    ($e:expr ()) => {};       //~ERROR  `$e:expr` is followed by `(`
+    ($e:expr []) => {};       //~ERROR  `$e:expr` is followed by `[`
+    ($e:expr {}) => {};       //~ERROR  `$e:expr` is followed by `{`
     ($e:expr =) => {};        //~ERROR `$e:expr` is followed by `=`
     ($e:expr |) => {};        //~ERROR `$e:expr` is followed by `|`
     ($e:expr :) => {};        //~ERROR `$e:expr` is followed by `:`
@@ -57,7 +57,7 @@ macro_rules! follow_expr {
 // FOLLOW(ty) = {OpenDelim(Brace), Comma, FatArrow, Colon, Eq, Gt, Semi, Or,
 //               Ident(as), Ident(where), OpenDelim(Bracket), Nonterminal(Block)}
 macro_rules! follow_ty {
-    ($t:ty ()) => {};       //~WARN  `$t:ty` is followed by `(`
+    ($t:ty ()) => {};       //~ERROR  `$t:ty` is followed by `(`
     ($t:ty []) => {};       // ok (RFC 1462)
     ($t:ty +) => {};        //~ERROR `$t:ty` is followed by `+`
     ($t:ty ident) => {};    //~ERROR `$t:ty` is followed by `ident`
@@ -75,9 +75,9 @@ macro_rules! follow_ty {
 }
 // FOLLOW(stmt) = FOLLOW(expr)
 macro_rules! follow_stmt {
-    ($s:stmt ()) => {};       //~WARN  `$s:stmt` is followed by `(`
-    ($s:stmt []) => {};       //~WARN  `$s:stmt` is followed by `[`
-    ($s:stmt {}) => {};       //~WARN  `$s:stmt` is followed by `{`
+    ($s:stmt ()) => {};       //~ERROR  `$s:stmt` is followed by `(`
+    ($s:stmt []) => {};       //~ERROR  `$s:stmt` is followed by `[`
+    ($s:stmt {}) => {};       //~ERROR  `$s:stmt` is followed by `{`
     ($s:stmt =) => {};        //~ERROR `$s:stmt` is followed by `=`
     ($s:stmt |) => {};        //~ERROR `$s:stmt` is followed by `|`
     ($s:stmt :) => {};        //~ERROR `$s:stmt` is followed by `:`
@@ -99,7 +99,7 @@ macro_rules! follow_stmt {
 }
 // FOLLOW(path) = FOLLOW(ty)
 macro_rules! follow_path {
-    ($p:path ()) => {};       //~WARN  `$p:path` is followed by `(`
+    ($p:path ()) => {};       //~ERROR  `$p:path` is followed by `(`
     ($p:path []) => {};       // ok (RFC 1462)
     ($p:path +) => {};        //~ERROR `$p:path` is followed by `+`
     ($p:path ident) => {};    //~ERROR `$p:path` is followed by `ident`

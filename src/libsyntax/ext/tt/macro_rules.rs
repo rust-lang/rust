@@ -349,203 +349,12 @@ fn check_rhs(cx: &mut ExtCtxt, rhs: &TokenTree) -> bool {
     false
 }
 
-// Issue 30450: when we are through a warning cycle, we can just error
-// on all failure conditions and remove this struct and enum.
-
-#[derive(Debug)]
-struct OnFail {
-    saw_failure: bool,
-    action: OnFailAction,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum OnFailAction { Warn, Error, DoNothing }
-
-impl OnFail {
-    fn warn() -> OnFail { OnFail { saw_failure: false, action: OnFailAction::Warn } }
-    fn error() -> OnFail { OnFail { saw_failure: false, action: OnFailAction::Error } }
-    fn do_nothing() -> OnFail { OnFail { saw_failure: false, action: OnFailAction::DoNothing } }
-    fn react(&mut self, cx: &mut ExtCtxt, sp: Span, msg: &str, help: Option<&str>) {
-        match self.action {
-            OnFailAction::DoNothing => {}
-            OnFailAction::Error => {
-                let mut err = cx.struct_span_err(sp, msg);
-                if let Some(msg) = help { err.span_help(sp, msg); }
-                err.emit();
-            }
-            OnFailAction::Warn => {
-                let mut warn = cx.struct_span_warn(sp, msg);
-                if let Some(msg) = help { warn.span_help(sp, msg); }
-                warn.span_note(sp, "The above warning will be a hard error in the next release.")
-                    .emit();
-            }
-        };
-        self.saw_failure = true;
-    }
-}
-
 fn check_matcher(cx: &mut ExtCtxt, matcher: &[TokenTree]) -> bool {
-    // Issue 30450: when we are through a warning cycle, we can just
-    // error on all failure conditions (and remove check_matcher_old).
-
-    // First run the old-pass, but *only* to find out if it would have failed.
-    let mut on_fail = OnFail::do_nothing();
-    check_matcher_old(cx, matcher.iter(), &Eof, &mut on_fail);
-    // Then run the new pass, but merely warn if the old pass accepts and new pass rejects.
-    // (Note this silently accepts code if new pass accepts.)
-    let mut on_fail = if on_fail.saw_failure {
-        OnFail::error()
-    } else {
-        OnFail::warn()
-    };
-    check_matcher_new(cx, matcher, &mut on_fail);
-    // matcher is valid if the new pass didn't see any error,
-    // or if errors were considered warnings
-    on_fail.action != OnFailAction::Error || !on_fail.saw_failure
-}
-
-// returns the last token that was checked, for TokenTree::Sequence.
-// return value is used by recursive calls.
-fn check_matcher_old<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token, on_fail: &mut OnFail)
--> Option<(Span, Token)> where I: Iterator<Item=&'a TokenTree> {
-    use print::pprust::token_to_string;
-    use std::iter::once;
-
-    let mut last = None;
-
-    // 2. For each token T in M:
-    let mut tokens = matcher.peekable();
-    while let Some(token) = tokens.next() {
-        last = match *token {
-            TokenTree::Token(sp, MatchNt(ref name, ref frag_spec)) => {
-                // ii. If T is a simple NT, look ahead to the next token T' in
-                // M. If T' is in the set FOLLOW(NT), continue. Else; reject.
-                if can_be_followed_by_any(&frag_spec.name.as_str()) {
-                    continue
-                } else {
-                    let next_token = match tokens.peek() {
-                        // If T' closes a complex NT, replace T' with F
-                        Some(&&TokenTree::Token(_, CloseDelim(_))) => follow.clone(),
-                        Some(&&TokenTree::Token(_, ref tok)) => tok.clone(),
-                        Some(&&TokenTree::Sequence(sp, _)) => {
-                            // Be conservative around sequences: to be
-                            // more specific, we would need to
-                            // consider FIRST sets, but also the
-                            // possibility that the sequence occurred
-                            // zero times (in which case we need to
-                            // look at the token that follows the
-                            // sequence, which may itself be a sequence,
-                            // and so on).
-                            on_fail.react(cx, sp,
-                                          &format!("`${0}:{1}` is followed by a \
-                                                    sequence repetition, which is not \
-                                                    allowed for `{1}` fragments",
-                                                   name, frag_spec),
-                                          None);
-                            Eof
-                        },
-                        // die next iteration
-                        Some(&&TokenTree::Delimited(_, ref delim)) => delim.close_token(),
-                        // else, we're at the end of the macro or sequence
-                        None => follow.clone()
-                    };
-
-                    let tok = if let TokenTree::Token(_, ref tok) = *token {
-                        tok
-                    } else {
-                        unreachable!()
-                    };
-
-                    // If T' is in the set FOLLOW(NT), continue. Else, reject.
-                    match (&next_token, is_in_follow(cx, &next_token, &frag_spec.name.as_str())) {
-                        (_, Err((msg, _))) => {
-                            // no need for help message, those messages
-                            // are never emitted anyway...
-                            on_fail.react(cx, sp, &msg, None);
-                            continue
-                        }
-                        (&Eof, _) => return Some((sp, tok.clone())),
-                        (_, Ok(true)) => continue,
-                        (next, Ok(false)) => {
-                            on_fail.react(cx, sp, &format!("`${0}:{1}` is followed by `{2}`, which \
-                                                      is not allowed for `{1}` fragments",
-                                                     name, frag_spec,
-                                                     token_to_string(next)), None);
-                            continue
-                        },
-                    }
-                }
-            },
-            TokenTree::Sequence(sp, ref seq) => {
-                // iii. Else, T is a complex NT.
-                match seq.separator {
-                    // If T has the form $(...)U+ or $(...)U* for some token U,
-                    // run the algorithm on the contents with F set to U. If it
-                    // accepts, continue, else, reject.
-                    Some(ref u) => {
-                        let last = check_matcher_old(cx, seq.tts.iter(), u, on_fail);
-                        match last {
-                            // Since the delimiter isn't required after the last
-                            // repetition, make sure that the *next* token is
-                            // sane. This doesn't actually compute the FIRST of
-                            // the rest of the matcher yet, it only considers
-                            // single tokens and simple NTs. This is imprecise,
-                            // but conservatively correct.
-                            Some((span, tok)) => {
-                                let fol = match tokens.peek() {
-                                    Some(&&TokenTree::Token(_, ref tok)) => tok.clone(),
-                                    Some(&&TokenTree::Delimited(_, ref delim)) =>
-                                        delim.close_token(),
-                                    Some(_) => {
-                                        on_fail.react(cx, sp, "sequence repetition followed by \
-                                                another sequence repetition, which is not allowed",
-                                                      None);
-                                        Eof
-                                    },
-                                    None => Eof
-                                };
-                                check_matcher_old(cx, once(&TokenTree::Token(span, tok.clone())),
-                                                  &fol, on_fail)
-                            },
-                            None => last,
-                        }
-                    },
-                    // If T has the form $(...)+ or $(...)*, run the algorithm
-                    // on the contents with F set to the token following the
-                    // sequence. If it accepts, continue, else, reject.
-                    None => {
-                        let fol = match tokens.peek() {
-                            Some(&&TokenTree::Token(_, ref tok)) => tok.clone(),
-                            Some(&&TokenTree::Delimited(_, ref delim)) => delim.close_token(),
-                            Some(_) => {
-                                on_fail.react(cx, sp, "sequence repetition followed by another \
-                                             sequence repetition, which is not allowed", None);
-                                Eof
-                            },
-                            None => Eof
-                        };
-                        check_matcher_old(cx, seq.tts.iter(), &fol, on_fail)
-                    }
-                }
-            },
-            TokenTree::Token(..) => {
-                // i. If T is not an NT, continue.
-                continue
-            },
-            TokenTree::Delimited(_, ref tts) => {
-                // if we don't pass in that close delimiter, we'll incorrectly consider the matcher
-                // `{ $foo:ty }` as having a follow that isn't `RBrace`
-                check_matcher_old(cx, tts.tts.iter(), &tts.close_token(), on_fail)
-            }
-        }
-    }
-    last
-}
-
-fn check_matcher_new(cx: &mut ExtCtxt, matcher: &[TokenTree], on_fail: &mut OnFail) {
     let first_sets = FirstSets::new(matcher);
     let empty_suffix = TokenSet::empty();
-    check_matcher_core(cx, &first_sets, matcher, &empty_suffix, on_fail);
+    let err = cx.parse_sess.span_diagnostic.err_count();
+    check_matcher_core(cx, &first_sets, matcher, &empty_suffix);
+    err == cx.parse_sess.span_diagnostic.err_count()
 }
 
 // The FirstSets for a matcher is a mapping from subsequences in the
@@ -785,8 +594,7 @@ impl TokenSet {
 fn check_matcher_core(cx: &mut ExtCtxt,
                       first_sets: &FirstSets,
                       matcher: &[TokenTree],
-                      follow: &TokenSet,
-                      on_fail: &mut OnFail) -> TokenSet {
+                      follow: &TokenSet) -> TokenSet {
     use print::pprust::token_to_string;
 
     let mut last = TokenSet::empty();
@@ -815,11 +623,11 @@ fn check_matcher_core(cx: &mut ExtCtxt,
             TokenTree::Token(sp, ref tok) => {
                 let can_be_followed_by_any;
                 if let Err(bad_frag) = has_legal_fragment_specifier(tok) {
-                    on_fail.react(cx, sp,
-                                  &format!("invalid fragment specifier `{}`", bad_frag),
-                                  Some("valid fragment specifiers are `ident`, `block`, \
-                                        `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt` \
-                                        and `item`"));
+                    cx.struct_span_err(sp, &format!("invalid fragment specifier `{}`", bad_frag))
+                        .help("valid fragment specifiers are `ident`, `block`, \
+                               `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt` \
+                               and `item`")
+                        .emit();
                     // (This eliminates false positives and duplicates
                     // from error messages.)
                     can_be_followed_by_any = true;
@@ -840,7 +648,7 @@ fn check_matcher_core(cx: &mut ExtCtxt,
             }
             TokenTree::Delimited(_, ref d) => {
                 let my_suffix = TokenSet::singleton((d.close_span, Token::CloseDelim(d.delim)));
-                check_matcher_core(cx, first_sets, &d.tts, &my_suffix, on_fail);
+                check_matcher_core(cx, first_sets, &d.tts, &my_suffix);
                 // don't track non NT tokens
                 last.replace_with_irrelevant();
 
@@ -872,7 +680,7 @@ fn check_matcher_core(cx: &mut ExtCtxt,
                 // At this point, `suffix_first` is built, and
                 // `my_suffix` is some TokenSet that we can use
                 // for checking the interior of `seq_rep`.
-                let next = check_matcher_core(cx, first_sets, &seq_rep.tts, my_suffix, on_fail);
+                let next = check_matcher_core(cx, first_sets, &seq_rep.tts, my_suffix);
                 if next.maybe_empty {
                     last.add_all(&next);
                 } else {
@@ -894,7 +702,7 @@ fn check_matcher_core(cx: &mut ExtCtxt,
                 for &(sp, ref next_token) in &suffix_first.tokens {
                     match is_in_follow(cx, next_token, &frag_spec.name.as_str()) {
                         Err((msg, help)) => {
-                            on_fail.react(cx, sp, &msg, Some(help));
+                            cx.struct_span_err(sp, &msg).help(help).emit();
                             // don't bother reporting every source of
                             // conflict for a particular element of `last`.
                             continue 'each_last;
@@ -909,15 +717,14 @@ fn check_matcher_core(cx: &mut ExtCtxt,
                                 "may be"
                             };
 
-                            on_fail.react(
-                                cx, sp,
+                            cx.span_err(
+                                sp,
                                 &format!("`${name}:{frag}` {may_be} followed by `{next}`, which \
                                           is not allowed for `{frag}` fragments",
                                          name=name,
                                          frag=frag_spec,
                                          next=token_to_string(next_token),
-                                         may_be=may_be),
-                                None
+                                         may_be=may_be)
                             );
                         }
                     }
@@ -947,33 +754,11 @@ fn token_can_be_followed_by_any(tok: &Token) -> bool {
 /// ANYTHING without fear of future compatibility hazards).
 fn frag_can_be_followed_by_any(frag: &str) -> bool {
     match frag {
-        "item" |  // always terminated by `}` or `;`
+        "item"  | // always terminated by `}` or `;`
         "block" | // exactly one token tree
         "ident" | // exactly one token tree
-        "meta" |  // exactly one token tree
-        "tt" =>    // exactly one token tree
-            true,
-
-        _ =>
-            false,
-    }
-}
-
-/// True if a fragment of type `frag` can be followed by any sort of
-/// token.  We use this (among other things) as a useful approximation
-/// for when `frag` can be followed by a repetition like `$(...)*` or
-/// `$(...)+`. In general, these can be a bit tricky to reason about,
-/// so we adopt a conservative position that says that any fragment
-/// specifier which consumes at most one token tree can be followed by
-/// a fragment specifier (indeed, these fragments can be followed by
-/// ANYTHING without fear of future compatibility hazards).
-fn can_be_followed_by_any(frag: &str) -> bool {
-    match frag {
-        "item" |  // always terminated by `}` or `;`
-        "block" | // exactly one token tree
-        "ident" | // exactly one token tree
-        "meta" |  // exactly one token tree
-        "tt" =>    // exactly one token tree
+        "meta"  | // exactly one token tree
+        "tt" =>   // exactly one token tree
             true,
 
         _ =>
