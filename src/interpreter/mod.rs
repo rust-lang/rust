@@ -194,6 +194,7 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
             ty::FnDiverging => None,
         }
     }
+
     // TODO(solson): Try making const_to_primval instead.
     fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<Pointer> {
         use rustc::middle::const_val::ConstVal::*;
@@ -336,6 +337,25 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
                 CachedMir::Owned(cached)
             }
         }
+    }
+
+    fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+        let substituted = ty.subst(self.tcx, substs);
+        self.tcx.normalize_associated_type(&substituted)
+    }
+
+    fn type_size(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> usize {
+        self.type_layout(ty, substs).size(&self.tcx.data_layout).bytes() as usize
+    }
+
+    fn type_layout(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> &'tcx Layout {
+        // TODO(solson): Is this inefficient? Needs investigation.
+        let ty = self.monomorphize(ty, substs);
+
+        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+            // TODO(solson): Report this error properly.
+            ty.layout(&infcx).unwrap()
+        })
     }
 }
 
@@ -1308,49 +1328,6 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(Lvalue { ptr: ptr, extra: LvalueExtra::None })
     }
 
-    // TODO(solson): Try making const_to_primval instead.
-    fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<Pointer> {
-        use rustc::middle::const_val::ConstVal::*;
-        match *const_val {
-            Float(_f) => unimplemented!(),
-            Integral(int) => {
-                // TODO(solson): Check int constant type.
-                let ptr = self.memory.allocate(8);
-                self.memory.write_uint(ptr, int.to_u64_unchecked(), 8)?;
-                Ok(ptr)
-            }
-            Str(ref s) => {
-                let psize = self.memory.pointer_size;
-                let static_ptr = self.memory.allocate(s.len());
-                let ptr = self.memory.allocate(psize * 2);
-                self.memory.write_bytes(static_ptr, s.as_bytes())?;
-                self.memory.write_ptr(ptr, static_ptr)?;
-                self.memory.write_usize(ptr.offset(psize as isize), s.len() as u64)?;
-                Ok(ptr)
-            }
-            ByteStr(ref bs) => {
-                let psize = self.memory.pointer_size;
-                let static_ptr = self.memory.allocate(bs.len());
-                let ptr = self.memory.allocate(psize);
-                self.memory.write_bytes(static_ptr, bs)?;
-                self.memory.write_ptr(ptr, static_ptr)?;
-                Ok(ptr)
-            }
-            Bool(b) => {
-                let ptr = self.memory.allocate(1);
-                self.memory.write_bool(ptr, b)?;
-                Ok(ptr)
-            }
-            Char(_c)          => unimplemented!(),
-            Struct(_node_id)  => unimplemented!(),
-            Tuple(_node_id)   => unimplemented!(),
-            Function(_def_id) => unimplemented!(),
-            Array(_, _)       => unimplemented!(),
-            Repeat(_, _)      => unimplemented!(),
-            Dummy             => unimplemented!(),
-        }
-    }
-
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
         self.monomorphize(self.mir().lvalue_ty(self.tcx, lvalue).to_ty(self.tcx))
     }
@@ -1360,12 +1337,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     }
 
     fn monomorphize(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let substituted = ty.subst(self.tcx, self.substs());
-        self.tcx.normalize_associated_type(&substituted)
-    }
-
-    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        self.tcx.type_needs_drop_given_env(ty, &self.tcx.empty_parameter_environment())
+        self.gecx.monomorphize(ty, self.substs())
     }
 
     fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<()> {
@@ -1377,22 +1349,12 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(())
     }
 
-    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
-    }
-
     fn type_size(&self, ty: Ty<'tcx>) -> usize {
-        self.type_layout(ty).size(&self.tcx.data_layout).bytes() as usize
+        self.gecx.type_size(ty, self.substs())
     }
 
     fn type_layout(&self, ty: Ty<'tcx>) -> &'tcx Layout {
-        // TODO(solson): Is this inefficient? Needs investigation.
-        let ty = self.monomorphize(ty);
-
-        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
-            // TODO(solson): Report this error properly.
-            ty.layout(&infcx).unwrap()
-        })
+        self.gecx.type_layout(ty, self.substs())
     }
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<PrimVal> {
@@ -1449,6 +1411,10 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     fn mir(&self) -> CachedMir<'mir, 'tcx> {
         self.frame().mir.clone()
+    }
+
+    fn substs(&self) -> &'tcx Substs<'tcx> {
+        self.frame().substs
     }
 }
 

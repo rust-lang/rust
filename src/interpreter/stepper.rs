@@ -3,7 +3,8 @@ use super::{
     CachedMir,
     TerminatorTarget,
     ConstantId,
-    GlobalEvalContext
+    GlobalEvalContext,
+    Frame,
 };
 use error::EvalResult;
 use rustc::mir::repr as mir;
@@ -41,7 +42,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         let stmt = &block_data.statements[self.fncx.frame().stmt];
         let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
         let result = self.fncx.eval_assignment(lvalue, rvalue);
-        self.fncx.maybe_report(stmt.span, result)?;
+        self.fncx.maybe_report(result)?;
         self.fncx.frame_mut().stmt += 1;
         Ok(())
     }
@@ -54,7 +55,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             let block_data = mir.basic_block_data(self.fncx.frame().next_block);
             let terminator = block_data.terminator();
             let result = self.fncx.eval_terminator(terminator);
-            self.fncx.maybe_report(terminator.span, result)?
+            self.fncx.maybe_report(result)?
         };
         match term {
             TerminatorTarget::Block => {},
