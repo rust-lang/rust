@@ -247,7 +247,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, &loc.file.name);
+    let file_metadata = file_metadata(cx, &loc.file.name, &loc.file.abs_path);
 
     let function_type_metadata = unsafe {
         let fn_signature = get_function_signature(cx, sig, abi);
@@ -476,8 +476,9 @@ pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  span: Span) {
     let cx: &CrateContext = bcx.ccx();
 
-    let filename = span_start(cx, span).file.name.clone();
-    let file_metadata = file_metadata(cx, &filename[..]);
+    let file = span_start(cx, span).file;
+    let filename = file.name.clone();
+    let file_metadata = file_metadata(cx, &filename[..], &file.abs_path);
 
     let loc = span_start(cx, span);
     let type_metadata = type_metadata(cx, variable_type, span);

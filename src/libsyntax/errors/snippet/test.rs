@@ -88,7 +88,7 @@ fn foo() {
 ";
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
     let span_bar = cm.span_substr(&foo, file_text, "bar", 0);
 
     let mut snippet = SnippetData::new(cm, Some(span_bar));
@@ -113,7 +113,7 @@ fn foo() {
 "#;
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
     let span_vec0 = cm.span_substr(&foo, file_text, "vec", 0);
     let span_vec1 = cm.span_substr(&foo, file_text, "vec", 1);
     let span_semi = cm.span_substr(&foo, file_text, ";", 0);
@@ -173,12 +173,12 @@ fn bar() {
 "#;
 
     let cm = Rc::new(CodeMap::new());
-    let foo_map = cm.new_filemap_and_lines("foo.rs", file_text_foo);
+    let foo_map = cm.new_filemap_and_lines("foo.rs", None, file_text_foo);
     let span_foo_vec0 = cm.span_substr(&foo_map, file_text_foo, "vec", 0);
     let span_foo_vec1 = cm.span_substr(&foo_map, file_text_foo, "vec", 1);
     let span_foo_semi = cm.span_substr(&foo_map, file_text_foo, ";", 0);
 
-    let bar_map = cm.new_filemap_and_lines("bar.rs", file_text_bar);
+    let bar_map = cm.new_filemap_and_lines("bar.rs", None, file_text_bar);
     let span_bar_vec0 = cm.span_substr(&bar_map, file_text_bar, "vec", 0);
     let span_bar_vec1 = cm.span_substr(&bar_map, file_text_bar, "vec", 1);
     let span_bar_semi = cm.span_substr(&bar_map, file_text_bar, ";", 0);
@@ -235,7 +235,7 @@ fn foo() {
 "#;
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
     let span_data0 = cm.span_substr(&foo, file_text, "data", 0);
     let span_data1 = cm.span_substr(&foo, file_text, "data", 1);
     let span_rbrace = cm.span_substr(&foo, file_text, "}", 3);
@@ -274,7 +274,7 @@ fn foo() {
 "#;
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
     let span0 = cm.span_substr(&foo, file_text, "vec.push", 0);
     let span1 = cm.span_substr(&foo, file_text, "vec", 0);
     let span2 = cm.span_substr(&foo, file_text, "ec.push", 0);
@@ -312,7 +312,7 @@ fn foo() {
 "#;
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
     let span_vec0 = cm.span_substr(&foo, file_text, "vec", 0);
     let span_vec1 = cm.span_substr(&foo, file_text, "vec", 1);
     let span_semi = cm.span_substr(&foo, file_text, ";", 0);
@@ -354,7 +354,7 @@ fn foo() {
 "#;
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
     let span_vec0 = cm.span_substr(&foo, file_text, "vec", 3);
     let span_vec1 = cm.span_substr(&foo, file_text, "vec", 8);
 
@@ -393,7 +393,7 @@ fn foo() {
 "#;
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
 
     let mut snippet = SnippetData::new(cm.clone(), None);
     for i in 0..4 {
@@ -427,7 +427,7 @@ impl SomeTrait for () {
 "#;
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
 
     let mut snippet = SnippetData::new(cm.clone(), None);
     let fn_span = cm.span_substr(&foo, file_text, "fn", 0);
@@ -456,7 +456,7 @@ fn span_overlap_label() {
 "#;
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
 
     let mut snippet = SnippetData::new(cm.clone(), None);
     let fn_span = cm.span_substr(&foo, file_text, "fn foo(x: u32)", 0);
@@ -491,7 +491,7 @@ fn span_overlap_label2() {
 "#;
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
 
     let mut snippet = SnippetData::new(cm.clone(), None);
     let fn_span = cm.span_substr(&foo, file_text, "fn foo(x", 0);
@@ -529,7 +529,7 @@ fn span_overlap_label3() {
 "#;
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
 
     let mut snippet = SnippetData::new(cm.clone(), None);
 
@@ -578,7 +578,7 @@ fn main() {
 
 
     let cm = Rc::new(CodeMap::new());
-    let foo = cm.new_filemap_and_lines("foo.rs", file_text);
+    let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
 
     let mut rbrace_span = cm.span_substr(&foo, file_text, "}", 1);
     rbrace_span.lo = rbrace_span.hi;

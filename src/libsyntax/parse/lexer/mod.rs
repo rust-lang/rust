@@ -1695,7 +1695,7 @@ mod tests {
                  span_handler: &'a errors::Handler,
                  teststr: String)
                  -> StringReader<'a> {
-        let fm = cm.new_filemap("zebra.rs".to_string(), teststr);
+        let fm = cm.new_filemap("zebra.rs".to_string(), None, teststr);
         StringReader::new(span_handler, fm)
     }
 
