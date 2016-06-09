@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.76 — TBD
+* `cargo clippy` now automatically defines the `clippy` feature
+
 ## 0.0.75 — 2016-06-08
 * Rustup to *rustc 1.11.0-nightly (763f9234b 2016-06-06)*
 

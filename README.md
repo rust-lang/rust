@@ -245,22 +245,6 @@ similar crates.
 SYSROOT=/path/to/rustc/sysroot cargo install clippy
 ```
 
-### Configuring clippy
-
-You can add options  to `allow`/`warn`/`deny`:
-
-*   the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy)]`)
-
-*   all lints using both the `clippy` and `clippy_pedantic` lint groups (`#![deny(clippy)]`,
-    `#![deny(clippy_pedantic)]`). Note that `clippy_pedantic` contains some very aggressive
-    lints prone to false positives.
-
-*   only some lints (`#![deny(single_match, box_vec)]`, etc)
-
-*   `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc
-
-Note: `deny` produces errors instead of warnings
-
 ### Running clippy from the command line without installing
 
 To have cargo compile your crate with clippy without needing `#![plugin(clippy)]`
@@ -320,6 +304,29 @@ You can also specify the path to the configuration file with:
 
 To deactivate the “for further information visit *wiki-link*” message you can
 define the `CLIPPY_DISABLE_WIKI_LINKS` environment variable.
+
+### Allowing/denying lints
+
+You can add options  to `allow`/`warn`/`deny`:
+
+*   the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy)]`)
+
+*   all lints using both the `clippy` and `clippy_pedantic` lint groups (`#![deny(clippy)]`,
+    `#![deny(clippy_pedantic)]`). Note that `clippy_pedantic` contains some very aggressive
+    lints prone to false positives.
+
+*   only some lints (`#![deny(single_match, box_vec)]`, etc)
+
+*   `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc
+
+Note: `deny` produces errors instead of warnings.
+
+For convenience, `cargo clippy` automatically defines a `clippy` features. This
+lets you set lints level and compile with or without clippy transparently:
+
+```rust
+#[cfg_attr(feature = "clippy", allow(needless_lifetimes))]
+```
 
 ## Link with clippy service
 
