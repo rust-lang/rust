@@ -32,7 +32,6 @@ struct LLVMRustArchiveMember {
 };
 
 typedef OwningBinary<Archive> RustArchive;
-#define GET_ARCHIVE(a) ((a)->getBinary())
 
 extern "C" void*
 LLVMRustOpenArchive(char *path) {
@@ -70,7 +69,7 @@ struct RustArchiveIterator {
 
 extern "C" RustArchiveIterator*
 LLVMRustArchiveIteratorNew(RustArchive *ra) {
-    Archive *ar = GET_ARCHIVE(ra);
+    Archive *ar = ra->getBinary();
     RustArchiveIterator *rai = new RustArchiveIterator();
     rai->cur = ar->child_begin();
     rai->end = ar->child_end();
