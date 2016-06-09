@@ -408,7 +408,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             tests.add_test(text.to_owned(),
                            block_info.should_panic, block_info.no_run,
                            block_info.ignore, block_info.test_harness,
-                           block_info.compile_fail);
+                           block_info.compile_fail, block_info.error_codes);
         }
     }
 
@@ -454,6 +454,7 @@ struct LangString {
     rust: bool,
     test_harness: bool,
     compile_fail: bool,
+    error_codes: Vec<String>,
 }
 
 impl LangString {
@@ -465,6 +466,7 @@ impl LangString {
             rust: true,  // NB This used to be `notrust = false`
             test_harness: false,
             compile_fail: false,
+            error_codes: Vec::new(),
         }
     }
 
@@ -472,9 +474,14 @@ impl LangString {
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
-        let allow_compile_fail = match get_unstable_features_setting() {
-            UnstableFeatures::Allow | UnstableFeatures::Cheat=> true,
-            _ => false,
+        let mut allow_compile_fail = false;
+        let mut allow_error_code_check = false;
+        match get_unstable_features_setting() {
+            UnstableFeatures::Allow | UnstableFeatures::Cheat => {
+                allow_compile_fail = true;
+                allow_error_code_check = true;
+            }
+            _ => {},
         };
 
         let tokens = string.split(|c: char|
@@ -493,7 +500,15 @@ impl LangString {
                     data.compile_fail = true;
                     seen_rust_tags = true;
                     data.no_run = true;
-                },
+                }
+                x if allow_error_code_check && x.starts_with("E") && x.len() == 5 => {
+                    if let Ok(_) = x[1..].parse::<u32>() {
+                        data.error_codes.push(x.to_owned());
+                        seen_rust_tags = true;
+                    } else {
+                        seen_other_tags = true;
+                    }
+                }
                 _ => { seen_other_tags = true }
             }
         }
@@ -577,7 +592,7 @@ mod tests {
     fn test_lang_string_parse() {
         fn t(s: &str,
             should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
-            compile_fail: bool) {
+            compile_fail: bool, error_codes: Vec<String>) {
             assert_eq!(LangString::parse(s), LangString {
                 should_panic: should_panic,
                 no_run: no_run,
@@ -585,6 +600,7 @@ mod tests {
                 rust: rust,
                 test_harness: test_harness,
                 compile_fail: compile_fail,
+                error_codes: error_codes,
             })
         }
 
