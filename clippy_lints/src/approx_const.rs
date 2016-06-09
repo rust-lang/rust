@@ -69,7 +69,7 @@ fn check_known_consts(cx: &LateContext, e: &Expr, s: &str, module: &str) {
                 span_lint(cx,
                           APPROX_CONSTANT,
                           e.span,
-                          &format!("approximate value of `{}::{}` found. Consider using it directly", module, &name));
+                          &format!("approximate value of `{}::consts::{}` found. Consider using it directly", module, &name));
                 return;
             }
         }
