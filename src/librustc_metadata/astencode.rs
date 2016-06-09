@@ -53,11 +53,16 @@ use rustc_serialize as serialize;
 use rustc_serialize::{Decodable, Decoder, DecoderHelpers};
 use rustc_serialize::{Encodable, EncoderHelpers};
 
-#[cfg(test)] use std::io::Cursor;
-#[cfg(test)] use syntax::parse;
-#[cfg(test)] use syntax::ast::NodeId;
-#[cfg(test)] use rustc::hir::print as pprust;
-#[cfg(test)] use rustc::hir::lowering::{LoweringContext, DummyResolver};
+#[cfg(test)]
+use std::io::Cursor;
+#[cfg(test)]
+use syntax::parse;
+#[cfg(test)]
+use syntax::ast::NodeId;
+#[cfg(test)]
+use rustc::hir::print as pprust;
+#[cfg(test)]
+use rustc::hir::lowering::{DummyResolver, LoweringContext};
 
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -75,9 +80,7 @@ trait tr {
 // ______________________________________________________________________
 // Top-level methods.
 
-pub fn encode_inlined_item(ecx: &e::EncodeContext,
-                           rbml_w: &mut Encoder,
-                           ii: InlinedItemRef) {
+pub fn encode_inlined_item(ecx: &e::EncodeContext, rbml_w: &mut Encoder, ii: InlinedItemRef) {
     let id = match ii {
         InlinedItemRef::Item(i) => i.id,
         InlinedItemRef::Foreign(i) => i.id,
@@ -138,7 +141,7 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &cstore::crate_metadata,
         tcx: tcx,
         from_id_range: from_id_range,
         to_id_range: to_id_range,
-        last_filemap_index: Cell::new(0)
+        last_filemap_index: Cell::new(0),
     };
     let ii = ast_map::map_decoded_item(&dcx.tcx.map,
                                        parent_def_path,
@@ -149,12 +152,12 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &cstore::crate_metadata,
         InlinedItem::Item(ref i) => i.name,
         InlinedItem::Foreign(ref i) => i.name,
         InlinedItem::TraitItem(_, ref ti) => ti.name,
-        InlinedItem::ImplItem(_, ref ii) => ii.name
+        InlinedItem::ImplItem(_, ref ii) => ii.name,
     };
     debug!("Fn named: {}", name);
     debug!("< Decoded inlined fn: {}::{}",
-            tcx.item_path_str(parent_did),
-            name);
+           tcx.item_path_str(parent_did),
+           name);
     region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
     decode_side_tables(dcx, ast_doc);
     copy_item_types(dcx, ii, orig_did);
@@ -169,14 +172,18 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &cstore::crate_metadata,
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
 
-fn reserve_id_range(sess: &Session,
-                    from_id_range: IdRange) -> IdRange {
+fn reserve_id_range(sess: &Session, from_id_range: IdRange) -> IdRange {
     // Handle the case of an empty range:
-    if from_id_range.empty() { return from_id_range; }
+    if from_id_range.empty() {
+        return from_id_range;
+    }
     let cnt = from_id_range.max - from_id_range.min;
     let to_id_min = sess.reserve_node_ids(cnt);
     let to_id_max = to_id_min + cnt;
-    IdRange { min: to_id_min, max: to_id_max }
+    IdRange {
+        min: to_id_min,
+        max: to_id_max,
+    }
 }
 
 impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
@@ -236,7 +243,7 @@ trait def_id_encoder_helpers {
     fn emit_def_id(&mut self, did: DefId);
 }
 
-impl<S:serialize::Encoder> def_id_encoder_helpers for S
+impl<S: serialize::Encoder> def_id_encoder_helpers for S
     where <S as serialize::Encoder>::Error: Debug
 {
     fn emit_def_id(&mut self, did: DefId) {
@@ -246,11 +253,10 @@ impl<S:serialize::Encoder> def_id_encoder_helpers for S
 
 trait def_id_decoder_helpers {
     fn read_def_id(&mut self, dcx: &DecodeContext) -> DefId;
-    fn read_def_id_nodcx(&mut self,
-                         cdata: &cstore::crate_metadata) -> DefId;
+    fn read_def_id_nodcx(&mut self, cdata: &cstore::crate_metadata) -> DefId;
 }
 
-impl<D:serialize::Decoder> def_id_decoder_helpers for D
+impl<D: serialize::Decoder> def_id_decoder_helpers for D
     where <D as serialize::Decoder>::Error: Debug
 {
     fn read_def_id(&mut self, dcx: &DecodeContext) -> DefId {
@@ -258,9 +264,7 @@ impl<D:serialize::Decoder> def_id_decoder_helpers for D
         did.tr(dcx)
     }
 
-    fn read_def_id_nodcx(&mut self,
-                         cdata: &cstore::crate_metadata)
-                         -> DefId {
+    fn read_def_id_nodcx(&mut self, cdata: &cstore::crate_metadata) -> DefId {
         let did: DefId = Decodable::decode(self).unwrap();
         decoder::translate_def_id(cdata, did)
     }
@@ -285,22 +289,24 @@ struct NestedItemsDropper;
 impl Folder for NestedItemsDropper {
     fn fold_block(&mut self, blk: P<hir::Block>) -> P<hir::Block> {
         blk.and_then(|hir::Block {id, stmts, expr, rules, span, ..}| {
-            let stmts_sans_items = stmts.into_iter().filter_map(|stmt| {
-                let use_stmt = match stmt.node {
-                    hir::StmtExpr(_, _) | hir::StmtSemi(_, _) => true,
-                    hir::StmtDecl(ref decl, _) => {
-                        match decl.node {
-                            hir::DeclLocal(_) => true,
-                            hir::DeclItem(_) => false,
-                        }
-                    }
-                };
-                if use_stmt {
-                    Some(stmt)
-                } else {
-                    None
-                }
-            }).collect();
+            let stmts_sans_items = stmts.into_iter()
+                                        .filter_map(|stmt| {
+                                            let use_stmt = match stmt.node {
+                                                hir::StmtExpr(_, _) | hir::StmtSemi(_, _) => true,
+                                                hir::StmtDecl(ref decl, _) => {
+                                                    match decl.node {
+                                                        hir::DeclLocal(_) => true,
+                                                        hir::DeclItem(_) => false,
+                                                    }
+                                                }
+                                            };
+                                            if use_stmt {
+                                                Some(stmt)
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .collect();
             let blk_sans_items = P(hir::Block {
                 stmts: stmts_sans_items,
                 expr: expr,
@@ -328,9 +334,7 @@ fn simplify_ast(ii: InlinedItemRef) -> InlinedItem {
 
     match ii {
         // HACK we're not dropping items.
-        InlinedItemRef::Item(i) => {
-            InlinedItem::Item(P(fold::noop_fold_item(i.clone(), &mut fld)))
-        }
+        InlinedItemRef::Item(i) => InlinedItem::Item(P(fold::noop_fold_item(i.clone(), &mut fld))),
         InlinedItemRef::TraitItem(d, ti) => {
             InlinedItem::TraitItem(d, P(fold::noop_fold_trait_item(ti.clone(), &mut fld)))
         }
@@ -360,37 +364,38 @@ fn decode_def(dcx: &DecodeContext, dsr: &mut reader::Decoder) -> Def {
 impl tr for Def {
     fn tr(&self, dcx: &DecodeContext) -> Def {
         match *self {
-          Def::Fn(did) => Def::Fn(did.tr(dcx)),
-          Def::Method(did) => Def::Method(did.tr(dcx)),
-          Def::SelfTy(opt_did, impl_id) => { Def::SelfTy(opt_did.map(|did| did.tr(dcx)),
-                                                         impl_id.map(|id| dcx.tr_id(id))) }
-          Def::Mod(did) => { Def::Mod(did.tr(dcx)) }
-          Def::ForeignMod(did) => { Def::ForeignMod(did.tr(dcx)) }
-          Def::Static(did, m) => { Def::Static(did.tr(dcx), m) }
-          Def::Const(did) => { Def::Const(did.tr(dcx)) }
-          Def::AssociatedConst(did) => Def::AssociatedConst(did.tr(dcx)),
-          Def::Local(_, nid) => {
-              let nid = dcx.tr_id(nid);
-              let did = dcx.tcx.map.local_def_id(nid);
-              Def::Local(did, nid)
-          }
-          Def::Variant(e_did, v_did) => Def::Variant(e_did.tr(dcx), v_did.tr(dcx)),
-          Def::Trait(did) => Def::Trait(did.tr(dcx)),
-          Def::Enum(did) => Def::Enum(did.tr(dcx)),
-          Def::TyAlias(did) => Def::TyAlias(did.tr(dcx)),
-          Def::AssociatedTy(trait_did, did) =>
-              Def::AssociatedTy(trait_did.tr(dcx), did.tr(dcx)),
-          Def::PrimTy(p) => Def::PrimTy(p),
-          Def::TyParam(s, index, def_id, n) => Def::TyParam(s, index, def_id.tr(dcx), n),
-          Def::Upvar(_, nid1, index, nid2) => {
-              let nid1 = dcx.tr_id(nid1);
-              let nid2 = dcx.tr_id(nid2);
-              let did1 = dcx.tcx.map.local_def_id(nid1);
-              Def::Upvar(did1, nid1, index, nid2)
-          }
-          Def::Struct(did) => Def::Struct(did.tr(dcx)),
-          Def::Label(nid) => Def::Label(dcx.tr_id(nid)),
-          Def::Err => Def::Err,
+            Def::Fn(did) => Def::Fn(did.tr(dcx)),
+            Def::Method(did) => Def::Method(did.tr(dcx)),
+            Def::SelfTy(opt_did, impl_id) => {
+                Def::SelfTy(opt_did.map(|did| did.tr(dcx)),
+                            impl_id.map(|id| dcx.tr_id(id)))
+            }
+            Def::Mod(did) => Def::Mod(did.tr(dcx)),
+            Def::ForeignMod(did) => Def::ForeignMod(did.tr(dcx)),
+            Def::Static(did, m) => Def::Static(did.tr(dcx), m),
+            Def::Const(did) => Def::Const(did.tr(dcx)),
+            Def::AssociatedConst(did) => Def::AssociatedConst(did.tr(dcx)),
+            Def::Local(_, nid) => {
+                let nid = dcx.tr_id(nid);
+                let did = dcx.tcx.map.local_def_id(nid);
+                Def::Local(did, nid)
+            }
+            Def::Variant(e_did, v_did) => Def::Variant(e_did.tr(dcx), v_did.tr(dcx)),
+            Def::Trait(did) => Def::Trait(did.tr(dcx)),
+            Def::Enum(did) => Def::Enum(did.tr(dcx)),
+            Def::TyAlias(did) => Def::TyAlias(did.tr(dcx)),
+            Def::AssociatedTy(trait_did, did) => Def::AssociatedTy(trait_did.tr(dcx), did.tr(dcx)),
+            Def::PrimTy(p) => Def::PrimTy(p),
+            Def::TyParam(s, index, def_id, n) => Def::TyParam(s, index, def_id.tr(dcx), n),
+            Def::Upvar(_, nid1, index, nid2) => {
+                let nid1 = dcx.tr_id(nid1);
+                let nid2 = dcx.tr_id(nid2);
+                let did1 = dcx.tcx.map.local_def_id(nid1);
+                Def::Upvar(did1, nid1, index, nid2)
+            }
+            Def::Struct(did) => Def::Struct(did.tr(dcx)),
+            Def::Label(nid) => Def::Label(dcx.tr_id(nid)),
+            Def::Err => Def::Err,
         }
     }
 }
@@ -403,14 +408,12 @@ fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &hir::Freevar) {
 }
 
 trait rbml_decoder_helper {
-    fn read_freevar_entry(&mut self, dcx: &DecodeContext)
-                          -> hir::Freevar;
+    fn read_freevar_entry(&mut self, dcx: &DecodeContext) -> hir::Freevar;
     fn read_capture_mode(&mut self) -> hir::CaptureClause;
 }
 
 impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
-    fn read_freevar_entry(&mut self, dcx: &DecodeContext)
-                          -> hir::Freevar {
+    fn read_freevar_entry(&mut self, dcx: &DecodeContext) -> hir::Freevar {
         let fv: hir::Freevar = Decodable::decode(self).unwrap();
         fv.tr(dcx)
     }
@@ -434,7 +437,8 @@ impl tr for hir::Freevar {
 // Encoding and decoding of MethodCallee
 
 trait read_method_callee_helper<'tcx> {
-    fn read_method_callee<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+    fn read_method_callee<'a, 'b>(&mut self,
+                                  dcx: &DecodeContext<'a, 'b, 'tcx>)
                                   -> (u32, ty::MethodCallee<'tcx>);
 }
 
@@ -445,40 +449,37 @@ fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
     use rustc_serialize::Encoder;
 
     rbml_w.emit_struct("MethodCallee", 4, |rbml_w| {
-        rbml_w.emit_struct_field("autoderef", 0, |rbml_w| {
-            autoderef.encode(rbml_w)
-        });
-        rbml_w.emit_struct_field("def_id", 1, |rbml_w| {
-            Ok(rbml_w.emit_def_id(method.def_id))
-        });
-        rbml_w.emit_struct_field("ty", 2, |rbml_w| {
-            Ok(rbml_w.emit_ty(ecx, method.ty))
-        });
-        rbml_w.emit_struct_field("substs", 3, |rbml_w| {
-            Ok(rbml_w.emit_substs(ecx, &method.substs))
-        })
-    }).unwrap();
+              rbml_w.emit_struct_field("autoderef", 0, |rbml_w| autoderef.encode(rbml_w));
+              rbml_w.emit_struct_field("def_id", 1, |rbml_w| Ok(rbml_w.emit_def_id(method.def_id)));
+              rbml_w.emit_struct_field("ty", 2, |rbml_w| Ok(rbml_w.emit_ty(ecx, method.ty)));
+              rbml_w.emit_struct_field("substs",
+                                       3,
+                                       |rbml_w| Ok(rbml_w.emit_substs(ecx, &method.substs)))
+          })
+          .unwrap();
 }
 
 impl<'a, 'tcx> read_method_callee_helper<'tcx> for reader::Decoder<'a> {
-    fn read_method_callee<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
+    fn read_method_callee<'b, 'c>(&mut self,
+                                  dcx: &DecodeContext<'b, 'c, 'tcx>)
                                   -> (u32, ty::MethodCallee<'tcx>) {
 
         self.read_struct("MethodCallee", 4, |this| {
-            let autoderef = this.read_struct_field("autoderef", 0,
-                                                   Decodable::decode).unwrap();
-            Ok((autoderef, ty::MethodCallee {
-                def_id: this.read_struct_field("def_id", 1, |this| {
-                    Ok(this.read_def_id(dcx))
-                }).unwrap(),
-                ty: this.read_struct_field("ty", 2, |this| {
-                    Ok(this.read_ty(dcx))
-                }).unwrap(),
-                substs: this.read_struct_field("substs", 3, |this| {
-                    Ok(dcx.tcx.mk_substs(this.read_substs(dcx)))
-                }).unwrap()
-            }))
-        }).unwrap()
+                let autoderef = this.read_struct_field("autoderef", 0, Decodable::decode)
+                                    .unwrap();
+                Ok((autoderef,
+                    ty::MethodCallee {
+                    def_id: this.read_struct_field("def_id", 1, |this| Ok(this.read_def_id(dcx)))
+                                .unwrap(),
+                    ty: this.read_struct_field("ty", 2, |this| Ok(this.read_ty(dcx)))
+                            .unwrap(),
+                    substs: this.read_struct_field("substs", 3, |this| {
+                                    Ok(dcx.tcx.mk_substs(this.read_substs(dcx)))
+                                })
+                                .unwrap(),
+                }))
+            })
+            .unwrap()
     }
 }
 
@@ -493,98 +494,97 @@ trait rbml_writer_helpers<'tcx> {
     fn emit_region(&mut self, ecx: &e::EncodeContext, r: ty::Region);
     fn emit_ty<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, ty: Ty<'tcx>);
     fn emit_tys<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, tys: &[Ty<'tcx>]);
-    fn emit_predicate<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
+    fn emit_predicate<'a>(&mut self,
+                          ecx: &e::EncodeContext<'a, 'tcx>,
                           predicate: &ty::Predicate<'tcx>);
-    fn emit_trait_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                          ty: &ty::TraitRef<'tcx>);
-    fn emit_substs<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                       substs: &subst::Substs<'tcx>);
-    fn emit_existential_bounds<'b>(&mut self, ecx: &e::EncodeContext<'b,'tcx>,
+    fn emit_trait_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, ty: &ty::TraitRef<'tcx>);
+    fn emit_substs<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, substs: &subst::Substs<'tcx>);
+    fn emit_existential_bounds<'b>(&mut self,
+                                   ecx: &e::EncodeContext<'b, 'tcx>,
                                    bounds: &ty::ExistentialBounds<'tcx>);
     fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds);
     fn emit_upvar_capture(&mut self, ecx: &e::EncodeContext, capture: &ty::UpvarCapture);
-    fn emit_auto_adjustment<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
+    fn emit_auto_adjustment<'a>(&mut self,
+                                ecx: &e::EncodeContext<'a, 'tcx>,
                                 adj: &adjustment::AutoAdjustment<'tcx>);
-    fn emit_autoref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
+    fn emit_autoref<'a>(&mut self,
+                        ecx: &e::EncodeContext<'a, 'tcx>,
                         autoref: &adjustment::AutoRef<'tcx>);
-    fn emit_auto_deref_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
+    fn emit_auto_deref_ref<'a>(&mut self,
+                               ecx: &e::EncodeContext<'a, 'tcx>,
                                auto_deref_ref: &adjustment::AutoDerefRef<'tcx>);
 }
 
 impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     fn emit_region(&mut self, ecx: &e::EncodeContext, r: ty::Region) {
-        self.emit_opaque(|this| Ok(tyencode::enc_region(&mut this.cursor,
-                                                        &ecx.ty_str_ctxt(),
-                                                        r)));
+        self.emit_opaque(|this| Ok(tyencode::enc_region(&mut this.cursor, &ecx.ty_str_ctxt(), r)));
     }
 
     fn emit_ty<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>, ty: Ty<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_ty(&mut this.cursor,
-                                                    &ecx.ty_str_ctxt(),
-                                                    ty)));
+        self.emit_opaque(|this| Ok(tyencode::enc_ty(&mut this.cursor, &ecx.ty_str_ctxt(), ty)));
     }
 
     fn emit_tys<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>, tys: &[Ty<'tcx>]) {
         self.emit_from_vec(tys, |this, ty| Ok(this.emit_ty(ecx, *ty)));
     }
 
-    fn emit_trait_ref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
+    fn emit_trait_ref<'b>(&mut self,
+                          ecx: &e::EncodeContext<'b, 'tcx>,
                           trait_ref: &ty::TraitRef<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_trait_ref(&mut this.cursor,
-                                                           &ecx.ty_str_ctxt(),
-                                                           *trait_ref)));
-    }
-
-    fn emit_predicate<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                          predicate: &ty::Predicate<'tcx>) {
         self.emit_opaque(|this| {
-            Ok(tyencode::enc_predicate(&mut this.cursor,
-                                       &ecx.ty_str_ctxt(),
-                                       predicate))
+            Ok(tyencode::enc_trait_ref(&mut this.cursor, &ecx.ty_str_ctxt(), *trait_ref))
         });
     }
 
-    fn emit_existential_bounds<'b>(&mut self, ecx: &e::EncodeContext<'b,'tcx>,
+    fn emit_predicate<'b>(&mut self,
+                          ecx: &e::EncodeContext<'b, 'tcx>,
+                          predicate: &ty::Predicate<'tcx>) {
+        self.emit_opaque(|this| {
+            Ok(tyencode::enc_predicate(&mut this.cursor, &ecx.ty_str_ctxt(), predicate))
+        });
+    }
+
+    fn emit_existential_bounds<'b>(&mut self,
+                                   ecx: &e::EncodeContext<'b, 'tcx>,
                                    bounds: &ty::ExistentialBounds<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_existential_bounds(&mut this.cursor,
-                                                                    &ecx.ty_str_ctxt(),
-                                                                    bounds)));
+        self.emit_opaque(|this| {
+            Ok(tyencode::enc_existential_bounds(&mut this.cursor, &ecx.ty_str_ctxt(), bounds))
+        });
     }
 
     fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds) {
-        self.emit_opaque(|this| Ok(tyencode::enc_builtin_bounds(&mut this.cursor,
-                                                                &ecx.ty_str_ctxt(),
-                                                                bounds)));
+        self.emit_opaque(|this| {
+            Ok(tyencode::enc_builtin_bounds(&mut this.cursor, &ecx.ty_str_ctxt(), bounds))
+        });
     }
 
     fn emit_upvar_capture(&mut self, ecx: &e::EncodeContext, capture: &ty::UpvarCapture) {
         use rustc_serialize::Encoder;
 
         self.emit_enum("UpvarCapture", |this| {
-            match *capture {
-                ty::UpvarCapture::ByValue => {
-                    this.emit_enum_variant("ByValue", 1, 0, |_| Ok(()))
+                match *capture {
+                    ty::UpvarCapture::ByValue => {
+                        this.emit_enum_variant("ByValue", 1, 0, |_| Ok(()))
+                    }
+                    ty::UpvarCapture::ByRef(ty::UpvarBorrow { kind, region }) => {
+                        this.emit_enum_variant("ByRef", 2, 0, |this| {
+                            this.emit_enum_variant_arg(0, |this| kind.encode(this));
+                            this.emit_enum_variant_arg(1, |this| Ok(this.emit_region(ecx, region)))
+                        })
+                    }
                 }
-                ty::UpvarCapture::ByRef(ty::UpvarBorrow { kind, region }) => {
-                    this.emit_enum_variant("ByRef", 2, 0, |this| {
-                        this.emit_enum_variant_arg(0,
-                            |this| kind.encode(this));
-                        this.emit_enum_variant_arg(1,
-                            |this| Ok(this.emit_region(ecx, region)))
-                    })
-                }
-            }
-        }).unwrap()
+            })
+            .unwrap()
     }
 
-    fn emit_substs<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                       substs: &subst::Substs<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_substs(&mut this.cursor,
-                                                        &ecx.ty_str_ctxt(),
-                                                        substs)));
+    fn emit_substs<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>, substs: &subst::Substs<'tcx>) {
+        self.emit_opaque(|this| {
+            Ok(tyencode::enc_substs(&mut this.cursor, &ecx.ty_str_ctxt(), substs))
+        });
     }
 
-    fn emit_auto_adjustment<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
+    fn emit_auto_adjustment<'b>(&mut self,
+                                ecx: &e::EncodeContext<'b, 'tcx>,
                                 adj: &adjustment::AutoAdjustment<'tcx>) {
         use rustc_serialize::Encoder;
 
@@ -595,28 +595,26 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                 }
 
                 adjustment::AdjustUnsafeFnPointer => {
-                    this.emit_enum_variant("AdjustUnsafeFnPointer", 2, 0, |_| {
-                        Ok(())
-                    })
+                    this.emit_enum_variant("AdjustUnsafeFnPointer", 2, 0, |_| Ok(()))
                 }
 
                 adjustment::AdjustMutToConstPointer => {
-                    this.emit_enum_variant("AdjustMutToConstPointer", 3, 0, |_| {
-                        Ok(())
-                    })
+                    this.emit_enum_variant("AdjustMutToConstPointer", 3, 0, |_| Ok(()))
                 }
 
                 adjustment::AdjustDerefRef(ref auto_deref_ref) => {
                     this.emit_enum_variant("AdjustDerefRef", 4, 2, |this| {
-                        this.emit_enum_variant_arg(0,
-                            |this| Ok(this.emit_auto_deref_ref(ecx, auto_deref_ref)))
+                        this.emit_enum_variant_arg(0, |this| {
+                            Ok(this.emit_auto_deref_ref(ecx, auto_deref_ref))
+                        })
                     })
                 }
             }
         });
     }
 
-    fn emit_autoref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
+    fn emit_autoref<'b>(&mut self,
+                        ecx: &e::EncodeContext<'b, 'tcx>,
                         autoref: &adjustment::AutoRef<'tcx>) {
         use rustc_serialize::Encoder;
 
@@ -624,8 +622,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
             match autoref {
                 &adjustment::AutoPtr(r, m) => {
                     this.emit_enum_variant("AutoPtr", 0, 2, |this| {
-                        this.emit_enum_variant_arg(0,
-                            |this| Ok(this.emit_region(ecx, *r)));
+                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_region(ecx, *r)));
                         this.emit_enum_variant_arg(1, |this| m.encode(this))
                     })
                 }
@@ -638,12 +635,15 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
         });
     }
 
-    fn emit_auto_deref_ref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
+    fn emit_auto_deref_ref<'b>(&mut self,
+                               ecx: &e::EncodeContext<'b, 'tcx>,
                                auto_deref_ref: &adjustment::AutoDerefRef<'tcx>) {
         use rustc_serialize::Encoder;
 
         self.emit_struct("AutoDerefRef", 2, |this| {
-            this.emit_struct_field("autoderefs", 0, |this| auto_deref_ref.autoderefs.encode(this));
+            this.emit_struct_field("autoderefs",
+                                   0,
+                                   |this| auto_deref_ref.autoderefs.encode(this));
 
             this.emit_struct_field("autoref", 1, |this| {
                 this.emit_option(|this| {
@@ -658,9 +658,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                 this.emit_option(|this| {
                     match auto_deref_ref.unsize {
                         None => this.emit_option_none(),
-                        Some(target) => this.emit_option_some(|this| {
-                            Ok(this.emit_ty(ecx, target))
-                        })
+                        Some(target) => this.emit_option_some(|this| Ok(this.emit_ty(ecx, target))),
                     }
                 })
             })
@@ -674,10 +672,8 @@ trait write_tag_and_id {
 }
 
 impl<'a> write_tag_and_id for Encoder<'a> {
-    fn tag<F>(&mut self,
-              tag_id: c::astencode_tag,
-              f: F) where
-        F: FnOnce(&mut Encoder<'a>),
+    fn tag<F>(&mut self, tag_id: c::astencode_tag, f: F)
+        where F: FnOnce(&mut Encoder<'a>)
     {
         self.start_tag(tag_id as usize);
         f(self);
@@ -689,32 +685,27 @@ impl<'a> write_tag_and_id for Encoder<'a> {
     }
 }
 
-struct SideTableEncodingIdVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
+struct SideTableEncodingIdVisitor<'a, 'b: 'a, 'c: 'a, 'tcx: 'c> {
     ecx: &'a e::EncodeContext<'c, 'tcx>,
     rbml_w: &'a mut Encoder<'b>,
 }
 
-impl<'a, 'b, 'c, 'tcx> IdVisitingOperation for
-        SideTableEncodingIdVisitor<'a, 'b, 'c, 'tcx> {
+impl<'a, 'b, 'c, 'tcx> IdVisitingOperation for SideTableEncodingIdVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_id(&mut self, id: ast::NodeId) {
         encode_side_tables_for_id(self.ecx, self.rbml_w, id)
     }
 }
 
-fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
-                             rbml_w: &mut Encoder,
-                             ii: &InlinedItem) {
+fn encode_side_tables_for_ii(ecx: &e::EncodeContext, rbml_w: &mut Encoder, ii: &InlinedItem) {
     rbml_w.start_tag(c::tag_table as usize);
     ii.visit_ids(&mut SideTableEncodingIdVisitor {
         ecx: ecx,
-        rbml_w: rbml_w
+        rbml_w: rbml_w,
     });
     rbml_w.end_tag();
 }
 
-fn encode_side_tables_for_id(ecx: &e::EncodeContext,
-                             rbml_w: &mut Encoder,
-                             id: ast::NodeId) {
+fn encode_side_tables_for_id(ecx: &e::EncodeContext, rbml_w: &mut Encoder, id: ast::NodeId) {
     let tcx = ecx.tcx;
 
     debug!("Encoding side tables for id {}", id);
@@ -743,9 +734,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     if let Some(fv) = tcx.freevars.borrow().get(&id) {
         rbml_w.tag(c::tag_table_freevars, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.emit_from_vec(fv, |rbml_w, fv_entry| {
-                Ok(encode_freevar_entry(rbml_w, fv_entry))
-            });
+            rbml_w.emit_from_vec(fv,
+                                 |rbml_w, fv_entry| Ok(encode_freevar_entry(rbml_w, fv_entry)));
         });
 
         for freevar in fv {
@@ -755,7 +745,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                 let var_id = freevar.def.var_id();
                 let upvar_id = ty::UpvarId {
                     var_id: var_id,
-                    closure_expr_id: id
+                    closure_expr_id: id,
                 };
                 let upvar_capture = tcx.tables
                                        .borrow()
@@ -785,8 +775,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                     if let Some(method) = tcx.tables.borrow().method_map.get(&method_call) {
                         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
                             rbml_w.id(id);
-                            encode_method_callee(ecx, rbml_w,
-                                                 method_call.autoderef, method)
+                            encode_method_callee(ecx, rbml_w, method_call.autoderef, method)
                         })
                     }
                 }
@@ -821,94 +810,108 @@ trait doc_decoder_helpers: Sized {
 }
 
 impl<'a> doc_decoder_helpers for rbml::Doc<'a> {
-    fn as_int(&self) -> isize { reader::doc_as_u64(*self) as isize }
+    fn as_int(&self) -> isize {
+        reader::doc_as_u64(*self) as isize
+    }
     fn opt_child(&self, tag: c::astencode_tag) -> Option<rbml::Doc<'a>> {
         reader::maybe_get_doc(*self, tag as usize)
     }
 }
 
 trait rbml_decoder_decoder_helpers<'tcx> {
-    fn read_ty_encoded<'a, 'b, F, R>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>,
-                                     f: F) -> R
+    fn read_ty_encoded<'a, 'b, F, R>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>, f: F) -> R
         where F: for<'x> FnOnce(&mut tydecode::TyDecoder<'x, 'tcx>) -> R;
 
     fn read_region(&mut self, dcx: &DecodeContext) -> ty::Region;
     fn read_ty<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Ty<'tcx>;
     fn read_tys<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Vec<Ty<'tcx>>;
-    fn read_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                              -> ty::TraitRef<'tcx>;
-    fn read_poly_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+    fn read_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> ty::TraitRef<'tcx>;
+    fn read_poly_trait_ref<'a, 'b>(&mut self,
+                                   dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> ty::PolyTraitRef<'tcx>;
-    fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                              -> ty::Predicate<'tcx>;
-    fn read_existential_bounds<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+    fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> ty::Predicate<'tcx>;
+    fn read_existential_bounds<'a, 'b>(&mut self,
+                                       dcx: &DecodeContext<'a, 'b, 'tcx>)
                                        -> ty::ExistentialBounds<'tcx>;
-    fn read_substs<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                           -> subst::Substs<'tcx>;
-    fn read_upvar_capture(&mut self, dcx: &DecodeContext)
-                          -> ty::UpvarCapture;
-    fn read_auto_adjustment<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+    fn read_substs<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> subst::Substs<'tcx>;
+    fn read_upvar_capture(&mut self, dcx: &DecodeContext) -> ty::UpvarCapture;
+    fn read_auto_adjustment<'a, 'b>(&mut self,
+                                    dcx: &DecodeContext<'a, 'b, 'tcx>)
                                     -> adjustment::AutoAdjustment<'tcx>;
-    fn read_cast_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                 -> cast::CastKind;
-    fn read_auto_deref_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+    fn read_cast_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> cast::CastKind;
+    fn read_auto_deref_ref<'a, 'b>(&mut self,
+                                   dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> adjustment::AutoDerefRef<'tcx>;
-    fn read_autoref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+    fn read_autoref<'a, 'b>(&mut self,
+                            dcx: &DecodeContext<'a, 'b, 'tcx>)
                             -> adjustment::AutoRef<'tcx>;
 
     // Versions of the type reading functions that don't need the full
     // DecodeContext.
-    fn read_ty_nodcx<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         cdata: &cstore::crate_metadata) -> Ty<'tcx>;
-    fn read_tys_nodcx<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          cdata: &cstore::crate_metadata) -> Vec<Ty<'tcx>>;
-    fn read_substs_nodcx<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn read_ty_nodcx<'a>(&mut self,
+                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         cdata: &cstore::crate_metadata)
+                         -> Ty<'tcx>;
+    fn read_tys_nodcx<'a>(&mut self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          cdata: &cstore::crate_metadata)
+                          -> Vec<Ty<'tcx>>;
+    fn read_substs_nodcx<'a>(&mut self,
+                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              cdata: &cstore::crate_metadata)
                              -> subst::Substs<'tcx>;
 }
 
 impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
-    fn read_ty_nodcx<'b>(&mut self, tcx: TyCtxt<'b, 'tcx, 'tcx>,
+    fn read_ty_nodcx<'b>(&mut self,
+                         tcx: TyCtxt<'b, 'tcx, 'tcx>,
                          cdata: &cstore::crate_metadata)
                          -> Ty<'tcx> {
         self.read_opaque(|_, doc| {
-            Ok(
-                tydecode::TyDecoder::with_doc(tcx, cdata.cnum, doc,
-                                              &mut |id| decoder::translate_def_id(cdata, id))
-                    .parse_ty())
-        }).unwrap()
+                Ok(tydecode::TyDecoder::with_doc(tcx,
+                                                 cdata.cnum,
+                                                 doc,
+                                                 &mut |id| decoder::translate_def_id(cdata, id))
+                       .parse_ty())
+            })
+            .unwrap()
     }
 
-    fn read_tys_nodcx<'b>(&mut self, tcx: TyCtxt<'b, 'tcx, 'tcx>,
-                          cdata: &cstore::crate_metadata) -> Vec<Ty<'tcx>> {
-        self.read_to_vec(|this| Ok(this.read_ty_nodcx(tcx, cdata)) )
+    fn read_tys_nodcx<'b>(&mut self,
+                          tcx: TyCtxt<'b, 'tcx, 'tcx>,
+                          cdata: &cstore::crate_metadata)
+                          -> Vec<Ty<'tcx>> {
+        self.read_to_vec(|this| Ok(this.read_ty_nodcx(tcx, cdata)))
             .unwrap()
             .into_iter()
             .collect()
     }
 
-    fn read_substs_nodcx<'b>(&mut self, tcx: TyCtxt<'b, 'tcx, 'tcx>,
+    fn read_substs_nodcx<'b>(&mut self,
+                             tcx: TyCtxt<'b, 'tcx, 'tcx>,
                              cdata: &cstore::crate_metadata)
-                             -> subst::Substs<'tcx>
-    {
+                             -> subst::Substs<'tcx> {
         self.read_opaque(|_, doc| {
-            Ok(
-                tydecode::TyDecoder::with_doc(tcx, cdata.cnum, doc,
-                                              &mut |id| decoder::translate_def_id(cdata, id))
-                    .parse_substs())
-        }).unwrap()
+                Ok(tydecode::TyDecoder::with_doc(tcx,
+                                                 cdata.cnum,
+                                                 doc,
+                                                 &mut |id| decoder::translate_def_id(cdata, id))
+                       .parse_substs())
+            })
+            .unwrap()
     }
 
     fn read_ty_encoded<'b, 'c, F, R>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>, op: F) -> R
-        where F: for<'x> FnOnce(&mut tydecode::TyDecoder<'x,'tcx>) -> R
+        where F: for<'x> FnOnce(&mut tydecode::TyDecoder<'x, 'tcx>) -> R
     {
         return self.read_opaque(|_, doc| {
-            debug!("read_ty_encoded({})", type_string(doc));
-            Ok(op(
-                &mut tydecode::TyDecoder::with_doc(
-                    dcx.tcx, dcx.cdata.cnum, doc,
-                    &mut |d| convert_def_id(dcx, d))))
-        }).unwrap();
+                       debug!("read_ty_encoded({})", type_string(doc));
+                       Ok(op(&mut tydecode::TyDecoder::with_doc(dcx.tcx,
+                                                                dcx.cdata.cnum,
+                                                                doc,
+                                                                &mut |d| convert_def_id(dcx, d))))
+                   })
+                   .unwrap();
 
         fn type_string(doc: rbml::Doc) -> String {
             let mut str = String::new();
@@ -929,143 +932,160 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         return self.read_ty_encoded(dcx, |decoder| decoder.parse_ty());
     }
 
-    fn read_tys<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                        -> Vec<Ty<'tcx>> {
+    fn read_tys<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> Vec<Ty<'tcx>> {
         self.read_to_vec(|this| Ok(this.read_ty(dcx))).unwrap().into_iter().collect()
     }
 
-    fn read_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                              -> ty::TraitRef<'tcx> {
+    fn read_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> ty::TraitRef<'tcx> {
         self.read_ty_encoded(dcx, |decoder| decoder.parse_trait_ref())
     }
 
-    fn read_poly_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
+    fn read_poly_trait_ref<'b, 'c>(&mut self,
+                                   dcx: &DecodeContext<'b, 'c, 'tcx>)
                                    -> ty::PolyTraitRef<'tcx> {
         ty::Binder(self.read_ty_encoded(dcx, |decoder| decoder.parse_trait_ref()))
     }
 
-    fn read_predicate<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                              -> ty::Predicate<'tcx>
-    {
+    fn read_predicate<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> ty::Predicate<'tcx> {
         self.read_ty_encoded(dcx, |decoder| decoder.parse_predicate())
     }
 
-    fn read_existential_bounds<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                       -> ty::ExistentialBounds<'tcx>
-    {
+    fn read_existential_bounds<'b, 'c>(&mut self,
+                                       dcx: &DecodeContext<'b, 'c, 'tcx>)
+                                       -> ty::ExistentialBounds<'tcx> {
         self.read_ty_encoded(dcx, |decoder| decoder.parse_existential_bounds())
     }
 
-    fn read_substs<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                           -> subst::Substs<'tcx> {
+    fn read_substs<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> subst::Substs<'tcx> {
         self.read_opaque(|_, doc| {
-            Ok(tydecode::TyDecoder::with_doc(dcx.tcx, dcx.cdata.cnum, doc,
-                                             &mut |d| convert_def_id(dcx, d))
-               .parse_substs())
-        }).unwrap()
+                Ok(tydecode::TyDecoder::with_doc(dcx.tcx,
+                                                 dcx.cdata.cnum,
+                                                 doc,
+                                                 &mut |d| convert_def_id(dcx, d))
+                       .parse_substs())
+            })
+            .unwrap()
     }
     fn read_upvar_capture(&mut self, dcx: &DecodeContext) -> ty::UpvarCapture {
         self.read_enum("UpvarCapture", |this| {
-            let variants = ["ByValue", "ByRef"];
-            this.read_enum_variant(&variants, |this, i| {
-                Ok(match i {
-                    1 => ty::UpvarCapture::ByValue,
-                    2 => ty::UpvarCapture::ByRef(ty::UpvarBorrow {
-                        kind: this.read_enum_variant_arg(0,
-                                  |this| Decodable::decode(this)).unwrap(),
-                        region: this.read_enum_variant_arg(1,
-                                    |this| Ok(this.read_region(dcx))).unwrap()
-                    }),
-                    _ => bug!("bad enum variant for ty::UpvarCapture")
+                let variants = ["ByValue", "ByRef"];
+                this.read_enum_variant(&variants, |this, i| {
+                    Ok(match i {
+                        1 => ty::UpvarCapture::ByValue,
+                        2 => {
+                            ty::UpvarCapture::ByRef(ty::UpvarBorrow {
+                                kind: this.read_enum_variant_arg(0, |this| Decodable::decode(this))
+                                          .unwrap(),
+                                region: this.read_enum_variant_arg(1, |this| {
+                                                Ok(this.read_region(dcx))
+                                            })
+                                            .unwrap(),
+                            })
+                        }
+                        _ => bug!("bad enum variant for ty::UpvarCapture"),
+                    })
                 })
             })
-        }).unwrap()
+            .unwrap()
     }
-    fn read_auto_adjustment<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
+    fn read_auto_adjustment<'b, 'c>(&mut self,
+                                    dcx: &DecodeContext<'b, 'c, 'tcx>)
                                     -> adjustment::AutoAdjustment<'tcx> {
         self.read_enum("AutoAdjustment", |this| {
-            let variants = ["AdjustReifyFnPointer", "AdjustUnsafeFnPointer",
-                            "AdjustMutToConstPointer", "AdjustDerefRef"];
-            this.read_enum_variant(&variants, |this, i| {
-                Ok(match i {
-                    1 => adjustment::AdjustReifyFnPointer,
-                    2 => adjustment::AdjustUnsafeFnPointer,
-                    3 => adjustment::AdjustMutToConstPointer,
-                    4 => {
-                        let auto_deref_ref: adjustment::AutoDerefRef =
-                            this.read_enum_variant_arg(0,
-                                |this| Ok(this.read_auto_deref_ref(dcx))).unwrap();
+                let variants = ["AdjustReifyFnPointer",
+                                "AdjustUnsafeFnPointer",
+                                "AdjustMutToConstPointer",
+                                "AdjustDerefRef"];
+                this.read_enum_variant(&variants, |this, i| {
+                    Ok(match i {
+                        1 => adjustment::AdjustReifyFnPointer,
+                        2 => adjustment::AdjustUnsafeFnPointer,
+                        3 => adjustment::AdjustMutToConstPointer,
+                        4 => {
+                            let auto_deref_ref: adjustment::AutoDerefRef =
+                                this.read_enum_variant_arg(0, |this| {
+                                        Ok(this.read_auto_deref_ref(dcx))
+                                    })
+                                    .unwrap();
 
-                        adjustment::AdjustDerefRef(auto_deref_ref)
-                    }
-                    _ => bug!("bad enum variant for adjustment::AutoAdjustment")
+                            adjustment::AdjustDerefRef(auto_deref_ref)
+                        }
+                        _ => bug!("bad enum variant for adjustment::AutoAdjustment"),
+                    })
                 })
             })
-        }).unwrap()
+            .unwrap()
     }
 
-    fn read_auto_deref_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
+    fn read_auto_deref_ref<'b, 'c>(&mut self,
+                                   dcx: &DecodeContext<'b, 'c, 'tcx>)
                                    -> adjustment::AutoDerefRef<'tcx> {
         self.read_struct("AutoDerefRef", 2, |this| {
-            Ok(adjustment::AutoDerefRef {
-                autoderefs: this.read_struct_field("autoderefs", 0, |this| {
-                    Decodable::decode(this)
-                }).unwrap(),
-                autoref: this.read_struct_field("autoref", 1, |this| {
-                    this.read_option(|this, b| {
-                        if b {
-                            Ok(Some(this.read_autoref(dcx)))
-                        } else {
-                            Ok(None)
-                        }
-                    })
-                }).unwrap(),
-                unsize: this.read_struct_field("unsize", 2, |this| {
-                    this.read_option(|this, b| {
-                        if b {
-                            Ok(Some(this.read_ty(dcx)))
-                        } else {
-                            Ok(None)
-                        }
-                    })
-                }).unwrap(),
-            })
-        }).unwrap()
-    }
-
-    fn read_autoref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                            -> adjustment::AutoRef<'tcx> {
-        self.read_enum("AutoRef", |this| {
-            let variants = ["AutoPtr", "AutoUnsafe"];
-            this.read_enum_variant(&variants, |this, i| {
-                Ok(match i {
-                    0 => {
-                        let r: ty::Region =
-                            this.read_enum_variant_arg(0, |this| {
-                                Ok(this.read_region(dcx))
-                            }).unwrap();
-                        let m: hir::Mutability =
-                            this.read_enum_variant_arg(1, |this| {
-                                Decodable::decode(this)
-                            }).unwrap();
-
-                        adjustment::AutoPtr(dcx.tcx.mk_region(r), m)
-                    }
-                    1 => {
-                        let m: hir::Mutability =
-                            this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
-
-                        adjustment::AutoUnsafe(m)
-                    }
-                    _ => bug!("bad enum variant for adjustment::AutoRef")
+                Ok(adjustment::AutoDerefRef {
+                    autoderefs: this.read_struct_field("autoderefs",
+                                                       0,
+                                                       |this| Decodable::decode(this))
+                                    .unwrap(),
+                    autoref: this.read_struct_field("autoref", 1, |this| {
+                                     this.read_option(|this, b| {
+                                         if b {
+                                             Ok(Some(this.read_autoref(dcx)))
+                                         } else {
+                                             Ok(None)
+                                         }
+                                     })
+                                 })
+                                 .unwrap(),
+                    unsize: this.read_struct_field("unsize", 2, |this| {
+                                    this.read_option(|this, b| {
+                                        if b {
+                                            Ok(Some(this.read_ty(dcx)))
+                                        } else {
+                                            Ok(None)
+                                        }
+                                    })
+                                })
+                                .unwrap(),
                 })
             })
-        }).unwrap()
+            .unwrap()
     }
 
-    fn read_cast_kind<'b, 'c>(&mut self, _dcx: &DecodeContext<'b, 'c, 'tcx>)
-                              -> cast::CastKind
-    {
+    fn read_autoref<'b, 'c>(&mut self,
+                            dcx: &DecodeContext<'b, 'c, 'tcx>)
+                            -> adjustment::AutoRef<'tcx> {
+        self.read_enum("AutoRef", |this| {
+                let variants = ["AutoPtr", "AutoUnsafe"];
+                this.read_enum_variant(&variants, |this, i| {
+                    Ok(match i {
+                        0 => {
+                            let r: ty::Region = this.read_enum_variant_arg(0, |this| {
+                                                        Ok(this.read_region(dcx))
+                                                    })
+                                                    .unwrap();
+                            let m: hir::Mutability = this.read_enum_variant_arg(1, |this| {
+                                                             Decodable::decode(this)
+                                                         })
+                                                         .unwrap();
+
+                            adjustment::AutoPtr(dcx.tcx.mk_region(r), m)
+                        }
+                        1 => {
+                            let m: hir::Mutability = this.read_enum_variant_arg(0, |this| {
+                                                             Decodable::decode(this)
+                                                         })
+                                                         .unwrap();
+
+                            adjustment::AutoUnsafe(m)
+                        }
+                        _ => bug!("bad enum variant for adjustment::AutoRef"),
+                    })
+                })
+            })
+            .unwrap()
+    }
+
+    fn read_cast_kind<'b, 'c>(&mut self, _dcx: &DecodeContext<'b, 'c, 'tcx>) -> cast::CastKind {
         Decodable::decode(self).unwrap()
     }
 }
@@ -1102,16 +1122,13 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 //
 // It'd be really nice to refactor the type repr to not include
 // def-ids so that all these distinctions were unnecessary.
-fn convert_def_id(dcx: &DecodeContext,
-                  did: DefId)
-                  -> DefId {
+fn convert_def_id(dcx: &DecodeContext, did: DefId) -> DefId {
     let r = dcx.tr_def_id(did);
     debug!("convert_def_id(did={:?})={:?}", did, r);
     return r;
 }
 
-fn decode_side_tables(dcx: &DecodeContext,
-                      ast_doc: rbml::Doc) {
+fn decode_side_tables(dcx: &DecodeContext, ast_doc: rbml::Doc) {
     let tbl_doc = ast_doc.get(c::tag_table as usize);
     for (tag, entry_doc) in reader::docs(tbl_doc) {
         let mut entry_dsr = reader::Decoder::new(entry_doc);
@@ -1120,7 +1137,9 @@ fn decode_side_tables(dcx: &DecodeContext,
 
         debug!(">> Side table document with tag 0x{:x} \
                 found for id {} (orig {})",
-               tag, id, id0);
+               tag,
+               id,
+               id0);
         let tag = tag as u32;
         let decoded_tag: Option<c::astencode_tag> = c::astencode_tag::from_u32(tag);
         match decoded_tag {
@@ -1133,35 +1152,37 @@ fn decode_side_tables(dcx: &DecodeContext,
                 match value {
                     c::tag_table_def => {
                         let def = decode_def(dcx, val_dsr);
-                        dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution {
-                            base_def: def,
-                            depth: 0
-                        });
+                        dcx.tcx.def_map.borrow_mut().insert(id,
+                                                            def::PathResolution {
+                                                                base_def: def,
+                                                                depth: 0,
+                                                            });
                     }
                     c::tag_table_node_type => {
                         let ty = val_dsr.read_ty(dcx);
-                        debug!("inserting ty for node {}: {:?}",
-                               id,  ty);
+                        debug!("inserting ty for node {}: {:?}", id, ty);
                         dcx.tcx.node_type_insert(id, ty);
                     }
                     c::tag_table_item_subst => {
                         let item_substs = ty::ItemSubsts {
-                            substs: dcx.tcx.mk_substs(val_dsr.read_substs(dcx))
+                            substs: dcx.tcx.mk_substs(val_dsr.read_substs(dcx)),
                         };
-                        dcx.tcx.tables.borrow_mut().item_substs.insert(
-                            id, item_substs);
+                        dcx.tcx.tables.borrow_mut().item_substs.insert(id, item_substs);
                     }
                     c::tag_table_freevars => {
                         let fv_info = val_dsr.read_to_vec(|val_dsr| {
-                            Ok(val_dsr.read_freevar_entry(dcx))
-                        }).unwrap().into_iter().collect();
+                                                 Ok(val_dsr.read_freevar_entry(dcx))
+                                             })
+                                             .unwrap()
+                                             .into_iter()
+                                             .collect();
                         dcx.tcx.freevars.borrow_mut().insert(id, fv_info);
                     }
                     c::tag_table_upvar_capture_map => {
                         let var_id: ast::NodeId = Decodable::decode(val_dsr).unwrap();
                         let upvar_id = ty::UpvarId {
                             var_id: dcx.tr_id(var_id),
-                            closure_expr_id: id
+                            closure_expr_id: id,
                         };
                         let ub = val_dsr.read_upvar_capture(dcx);
                         dcx.tcx.tables.borrow_mut().upvar_capture_map.insert(upvar_id, ub);
@@ -1170,18 +1191,16 @@ fn decode_side_tables(dcx: &DecodeContext,
                         let (autoderef, method) = val_dsr.read_method_callee(dcx);
                         let method_call = ty::MethodCall {
                             expr_id: id,
-                            autoderef: autoderef
+                            autoderef: autoderef,
                         };
                         dcx.tcx.tables.borrow_mut().method_map.insert(method_call, method);
                     }
                     c::tag_table_adjustments => {
-                        let adj =
-                            val_dsr.read_auto_adjustment(dcx);
+                        let adj = val_dsr.read_auto_adjustment(dcx);
                         dcx.tcx.tables.borrow_mut().adjustments.insert(id, adj);
                     }
                     c::tag_table_cast_kinds => {
-                        let cast_kind =
-                            val_dsr.read_cast_kind(dcx);
+                        let cast_kind = val_dsr.read_cast_kind(dcx);
                         dcx.tcx.cast_kinds.borrow_mut().insert(id, cast_kind);
                     }
                     c::tag_table_const_qualif => {
@@ -1202,12 +1221,9 @@ fn decode_side_tables(dcx: &DecodeContext,
 // copy the tcache entries from the original item to the new
 // inlined item
 fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
-    fn copy_item_type(dcx: &DecodeContext,
-                      inlined_id: ast::NodeId,
-                      remote_did: DefId) {
+    fn copy_item_type(dcx: &DecodeContext, inlined_id: ast::NodeId, remote_did: DefId) {
         let inlined_did = dcx.tcx.map.local_def_id(inlined_id);
-        dcx.tcx.register_item_type(inlined_did,
-                                   dcx.tcx.lookup_item_type(remote_did));
+        dcx.tcx.register_item_type(inlined_did, dcx.tcx.lookup_item_type(remote_did));
 
     }
     // copy the entry for the item itself
@@ -1215,7 +1231,7 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
         &InlinedItem::Item(ref i) => i.id,
         &InlinedItem::TraitItem(_, ref ti) => ti.id,
         &InlinedItem::ImplItem(_, ref ii) => ii.id,
-        &InlinedItem::Foreign(ref fi) => fi.id
+        &InlinedItem::Foreign(ref fi) => fi.id,
     };
     copy_item_type(dcx, item_node_id, orig_did);
 
@@ -1224,20 +1240,20 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
         match item.node {
             hir::ItemEnum(ref def, _) => {
                 let orig_def = dcx.tcx.lookup_adt_def(orig_did);
-                for (i_variant, orig_variant) in
-                    def.variants.iter().zip(orig_def.variants.iter())
-                {
+                for (i_variant, orig_variant) in def.variants.iter().zip(orig_def.variants.iter()) {
                     debug!("astencode: copying variant {:?} => {:?}",
-                           orig_variant.did, i_variant.node.data.id());
+                           orig_variant.did,
+                           i_variant.node.data.id());
                     copy_item_type(dcx, i_variant.node.data.id(), orig_variant.did);
                 }
             }
             hir::ItemStruct(ref def, _) => {
                 if !def.is_struct() {
-                    let ctor_did = dcx.tcx.lookup_adt_def(orig_did)
-                        .struct_variant().did;
-                    debug!("astencode: copying ctor {:?} => {:?}", ctor_did,
-                           def.id());
+                    let ctor_did = dcx.tcx
+                                      .lookup_adt_def(orig_did)
+                                      .struct_variant()
+                                      .did;
+                    debug!("astencode: copying ctor {:?} => {:?}", ctor_did, def.id());
                     copy_item_type(dcx, def.id(), ctor_did);
                 }
             }
@@ -1287,14 +1303,18 @@ impl FakeExtCtxt for parse::ParseSess {
             expn_id: codemap::NO_EXPANSION,
         }
     }
-    fn cfg(&self) -> ast::CrateConfig { Vec::new() }
+    fn cfg(&self) -> ast::CrateConfig {
+        Vec::new()
+    }
     fn ident_of(&self, st: &str) -> ast::Ident {
         parse::token::str_to_ident(st)
     }
     fn name_of(&self, st: &str) -> ast::Name {
         parse::token::intern(st)
     }
-    fn parse_sess(&self) -> &parse::ParseSess { self }
+    fn parse_sess(&self) -> &parse::ParseSess {
+        self
+    }
 }
 
 #[cfg(test)]
@@ -1342,7 +1362,8 @@ fn test_basic() {
     with_testing_context(|lcx| {
         roundtrip(lcx.lower_item(&quote_item!(&cx,
             fn foo() {}
-        ).unwrap()));
+        )
+                                      .unwrap()));
     });
 }
 
@@ -1352,7 +1373,8 @@ fn test_smalltalk() {
     with_testing_context(|lcx| {
         roundtrip(lcx.lower_item(&quote_item!(&cx,
             fn foo() -> isize { 3 + 4 } // first smalltalk program ever executed.
-        ).unwrap()));
+        )
+                                      .unwrap()));
     });
 }
 
@@ -1365,7 +1387,8 @@ fn test_more() {
                 let z = x + y;
                 return z;
             }
-        ).unwrap()));
+        )
+                                      .unwrap()));
     });
 }
 
@@ -1377,7 +1400,8 @@ fn test_simplification() {
             fn eq_int(a: isize, b: isize) -> bool { a == b }
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
-    ).unwrap();
+    )
+                   .unwrap();
     let cx = mk_ctxt();
     with_testing_context(|lcx| {
         let hir_item = lcx.lower_item(&item);
@@ -1387,13 +1411,13 @@ fn test_simplification() {
             fn new_int_alist<B>() -> alist<isize, B> {
                 return alist {eq_fn: eq_int, data: Vec::new()};
             }
-        ).unwrap())));
+        )
+                                                               .unwrap())));
         match (item_out, item_exp) {
             (InlinedItem::Item(item_out), InlinedItem::Item(item_exp)) => {
-                 assert!(pprust::item_to_string(&item_out) ==
-                         pprust::item_to_string(&item_exp));
+                assert!(pprust::item_to_string(&item_out) == pprust::item_to_string(&item_exp));
             }
-            _ => bug!()
+            _ => bug!(),
         }
     });
 }

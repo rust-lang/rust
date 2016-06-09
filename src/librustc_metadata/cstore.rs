@@ -21,14 +21,14 @@ use index;
 use loader;
 
 use rustc::dep_graph::DepGraph;
-use rustc::hir::def_id::{DefIndex, DefId};
+use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::map::DefKey;
 use rustc::hir::svh::Svh;
-use rustc::middle::cstore::{ExternCrate};
+use rustc::middle::cstore::ExternCrate;
 use rustc::session::config::PanicStrategy;
-use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
+use rustc::util::nodemap::{DefIdMap, FnvHashMap, NodeMap, NodeSet};
 
-use std::cell::{RefCell, Ref, Cell};
+use std::cell::{Cell, Ref, RefCell};
 use std::rc::Rc;
 use std::path::PathBuf;
 use flate::Bytes;
@@ -37,8 +37,8 @@ use syntax::attr;
 use syntax::codemap;
 use syntax::parse::token::IdentInterner;
 
-pub use middle::cstore::{NativeLibraryKind, LinkagePreference};
-pub use middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
+pub use middle::cstore::{LinkagePreference, NativeLibraryKind};
+pub use middle::cstore::{NativeFramework, NativeStatic, NativeUnknown};
 pub use middle::cstore::{CrateSource, LinkMeta};
 
 // A map from external crate numbers (as decoded from some crate file) to
@@ -60,7 +60,7 @@ pub struct ImportedFileMap {
     /// The end of this FileMap within the codemap of its original crate
     pub original_end_pos: codemap::BytePos,
     /// The imported FileMap's representation within the local codemap
-    pub translated_filemap: Rc<codemap::FileMap>
+    pub translated_filemap: Rc<codemap::FileMap>,
 }
 
 pub struct crate_metadata {
@@ -108,8 +108,7 @@ pub struct CStore {
 }
 
 impl CStore {
-    pub fn new(dep_graph: &DepGraph,
-               intr: Rc<IdentInterner>) -> CStore {
+    pub fn new(dep_graph: &DepGraph, intr: Rc<IdentInterner>) -> CStore {
         CStore {
             dep_graph: dep_graph.clone(),
             metas: RefCell::new(FnvHashMap()),
@@ -140,8 +139,8 @@ impl CStore {
         self.metas.borrow_mut().insert(cnum, data);
     }
 
-    pub fn iter_crate_data<I>(&self, mut i: I) where
-        I: FnMut(ast::CrateNum, &Rc<crate_metadata>),
+    pub fn iter_crate_data<I>(&self, mut i: I)
+        where I: FnMut(ast::CrateNum, &Rc<crate_metadata>)
     {
         for (&k, v) in self.metas.borrow().iter() {
             i(k, v);
@@ -149,12 +148,14 @@ impl CStore {
     }
 
     /// Like `iter_crate_data`, but passes source paths (if available) as well.
-    pub fn iter_crate_data_origins<I>(&self, mut i: I) where
-        I: FnMut(ast::CrateNum, &crate_metadata, Option<CrateSource>),
+    pub fn iter_crate_data_origins<I>(&self, mut i: I)
+        where I: FnMut(ast::CrateNum, &crate_metadata, Option<CrateSource>)
     {
         for (&k, v) in self.metas.borrow().iter() {
             let origin = self.opt_used_crate_source(k);
-            origin.as_ref().map(|cs| { assert!(k == cs.cnum); });
+            origin.as_ref().map(|cs| {
+                assert!(k == cs.cnum);
+            });
             i(k, &v, origin);
         }
     }
@@ -166,10 +167,12 @@ impl CStore {
         }
     }
 
-    pub fn opt_used_crate_source(&self, cnum: ast::CrateNum)
-                                 -> Option<CrateSource> {
-        self.used_crate_sources.borrow_mut()
-            .iter().find(|source| source.cnum == cnum).cloned()
+    pub fn opt_used_crate_source(&self, cnum: ast::CrateNum) -> Option<CrateSource> {
+        self.used_crate_sources
+            .borrow_mut()
+            .iter()
+            .find(|source| source.cnum == cnum)
+            .cloned()
     }
 
     pub fn reset(&self) {
@@ -190,12 +193,14 @@ impl CStore {
     // In order to get this left-to-right dependency ordering, we perform a
     // topological sort of all crates putting the leaves at the right-most
     // positions.
-    pub fn do_get_used_crates(&self, prefer: LinkagePreference)
+    pub fn do_get_used_crates(&self,
+                              prefer: LinkagePreference)
                               -> Vec<(ast::CrateNum, Option<PathBuf>)> {
         let mut ordering = Vec::new();
-        fn visit(cstore: &CStore, cnum: ast::CrateNum,
-                 ordering: &mut Vec<ast::CrateNum>) {
-            if ordering.contains(&cnum) { return }
+        fn visit(cstore: &CStore, cnum: ast::CrateNum, ordering: &mut Vec<ast::CrateNum>) {
+            if ordering.contains(&cnum) {
+                return;
+            }
             let meta = cstore.get_crate_data(cnum);
             for (_, &dep) in meta.cnum_map.borrow().iter() {
                 visit(cstore, dep, ordering);
@@ -207,13 +212,21 @@ impl CStore {
         }
         info!("topological ordering: {:?}", ordering);
         ordering.reverse();
-        let mut libs = self.used_crate_sources.borrow()
-            .iter()
-            .map(|src| (src.cnum, match prefer {
-                LinkagePreference::RequireDynamic => src.dylib.clone().map(|p| p.0),
-                LinkagePreference::RequireStatic => src.rlib.clone().map(|p| p.0),
-            }))
-            .collect::<Vec<_>>();
+        let mut libs = self.used_crate_sources
+                           .borrow()
+                           .iter()
+                           .map(|src| {
+                               (src.cnum,
+                                match prefer {
+                                   LinkagePreference::RequireDynamic => {
+                                       src.dylib.clone().map(|p| p.0)
+                                   }
+                                   LinkagePreference::RequireStatic => {
+                                       src.rlib.clone().map(|p| p.0)
+                                   }
+                               })
+                           })
+                           .collect::<Vec<_>>();
         libs.sort_by(|&(a, _), &(b, _)| {
             let a = ordering.iter().position(|x| *x == a);
             let b = ordering.iter().position(|x| *x == b);
@@ -227,9 +240,7 @@ impl CStore {
         self.used_libraries.borrow_mut().push((lib, kind));
     }
 
-    pub fn get_used_libraries<'a>(&'a self)
-                              -> &'a RefCell<Vec<(String,
-                                                  NativeLibraryKind)>> {
+    pub fn get_used_libraries<'a>(&'a self) -> &'a RefCell<Vec<(String, NativeLibraryKind)>> {
         &self.used_libraries
     }
 
@@ -239,13 +250,11 @@ impl CStore {
         }
     }
 
-    pub fn get_used_link_args<'a>(&'a self) -> &'a RefCell<Vec<String> > {
+    pub fn get_used_link_args<'a>(&'a self) -> &'a RefCell<Vec<String>> {
         &self.used_link_args
     }
 
-    pub fn add_extern_mod_stmt_cnum(&self,
-                                    emod_id: ast::NodeId,
-                                    cnum: ast::CrateNum) {
+    pub fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: ast::CrateNum) {
         self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
     }
 
@@ -257,20 +266,26 @@ impl CStore {
         self.statically_included_foreign_items.borrow().contains(&id)
     }
 
-    pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>
-    {
+    pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum> {
         self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
     }
 }
 
 impl crate_metadata {
-    pub fn data<'a>(&'a self) -> &'a [u8] { self.data.as_slice() }
-    pub fn name(&self) -> &str { decoder::get_crate_name(self.data()) }
-    pub fn hash(&self) -> Svh { decoder::get_crate_hash(self.data()) }
+    pub fn data<'a>(&'a self) -> &'a [u8] {
+        self.data.as_slice()
+    }
+    pub fn name(&self) -> &str {
+        decoder::get_crate_name(self.data())
+    }
+    pub fn hash(&self) -> Svh {
+        decoder::get_crate_hash(self.data())
+    }
     pub fn disambiguator(&self) -> &str {
         decoder::get_crate_disambiguator(self.data())
     }
-    pub fn imported_filemaps<'a>(&'a self, codemap: &codemap::CodeMap)
+    pub fn imported_filemaps<'a>(&'a self,
+                                 codemap: &codemap::CodeMap)
                                  -> Ref<'a, Vec<ImportedFileMap>> {
         let filemaps = self.codemap_import_info.borrow();
         if filemaps.is_empty() {
@@ -319,12 +334,11 @@ impl MetadataBlob {
         if slice.len() < 4 {
             &[] // corrupt metadata
         } else {
-            let len = (((slice[0] as u32) << 24) |
-                       ((slice[1] as u32) << 16) |
+            let len = (((slice[0] as u32) << 24) | ((slice[1] as u32) << 16) |
                        ((slice[2] as u32) << 8) |
                        ((slice[3] as u32) << 0)) as usize;
             if len + 4 <= slice.len() {
-                &slice[4.. len + 4]
+                &slice[4..len + 4]
             } else {
                 &[] // corrupt or old metadata
             }

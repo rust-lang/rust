@@ -91,14 +91,13 @@ pub const tag_disr_val: usize = 0x3c;
 pub const tag_item_field: usize = 0x41;
 // GAP 0x42
 pub const tag_item_variances: usize = 0x43;
-/*
-  trait items contain tag_item_trait_item elements,
-  impl items contain tag_item_impl_item elements, and classes
-  have both. That's because some code treats classes like traits,
-  and other code treats them like impls. Because classes can contain
-  both, tag_item_trait_item and tag_item_impl_item have to be two
-  different tags.
- */
+// trait items contain tag_item_trait_item elements,
+// impl items contain tag_item_impl_item elements, and classes
+// have both. That's because some code treats classes like traits,
+// and other code treats them like impls. Because classes can contain
+// both, tag_item_trait_item and tag_item_impl_item have to be two
+// different tags.
+//
 pub const tag_item_impl_item: usize = 0x44;
 pub const tag_item_trait_method_explicit_self: usize = 0x45;
 
@@ -245,10 +244,8 @@ pub const tag_items_data_parent_impl: usize = 0xa9;
 
 pub const tag_rustc_version: usize = 0x10f;
 pub fn rustc_version() -> String {
-    format!(
-        "rustc {}",
-        option_env!("CFG_VERSION").unwrap_or("unknown version")
-    )
+    format!("rustc {}",
+            option_env!("CFG_VERSION").unwrap_or("unknown version"))
 }
 
 pub const tag_panic_strategy: usize = 0x114;
