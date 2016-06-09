@@ -75,13 +75,13 @@ build.
    $ pacman -Sy pacman-mirrors
    ```
 
-Download [MinGW from
-here](http://mingw-w64.org/doku.php/download/mingw-builds), and choose the
-`version=4.9.x,threads=win32,exceptions=dwarf/seh` flavor when installing. Also, make sure to install to a path without spaces in it. After installing,
-add its `bin` directory to your `PATH`. This is due to [#28260](https://github.com/rust-lang/rust/issues/28260), in the future,
-installing from pacman should be just fine.
+   Download [MinGW from
+   here](http://mingw-w64.org/doku.php/download/mingw-builds), and choose the
+   `version=4.9.x,threads=win32,exceptions=dwarf/seh` flavor when installing. Also, make sure to install to a path without spaces in it. After installing,
+   add its `bin` directory to your `PATH`. This is due to [#28260](https://github.com/rust-lang/rust/issues/28260), in the future,
+   installing from pacman should be just fine.
 
-   ```
+   ```sh
    # Make git available in MSYS2 (if not already available on path)
    $ pacman -S git
 
