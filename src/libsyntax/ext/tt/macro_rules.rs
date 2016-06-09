@@ -594,7 +594,7 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree]) -> boo
     //   matches A will never match B or vice-versa
     // * we find a case that is too complex to handle and reject it
     // * we reach the end of the macro
-    for (ta, tb) in ma.iter().zip(mb.iter()) {
+    for ((idx_a, ta), tb) in ma.iter().enumerate().zip(mb.iter()) {
         if match_same_input(ta, tb) {
             continue;
         }
@@ -608,18 +608,25 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree]) -> boo
         // not tt, ident, or block (that is, either A or B could match several
         // token trees), we cannot know where we should continue the analysis.
         match (ta, tb) {
-            (&TokenTree::Sequence(_, _), _) |
-            (_, &TokenTree::Sequence(_, _)) => return false,
-
             (&TokenTree::Token(_, MatchNt(_, nta)),
              &TokenTree::Token(_, MatchNt(_, ntb))) =>
                 if !(nt_is_single_tt(nta) && nt_is_single_tt(ntb)) {
                     return false
                 },
 
-            (&TokenTree::Token(_, MatchNt(_, nt)), _) |
-            (_ ,&TokenTree::Token(_, MatchNt(_, nt))) =>
-                if !nt_is_single_tt(nt) { return false },
+            (&TokenTree::Token(_, MatchNt(_, nt)), _) if !nt_is_single_tt(nt) =>
+                return false,
+
+            // super specific corner case: if one arm is always one token,
+            // followed by the end of the macro invocation, then we can accept
+            // it.
+
+            (&TokenTree::Sequence(_, _), _) |
+            (_, &TokenTree::Sequence(_, _)) =>
+                return only_simple_tokens(&ma[idx_a..]) && !need_disambiguation,
+
+            (_ ,&TokenTree::Token(_, MatchNt(_, nt))) if !nt_is_single_tt(nt) =>
+                return only_simple_tokens(&ma[idx_a..]) && !need_disambiguation,
 
             _ => ()
         }
@@ -662,18 +669,26 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree]) -> boo
                     cx.bug("unexpeceted NT vs. Token")
                 },
 
-            (&TokenTree::Token(_, MatchNt(_, nt)), &TokenTree::Delimited(_, ref delim)) |
-            (&TokenTree::Delimited(_, ref delim), &TokenTree::Token(_, MatchNt(_, nt))) =>
-                if nt.name.as_str() == "block"
-                && delim.delim == token::DelimToken::Brace {
-                    // we cannot say much here. we cannot look inside. we
-                    // can just hope we will find an obvious disambiguation later
-                    need_disambiguation = true;
-                    continue
-                } else {
-                    // again, the other possibilites do not share any FIRST token
-                    cx.bug("unexpeceted NT vs. Delim")
-                },
+            (&TokenTree::Token(_, MatchNt(_, nt)),
+             &TokenTree::Delimited(_, ref delim)) => {
+                // should be the only possibility.
+                assert!(nt.name.as_str() == "block" &&
+                        delim.delim == token::DelimToken::Brace);
+                // we cannot say much here. we cannot look inside. we
+                // can just hope we will find an obvious disambiguation later
+                need_disambiguation = true;
+                continue
+            }
+
+            (&TokenTree::Delimited(_, ref delim),
+             &TokenTree::Token(_, MatchNt(_, nt))) => {
+                assert!(nt.name.as_str() == "block" &&
+                        delim.delim == token::DelimToken::Brace);
+                // as with several-TTs NTs, if the above is only
+                // made of simple tokens this is ok...
+                need_disambiguation |= !only_simple_tokens(&delim.tts);
+                continue
+            }
 
             (&TokenTree::Delimited(..), &TokenTree::Delimited(..)) => {
                 // they have the same delim. as above.
@@ -705,6 +720,16 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree]) -> boo
         // it's unreachable. this is not our problem. accept.
         true
     }
+}
+
+// checks that a matcher does not contain any NT except ident
+fn only_simple_tokens(m: &[TokenTree]) -> bool {
+    m.iter().all(|tt| match *tt {
+        TokenTree::Token(_, MatchNt(_, nt)) => nt.name.as_str() == "ident",
+        TokenTree::Token(..) => true,
+        TokenTree::Delimited(_, ref delim) => only_simple_tokens(&delim.tts),
+        TokenTree::Sequence(_, ref seq) => only_simple_tokens(&seq.tts)
+    })
 }
 
 fn nt_is_single_tt(nt: ast::Ident) -> bool {
