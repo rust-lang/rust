@@ -82,7 +82,7 @@ mod imp {
     }
 
     fn get_global_ptr() -> *mut Option<Box<Vec<Vec<u8>>>> {
-        unsafe { mem::transmute(&GLOBAL_ARGS_PTR) }
+        unsafe { mem::transmute(&mut GLOBAL_ARGS_PTR) }
     }
 
 }
