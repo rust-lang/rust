@@ -135,18 +135,6 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
         }
     }
 
-    fn call(&mut self, mir: &'a mir::Mir<'tcx>, def_id: DefId) -> EvalResult<Option<Pointer>> {
-        let substs = self.tcx.mk_substs(subst::Substs::empty());
-        let return_ptr = self.alloc_ret_ptr(mir.return_ty, substs);
-
-        self.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, None);
-
-        self.frame_mut().return_ptr = return_ptr;
-
-        self.run()?;
-        Ok(return_ptr)
-    }
-
     fn alloc_ret_ptr(&mut self, output_ty: ty::FnOutput<'tcx>, substs: &'tcx Substs<'tcx>) -> Option<Pointer> {
         match output_ty {
             ty::FnConverging(ty) => {
@@ -1423,12 +1411,18 @@ pub fn interpret_start_points<'a, 'tcx>(
                 debug!("Interpreting: {}", item.name);
 
                 let mut gecx = GlobalEvalContext::new(tcx, mir_map);
-                match gecx.call(mir, tcx.map.local_def_id(id)) {
-                    Ok(Some(return_ptr)) => if log_enabled!(::log::LogLevel::Debug) {
-                        gecx.memory.dump(return_ptr.alloc_id);
+                let substs = tcx.mk_substs(subst::Substs::empty());
+                let return_ptr = gecx.alloc_ret_ptr(mir.return_ty, substs);
+
+                gecx.push_stack_frame(tcx.map.local_def_id(id), mir.span, CachedMir::Ref(mir), substs, return_ptr);
+
+                match (gecx.run(), return_ptr) {
+                    (Ok(()), Some(ptr)) => if log_enabled!(::log::LogLevel::Debug) {
+                        gecx.memory.dump(ptr.alloc_id);
                     },
-                    Ok(None) => warn!("diverging function returned"),
-                    Err(e) => gecx.report(e),
+                    (Ok(()), None) => warn!("diverging function returned"),
+                    // FIXME: diverging functions can end up here in some future miri
+                    (Err(e), _) => gecx.report(e),
                 }
             }
         }
