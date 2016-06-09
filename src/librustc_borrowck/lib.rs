@@ -34,6 +34,7 @@
 extern crate graphviz as dot;
 #[macro_use]
 extern crate rustc;
+extern crate rustc_data_structures;
 extern crate rustc_mir;
 extern crate core; // for NonZero
 

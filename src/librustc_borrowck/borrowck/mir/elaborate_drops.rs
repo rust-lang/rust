@@ -22,7 +22,7 @@ use rustc::mir::transform::{Pass, MirPass, MirSource};
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items;
 use rustc::util::nodemap::FnvHashMap;
-use rustc_mir::pretty;
+use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::Span;
 
 use std::fmt;
@@ -65,9 +65,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 patch: MirPatch::new(mir),
             }.elaborate()
         };
-        pretty::dump_mir(tcx, "elaborate_drops", &0, src, mir, None);
         elaborate_patch.apply(mir);
-        pretty::dump_mir(tcx, "elaborate_drops", &1, src, mir, None);
     }
 }
 
@@ -118,7 +116,7 @@ struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
     env: &'a MoveDataParamEnv<'tcx>,
     flow_inits: DataflowResults<MaybeInitializedLvals<'a, 'tcx>>,
     flow_uninits:  DataflowResults<MaybeUninitializedLvals<'a, 'tcx>>,
-    drop_flags: FnvHashMap<MovePathIndex, u32>,
+    drop_flags: FnvHashMap<MovePathIndex, Temp>,
     patch: MirPatch<'tcx>,
 }
 
@@ -214,8 +212,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn collect_drop_flags(&mut self)
     {
-        for bb in self.mir.all_basic_blocks() {
-            let data = self.mir.basic_block_data(bb);
+        for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             let terminator = data.terminator();
             let location = match terminator.kind {
                 TerminatorKind::Drop { ref location, .. } |
@@ -251,8 +248,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn elaborate_drops(&mut self)
     {
-        for bb in self.mir.all_basic_blocks() {
-            let data = self.mir.basic_block_data(bb);
+        for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             let loc = Location { block: bb, index: data.statements.len() };
             let terminator = data.terminator();
 
@@ -312,7 +308,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         unwind: Option<BasicBlock>)
     {
         let bb = loc.block;
-        let data = self.mir.basic_block_data(bb);
+        let data = &self.mir[bb];
         let terminator = data.terminator();
 
         let assign = Statement {
@@ -931,8 +927,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn drop_flags_for_fn_rets(&mut self) {
-        for bb in self.mir.all_basic_blocks() {
-            let data = self.mir.basic_block_data(bb);
+        for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             if let TerminatorKind::Call {
                 destination: Some((ref lv, tgt)), cleanup: Some(_), ..
             } = data.terminator().kind {
@@ -964,8 +959,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         // drop flags by themselves, to avoid the drop flags being
         // clobbered before they are read.
 
-        for bb in self.mir.all_basic_blocks() {
-            let data = self.mir.basic_block_data(bb);
+        for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             debug!("drop_flags_for_locs({:?})", data);
             for i in 0..(data.statements.len()+1) {
                 debug!("drop_flag_for_locs: stmt {}", i);

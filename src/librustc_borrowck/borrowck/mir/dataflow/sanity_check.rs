@@ -14,6 +14,7 @@ use syntax::codemap::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::repr::{self, Mir};
+use rustc_data_structures::indexed_vec::Idx;
 
 use super::super::gather_moves::{MovePathIndex};
 use super::super::MoveDataParamEnv;
@@ -49,8 +50,7 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // `dataflow::build_sets`. (But note it is doing non-standard
     // stuff, so such generalization may not be realistic.)
 
-    let blocks = mir.all_basic_blocks();
-    'next_block: for bb in blocks {
+    for bb in mir.basic_blocks().indices() {
         each_block(tcx, mir, flow_ctxt, results, bb);
     }
 }
@@ -63,10 +63,9 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     O: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>, Idx=MovePathIndex>
 {
     let move_data = &ctxt.move_data;
-    let bb_data = mir.basic_block_data(bb);
-    let &repr::BasicBlockData { ref statements,
-                                ref terminator,
-                                is_cleanup: _ } = bb_data;
+    let repr::BasicBlockData { ref statements,
+                               ref terminator,
+                               is_cleanup: _ } = mir[bb];
 
     let (args, span) = match is_rustc_peek(tcx, terminator) {
         Some(args_and_span) => args_and_span,

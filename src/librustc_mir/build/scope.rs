@@ -90,12 +90,10 @@ use build::{BlockAnd, BlockAndExtension, Builder, CFG, ScopeAuxiliary, ScopeId};
 use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
 use rustc::ty::subst::{Substs, Subst, VecPerParamSpace};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::repr::*;
-use syntax::codemap::{Span, DUMMY_SP};
-use syntax::parse::token::intern_and_get_ident;
-use rustc::middle::const_val::ConstVal;
-use rustc_const_math::ConstInt;
+use syntax::codemap::Span;
+use rustc_data_structures::indexed_vec::Idx;
 
 pub struct Scope<'tcx> {
     /// the scope-id within the scope_auxiliary
@@ -264,7 +262,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// wrapper maybe preferable.
     pub fn push_scope(&mut self, extent: CodeExtent, entry: BasicBlock) {
         debug!("push_scope({:?})", extent);
-        let id = ScopeId::new(self.scope_auxiliary.vec.len());
+        let id = ScopeId::new(self.scope_auxiliary.len());
         let vis_scope = self.visibility_scope;
         self.scopes.push(Scope {
             id: id,
@@ -274,7 +272,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             free: None,
             cached_block: None,
         });
-        self.scope_auxiliary.vec.push(ScopeAuxiliary {
+        self.scope_auxiliary.push(ScopeAuxiliary {
             extent: extent,
             dom: self.cfg.current_location(entry),
             postdoms: vec![]
@@ -555,50 +553,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         next_target.unit()
     }
 
-    /// Create diverge cleanup and branch to it from `block`.
-    // FIXME: Remove this (used only for unreachable cases in match).
-    pub fn panic(&mut self, block: BasicBlock, msg: &'static str, span: Span) {
-        // fn(&(msg: &'static str filename: &'static str, line: u32)) -> !
-        let region = ty::ReStatic; // FIXME(mir-borrowck): use a better region?
-        let func = self.lang_function(lang_items::PanicFnLangItem);
-        let args = self.hir.tcx().replace_late_bound_regions(&func.ty.fn_args(), |_| region).0;
-
-        let ref_ty = args[0];
-        let tup_ty = if let ty::TyRef(_, tyandmut) = ref_ty.sty {
-            tyandmut.ty
-        } else {
-            span_bug!(span, "unexpected panic type: {:?}", func.ty);
-        };
-
-        let (tuple, tuple_ref) = (self.temp(tup_ty), self.temp(ref_ty));
-        let (file, line) = self.span_to_fileline_args(span);
-        let message = Constant {
-            span: span,
-            ty: self.hir.tcx().mk_static_str(),
-            literal: self.hir.str_literal(intern_and_get_ident(msg))
-        };
-        let elems = vec![Operand::Constant(message),
-                         Operand::Constant(file),
-                         Operand::Constant(line)];
-        let source_info = self.source_info(span);
-        // FIXME: We should have this as a constant, rather than a stack variable (to not pollute
-        // icache with cold branch code), however to achieve that we either have to rely on rvalue
-        // promotion or have some way, in MIR, to create constants.
-        self.cfg.push_assign(block, source_info, &tuple, // [1]
-                             Rvalue::Aggregate(AggregateKind::Tuple, elems));
-        // [1] tuple = (message_arg, file_arg, line_arg);
-        // FIXME: is this region really correct here?
-        self.cfg.push_assign(block, source_info, &tuple_ref, // tuple_ref = &tuple;
-                             Rvalue::Ref(region, BorrowKind::Shared, tuple));
-        let cleanup = self.diverge_cleanup();
-        self.cfg.terminate(block, source_info, TerminatorKind::Call {
-            func: Operand::Constant(func),
-            args: vec![Operand::Consume(tuple_ref)],
-            cleanup: cleanup,
-            destination: None,
-        });
-    }
-
     /// Create an Assert terminator and return the success block.
     /// If the boolean condition operand is not the expected value,
     /// a runtime panic will be caused with the given message.
@@ -624,39 +578,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         success_block
     }
-
-    fn lang_function(&mut self, lang_item: lang_items::LangItem) -> Constant<'tcx> {
-        let funcdid = match self.hir.tcx().lang_items.require(lang_item) {
-            Ok(d) => d,
-            Err(m) => {
-                self.hir.tcx().sess.fatal(&m)
-            }
-        };
-        Constant {
-            span: DUMMY_SP,
-            ty: self.hir.tcx().lookup_item_type(funcdid).ty,
-            literal: Literal::Item {
-                def_id: funcdid,
-                substs: self.hir.tcx().mk_substs(Substs::empty())
-            }
-        }
-    }
-
-    fn span_to_fileline_args(&mut self, span: Span) -> (Constant<'tcx>, Constant<'tcx>) {
-        let span_lines = self.hir.tcx().sess.codemap().lookup_char_pos(span.lo);
-        (Constant {
-            span: span,
-            ty: self.hir.tcx().mk_static_str(),
-            literal: self.hir.str_literal(intern_and_get_ident(&span_lines.file.name))
-        }, Constant {
-            span: span,
-            ty: self.hir.tcx().types.u32,
-            literal: Literal::Value {
-                value: ConstVal::Integral(ConstInt::U32(span_lines.line as u32)),
-            },
-        })
-    }
-
 }
 
 /// Builds drops for pop_scope and exit_scope.

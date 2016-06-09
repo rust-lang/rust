@@ -10,18 +10,64 @@
 
 //! This pass just dumps MIR at a specified point.
 
+use std::fmt;
+
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
-use rustc::mir::transform::{Pass, MirPass, MirSource};
+use rustc::mir::transform::{Pass, MirPass, MirPassHook, MirSource};
 use pretty;
 
-pub struct DumpMir<'a>(pub &'a str);
+pub struct Marker<'a>(pub &'a str);
 
-impl<'b, 'tcx> MirPass<'tcx> for DumpMir<'b> {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    src: MirSource, mir: &mut Mir<'tcx>) {
-        pretty::dump_mir(tcx, self.0, &0, src, mir, None);
+impl<'b, 'tcx> MirPass<'tcx> for Marker<'b> {
+    fn run_pass<'a>(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    _src: MirSource, _mir: &mut Mir<'tcx>)
+    {}
+}
+
+impl<'b> Pass for Marker<'b> {
+    fn name(&self) -> &str { self.0 }
+}
+
+pub struct Disambiguator<'a> {
+    pass: &'a Pass,
+    is_after: bool
+}
+
+impl<'a> fmt::Display for Disambiguator<'a> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let title = if self.is_after { "after" } else { "before" };
+        if let Some(fmt) = self.pass.disambiguator() {
+            write!(formatter, "{}-{}", fmt, title)
+        } else {
+            write!(formatter, "{}", title)
+        }
     }
 }
 
-impl<'b> Pass for DumpMir<'b> {}
+pub struct DumpMir;
+
+impl<'tcx> MirPassHook<'tcx> for DumpMir {
+    fn on_mir_pass<'a>(
+        &mut self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        src: MirSource,
+        mir: &Mir<'tcx>,
+        pass: &Pass,
+        is_after: bool)
+    {
+        pretty::dump_mir(
+            tcx,
+            pass.name(),
+            &Disambiguator {
+                pass: pass,
+                is_after: is_after
+            },
+            src,
+            mir,
+            None
+        );
+    }
+}
+
+impl<'b> Pass for DumpMir {}

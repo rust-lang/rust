@@ -30,6 +30,8 @@ use syntax::codemap::Span;
 
 use build::Location;
 
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+
 use std::mem;
 
 /// State of a temporary during collection and promotion.
@@ -74,7 +76,7 @@ pub enum Candidate {
 }
 
 struct TempCollector {
-    temps: Vec<TempState>,
+    temps: IndexVec<Temp, TempState>,
     location: Location,
     span: Span
 }
@@ -89,7 +91,7 @@ impl<'tcx> Visitor<'tcx> for TempCollector {
                 return;
             }
 
-            let temp = &mut self.temps[index as usize];
+            let temp = &mut self.temps[index];
             if *temp == TempState::Undefined {
                 match context {
                     LvalueContext::Store |
@@ -134,9 +136,9 @@ impl<'tcx> Visitor<'tcx> for TempCollector {
     }
 }
 
-pub fn collect_temps(mir: &Mir, rpo: &mut ReversePostorder) -> Vec<TempState> {
+pub fn collect_temps(mir: &Mir, rpo: &mut ReversePostorder) -> IndexVec<Temp, TempState> {
     let mut collector = TempCollector {
-        temps: vec![TempState::Undefined; mir.temp_decls.len()],
+        temps: IndexVec::from_elem(TempState::Undefined, &mir.temp_decls),
         location: Location {
             block: START_BLOCK,
             statement_index: 0
@@ -152,7 +154,7 @@ pub fn collect_temps(mir: &Mir, rpo: &mut ReversePostorder) -> Vec<TempState> {
 struct Promoter<'a, 'tcx: 'a> {
     source: &'a mut Mir<'tcx>,
     promoted: Mir<'tcx>,
-    temps: &'a mut Vec<TempState>,
+    temps: &'a mut IndexVec<Temp, TempState>,
 
     /// If true, all nested temps are also kept in the
     /// source MIR, not moved to the promoted MIR.
@@ -161,23 +163,23 @@ struct Promoter<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
     fn new_block(&mut self) -> BasicBlock {
-        let index = self.promoted.basic_blocks.len();
-        self.promoted.basic_blocks.push(BasicBlockData {
+        let span = self.promoted.span;
+        self.promoted.basic_blocks_mut().push(BasicBlockData {
             statements: vec![],
             terminator: Some(Terminator {
                 source_info: SourceInfo {
-                    span: self.promoted.span,
+                    span: span,
                     scope: ARGUMENT_VISIBILITY_SCOPE
                 },
                 kind: TerminatorKind::Return
             }),
             is_cleanup: false
-        });
-        BasicBlock::new(index)
+        })
     }
 
     fn assign(&mut self, dest: Lvalue<'tcx>, rvalue: Rvalue<'tcx>, span: Span) {
-        let data = self.promoted.basic_blocks.last_mut().unwrap();
+        let last = self.promoted.basic_blocks().last().unwrap();
+        let data = &mut self.promoted[last];
         data.statements.push(Statement {
             source_info: SourceInfo {
                 span: span,
@@ -189,10 +191,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
     /// Copy the initialization of this temp to the
     /// promoted MIR, recursing through temps.
-    fn promote_temp(&mut self, index: u32) -> u32 {
-        let index = index as usize;
+    fn promote_temp(&mut self, temp: Temp) -> Temp {
         let old_keep_original = self.keep_original;
-        let (bb, stmt_idx) = match self.temps[index] {
+        let (bb, stmt_idx) = match self.temps[temp] {
             TempState::Defined {
                 location: Location { block, statement_index },
                 uses
@@ -202,13 +203,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 }
                 (block, statement_index)
             }
-            temp =>  {
-                span_bug!(self.promoted.span, "tmp{} not promotable: {:?}",
-                          index, temp);
+            state =>  {
+                span_bug!(self.promoted.span, "{:?} not promotable: {:?}",
+                          temp, state);
             }
         };
         if !self.keep_original {
-            self.temps[index] = TempState::PromotedOut;
+            self.temps[temp] = TempState::PromotedOut;
         }
 
         let no_stmts = self.source[bb].statements.len();
@@ -260,26 +261,24 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.visit_terminator_kind(bb, call.as_mut().unwrap());
         }
 
-        let new_index = self.promoted.temp_decls.len() as u32;
-        let new_temp = Lvalue::Temp(new_index);
-        self.promoted.temp_decls.push(TempDecl {
-            ty: self.source.temp_decls[index].ty
+        let new_temp = self.promoted.temp_decls.push(TempDecl {
+            ty: self.source.temp_decls[temp].ty
         });
 
         // Inject the Rvalue or Call into the promoted MIR.
         if stmt_idx < no_stmts {
-            self.assign(new_temp, rvalue.unwrap(), source_info.span);
+            self.assign(Lvalue::Temp(new_temp), rvalue.unwrap(), source_info.span);
         } else {
-            let last = self.promoted.basic_blocks.len() - 1;
+            let last = self.promoted.basic_blocks().last().unwrap();
             let new_target = self.new_block();
             let mut call = call.unwrap();
             match call {
                 TerminatorKind::Call { ref mut destination, ..}  => {
-                    *destination = Some((new_temp, new_target));
+                    *destination = Some((Lvalue::Temp(new_temp), new_target));
                 }
                 _ => bug!()
             }
-            let terminator = &mut self.promoted.basic_blocks[last].terminator_mut();
+            let terminator = self.promoted[last].terminator_mut();
             terminator.source_info.span = source_info.span;
             terminator.kind = call;
         }
@@ -287,7 +286,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         // Restore the old duplication state.
         self.keep_original = old_keep_original;
 
-        new_index
+        new_temp
     }
 
     fn promote_candidate(mut self, candidate: Candidate) {
@@ -296,7 +295,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             span: span,
             ty: self.promoted.return_ty.unwrap(),
             literal: Literal::Promoted {
-                index: self.source.promoted.len()
+                index: Promoted::new(self.source.promoted.len())
             }
         });
         let mut rvalue = match candidate {
@@ -325,8 +324,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 /// Replaces all temporaries with their promoted counterparts.
 impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     fn visit_lvalue(&mut self, lvalue: &mut Lvalue<'tcx>, context: LvalueContext) {
-        if let Lvalue::Temp(ref mut index) = *lvalue {
-            *index = self.promote_temp(*index);
+        if let Lvalue::Temp(ref mut temp) = *lvalue {
+            *temp = self.promote_temp(*temp);
         }
         self.super_lvalue(lvalue, context);
     }
@@ -334,7 +333,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 
 pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    mut temps: Vec<TempState>,
+                                    mut temps: IndexVec<Temp, TempState>,
                                     candidates: Vec<Candidate>) {
     // Visit candidates in reverse, in case they're nested.
     for candidate in candidates.into_iter().rev() {
@@ -343,7 +342,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                 let statement = &mir[bb].statements[stmt_idx];
                 let StatementKind::Assign(ref dest, _) = statement.kind;
                 if let Lvalue::Temp(index) = *dest {
-                    if temps[index as usize] == TempState::PromotedOut {
+                    if temps[index] == TempState::PromotedOut {
                         // Already promoted.
                         continue;
                     }
@@ -367,20 +366,20 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
 
         let mut promoter = Promoter {
             source: mir,
-            promoted: Mir {
-                basic_blocks: vec![],
-                visibility_scopes: vec![VisibilityScopeData {
+            promoted: Mir::new(
+                IndexVec::new(),
+                Some(VisibilityScopeData {
                     span: span,
                     parent_scope: None
-                }],
-                promoted: vec![],
-                return_ty: ty::FnConverging(ty),
-                var_decls: vec![],
-                arg_decls: vec![],
-                temp_decls: vec![],
-                upvar_decls: vec![],
-                span: span
-            },
+                }).into_iter().collect(),
+                IndexVec::new(),
+                ty::FnConverging(ty),
+                IndexVec::new(),
+                IndexVec::new(),
+                IndexVec::new(),
+                vec![],
+                span
+            ),
             temps: &mut temps,
             keep_original: false
         };
@@ -389,8 +388,8 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
     }
 
     // Eliminate assignments to, and drops of promoted temps.
-    let promoted = |index: u32| temps[index as usize] == TempState::PromotedOut;
-    for block in &mut mir.basic_blocks {
+    let promoted = |index: Temp| temps[index] == TempState::PromotedOut;
+    for block in mir.basic_blocks_mut() {
         block.statements.retain(|statement| {
             match statement.kind {
                 StatementKind::Assign(Lvalue::Temp(index), _) => {

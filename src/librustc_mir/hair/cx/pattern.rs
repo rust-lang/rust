@@ -11,6 +11,7 @@
 use hair::*;
 use hair::cx::Cx;
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc_const_eval as const_eval;
 use rustc::hir::def::Def;
 use rustc::hir::pat_util::{EnumerateAndAdjustIterator, pat_is_resolved_const};

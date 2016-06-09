@@ -14,6 +14,7 @@ use rustc::mir::repr::*;
 use rustc::mir::transform::MirSource;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::indexed_vec::{Idx};
 use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
@@ -111,9 +112,7 @@ fn scope_entry_exit_annotations(auxiliary: Option<&ScopeAuxiliaryVec>)
     // compute scope/entry exit annotations
     let mut annotations = FnvHashMap();
     if let Some(auxiliary) = auxiliary {
-        for (index, auxiliary) in auxiliary.vec.iter().enumerate() {
-            let scope_id = ScopeId::new(index);
-
+        for (scope_id, auxiliary) in auxiliary.iter_enumerated() {
             annotations.entry(auxiliary.dom)
                        .or_insert(vec![])
                        .push(Annotation::EnterScope(scope_id));
@@ -136,9 +135,9 @@ pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               -> io::Result<()> {
     let annotations = scope_entry_exit_annotations(auxiliary);
     write_mir_intro(tcx, src, mir, w)?;
-    for block in mir.all_basic_blocks() {
+    for block in mir.basic_blocks().indices() {
         write_basic_block(tcx, block, mir, w, &annotations)?;
-        if block.index() + 1 != mir.basic_blocks.len() {
+        if block.index() + 1 != mir.basic_blocks().len() {
             writeln!(w, "")?;
         }
     }
@@ -154,7 +153,7 @@ fn write_basic_block(tcx: TyCtxt,
                      w: &mut Write,
                      annotations: &FnvHashMap<Location, Vec<Annotation>>)
                      -> io::Result<()> {
-    let data = mir.basic_block_data(block);
+    let data = &mir[block];
 
     // Basic block label at the top.
     writeln!(w, "{}{:?}: {{", INDENT, block)?;
@@ -218,7 +217,7 @@ fn write_scope_tree(tcx: TyCtxt,
         writeln!(w, "{0:1$}scope {2} {{", "", indent, child.index())?;
 
         // User variable types (including the user's name in a comment).
-        for (i, var) in mir.var_decls.iter().enumerate() {
+        for (id, var) in mir.var_decls.iter_enumerated() {
             // Skip if not declared in this scope.
             if var.source_info.scope != child {
                 continue;
@@ -235,7 +234,7 @@ fn write_scope_tree(tcx: TyCtxt,
                                        INDENT,
                                        indent,
                                        mut_str,
-                                       Lvalue::Var(i as u32),
+                                       id,
                                        var.ty);
             writeln!(w, "{0:1$} // \"{2}\" in {3}",
                      indented_var,
@@ -297,11 +296,11 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
         write!(w, "(")?;
 
         // fn argument types.
-        for (i, arg) in mir.arg_decls.iter().enumerate() {
-            if i > 0 {
+        for (i, arg) in mir.arg_decls.iter_enumerated() {
+            if i.index() != 0 {
                 write!(w, ", ")?;
             }
-            write!(w, "{:?}: {}", Lvalue::Arg(i as u32), arg.ty)?;
+            write!(w, "{:?}: {}", Lvalue::Arg(i), arg.ty)?;
         }
 
         write!(w, ") -> ")?;
@@ -319,8 +318,8 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
 
 fn write_mir_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
     // Compiler-introduced temporary types.
-    for (i, temp) in mir.temp_decls.iter().enumerate() {
-        writeln!(w, "{}let mut {:?}: {};", INDENT, Lvalue::Temp(i as u32), temp.ty)?;
+    for (id, temp) in mir.temp_decls.iter_enumerated() {
+        writeln!(w, "{}let mut {:?}: {};", INDENT, id, temp.ty)?;
     }
 
     // Wrote any declaration? Add an empty line before the first block is printed.

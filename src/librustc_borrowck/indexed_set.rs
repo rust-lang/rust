@@ -17,13 +17,7 @@ use std::ops::{Deref, DerefMut, Range};
 use bitslice::{BitSlice, Word};
 use bitslice::{bitwise, Union, Subtract};
 
-/// Represents some newtyped `usize` wrapper.
-///
-/// (purpose: avoid mixing indexes for different bitvector domains.)
-pub trait Idx: 'static {
-    fn new(usize) -> Self;
-    fn idx(&self) -> usize;
-}
+use rustc_data_structures::indexed_vec::Idx;
 
 /// Represents a set (or packed family of sets), of some element type
 /// E, where each E is identified by some unique index type `T`.
@@ -120,27 +114,27 @@ impl<T: Idx> IdxSet<T> {
 
     /// Removes `elem` from the set `self`; returns true iff this changed `self`.
     pub fn remove(&mut self, elem: &T) -> bool {
-        self.bits.clear_bit(elem.idx())
+        self.bits.clear_bit(elem.index())
     }
 
     /// Adds `elem` to the set `self`; returns true iff this changed `self`.
     pub fn add(&mut self, elem: &T) -> bool {
-        self.bits.set_bit(elem.idx())
+        self.bits.set_bit(elem.index())
     }
 
     pub fn range(&self, elems: &Range<T>) -> &Self {
-        let elems = elems.start.idx()..elems.end.idx();
+        let elems = elems.start.index()..elems.end.index();
         unsafe { Self::from_slice(&self.bits[elems]) }
     }
 
     pub fn range_mut(&mut self, elems: &Range<T>) -> &mut Self {
-        let elems = elems.start.idx()..elems.end.idx();
+        let elems = elems.start.index()..elems.end.index();
         unsafe { Self::from_slice_mut(&mut self.bits[elems]) }
     }
 
     /// Returns true iff set `self` contains `elem`.
     pub fn contains(&self, elem: &T) -> bool {
-        self.bits.get_bit(elem.idx())
+        self.bits.get_bit(elem.index())
     }
 
     pub fn words(&self) -> &[Word] {

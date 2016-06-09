@@ -18,7 +18,6 @@ use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 
 use rustc::mir::repr::*;
-use std::u32;
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -29,12 +28,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// NB: **No cleanup is scheduled for this temporary.** You should
     /// call `schedule_drop` once the temporary is initialized.
     pub fn temp(&mut self, ty: Ty<'tcx>) -> Lvalue<'tcx> {
-        let index = self.temp_decls.len();
-        self.temp_decls.push(TempDecl { ty: ty });
-        assert!(index < (u32::MAX) as usize);
-        let lvalue = Lvalue::Temp(index as u32);
+        let temp = self.temp_decls.push(TempDecl { ty: ty });
+        let lvalue = Lvalue::Temp(temp);
         debug!("temp: created temp {:?} with type {:?}",
-               lvalue, self.temp_decls.last().unwrap().ty);
+               lvalue, self.temp_decls[temp].ty);
         lvalue
     }
 

@@ -12,6 +12,7 @@
 
 use syntax::ast::NodeId;
 use rustc::mir::repr::{BasicBlock, Mir};
+use rustc_data_structures::indexed_vec::Idx;
 
 use dot;
 use dot::IntoCow;
@@ -27,7 +28,7 @@ use std::path::Path;
 use super::super::MoveDataParamEnv;
 use super::super::MirBorrowckCtxtPreDataflow;
 use bitslice::bits_to_string;
-use indexed_set::{Idx, IdxSet};
+use indexed_set::{IdxSet};
 use super::{BitDenotation, DataflowState};
 
 impl<O: BitDenotation> DataflowState<O> {
@@ -126,7 +127,7 @@ pub type Node = BasicBlock;
 pub struct Edge { source: BasicBlock, index: usize }
 
 fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
-    let succ_len = mir.basic_block_data(bb).terminator().successors().len();
+    let succ_len = mir[bb].terminator().successors().len();
     (0..succ_len).map(|index| Edge { source: bb, index: index}).collect()
 }
 
@@ -312,17 +313,20 @@ impl<'a, 'tcx, MWF, P> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF, P>
     type Node = Node;
     type Edge = Edge;
     fn nodes(&self) -> dot::Nodes<Node> {
-        self.mbcx.mir().all_basic_blocks().into_cow()
+        self.mbcx.mir()
+            .basic_blocks()
+            .indices()
+            .collect::<Vec<_>>()
+            .into_cow()
     }
 
     fn edges(&self) -> dot::Edges<Edge> {
         let mir = self.mbcx.mir();
-        let blocks = mir.all_basic_blocks();
         // base initial capacity on assumption every block has at
         // least one outgoing edge (Which should be true for all
         // blocks but one, the exit-block).
-        let mut edges = Vec::with_capacity(blocks.len());
-        for bb in blocks {
+        let mut edges = Vec::with_capacity(mir.basic_blocks().len());
+        for bb in mir.basic_blocks().indices() {
             let outgoing = outgoing(mir, bb);
             edges.extend(outgoing.into_iter());
         }
@@ -335,6 +339,6 @@ impl<'a, 'tcx, MWF, P> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF, P>
 
     fn target(&self, edge: &Edge) -> Node {
         let mir = self.mbcx.mir();
-        mir.basic_block_data(edge.source).terminator().successors()[edge.index]
+        mir[edge.source].terminator().successors()[edge.index]
     }
 }
