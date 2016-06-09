@@ -66,6 +66,34 @@ impl<T: fmt::Display> fmt::Display for Wrapping<T> {
     }
 }
 
+#[stable(feature = "wrapping_fmt", since = "1.11.0")]
+impl<T: fmt::Binary> fmt::Binary for Wrapping<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[stable(feature = "wrapping_fmt", since = "1.11.0")]
+impl<T: fmt::Octal> fmt::Octal for Wrapping<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[stable(feature = "wrapping_fmt", since = "1.11.0")]
+impl<T: fmt::LowerHex> fmt::LowerHex for Wrapping<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[stable(feature = "wrapping_fmt", since = "1.11.0")]
+impl<T: fmt::UpperHex> fmt::UpperHex for Wrapping<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 mod wrapping;
 
 // All these modules are technically private and only exposed for libcoretest:
