@@ -444,6 +444,11 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                 if sup {
                     let start_snippet = snippet(cx, start.span, "_");
                     let end_snippet = snippet(cx, end.span, "_");
+                    let dots = if limits == ast::RangeLimits::Closed {
+                        "..."
+                    } else {
+                        ".."
+                    };
 
                     span_lint_and_then(cx,
                                        REVERSE_RANGE_LOOP,
@@ -454,7 +459,10 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                                                               "consider using the following if \
                                                                you are attempting to iterate \
                                                                over this range in reverse",
-                                                              format!("({}..{}).rev()", end_snippet, start_snippet));
+                                                              format!("({end}{dots}{start}).rev()",
+                                                                      end=end_snippet,
+                                                                      dots=dots,
+                                                                      start=start_snippet));
                                        });
                 } else if eq && limits != ast::RangeLimits::Closed {
                     // if they are equal, it's also problematic - this loop
