@@ -322,7 +322,7 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
 
     #[inline(never)]
     #[cold]
-    fn report(&self, e: &EvalError) {
+    fn report(&self, e: EvalError) {
         let stmt = self.frame().stmt;
         let block = self.basic_block();
         let span = if stmt < block.statements.len() {
@@ -345,13 +345,6 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
             err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
         }
         err.emit();
-    }
-
-    fn maybe_report<T>(&self, r: EvalResult<T>) -> EvalResult<T> {
-        if let Err(ref e) = r {
-            self.report(e);
-        }
-        r
     }
 
     fn run(&mut self) -> EvalResult<()> {
@@ -1435,10 +1428,7 @@ pub fn interpret_start_points<'a, 'tcx>(
                         gecx.memory.dump(return_ptr.alloc_id);
                     },
                     Ok(None) => warn!("diverging function returned"),
-                    Err(_e) => {
-                        // TODO(solson): Detect whether the error was already reported or not.
-                        // tcx.sess.err(&e.to_string());
-                    }
+                    Err(e) => gecx.report(e),
                 }
             }
         }

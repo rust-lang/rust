@@ -32,8 +32,7 @@ impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<()> {
         trace!("{:?}", stmt);
         let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-        let result = self.gecx.eval_assignment(lvalue, rvalue);
-        self.gecx.maybe_report(result)?;
+        self.gecx.eval_assignment(lvalue, rvalue)?;
         self.gecx.frame_mut().stmt += 1;
         Ok(())
     }
@@ -42,8 +41,7 @@ impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
         // after a terminator we go to a new block
         self.gecx.frame_mut().stmt = 0;
         trace!("{:?}", terminator.kind);
-        let result = self.gecx.eval_terminator(terminator);
-        self.gecx.maybe_report(result)?;
+        self.gecx.eval_terminator(terminator)?;
         if !self.gecx.stack.is_empty() {
             trace!("// {:?}", self.gecx.frame().next_block);
         }
