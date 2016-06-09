@@ -1189,7 +1189,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 match *literal {
                     Value { ref value } => Ok(self.const_to_ptr(value)?),
                     Item { def_id, substs } => {
-                        if ty.is_fn() {
+                        if let ty::TyFnDef(..) = ty.sty {
                             Err(EvalError::Unimplemented("unimplemented: mentions of function items".to_string()))
                         } else {
                             let cid = ConstantId {
