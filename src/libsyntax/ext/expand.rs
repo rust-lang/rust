@@ -726,13 +726,11 @@ fn expand_annotatable(a: Annotatable,
     let new_items: SmallVector<Annotatable> = match a {
         Annotatable::Item(it) => match it.node {
             ast::ItemKind::Mac(..) => {
-                let new_items: SmallVector<P<ast::Item>> = it.and_then(|it| match it.node {
+                it.and_then(|it| match it.node {
                     ItemKind::Mac(mac) =>
                         expand_mac_invoc(mac, Some(it.ident), it.attrs, it.span, fld),
                     _ => unreachable!(),
-                });
-
-                new_items.into_iter().map(|i| Annotatable::Item(i)).collect()
+                })
             }
             ast::ItemKind::Mod(_) | ast::ItemKind::ForeignMod(_) => {
                 let valid_ident =
@@ -748,7 +746,7 @@ fn expand_annotatable(a: Annotatable,
                 if valid_ident {
                     fld.cx.mod_pop();
                 }
-                result.into_iter().map(|i| Annotatable::Item(i)).collect()
+                result
             },
             ast::ItemKind::ExternCrate(_) => {
                 // We need to error on `#[macro_use] extern crate` when it isn't at the
@@ -757,10 +755,10 @@ fn expand_annotatable(a: Annotatable,
                 for def in fld.cx.loader.load_crate(&it, allows_macros) {
                     fld.cx.insert_macro(def);
                 }
-                SmallVector::one(Annotatable::Item(it))
+                SmallVector::one(it)
             },
-            _ => noop_fold_item(it, fld).into_iter().map(|i| Annotatable::Item(i)).collect(),
-        },
+            _ => noop_fold_item(it, fld),
+        }.into_iter().map(|i| Annotatable::Item(i)).collect(),
 
         Annotatable::TraitItem(it) => match it.node {
             ast::TraitItemKind::Method(_, Some(_)) => {
