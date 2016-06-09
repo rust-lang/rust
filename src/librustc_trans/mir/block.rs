@@ -196,13 +196,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
-                let lvalue = self.trans_lvalue(&bcx, location);
-                let ty = lvalue.ty.to_ty(bcx.tcx());
+                let ty = mir.lvalue_ty(bcx.tcx(), location).to_ty(bcx.tcx());
+                let ty = bcx.monomorphize(&ty);
+
                 // Double check for necessity to drop
                 if !glue::type_needs_drop(bcx.tcx(), ty) {
                     funclet_br(self, bcx, target);
                     return;
                 }
+
+                let lvalue = self.trans_lvalue(&bcx, location);
                 let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
                 let drop_ty = glue::get_drop_glue_type(bcx.tcx(), ty);
                 let llvalue = if drop_ty != ty {
