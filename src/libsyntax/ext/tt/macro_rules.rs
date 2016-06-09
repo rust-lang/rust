@@ -249,7 +249,8 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 
 /// Converts a `macro_rules!` invocation into a syntax extension.
 pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
-                    def: &ast::MacroDef) -> SyntaxExtension {
+                    def: &ast::MacroDef,
+                    imported: bool) -> SyntaxExtension {
 
     let lhs_nm =  gensym_ident("lhs");
     let rhs_nm =  gensym_ident("rhs");
@@ -305,7 +306,9 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         MatchedSeq(ref s, _) => {
             s.iter().map(|m| match **m {
                 MatchedNonterminal(NtTT(ref tt)) => {
-                    valid &= check_lhs_nt_follows(cx, tt);
+                    if !imported {
+                        valid &= check_lhs_nt_follows(cx, tt);
+                    }
                     (**tt).clone()
                 }
                 _ => cx.span_bug(def.span, "wrong-structured lhs")
@@ -314,16 +317,18 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         _ => cx.span_bug(def.span, "wrong-structured lhs")
     };
 
-    'a: for (i, lhs) in lhses.iter().enumerate() {
-        for lhs_ in lhses[i + 1 ..].iter() {
-            if !check_lhs_firsts(cx, lhs, lhs_) {
-                cx.struct_span_warn(def.span, "macro is not future-proof")
-                    .span_help(lhs.get_span(), "parsing of this arm is ambiguous...")
-                    .span_help(lhs_.get_span(), "with the parsing of this arm.")
-                    .help("the behaviour of this macro might change in the future")
-                    .emit();
-                //valid = false;
-                break 'a;
+    if !imported {
+        'a: for (i, lhs) in lhses.iter().enumerate() {
+            for lhs_ in lhses[i + 1 ..].iter() {
+                if !check_lhs_firsts(cx, lhs, lhs_) {
+                    cx.struct_span_warn(def.span, "macro is not future-proof")
+                        .span_help(lhs.get_span(), "parsing of this arm is ambiguous...")
+                        .span_help(lhs_.get_span(), "with the parsing of this arm.")
+                        .help("the behaviour of this macro might change in the future")
+                        .emit();
+                    //valid = false;
+                    break 'a;
+                }
             }
         }
     }

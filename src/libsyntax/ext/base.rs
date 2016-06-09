@@ -715,12 +715,12 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn insert_macro(&mut self, def: ast::MacroDef) {
+    pub fn insert_macro(&mut self, def: ast::MacroDef, imported: bool) {
         if def.export {
             self.exported_macros.push(def.clone());
         }
         if def.use_locally {
-            let ext = macro_rules::compile(self, &def);
+            let ext = macro_rules::compile(self, &def, imported);
             self.syntax_env.insert(def.ident.name, ext);
         }
     }

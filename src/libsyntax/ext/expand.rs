@@ -290,7 +290,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                     export: attr::contains_name(&attrs, "macro_export"),
                     allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
                     attrs: attrs,
-                });
+                }, false);
 
                 // macro_rules! has a side effect but expands to nothing.
                 fld.cx.bt_pop();
@@ -911,7 +911,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     // We need to error on `#[macro_use] extern crate` when it isn't at the
                     // crate root, because `$crate` won't work properly.
                     for def in self.cx.loader.load_crate(item, self.at_crate_root) {
-                        self.cx.insert_macro(def);
+                        self.cx.insert_macro(def, true);
                     }
                 } else {
                     let at_crate_root = ::std::mem::replace(&mut self.at_crate_root, false);
