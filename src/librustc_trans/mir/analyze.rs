@@ -18,6 +18,7 @@ use rustc::mir::repr::TerminatorKind;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use common::{self, Block, BlockAndBuilder};
+use glue;
 use super::rvalue;
 
 pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
@@ -138,12 +139,20 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
                     LvalueContext::Consume => {
                     }
                     LvalueContext::Store |
-                    LvalueContext::Drop |
                     LvalueContext::Inspect |
                     LvalueContext::Borrow { .. } |
                     LvalueContext::Slice { .. } |
                     LvalueContext::Projection => {
                         self.mark_as_lvalue(temp.index());
+                    }
+                    LvalueContext::Drop => {
+                        let ty = self.mir.temp_decls[index as usize].ty;
+                        let ty = self.bcx.monomorphize(&ty);
+
+                        // Only need the lvalue if we're actually dropping it.
+                        if glue::type_needs_drop(self.bcx.tcx(), ty) {
+                            self.mark_as_lvalue(index as usize);
+                        }
                     }
                 }
             }
