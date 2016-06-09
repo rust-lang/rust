@@ -605,18 +605,21 @@ mod tests {
         }
 
         // marker                | should_panic| no_run| ignore| rust | test_harness| compile_fail
-        t("",                      false,        false,  false,  true,  false,        false);
-        t("rust",                  false,        false,  false,  true,  false,        false);
-        t("sh",                    false,        false,  false,  false, false,        false);
-        t("ignore",                false,        false,  true,   true,  false,        false);
-        t("should_panic",          true,         false,  false,  true,  false,        false);
-        t("no_run",                false,        true,   false,  true,  false,        false);
-        t("test_harness",          false,        false,  false,  true,  true,         false);
-        t("compile_fail",          false,        true,   false,  true,  false,        true);
-        t("{.no_run .example}",    false,        true,   false,  true,  false,        false);
-        t("{.sh .should_panic}",   true,         false,  false,  true,  false,        false);
-        t("{.example .rust}",      false,        false,  false,  true,  false,        false);
-        t("{.test_harness .rust}", false,        false,  false,  true,  true,         false);
+        //                       | error_codes
+        t("",                      false,        false,  false,  true,  false, false, Vec::new());
+        t("rust",                  false,        false,  false,  true,  false, false, Vec::new());
+        t("sh",                    false,        false,  false,  false, false, false, Vec::new());
+        t("ignore",                false,        false,  true,   true,  false, false, Vec::new());
+        t("should_panic",          true,         false,  false,  true,  false, false, Vec::new());
+        t("no_run",                false,        true,   false,  true,  false, false, Vec::new());
+        t("test_harness",          false,        false,  false,  true,  true,  false, Vec::new());
+        t("compile_fail",          false,        true,   false,  true,  false, true,  Vec::new());
+        t("E0450",                 false,        false,  false,  true,  false, false,
+                                   vec!("E0450".to_owned()));
+        t("{.no_run .example}",    false,        true,   false,  true,  false, false, Vec::new());
+        t("{.sh .should_panic}",   true,         false,  false,  true,  false, false, Vec::new());
+        t("{.example .rust}",      false,        false,  false,  true,  false, false, Vec::new());
+        t("{.test_harness .rust}", false,        false,  false,  true,  true,  false, Vec::new());
     }
 
     #[test]
