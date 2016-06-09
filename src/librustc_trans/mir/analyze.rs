@@ -151,6 +151,13 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
             }
         }
 
+        // A deref projection only reads the pointer, never needs the lvalue.
+        if let mir::Lvalue::Projection(ref proj) = *lvalue {
+            if let mir::ProjectionElem::Deref = proj.elem {
+                return self.visit_lvalue(&proj.base, LvalueContext::Consume);
+            }
+        }
+
         self.super_lvalue(lvalue, context);
     }
 }
