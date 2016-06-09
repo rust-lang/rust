@@ -52,21 +52,19 @@ struct AcsLattice<'tcx> {
 impl<'tcx> Lattice for AcsLattice<'tcx> {
     fn bottom() -> Self { unimplemented!() }
     fn join(&mut self, other: &Self) -> bool {
-        let mut changed = false;
+        let mut to_remove = vec![];
 
-        for (k, v) in &other.known_values {
-            let should_remove = if let Some(cur_v) = self.known_values.get(k) {
-                cur_v != v
-            } else {
-                false
-            };
-            if should_remove {
-                self.known_values.remove(k);
-                changed = true;
+        for (k, v) in &self.known_values {
+            if other.known_values.get(k).map_or(true, |other_v| other_v != v) {
+                to_remove.push(k.clone());
             }
         }
 
-        changed
+        for k in &to_remove {
+            self.known_values.remove(k);
+        }
+
+        !to_remove.is_empty()
     }
 }
 
