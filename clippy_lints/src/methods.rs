@@ -452,8 +452,8 @@ impl LateLintPass for MethodsPass {
                                   explicit_self.span,
                                   "methods called `new` usually return `Self`");
                     }
-                }
-            }}
+                }}
+            }
         }
     }
 }
@@ -1022,9 +1022,7 @@ impl OutType {
             (&OutType::Unit, &hir::Return(ref ty)) if ty.node == hir::TyTup(vec![].into()) => true,
             (&OutType::Bool, &hir::Return(ref ty)) if is_bool(ty) => true,
             (&OutType::Any, &hir::Return(ref ty)) if ty.node != hir::TyTup(vec![].into()) => true,
-            (&OutType::Ref, &hir::Return(ref ty)) => {
-                matches!(ty.node, hir::TyRptr(_, _))
-            }
+            (&OutType::Ref, &hir::Return(ref ty)) => matches!(ty.node, hir::TyRptr(_, _)),
             _ => false,
         }
     }

@@ -16,15 +16,18 @@ use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 
 fn spanned<T>(t: T) -> Spanned<T> {
-    Spanned{ node: t, span: COMMAND_LINE_SP }
+    Spanned {
+        node: t,
+        span: COMMAND_LINE_SP,
+    }
 }
 
 fn expr(n: Expr_) -> Expr {
-    Expr{
+    Expr {
         id: 1,
         node: n,
         span: COMMAND_LINE_SP,
-        attrs: None
+        attrs: None,
     }
 }
 
@@ -40,19 +43,19 @@ fn check(expect: Constant, expr: &Expr) {
     assert_eq!(Some(expect), constant_simple(expr))
 }
 
-const TRUE : Constant = Constant::Bool(true);
-const FALSE : Constant = Constant::Bool(false);
-const ZERO : Constant = Constant::Int(ConstInt::Infer(0));
-const ONE : Constant = Constant::Int(ConstInt::Infer(1));
-const TWO : Constant = Constant::Int(ConstInt::Infer(2));
+const TRUE: Constant = Constant::Bool(true);
+const FALSE: Constant = Constant::Bool(false);
+const ZERO: Constant = Constant::Int(ConstInt::Infer(0));
+const ONE: Constant = Constant::Int(ConstInt::Infer(1));
+const TWO: Constant = Constant::Int(ConstInt::Infer(2));
 
 #[test]
 fn test_lit() {
     check(TRUE, &lit(LitKind::Bool(true)));
     check(FALSE, &lit(LitKind::Bool(false)));
     check(ZERO, &lit(LitKind::Int(0, LitIntType::Unsuffixed)));
-    check(Constant::Str("cool!".into(), StrStyle::Cooked), &lit(LitKind::Str(
-        InternedString::new("cool!"), StrStyle::Cooked)));
+    check(Constant::Str("cool!".into(), StrStyle::Cooked),
+          &lit(LitKind::Str(InternedString::new("cool!"), StrStyle::Cooked)));
 }
 
 #[test]

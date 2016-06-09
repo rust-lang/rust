@@ -120,7 +120,6 @@ impl<'a, 'tcx, 'v, 'b> Visitor<'v> for InsertVisitor<'a, 'tcx, 'b> {
             get_item_name(self.cx, self.map) == get_item_name(self.cx, &*params[0]),
             SpanlessEq::new(self.cx).eq_expr(self.key, &params[1])
         ], {
-
             span_lint_and_then(self.cx, MAP_ENTRY, self.span,
                                &format!("usage of `contains_key` followed by `insert` on `{}`", self.ty), |db| {
                 if self.sole_expr {

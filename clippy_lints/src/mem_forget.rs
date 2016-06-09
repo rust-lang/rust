@@ -33,7 +33,7 @@ impl LateLintPass for MemForget {
 
                     if match forgot_ty.ty_adt_def() {
                         Some(def) => def.has_dtor(),
-                        _ => false
+                        _ => false,
                     } {
                         span_lint(cx, MEM_FORGET, e.span, "usage of mem::forget on Drop type");
                     }

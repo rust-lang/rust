@@ -12,5 +12,5 @@ struct MacroAttributesTest {
 
 #[test]
 fn macro_attributes_test() {
-    let _ = MacroAttributesTest{_foo: 0};
+    let _ = MacroAttributesTest { _foo: 0 };
 }

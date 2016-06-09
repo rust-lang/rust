@@ -23,21 +23,16 @@ name = "cargo-clippy"
 test = false
 
 [dependencies]
-regex-syntax = "0.3.0"
 regex_macros = { version = "0.1.33", optional = true }
-semver = "0.2.1"
-toml = "0.1"
-unicode-normalization = "0.1"
-quine-mc_cluskey = "0.2.2"
 # begin automatic update
 clippy_lints = { version = "0.0.75", path = "clippy_lints" }
 # end automatic update
-rustc-serialize = "0.3"
 
 [dev-dependencies]
 compiletest_rs = "0.2.0"
 lazy_static = "0.1.15"
 regex = "0.1.56"
+rustc-serialize = "0.3"
 
 [features]
 debugging = []

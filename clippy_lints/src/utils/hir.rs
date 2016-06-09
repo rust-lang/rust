@@ -153,7 +153,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&PatKind::QPath(ref ls, ref lp), &PatKind::QPath(ref rs, ref rp)) => {
                 self.eq_qself(ls, rs) && self.eq_path(lp, rp)
             }
-            (&PatKind::Tuple(ref l, ls), &PatKind::Tuple(ref r, rs)) => ls == rs && over(l, r, |l, r| self.eq_pat(l, r)),
+            (&PatKind::Tuple(ref l, ls), &PatKind::Tuple(ref r, rs)) => {
+                ls == rs && over(l, r, |l, r| self.eq_pat(l, r))
+            }
             (&PatKind::Range(ref ls, ref le), &PatKind::Range(ref rs, ref re)) => {
                 self.eq_expr(ls, rs) && self.eq_expr(le, re)
             }

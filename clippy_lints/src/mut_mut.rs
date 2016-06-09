@@ -34,10 +34,7 @@ impl LateLintPass for MutMut {
 
         if let ExprAddrOf(MutMutable, ref e) = expr.node {
             if let ExprAddrOf(MutMutable, _) = e.node {
-                span_lint(cx,
-                          MUT_MUT,
-                          expr.span,
-                          "generally you want to avoid `&mut &mut _` if possible");
+                span_lint(cx, MUT_MUT, expr.span, "generally you want to avoid `&mut &mut _` if possible");
             } else {
                 if let TyRef(_, TypeAndMut { mutbl: MutMutable, .. }) = cx.tcx.expr_ty(e).sty {
                     span_lint(cx,

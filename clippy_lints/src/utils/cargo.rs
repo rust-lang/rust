@@ -50,13 +50,19 @@ pub enum Error {
 }
 
 impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self { Error::Io(err) }
+    fn from(err: io::Error) -> Self {
+        Error::Io(err)
+    }
 }
 impl From<Utf8Error> for Error {
-    fn from(err: Utf8Error) -> Self { Error::Utf8(err) }
+    fn from(err: Utf8Error) -> Self {
+        Error::Utf8(err)
+    }
 }
 impl From<json::DecoderError> for Error {
-    fn from(err: json::DecoderError) -> Self { Error::Json(err) }
+    fn from(err: json::DecoderError) -> Self {
+        Error::Json(err)
+    }
 }
 
 pub fn metadata() -> Result<Metadata, Error> {

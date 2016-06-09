@@ -171,14 +171,14 @@ fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], 
                            "you seem to be trying to use match for destructuring a single pattern. \
                            Consider using `if let`",
                            |db| {
-                               db.span_suggestion(expr.span,
-                                                  "try this",
-                                                  format!("if let {} = {} {}{}",
-                                                          snippet(cx, arms[0].pats[0].span, ".."),
-                                                          snippet(cx, ex.span, ".."),
-                                                          expr_block(cx, &arms[0].body, None, ".."),
-                                                          els_str));
-                           });
+            db.span_suggestion(expr.span,
+                               "try this",
+                               format!("if let {} = {} {}{}",
+                                       snippet(cx, arms[0].pats[0].span, ".."),
+                                       snippet(cx, ex.span, ".."),
+                                       expr_block(cx, &arms[0].body, None, ".."),
+                                       els_str));
+        });
     }
 }
 
@@ -219,14 +219,14 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
                                "you seem to be trying to use match for destructuring a single pattern. Consider \
                                 using `if let`",
                                |db| {
-                                   db.span_suggestion(expr.span,
-                                                      "try this",
-                                                      format!("if let {} = {} {}{}",
-                                                              snippet(cx, arms[0].pats[0].span, ".."),
-                                                              snippet(cx, ex.span, ".."),
-                                                              expr_block(cx, &arms[0].body, None, ".."),
-                                                              els_str));
-                               });
+                db.span_suggestion(expr.span,
+                                   "try this",
+                                   format!("if let {} = {} {}{}",
+                                           snippet(cx, arms[0].pats[0].span, ".."),
+                                           snippet(cx, ex.span, ".."),
+                                           expr_block(cx, &arms[0].body, None, ".."),
+                                           els_str));
+            });
         }
     }
 }
@@ -339,15 +339,15 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
                 Some(pats.iter().filter_map(|pat| {
                     if_let_chain! {[
                         let PatKind::Range(ref lhs, ref rhs) = pat.node,
-                        let Ok(lhs) = eval_const_expr_partial(cx.tcx, &lhs, ExprTypeChecked, None),
-                        let Ok(rhs) = eval_const_expr_partial(cx.tcx, &rhs, ExprTypeChecked, None)
+                        let Ok(lhs) = eval_const_expr_partial(cx.tcx, lhs, ExprTypeChecked, None),
+                        let Ok(rhs) = eval_const_expr_partial(cx.tcx, rhs, ExprTypeChecked, None)
                     ], {
                         return Some(SpannedRange { span: pat.span, node: (lhs, rhs) });
                     }}
 
                     if_let_chain! {[
                         let PatKind::Lit(ref value) = pat.node,
-                        let Ok(value) = eval_const_expr_partial(cx.tcx, &value, ExprTypeChecked, None)
+                        let Ok(value) = eval_const_expr_partial(cx.tcx, value, ExprTypeChecked, None)
                     ], {
                         return Some(SpannedRange { span: pat.span, node: (value.clone(), value) });
                     }}

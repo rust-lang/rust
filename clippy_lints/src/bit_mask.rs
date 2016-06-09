@@ -91,16 +91,11 @@ impl LateLintPass for BitMask {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = e.node {
             if cmp.node.is_comparison() {
-                fetch_int_literal(cx, right).map_or_else(|| {
-                                                             fetch_int_literal(cx, left).map_or((), |cmp_val| {
-                                                                 check_compare(cx,
-                                                                               right,
-                                                                               invert_cmp(cmp.node),
-                                                                               cmp_val,
-                                                                               &e.span)
-                                                             })
-                                                         },
-                                                         |cmp_opt| check_compare(cx, left, cmp.node, cmp_opt, &e.span))
+                if let Some(cmp_opt) = fetch_int_literal(cx, right) {
+                    check_compare(cx, left, cmp.node, cmp_opt, &e.span)
+                } else if let Some(cmp_val) = fetch_int_literal(cx, left) {
+                    check_compare(cx, right, invert_cmp(cmp.node), cmp_val, &e.span)
+                }
             }
         }
     }

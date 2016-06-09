@@ -108,7 +108,7 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span
         /// First byte of the current potential match
         current_word_begin: usize,
         /// List of lines and their associated span
-        docs: &'a[(&'a str, Span)],
+        docs: &'a [(&'a str, Span)],
         /// Index of the current line we are parsing
         line: usize,
         /// Whether we are in a link

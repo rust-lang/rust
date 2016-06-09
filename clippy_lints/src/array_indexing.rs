@@ -79,11 +79,11 @@ impl LateLintPass for ArrayIndexing {
                 // Index is a constant range
                 if let Some(range) = utils::unsugar_range(index) {
                     let start = range.start
-                                     .map(|start| eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None))
-                                     .map(|v| v.ok());
+                        .map(|start| eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None))
+                        .map(|v| v.ok());
                     let end = range.end
-                                   .map(|end| eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None))
-                                   .map(|v| v.ok());
+                        .map(|end| eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None))
+                        .map(|v| v.ok());
 
                     if let Some((start, end)) = to_const_range(start, end, range.limits, size) {
                         if start > size || end > size {

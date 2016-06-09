@@ -57,24 +57,21 @@ impl LateLintPass for TypePass {
         if let Some(did) = cx.tcx.def_map.borrow().get(&ast_ty.id) {
             if let def::Def::Struct(..) = did.full_def() {
                 if Some(did.def_id()) == cx.tcx.lang_items.owned_box() {
-                    if_let_chain! {
-                        [
-                            let TyPath(_, ref path) = ast_ty.node,
-                            let Some(ref last) = path.segments.last(),
-                            let PathParameters::AngleBracketedParameters(ref ag) = last.parameters,
-                            let Some(ref vec) = ag.types.get(0),
-                            let Some(did) = cx.tcx.def_map.borrow().get(&vec.id),
-                            let def::Def::Struct(..) = did.full_def(),
-                            match_def_path(cx, did.def_id(), &paths::VEC),
-                        ],
-                        {
-                            span_help_and_lint(cx,
-                                               BOX_VEC,
-                                               ast_ty.span,
-                                               "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
-                                               "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
-                        }
-                    }
+                    if_let_chain! {[
+                        let TyPath(_, ref path) = ast_ty.node,
+                        let Some(ref last) = path.segments.last(),
+                        let PathParameters::AngleBracketedParameters(ref ag) = last.parameters,
+                        let Some(ref vec) = ag.types.get(0),
+                        let Some(did) = cx.tcx.def_map.borrow().get(&vec.id),
+                        let def::Def::Struct(..) = did.full_def(),
+                        match_def_path(cx, did.def_id(), &paths::VEC),
+                    ], {
+                        span_help_and_lint(cx,
+                                           BOX_VEC,
+                                           ast_ty.span,
+                                           "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
+                                           "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
+                    }}
                 } else if match_def_path(cx, did.def_id(), &paths::LINKED_LIST) {
                     span_help_and_lint(cx,
                                        LINKEDLIST,

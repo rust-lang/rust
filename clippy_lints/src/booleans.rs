@@ -322,7 +322,8 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 let simplified_stats = terminal_stats(suggestion);
                 let mut improvement = false;
                 for i in 0..32 {
-                    // ignore any "simplifications" that end up requiring a terminal more often than in the original expression
+                    // ignore any "simplifications" that end up requiring a terminal more often
+                    // than in the original expression
                     if stats.terminals[i] < simplified_stats.terminals[i] {
                         continue 'simplified;
                     }
@@ -332,17 +333,18 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                            e.span,
                                            "this boolean expression contains a logic bug",
                                            |db| {
-                                               db.span_help(h2q.terminals[i].span,
-                                                            "this expression can be optimized out by applying \
-                                                             boolean operations to the outer expression");
-                                               db.span_suggestion(e.span,
-                                                                  "it would look like the following",
-                                                                  suggest(self.0, suggestion, &h2q.terminals));
-                                           });
+                            db.span_help(h2q.terminals[i].span,
+                                         "this expression can be optimized out by applying boolean operations to the \
+                                          outer expression");
+                            db.span_suggestion(e.span,
+                                               "it would look like the following",
+                                               suggest(self.0, suggestion, &h2q.terminals));
+                        });
                         // don't also lint `NONMINIMAL_BOOL`
                         return;
                     }
-                    // if the number of occurrences of a terminal decreases or any of the stats decreases while none increases
+                    // if the number of occurrences of a terminal decreases or any of the stats
+                    // decreases while none increases
                     improvement |= (stats.terminals[i] > simplified_stats.terminals[i]) ||
                                    (stats.negations > simplified_stats.negations &&
                                     stats.ops == simplified_stats.ops) ||
@@ -358,12 +360,10 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                    e.span,
                                    "this boolean expression can be simplified",
                                    |db| {
-                                       for suggestion in &improvements {
-                                           db.span_suggestion(e.span,
-                                                              "try",
-                                                              suggest(self.0, suggestion, &h2q.terminals));
-                                       }
-                                   });
+                    for suggestion in &improvements {
+                        db.span_suggestion(e.span, "try", suggest(self.0, suggestion, &h2q.terminals));
+                    }
+                });
             }
         }
     }

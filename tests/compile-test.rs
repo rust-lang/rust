@@ -9,7 +9,7 @@ fn run_mode(dir: &'static str, mode: &'static str) {
     let cfg_mode = mode.parse().ok().expect("Invalid mode");
     config.target_rustcflags = Some("-L target/debug/ -L target/debug/deps".to_owned());
     if let Ok(name) = var::<&str>("TESTNAME") {
-        let s : String = name.to_owned();
+        let s: String = name.to_owned();
         config.filter = Some(s)
     }
 

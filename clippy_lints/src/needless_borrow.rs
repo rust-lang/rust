@@ -42,7 +42,8 @@ impl LateLintPass for NeedlessBorrow {
                         span_lint(cx,
                                   NEEDLESS_BORROW,
                                   e.span,
-                                  "this expression borrows a reference that is immediately dereferenced by the compiler");
+                                  "this expression borrows a reference that is immediately dereferenced by the \
+                                   compiler");
                     }
                 }
             }

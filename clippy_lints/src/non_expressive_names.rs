@@ -72,11 +72,13 @@ impl<'v, 'a, 'b, 'c> Visitor<'v> for SimilarNamesNameVisitor<'a, 'b, 'c> {
     fn visit_pat(&mut self, pat: &'v Pat) {
         match pat.node {
             PatKind::Ident(_, id, _) => self.check_name(id.span, id.node.name),
-            PatKind::Struct(_, ref fields, _) => for field in fields {
-                if !field.node.is_shorthand {
-                    self.visit_pat(&field.node.pat);
+            PatKind::Struct(_, ref fields, _) => {
+                for field in fields {
+                    if !field.node.is_shorthand {
+                        self.visit_pat(&field.node.pat);
+                    }
                 }
-            },
+            }
             _ => walk_pat(self, pat),
         }
     }
@@ -193,15 +195,15 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                                span,
                                "binding's name is too similar to existing binding",
                                |diag| {
-                                   diag.span_note(existing_name.span, "existing binding defined here");
-                                   if let Some(split) = split_at {
-                                       diag.span_help(span,
-                                                      &format!("separate the discriminating character by an \
+                diag.span_note(existing_name.span, "existing binding defined here");
+                if let Some(split) = split_at {
+                    diag.span_help(span,
+                                   &format!("separate the discriminating character by an \
                                                                 underscore like: `{}_{}`",
                                                                &interned_name[..split],
                                                                &interned_name[split..]));
-                                   }
-                               });
+                }
+            });
             return;
         }
         self.0.names.push(ExistingName {

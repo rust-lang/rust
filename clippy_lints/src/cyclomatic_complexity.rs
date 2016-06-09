@@ -13,7 +13,8 @@ use utils::{in_macro, LimitStack, span_help_and_lint, paths, match_type};
 
 /// **What it does:** This lint checks for methods with high cyclomatic complexity
 ///
-/// **Why is this bad?** Methods of high cyclomatic complexity tend to be badly readable. Also LLVM will usually optimize small methods better.
+/// **Why is this bad?** Methods of high cyclomatic complexity tend to be badly readable. Also LLVM
+/// will usually optimize small methods better.
 ///
 /// **Known problems:** Sometimes it's hard to find a way to reduce the complexity
 ///
@@ -69,7 +70,7 @@ impl CyclomaticComplexity {
             returns / 2
         };
 
-        if cc + divergence < match_arms + short_circuits  {
+        if cc + divergence < match_arms + short_circuits {
             report_cc_bug(cx, cc, match_arms, divergence, short_circuits, ret_adjust, span);
         } else {
             let mut rust_cc = cc + divergence - match_arms - short_circuits;
@@ -117,7 +118,7 @@ impl LateLintPass for CyclomaticComplexity {
     }
 }
 
-struct CCHelper<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct CCHelper<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     match_arms: u64,
     divergence: u64,
     returns: u64,
@@ -176,8 +177,9 @@ fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, r
     if cx.current_level(CYCLOMATIC_COMPLEXITY) != Level::Allow {
         cx.sess().span_note_without_error(span,
                                           &format!("Clippy encountered a bug calculating cyclomatic complexity \
-                                                    (hide this message with `#[allow(cyclomatic_complexity)]`): cc \
-                                                    = {}, arms = {}, div = {}, shorts = {}, returns = {}. Please file a bug report.",
+                                                    (hide this message with `#[allow(cyclomatic_complexity)]`): \
+                                                    cc = {}, arms = {}, div = {}, shorts = {}, returns = {}. \
+                                                    Please file a bug report.",
                                                    cc,
                                                    narms,
                                                    div,

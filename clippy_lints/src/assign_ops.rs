@@ -51,31 +51,24 @@ impl LateLintPass for AssignOps {
         match expr.node {
             hir::ExprAssignOp(op, ref lhs, ref rhs) => {
                 if let (Some(l), Some(r)) = (snippet_opt(cx, lhs.span), snippet_opt(cx, rhs.span)) {
-                    span_lint_and_then(cx,
-                                       ASSIGN_OPS,
-                                       expr.span,
-                                       "assign operation detected",
-                                       |db| {
-                                           match rhs.node {
-                                               hir::ExprBinary(op2, _, _) if op2 != op => {
-                                                   db.span_suggestion(expr.span,
-                                                                       "replace it with",
-                                                                       format!("{} = {} {} ({})", l, l, op.node.as_str(), r));
-                                               },
-                                               _ => {
-                                                   db.span_suggestion(expr.span,
-                                                                       "replace it with",
-                                                                       format!("{} = {} {} {}", l, l, op.node.as_str(), r));
-                                               }
-                                           }
-                                       });
+                    span_lint_and_then(cx, ASSIGN_OPS, expr.span, "assign operation detected", |db| {
+                        match rhs.node {
+                            hir::ExprBinary(op2, _, _) if op2 != op => {
+                                db.span_suggestion(expr.span,
+                                                   "replace it with",
+                                                   format!("{} = {} {} ({})", l, l, op.node.as_str(), r));
+                            }
+                            _ => {
+                                db.span_suggestion(expr.span,
+                                                   "replace it with",
+                                                   format!("{} = {} {} {}", l, l, op.node.as_str(), r));
+                            }
+                        }
+                    });
                 } else {
-                    span_lint(cx,
-                              ASSIGN_OPS,
-                              expr.span,
-                              "assign operation detected");
+                    span_lint(cx, ASSIGN_OPS, expr.span, "assign operation detected");
                 }
-            },
+            }
             hir::ExprAssign(ref assignee, ref e) => {
                 if let hir::ExprBinary(op, ref l, ref r) = e.node {
                     let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
@@ -104,28 +97,32 @@ impl LateLintPass for AssignOps {
                                 }
                             }
                         }
-                        if ops!(op.node, cx, ty, rty, Add:BiAdd,
-                                                      Sub:BiSub,
-                                                      Mul:BiMul,
-                                                      Div:BiDiv,
-                                                      Rem:BiRem,
-                                                      And:BiAnd,
-                                                      Or:BiOr,
-                                                      BitAnd:BiBitAnd,
-                                                      BitOr:BiBitOr,
-                                                      BitXor:BiBitXor,
-                                                      Shr:BiShr,
-                                                      Shl:BiShl
-                        ) {
-                            if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span)) {
+                        if ops!(op.node,
+                                cx,
+                                ty,
+                                rty,
+                                Add: BiAdd,
+                                Sub: BiSub,
+                                Mul: BiMul,
+                                Div: BiDiv,
+                                Rem: BiRem,
+                                And: BiAnd,
+                                Or: BiOr,
+                                BitAnd: BiBitAnd,
+                                BitOr: BiBitOr,
+                                BitXor: BiBitXor,
+                                Shr: BiShr,
+                                Shl: BiShl) {
+                            if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span),
+                                                                   snippet_opt(cx, rhs.span)) {
                                 span_lint_and_then(cx,
                                                    ASSIGN_OP_PATTERN,
                                                    expr.span,
                                                    "manual implementation of an assign operation",
                                                    |db| {
                                                        db.span_suggestion(expr.span,
-                                                                           "replace it with",
-                                                                           format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
+                                                                          "replace it with",
+                                                                          format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
                                                    });
                             } else {
                                 span_lint(cx,
@@ -142,17 +139,16 @@ impl LateLintPass for AssignOps {
                     // a = b commutative_op a
                     if SpanlessEq::new(cx).ignore_fn().eq_expr(assignee, r) {
                         match op.node {
-                            hir::BiAdd | hir::BiMul |
-                            hir::BiAnd | hir::BiOr |
-                            hir::BiBitXor | hir::BiBitAnd | hir::BiBitOr => {
+                            hir::BiAdd | hir::BiMul | hir::BiAnd | hir::BiOr | hir::BiBitXor | hir::BiBitAnd |
+                            hir::BiBitOr => {
                                 lint(assignee, l);
-                            },
-                            _ => {},
+                            }
+                            _ => {}
                         }
                     }
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 }

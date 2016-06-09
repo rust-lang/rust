@@ -182,7 +182,7 @@ fn used_in_expr(cx: &LateContext, id: hir::def_id::DefId, expr: &hir::Expr) -> b
     let mut v = UsedVisitor {
         cx: cx,
         id: id,
-        used: false
+        used: false,
     };
     hir::intravisit::walk_expr(&mut v, expr);
     v.used

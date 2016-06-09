@@ -49,29 +49,27 @@ impl LateLintPass for StepByZero {
             } else if name.as_str() == "zip" && args.len() == 2 {
                 let iter = &args[0].node;
                 let zip_arg = &args[1];
-                if_let_chain! {
-                    [
-                        // .iter() call
-                        let ExprMethodCall( Spanned { node: ref iter_name, .. }, _, ref iter_args ) = *iter,
-                        iter_name.as_str() == "iter",
-                        // range expression in .zip() call: 0..x.len()
-                        let Some(UnsugaredRange { start: Some(ref start), end: Some(ref end), .. }) = unsugar_range(zip_arg),
-                        is_integer_literal(start, 0),
-                        // .len() call
-                        let ExprMethodCall(Spanned { node: ref len_name, .. }, _, ref len_args) = end.node,
-                        len_name.as_str() == "len" && len_args.len() == 1,
-                        // .iter() and .len() called on same Path
-                        let ExprPath(_, Path { segments: ref iter_path, .. }) = iter_args[0].node,
-                        let ExprPath(_, Path { segments: ref len_path, .. }) = len_args[0].node,
-                        iter_path == len_path
-                     ], {
-                        span_lint(cx,
-                                  RANGE_ZIP_WITH_LEN,
-                                  expr.span,
-                                  &format!("It is more idiomatic to use {}.iter().enumerate()",
-                                           snippet(cx, iter_args[0].span, "_")));
-                    }
-                }
+                if_let_chain! {[
+                    // .iter() call
+                    let ExprMethodCall( Spanned { node: ref iter_name, .. }, _, ref iter_args ) = *iter,
+                    iter_name.as_str() == "iter",
+                    // range expression in .zip() call: 0..x.len()
+                    let Some(UnsugaredRange { start: Some(ref start), end: Some(ref end), .. }) = unsugar_range(zip_arg),
+                    is_integer_literal(start, 0),
+                    // .len() call
+                    let ExprMethodCall(Spanned { node: ref len_name, .. }, _, ref len_args) = end.node,
+                    len_name.as_str() == "len" && len_args.len() == 1,
+                    // .iter() and .len() called on same Path
+                    let ExprPath(_, Path { segments: ref iter_path, .. }) = iter_args[0].node,
+                    let ExprPath(_, Path { segments: ref len_path, .. }) = len_args[0].node,
+                    iter_path == len_path
+                 ], {
+                    span_lint(cx,
+                              RANGE_ZIP_WITH_LEN,
+                              expr.span,
+                              &format!("It is more idiomatic to use {}.iter().enumerate()",
+                                       snippet(cx, iter_args[0].span, "_")));
+                }}
             }
         }
     }

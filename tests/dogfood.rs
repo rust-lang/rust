@@ -30,11 +30,7 @@ fn dogfood() {
 
     config.mode = cfg_mode;
 
-    let files = [
-        "src/main.rs",
-        "src/lib.rs",
-        "clippy_lints/src/lib.rs",
-    ];
+    let files = ["src/main.rs", "src/lib.rs", "clippy_lints/src/lib.rs"];
 
     for file in &files {
         let paths = TestPaths {
