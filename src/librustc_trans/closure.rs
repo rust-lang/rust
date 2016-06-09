@@ -212,6 +212,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
 
     let llfn = get_or_create_closure_declaration(ccx, closure_def_id, closure_substs);
     llvm::SetLinkage(llfn, llvm::WeakODRLinkage);
+    llvm::SetUniqueComdat(ccx.llmod(), llfn);
 
     // Get the type of this closure. Use the current `param_substs` as
     // the closure substitutions. This makes sense because the closure
