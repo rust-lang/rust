@@ -16,7 +16,7 @@ E0445: r##"
 A private trait was used on a public type parameter bound. Erroneous code
 examples:
 
-```compile_fail
+```compile_fail,E0445
 #![deny(private_in_public)]
 
 trait Foo {
@@ -46,7 +46,7 @@ pub fn foo<T: Foo> (t: T) {} // ok!
 E0446: r##"
 A private type was used in a public type signature. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0446
 #![deny(private_in_public)]
 
 mod Foo {
@@ -100,7 +100,7 @@ pub enum Foo {
 Since the enum is already public, adding `pub` on one its elements is
 unnecessary. Example:
 
-```compile_fail
+```compile_fail,
 enum Foo {
     pub Bar, // not ok!
 }
@@ -119,7 +119,7 @@ E0450: r##"
 A tuple constructor was invoked while some of its fields are private. Erroneous
 code example:
 
-```compile_fail
+```compile_fail,E0450
 mod Bar {
     pub struct Foo(isize);
 }
@@ -157,7 +157,7 @@ let f = bar::Foo::new(1);
 E0451: r##"
 A struct constructor with private fields was invoked. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0451
 mod Bar {
     pub struct Foo {
         pub a: isize,

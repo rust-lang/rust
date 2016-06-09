@@ -275,7 +275,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
                     }
                     if count > 0 && error_codes.len() > 0 {
                         let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
-                        error_codes = error_codes.into_iter().filter(|err| !out.contains(err)).collect();
+                        error_codes.retain(|err| !out.contains(err));
                     }
                 }
                 Ok(()) if compile_fail => panic!("test compiled while it wasn't supposed to"),
