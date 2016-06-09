@@ -197,28 +197,18 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     /// Returns whether this lvalue is tracked by drop elaboration. This
-    /// includes all lvalues, except these behind references or arrays.
-    ///
-    /// Lvalues behind references or arrays are not tracked by elaboration
-    /// and are always assumed to be initialized when accessible. As
-    /// references and indexes can be reseated, trying to track them
-    /// can only lead to trouble.
+    /// includes all lvalues, except these (1.) behind references or arrays,
+    ///  or (2.) behind ADT's with a Drop impl.
     fn lvalue_is_tracked(&self, lv: &Lvalue<'tcx>) -> bool
     {
+        // `lvalue_contents_drop_state_cannot_differ` only compares
+        // the `lv` to its immediate contents, while this recursively
+        // follows parent chain formed by `base` of each projection.
         if let &Lvalue::Projection(ref data) = lv {
-            self.lvalue_contents_are_tracked(&data.base)
+            !super::lvalue_contents_drop_state_cannot_differ(self.tcx, self.mir, &data.base) &&
+                self.lvalue_is_tracked(&data.base)
         } else {
             true
-        }
-    }
-
-    fn lvalue_contents_are_tracked(&self, lv: &Lvalue<'tcx>) -> bool {
-        let ty = self.mir.lvalue_ty(self.tcx, lv).to_ty(self.tcx);
-        match ty.sty {
-            ty::TyArray(..) | ty::TySlice(..) | ty::TyRef(..) | ty::TyRawPtr(..) => {
-                false
-            }
-            _ => self.lvalue_is_tracked(lv)
         }
     }
 

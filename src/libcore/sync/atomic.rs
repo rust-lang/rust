@@ -289,7 +289,7 @@ impl AtomicBool {
     /// Stores a value into the `bool` if the current value is the same as the `current` value.
     ///
     /// The return value is a result indicating whether the new value was written and containing
-    /// the previous value. On success this value is guaranteed to be equal to `new`.
+    /// the previous value. On success this value is guaranteed to be equal to `current`.
     ///
     /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
     /// operation. The first describes the required ordering if the operation succeeds while the
@@ -633,7 +633,7 @@ impl<T> AtomicPtr<T> {
     /// Stores a value into the pointer if the current value is the same as the `current` value.
     ///
     /// The return value is a result indicating whether the new value was written and containing
-    /// the previous value. On success this value is guaranteed to be equal to `new`.
+    /// the previous value. On success this value is guaranteed to be equal to `current`.
     ///
     /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
     /// operation. The first describes the required ordering if the operation succeeds while the
@@ -886,7 +886,7 @@ macro_rules! atomic_int {
             ///
             /// The return value is a result indicating whether the new value was written and
             /// containing the previous value. On success this value is guaranteed to be equal to
-            /// `new`.
+            /// `current`.
             ///
             /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of
             /// this operation. The first describes the required ordering if the operation succeeds

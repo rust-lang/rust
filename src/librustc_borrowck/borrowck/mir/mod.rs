@@ -235,6 +235,45 @@ fn move_path_children_matching<'tcx, F>(move_paths: &MovePathData<'tcx>,
     None
 }
 
+/// When enumerating the child fragments of a path, don't recurse into
+/// paths (1.) past arrays, slices, and pointers, nor (2.) into a type
+/// that implements `Drop`.
+///
+/// Lvalues behind references or arrays are not tracked by elaboration
+/// and are always assumed to be initialized when accessible. As
+/// references and indexes can be reseated, trying to track them can
+/// only lead to trouble.
+///
+/// Lvalues behind ADT's with a Drop impl are not tracked by
+/// elaboration since they can never have a drop-flag state that
+/// differs from that of the parent with the Drop impl.
+///
+/// In both cases, the contents can only be accessed if and only if
+/// their parents are initialized. This implies for example that there
+/// is no need to maintain separate drop flags to track such state.
+///
+/// FIXME: we have to do something for moving slice patterns.
+fn lvalue_contents_drop_state_cannot_differ<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                      mir: &Mir<'tcx>,
+                                                      lv: &repr::Lvalue<'tcx>) -> bool {
+    let ty = mir.lvalue_ty(tcx, lv).to_ty(tcx);
+    match ty.sty {
+        ty::TyArray(..) | ty::TySlice(..) | ty::TyRef(..) | ty::TyRawPtr(..) => {
+            debug!("lvalue_contents_drop_state_cannot_differ lv: {:?} ty: {:?} refd => false",
+                   lv, ty);
+            true
+        }
+        ty::TyStruct(def, _) | ty::TyEnum(def, _) if def.has_dtor() => {
+            debug!("lvalue_contents_drop_state_cannot_differ lv: {:?} ty: {:?} Drop => false",
+                   lv, ty);
+            true
+        }
+        _ => {
+            false
+        }
+    }
+}
+
 fn on_all_children_bits<'a, 'tcx, F>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
@@ -251,17 +290,7 @@ fn on_all_children_bits<'a, 'tcx, F>(
     {
         match move_data.move_paths[path].content {
             MovePathContent::Lvalue(ref lvalue) => {
-                match mir.lvalue_ty(tcx, lvalue).to_ty(tcx).sty {
-                    // don't trace paths past arrays, slices, and
-                    // pointers. They can only be accessed while
-                    // their parents are initialized.
-                    //
-                    // FIXME: we have to do something for moving
-                    // slice patterns.
-                    ty::TyArray(..) | ty::TySlice(..) |
-                    ty::TyRef(..) | ty::TyRawPtr(..) => true,
-                    _ => false
-                }
+                lvalue_contents_drop_state_cannot_differ(tcx, mir, lvalue)
             }
             _ => true
         }

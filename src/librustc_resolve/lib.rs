@@ -126,7 +126,7 @@ enum ResolutionError<'a> {
     /// error E0413: cannot be named the same as an enum variant or unit-like struct in scope
     DeclarationShadowsEnumVariantOrUnitLikeStruct(Name),
     /// error E0414: only irrefutable patterns allowed here
-    ConstantForIrrefutableBinding(Name),
+    ConstantForIrrefutableBinding(Name, &'a NameBinding<'a>),
     /// error E0415: identifier is bound more than once in this parameter list
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
     /// error E0416: identifier is bound more than once in the same pattern
@@ -317,19 +317,15 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                 &format!("has same name as enum variant or unit-like struct"));
             err
         }
-        ResolutionError::ConstantForIrrefutableBinding(name) => {
+        ResolutionError::ConstantForIrrefutableBinding(name, binding) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0414,
                                        "let variables cannot be named the same as const variables");
             err.span_label(span,
                            &format!("cannot be named the same as a const variable"));
-            if let Some(binding) = resolver.current_module
-                                           .resolve_name_in_lexical_scope(name, ValueNS) {
-                let participle = if binding.is_import() { "imported" } else { "defined" };
-                err.span_label(binding.span, &format!("a constant `{}` is {} here",
-                               name, participle));
-            }
+            let participle = if binding.is_import() { "imported" } else { "defined" };
+            err.span_label(binding.span, &format!("a constant `{}` is {} here", name, participle));
             err
         }
         ResolutionError::IdentifierBoundMoreThanOnceInParameterList(identifier) => {
@@ -714,9 +710,9 @@ enum AssocItemResolveResult {
 }
 
 #[derive(Copy, Clone)]
-enum BareIdentifierPatternResolution {
+enum BareIdentifierPatternResolution<'a> {
     FoundStructOrEnumVariant(Def),
-    FoundConst(Def, Name),
+    FoundConst(&'a NameBinding<'a>, Name),
     BareIdentifierPatternUnresolved,
 }
 
@@ -792,7 +788,7 @@ pub struct ModuleS<'a> {
     resolutions: RefCell<HashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
     unresolved_imports: RefCell<Vec<&'a ImportDirective<'a>>>,
 
-    prelude: RefCell<Option<Module<'a>>>,
+    no_implicit_prelude: Cell<bool>,
 
     glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective<'a>)>>,
     globs: RefCell<Vec<&'a ImportDirective<'a>>>,
@@ -821,7 +817,7 @@ impl<'a> ModuleS<'a> {
             extern_crate_id: None,
             resolutions: RefCell::new(HashMap::new()),
             unresolved_imports: RefCell::new(Vec::new()),
-            prelude: RefCell::new(None),
+            no_implicit_prelude: Cell::new(false),
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
@@ -984,6 +980,8 @@ pub struct Resolver<'a> {
     definitions: &'a mut Definitions,
 
     graph_root: Module<'a>,
+
+    prelude: Option<Module<'a>>,
 
     trait_item_map: FnvHashMap<(Name, DefId), bool /* is static method? */>,
 
@@ -1174,6 +1172,7 @@ impl<'a> Resolver<'a> {
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
             graph_root: graph_root,
+            prelude: None,
 
             trait_item_map: FnvHashMap(),
             structs: FnvHashMap(),
@@ -1456,7 +1455,15 @@ impl<'a> Resolver<'a> {
                 }
 
                 // We can only see through anonymous modules
-                if module.def.is_some() { return None; }
+                if module.def.is_some() {
+                    return match self.prelude {
+                        Some(prelude) if !module.no_implicit_prelude.get() => {
+                            prelude.resolve_name(name, ns, false).success()
+                                   .map(LexicalScopeBinding::Item)
+                        }
+                        _ => None,
+                    };
+                }
             }
         }
 
@@ -1543,11 +1550,7 @@ impl<'a> Resolver<'a> {
         debug!("(resolving name in module) resolving `{}` in `{}`", name, module_to_string(module));
 
         self.populate_module_if_necessary(module);
-        match use_lexical_scope {
-            true => module.resolve_name_in_lexical_scope(name, namespace)
-                          .map(Success).unwrap_or(Failed(None)),
-            false => module.resolve_name(name, namespace, false),
-        }.and_then(|binding| {
+        module.resolve_name(name, namespace, use_lexical_scope).and_then(|binding| {
             if record_used {
                 if let NameBindingKind::Import { directive, .. } = binding.kind {
                     self.used_imports.insert((directive.id, namespace));
@@ -2289,21 +2292,21 @@ impl<'a> Resolver<'a> {
                             );
                             self.record_def(pattern.id, err_path_resolution());
                         }
-                        FoundConst(def, _) if const_ok => {
+                        FoundConst(binding, _) if const_ok => {
                             debug!("(resolving pattern) resolving `{}` to constant", renamed);
 
                             self.enforce_default_binding_mode(pattern, binding_mode, "a constant");
                             self.record_def(pattern.id,
                                             PathResolution {
-                                                base_def: def,
+                                                base_def: binding.def().unwrap(),
                                                 depth: 0,
                                             });
                         }
-                        FoundConst(_, name) => {
+                        FoundConst(binding, name) => {
                             resolve_error(
                                 self,
                                 pattern.span,
-                                ResolutionError::ConstantForIrrefutableBinding(name)
+                                ResolutionError::ConstantForIrrefutableBinding(name, binding)
                             );
                             self.record_def(pattern.id, err_path_resolution());
                         }
@@ -2526,7 +2529,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_bare_identifier_pattern(&mut self, ident: ast::Ident, span: Span)
-                                       -> BareIdentifierPatternResolution {
+                                       -> BareIdentifierPatternResolution<'a> {
         let binding = match self.resolve_ident_in_lexical_scope(ident, ValueNS, true) {
             Some(LexicalScopeBinding::Item(binding)) => binding,
             _ => return BareIdentifierPatternUnresolved,
@@ -2535,7 +2538,7 @@ impl<'a> Resolver<'a> {
 
         match def {
             Def::Variant(..) | Def::Struct(..) => FoundStructOrEnumVariant(def),
-            Def::Const(..) | Def::AssociatedConst(..) => FoundConst(def, ident.name),
+            Def::Const(..) | Def::AssociatedConst(..) => FoundConst(binding, ident.name),
             Def::Static(..) => {
                 let error = ResolutionError::StaticVariableReference(binding);
                 resolve_error(self, span, error);
@@ -3264,7 +3267,7 @@ impl<'a> Resolver<'a> {
         let mut search_module = self.current_module;
         loop {
             // Look for trait children.
-            let mut search_in_module = |module: Module<'a>| {
+            let mut search_in_module = |this: &mut Self, module: Module<'a>| {
                 let mut traits = module.traits.borrow_mut();
                 if traits.is_none() {
                     let mut collected_traits = Vec::new();
@@ -3279,23 +3282,25 @@ impl<'a> Resolver<'a> {
 
                 for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
                     let trait_def_id = binding.def().unwrap().def_id();
-                    if self.trait_item_map.contains_key(&(name, trait_def_id)) {
+                    if this.trait_item_map.contains_key(&(name, trait_def_id)) {
                         let mut import_id = None;
                         if let NameBindingKind::Import { directive, .. } = binding.kind {
                             let id = directive.id;
-                            self.maybe_unused_trait_imports.insert(id);
+                            this.maybe_unused_trait_imports.insert(id);
                             import_id = Some(id);
                         }
                         add_trait_info(&mut found_traits, trait_def_id, import_id, name);
-                        self.record_use(trait_name, binding);
+                        this.record_use(trait_name, binding);
                     }
                 }
             };
-            search_in_module(search_module);
+            search_in_module(self, search_module);
 
             match search_module.parent_link {
                 NoParentLink | ModuleParentLink(..) => {
-                    search_module.prelude.borrow().map(search_in_module);
+                    if !search_module.no_implicit_prelude.get() {
+                        self.prelude.map(|prelude| search_in_module(self, prelude));
+                    }
                     break;
                 }
                 BlockParentLink(parent_module, _) => {
