@@ -81,7 +81,7 @@ impl<'a> SpanUtils<'a> {
         // are incompatible with spans over other filemaps.
         let filemap = self.sess
                           .codemap()
-                          .new_filemap(String::from("<anon-dxr>"), self.snippet(span));
+                          .new_filemap(String::from("<anon-dxr>"), None, self.snippet(span));
         let s = self.sess;
         lexer::StringReader::new(s.diagnostic(), filemap)
     }

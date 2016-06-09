@@ -1078,6 +1078,7 @@ pub fn import_codemap(local_codemap: &codemap::CodeMap,
                 // containing the information we need.
                 let codemap::FileMap {
                     name,
+                    abs_path,
                     start_pos,
                     end_pos,
                     lines,
@@ -1102,6 +1103,7 @@ pub fn import_codemap(local_codemap: &codemap::CodeMap,
                 }
 
                 let local_version = local_codemap.new_imported_filemap(name,
+                                                                       abs_path,
                                                                        source_length,
                                                                        lines,
                                                                        multibyte_chars);

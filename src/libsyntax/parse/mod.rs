@@ -178,7 +178,7 @@ pub fn new_parser_from_source_str<'a>(sess: &'a ParseSess,
                                       name: String,
                                       source: String)
                                       -> Parser<'a> {
-    filemap_to_parser(sess, sess.codemap().new_filemap(name, source), cfg)
+    filemap_to_parser(sess, sess.codemap().new_filemap(name, None, source), cfg)
 }
 
 /// Create a new parser, handling errors as appropriate
