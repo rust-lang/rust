@@ -37,8 +37,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                      impl_m_body_id: ast::NodeId,
                                      trait_m: &ty::Method<'tcx>,
                                      impl_trait_ref: &ty::TraitRef<'tcx>) {
-    debug!("compare_impl_method(impl_trait_ref={:?})",
-           impl_trait_ref);
+    debug!("compare_impl_method(impl_trait_ref={:?})", impl_trait_ref);
 
     debug!("compare_impl_method: impl_trait_ref (liberated) = {:?}",
            impl_trait_ref);
@@ -55,22 +54,25 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // inscrutable, particularly for cases where one method has no
     // self.
     match (&trait_m.explicit_self, &impl_m.explicit_self) {
-        (&ty::ExplicitSelfCategory::Static,
-         &ty::ExplicitSelfCategory::Static) => {}
+        (&ty::ExplicitSelfCategory::Static, &ty::ExplicitSelfCategory::Static) => {}
         (&ty::ExplicitSelfCategory::Static, _) => {
-            span_err!(tcx.sess, impl_m_span, E0185,
-                "method `{}` has a `{}` declaration in the impl, \
+            span_err!(tcx.sess,
+                      impl_m_span,
+                      E0185,
+                      "method `{}` has a `{}` declaration in the impl, \
                         but not in the trait",
-                        trait_m.name,
-                        impl_m.explicit_self);
+                      trait_m.name,
+                      impl_m.explicit_self);
             return;
         }
         (_, &ty::ExplicitSelfCategory::Static) => {
-            span_err!(tcx.sess, impl_m_span, E0186,
-                "method `{}` has a `{}` declaration in the trait, \
+            span_err!(tcx.sess,
+                      impl_m_span,
+                      E0186,
+                      "method `{}` has a `{}` declaration in the trait, \
                         but not in the impl",
-                        trait_m.name,
-                        trait_m.explicit_self);
+                      trait_m.name,
+                      trait_m.explicit_self);
             return;
         }
         _ => {
@@ -81,26 +83,42 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let num_impl_m_type_params = impl_m.generics.types.len(subst::FnSpace);
     let num_trait_m_type_params = trait_m.generics.types.len(subst::FnSpace);
     if num_impl_m_type_params != num_trait_m_type_params {
-        span_err!(tcx.sess, impl_m_span, E0049,
-            "method `{}` has {} type parameter{} \
+        span_err!(tcx.sess,
+                  impl_m_span,
+                  E0049,
+                  "method `{}` has {} type parameter{} \
              but its trait declaration has {} type parameter{}",
-            trait_m.name,
-            num_impl_m_type_params,
-            if num_impl_m_type_params == 1 {""} else {"s"},
-            num_trait_m_type_params,
-            if num_trait_m_type_params == 1 {""} else {"s"});
+                  trait_m.name,
+                  num_impl_m_type_params,
+                  if num_impl_m_type_params == 1 {
+                      ""
+                  } else {
+                      "s"
+                  },
+                  num_trait_m_type_params,
+                  if num_trait_m_type_params == 1 {
+                      ""
+                  } else {
+                      "s"
+                  });
         return;
     }
 
     if impl_m.fty.sig.0.inputs.len() != trait_m.fty.sig.0.inputs.len() {
-        span_err!(tcx.sess, impl_m_span, E0050,
-            "method `{}` has {} parameter{} \
+        span_err!(tcx.sess,
+                  impl_m_span,
+                  E0050,
+                  "method `{}` has {} parameter{} \
              but the declaration in trait `{}` has {}",
-            trait_m.name,
-            impl_m.fty.sig.0.inputs.len(),
-            if impl_m.fty.sig.0.inputs.len() == 1 {""} else {"s"},
-            tcx.item_path_str(trait_m.def_id),
-            trait_m.fty.sig.0.inputs.len());
+                  trait_m.name,
+                  impl_m.fty.sig.0.inputs.len(),
+                  if impl_m.fty.sig.0.inputs.len() == 1 {
+                      ""
+                  } else {
+                      "s"
+                  },
+                  tcx.item_path_str(trait_m.def_id),
+                  trait_m.fty.sig.0.inputs.len());
         return;
     }
 
@@ -177,10 +195,14 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     // Create mapping from trait to skolemized.
     let trait_to_skol_substs =
-        trait_to_impl_substs
-        .subst(tcx, impl_to_skol_substs).clone()
-        .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
-                     impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
+        trait_to_impl_substs.subst(tcx, impl_to_skol_substs)
+                            .clone()
+                            .with_method(impl_to_skol_substs.types
+                                                            .get_slice(subst::FnSpace)
+                                                            .to_vec(),
+                                         impl_to_skol_substs.regions
+                                                            .get_slice(subst::FnSpace)
+                                                            .to_vec());
     debug!("compare_impl_method: trait_to_skol_substs={:?}",
            trait_to_skol_substs);
 
@@ -207,8 +229,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // environment. We can't just use `impl_env.caller_bounds`,
         // however, because we want to replace all late-bound regions with
         // region variables.
-        let impl_bounds =
-            impl_m.predicates.instantiate(tcx, impl_to_skol_substs);
+        let impl_bounds = impl_m.predicates.instantiate(tcx, impl_to_skol_substs);
 
         debug!("compare_impl_method: impl_bounds={:?}", impl_bounds);
 
@@ -223,11 +244,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         //
         // We then register the obligations from the impl_m and check to see
         // if all constraints hold.
-        let hybrid_preds = VecPerParamSpace::new(
-            impl_pred.types,
-            impl_pred.selfs,
-            trait_pred.fns
-        );
+        let hybrid_preds = VecPerParamSpace::new(impl_pred.types, impl_pred.selfs, trait_pred.fns);
 
         // Construct trait parameter environment and then shift it into the skolemized viewpoint.
         // The key step here is to update the caller_bounds's predicates to be
@@ -241,15 +258,14 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         infcx.parameter_environment = trait_param_env;
 
         debug!("compare_impl_method: trait_bounds={:?}",
-            infcx.parameter_environment.caller_bounds);
+               infcx.parameter_environment.caller_bounds);
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
         let (impl_pred_fns, _) =
-            infcx.replace_late_bound_regions_with_fresh_var(
-                impl_m_span,
-                infer::HigherRankedType,
-                &ty::Binder(impl_pred.fns));
+            infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
+                                                            infer::HigherRankedType,
+                                                            &ty::Binder(impl_pred.fns));
         for predicate in impl_pred_fns {
             let traits::Normalized { value: predicate, .. } =
                 traits::normalize(&mut selcx, normalize_cause.clone(), &predicate);
@@ -257,12 +273,11 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let cause = traits::ObligationCause {
                 span: impl_m_span,
                 body_id: impl_m_body_id,
-                code: traits::ObligationCauseCode::CompareImplMethodObligation
+                code: traits::ObligationCauseCode::CompareImplMethodObligation,
             };
 
-            fulfillment_cx.register_predicate_obligation(
-                &infcx,
-                traits::Obligation::new(cause, predicate));
+            fulfillment_cx.register_predicate_obligation(&infcx,
+                                                         traits::Obligation::new(cause, predicate));
         }
 
         // We now need to check that the signature of the impl method is
@@ -286,36 +301,32 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
                                                             infer::HigherRankedType,
                                                             &impl_m.fty.sig);
-        let impl_sig =
-            impl_sig.subst(tcx, impl_to_skol_substs);
-        let impl_sig =
-            assoc::normalize_associated_types_in(&infcx,
-                                                 &mut fulfillment_cx,
-                                                 impl_m_span,
-                                                 impl_m_body_id,
-                                                 &impl_sig);
+        let impl_sig = impl_sig.subst(tcx, impl_to_skol_substs);
+        let impl_sig = assoc::normalize_associated_types_in(&infcx,
+                                                            &mut fulfillment_cx,
+                                                            impl_m_span,
+                                                            impl_m_body_id,
+                                                            &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: impl_m.fty.unsafety,
             abi: impl_m.fty.abi,
-            sig: ty::Binder(impl_sig)
+            sig: ty::Binder(impl_sig),
         }));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
-        let trait_sig = tcx.liberate_late_bound_regions(
-            infcx.parameter_environment.free_id_outlive,
-            &trait_m.fty.sig);
-        let trait_sig =
-            trait_sig.subst(tcx, &trait_to_skol_substs);
-        let trait_sig =
-            assoc::normalize_associated_types_in(&infcx,
-                                                 &mut fulfillment_cx,
-                                                 impl_m_span,
-                                                 impl_m_body_id,
-                                                 &trait_sig);
+        let trait_sig = tcx.liberate_late_bound_regions(infcx.parameter_environment
+                                                             .free_id_outlive,
+                                                        &trait_m.fty.sig);
+        let trait_sig = trait_sig.subst(tcx, &trait_to_skol_substs);
+        let trait_sig = assoc::normalize_associated_types_in(&infcx,
+                                                             &mut fulfillment_cx,
+                                                             impl_m_span,
+                                                             impl_m_body_id,
+                                                             &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: trait_m.fty.unsafety,
             abi: trait_m.fty.abi,
-            sig: ty::Binder(trait_sig)
+            sig: ty::Binder(trait_sig),
         }));
 
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
@@ -324,18 +335,20 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             debug!("sub_types failed: impl ty {:?}, trait ty {:?}",
                    impl_fty,
                    trait_fty);
-            span_err!(tcx.sess, impl_m_span, E0053,
+            span_err!(tcx.sess,
+                      impl_m_span,
+                      E0053,
                       "method `{}` has an incompatible type for trait: {}",
                       trait_m.name,
                       terr);
-            return
+            return;
         }
 
         // Check that all obligations are satisfied by the implementation's
         // version.
         if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
             infcx.report_fulfillment_errors(errors);
-            return
+            return;
         }
 
         // Finally, resolve all regions. This catches wily misuses of
@@ -348,8 +361,8 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // anyway, so it shouldn't be needed there either. Anyway, we can
         // always add more relations later (it's backwards compat).
         let mut free_regions = FreeRegionMap::new();
-        free_regions.relate_free_regions_from_predicates(
-            &infcx.parameter_environment.caller_bounds);
+        free_regions.relate_free_regions_from_predicates(&infcx.parameter_environment
+                                                               .caller_bounds);
 
         infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
     });
@@ -361,8 +374,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                     impl_generics: &ty::Generics<'tcx>,
                                                     trait_to_skol_substs: &Substs<'tcx>,
                                                     impl_to_skol_substs: &Substs<'tcx>)
-                                                    -> bool
-    {
+                                                    -> bool {
 
         let trait_params = trait_generics.regions.get_slice(subst::FnSpace);
         let impl_params = impl_generics.regions.get_slice(subst::FnSpace);
@@ -387,10 +399,12 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // are zero. Since I don't quite know how to phrase things at
         // the moment, give a kind of vague error message.
         if trait_params.len() != impl_params.len() {
-            span_err!(ccx.tcx.sess, span, E0195,
-                "lifetime parameters or bounds on method `{}` do \
+            span_err!(ccx.tcx.sess,
+                      span,
+                      E0195,
+                      "lifetime parameters or bounds on method `{}` do \
                          not match the trait declaration",
-                         impl_m.name);
+                      impl_m.name);
             return false;
         }
 
@@ -403,8 +417,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     impl_c_span: Span,
                                     trait_c: &ty::AssociatedConst<'tcx>,
                                     impl_trait_ref: &ty::TraitRef<'tcx>) {
-    debug!("compare_const_impl(impl_trait_ref={:?})",
-           impl_trait_ref);
+    debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
     let tcx = ccx.tcx;
     tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
@@ -427,12 +440,16 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         // Create mapping from trait to skolemized.
         let trait_to_skol_substs =
-            trait_to_impl_substs
-            .subst(tcx, impl_to_skol_substs).clone()
-            .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
-                         impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
+            trait_to_impl_substs.subst(tcx, impl_to_skol_substs)
+                                .clone()
+                                .with_method(impl_to_skol_substs.types
+                                                                .get_slice(subst::FnSpace)
+                                                                .to_vec(),
+                                             impl_to_skol_substs.regions
+                                                                .get_slice(subst::FnSpace)
+                                                                .to_vec());
         debug!("compare_const_impl: trait_to_skol_substs={:?}",
-            trait_to_skol_substs);
+               trait_to_skol_substs);
 
         // Compute skolemized form of impl and trait const tys.
         let impl_ty = impl_c.ty.subst(tcx, impl_to_skol_substs);
@@ -442,38 +459,36 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let origin = TypeOrigin::Misc(impl_c_span);
 
             // There is no "body" here, so just pass dummy id.
-            let impl_ty =
-                assoc::normalize_associated_types_in(&infcx,
-                                                     &mut fulfillment_cx,
-                                                     impl_c_span,
-                                                     0,
-                                                     &impl_ty);
+            let impl_ty = assoc::normalize_associated_types_in(&infcx,
+                                                               &mut fulfillment_cx,
+                                                               impl_c_span,
+                                                               0,
+                                                               &impl_ty);
 
-            debug!("compare_const_impl: impl_ty={:?}",
-                impl_ty);
+            debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
-            let trait_ty =
-                assoc::normalize_associated_types_in(&infcx,
-                                                     &mut fulfillment_cx,
-                                                     impl_c_span,
-                                                     0,
-                                                     &trait_ty);
+            let trait_ty = assoc::normalize_associated_types_in(&infcx,
+                                                                &mut fulfillment_cx,
+                                                                impl_c_span,
+                                                                0,
+                                                                &trait_ty);
 
-            debug!("compare_const_impl: trait_ty={:?}",
-                trait_ty);
+            debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
             infcx.sub_types(false, origin, impl_ty, trait_ty)
                  .map(|InferOk { obligations, .. }| {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty())
-            })
+                     // FIXME(#32730) propagate obligations
+                     assert!(obligations.is_empty())
+                 })
         });
 
         if let Err(terr) = err {
             debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
                    impl_ty,
                    trait_ty);
-            span_err!(tcx.sess, impl_c_span, E0326,
+            span_err!(tcx.sess,
+                      impl_c_span,
+                      E0326,
                       "implemented const `{}` has an incompatible type for \
                       trait: {}",
                       trait_c.name,

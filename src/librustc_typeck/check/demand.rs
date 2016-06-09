@@ -25,7 +25,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok(InferOk { obligations, .. }) => {
                 // FIXME(#32730) propagate obligations
                 assert!(obligations.is_empty());
-            },
+            }
             Err(e) => {
                 self.report_mismatched_types(origin, expected, actual, e);
             }
@@ -38,7 +38,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok(InferOk { obligations, .. }) => {
                 // FIXME(#32730) propagate obligations
                 assert!(obligations.is_empty());
-            },
+            }
             Err(e) => {
                 self.report_mismatched_types(origin, expected, actual, e);
             }
@@ -55,8 +55,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn require_same_types(&self, span: Span, t1: Ty<'tcx>, t2: Ty<'tcx>, msg: &str)
-                              -> bool {
+    pub fn require_same_types(&self, span: Span, t1: Ty<'tcx>, t2: Ty<'tcx>, msg: &str) -> bool {
         if let Err(err) = self.eq_types(false, TypeOrigin::Misc(span), t1, t2) {
             let found_ty = self.resolve_type_vars_if_possible(&t1);
             let expected_ty = self.resolve_type_vars_if_possible(&t2);
