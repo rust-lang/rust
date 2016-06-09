@@ -109,7 +109,7 @@ DEPS_rustc := syntax fmt_macros flate arena serialize getopts rbml \
               log graphviz rustc_llvm rustc_back rustc_data_structures\
 		  	  rustc_const_math
 DEPS_rustc_back := std syntax flate log libc
-DEPS_rustc_borrowck := rustc rustc_mir log graphviz syntax
+DEPS_rustc_borrowck := rustc log graphviz syntax rustc_mir
 DEPS_rustc_data_structures := std log serialize
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
                      rustc_typeck rustc_mir rustc_resolve log syntax serialize rustc_llvm \
@@ -123,9 +123,9 @@ DEPS_rustc_passes := syntax rustc core rustc_const_eval
 DEPS_rustc_mir := rustc syntax rustc_const_math rustc_const_eval rustc_bitflags
 DEPS_rustc_resolve := arena rustc log syntax
 DEPS_rustc_platform_intrinsics := std
-DEPS_rustc_plugin := rustc rustc_metadata syntax rustc_mir
+DEPS_rustc_plugin := rustc rustc_metadata syntax
 DEPS_rustc_privacy := rustc log syntax
-DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back rustc_mir \
+DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
                     log syntax serialize rustc_llvm rustc_platform_intrinsics \
                     rustc_const_math rustc_const_eval rustc_incremental
 DEPS_rustc_incremental := rbml rustc serialize rustc_data_structures

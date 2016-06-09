@@ -13,12 +13,11 @@ use rustc::middle::const_val::ConstVal;
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::traversal;
 use pretty;
 use std::mem;
 
 use super::remove_dead_blocks::RemoveDeadBlocks;
-
-use traversal;
 
 pub struct SimplifyCfg;
 

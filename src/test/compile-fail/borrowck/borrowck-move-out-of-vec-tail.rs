@@ -24,14 +24,14 @@ pub fn main() {
         Foo { string: "baz".to_string() }
     );
     let x: &[Foo] = &x;
-    match x {
-        [_, tail..] => {
+    match *x {
+        [_, ref tail..] => {
             match tail {
-                [Foo { string: a },
+                &[Foo { string: a },
                 //~^ ERROR cannot move out of borrowed content
                 //~| cannot move out
                 //~| to prevent move
-                 Foo { string: b }] => {
+                  Foo { string: b }] => {
                     //~^ NOTE and here
                 }
                 _ => {

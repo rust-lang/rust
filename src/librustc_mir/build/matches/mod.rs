@@ -429,42 +429,87 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// simpler (and, in fact, irrefutable).
     ///
     /// But there may also be candidates that the test just doesn't
-    /// apply to. For example, consider the case of #29740:
+    /// apply to. The classical example involves wildcards:
     ///
     /// ```rust,ignore
-    /// match x {
-    ///     "foo" => ...,
-    ///     "bar" => ...,
-    ///     "baz" => ...,
-    ///     _ => ...,
+    /// match (x, y, z) {
+    ///     (true, _, true) => true,    // (0)
+    ///     (_, true, _) => true,       // (1)
+    ///     (false, false, _) => false, // (2)
+    ///     (true, _, false) => false,  // (3)
     /// }
     /// ```
     ///
-    /// Here the match-pair we are testing will be `x @ "foo"`, and we
-    /// will generate an `Eq` test. Because `"bar"` and `"baz"` are different
-    /// constants, we will decide that these later candidates are just not
-    /// informed by the eq test. So we'll wind up with three candidate sets:
+    /// In that case, after we test on `x`, there are 2 overlapping candidate
+    /// sets:
     ///
-    /// - If outcome is that `x == "foo"` (one candidate, derived from `x @ "foo"`)
-    /// - If outcome is that `x != "foo"` (empty list of candidates)
-    /// - Otherwise (three candidates, `x @ "bar"`, `x @ "baz"`, `x @
-    ///   _`). Here we have the invariant that everything in the
-    ///   otherwise list is of **lower priority** than the stuff in the
-    ///   other lists.
+    /// - If the outcome is that `x` is true, candidates 0, 1, and 3
+    /// - If the outcome is that `x` is false, candidates 1 and 2
     ///
-    /// So we'll compile the test. For each outcome of the test, we
-    /// recursively call `match_candidates` with the corresponding set
-    /// of candidates. But note that this set is now inexhaustive: for
-    /// example, in the case where the test returns false, there are
-    /// NO candidates, even though there is stll a value to be
-    /// matched. So we'll collect the return values from
-    /// `match_candidates`, which are the blocks where control-flow
-    /// goes if none of the candidates matched. At this point, we can
-    /// continue with the "otherwise" list.
+    /// Here, the traditional "decision tree" method would generate 2
+    /// separate code-paths for the 2 separate cases.
+    ///
+    /// In some cases, this duplication can create an exponential amount of
+    /// code. This is most easily seen by noticing that this method terminates
+    /// with precisely the reachable arms being reachable - but that problem
+    /// is trivially NP-complete:
+    ///
+    /// ```rust
+    ///     match (var0, var1, var2, var3, ..) {
+    ///         (true, _, _, false, true, ...) => false,
+    ///         (_, true, true, false, _, ...) => false,
+    ///         (false, _, false, false, _, ...) => false,
+    ///         ...
+    ///         _ => true
+    ///     }
+    /// ```
+    ///
+    /// Here the last arm is reachable only if there is an assignment to
+    /// the variables that does not match any of the literals. Therefore,
+    /// compilation would take an exponential amount of time in some cases.
+    ///
+    /// That kind of exponential worst-case might not occur in practice, but
+    /// our simplistic treatment of constants and guards would make it occur
+    /// in very common situations - for example #29740:
+    ///
+    /// ```rust
+    /// match x {
+    ///     "foo" if foo_guard => ...,
+    ///     "bar" if bar_guard => ...,
+    ///     "baz" if baz_guard => ...,
+    ///     ...
+    /// }
+    /// ```
+    ///
+    /// Here we first test the match-pair `x @ "foo"`, which is an `Eq` test.
+    ///
+    /// It might seem that we would end up with 2 disjoint candidate
+    /// sets, consisting of the first candidate or the other 3, but our
+    /// algorithm doesn't reason about "foo" being distinct from the other
+    /// constants; it considers the latter arms to potentially match after
+    /// both outcomes, which obviously leads to an exponential amount
+    /// of tests.
+    ///
+    /// To avoid these kinds of problems, our algorithm tries to ensure
+    /// the amount of generated tests is linear. When we do a k-way test,
+    /// we return an additional "unmatched" set alongside the obvious `k`
+    /// sets. When we encounter a candidate that would be present in more
+    /// than one of the sets, we put it and all candidates below it into the
+    /// "unmatched" set. This ensures these `k+1` sets are disjoint.
+    ///
+    /// After we perform our test, we branch into the appropriate candidate
+    /// set and recurse with `match_candidates`. These sub-matches are
+    /// obviously inexhaustive - as we discarded our otherwise set - so
+    /// we set their continuation to do `match_candidates` on the
+    /// "unmatched" set (which is again inexhaustive).
     ///
     /// If you apply this to the above test, you basically wind up
     /// with an if-else-if chain, testing each candidate in turn,
     /// which is precisely what we want.
+    ///
+    /// In addition to avoiding exponential-time blowups, this algorithm
+    /// also has nice property that each guard and arm is only generated
+    /// once.
     fn test_candidates<'pat>(&mut self,
                              span: Span,
                              arm_blocks: &mut ArmBlocks,

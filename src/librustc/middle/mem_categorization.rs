@@ -228,10 +228,10 @@ fn deref_kind(t: Ty, context: DerefKindContext) -> McResult<deref_kind> {
             Ok(deref_interior(InteriorField(PositionalField(0))))
         }
 
-        ty::TyArray(_, _) | ty::TySlice(_) | ty::TyStr => {
+        ty::TyArray(_, _) | ty::TySlice(_) => {
             // no deref of indexed content without supplying InteriorOffsetKind
             if let Some(context) = context {
-                Ok(deref_interior(InteriorElement(context, element_kind(t))))
+                Ok(deref_interior(InteriorElement(context, ElementKind::VecElement)))
             } else {
                 Err(())
             }
@@ -981,18 +981,19 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let method_call = ty::MethodCall::expr(elt.id());
         let method_ty = self.infcx.node_method_ty(method_call);
 
-        let element_ty = match method_ty {
+        let (element_ty, element_kind) = match method_ty {
             Some(method_ty) => {
                 let ref_ty = self.overloaded_method_return_ty(method_ty);
                 base_cmt = self.cat_rvalue_node(elt.id(), elt.span(), ref_ty);
 
                 // FIXME(#20649) -- why are we using the `self_ty` as the element type...?
                 let self_ty = method_ty.fn_sig().input(0);
-                self.tcx().no_late_bound_regions(&self_ty).unwrap()
+                (self.tcx().no_late_bound_regions(&self_ty).unwrap(),
+                 ElementKind::OtherElement)
             }
             None => {
                 match base_cmt.ty.builtin_index() {
-                    Some(ty) => ty,
+                    Some(ty) => (ty, ElementKind::VecElement),
                     None => {
                         return Err(());
                     }
@@ -1000,102 +1001,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
         };
 
-        let m = base_cmt.mutbl.inherit();
-        let ret = interior(elt, base_cmt.clone(), base_cmt.ty,
-                           m, context, element_ty);
+        let interior_elem = InteriorElement(context, element_kind);
+        let ret =
+            self.cat_imm_interior(elt, base_cmt.clone(), element_ty, interior_elem);
         debug!("cat_index ret {:?}", ret);
         return Ok(ret);
-
-        fn interior<'tcx, N: ast_node>(elt: &N,
-                                       of_cmt: cmt<'tcx>,
-                                       vec_ty: Ty<'tcx>,
-                                       mutbl: MutabilityCategory,
-                                       context: InteriorOffsetKind,
-                                       element_ty: Ty<'tcx>) -> cmt<'tcx>
-        {
-            let interior_elem = InteriorElement(context, element_kind(vec_ty));
-            Rc::new(cmt_ {
-                id:elt.id(),
-                span:elt.span(),
-                cat:Categorization::Interior(of_cmt, interior_elem),
-                mutbl:mutbl,
-                ty:element_ty,
-                note: NoteNone
-            })
-        }
-    }
-
-    // Takes either a vec or a reference to a vec and returns the cmt for the
-    // underlying vec.
-    fn deref_vec<N:ast_node>(&self,
-                             elt: &N,
-                             base_cmt: cmt<'tcx>,
-                             context: InteriorOffsetKind)
-                             -> McResult<cmt<'tcx>>
-    {
-        let ret = match deref_kind(base_cmt.ty, Some(context))? {
-            deref_ptr(ptr) => {
-                // for unique ptrs, we inherit mutability from the
-                // owning reference.
-                let m = MutabilityCategory::from_pointer_kind(base_cmt.mutbl, ptr);
-
-                // the deref is explicit in the resulting cmt
-                Rc::new(cmt_ {
-                    id:elt.id(),
-                    span:elt.span(),
-                    cat:Categorization::Deref(base_cmt.clone(), 0, ptr),
-                    mutbl:m,
-                    ty: match base_cmt.ty.builtin_deref(false, ty::NoPreference) {
-                        Some(mt) => mt.ty,
-                        None => bug!("Found non-derefable type")
-                    },
-                    note: NoteNone
-                })
-            }
-
-            deref_interior(_) => {
-                base_cmt
-            }
-        };
-        debug!("deref_vec ret {:?}", ret);
-        Ok(ret)
-    }
-
-    /// Given a pattern P like: `[_, ..Q, _]`, where `vec_cmt` is the cmt for `P`, `slice_pat` is
-    /// the pattern `Q`, returns:
-    ///
-    /// * a cmt for `Q`
-    /// * the mutability and region of the slice `Q`
-    ///
-    /// These last two bits of info happen to be things that borrowck needs.
-    pub fn cat_slice_pattern(&self,
-                             vec_cmt: cmt<'tcx>,
-                             slice_pat: &hir::Pat)
-                             -> McResult<(cmt<'tcx>, hir::Mutability, ty::Region)> {
-        let slice_ty = self.node_ty(slice_pat.id)?;
-        let (slice_mutbl, slice_r) = vec_slice_info(slice_pat, slice_ty);
-        let context = InteriorOffsetKind::Pattern;
-        let cmt_vec = self.deref_vec(slice_pat, vec_cmt, context)?;
-        let cmt_slice = self.cat_index(slice_pat, cmt_vec, context)?;
-        return Ok((cmt_slice, slice_mutbl, slice_r));
-
-        /// In a pattern like [a, b, ..c], normally `c` has slice type, but if you have [a, b,
-        /// ..ref c], then the type of `ref c` will be `&&[]`, so to extract the slice details we
-        /// have to recurse through rptrs.
-        fn vec_slice_info(pat: &hir::Pat, slice_ty: Ty)
-                          -> (hir::Mutability, ty::Region) {
-            match slice_ty.sty {
-                ty::TyRef(r, ref mt) => match mt.ty.sty {
-                    ty::TySlice(_) => (mt.mutbl, *r),
-                    _ => vec_slice_info(pat, mt.ty),
-                },
-
-                _ => {
-                    span_bug!(pat.span,
-                              "type of slice pattern is not a slice");
-                }
-            }
-        }
     }
 
     pub fn cat_imm_interior<N:ast_node>(&self,
@@ -1319,15 +1229,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
           PatKind::Vec(ref before, ref slice, ref after) => {
               let context = InteriorOffsetKind::Pattern;
-              let vec_cmt = self.deref_vec(pat, cmt, context)?;
-              let elt_cmt = self.cat_index(pat, vec_cmt, context)?;
+              let elt_cmt = self.cat_index(pat, cmt, context)?;
               for before_pat in before {
                   self.cat_pattern_(elt_cmt.clone(), &before_pat, op)?;
               }
               if let Some(ref slice_pat) = *slice {
-                  let slice_ty = self.pat_ty(&slice_pat)?;
-                  let slice_cmt = self.cat_rvalue_node(pat.id(), pat.span(), slice_ty);
-                  self.cat_pattern_(slice_cmt, &slice_pat, op)?;
+                  self.cat_pattern_(elt_cmt.clone(), &slice_pat, op)?;
               }
               for after_pat in after {
                   self.cat_pattern_(elt_cmt.clone(), &after_pat, op)?;
@@ -1617,18 +1524,6 @@ impl fmt::Debug for InteriorKind {
             InteriorField(PositionalField(i)) => write!(f, "#{}", i),
             InteriorElement(..) => write!(f, "[]"),
         }
-    }
-}
-
-fn element_kind(t: Ty) -> ElementKind {
-    match t.sty {
-        ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
-        ty::TyBox(ty) => match ty.sty {
-            ty::TySlice(_) => VecElement,
-            _ => OtherElement
-        },
-        ty::TyArray(..) | ty::TySlice(_) => VecElement,
-        _ => OtherElement
     }
 }
 

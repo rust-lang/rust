@@ -775,9 +775,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
         let dest = match *dest {
             mir::Lvalue::Temp(idx) => {
-                let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), dest);
-                let lvalue_ty = bcx.monomorphize(&lvalue_ty);
-                let ret_ty = lvalue_ty.to_ty(bcx.tcx());
+                let ret_ty = self.lvalue_ty(dest);
                 match self.temps[idx as usize] {
                     TempRef::Lvalue(dest) => dest,
                     TempRef::Operand(None) => {

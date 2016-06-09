@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-#![feature(slice_patterns)]
-
-#[rustc_mir]
 fn main() {
-    let x = [(), ()];
+    match "world" { //~ ERROR non-exhaustive patterns: `&_`
+        "hello" => {}
+    }
 
-    // The subslice used to go out of bounds for zero-sized array items, check that this doesn't
-    // happen anymore
-    match x {
-        [_, ref y..] => assert_eq!(&x[1] as *const (), &y[0] as *const ())
+    match "world" { //~ ERROR non-exhaustive patterns: `&_`
+        ref _x if false => {}
+        "hello" => {}
+        "hello" => {} //~ ERROR unreachable pattern
     }
 }

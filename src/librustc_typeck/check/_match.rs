@@ -19,8 +19,8 @@ use lint;
 use util::nodemap::FnvHashMap;
 use session::Session;
 
-use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::cmp;
 use std::ops::Deref;
 use syntax::ast;
 use syntax::codemap::{Span, Spanned};
@@ -323,44 +323,53 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
             }
             PatKind::Vec(ref before, ref slice, ref after) => {
                 let expected_ty = self.structurally_resolved_type(pat.span, expected);
-                let inner_ty = self.next_ty_var();
-                let pat_ty = match expected_ty.sty {
-                    ty::TyArray(_, size) => tcx.mk_array(inner_ty, {
+                let (inner_ty, slice_ty) = match expected_ty.sty {
+                    ty::TyArray(inner_ty, size) => {
                         let min_len = before.len() + after.len();
-                        match *slice {
-                            Some(_) => cmp::max(min_len, size),
-                            None => min_len
+                        if slice.is_none() {
+                            if min_len != size {
+                                span_err!(tcx.sess, pat.span, E0527,
+                                          "pattern requires {} elements but array has {}",
+                                          min_len, size);
+                            }
+                            (inner_ty, tcx.types.err)
+                        } else if let Some(rest) = size.checked_sub(min_len) {
+                            (inner_ty, tcx.mk_array(inner_ty, rest))
+                        } else {
+                            span_err!(tcx.sess, pat.span, E0528,
+                                      "pattern requires at least {} elements but array has {}",
+                                      min_len, size);
+                            (inner_ty, tcx.types.err)
                         }
-                    }),
+                    }
+                    ty::TySlice(inner_ty) => (inner_ty, expected_ty),
                     _ => {
-                        let region = self.next_region_var(infer::PatternRegion(pat.span));
-                        tcx.mk_ref(tcx.mk_region(region), ty::TypeAndMut {
-                            ty: tcx.mk_slice(inner_ty),
-                            mutbl: expected_ty.builtin_deref(true, ty::NoPreference)
-                                              .map_or(hir::MutImmutable, |mt| mt.mutbl)
-                        })
+                        if !expected_ty.references_error() {
+                            let mut err = struct_span_err!(
+                                tcx.sess, pat.span, E0529,
+                                "expected an array or slice, found `{}`",
+                                expected_ty);
+                            if let ty::TyRef(_, ty::TypeAndMut { mutbl: _, ty }) = expected_ty.sty {
+                                match ty.sty {
+                                    ty::TyArray(..) | ty::TySlice(..) => {
+                                        err.help("the semantics of slice patterns changed \
+                                                  recently; see issue #23121");
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            err.emit();
+                        }
+                        (tcx.types.err, tcx.types.err)
                     }
                 };
 
-                self.write_ty(pat.id, pat_ty);
-
-                // `demand::subtype` would be good enough, but using
-                // `eqtype` turns out to be equally general. See (*)
-                // below for details.
-                self.demand_eqtype(pat.span, expected, pat_ty);
+                self.write_ty(pat.id, expected_ty);
 
                 for elt in before {
                     self.check_pat(&elt, inner_ty);
                 }
                 if let Some(ref slice) = *slice {
-                    let region = self.next_region_var(infer::PatternRegion(pat.span));
-                    let mutbl = expected_ty.builtin_deref(true, ty::NoPreference)
-                        .map_or(hir::MutImmutable, |mt| mt.mutbl);
-
-                    let slice_ty = tcx.mk_ref(tcx.mk_region(region), ty::TypeAndMut {
-                        ty: tcx.mk_slice(inner_ty),
-                        mutbl: mutbl
-                    });
                     self.check_pat(&slice, slice_ty);
                 }
                 for elt in after {
@@ -368,7 +377,6 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         }
-
 
         // (*) In most of the cases above (literals and constants being
         // the exception), we relate types using strict equality, evewn

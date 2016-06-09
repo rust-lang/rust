@@ -40,8 +40,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 bcx
                             }
                             TempRef::Operand(Some(_)) => {
-                                let ty = self.mir.lvalue_ty(bcx.tcx(), lvalue);
-                                let ty = bcx.monomorphize(&ty.to_ty(bcx.tcx()));
+                                let ty = self.lvalue_ty(lvalue);
 
                                 if !common::type_is_zero_size(bcx.ccx(), ty) {
                                     span_bug!(statement.source_info.span,

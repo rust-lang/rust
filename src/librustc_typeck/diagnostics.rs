@@ -4139,5 +4139,8 @@ register_diagnostics! {
            // type `{}` was overridden
     E0436, // functional record update requires a struct
     E0513, // no type for local variable ..
-    E0521  // redundant default implementations of trait
+    E0521, // redundant default implementations of trait
+    E0527, // expected {} elements, found {}
+    E0528, // expected at least {} elements, found {}
+    E0529, // slice pattern expects array or slice, not `{}`
 }
