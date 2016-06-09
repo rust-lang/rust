@@ -353,11 +353,16 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
 
         ::log_settings::settings().indentation += 1;
 
+        let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
+            let size = self.type_size(ty, substs);
+            self.memory.allocate(size)
+        }).collect();
+
         self.stack.push(Frame {
             mir: mir.clone(),
             next_block: mir::START_BLOCK,
             return_ptr: return_ptr,
-            locals: Vec::new(),
+            locals: locals,
             var_offset: num_args,
             temp_offset: num_args + num_vars,
             span: span,
@@ -365,13 +370,6 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
             substs: substs,
             stmt: 0,
         });
-
-        let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
-            let size = self.type_size(ty, self.substs());
-            self.memory.allocate(size)
-        }).collect();
-
-        self.frame_mut().locals = locals;
     }
 
     fn pop_stack_frame(&mut self) {
