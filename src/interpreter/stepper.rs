@@ -11,21 +11,15 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use syntax::codemap::Span;
 use std::rc::Rc;
-use memory::Pointer;
 
 pub struct Stepper<'fncx, 'a: 'fncx, 'tcx: 'a>{
     gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>,
-
-    // a cache of the constants to be computed before the next statement/terminator
-    // this is an optimization, so we don't have to allocate a new vector for every statement
-    constants: Vec<(ConstantId<'tcx>, Span, Pointer, CachedMir<'a, 'tcx>)>,
 }
 
 impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
     pub(super) fn new(gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>) -> Self {
         Stepper {
             gecx: gecx,
-            constants: Vec::new(),
         }
     }
 
@@ -60,64 +54,57 @@ impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
         let basic_block = mir.basic_block_data(block);
 
         if let Some(ref stmt) = basic_block.statements.get(stmt) {
-            assert!(self.constants.is_empty());
+            let current_stack = self.gecx.stack.len();
             ConstantExtractor {
                 span: stmt.span,
                 substs: self.gecx.substs(),
                 def_id: self.gecx.frame().def_id,
                 gecx: self.gecx,
-                constants: &mut self.constants,
                 mir: &mir,
             }.visit_statement(block, stmt);
-            if self.constants.is_empty() {
+            if current_stack == self.gecx.stack.len() {
                 self.statement(stmt)?;
             } else {
-                self.extract_constants()?;
+                // ConstantExtractor added some new frames for statics/constants/promoteds
+                // self.step() can't be "done", so it can't return false
+                assert!(self.step()?);
             }
             return Ok(true);
         }
 
         let terminator = basic_block.terminator();
-        assert!(self.constants.is_empty());
+        let current_stack = self.gecx.stack.len();
         ConstantExtractor {
             span: terminator.span,
             substs: self.gecx.substs(),
             def_id: self.gecx.frame().def_id,
             gecx: self.gecx,
-            constants: &mut self.constants,
             mir: &mir,
         }.visit_terminator(block, terminator);
-        if self.constants.is_empty() {
+        if current_stack == self.gecx.stack.len() {
             self.terminator(terminator)?;
         } else {
-            self.extract_constants()?;
+            // ConstantExtractor added some new frames for statics/constants/promoteds
+            // self.step() can't be "done", so it can't return false
+            assert!(self.step()?);
         }
         Ok(true)
     }
-
-    fn extract_constants(&mut self) -> EvalResult<()> {
-        assert!(!self.constants.is_empty());
-        for (cid, span, return_ptr, mir) in self.constants.drain(..) {
-            trace!("queuing a constant");
-            self.gecx.push_stack_frame(cid.def_id, span, mir, cid.substs, Some(return_ptr));
-        }
-        // self.step() can't be "done", so it can't return false
-        assert!(self.step()?);
-        Ok(())
-    }
 }
 
-struct ConstantExtractor<'a, 'b: 'mir, 'mir: 'a, 'tcx: 'b> {
+// WARNING: make sure that any methods implemented on this type don't ever access gecx.stack
+// this includes any method that might access the stack
+// basically don't call anything other than `load_mir`, `alloc_ret_ptr`, `push_stack_frame`
+// The reason for this is, that `push_stack_frame` modifies the stack out of obvious reasons
+struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
     span: Span,
-    // FIXME: directly push the new stackframes instead of doing this intermediate caching
-    constants: &'a mut Vec<(ConstantId<'tcx>, Span, Pointer, CachedMir<'mir, 'tcx>)>,
     gecx: &'a mut GlobalEvalContext<'b, 'tcx>,
     mir: &'a mir::Mir<'tcx>,
     def_id: DefId,
     substs: &'tcx subst::Substs<'tcx>,
 }
 
-impl<'a, 'b, 'mir, 'tcx> ConstantExtractor<'a, 'b, 'mir, 'tcx> {
+impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
     fn global_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span) {
         let cid = ConstantId {
             def_id: def_id,
@@ -130,11 +117,11 @@ impl<'a, 'b, 'mir, 'tcx> ConstantExtractor<'a, 'b, 'mir, 'tcx> {
         let mir = self.gecx.load_mir(def_id);
         let ptr = self.gecx.alloc_ret_ptr(mir.return_ty, substs).expect("there's no such thing as an unreachable static");
         self.gecx.statics.insert(cid.clone(), ptr);
-        self.constants.push((cid, span, ptr, mir));
+        self.gecx.push_stack_frame(def_id, span, mir, substs, Some(ptr));
     }
 }
 
-impl<'a, 'b, 'mir, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'mir, 'tcx> {
+impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>) {
         self.super_constant(constant);
         match constant.literal {
@@ -163,7 +150,7 @@ impl<'a, 'b, 'mir, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'mir, 'tcx>
                 let return_ptr = self.gecx.alloc_ret_ptr(return_ty, cid.substs).expect("there's no such thing as an unreachable static");
                 let mir = CachedMir::Owned(Rc::new(mir));
                 self.gecx.statics.insert(cid.clone(), return_ptr);
-                self.constants.push((cid, constant.span, return_ptr, mir));
+                self.gecx.push_stack_frame(self.def_id, constant.span, mir, self.substs, Some(return_ptr));
             }
         }
     }
