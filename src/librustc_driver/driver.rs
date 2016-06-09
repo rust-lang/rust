@@ -120,29 +120,7 @@ pub fn compile_input(sess: &Session,
             phase_2_configure_and_expand(sess, &cstore, krate, &id, addl_plugins, make_glob_map)?
         };
 
-        controller_entry_point!(after_expand,
-                                sess,
-                                CompileState::state_after_expand(input,
-                                                                 sess,
-                                                                 outdir,
-                                                                 output,
-                                                                 &cstore,
-                                                                 &expanded_crate,
-                                                                 &id),
-                                Ok(()));
-
         write_out_deps(sess, &outputs, &id);
-
-        controller_entry_point!(after_write_deps,
-                                sess,
-                                CompileState::state_after_write_deps(input,
-                                                                     sess,
-                                                                     outdir,
-                                                                     output,
-                                                                     &cstore,
-                                                                     &expanded_crate,
-                                                                     &id),
-                                Ok(()));
 
         let arenas = ty::CtxtArenas::new();
 
@@ -284,8 +262,6 @@ pub fn source_name(input: &Input) -> String {
 /// Expect more entry points to be added in the future.
 pub struct CompileController<'a> {
     pub after_parse: PhaseController<'a>,
-    pub after_expand: PhaseController<'a>,
-    pub after_write_deps: PhaseController<'a>,
     pub after_hir_lowering: PhaseController<'a>,
     pub after_analysis: PhaseController<'a>,
     pub after_llvm: PhaseController<'a>,
@@ -297,8 +273,6 @@ impl<'a> CompileController<'a> {
     pub fn basic() -> CompileController<'a> {
         CompileController {
             after_parse: PhaseController::basic(),
-            after_expand: PhaseController::basic(),
-            after_write_deps: PhaseController::basic(),
             after_hir_lowering: PhaseController::basic(),
             after_analysis: PhaseController::basic(),
             after_llvm: PhaseController::basic(),
@@ -384,40 +358,6 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
         CompileState {
             krate: Some(krate),
             cstore: Some(cstore),
-            out_file: out_file.as_ref().map(|s| &**s),
-            ..CompileState::empty(input, session, out_dir)
-        }
-    }
-
-    fn state_after_expand(input: &'a Input,
-                          session: &'ast Session,
-                          out_dir: &'a Option<PathBuf>,
-                          out_file: &'a Option<PathBuf>,
-                          cstore: &'a CStore,
-                          expanded_crate: &'a ast::Crate,
-                          crate_name: &'a str)
-                          -> CompileState<'a, 'b, 'ast, 'tcx> {
-        CompileState {
-            crate_name: Some(crate_name),
-            cstore: Some(cstore),
-            expanded_crate: Some(expanded_crate),
-            out_file: out_file.as_ref().map(|s| &**s),
-            ..CompileState::empty(input, session, out_dir)
-        }
-    }
-
-    fn state_after_write_deps(input: &'a Input,
-                              session: &'ast Session,
-                              out_dir: &'a Option<PathBuf>,
-                              out_file: &'a Option<PathBuf>,
-                              cstore: &'a CStore,
-                              krate: &'a ast::Crate,
-                              crate_name: &'a str)
-                              -> CompileState<'a, 'b, 'ast, 'tcx> {
-        CompileState {
-            crate_name: Some(crate_name),
-            cstore: Some(cstore),
-            expanded_crate: Some(krate),
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
         }

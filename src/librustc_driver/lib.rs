@@ -511,7 +511,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         }
 
         if sess.opts.no_analysis || sess.opts.debugging_opts.ast_json {
-            control.after_write_deps.stop = Compilation::Stop;
+            control.after_hir_lowering.stop = Compilation::Stop;
         }
 
         if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe) {
