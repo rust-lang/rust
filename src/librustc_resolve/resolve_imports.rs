@@ -257,15 +257,6 @@ impl<'a> ::ModuleS<'a> {
         Failed(None)
     }
 
-    // Invariant: this may not be called until import resolution is complete.
-    pub fn resolve_name_in_lexical_scope(&self, name: Name, ns: Namespace)
-                                         -> Option<&'a NameBinding<'a>> {
-        self.resolution(name, ns).borrow().binding
-            .or_else(|| self.prelude.borrow().and_then(|prelude| {
-                prelude.resolve_name(name, ns, false).success()
-            }))
-    }
-
     // Define the name or return the existing binding if there is a collision.
     pub fn try_define_child(&self, name: Name, ns: Namespace, binding: NameBinding<'a>)
                             -> Result<(), &'a NameBinding<'a>> {
@@ -633,7 +624,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.resolver.populate_module_if_necessary(target_module);
 
         if let GlobImport { is_prelude: true } = directive.subclass {
-            *module_.prelude.borrow_mut() = Some(target_module);
+            self.resolver.prelude = Some(target_module);
             return Success(());
         }
 
