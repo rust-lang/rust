@@ -510,6 +510,11 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                                           across crates and will never be stable",
                                                           cfg_fn!(rustc_attrs))),
 
+    ("unsafe_macro", Normal, Gated("rustc_attrs",
+                                   "unsafe_macro allows to write \
+                                    non-future proof macros",
+                                   cfg_fn!(rustc_attrs))),
+
     ("allow_internal_unstable", Normal, Gated("allow_internal_unstable",
                                               EXPLAIN_ALLOW_INTERNAL_UNSTABLE,
                                               cfg_fn!(allow_internal_unstable))),

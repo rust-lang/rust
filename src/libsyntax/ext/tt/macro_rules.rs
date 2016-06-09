@@ -116,7 +116,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
 
 
     fn make_stmts(self: Box<ParserAnyMacro<'a>>)
-                 -> Option<SmallVector<ast::Stmt>> {
+                  -> Option<SmallVector<ast::Stmt>> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();
@@ -250,7 +250,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 /// Converts a `macro_rules!` invocation into a syntax extension.
 pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
                     def: &ast::MacroDef,
-                    imported: bool) -> SyntaxExtension {
+                    check_macro: bool) -> SyntaxExtension {
 
     let lhs_nm =  gensym_ident("lhs");
     let rhs_nm =  gensym_ident("rhs");
@@ -306,7 +306,7 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         MatchedSeq(ref s, _) => {
             s.iter().map(|m| match **m {
                 MatchedNonterminal(NtTT(ref tt)) => {
-                    if !imported {
+                    if check_macro {
                         valid &= check_lhs_nt_follows(cx, tt);
                     }
                     (**tt).clone()
@@ -317,17 +317,20 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         _ => cx.span_bug(def.span, "wrong-structured lhs")
     };
 
-    if !imported {
+    if check_macro {
         'a: for (i, lhs) in lhses.iter().enumerate() {
             for lhs_ in lhses[i + 1 ..].iter() {
-                if !check_lhs_firsts(cx, lhs, lhs_) {
-                    cx.struct_span_warn(def.span, "macro is not future-proof")
-                        .span_help(lhs.get_span(), "parsing of this arm is ambiguous...")
-                        .span_help(lhs_.get_span(), "with the parsing of this arm.")
-                        .help("the behaviour of this macro might change in the future")
-                        .emit();
-                    //valid = false;
-                    break 'a;
+                match check_lhs_firsts(cx, lhs, lhs_) {
+                    AnalysisResult::Error => {
+                        cx.struct_span_err(def.span, "macro is not future-proof")
+                            .span_help(lhs.get_span(), "parsing of this arm is ambiguous...")
+                            .span_help(lhs_.get_span(), "with the parsing of this arm.")
+                            .help("the behaviour of this macro might change in the future")
+                            .emit();
+                        //valid = false;
+                        break 'a;
+                    }
+                    _ => ()
                 }
             }
         }
@@ -358,7 +361,8 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     NormalTT(exp, Some(def.span), def.allow_internal_unstable)
 }
 
-fn check_lhs_firsts(cx: &ExtCtxt, lhs: &TokenTree, lhs_: &TokenTree) -> bool {
+fn check_lhs_firsts(cx: &ExtCtxt, lhs: &TokenTree, lhs_: &TokenTree)
+                    -> AnalysisResult {
     match (lhs, lhs_) {
         (&TokenTree::Delimited(_, ref tta),
          &TokenTree::Delimited(_, ref ttb)) =>
@@ -578,7 +582,20 @@ fn first_sets_disjoints(ma: &TokenTree, mb: &TokenTree,
     }
 }
 
-fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree]) -> bool {
+// the result of the FIRST set analysis.
+// * Ok -> an obvious disambiguation has been found
+// * Unsure -> no problem between those matchers but analysis should continue
+// * Error -> maybe a problem. should be accepted only if an obvious
+//   disambiguation is found later
+enum AnalysisResult {
+    Ok,
+    Unsure,
+    Error
+}
+
+fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree])
+                        -> AnalysisResult {
+    use self::AnalysisResult::*;
     let mut need_disambiguation = false;
 
     // first compute the FIRST sets. FIRST sets for tokens, delimited TTs and NT
@@ -601,7 +618,7 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree]) -> boo
 
         if first_sets_disjoints(&ta, &tb, &firsts_a, &firsts_b) {
             // accept the macro
-            return true
+            return Ok
         }
 
         // i.e. A or B is either a repeated sequence or a NT matcher that is
@@ -611,11 +628,11 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree]) -> boo
             (&TokenTree::Token(_, MatchNt(_, nta)),
              &TokenTree::Token(_, MatchNt(_, ntb))) =>
                 if !(nt_is_single_tt(nta) && nt_is_single_tt(ntb)) {
-                    return false
+                    return Error
                 },
 
             (&TokenTree::Token(_, MatchNt(_, nt)), _) if !nt_is_single_tt(nt) =>
-                return false,
+                return Error,
 
             // super specific corner case: if one arm is always one token,
             // followed by the end of the macro invocation, then we can accept
@@ -623,10 +640,14 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree]) -> boo
 
             (&TokenTree::Sequence(_, _), _) |
             (_, &TokenTree::Sequence(_, _)) =>
-                return only_simple_tokens(&ma[idx_a..]) && !need_disambiguation,
+                return if only_simple_tokens(&ma[idx_a..]) && !need_disambiguation {
+                    Unsure
+                } else { Error },
 
             (_ ,&TokenTree::Token(_, MatchNt(_, nt))) if !nt_is_single_tt(nt) =>
-                return only_simple_tokens(&ma[idx_a..]) && !need_disambiguation,
+                return if only_simple_tokens(&ma[idx_a..]) && !need_disambiguation {
+                    Unsure
+                } else { Error },
 
             _ => ()
         }
@@ -690,12 +711,17 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree]) -> boo
                 continue
             }
 
-            (&TokenTree::Delimited(..), &TokenTree::Delimited(..)) => {
+            (&TokenTree::Delimited(_, ref d1),
+             &TokenTree::Delimited(_, ref d2)) => {
                 // they have the same delim. as above.
-                // FIXME: we could search for disambiguation *inside* the
-                // delimited TTs
-                need_disambiguation = true;
-                continue
+                match check_matcher_firsts(cx, &d1.tts, &d2.tts) {
+                    Ok => return Ok,
+                    Unsure => continue,
+                    Error => {
+                        need_disambiguation = true;
+                        continue
+                    }
+                }
             }
 
             // cannot happen. either they're the same token or their FIRST sets
@@ -713,12 +739,12 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree]) -> boo
         // reject conservatively.
         // FIXME: if we are not at the end of the other arm, and that the other
         // arm cannot derive empty, I think we could accept...?
-        false
+        Error
     } else {
         // either A is strictly included in B and the other inputs that match B
         // will never match A, or B is included in or equal to A, which means
         // it's unreachable. this is not our problem. accept.
-        true
+        Unsure
     }
 }
 

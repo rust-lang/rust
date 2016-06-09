@@ -43,6 +43,7 @@
 #![feature(pattern)]
 #![feature(placement_in)]
 #![feature(placement_new_protocol)]
+#![feature(rustc_attrs)]
 #![feature(shared)]
 #![feature(slice_patterns)]
 #![feature(specialization)]
