@@ -128,7 +128,7 @@ struct ConstantExtractor<'a, 'b: 'mir, 'mir: 'a, 'tcx: 'b> {
 }
 
 impl<'a, 'b, 'mir, 'tcx> ConstantExtractor<'a, 'b, 'mir, 'tcx> {
-    fn static_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span) {
+    fn global_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span) {
         let cid = ConstantId {
             def_id: def_id,
             substs: substs,
@@ -156,7 +156,7 @@ impl<'a, 'b, 'mir, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'mir, 'tcx>
                     // because the type is the actual function, not the signature of the function.
                     // Thus we can simply create a zero sized allocation in `evaluate_operand`
                 } else {
-                    self.static_item(def_id, substs, constant.span);
+                    self.global_item(def_id, substs, constant.span);
                 }
             },
             mir::Literal::Promoted { index } => {
@@ -183,7 +183,7 @@ impl<'a, 'b, 'mir, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'mir, 'tcx>
         if let mir::Lvalue::Static(def_id) = *lvalue {
             let substs = self.gecx.tcx.mk_substs(subst::Substs::empty());
             let span = self.span;
-            self.static_item(def_id, substs, span);
+            self.global_item(def_id, substs, span);
         }
     }
 }
