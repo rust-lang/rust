@@ -395,17 +395,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     fn run(&mut self) -> EvalResult<()> {
         let mut stepper = stepper::Stepper::new(self);
-        let mut done = false;
-        while !done {
-            use self::stepper::Event::*;
-            stepper.step(|event| match event {
-                Block(b) => trace!("// {:?}", b),
-                Assignment(a) => trace!("{:?}", a),
-                Terminator(t) => trace!("{:?}", t.kind),
-                Done => done = true,
-                _ => {},
-            })?;
-        }
+        while stepper.step()? {}
         Ok(())
     }
 

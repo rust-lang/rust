@@ -15,16 +15,6 @@ use syntax::codemap::Span;
 use std::rc::Rc;
 use memory::Pointer;
 
-pub enum Event<'a, 'tcx: 'a> {
-    Block(mir::BasicBlock),
-    Return,
-    Call,
-    Constant,
-    Assignment(&'a mir::Statement<'tcx>),
-    Terminator(&'a mir::Terminator<'tcx>),
-    Done,
-}
-
 pub struct Stepper<'fncx, 'a: 'fncx, 'b: 'a + 'mir, 'mir: 'fncx, 'tcx: 'b>{
     fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>,
 
@@ -41,8 +31,8 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         }
     }
 
-    fn statement<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F, stmt: &mir::Statement<'tcx>) -> EvalResult<()> {
-        f(Event::Assignment(stmt));
+    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<()> {
+        trace!("{:?}", stmt);
         let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
         let result = self.fncx.eval_assignment(lvalue, rvalue);
         self.fncx.maybe_report(result)?;
@@ -50,30 +40,28 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         Ok(())
     }
 
-    fn terminator<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F, terminator: &mir::Terminator<'tcx>) -> EvalResult<()> {
+    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<()> {
         // after a terminator we go to a new block
         self.fncx.frame_mut().stmt = 0;
         let term = {
-            f(Event::Terminator(terminator));
+            trace!("{:?}", terminator.kind);
             let result = self.fncx.eval_terminator(terminator);
             self.fncx.maybe_report(result)?
         };
         match term {
-            TerminatorTarget::Block => f(Event::Block(self.fncx.frame().next_block)),
             TerminatorTarget::Return => {
-                f(Event::Return);
                 self.fncx.pop_stack_frame();
             },
-            TerminatorTarget::Call => f(Event::Call),
+            TerminatorTarget::Block |
+            TerminatorTarget::Call => trace!("// {:?}", self.fncx.frame().next_block),
         }
         Ok(())
     }
 
     // returns true as long as there are more things to do
-    pub fn step<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F) -> EvalResult<()> {
+    pub fn step(&mut self) -> EvalResult<bool> {
         if self.fncx.stack.is_empty() {
-            f(Event::Done);
-            return Ok(());
+            return Ok(false);
         }
 
         let block = self.fncx.frame().next_block;
@@ -92,10 +80,11 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
                 mir: &mir,
             }.visit_statement(block, stmt);
             if self.constants.is_empty() {
-                return self.statement(f, stmt);
+                self.statement(stmt)?;
             } else {
-                return self.extract_constants(f);
+                self.extract_constants()?;
             }
+            return Ok(true);
         }
 
         let terminator = basic_block.terminator();
@@ -109,19 +98,22 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
             mir: &mir,
         }.visit_terminator(block, terminator);
         if self.constants.is_empty() {
-            self.terminator(f, terminator)
+            self.terminator(terminator)?;
         } else {
-            self.extract_constants(f)
+            self.extract_constants()?;
         }
+        Ok(true)
     }
 
-    fn extract_constants<F: for<'f> FnMut(Event<'f, 'tcx>)>(&mut self, mut f: F) -> EvalResult<()> {
+    fn extract_constants(&mut self) -> EvalResult<()> {
         assert!(!self.constants.is_empty());
         for (cid, span, return_ptr, mir) in self.constants.drain(..) {
-            f(Event::Constant);
+            trace!("queuing a constant");
             self.fncx.push_stack_frame(cid.def_id, span, mir, cid.substs, Some(return_ptr));
         }
-        self.step(f)
+        // self.step() can't be "done", so it can't return false
+        assert!(self.step()?);
+        Ok(())
     }
 }
 
