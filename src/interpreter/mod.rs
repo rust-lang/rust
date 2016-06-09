@@ -99,18 +99,6 @@ enum CachedMir<'mir, 'tcx: 'mir> {
     Owned(Rc<mir::Mir<'tcx>>)
 }
 
-/// Represents the action to be taken in the main loop as a result of executing a terminator.
-enum TerminatorTarget {
-    /// Make a local jump to the next block
-    Block,
-
-    /// Start executing from the new current frame. (For function calls.)
-    Call,
-
-    /// Stop executing the current frame and resume the previous frame.
-    Return,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 /// Uniquely identifies a specific constant or static
 struct ConstantId<'tcx> {
@@ -412,21 +400,19 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>)
-            -> EvalResult<TerminatorTarget> {
+            -> EvalResult<()> {
         use rustc::mir::repr::TerminatorKind::*;
-        let target = match terminator.kind {
-            Return => TerminatorTarget::Return,
+        match terminator.kind {
+            Return => self.pop_stack_frame(),
 
             Goto { target } => {
                 self.frame_mut().next_block = target;
-                TerminatorTarget::Block
             },
 
             If { ref cond, targets: (then_target, else_target) } => {
                 let cond_ptr = self.eval_operand(cond)?;
                 let cond_val = self.memory.read_bool(cond_ptr)?;
                 self.frame_mut().next_block = if cond_val { then_target } else { else_target };
-                TerminatorTarget::Block
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
@@ -450,7 +436,6 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
                 }
 
                 self.frame_mut().next_block = target_block;
-                TerminatorTarget::Block
             }
 
             Switch { ref discr, ref targets, adt_def } => {
@@ -463,7 +448,6 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
                 match matching {
                     Some(i) => {
                         self.frame_mut().next_block = targets[i];
-                        TerminatorTarget::Block
                     },
                     None => return Err(EvalError::InvalidDiscriminant),
                 }
@@ -549,8 +533,6 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
                                     let dest = self.frame().locals[i];
                                     self.move_(src, dest, src_ty)?;
                                 }
-
-                                TerminatorTarget::Call
                             }
 
                             abi => return Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", abi))),
@@ -566,13 +548,12 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
                 let ty = self.lvalue_ty(value);
                 self.drop(ptr, ty)?;
                 self.frame_mut().next_block = target;
-                TerminatorTarget::Block
             }
 
             Resume => unimplemented!(),
-        };
+        }
 
-        Ok(target)
+        Ok(())
     }
 
     fn drop(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<()> {
@@ -662,7 +643,7 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
         args: &[mir::Operand<'tcx>],
         dest: Pointer,
         dest_size: usize
-    ) -> EvalResult<TerminatorTarget> {
+    ) -> EvalResult<()> {
         let args_res: EvalResult<Vec<Pointer>> = args.iter()
             .map(|arg| self.eval_operand(arg))
             .collect();
@@ -799,7 +780,7 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
         // Since we pushed no stack frame, the main loop will act
         // as if the call just completed and it's returning to the
         // current frame.
-        Ok(TerminatorTarget::Call)
+        Ok(())
     }
 
     fn call_c_abi(
@@ -808,7 +789,7 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
         args: &[mir::Operand<'tcx>],
         dest: Pointer,
         dest_size: usize,
-    ) -> EvalResult<TerminatorTarget> {
+    ) -> EvalResult<()> {
         let name = self.tcx.item_name(def_id);
         let attrs = self.tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
@@ -861,7 +842,7 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
         // Since we pushed no stack frame, the main loop will act
         // as if the call just completed and it's returning to the
         // current frame.
-        Ok(TerminatorTarget::Call)
+        Ok(())
     }
 
     fn assign_fields<I: IntoIterator<Item = u64>>(

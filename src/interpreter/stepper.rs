@@ -1,6 +1,5 @@
 use super::{
     CachedMir,
-    TerminatorTarget,
     ConstantId,
     GlobalEvalContext,
     ConstantKind,
@@ -42,17 +41,11 @@ impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<()> {
         // after a terminator we go to a new block
         self.gecx.frame_mut().stmt = 0;
-        let term = {
-            trace!("{:?}", terminator.kind);
-            let result = self.gecx.eval_terminator(terminator);
-            self.gecx.maybe_report(result)?
-        };
-        match term {
-            TerminatorTarget::Return => {
-                self.gecx.pop_stack_frame();
-            },
-            TerminatorTarget::Block |
-            TerminatorTarget::Call => trace!("// {:?}", self.gecx.frame().next_block),
+        trace!("{:?}", terminator.kind);
+        let result = self.gecx.eval_terminator(terminator);
+        self.gecx.maybe_report(result)?;
+        if !self.gecx.stack.is_empty() {
+            trace!("// {:?}", self.gecx.frame().next_block);
         }
         Ok(())
     }
