@@ -9,7 +9,7 @@ use rustc::ty::subst::{self, Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::DefIdMap;
 use std::cell::RefCell;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::rc::Rc;
 use std::{iter, mem};
 use syntax::ast;
@@ -39,26 +39,9 @@ struct GlobalEvalContext<'a, 'tcx: 'a> {
 
     /// Precomputed statics, constants and promoteds
     statics: HashMap<ConstantId<'tcx>, Pointer>,
-}
-
-struct FnEvalContext<'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> {
-    gecx: &'a mut GlobalEvalContext<'b, 'tcx>,
 
     /// The virtual call stack.
-    stack: Vec<Frame<'mir, 'tcx>>,
-}
-
-impl<'a, 'b, 'mir, 'tcx> Deref for FnEvalContext<'a, 'b, 'mir, 'tcx> {
-    type Target = GlobalEvalContext<'b, 'tcx>;
-    fn deref(&self) -> &Self::Target {
-        self.gecx
-    }
-}
-
-impl<'a, 'b, 'mir, 'tcx> DerefMut for FnEvalContext<'a, 'b, 'mir, 'tcx> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.gecx
-    }
+    stack: Vec<Frame<'a, 'tcx>>,
 }
 
 /// A stack frame.
@@ -160,20 +143,19 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
                                    .bit_width()
                                    .expect("Session::target::uint_type was usize")/8),
             statics: HashMap::new(),
+            stack: Vec::new(),
         }
     }
 
-    fn call(&mut self, mir: &mir::Mir<'tcx>, def_id: DefId) -> EvalResult<Option<Pointer>> {
+    fn call(&mut self, mir: &'a mir::Mir<'tcx>, def_id: DefId) -> EvalResult<Option<Pointer>> {
         let substs = self.tcx.mk_substs(subst::Substs::empty());
         let return_ptr = self.alloc_ret_ptr(mir.return_ty, substs);
 
-        let mut nested_fecx = FnEvalContext::new(self);
+        self.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, None);
 
-        nested_fecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, None);
+        self.frame_mut().return_ptr = return_ptr;
 
-        nested_fecx.frame_mut().return_ptr = return_ptr;
-
-        nested_fecx.run()?;
+        self.run()?;
         Ok(return_ptr)
     }
 
@@ -349,15 +331,6 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
             ty.layout(&infcx).unwrap()
         })
     }
-}
-
-impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
-    fn new(gecx: &'a mut GlobalEvalContext<'b, 'tcx>) -> Self {
-        FnEvalContext {
-            gecx: gecx,
-            stack: Vec::new(),
-        }
-    }
 
     #[inline(never)]
     #[cold]
@@ -399,7 +372,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(())
     }
 
-    fn push_stack_frame(&mut self, def_id: DefId, span: codemap::Span, mir: CachedMir<'mir, 'tcx>, substs: &'tcx Substs<'tcx>,
+    fn push_stack_frame(&mut self, def_id: DefId, span: codemap::Span, mir: CachedMir<'a, 'tcx>, substs: &'tcx Substs<'tcx>,
         return_ptr: Option<Pointer>)
     {
         let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
@@ -425,7 +398,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         });
 
         let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
-            let size = self.type_size(ty);
+            let size = self.type_size(ty, self.substs());
             self.memory.allocate(size)
         }).collect();
 
@@ -459,7 +432,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             SwitchInt { ref discr, ref values, ref targets, .. } => {
                 let discr_ptr = self.eval_lvalue(discr)?.to_ptr();
                 let discr_size = self
-                    .type_layout(self.lvalue_ty(discr))
+                    .type_layout(self.lvalue_ty(discr), self.substs())
                     .size(&self.tcx.data_layout)
                     .bytes() as usize;
                 let discr_val = self.memory.read_uint(discr_ptr, discr_size)?;
@@ -512,7 +485,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                 let name = self.tcx.item_name(def_id).as_str();
                                 match fn_ty.sig.0.output {
                                     ty::FnConverging(ty) => {
-                                        let size = self.type_size(ty);
+                                        let size = self.type_size(ty, self.substs());
                                         let ret = return_ptr.unwrap();
                                         self.call_intrinsic(&name, substs, args, ret, size)?
                                     }
@@ -523,7 +496,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                             Abi::C => {
                                 match fn_ty.sig.0.output {
                                     ty::FnConverging(ty) => {
-                                        let size = self.type_size(ty);
+                                        let size = self.type_size(ty, self.substs());
                                         self.call_c_abi(def_id, args, return_ptr.unwrap(), size)?
                                     }
                                     ty::FnDiverging => unimplemented!(),
@@ -553,7 +526,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                     let last_arg = args.last().unwrap();
                                     let last = self.eval_operand(last_arg)?;
                                     let last_ty = self.operand_ty(last_arg);
-                                    let last_layout = self.type_layout(last_ty);
+                                    let last_layout = self.type_layout(last_ty, self.substs());
                                     match (&last_ty.sty, last_layout) {
                                         (&ty::TyTuple(fields),
                                          &Layout::Univariant { ref variant, .. }) => {
@@ -638,7 +611,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
         // Filling drop.
         // FIXME(solson): Trait objects (with no static size) probably get filled, too.
-        let size = self.type_size(ty);
+        let size = self.type_size(ty, self.substs());
         self.memory.drop_fill(ptr, size)?;
 
         Ok(())
@@ -646,7 +619,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
     fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<u64> {
         use rustc::ty::layout::Layout::*;
-        let adt_layout = self.type_layout(adt_ty);
+        let adt_layout = self.type_layout(adt_ty, self.substs());
 
         let discr_val = match *adt_layout {
             General { discr, .. } | CEnum { discr, .. } => {
@@ -699,7 +672,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             // FIXME(solson): Handle different integer types correctly.
             "add_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty);
+                let size = self.type_size(ty, self.substs());
                 let left = self.memory.read_int(args[0], size)?;
                 let right = self.memory.read_int(args[1], size)?;
                 let (n, overflowed) = unsafe {
@@ -713,7 +686,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
             "copy_nonoverlapping" => {
                 let elem_ty = *substs.types.get(subst::FnSpace, 0);
-                let elem_size = self.type_size(elem_ty);
+                let elem_size = self.type_size(elem_ty, self.substs());
                 let src = self.memory.read_ptr(args[0])?;
                 let dest = self.memory.read_ptr(args[1])?;
                 let count = self.memory.read_isize(args[2])?;
@@ -729,7 +702,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
             "forget" => {
                 let arg_ty = *substs.types.get(subst::FnSpace, 0);
-                let arg_size = self.type_size(arg_ty);
+                let arg_size = self.type_size(arg_ty, self.substs());
                 self.memory.drop_fill(args[0], arg_size)?;
             }
 
@@ -748,7 +721,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             // FIXME(solson): Handle different integer types correctly.
             "mul_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty);
+                let size = self.type_size(ty, self.substs());
                 let left = self.memory.read_int(args[0], size)?;
                 let right = self.memory.read_int(args[1], size)?;
                 let (n, overflowed) = unsafe {
@@ -760,7 +733,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
             "offset" => {
                 let pointee_ty = *substs.types.get(subst::FnSpace, 0);
-                let pointee_size = self.type_size(pointee_ty) as isize;
+                let pointee_size = self.type_size(pointee_ty, self.substs()) as isize;
                 let ptr_arg = args[0];
                 let offset = self.memory.read_isize(args[1])?;
 
@@ -781,7 +754,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             // FIXME(solson): Handle different integer types correctly. Use primvals?
             "overflowing_sub" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty);
+                let size = self.type_size(ty, self.substs());
                 let left = self.memory.read_int(args[0], size)?;
                 let right = self.memory.read_int(args[1], size)?;
                 let n = left.wrapping_sub(right);
@@ -790,20 +763,20 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
             "size_of" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty) as u64;
+                let size = self.type_size(ty, self.substs()) as u64;
                 self.memory.write_uint(dest, size, dest_size)?;
             }
 
             "size_of_val" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 if self.type_is_sized(ty) {
-                    let size = self.type_size(ty) as u64;
+                    let size = self.type_size(ty, self.substs()) as u64;
                     self.memory.write_uint(dest, size, dest_size)?;
                 } else {
                     match ty.sty {
                         ty::TySlice(_) | ty::TyStr => {
                             let elem_ty = ty.sequence_element_type(self.tcx);
-                            let elem_size = self.type_size(elem_ty) as u64;
+                            let elem_size = self.type_size(elem_ty, self.substs()) as u64;
                             let ptr_size = self.memory.pointer_size as isize;
                             let n = self.memory.read_usize(args[0].offset(ptr_size))?;
                             self.memory.write_uint(dest, n * elem_size, dest_size)?;
@@ -911,7 +884,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     {
         let dest = self.eval_lvalue(lvalue)?.to_ptr();
         let dest_ty = self.lvalue_ty(lvalue);
-        let dest_layout = self.type_layout(dest_ty);
+        let dest_layout = self.type_layout(dest_ty, self.substs());
 
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
@@ -951,7 +924,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
                     Array { .. } => {
                         let elem_size = match dest_ty.sty {
-                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty) as u64,
+                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty, self.substs()) as u64,
                             _ => panic!("tried to assign {:?} to non-array type {:?}",
                                         kind, dest_ty),
                         };
@@ -1029,7 +1002,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
             Repeat(ref operand, _) => {
                 let (elem_size, length) = match dest_ty.sty {
-                    ty::TyArray(elem_ty, n) => (self.type_size(elem_ty), n),
+                    ty::TyArray(elem_ty, n) => (self.type_size(elem_ty, self.substs()), n),
                     _ => panic!("tried to assign array-repeat to non-array type {:?}", dest_ty),
                 };
 
@@ -1070,7 +1043,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             }
 
             Box(ty) => {
-                let size = self.type_size(ty);
+                let size = self.type_size(ty, self.substs());
                 let ptr = self.memory.allocate(size);
                 self.memory.write_ptr(dest, ptr)?;
             }
@@ -1164,7 +1137,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     }
 
     fn get_field_offset(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<Size> {
-        let layout = self.type_layout(ty);
+        let layout = self.type_layout(ty, self.substs());
 
         use rustc::ty::layout::Layout::*;
         match *layout {
@@ -1229,13 +1202,13 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     substs: substs,
                     kind: ConstantKind::Global,
                 };
-                *self.gecx.statics.get(&cid).expect("static should have been cached (lvalue)")
+                *self.statics.get(&cid).expect("static should have been cached (lvalue)")
             },
 
             Projection(ref proj) => {
                 let base = self.eval_lvalue(&proj.base)?;
                 let base_ty = self.lvalue_ty(&proj.base);
-                let base_layout = self.type_layout(base_ty);
+                let base_layout = self.type_layout(base_ty, self.substs());
 
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
@@ -1296,7 +1269,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     Index(ref operand) => {
                         let elem_size = match base_ty.sty {
                             ty::TyArray(elem_ty, _) |
-                            ty::TySlice(elem_ty) => self.type_size(elem_ty),
+                            ty::TySlice(elem_ty) => self.type_size(elem_ty, self.substs()),
                             _ => panic!("indexing expected an array or slice, got {:?}", base_ty),
                         };
                         let n_ptr = self.eval_operand(operand)?;
@@ -1313,32 +1286,20 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     }
 
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
-        self.monomorphize(self.mir().lvalue_ty(self.tcx, lvalue).to_ty(self.tcx))
+        self.monomorphize(self.mir().lvalue_ty(self.tcx, lvalue).to_ty(self.tcx), self.substs())
     }
 
     fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
-        self.monomorphize(self.mir().operand_ty(self.tcx, operand))
-    }
-
-    fn monomorphize(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.gecx.monomorphize(ty, self.substs())
+        self.monomorphize(self.mir().operand_ty(self.tcx, operand), self.substs())
     }
 
     fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<()> {
-        let size = self.type_size(ty);
+        let size = self.type_size(ty, self.substs());
         self.memory.copy(src, dest, size)?;
         if self.type_needs_drop(ty) {
             self.memory.drop_fill(src, size)?;
         }
         Ok(())
-    }
-
-    fn type_size(&self, ty: Ty<'tcx>) -> usize {
-        self.gecx.type_size(ty, self.substs())
-    }
-
-    fn type_layout(&self, ty: Ty<'tcx>) -> &'tcx Layout {
-        self.gecx.type_layout(ty, self.substs())
     }
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<PrimVal> {
@@ -1380,7 +1341,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(val)
     }
 
-    fn frame(&self) -> &Frame<'mir, 'tcx> {
+    fn frame(&self) -> &Frame<'a, 'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
@@ -1389,11 +1350,11 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         frame.mir.basic_block_data(frame.next_block)
     }
 
-    fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx> {
+    fn frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
 
-    fn mir(&self) -> CachedMir<'mir, 'tcx> {
+    fn mir(&self) -> CachedMir<'a, 'tcx> {
         self.frame().mir.clone()
     }
 

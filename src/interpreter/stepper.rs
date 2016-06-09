@@ -1,5 +1,4 @@
 use super::{
-    FnEvalContext,
     CachedMir,
     TerminatorTarget,
     ConstantId,
@@ -15,18 +14,18 @@ use syntax::codemap::Span;
 use std::rc::Rc;
 use memory::Pointer;
 
-pub struct Stepper<'fncx, 'a: 'fncx, 'b: 'a + 'mir, 'mir: 'fncx, 'tcx: 'b>{
-    fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>,
+pub struct Stepper<'fncx, 'a: 'fncx, 'tcx: 'a>{
+    gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>,
 
     // a cache of the constants to be computed before the next statement/terminator
     // this is an optimization, so we don't have to allocate a new vector for every statement
-    constants: Vec<(ConstantId<'tcx>, Span, Pointer, CachedMir<'mir, 'tcx>)>,
+    constants: Vec<(ConstantId<'tcx>, Span, Pointer, CachedMir<'a, 'tcx>)>,
 }
 
-impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx> {
-    pub(super) fn new(fncx: &'fncx mut FnEvalContext<'a, 'b, 'mir, 'tcx>) -> Self {
+impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
+    pub(super) fn new(gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>) -> Self {
         Stepper {
-            fncx: fncx,
+            gecx: gecx,
             constants: Vec::new(),
         }
     }
@@ -34,48 +33,48 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<()> {
         trace!("{:?}", stmt);
         let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-        let result = self.fncx.eval_assignment(lvalue, rvalue);
-        self.fncx.maybe_report(result)?;
-        self.fncx.frame_mut().stmt += 1;
+        let result = self.gecx.eval_assignment(lvalue, rvalue);
+        self.gecx.maybe_report(result)?;
+        self.gecx.frame_mut().stmt += 1;
         Ok(())
     }
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<()> {
         // after a terminator we go to a new block
-        self.fncx.frame_mut().stmt = 0;
+        self.gecx.frame_mut().stmt = 0;
         let term = {
             trace!("{:?}", terminator.kind);
-            let result = self.fncx.eval_terminator(terminator);
-            self.fncx.maybe_report(result)?
+            let result = self.gecx.eval_terminator(terminator);
+            self.gecx.maybe_report(result)?
         };
         match term {
             TerminatorTarget::Return => {
-                self.fncx.pop_stack_frame();
+                self.gecx.pop_stack_frame();
             },
             TerminatorTarget::Block |
-            TerminatorTarget::Call => trace!("// {:?}", self.fncx.frame().next_block),
+            TerminatorTarget::Call => trace!("// {:?}", self.gecx.frame().next_block),
         }
         Ok(())
     }
 
     // returns true as long as there are more things to do
     pub fn step(&mut self) -> EvalResult<bool> {
-        if self.fncx.stack.is_empty() {
+        if self.gecx.stack.is_empty() {
             return Ok(false);
         }
 
-        let block = self.fncx.frame().next_block;
-        let stmt = self.fncx.frame().stmt;
-        let mir = self.fncx.mir();
+        let block = self.gecx.frame().next_block;
+        let stmt = self.gecx.frame().stmt;
+        let mir = self.gecx.mir();
         let basic_block = mir.basic_block_data(block);
 
         if let Some(ref stmt) = basic_block.statements.get(stmt) {
             assert!(self.constants.is_empty());
             ConstantExtractor {
                 span: stmt.span,
-                substs: self.fncx.substs(),
-                def_id: self.fncx.frame().def_id,
-                gecx: self.fncx.gecx,
+                substs: self.gecx.substs(),
+                def_id: self.gecx.frame().def_id,
+                gecx: self.gecx,
                 constants: &mut self.constants,
                 mir: &mir,
             }.visit_statement(block, stmt);
@@ -91,9 +90,9 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         assert!(self.constants.is_empty());
         ConstantExtractor {
             span: terminator.span,
-            substs: self.fncx.substs(),
-            def_id: self.fncx.frame().def_id,
-            gecx: self.fncx.gecx,
+            substs: self.gecx.substs(),
+            def_id: self.gecx.frame().def_id,
+            gecx: self.gecx,
             constants: &mut self.constants,
             mir: &mir,
         }.visit_terminator(block, terminator);
@@ -109,7 +108,7 @@ impl<'fncx, 'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> Stepper<'fncx, 'a, 'b, 'mir, 'tcx
         assert!(!self.constants.is_empty());
         for (cid, span, return_ptr, mir) in self.constants.drain(..) {
             trace!("queuing a constant");
-            self.fncx.push_stack_frame(cid.def_id, span, mir, cid.substs, Some(return_ptr));
+            self.gecx.push_stack_frame(cid.def_id, span, mir, cid.substs, Some(return_ptr));
         }
         // self.step() can't be "done", so it can't return false
         assert!(self.step()?);
