@@ -123,8 +123,6 @@ macro_rules! test_concat {
 fn test_concat_for_different_types() {
     test_concat!("ab", vec![s("a"), s("b")]);
     test_concat!("ab", vec!["a", "b"]);
-    test_concat!("ab", vec!["a", "b"]);
-    test_concat!("ab", vec![s("a"), s("b")]);
 }
 
 #[test]
