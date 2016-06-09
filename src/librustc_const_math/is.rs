@@ -27,7 +27,8 @@ impl ConstIsize {
             (Is16(i), ast::IntTy::I16) => i as i64,
             (Is32(i), ast::IntTy::I32) => i as i64,
             (Is64(i), ast::IntTy::I64) => i,
-            _ => panic!("got invalid isize size for target"),
+            _ => panic!("unable to convert self ({:?}) to target isize ({:?})",
+                        self, target_int_ty),
         }
     }
     pub fn new(i: i64, target_int_ty: ast::IntTy) -> Result<Self, ConstMathErr> {
@@ -37,6 +38,14 @@ impl ConstIsize {
             ast::IntTy::I32 if i as i32 as i64 == i => Ok(Is32(i as i32)),
             ast::IntTy::I32 => Err(LitOutOfRange(ast::IntTy::Is)),
             ast::IntTy::I64 => Ok(Is64(i)),
+            _ => unreachable!(),
+        }
+    }
+    pub fn new_truncating(i: i64, target_int_ty: ast::IntTy) -> Self {
+        match target_int_ty {
+            ast::IntTy::I16 => Is16(i as i16),
+            ast::IntTy::I32 => Is32(i as i32),
+            ast::IntTy::I64 => Is64(i),
             _ => unreachable!(),
         }
     }
