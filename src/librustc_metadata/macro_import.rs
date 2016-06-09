@@ -20,24 +20,19 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ast;
 use syntax::attr;
-use syntax::visit;
-use syntax::visit::Visitor;
 use syntax::attr::AttrMetaMethods;
+use syntax::ext;
 
-struct MacroLoader<'a> {
+pub struct MacroLoader<'a> {
     sess: &'a Session,
-    span_whitelist: HashSet<Span>,
     reader: CrateReader<'a>,
-    macros: Vec<ast::MacroDef>,
 }
 
 impl<'a> MacroLoader<'a> {
-    fn new(sess: &'a Session, cstore: &'a CStore, crate_name: &str) -> MacroLoader<'a> {
+    pub fn new(sess: &'a Session, cstore: &'a CStore, crate_name: &str) -> MacroLoader<'a> {
         MacroLoader {
             sess: sess,
-            span_whitelist: HashSet::new(),
             reader: CrateReader::new(sess, cstore, crate_name),
-            macros: vec![],
         }
     }
 }
@@ -46,48 +41,15 @@ pub fn call_bad_macro_reexport(a: &Session, b: Span) {
     span_err!(a, b, E0467, "bad macro reexport");
 }
 
-/// Read exported macros.
-pub fn read_macro_defs(sess: &Session,
-                       cstore: &CStore,
-                       krate: &ast::Crate,
-                       crate_name: &str)
-                       -> Vec<ast::MacroDef>
-{
-    let mut loader = MacroLoader::new(sess, cstore, crate_name);
-
-    // We need to error on `#[macro_use] extern crate` when it isn't at the
-    // crate root, because `$crate` won't work properly. Identify these by
-    // spans, because the crate map isn't set up yet.
-    for item in &krate.module.items {
-        if let ast::ItemKind::ExternCrate(_) = item.node {
-            loader.span_whitelist.insert(item.span);
-        }
-    }
-
-    visit::walk_crate(&mut loader, krate);
-
-    loader.macros
-}
-
 pub type MacroSelection = HashMap<token::InternedString, Span>;
 
-// note that macros aren't expanded yet, and therefore macros can't add macro imports.
-impl<'a, 'v> Visitor<'v> for MacroLoader<'a> {
-    fn visit_item(&mut self, item: &ast::Item) {
-        // We're only interested in `extern crate`.
-        match item.node {
-            ast::ItemKind::ExternCrate(_) => {}
-            _ => {
-                visit::walk_item(self, item);
-                return;
-            }
-        }
-
+impl<'a> ext::base::MacroLoader for MacroLoader<'a> {
+    fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<ast::MacroDef> {
         // Parse the attributes relating to macros.
         let mut import = Some(HashMap::new());  // None => load all
         let mut reexport = HashMap::new();
 
-        for attr in &item.attrs {
+        for attr in &extern_crate.attrs {
             let mut used = true;
             match &attr.name()[..] {
                 "macro_use" => {
@@ -130,36 +92,33 @@ impl<'a, 'v> Visitor<'v> for MacroLoader<'a> {
             }
         }
 
-        self.load_macros(item, import, reexport)
-    }
-
-    fn visit_mac(&mut self, _: &ast::Mac) {
-        // bummer... can't see macro imports inside macros.
-        // do nothing.
+        self.load_macros(extern_crate, allows_macros, import, reexport)
     }
 }
 
 impl<'a> MacroLoader<'a> {
     fn load_macros<'b>(&mut self,
                        vi: &ast::Item,
+                       allows_macros: bool,
                        import: Option<MacroSelection>,
-                       reexport: MacroSelection) {
+                       reexport: MacroSelection)
+                       -> Vec<ast::MacroDef> {
         if let Some(sel) = import.as_ref() {
             if sel.is_empty() && reexport.is_empty() {
-                return;
+                return Vec::new();
             }
         }
 
-        if !self.span_whitelist.contains(&vi.span) {
+        if !allows_macros {
             span_err!(self.sess, vi.span, E0468,
                       "an `extern crate` loading macros must be at the crate root");
-            return;
+            return Vec::new();
         }
 
-        let macros = self.reader.read_exported_macros(vi);
+        let mut macros = Vec::new();
         let mut seen = HashSet::new();
 
-        for mut def in macros {
+        for mut def in self.reader.read_exported_macros(vi) {
             let name = def.ident.name.as_str();
 
             def.use_locally = match import.as_ref() {
@@ -170,7 +129,7 @@ impl<'a> MacroLoader<'a> {
             def.allow_internal_unstable = attr::contains_name(&def.attrs,
                                                               "allow_internal_unstable");
             debug!("load_macros: loaded: {:?}", def);
-            self.macros.push(def);
+            macros.push(def);
             seen.insert(name);
         }
 
@@ -189,5 +148,7 @@ impl<'a> MacroLoader<'a> {
                           "reexported macro not found");
             }
         }
+
+        macros
     }
 }
