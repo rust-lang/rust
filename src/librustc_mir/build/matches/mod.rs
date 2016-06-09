@@ -87,6 +87,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // can't be reached - terminate them with an `unreachable`.
             let source_info = self.source_info(span);
 
+            let mut otherwise = otherwise;
+            otherwise.sort();
+            otherwise.dedup(); // variant switches can introduce duplicate target blocks
             for block in otherwise {
                 self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
             }
