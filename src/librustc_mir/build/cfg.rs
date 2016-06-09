@@ -78,8 +78,11 @@ impl<'tcx> CFG<'tcx> {
                      block: BasicBlock,
                      source_info: SourceInfo,
                      kind: TerminatorKind<'tcx>) {
+        debug!("terminating block {:?} <- {:?}", block, kind);
         debug_assert!(self.block_data(block).terminator.is_none(),
-                      "terminate: block {:?} already has a terminator set", block);
+                      "terminate: block {:?}={:?} already has a terminator set",
+                      block,
+                      self.block_data(block));
         self.block_data_mut(block).terminator = Some(Terminator {
             source_info: source_info,
             kind: kind,
