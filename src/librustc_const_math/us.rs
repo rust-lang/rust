@@ -27,7 +27,8 @@ impl ConstUsize {
             (Us16(i), ast::UintTy::U16) => i as u64,
             (Us32(i), ast::UintTy::U32) => i as u64,
             (Us64(i), ast::UintTy::U64) => i,
-            _ => panic!("got invalid usize size for target"),
+            _ => panic!("unable to convert self ({:?}) to target usize ({:?})",
+                        self, target_uint_ty),
         }
     }
     pub fn new(i: u64, target_uint_ty: ast::UintTy) -> Result<Self, ConstMathErr> {
@@ -37,6 +38,14 @@ impl ConstUsize {
             ast::UintTy::U32 if i as u32 as u64 == i => Ok(Us32(i as u32)),
             ast::UintTy::U32 => Err(ULitOutOfRange(ast::UintTy::Us)),
             ast::UintTy::U64 => Ok(Us64(i)),
+            _ => unreachable!(),
+        }
+    }
+    pub fn new_truncating(i: u64, target_uint_ty: ast::UintTy) -> Self {
+        match target_uint_ty {
+            ast::UintTy::U16 => Us16(i as u16),
+            ast::UintTy::U32 => Us32(i as u32),
+            ast::UintTy::U64 => Us64(i),
             _ => unreachable!(),
         }
     }
