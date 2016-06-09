@@ -31,7 +31,7 @@ use std::mem;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn simplify_candidate<'pat>(&mut self,
-                                    mut block: BasicBlock,
+                                    block: BasicBlock,
                                     candidate: &mut Candidate<'pat, 'tcx>)
                                     -> BlockAnd<()> {
         // repeatedly simplify match pairs until fixed point is reached
@@ -39,10 +39,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);
             let mut progress = match_pairs.len(); // count how many were simplified
             for match_pair in match_pairs {
-                match self.simplify_match_pair(block, match_pair, candidate) {
-                    Ok(b) => {
-                        block = b;
-                    }
+                match self.simplify_match_pair(match_pair, candidate) {
+                    Ok(()) => {}
                     Err(match_pair) => {
                         candidate.match_pairs.push(match_pair);
                         progress -= 1; // this one was not simplified
@@ -61,14 +59,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// possible, Err is returned and no changes are made to
     /// candidate.
     fn simplify_match_pair<'pat>(&mut self,
-                                 mut block: BasicBlock,
                                  match_pair: MatchPair<'pat, 'tcx>,
                                  candidate: &mut Candidate<'pat, 'tcx>)
-                                 -> Result<BasicBlock, MatchPair<'pat, 'tcx>> {
+                                 -> Result<(), MatchPair<'pat, 'tcx>> {
         match *match_pair.pattern.kind {
             PatternKind::Wild => {
                 // nothing left to do
-                Ok(block)
+                Ok(())
             }
 
             PatternKind::Binding { name, mutability, mode, var, ty, ref subpattern } => {
@@ -87,7 +84,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     candidate.match_pairs.push(MatchPair::new(match_pair.lvalue, subpattern));
                 }
 
-                Ok(block)
+                Ok(())
             }
 
             PatternKind::Constant { .. } => {
@@ -96,37 +93,31 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             PatternKind::Range { .. } |
-            PatternKind::Variant { .. } => {
-                // cannot simplify, test is required
+            PatternKind::Variant { .. } |
+            PatternKind::Slice { .. } => {
                 Err(match_pair)
             }
 
-            PatternKind::Slice { .. } if !match_pair.slice_len_checked => {
-                Err(match_pair)
-            }
-
-            PatternKind::Array { ref prefix, ref slice, ref suffix } |
-            PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
-                unpack!(block = self.prefix_suffix_slice(&mut candidate.match_pairs,
-                                                         block,
-                                                         match_pair.lvalue.clone(),
-                                                         prefix,
-                                                         slice.as_ref(),
-                                                         suffix));
-                Ok(block)
+            PatternKind::Array { ref prefix, ref slice, ref suffix } => {
+                self.prefix_slice_suffix(&mut candidate.match_pairs,
+                                         &match_pair.lvalue,
+                                         prefix,
+                                         slice.as_ref(),
+                                         suffix);
+                Ok(())
             }
 
             PatternKind::Leaf { ref subpatterns } => {
                 // tuple struct, match subpats (if any)
                 candidate.match_pairs
                          .extend(self.field_match_pairs(match_pair.lvalue, subpatterns));
-                Ok(block)
+                Ok(())
             }
 
             PatternKind::Deref { ref subpattern } => {
                 let lvalue = match_pair.lvalue.deref();
                 candidate.match_pairs.push(MatchPair::new(lvalue, subpattern));
-                Ok(block)
+                Ok(())
             }
         }
     }

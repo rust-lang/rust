@@ -505,14 +505,16 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                                           val: MatchInput,
                                           mut e: F)
                                           -> Vec<Match<'a, 'p, 'blk, 'tcx>> where
-    F: FnMut(&[&'p hir::Pat]) -> Option<Vec<&'p hir::Pat>>,
+    F: FnMut(&[(&'p hir::Pat, Option<Ty<'tcx>>)])
+             -> Option<Vec<(&'p hir::Pat, Option<Ty<'tcx>>)>>,
 {
     debug!("enter_match(bcx={}, m={:?}, col={}, val={:?})",
            bcx.to_str(), m, col, val);
     let _indenter = indenter();
 
     m.iter().filter_map(|br| {
-        e(&br.pats).map(|pats| {
+        let pats : Vec<_> = br.pats.iter().map(|p| (*p, None)).collect();
+        e(&pats).map(|pats| {
             let this = br.pats[col];
             let mut bound_ptrs = br.bound_ptrs.clone();
             match this.node {
@@ -530,7 +532,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                 _ => {}
             }
             Match {
-                pats: pats,
+                pats: pats.into_iter().map(|p| p.0).collect(),
                 data: br.data,
                 bound_ptrs: bound_ptrs,
                 pat_renaming_map: br.pat_renaming_map,
@@ -550,7 +552,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Collect all of the matches that can match against anything.
     enter_match(bcx, m, col, val, |pats| {
-        match pats[col].node {
+        match pats[col].0.node {
             PatKind::Binding(..) | PatKind::Wild => {
                 let mut r = pats[..col].to_vec();
                 r.extend_from_slice(&pats[col + 1..]);
@@ -729,7 +731,14 @@ fn bind_subslice_pat(bcx: Block,
     let (base, len) = vec_datum.get_vec_base_and_len(bcx);
 
     let slice_begin = InBoundsGEP(bcx, base, &[C_uint(bcx.ccx(), offset_left)]);
-    let slice_len_offset = C_uint(bcx.ccx(), offset_left + offset_right);
+    let diff = offset_left + offset_right;
+    if let ty::TyArray(ty, n) = vec_ty_contents.sty {
+        let array_ty = bcx.tcx().mk_array(ty, n-diff);
+        let llty_array = type_of::type_of(bcx.ccx(), array_ty);
+        return PointerCast(bcx, slice_begin, llty_array.ptr_to());
+    }
+
+    let slice_len_offset = C_uint(bcx.ccx(), diff);
     let slice_len = Sub(bcx, len, slice_len_offset, DebugLoc::None);
     let slice_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReErased),
                                          bcx.tcx().mk_slice(unit_ty));
@@ -1205,7 +1214,12 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         Some(field_vals)
     } else if any_uniq_pat(m, col) || any_region_pat(m, col) {
-        Some(vec!(Load(bcx, val.val)))
+        let ptr = if type_is_fat_ptr(bcx.tcx(), left_ty) {
+            val.val
+        } else {
+            Load(bcx, val.val)
+        };
+        Some(vec!(ptr))
     } else {
         match left_ty.sty {
             ty::TyArray(_, n) => {

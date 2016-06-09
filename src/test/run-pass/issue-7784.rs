@@ -11,6 +11,7 @@
 
 #![feature(advanced_slice_patterns)]
 #![feature(slice_patterns)]
+#![feature(rustc_attrs)]
 
 use std::ops::Add;
 
@@ -21,6 +22,7 @@ fn bar(a: &'static str, b: &'static str) -> [&'static str; 4] {
     [a, b, b, a]
 }
 
+#[rustc_mir]
 fn main() {
     assert_eq!(foo([1, 2, 3]), (1, 3, 6));
 

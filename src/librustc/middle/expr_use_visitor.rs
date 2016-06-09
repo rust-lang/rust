@@ -993,40 +993,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         }
                     }
                 }
-                PatKind::Vec(_, Some(ref slice_pat), _) => {
-                    // The `slice_pat` here creates a slice into
-                    // the original vector.  This is effectively a
-                    // borrow of the elements of the vector being
-                    // matched.
-
-                    let (slice_cmt, slice_mutbl, slice_r) =
-                        return_if_err!(mc.cat_slice_pattern(cmt_pat, &slice_pat));
-
-                    // Note: We declare here that the borrow
-                    // occurs upon entering the `[...]`
-                    // pattern. This implies that something like
-                    // `[a; b]` where `a` is a move is illegal,
-                    // because the borrow is already in effect.
-                    // In fact such a move would be safe-ish, but
-                    // it effectively *requires* that we use the
-                    // nulling out semantics to indicate when a
-                    // value has been moved, which we are trying
-                    // to move away from.  Otherwise, how can we
-                    // indicate that the first element in the
-                    // vector has been moved?  Eventually, we
-                    // could perhaps modify this rule to permit
-                    // `[..a, b]` where `b` is a move, because in
-                    // that case we can adjust the length of the
-                    // original vec accordingly, but we'd have to
-                    // make trans do the right thing, and it would
-                    // only work for `Box<[T]>`s. It seems simpler
-                    // to just require that people call
-                    // `vec.pop()` or `vec.unshift()`.
-                    let slice_bk = ty::BorrowKind::from_mutbl(slice_mutbl);
-                    delegate.borrow(pat.id, pat.span,
-                                    slice_cmt, slice_r,
-                                    slice_bk, RefBinding);
-                }
                 _ => {}
             }
         }));

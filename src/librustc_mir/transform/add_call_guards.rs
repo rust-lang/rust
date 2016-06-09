@@ -11,10 +11,8 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
-
+use rustc::mir::traversal;
 use pretty;
-
-use traversal;
 
 pub struct AddCallGuards;
 

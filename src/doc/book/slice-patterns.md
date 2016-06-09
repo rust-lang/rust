@@ -10,7 +10,7 @@ fn main() {
     let v = vec!["match_this", "1"];
 
     match &v[..] {
-        ["match_this", second] => println!("The second element is {}", second),
+        &["match_this", second] => println!("The second element is {}", second),
         _ => {},
     }
 }
@@ -26,8 +26,8 @@ slice will be bound to that name. For example:
 
 fn is_symmetric(list: &[u32]) -> bool {
     match list {
-        [] | [_] => true,
-        [x, inside.., y] if x == y => is_symmetric(inside),
+        &[] | &[_] => true,
+        &[x, ref inside.., y] if x == y => is_symmetric(inside),
         _ => false
     }
 }

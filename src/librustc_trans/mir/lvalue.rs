@@ -20,13 +20,14 @@ use common::{self, BlockAndBuilder, CrateContext, C_uint, C_undef};
 use consts;
 use machine;
 use type_of::type_of;
+use type_of;
 use Disr;
 
 use std::ptr;
 
 use super::{MirContext, TempRef};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct LvalueRef<'tcx> {
     /// Pointer to the contents of the lvalue
     pub llval: ValueRef,
@@ -88,7 +89,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let fcx = bcx.fcx();
         let ccx = bcx.ccx();
         let tcx = bcx.tcx();
-        match *lvalue {
+        let result = match *lvalue {
             mir::Lvalue::Var(index) => self.vars[index as usize],
             mir::Lvalue::Temp(index) => match self.temps[index as usize] {
                 TempRef::Lvalue(lvalue) =>
@@ -98,8 +99,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             },
             mir::Lvalue::Arg(index) => self.args[index as usize],
             mir::Lvalue::Static(def_id) => {
-                let const_ty = self.mir.lvalue_ty(tcx, lvalue);
-                LvalueRef::new_sized(consts::get_static(ccx, def_id).val, const_ty)
+                let const_ty = self.lvalue_ty(lvalue);
+                LvalueRef::new_sized(consts::get_static(ccx, def_id).val,
+                                     LvalueTy::from_ty(const_ty))
             },
             mir::Lvalue::ReturnPointer => {
                 let llval = if !fcx.fn_ty.ret.is_ignore() {
@@ -131,7 +133,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let zero = common::C_uint(bcx.ccx(), 0u64);
                         bcx.inbounds_gep(tr_base.llval, &[zero, llindex])
                     };
-                    (element, ptr::null_mut())
+                    element
                 };
 
                 let (llprojected, llextra) = match projection.elem {
@@ -169,13 +171,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                     mir::ProjectionElem::Index(ref index) => {
                         let index = self.trans_operand(bcx, index);
-                        project_index(self.prepare_index(bcx, index.immediate()))
+                        (project_index(self.prepare_index(bcx, index.immediate())), ptr::null_mut())
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: false,
                                                          min_length: _ } => {
                         let lloffset = C_uint(bcx.ccx(), offset);
-                        project_index(self.prepare_index(bcx, lloffset))
+                        (project_index(lloffset), ptr::null_mut())
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: true,
@@ -183,7 +185,30 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let lloffset = C_uint(bcx.ccx(), offset);
                         let lllen = tr_base.len(bcx.ccx());
                         let llindex = bcx.sub(lllen, lloffset);
-                        project_index(self.prepare_index(bcx, llindex))
+                        (project_index(llindex), ptr::null_mut())
+                    }
+                    mir::ProjectionElem::Subslice { from, to } => {
+                        let llindex = C_uint(bcx.ccx(), from);
+                        let llbase = project_index(llindex);
+
+                        let base_ty = tr_base.ty.to_ty(bcx.tcx());
+                        match base_ty.sty {
+                            ty::TyArray(..) => {
+                                // must cast the lvalue pointer type to the new
+                                // array type (*[%_; new_len]).
+                                let base_ty = self.lvalue_ty(lvalue);
+                                let llbasety = type_of::type_of(bcx.ccx(), base_ty).ptr_to();
+                                let llbase = bcx.pointercast(llbase, llbasety);
+                                (llbase, ptr::null_mut())
+                            }
+                            ty::TySlice(..) => {
+                                assert!(tr_base.llextra != ptr::null_mut());
+                                let lllen = bcx.sub(tr_base.llextra,
+                                                    C_uint(bcx.ccx(), from+to));
+                                (llbase, lllen)
+                            }
+                            _ => bug!("unexpected type {:?} in Subslice", base_ty)
+                        }
                     }
                     mir::ProjectionElem::Downcast(..) => {
                         (tr_base.llval, tr_base.llextra)
@@ -195,7 +220,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     ty: projected_ty,
                 }
             }
-        }
+        };
+        debug!("trans_lvalue(lvalue={:?}) => {:?}", lvalue, result);
+        result
     }
 
     // Perform an action using the given Lvalue.
@@ -210,27 +237,23 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 match self.temps[idx as usize] {
                     TempRef::Lvalue(lvalue) => f(self, lvalue),
                     TempRef::Operand(None) => {
-                        let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), lvalue);
-                        let lvalue_ty = bcx.monomorphize(&lvalue_ty);
+                        let lvalue_ty = self.lvalue_ty(lvalue);
                         let lvalue = LvalueRef::alloca(bcx,
-                                                       lvalue_ty.to_ty(bcx.tcx()),
+                                                       lvalue_ty,
                                                        "lvalue_temp");
                         let ret = f(self, lvalue);
-                        let op = self.trans_load(bcx, lvalue.llval, lvalue_ty.to_ty(bcx.tcx()));
+                        let op = self.trans_load(bcx, lvalue.llval, lvalue_ty);
                         self.temps[idx as usize] = TempRef::Operand(Some(op));
                         ret
                     }
                     TempRef::Operand(Some(_)) => {
-                        let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), lvalue);
-                        let lvalue_ty = bcx.monomorphize(&lvalue_ty);
-
                         // See comments in TempRef::new_operand as to why
                         // we always have Some in a ZST TempRef::Operand.
-                        let ty = lvalue_ty.to_ty(bcx.tcx());
+                        let ty = self.lvalue_ty(lvalue);
                         if common::type_is_zero_size(bcx.ccx(), ty) {
                             // Pass an undef pointer as no stores can actually occur.
                             let llptr = C_undef(type_of(bcx.ccx(), ty).ptr_to());
-                            f(self, LvalueRef::new_sized(llptr, lvalue_ty))
+                            f(self, LvalueRef::new_sized(llptr, LvalueTy::from_ty(ty)))
                         } else {
                             bug!("Lvalue temp already set");
                         }
@@ -263,5 +286,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         } else {
             llindex
         }
+    }
+
+    pub fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
+        let tcx = self.fcx.ccx.tcx();
+        let lvalue_ty = self.mir.lvalue_ty(tcx, lvalue);
+        self.fcx.monomorphize(&lvalue_ty.to_ty(tcx))
     }
 }

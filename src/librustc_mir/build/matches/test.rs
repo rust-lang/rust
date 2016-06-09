@@ -24,6 +24,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
 use syntax::codemap::Span;
+use std::cmp::Ordering;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
@@ -446,69 +447,118 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
         };
 
-        match test.kind {
+        match (&test.kind, &*match_pair.pattern.kind) {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
-            TestKind::Switch { adt_def: tested_adt_def , .. } => {
-                match *match_pair.pattern.kind {
-                    PatternKind::Variant { adt_def, variant_index, ref subpatterns } => {
-                        assert_eq!(adt_def, tested_adt_def);
-                        let new_candidate =
-                            self.candidate_after_variant_switch(match_pair_index,
-                                                                adt_def,
-                                                                variant_index,
-                                                                subpatterns,
-                                                                candidate);
-                        resulting_candidates[variant_index].push(new_candidate);
-                        true
-                    }
-                    _ => {
-                        false
-                    }
-                }
+            (&TestKind::Switch { adt_def: tested_adt_def, .. },
+             &PatternKind::Variant { adt_def, variant_index, ref subpatterns }) => {
+                assert_eq!(adt_def, tested_adt_def);
+                let new_candidate =
+                    self.candidate_after_variant_switch(match_pair_index,
+                                                        adt_def,
+                                                        variant_index,
+                                                        subpatterns,
+                                                        candidate);
+                resulting_candidates[variant_index].push(new_candidate);
+                true
             }
+            (&TestKind::Switch { .. }, _) => false,
 
             // If we are performing a switch over integers, then this informs integer
             // equality, but nothing else.
             //
-            // FIXME(#29623) we could use TestKind::Range to rule
+            // FIXME(#29623) we could use PatternKind::Range to rule
             // things out here, in some cases.
-            TestKind::SwitchInt { switch_ty: _, options: _, ref indices } => {
-                match *match_pair.pattern.kind {
-                    PatternKind::Constant { ref value }
-                    if is_switch_ty(match_pair.pattern.ty) => {
-                        let index = indices[value];
-                        let new_candidate = self.candidate_without_match_pair(match_pair_index,
-                                                                              candidate);
-                        resulting_candidates[index].push(new_candidate);
+            (&TestKind::SwitchInt { switch_ty: _, options: _, ref indices },
+             &PatternKind::Constant { ref value })
+            if is_switch_ty(match_pair.pattern.ty) => {
+                let index = indices[value];
+                let new_candidate = self.candidate_without_match_pair(match_pair_index,
+                                                                      candidate);
+                resulting_candidates[index].push(new_candidate);
+                true
+            }
+            (&TestKind::SwitchInt { .. }, _) => false,
+
+
+            (&TestKind::Len { len: test_len, op: BinOp::Eq },
+             &PatternKind::Slice { ref prefix, ref slice, ref suffix }) => {
+                let pat_len = (prefix.len() + suffix.len()) as u64;
+                match (test_len.cmp(&pat_len), slice) {
+                    (Ordering::Equal, &None) => {
+                        // on true, min_len = len = $actual_length,
+                        // on false, len != $actual_length
+                        resulting_candidates[0].push(
+                            self.candidate_after_slice_test(match_pair_index,
+                                                            candidate,
+                                                            prefix,
+                                                            slice.as_ref(),
+                                                            suffix)
+                        );
                         true
                     }
-                    _ => {
+                    (Ordering::Less, _) => {
+                        // test_len < pat_len. If $actual_len = test_len,
+                        // then $actual_len < pat_len and we don't have
+                        // enough elements.
+                        resulting_candidates[1].push(candidate.clone());
+                        true
+                    }
+                    (Ordering::Equal, &Some(_)) | (Ordering::Greater, &Some(_)) => {
+                        // This can match both if $actual_len = test_len >= pat_len,
+                        // and if $actual_len > test_len. We can't advance.
+                        false
+                    }
+                    (Ordering::Greater, &None) => {
+                        // test_len != pat_len, so if $actual_len = test_len, then
+                        // $actual_len != pat_len.
+                        resulting_candidates[1].push(candidate.clone());
+                        true
+                    }
+                }
+            }
+
+            (&TestKind::Len { len: test_len, op: BinOp::Ge },
+             &PatternKind::Slice { ref prefix, ref slice, ref suffix }) => {
+                // the test is `$actual_len >= test_len`
+                let pat_len = (prefix.len() + suffix.len()) as u64;
+                match (test_len.cmp(&pat_len), slice) {
+                    (Ordering::Equal, &Some(_))  => {
+                        // $actual_len >= test_len = pat_len,
+                        // so we can match.
+                        resulting_candidates[0].push(
+                            self.candidate_after_slice_test(match_pair_index,
+                                                            candidate,
+                                                            prefix,
+                                                            slice.as_ref(),
+                                                            suffix)
+                        );
+                        true
+                    }
+                    (Ordering::Less, _) | (Ordering::Equal, &None) => {
+                        // test_len <= pat_len. If $actual_len < test_len,
+                        // then it is also < pat_len, so the test passing is
+                        // necessary (but insufficient).
+                        resulting_candidates[0].push(candidate.clone());
+                        true
+                    }
+                    (Ordering::Greater, &None) => {
+                        // test_len > pat_len. If $actual_len >= test_len > pat_len,
+                        // then we know we won't have a match.
+                        resulting_candidates[1].push(candidate.clone());
+                        true
+                    }
+                    (Ordering::Greater, &Some(_)) => {
+                        // test_len < pat_len, and is therefore less
+                        // strict. This can still go both ways.
                         false
                     }
                 }
             }
 
-            // If we are performing a length check, then this
-            // informs slice patterns, but nothing else.
-            TestKind::Len { .. } => {
-                let pattern_test = self.test(&match_pair);
-                match *match_pair.pattern.kind {
-                    PatternKind::Slice { .. } if pattern_test.kind == test.kind => {
-                        let mut new_candidate = candidate.clone();
-
-                        // Set up the MatchKind to simplify this like an array.
-                        new_candidate.match_pairs[match_pair_index]
-                                     .slice_len_checked = true;
-                        resulting_candidates[0].push(new_candidate);
-                        true
-                    }
-                    _ => false
-                }
-            }
-
-            TestKind::Eq { .. } |
-            TestKind::Range { .. } => {
+            (&TestKind::Eq { .. }, _) |
+            (&TestKind::Range { .. }, _) |
+            (&TestKind::Len { .. }, _) => {
                 // These are all binary tests.
                 //
                 // FIXME(#29623) we can be more clever here
@@ -542,6 +592,25 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             guard: candidate.guard.clone(),
             arm_index: candidate.arm_index,
         }
+    }
+
+    fn candidate_after_slice_test<'pat>(&mut self,
+                                        match_pair_index: usize,
+                                        candidate: &Candidate<'pat, 'tcx>,
+                                        prefix: &'pat [Pattern<'tcx>],
+                                        opt_slice: Option<&'pat Pattern<'tcx>>,
+                                        suffix: &'pat [Pattern<'tcx>])
+                                        -> Candidate<'pat, 'tcx> {
+        let mut new_candidate =
+            self.candidate_without_match_pair(match_pair_index, candidate);
+        self.prefix_slice_suffix(
+            &mut new_candidate.match_pairs,
+            &candidate.match_pairs[match_pair_index].lvalue,
+            prefix,
+            opt_slice,
+            suffix);
+
+        new_candidate
     }
 
     fn candidate_after_variant_switch<'pat>(&mut self,

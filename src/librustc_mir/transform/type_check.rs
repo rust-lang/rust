@@ -203,6 +203,26 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     })
                 }
             }
+            ProjectionElem::Subslice { from, to } => {
+                LvalueTy::Ty {
+                    ty: match base_ty.sty {
+                        ty::TyArray(inner, size) => {
+                            let min_size = (from as usize) + (to as usize);
+                            if let Some(rest_size) = size.checked_sub(min_size) {
+                                tcx.mk_array(inner, rest_size)
+                            } else {
+                                span_mirbug_and_err!(
+                                    self, lvalue, "taking too-small slice of {:?}", base_ty)
+                            }
+                        }
+                        ty::TySlice(..) => base_ty,
+                        _ => {
+                            span_mirbug_and_err!(
+                                self, lvalue, "slice of non-array {:?}", base_ty)
+                        }
+                    }
+                }
+            }
             ProjectionElem::Downcast(adt_def1, index) =>
                 match base_ty.sty {
                     ty::TyEnum(adt_def, substs) if adt_def == adt_def1 => {

@@ -48,7 +48,6 @@ extern crate rustc_back;
 extern crate rustc_data_structures;
 extern crate rustc_incremental;
 pub extern crate rustc_llvm as llvm;
-extern crate rustc_mir;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate serialize;
 extern crate rustc_const_math;
