@@ -27,6 +27,7 @@ use Disr;
 use std::ptr;
 
 use super::{MirContext, TempRef};
+use super::operand::OperandValue;
 
 #[derive(Copy, Clone, Debug)]
 pub struct LvalueRef<'tcx> {
@@ -121,6 +122,26 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let return_ty = fn_return_ty.unwrap();
                 LvalueRef::new_sized(llval, LvalueTy::from_ty(return_ty))
             },
+            mir::Lvalue::Projection(box mir::Projection {
+                ref base,
+                elem: mir::ProjectionElem::Deref
+            }) => {
+                // Load the pointer from its location.
+                let ptr = self.trans_consume(bcx, base);
+                let projected_ty = LvalueTy::from_ty(ptr.ty)
+                    .projection_ty(tcx, &mir::ProjectionElem::Deref);
+                let projected_ty = bcx.monomorphize(&projected_ty);
+                let (llptr, llextra) = match ptr.val {
+                    OperandValue::Immediate(llptr) => (llptr, ptr::null_mut()),
+                    OperandValue::Pair(llptr, llextra) => (llptr, llextra),
+                    OperandValue::Ref(_) => bug!("Deref of by-Ref type {:?}", ptr.ty)
+                };
+                LvalueRef {
+                    llval: llptr,
+                    llextra: llextra,
+                    ty: projected_ty,
+                }
+            }
             mir::Lvalue::Projection(ref projection) => {
                 let tr_base = self.trans_lvalue(bcx, &projection.base);
                 let projected_ty = tr_base.ty.projection_ty(tcx, &projection.elem);
@@ -138,15 +159,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 };
 
                 let (llprojected, llextra) = match projection.elem {
-                    mir::ProjectionElem::Deref => {
-                        let base_ty = tr_base.ty.to_ty(tcx);
-                        if common::type_is_sized(tcx, projected_ty.to_ty(tcx)) {
-                            (base::load_ty_builder(bcx, tr_base.llval, base_ty),
-                             ptr::null_mut())
-                        } else {
-                            load_fat_ptr(bcx, tr_base.llval)
-                        }
-                    }
+                    mir::ProjectionElem::Deref => bug!(),
                     mir::ProjectionElem::Field(ref field, _) => {
                         let base_ty = tr_base.ty.to_ty(tcx);
                         let base_repr = adt::represent_type(ccx, base_ty);
