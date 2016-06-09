@@ -150,6 +150,7 @@ impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for UsedVisitor<'a, 'tcx> {
 
 fn check_assign<'e>(cx: &LateContext, decl: hir::def_id::DefId, block: &'e hir::Block) -> Option<&'e hir::Expr> {
     if_let_chain! {[
+        block.expr.is_none(),
         let Some(expr) = block.stmts.iter().last(),
         let hir::StmtSemi(ref expr, _) = expr.node,
         let hir::ExprAssign(ref var, ref value) = expr.node,

@@ -169,7 +169,7 @@ fn main() {
     for i in 10...0 {
         //~^ERROR this range is empty so this for loop will never run
         //~|HELP consider
-        //~|SUGGESTION (0..10).rev()
+        //~|SUGGESTION (0...10).rev()
         println!("{}", i);
     }
 
