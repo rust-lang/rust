@@ -11,7 +11,8 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
-use rustc::mir::traversal;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+
 use pretty;
 
 pub struct AddCallGuards;
@@ -38,38 +39,27 @@ pub struct AddCallGuards;
 
 impl<'tcx> MirPass<'tcx> for AddCallGuards {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
-        let mut pred_count = vec![0u32; mir.basic_blocks.len()];
-
-        // Build the precedecessor map for the MIR
-        for (_, data) in traversal::preorder(mir) {
-            if let Some(ref term) = data.terminator {
-                for &tgt in term.successors().iter() {
-                    pred_count[tgt.index()] += 1;
-                }
-            }
-        }
+        let pred_count: IndexVec<_, _> =
+            mir.predecessors().iter().map(|ps| ps.len()).collect();
 
         // We need a place to store the new blocks generated
         let mut new_blocks = Vec::new();
 
-        let bbs = mir.all_basic_blocks();
-        let cur_len = mir.basic_blocks.len();
+        let cur_len = mir.basic_blocks().len();
 
-        for &bb in &bbs {
-            let data = mir.basic_block_data_mut(bb);
-
-            match data.terminator {
+        for block in mir.basic_blocks_mut() {
+            match block.terminator {
                 Some(Terminator {
                     kind: TerminatorKind::Call {
                         destination: Some((_, ref mut destination)),
                         cleanup: Some(_),
                         ..
                     }, source_info
-                }) if pred_count[destination.index()] > 1 => {
+                }) if pred_count[*destination] > 1 => {
                     // It's a critical edge, break it
                     let call_guard = BasicBlockData {
                         statements: vec![],
-                        is_cleanup: data.is_cleanup,
+                        is_cleanup: block.is_cleanup,
                         terminator: Some(Terminator {
                             source_info: source_info,
                             kind: TerminatorKind::Goto { target: *destination }
@@ -88,7 +78,7 @@ impl<'tcx> MirPass<'tcx> for AddCallGuards {
         pretty::dump_mir(tcx, "break_cleanup_edges", &0, src, mir, None);
         debug!("Broke {} N edges", new_blocks.len());
 
-        mir.basic_blocks.extend_from_slice(&new_blocks);
+        mir.basic_blocks_mut().extend(new_blocks);
     }
 }
 

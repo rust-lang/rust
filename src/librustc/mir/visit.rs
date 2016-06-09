@@ -15,6 +15,7 @@ use ty::{ClosureSubsts, FnOutput, Region, Ty};
 use mir::repr::*;
 use rustc_const_math::ConstUsize;
 use rustc_data_structures::tuple_slice::TupleSlice;
+use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::Span;
 
 // # The MIR Visitor
@@ -251,42 +252,30 @@ macro_rules! make_mir_visitor {
 
             fn super_mir(&mut self,
                          mir: & $($mutability)* Mir<'tcx>) {
-                let Mir {
-                    ref $($mutability)* basic_blocks,
-                    ref $($mutability)* visibility_scopes,
-                    promoted: _, // Visited by passes separately.
-                    ref $($mutability)* return_ty,
-                    ref $($mutability)* var_decls,
-                    ref $($mutability)* arg_decls,
-                    ref $($mutability)* temp_decls,
-                    upvar_decls: _,
-                    ref $($mutability)* span,
-                } = *mir;
-
-                for (index, data) in basic_blocks.into_iter().enumerate() {
+                for index in 0..mir.basic_blocks().len() {
                     let block = BasicBlock::new(index);
-                    self.visit_basic_block_data(block, data);
+                    self.visit_basic_block_data(block, &$($mutability)* mir[block]);
                 }
 
-                for scope in visibility_scopes {
+                for scope in &$($mutability)* mir.visibility_scopes {
                     self.visit_visibility_scope_data(scope);
                 }
 
-                self.visit_fn_output(return_ty);
+                self.visit_fn_output(&$($mutability)* mir.return_ty);
 
-                for var_decl in var_decls {
+                for var_decl in &$($mutability)* mir.var_decls {
                     self.visit_var_decl(var_decl);
                 }
 
-                for arg_decl in arg_decls {
+                for arg_decl in &$($mutability)* mir.arg_decls {
                     self.visit_arg_decl(arg_decl);
                 }
 
-                for temp_decl in temp_decls {
+                for temp_decl in &$($mutability)* mir.temp_decls {
                     self.visit_temp_decl(temp_decl);
                 }
 
-                self.visit_span(span);
+                self.visit_span(&$($mutability)* mir.span);
             }
 
             fn super_basic_block_data(&mut self,
@@ -397,7 +386,8 @@ macro_rules! make_mir_visitor {
                     }
 
                     TerminatorKind::Resume |
-                    TerminatorKind::Return => {
+                    TerminatorKind::Return |
+                    TerminatorKind::Unreachable => {
                     }
 
                     TerminatorKind::Drop { ref $($mutability)* location,

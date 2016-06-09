@@ -11,6 +11,8 @@
 use llvm::ValueRef;
 use rustc::ty::Ty;
 use rustc::mir::repr as mir;
+use rustc_data_structures::indexed_vec::Idx;
+
 use base;
 use common::{self, Block, BlockAndBuilder};
 use value::Value;
@@ -174,7 +176,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // watch out for temporaries that do not have an
                 // alloca; they are handled somewhat differently
                 if let &mir::Lvalue::Temp(index) = lvalue {
-                    match self.temps[index as usize] {
+                    match self.temps[index] {
                         TempRef::Operand(Some(o)) => {
                             return o;
                         }
@@ -190,7 +192,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // Moves out of pair fields are trivial.
                 if let &mir::Lvalue::Projection(ref proj) = lvalue {
                     if let mir::Lvalue::Temp(index) = proj.base {
-                        let temp_ref = &self.temps[index as usize];
+                        let temp_ref = &self.temps[index];
                         if let &TempRef::Operand(Some(o)) = temp_ref {
                             match (o.val, &proj.elem) {
                                 (OperandValue::Pair(a, b),

@@ -24,6 +24,8 @@ use rustc::mir::visit::{self, Visitor};
 use std::fmt;
 use syntax::codemap::{Span, DUMMY_SP};
 
+use rustc_data_structures::indexed_vec::Idx;
+
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
         $context.tcx().sess.span_warn(
@@ -129,11 +131,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn sanitize_lvalue(&mut self, lvalue: &Lvalue<'tcx>) -> LvalueTy<'tcx> {
         debug!("sanitize_lvalue: {:?}", lvalue);
         match *lvalue {
-            Lvalue::Var(index) => LvalueTy::Ty { ty: self.mir.var_decls[index as usize].ty },
-            Lvalue::Temp(index) =>
-                LvalueTy::Ty { ty: self.mir.temp_decls[index as usize].ty },
-            Lvalue::Arg(index) =>
-                LvalueTy::Ty { ty: self.mir.arg_decls[index as usize].ty },
+            Lvalue::Var(index) => LvalueTy::Ty { ty: self.mir.var_decls[index].ty },
+            Lvalue::Temp(index) => LvalueTy::Ty { ty: self.mir.temp_decls[index].ty },
+            Lvalue::Arg(index) => LvalueTy::Ty { ty: self.mir.arg_decls[index].ty },
             Lvalue::Static(def_id) =>
                 LvalueTy::Ty { ty: self.tcx().lookup_item_type(def_id).ty },
             Lvalue::ReturnPointer => {
@@ -379,6 +379,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             TerminatorKind::Goto { .. } |
             TerminatorKind::Resume |
             TerminatorKind::Return |
+            TerminatorKind::Unreachable |
             TerminatorKind::Drop { .. } => {
                 // no checks needed for these
             }
@@ -595,6 +596,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     span_mirbug!(self, block, "return on cleanup block")
                 }
             }
+            TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. } |
             TerminatorKind::DropAndReplace { target, unwind, .. } |
             TerminatorKind::Assert { target, cleanup: unwind, .. } => {
@@ -626,7 +628,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         bb: BasicBlock,
                         iscleanuppad: bool)
     {
-        if mir.basic_block_data(bb).is_cleanup != iscleanuppad {
+        if mir[bb].is_cleanup != iscleanuppad {
             span_mirbug!(self, ctxt, "cleanuppad mismatch: {:?} should be {:?}",
                          bb, iscleanuppad);
         }
@@ -635,7 +637,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
         self.last_span = mir.span;
         debug!("run_on_mir: {:?}", mir.span);
-        for block in &mir.basic_blocks {
+        for block in mir.basic_blocks() {
             for stmt in &block.statements {
                 if stmt.source_info.span != DUMMY_SP {
                     self.last_span = stmt.source_info.span;

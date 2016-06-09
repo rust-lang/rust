@@ -12,6 +12,7 @@
 //! which do not.
 
 use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::repr as mir;
 use rustc::mir::repr::TerminatorKind;
 use rustc::mir::visit::{Visitor, LvalueContext};
@@ -94,10 +95,10 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
         debug!("visit_assign(block={:?}, lvalue={:?}, rvalue={:?})", block, lvalue, rvalue);
 
         match *lvalue {
-            mir::Lvalue::Temp(index) => {
-                self.mark_assigned(index as usize);
+            mir::Lvalue::Temp(temp) => {
+                self.mark_assigned(temp.index());
                 if !rvalue::rvalue_creates_operand(self.mir, self.bcx, rvalue) {
-                    self.mark_as_lvalue(index as usize);
+                    self.mark_as_lvalue(temp.index());
                 }
             }
             _ => {
@@ -115,8 +116,8 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
 
         // Allow uses of projections of immediate pair fields.
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
-            if let mir::Lvalue::Temp(index) = proj.base {
-                let ty = self.mir.temp_decls[index as usize].ty;
+            if let mir::Lvalue::Temp(temp) = proj.base {
+                let ty = self.mir.temp_decls[temp].ty;
                 let ty = self.bcx.monomorphize(&ty);
                 if common::type_is_imm_pair(self.bcx.ccx(), ty) {
                     if let mir::ProjectionElem::Field(..) = proj.elem {
@@ -129,10 +130,10 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
         }
 
         match *lvalue {
-            mir::Lvalue::Temp(index) => {
+            mir::Lvalue::Temp(temp) => {
                 match context {
                     LvalueContext::Call => {
-                        self.mark_assigned(index as usize);
+                        self.mark_assigned(temp.index());
                     }
                     LvalueContext::Consume => {
                     }
@@ -142,7 +143,7 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
                     LvalueContext::Borrow { .. } |
                     LvalueContext::Slice { .. } |
                     LvalueContext::Projection => {
-                        self.mark_as_lvalue(index as usize);
+                        self.mark_as_lvalue(temp.index());
                     }
                 }
             }
@@ -163,15 +164,16 @@ pub enum CleanupKind {
 
 pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
                                 mir: &mir::Mir<'tcx>)
-                                -> Vec<CleanupKind>
+                                -> IndexVec<mir::BasicBlock, CleanupKind>
 {
-    fn discover_masters<'tcx>(result: &mut [CleanupKind], mir: &mir::Mir<'tcx>) {
-        for bb in mir.all_basic_blocks() {
-            let data = mir.basic_block_data(bb);
+    fn discover_masters<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
+                              mir: &mir::Mir<'tcx>) {
+        for (bb, data) in mir.basic_blocks().iter_enumerated() {
             match data.terminator().kind {
                 TerminatorKind::Goto { .. } |
                 TerminatorKind::Resume |
                 TerminatorKind::Return |
+                TerminatorKind::Unreachable |
                 TerminatorKind::If { .. } |
                 TerminatorKind::Switch { .. } |
                 TerminatorKind::SwitchInt { .. } => {
@@ -184,19 +186,19 @@ pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
                     if let Some(unwind) = unwind {
                         debug!("cleanup_kinds: {:?}/{:?} registering {:?} as funclet",
                                bb, data, unwind);
-                        result[unwind.index()] = CleanupKind::Funclet;
+                        result[unwind] = CleanupKind::Funclet;
                     }
                 }
             }
         }
     }
 
-    fn propagate<'tcx>(result: &mut [CleanupKind], mir: &mir::Mir<'tcx>) {
-        let mut funclet_succs : Vec<_> =
-            mir.all_basic_blocks().iter().map(|_| None).collect();
+    fn propagate<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
+                       mir: &mir::Mir<'tcx>) {
+        let mut funclet_succs = IndexVec::from_elem(None, mir.basic_blocks());
 
         let mut set_successor = |funclet: mir::BasicBlock, succ| {
-            match funclet_succs[funclet.index()] {
+            match funclet_succs[funclet] {
                 ref mut s @ None => {
                     debug!("set_successor: updating successor of {:?} to {:?}",
                            funclet, succ);
@@ -210,22 +212,22 @@ pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
         };
 
         for (bb, data) in traversal::reverse_postorder(mir) {
-            let funclet = match result[bb.index()] {
+            let funclet = match result[bb] {
                 CleanupKind::NotCleanup => continue,
                 CleanupKind::Funclet => bb,
                 CleanupKind::Internal { funclet } => funclet,
             };
 
             debug!("cleanup_kinds: {:?}/{:?}/{:?} propagating funclet {:?}",
-                   bb, data, result[bb.index()], funclet);
+                   bb, data, result[bb], funclet);
 
             for &succ in data.terminator().successors().iter() {
-                let kind = result[succ.index()];
+                let kind = result[succ];
                 debug!("cleanup_kinds: propagating {:?} to {:?}/{:?}",
                        funclet, succ, kind);
                 match kind {
                     CleanupKind::NotCleanup => {
-                        result[succ.index()] = CleanupKind::Internal { funclet: funclet };
+                        result[succ] = CleanupKind::Internal { funclet: funclet };
                     }
                     CleanupKind::Funclet => {
                         set_successor(funclet, succ);
@@ -237,7 +239,7 @@ pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
 
                             debug!("promoting {:?} to a funclet and updating {:?}", succ,
                                    succ_funclet);
-                            result[succ.index()] = CleanupKind::Funclet;
+                            result[succ] = CleanupKind::Funclet;
                             set_successor(succ_funclet, succ);
                             set_successor(funclet, succ);
                         }
@@ -247,8 +249,7 @@ pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
         }
     }
 
-    let mut result : Vec<_> =
-        mir.all_basic_blocks().iter().map(|_| CleanupKind::NotCleanup).collect();
+    let mut result = IndexVec::from_elem(CleanupKind::NotCleanup, mir.basic_blocks());
 
     discover_masters(&mut result, mir);
     propagate(&mut result, mir);

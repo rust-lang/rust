@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc_data_structures::indexed_vec::Idx;
+
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::{self, Mir};
 
@@ -21,7 +23,7 @@ use super::MirBorrowckCtxtPreDataflow;
 use super::MoveDataParamEnv;
 
 use bitslice::{bitwise, BitwiseOperator};
-use indexed_set::{Idx, IdxSet, IdxSetBuf};
+use indexed_set::{IdxSet, IdxSetBuf};
 
 pub use self::sanity_check::sanity_check_via_rustc_peek;
 pub use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
@@ -81,11 +83,10 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
             self.flow_state.operator.start_block_effect(&self.ctxt, sets);
         }
 
-        for bb in self.mir.all_basic_blocks() {
+        for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             let &repr::BasicBlockData { ref statements,
                                         ref terminator,
-                                        is_cleanup: _ } =
-                self.mir.basic_block_data(bb);
+                                        is_cleanup: _ } = data;
 
             let sets = &mut self.flow_state.sets.for_block(bb.index());
             for j_stmt in 0..statements.len() {
@@ -112,7 +113,7 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD>
 
     fn walk_cfg(&mut self, in_out: &mut IdxSet<BD::Idx>) {
         let mir = self.builder.mir;
-        for (bb_idx, bb_data) in mir.basic_blocks.iter().enumerate() {
+        for (bb_idx, bb_data) in mir.basic_blocks().iter().enumerate() {
             let builder = &mut self.builder;
             {
                 let sets = builder.flow_state.sets.for_block(bb_idx);
@@ -396,7 +397,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
         // (now rounded up to multiple of word size)
         let bits_per_block = words_per_block * usize_bits;
 
-        let num_blocks = mir.basic_blocks.len();
+        let num_blocks = mir.basic_blocks().len();
         let num_overall = num_blocks * bits_per_block;
 
         let zeroes = Bits::new(IdxSetBuf::new_empty(num_overall));
@@ -448,7 +449,8 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
     {
         match bb_data.terminator().kind {
             repr::TerminatorKind::Return |
-            repr::TerminatorKind::Resume => {}
+            repr::TerminatorKind::Resume |
+            repr::TerminatorKind::Unreachable => {}
             repr::TerminatorKind::Goto { ref target } |
             repr::TerminatorKind::Assert { ref target, cleanup: None, .. } |
             repr::TerminatorKind::Drop { ref target, location: _, unwind: None } |

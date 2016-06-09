@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use rustc::mir::repr as mir;
+
 use common::{self, BlockAndBuilder};
 
 use super::MirContext;
@@ -28,8 +29,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
                 match *lvalue {
                     mir::Lvalue::Temp(index) => {
-                        let index = index as usize;
-                        match self.temps[index as usize] {
+                        match self.temps[index] {
                             TempRef::Lvalue(tr_dest) => {
                                 self.trans_rvalue(bcx, tr_dest, rvalue, debug_loc)
                             }

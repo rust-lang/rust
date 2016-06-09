@@ -28,6 +28,7 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(const_fn)]
+#![feature(core_intrinsics)]
 #![feature(enumset)]
 #![feature(iter_arith)]
 #![feature(libc)]
@@ -102,6 +103,7 @@ pub mod middle {
 }
 
 pub mod mir {
+    mod cache;
     pub mod repr;
     pub mod tcx;
     pub mod visit;

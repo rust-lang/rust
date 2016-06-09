@@ -18,17 +18,15 @@ use rustc::mir::repr::*;
 
 impl<'tcx> CFG<'tcx> {
     pub fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
-        &self.basic_blocks[blk.index()]
+        &self.basic_blocks[blk]
     }
 
     pub fn block_data_mut(&mut self, blk: BasicBlock) -> &mut BasicBlockData<'tcx> {
-        &mut self.basic_blocks[blk.index()]
+        &mut self.basic_blocks[blk]
     }
 
     pub fn start_new_block(&mut self) -> BasicBlock {
-        let node_index = self.basic_blocks.len();
-        self.basic_blocks.push(BasicBlockData::new(None));
-        BasicBlock::new(node_index)
+        self.basic_blocks.push(BasicBlockData::new(None))
     }
 
     pub fn start_new_cleanup_block(&mut self) -> BasicBlock {
@@ -80,8 +78,11 @@ impl<'tcx> CFG<'tcx> {
                      block: BasicBlock,
                      source_info: SourceInfo,
                      kind: TerminatorKind<'tcx>) {
+        debug!("terminating block {:?} <- {:?}", block, kind);
         debug_assert!(self.block_data(block).terminator.is_none(),
-                      "terminate: block {:?} already has a terminator set", block);
+                      "terminate: block {:?}={:?} already has a terminator set",
+                      block,
+                      self.block_data(block));
         self.block_data_mut(block).terminator = Some(Terminator {
             source_info: source_info,
             kind: kind,

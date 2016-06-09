@@ -11,6 +11,7 @@
 use std::vec;
 
 use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::indexed_vec::Idx;
 
 use super::repr::*;
 
@@ -44,7 +45,7 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
 
         Preorder {
             mir: mir,
-            visited: BitVector::new(mir.basic_blocks.len()),
+            visited: BitVector::new(mir.basic_blocks().len()),
             worklist: worklist
         }
     }
@@ -63,7 +64,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
                 continue;
             }
 
-            let data = self.mir.basic_block_data(idx);
+            let data = &self.mir[idx];
 
             if let Some(ref term) = data.terminator {
                 for &succ in term.successors().iter() {
@@ -106,12 +107,12 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
     pub fn new(mir: &'a Mir<'tcx>, root: BasicBlock) -> Postorder<'a, 'tcx> {
         let mut po = Postorder {
             mir: mir,
-            visited: BitVector::new(mir.basic_blocks.len()),
+            visited: BitVector::new(mir.basic_blocks().len()),
             visit_stack: Vec::new()
         };
 
 
-        let data = po.mir.basic_block_data(root);
+        let data = &po.mir[root];
 
         if let Some(ref term) = data.terminator {
             po.visited.insert(root.index());
@@ -185,9 +186,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
             };
 
             if self.visited.insert(bb.index()) {
-                let data = self.mir.basic_block_data(bb);
-
-                if let Some(ref term) = data.terminator {
+                if let Some(ref term) = self.mir[bb].terminator {
                     let succs = term.successors().into_owned().into_iter();
                     self.visit_stack.push((bb, succs));
                 }
@@ -209,10 +208,7 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
             self.traverse_successor();
         }
 
-        next.map(|(bb, _)| {
-            let data = self.mir.basic_block_data(bb);
-            (bb, data)
-        })
+        next.map(|(bb, _)| (bb, &self.mir[bb]))
     }
 }
 
@@ -278,9 +274,6 @@ impl<'a, 'tcx> Iterator for ReversePostorder<'a, 'tcx> {
         if self.idx == 0 { return None; }
         self.idx -= 1;
 
-        self.blocks.get(self.idx).map(|&bb| {
-            let data = self.mir.basic_block_data(bb);
-            (bb, data)
-        })
+        self.blocks.get(self.idx).map(|&bb| (bb, &self.mir[bb]))
     }
 }

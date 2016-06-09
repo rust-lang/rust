@@ -78,12 +78,21 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // branch to the appropriate arm block
         let otherwise = self.match_candidates(span, &mut arm_blocks, candidates, block);
 
-        // because all matches are exhaustive, in principle we expect
-        // an empty vector to be returned here, but the algorithm is
-        // not entirely precise
         if !otherwise.is_empty() {
-            let join_block = self.join_otherwise_blocks(span, otherwise);
-            self.panic(join_block, "something about matches algorithm not being precise", span);
+            // All matches are exhaustive. However, because some matches
+            // only have exponentially-large exhaustive decision trees, we
+            // sometimes generate an inexhaustive decision tree.
+            //
+            // In that case, the inexhaustive tips of the decision tree
+            // can't be reached - terminate them with an `unreachable`.
+            let source_info = self.source_info(span);
+
+            let mut otherwise = otherwise;
+            otherwise.sort();
+            otherwise.dedup(); // variant switches can introduce duplicate target blocks
+            for block in otherwise {
+                self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+            }
         }
 
         // all the arm blocks will rejoin here
@@ -667,25 +676,23 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                        name: Name,
                        var_id: NodeId,
                        var_ty: Ty<'tcx>)
-                       -> u32
+                       -> Var
     {
         debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, source_info={:?})",
                var_id, name, var_ty, source_info);
 
-        let index = self.var_decls.len();
-        self.var_decls.push(VarDecl::<'tcx> {
+        let var = self.var_decls.push(VarDecl::<'tcx> {
             source_info: source_info,
             mutability: mutability,
             name: name,
             ty: var_ty.clone(),
         });
-        let index = index as u32;
         let extent = self.extent_of_innermost_scope();
-        self.schedule_drop(source_info.span, extent, &Lvalue::Var(index), var_ty);
-        self.var_indices.insert(var_id, index);
+        self.schedule_drop(source_info.span, extent, &Lvalue::Var(var), var_ty);
+        self.var_indices.insert(var_id, var);
 
-        debug!("declare_binding: index={:?}", index);
+        debug!("declare_binding: var={:?}", var);
 
-        index
+        var
     }
 }
