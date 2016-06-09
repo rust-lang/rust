@@ -192,24 +192,24 @@ fn test_unsafe_slice() {
 
 #[test]
 fn test_starts_with() {
-    assert!(("".starts_with("")));
-    assert!(("abc".starts_with("")));
-    assert!(("abc".starts_with("a")));
-    assert!((!"a".starts_with("abc")));
-    assert!((!"".starts_with("abc")));
-    assert!((!"ödd".starts_with("-")));
-    assert!(("ödd".starts_with("öd")));
+    assert!("".starts_with(""));
+    assert!("abc".starts_with(""));
+    assert!("abc".starts_with("a"));
+    assert!(!"a".starts_with("abc"));
+    assert!(!"".starts_with("abc"));
+    assert!(!"ödd".starts_with("-"));
+    assert!("ödd".starts_with("öd"));
 }
 
 #[test]
 fn test_ends_with() {
-    assert!(("".ends_with("")));
-    assert!(("abc".ends_with("")));
-    assert!(("abc".ends_with("c")));
-    assert!((!"a".ends_with("abc")));
-    assert!((!"".ends_with("abc")));
-    assert!((!"ddö".ends_with("-")));
-    assert!(("ddö".ends_with("dö")));
+    assert!("".ends_with(""));
+    assert!("abc".ends_with(""));
+    assert!("abc".ends_with("c"));
+    assert!(!"a".ends_with("abc"));
+    assert!(!"".ends_with("abc"));
+    assert!(!"ddö".ends_with("-"));
+    assert!("ddö".ends_with("dö"));
 }
 
 #[test]
