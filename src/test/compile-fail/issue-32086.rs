@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
-
-trait MyTrait {
-    fn trait_bar() {}
-}
-
-impl MyTrait for Foo {}
+struct S(u8);
+const C: S = S(10);
 
 fn main() {
-    match 0u32 {
-        <Foo as MyTrait>::trait_bar => {}
-        //~^ ERROR expected associated constant, found method `trait_bar`
-    }
+    let C(a) = S(11); //~ ERROR expected variant or struct, found constant `C`
+    let C(..) = S(11); //~ ERROR expected variant or struct, found constant `C`
 }

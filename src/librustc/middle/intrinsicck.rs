@@ -156,7 +156,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
 impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for ExprVisitor<'a, 'gcx, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         if let hir::ExprPath(..) = expr.node {
-            match self.infcx.tcx.resolve_expr(expr) {
+            match self.infcx.tcx.expect_def(expr.id) {
                 Def::Fn(did) if self.def_id_is_transmute(did) => {
                     let typ = self.infcx.tcx.node_id_to_type(expr.id);
                     match typ.sty {

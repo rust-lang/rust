@@ -92,13 +92,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
             hir::ExprPath(..) => {
-                let def = match self.tcx.def_map.borrow().get(&expr.id) {
-                    Some(d) => d.full_def(),
-                    None => {
-                        span_bug!(expr.span, "def ID not in def map?!")
-                    }
-                };
-
+                let def = self.tcx.expect_def(expr.id);
                 let def_id = def.def_id();
                 if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
                     if self.def_id_represents_local_inlined_item(def_id) {

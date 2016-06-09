@@ -677,100 +677,6 @@ fn foo<T>(x: T) {} // ok!
 ```
 "##,
 
-E0413: r##"
-A declaration shadows an enum variant or unit-like struct in scope. Example of
-erroneous code:
-
-```compile_fail
-struct Foo;
-
-let Foo = 12i32; // error: declaration of `Foo` shadows an enum variant or
-                 //        unit-like struct in scope
-```
-
-To fix this error, rename the variable such that it doesn't shadow any enum
-variable or structure in scope. Example:
-
-```
-struct Foo;
-
-let foo = 12i32; // ok!
-```
-
-Or:
-
-```
-struct FooStruct;
-
-let Foo = 12i32; // ok!
-```
-
-The goal here is to avoid a conflict of names.
-"##,
-
-E0414: r##"
-A variable binding in an irrefutable pattern is shadowing the name of a
-constant. Example of erroneous code:
-
-```compile_fail
-const FOO: u8 = 7;
-
-let FOO = 5; // error: variable bindings cannot shadow constants
-
-// or
-
-fn bar(FOO: u8) { // error: variable bindings cannot shadow constants
-
-}
-
-// or
-
-for FOO in bar {
-
-}
-```
-
-Introducing a new variable in Rust is done through a pattern. Thus you can have
-`let` bindings like `let (a, b) = ...`. However, patterns also allow constants
-in them, e.g. if you want to match over a constant:
-
-```ignore
-const FOO: u8 = 1;
-
-match (x,y) {
- (3, 4) => { .. }, // it is (3,4)
- (FOO, 1) => { .. }, // it is (1,1)
- (foo, 1) => { .. }, // it is (anything, 1)
-                     // call the value in the first slot "foo"
- _ => { .. } // it is anything
-}
-```
-
-Here, the second arm matches the value of `x` against the constant `FOO`,
-whereas the third arm will accept any value of `x` and call it `foo`.
-
-This works for `match`, however in cases where an irrefutable pattern is
-required, constants can't be used. An irrefutable pattern is one which always
-matches, whose purpose is only to bind variable names to values. These are
-required by let, for, and function argument patterns.
-
-Refutable patterns in such a situation do not make sense, for example:
-
-```ignore
-let Some(x) = foo; // what if foo is None, instead?
-
-let (1, x) = foo; // what if foo.0 is not 1?
-
-let (SOME_CONST, x) = foo; // what if foo.0 is not SOME_CONST?
-
-let SOME_CONST = foo; // what if foo is not SOME_CONST?
-```
-
-Thus, an irrefutable variable binding can't contain a constant.
-
-To fix this error, just give the marked variable a different name.
-"##,
-
 E0415: r##"
 More than one function parameter have the same name. Example of erroneous code:
 
@@ -810,60 +716,6 @@ Or maybe did you mean to unify? Consider using a guard:
 match (A, B, C) {
     (x, x2, see) if x == x2 => { /* A and B are equal, do one thing */ }
     (y, z, see) => { /* A and B unequal; do another thing */ }
-}
-```
-"##,
-
-E0417: r##"
-A static variable was referenced in a pattern. Example of erroneous code:
-
-```compile_fail
-static FOO : i32 = 0;
-
-match 0 {
-    FOO => {} // error: static variables cannot be referenced in a
-              //        pattern, use a `const` instead
-    _ => {}
-}
-```
-
-The compiler needs to know the value of the pattern at compile time;
-compile-time patterns can defined via const or enum items. Please verify
-that the identifier is spelled correctly, and if so, use a const instead
-of static to define it. Example:
-
-```
-const FOO : i32 = 0;
-
-match 0 {
-    FOO => {} // ok!
-    _ => {}
-}
-```
-"##,
-
-E0419: r##"
-An unknown enum variant, struct or const was used. Example of erroneous code:
-
-```compile_fail
-match 0 {
-    Something::Foo => {} // error: unresolved enum variant, struct
-                         //        or const `Foo`
-}
-```
-
-Please verify you didn't misspell it and the enum variant, struct or const has
-been declared and imported into scope. Example:
-
-```
-enum Something {
-    Foo,
-    NotFoo,
-}
-
-match Something::NotFoo {
-    Something::Foo => {} // ok!
-    _ => {}
 }
 ```
 "##,
@@ -1255,8 +1107,15 @@ register_diagnostics! {
     E0402, // cannot use an outer type parameter in this context
     E0406, // undeclared associated type
 //  E0410, merged into 408
-    E0418, // is not an enum variant, struct or const
-    E0420, // is not an associated const
-    E0421, // unresolved associated const
-    E0427, // cannot use `ref` binding mode with ...
+//  E0413, merged into 530
+//  E0414, merged into 530
+//  E0417, merged into 532
+//  E0418, merged into 532
+//  E0419, merged into 531
+//  E0420, merged into 532
+//  E0421, merged into 531
+    E0530, // X bindings cannot shadow Ys
+    E0531, // unresolved pattern path kind `name`
+    E0532, // expected pattern path kind, found another pattern path kind
+//  E0427, merged into 530
 }

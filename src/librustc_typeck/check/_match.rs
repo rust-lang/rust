@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def::{self, Def};
+use hir::def::Def;
 use rustc::infer::{self, InferOk, TypeOrigin};
-use hir::pat_util::{PatIdMap, pat_id_map};
 use hir::pat_util::{EnumerateAndAdjustIterator, pat_is_resolved_const};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
@@ -21,25 +20,12 @@ use session::Session;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
-use std::ops::Deref;
 use syntax::ast;
 use syntax::codemap::{Span, Spanned};
 use syntax::ptr::P;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
-
-pub struct PatCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    pub fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-    pub map: PatIdMap,
-}
-
-impl<'a, 'gcx, 'tcx> Deref for PatCtxt<'a, 'gcx, 'tcx> {
-    type Target = FnCtxt<'a, 'gcx, 'tcx>;
-    fn deref(&self) -> &Self::Target {
-        self.fcx
-    }
-}
 
 // This function exists due to the warning "diagnostic code E0164 already used"
 fn bad_struct_kind_err(sess: &Session, pat: &hir::Pat, path: &hir::Path, lint: bool) {
@@ -55,7 +41,7 @@ fn bad_struct_kind_err(sess: &Session, pat: &hir::Pat, path: &hir::Path, lint: b
     }
 }
 
-impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_pat(&self, pat: &'gcx hir::Pat, expected: Ty<'tcx>) {
         let tcx = self.tcx;
 
@@ -150,26 +136,22 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                 self.demand_eqtype(pat.span, expected, lhs_ty);
             }
             PatKind::Path(..) if pat_is_resolved_const(&tcx.def_map.borrow(), pat) => {
-                if let Some(pat_def) = tcx.def_map.borrow().get(&pat.id) {
-                    let const_did = pat_def.def_id();
-                    let const_scheme = tcx.lookup_item_type(const_did);
-                    assert!(const_scheme.generics.is_empty());
-                    let const_ty = self.instantiate_type_scheme(pat.span,
-                                                                &Substs::empty(),
-                                                                &const_scheme.ty);
-                    self.write_ty(pat.id, const_ty);
+                let const_did = tcx.expect_def(pat.id).def_id();
+                let const_scheme = tcx.lookup_item_type(const_did);
+                assert!(const_scheme.generics.is_empty());
+                let const_ty = self.instantiate_type_scheme(pat.span,
+                                                            &Substs::empty(),
+                                                            &const_scheme.ty);
+                self.write_ty(pat.id, const_ty);
 
-                    // FIXME(#20489) -- we should limit the types here to scalars or something!
+                // FIXME(#20489) -- we should limit the types here to scalars or something!
 
-                    // As with PatKind::Lit, what we really want here is that there
-                    // exist a LUB, but for the cases that can occur, subtype
-                    // is good enough.
-                    self.demand_suptype(pat.span, expected, const_ty);
-                } else {
-                    self.write_error(pat.id);
-                }
+                // As with PatKind::Lit, what we really want here is that there
+                // exist a LUB, but for the cases that can occur, subtype
+                // is good enough.
+                self.demand_suptype(pat.span, expected, const_ty);
             }
-            PatKind::Binding(bm, ref path, ref sub) => {
+            PatKind::Binding(bm, _, ref sub) => {
                 let typ = self.local_ty(pat.span, pat.id);
                 match bm {
                     hir::BindByRef(mutbl) => {
@@ -198,15 +180,19 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
 
                 // if there are multiple arms, make sure they all agree on
                 // what the type of the binding `x` ought to be
-                if let Some(&canon_id) = self.map.get(&path.node) {
-                    if canon_id != pat.id {
-                        let ct = self.local_ty(pat.span, canon_id);
-                        self.demand_eqtype(pat.span, ct, typ);
+                match tcx.expect_def(pat.id) {
+                    Def::Err => {}
+                    Def::Local(_, var_id) => {
+                        if var_id != pat.id {
+                            let vt = self.local_ty(pat.span, var_id);
+                            self.demand_eqtype(pat.span, vt, typ);
+                        }
                     }
+                    d => bug!("bad def for pattern binding `{:?}`", d)
+                }
 
-                    if let Some(ref p) = *sub {
-                        self.check_pat(&p, expected);
-                    }
+                if let Some(ref p) = *sub {
+                    self.check_pat(&p, expected);
                 }
             }
             PatKind::TupleStruct(ref path, ref subpats, ddpos) => {
@@ -217,25 +203,12 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
             }
             PatKind::QPath(ref qself, ref path) => {
                 let self_ty = self.to_ty(&qself.ty);
-                let path_res = if let Some(&d) = tcx.def_map.borrow().get(&pat.id) {
-                    if d.base_def == Def::Err {
-                        self.set_tainted_by_errors();
-                        self.write_error(pat.id);
-                        return;
-                    }
-                    d
-                } else if qself.position == 0 {
-                    // This is just a sentinel for finish_resolving_def_to_ty.
-                    let sentinel = self.tcx.map.local_def_id(ast::CRATE_NODE_ID);
-                    def::PathResolution {
-                        base_def: Def::Mod(sentinel),
-                        depth: path.segments.len()
-                    }
-                } else {
-                    debug!("unbound path {:?}", pat);
+                let path_res = tcx.expect_resolution(pat.id);
+                if path_res.base_def == Def::Err {
+                    self.set_tainted_by_errors();
                     self.write_error(pat.id);
                     return;
-                };
+                }
                 if let Some((opt_ty, segments, def)) =
                         self.resolve_ty_and_def_ufcs(path_res, Some(self_ty),
                                                      path, pat.span, pat.id) {
@@ -493,12 +466,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Typecheck the patterns first, so that we get types for all the
         // bindings.
         for arm in arms {
-            let pcx = PatCtxt {
-                fcx: self,
-                map: pat_id_map(&arm.pats[0]),
-            };
             for p in &arm.pats {
-                pcx.check_pat(&p, discrim_ty);
+                self.check_pat(&p, discrim_ty);
             }
         }
 
@@ -583,13 +552,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_pat_struct(&self, pat: &'gcx hir::Pat,
                             path: &hir::Path, fields: &'gcx [Spanned<hir::FieldPat>],
                             etc: bool, expected: Ty<'tcx>) {
         let tcx = self.tcx;
 
-        let def = tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
+        let def = tcx.expect_def(pat.id);
         let variant = match self.def_struct_variant(def, path.span) {
             Some((_, variant)) => variant,
             None => {
@@ -630,18 +599,16 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
         // Typecheck the path.
         let tcx = self.tcx;
 
-        let path_res = match tcx.def_map.borrow().get(&pat.id) {
-            Some(&path_res) if path_res.base_def != Def::Err => path_res,
-            _ => {
-                self.set_tainted_by_errors();
-                self.write_error(pat.id);
+        let path_res = tcx.expect_resolution(pat.id);
+        if path_res.base_def == Def::Err {
+            self.set_tainted_by_errors();
+            self.write_error(pat.id);
 
-                for pat in subpats {
-                    self.check_pat(&pat, tcx.types.err);
-                }
-                return;
+            for pat in subpats {
+                self.check_pat(&pat, tcx.types.err);
             }
-        };
+            return;
+        }
 
         let (opt_ty, segments, def) = match self.resolve_ty_and_def_ufcs(path_res,
                                                                          None, path,

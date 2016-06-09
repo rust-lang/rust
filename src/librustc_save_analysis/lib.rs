@@ -465,11 +465,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Data> {
-        let def_map = self.tcx.def_map.borrow();
-        if !def_map.contains_key(&id) {
-            span_bug!(path.span, "def_map has no key for {} in visit_expr", id);
-        }
-        let def = def_map.get(&id).unwrap().full_def();
+        let def = self.tcx.expect_def(id);
         let sub_span = self.span_utils.span_for_last_ident(path.span);
         filter!(self.span_utils, sub_span, path.span, None);
         match def {
@@ -637,13 +633,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
-        if !self.tcx.def_map.borrow().contains_key(&ref_id) {
-            bug!("def_map has no key for {} in lookup_type_ref", ref_id);
-        }
-        let def = self.tcx.def_map.borrow().get(&ref_id).unwrap().full_def();
-        match def {
+        match self.tcx.expect_def(ref_id) {
             Def::PrimTy(_) | Def::SelfTy(..) => None,
-            _ => Some(def.def_id()),
+            def => Some(def.def_id()),
         }
     }
 

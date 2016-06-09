@@ -4125,7 +4125,7 @@ register_diagnostics! {
 //  E0239, // `next` method of `Iterator` trait has unexpected type
 //  E0240,
 //  E0241,
-    E0242, // internal error looking up a definition
+//  E0242,
     E0245, // not a trait
 //  E0246, // invalid recursive type
 //  E0247,

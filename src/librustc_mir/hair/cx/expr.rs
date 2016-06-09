@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use hair::*;
-use rustc_data_structures::fnv::FnvHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_const_math::ConstInt;
 use hair::cx::Cx;
@@ -20,7 +19,6 @@ use rustc::hir::def::Def;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval as const_eval;
 use rustc::middle::region::CodeExtent;
-use rustc::hir::pat_util;
 use rustc::ty::{self, VariantDef, Ty};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::mir::repr::*;
@@ -264,7 +262,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 let adt_data = if let hir::ExprPath(..) = fun.node {
                     // Tuple-like ADTs are represented as ExprCall. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def|{
-                        match cx.tcx.def_map.borrow()[&fun.id].full_def() {
+                        match cx.tcx.expect_def(fun.id) {
                             Def::Variant(_, variant_id) => {
                                 Some((adt_def, adt_def.variant_index_with_id(variant_id)))
                             },
@@ -472,7 +470,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     }
                 }
                 ty::TyEnum(adt, substs) => {
-                    match cx.tcx.def_map.borrow()[&expr.id].full_def() {
+                    match cx.tcx.expect_def(expr.id) {
                         Def::Variant(enum_id, variant_id) => {
                             debug_assert!(adt.did == enum_id);
                             assert!(base.is_none());
@@ -652,19 +650,8 @@ fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
 
 fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                arm: &'tcx hir::Arm) -> Arm<'tcx> {
-    let mut map;
-    let opt_map = if arm.pats.len() == 1 {
-        None
-    } else {
-        map = FnvHashMap();
-        pat_util::pat_bindings(&arm.pats[0], |_, p_id, _, path| {
-            map.insert(path.node, p_id);
-        });
-        Some(&map)
-    };
-
     Arm {
-        patterns: arm.pats.iter().map(|p| cx.refutable_pat(opt_map, p)).collect(),
+        patterns: arm.pats.iter().map(|p| cx.refutable_pat(p)).collect(),
         guard: arm.guard.to_ref(),
         body: arm.body.to_ref(),
     }
@@ -675,7 +662,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                      -> ExprKind<'tcx> {
     let substs = cx.tcx.node_id_item_substs(expr.id).substs;
     // Otherwise there may be def_map borrow conflicts
-    let def = cx.tcx.def_map.borrow()[&expr.id].full_def();
+    let def = cx.tcx.expect_def(expr.id);
     let def_id = match def {
         // A regular function.
         Def::Fn(def_id) | Def::Method(def_id) => def_id,
@@ -731,14 +718,9 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             id: node_id,
         },
 
-        def @ Def::Local(..) |
-        def @ Def::Upvar(..) => return convert_var(cx, expr, def),
+        Def::Local(..) | Def::Upvar(..) => return convert_var(cx, expr, def),
 
-        def =>
-            span_bug!(
-                expr.span,
-                "def `{:?}` not yet implemented",
-                def),
+        _ => span_bug!(expr.span, "def `{:?}` not yet implemented", def),
     };
     ExprKind::Literal {
         literal: Literal::Item { def_id: def_id, substs: substs }
@@ -1039,11 +1021,9 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
 fn loop_label<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                               expr: &'tcx hir::Expr) -> CodeExtent {
-    match cx.tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def()) {
-        Some(Def::Label(loop_id)) => cx.tcx.region_maps.node_extent(loop_id),
-        d => {
-            span_bug!(expr.span, "loop scope resolved to {:?}", d);
-        }
+    match cx.tcx.expect_def(expr.id) {
+        Def::Label(loop_id) => cx.tcx.region_maps.node_extent(loop_id),
+        d => span_bug!(expr.span, "loop scope resolved to {:?}", d),
     }
 }
 

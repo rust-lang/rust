@@ -297,8 +297,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // `def` must be its own statement and cannot be in the `match`
         // otherwise the `def_map` will be borrowed for the entire match instead
         // of just to get the `def` value
-        let def = ccx.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
-        match def {
+        match ccx.tcx().expect_def(expr.id) {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 if !ccx.tcx().tables.borrow().adjustments.contains_key(&expr.id) {
                     debug!("get_const_expr_as_global ({:?}): found const {:?}",
@@ -803,8 +802,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     _ => break,
                 }
             }
-            let opt_def = cx.tcx().def_map.borrow().get(&cur.id).map(|d| d.full_def());
-            if let Some(Def::Static(def_id, _)) = opt_def {
+            if let Some(Def::Static(def_id, _)) = cx.tcx().expect_def_or_none(cur.id) {
                 get_static(cx, def_id).val
             } else {
                 // If this isn't the address of a static, then keep going through
@@ -891,8 +889,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         },
         hir::ExprPath(..) => {
-            let def = cx.tcx().def_map.borrow().get(&e.id).unwrap().full_def();
-            match def {
+            match cx.tcx().expect_def(e.id) {
                 Def::Local(_, id) => {
                     if let Some(val) = fn_args.and_then(|args| args.get(&id).cloned()) {
                         val
@@ -937,9 +934,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     _ => break,
                 };
             }
-            let def = cx.tcx().def_map.borrow()[&callee.id].full_def();
             let arg_vals = map_list(args)?;
-            match def {
+            match cx.tcx().expect_def(callee.id) {
                 Def::Fn(did) | Def::Method(did) => {
                     const_fn_call(
                         cx,

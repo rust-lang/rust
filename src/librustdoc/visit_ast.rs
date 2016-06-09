@@ -241,7 +241,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Some(tcx) => tcx,
             None => return false
         };
-        let def = tcx.def_map.borrow()[&id];
+        let def = tcx.expect_def(id);
         let def_did = def.def_id();
 
         let use_attrs = tcx.map.attrs(id).clean(self.cx);
@@ -251,10 +251,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // reachable in documentation - a previously nonreachable item can be
         // made reachable by cross-crate inlining which we're checking here.
         // (this is done here because we need to know this upfront)
-        if !def.def_id().is_local() && !is_no_inline {
+        if !def_did.is_local() && !is_no_inline {
             let attrs = clean::inline::load_attrs(self.cx, tcx, def_did);
             let self_is_hidden = attrs.list("doc").has_word("hidden");
-            match def.base_def {
+            match def {
                 Def::Trait(did) |
                 Def::Struct(did) |
                 Def::Enum(did) |

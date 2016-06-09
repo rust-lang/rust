@@ -22,7 +22,7 @@ use dep_graph::{self, DepNode};
 use hir::map as ast_map;
 use middle;
 use middle::cstore::{self, LOCAL_CRATE};
-use hir::def::{self, Def, ExportMap};
+use hir::def::{Def, PathResolution, ExportMap};
 use hir::def_id::DefId;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
@@ -308,13 +308,11 @@ impl Visibility {
         match *visibility {
             hir::Public => Visibility::Public,
             hir::Visibility::Crate => Visibility::Restricted(ast::CRATE_NODE_ID),
-            hir::Visibility::Restricted { id, .. } => match tcx.def_map.borrow().get(&id) {
-                Some(resolution) => Visibility::Restricted({
-                    tcx.map.as_local_node_id(resolution.base_def.def_id()).unwrap()
-                }),
+            hir::Visibility::Restricted { id, .. } => match tcx.expect_def(id) {
                 // If there is no resolution, `resolve` will have already reported an error, so
                 // assume that the visibility is public to avoid reporting more privacy errors.
-                None => Visibility::Public,
+                Def::Err => Visibility::Public,
+                def => Visibility::Restricted(tcx.map.as_local_node_id(def.def_id()).unwrap()),
             },
             hir::Inherited => Visibility::Restricted(tcx.map.get_module_parent(id)),
         }
@@ -2249,34 +2247,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn resolve_expr(self, expr: &hir::Expr) -> Def {
-        match self.def_map.borrow().get(&expr.id) {
-            Some(def) => def.full_def(),
-            None => {
-                span_bug!(expr.span, "no def-map entry for expr {}", expr.id);
-            }
-        }
-    }
-
     pub fn expr_is_lval(self, expr: &hir::Expr) -> bool {
          match expr.node {
             hir::ExprPath(..) => {
-                // We can't use resolve_expr here, as this needs to run on broken
-                // programs. We don't need to through - associated items are all
-                // rvalues.
-                match self.def_map.borrow().get(&expr.id) {
-                    Some(&def::PathResolution {
-                        base_def: Def::Static(..), ..
-                    }) | Some(&def::PathResolution {
-                        base_def: Def::Upvar(..), ..
-                    }) | Some(&def::PathResolution {
-                        base_def: Def::Local(..), ..
-                    }) => {
-                        true
-                    }
-                    Some(&def::PathResolution { base_def: Def::Err, .. })=> true,
-                    Some(..) => false,
-                    None => span_bug!(expr.span, "no def for path {}", expr.id)
+                // This function can be used during type checking when not all paths are
+                // fully resolved. Partially resolved paths in expressions can only legally
+                // refer to associated items which are always rvalues.
+                match self.expect_resolution(expr.id).base_def {
+                    Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
+                    _ => false,
                 }
             }
 
@@ -2459,8 +2438,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn trait_ref_to_def_id(self, tr: &hir::TraitRef) -> DefId {
-        self.def_map.borrow().get(&tr.ref_id).expect("no def-map entry for trait").def_id()
+    /// Returns a path resolution for node id if it exists, panics otherwise.
+    pub fn expect_resolution(self, id: NodeId) -> PathResolution {
+        *self.def_map.borrow().get(&id).expect("no def-map entry for node id")
+    }
+
+    /// Returns a fully resolved definition for node id if it exists, panics otherwise.
+    pub fn expect_def(self, id: NodeId) -> Def {
+        self.expect_resolution(id).full_def()
+    }
+
+    /// Returns a fully resolved definition for node id if it exists, or none if no
+    /// definition exists, panics on partial resolutions to catch errors.
+    pub fn expect_def_or_none(self, id: NodeId) -> Option<Def> {
+        self.def_map.borrow().get(&id).map(|resolution| resolution.full_def())
     }
 
     pub fn def_key(self, id: DefId) -> ast_map::DefKey {

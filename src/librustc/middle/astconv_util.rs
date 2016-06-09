@@ -65,13 +65,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// to it.
     pub fn ast_ty_to_prim_ty(self, ast_ty: &ast::Ty) -> Option<Ty<'tcx>> {
         if let ast::TyPath(None, ref path) = ast_ty.node {
-            let def = match self.def_map.borrow().get(&ast_ty.id) {
-                None => {
-                    span_bug!(ast_ty.span, "unbound path {:?}", path)
-                }
-                Some(d) => d.full_def()
-            };
-            if let Def::PrimTy(nty) = def {
+            if let Def::PrimTy(nty) = self.expect_def(ast_ty.id) {
                 Some(self.prim_ty_to_ty(&path.segments, nty))
             } else {
                 None

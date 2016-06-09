@@ -445,7 +445,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       hir::ExprPath(..) => {
-        let def = ir.tcx.def_map.borrow().get(&expr.id).unwrap().full_def();
+        let def = ir.tcx.expect_def(expr.id);
         debug!("expr {}: path that leads to {:?}", expr.id, def);
         if let Def::Local(..) = def {
             ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -695,8 +695,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             Some(_) => {
                 // Refers to a labeled loop. Use the results of resolve
                 // to find with one
-                match self.ir.tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
-                    Some(Def::Label(loop_id)) => loop_id,
+                match self.ir.tcx.expect_def(id) {
+                    Def::Label(loop_id) => loop_id,
                     _ => span_bug!(sp, "label on break/loop \
                                         doesn't refer to a loop")
                 }
@@ -1269,7 +1269,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: u32)
                    -> LiveNode {
-        match self.ir.tcx.def_map.borrow().get(&expr.id).unwrap().full_def() {
+        match self.ir.tcx.expect_def(expr.id) {
           Def::Local(_, nid) => {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0 {
@@ -1534,9 +1534,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_lvalue(&mut self, expr: &Expr) {
         match expr.node {
             hir::ExprPath(..) => {
-                if let Def::Local(_, nid) = self.ir.tcx.def_map.borrow().get(&expr.id)
-                                                                      .unwrap()
-                                                                      .full_def() {
+                if let Def::Local(_, nid) = self.ir.tcx.expect_def(expr.id) {
                     // Assignment to an immutable variable or argument: only legal
                     // if there is no later assignment. If this local is actually
                     // mutable, then check for a reassignment to flag the mutability

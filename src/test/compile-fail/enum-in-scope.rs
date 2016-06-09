@@ -11,5 +11,5 @@
 struct hello(isize);
 
 fn main() {
-    let hello = 0; //~ERROR cannot be named the same
+    let hello = 0; //~ERROR let bindings cannot shadow structs
 }

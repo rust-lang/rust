@@ -734,7 +734,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     fn trait_def_id(&self, trait_ref: &hir::TraitRef) -> DefId {
         let path = &trait_ref.path;
-        match ::lookup_full_def(self.tcx(), path.span, trait_ref.ref_id) {
+        match self.tcx().expect_def(trait_ref.ref_id) {
             Def::Trait(trait_def_id) => trait_def_id,
             Def::Err => {
                 self.tcx().sess.fatal("cannot continue compilation due to previous error");
@@ -1064,12 +1064,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         match ty.node {
             hir::TyPath(None, ref path) => {
-                let def = match self.tcx().def_map.borrow().get(&ty.id) {
-                    Some(&def::PathResolution { base_def, depth: 0, .. }) => Some(base_def),
-                    _ => None
-                };
-                match def {
-                    Some(Def::Trait(trait_def_id)) => {
+                let resolution = self.tcx().expect_resolution(ty.id);
+                match resolution.base_def {
+                    Def::Trait(trait_def_id) if resolution.depth == 0 => {
                         let mut projection_bounds = Vec::new();
                         let trait_ref =
                             self.object_path_to_poly_trait_ref(rscope,
@@ -1721,17 +1718,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyPath(ref maybe_qself, ref path) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
-                let path_res = if let Some(&d) = tcx.def_map.borrow().get(&ast_ty.id) {
-                    d
-                } else if let Some(hir::QSelf { position: 0, .. }) = *maybe_qself {
-                    // Create some fake resolution that can't possibly be a type.
-                    def::PathResolution {
-                        base_def: Def::Mod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
-                        depth: path.segments.len()
-                    }
-                } else {
-                    span_bug!(ast_ty.span, "unbound path {:?}", ast_ty)
-                };
+                let path_res = tcx.expect_resolution(ast_ty.id);
                 let def = path_res.base_def;
                 let base_ty_end = path.segments.len() - path_res.depth;
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| {
@@ -1748,10 +1735,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
                 if path_res.depth != 0 && ty.sty != ty::TyError {
                     // Write back the new resolution.
-                    tcx.def_map.borrow_mut().insert(ast_ty.id, def::PathResolution {
-                        base_def: def,
-                        depth: 0
-                    });
+                    tcx.def_map.borrow_mut().insert(ast_ty.id, def::PathResolution::new(def));
                 }
 
                 ty
@@ -2232,7 +2216,7 @@ pub fn partition_bounds<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     for ast_bound in ast_bounds {
         match *ast_bound {
             hir::TraitTyParamBound(ref b, hir::TraitBoundModifier::None) => {
-                match ::lookup_full_def(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {
+                match tcx.expect_def(b.trait_ref.ref_id) {
                     Def::Trait(trait_did) => {
                         if tcx.try_add_builtin_trait(trait_did,
                                                      &mut builtin_bounds) {

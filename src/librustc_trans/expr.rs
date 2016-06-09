@@ -153,7 +153,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // have side effects. This seems to be reached through tuple struct constructors being
             // passed zero-size constants.
             if let hir::ExprPath(..) = expr.node {
-                match bcx.def(expr.id) {
+                match bcx.tcx().expect_def(expr.id) {
                     Def::Const(_) | Def::AssociatedConst(_) => {
                         assert!(type_is_zero_size(bcx.ccx(), bcx.tcx().node_id_to_type(expr.id)));
                         return bcx;
@@ -172,7 +172,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // `[x; N]` somewhere within.
             match expr.node {
                 hir::ExprPath(..) => {
-                    match bcx.def(expr.id) {
+                    match bcx.tcx().expect_def(expr.id) {
                         Def::Const(did) | Def::AssociatedConst(did) => {
                             let empty_substs = bcx.tcx().mk_substs(Substs::empty());
                             let const_expr = consts::get_const_expr(bcx.ccx(), did, expr,
@@ -651,7 +651,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans(bcx, &e)
         }
         hir::ExprPath(..) => {
-            let var = trans_var(bcx, bcx.def(expr.id));
+            let var = trans_var(bcx, bcx.tcx().expect_def(expr.id));
             DatumBlock::new(bcx, var.to_expr_datum())
         }
         hir::ExprField(ref base, name) => {
@@ -1073,7 +1073,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans_into(bcx, &e, dest)
         }
         hir::ExprPath(..) => {
-            trans_def_dps_unadjusted(bcx, expr, bcx.def(expr.id), dest)
+            trans_def_dps_unadjusted(bcx, expr, bcx.tcx().expect_def(expr.id), dest)
         }
         hir::ExprIf(ref cond, ref thn, ref els) => {
             controlflow::trans_if(bcx, expr.id, &cond, &thn, els.as_ref().map(|e| &**e), dest)
@@ -2373,7 +2373,7 @@ fn expr_kind<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, expr: &hir::Expr) -> ExprKin
 
     match expr.node {
         hir::ExprPath(..) => {
-            match tcx.resolve_expr(expr) {
+            match tcx.expect_def(expr.id) {
                 // Put functions and ctors with the ADTs, as they
                 // are zero-sized, so DPS is the cheapest option.
                 Def::Struct(..) | Def::Variant(..) |

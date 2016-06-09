@@ -532,17 +532,13 @@ fn is_param<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       -> bool
 {
     if let hir::TyPath(None, _) = ast_ty.node {
-        let path_res = *tcx.def_map.borrow().get(&ast_ty.id).unwrap();
+        let path_res = tcx.expect_resolution(ast_ty.id);
         match path_res.base_def {
-            Def::SelfTy(Some(def_id), None) => {
-                path_res.depth == 0 && def_id == tcx.map.local_def_id(param_id)
+            Def::SelfTy(Some(def_id), None) |
+            Def::TyParam(_, _, def_id, _) if path_res.depth == 0 => {
+                def_id == tcx.map.local_def_id(param_id)
             }
-            Def::TyParam(_, _, def_id, _) => {
-                path_res.depth == 0 && def_id == tcx.map.local_def_id(param_id)
-            }
-            _ => {
-                false
-            }
+            _ => false
         }
     } else {
         false
@@ -1719,7 +1715,7 @@ fn add_unsized_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
     match unbound {
         Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.
-            let trait_def_id = tcx.trait_ref_to_def_id(tpb);
+            let trait_def_id = tcx.expect_def(tpb.ref_id).def_id();
             match kind_id {
                 Ok(kind_id) if trait_def_id != kind_id => {
                     tcx.sess.span_warn(span,

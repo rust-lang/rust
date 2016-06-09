@@ -260,8 +260,7 @@ impl<'a, 'tcx> VariantInfo<'tcx> {
 
     /// Return the variant corresponding to a given node (e.g. expr)
     pub fn of_node(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>, id: ast::NodeId) -> Self {
-        let node_def = tcx.def_map.borrow().get(&id).map(|v| v.full_def());
-        Self::from_ty(tcx, ty, node_def)
+        Self::from_ty(tcx, ty, Some(tcx.expect_def(id)))
     }
 
     pub fn field_index(&self, name: ast::Name) -> usize {
@@ -654,15 +653,6 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
 
     pub fn node_id_to_string(&self, id: ast::NodeId) -> String {
         self.tcx().map.node_to_string(id).to_string()
-    }
-
-    pub fn def(&self, nid: ast::NodeId) -> Def {
-        match self.tcx().def_map.borrow().get(&nid) {
-            Some(v) => v.full_def(),
-            None => {
-                bug!("no def associated with node id {}", nid);
-            }
-        }
     }
 
     pub fn to_str(&self) -> String {

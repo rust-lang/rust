@@ -955,9 +955,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         debug!("walk_pat cmt_discr={:?} pat={:?}", cmt_discr,
                pat);
 
+        let tcx = &self.tcx();
         let mc = &self.mc;
         let infcx = self.mc.infcx;
-        let def_map = &self.tcx().def_map;
         let delegate = &mut self.delegate;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
             match pat.node {
@@ -972,8 +972,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
                     // Each match binding is effectively an assignment to the
                     // binding being produced.
-                    let def = def_map.borrow().get(&pat.id).unwrap().full_def();
-                    if let Ok(binding_cmt) = mc.cat_def(pat.id, pat.span, pat_ty, def) {
+                    if let Ok(binding_cmt) = mc.cat_def(pat.id, pat.span, pat_ty,
+                                                        tcx.expect_def(pat.id)) {
                         delegate.mutate(pat.id, pat.span, binding_cmt, MutateMode::Init);
                     }
 
@@ -1002,14 +1002,11 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // to the above loop's visit of than the bindings that form
         // the leaves of the pattern tree structure.
         return_if_err!(mc.cat_pattern(cmt_discr, pat, |mc, cmt_pat, pat| {
-            let def_map = def_map.borrow();
-            let tcx = infcx.tcx;
-
             match pat.node {
                 PatKind::Struct(..) | PatKind::TupleStruct(..) |
                 PatKind::Path(..) | PatKind::QPath(..) => {
-                    match def_map.get(&pat.id).map(|d| d.full_def()) {
-                        Some(Def::Variant(enum_did, variant_did)) => {
+                    match tcx.expect_def(pat.id) {
+                        Def::Variant(enum_did, variant_did) => {
                             let downcast_cmt =
                                 if tcx.lookup_adt_def(enum_did).is_univariant() {
                                     cmt_pat
@@ -1025,7 +1022,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                             delegate.matched_pat(pat, downcast_cmt, match_mode);
                         }
 
-                        Some(Def::Struct(..)) | Some(Def::TyAlias(..)) => {
+                        Def::Struct(..) | Def::TyAlias(..) => {
                             // A struct (in either the value or type
                             // namespace; we encounter the former on
                             // e.g. patterns for unit structs).
@@ -1037,8 +1034,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                             delegate.matched_pat(pat, cmt_pat, match_mode);
                         }
 
-                        Some(Def::Const(..)) |
-                        Some(Def::AssociatedConst(..)) => {
+                        Def::Const(..) | Def::AssociatedConst(..) => {
                             // This is a leaf (i.e. identifier binding
                             // or constant value to match); thus no
                             // `matched_pat` call.
