@@ -866,7 +866,7 @@ impl<'a> LoweringContext<'a> {
                 PatKind::Wild => hir::PatKind::Wild,
                 PatKind::Ident(ref binding_mode, pth1, ref sub) => {
                     self.with_parent_def(p.id, |this| {
-                        match this.resolver.get_resolution(p.id).map(|d| d.full_def()) {
+                        match this.resolver.get_resolution(p.id).map(|d| d.base_def) {
                             // `None` can occur in body-less function signatures
                             None | Some(Def::Local(..)) => {
                                 hir::PatKind::Binding(this.lower_binding_mode(binding_mode),
@@ -1238,14 +1238,10 @@ impl<'a> LoweringContext<'a> {
                             position: position,
                         }
                     });
-                    let rename = if path.segments.len() == 1 {
-                        // Only local variables are renamed
-                        match self.resolver.get_resolution(e.id).map(|d| d.full_def()) {
-                            Some(Def::Local(..)) | Some(Def::Upvar(..)) => true,
-                            _ => false,
-                        }
-                    } else {
-                        false
+                    // Only local variables are renamed
+                    let rename = match self.resolver.get_resolution(e.id).map(|d| d.base_def) {
+                        Some(Def::Local(..)) | Some(Def::Upvar(..)) => true,
+                        _ => false,
                     };
                     hir::ExprPath(hir_qself, self.lower_path_full(path, rename))
                 }

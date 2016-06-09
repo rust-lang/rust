@@ -27,7 +27,7 @@ impl S {
 
 fn main() {
     match 10 {
-        <S as Tr>::A::f::<u8> => {} //~ ERROR `f` is not an associated const
+        <S as Tr>::A::f::<u8> => {} //~ ERROR associated items in match patterns must be constants
         0 ... <S as Tr>::A::f::<u8> => {} //~ ERROR only char and numeric types are allowed in range
     }
 }

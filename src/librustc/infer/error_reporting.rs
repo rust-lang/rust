@@ -1357,17 +1357,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                     ty_queue.push(&mut_ty.ty);
                 }
                 hir::TyPath(ref maybe_qself, ref path) => {
-                    let a_def = match self.tcx.def_map.borrow().get(&cur_ty.id) {
-                        None => {
-                            self.tcx
-                                .sess
-                                .fatal(&format!(
-                                        "unbound path {}",
-                                        pprust::path_to_string(path)))
-                        }
-                        Some(d) => d.full_def()
-                    };
-                    match a_def {
+                    match self.tcx.expect_def(cur_ty.id) {
                         Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) => {
                             let generics = self.tcx.lookup_item_type(did).generics;
 

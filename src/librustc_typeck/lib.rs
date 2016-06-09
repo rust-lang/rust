@@ -103,7 +103,6 @@ pub use rustc::util;
 
 use dep_graph::DepNode;
 use hir::map as hir_map;
-use hir::def::Def;
 use rustc::infer::TypeOrigin;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -173,15 +172,6 @@ fn write_substs_to_tcx<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         assert!(!item_substs.substs.types.needs_infer());
 
         ccx.tcx.tables.borrow_mut().item_substs.insert(node_id, item_substs);
-    }
-}
-
-fn lookup_full_def(tcx: TyCtxt, sp: Span, id: ast::NodeId) -> Def {
-    match tcx.def_map.borrow().get(&id) {
-        Some(x) => x.full_def(),
-        None => {
-            span_fatal!(tcx.sess, sp, E0242, "internal error looking up a definition")
-        }
     }
 }
 

@@ -574,8 +574,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             return *self.loop_scopes.last().unwrap();
         }
 
-        match self.tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def()) {
-            Some(Def::Label(loop_id)) => {
+        match self.tcx.expect_def(expr.id) {
+            Def::Label(loop_id) => {
                 for l in &self.loop_scopes {
                     if l.loop_id == loop_id {
                         return *l;

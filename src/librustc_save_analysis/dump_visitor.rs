@@ -269,14 +269,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
     // looks up anything, not just a type
     fn lookup_type_ref(&self, ref_id: NodeId) -> Option<DefId> {
-        if !self.tcx.def_map.borrow().contains_key(&ref_id) {
-            bug!("def_map has no key for {} in lookup_type_ref", ref_id);
-        }
-        let def = self.tcx.def_map.borrow().get(&ref_id).unwrap().full_def();
-        match def {
+        match self.tcx.expect_def(ref_id) {
             Def::PrimTy(..) => None,
             Def::SelfTy(..) => None,
-            _ => Some(def.def_id()),
+            def => Some(def.def_id()),
         }
     }
 
@@ -290,13 +286,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             return;
         }
 
-        let def_map = self.tcx.def_map.borrow();
-        if !def_map.contains_key(&ref_id) {
-            span_bug!(span,
-                      "def_map has no key for {} in lookup_def_kind",
-                      ref_id);
-        }
-        let def = def_map.get(&ref_id).unwrap().full_def();
+        let def = self.tcx.expect_def(ref_id);
         match def {
             Def::Mod(_) |
             Def::ForeignMod(_) => {
@@ -853,9 +843,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
 
         // Modules or types in the path prefix.
-        let def_map = self.tcx.def_map.borrow();
-        let def = def_map.get(&id).unwrap().full_def();
-        match def {
+        match self.tcx.expect_def(id) {
             Def::Method(did) => {
                 let ti = self.tcx.impl_or_trait_item(did);
                 if let ty::MethodTraitItem(m) = ti {
@@ -924,8 +912,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             PatKind::Struct(ref path, ref fields, _) => {
                 visit::walk_path(self, path);
                 let adt = self.tcx.node_id_to_type(p.id).ty_adt_def().unwrap();
-                let def = self.tcx.def_map.borrow()[&p.id].full_def();
-                let variant = adt.variant_of_def(def);
+                let variant = adt.variant_of_def(self.tcx.expect_def(p.id));
 
                 for &Spanned { node: ref field, span } in fields {
                     let sub_span = self.span.span_for_first_ident(span);
@@ -1269,7 +1256,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
                 let hir_expr = self.save_ctxt.tcx.map.expect_expr(ex.id);
                 let adt = self.tcx.expr_ty(&hir_expr).ty_adt_def().unwrap();
-                let def = self.tcx.resolve_expr(&hir_expr);
+                let def = self.tcx.expect_def(hir_expr.id);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_def(def), base)
             }
             ast::ExprKind::MethodCall(_, _, ref args) => self.process_method_call(ex, args),
@@ -1366,12 +1353,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
 
         // process collected paths
         for &(id, ref p, immut, ref_kind) in &collector.collected_paths {
-            let def_map = self.tcx.def_map.borrow();
-            if !def_map.contains_key(&id) {
-                span_bug!(p.span, "def_map has no key for {} in visit_arm", id);
-            }
-            let def = def_map.get(&id).unwrap().full_def();
-            match def {
+            match self.tcx.expect_def(id) {
                 Def::Local(_, id) => {
                     let value = if immut == ast::Mutability::Immutable {
                         self.span.snippet(p.span).to_string()
@@ -1401,8 +1383,8 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                 Def::Static(_, _) |
                 Def::Const(..) |
                 Def::AssociatedConst(..) => {}
-                _ => error!("unexpected definition kind when processing collected paths: {:?}",
-                            def),
+                def => error!("unexpected definition kind when processing collected paths: {:?}",
+                              def),
             }
         }
 

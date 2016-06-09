@@ -499,38 +499,36 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
         hir::ExprPath(..) => {
-            let def = v.tcx.def_map.borrow().get(&e.id).map(|d| d.full_def());
-            match def {
-                Some(Def::Variant(..)) => {
+            match v.tcx.expect_def(e.id) {
+                Def::Variant(..) => {
                     // Count the discriminator or function pointer.
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                 }
-                Some(Def::Struct(..)) => {
+                Def::Struct(..) => {
                     if let ty::TyFnDef(..) = node_ty.sty {
                         // Count the function pointer.
                         v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                     }
                 }
-                Some(Def::Fn(..)) | Some(Def::Method(..)) => {
+                Def::Fn(..) | Def::Method(..) => {
                     // Count the function pointer.
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                 }
-                Some(Def::Static(..)) => {
+                Def::Static(..) => {
                     match v.mode {
                         Mode::Static | Mode::StaticMut => {}
                         Mode::Const | Mode::ConstFn => {}
                         Mode::Var => v.add_qualif(ConstQualif::NOT_CONST)
                     }
                 }
-                Some(Def::Const(did)) |
-                Some(Def::AssociatedConst(did)) => {
+                Def::Const(did) | Def::AssociatedConst(did) => {
                     let substs = Some(v.tcx.node_id_item_substs(e.id).substs);
                     if let Some((expr, _)) = lookup_const_by_id(v.tcx, did, substs) {
                         let inner = v.global_expr(Mode::Const, expr);
                         v.add_qualif(inner);
                     }
                 }
-                Some(Def::Local(..)) if v.mode == Mode::ConstFn => {
+                Def::Local(..) if v.mode == Mode::ConstFn => {
                     // Sadly, we can't determine whether the types are zero-sized.
                     v.add_qualif(ConstQualif::NOT_CONST | ConstQualif::NON_ZERO_SIZED);
                 }
@@ -550,8 +548,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                     _ => break
                 };
             }
-            let def = v.tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def());
-            let is_const = match def {
+            // The callee is an arbitrary expression, it doesn't necessarily have a definition.
+            let is_const = match v.tcx.expect_def_or_none(callee.id) {
                 Some(Def::Struct(..)) => true,
                 Some(Def::Variant(..)) => {
                     // Count the discriminator.
@@ -586,8 +584,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
         hir::ExprStruct(..) => {
-            let did = v.tcx.def_map.borrow().get(&e.id).map(|def| def.def_id());
-            if did == v.tcx.lang_items.unsafe_cell_type() {
+            // unsafe_cell_type doesn't necessarily exist with no_core
+            if Some(v.tcx.expect_def(e.id).def_id()) == v.tcx.lang_items.unsafe_cell_type() {
                 v.add_qualif(ConstQualif::MUTABLE_MEM);
             }
         }

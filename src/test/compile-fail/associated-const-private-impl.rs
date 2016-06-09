@@ -23,5 +23,5 @@ mod bar1 {
 
 fn main() {
     assert_eq!(1, bar1::Foo::ID);
-    //~^ERROR associated const `ID` is private
+    //~^ERROR associated constant `ID` is private
 }

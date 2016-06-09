@@ -12,6 +12,6 @@ mod foo { pub struct bar; }
 
 fn main() {
     let bar = 5;
-    //~^ ERROR cannot be named the same
+    //~^ ERROR let bindings cannot shadow structs
     use foo::bar;
 }
