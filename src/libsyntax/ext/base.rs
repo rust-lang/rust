@@ -536,6 +536,17 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders
 }
 
+pub trait MacroLoader {
+    fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<ast::MacroDef>;
+}
+
+pub struct DummyMacroLoader;
+impl MacroLoader for DummyMacroLoader {
+    fn load_crate(&mut self, _: &ast::Item, _: bool) -> Vec<ast::MacroDef> {
+        Vec::new()
+    }
+}
+
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the backtrace()
 /// -> expn_info of their expansion context stored into their span.
@@ -546,6 +557,7 @@ pub struct ExtCtxt<'a> {
     pub ecfg: expand::ExpansionConfig<'a>,
     pub crate_root: Option<&'static str>,
     pub feature_gated_cfgs: &'a mut Vec<GatedCfgAttr>,
+    pub loader: &'a mut MacroLoader,
 
     pub mod_path: Vec<ast::Ident> ,
     pub exported_macros: Vec<ast::MacroDef>,
@@ -561,7 +573,9 @@ pub struct ExtCtxt<'a> {
 impl<'a> ExtCtxt<'a> {
     pub fn new(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
                ecfg: expand::ExpansionConfig<'a>,
-               feature_gated_cfgs: &'a mut Vec<GatedCfgAttr>) -> ExtCtxt<'a> {
+               feature_gated_cfgs: &'a mut Vec<GatedCfgAttr>,
+               loader: &'a mut MacroLoader)
+               -> ExtCtxt<'a> {
         let env = initial_syntax_expander_table(&ecfg);
         ExtCtxt {
             parse_sess: parse_sess,
@@ -572,6 +586,7 @@ impl<'a> ExtCtxt<'a> {
             crate_root: None,
             feature_gated_cfgs: feature_gated_cfgs,
             exported_macros: Vec::new(),
+            loader: loader,
             syntax_env: env,
             recursion_count: 0,
 
@@ -924,5 +939,11 @@ impl SyntaxEnv {
     pub fn info(&mut self) -> &mut BlockInfo {
         let last_chain_index = self.chain.len() - 1;
         &mut self.chain[last_chain_index].info
+    }
+
+    pub fn is_crate_root(&mut self) -> bool {
+        // The first frame is pushed in `SyntaxEnv::new()` and the second frame is
+        // pushed when folding the crate root pseudo-module (c.f. noop_fold_crate).
+        self.chain.len() == 2
     }
 }
