@@ -873,12 +873,6 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     // Return the visibility of the type alias's least visible component type when substituted
     fn substituted_alias_visibility(&self, item: &hir::Item, path: &hir::Path)
                                     -> Option<ty::Visibility> {
-        // We substitute type aliases only when determining impl publicity
-        // FIXME: This will probably change and all type aliases will be substituted,
-        // requires an amendment to RFC 136.
-        if self.required_visibility != ty::Visibility::PrivateExternal {
-            return None;
-        }
         // Type alias is considered public if the aliased type is
         // public, even if the type alias itself is private. So, something
         // like `type A = u8; pub fn f() -> A {...}` doesn't cause an error.
