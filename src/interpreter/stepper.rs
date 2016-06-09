@@ -8,7 +8,7 @@ use super::{
 };
 use error::EvalResult;
 use rustc::mir::repr as mir;
-use rustc::ty::subst::{self, Subst};
+use rustc::ty::subst;
 use rustc::hir::def_id::DefId;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use syntax::codemap::Span;
@@ -151,9 +151,10 @@ impl<'a, 'b, 'mir, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'mir, 'tcx>
             // already computed by rustc
             mir::Literal::Value { .. } => {}
             mir::Literal::Item { def_id, substs } => {
-                let item_ty = self.gecx.tcx.lookup_item_type(def_id).subst(self.gecx.tcx, substs);
-                if item_ty.ty.is_fn() {
-                    // unimplemented
+                if constant.ty.is_fn() {
+                    // No need to do anything here, even if function pointers are implemented,
+                    // because the type is the actual function, not the signature of the function.
+                    // Thus we can simply create a zero sized allocation in `evaluate_operand`
                 } else {
                     self.static_item(def_id, substs, constant.span);
                 }

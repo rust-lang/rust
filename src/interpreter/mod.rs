@@ -1184,13 +1184,12 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         use rustc::mir::repr::Operand::*;
         match *op {
             Consume(ref lvalue) => Ok(self.eval_lvalue(lvalue)?.to_ptr()),
-            Constant(mir::Constant { ref literal, .. }) => {
+            Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal::*;
                 match *literal {
                     Value { ref value } => Ok(self.const_to_ptr(value)?),
                     Item { def_id, substs } => {
-                        let item_ty = self.tcx.lookup_item_type(def_id).subst(self.tcx, substs);
-                        if item_ty.ty.is_fn() {
+                        if ty.is_fn() {
                             Err(EvalError::Unimplemented("unimplemented: mentions of function items".to_string()))
                         } else {
                             let cid = ConstantId {
