@@ -190,9 +190,13 @@ impl<'a, 'tcx> TransItem<'tcx> {
             }) => {
                 let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
                 llvm::SetLinkage(lldecl, linkage);
-                attributes::from_fn_attrs(ccx, attrs, lldecl);
                 base::set_link_section(ccx, lldecl, attrs);
+                if linkage == llvm::LinkOnceODRLinkage ||
+                   linkage == llvm::WeakODRLinkage {
+                    llvm::SetUniqueComdat(ccx.llmod(), lldecl);
+                }
 
+                attributes::from_fn_attrs(ccx, attrs, lldecl);
                 ccx.instances().borrow_mut().insert(instance, lldecl);
             }
             _ => bug!("Invalid item for TransItem::Fn: `{:?}`", map_node)
@@ -223,6 +227,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert!(declare::get_defined_value(ccx, symbol_name).is_none());
         let llfn = declare::declare_cfn(ccx, symbol_name, llfnty);
         llvm::SetLinkage(llfn, linkage);
+        if linkage == llvm::LinkOnceODRLinkage ||
+           linkage == llvm::WeakODRLinkage {
+            llvm::SetUniqueComdat(ccx.llmod(), llfn);
+        }
         attributes::set_frame_pointer_elimination(ccx, llfn);
         ccx.drop_glues().borrow_mut().insert(dg, (llfn, fn_ty));
     }
