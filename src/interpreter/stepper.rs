@@ -12,16 +12,12 @@ use rustc::mir::visit::{Visitor, LvalueContext};
 use syntax::codemap::Span;
 use std::rc::Rc;
 
-struct Stepper<'fncx, 'a: 'fncx, 'tcx: 'a>{
+pub(super) struct Stepper<'fncx, 'a: 'fncx, 'tcx: 'a>{
     gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>,
 }
 
-pub fn step<'fncx, 'a: 'fncx, 'tcx: 'a>(gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>) -> EvalResult<bool> {
-    Stepper::new(gecx).step()
-}
-
 impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
-    fn new(gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>) -> Self {
+    pub(super) fn new(gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>) -> Self {
         Stepper {
             gecx: gecx,
         }
@@ -47,7 +43,7 @@ impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
     }
 
     // returns true as long as there are more things to do
-    fn step(&mut self) -> EvalResult<bool> {
+    pub(super) fn step(&mut self) -> EvalResult<bool> {
         if self.gecx.stack.is_empty() {
             return Ok(false);
         }

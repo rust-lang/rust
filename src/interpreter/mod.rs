@@ -24,6 +24,10 @@ use std::collections::HashMap;
 
 mod stepper;
 
+pub fn step<'fncx, 'a: 'fncx, 'tcx: 'a>(gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>) -> EvalResult<bool> {
+    stepper::Stepper::new(gecx).step()
+}
+
 pub struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -45,38 +49,38 @@ pub struct GlobalEvalContext<'a, 'tcx: 'a> {
 }
 
 /// A stack frame.
-struct Frame<'a, 'tcx: 'a> {
+pub struct Frame<'a, 'tcx: 'a> {
     /// The def_id of the current function
-    def_id: DefId,
+    pub def_id: DefId,
 
     /// The span of the call site
-    span: codemap::Span,
+    pub span: codemap::Span,
 
     /// type substitutions for the current function invocation
-    substs: &'tcx Substs<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
 
     /// The MIR for the function called on this frame.
-    mir: CachedMir<'a, 'tcx>,
+    pub mir: CachedMir<'a, 'tcx>,
 
     /// The block that is currently executed (or will be executed after the above call stacks return)
-    next_block: mir::BasicBlock,
+    pub next_block: mir::BasicBlock,
 
     /// A pointer for writing the return value of the current call if it's not a diverging call.
-    return_ptr: Option<Pointer>,
+    pub return_ptr: Option<Pointer>,
 
     /// The list of locals for the current function, stored in order as
     /// `[arguments..., variables..., temporaries...]`. The variables begin at `self.var_offset`
     /// and the temporaries at `self.temp_offset`.
-    locals: Vec<Pointer>,
+    pub locals: Vec<Pointer>,
 
     /// The offset of the first variable in `self.locals`.
-    var_offset: usize,
+    pub var_offset: usize,
 
     /// The offset of the first temporary in `self.locals`.
-    temp_offset: usize,
+    pub temp_offset: usize,
 
     /// The index of the currently evaluated statment
-    stmt: usize,
+    pub stmt: usize,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -94,7 +98,7 @@ enum LvalueExtra {
 }
 
 #[derive(Clone)]
-enum CachedMir<'mir, 'tcx: 'mir> {
+pub enum CachedMir<'mir, 'tcx: 'mir> {
     Ref(&'mir mir::Mir<'tcx>),
     Owned(Rc<mir::Mir<'tcx>>)
 }
@@ -120,7 +124,7 @@ enum ConstantKind {
 }
 
 impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
         GlobalEvalContext {
             tcx: tcx,
             mir_map: mir_map,
@@ -135,7 +139,7 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
         }
     }
 
-    fn alloc_ret_ptr(&mut self, output_ty: ty::FnOutput<'tcx>, substs: &'tcx Substs<'tcx>) -> Option<Pointer> {
+    pub fn alloc_ret_ptr(&mut self, output_ty: ty::FnOutput<'tcx>, substs: &'tcx Substs<'tcx>) -> Option<Pointer> {
         match output_ty {
             ty::FnConverging(ty) => {
                 let size = self.type_size(ty, substs);
@@ -143,6 +147,14 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
             }
             ty::FnDiverging => None,
         }
+    }
+
+    pub fn memory(&self) -> &Memory {
+        &self.memory
+    }
+
+    pub fn stack(&self) -> &[Frame] {
+        &self.stack
     }
 
     // TODO(solson): Try making const_to_primval instead.
@@ -308,34 +320,7 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
         })
     }
 
-    #[inline(never)]
-    #[cold]
-    fn report(&self, e: EvalError) {
-        let stmt = self.frame().stmt;
-        let block = self.basic_block();
-        let span = if stmt < block.statements.len() {
-            block.statements[stmt].span
-        } else {
-            block.terminator().span
-        };
-        let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
-        for &Frame{ def_id, substs, span, .. } in self.stack.iter().rev() {
-            // FIXME(solson): Find a way to do this without this Display impl hack.
-            use rustc::util::ppaux;
-            use std::fmt;
-            struct Instance<'tcx>(DefId, &'tcx Substs<'tcx>);
-            impl<'tcx> fmt::Display for Instance<'tcx> {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[],
-                        |tcx| tcx.lookup_item_type(self.0).generics)
-                }
-            }
-            err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
-        }
-        err.emit();
-    }
-
-    fn push_stack_frame(&mut self, def_id: DefId, span: codemap::Span, mir: CachedMir<'a, 'tcx>, substs: &'tcx Substs<'tcx>,
+    pub fn push_stack_frame(&mut self, def_id: DefId, span: codemap::Span, mir: CachedMir<'a, 'tcx>, substs: &'tcx Substs<'tcx>,
         return_ptr: Option<Pointer>)
     {
         let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
@@ -1383,48 +1368,6 @@ pub fn get_impl_method<'a, 'tcx>(
         }
         None => {
             bug!("method {:?} not found in {:?}", name, impl_def_id)
-        }
-    }
-}
-
-pub fn interpret_start_points<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir_map: &MirMap<'tcx>,
-) {
-    let initial_indentation = ::log_settings::settings().indentation;
-    for (&id, mir) in &mir_map.map {
-        for attr in tcx.map.attrs(id) {
-            use syntax::attr::AttrMetaMethods;
-            if attr.check_name("miri_run") {
-                let item = tcx.map.expect_item(id);
-
-                ::log_settings::settings().indentation = initial_indentation;
-
-                debug!("Interpreting: {}", item.name);
-
-                let mut gecx = GlobalEvalContext::new(tcx, mir_map);
-                let substs = tcx.mk_substs(subst::Substs::empty());
-                let return_ptr = gecx.alloc_ret_ptr(mir.return_ty, substs);
-
-                gecx.push_stack_frame(tcx.map.local_def_id(id), mir.span, CachedMir::Ref(mir), substs, return_ptr);
-
-                loop { match (stepper::step(&mut gecx), return_ptr) {
-                    (Ok(true), _) => {},
-                    (Ok(false), Some(ptr)) => if log_enabled!(::log::LogLevel::Debug) {
-                        gecx.memory.dump(ptr.alloc_id);
-                        break;
-                    },
-                    (Ok(false), None) => {
-                        warn!("diverging function returned");
-                        break;
-                    },
-                    // FIXME: diverging functions can end up here in some future miri
-                    (Err(e), _) => {
-                        gecx.report(e);
-                        break;
-                    },
-                } }
-            }
         }
     }
 }

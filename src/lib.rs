@@ -20,6 +20,20 @@ extern crate log_settings;
 extern crate byteorder;
 
 mod error;
-pub mod interpreter;
+mod interpreter;
 mod memory;
 mod primval;
+
+pub use error::{
+    EvalError,
+    EvalResult,
+};
+
+pub use interpreter::{
+    GlobalEvalContext,
+    step,
+    Frame,
+    CachedMir,
+};
+
+pub use memory::Memory;
