@@ -185,6 +185,9 @@ pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod) {
 }
 
 pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
+    for attr in local.attrs.as_attr_slice() {
+        visitor.visit_attribute(attr);
+    }
     visitor.visit_pat(&local.pat);
     walk_list!(visitor, visit_ty, &local.ty);
     walk_list!(visitor, visit_expr, &local.init);
@@ -635,6 +638,9 @@ pub fn walk_mac<'v, V: Visitor<'v>>(_: &mut V, _: &'v Mac) {
 }
 
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
+    for attr in expression.attrs.as_attr_slice() {
+        visitor.visit_attribute(attr);
+    }
     match expression.node {
         ExprKind::Box(ref subexpression) => {
             visitor.visit_expr(subexpression)
