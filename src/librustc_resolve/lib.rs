@@ -2309,7 +2309,7 @@ impl<'a> Resolver<'a> {
                                 );
                                 err_path_resolution()
                             }
-                            Def::Local(..) | Def::Upvar(..) | Def::Fn(..) | Def::Err => {
+                            Def::Local(..) | Def::Upvar(..) | Def::Fn(..) => {
                                 // These entities are explicitly allowed
                                 // to be shadowed by fresh bindings.
                                 self.fresh_binding(ident, pat.id, outer_pat_id,
@@ -2331,7 +2331,7 @@ impl<'a> Resolver<'a> {
                 PatKind::TupleStruct(ref path, _, _) => {
                     self.resolve_pattern_path(pat.id, None, path, ValueNS, |def| {
                         match def {
-                            Def::Struct(..) | Def::Variant(..) | Def::Err => true,
+                            Def::Struct(..) | Def::Variant(..) => true,
                             _ => false,
                         }
                     }, "variant or struct");
@@ -2341,7 +2341,7 @@ impl<'a> Resolver<'a> {
                     self.resolve_pattern_path(pat.id, qself.as_ref(), path, ValueNS, |def| {
                         match def {
                             Def::Struct(..) | Def::Variant(..) |
-                            Def::Const(..) | Def::AssociatedConst(..) | Def::Err => true,
+                            Def::Const(..) | Def::AssociatedConst(..) => true,
                             _ => false,
                         }
                     }, "variant, struct or constant");
@@ -2351,7 +2351,7 @@ impl<'a> Resolver<'a> {
                     self.resolve_pattern_path(pat.id, None, path, TypeNS, |def| {
                         match def {
                             Def::Struct(..) | Def::Variant(..) |
-                            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::Err => true,
+                            Def::TyAlias(..) | Def::AssociatedTy(..) => true,
                             _ => false,
                         }
                     }, "variant, struct or type alias");
@@ -2482,7 +2482,7 @@ impl<'a> Resolver<'a> {
                           record_used: bool)
                           -> Option<LocalDef> {
         if identifier.name == keywords::Invalid.name() {
-            return Some(LocalDef::from_def(Def::Err));
+            return None;
         }
 
         self.resolve_ident_in_lexical_scope(identifier, namespace, record_used)
