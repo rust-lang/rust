@@ -14,6 +14,7 @@ use feature_gate::GatedCfgAttr;
 use fold::Folder;
 use {ast, fold, attr};
 use codemap::{Spanned, respan};
+use parse::token;
 use ptr::P;
 
 use util::small_vector::SmallVector;
@@ -246,6 +247,12 @@ impl<T: CfgFolder> fold::Folder for T {
     fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVector<ast::TraitItem> {
         self.configure(item).map(|item| fold::noop_fold_trait_item(item, self))
                             .unwrap_or(SmallVector::zero())
+    }
+
+    fn fold_interpolated(&mut self, nt: token::Nonterminal) -> token::Nonterminal {
+        // Don't configure interpolated AST (c.f. #34171).
+        // Interpolated AST will get configured once the surrounding tokens are parsed.
+        nt
     }
 }
 
