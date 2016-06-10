@@ -24,7 +24,7 @@ use std::collections::HashMap;
 
 mod stepper;
 
-struct GlobalEvalContext<'a, 'tcx: 'a> {
+pub struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
@@ -333,12 +333,6 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
             err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
         }
         err.emit();
-    }
-
-    fn run(&mut self) -> EvalResult<()> {
-        let mut stepper = stepper::Stepper::new(self);
-        while stepper.step()? {}
-        Ok(())
     }
 
     fn push_stack_frame(&mut self, def_id: DefId, span: codemap::Span, mir: CachedMir<'a, 'tcx>, substs: &'tcx Substs<'tcx>,
@@ -1414,14 +1408,22 @@ pub fn interpret_start_points<'a, 'tcx>(
 
                 gecx.push_stack_frame(tcx.map.local_def_id(id), mir.span, CachedMir::Ref(mir), substs, return_ptr);
 
-                match (gecx.run(), return_ptr) {
-                    (Ok(()), Some(ptr)) => if log_enabled!(::log::LogLevel::Debug) {
+                loop { match (stepper::step(&mut gecx), return_ptr) {
+                    (Ok(true), _) => {},
+                    (Ok(false), Some(ptr)) => if log_enabled!(::log::LogLevel::Debug) {
                         gecx.memory.dump(ptr.alloc_id);
+                        break;
                     },
-                    (Ok(()), None) => warn!("diverging function returned"),
+                    (Ok(false), None) => {
+                        warn!("diverging function returned");
+                        break;
+                    },
                     // FIXME: diverging functions can end up here in some future miri
-                    (Err(e), _) => gecx.report(e),
-                }
+                    (Err(e), _) => {
+                        gecx.report(e);
+                        break;
+                    },
+                } }
             }
         }
     }
