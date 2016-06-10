@@ -256,8 +256,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
     pub fn requests_inline(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         match *self {
             TransItem::Fn(ref instance) => {
-                let attributes = tcx.get_attrs(instance.def);
-                attr::requests_inline(&attributes[..])
+                !instance.substs.types.is_empty() || {
+                    let attributes = tcx.get_attrs(instance.def);
+                    attr::requests_inline(&attributes[..])
+                }
             }
             TransItem::DropGlue(..) => true,
             TransItem::Static(..)   => false,
@@ -272,9 +274,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn is_lazily_instantiated(&self) -> bool {
+    pub fn is_instantiated_only_on_demand(&self) -> bool {
         match *self {
-            TransItem::Fn(ref instance) => !instance.substs.types.is_empty(),
+            TransItem::Fn(ref instance) => !instance.def.is_local() ||
+                                           !instance.substs.types.is_empty(),
             TransItem::DropGlue(..) => true,
             TransItem::Static(..)   => false,
         }

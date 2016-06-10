@@ -58,7 +58,7 @@ mod mod3 {
 
 // Make sure the two generic functions from the extern crate get instantiated
 // privately in every module they are use in.
-//~ TRANS_ITEM fn cgu_generic_function::foo[0]<&str> @@ extern_generic[OnceODR] extern_generic-mod1[OnceODR] extern_generic-mod2[OnceODR] extern_generic-mod1-mod1[OnceODR]
-//~ TRANS_ITEM fn cgu_generic_function::bar[0]<&str> @@ extern_generic[OnceODR] extern_generic-mod1[OnceODR] extern_generic-mod2[OnceODR] extern_generic-mod1-mod1[OnceODR]
+//~ TRANS_ITEM fn cgu_generic_function::foo[0]<&str> @@ extern_generic[Internal] extern_generic-mod1[Internal] extern_generic-mod2[Internal] extern_generic-mod1-mod1[Internal]
+//~ TRANS_ITEM fn cgu_generic_function::bar[0]<&str> @@ extern_generic[Internal] extern_generic-mod1[Internal] extern_generic-mod2[Internal] extern_generic-mod1-mod1[Internal]
 
 //~ TRANS_ITEM drop-glue i8

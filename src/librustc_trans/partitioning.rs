@@ -265,15 +265,11 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut codegen_units = FnvHashMap();
 
     for trans_item in trans_items {
-        let is_root = match trans_item {
-            TransItem::Static(..) => true,
-            TransItem::DropGlue(..) => false,
-            TransItem::Fn(_) => !trans_item.is_from_extern_crate(),
-        };
+        let is_root = !trans_item.is_instantiated_only_on_demand();
 
         if is_root {
             let characteristic_def_id = characteristic_def_id_of_trans_item(tcx, trans_item);
-            let is_volatile = trans_item.is_lazily_instantiated();
+            let is_volatile = trans_item.is_generic_fn();
 
             let codegen_unit_name = match characteristic_def_id {
                 Some(def_id) => compute_codegen_unit_name(tcx, def_id, is_volatile),
@@ -304,9 +300,9 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 // it might be used in another codegen unit.
                                 llvm::ExternalLinkage
                             } else {
-                                // Monomorphizations of generic functions are
-                                // always weak-odr
-                                llvm::WeakODRLinkage
+                                // In the current setup, generic functions cannot
+                                // be roots.
+                                unreachable!()
                             }
                         }
                     }
@@ -395,25 +391,30 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
             if let Some(linkage) = codegen_unit.items.get(&trans_item) {
                 // This is a root, just copy it over
                 new_codegen_unit.items.insert(trans_item, *linkage);
+            } else if initial_partitioning.roots.contains(&trans_item) {
+                // This item will be instantiated in some other codegen unit,
+                // so we just add it here with AvailableExternallyLinkage
+                // FIXME(mw): I have not seen it happening yet but having
+                //            available_externally here could potentially lead
+                //            to the same problem with exception handling tables
+                //            as in the case below.
+                new_codegen_unit.items.insert(trans_item,
+                                              llvm::AvailableExternallyLinkage);
+            } else if trans_item.is_from_extern_crate() && !trans_item.is_generic_fn() {
+                // FIXME(mw): It would be nice if we could mark these as
+                // `AvailableExternallyLinkage`, since they should have
+                // been instantiated in the extern crate. But this
+                // sometimes leads to crashes on Windows because LLVM
+                // does not handle exception handling table instantiation
+                // reliably in that case.
+                new_codegen_unit.items.insert(trans_item, llvm::InternalLinkage);
             } else {
-                if initial_partitioning.roots.contains(&trans_item) {
-                    // This item will be instantiated in some other codegen unit,
-                    // so we just add it here with AvailableExternallyLinkage
-                    new_codegen_unit.items.insert(trans_item,
-                                                  llvm::AvailableExternallyLinkage);
-                } else if trans_item.is_from_extern_crate() && !trans_item.is_generic_fn() {
-                    // An instantiation of this item is always available in the
-                    // crate it was imported from.
-                    new_codegen_unit.items.insert(trans_item,
-                                                  llvm::AvailableExternallyLinkage);
-                } else {
-                    // We can't be sure if this will also be instantiated
-                    // somewhere else, so we add an instance here with
-                    // LinkOnceODRLinkage. That way the item can be discarded if
-                    // it's not needed (inlined) after all.
-                    new_codegen_unit.items.insert(trans_item,
-                                                  llvm::LinkOnceODRLinkage);
-                }
+                assert!(trans_item.is_instantiated_only_on_demand());
+                // We can't be sure if this will also be instantiated
+                // somewhere else, so we add an instance here with
+                // InternalLinkage so we don't get any conflicts.
+                new_codegen_unit.items.insert(trans_item,
+                                              llvm::InternalLinkage);
             }
         }
 
@@ -521,17 +522,36 @@ fn single_codegen_unit<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     }
                 }
                 TransItem::DropGlue(_) => {
-                    llvm::PrivateLinkage
+                    llvm::InternalLinkage
                 }
                 TransItem::Fn(instance) => {
-                    if trans_item.is_generic_fn() ||
-                       trans_item.is_from_extern_crate() ||
-                       !reachable.contains(&tcx.map
-                                               .as_local_node_id(instance.def)
-                                               .unwrap()) {
+                    if trans_item.is_generic_fn() {
+                        // FIXME(mw): Assigning internal linkage to all
+                        // monomorphizations is potentially a waste of space
+                        // since monomorphizations could be shared between
+                        // crates. The main reason for making them internal is
+                        // a limitation in MingW's binutils that cannot deal
+                        // with COFF object that have more than 2^15 sections,
+                        // which is something that can happen for large programs
+                        // when every function gets put into its own COMDAT
+                        // section.
                         llvm::InternalLinkage
-                    } else {
+                    } else if trans_item.is_from_extern_crate() {
+                        // FIXME(mw): It would be nice if we could mark these as
+                        // `AvailableExternallyLinkage`, since they should have
+                        // been instantiated in the extern crate. But this
+                        // sometimes leads to crashes on Windows because LLVM
+                        // does not handle exception handling table instantiation
+                        // reliably in that case.
+                        llvm::InternalLinkage
+                    } else if reachable.contains(&tcx.map
+                                                     .as_local_node_id(instance.def)
+                                                     .unwrap()) {
                         llvm::ExternalLinkage
+                    } else {
+                        // Functions that are not visible outside this crate can
+                        // be marked as internal.
+                        llvm::InternalLinkage
                     }
                 }
             }

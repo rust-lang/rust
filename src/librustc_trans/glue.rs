@@ -255,7 +255,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // on MIR. Thus, we'll instantiate the missing function on demand in
     // this codegen unit, so that things keep working.
 
-    TransItem::DropGlue(g).predefine(ccx, llvm::LinkOnceODRLinkage);
+    TransItem::DropGlue(g).predefine(ccx, llvm::InternalLinkage);
     TransItem::DropGlue(g).define(ccx);
 
     // Now that we made sure that the glue function is in ccx.drop_glues,
