@@ -291,8 +291,8 @@ macro_rules! bitflags {
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
 mod tests {
-    use std::hash::{Hasher, Hash, SipHasher};
-    use std::option::Option::{Some, None};
+    use std::hash::{Hash, Hasher, SipHasher};
+    use std::option::Option::{None, Some};
 
     bitflags! {
         #[doc = "> The first principle is that you must not fool yourself — and"]
