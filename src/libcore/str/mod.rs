@@ -727,6 +727,17 @@ macro_rules! generate_pattern_iterators {
             }
         }
 
+        impl<'a, P: Pattern<'a>> $reverse_iterator<'a, P> {
+            /// View the underlying data as a subslice of the original data.
+            ///
+            /// This has the same lifetime as the original slice, and so the
+            /// iterator can continue to be used while this exists.
+            $(#[$common_stability_attribute])*
+            pub fn as_str(&self) -> &'a str {
+                self.0.as_str()
+            }
+        }
+
         generate_pattern_iterators!($($t)* with $(#[$common_stability_attribute])*,
                                                 $forward_iterator,
                                                 $reverse_iterator, $iterty);
@@ -814,6 +825,15 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
                 Some(elt)
             },
             None => self.get_end(),
+        }
+    }
+
+    #[inline]
+    fn as_str(&self) -> &'a str {
+        if self.finished {
+            ""
+        } else {
+            unsafe { self.matcher.haystack().slice_unchecked(self.start, self.end) }
         }
     }
 
@@ -913,6 +933,11 @@ impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
     }
 
     #[inline]
+    fn as_str(&self) -> &'a str {
+        self.iter.as_str()
+    }
+
+    #[inline]
     fn next_back(&mut self) -> Option<&'a str>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -966,6 +991,11 @@ impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
     }
 
     #[inline]
+    fn as_str(&self) -> &'a str {
+        self.0.as_str()
+    }
+
+    #[inline]
     fn next_back(&mut self) -> Option<(usize, &'a str)>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1015,6 +1045,11 @@ impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
             // Indices are known to be on utf8 boundaries
             self.0.haystack().slice_unchecked(a, b)
         })
+    }
+
+    #[inline]
+    fn as_str(&self) -> &'a str {
+        self.0.as_str()
     }
 
     #[inline]
