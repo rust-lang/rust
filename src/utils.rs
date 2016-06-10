@@ -23,11 +23,10 @@ use rewrite::{Rewrite, RewriteContext};
 use SKIP_ANNOTATION;
 
 // Computes the length of a string's last line, minus offset.
-#[inline]
 pub fn extra_offset(text: &str, offset: Indent) -> usize {
     match text.rfind('\n') {
         // 1 for newline character
-        Some(idx) => text.len() - idx - 1 - offset.width(),
+        Some(idx) => text.len().checked_sub(idx + 1 + offset.width()).unwrap_or(0),
         None => text.len(),
     }
 }
