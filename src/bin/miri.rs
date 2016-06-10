@@ -65,22 +65,24 @@ fn interpret_start_points<'a, 'tcx>(
 
                 gecx.push_stack_frame(tcx.map.local_def_id(id), mir.span, CachedMir::Ref(mir), substs, return_ptr);
 
-                loop { match (step(&mut gecx), return_ptr) {
-                    (Ok(true), _) => {},
-                    (Ok(false), Some(ptr)) => if log_enabled!(::log::LogLevel::Debug) {
-                        gecx.memory().dump(ptr.alloc_id);
-                        break;
-                    },
-                    (Ok(false), None) => {
-                        warn!("diverging function returned");
-                        break;
-                    },
-                    // FIXME: diverging functions can end up here in some future miri
-                    (Err(e), _) => {
-                        report(tcx, &gecx, e);
-                        break;
-                    },
-                } }
+                loop {
+                    match (step(&mut gecx), return_ptr) {
+                        (Ok(true), _) => {},
+                        (Ok(false), Some(ptr)) => if log_enabled!(::log::LogLevel::Debug) {
+                            gecx.memory().dump(ptr.alloc_id);
+                            break;
+                        },
+                        (Ok(false), None) => {
+                            warn!("diverging function returned");
+                            break;
+                        },
+                        // FIXME: diverging functions can end up here in some future miri
+                        (Err(e), _) => {
+                            report(tcx, &gecx, e);
+                            break;
+                        },
+                    }
+                }
             }
         }
     }
