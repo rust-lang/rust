@@ -32,17 +32,17 @@ pub fn file(args: &[ptr::P<ast::MetaItem>]) -> Result<Option<token::InternedStri
 /// Error from reading a configuration file.
 #[derive(Debug)]
 pub enum Error {
-    IoError(io::Error),
-    TomlError(Vec<toml::ParserError>),
-    TypeError(&'static str, &'static str, &'static str),
+    Io(io::Error),
+    Toml(Vec<toml::ParserError>),
+    Type(&'static str, &'static str, &'static str),
     UnknownKey(String),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            Error::IoError(ref err) => err.fmt(f),
-            Error::TomlError(ref errs) => {
+            Error::Io(ref err) => err.fmt(f),
+            Error::Toml(ref errs) => {
                 let mut first = true;
                 for err in errs {
                     if !first {
@@ -55,7 +55,7 @@ impl fmt::Display for Error {
 
                 Ok(())
             }
-            Error::TypeError(ref key, ref expected, ref got) => {
+            Error::Type(ref key, ref expected, ref got) => {
                 write!(f, "`{}` is expected to be a `{}` but is a `{}`", key, expected, got)
             }
             Error::UnknownKey(ref key) => write!(f, "unknown key `{}`", key),
@@ -65,7 +65,7 @@ impl fmt::Display for Error {
 
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
-        Error::IoError(e)
+        Error::Io(e)
     }
 }
 
@@ -95,9 +95,9 @@ macro_rules! define_Conf {
                                 self.$rust_name = value;
                             }
                             else {
-                                return Err(Error::TypeError(define_Conf!(EXPR $toml_name),
-                                                                stringify!($($ty)+),
-                                                                value.type_str()));
+                                return Err(Error::Type(define_Conf!(EXPR $toml_name),
+                                                       stringify!($($ty)+),
+                                                       value.type_str()));
                             }
                         },
                     )+
@@ -191,7 +191,7 @@ pub fn read(path: &str, must_exist: bool) -> (Conf, Vec<Error>) {
     let toml = if let Some(toml) = parser.parse() {
         toml
     } else {
-        errors.push(Error::TomlError(parser.errors));
+        errors.push(Error::Toml(parser.errors));
         return (conf, errors);
     };
 
