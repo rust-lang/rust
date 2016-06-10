@@ -51,10 +51,10 @@ pub struct StringReader<'a> {
     pub filemap: Rc<syntax_pos::FileMap>,
     /// If Some, stop reading the source at this position (inclusive).
     pub terminator: Option<BytePos>,
-    /// Whether to record new-lines in filemap. This is only necessary the first
-    /// time a filemap is lexed. If part of a filemap is being re-lexed, this
-    /// should be set to false.
-    pub save_new_lines: bool,
+    /// Whether to record new-lines and multibyte chars in filemap.
+    /// This is only necessary the first time a filemap is lexed.
+    /// If part of a filemap is being re-lexed, this should be set to false.
+    pub save_new_lines_and_multibyte: bool,
     // cached:
     pub peek_tok: token::Token,
     pub peek_span: Span,
@@ -162,7 +162,7 @@ impl<'a> StringReader<'a> {
             ch: Some('\n'),
             filemap: filemap,
             terminator: None,
-            save_new_lines: true,
+            save_new_lines_and_multibyte: true,
             // dummy values; not read
             peek_tok: token::Eof,
             peek_span: syntax_pos::DUMMY_SP,
@@ -176,6 +176,31 @@ impl<'a> StringReader<'a> {
 
     pub fn new(sess: &'a ParseSess, filemap: Rc<syntax_pos::FileMap>) -> Self {
         let mut sr = StringReader::new_raw(sess, filemap);
+        if let Err(_) = sr.advance_token() {
+            sr.emit_fatal_errors();
+            panic!(FatalError);
+        }
+        sr
+    }
+
+    pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {
+        let begin = sess.codemap().lookup_byte_offset(span.lo);
+        let end = sess.codemap().lookup_byte_offset(span.hi);
+
+        // Make the range zero-length if the span is invalid.
+        if span.lo > span.hi || begin.fm.start_pos != end.fm.start_pos {
+            span.hi = span.lo;
+        }
+
+        let mut sr = StringReader::new_raw_internal(sess, begin.fm);
+
+        // Seek the lexer to the right byte range.
+        sr.save_new_lines_and_multibyte = false;
+        sr.next_pos = span.lo;
+        sr.terminator = Some(span.hi);
+
+        sr.bump();
+
         if let Err(_) = sr.advance_token() {
             sr.emit_fatal_errors();
             panic!(FatalError);
@@ -378,7 +403,10 @@ impl<'a> StringReader<'a> {
     pub fn bump(&mut self) {
         let new_pos = self.next_pos;
         let new_byte_offset = self.byte_offset(new_pos).to_usize();
-        if new_byte_offset < self.source_text.len() {
+        let end = self.terminator.map_or(self.source_text.len(), |t| {
+            self.byte_offset(t).to_usize()
+        });
+        if new_byte_offset < end {
             let old_ch_is_newline = self.ch.unwrap() == '\n';
             let new_ch = char_at(&self.source_text, new_byte_offset);
             let new_ch_len = new_ch.len_utf8();
@@ -387,7 +415,7 @@ impl<'a> StringReader<'a> {
             self.pos = new_pos;
             self.next_pos = new_pos + Pos::from_usize(new_ch_len);
             if old_ch_is_newline {
-                if self.save_new_lines {
+                if self.save_new_lines_and_multibyte {
                     self.filemap.next_line(self.pos);
                 }
                 self.col = CharPos(0);
@@ -395,7 +423,9 @@ impl<'a> StringReader<'a> {
                 self.col = self.col + CharPos(1);
             }
             if new_ch_len > 1 {
-                self.filemap.record_multibyte_char(self.pos, new_ch_len);
+                if self.save_new_lines_and_multibyte {
+                    self.filemap.record_multibyte_char(self.pos, new_ch_len);
+                }
             }
         } else {
             self.ch = None;
