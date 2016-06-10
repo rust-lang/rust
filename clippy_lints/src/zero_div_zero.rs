@@ -3,10 +3,10 @@ use rustc::lint::*;
 use rustc::hir::*;
 use utils::span_help_and_lint;
 
-/// `ZeroDivZeroPass` is a pass that checks for a binary expression that consists
+/// `Pass` is a pass that checks for a binary expression that consists
 /// `of 0.0/0.0`, which is always `NaN`. It is more clear to replace instances of
 /// `0.0/0.0` with `std::f32::NaN` or `std::f64::NaN`, depending on the precision.
-pub struct ZeroDivZeroPass;
+pub struct Pass;
 
 /// **What it does:** This lint checks for `0.0 / 0.0`.
 ///
@@ -21,13 +21,13 @@ declare_lint! {
     "usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN"
 }
 
-impl LintPass for ZeroDivZeroPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(ZERO_DIVIDED_BY_ZERO)
     }
 }
 
-impl LateLintPass for ZeroDivZeroPass {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         // check for instances of 0.0/0.0
         if_let_chain! {[

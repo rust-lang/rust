@@ -5,7 +5,7 @@ use syntax::parse::token;
 use toml;
 
 /// Get the configuration file from arguments.
-pub fn conf_file(args: &[ptr::P<ast::MetaItem>]) -> Result<Option<token::InternedString>, (&'static str, codemap::Span)> {
+pub fn file(args: &[ptr::P<ast::MetaItem>]) -> Result<Option<token::InternedString>, (&'static str, codemap::Span)> {
     for arg in args {
         match arg.node {
             ast::MetaItemKind::Word(ref name) |
@@ -31,18 +31,18 @@ pub fn conf_file(args: &[ptr::P<ast::MetaItem>]) -> Result<Option<token::Interne
 
 /// Error from reading a configuration file.
 #[derive(Debug)]
-pub enum ConfError {
+pub enum Error {
     IoError(io::Error),
     TomlError(Vec<toml::ParserError>),
     TypeError(&'static str, &'static str, &'static str),
     UnknownKey(String),
 }
 
-impl fmt::Display for ConfError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            ConfError::IoError(ref err) => err.fmt(f),
-            ConfError::TomlError(ref errs) => {
+            Error::IoError(ref err) => err.fmt(f),
+            Error::TomlError(ref errs) => {
                 let mut first = true;
                 for err in errs {
                     if !first {
@@ -55,17 +55,17 @@ impl fmt::Display for ConfError {
 
                 Ok(())
             }
-            ConfError::TypeError(ref key, ref expected, ref got) => {
+            Error::TypeError(ref key, ref expected, ref got) => {
                 write!(f, "`{}` is expected to be a `{}` but is a `{}`", key, expected, got)
             }
-            ConfError::UnknownKey(ref key) => write!(f, "unknown key `{}`", key),
+            Error::UnknownKey(ref key) => write!(f, "unknown key `{}`", key),
         }
     }
 }
 
-impl From<io::Error> for ConfError {
+impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
-        ConfError::IoError(e)
+        Error::IoError(e)
     }
 }
 
@@ -87,7 +87,7 @@ macro_rules! define_Conf {
         impl Conf {
             /// Set the property `name` (which must be the `toml` name) to the given value
             #[allow(cast_sign_loss)]
-            fn set(&mut self, name: String, value: toml::Value) -> Result<(), ConfError> {
+            fn set(&mut self, name: String, value: toml::Value) -> Result<(), Error> {
                 match name.as_str() {
                     $(
                         define_Conf!(PAT $toml_name) => {
@@ -95,7 +95,7 @@ macro_rules! define_Conf {
                                 self.$rust_name = value;
                             }
                             else {
-                                return Err(ConfError::TypeError(define_Conf!(EXPR $toml_name),
+                                return Err(Error::TypeError(define_Conf!(EXPR $toml_name),
                                                                 stringify!($($ty)+),
                                                                 value.type_str()));
                             }
@@ -106,7 +106,7 @@ macro_rules! define_Conf {
                         return Ok(());
                     }
                     _ => {
-                        return Err(ConfError::UnknownKey(name));
+                        return Err(Error::UnknownKey(name));
                     }
                 }
 
@@ -163,7 +163,7 @@ define_Conf! {
 /// Read the `toml` configuration file. The function will ignore “File not found” errors iif
 /// `!must_exist`, in which case, it will return the default configuration.
 /// In case of error, the function tries to continue as much as possible.
-pub fn read_conf(path: &str, must_exist: bool) -> (Conf, Vec<ConfError>) {
+pub fn read(path: &str, must_exist: bool) -> (Conf, Vec<Error>) {
     let mut conf = Conf::default();
     let mut errors = Vec::new();
 
@@ -191,7 +191,7 @@ pub fn read_conf(path: &str, must_exist: bool) -> (Conf, Vec<ConfError>) {
     let toml = if let Some(toml) = parser.parse() {
         toml
     } else {
-        errors.push(ConfError::TomlError(parser.errors));
+        errors.push(Error::TomlError(parser.errors));
         return (conf, errors);
     };
 

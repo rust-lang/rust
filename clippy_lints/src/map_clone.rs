@@ -18,9 +18,9 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct MapClonePass;
+pub struct Pass;
 
-impl LateLintPass for MapClonePass {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         // call to .map()
         if let ExprMethodCall(name, _, ref args) = expr.node {
@@ -119,7 +119,7 @@ fn only_derefs(cx: &LateContext, expr: &Expr, id: ast::Name) -> bool {
     }
 }
 
-impl LintPass for MapClonePass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(MAP_CLONE)
     }

@@ -23,15 +23,15 @@ declare_lint! {
 }
 
 #[allow(missing_copy_implementations)]
-pub struct DropRefPass;
+pub struct Pass;
 
-impl LintPass for DropRefPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(DROP_REF)
     }
 }
 
-impl LateLintPass for DropRefPass {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprCall(ref path, ref args) = expr.node {
             if let ExprPath(None, _) = path.node {

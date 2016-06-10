@@ -17,7 +17,7 @@ use utils::MethodArgs;
 use utils::paths;
 
 #[derive(Clone)]
-pub struct MethodsPass;
+pub struct Pass;
 
 /// **What it does:** This lint checks for `.unwrap()` calls on `Option`s.
 ///
@@ -336,7 +336,7 @@ declare_lint! {
     "using `.iter().nth()` on a slice or Vec"
 }
 
-impl LintPass for MethodsPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(EXTEND_FROM_SLICE,
                     OPTION_UNWRAP_USED,
@@ -359,7 +359,7 @@ impl LintPass for MethodsPass {
     }
 }
 
-impl LateLintPass for MethodsPass {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
         if in_macro(cx, expr.span) {
             return;

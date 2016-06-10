@@ -56,18 +56,18 @@ declare_lint! {
 }
 
 #[derive(Clone, Default)]
-pub struct RegexPass {
+pub struct Pass {
     spans: HashSet<Span>,
     last: Option<NodeId>,
 }
 
-impl LintPass for RegexPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(INVALID_REGEX, REGEX_MACRO, TRIVIAL_REGEX)
     }
 }
 
-impl LateLintPass for RegexPass {
+impl LateLintPass for Pass {
     fn check_crate(&mut self, _: &LateContext, _: &Crate) {
         self.spans.clear();
     }

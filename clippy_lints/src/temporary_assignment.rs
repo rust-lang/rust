@@ -24,15 +24,15 @@ fn is_temporary(expr: &Expr) -> bool {
 }
 
 #[derive(Copy, Clone)]
-pub struct TemporaryAssignmentPass;
+pub struct Pass;
 
-impl LintPass for TemporaryAssignmentPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(TEMPORARY_ASSIGNMENT)
     }
 }
 
-impl LateLintPass for TemporaryAssignmentPass {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprAssign(ref target, _) = expr.node {
             match target.node {

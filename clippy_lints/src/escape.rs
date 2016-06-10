@@ -11,7 +11,7 @@ use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::span_lint;
 
-pub struct EscapePass;
+pub struct Pass;
 
 /// **What it does:** This lint checks for usage of `Box<T>` where an unboxed `T` would work fine.
 ///
@@ -44,13 +44,13 @@ struct EscapeDelegate<'a, 'tcx: 'a> {
     set: NodeSet,
 }
 
-impl LintPass for EscapePass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(BOXED_LOCAL)
     }
 }
 
-impl LateLintPass for EscapePass {
+impl LateLintPass for Pass {
     fn check_fn(&mut self, cx: &LateContext, _: visit::FnKind, decl: &FnDecl, body: &Block, _: Span, id: NodeId) {
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
 

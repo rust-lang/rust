@@ -17,15 +17,15 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct NeedlessUpdatePass;
+pub struct Pass;
 
-impl LintPass for NeedlessUpdatePass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_UPDATE)
     }
 }
 
-impl LateLintPass for NeedlessUpdatePass {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprStruct(_, ref fields, Some(ref base)) = expr.node {
             let ty = cx.tcx.expr_ty(expr);

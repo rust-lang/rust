@@ -80,7 +80,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
 }
 
 #[allow(while_let_loop)] // #362
-pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span)]) -> Result<(), ()> {
+fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span)]) -> Result<(), ()> {
     // In markdown, `_` can be used to emphasize something, or, is a raw `_` depending on context.
     // There really is no markdown specification that would disambiguate this properly. This is
     // what GitHub and Rustdoc do:

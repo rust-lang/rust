@@ -37,15 +37,15 @@ const KNOWN_CONSTS: &'static [(f64, &'static str, usize)] = &[(f64::E, "E", 4),
                                                               (f64::SQRT_2, "SQRT_2", 5)];
 
 #[derive(Copy,Clone)]
-pub struct ApproxConstant;
+pub struct Pass;
 
-impl LintPass for ApproxConstant {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(APPROX_CONSTANT)
     }
 }
 
-impl LateLintPass for ApproxConstant {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprLit(ref lit) = e.node {
             check_lit(cx, lit, e);

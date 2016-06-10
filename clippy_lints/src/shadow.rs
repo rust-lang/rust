@@ -45,15 +45,15 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct ShadowPass;
+pub struct Pass;
 
-impl LintPass for ShadowPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(SHADOW_SAME, SHADOW_REUSE, SHADOW_UNRELATED)
     }
 }
 
-impl LateLintPass for ShadowPass {
+impl LateLintPass for Pass {
     fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, block: &Block, _: Span, _: NodeId) {
         if in_external_macro(cx, block.span) {
             return;
