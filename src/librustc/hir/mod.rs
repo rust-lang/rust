@@ -1138,7 +1138,7 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 impl Arg {
     pub fn to_self(&self) -> Option<ExplicitSelf> {
         if let PatKind::Binding(BindByValue(mutbl), name, _) = self.pat.node {
-            if name.node.unhygienize() == keywords::SelfValue.name() {
+            if name.node == keywords::SelfValue.name() {
                 return match self.ty.node {
                     TyInfer => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
                     TyRptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyInfer => {
@@ -1154,7 +1154,7 @@ impl Arg {
 
     pub fn is_self(&self) -> bool {
         if let PatKind::Binding(_, name, _) = self.pat.node {
-            name.node.unhygienize() == keywords::SelfValue.name()
+            name.node == keywords::SelfValue.name()
         } else {
             false
         }
