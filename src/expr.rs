@@ -1278,7 +1278,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
         let spacer = if pat.is_some() { " " } else { "" };
 
         let expr_rewrite = expr.rewrite(context,
-                                        width - extra_offset - spacer.len(),
+                                        try_opt!(width.checked_sub(extra_offset + spacer.len())),
                                         offset + extra_offset + spacer.len());
 
         if let Some(expr_string) = expr_rewrite {
@@ -1292,9 +1292,10 @@ fn rewrite_pat_expr(context: &RewriteContext,
     result.push('\n');
     result.push_str(&pat_offset.to_string(context.config));
 
-    let expr_rewrite = expr.rewrite(context,
-                                    context.config.max_width - pat_offset.width(),
-                                    pat_offset);
+    let expr_rewrite =
+        expr.rewrite(context,
+                     try_opt!(context.config.max_width.checked_sub(pat_offset.width())),
+                     pat_offset);
     result.push_str(&&try_opt!(expr_rewrite));
 
     Some(result)
