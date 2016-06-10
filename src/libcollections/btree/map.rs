@@ -68,7 +68,7 @@ use self::Entry::*;
 /// // would be `BTreeMap<&str, &str>` in this example).
 /// let mut movie_reviews = BTreeMap::new();
 ///
-/// // review some books.
+/// // review some movies.
 /// movie_reviews.insert("Office Space",       "Deals with real issues in the workplace.");
 /// movie_reviews.insert("Pulp Fiction",       "Masterpiece.");
 /// movie_reviews.insert("The Godfather",      "Very enjoyable.");
