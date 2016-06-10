@@ -69,15 +69,15 @@ impl LateLintPass for LetIfSeq {
                 let Some(def) = cx.tcx.def_map.borrow().get(&decl.pat.id),
                 let hir::StmtExpr(ref if_, _) = expr.node,
                 let hir::ExprIf(ref cond, ref then, ref else_) = if_.node,
-                !used_in_expr(cx, def.def_id(), cond),
-                let Some(value) = check_assign(cx, def.def_id(), then),
-                !used_in_expr(cx, def.def_id(), value),
+                !used_in_expr(cx, def.full_def().def_id(), cond),
+                let Some(value) = check_assign(cx, def.full_def().def_id(), then),
+                !used_in_expr(cx, def.full_def().def_id(), value),
             ], {
                 let span = codemap::mk_sp(stmt.span.lo, if_.span.hi);
 
                 let (default_multi_stmts, default) = if let Some(ref else_) = *else_ {
                     if let hir::ExprBlock(ref else_) = else_.node {
-                        if let Some(default) = check_assign(cx, def.def_id(), else_) {
+                        if let Some(default) = check_assign(cx, def.full_def().def_id(), else_) {
                             (else_.stmts.len() > 1, default)
                         } else if let Some(ref default) = decl.init {
                             (true, &**default)
@@ -139,7 +139,7 @@ impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for UsedVisitor<'a, 'tcx> {
         if_let_chain! {[
             let hir::ExprPath(None, _) = expr.node,
             let Some(def) = self.cx.tcx.def_map.borrow().get(&expr.id),
-            self.id == def.def_id(),
+            self.id == def.full_def().def_id(),
         ], {
             self.used = true;
             return;
@@ -156,7 +156,7 @@ fn check_assign<'e>(cx: &LateContext, decl: hir::def_id::DefId, block: &'e hir::
         let hir::ExprAssign(ref var, ref value) = expr.node,
         let hir::ExprPath(None, _) = var.node,
         let Some(def) = cx.tcx.def_map.borrow().get(&var.id),
-        decl == def.def_id(),
+        decl == def.full_def().def_id(),
     ], {
         let mut v = UsedVisitor {
             cx: cx,
