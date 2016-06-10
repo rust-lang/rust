@@ -137,7 +137,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 ccx.stats().n_fallback_instantiations.set(ccx.stats()
                                                              .n_fallback_instantiations
                                                              .get() + 1);
-                trans_item.predefine(ccx, llvm::PrivateLinkage);
+                trans_item.predefine(ccx, llvm::InternalLinkage);
                 trans_item.define(ccx);
             }
         }

@@ -21,8 +21,8 @@ extern crate cgu_explicit_inlining;
 // This test makes sure that items inlined from external crates are privately
 // instantiated in every codegen unit they are used in.
 
-//~ TRANS_ITEM fn cgu_explicit_inlining::inlined[0] @@ inlining_from_extern_crate[Available] inlining_from_extern_crate-mod1[Available]
-//~ TRANS_ITEM fn cgu_explicit_inlining::always_inlined[0] @@ inlining_from_extern_crate[Available] inlining_from_extern_crate-mod2[Available]
+//~ TRANS_ITEM fn cgu_explicit_inlining::inlined[0] @@ inlining_from_extern_crate[Internal] inlining_from_extern_crate-mod1[Internal]
+//~ TRANS_ITEM fn cgu_explicit_inlining::always_inlined[0] @@ inlining_from_extern_crate[Internal] inlining_from_extern_crate-mod2[Internal]
 
 //~ TRANS_ITEM fn inlining_from_extern_crate::user[0] @@ inlining_from_extern_crate[External]
 pub fn user()

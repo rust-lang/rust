@@ -16,13 +16,10 @@
 #![allow(dead_code)]
 #![crate_type="lib"]
 
-// Used in different modules/codegen units but always instantiated in the same
-// codegen unit.
-
-//~ TRANS_ITEM fn local_generic::generic[0]<u32> @@ local_generic.volatile[WeakODR]
-//~ TRANS_ITEM fn local_generic::generic[0]<u64> @@ local_generic.volatile[WeakODR]
-//~ TRANS_ITEM fn local_generic::generic[0]<char> @@ local_generic.volatile[WeakODR]
-//~ TRANS_ITEM fn local_generic::generic[0]<&str> @@ local_generic.volatile[WeakODR]
+//~ TRANS_ITEM fn local_generic::generic[0]<u32> @@ local_generic[Internal]
+//~ TRANS_ITEM fn local_generic::generic[0]<u64> @@ local_generic-mod1[Internal]
+//~ TRANS_ITEM fn local_generic::generic[0]<char> @@ local_generic-mod1-mod1[Internal]
+//~ TRANS_ITEM fn local_generic::generic[0]<&str> @@ local_generic-mod2[Internal]
 pub fn generic<T>(x: T) -> T { x }
 
 //~ TRANS_ITEM fn local_generic::user[0] @@ local_generic[External]
