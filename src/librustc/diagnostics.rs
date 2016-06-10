@@ -1112,6 +1112,7 @@ fn main() {
 ```
 
 Or in a generic context, an erroneous code example would look like:
+
 ```compile_fail
 fn some_func<T>(foo: T) {
     println!("{:?}", foo); // error: the trait `core::fmt::Debug` is not
@@ -1130,6 +1131,7 @@ we only call it with a parameter that does implement `Debug`, the compiler
 still rejects the function: It must work with all possible input types. In
 order to make this example compile, we need to restrict the generic type we're
 accepting:
+
 ```
 use std::fmt;
 
@@ -1381,6 +1383,7 @@ denotes this will cause this error.
 struct Foo<T> {
     foo: &'static T
 }
+```
 
 This will compile, because it has the constraint on the type parameter:
 
