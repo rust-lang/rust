@@ -516,8 +516,10 @@ fn foo(a: &mut i32) {
             //        as immutable
 }
 ```
+
 To fix this error, ensure that you don't have any other references to the
 variable before trying to access it mutably:
+
 ```
 fn bar(x: &mut i32) {}
 fn foo(a: &mut i32) {
@@ -525,6 +527,7 @@ fn foo(a: &mut i32) {
     let ref y = a; // ok!
 }
 ```
+
 For more information on the rust ownership system, take a look at
 https://doc.rust-lang.org/stable/book/references-and-borrowing.html.
 "##,
