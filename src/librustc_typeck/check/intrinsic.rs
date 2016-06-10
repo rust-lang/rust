@@ -298,6 +298,15 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                 (0, vec![tcx.mk_fn_ptr(fn_ty), mut_u8, mut_u8], tcx.types.i32)
             }
 
+            "thread_idx_x" | "thread_idx_y" | "thread_idx_z" |
+            "block_idx_x" | "block_idx_y" | "block_idx_z" |
+            "block_dim_x" | "block_dim_y" | "block_dim_z" |
+            "grid_dim_x" | "grid_dim_y" | "grid_dim_z" => {
+                (0, vec![], tcx.types.i32)
+            }
+
+            "syncthreads" => (0, vec![], tcx.mk_nil()),
+
             ref other => {
                 span_err!(tcx.sess, it.span, E0093,
                           "unrecognized intrinsic function: `{}`", *other);

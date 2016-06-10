@@ -602,4 +602,22 @@ extern "rust-intrinsic" {
     /// on MSVC it's `*mut [usize; 2]`. For more information see the compiler's
     /// source as well as std's catch implementation.
     pub fn try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
+
+}
+
+#[cfg(not(stage0))]
+extern "rust-intrinsic" {
+    pub fn thread_idx_x() -> i32;
+    pub fn thread_idx_y() -> i32;
+    pub fn thread_idx_z() -> i32;
+    pub fn block_idx_x() -> i32;
+    pub fn block_idx_y() -> i32;
+    pub fn block_idx_z() -> i32;
+    pub fn block_dim_x() -> i32;
+    pub fn block_dim_y() -> i32;
+    pub fn block_dim_z() -> i32;
+    pub fn grid_dim_x() -> i32;
+    pub fn grid_dim_y() -> i32;
+    pub fn grid_dim_z() -> i32;
+    pub fn syncthreads();
 }

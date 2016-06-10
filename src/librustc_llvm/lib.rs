@@ -2407,6 +2407,11 @@ pub fn initialize_available_targets() {
                  LLVMInitializeMipsTargetMC,
                  LLVMInitializeMipsAsmPrinter,
                  LLVMInitializeMipsAsmParser);
+    init_target!(llvm_component = "nvptx",
+                 LLVMInitializeNVPTXTargetInfo,
+                 LLVMInitializeNVPTXTarget,
+                 LLVMInitializeNVPTXTargetMC,
+                 LLVMInitializeNVPTXAsmPrinter);
     init_target!(llvm_component = "powerpc",
                  LLVMInitializePowerPCTargetInfo,
                  LLVMInitializePowerPCTarget,

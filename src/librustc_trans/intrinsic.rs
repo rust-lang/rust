@@ -89,6 +89,19 @@ fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
         "roundf32" => "llvm.round.f32",
         "roundf64" => "llvm.round.f64",
         "assume" => "llvm.assume",
+        "thread_idx_x" => "llvm.nvvm.read.ptx.sreg.tid.x",
+        "thread_idx_y" => "llvm.nvvm.read.ptx.sreg.tid.y",
+        "thread_idx_z" => "llvm.nvvm.read.ptx.sreg.tid.z",
+        "block_idx_x" => "llvm.nvvm.read.ptx.sreg.ctaid.x",
+        "block_idx_y" => "llvm.nvvm.read.ptx.sreg.ctaid.y",
+        "block_idx_z" => "llvm.nvvm.read.ptx.sreg.ctaid.z",
+        "block_dim_x" => "llvm.nvvm.read.ptx.sreg.ntid.x",
+        "block_dim_y" => "llvm.nvvm.read.ptx.sreg.ntid.y",
+        "block_dim_z" => "llvm.nvvm.read.ptx.sreg.ntid.z",
+        "grid_dim_x" => "llvm.nvvm.read.ptx.sreg.nctaid.x",
+        "grid_dim_y" => "llvm.nvvm.read.ptx.sreg.nctaid.y",
+        "grid_dim_z" => "llvm.nvvm.read.ptx.sreg.nctaid.z",
+        "syncthreads" => "llvm.cuda.syncthreads",
         _ => return None
     };
     Some(ccx.get_intrinsic(&llvm_name))
