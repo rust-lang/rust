@@ -24,8 +24,8 @@ use std::collections::HashMap;
 
 mod stepper;
 
-pub fn step<'fncx, 'a: 'fncx, 'tcx: 'a>(gecx: &'fncx mut EvalContext<'a, 'tcx>) -> EvalResult<bool> {
-    stepper::Stepper::new(gecx).step()
+pub fn step<'ecx, 'a: 'ecx, 'tcx: 'a>(ecx: &'ecx mut EvalContext<'a, 'tcx>) -> EvalResult<bool> {
+    stepper::Stepper::new(ecx).step()
 }
 
 pub struct EvalContext<'a, 'tcx: 'a> {

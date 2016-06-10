@@ -59,17 +59,17 @@ fn interpret_start_points<'a, 'tcx>(
 
                 debug!("Interpreting: {}", item.name);
 
-                let mut gecx = EvalContext::new(tcx, mir_map);
+                let mut ecx = EvalContext::new(tcx, mir_map);
                 let substs = tcx.mk_substs(subst::Substs::empty());
-                let return_ptr = gecx.alloc_ret_ptr(mir.return_ty, substs);
+                let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs);
 
-                gecx.push_stack_frame(tcx.map.local_def_id(id), mir.span, CachedMir::Ref(mir), substs, return_ptr);
+                ecx.push_stack_frame(tcx.map.local_def_id(id), mir.span, CachedMir::Ref(mir), substs, return_ptr);
 
                 loop {
-                    match (step(&mut gecx), return_ptr) {
+                    match (step(&mut ecx), return_ptr) {
                         (Ok(true), _) => {},
                         (Ok(false), Some(ptr)) => if log_enabled!(::log::LogLevel::Debug) {
-                            gecx.memory().dump(ptr.alloc_id);
+                            ecx.memory().dump(ptr.alloc_id);
                             break;
                         },
                         (Ok(false), None) => {
@@ -78,7 +78,7 @@ fn interpret_start_points<'a, 'tcx>(
                         },
                         // FIXME: diverging functions can end up here in some future miri
                         (Err(e), _) => {
-                            report(tcx, &gecx, e);
+                            report(tcx, &ecx, e);
                             break;
                         },
                     }
@@ -88,8 +88,8 @@ fn interpret_start_points<'a, 'tcx>(
     }
 }
 
-fn report(tcx: TyCtxt, gecx: &EvalContext, e: EvalError) {
-    let frame = gecx.stack().last().expect("stackframe was empty");
+fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
+    let frame = ecx.stack().last().expect("stackframe was empty");
     let block = frame.mir.basic_block_data(frame.next_block);
     let span = if frame.stmt < block.statements.len() {
         block.statements[frame.stmt].span
@@ -97,7 +97,7 @@ fn report(tcx: TyCtxt, gecx: &EvalContext, e: EvalError) {
         block.terminator().span
     };
     let mut err = tcx.sess.struct_span_err(span, &e.to_string());
-    for &Frame { def_id, substs, span, .. } in gecx.stack().iter().rev() {
+    for &Frame { def_id, substs, span, .. } in ecx.stack().iter().rev() {
         // FIXME(solson): Find a way to do this without this Display impl hack.
         use rustc::util::ppaux;
         use std::fmt;

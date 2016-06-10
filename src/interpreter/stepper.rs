@@ -12,57 +12,57 @@ use rustc::mir::visit::{Visitor, LvalueContext};
 use syntax::codemap::Span;
 use std::rc::Rc;
 
-pub(super) struct Stepper<'fncx, 'a: 'fncx, 'tcx: 'a>{
-    gecx: &'fncx mut EvalContext<'a, 'tcx>,
+pub(super) struct Stepper<'ecx, 'a: 'ecx, 'tcx: 'a>{
+    ecx: &'ecx mut EvalContext<'a, 'tcx>,
 }
 
-impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
-    pub(super) fn new(gecx: &'fncx mut EvalContext<'a, 'tcx>) -> Self {
+impl<'ecx, 'a, 'tcx> Stepper<'ecx, 'a, 'tcx> {
+    pub(super) fn new(ecx: &'ecx mut EvalContext<'a, 'tcx>) -> Self {
         Stepper {
-            gecx: gecx,
+            ecx: ecx,
         }
     }
 
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<()> {
         trace!("{:?}", stmt);
         let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-        self.gecx.eval_assignment(lvalue, rvalue)?;
-        self.gecx.frame_mut().stmt += 1;
+        self.ecx.eval_assignment(lvalue, rvalue)?;
+        self.ecx.frame_mut().stmt += 1;
         Ok(())
     }
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<()> {
         // after a terminator we go to a new block
-        self.gecx.frame_mut().stmt = 0;
+        self.ecx.frame_mut().stmt = 0;
         trace!("{:?}", terminator.kind);
-        self.gecx.eval_terminator(terminator)?;
-        if !self.gecx.stack.is_empty() {
-            trace!("// {:?}", self.gecx.frame().next_block);
+        self.ecx.eval_terminator(terminator)?;
+        if !self.ecx.stack.is_empty() {
+            trace!("// {:?}", self.ecx.frame().next_block);
         }
         Ok(())
     }
 
     // returns true as long as there are more things to do
     pub(super) fn step(&mut self) -> EvalResult<bool> {
-        if self.gecx.stack.is_empty() {
+        if self.ecx.stack.is_empty() {
             return Ok(false);
         }
 
-        let block = self.gecx.frame().next_block;
-        let stmt = self.gecx.frame().stmt;
-        let mir = self.gecx.mir();
+        let block = self.ecx.frame().next_block;
+        let stmt = self.ecx.frame().stmt;
+        let mir = self.ecx.mir();
         let basic_block = mir.basic_block_data(block);
 
         if let Some(ref stmt) = basic_block.statements.get(stmt) {
-            let current_stack = self.gecx.stack.len();
+            let current_stack = self.ecx.stack.len();
             ConstantExtractor {
                 span: stmt.span,
-                substs: self.gecx.substs(),
-                def_id: self.gecx.frame().def_id,
-                gecx: self.gecx,
+                substs: self.ecx.substs(),
+                def_id: self.ecx.frame().def_id,
+                ecx: self.ecx,
                 mir: &mir,
             }.visit_statement(block, stmt);
-            if current_stack == self.gecx.stack.len() {
+            if current_stack == self.ecx.stack.len() {
                 self.statement(stmt)?;
             } else {
                 // ConstantExtractor added some new frames for statics/constants/promoteds
@@ -73,15 +73,15 @@ impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
         }
 
         let terminator = basic_block.terminator();
-        let current_stack = self.gecx.stack.len();
+        let current_stack = self.ecx.stack.len();
         ConstantExtractor {
             span: terminator.span,
-            substs: self.gecx.substs(),
-            def_id: self.gecx.frame().def_id,
-            gecx: self.gecx,
+            substs: self.ecx.substs(),
+            def_id: self.ecx.frame().def_id,
+            ecx: self.ecx,
             mir: &mir,
         }.visit_terminator(block, terminator);
-        if current_stack == self.gecx.stack.len() {
+        if current_stack == self.ecx.stack.len() {
             self.terminator(terminator)?;
         } else {
             // ConstantExtractor added some new frames for statics/constants/promoteds
@@ -92,13 +92,13 @@ impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
     }
 }
 
-// WARNING: make sure that any methods implemented on this type don't ever access gecx.stack
+// WARNING: make sure that any methods implemented on this type don't ever access ecx.stack
 // this includes any method that might access the stack
 // basically don't call anything other than `load_mir`, `alloc_ret_ptr`, `push_stack_frame`
 // The reason for this is, that `push_stack_frame` modifies the stack out of obvious reasons
 struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
     span: Span,
-    gecx: &'a mut EvalContext<'b, 'tcx>,
+    ecx: &'a mut EvalContext<'b, 'tcx>,
     mir: &'a mir::Mir<'tcx>,
     def_id: DefId,
     substs: &'tcx subst::Substs<'tcx>,
@@ -111,13 +111,13 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
             substs: substs,
             kind: ConstantKind::Global,
         };
-        if self.gecx.statics.contains_key(&cid) {
+        if self.ecx.statics.contains_key(&cid) {
             return;
         }
-        let mir = self.gecx.load_mir(def_id);
-        let ptr = self.gecx.alloc_ret_ptr(mir.return_ty, substs).expect("there's no such thing as an unreachable static");
-        self.gecx.statics.insert(cid.clone(), ptr);
-        self.gecx.push_stack_frame(def_id, span, mir, substs, Some(ptr));
+        let mir = self.ecx.load_mir(def_id);
+        let ptr = self.ecx.alloc_ret_ptr(mir.return_ty, substs).expect("there's no such thing as an unreachable static");
+        self.ecx.statics.insert(cid.clone(), ptr);
+        self.ecx.push_stack_frame(def_id, span, mir, substs, Some(ptr));
     }
 }
 
@@ -142,15 +142,15 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                     substs: self.substs,
                     kind: ConstantKind::Promoted(index),
                 };
-                if self.gecx.statics.contains_key(&cid) {
+                if self.ecx.statics.contains_key(&cid) {
                     return;
                 }
                 let mir = self.mir.promoted[index].clone();
                 let return_ty = mir.return_ty;
-                let return_ptr = self.gecx.alloc_ret_ptr(return_ty, cid.substs).expect("there's no such thing as an unreachable static");
+                let return_ptr = self.ecx.alloc_ret_ptr(return_ty, cid.substs).expect("there's no such thing as an unreachable static");
                 let mir = CachedMir::Owned(Rc::new(mir));
-                self.gecx.statics.insert(cid.clone(), return_ptr);
-                self.gecx.push_stack_frame(self.def_id, constant.span, mir, self.substs, Some(return_ptr));
+                self.ecx.statics.insert(cid.clone(), return_ptr);
+                self.ecx.push_stack_frame(self.def_id, constant.span, mir, self.substs, Some(return_ptr));
             }
         }
     }
@@ -158,7 +158,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
     fn visit_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>, context: LvalueContext) {
         self.super_lvalue(lvalue, context);
         if let mir::Lvalue::Static(def_id) = *lvalue {
-            let substs = self.gecx.tcx.mk_substs(subst::Substs::empty());
+            let substs = self.ecx.tcx.mk_substs(subst::Substs::empty());
             let span = self.span;
             self.global_item(def_id, substs, span);
         }
