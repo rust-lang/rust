@@ -20,6 +20,10 @@ use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer};
 use primval::{self, PrimVal};
 
+use std::collections::HashMap;
+
+mod stepper;
+
 struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -33,16 +37,8 @@ struct GlobalEvalContext<'a, 'tcx: 'a> {
     /// The virtual memory system.
     memory: Memory,
 
-    /// Another stack containing the type substitutions for the current function invocation. It
-    /// exists separately from `stack` because it must contain the `Substs` for a function while
-    /// *creating* the `Frame` for that same function.
-    substs_stack: Vec<&'tcx Substs<'tcx>>,
-
-    // TODO(solson): Merge with `substs_stack`. Also try restructuring `Frame` to accomodate.
-    /// A stack of the things necessary to print good strack traces:
-    ///   * Function DefIds and Substs to print proper substituted function names.
-    ///   * Spans pointing to specific function calls in the source.
-    name_stack: Vec<(DefId, &'tcx Substs<'tcx>, codemap::Span)>,
+    /// Precomputed statics, constants and promoteds
+    statics: HashMap<ConstantId<'tcx>, Pointer>,
 }
 
 struct FnEvalContext<'a, 'b: 'a + 'mir, 'mir, 'tcx: 'b> {
@@ -67,10 +63,19 @@ impl<'a, 'b, 'mir, 'tcx> DerefMut for FnEvalContext<'a, 'b, 'mir, 'tcx> {
 
 /// A stack frame.
 struct Frame<'a, 'tcx: 'a> {
+    /// The def_id of the current function
+    def_id: DefId,
+
+    /// The span of the call site
+    span: codemap::Span,
+
+    /// type substitutions for the current function invocation
+    substs: &'tcx Substs<'tcx>,
+
     /// The MIR for the function called on this frame.
     mir: CachedMir<'a, 'tcx>,
 
-    /// The block this frame will execute when a function call returns back to this frame.
+    /// The block that is currently executed (or will be executed after the above call stacks return)
     next_block: mir::BasicBlock,
 
     /// A pointer for writing the return value of the current call if it's not a diverging call.
@@ -86,6 +91,9 @@ struct Frame<'a, 'tcx: 'a> {
 
     /// The offset of the first temporary in `self.locals`.
     temp_offset: usize,
+
+    /// The index of the currently evaluated statment
+    stmt: usize,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -110,14 +118,34 @@ enum CachedMir<'mir, 'tcx: 'mir> {
 
 /// Represents the action to be taken in the main loop as a result of executing a terminator.
 enum TerminatorTarget {
-    /// Make a local jump to the given block.
-    Block(mir::BasicBlock),
+    /// Make a local jump to the next block
+    Block,
 
     /// Start executing from the new current frame. (For function calls.)
     Call,
 
     /// Stop executing the current frame and resume the previous frame.
     Return,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+/// Uniquely identifies a specific constant or static
+struct ConstantId<'tcx> {
+    /// the def id of the constant/static or in case of promoteds, the def id of the function they belong to
+    def_id: DefId,
+    /// In case of statics and constants this is `Substs::empty()`, so only promoteds and associated
+    /// constants actually have something useful here. We could special case statics and constants,
+    /// but that would only require more branching when working with constants, and not bring any
+    /// real benefits.
+    substs: &'tcx Substs<'tcx>,
+    kind: ConstantKind,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+enum ConstantKind {
+    Promoted(usize),
+    /// Statics, constants and associated constants
+    Global,
 }
 
 impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
@@ -131,9 +159,195 @@ impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
                                    .uint_type
                                    .bit_width()
                                    .expect("Session::target::uint_type was usize")/8),
-            substs_stack: Vec::new(),
-            name_stack: Vec::new(),
+            statics: HashMap::new(),
         }
+    }
+
+    fn call(&mut self, mir: &mir::Mir<'tcx>, def_id: DefId) -> EvalResult<Option<Pointer>> {
+        let substs = self.tcx.mk_substs(subst::Substs::empty());
+        let return_ptr = self.alloc_ret_ptr(mir.return_ty, substs);
+
+        let mut nested_fecx = FnEvalContext::new(self);
+
+        nested_fecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, None);
+
+        nested_fecx.frame_mut().return_ptr = return_ptr;
+
+        nested_fecx.run()?;
+        Ok(return_ptr)
+    }
+
+    fn alloc_ret_ptr(&mut self, output_ty: ty::FnOutput<'tcx>, substs: &'tcx Substs<'tcx>) -> Option<Pointer> {
+        match output_ty {
+            ty::FnConverging(ty) => {
+                let size = self.type_size(ty, substs);
+                Some(self.memory.allocate(size))
+            }
+            ty::FnDiverging => None,
+        }
+    }
+
+    // TODO(solson): Try making const_to_primval instead.
+    fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<Pointer> {
+        use rustc::middle::const_val::ConstVal::*;
+        match *const_val {
+            Float(_f) => unimplemented!(),
+            Integral(int) => {
+                // TODO(solson): Check int constant type.
+                let ptr = self.memory.allocate(8);
+                self.memory.write_uint(ptr, int.to_u64_unchecked(), 8)?;
+                Ok(ptr)
+            }
+            Str(ref s) => {
+                let psize = self.memory.pointer_size;
+                let static_ptr = self.memory.allocate(s.len());
+                let ptr = self.memory.allocate(psize * 2);
+                self.memory.write_bytes(static_ptr, s.as_bytes())?;
+                self.memory.write_ptr(ptr, static_ptr)?;
+                self.memory.write_usize(ptr.offset(psize as isize), s.len() as u64)?;
+                Ok(ptr)
+            }
+            ByteStr(ref bs) => {
+                let psize = self.memory.pointer_size;
+                let static_ptr = self.memory.allocate(bs.len());
+                let ptr = self.memory.allocate(psize);
+                self.memory.write_bytes(static_ptr, bs)?;
+                self.memory.write_ptr(ptr, static_ptr)?;
+                Ok(ptr)
+            }
+            Bool(b) => {
+                let ptr = self.memory.allocate(1);
+                self.memory.write_bool(ptr, b)?;
+                Ok(ptr)
+            }
+            Char(_c)          => unimplemented!(),
+            Struct(_node_id)  => unimplemented!(),
+            Tuple(_node_id)   => unimplemented!(),
+            Function(_def_id) => unimplemented!(),
+            Array(_, _)       => unimplemented!(),
+            Repeat(_, _)      => unimplemented!(),
+            Dummy             => unimplemented!(),
+        }
+    }
+
+    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
+        self.tcx.type_needs_drop_given_env(ty, &self.tcx.empty_parameter_environment())
+    }
+
+    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
+        ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
+    }
+
+    fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
+        // Do the initial selection for the obligation. This yields the shallow result we are
+        // looking for -- that is, what specific impl.
+        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+            let mut selcx = traits::SelectionContext::new(&infcx);
+
+            let obligation = traits::Obligation::new(
+                traits::ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID),
+                trait_ref.to_poly_trait_predicate(),
+            );
+            let selection = selcx.select(&obligation).unwrap().unwrap();
+
+            // Currently, we use a fulfillment context to completely resolve all nested obligations.
+            // This is because they can inform the inference of the impl's type parameters.
+            let mut fulfill_cx = traits::FulfillmentContext::new();
+            let vtable = selection.map(|predicate| {
+                fulfill_cx.register_predicate_obligation(&infcx, predicate);
+            });
+            infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &vtable)
+        })
+    }
+
+    /// Trait method, which has to be resolved to an impl method.
+    pub fn trait_method(
+        &self,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>
+    ) -> (DefId, &'tcx Substs<'tcx>) {
+        let method_item = self.tcx.impl_or_trait_item(def_id);
+        let trait_id = method_item.container().id();
+        let trait_ref = ty::Binder(substs.to_trait_ref(self.tcx, trait_id));
+        match self.fulfill_obligation(trait_ref) {
+            traits::VtableImpl(vtable_impl) => {
+                let impl_did = vtable_impl.impl_def_id;
+                let mname = self.tcx.item_name(def_id);
+                // Create a concatenated set of substitutions which includes those from the impl
+                // and those from the method:
+                let impl_substs = vtable_impl.substs.with_method_from(substs);
+                let substs = self.tcx.mk_substs(impl_substs);
+                let mth = get_impl_method(self.tcx, impl_did, substs, mname);
+
+                (mth.method.def_id, mth.substs)
+            }
+
+            traits::VtableClosure(vtable_closure) =>
+                (vtable_closure.closure_def_id, vtable_closure.substs.func_substs),
+
+            traits::VtableFnPointer(_fn_ty) => {
+                let _trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+                unimplemented!()
+                // let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, fn_ty);
+
+                // let method_ty = def_ty(tcx, def_id, substs);
+                // let fn_ptr_ty = match method_ty.sty {
+                //     ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
+                //     _ => unreachable!("expected fn item type, found {}",
+                //                       method_ty)
+                // };
+                // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
+            }
+
+            traits::VtableObject(ref _data) => {
+                unimplemented!()
+                // Callee {
+                //     data: Virtual(traits::get_vtable_index_of_object_method(
+                //                   tcx, data, def_id)),
+                //                   ty: def_ty(tcx, def_id, substs)
+                // }
+            }
+            vtable => unreachable!("resolved vtable bad vtable {:?} in trans", vtable),
+        }
+    }
+
+    fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
+        match self.tcx.map.as_local_node_id(def_id) {
+            Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
+            None => {
+                let mut mir_cache = self.mir_cache.borrow_mut();
+                if let Some(mir) = mir_cache.get(&def_id) {
+                    return CachedMir::Owned(mir.clone());
+                }
+
+                let cs = &self.tcx.sess.cstore;
+                let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
+                    panic!("no mir for {:?}", def_id);
+                });
+                let cached = Rc::new(mir);
+                mir_cache.insert(def_id, cached.clone());
+                CachedMir::Owned(cached)
+            }
+        }
+    }
+
+    fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+        let substituted = ty.subst(self.tcx, substs);
+        self.tcx.normalize_associated_type(&substituted)
+    }
+
+    fn type_size(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> usize {
+        self.type_layout(ty, substs).size(&self.tcx.data_layout).bytes() as usize
+    }
+
+    fn type_layout(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> &'tcx Layout {
+        // TODO(solson): Is this inefficient? Needs investigation.
+        let ty = self.monomorphize(ty, substs);
+
+        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+            // TODO(solson): Report this error properly.
+            ty.layout(&infcx).unwrap()
+        })
     }
 }
 
@@ -145,92 +359,52 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         }
     }
 
-    fn maybe_report<T>(&self, span: codemap::Span, r: EvalResult<T>) -> EvalResult<T> {
-        if let Err(ref e) = r {
-            let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
-            for &(def_id, substs, span) in self.name_stack.iter().rev() {
-                // FIXME(solson): Find a way to do this without this Display impl hack.
-                use rustc::util::ppaux;
-                use std::fmt;
-                struct Instance<'tcx>(DefId, &'tcx Substs<'tcx>);
-                impl<'tcx> fmt::Display for Instance<'tcx> {
-                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                        ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[],
-                            |tcx| tcx.lookup_item_type(self.0).generics)
-                    }
+    #[inline(never)]
+    #[cold]
+    fn report(&self, e: &EvalError) {
+        let stmt = self.frame().stmt;
+        let block = self.basic_block();
+        let span = if stmt < block.statements.len() {
+            block.statements[stmt].span
+        } else {
+            block.terminator().span
+        };
+        let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
+        for &Frame{ def_id, substs, span, .. } in self.stack.iter().rev() {
+            // FIXME(solson): Find a way to do this without this Display impl hack.
+            use rustc::util::ppaux;
+            use std::fmt;
+            struct Instance<'tcx>(DefId, &'tcx Substs<'tcx>);
+            impl<'tcx> fmt::Display for Instance<'tcx> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[],
+                        |tcx| tcx.lookup_item_type(self.0).generics)
                 }
-                err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
             }
-            err.emit();
+            err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
+        }
+        err.emit();
+    }
+
+    fn maybe_report<T>(&self, r: EvalResult<T>) -> EvalResult<T> {
+        if let Err(ref e) = r {
+            self.report(e);
         }
         r
     }
 
     fn run(&mut self) -> EvalResult<()> {
-        'outer: while !self.stack.is_empty() {
-            let mut current_block = self.frame().next_block;
-
-            loop {
-                trace!("// {:?}", current_block);
-                let current_mir = self.mir().clone(); // Cloning a reference.
-                let block_data = current_mir.basic_block_data(current_block);
-
-                for stmt in &block_data.statements {
-                    trace!("{:?}", stmt);
-                    let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-                    let result = self.eval_assignment(lvalue, rvalue);
-                    self.maybe_report(stmt.span, result)?;
-                }
-
-                let terminator = block_data.terminator();
-                trace!("{:?}", terminator.kind);
-
-                let result = self.eval_terminator(terminator);
-                match self.maybe_report(terminator.span, result)? {
-                    TerminatorTarget::Block(block) => current_block = block,
-                    TerminatorTarget::Return => {
-                        self.pop_stack_frame();
-                        self.name_stack.pop();
-                        continue 'outer;
-                    }
-                    TerminatorTarget::Call => continue 'outer,
-                }
-            }
-        }
-
+        let mut stepper = stepper::Stepper::new(self);
+        while stepper.step()? {}
         Ok(())
     }
 
-    fn call_nested(&mut self, mir: &mir::Mir<'tcx>) -> EvalResult<Option<Pointer>> {
-        let mut nested_fecx = FnEvalContext::new(self.gecx);
-
-        let return_ptr = match mir.return_ty {
-            ty::FnConverging(ty) => {
-                let size = nested_fecx.type_size(ty);
-                Some(nested_fecx.memory.allocate(size))
-            }
-            ty::FnDiverging => None,
-        };
-
-        let substs = nested_fecx.substs();
-        nested_fecx.push_stack_frame(CachedMir::Ref(mir), substs, return_ptr);
-        nested_fecx.run()?;
-        Ok(return_ptr)
-    }
-
-    fn push_stack_frame(&mut self, mir: CachedMir<'mir, 'tcx>, substs: &'tcx Substs<'tcx>,
+    fn push_stack_frame(&mut self, def_id: DefId, span: codemap::Span, mir: CachedMir<'mir, 'tcx>, substs: &'tcx Substs<'tcx>,
         return_ptr: Option<Pointer>)
     {
-        self.substs_stack.push(substs);
-
         let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
         let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
-
-        let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
-            let size = self.type_size(ty);
-            self.memory.allocate(size)
-        }).collect();
 
         let num_args = mir.arg_decls.len();
         let num_vars = mir.var_decls.len();
@@ -241,17 +415,27 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             mir: mir.clone(),
             next_block: mir::START_BLOCK,
             return_ptr: return_ptr,
-            locals: locals,
+            locals: Vec::new(),
             var_offset: num_args,
             temp_offset: num_args + num_vars,
+            span: span,
+            def_id: def_id,
+            substs: substs,
+            stmt: 0,
         });
+
+        let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
+            let size = self.type_size(ty);
+            self.memory.allocate(size)
+        }).collect();
+
+        self.frame_mut().locals = locals;
     }
 
     fn pop_stack_frame(&mut self) {
         ::log_settings::settings().indentation -= 1;
         let _frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         // TODO(solson): Deallocate local variables.
-        self.substs_stack.pop();
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>)
@@ -260,12 +444,16 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         let target = match terminator.kind {
             Return => TerminatorTarget::Return,
 
-            Goto { target } => TerminatorTarget::Block(target),
+            Goto { target } => {
+                self.frame_mut().next_block = target;
+                TerminatorTarget::Block
+            },
 
             If { ref cond, targets: (then_target, else_target) } => {
                 let cond_ptr = self.eval_operand(cond)?;
                 let cond_val = self.memory.read_bool(cond_ptr)?;
-                TerminatorTarget::Block(if cond_val { then_target } else { else_target })
+                self.frame_mut().next_block = if cond_val { then_target } else { else_target };
+                TerminatorTarget::Block
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
@@ -288,7 +476,8 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     }
                 }
 
-                TerminatorTarget::Block(target_block)
+                self.frame_mut().next_block = target_block;
+                TerminatorTarget::Block
             }
 
             Switch { ref discr, ref targets, adt_def } => {
@@ -299,7 +488,10 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                     .position(|v| discr_val == v.disr_val.to_u64_unchecked());
 
                 match matching {
-                    Some(i) => TerminatorTarget::Block(targets[i]),
+                    Some(i) => {
+                        self.frame_mut().next_block = targets[i];
+                        TerminatorTarget::Block
+                    },
                     None => return Err(EvalError::InvalidDiscriminant),
                 }
             }
@@ -378,8 +570,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                                 }
 
                                 let mir = self.load_mir(resolved_def_id);
-                                self.name_stack.push((def_id, substs, terminator.span));
-                                self.push_stack_frame(mir, resolved_substs, return_ptr);
+                                self.push_stack_frame(def_id, terminator.span, mir, resolved_substs, return_ptr);
 
                                 for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
                                     let dest = self.frame().locals[i];
@@ -401,7 +592,8 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
                 let ptr = self.eval_lvalue(value)?.to_ptr();
                 let ty = self.lvalue_ty(value);
                 self.drop(ptr, ty)?;
-                TerminatorTarget::Block(target)
+                self.frame_mut().next_block = target;
+                TerminatorTarget::Block
             }
 
             Resume => unimplemented!(),
@@ -992,18 +1184,30 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         use rustc::mir::repr::Operand::*;
         match *op {
             Consume(ref lvalue) => Ok(self.eval_lvalue(lvalue)?.to_ptr()),
-            Constant(mir::Constant { ref literal, .. }) => {
+            Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal::*;
                 match *literal {
                     Value { ref value } => Ok(self.const_to_ptr(value)?),
-                    Item { .. } => unimplemented!(),
+                    Item { def_id, substs } => {
+                        if let ty::TyFnDef(..) = ty.sty {
+                            Err(EvalError::Unimplemented("unimplemented: mentions of function items".to_string()))
+                        } else {
+                            let cid = ConstantId {
+                                def_id: def_id,
+                                substs: substs,
+                                kind: ConstantKind::Global,
+                            };
+                            Ok(*self.statics.get(&cid).expect("static should have been cached (rvalue)"))
+                        }
+                    },
                     Promoted { index } => {
-                        // TODO(solson): Mark constants and statics as read-only and cache their
-                        // values.
-                        let current_mir = self.mir();
-                        let mir = &current_mir.promoted[index];
-                        self.call_nested(mir).map(Option::unwrap)
-                    }
+                        let cid = ConstantId {
+                            def_id: self.frame().def_id,
+                            substs: self.substs(),
+                            kind: ConstantKind::Promoted(index),
+                        };
+                        Ok(*self.statics.get(&cid).expect("a promoted constant hasn't been precomputed"))
+                    },
                 }
             }
         }
@@ -1019,10 +1223,14 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
             Temp(i) => self.frame().locals[self.frame().temp_offset + i as usize],
 
             Static(def_id) => {
-                // TODO(solson): Mark constants and statics as read-only and cache their values.
-                let mir = self.load_mir(def_id);
-                self.call_nested(&mir)?.unwrap()
-            }
+                let substs = self.tcx.mk_substs(subst::Substs::empty());
+                let cid = ConstantId {
+                    def_id: def_id,
+                    substs: substs,
+                    kind: ConstantKind::Global,
+                };
+                *self.gecx.statics.get(&cid).expect("static should have been cached (lvalue)")
+            },
 
             Projection(ref proj) => {
                 let base = self.eval_lvalue(&proj.base)?;
@@ -1104,49 +1312,6 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(Lvalue { ptr: ptr, extra: LvalueExtra::None })
     }
 
-    // TODO(solson): Try making const_to_primval instead.
-    fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<Pointer> {
-        use rustc::middle::const_val::ConstVal::*;
-        match *const_val {
-            Float(_f) => unimplemented!(),
-            Integral(int) => {
-                // TODO(solson): Check int constant type.
-                let ptr = self.memory.allocate(8);
-                self.memory.write_uint(ptr, int.to_u64_unchecked(), 8)?;
-                Ok(ptr)
-            }
-            Str(ref s) => {
-                let psize = self.memory.pointer_size;
-                let static_ptr = self.memory.allocate(s.len());
-                let ptr = self.memory.allocate(psize * 2);
-                self.memory.write_bytes(static_ptr, s.as_bytes())?;
-                self.memory.write_ptr(ptr, static_ptr)?;
-                self.memory.write_usize(ptr.offset(psize as isize), s.len() as u64)?;
-                Ok(ptr)
-            }
-            ByteStr(ref bs) => {
-                let psize = self.memory.pointer_size;
-                let static_ptr = self.memory.allocate(bs.len());
-                let ptr = self.memory.allocate(psize);
-                self.memory.write_bytes(static_ptr, bs)?;
-                self.memory.write_ptr(ptr, static_ptr)?;
-                Ok(ptr)
-            }
-            Bool(b) => {
-                let ptr = self.memory.allocate(1);
-                self.memory.write_bool(ptr, b)?;
-                Ok(ptr)
-            }
-            Char(_c)          => unimplemented!(),
-            Struct(_node_id)  => unimplemented!(),
-            Tuple(_node_id)   => unimplemented!(),
-            Function(_def_id) => unimplemented!(),
-            Array(_, _)       => unimplemented!(),
-            Repeat(_, _)      => unimplemented!(),
-            Dummy             => unimplemented!(),
-        }
-    }
-
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
         self.monomorphize(self.mir().lvalue_ty(self.tcx, lvalue).to_ty(self.tcx))
     }
@@ -1156,12 +1321,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     }
 
     fn monomorphize(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let substituted = ty.subst(self.tcx, self.substs());
-        self.tcx.normalize_associated_type(&substituted)
-    }
-
-    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        self.tcx.type_needs_drop_given_env(ty, &self.tcx.empty_parameter_environment())
+        self.gecx.monomorphize(ty, self.substs())
     }
 
     fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<()> {
@@ -1173,22 +1333,12 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         Ok(())
     }
 
-    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
-    }
-
     fn type_size(&self, ty: Ty<'tcx>) -> usize {
-        self.type_layout(ty).size(&self.tcx.data_layout).bytes() as usize
+        self.gecx.type_size(ty, self.substs())
     }
 
     fn type_layout(&self, ty: Ty<'tcx>) -> &'tcx Layout {
-        // TODO(solson): Is this inefficient? Needs investigation.
-        let ty = self.monomorphize(ty);
-
-        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
-            // TODO(solson): Report this error properly.
-            ty.layout(&infcx).unwrap()
-        })
+        self.gecx.type_layout(ty, self.substs())
     }
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<PrimVal> {
@@ -1234,6 +1384,11 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
+    fn basic_block(&self) -> &mir::BasicBlockData<'tcx> {
+        let frame = self.frame();
+        frame.mir.basic_block_data(frame.next_block)
+    }
+
     fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
@@ -1243,100 +1398,7 @@ impl<'a, 'b, 'mir, 'tcx> FnEvalContext<'a, 'b, 'mir, 'tcx> {
     }
 
     fn substs(&self) -> &'tcx Substs<'tcx> {
-        self.substs_stack.last().cloned().unwrap_or_else(|| self.tcx.mk_substs(Substs::empty()))
-    }
-
-    fn load_mir(&self, def_id: DefId) -> CachedMir<'mir, 'tcx> {
-        match self.tcx.map.as_local_node_id(def_id) {
-            Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
-            None => {
-                let mut mir_cache = self.mir_cache.borrow_mut();
-                if let Some(mir) = mir_cache.get(&def_id) {
-                    return CachedMir::Owned(mir.clone());
-                }
-
-                let cs = &self.tcx.sess.cstore;
-                let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
-                    panic!("no mir for {:?}", def_id);
-                });
-                let cached = Rc::new(mir);
-                mir_cache.insert(def_id, cached.clone());
-                CachedMir::Owned(cached)
-            }
-        }
-    }
-
-    fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
-        // Do the initial selection for the obligation. This yields the shallow result we are
-        // looking for -- that is, what specific impl.
-        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
-            let mut selcx = traits::SelectionContext::new(&infcx);
-
-            let obligation = traits::Obligation::new(
-                traits::ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID),
-                trait_ref.to_poly_trait_predicate(),
-            );
-            let selection = selcx.select(&obligation).unwrap().unwrap();
-
-            // Currently, we use a fulfillment context to completely resolve all nested obligations.
-            // This is because they can inform the inference of the impl's type parameters.
-            let mut fulfill_cx = traits::FulfillmentContext::new();
-            let vtable = selection.map(|predicate| {
-                fulfill_cx.register_predicate_obligation(&infcx, predicate);
-            });
-            infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &vtable)
-        })
-    }
-
-    /// Trait method, which has to be resolved to an impl method.
-    pub fn trait_method(
-        &self,
-        def_id: DefId,
-        substs: &'tcx Substs<'tcx>
-    ) -> (DefId, &'tcx Substs<'tcx>) {
-        let method_item = self.tcx.impl_or_trait_item(def_id);
-        let trait_id = method_item.container().id();
-        let trait_ref = ty::Binder(substs.to_trait_ref(self.tcx, trait_id));
-        match self.fulfill_obligation(trait_ref) {
-            traits::VtableImpl(vtable_impl) => {
-                let impl_did = vtable_impl.impl_def_id;
-                let mname = self.tcx.item_name(def_id);
-                // Create a concatenated set of substitutions which includes those from the impl
-                // and those from the method:
-                let impl_substs = vtable_impl.substs.with_method_from(substs);
-                let substs = self.tcx.mk_substs(impl_substs);
-                let mth = get_impl_method(self.tcx, impl_did, substs, mname);
-
-                (mth.method.def_id, mth.substs)
-            }
-
-            traits::VtableClosure(vtable_closure) =>
-                (vtable_closure.closure_def_id, vtable_closure.substs.func_substs),
-
-            traits::VtableFnPointer(_fn_ty) => {
-                let _trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
-                unimplemented!()
-                // let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, fn_ty);
-
-                // let method_ty = def_ty(tcx, def_id, substs);
-                // let fn_ptr_ty = match method_ty.sty {
-                //     ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
-                //     _ => unreachable!("expected fn item type, found {}",
-                //                       method_ty)
-                // };
-                // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
-            }
-
-            traits::VtableObject(ref _data) => {
-                unimplemented!()
-                // Callee {
-                //     data: Virtual(traits::get_vtable_index_of_object_method(
-                //                   tcx, data, def_id)),
-                //                   ty: def_ty(tcx, def_id, substs)
-                // }
-            }
-            vtable => unreachable!("resolved vtable bad vtable {:?} in trans", vtable),
-        }
+        self.frame().substs
     }
 }
 
@@ -1426,10 +1488,9 @@ pub fn interpret_start_points<'a, 'tcx>(
                 debug!("Interpreting: {}", item.name);
 
                 let mut gecx = GlobalEvalContext::new(tcx, mir_map);
-                let mut fecx = FnEvalContext::new(&mut gecx);
-                match fecx.call_nested(mir) {
+                match gecx.call(mir, tcx.map.local_def_id(id)) {
                     Ok(Some(return_ptr)) => if log_enabled!(::log::LogLevel::Debug) {
-                        fecx.memory.dump(return_ptr.alloc_id);
+                        gecx.memory.dump(return_ptr.alloc_id);
                     },
                     Ok(None) => warn!("diverging function returned"),
                     Err(_e) => {

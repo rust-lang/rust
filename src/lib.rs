@@ -6,6 +6,7 @@
     filling_drop,
     question_mark,
     rustc_private,
+    pub_restricted,
 )]
 
 // From rustc.

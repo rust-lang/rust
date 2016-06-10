@@ -10,7 +10,7 @@ extern crate test;
 
 use self::miri::interpreter;
 use self::rustc::session::Session;
-use self::rustc_driver::{driver, CompilerCalls};
+use self::rustc_driver::{driver, CompilerCalls, Compilation};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::env::var;
@@ -35,6 +35,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls<'a> {
 
         let bencher = self.0.clone();
 
+        control.after_analysis.stop = Compilation::Stop;
         control.after_analysis.callback = Box::new(move |state| {
             state.session.abort_if_errors();
             bencher.borrow_mut().iter(|| {
