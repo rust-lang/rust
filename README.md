@@ -180,10 +180,10 @@ More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/
 
 ### As a Compiler Plugin
 
-Compiler plugins are highly unstable and will only work with a nightly Rust for now.
-Since stable Rust is backwards compatible, you should be able to compile
-your stable programs with nightly Rust with clippy plugged in to circumvent
-this.
+Compiler plugins are highly unstable and will only work with a *recent* nightly
+Rust for now.  Since stable Rust is backwards compatible, you should be able to
+compile your stable programs with nightly Rust with clippy plugged in to
+circumvent this.
 
 Add in your `Cargo.toml`:
 
