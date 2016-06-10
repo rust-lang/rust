@@ -8,5 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate issue_28927_2 as inner2;
-pub use inner2 as bar;
+mod detail {
+    pub extern crate issue_28927_2 as inner2;
+}
+pub use detail::inner2 as bar;
