@@ -90,13 +90,8 @@ extern "C" LLVMExecutionEngineRef LLVMBuildExecutionEngine(LLVMModuleRef mod)
     RustJITMemoryManager *mm = new RustJITMemoryManager;
 
     ExecutionEngine *ee =
-    #if LLVM_VERSION_MINOR >= 6
         EngineBuilder(std::unique_ptr<Module>(unwrap(mod)))
             .setMCJITMemoryManager(std::unique_ptr<RustJITMemoryManager>(mm))
-    #else
-        EngineBuilder(unwrap(mod))
-            .setMCJITMemoryManager(mm)
-    #endif
             .setEngineKind(EngineKind::JIT)
             .setErrorStr(&error_str)
             .setTargetOptions(options)
