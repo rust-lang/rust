@@ -60,7 +60,7 @@ impl LateLintPass for Transmute {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprCall(ref path_expr, ref args) = e.node {
             if let ExprPath(None, _) = path_expr.node {
-                let def_id = cx.tcx.def_map.borrow()[&path_expr.id].def_id();
+                let def_id = cx.tcx.expect_def(path_expr.id).def_id();
 
                 if match_def_path(cx, def_id, &paths::TRANSMUTE) {
                     let from_ty = cx.tcx.expr_ty(&args[0]);
