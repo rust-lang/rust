@@ -24,11 +24,11 @@ use std::collections::HashMap;
 
 mod stepper;
 
-pub fn step<'fncx, 'a: 'fncx, 'tcx: 'a>(gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>) -> EvalResult<bool> {
+pub fn step<'fncx, 'a: 'fncx, 'tcx: 'a>(gecx: &'fncx mut EvalContext<'a, 'tcx>) -> EvalResult<bool> {
     stepper::Stepper::new(gecx).step()
 }
 
-pub struct GlobalEvalContext<'a, 'tcx: 'a> {
+pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
@@ -123,9 +123,9 @@ enum ConstantKind {
     Global,
 }
 
-impl<'a, 'tcx> GlobalEvalContext<'a, 'tcx> {
+impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
-        GlobalEvalContext {
+        EvalContext {
             tcx: tcx,
             mir_map: mir_map,
             mir_cache: RefCell::new(DefIdMap()),

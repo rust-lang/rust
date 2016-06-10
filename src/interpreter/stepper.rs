@@ -1,7 +1,7 @@
 use super::{
     CachedMir,
     ConstantId,
-    GlobalEvalContext,
+    EvalContext,
     ConstantKind,
 };
 use error::EvalResult;
@@ -13,11 +13,11 @@ use syntax::codemap::Span;
 use std::rc::Rc;
 
 pub(super) struct Stepper<'fncx, 'a: 'fncx, 'tcx: 'a>{
-    gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>,
+    gecx: &'fncx mut EvalContext<'a, 'tcx>,
 }
 
 impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
-    pub(super) fn new(gecx: &'fncx mut GlobalEvalContext<'a, 'tcx>) -> Self {
+    pub(super) fn new(gecx: &'fncx mut EvalContext<'a, 'tcx>) -> Self {
         Stepper {
             gecx: gecx,
         }
@@ -98,7 +98,7 @@ impl<'fncx, 'a, 'tcx> Stepper<'fncx, 'a, 'tcx> {
 // The reason for this is, that `push_stack_frame` modifies the stack out of obvious reasons
 struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
     span: Span,
-    gecx: &'a mut GlobalEvalContext<'b, 'tcx>,
+    gecx: &'a mut EvalContext<'b, 'tcx>,
     mir: &'a mir::Mir<'tcx>,
     def_id: DefId,
     substs: &'tcx subst::Substs<'tcx>,

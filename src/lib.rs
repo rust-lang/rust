@@ -30,7 +30,7 @@ pub use error::{
 };
 
 pub use interpreter::{
-    GlobalEvalContext,
+    EvalContext,
     step,
     Frame,
     CachedMir,

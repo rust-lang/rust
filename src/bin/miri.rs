@@ -11,7 +11,7 @@ extern crate syntax;
 #[macro_use] extern crate log;
 
 use miri::{
-    GlobalEvalContext,
+    EvalContext,
     CachedMir,
     step,
     EvalError,
@@ -59,7 +59,7 @@ fn interpret_start_points<'a, 'tcx>(
 
                 debug!("Interpreting: {}", item.name);
 
-                let mut gecx = GlobalEvalContext::new(tcx, mir_map);
+                let mut gecx = EvalContext::new(tcx, mir_map);
                 let substs = tcx.mk_substs(subst::Substs::empty());
                 let return_ptr = gecx.alloc_ret_ptr(mir.return_ty, substs);
 
@@ -86,7 +86,7 @@ fn interpret_start_points<'a, 'tcx>(
     }
 }
 
-fn report(tcx: TyCtxt, gecx: &GlobalEvalContext, e: EvalError) {
+fn report(tcx: TyCtxt, gecx: &EvalContext, e: EvalError) {
     let frame = gecx.stack().last().expect("stackframe was empty");
     let block = frame.mir.basic_block_data(frame.next_block);
     let span = if frame.stmt < block.statements.len() {
