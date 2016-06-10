@@ -1284,11 +1284,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
-    fn basic_block(&self) -> &mir::BasicBlockData<'tcx> {
-        let frame = self.frame();
-        frame.mir.basic_block_data(frame.next_block)
-    }
-
     fn frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
