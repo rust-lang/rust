@@ -33,18 +33,26 @@ fn main() {
                  jemalloc.parent().unwrap().display());
         let stem = jemalloc.file_stem().unwrap().to_str().unwrap();
         let name = jemalloc.file_name().unwrap().to_str().unwrap();
-        let kind = if name.ends_with(".a") {"static"} else {"dylib"};
+        let kind = if name.ends_with(".a") {
+            "static"
+        } else {
+            "dylib"
+        };
         println!("cargo:rustc-link-lib={}={}", kind, &stem[3..]);
-        return
+        return;
     }
 
     let compiler = gcc::Config::new().get_compiler();
     let ar = build_helper::cc2ar(compiler.path(), &target);
-    let cflags = compiler.args().iter().map(|s| s.to_str().unwrap())
-                         .collect::<Vec<_>>().join(" ");
+    let cflags = compiler.args()
+                         .iter()
+                         .map(|s| s.to_str().unwrap())
+                         .collect::<Vec<_>>()
+                         .join(" ");
 
     let mut stack = src_dir.join("../jemalloc")
-                           .read_dir().unwrap()
+                           .read_dir()
+                           .unwrap()
                            .map(|e| e.unwrap())
                            .collect::<Vec<_>>();
     while let Some(entry) = stack.pop() {
@@ -57,7 +65,9 @@ fn main() {
     }
 
     let mut cmd = Command::new("sh");
-    cmd.arg(src_dir.join("../jemalloc/configure").to_str().unwrap()
+    cmd.arg(src_dir.join("../jemalloc/configure")
+                   .to_str()
+                   .unwrap()
                    .replace("C:\\", "/c/")
                    .replace("\\", "/"))
        .current_dir(&build_dir)
@@ -117,9 +127,10 @@ fn main() {
 
     run(&mut cmd);
     run(Command::new("make")
-                .current_dir(&build_dir)
-                .arg("build_lib_static")
-                .arg("-j").arg(env::var("NUM_JOBS").unwrap()));
+            .current_dir(&build_dir)
+            .arg("build_lib_static")
+            .arg("-j")
+            .arg(env::var("NUM_JOBS").unwrap()));
 
     if target.contains("windows") {
         println!("cargo:rustc-link-lib=static=jemalloc");
