@@ -85,7 +85,7 @@ use marker::{Reflect, Sized};
 
 /// A type to emulate dynamic typing.
 ///
-/// Every type with no non-`'static` references implements `Any`.
+/// Most types implement `Any`. However, any type which contains a non-`'static` reference does not.
 /// See the [module-level documentation][mod] for more details.
 ///
 /// [mod]: index.html
