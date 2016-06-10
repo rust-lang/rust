@@ -182,8 +182,10 @@ impl FromInner<AnonPipe> for ChildStderr {
     }
 }
 
-/// The `Command` type acts as a process builder, providing fine-grained control
-/// over how a new process should be spawned. A default configuration can be
+/// A process builder, providing fine-grained control
+/// over how a new process should be spawned.
+///
+/// A default configuration can be
 /// generated using `Command::new(program)`, where `program` gives a path to the
 /// program to be executed. Additional builder methods allow the configuration
 /// to be changed (for example, by adding arguments) prior to spawning:
