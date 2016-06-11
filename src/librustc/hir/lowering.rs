@@ -866,10 +866,10 @@ impl<'a> LoweringContext<'a> {
                                               pats.iter().map(|x| self.lower_pat(x)).collect(),
                                               ddpos)
                 }
-                PatKind::Path(ref pth) => {
+                PatKind::Path(None, ref pth) => {
                     hir::PatKind::Path(self.lower_path(pth))
                 }
-                PatKind::QPath(ref qself, ref pth) => {
+                PatKind::Path(Some(ref qself), ref pth) => {
                     let qself = hir::QSelf {
                         ty: self.lower_ty(&qself.ty),
                         position: qself.position,
