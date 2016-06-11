@@ -13,8 +13,9 @@ use std::io::Write;
 use rustc::hir::def_id::DefId;
 use rustc_serialize::json::as_json;
 
-use super::external_data::*;
-use super::dump::Dump;
+use external_data::*;
+use data::VariableKind;
+use dump::Dump;
 
 pub struct JsonDumper<'b, W: Write + 'b> {
     output: &'b mut W,
@@ -180,6 +181,7 @@ struct Def {
     name: String,
     qualname: String,
     value: String,
+    children: Vec<Id>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -194,14 +196,19 @@ enum DefKind {
     Trait,
     // value = type + generics
     Function,
+    // value = type + generics
+    Method,
     // No id, no value.
     Macro,
     // value = file_name
     Mod,
     // value = aliased type
     Type,
-    // value = type and init expression
-    Variable,
+    // value = type and init expression (for all variable kinds).
+    Local,
+    Static,
+    Const,
+    Field,
 }
 
 impl From<EnumData> for Def {
@@ -213,6 +220,7 @@ impl From<EnumData> for Def {
             name: data.name,
             qualname: data.qualname,
             value: data.value,
+            children: data.variants.into_iter().map(|id| From::from(id)).collect(),
         }
     }
 }
@@ -226,6 +234,7 @@ impl From<TupleVariantData> for Def {
             name: data.name,
             qualname: data.qualname,
             value: data.value,
+            children: vec![],
         }
     }
 }
@@ -238,6 +247,7 @@ impl From<StructVariantData> for Def {
             name: data.name,
             qualname: data.qualname,
             value: data.value,
+            children: vec![],
         }
     }
 }
@@ -250,6 +260,7 @@ impl From<StructData> for Def {
             name: data.name,
             qualname: data.qualname,
             value: data.value,
+            children: data.fields.into_iter().map(|id| From::from(id)).collect(),
         }
     }
 }
@@ -262,6 +273,7 @@ impl From<TraitData> for Def {
             name: data.name,
             qualname: data.qualname,
             value: data.value,
+            children: data.items.into_iter().map(|id| From::from(id)).collect(),
         }
     }
 }
@@ -274,18 +286,20 @@ impl From<FunctionData> for Def {
             name: data.name,
             qualname: data.qualname,
             value: data.value,
+            children: vec![],
         }
     }
 }
 impl From<MethodData> for Def {
     fn from(data: MethodData) -> Def {
         Def {
-            kind: DefKind::Function,
+            kind: DefKind::Method,
             id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
             value: data.value,
+            children: vec![],
         }
     }
 }
@@ -298,6 +312,7 @@ impl From<MacroData> for Def {
             name: data.name,
             qualname: data.qualname,
             value: String::new(),
+            children: vec![],
         }
     }
 }
@@ -310,6 +325,7 @@ impl From<ModData> for Def {
             name: data.name,
             qualname: data.qualname,
             value: data.filename,
+            children: data.items.into_iter().map(|id| From::from(id)).collect(),
         }
     }
 }
@@ -322,18 +338,25 @@ impl From<TypeDefData> for Def {
             name: data.name,
             qualname: data.qualname,
             value: data.value,
+            children: vec![],
         }
     }
 }
 impl From<VariableData> for Def {
     fn from(data: VariableData) -> Def {
         Def {
-            kind: DefKind::Variable,
+            kind: match data.kind {
+                VariableKind::Static => DefKind::Static,
+                VariableKind::Const => DefKind::Const,
+                VariableKind::Local => DefKind::Local,
+                VariableKind::Field => DefKind::Field,
+            },
             id: From::from(data.id),
             span: data.span,
             name: data.name,
             qualname: data.qualname,
             value: data.value,
+            children: vec![],
         }
     }
 }
