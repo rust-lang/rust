@@ -495,9 +495,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         expected: Ty<'tcx>)
     {
         // Resolve the path and check the definition for errors.
-        let def = self.finish_resolving_struct_path(path, pat.id, pat.span);
-        let variant = if let Some(variant) = self.check_struct_path(def, path, pat.span) {
-            variant
+        let (variant, pat_ty) = if let Some(variant_ty) = self.check_struct_path(path, pat.id,
+                                                                                 pat.span) {
+            variant_ty
         } else {
             self.write_error(pat.id);
             for field in fields {
@@ -507,7 +507,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Type check the path.
-        let pat_ty = self.instantiate_type_path(def.def_id(), path, pat.id);
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.
