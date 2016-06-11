@@ -1193,7 +1193,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
           }
 
-          PatKind::Path(..) | PatKind::QPath(..) | PatKind::Binding(_, _, None) |
+          PatKind::Path(..) | PatKind::Binding(_, _, None) |
           PatKind::Lit(..) | PatKind::Range(..) | PatKind::Wild => {
             // always ok
           }

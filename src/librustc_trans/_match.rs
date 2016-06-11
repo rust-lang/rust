@@ -2003,7 +2003,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         cleanup_scope)
                 });
         }
-        PatKind::Path(..) | PatKind::QPath(..) | PatKind::Wild |
+        PatKind::Path(..) | PatKind::Wild |
         PatKind::Lit(..) | PatKind::Range(..) => ()
     }
     return bcx;

@@ -168,11 +168,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             PatKind::TupleStruct(ref path, ref subpats, ddpos) => {
                 self.check_pat_tuple_struct(pat, path, &subpats, ddpos, expected);
             }
-            PatKind::Path(ref path) => {
-                self.check_pat_path(pat, None, path, expected);
-            }
-            PatKind::QPath(ref qself, ref path) => {
-                self.check_pat_path(pat, Some(self.to_ty(&qself.ty)), path, expected);
+            PatKind::Path(ref opt_qself, ref path) => {
+                let opt_qself_ty = opt_qself.as_ref().map(|qself| self.to_ty(&qself.ty));
+                self.check_pat_path(pat, opt_qself_ty, path, expected);
             }
             PatKind::Struct(ref path, ref fields, etc) => {
                 self.check_pat_struct(pat, path, fields, etc, expected);
