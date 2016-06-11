@@ -227,6 +227,11 @@ pub trait MacResult {
         None
     }
 
+    /// Create zero or more trait items.
+    fn make_trait_items(self: Box<Self>) -> Option<SmallVector<ast::TraitItem>> {
+        None
+    }
+
     /// Create a pattern.
     fn make_pat(self: Box<Self>) -> Option<P<ast::Pat>> {
         None
@@ -274,6 +279,7 @@ make_MacEager! {
     pat: P<ast::Pat>,
     items: SmallVector<P<ast::Item>>,
     impl_items: SmallVector<ast::ImplItem>,
+    trait_items: SmallVector<ast::TraitItem>,
     stmts: SmallVector<ast::Stmt>,
     ty: P<ast::Ty>,
 }
@@ -289,6 +295,10 @@ impl MacResult for MacEager {
 
     fn make_impl_items(self: Box<Self>) -> Option<SmallVector<ast::ImplItem>> {
         self.impl_items
+    }
+
+    fn make_trait_items(self: Box<Self>) -> Option<SmallVector<ast::TraitItem>> {
+        self.trait_items
     }
 
     fn make_stmts(self: Box<Self>) -> Option<SmallVector<ast::Stmt>> {
@@ -392,6 +402,14 @@ impl MacResult for DummyResult {
     }
 
     fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVector<ast::ImplItem>> {
+        if self.expr_only {
+            None
+        } else {
+            Some(SmallVector::zero())
+        }
+    }
+
+    fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVector<ast::TraitItem>> {
         if self.expr_only {
             None
         } else {

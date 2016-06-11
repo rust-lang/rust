@@ -945,6 +945,9 @@ pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T)
                 TraitItemKind::Type(folder.fold_bounds(bounds),
                               default.map(|x| folder.fold_ty(x)))
             }
+            ast::TraitItemKind::Macro(mac) => {
+                TraitItemKind::Macro(folder.fold_mac(mac))
+            }
         },
         span: folder.new_span(i.span)
     })
