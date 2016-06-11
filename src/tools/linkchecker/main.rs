@@ -75,30 +75,20 @@ struct FileEntry {
 type Cache = HashMap<PathBuf, FileEntry>;
 
 impl FileEntry {
-    fn parse_ids(&mut self,
-                file: &Path,
-                contents: &str,
-                errors: &mut bool)
-{
+    fn parse_ids(&mut self, file: &Path, contents: &str, errors: &mut bool) {
         if self.ids.is_empty() {
             with_attrs_in_source(contents, " id", |fragment, i| {
                 let frag = fragment.trim_left_matches("#").to_owned();
                 if !self.ids.insert(frag) {
                     *errors = true;
-                    println!("{}:{}: id is not unique: `{}`",
-                             file.display(), i, fragment);
+                    println!("{}:{}: id is not unique: `{}`", file.display(), i, fragment);
                 }
             });
         }
     }
 }
 
-fn walk(cache: &mut Cache,
-        root: &Path,
-        dir: &Path,
-        url: &mut Url,
-        errors: &mut bool)
-{
+fn walk(cache: &mut Cache, root: &Path, dir: &Path, url: &mut Url, errors: &mut bool) {
     for entry in t!(dir.read_dir()).map(|e| t!(e)) {
         let path = entry.path();
         let kind = t!(entry.file_type());
@@ -122,8 +112,8 @@ fn check(cache: &mut Cache,
          root: &Path,
          file: &Path,
          base: &Url,
-         errors: &mut bool) -> Option<PathBuf>
-{
+         errors: &mut bool)
+         -> Option<PathBuf> {
     // ignore js files as they are not prone to errors as the rest of the
     // documentation is and they otherwise bring up false positives.
     if file.extension().and_then(|s| s.to_str()) == Some("js") {
@@ -173,8 +163,9 @@ fn check(cache: &mut Cache,
         Err(_) => return None,
     };
     {
-        cache.get_mut(&pretty_file).unwrap()
-                                   .parse_ids(&pretty_file, &contents, errors);
+        cache.get_mut(&pretty_file)
+             .unwrap()
+             .parse_ids(&pretty_file, &contents, errors);
     }
 
     // Search for anything that's the regex 'href[ ]*=[ ]*".*?"'
@@ -195,8 +186,10 @@ fn check(cache: &mut Cache,
                 // the docs offline so it's best to avoid them.
                 *errors = true;
                 let pretty_path = path.strip_prefix(root).unwrap_or(&path);
-                println!("{}:{}: directory link - {}", pretty_file.display(),
-                         i + 1, pretty_path.display());
+                println!("{}:{}: directory link - {}",
+                         pretty_file.display(),
+                         i + 1,
+                         pretty_path.display());
                 return;
             }
             let res = load_file(cache, root, path.clone(), FromRedirect(false));
@@ -205,7 +198,9 @@ fn check(cache: &mut Cache,
                 Err(LoadError::IOError(err)) => panic!(format!("{}", err)),
                 Err(LoadError::BrokenRedirect(target, _)) => {
                     print!("{}:{}: broken redirect to {}",
-                           pretty_file.display(), i + 1, target.display());
+                           pretty_file.display(),
+                           i + 1,
+                           target.display());
                     return;
                 }
                 Err(LoadError::IsRedirect) => unreachable!(),
@@ -225,9 +220,9 @@ fn check(cache: &mut Cache,
                 if !entry.ids.contains(fragment) {
                     *errors = true;
                     print!("{}:{}: broken link fragment  ",
-                           pretty_file.display(), i + 1);
-                    println!("`#{}` pointing to `{}`",
-                             fragment, pretty_path.display());
+                           pretty_file.display(),
+                           i + 1);
+                    println!("`#{}` pointing to `{}`", fragment, pretty_path.display());
                 };
             }
         } else {
@@ -243,7 +238,8 @@ fn check(cache: &mut Cache,
 fn load_file(cache: &mut Cache,
              root: &Path,
              file: PathBuf,
-             redirect: Redirect) -> Result<(PathBuf, String), LoadError> {
+             redirect: Redirect)
+             -> Result<(PathBuf, String), LoadError> {
     let mut contents = String::new();
     let pretty_file = PathBuf::from(file.strip_prefix(root).unwrap_or(&file));
 
@@ -251,7 +247,7 @@ fn load_file(cache: &mut Cache,
         Entry::Occupied(entry) => {
             contents = entry.get().source.clone();
             None
-        },
+        }
         Entry::Vacant(entry) => {
             let mut fp = try!(File::open(file.clone()).map_err(|err| {
                 if let FromRedirect(true) = redirect {
@@ -275,7 +271,7 @@ fn load_file(cache: &mut Cache,
                 });
             }
             maybe
-        },
+        }
     };
     let base = Url::from_file_path(&file).unwrap();
     let mut parser = UrlParser::new();
@@ -286,7 +282,7 @@ fn load_file(cache: &mut Cache,
             let path = PathBuf::from(redirect_file);
             load_file(cache, root, path, FromRedirect(true))
         }
-        None => Ok((pretty_file, contents))
+        None => Ok((pretty_file, contents)),
     }
 }
 
@@ -307,25 +303,22 @@ fn maybe_redirect(source: &str) -> Option<String> {
 }
 
 fn url_to_file_path(parser: &UrlParser, url: &str) -> Option<(Url, PathBuf)> {
-    parser.parse(url).ok().and_then(|parsed_url| {
-        parsed_url.to_file_path().ok().map(|f| (parsed_url, f))
-    })
+    parser.parse(url)
+          .ok()
+          .and_then(|parsed_url| parsed_url.to_file_path().ok().map(|f| (parsed_url, f)))
 }
 
-fn with_attrs_in_source<F: FnMut(&str, usize)>(contents: &str,
-                                               attr: &str,
-                                               mut f: F)
-{
+fn with_attrs_in_source<F: FnMut(&str, usize)>(contents: &str, attr: &str, mut f: F) {
     for (i, mut line) in contents.lines().enumerate() {
         while let Some(j) = line.find(attr) {
-            let rest = &line[j + attr.len() ..];
+            let rest = &line[j + attr.len()..];
             line = rest;
             let pos_equals = match rest.find("=") {
                 Some(i) => i,
                 None => continue,
             };
             if rest[..pos_equals].trim_left_matches(" ") != "" {
-                continue
+                continue;
             }
 
             let rest = &rest[pos_equals + 1..];
@@ -337,7 +330,7 @@ fn with_attrs_in_source<F: FnMut(&str, usize)>(contents: &str,
             let quote_delim = rest.as_bytes()[pos_quote] as char;
 
             if rest[..pos_quote].trim_left_matches(" ") != "" {
-                continue
+                continue;
             }
             let rest = &rest[pos_quote + 1..];
             let url = match rest.find(quote_delim) {
