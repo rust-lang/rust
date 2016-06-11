@@ -20,12 +20,11 @@ use ast::{Stmt, StmtKind, DeclKind};
 use ast::{Expr, Item, Local, Decl};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
-use config::CfgDiag;
 use errors::Handler;
-use feature_gate::{GatedCfg, GatedCfgAttr};
+use feature_gate::{Features, GatedCfg};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::token::InternedString;
-use parse::token;
+use parse::{ParseSess, token};
 use ptr::P;
 
 use std::cell::{RefCell, Cell};
@@ -365,35 +364,29 @@ pub fn requests_inline(attrs: &[Attribute]) -> bool {
 }
 
 /// Tests if a cfg-pattern matches the cfg set
-pub fn cfg_matches<T: CfgDiag>(cfgs: &[P<MetaItem>],
-                           cfg: &ast::MetaItem,
-                           diag: &mut T) -> bool {
+pub fn cfg_matches(cfgs: &[P<MetaItem>], cfg: &ast::MetaItem,
+                   sess: &ParseSess, features: Option<&Features>)
+                   -> bool {
     match cfg.node {
         ast::MetaItemKind::List(ref pred, ref mis) if &pred[..] == "any" =>
-            mis.iter().any(|mi| cfg_matches(cfgs, &mi, diag)),
+            mis.iter().any(|mi| cfg_matches(cfgs, &mi, sess, features)),
         ast::MetaItemKind::List(ref pred, ref mis) if &pred[..] == "all" =>
-            mis.iter().all(|mi| cfg_matches(cfgs, &mi, diag)),
+            mis.iter().all(|mi| cfg_matches(cfgs, &mi, sess, features)),
         ast::MetaItemKind::List(ref pred, ref mis) if &pred[..] == "not" => {
             if mis.len() != 1 {
-                diag.emit_error(|diagnostic| {
-                    diagnostic.span_err(cfg.span, "expected 1 cfg-pattern");
-                });
+                sess.span_diagnostic.span_err(cfg.span, "expected 1 cfg-pattern");
                 return false;
             }
-            !cfg_matches(cfgs, &mis[0], diag)
+            !cfg_matches(cfgs, &mis[0], sess, features)
         }
         ast::MetaItemKind::List(ref pred, _) => {
-            diag.emit_error(|diagnostic| {
-                diagnostic.span_err(cfg.span,
-                    &format!("invalid predicate `{}`", pred));
-            });
+            sess.span_diagnostic.span_err(cfg.span, &format!("invalid predicate `{}`", pred));
             false
         },
         ast::MetaItemKind::Word(_) | ast::MetaItemKind::NameValue(..) => {
-            diag.flag_gated(|feature_gated_cfgs| {
-                feature_gated_cfgs.extend(
-                    GatedCfg::gate(cfg).map(GatedCfgAttr::GatedCfg));
-            });
+            if let (Some(features), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
+                gated_cfg.check_and_emit(sess, features);
+            }
             contains(cfgs, cfg)
         }
     }

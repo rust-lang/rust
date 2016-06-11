@@ -577,15 +577,13 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
     //
     // baz! should not use this definition unless foo is enabled.
 
-    let mut feature_gated_cfgs = vec![];
-    krate = time(time_passes, "configuration 1", || {
-        sess.track_errors(|| {
-            syntax::config::strip_unconfigured_items(sess.diagnostic(),
-                                                     krate,
-                                                     sess.opts.test,
-                                                     &mut feature_gated_cfgs)
-        })
-    })?;
+    krate = time(time_passes, "configuration", || {
+        let (krate, features) =
+            syntax::config::strip_unconfigured_items(krate, &sess.parse_sess, sess.opts.test);
+        // these need to be set "early" so that expansion sees `quote` if enabled.
+        *sess.features.borrow_mut() = features;
+        krate
+    });
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
     sess.crate_disambiguator.set(token::intern(&compute_crate_disambiguator(sess)));
@@ -593,13 +591,6 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
     time(time_passes, "recursion limit", || {
         middle::recursion_limit::update_recursion_limit(sess, &krate);
     });
-
-    // these need to be set "early" so that expansion sees `quote` if enabled.
-    sess.track_errors(|| {
-        *sess.features.borrow_mut() =
-            syntax::feature_gate::get_features(&sess.parse_sess.span_diagnostic,
-                                               &krate);
-    })?;
 
     krate = time(time_passes, "crate injection", || {
         let alt_std_name = sess.opts.alt_std_name.clone();
@@ -699,7 +690,6 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
         let mut ecx = syntax::ext::base::ExtCtxt::new(&sess.parse_sess,
                                                       krate.config.clone(),
                                                       cfg,
-                                                      &mut feature_gated_cfgs,
                                                       &mut loader);
         syntax_ext::register_builtins(&mut ecx.syntax_env);
         let (ret, macro_names) = syntax::ext::expand::expand_crate(ecx,
@@ -711,19 +701,6 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
         *sess.available_macros.borrow_mut() = macro_names;
         ret
     });
-
-    krate = sess.track_errors(|| {
-        time(time_passes, "gated configuration checking", || {
-            let features = sess.features.borrow();
-            feature_gated_cfgs.sort();
-            feature_gated_cfgs.dedup();
-            for cfg in &feature_gated_cfgs {
-                cfg.check_and_emit(sess.diagnostic(), &features, sess.codemap());
-            }
-        });
-
-        krate
-    })?;
 
     krate = time(time_passes, "maybe building test harness", || {
         syntax::test::modify_for_testing(&sess.parse_sess,
@@ -739,12 +716,11 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     time(time_passes, "complete gated feature checking", || {
         sess.track_errors(|| {
-            let features = syntax::feature_gate::check_crate(sess.codemap(),
-                                                             &sess.parse_sess.span_diagnostic,
-                                                             &krate,
-                                                             &attributes,
-                                                             sess.opts.unstable_features);
-            *sess.features.borrow_mut() = features;
+            syntax::feature_gate::check_crate(&krate,
+                                              &sess.parse_sess,
+                                              &sess.features.borrow(),
+                                              &attributes,
+                                              sess.opts.unstable_features);
         })
     })?;
 

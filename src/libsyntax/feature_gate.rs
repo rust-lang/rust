@@ -34,10 +34,10 @@ use codemap::{CodeMap, Span};
 use errors::Handler;
 use visit;
 use visit::{FnKind, Visitor};
+use parse::ParseSess;
 use parse::token::InternedString;
 
 use std::ascii::AsciiExt;
-use std::cmp;
 
 macro_rules! setter {
     ($field: ident) => {{
@@ -604,57 +604,9 @@ const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)]
 ];
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum GatedCfgAttr {
-    GatedCfg(GatedCfg),
-    GatedAttr(Span),
-}
-
-#[derive(Debug, Eq, PartialEq)]
 pub struct GatedCfg {
     span: Span,
     index: usize,
-}
-
-impl Ord for GatedCfgAttr {
-    fn cmp(&self, other: &GatedCfgAttr) -> cmp::Ordering {
-        let to_tup = |s: &GatedCfgAttr| match *s {
-            GatedCfgAttr::GatedCfg(ref gated_cfg) => {
-                (gated_cfg.span.lo.0, gated_cfg.span.hi.0, gated_cfg.index)
-            }
-            GatedCfgAttr::GatedAttr(ref span) => {
-                (span.lo.0, span.hi.0, GATED_CFGS.len())
-            }
-        };
-        to_tup(self).cmp(&to_tup(other))
-    }
-}
-
-impl PartialOrd for GatedCfgAttr {
-    fn partial_cmp(&self, other: &GatedCfgAttr) -> Option<cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl GatedCfgAttr {
-    pub fn check_and_emit(&self,
-                          diagnostic: &Handler,
-                          features: &Features,
-                          codemap: &CodeMap) {
-        match *self {
-            GatedCfgAttr::GatedCfg(ref cfg) => {
-                cfg.check_and_emit(diagnostic, features, codemap);
-            }
-            GatedCfgAttr::GatedAttr(span) => {
-                if !features.stmt_expr_attributes {
-                    emit_feature_err(diagnostic,
-                                     "stmt_expr_attributes",
-                                     span,
-                                     GateIssue::Language,
-                                     EXPLAIN_STMT_ATTR_SYNTAX);
-                }
-            }
-        }
-    }
 }
 
 impl GatedCfg {
@@ -669,12 +621,11 @@ impl GatedCfg {
                       }
                   })
     }
-    fn check_and_emit(&self,
-                      diagnostic: &Handler,
-                      features: &Features,
-                      codemap: &CodeMap) {
+
+    pub fn check_and_emit(&self, sess: &ParseSess, features: &Features) {
         let (cfg, feature, has_feature) = GATED_CFGS[self.index];
-        if !has_feature(features) && !codemap.span_allows_unstable(self.span) {
+        if !has_feature(features) && !sess.codemap().span_allows_unstable(self.span) {
+            let diagnostic = &sess.span_diagnostic;
             let explain = format!("`cfg({})` is experimental and subject to change", cfg);
             emit_feature_err(diagnostic, feature, self.span, GateIssue::Language, &explain);
         }
@@ -810,7 +761,7 @@ pub fn emit_feature_err(diag: &Handler, feature: &str, span: Span, issue: GateIs
 const EXPLAIN_BOX_SYNTAX: &'static str =
     "box expression syntax is experimental; you can call `Box::new` instead.";
 
-const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
+pub const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
     "attributes on non-item statements and expressions are experimental.";
 
 pub const EXPLAIN_ASM: &'static str =
@@ -1142,10 +1093,10 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 }
 
-pub fn get_features(span_handler: &Handler, krate: &ast::Crate) -> Features {
+pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> Features {
     let mut features = Features::new();
 
-    for attr in &krate.attrs {
+    for attr in krate_attrs {
         if !attr.check_name("feature") {
             continue
         }
@@ -1188,21 +1139,19 @@ pub fn get_features(span_handler: &Handler, krate: &ast::Crate) -> Features {
     features
 }
 
-pub fn check_crate(cm: &CodeMap, span_handler: &Handler, krate: &ast::Crate,
+pub fn check_crate(krate: &ast::Crate,
+                   sess: &ParseSess,
+                   features: &Features,
                    plugin_attributes: &[(String, AttributeType)],
-                   unstable: UnstableFeatures) -> Features {
-    maybe_stage_features(span_handler, krate, unstable);
-    let features = get_features(span_handler, krate);
-    {
-        let ctx = Context {
-            features: &features,
-            span_handler: span_handler,
-            cm: cm,
-            plugin_attributes: plugin_attributes,
-        };
-        visit::walk_crate(&mut PostExpansionVisitor { context: &ctx }, krate);
-    }
-    features
+                   unstable: UnstableFeatures) {
+    maybe_stage_features(&sess.span_diagnostic, krate, unstable);
+    let ctx = Context {
+        features: features,
+        span_handler: &sess.span_diagnostic,
+        cm: sess.codemap(),
+        plugin_attributes: plugin_attributes,
+    };
+    visit::walk_crate(&mut PostExpansionVisitor { context: &ctx }, krate);
 }
 
 #[derive(Clone, Copy)]

@@ -20,11 +20,11 @@ use syntax::parse::token::intern;
 
 fn main() {
     let ps = syntax::parse::ParseSess::new();
-    let (mut feature_gated_cfgs, mut loader) = (vec![], syntax::ext::base::DummyMacroLoader);
+    let mut loader = syntax::ext::base::DummyMacroLoader;
     let mut cx = syntax::ext::base::ExtCtxt::new(
         &ps, vec![],
         syntax::ext::expand::ExpansionConfig::default("qquote".to_string()),
-        &mut feature_gated_cfgs, &mut loader);
+        &mut loader);
     cx.bt_push(syntax::codemap::ExpnInfo {
         call_site: DUMMY_SP,
         callee: syntax::codemap::NameAndSpan {
