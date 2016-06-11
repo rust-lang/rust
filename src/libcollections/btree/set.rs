@@ -11,12 +11,12 @@
 // This is pretty much entirely stolen from TreeSet, since BTreeMap has an identical interface
 // to TreeMap
 
-use core::cmp::Ordering::{self, Less, Greater, Equal};
-use core::cmp::{min, max};
+use core::cmp::Ordering::{self, Equal, Greater, Less};
+use core::cmp::{max, min};
 use core::fmt::Debug;
 use core::fmt;
-use core::iter::{Peekable, FromIterator};
-use core::ops::{BitOr, BitAnd, BitXor, Sub};
+use core::iter::{FromIterator, Peekable};
+use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use borrow::Borrow;
 use btree_map::{BTreeMap, Keys};
@@ -614,7 +614,9 @@ impl<T: Ord> BTreeSet<T> {
     #[unstable(feature = "btree_split_off",
                reason = "recently added as part of collections reform 2",
                issue = "19986")]
-    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self where T: Borrow<Q> {
+    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
+        where T: Borrow<Q>
+    {
         BTreeSet { map: self.map.split_off(key) }
     }
 }
@@ -807,7 +809,9 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {
-    fn len(&self) -> usize { self.iter.len() }
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
 }
 
 
@@ -830,7 +834,9 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {
-    fn len(&self) -> usize { self.iter.len() }
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
 }
 
 
