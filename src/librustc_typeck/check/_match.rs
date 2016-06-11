@@ -489,39 +489,35 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn check_pat_struct(&self, pat: &'gcx hir::Pat,
-                            path: &hir::Path, fields: &'gcx [Spanned<hir::FieldPat>],
-                            etc: bool, expected: Ty<'tcx>) {
-        let tcx = self.tcx;
-
-        let def = tcx.expect_def(pat.id);
-        let variant = match self.def_struct_variant(def, path.span) {
-            Some((_, variant)) => variant,
-            None => {
-                let name = pprust::path_to_string(path);
-                span_err!(tcx.sess, pat.span, E0163,
-                          "`{}` does not name a struct or a struct variant", name);
-                self.write_error(pat.id);
-
-                for field in fields {
-                    self.check_pat(&field.node.pat, tcx.types.err);
-                }
-                return;
+    fn check_pat_struct(&self,
+                        pat: &'gcx hir::Pat,
+                        path: &hir::Path,
+                        fields: &'gcx [Spanned<hir::FieldPat>],
+                        etc: bool,
+                        expected: Ty<'tcx>)
+    {
+        // Resolve the path and check the definition for errors.
+        let def = self.finish_resolving_struct_path(path, pat.id, pat.span);
+        let variant = if let Some(variant) = self.check_struct_path(def, path, pat.span) {
+            variant
+        } else {
+            self.write_error(pat.id);
+            for field in fields {
+                self.check_pat(&field.node.pat, self.tcx.types.err);
             }
+            return;
         };
 
-        let pat_ty = self.instantiate_type(def.def_id(), path);
-        let item_substs = match pat_ty.sty {
+        // Type check the path.
+        let pat_ty = self.instantiate_type_path(def.def_id(), path, pat.id);
+        self.demand_eqtype(pat.span, expected, pat_ty);
+
+        // Type check subpatterns.
+        let substs = match pat_ty.sty {
             ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
             _ => span_bug!(pat.span, "struct variant is not an ADT")
         };
-        self.demand_eqtype(pat.span, expected, pat_ty);
-        self.check_struct_pat_fields(pat.span, fields, variant, &item_substs, etc);
-
-        self.write_ty(pat.id, pat_ty);
-        self.write_substs(pat.id, ty::ItemSubsts {
-            substs: item_substs
-        });
+        self.check_struct_pat_fields(pat.span, fields, variant, substs, etc);
     }
 
     fn check_pat_path(&self,
@@ -539,8 +535,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Resolve the path and check the definition for errors.
-        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(tcx.expect_resolution(pat.id),
-                                                            opt_self_ty, path, pat.span, pat.id);
+        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(opt_self_ty, path,
+                                                                   pat.id, pat.span);
         match def {
             Def::Err => {
                 self.set_tainted_by_errors();
@@ -565,8 +561,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Type check the path.
         let scheme = tcx.lookup_item_type(def.def_id());
         let predicates = tcx.lookup_predicates(def.def_id());
-        self.instantiate_path(segments, scheme, &predicates, opt_ty, def, pat.span, pat.id);
-        let pat_ty = self.node_ty(pat.id);
+        let pat_ty = self.instantiate_value_path(segments, scheme, &predicates,
+                                                 opt_ty, def, pat.span, pat.id);
         self.demand_suptype(pat.span, expected, pat_ty);
     }
 
@@ -597,9 +593,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Resolve the path and check the definition for errors.
-        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(tcx.expect_resolution(pat.id),
-                                                                   None, path, pat.span, pat.id);
-        match def {
+        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(None, path, pat.id, pat.span);
+        let variant = match def {
             Def::Err => {
                 self.set_tainted_by_errors();
                 on_error();
@@ -609,10 +604,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 report_unexpected_def(false);
                 return;
             }
-            Def::Variant(..) | Def::Struct(..) => {} // OK
+            Def::Variant(..) | Def::Struct(..) => {
+                tcx.expect_variant_def(def)
+            }
             _ => bug!("unexpected pattern definition {:?}", def)
-        }
-        let variant = tcx.expect_variant_def(def);
+        };
         if variant.kind == VariantKind::Unit && subpats.is_empty() && ddpos.is_some() {
             // Matching unit structs with tuple variant patterns (`UnitVariant(..)`)
             // is allowed for backward compatibility.
@@ -633,20 +629,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             scheme
         };
         let predicates = tcx.lookup_predicates(def.def_id());
-        self.instantiate_path(segments, scheme, &predicates, opt_ty, def, pat.span, pat.id);
-        let pat_ty = self.node_ty(pat.id);
+        let pat_ty = self.instantiate_value_path(segments, scheme, &predicates,
+                                                 opt_ty, def, pat.span, pat.id);
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.
         if subpats.len() == variant.fields.len() ||
                 subpats.len() < variant.fields.len() && ddpos.is_some() {
-            let expected_substs = match pat_ty.sty {
-                ty::TyEnum(_, expected_substs) => expected_substs,
-                ty::TyStruct(_, expected_substs) => expected_substs,
+            let substs = match pat_ty.sty {
+                ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
                 ref ty => bug!("unexpected pattern type {:?}", ty),
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
-                let field_ty = self.field_ty(subpat.span, &variant.fields[i], expected_substs);
+                let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
                 self.check_pat(&subpat, field_ty);
             }
         } else {

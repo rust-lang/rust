@@ -10,7 +10,7 @@
 
 struct T { i: i32 }
 fn f<T>() {
-    let t = T { i: 0 }; //~ ERROR `T` does not name a structure
+    let t = T { i: 0 }; //~ ERROR `T` does not name a struct or a struct variant
 }
 
 mod Foo {

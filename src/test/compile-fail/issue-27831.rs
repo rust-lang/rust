@@ -18,7 +18,7 @@ enum Enum {
 
 fn main() {
     let x = Foo(1);
-    Foo { ..x }; //~ ERROR `Foo` does not name a structure
+    Foo { ..x }; //~ ERROR `Foo` does not name a struct or a struct variant
     let Foo { .. } = x; //~ ERROR `Foo` does not name a struct
 
     let x = Bar;

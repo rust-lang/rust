@@ -12,6 +12,5 @@ fn main() {
     match 'a' {
         char{ch} => true
         //~^ ERROR expected variant, struct or type alias, found builtin type `char`
-        //~| ERROR `char` does not name a struct or a struct variant
     };
 }

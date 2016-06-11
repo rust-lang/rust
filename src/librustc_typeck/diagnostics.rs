@@ -1895,33 +1895,6 @@ fn my_start(argc: isize, argv: *const *const u8) -> isize {
 ```
 "##,
 
-E0163: r##"
-This error means that an attempt was made to match an enum variant as a
-struct type when the variant isn't a struct type:
-
-```compile_fail
-enum Foo { B(u32) }
-
-fn bar(foo: Foo) -> u32 {
-    match foo {
-        B{i} => i, // error E0163
-    }
-}
-```
-
-Try using `()` instead:
-
-```
-enum Foo { B(u32) }
-
-fn bar(foo: Foo) -> u32 {
-    match foo {
-        Foo::B(i) => i,
-    }
-}
-```
-"##,
-
 E0164: r##"
 This error means that an attempt was made to match a struct type enum
 variant as a non-struct type:
@@ -4070,6 +4043,7 @@ register_diagnostics! {
 //  E0129,
 //  E0141,
 //  E0159, // use of trait `{}` as struct constructor
+//  E0163, // merged into E0071
     E0167,
 //  E0168,
 //  E0173, // manual implementations of unboxed closure traits are experimental
