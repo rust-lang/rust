@@ -444,6 +444,43 @@ impl SomeTrait for Foo { // ok!
 ```
 "##,
 
+E0406: r##"
+The function is referring to an associated type which hasn't been declared in
+the trait.
+
+```compile_fail
+trait Foo {
+    type Bar;
+
+    fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
+    // etc
+}
+```
+
+One solution might be to declare the associated type in the trait:
+
+```
+trait Foo {
+    type Bar;
+    type Baz;                         //declare required associated type
+
+    fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
+    // etc
+}
+```
+Alternatively, you could remove the input variable
+corresponding to the associated type from the function signature:
+
+```
+trait Foo {
+    type Bar;
+
+    fn return_bool(&self, &Self::Bar) -> bool; //&Self::Baz has been removed
+    // etc
+}
+```
+"##,
+
 E0407: r##"
 A definition of a method not in the implemented trait was given in a trait
 implementation. Example of erroneous code:
@@ -1105,7 +1142,6 @@ register_diagnostics! {
 //  E0257,
 //  E0258,
     E0402, // cannot use an outer type parameter in this context
-    E0406, // undeclared associated type
 //  E0410, merged into 408
 //  E0413, merged into 530
 //  E0414, merged into 530
