@@ -949,7 +949,7 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   scheme: ty::TypeScheme<'tcx>,
                                   predicates: ty::GenericPredicates<'tcx>) {
     let tcx = ccx.tcx;
-    let ctor_ty = match variant.kind() {
+    let ctor_ty = match variant.kind {
         VariantKind::Unit | VariantKind::Struct => scheme.ty,
         VariantKind::Tuple => {
             let inputs: Vec<_> =

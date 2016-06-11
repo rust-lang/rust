@@ -1904,7 +1904,7 @@ impl Clean<Item> for doctree::Variant {
 
 impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
-        let kind = match self.kind() {
+        let kind = match self.kind {
             ty::VariantKind::Unit => CLikeVariant,
             ty::VariantKind::Tuple => {
                 TupleVariant(

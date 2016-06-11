@@ -1671,14 +1671,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => return None
         };
 
-        let var_kind = variant.kind();
-        if var_kind == ty::VariantKind::Struct {
+        if variant.kind == ty::VariantKind::Struct ||
+           variant.kind == ty::VariantKind::Unit {
             Some((adt, variant))
-        } else if var_kind == ty::VariantKind::Unit {
-             Some((adt, variant))
-         } else {
-             None
-         }
+        } else {
+            None
+        }
     }
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
@@ -2998,7 +2996,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         while let Some((base_t, autoderefs)) = autoderef.next() {
             let field = match base_t.sty {
                 ty::TyStruct(base_def, substs) => {
-                    tuple_like = base_def.struct_variant().is_tuple_struct();
+                    tuple_like = base_def.struct_variant().kind == ty::VariantKind::Tuple;
                     if !tuple_like { continue }
 
                     debug!("tuple struct named {:?}",  base_t);
