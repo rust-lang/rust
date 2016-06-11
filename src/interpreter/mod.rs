@@ -861,7 +861,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_primval(dest, val)?;
             }
 
-            CheckedBinaryOp(..) => unimplemented!(),
+            // FIXME(solson): Factor this out with BinaryOp.
+            CheckedBinaryOp(bin_op, ref left, ref right) => {
+                let left_ptr = self.eval_operand(left)?;
+                let left_ty = self.operand_ty(left);
+                let left_val = self.read_primval(left_ptr, left_ty)?;
+
+                let right_ptr = self.eval_operand(right)?;
+                let right_ty = self.operand_ty(right);
+                let right_val = self.read_primval(right_ptr, right_ty)?;
+
+                let val = primval::binary_op(bin_op, left_val, right_val)?;
+                self.memory.write_primval(dest, val)?;
+
+                // FIXME(solson): Find the result type size properly. Perhaps refactor out
+                // Projection calculations so we can do the equivalent of `dest.1` here.
+                let s = self.type_size(left_ty, self.substs());
+                self.memory.write_bool(dest.offset(s as isize), false)?;
+            }
 
             UnaryOp(un_op, ref operand) => {
                 let ptr = self.eval_operand(operand)?;
