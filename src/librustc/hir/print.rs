@@ -1750,10 +1750,10 @@ impl<'a> State<'a> {
                 }
                 try!(self.pclose());
             }
-            PatKind::Path(ref path) => {
+            PatKind::Path(None, ref path) => {
                 self.print_path(path, true, 0)?;
             }
-            PatKind::QPath(ref qself, ref path) => {
+            PatKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, false)?;
             }
             PatKind::Struct(ref path, ref fields, etc) => {

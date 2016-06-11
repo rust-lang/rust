@@ -101,7 +101,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         match pat.node {
             PatKind::Binding(_, _, None) |
             PatKind::Path(..) |
-            PatKind::QPath(..) |
             PatKind::Lit(..) |
             PatKind::Range(..) |
             PatKind::Wild => {

@@ -489,7 +489,7 @@ impl<'map> IdVisitingOperation for RenamingRecorder<'map> {
 impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
         return match pat.node {
-            PatKind::Path(..) | PatKind::QPath(..) => {
+            PatKind::Path(..) => {
                 match self.tcx.expect_def(pat.id) {
                     Def::AssociatedConst(did) | Def::Const(did) => {
                         let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
@@ -583,7 +583,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                     PatKind::TupleStruct(def_to_path(cx.tcx, v.did), pats.collect(), None)
                 }
                 VariantKind::Unit => {
-                    PatKind::Path(def_to_path(cx.tcx, v.did))
+                    PatKind::Path(None, def_to_path(cx.tcx, v.did))
                 }
             }
         }
@@ -784,7 +784,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                     left_ty: Ty, max_slice_length: usize) -> Vec<Constructor> {
     let pat = raw_pat(p);
     match pat.node {
-        PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) | PatKind::QPath(..) =>
+        PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) =>
             match cx.tcx.expect_def(pat.id) {
                 Def::Variant(_, id) => vec![Variant(id)],
                 Def::Struct(..) | Def::TyAlias(..) | Def::AssociatedTy(..) => vec![Single],
@@ -895,7 +895,7 @@ pub fn specialize<'a, 'b, 'tcx>(
         PatKind::Binding(..) | PatKind::Wild =>
             Some(vec![dummy_pat; arity]),
 
-        PatKind::Path(..) | PatKind::QPath(..) => {
+        PatKind::Path(..) => {
             match cx.tcx.expect_def(pat_id) {
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \

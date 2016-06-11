@@ -360,7 +360,7 @@ impl LateLintPass for NonUpperCaseGlobals {
 
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
-        if let PatKind::Path(ref path) = p.node {
+        if let PatKind::Path(None, ref path) = p.node {
             if !path.global && path.segments.len() == 1 && path.segments[0].parameters.is_empty() {
                 if let Def::Const(..) = cx.tcx.expect_def(p.id) {
                     NonUpperCaseGlobals::check_upper_case(cx, "constant in pattern",
