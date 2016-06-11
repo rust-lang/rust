@@ -67,21 +67,6 @@ pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
     }
 }
 
-pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &hir::Pat) -> bool {
-    match pat.node {
-        PatKind::TupleStruct(..) |
-        PatKind::Path(..) |
-        PatKind::Struct(..) => {
-            match dm.get(&pat.id).map(|d| d.full_def()) {
-                Some(Def::Variant(..)) | Some(Def::Struct(..)) |
-                Some(Def::TyAlias(..)) | Some(Def::AssociatedTy(..)) => true,
-                _ => false
-            }
-        }
-        _ => false
-    }
-}
-
 pub fn pat_is_const(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
         PatKind::Path(..) | PatKind::QPath(..) => {
