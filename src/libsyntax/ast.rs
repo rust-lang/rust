@@ -1390,6 +1390,7 @@ pub enum TraitItemKind {
     Const(P<Ty>, Option<P<Expr>>),
     Method(MethodSig, Option<P<Block>>),
     Type(TyParamBounds, Option<P<Ty>>),
+    Macro(Mac),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

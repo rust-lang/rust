@@ -1204,7 +1204,8 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                                     trait_item.span);
             }
             ast::TraitItemKind::Const(_, None) |
-            ast::TraitItemKind::Type(..) => {}
+            ast::TraitItemKind::Type(..) |
+            ast::TraitItemKind::Macro(_) => {}
         }
     }
 

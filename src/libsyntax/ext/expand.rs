@@ -70,6 +70,8 @@ impl_macro_generable! {
     P<ast::Ty>:   "type",       .make_ty,   .fold_ty,   |span| DummyResult::raw_ty(span);
     SmallVector<ast::ImplItem>:
         "impl item", .make_impl_items, lift .fold_impl_item, |_span| SmallVector::zero();
+    SmallVector<ast::TraitItem>:
+        "trait item", .make_trait_items, lift .fold_trait_item, |_span| SmallVector::zero();
     SmallVector<P<ast::Item>>:
         "item",      .make_items,      lift .fold_item,      |_span| SmallVector::zero();
     SmallVector<ast::Stmt>:
@@ -760,25 +762,10 @@ fn expand_annotatable(a: Annotatable,
             _ => noop_fold_item(it, fld),
         }.into_iter().map(|i| Annotatable::Item(i)).collect(),
 
-        Annotatable::TraitItem(it) => match it.node {
-            ast::TraitItemKind::Method(_, Some(_)) => {
-                let ti = it.unwrap();
-                SmallVector::one(ast::TraitItem {
-                    id: ti.id,
-                    ident: ti.ident,
-                    attrs: ti.attrs,
-                    node: match ti.node  {
-                        ast::TraitItemKind::Method(sig, Some(body)) => {
-                            let (sig, body) = expand_and_rename_method(sig, body, fld);
-                            ast::TraitItemKind::Method(sig, Some(body))
-                        }
-                        _ => unreachable!()
-                    },
-                    span: ti.span,
-                })
-            }
-            _ => fold::noop_fold_trait_item(it.unwrap(), fld)
-        }.into_iter().map(|ti| Annotatable::TraitItem(P(ti))).collect(),
+        Annotatable::TraitItem(it) => {
+            expand_trait_item(it.unwrap(), fld).into_iter().
+                map(|it| Annotatable::TraitItem(P(it))).collect()
+        }
 
         Annotatable::ImplItem(ii) => {
             expand_impl_item(ii.unwrap(), fld).into_iter().
@@ -931,6 +918,31 @@ fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
             expand_mac_invoc(mac, None, ii.attrs, ii.span, fld)
         }
         _ => fold::noop_fold_impl_item(ii, fld)
+    }
+}
+
+fn expand_trait_item(ti: ast::TraitItem, fld: &mut MacroExpander)
+                     -> SmallVector<ast::TraitItem> {
+    match ti.node {
+        ast::TraitItemKind::Method(_, Some(_)) => {
+            SmallVector::one(ast::TraitItem {
+                id: ti.id,
+                ident: ti.ident,
+                attrs: ti.attrs,
+                node: match ti.node  {
+                    ast::TraitItemKind::Method(sig, Some(body)) => {
+                        let (sig, body) = expand_and_rename_method(sig, body, fld);
+                        ast::TraitItemKind::Method(sig, Some(body))
+                    }
+                    _ => unreachable!()
+                },
+                span: ti.span,
+            })
+        }
+        ast::TraitItemKind::Macro(mac) => {
+            expand_mac_invoc(mac, None, ti.attrs, ti.span, fld)
+        }
+        _ => fold::noop_fold_trait_item(ti, fld)
     }
 }
 

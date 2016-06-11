@@ -1232,55 +1232,70 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse the items in a trait declaration
-    pub fn parse_trait_items(&mut self) -> PResult<'a,  Vec<TraitItem>> {
-        self.parse_unspanned_seq(
-            &token::OpenDelim(token::Brace),
-            &token::CloseDelim(token::Brace),
-            SeqSep::none(),
-            |p| -> PResult<'a, TraitItem> {
-            maybe_whole!(no_clone_from_p p, NtTraitItem);
-            let mut attrs = p.parse_outer_attributes()?;
-            let lo = p.span.lo;
+    pub fn parse_trait_item(&mut self) -> PResult<'a, TraitItem> {
+        maybe_whole!(no_clone_from_p self, NtTraitItem);
+        let mut attrs = self.parse_outer_attributes()?;
+        let lo = self.span.lo;
 
-            let (name, node) = if p.eat_keyword(keywords::Type) {
-                let TyParam {ident, bounds, default, ..} = p.parse_ty_param()?;
-                p.expect(&token::Semi)?;
-                (ident, TraitItemKind::Type(bounds, default))
-            } else if p.is_const_item() {
-                p.expect_keyword(keywords::Const)?;
-                let ident = p.parse_ident()?;
-                p.expect(&token::Colon)?;
-                let ty = p.parse_ty_sum()?;
-                let default = if p.check(&token::Eq) {
-                    p.bump();
-                    let expr = p.parse_expr()?;
-                    p.commit_expr_expecting(&expr, token::Semi)?;
-                    Some(expr)
-                } else {
-                    p.expect(&token::Semi)?;
-                    None
-                };
-                (ident, TraitItemKind::Const(ty, default))
+        let (name, node) = if self.eat_keyword(keywords::Type) {
+            let TyParam {ident, bounds, default, ..} = self.parse_ty_param()?;
+            self.expect(&token::Semi)?;
+            (ident, TraitItemKind::Type(bounds, default))
+        } else if self.is_const_item() {
+                self.expect_keyword(keywords::Const)?;
+            let ident = self.parse_ident()?;
+            self.expect(&token::Colon)?;
+            let ty = self.parse_ty_sum()?;
+            let default = if self.check(&token::Eq) {
+                self.bump();
+                let expr = self.parse_expr()?;
+                self.commit_expr_expecting(&expr, token::Semi)?;
+                Some(expr)
             } else {
-                let (constness, unsafety, abi) = match p.parse_fn_front_matter() {
+                self.expect(&token::Semi)?;
+                None
+            };
+            (ident, TraitItemKind::Const(ty, default))
+        } else if !self.token.is_any_keyword()
+            && self.look_ahead(1, |t| *t == token::Not)
+            && (self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
+                || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
+                // trait item macro.
+                // code copied from parse_macro_use_or_failure... abstraction!
+                let lo = self.span.lo;
+                let pth = self.parse_ident_into_path()?;
+                self.expect(&token::Not)?;
+
+                // eat a matched-delimiter token tree:
+                let delim = self.expect_open_delim()?;
+                let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
+                                             SeqSep::none(),
+                                             |pp| pp.parse_token_tree())?;
+                let m_ = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
+                let m: ast::Mac = codemap::Spanned { node: m_,
+                                                     span: mk_sp(lo,
+                                                                 self.last_span.hi) };
+                if delim != token::Brace {
+                    self.expect(&token::Semi)?
+                }
+                (keywords::Invalid.ident(), ast::TraitItemKind::Macro(m))
+            } else {
+                let (constness, unsafety, abi) = match self.parse_fn_front_matter() {
                     Ok(cua) => cua,
                     Err(e) => {
                         loop {
-                            match p.token {
+                            match self.token {
                                 token::Eof => break,
-
                                 token::CloseDelim(token::Brace) |
                                 token::Semi => {
-                                    p.bump();
+                                    self.bump();
                                     break;
                                 }
-
                                 token::OpenDelim(token::Brace) => {
-                                    p.parse_token_tree()?;
+                                    self.parse_token_tree()?;
                                     break;
                                 }
-
-                                _ => p.bump()
+                                _ => self.bump()
                             }
                         }
 
@@ -1288,17 +1303,17 @@ impl<'a> Parser<'a> {
                     }
                 };
 
-                let ident = p.parse_ident()?;
-                let mut generics = p.parse_generics()?;
+                let ident = self.parse_ident()?;
+                let mut generics = self.parse_generics()?;
 
-                let d = p.parse_fn_decl_with_self(|p: &mut Parser<'a>|{
+                let d = self.parse_fn_decl_with_self(|p: &mut Parser<'a>|{
                     // This is somewhat dubious; We don't want to allow
                     // argument names to be left off if there is a
                     // definition...
                     p.parse_arg_general(false)
                 })?;
 
-                generics.where_clause = p.parse_where_clause()?;
+                generics.where_clause = self.parse_where_clause()?;
                 let sig = ast::MethodSig {
                     unsafety: unsafety,
                     constness: constness,
@@ -1307,37 +1322,47 @@ impl<'a> Parser<'a> {
                     abi: abi,
                 };
 
-                let body = match p.token {
-                  token::Semi => {
-                    p.bump();
-                    debug!("parse_trait_methods(): parsing required method");
-                    None
-                  }
-                  token::OpenDelim(token::Brace) => {
-                    debug!("parse_trait_methods(): parsing provided method");
-                    let (inner_attrs, body) =
-                        p.parse_inner_attrs_and_block()?;
-                    attrs.extend(inner_attrs.iter().cloned());
-                    Some(body)
-                  }
+                let body = match self.token {
+                    token::Semi => {
+                        self.bump();
+                        debug!("parse_trait_methods(): parsing required method");
+                        None
+                    }
+                    token::OpenDelim(token::Brace) => {
+                        debug!("parse_trait_methods(): parsing provided method");
+                        let (inner_attrs, body) =
+                            self.parse_inner_attrs_and_block()?;
+                        attrs.extend(inner_attrs.iter().cloned());
+                        Some(body)
+                    }
 
-                  _ => {
-                      let token_str = p.this_token_to_string();
-                      return Err(p.fatal(&format!("expected `;` or `{{`, found `{}`",
-                                       token_str)[..]))
-                  }
+                    _ => {
+                        let token_str = self.this_token_to_string();
+                        return Err(self.fatal(&format!("expected `;` or `{{`, found `{}`",
+                                                    token_str)[..]))
+                    }
                 };
                 (ident, ast::TraitItemKind::Method(sig, body))
             };
-
-            Ok(TraitItem {
-                id: ast::DUMMY_NODE_ID,
-                ident: name,
-                attrs: attrs,
-                node: node,
-                span: mk_sp(lo, p.last_span.hi),
-            })
+        Ok(TraitItem {
+            id: ast::DUMMY_NODE_ID,
+            ident: name,
+            attrs: attrs,
+            node: node,
+            span: mk_sp(lo, self.last_span.hi),
         })
+    }
+
+
+    /// Parse the items in a trait declaration
+    pub fn parse_trait_items(&mut self) -> PResult<'a,  Vec<TraitItem>> {
+        self.parse_unspanned_seq(
+            &token::OpenDelim(token::Brace),
+            &token::CloseDelim(token::Brace),
+            SeqSep::none(),
+            |p| -> PResult<'a, TraitItem> {
+                p.parse_trait_item()
+            })
     }
 
     /// Parse a possibly mutable type
@@ -4940,7 +4965,6 @@ impl<'a> Parser<'a> {
 
     /// Parse trait Foo { ... }
     fn parse_item_trait(&mut self, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
-
         let ident = self.parse_ident()?;
         let mut tps = self.parse_generics()?;
 

@@ -1692,6 +1692,7 @@ impl<'a> Resolver<'a> {
                                         visit::walk_trait_item(this, trait_item)
                                     });
                                 }
+                                TraitItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
                             };
                         }
                     });
