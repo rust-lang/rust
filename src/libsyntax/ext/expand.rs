@@ -41,6 +41,7 @@ trait MacroGenerable: Sized {
 
     // Fold this node or list of nodes using the given folder.
     fn fold_with<F: Folder>(self, folder: &mut F) -> Self;
+    fn visit_with<'v, V: Visitor<'v>>(&'v self, visitor: &mut V);
 
     // Return a placeholder expansion to allow compilation to continue after an erroring expansion.
     fn dummy(span: Span) -> Self;
@@ -50,7 +51,9 @@ trait MacroGenerable: Sized {
 }
 
 macro_rules! impl_macro_generable {
-    ($($ty:ty: $kind_name:expr, .$make:ident, $(.$fold:ident)* $(lift .$fold_elt:ident)*,
+    ($($ty:ty: $kind_name:expr, .$make:ident,
+               $(.$fold:ident)*  $(lift .$fold_elt:ident)*,
+               $(.$visit:ident)* $(lift .$visit_elt:ident)*,
                |$span:ident| $dummy:expr;)*) => { $(
         impl MacroGenerable for $ty {
             fn kind_name() -> &'static str { $kind_name }
@@ -59,21 +62,27 @@ macro_rules! impl_macro_generable {
                 $( folder.$fold(self) )*
                 $( self.into_iter().flat_map(|item| folder. $fold_elt (item)).collect() )*
             }
+            fn visit_with<'v, V: Visitor<'v>>(&'v self, visitor: &mut V) {
+                $( visitor.$visit(self) )*
+                $( for item in self.as_slice() { visitor. $visit_elt (item) } )*
+            }
             fn dummy($span: Span) -> Self { $dummy }
         }
     )* }
 }
 
 impl_macro_generable! {
-    P<ast::Expr>: "expression", .make_expr, .fold_expr, |span| DummyResult::raw_expr(span);
-    P<ast::Pat>:  "pattern",    .make_pat,  .fold_pat,  |span| P(DummyResult::raw_pat(span));
-    P<ast::Ty>:   "type",       .make_ty,   .fold_ty,   |span| DummyResult::raw_ty(span);
-    SmallVector<ast::ImplItem>:
-        "impl item", .make_impl_items, lift .fold_impl_item, |_span| SmallVector::zero();
-    SmallVector<P<ast::Item>>:
-        "item",      .make_items,      lift .fold_item,      |_span| SmallVector::zero();
+    P<ast::Pat>: "pattern", .make_pat, .fold_pat, .visit_pat, |span| P(DummyResult::raw_pat(span));
+    P<ast::Ty>:  "type",    .make_ty,  .fold_ty,  .visit_ty,  |span| DummyResult::raw_ty(span);
+    P<ast::Expr>:
+        "expression", .make_expr, .fold_expr, .visit_expr, |span| DummyResult::raw_expr(span);
     SmallVector<ast::Stmt>:
-        "statement", .make_stmts,      lift .fold_stmt,      |_span| SmallVector::zero();
+        "statement",  .make_stmts, lift .fold_stmt, lift .visit_stmt, |_span| SmallVector::zero();
+    SmallVector<P<ast::Item>>:
+        "item",       .make_items, lift .fold_item, lift .visit_item, |_span| SmallVector::zero();
+    SmallVector<ast::ImplItem>:
+        "impl item",  .make_impl_items, lift .fold_impl_item, lift .visit_impl_item,
+        |_span| SmallVector::zero();
 }
 
 impl MacroGenerable for Option<P<ast::Expr>> {
@@ -84,6 +93,9 @@ impl MacroGenerable for Option<P<ast::Expr>> {
     }
     fn fold_with<F: Folder>(self, folder: &mut F) -> Self {
         self.and_then(|expr| folder.fold_opt_expr(expr))
+    }
+    fn visit_with<'v, V: Visitor<'v>>(&'v self, visitor: &mut V) {
+        self.as_ref().map(|expr| visitor.visit_expr(expr));
     }
 }
 
