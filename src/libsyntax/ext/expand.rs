@@ -1001,6 +1001,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn strip_unconfigured(&mut self) -> StripUnconfigured {
         StripUnconfigured::new(&self.cx.cfg,
+                               self.cx.ecfg.should_test,
                                &self.cx.parse_sess.span_diagnostic,
                                self.cx.feature_gated_cfgs)
     }
@@ -1106,6 +1107,7 @@ pub struct ExpansionConfig<'feat> {
     pub features: Option<&'feat Features>,
     pub recursion_limit: usize,
     pub trace_mac: bool,
+    pub should_test: bool, // If false, strip `#[test]` nodes
 }
 
 macro_rules! feature_tests {
@@ -1128,6 +1130,7 @@ impl<'feat> ExpansionConfig<'feat> {
             features: None,
             recursion_limit: 64,
             trace_mac: false,
+            should_test: false,
         }
     }
 

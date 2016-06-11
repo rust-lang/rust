@@ -81,7 +81,7 @@ pub fn modify_for_testing(sess: &ParseSess,
     if should_test {
         generate_test_harness(sess, reexport_test_harness_main, krate, span_diagnostic)
     } else {
-        strip_test_functions(krate)
+        krate
     }
 }
 
@@ -304,19 +304,6 @@ fn generate_test_harness(sess: &ParseSess,
     let res = fold.fold_crate(krate);
     fold.cx.ext_cx.bt_pop();
     return res;
-}
-
-fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
-    // When not compiling with --test we should not compile the
-    // #[test] functions
-    struct StripTests;
-    impl config::CfgFolder for StripTests {
-        fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
-            !attr::contains_name(attrs, "test") && !attr::contains_name(attrs, "bench")
-        }
-    }
-
-    StripTests.fold_crate(krate)
 }
 
 /// Craft a span that will be ignored by the stability lint's
