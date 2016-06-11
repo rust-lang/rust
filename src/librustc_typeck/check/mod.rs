@@ -3135,7 +3135,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Some(self.tcx.expect_variant_def(def))
             }
             Def::TyAlias(did) | Def::AssociatedTy(_, did) => {
-                if let ty::TyStruct(adt, _) = self.tcx.lookup_item_type(did).ty.sty {
+                if let Some(&ty::TyStruct(adt, _)) = self.tcx.opt_lookup_item_type(did)
+                                                             .map(|scheme| &scheme.ty.sty) {
                     Some(adt.struct_variant())
                 } else {
                     None
