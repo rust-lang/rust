@@ -3225,42 +3225,6 @@ impl Foo for Bar {
 ```
 "##,
 
-E0327: r##"
-You cannot use associated items other than constant items as patterns. This
-includes method items. Example of erroneous code:
-
-```compile_fail
-enum B {}
-
-impl B {
-    fn bb() -> i32 { 0 }
-}
-
-fn main() {
-    match 0 {
-        B::bb => {} // error: associated items in match patterns must
-                    // be constants
-    }
-}
-```
-
-Please check that you're not using a method as a pattern. Example:
-
-```
-enum B {
-    ba,
-    bb
-}
-
-fn main() {
-    match B::ba {
-        B::bb => {} // ok!
-        _ => {}
-    }
-}
-```
-"##,
-
 E0329: r##"
 An attempt was made to access an associated constant through either a generic
 type parameter or `Self`. This is not supported yet. An example causing this
@@ -4162,4 +4126,5 @@ register_diagnostics! {
     E0527, // expected {} elements, found {}
     E0528, // expected at least {} elements, found {}
     E0529, // slice pattern expects array or slice, not `{}`
+    E0533, // `{}` does not name a unit variant, unit struct or a constant
 }
