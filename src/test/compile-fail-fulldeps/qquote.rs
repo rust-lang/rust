@@ -25,7 +25,7 @@ fn main() {
     let mut cx = syntax::ext::base::ExtCtxt::new(
         &ps, vec![],
         syntax::ext::expand::ExpansionConfig::default("qquote".to_string()),
-        &mut Vec::new(), &mut loader);
+        &mut loader);
     cx.bt_push(syntax::codemap::ExpnInfo {
         call_site: DUMMY_SP,
         callee: syntax::codemap::NameAndSpan {
