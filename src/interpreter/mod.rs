@@ -6,7 +6,7 @@ use rustc::traits::{self, ProjectionMode};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, BareFnTy};
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::cell::RefCell;
@@ -15,7 +15,7 @@ use std::rc::Rc;
 use std::{iter, mem};
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::{self, DUMMY_SP};
+use syntax::codemap::{self, DUMMY_SP, Span};
 
 use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer};
@@ -40,7 +40,7 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
 
     /// The virtual memory system.
-    memory: Memory,
+    memory: Memory<'tcx>,
 
     /// Precomputed statics, constants and promoteds
     statics: HashMap<ConstantId<'tcx>, Pointer>,
@@ -283,6 +283,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
+        use rustc_trans::back::symbol_names::def_id_to_string;
         match self.tcx.map.as_local_node_id(def_id) {
             Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
             None => {
@@ -293,7 +294,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let cs = &self.tcx.sess.cstore;
                 let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
-                    panic!("no mir for {:?}", def_id);
+                    panic!("no mir for `{}`", def_id_to_string(self.tcx, def_id));
                 });
                 let cached = Rc::new(mir);
                 mir_cache.insert(def_id, cached.clone());
@@ -421,84 +422,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let func_ty = self.operand_ty(func);
                 match func_ty.sty {
+                    ty::TyFnPtr(bare_fn_ty) => {
+                        let ptr = self.eval_operand(func)?;
+                        assert_eq!(ptr.offset, 0);
+                        let fn_ptr = self.memory.read_ptr(ptr)?;
+                        let (def_id, substs) = self.memory.get_fn(fn_ptr.alloc_id)?;
+                        self.eval_fn_call(def_id, substs, bare_fn_ty, return_ptr, args,
+                                          terminator.source_info.span)?
+                    },
                     ty::TyFnDef(def_id, substs, fn_ty) => {
-                        use syntax::abi::Abi;
-                        match fn_ty.abi {
-                            Abi::RustIntrinsic => {
-                                let name = self.tcx.item_name(def_id).as_str();
-                                match fn_ty.sig.0.output {
-                                    ty::FnConverging(ty) => {
-                                        let size = self.type_size(ty, self.substs());
-                                        let ret = return_ptr.unwrap();
-                                        self.call_intrinsic(&name, substs, args, ret, size)?
-                                    }
-                                    ty::FnDiverging => unimplemented!(),
-                                }
-                            }
-
-                            Abi::C => {
-                                match fn_ty.sig.0.output {
-                                    ty::FnConverging(ty) => {
-                                        let size = self.type_size(ty, self.substs());
-                                        self.call_c_abi(def_id, args, return_ptr.unwrap(), size)?
-                                    }
-                                    ty::FnDiverging => unimplemented!(),
-                                }
-                            }
-
-                            Abi::Rust | Abi::RustCall => {
-                                // TODO(solson): Adjust the first argument when calling a Fn or
-                                // FnMut closure via FnOnce::call_once.
-
-                                // Only trait methods can have a Self parameter.
-                                let (resolved_def_id, resolved_substs) = if substs.self_ty().is_some() {
-                                    self.trait_method(def_id, substs)
-                                } else {
-                                    (def_id, substs)
-                                };
-
-                                let mut arg_srcs = Vec::new();
-                                for arg in args {
-                                    let src = self.eval_operand(arg)?;
-                                    let src_ty = self.operand_ty(arg);
-                                    arg_srcs.push((src, src_ty));
-                                }
-
-                                if fn_ty.abi == Abi::RustCall && !args.is_empty() {
-                                    arg_srcs.pop();
-                                    let last_arg = args.last().unwrap();
-                                    let last = self.eval_operand(last_arg)?;
-                                    let last_ty = self.operand_ty(last_arg);
-                                    let last_layout = self.type_layout(last_ty, self.substs());
-                                    match (&last_ty.sty, last_layout) {
-                                        (&ty::TyTuple(fields),
-                                         &Layout::Univariant { ref variant, .. }) => {
-                                            let offsets = iter::once(0)
-                                                .chain(variant.offset_after_field.iter()
-                                                    .map(|s| s.bytes()));
-                                            for (offset, ty) in offsets.zip(fields) {
-                                                let src = last.offset(offset as isize);
-                                                arg_srcs.push((src, ty));
-                                            }
-                                        }
-                                        ty => panic!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
-                                    }
-                                }
-
-                                let mir = self.load_mir(resolved_def_id);
-                                self.push_stack_frame(
-                                    def_id, terminator.source_info.span, mir, resolved_substs,
-                                    return_ptr
-                                );
-
-                                for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
-                                    let dest = self.frame().locals[i];
-                                    self.move_(src, dest, src_ty)?;
-                                }
-                            }
-
-                            abi => return Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", abi))),
-                        }
+                        self.eval_fn_call(def_id, substs, fn_ty, return_ptr, args,
+                                          terminator.source_info.span)?
                     }
 
                     _ => return Err(EvalError::Unimplemented(format!("can't handle callee of type {:?}", func_ty))),
@@ -528,6 +462,93 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
 
         Ok(())
+    }
+
+    pub fn eval_fn_call(
+        &mut self,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+        fn_ty: &'tcx BareFnTy,
+        return_ptr: Option<Pointer>,
+        args: &[mir::Operand<'tcx>],
+        span: Span,
+    ) -> EvalResult<()> {
+        use syntax::abi::Abi;
+        match fn_ty.abi {
+            Abi::RustIntrinsic => {
+                let name = self.tcx.item_name(def_id).as_str();
+                match fn_ty.sig.0.output {
+                    ty::FnConverging(ty) => {
+                        let size = self.type_size(ty, self.substs());
+                        let ret = return_ptr.unwrap();
+                        self.call_intrinsic(&name, substs, args, ret, size)
+                    }
+                    ty::FnDiverging => unimplemented!(),
+                }
+            }
+
+            Abi::C => {
+                match fn_ty.sig.0.output {
+                    ty::FnConverging(ty) => {
+                        let size = self.type_size(ty, self.substs());
+                        self.call_c_abi(def_id, args, return_ptr.unwrap(), size)
+                    }
+                    ty::FnDiverging => unimplemented!(),
+                }
+            }
+
+            Abi::Rust | Abi::RustCall => {
+                // TODO(solson): Adjust the first argument when calling a Fn or
+                // FnMut closure via FnOnce::call_once.
+
+                // Only trait methods can have a Self parameter.
+                let (resolved_def_id, resolved_substs) = if substs.self_ty().is_some() {
+                    self.trait_method(def_id, substs)
+                } else {
+                    (def_id, substs)
+                };
+
+                let mut arg_srcs = Vec::new();
+                for arg in args {
+                    let src = self.eval_operand(arg)?;
+                    let src_ty = self.operand_ty(arg);
+                    arg_srcs.push((src, src_ty));
+                }
+
+                if fn_ty.abi == Abi::RustCall && !args.is_empty() {
+                    arg_srcs.pop();
+                    let last_arg = args.last().unwrap();
+                    let last = self.eval_operand(last_arg)?;
+                    let last_ty = self.operand_ty(last_arg);
+                    let last_layout = self.type_layout(last_ty, self.substs());
+                    match (&last_ty.sty, last_layout) {
+                        (&ty::TyTuple(fields),
+                         &Layout::Univariant { ref variant, .. }) => {
+                            let offsets = iter::once(0)
+                                .chain(variant.offset_after_field.iter()
+                                    .map(|s| s.bytes()));
+                            for (offset, ty) in offsets.zip(fields) {
+                                let src = last.offset(offset as isize);
+                                arg_srcs.push((src, ty));
+                            }
+                        }
+                        ty => panic!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
+                    }
+                }
+
+                let mir = self.load_mir(resolved_def_id);
+                self.push_stack_frame(def_id, span, mir, resolved_substs, return_ptr);
+
+                for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
+                    let dest = self.frame().locals[i];
+                    self.move_(src, dest, src_ty)?;
+                }
+
+                Ok(())
+            }
+
+            abi => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", abi))),
+        }
     }
 
     fn drop(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<()> {
@@ -1023,12 +1044,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Cast(kind, ref operand, dest_ty) => {
-                let src = self.eval_operand(operand)?;
-                let src_ty = self.operand_ty(operand);
-
                 use rustc::mir::repr::CastKind::*;
                 match kind {
                     Unsize => {
+                        let src = self.eval_operand(operand)?;
+                        let src_ty = self.operand_ty(operand);
                         self.move_(src, dest, src_ty)?;
                         let src_pointee_ty = pointee_type(src_ty).unwrap();
                         let dest_pointee_ty = pointee_type(dest_ty).unwrap();
@@ -1044,10 +1064,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     Misc => {
+                        let src = self.eval_operand(operand)?;
                         // FIXME(solson): Wrong for almost everything.
                         let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
                         self.memory.copy(src, dest, size)?;
                     }
+
+                    ReifyFnPointer => match self.operand_ty(operand).sty {
+                        ty::TyFnDef(def_id, substs, _) => {
+                            let fn_ptr = self.memory.create_fn_ptr(def_id, substs);
+                            self.memory.write_ptr(dest, fn_ptr)?;
+                        },
+                        ref other => panic!("reify fn pointer on {:?}", other),
+                    },
 
                     _ => return Err(EvalError::Unimplemented(format!("can't handle cast: {:?}", rvalue))),
                 }
@@ -1136,7 +1165,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value { ref value } => Ok(self.const_to_ptr(value)?),
                     Item { def_id, substs } => {
                         if let ty::TyFnDef(..) = ty.sty {
-                            Err(EvalError::Unimplemented("unimplemented: mentions of function items".to_string()))
+                            // function items are zero sized
+                            Ok(self.memory.allocate(0))
                         } else {
                             let cid = ConstantId {
                                 def_id: def_id,

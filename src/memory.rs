@@ -3,6 +3,9 @@ use std::collections::Bound::{Included, Excluded};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, mem, ptr};
 
+use rustc::hir::def_id::DefId;
+use rustc::ty::subst::Substs;
+
 use error::{EvalError, EvalResult};
 use primval::PrimVal;
 
@@ -42,19 +45,34 @@ impl Pointer {
 // Top-level interpreter memory
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct Memory {
+pub struct Memory<'tcx> {
     alloc_map: HashMap<AllocId, Allocation>,
+    functions: HashMap<AllocId, (DefId, &'tcx Substs<'tcx>)>,
     next_id: AllocId,
     pub pointer_size: usize,
 }
 
-impl Memory {
+impl<'tcx> Memory<'tcx> {
     // FIXME: pass tcx.data_layout (This would also allow it to use primitive type alignments to diagnose unaligned memory accesses.)
     pub fn new(pointer_size: usize) -> Self {
         Memory {
             alloc_map: HashMap::new(),
+            functions: HashMap::new(),
             next_id: AllocId(0),
             pointer_size: pointer_size,
+        }
+    }
+
+    // FIXME: never create two pointers to the same def_id + substs combination
+    // maybe re-use the statics cache of the gecx?
+    pub fn create_fn_ptr(&mut self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Pointer {
+        let id = self.next_id;
+        debug!("creating fn ptr: {}", id);
+        self.next_id.0 += 1;
+        self.functions.insert(id, (def_id, substs));
+        Pointer {
+            alloc_id: id,
+            offset: 0,
         }
     }
 
@@ -125,6 +143,11 @@ impl Memory {
         self.alloc_map.get_mut(&id).ok_or(EvalError::DanglingPointerDeref)
     }
 
+    pub fn get_fn(&self, id: AllocId) -> EvalResult<(DefId, &'tcx Substs<'tcx>)> {
+        debug!("reading fn ptr: {}", id);
+        self.functions.get(&id).map(|&did| did).ok_or(EvalError::InvalidFunctionPointer)
+    }
+
     /// Print an allocation and all allocations it points to, recursively.
     pub fn dump(&self, id: AllocId) {
         let mut allocs_seen = HashSet::new();
@@ -137,12 +160,18 @@ impl Memory {
             print!("{}", prefix);
             let mut relocations = vec![];
 
-            let alloc = match self.alloc_map.get(&id) {
-                Some(a) => a,
-                None => {
+            let alloc = match (self.alloc_map.get(&id), self.functions.get(&id)) {
+                (Some(a), None) => a,
+                (None, Some(_)) => {
+                    // FIXME: print function name
+                    println!("function pointer");
+                    continue;
+                },
+                (None, None) => {
                     println!("(deallocated)");
                     continue;
-                }
+                },
+                (Some(_), Some(_)) => unreachable!(),
             };
 
             for i in 0..alloc.bytes.len() {

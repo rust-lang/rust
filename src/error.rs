@@ -6,6 +6,7 @@ use memory::Pointer;
 #[derive(Clone, Debug)]
 pub enum EvalError {
     DanglingPointerDeref,
+    InvalidFunctionPointer,
     InvalidBool,
     InvalidDiscriminant,
     PointerOutOfBounds {
@@ -28,6 +29,8 @@ impl Error for EvalError {
         match *self {
             EvalError::DanglingPointerDeref =>
                 "dangling pointer was dereferenced",
+            EvalError::InvalidFunctionPointer =>
+                "tried to use a pointer as a function pointer",
             EvalError::InvalidBool =>
                 "invalid boolean value read",
             EvalError::InvalidDiscriminant =>
