@@ -1715,7 +1715,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     pub fn variant_of_def(&self, def: Def) -> &VariantDefData<'gcx, 'container> {
         match def {
             Def::Variant(_, vid) => self.variant_with_id(vid),
-            Def::Struct(..) | Def::TyAlias(..) => self.struct_variant(),
+            Def::Struct(..) | Def::TyAlias(..) | Def::AssociatedTy(..) => self.struct_variant(),
             _ => bug!("unexpected def {:?} in variant_of_def", def)
         }
     }

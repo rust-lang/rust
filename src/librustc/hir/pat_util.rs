@@ -76,7 +76,8 @@ pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &hir::Pat) -> bool {
         PatKind::Path(..) |
         PatKind::Struct(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
-                Some(Def::Variant(..)) | Some(Def::Struct(..)) | Some(Def::TyAlias(..)) => true,
+                Some(Def::Variant(..)) | Some(Def::Struct(..)) |
+                Some(Def::TyAlias(..)) | Some(Def::AssociatedTy(..)) => true,
                 _ => false
             }
         }
