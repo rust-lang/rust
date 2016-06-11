@@ -2258,8 +2258,8 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         if fields.peek().is_some() {
             write!(w, "<h2 class='fields'>Fields</h2>")?;
             for (field, ty) in fields {
-                write!(w, "<span id='{shortty}.{name}'><code>{name}: {ty}</code></span>
-                           <span class='stab {stab}'></span>",
+                write!(w, "<span id='{shortty}.{name}' class='{shortty}'><code>{name}: {ty}</code>
+                           </span><span class='stab {stab}'></span>",
                        shortty = ItemType::StructField,
                        stab = field.stability_class(),
                        name = field.name.as_ref().unwrap(),
