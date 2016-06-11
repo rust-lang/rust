@@ -276,6 +276,7 @@ check-stage$(1)-T-$(2)-H-$(3)-exec: \
 	check-stage$(1)-T-$(2)-H-$(3)-incremental-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-ui-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-doc-error-index-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-exec
 
 ifndef CFG_DISABLE_CODEGEN_TESTS
