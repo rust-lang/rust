@@ -1,5 +1,4 @@
-#![feature(rustc_private, custom_attribute)]
-#![allow(unused_attributes)]
+#![feature(rustc_private)]
 
 extern crate getopts;
 extern crate miri;
@@ -114,14 +113,12 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
     err.emit();
 }
 
-#[miri_run]
 fn main() {
     init_logger();
     let args: Vec<String> = std::env::args().collect();
     rustc_driver::run_compiler(&args, &mut MiriCompilerCalls);
 }
 
-#[miri_run]
 fn init_logger() {
     const NSPACES: usize = 40;
     let format = |record: &log::LogRecord| {
