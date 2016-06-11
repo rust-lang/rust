@@ -1243,7 +1243,7 @@ impl<'a, 'b>  GraphSuccessors<'b> for Mir<'a> {
     type Iter = IntoIter<BasicBlock>;
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Ord, PartialOrd)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Location {
     /// the location is within this block
     pub block: BasicBlock,
@@ -1253,3 +1253,8 @@ pub struct Location {
     pub statement_index: usize,
 }
 
+impl fmt::Debug for Location {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{:?}[{}]", self.block, self.statement_index)
+    }
+}

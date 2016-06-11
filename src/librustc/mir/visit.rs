@@ -774,9 +774,6 @@ pub enum LvalueContext<'tcx> {
     // Being borrowed
     Borrow { region: &'tcx Region, kind: BorrowKind },
 
-    // Being sliced -- this should be same as being borrowed, probably
-    Slice { from_start: usize, from_end: usize },
-
     // Used as base for another lvalue, e.g. `x` in `x.y`
     Projection,
 
