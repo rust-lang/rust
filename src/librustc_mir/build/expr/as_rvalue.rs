@@ -368,6 +368,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::IntTy::Is => {
                         let int_ty = self.hir.tcx().sess.target.int_type;
                         let min = match int_ty {
+                            ast::IntTy::I16 => std::i16::MIN as i64,
                             ast::IntTy::I32 => std::i32::MIN as i64,
                             ast::IntTy::I64 => std::i64::MIN,
                             _ => unreachable!()
