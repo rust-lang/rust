@@ -796,7 +796,7 @@ fn any_irrefutable_adt_pat(tcx: TyCtxt, m: &[Match], col: usize) -> bool {
             PatKind::Tuple(..) => true,
             PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) => {
                 match tcx.expect_def(pat.id) {
-                    Def::Struct(..) | Def::TyAlias(..) => true,
+                    Def::Struct(..) | Def::TyAlias(..) | Def::AssociatedTy(..) => true,
                     _ => false,
                 }
             }
