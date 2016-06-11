@@ -54,6 +54,7 @@ pub use self::DiagnosticSeverity::*;
 pub use self::Linkage::*;
 pub use self::DLLStorageClassTypes::*;
 
+use std::str::FromStr;
 use std::ffi::{CString, CStr};
 use std::cell::RefCell;
 use std::slice;
@@ -424,6 +425,20 @@ pub enum ArchiveKind {
     K_MIPS64,
     K_BSD,
     K_COFF,
+}
+
+impl FromStr for ArchiveKind {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "gnu" => Ok(ArchiveKind::K_GNU),
+            "mips64" => Ok(ArchiveKind::K_MIPS64),
+            "bsd" => Ok(ArchiveKind::K_BSD),
+            "coff" => Ok(ArchiveKind::K_COFF),
+            _ => Err(()),
+        }
+    }
 }
 
 /// Represents the different LLVM passes Rust supports

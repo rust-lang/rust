@@ -1097,45 +1097,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
     ifn!("llvm.localrecover", fn(i8p, i8p, t_i32) -> i8p);
     ifn!("llvm.x86.seh.recoverfp", fn(i8p, i8p) -> i8p);
 
-    // Some intrinsics were introduced in later versions of LLVM, but they have
-    // fallbacks in libc or libm and such.
-    macro_rules! compatible_ifn {
-        ($name:expr, noop($cname:ident ($($arg:expr),*) -> void), $llvm_version:expr) => (
-            if unsafe { llvm::LLVMVersionMinor() >= $llvm_version } {
-                // The `if key == $name` is already in ifn!
-                ifn!($name, fn($($arg),*) -> void);
-            } else if key == $name {
-                let f = declare::declare_cfn(ccx, stringify!($cname),
-                                             Type::func(&[$($arg),*], &void));
-                llvm::SetLinkage(f, llvm::InternalLinkage);
-
-                let bld = ccx.builder();
-                let llbb = unsafe {
-                    llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), f,
-                                                        "entry-block\0".as_ptr() as *const _)
-                };
-
-                bld.position_at_end(llbb);
-                bld.ret_void();
-
-                ccx.intrinsics().borrow_mut().insert($name, f.clone());
-                return Some(f);
-            }
-        );
-        ($name:expr, $cname:ident ($($arg:expr),*) -> $ret:expr, $llvm_version:expr) => (
-            if unsafe { llvm::LLVMVersionMinor() >= $llvm_version } {
-                // The `if key == $name` is already in ifn!
-                ifn!($name, fn($($arg),*) -> $ret);
-            } else if key == $name {
-                let f = declare::declare_cfn(ccx, stringify!($cname),
-                                             Type::func(&[$($arg),*], &$ret));
-                ccx.intrinsics().borrow_mut().insert($name, f.clone());
-                return Some(f);
-            }
-        )
-    }
-
-    compatible_ifn!("llvm.assume", noop(llvmcompat_assume(i1) -> void), 6);
+    ifn!("llvm.assume", fn(i1) -> void);
 
     if ccx.sess().opts.debuginfo != NoDebugInfo {
         ifn!("llvm.dbg.declare", fn(Type::metadata(ccx), Type::metadata(ccx)) -> void);
