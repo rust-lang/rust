@@ -945,10 +945,7 @@ fn infer<'a, 'tcx>(i: ConstInt,
         (&ty::TyInt(IntTy::I32), Infer(i)) => Ok(I32(i as i64 as i32)),
         (&ty::TyInt(IntTy::I64), Infer(i)) => Ok(I64(i as i64)),
         (&ty::TyInt(IntTy::Is), Infer(i)) => {
-            match ConstIsize::new(i as i64, tcx.sess.target.int_type) {
-                Ok(val) => Ok(Isize(val)),
-                Err(_) => Ok(Isize(ConstIsize::Is32(i as i64 as i32))),
-            }
+            Ok(Isize(ConstIsize::new_truncating(i as i64, tcx.sess.target.int_type)))
         },
 
         (&ty::TyInt(IntTy::I8), InferSigned(i)) => Ok(I8(i as i8)),
@@ -956,10 +953,7 @@ fn infer<'a, 'tcx>(i: ConstInt,
         (&ty::TyInt(IntTy::I32), InferSigned(i)) => Ok(I32(i as i32)),
         (&ty::TyInt(IntTy::I64), InferSigned(i)) => Ok(I64(i)),
         (&ty::TyInt(IntTy::Is), InferSigned(i)) => {
-            match ConstIsize::new(i, tcx.sess.target.int_type) {
-                Ok(val) => Ok(Isize(val)),
-                Err(_) => Ok(Isize(ConstIsize::Is32(i as i32))),
-            }
+            Ok(Isize(ConstIsize::new_truncating(i, tcx.sess.target.int_type)))
         },
 
         (&ty::TyUint(UintTy::U8), Infer(i)) => Ok(U8(i as u8)),
@@ -967,10 +961,7 @@ fn infer<'a, 'tcx>(i: ConstInt,
         (&ty::TyUint(UintTy::U32), Infer(i)) => Ok(U32(i as u32)),
         (&ty::TyUint(UintTy::U64), Infer(i)) => Ok(U64(i)),
         (&ty::TyUint(UintTy::Us), Infer(i)) => {
-            match ConstUsize::new(i, tcx.sess.target.uint_type) {
-                Ok(val) => Ok(Usize(val)),
-                Err(_) => Ok(Usize(ConstUsize::Us32(i as u32))),
-            }
+            Ok(Usize(ConstUsize::new_truncating(i, tcx.sess.target.uint_type)))
         },
         (&ty::TyUint(_), InferSigned(_)) => Err(IntermediateUnsignedNegative),
 
@@ -1052,20 +1043,14 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstInt, ty: ty::
         ty::TyInt(ast::IntTy::I32) => Ok(Integral(I32(v as i64 as i32))),
         ty::TyInt(ast::IntTy::I64) => Ok(Integral(I64(v as i64))),
         ty::TyInt(ast::IntTy::Is) => {
-            match ConstIsize::new(v as i64, tcx.sess.target.int_type) {
-                Ok(val) => Ok(Integral(Isize(val))),
-                Err(_) => Ok(Integral(Isize(ConstIsize::Is32(v as i64 as i32)))),
-            }
+            Ok(Integral(Isize(ConstIsize::new_truncating(v as i64, tcx.sess.target.int_type))))
         },
         ty::TyUint(ast::UintTy::U8) => Ok(Integral(U8(v as u8))),
         ty::TyUint(ast::UintTy::U16) => Ok(Integral(U16(v as u16))),
         ty::TyUint(ast::UintTy::U32) => Ok(Integral(U32(v as u32))),
         ty::TyUint(ast::UintTy::U64) => Ok(Integral(U64(v))),
         ty::TyUint(ast::UintTy::Us) => {
-            match ConstUsize::new(v, tcx.sess.target.uint_type) {
-                Ok(val) => Ok(Integral(Usize(val))),
-                Err(_) => Ok(Integral(Usize(ConstUsize::Us32(v as u32)))),
-            }
+            Ok(Integral(Usize(ConstUsize::new_truncating(v, tcx.sess.target.uint_type))))
         },
         ty::TyFloat(ast::FloatTy::F64) => match val.erase_type() {
             Infer(u) => Ok(Float(F64(u as f64))),
