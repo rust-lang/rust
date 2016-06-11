@@ -12,6 +12,7 @@
 
 use std::ops::*;
 
+// FIXME #34229 duplicated errors
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 struct AllTheRanges {
     a: Range<usize>,
