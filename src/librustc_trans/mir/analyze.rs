@@ -180,7 +180,6 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
                 LvalueContext::Store |
                 LvalueContext::Inspect |
                 LvalueContext::Borrow { .. } |
-                LvalueContext::Slice { .. } |
                 LvalueContext::Projection => {
                     self.mark_as_lvalue(index);
                 }
