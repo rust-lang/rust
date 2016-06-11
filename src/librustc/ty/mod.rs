@@ -2454,6 +2454,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.def_map.borrow().get(&id).map(|resolution| resolution.full_def())
     }
 
+    // Returns `ty::VariantDef` if `def` refers to a struct,
+    // or variant or their constructors, panics otherwise.
+    pub fn expect_variant_def(self, def: Def) -> VariantDef<'tcx> {
+        match def {
+            Def::Variant(enum_did, did) => {
+                self.lookup_adt_def(enum_did).variant_with_id(did)
+            }
+            Def::Struct(did) => {
+                self.lookup_adt_def(did).struct_variant()
+            }
+            _ => bug!("expect_variant_def used with unexpected def {:?}", def)
+        }
+    }
+
     pub fn def_key(self, id: DefId) -> ast_map::DefKey {
         if id.is_local() {
             self.map.def_key(id)
