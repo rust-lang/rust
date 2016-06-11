@@ -66,21 +66,22 @@ fn interpret_start_points<'a, 'tcx>(
                 ecx.push_stack_frame(tcx.map.local_def_id(id), mir.span, CachedMir::Ref(mir), substs, return_ptr);
 
                 loop {
-                    match (step(&mut ecx), return_ptr) {
-                        (Ok(true), _) => {},
-                        (Ok(false), Some(ptr)) => if log_enabled!(::log::LogLevel::Debug) {
-                            ecx.memory().dump(ptr.alloc_id);
+                    match step(&mut ecx) {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            match return_ptr {
+                                Some(ptr) => if log_enabled!(::log::LogLevel::Debug) {
+                                    ecx.memory().dump(ptr.alloc_id);
+                                },
+                                None => warn!("diverging function returned"),
+                            }
                             break;
-                        },
-                        (Ok(false), None) => {
-                            warn!("diverging function returned");
-                            break;
-                        },
+                        }
                         // FIXME: diverging functions can end up here in some future miri
-                        (Err(e), _) => {
+                        Err(e) => {
                             report(tcx, &ecx, e);
                             break;
-                        },
+                        }
                     }
                 }
             }
