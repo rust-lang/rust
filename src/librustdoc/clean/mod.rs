@@ -2653,7 +2653,7 @@ fn resolve_type(cx: &DocContext,
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfType.name().to_string());
         }
-        Def::SelfTy(..) | Def::TyParam(..) => true,
+        Def::SelfTy(..) | Def::TyParam(..) | Def::AssociatedTy(..) => true,
         _ => false,
     };
     let did = register_def(&*cx, def);

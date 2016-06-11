@@ -874,7 +874,7 @@ impl<'a> LoweringContext<'a> {
                                               ddpos)
                 }
                 PatKind::Path(ref opt_qself, ref path) => {
-                    let opt_qself = opt_qself.map(|qself| {
+                    let opt_qself = opt_qself.as_ref().map(|qself| {
                         hir::QSelf { ty: self.lower_ty(&qself.ty), position: qself.position }
                     });
                     hir::PatKind::Path(opt_qself, self.lower_path(path))
