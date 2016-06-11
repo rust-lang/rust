@@ -412,13 +412,6 @@ fn link_rlib<'a>(sess: &'a Session,
     // symbol table of the archive.
     ab.update_symbols();
 
-    // For OSX/iOS, we must be careful to update symbols only when adding
-    // object files.  We're about to start adding non-object files, so run
-    // `ar` now to process the object files.
-    if sess.target.target.options.is_like_osx && !ab.using_llvm() {
-        ab.build();
-    }
-
     // Note that it is important that we add all of our non-object "magical
     // files" *after* all of the object files in the archive. The reason for
     // this is as follows:
@@ -515,7 +508,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // After adding all files to the archive, we need to update the
             // symbol table of the archive. This currently dies on OSX (see
             // #11162), and isn't necessary there anyway
-            if !sess.target.target.options.is_like_osx || ab.using_llvm() {
+            if !sess.target.target.options.is_like_osx {
                 ab.update_symbols();
             }
         }
@@ -575,9 +568,6 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
 fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
                   tempdir: &Path) {
     let mut ab = link_rlib(sess, None, objects, out_filename, tempdir);
-    if sess.target.target.options.is_like_osx && !ab.using_llvm() {
-        ab.build();
-    }
     if !sess.target.target.options.no_compiler_rt {
         ab.add_native_library("compiler-rt");
     }
