@@ -90,11 +90,11 @@ fn interpret_start_points<'a, 'tcx>(
 
 fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
     let frame = ecx.stack().last().expect("stackframe was empty");
-    let block = frame.mir.basic_block_data(frame.next_block);
+    let block = &frame.mir.basic_blocks()[frame.next_block];
     let span = if frame.stmt < block.statements.len() {
-        block.statements[frame.stmt].span
+        block.statements[frame.stmt].source_info.span
     } else {
-        block.terminator().span
+        block.terminator().source_info.span
     };
     let mut err = tcx.sess.struct_span_err(span, &e.to_string());
     for &Frame { def_id, substs, span, .. } in ecx.stack().iter().rev() {
@@ -105,7 +105,7 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
         impl<'tcx> fmt::Display for Instance<'tcx> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[],
-                    |tcx| tcx.lookup_item_type(self.0).generics)
+                    |tcx| Some(tcx.lookup_item_type(self.0).generics))
             }
         }
         err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));

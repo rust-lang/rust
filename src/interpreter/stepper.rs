@@ -51,12 +51,12 @@ impl<'ecx, 'a, 'tcx> Stepper<'ecx, 'a, 'tcx> {
         let block = self.ecx.frame().next_block;
         let stmt = self.ecx.frame().stmt;
         let mir = self.ecx.mir();
-        let basic_block = mir.basic_block_data(block);
+        let basic_block = &mir.basic_blocks()[block];
 
         if let Some(ref stmt) = basic_block.statements.get(stmt) {
             let current_stack = self.ecx.stack.len();
             ConstantExtractor {
-                span: stmt.span,
+                span: stmt.source_info.span,
                 substs: self.ecx.substs(),
                 def_id: self.ecx.frame().def_id,
                 ecx: self.ecx,
@@ -75,7 +75,7 @@ impl<'ecx, 'a, 'tcx> Stepper<'ecx, 'a, 'tcx> {
         let terminator = basic_block.terminator();
         let current_stack = self.ecx.stack.len();
         ConstantExtractor {
-            span: terminator.span,
+            span: terminator.source_info.span,
             substs: self.ecx.substs(),
             def_id: self.ecx.frame().def_id,
             ecx: self.ecx,

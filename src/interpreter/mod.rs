@@ -8,6 +8,7 @@ use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::DefIdMap;
+use rustc_data_structures::indexed_vec::Idx;
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -118,7 +119,7 @@ struct ConstantId<'tcx> {
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 enum ConstantKind {
-    Promoted(usize),
+    Promoted(mir::Promoted),
     /// Statics, constants and associated constants
     Global,
 }
@@ -485,7 +486,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 }
 
                                 let mir = self.load_mir(resolved_def_id);
-                                self.push_stack_frame(def_id, terminator.span, mir, resolved_substs, return_ptr);
+                                self.push_stack_frame(
+                                    def_id, terminator.source_info.span, mir, resolved_substs,
+                                    return_ptr
+                                );
 
                                 for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
                                     let dest = self.frame().locals[i];
@@ -501,14 +505,26 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            Drop { ref value, target, .. } => {
-                let ptr = self.eval_lvalue(value)?.to_ptr();
-                let ty = self.lvalue_ty(value);
+            Drop { ref location, target, .. } => {
+                let ptr = self.eval_lvalue(location)?.to_ptr();
+                let ty = self.lvalue_ty(location);
                 self.drop(ptr, ty)?;
                 self.frame_mut().next_block = target;
             }
 
+            Assert { ref cond, expected, ref msg, target, cleanup } => {
+                let actual_ptr = self.eval_operand(cond)?;
+                let actual = self.memory.read_bool(actual_ptr)?;
+                if actual == expected {
+                    self.frame_mut().next_block = target;
+                } else {
+                    panic!("unimplemented: jump to {:?} and print {:?}", cleanup, msg);
+                }
+            }
+
+            DropAndReplace { .. } => unimplemented!(),
             Resume => unimplemented!(),
+            Unreachable => unimplemented!(),
         }
 
         Ok(())
@@ -845,6 +861,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_primval(dest, val)?;
             }
 
+            CheckedBinaryOp(..) => unimplemented!(),
+
             UnaryOp(un_op, ref operand) => {
                 let ptr = self.eval_operand(operand)?;
                 let ty = self.operand_ty(operand);
@@ -1018,7 +1036,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            Slice { .. } => unimplemented!(),
             InlineAsm { .. } => unimplemented!(),
         }
 
@@ -1130,9 +1147,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let ptr = match *lvalue {
             ReturnPointer => self.frame().return_ptr
                 .expect("ReturnPointer used in a function with no return value"),
-            Arg(i) => self.frame().locals[i as usize],
-            Var(i) => self.frame().locals[self.frame().var_offset + i as usize],
-            Temp(i) => self.frame().locals[self.frame().temp_offset + i as usize],
+            Arg(i) => self.frame().locals[i.index()],
+            Var(i) => self.frame().locals[self.frame().var_offset + i.index()],
+            Temp(i) => self.frame().locals[self.frame().temp_offset + i.index()],
 
             Static(def_id) => {
                 let substs = self.tcx.mk_substs(subst::Substs::empty());
@@ -1217,6 +1234,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     ConstantIndex { .. } => unimplemented!(),
+                    Subslice { .. } => unimplemented!(),
                 }
             }
         };
