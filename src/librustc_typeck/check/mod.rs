@@ -3122,10 +3122,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_struct_path(&self,
-                         def: Def,
                          path: &hir::Path,
+                         node_id: ast::NodeId,
                          span: Span)
-                         -> Option<ty::VariantDef<'tcx>> {
+                         -> Option<(ty::VariantDef<'tcx>,  Ty<'tcx>)> {
+        let def = self.finish_resolving_struct_path(path, node_id, span);
         let variant = match def {
             Def::Err => {
                 self.set_tainted_by_errors();
@@ -3151,7 +3152,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       pprust::path_to_string(path));
             return None;
         }
-        variant
+
+        let ty = self.instantiate_type_path(def.def_id(), path, node_id);
+        Some((variant.unwrap(), ty))
     }
 
     fn check_expr_struct(&self,
@@ -3161,15 +3164,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          base_expr: &'gcx Option<P<hir::Expr>>)
     {
         // Find the relevant variant
-        let def = self.finish_resolving_struct_path(path, expr.id, expr.span);
-        let variant = if let Some(variant) = self.check_struct_path(def, path, expr.span) {
-            variant
+        let (variant, expr_ty) = if let Some(variant_ty) = self.check_struct_path(path, expr.id,
+                                                                                  expr.span) {
+            variant_ty
         } else {
             self.check_struct_fields_on_error(expr.id, fields, base_expr);
             return;
         };
-
-        let expr_ty = self.instantiate_type_path(def.def_id(), path, expr.id);
 
         self.check_expr_struct_fields(expr_ty, path.span, variant, fields,
                                       base_expr.is_none());
