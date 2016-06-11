@@ -1925,14 +1925,6 @@ impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
         self.fields.iter()
     }
 
-    pub fn kind(&self) -> VariantKind {
-        self.kind
-    }
-
-    pub fn is_tuple_struct(&self) -> bool {
-        self.kind() == VariantKind::Tuple
-    }
-
     #[inline]
     pub fn find_field_named(&self,
                             name: ast::Name)

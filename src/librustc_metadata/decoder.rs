@@ -498,7 +498,7 @@ pub fn get_adt_def<'a, 'tcx>(intr: &IdentInterner,
     // this needs to be done *after* the variant is interned,
     // to support recursive structures
     for variant in &adt.variants {
-        if variant.kind() == ty::VariantKind::Tuple &&
+        if variant.kind == ty::VariantKind::Tuple &&
             adt.adt_kind() == ty::AdtKind::Enum {
             // tuple-like enum variant fields aren't real items - get the types
             // from the ctor.
