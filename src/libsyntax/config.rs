@@ -12,7 +12,7 @@ use attr::{AttrMetaMethods, HasAttrs};
 use errors::Handler;
 use feature_gate::GatedCfgAttr;
 use fold::Folder;
-use {ast, fold, attr};
+use {ast, attr, fold};
 use codemap::{Spanned, respan};
 use parse::token;
 use ptr::P;
@@ -24,7 +24,9 @@ pub trait CfgFolder: fold::Folder {
     fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool;
 
     // Update a node before checking if it is in this configuration (used to implement `cfg_attr`).
-    fn process_attrs<T: HasAttrs>(&mut self, node: T) -> T { node }
+    fn process_attrs<T: HasAttrs>(&mut self, node: T) -> T {
+        node
+    }
 
     // Visit attributes on expression and statements (but not attributes on items in blocks).
     fn visit_stmt_or_expr_attrs(&mut self, _attrs: &[ast::Attribute]) {}
@@ -34,7 +36,11 @@ pub trait CfgFolder: fold::Folder {
 
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
         let node = self.process_attrs(node);
-        if self.in_cfg(node.attrs()) { Some(node) } else { None }
+        if self.in_cfg(node.attrs()) {
+            Some(node)
+        } else {
+            None
+        }
     }
 }
 
@@ -52,7 +58,10 @@ impl<'a> StripUnconfigured<'a> {
                -> Self {
         StripUnconfigured {
             config: config,
-            diag: CfgDiagReal { diag: diagnostic, feature_gated_cfgs: feature_gated_cfgs },
+            diag: CfgDiagReal {
+                diag: diagnostic,
+                feature_gated_cfgs: feature_gated_cfgs,
+            },
         }
     }
 
@@ -79,12 +88,13 @@ impl<'a> StripUnconfigured<'a> {
         };
 
         if attr::cfg_matches(self.config, &cfg, &mut self.diag) {
-            Some(respan(mi.span, ast::Attribute_ {
-                id: attr::mk_attr_id(),
-                style: attr.node.style,
-                value: mi.clone(),
-                is_sugared_doc: false,
-            }))
+            Some(respan(mi.span,
+                        ast::Attribute_ {
+                            id: attr::mk_attr_id(),
+                            style: attr.node.style,
+                            value: mi.clone(),
+                            is_sugared_doc: false,
+                        }))
         } else {
             None
         }
@@ -98,7 +108,7 @@ impl<'a> CfgFolder for StripUnconfigured<'a> {
         attrs.iter().all(|attr| {
             let mis = match attr.node.value.node {
                 ast::MetaItemKind::List(_, ref mis) if is_cfg(&attr) => mis,
-                _ => return true
+                _ => return true,
             };
 
             if mis.len() != 1 {
@@ -135,10 +145,10 @@ impl<'a> CfgFolder for StripUnconfigured<'a> {
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
-pub fn strip_unconfigured_items(diagnostic: &Handler, krate: ast::Crate,
+pub fn strip_unconfigured_items(diagnostic: &Handler,
+                                krate: ast::Crate,
                                 feature_gated_cfgs: &mut Vec<GatedCfgAttr>)
-                                -> ast::Crate
-{
+                                -> ast::Crate {
     let config = &krate.config.clone();
     StripUnconfigured::new(config, diagnostic, feature_gated_cfgs).fold_crate(krate)
 }
@@ -147,23 +157,29 @@ impl<T: CfgFolder> fold::Folder for T {
     fn fold_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
         ast::ForeignMod {
             abi: foreign_mod.abi,
-            items: foreign_mod.items.into_iter().filter_map(|item| {
-                self.configure(item).map(|item| fold::noop_fold_foreign_item(item, self))
-            }).collect(),
+            items: foreign_mod.items
+                              .into_iter()
+                              .filter_map(|item| {
+                                  self.configure(item)
+                                      .map(|item| fold::noop_fold_foreign_item(item, self))
+                              })
+                              .collect(),
         }
     }
 
     fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
-        let fold_struct = |this: &mut Self, vdata| match vdata {
-            ast::VariantData::Struct(fields, id) => {
-                let fields = fields.into_iter().filter_map(|field| this.configure(field));
-                ast::VariantData::Struct(fields.collect(), id)
+        let fold_struct = |this: &mut Self, vdata| {
+            match vdata {
+                ast::VariantData::Struct(fields, id) => {
+                    let fields = fields.into_iter().filter_map(|field| this.configure(field));
+                    ast::VariantData::Struct(fields.collect(), id)
+                }
+                ast::VariantData::Tuple(fields, id) => {
+                    let fields = fields.into_iter().filter_map(|field| this.configure(field));
+                    ast::VariantData::Tuple(fields.collect(), id)
+                }
+                ast::VariantData::Unit(id) => ast::VariantData::Unit(id),
             }
-            ast::VariantData::Tuple(fields, id) => {
-                let fields = fields.into_iter().filter_map(|field| this.configure(field));
-                ast::VariantData::Tuple(fields.collect(), id)
-            }
-            ast::VariantData::Unit(id) => ast::VariantData::Unit(id)
         };
 
         let item = match item {
@@ -180,13 +196,11 @@ impl<T: CfgFolder> fold::Folder for T {
                                 data: fold_struct(self, v.node.data),
                                 disr_expr: v.node.disr_expr,
                             },
-                            span: v.span
+                            span: v.span,
                         }
                     })
                 });
-                ast::ItemKind::Enum(ast::EnumDef {
-                    variants: variants.collect(),
-                }, generics)
+                ast::ItemKind::Enum(ast::EnumDef { variants: variants.collect() }, generics)
             }
             item => item,
         };
@@ -214,10 +228,12 @@ impl<T: CfgFolder> fold::Folder for T {
 
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
         let is_item = match stmt.node {
-            ast::StmtKind::Decl(ref decl, _) => match decl.node {
-                ast::DeclKind::Item(_) => true,
-                _ => false,
-            },
+            ast::StmtKind::Decl(ref decl, _) => {
+                match decl.node {
+                    ast::DeclKind::Item(_) => true,
+                    _ => false,
+                }
+            }
             _ => false,
         };
 
@@ -226,8 +242,9 @@ impl<T: CfgFolder> fold::Folder for T {
             self.visit_stmt_or_expr_attrs(stmt.attrs());
         }
 
-        self.configure(stmt).map(|stmt| fold::noop_fold_stmt(stmt, self))
-                            .unwrap_or(SmallVector::zero())
+        self.configure(stmt)
+            .map(|stmt| fold::noop_fold_stmt(stmt, self))
+            .unwrap_or(SmallVector::zero())
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
@@ -235,18 +252,21 @@ impl<T: CfgFolder> fold::Folder for T {
     }
 
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
-        self.configure(item).map(|item| fold::noop_fold_item(item, self))
-                            .unwrap_or(SmallVector::zero())
+        self.configure(item)
+            .map(|item| fold::noop_fold_item(item, self))
+            .unwrap_or(SmallVector::zero())
     }
 
     fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVector<ast::ImplItem> {
-        self.configure(item).map(|item| fold::noop_fold_impl_item(item, self))
-                            .unwrap_or(SmallVector::zero())
+        self.configure(item)
+            .map(|item| fold::noop_fold_impl_item(item, self))
+            .unwrap_or(SmallVector::zero())
     }
 
     fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVector<ast::TraitItem> {
-        self.configure(item).map(|item| fold::noop_fold_trait_item(item, self))
-                            .unwrap_or(SmallVector::zero())
+        self.configure(item)
+            .map(|item| fold::noop_fold_trait_item(item, self))
+            .unwrap_or(SmallVector::zero())
     }
 
     fn fold_interpolated(&mut self, nt: token::Nonterminal) -> token::Nonterminal {
@@ -257,20 +277,24 @@ impl<T: CfgFolder> fold::Folder for T {
 }
 
 fn fold_expr<F: CfgFolder>(folder: &mut F, expr: P<ast::Expr>) -> P<ast::Expr> {
-    expr.map(|ast::Expr {id, span, node, attrs}| {
+    expr.map(|ast::Expr { id, span, node, attrs }| {
         fold::noop_fold_expr(ast::Expr {
-            id: id,
-            node: match node {
-                ast::ExprKind::Match(m, arms) => {
-                    ast::ExprKind::Match(m, arms.into_iter()
-                                        .filter_map(|a| folder.configure(a))
-                                        .collect())
-                }
-                _ => node
-            },
-            span: span,
-            attrs: attrs,
-        }, folder)
+                                 id: id,
+                                 node: match node {
+                                     ast::ExprKind::Match(m, arms) => {
+                                         ast::ExprKind::Match(m,
+                                                              arms.into_iter()
+                                                                  .filter_map(|a| {
+                                                                      folder.configure(a)
+                                                                  })
+                                                                  .collect())
+                                     }
+                                     _ => node,
+                                 },
+                                 span: span,
+                                 attrs: attrs,
+                             },
+                             folder)
     })
 }
 
@@ -289,10 +313,14 @@ pub struct CfgDiagReal<'a, 'b> {
 }
 
 impl<'a, 'b> CfgDiag for CfgDiagReal<'a, 'b> {
-    fn emit_error<F>(&mut self, mut f: F) where F: FnMut(&Handler) {
+    fn emit_error<F>(&mut self, mut f: F)
+        where F: FnMut(&Handler)
+    {
         f(self.diag)
     }
-    fn flag_gated<F>(&mut self, mut f: F) where F: FnMut(&mut Vec<GatedCfgAttr>) {
+    fn flag_gated<F>(&mut self, mut f: F)
+        where F: FnMut(&mut Vec<GatedCfgAttr>)
+    {
         f(self.feature_gated_cfgs)
     }
 }

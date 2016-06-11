@@ -36,32 +36,30 @@
 //!   implementation changes (using a special thread-local heap, for example).
 //!   Moreover, a switch to, e.g. `P<'a, T>` would be easy and mostly automated.
 
-use std::fmt::{self, Display, Debug};
+use std::fmt::{self, Debug, Display};
 use std::iter::FromIterator;
 use std::ops::Deref;
 use std::{ptr, slice, vec};
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use serialize::{Decodable, Decoder, Encodable, Encoder};
 
 /// An owned smart pointer.
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct P<T: ?Sized> {
-    ptr: Box<T>
+    ptr: Box<T>,
 }
 
 #[allow(non_snake_case)]
 /// Construct a `P<T>` from a `T` value.
 pub fn P<T: 'static>(value: T) -> P<T> {
-    P {
-        ptr: Box::new(value)
-    }
+    P { ptr: Box::new(value) }
 }
 
 impl<T: 'static> P<T> {
     /// Move out of the pointer.
     /// Intended for chaining transformations not covered by `map`.
-    pub fn and_then<U, F>(self, f: F) -> U where
-        F: FnOnce(T) -> U,
+    pub fn and_then<U, F>(self, f: F) -> U
+        where F: FnOnce(T) -> U
     {
         f(*self.ptr)
     }
@@ -71,8 +69,8 @@ impl<T: 'static> P<T> {
     }
 
     /// Transform the inner value, consuming `self` and producing a new `P<T>`.
-    pub fn map<F>(mut self, f: F) -> P<T> where
-        F: FnOnce(T) -> T,
+    pub fn map<F>(mut self, f: F) -> P<T>
+        where F: FnOnce(T) -> T
     {
         unsafe {
             let p = &mut *self.ptr;
@@ -168,7 +166,7 @@ impl<T> Into<Vec<T>> for P<[T]> {
 }
 
 impl<T> FromIterator<T> for P<[T]> {
-    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> P<[T]> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> P<[T]> {
         P::from_vec(iter.into_iter().collect())
     }
 }
@@ -200,7 +198,7 @@ impl<T: Decodable> Decodable for P<[T]> {
     fn decode<D: Decoder>(d: &mut D) -> Result<P<[T]>, D::Error> {
         Ok(P::from_vec(match Decodable::decode(d) {
             Ok(t) => t,
-            Err(e) => return Err(e)
+            Err(e) => return Err(e),
         }))
     }
 }

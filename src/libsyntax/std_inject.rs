@@ -10,10 +10,10 @@
 
 use ast;
 use attr;
-use codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
+use codemap::{DUMMY_SP, ExpnInfo, MacroAttribute, NameAndSpan, Span};
 use codemap;
-use parse::token::{intern, InternedString, keywords};
-use parse::{token, ParseSess};
+use parse::token::{InternedString, intern, keywords};
+use parse::{ParseSess, token};
 use ptr::P;
 
 /// Craft a span that will be ignored by the stability lint's
@@ -26,7 +26,7 @@ fn ignored_span(sess: &ParseSess, sp: Span) -> Span {
             format: MacroAttribute(intern("std_inject")),
             span: None,
             allow_internal_unstable: true,
-        }
+        },
     };
     let expn_id = sess.codemap().record_expansion(info);
     let mut sp = sp;
@@ -50,18 +50,23 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
         return krate;
     }
 
-    let name = if no_std(&krate) { "core" } else { "std" };
+    let name = if no_std(&krate) {
+        "core"
+    } else {
+        "std"
+    };
     let crate_name = token::intern(&alt_std_name.unwrap_or(name.to_string()));
 
-    krate.module.items.insert(0, P(ast::Item {
-        attrs: vec![attr::mk_attr_outer(attr::mk_attr_id(),
+    krate.module.items.insert(0,
+                              P(ast::Item {
+                                  attrs: vec![attr::mk_attr_outer(attr::mk_attr_id(),
                                         attr::mk_word_item(InternedString::new("macro_use")))],
-        vis: ast::Visibility::Inherited,
-        node: ast::ItemKind::ExternCrate(Some(crate_name)),
-        ident: token::str_to_ident(name),
-        id: ast::DUMMY_NODE_ID,
-        span: DUMMY_SP,
-    }));
+                                  vis: ast::Visibility::Inherited,
+                                  node: ast::ItemKind::ExternCrate(Some(crate_name)),
+                                  ident: token::str_to_ident(name),
+                                  id: ast::DUMMY_NODE_ID,
+                                  span: DUMMY_SP,
+                              }));
 
     let span = ignored_span(sess, DUMMY_SP);
     krate.module.items.insert(0, P(ast::Item {
