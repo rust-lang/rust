@@ -784,18 +784,14 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                     left_ty: Ty, max_slice_length: usize) -> Vec<Constructor> {
     let pat = raw_pat(p);
     match pat.node {
-        PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) =>
+        PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) | PatKind::QPath(..) =>
             match cx.tcx.expect_def(pat.id) {
-                Def::Const(..) | Def::AssociatedConst(..) =>
-                    span_bug!(pat.span, "const pattern should've \
-                                         been rewritten"),
-                Def::Struct(..) | Def::TyAlias(..) => vec![Single],
                 Def::Variant(_, id) => vec![Variant(id)],
-                def => span_bug!(pat.span, "pat_constructors: unexpected \
-                                            definition {:?}", def),
+                Def::Struct(..) | Def::TyAlias(..) | Def::AssociatedTy(..) => vec![Single],
+                Def::Const(..) | Def::AssociatedConst(..) =>
+                    span_bug!(pat.span, "const pattern should've been rewritten"),
+                def => span_bug!(pat.span, "pat_constructors: unexpected definition {:?}", def),
             },
-        PatKind::QPath(..) =>
-            span_bug!(pat.span, "const pattern should've been rewritten"),
         PatKind::Lit(ref expr) =>
             vec![ConstantValue(eval_const_expr(cx.tcx, &expr))],
         PatKind::Range(ref lo, ref hi) =>
@@ -899,7 +895,7 @@ pub fn specialize<'a, 'b, 'tcx>(
         PatKind::Binding(..) | PatKind::Wild =>
             Some(vec![dummy_pat; arity]),
 
-        PatKind::Path(..) => {
+        PatKind::Path(..) | PatKind::QPath(..) => {
             match cx.tcx.expect_def(pat_id) {
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
@@ -932,10 +928,6 @@ pub fn specialize<'a, 'b, 'tcx>(
                 }
                 _ => None
             }
-        }
-
-        PatKind::QPath(_, _) => {
-            span_bug!(pat_span, "const pattern should've been rewritten")
         }
 
         PatKind::Struct(_, ref pattern_fields, _) => {
