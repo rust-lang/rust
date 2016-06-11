@@ -21,20 +21,18 @@ struct Test {
     lock: Option<&'static str>,
 }
 
-const TEST_REPOS: &'static [Test] = &[
-    Test {
-        name: "cargo",
-        repo: "https://github.com/rust-lang/cargo",
-        sha: "7d79da08238e3d47e0bc4406155bdcc45ccb8c82",
-        lock: None,
-    },
-    Test {
-        name: "iron",
-        repo: "https://github.com/iron/iron",
-        sha: "16c858ec2901e2992fe5e529780f59fa8ed12903",
-        lock: Some(include_str!("lockfiles/iron-Cargo.lock")),
-    },
-];
+const TEST_REPOS: &'static [Test] = &[Test {
+                                          name: "cargo",
+                                          repo: "https://github.com/rust-lang/cargo",
+                                          sha: "7d79da08238e3d47e0bc4406155bdcc45ccb8c82",
+                                          lock: None,
+                                      },
+                                      Test {
+                                          name: "iron",
+                                          repo: "https://github.com/iron/iron",
+                                          sha: "16c858ec2901e2992fe5e529780f59fa8ed12903",
+                                          lock: Some(include_str!("lockfiles/iron-Cargo.lock")),
+                                      }];
 
 
 fn main() {
@@ -52,8 +50,10 @@ fn test_repo(cargo: &Path, out_dir: &Path, test: &Test) {
     println!("testing {}", test.repo);
     let dir = clone_repo(test, out_dir);
     if let Some(lockfile) = test.lock {
-        File::create(&dir.join("Cargo.lock")).expect("")
-            .write_all(lockfile.as_bytes()).expect("");
+        File::create(&dir.join("Cargo.lock"))
+            .expect("")
+            .write_all(lockfile.as_bytes())
+            .expect("");
     }
     if !run_cargo_test(cargo, &dir) {
         panic!("tests failed for {}", test.repo);
@@ -65,10 +65,10 @@ fn clone_repo(test: &Test, out_dir: &Path) -> PathBuf {
 
     if !out_dir.join(".git").is_dir() {
         let status = Command::new("git")
-            .arg("init")
-            .arg(&out_dir)
-            .status()
-            .expect("");
+                         .arg("init")
+                         .arg(&out_dir)
+                         .status()
+                         .expect("");
         assert!(status.success());
     }
 
@@ -77,23 +77,23 @@ fn clone_repo(test: &Test, out_dir: &Path) -> PathBuf {
     for depth in &[0, 1, 10, 100, 1000, 100000] {
         if *depth > 0 {
             let status = Command::new("git")
-                .arg("fetch")
-                .arg(test.repo)
-                .arg("master")
-                .arg(&format!("--depth={}", depth))
-                .current_dir(&out_dir)
-                .status()
-                .expect("");
+                             .arg("fetch")
+                             .arg(test.repo)
+                             .arg("master")
+                             .arg(&format!("--depth={}", depth))
+                             .current_dir(&out_dir)
+                             .status()
+                             .expect("");
             assert!(status.success());
         }
 
         let status = Command::new("git")
-            .arg("reset")
-            .arg(test.sha)
-            .arg("--hard")
-            .current_dir(&out_dir)
-            .status()
-            .expect("");
+                         .arg("reset")
+                         .arg(test.sha)
+                         .arg("--hard")
+                         .current_dir(&out_dir)
+                         .status()
+                         .expect("");
 
         if status.success() {
             found = true;
@@ -105,11 +105,11 @@ fn clone_repo(test: &Test, out_dir: &Path) -> PathBuf {
         panic!("unable to find commit {}", test.sha)
     }
     let status = Command::new("git")
-        .arg("clean")
-        .arg("-fdx")
-        .current_dir(&out_dir)
-        .status()
-        .unwrap();
+                     .arg("clean")
+                     .arg("-fdx")
+                     .current_dir(&out_dir)
+                     .status()
+                     .unwrap();
     assert!(status.success());
 
     out_dir
