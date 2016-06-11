@@ -356,6 +356,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 if !self.span.filter_generated(sub_span, p.span) {
                     self.dumper.variable(VariableData {
                         id: id,
+                        kind: VariableKind::Local,
                         span: sub_span.expect("No span found for variable"),
                         name: path_to_string(p),
                         qualname: format!("{}::{}", qualname, path_to_string(p)),
@@ -519,6 +520,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         if !self.span.filter_generated(sub_span, span) {
             self.dumper.variable(VariableData {
                 span: sub_span.expect("No span found for variable"),
+                kind: VariableKind::Const,
                 id: id,
                 name: name.to_string(),
                 qualname: qualname,
@@ -542,17 +544,18 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Struct);
-        let val = if let ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _) =
-                    item.node {
+        let (val, fields) =
+            if let ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _) = item.node
+        {
             let fields_str = fields.iter()
                                    .enumerate()
                                    .map(|(i, f)| f.ident.map(|i| i.to_string())
                                                   .unwrap_or(i.to_string()))
                                    .collect::<Vec<_>>()
                                    .join(", ");
-            format!("{} {{ {} }}", name, fields_str)
+            (format!("{} {{ {} }}", name, fields_str), fields.iter().map(|f| f.id).collect())
         } else {
-            String::new()
+            (String::new(), vec![])
         };
 
         if !self.span.filter_generated(sub_span, item.span) {
@@ -563,7 +566,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 ctor_id: def.id(),
                 qualname: qualname.clone(),
                 scope: self.cur_scope,
-                value: val
+                value: val,
+                fields: fields,
             }.lower(self.tcx));
         }
 
@@ -718,7 +722,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 name: name,
                 qualname: qualname.clone(),
                 scope: self.cur_scope,
-                value: val
+                value: val,
+                items: methods.iter().map(|i| i.id).collect(),
             }.lower(self.tcx));
         }
 
@@ -958,6 +963,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             if !self.span.filter_generated(sub_span, p.span) {
                 self.dumper.variable(VariableData {
                     span: sub_span.expect("No span found for variable"),
+                    kind: VariableKind::Local,
                     id: id,
                     name: path_to_string(p),
                     qualname: format!("{}${}", path_to_string(p), id),
@@ -1366,6 +1372,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                     if !self.span.filter_generated(Some(p.span), p.span) {
                         self.dumper.variable(VariableData {
                             span: p.span,
+                            kind: VariableKind::Local,
                             id: id,
                             name: path_to_string(p),
                             qualname: format!("{}${}", path_to_string(p), id),

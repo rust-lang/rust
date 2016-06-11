@@ -14,7 +14,7 @@ use rustc::ty::TyCtxt;
 use syntax::ast::{CrateNum, NodeId};
 use syntax::codemap::{Span, CodeMap};
 
-use super::data;
+use data;
 
 // FIXME: this should be pub(crate), but the current snapshot doesn't allow it yet
 pub trait Lower {
@@ -90,6 +90,7 @@ pub struct EnumData {
     pub qualname: String,
     pub span: SpanData,
     pub scope: DefId,
+    pub variants: Vec<DefId>
 }
 
 impl Lower for data::EnumData {
@@ -103,6 +104,7 @@ impl Lower for data::EnumData {
             qualname: self.qualname,
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             scope: make_def_id(self.scope, &tcx.map),
+            variants: self.variants.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
         }
     }
 }
@@ -345,6 +347,7 @@ pub struct ModData {
     pub span: SpanData,
     pub scope: DefId,
     pub filename: String,
+    pub items: Vec<DefId>,
 }
 
 impl Lower for data::ModData {
@@ -358,6 +361,7 @@ impl Lower for data::ModData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             scope: make_def_id(self.scope, &tcx.map),
             filename: self.filename,
+            items: self.items.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
         }
     }
 }
@@ -392,7 +396,8 @@ pub struct StructData {
     pub ctor_id: DefId,
     pub qualname: String,
     pub scope: DefId,
-    pub value: String
+    pub value: String,
+    pub fields: Vec<DefId>,
 }
 
 impl Lower for data::StructData {
@@ -406,7 +411,8 @@ impl Lower for data::StructData {
             ctor_id: make_def_id(self.ctor_id, &tcx.map),
             qualname: self.qualname,
             scope: make_def_id(self.scope, &tcx.map),
-            value: self.value
+            value: self.value,
+            fields: self.fields.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
         }
     }
 }
@@ -445,7 +451,8 @@ pub struct TraitData {
     pub id: DefId,
     pub qualname: String,
     pub scope: DefId,
-    pub value: String
+    pub value: String,
+    pub items: Vec<DefId>,
 }
 
 impl Lower for data::TraitData {
@@ -459,6 +466,7 @@ impl Lower for data::TraitData {
             qualname: self.qualname,
             scope: make_def_id(self.scope, &tcx.map),
             value: self.value,
+            items: self.items.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
         }
     }
 }
@@ -585,6 +593,7 @@ impl Lower for data::UseGlobData {
 pub struct VariableData {
     pub id: DefId,
     pub name: String,
+    pub kind: data::VariableKind,
     pub qualname: String,
     pub span: SpanData,
     pub scope: DefId,
@@ -598,6 +607,7 @@ impl Lower for data::VariableData {
     fn lower(self, tcx: TyCtxt) -> VariableData {
         VariableData {
             id: make_def_id(self.id, &tcx.map),
+            kind: self.kind,
             name: self.name,
             qualname: self.qualname,
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
