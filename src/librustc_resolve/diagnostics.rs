@@ -452,18 +452,26 @@ the trait. Example of erroneous code:
 trait Foo {
     type Bar;
 
-    // error: function signature contains a reference to Self::Baz,
-    // but 'Baz' hasn't been declared as an associated type of the trait
+    // error: function signature contains a reference to `Self::Baz`, but
+    //        `Baz` hasn't been declared as an associated type of the trait
     fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
 }
 ```
+
+The use of 'associated types' allows us declare variables which might be used
+in any of the function signatures in a particular trait. This helps in
+eliminating redundancies and improves readability of code. It works by using
+the `type` keyword to declare a variable (Eg: `type A;`), and then using it
+in the function signature as `&Self::A`. `Self` refers to the object which
+has invoked the method, and this object can be of any type for which trait
+`Foo` has been implemented.
 
 One solution might be to declare the associated type in the trait:
 
 ```
 trait Foo {
     type Bar;
-    type Baz; // declare 'Baz'
+    type Baz; // declare `Baz`
 
     fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
 }
@@ -476,7 +484,8 @@ corresponding to the associated type from the function signature:
 trait Foo {
     type Bar;
 
-    fn return_bool(&self, &Self::Bar) -> bool; // &Self::Baz has been removed
+    // `&Self::Baz` has been removed
+    fn return_bool(&self, &Self::Bar) -> bool;
 }
 ```
 "##,
