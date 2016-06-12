@@ -29,6 +29,16 @@ enum SmallVectorRepr<T> {
     Many(Vec<T>),
 }
 
+impl<T> Into<Vec<T>> for SmallVector<T> {
+    fn into(self) -> Vec<T> {
+        match self.repr {
+            Zero => Vec::new(),
+            One(t) => vec![t],
+            Many(vec) => vec,
+        }
+    }
+}
+
 impl<T> FromIterator<T> for SmallVector<T> {
     fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> SmallVector<T> {
         let mut v = SmallVector::zero();
