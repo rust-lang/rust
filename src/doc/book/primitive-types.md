@@ -163,7 +163,7 @@ A ‘slice’ is a reference to (or “view” into) another data structure. The
 useful for allowing safe, efficient access to a portion of an array without
 copying. For example, you might want to reference only one line of a file read
 into memory. By nature, a slice is not created directly, but from an existing
-variable binding. Slices have a defined length, can be mutable or immutable.
+variable binding. Slices have a defined length, and can be mutable or immutable.
 
 Internally, slices are represented as a pointer to the beginning of the data
 and a length.
