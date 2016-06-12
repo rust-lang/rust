@@ -40,6 +40,8 @@ pub fn main() {
     assert_eq!(Foo2::Bar2, Foo2::Bar2);
     test(None::<Foo2>);
 
+    let _ = Foo3::Bar;
+
     let x = 10i32;
     assert_eq!(x.foo(), 42);
     let x = 10u8;
