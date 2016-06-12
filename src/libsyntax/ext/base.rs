@@ -12,6 +12,7 @@ pub use self::SyntaxExtension::*;
 
 use ast;
 use ast::{Name, PatKind};
+use attr::HasAttrs;
 use codemap;
 use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION};
 use errors::DiagnosticBuilder;
@@ -41,28 +42,30 @@ pub enum Annotatable {
     ImplItem(P<ast::ImplItem>),
 }
 
-impl Annotatable {
-    pub fn attrs(&self) -> &[ast::Attribute] {
+impl HasAttrs for Annotatable {
+    fn attrs(&self) -> &[ast::Attribute] {
         match *self {
-            Annotatable::Item(ref i) => &i.attrs,
-            Annotatable::TraitItem(ref ti) => &ti.attrs,
-            Annotatable::ImplItem(ref ii) => &ii.attrs,
+            Annotatable::Item(ref item) => &item.attrs,
+            Annotatable::TraitItem(ref trait_item) => &trait_item.attrs,
+            Annotatable::ImplItem(ref impl_item) => &impl_item.attrs,
         }
     }
 
-    pub fn fold_attrs(self, attrs: Vec<ast::Attribute>) -> Annotatable {
+    fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
         match self {
-            Annotatable::Item(i) => Annotatable::Item(i.map(|i| ast::Item {
-                attrs: attrs,
-                ..i
-            })),
-            Annotatable::TraitItem(i) => Annotatable::TraitItem(i.map(|ti| {
-                ast::TraitItem { attrs: attrs, ..ti }
-            })),
-            Annotatable::ImplItem(i) => Annotatable::ImplItem(i.map(|ii| {
-                ast::ImplItem { attrs: attrs, ..ii }
-            })),
+            Annotatable::Item(item) => Annotatable::Item(item.map_attrs(f)),
+            Annotatable::TraitItem(trait_item) => Annotatable::TraitItem(trait_item.map_attrs(f)),
+            Annotatable::ImplItem(impl_item) => Annotatable::ImplItem(impl_item.map_attrs(f)),
         }
+    }
+}
+
+impl Annotatable {
+    pub fn attrs(&self) -> &[ast::Attribute] {
+        HasAttrs::attrs(self)
+    }
+    pub fn fold_attrs(self, attrs: Vec<ast::Attribute>) -> Annotatable {
+        self.map_attrs(|_| attrs)
     }
 
     pub fn expect_item(self) -> P<ast::Item> {
