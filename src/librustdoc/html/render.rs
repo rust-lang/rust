@@ -1257,7 +1257,6 @@ impl Context {
 
         info!("Recursing into {}", self.dst.display());
 
-        mkdir(&self.dst).unwrap();
         let ret = f(self);
 
         info!("Recursed; leaving {}", self.dst.display());
@@ -1301,7 +1300,7 @@ impl Context {
     fn item<F>(&mut self, item: clean::Item, mut f: F) -> Result<(), Error> where
         F: FnMut(&mut Context, clean::Item),
     {
-        fn render(w: File, cx: &Context, it: &clean::Item,
+        fn render(writer: &mut io::Write, cx: &Context, it: &clean::Item,
                   pushname: bool) -> io::Result<()> {
             // A little unfortunate that this is done like this, but it sure
             // does make formatting *a lot* nicer.
@@ -1336,12 +1335,8 @@ impl Context {
 
             reset_ids(true);
 
-            // We have a huge number of calls to write, so try to alleviate some
-            // of the pain by using a buffered writer instead of invoking the
-            // write syscall all the time.
-            let mut writer = BufWriter::new(w);
             if !cx.render_redirect_pages {
-                layout::render(&mut writer, &cx.shared.layout, &page,
+                layout::render(writer, &cx.shared.layout, &page,
                                &Sidebar{ cx: cx, item: it },
                                &Item{ cx: cx, item: it },
                                cx.shared.css_file_extension.is_some())?;
@@ -1354,10 +1349,10 @@ impl Context {
                         url.push_str("/");
                     }
                     url.push_str(&item_path(it));
-                    layout::redirect(&mut writer, &url)?;
+                    layout::redirect(writer, &url)?;
                 }
             }
-            writer.flush()
+            Ok(())
         }
 
         // Stripped modules survive the rustdoc passes (i.e. `strip-private`)
@@ -1378,9 +1373,16 @@ impl Context {
             let mut item = Some(item);
             self.recurse(name, |this| {
                 let item = item.take().unwrap();
-                let joint_dst = this.dst.join("index.html");
-                let dst = try_err!(File::create(&joint_dst), &joint_dst);
-                try_err!(render(dst, this, &item, false), &joint_dst);
+
+                let mut buf = Vec::new();
+                render(&mut buf, this, &item, false).unwrap();
+                // buf will be empty if the module is stripped and there is no redirect for it
+                if !buf.is_empty() {
+                    let joint_dst = this.dst.join("index.html");
+                    try_err!(fs::create_dir_all(&this.dst), &this.dst);
+                    let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
+                    try_err!(dst.write_all(&buf), &joint_dst);
+                }
 
                 let m = match item.inner {
                     clean::StrippedItem(box clean::ModuleItem(m)) |
@@ -1389,7 +1391,7 @@ impl Context {
                 };
 
                 // render sidebar-items.js used throughout this module
-                {
+                if !this.render_redirect_pages {
                     let items = this.build_sidebar_items(&m);
                     let js_dst = this.dst.join("sidebar-items.js");
                     let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
@@ -1403,10 +1405,15 @@ impl Context {
                 Ok(())
             })
         } else if item.name.is_some() {
-            let joint_dst = self.dst.join(&item_path(&item));
-
-            let dst = try_err!(File::create(&joint_dst), &joint_dst);
-            try_err!(render(dst, self, &item, true), &joint_dst);
+            let mut buf = Vec::new();
+            render(&mut buf, self, &item, true).unwrap();
+            // buf will be empty if the item is stripped and there is no redirect for it
+            if !buf.is_empty() {
+                let joint_dst = self.dst.join(&item_path(&item));
+                try_err!(fs::create_dir_all(&self.dst), &self.dst);
+                let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
+                try_err!(dst.write_all(&buf), &joint_dst);
+            }
             Ok(())
         } else {
             Ok(())
