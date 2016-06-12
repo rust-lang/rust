@@ -911,6 +911,50 @@ You can find more information about borrowing in the rust-book:
 http://doc.rust-lang.org/stable/book/references-and-borrowing.html
 "##,
 
+E0508: r##"
+A value was moved out of a non-copy fixed-size array.
+
+Example of erroneous code:
+
+```compile_fail
+struct NonCopy;
+
+fn main() {
+    let array = [NonCopy; 1];
+    let _value = array[0]; // error: cannot move out of type `[NonCopy; 1]`,
+                           //        a non-copy fixed-size array
+}
+```
+
+The first element was moved out of the array, but this is not
+possible because `NonCopy` does not implement the `Copy` trait.
+
+Consider borrowing the element instead of moving it:
+
+```
+struct NonCopy;
+
+fn main() {
+    let array = [NonCopy; 1];
+    let _value = &array[0]; // Borrowing is allowed, unlike moving.
+}
+```
+
+Alternatively, if your type implements `Clone` and you need to own the value,
+consider borrowing and then cloning:
+
+```
+#[derive(Clone)]
+struct NonCopy;
+
+fn main() {
+    let array = [NonCopy; 1];
+    // Now you can clone the array element.
+    let _value = array[0].clone();
+}
+```
+"##,
+
 E0509: r##"
 This error occurs when an attempt is made to move out of a value whose type
 implements the `Drop` trait.
@@ -1012,6 +1056,5 @@ register_diagnostics! {
     E0385, // {} in an aliasable location
     E0388, // {} in a static location
     E0503, // cannot use `..` because it was mutably borrowed
-    E0508, // cannot move out of type `..`, a non-copy fixed-size array
     E0524, // two closures require unique access to `..` at the same time
 }
