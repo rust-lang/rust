@@ -529,6 +529,62 @@ For more information on the rust ownership system, take a look at
 https://doc.rust-lang.org/stable/book/references-and-borrowing.html.
 "##,
 
+E0503: r##"
+A value was used after it was mutably borrowed.
+
+Example of erroneous code:
+
+```compile_fail
+fn main() {
+    let mut value = 3;
+    // Create a mutable borrow of `value`. This borrow
+    // lives until the end of this function.
+    let _borrow = &mut value;
+    let _sum = value + 1; // error: cannot use `value` because
+                          //        it was mutably borrowed
+}
+```
+
+In this example, `value` is mutably borrowed by `borrow` and cannot be
+used to calculate `sum`. This is not possible because this would violate
+Rust's mutability rules.
+
+You can fix this error by limiting the scope of the borrow:
+
+```
+fn main() {
+    let mut value = 3;
+    // By creating a new block, you can limit the scope
+    // of the reference.
+    {
+        let _borrow = &mut value; // Use `_borrow` inside this block.
+    }
+    // The block has ended and with it the borrow.
+    // You can now use `value` again.
+    let _sum = value + 1;
+}
+```
+
+Or by cloning `value` before borrowing it:
+
+```
+fn main() {
+    let mut value = 3;
+    // We clone `value`, creating a copy.
+    let value_cloned = value.clone();
+    // The mutable borrow is a reference to `value` and
+    // not to `value_cloned`...
+    let _borrow = &mut value;
+    // ... which means we can still use `value_cloned`,
+    let _sum = value_cloned + 1;
+    // even though the borrow only ends here.
+}
+```
+
+You can find more information about borrowing in the rust-book:
+http://doc.rust-lang.org/stable/book/references-and-borrowing.html
+"##,
+
 E0504: r##"
 This error occurs when an attempt is made to move a borrowed variable into a
 closure.
@@ -1055,6 +1111,5 @@ fn main() {
 register_diagnostics! {
     E0385, // {} in an aliasable location
     E0388, // {} in a static location
-    E0503, // cannot use `..` because it was mutably borrowed
     E0524, // two closures require unique access to `..` at the same time
 }
