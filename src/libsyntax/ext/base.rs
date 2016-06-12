@@ -123,9 +123,7 @@ impl<F> MultiItemDecorator for F
     }
 }
 
-// A more flexible ItemKind::Modifier (ItemKind::Modifier should go away, eventually, FIXME).
-// meta_item is the annotation, item is the item being modified, parent_item
-// is the impl or trait item is declared in if item is part of such a thing.
+// `meta_item` is the annotation, and `item` is the item being modified.
 // FIXME Decorators should follow the same pattern too.
 pub trait MultiItemModifier {
     fn expand(&self,
@@ -133,22 +131,26 @@ pub trait MultiItemModifier {
               span: Span,
               meta_item: &ast::MetaItem,
               item: Annotatable)
-              -> Annotatable;
+              -> Vec<Annotatable>;
 }
 
-impl<F> MultiItemModifier for F
-    where F: Fn(&mut ExtCtxt,
-                Span,
-                &ast::MetaItem,
-                Annotatable) -> Annotatable
+impl<F, T> MultiItemModifier for F
+    where F: Fn(&mut ExtCtxt, Span, &ast::MetaItem, Annotatable) -> T,
+          T: Into<Vec<Annotatable>>,
 {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
               meta_item: &ast::MetaItem,
               item: Annotatable)
-              -> Annotatable {
-        (*self)(ecx, span, meta_item, item)
+              -> Vec<Annotatable> {
+        (*self)(ecx, span, meta_item, item).into()
+    }
+}
+
+impl Into<Vec<Annotatable>> for Annotatable {
+    fn into(self) -> Vec<Annotatable> {
+        vec![self]
     }
 }
 
