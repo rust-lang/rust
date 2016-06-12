@@ -178,7 +178,7 @@ loop {
 
 We now loop forever with `loop` and use `break` to break out early. Issuing an explicit `return` statement will also serve to terminate the loop early.
 
-`continue` is similar, but instead of ending the loop, goes to the next
+`continue` is similar, but instead of ending the loop, it goes to the next
 iteration. This will only print the odd numbers:
 
 ```rust
