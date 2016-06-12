@@ -19,6 +19,10 @@ fn run_mode(mode: &'static str) {
         config.mode = cfg_mode;
         config.src_base = PathBuf::from(format!("tests/{}", mode));
         config.target = target.to_owned();
+
+        // Disable rustc's new error fomatting. It breaks these tests.
+        std::env::remove_var("RUST_NEW_ERROR_FORMAT");
+
         compiletest::run_tests(&config);
     }
 }
