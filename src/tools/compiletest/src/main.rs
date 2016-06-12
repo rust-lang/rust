@@ -102,6 +102,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "android-cross-path", "Android NDK standalone path", "PATH"),
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
+          optopt("", "nodejs-executable", "path to Node executable for asmjs tests", "PROGRAM"),
           optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH"),
           reqopt("", "cc", "path to a C compiler", "PATH"),
           reqopt("", "cxx", "path to a C++ compiler", "PATH"),
@@ -179,6 +180,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
             opt_str2(matches.opt_str("target")).contains("android") &&
             "(none)" != opt_str2(matches.opt_str("adb-test-dir")) &&
             !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
+        node_path: matches.opt_str("nodejs-executable").or_else(detect_node),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
         quiet: matches.opt_present("quiet"),
@@ -524,3 +526,24 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
     }
     None
 }
+
+fn detect_node() -> Option<String> {
+    // Look for `nodejs` or `node` on PATH in that order, returning the name
+    // of whichever is found.
+    let path = match env::var_os("PATH") {
+        Some(x) => x,
+        None => return None
+    };
+
+    for mut dir in env::split_paths(&path) {
+        for bin in &["nodejs", "node"] {
+            dir.push(bin);
+            if dir.exists() {
+                return Some(bin.to_string());
+            }
+            dir.pop();
+        }
+    }
+    None
+}
+

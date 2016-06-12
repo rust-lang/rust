@@ -1405,7 +1405,11 @@ actual:\n\
 
         // If this is emscripten, then run tests under nodejs
         if self.config.target == "asmjs-unknown-emscripten" {
-            args.push("nodejs".to_owned());
+            if let Some(ref p) = self.config.node_path {
+                args.push(p.clone());
+            } else {
+                self.fatal("no Node binary found (--nodejs-executable)");
+            }
         }
 
         let exe_file = self.make_exe_name();
