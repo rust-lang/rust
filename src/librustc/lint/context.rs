@@ -905,7 +905,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
+impl<'a> ast_visit::Visitor for EarlyContext<'a> {
     fn visit_item(&mut self, it: &ast::Item) {
         self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_item, early_passes, it);
@@ -939,8 +939,8 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
         ast_visit::walk_stmt(self, s);
     }
 
-    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, decl: &'v ast::FnDecl,
-                body: &'v ast::Block, span: Span, id: ast::NodeId) {
+    fn visit_fn(&mut self, fk: ast_visit::FnKind, decl: &ast::FnDecl,
+                body: &ast::Block, span: Span, id: ast::NodeId) {
         run_lints!(self, check_fn, early_passes, fk, decl, body, span, id);
         ast_visit::walk_fn(self, fk, decl, body, span);
         run_lints!(self, check_fn_post, early_passes, fk, decl, body, span, id);

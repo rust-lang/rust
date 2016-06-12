@@ -58,8 +58,8 @@ pub struct CrateReader<'a> {
     local_crate_name: String,
 }
 
-impl<'a, 'ast> visit::Visitor<'ast> for LocalCrateReader<'a> {
-    fn visit_item(&mut self, a: &'ast ast::Item) {
+impl<'a> visit::Visitor for LocalCrateReader<'a> {
+    fn visit_item(&mut self, a: &ast::Item) {
         self.process_item(a);
         visit::walk_item(self, a);
     }

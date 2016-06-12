@@ -573,7 +573,7 @@ struct PatIdentFinder {
     ident_accumulator: Vec<ast::Ident>
 }
 
-impl<'v> Visitor<'v> for PatIdentFinder {
+impl Visitor for PatIdentFinder {
     fn visit_pat(&mut self, pattern: &ast::Pat) {
         match *pattern {
             ast::Pat { id: _, node: PatKind::Ident(_, ref path1, ref inner), span: _ } => {
@@ -1226,7 +1226,7 @@ mod tests {
         path_accumulator: Vec<ast::Path> ,
     }
 
-    impl<'v> Visitor<'v> for PathExprFinderContext {
+    impl Visitor for PathExprFinderContext {
         fn visit_expr(&mut self, expr: &ast::Expr) {
             if let ast::ExprKind::Path(None, ref p) = expr.node {
                 self.path_accumulator.push(p.clone());
@@ -1248,7 +1248,7 @@ mod tests {
         ident_accumulator: Vec<ast::Ident>
     }
 
-    impl<'v> Visitor<'v> for IdentFinder {
+    impl Visitor for IdentFinder {
         fn visit_ident(&mut self, _: codemap::Span, id: ast::Ident){
             self.ident_accumulator.push(id);
         }

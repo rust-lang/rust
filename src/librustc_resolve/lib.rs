@@ -500,7 +500,7 @@ pub enum Namespace {
     ValueNS,
 }
 
-impl<'a, 'v> Visitor<'v> for Resolver<'a> {
+impl<'a> Visitor for Resolver<'a> {
     fn visit_item(&mut self, item: &Item) {
         self.resolve_item(item);
     }
@@ -562,9 +562,9 @@ impl<'a, 'v> Visitor<'v> for Resolver<'a> {
         });
     }
     fn visit_fn(&mut self,
-                function_kind: FnKind<'v>,
-                declaration: &'v FnDecl,
-                block: &'v Block,
+                function_kind: FnKind,
+                declaration: &FnDecl,
+                block: &Block,
                 _: Span,
                 node_id: NodeId) {
         let rib_kind = match function_kind {
