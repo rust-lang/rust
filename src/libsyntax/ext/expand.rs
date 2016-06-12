@@ -338,6 +338,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
 
     let marked = expanded.fold_with(&mut Marker { mark: mark, expn_id: Some(fld.cx.backtrace()) });
     let configured = marked.fold_with(&mut fld.strip_unconfigured());
+    fld.load_macros(&configured);
     let fully_expanded = configured.fold_with(fld);
     fld.cx.bt_pop();
     fully_expanded
@@ -760,15 +761,6 @@ fn expand_annotatable(a: Annotatable,
                 }
                 result
             },
-            ast::ItemKind::ExternCrate(_) => {
-                // We need to error on `#[macro_use] extern crate` when it isn't at the
-                // crate root, because `$crate` won't work properly.
-                let allows_macros = fld.cx.syntax_env.is_crate_root();
-                for def in fld.cx.loader.load_crate(&it, allows_macros) {
-                    fld.cx.insert_macro(def);
-                }
-                SmallVector::one(it)
-            },
             _ => noop_fold_item(it, fld),
         }.into_iter().map(|i| Annotatable::Item(i)).collect(),
 
@@ -1017,6 +1009,40 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                &self.cx.parse_sess.span_diagnostic,
                                self.cx.feature_gated_cfgs)
     }
+
+    fn load_macros<T: MacroGenerable>(&mut self, node: &T) {
+        struct MacroLoadingVisitor<'a, 'b: 'a>{
+            cx: &'a mut ExtCtxt<'b>,
+            at_crate_root: bool,
+        }
+
+        impl<'a, 'b, 'v> Visitor<'v> for MacroLoadingVisitor<'a, 'b> {
+            fn visit_mac(&mut self, _: &'v ast::Mac) {}
+            fn visit_item(&mut self, item: &'v ast::Item) {
+                if let ast::ItemKind::ExternCrate(..) = item.node {
+                    // We need to error on `#[macro_use] extern crate` when it isn't at the
+                    // crate root, because `$crate` won't work properly.
+                    for def in self.cx.loader.load_crate(item, self.at_crate_root) {
+                        self.cx.insert_macro(def);
+                    }
+                } else {
+                    let at_crate_root = ::std::mem::replace(&mut self.at_crate_root, false);
+                    visit::walk_item(self, item);
+                    self.at_crate_root = at_crate_root;
+                }
+            }
+            fn visit_block(&mut self, block: &'v ast::Block) {
+                let at_crate_root = ::std::mem::replace(&mut self.at_crate_root, false);
+                visit::walk_block(self, block);
+                self.at_crate_root = at_crate_root;
+            }
+        }
+
+        node.visit_with(&mut MacroLoadingVisitor {
+            at_crate_root: self.cx.syntax_env.is_crate_root(),
+            cx: self.cx,
+        });
+    }
 }
 
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
@@ -1160,7 +1186,7 @@ impl<'feat> ExpansionConfig<'feat> {
 
 pub fn expand_crate(mut cx: ExtCtxt,
                     user_exts: Vec<NamedSyntaxExtension>,
-                    c: Crate) -> (Crate, HashSet<Name>) {
+                    mut c: Crate) -> (Crate, HashSet<Name>) {
     if std_inject::no_core(&c) {
         cx.crate_root = None;
     } else if std_inject::no_std(&c) {
@@ -1174,6 +1200,10 @@ pub fn expand_crate(mut cx: ExtCtxt,
         for (name, extension) in user_exts {
             expander.cx.syntax_env.insert(name, extension);
         }
+
+        let items = SmallVector::many(c.module.items);
+        expander.load_macros(&items);
+        c.module.items = items.into();
 
         let err_count = cx.parse_sess.span_diagnostic.err_count();
         let mut ret = expander.fold_crate(c);
