@@ -227,6 +227,7 @@
 #![feature(core_float)]
 #![feature(core_intrinsics)]
 #![feature(dropck_parametricity)]
+#![feature(drop_types_in_const)]
 #![feature(float_extras)]
 #![feature(float_from_str_radix)]
 #![feature(fnbox)]

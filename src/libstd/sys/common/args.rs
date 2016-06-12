@@ -45,12 +45,11 @@ mod imp {
     use prelude::v1::*;
 
     use libc::c_char;
-    use mem;
     use ffi::CStr;
 
     use sys_common::mutex::Mutex;
 
-    static mut GLOBAL_ARGS_PTR: usize = 0;
+    static mut GLOBAL_ARGS: Option<Vec<Vec<u8>>> = None;
     static LOCK: Mutex = Mutex::new();
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
@@ -59,32 +58,25 @@ mod imp {
         }).collect();
 
         LOCK.lock();
-        let ptr = get_global_ptr();
-        assert!((*ptr).is_none());
-        (*ptr) = Some(box args);
+        assert!(GLOBAL_ARGS.is_none());
+        GLOBAL_ARGS = Some(args);
         LOCK.unlock();
     }
 
     pub unsafe fn cleanup() {
         LOCK.lock();
-        *get_global_ptr() = None;
+        GLOBAL_ARGS = None;
         LOCK.unlock();
     }
 
     pub fn clone() -> Option<Vec<Vec<u8>>> {
         unsafe {
             LOCK.lock();
-            let ptr = get_global_ptr();
-            let ret = (*ptr).as_ref().map(|s| (**s).clone());
+            let ret = GLOBAL_ARGS.clone();
             LOCK.unlock();
             return ret
         }
     }
-
-    fn get_global_ptr() -> *mut Option<Box<Vec<Vec<u8>>>> {
-        unsafe { mem::transmute(&mut GLOBAL_ARGS_PTR) }
-    }
-
 }
 
 #[cfg(any(target_os = "macos",
