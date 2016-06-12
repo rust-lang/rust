@@ -62,15 +62,16 @@ fn expand_identity(cx: &mut ExtCtxt, _span: Span, tts: &[TokenTree])
 fn expand_into_foo_multi(cx: &mut ExtCtxt,
                          sp: Span,
                          attr: &MetaItem,
-                         it: Annotatable) -> Annotatable {
+                         it: Annotatable) -> Vec<Annotatable> {
     match it {
-        Annotatable::Item(it) => {
+        Annotatable::Item(it) => vec![
             Annotatable::Item(P(Item {
                 attrs: it.attrs.clone(),
                 ..(*quote_item!(cx, enum Foo2 { Bar2, Baz2 }).unwrap()).clone()
-            }))
-        }
-        Annotatable::ImplItem(it) => {
+            })),
+            Annotatable::Item(quote_item!(cx, enum Foo3 { Bar }).unwrap()),
+        ],
+        Annotatable::ImplItem(it) => vec![
             quote_item!(cx, impl X { fn foo(&self) -> i32 { 42 } }).unwrap().and_then(|i| {
                 match i.node {
                     ItemKind::Impl(_, _, _, _, _, mut items) => {
@@ -79,8 +80,8 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                     _ => unreachable!("impl parsed to something other than impl")
                 }
             })
-        }
-        Annotatable::TraitItem(it) => {
+        ],
+        Annotatable::TraitItem(it) => vec![
             quote_item!(cx, trait X { fn foo(&self) -> i32 { 0 } }).unwrap().and_then(|i| {
                 match i.node {
                     ItemKind::Trait(_, _, _, mut items) => {
@@ -89,7 +90,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                     _ => unreachable!("trait parsed to something other than trait")
                 }
             })
-        }
+        ],
     }
 }
 
