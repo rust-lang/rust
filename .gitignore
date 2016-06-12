@@ -98,3 +98,8 @@ tmp.*.rs
 version.md
 version.ml
 version.texi
+
+# My builds
+debug-release/
+debug/
+release/
