@@ -865,7 +865,7 @@ fn expand_annotatable(mut item: Annotatable, fld: &mut MacroExpander) -> SmallVe
                 });
                 let modified = mac.expand(fld.cx, attr.span, &attr.node.value, item);
                 fld.cx.bt_pop();
-                expand_annotatable(modified, fld)
+                modified.into_iter().flat_map(|it| expand_annotatable(it, fld)).collect()
             }
             _ => unreachable!(),
         }
