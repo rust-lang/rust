@@ -445,15 +445,16 @@ impl SomeTrait for Foo { // ok!
 "##,
 
 E0406: r##"
-The function is referring to an associated type which hasn't been declared in
-the trait.
+A function is referring to an associated type which hasn't been declared in
+the trait. Example of erroneous code:
 
 ```compile_fail
 trait Foo {
     type Bar;
 
+    // error: function signature contains a reference to Self::Baz,
+    // but 'Baz' hasn't been declared as an associated type of the trait
     fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
-    // etc
 }
 ```
 
@@ -462,12 +463,12 @@ One solution might be to declare the associated type in the trait:
 ```
 trait Foo {
     type Bar;
-    type Baz;                         //declare required associated type
+    type Baz; // declare 'Baz'
 
     fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
-    // etc
 }
 ```
+
 Alternatively, you could remove the input variable
 corresponding to the associated type from the function signature:
 
@@ -475,8 +476,7 @@ corresponding to the associated type from the function signature:
 trait Foo {
     type Bar;
 
-    fn return_bool(&self, &Self::Bar) -> bool; //&Self::Baz has been removed
-    // etc
+    fn return_bool(&self, &Self::Bar) -> bool; // &Self::Baz has been removed
 }
 ```
 "##,
