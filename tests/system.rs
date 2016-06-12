@@ -121,6 +121,7 @@ fn self_tests() {
         .map(get_path_string);
     // Hack because there's no `IntoIterator` impl for `[T; N]`.
     let files = files.chain(Some("src/lib.rs".to_owned()).into_iter());
+    let files = files.chain(Some("build.rs".to_owned()).into_iter());
 
     let (reports, count, fails) = check_files(files);
     let mut warnings = 0;

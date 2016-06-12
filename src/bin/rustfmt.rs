@@ -29,6 +29,12 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
+// Include git commit hash and worktree status; contents are like
+//   const COMMIT_HASH: Option<&'static str> = Some("c31a366");
+//   const WORKTREE_CLEAN: Option<bool> = Some(false);
+// with `None` if running git failed, eg if it is not installed.
+include!(concat!(env!("OUT_DIR"), "/git_info.rs"));
+
 type FmtError = Box<error::Error + Send + Sync>;
 type FmtResult<T> = std::result::Result<T, FmtError>;
 
@@ -291,11 +297,13 @@ fn print_usage(opts: &Options, reason: &str) {
 }
 
 fn print_version() {
-    println!("{}.{}.{}{}",
-             option_env!("CARGO_PKG_VERSION_MAJOR").unwrap_or("X"),
-             option_env!("CARGO_PKG_VERSION_MINOR").unwrap_or("X"),
-             option_env!("CARGO_PKG_VERSION_PATCH").unwrap_or("X"),
-             option_env!("CARGO_PKG_VERSION_PRE").unwrap_or(""));
+    println!("{} ({}{})",
+             option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"),
+             COMMIT_HASH.unwrap_or("git commit unavailable"),
+             match WORKTREE_CLEAN {
+                 Some(false) => " worktree dirty",
+                 _ => "",
+             });
 }
 
 fn determine_operation(matches: &Matches) -> FmtResult<Operation> {

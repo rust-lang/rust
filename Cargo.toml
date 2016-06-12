@@ -8,6 +8,7 @@ repository = "https://github.com/rust-lang-nursery/rustfmt"
 readme = "README.md"
 license = "Apache-2.0/MIT"
 include = ["src/*.rs", "Cargo.toml"]
+build = "build.rs"
 
 [features]
 default = ["cargo-fmt"]
@@ -27,6 +28,9 @@ env_logger = "0.3"
 getopts = "0.2"
 itertools = "0.4.15"
 multimap = "0.3"
+
+[build-dependencies]
+walkdir = "0.1.5"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.11"
