@@ -15,7 +15,7 @@ fn run_mode(mode: &'static str) {
             .expect("need to specify RUST_SYSROOT env var or use rustup or multirust")
             .to_owned(),
     };
-    let sysroot_flag = format!("--sysroot {}", sysroot);
+    let sysroot_flag = format!("--sysroot {} -Dwarnings", sysroot);
 
     // FIXME: read directories in sysroot/lib/rustlib and generate the test targets from that
     let targets = &["x86_64-unknown-linux-gnu", "i686-unknown-linux-gnu"];

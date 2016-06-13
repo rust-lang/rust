@@ -1,7 +1,3 @@
-#![feature(custom_attribute)]
-#![allow(dead_code, unused_attributes)]
-
-#[miri_run]
 fn factorial_loop() -> i64 {
     let mut product = 1;
     let mut i = 1;
@@ -14,7 +10,6 @@ fn factorial_loop() -> i64 {
     product
 }
 
-#[miri_run]
 fn index_for_loop() -> usize {
     let mut sum = 0;
     let a = [0, 10, 20, 30];
@@ -24,7 +19,6 @@ fn index_for_loop() -> usize {
     sum
 }
 
-#[miri_run]
 fn for_loop() -> usize {
     let mut sum = 0;
     let a = [0, 10, 20, 30];
@@ -34,7 +28,6 @@ fn for_loop() -> usize {
     sum
 }
 
-#[miri_run]
 fn main() {
     assert_eq!(factorial_loop(), 3628800);
     assert_eq!(index_for_loop(), 60);

@@ -20,7 +20,10 @@ use rustc::session::Session;
 use rustc_driver::{driver, CompilerCalls};
 use rustc::ty::{TyCtxt, subst};
 use rustc::mir::mir_map::MirMap;
+use rustc::mir::repr::Mir;
 use rustc::hir::def_id::DefId;
+use rustc::hir::{map, ItemFn, Item};
+use syntax::codemap::Span;
 
 struct MiriCompilerCalls;
 
@@ -34,58 +37,46 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
 
         control.after_analysis.callback = Box::new(|state| {
             state.session.abort_if_errors();
-            interpret_start_points(state.tcx.unwrap(), state.mir_map.unwrap());
+
+            let tcx = state.tcx.unwrap();
+            let mir_map = state.mir_map.unwrap();
+            let (span, mir, def_id) = get_main(tcx, mir_map);
+            println!("found `main` function at: {:?}", span);
+
+            let mut ecx = EvalContext::new(tcx, mir_map);
+            let substs = tcx.mk_substs(subst::Substs::empty());
+            let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs).expect("main function should not be diverging");
+
+            ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, Some(return_ptr));
+
+            loop {
+                match step(&mut ecx) {
+                    Ok(true) => {}
+                    Ok(false) => break,
+                    // FIXME: diverging functions can end up here in some future miri
+                    Err(e) => {
+                        report(tcx, &ecx, e);
+                        break;
+                    }
+                }
+            }
         });
 
         control
     }
 }
 
-
-
-fn interpret_start_points<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir_map: &MirMap<'tcx>,
-) {
-    let initial_indentation = ::log_settings::settings().indentation;
+fn get_main<'a, 'b, 'tcx: 'b>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'b MirMap<'tcx>) -> (Span, &'b Mir<'tcx>, DefId) {
     for (&id, mir) in &mir_map.map {
-        for attr in tcx.map.attrs(id) {
-            use syntax::attr::AttrMetaMethods;
-            if attr.check_name("miri_run") {
-                let item = tcx.map.expect_item(id);
-
-                ::log_settings::settings().indentation = initial_indentation;
-
-                debug!("Interpreting: {}", item.name);
-
-                let mut ecx = EvalContext::new(tcx, mir_map);
-                let substs = tcx.mk_substs(subst::Substs::empty());
-                let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs);
-
-                ecx.push_stack_frame(tcx.map.local_def_id(id), mir.span, CachedMir::Ref(mir), substs, return_ptr);
-
-                loop {
-                    match step(&mut ecx) {
-                        Ok(true) => {}
-                        Ok(false) => {
-                            match return_ptr {
-                                Some(ptr) => if log_enabled!(::log::LogLevel::Debug) {
-                                    ecx.memory().dump(ptr.alloc_id);
-                                },
-                                None => warn!("diverging function returned"),
-                            }
-                            break;
-                        }
-                        // FIXME: diverging functions can end up here in some future miri
-                        Err(e) => {
-                            report(tcx, &ecx, e);
-                            break;
-                        }
-                    }
+        if let map::Node::NodeItem(&Item { name, span, ref node, .. }) = tcx.map.get(id) {
+            if let ItemFn(..) = *node {
+                if name.as_str() == "main" {
+                    return (span, mir, tcx.map.local_def_id(id));
                 }
             }
         }
     }
+    panic!("no main function found");
 }
 
 fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
