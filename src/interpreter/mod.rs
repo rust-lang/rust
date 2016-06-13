@@ -1055,10 +1055,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     Misc => {
                         // FIXME(solson): Wrong for almost everything.
+                        warn!("misc cast from {:?} to {:?}", src_ty, dest_ty);
                         let dest_size = self.type_size(dest_ty);
                         let src_size = self.type_size(src_ty);
-                        if dest_size == src_size {
-                            warn!("performing fishy cast from {:?} to {:?}", src_ty, dest_ty);
+
+                        // Hack to support fat pointer -> thin pointer casts to keep tests for
+                        // other things passing for now.
+                        let is_fat_ptr_cast = pointee_type(src_ty).map(|ty| {
+                            !self.type_is_sized(ty)
+                        }).unwrap_or(false);
+
+                        if dest_size == src_size || is_fat_ptr_cast {
                             self.memory.copy(src, dest, dest_size)?;
                         } else {
                             return Err(EvalError::Unimplemented(format!("can't handle cast: {:?}", rvalue)));
