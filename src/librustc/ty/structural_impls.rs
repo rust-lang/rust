@@ -433,7 +433,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for VecPerParamSpace<T> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.iter().any(|elem| elem.visit_with(visitor))
+        self.as_full_slice().iter().any(|elem| elem.visit_with(visitor))
     }
 }
 

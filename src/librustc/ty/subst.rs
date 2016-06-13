@@ -19,9 +19,6 @@ use ty::fold::{TypeFoldable, TypeFolder};
 
 use serialize::{Encodable, Encoder, Decodable, Decoder};
 use std::fmt;
-use std::iter::IntoIterator;
-use std::slice::Iter;
-use std::vec::{Vec, IntoIter};
 use syntax_pos::{Span, DUMMY_SP};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -365,24 +362,12 @@ impl<T> VecPerParamSpace<T> {
         &self.get_slice(space)[index]
     }
 
-    pub fn iter<'a>(&'a self) -> Iter<'a,T> {
-        self.content.iter()
-    }
-
-    pub fn into_iter(self) -> IntoIter<T> {
-        self.content.into_iter()
-    }
-
     pub fn iter_enumerated<'a>(&'a self) -> EnumeratedItems<'a,T> {
         EnumeratedItems::new(self)
     }
 
-    pub fn as_slice(&self) -> &[T] {
+    pub fn as_full_slice(&self) -> &[T] {
         &self.content
-    }
-
-    pub fn into_vec(self) -> Vec<T> {
-        self.content
     }
 
     pub fn all_vecs<P>(&self, mut pred: P) -> bool where
@@ -392,11 +377,11 @@ impl<T> VecPerParamSpace<T> {
     }
 
     pub fn all<P>(&self, pred: P) -> bool where P: FnMut(&T) -> bool {
-        self.iter().all(pred)
+        self.as_full_slice().iter().all(pred)
     }
 
     pub fn any<P>(&self, pred: P) -> bool where P: FnMut(&T) -> bool {
-        self.iter().any(pred)
+        self.as_full_slice().iter().any(pred)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -404,7 +389,7 @@ impl<T> VecPerParamSpace<T> {
     }
 
     pub fn map<U, P>(&self, pred: P) -> VecPerParamSpace<U> where P: FnMut(&T) -> U {
-        let result = self.iter().map(pred).collect();
+        let result = self.as_full_slice().iter().map(pred).collect();
         VecPerParamSpace::new_internal(result,
                                        self.self_limit,
                                        self.type_limit)
@@ -478,26 +463,8 @@ impl<'a,T> Iterator for EnumeratedItems<'a,T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.vec.as_slice().len();
+        let size = self.vec.as_full_slice().len();
         (size, Some(size))
-    }
-}
-
-impl<T> IntoIterator for VecPerParamSpace<T> {
-    type Item = T;
-    type IntoIter = IntoIter<T>;
-
-    fn into_iter(self) -> IntoIter<T> {
-        self.into_vec().into_iter()
-    }
-}
-
-impl<'a,T> IntoIterator for &'a VecPerParamSpace<T> {
-    type Item = &'a T;
-    type IntoIter = Iter<'a, T>;
-
-    fn into_iter(self) -> Iter<'a, T> {
-        self.as_slice().into_iter()
     }
 }
 

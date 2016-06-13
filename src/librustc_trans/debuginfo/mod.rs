@@ -358,7 +358,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                          name_to_append_suffix_to: &mut String)
                                          -> DIArray
     {
-        let actual_types = param_substs.types.as_slice();
+        let actual_types = param_substs.types.as_full_slice();
 
         if actual_types.is_empty() {
             return create_DIArray(DIB(cx), &[]);
@@ -381,7 +381,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         // Again, only create type information if full debuginfo is enabled
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
-            generics.types.as_slice().iter().enumerate().map(|(i, param)| {
+            generics.types.as_full_slice().iter().enumerate().map(|(i, param)| {
                 let actual_type = cx.tcx().normalize_associated_type(&actual_types[i]);
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
                 let name = CString::new(param.name.as_str().as_bytes()).unwrap();

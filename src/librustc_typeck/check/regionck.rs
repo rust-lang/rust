@@ -1445,11 +1445,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let origin = infer::ParameterInScope(origin, expr_span);
 
-        for &region in &substs.regions {
+        for &region in substs.regions.as_full_slice() {
             self.sub_regions(origin.clone(), expr_region, region);
         }
 
-        for &ty in &substs.types {
+        for &ty in substs.types.as_full_slice() {
             let ty = self.resolve_type(ty);
             self.type_must_outlive(origin.clone(), ty, expr_region);
         }
@@ -1571,18 +1571,15 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // the problem is to add `T: 'r`, which isn't true. So, if there are no
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
-        let needs_infer = {
-            projection_ty.trait_ref.substs.types.iter().any(|t| t.needs_infer()) ||
-                projection_ty.trait_ref.substs.regions.iter().any(|r| r.needs_infer())
-        };
+        let needs_infer = projection_ty.trait_ref.needs_infer();
         if env_bounds.is_empty() && needs_infer {
             debug!("projection_must_outlive: no declared bounds");
 
-            for &component_ty in &projection_ty.trait_ref.substs.types {
+            for &component_ty in projection_ty.trait_ref.substs.types.as_full_slice() {
                 self.type_must_outlive(origin.clone(), component_ty, region);
             }
 
-            for &r in &projection_ty.trait_ref.substs.regions {
+            for &r in projection_ty.trait_ref.substs.regions.as_full_slice() {
                 self.sub_regions(origin.clone(), region, r);
             }
 
@@ -1600,7 +1597,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         if !env_bounds.is_empty() && env_bounds[1..].iter().all(|b| *b == env_bounds[0]) {
             let unique_bound = env_bounds[0];
             debug!("projection_must_outlive: unique declared bound = {:?}", unique_bound);
-            if projection_ty.trait_ref.substs.regions
+            if projection_ty.trait_ref.substs.regions.as_full_slice()
                                              .iter()
                                              .any(|r| env_bounds.contains(r))
             {

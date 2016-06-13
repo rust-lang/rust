@@ -1550,7 +1550,7 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Debugging aid.
     if tcx.has_attr(ccx.tcx.map.local_def_id(it.id), "rustc_object_lifetime_default") {
         let object_lifetime_default_reprs: String =
-            scheme.generics.types.iter()
+            scheme.generics.types.as_full_slice().iter()
                                  .map(|t| match t.object_lifetime_default {
                                      ty::ObjectLifetimeDefault::Specific(r) => r.to_string(),
                                      d => format!("{:?}", d),

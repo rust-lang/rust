@@ -302,8 +302,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         self.add_constraints_from_substs(
             generics,
             trait_ref.def_id,
-            trait_def.generics.types.as_slice(),
-            trait_def.generics.regions.as_slice(),
+            trait_def.generics.types.as_full_slice(),
+            trait_def.generics.regions.as_full_slice(),
             trait_ref.substs,
             variance);
     }
@@ -388,8 +388,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_substs(
                     generics,
                     trait_ref.def_id,
-                    trait_def.generics.types.as_slice(),
-                    trait_def.generics.regions.as_slice(),
+                    trait_def.generics.types.as_full_slice(),
+                    trait_def.generics.regions.as_full_slice(),
                     trait_ref.substs,
                     variance);
             }

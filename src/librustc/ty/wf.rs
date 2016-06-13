@@ -261,7 +261,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         let cause = self.cause(traits::MiscObligation);
         self.out.extend(
             trait_ref.substs.types
-                            .as_slice()
+                            .as_full_slice()
                             .iter()
                             .filter(|ty| !ty.has_escaping_regions())
                             .map(|ty| traits::Obligation::new(cause.clone(),
