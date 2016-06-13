@@ -580,7 +580,7 @@ However, the language provides a workaround.
 
 As a special case, an `enum` is eligible for the "nullable pointer optimization" if it
 contains exactly two variants, one of which contains no data and the other contains
-a single field of one of the non-nullable types listed above (or a struct containing such a type).
+a field of one of the non-nullable types listed above (or a struct containing such a type).
 This means it is represented as a single pointer, and the non-data variant is represented as a
 null pointer. This is called an "optimization", but unlike other optimizations it is guaranteed
 to apply to eligible types.
