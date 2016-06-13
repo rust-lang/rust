@@ -1444,6 +1444,51 @@ lint name). Ensure the attribute is of this form:
 ```
 "##,
 
+E0453: r##"
+A lint check attribute was overruled by a `forbid` directive set as an
+attribute on an enclosing scope, or on the command line with the `-F` option.
+
+Example of erroneous code:
+
+```compile_fail
+#![forbid(non_snake_case)]
+
+#[allow(non_snake_case)]
+fn main() {
+    let MyNumber = 2; // error: allow(non_snake_case) overruled by outer
+                      //        forbid(non_snake_case)
+}
+```
+
+The `forbid` lint setting, like `deny`, turns the corresponding compiler
+warning into a hard error. Unlike `deny`, `forbid` prevents itself from being
+overridden by inner attributes.
+
+If you're sure you want to override the lint check, you can change `forbid` to
+`deny` (or use `-D` instead of `-F` if the `forbid` setting was given as a
+command-line option) to allow the inner lint check attribute:
+
+```
+#![deny(non_snake_case)]
+
+#[allow(non_snake_case)]
+fn main() {
+    let MyNumber = 2; // ok!
+}
+```
+
+Otherwise, edit the code to pass the lint check, and remove the overruled
+attribute:
+
+```
+#![forbid(non_snake_case)]
+
+fn main() {
+    let my_number = 2;
+}
+```
+"##,
+
 E0496: r##"
 A lifetime name is shadowing another lifetime name. Erroneous code example:
 
@@ -1628,7 +1673,6 @@ register_diagnostics! {
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
-    E0453, // overruled by outer forbid
     E0473, // dereference of reference outside its lifetime
     E0474, // captured variable `..` does not outlive the enclosing closure
     E0475, // index of slice outside its lifetime
