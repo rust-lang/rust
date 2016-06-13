@@ -143,7 +143,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn alloc_ret_ptr(&mut self, output_ty: ty::FnOutput<'tcx>, substs: &'tcx Substs<'tcx>) -> Option<Pointer> {
         match output_ty {
             ty::FnConverging(ty) => {
-                let size = self.type_size(ty, substs);
+                let size = self.type_size_with_substs(ty, substs);
                 Some(self.memory.allocate(size))
             }
             ty::FnDiverging => None,
@@ -307,11 +307,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.tcx.normalize_associated_type(&substituted)
     }
 
-    fn type_size(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> usize {
-        self.type_layout(ty, substs).size(&self.tcx.data_layout).bytes() as usize
+    fn type_size(&self, ty: Ty<'tcx>) -> usize {
+        self.type_size_with_substs(ty, self.substs())
     }
 
-    fn type_layout(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> &'tcx Layout {
+    fn type_size_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> usize {
+        self.type_layout_with_substs(ty, substs).size(&self.tcx.data_layout).bytes() as usize
+    }
+
+    fn type_layout(&self, ty: Ty<'tcx>) -> &'tcx Layout {
+        self.type_layout_with_substs(ty, self.substs())
+    }
+
+    fn type_layout_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> &'tcx Layout {
         // TODO(solson): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty, substs);
 
@@ -334,7 +342,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ::log_settings::settings().indentation += 1;
 
         let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
-            let size = self.type_size(ty, substs);
+            let size = self.type_size_with_substs(ty, substs);
             self.memory.allocate(size)
         }).collect();
 
@@ -377,7 +385,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             SwitchInt { ref discr, ref values, ref targets, .. } => {
                 let discr_ptr = self.eval_lvalue(discr)?.to_ptr();
                 let discr_size = self
-                    .type_layout(self.lvalue_ty(discr), self.substs())
+                    .type_layout(self.lvalue_ty(discr))
                     .size(&self.tcx.data_layout)
                     .bytes() as usize;
                 let discr_val = self.memory.read_uint(discr_ptr, discr_size)?;
@@ -428,7 +436,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 let name = self.tcx.item_name(def_id).as_str();
                                 match fn_ty.sig.0.output {
                                     ty::FnConverging(ty) => {
-                                        let size = self.type_size(ty, self.substs());
+                                        let size = self.type_size(ty);
                                         let ret = return_ptr.unwrap();
                                         self.call_intrinsic(&name, substs, args, ret, size)?
                                     }
@@ -439,7 +447,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             Abi::C => {
                                 match fn_ty.sig.0.output {
                                     ty::FnConverging(ty) => {
-                                        let size = self.type_size(ty, self.substs());
+                                        let size = self.type_size(ty);
                                         self.call_c_abi(def_id, args, return_ptr.unwrap(), size)?
                                     }
                                     ty::FnDiverging => unimplemented!(),
@@ -469,7 +477,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                     let last_arg = args.last().unwrap();
                                     let last = self.eval_operand(last_arg)?;
                                     let last_ty = self.operand_ty(last_arg);
-                                    let last_layout = self.type_layout(last_ty, self.substs());
+                                    let last_layout = self.type_layout(last_ty);
                                     match (&last_ty.sty, last_layout) {
                                         (&ty::TyTuple(fields),
                                          &Layout::Univariant { ref variant, .. }) => {
@@ -566,7 +574,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         // Filling drop.
         // FIXME(solson): Trait objects (with no static size) probably get filled, too.
-        let size = self.type_size(ty, self.substs());
+        let size = self.type_size(ty);
         self.memory.drop_fill(ptr, size)?;
 
         Ok(())
@@ -574,7 +582,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<u64> {
         use rustc::ty::layout::Layout::*;
-        let adt_layout = self.type_layout(adt_ty, self.substs());
+        let adt_layout = self.type_layout(adt_ty);
 
         let discr_val = match *adt_layout {
             General { discr, .. } | CEnum { discr, .. } => {
@@ -627,7 +635,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // FIXME(solson): Handle different integer types correctly.
             "add_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty, self.substs());
+                let size = self.type_size(ty);
                 let left = self.memory.read_int(args[0], size)?;
                 let right = self.memory.read_int(args[1], size)?;
                 let (n, overflowed) = unsafe {
@@ -641,7 +649,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "copy_nonoverlapping" => {
                 let elem_ty = *substs.types.get(subst::FnSpace, 0);
-                let elem_size = self.type_size(elem_ty, self.substs());
+                let elem_size = self.type_size(elem_ty);
                 let src = self.memory.read_ptr(args[0])?;
                 let dest = self.memory.read_ptr(args[1])?;
                 let count = self.memory.read_isize(args[2])?;
@@ -657,7 +665,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "forget" => {
                 let arg_ty = *substs.types.get(subst::FnSpace, 0);
-                let arg_size = self.type_size(arg_ty, self.substs());
+                let arg_size = self.type_size(arg_ty);
                 self.memory.drop_fill(args[0], arg_size)?;
             }
 
@@ -676,7 +684,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // FIXME(solson): Handle different integer types correctly.
             "mul_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty, self.substs());
+                let size = self.type_size(ty);
                 let left = self.memory.read_int(args[0], size)?;
                 let right = self.memory.read_int(args[1], size)?;
                 let (n, overflowed) = unsafe {
@@ -688,7 +696,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "offset" => {
                 let pointee_ty = *substs.types.get(subst::FnSpace, 0);
-                let pointee_size = self.type_size(pointee_ty, self.substs()) as isize;
+                let pointee_size = self.type_size(pointee_ty) as isize;
                 let ptr_arg = args[0];
                 let offset = self.memory.read_isize(args[1])?;
 
@@ -709,7 +717,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // FIXME(solson): Handle different integer types correctly. Use primvals?
             "overflowing_sub" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty, self.substs());
+                let size = self.type_size(ty);
                 let left = self.memory.read_int(args[0], size)?;
                 let right = self.memory.read_int(args[1], size)?;
                 let n = left.wrapping_sub(right);
@@ -718,20 +726,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "size_of" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty, self.substs()) as u64;
+                let size = self.type_size(ty) as u64;
                 self.memory.write_uint(dest, size, dest_size)?;
             }
 
             "size_of_val" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 if self.type_is_sized(ty) {
-                    let size = self.type_size(ty, self.substs()) as u64;
+                    let size = self.type_size(ty) as u64;
                     self.memory.write_uint(dest, size, dest_size)?;
                 } else {
                     match ty.sty {
                         ty::TySlice(_) | ty::TyStr => {
                             let elem_ty = ty.sequence_element_type(self.tcx);
-                            let elem_size = self.type_size(elem_ty, self.substs()) as u64;
+                            let elem_size = self.type_size(elem_ty) as u64;
                             let ptr_size = self.memory.pointer_size as isize;
                             let n = self.memory.read_usize(args[0].offset(ptr_size))?;
                             self.memory.write_uint(dest, n * elem_size, dest_size)?;
@@ -810,7 +818,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_int(dest, result, dest_size)?;
             }
 
-            _ => return Err(EvalError::Unimplemented(format!("can't call C ABI function: {}", link_name))),
+            _ => {
+                return Err(EvalError::Unimplemented(format!("can't call C ABI function: {}", link_name)));
+            }
         }
 
         // Since we pushed no stack frame, the main loop will act
@@ -839,7 +849,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     {
         let dest = self.eval_lvalue(lvalue)?.to_ptr();
         let dest_ty = self.lvalue_ty(lvalue);
-        let dest_layout = self.type_layout(dest_ty, self.substs());
+        let dest_layout = self.type_layout(dest_ty);
 
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
@@ -876,7 +886,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 // FIXME(solson): Find the result type size properly. Perhaps refactor out
                 // Projection calculations so we can do the equivalent of `dest.1` here.
-                let s = self.type_size(left_ty, self.substs());
+                let s = self.type_size(left_ty);
                 self.memory.write_bool(dest.offset(s as isize), false)?;
             }
 
@@ -898,7 +908,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     Array { .. } => {
                         let elem_size = match dest_ty.sty {
-                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty, self.substs()) as u64,
+                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty) as u64,
                             _ => panic!("tried to assign {:?} to non-array type {:?}",
                                         kind, dest_ty),
                         };
@@ -976,7 +986,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Repeat(ref operand, _) => {
                 let (elem_size, length) = match dest_ty.sty {
-                    ty::TyArray(elem_ty, n) => (self.type_size(elem_ty, self.substs()), n),
+                    ty::TyArray(elem_ty, n) => (self.type_size(elem_ty), n),
                     _ => panic!("tried to assign array-repeat to non-array type {:?}", dest_ty),
                 };
 
@@ -1017,7 +1027,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Box(ty) => {
-                let size = self.type_size(ty, self.substs());
+                let size = self.type_size(ty);
                 let ptr = self.memory.allocate(size);
                 self.memory.write_ptr(dest, ptr)?;
             }
@@ -1045,8 +1055,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     Misc => {
                         // FIXME(solson): Wrong for almost everything.
-                        let dest_size = self.type_size(dest_ty, self.substs());
-                        let src_size = self.type_size(src_ty, self.substs());
+                        let dest_size = self.type_size(dest_ty);
+                        let src_size = self.type_size(src_ty);
                         if dest_size == src_size {
                             warn!("performing fishy cast from {:?} to {:?}", src_ty, dest_ty);
                             self.memory.copy(src, dest, dest_size)?;
@@ -1116,7 +1126,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn get_field_offset(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<Size> {
-        let layout = self.type_layout(ty, self.substs());
+        let layout = self.type_layout(ty);
 
         use rustc::ty::layout::Layout::*;
         match *layout {
@@ -1187,7 +1197,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Projection(ref proj) => {
                 let base = self.eval_lvalue(&proj.base)?;
                 let base_ty = self.lvalue_ty(&proj.base);
-                let base_layout = self.type_layout(base_ty, self.substs());
+                let base_layout = self.type_layout(base_ty);
 
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
@@ -1248,7 +1258,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Index(ref operand) => {
                         let elem_size = match base_ty.sty {
                             ty::TyArray(elem_ty, _) |
-                            ty::TySlice(elem_ty) => self.type_size(elem_ty, self.substs()),
+                            ty::TySlice(elem_ty) => self.type_size(elem_ty),
                             _ => panic!("indexing expected an array or slice, got {:?}", base_ty),
                         };
                         let n_ptr = self.eval_operand(operand)?;
@@ -1274,7 +1284,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<()> {
-        let size = self.type_size(ty, self.substs());
+        let size = self.type_size(ty);
         self.memory.copy(src, dest, size)?;
         if self.type_needs_drop(ty) {
             self.memory.drop_fill(src, size)?;
