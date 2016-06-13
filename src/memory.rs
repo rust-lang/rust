@@ -357,7 +357,7 @@ impl Memory {
         -> EvalResult<btree_map::Range<usize, AllocId>>
     {
         let start = ptr.offset.saturating_sub(self.pointer_size - 1);
-        let end = start + size;
+        let end = ptr.offset + size;
         Ok(self.get(ptr.alloc_id)?.relocations.range(Included(&start), Excluded(&end)))
     }
 
