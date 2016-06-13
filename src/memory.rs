@@ -67,7 +67,7 @@ impl<'tcx> Memory<'tcx> {
     }
 
     // FIXME: never create two pointers to the same def_id + substs combination
-    // maybe re-use the statics cache of the gecx?
+    // maybe re-use the statics cache of the EvalContext?
     pub fn create_fn_ptr(&mut self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Pointer {
         let id = self.next_id;
         debug!("creating fn ptr: {}", id);
