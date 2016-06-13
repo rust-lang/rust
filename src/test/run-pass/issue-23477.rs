@@ -7,10 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-#![crate_type = "lib"]
-
-extern crate core;
+// compiler-flags: -g
 
 pub struct Dst {
     pub a: (),
@@ -22,3 +19,5 @@ pub unsafe fn borrow(bytes: &[u8]) -> &Dst {
     let dst: &Dst = std::mem::transmute((bytes.as_ptr(), bytes.len()));
     dst
 }
+
+fn main() {}
