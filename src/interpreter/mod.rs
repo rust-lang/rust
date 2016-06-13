@@ -1045,8 +1045,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     Misc => {
                         // FIXME(solson): Wrong for almost everything.
-                        let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
-                        self.memory.copy(src, dest, size)?;
+                        let dest_size = self.type_size(dest_ty, self.substs());
+                        let src_size = self.type_size(src_ty, self.substs());
+                        if dest_size == src_size {
+                            warn!("performing fishy cast from {:?} to {:?}", src_ty, dest_ty);
+                            self.memory.copy(src, dest, dest_size)?;
+                        } else {
+                            return Err(EvalError::Unimplemented(format!("can't handle cast: {:?}", rvalue)));
+                        }
                     }
 
                     _ => return Err(EvalError::Unimplemented(format!("can't handle cast: {:?}", rvalue))),
