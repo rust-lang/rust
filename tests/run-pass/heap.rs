@@ -12,6 +12,26 @@ fn make_box_syntax() -> Box<(i16, i16)> {
 }
 
 #[miri_run]
+fn allocate_reallocate() {
+    let mut s = String::new();
+
+    // 6 byte heap alloc (__rust_allocate)
+    s.push_str("foobar");
+    assert_eq!(s.len(), 6);
+    assert_eq!(s.capacity(), 6);
+
+    // heap size doubled to 12 (__rust_reallocate)
+    s.push_str("baz");
+    assert_eq!(s.len(), 9);
+    assert_eq!(s.capacity(), 12);
+
+    // heap size reduced to 9  (__rust_reallocate)
+    s.shrink_to_fit();
+    assert_eq!(s.len(), 9);
+    assert_eq!(s.capacity(), 9);
+}
+
+#[miri_run]
 fn main() {
     assert_eq!(*make_box(), (1, 2));
     assert_eq!(*make_box_syntax(), (1, 2));
