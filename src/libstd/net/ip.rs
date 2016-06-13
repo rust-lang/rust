@@ -82,14 +82,15 @@ impl Ipv4Addr {
         [(bits >> 24) as u8, (bits >> 16) as u8, (bits >> 8) as u8, bits as u8]
     }
 
-    /// Returns true for the special 'unspecified' address 0.0.0.0.
+    /// Returns true for the special 'unspecified' address (0.0.0.0).
     pub fn is_unspecified(&self) -> bool {
         self.inner.s_addr == 0
     }
 
     /// Returns true if this is a loopback address (127.0.0.0/8).
     ///
-    /// This property is defined by RFC 6890.
+    /// This property is defined by [RFC 1122].
+    /// [RFC 1122]: https://tools.ietf.org/html/rfc1122
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_loopback(&self) -> bool {
         self.octets()[0] == 127
@@ -97,7 +98,8 @@ impl Ipv4Addr {
 
     /// Returns true if this is a private address.
     ///
-    /// The private address ranges are defined in RFC 1918 and include:
+    /// The private address ranges are defined in [RFC 1918] and include:
+    /// [RFC 1918]: https://tools.ietf.org/html/rfc1918
     ///
     ///  - 10.0.0.0/8
     ///  - 172.16.0.0/12
@@ -114,7 +116,8 @@ impl Ipv4Addr {
 
     /// Returns true if the address is link-local (169.254.0.0/16).
     ///
-    /// This property is defined by RFC 6890.
+    /// This property is defined by [RFC 3927].
+    /// [RFC 3927]: https://tools.ietf.org/html/rfc3927
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_link_local(&self) -> bool {
         self.octets()[0] == 169 && self.octets()[1] == 254
@@ -137,18 +140,20 @@ impl Ipv4Addr {
         !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
     }
 
-    /// Returns true if this is a multicast address.
+    /// Returns true if this is a multicast address (224.0.0.0/4).
     ///
     /// Multicast addresses have a most significant octet between 224 and 239,
-    /// and is defined by RFC 5771.
+    /// and is defined by [RFC 5771].
+    /// [RFC 5771]: https://tools.ietf.org/html/rfc5771
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_multicast(&self) -> bool {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
     }
 
-    /// Returns true if this is a broadcast address.
+    /// Returns true if this is a broadcast address (255.255.255.255).
     ///
-    /// A broadcast address has all octets set to 255 as defined in RFC 919.
+    /// A broadcast address has all octets set to 255 as defined in [RFC 919].
+    /// [RFC 919]: https://tools.ietf.org/html/rfc919
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_broadcast(&self) -> bool {
         self.octets()[0] == 255 && self.octets()[1] == 255 &&
@@ -157,7 +162,8 @@ impl Ipv4Addr {
 
     /// Returns true if this address is in a range designated for documentation.
     ///
-    /// This is defined in RFC 5737:
+    /// This is defined in [RFC 5737]:
+    /// [RFC 5737]: https://tools.ietf.org/html/rfc5737
     ///
     /// - 192.0.2.0/24 (TEST-NET-1)
     /// - 198.51.100.0/24 (TEST-NET-2)
@@ -321,9 +327,10 @@ impl Ipv6Addr {
         ]
     }
 
-    /// Returns true for the special 'unspecified' address ::.
+    /// Returns true for the special 'unspecified' address (::).
     ///
-    /// This property is defined in RFC 6890.
+    /// This property is defined in [RFC 4291].
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_unspecified(&self) -> bool {
         self.segments() == [0, 0, 0, 0, 0, 0, 0, 0]
@@ -331,7 +338,8 @@ impl Ipv6Addr {
 
     /// Returns true if this is a loopback address (::1).
     ///
-    /// This property is defined in RFC 6890.
+    /// This property is defined in [RFC 4291].
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_loopback(&self) -> bool {
         self.segments() == [0, 0, 0, 0, 0, 0, 0, 1]
@@ -352,26 +360,33 @@ impl Ipv6Addr {
         }
     }
 
-    /// Returns true if this is a unique local address (IPv6).
+    /// Returns true if this is a unique local address (fc00::/7).
     ///
-    /// Unique local addresses are defined in RFC 4193 and have the form fc00::/7.
+    /// This property is defined in [RFC 4193].
+    /// [RFC 4193]: https://tools.ietf.org/html/rfc4193
     pub fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
     /// Returns true if the address is unicast and link-local (fe80::/10).
+    ///
+    /// This property is defined in [RFC 4291].
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     pub fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
 
-    /// Returns true if this is a deprecated unicast site-local address (IPv6
-    /// fec0::/10).
+    /// Returns true if this is a deprecated unicast site-local address
+    /// (fec0::/10).
     pub fn is_unicast_site_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfec0
     }
 
     /// Returns true if this is an address reserved for documentation
-    /// This is defined to be 2001:db8::/32 in RFC 3849.
+    /// (2001:db8::/32).
+    ///
+    /// This property is defined in [RFC 3849].
+    /// [RFC 3849]: https://tools.ietf.org/html/rfc3849
     pub fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
     }
@@ -411,10 +426,10 @@ impl Ipv6Addr {
         }
     }
 
-    /// Returns true if this is a multicast address.
+    /// Returns true if this is a multicast address (ff00::/8).
     ///
-    /// Multicast addresses have the form ff00::/8, and this property is defined
-    /// by RFC 3956.
+    /// This property is defined by [RFC 4291].
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_multicast(&self) -> bool {
         (self.segments()[0] & 0xff00) == 0xff00
