@@ -20,6 +20,8 @@ pub enum EvalError {
     ReadUndefBytes,
     InvalidBoolOp(mir::BinOp),
     Unimplemented(String),
+    DerefFunctionPointer,
+    ExecuteMemory,
 }
 
 pub type EvalResult<T> = Result<T, EvalError>;
@@ -48,6 +50,10 @@ impl Error for EvalError {
             EvalError::InvalidBoolOp(_) =>
                 "invalid boolean operation",
             EvalError::Unimplemented(ref msg) => msg,
+            EvalError::DerefFunctionPointer =>
+                "tried to dereference a function pointer",
+            EvalError::ExecuteMemory =>
+                "tried to treat a memory pointer as a function pointer",
         }
     }
 

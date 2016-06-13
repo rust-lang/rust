@@ -46,7 +46,10 @@ impl Pointer {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Memory<'tcx> {
+    /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations)
     alloc_map: HashMap<AllocId, Allocation>,
+    /// Function "allocations". They exist solely so pointers have something to point to, and
+    /// we can figure out what they point to.
     functions: HashMap<AllocId, (DefId, &'tcx Substs<'tcx>)>,
     next_id: AllocId,
     pub pointer_size: usize,
@@ -137,16 +140,34 @@ impl<'tcx> Memory<'tcx> {
     ////////////////////////////////////////////////////////////////////////////////
 
     pub fn get(&self, id: AllocId) -> EvalResult<&Allocation> {
-        self.alloc_map.get(&id).ok_or(EvalError::DanglingPointerDeref)
+        match self.alloc_map.get(&id) {
+            Some(alloc) => Ok(alloc),
+            None => match self.functions.get(&id) {
+                Some(_) => Err(EvalError::DerefFunctionPointer),
+                None => Err(EvalError::DanglingPointerDeref),
+            }
+        }
     }
 
     pub fn get_mut(&mut self, id: AllocId) -> EvalResult<&mut Allocation> {
-        self.alloc_map.get_mut(&id).ok_or(EvalError::DanglingPointerDeref)
+        match self.alloc_map.get_mut(&id) {
+            Some(alloc) => Ok(alloc),
+            None => match self.functions.get(&id) {
+                Some(_) => Err(EvalError::DerefFunctionPointer),
+                None => Err(EvalError::DanglingPointerDeref),
+            }
+        }
     }
 
     pub fn get_fn(&self, id: AllocId) -> EvalResult<(DefId, &'tcx Substs<'tcx>)> {
         debug!("reading fn ptr: {}", id);
-        self.functions.get(&id).map(|&did| did).ok_or(EvalError::InvalidFunctionPointer)
+        match self.functions.get(&id) {
+            Some(&fn_id) => Ok(fn_id),
+            None => match self.alloc_map.get(&id) {
+                Some(_) => Err(EvalError::ExecuteMemory),
+                None => Err(EvalError::InvalidFunctionPointer),
+            }
+        }
     }
 
     /// Print an allocation and all allocations it points to, recursively.
