@@ -593,7 +593,7 @@ to represent a nullable function pointer using the C ABI (corresponding to the C
 Here is a contrived example. Let's say some C library has a facility for registering a
 callback, which gets called in certain situations. The callback is passed a function pointer
 and an integer and it is supposed to run the function with the integer as a parameter. So
-we have function pointers flying across the FFI interface in both directions.
+we have function pointers flying across the FFI boundary in both directions.
 
 ```rust
 use std::os::raw::c_int;
