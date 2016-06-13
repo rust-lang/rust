@@ -395,8 +395,12 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                 };
                 // Not sure the choice of ParamSpace actually matters here,
                 // because an associated type won't have generics on the LHS
-                let typedef = (type_scheme, ty::GenericPredicates::empty(),
-                               subst::ParamSpace::TypeSpace).clean(cx);
+                let typedef = clean::Typedef {
+                    type_: type_scheme.ty.clean(cx),
+                    generics: (&type_scheme.generics,
+                               &ty::GenericPredicates::empty(),
+                               subst::TypeSpace).clean(cx)
+                };
                 Some(clean::Item {
                     name: Some(assoc_ty.name.clean(cx)),
                     inner: clean::TypedefItem(typedef, true),
@@ -512,11 +516,32 @@ fn build_static<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// its associated types as well. We specifically move these clauses to the
 /// associated types instead when displaying, so when we're genering the
 /// generics for the trait itself we need to be sure to remove them.
+/// We also need to remove the implied "recursive" Self: Trait bound.
 ///
 /// The inverse of this filtering logic can be found in the `Clean`
 /// implementation for `AssociatedType`
 fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics)
                              -> clean::Generics {
+    for pred in &mut g.where_predicates {
+        match *pred {
+            clean::WherePredicate::BoundPredicate {
+                ty: clean::Generic(ref s),
+                ref mut bounds
+            } if *s == "Self" => {
+                bounds.retain(|bound| {
+                    match *bound {
+                        clean::TyParamBound::TraitBound(clean::PolyTrait {
+                            trait_: clean::ResolvedPath { did, .. },
+                            ..
+                        }, _) => did != trait_did,
+                        _ => true
+                    }
+                });
+            }
+            _ => {}
+        }
+    }
+
     g.where_predicates.retain(|pred| {
         match *pred {
             clean::WherePredicate::BoundPredicate {
@@ -524,8 +549,8 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics)
                     self_type: box clean::Generic(ref s),
                     trait_: box clean::ResolvedPath { did, .. },
                     name: ref _name,
-                }, ..
-            } => *s != "Self" || did != trait_did,
+                }, ref bounds
+            } => !(*s == "Self" && did == trait_did) && !bounds.is_empty(),
             _ => true,
         }
     });

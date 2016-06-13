@@ -1622,21 +1622,11 @@ fn doc_predicates<'a, 'tcx>(base_doc: rbml::Doc,
 {
     let doc = reader::get_doc(base_doc, tag);
 
-    let mut predicates = subst::VecPerParamSpace::empty();
-    for predicate_doc in reader::tagged_docs(doc, tag_type_predicate) {
-        predicates.push(subst::TypeSpace,
-                        doc_predicate(cdata, predicate_doc, tcx));
+    ty::GenericPredicates {
+        predicates: reader::tagged_docs(doc, tag_predicate).map(|predicate_doc| {
+            doc_predicate(cdata, predicate_doc, tcx)
+        }).collect()
     }
-    for predicate_doc in reader::tagged_docs(doc, tag_self_predicate) {
-        predicates.push(subst::SelfSpace,
-                        doc_predicate(cdata, predicate_doc, tcx));
-    }
-    for predicate_doc in reader::tagged_docs(doc, tag_fn_predicate) {
-        predicates.push(subst::FnSpace,
-                        doc_predicate(cdata, predicate_doc, tcx));
-    }
-
-    ty::GenericPredicates { predicates: predicates }
 }
 
 pub fn is_defaulted_trait(cdata: Cmd, trait_id: DefIndex) -> bool {

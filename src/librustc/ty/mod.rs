@@ -178,7 +178,7 @@ impl<'a, 'gcx, 'tcx> ImplHeader<'tcx> {
             impl_def_id: impl_def_id,
             self_ty: tcx.lookup_item_type(impl_def_id).ty,
             trait_ref: tcx.impl_trait_ref(impl_def_id),
-            predicates: tcx.lookup_predicates(impl_def_id).predicates.into_vec(),
+            predicates: tcx.lookup_predicates(impl_def_id).predicates
         }.subst(tcx, &impl_substs);
 
         let traits::Normalized { value: mut header, obligations } =
@@ -775,13 +775,13 @@ impl<'tcx> Generics<'tcx> {
 /// Bounds on generics.
 #[derive(Clone)]
 pub struct GenericPredicates<'tcx> {
-    pub predicates: VecPerParamSpace<Predicate<'tcx>>,
+    pub predicates: Vec<Predicate<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
     pub fn empty() -> GenericPredicates<'tcx> {
         GenericPredicates {
-            predicates: VecPerParamSpace::empty(),
+            predicates: vec![]
         }
     }
 
@@ -797,9 +797,9 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
                                   -> InstantiatedPredicates<'tcx>
     {
         InstantiatedPredicates {
-            predicates: self.predicates.map(|pred| {
+            predicates: self.predicates.iter().map(|pred| {
                 pred.subst_supertrait(tcx, poly_trait_ref)
-            })
+            }).collect()
         }
     }
 }
@@ -1193,12 +1193,12 @@ impl<'tcx> Predicate<'tcx> {
 /// [usize:Bar<isize>]]`.
 #[derive(Clone)]
 pub struct InstantiatedPredicates<'tcx> {
-    pub predicates: VecPerParamSpace<Predicate<'tcx>>,
+    pub predicates: Vec<Predicate<'tcx>>,
 }
 
 impl<'tcx> InstantiatedPredicates<'tcx> {
     pub fn empty() -> InstantiatedPredicates<'tcx> {
-        InstantiatedPredicates { predicates: VecPerParamSpace::empty() }
+        InstantiatedPredicates { predicates: vec![] }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -2909,7 +2909,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.global_tcx();
         let bounds = generic_predicates.instantiate(tcx, &free_substs);
         let bounds = tcx.liberate_late_bound_regions(free_id_outlive, &ty::Binder(bounds));
-        let predicates = bounds.predicates.into_vec();
+        let predicates = bounds.predicates;
 
         // Finally, we have to normalize the bounds in the environment, in
         // case they contain any associated type projections. This process

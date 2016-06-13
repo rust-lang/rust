@@ -1010,8 +1010,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
             srp.clean(cx)
         }).collect::<Vec<_>>();
 
-        let mut where_predicates = preds.predicates.get_slice(space)
-                                                   .to_vec().clean(cx);
+        let mut where_predicates = preds.predicates.to_vec().clean(cx);
 
         // Type parameters and have a Sized bound by default unless removed with
         // ?Sized.  Scan through the predicates and mark any type parameter with
@@ -1363,7 +1362,17 @@ impl Clean<Item> for hir::ImplItem {
 
 impl<'tcx> Clean<Item> for ty::Method<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
-        let generics = (&self.generics, &self.predicates,
+        // Depend on trait/impl predicates always being before method's own predicates,
+        // to be able to split method predicates into "inherited" and method-specific.
+        let outer_predicates = cx.tcx().lookup_predicates(self.container_id()).predicates;
+        let method_start = outer_predicates.len();
+        assert_eq!(&outer_predicates[..], &self.predicates.predicates[..method_start]);
+
+        let method_predicates = ty::GenericPredicates {
+            predicates: self.predicates.predicates[method_start..].to_vec()
+        };
+
+        let generics = (&self.generics, &method_predicates,
                         subst::FnSpace).clean(cx);
         let mut decl = (self.def_id, &self.fty.sig).clean(cx);
         match self.explicit_self {
@@ -1863,8 +1872,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 let item_predicates = cx.tcx().lookup_predicates(def_id);
                 let substs = cx.tcx().lift(&substs).unwrap();
                 let bounds = item_predicates.instantiate(cx.tcx(), substs);
-                let predicates = bounds.predicates.into_vec();
-                ImplTrait(predicates.into_iter().filter_map(|predicate| {
+                ImplTrait(bounds.predicates.into_iter().filter_map(|predicate| {
                     predicate.to_opt_poly_trait_ref().clean(cx)
                 }).collect())
             }
@@ -2963,17 +2971,6 @@ impl<'tcx> Clean<Item> for ty::AssociatedType<'tcx> {
             def_id: self.def_id,
             stability: cx.tcx().lookup_stability(self.def_id).clean(cx),
             deprecation: cx.tcx().lookup_deprecation(self.def_id).clean(cx),
-        }
-    }
-}
-
-impl<'a> Clean<Typedef> for (ty::TypeScheme<'a>, ty::GenericPredicates<'a>,
-                             ParamSpace) {
-    fn clean(&self, cx: &DocContext) -> Typedef {
-        let (ref ty_scheme, ref predicates, ps) = *self;
-        Typedef {
-            type_: ty_scheme.ty.clean(cx),
-            generics: (&ty_scheme.generics, predicates, ps).clean(cx)
         }
     }
 }

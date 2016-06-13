@@ -179,10 +179,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     let generic_assumptions = tcx.lookup_predicates(self_type_did);
 
     let assumptions_in_impl_context = generic_assumptions.instantiate(tcx, &self_to_impl_substs);
-    assert!(assumptions_in_impl_context.predicates.is_empty_in(subst::SelfSpace));
-    assert!(assumptions_in_impl_context.predicates.is_empty_in(subst::FnSpace));
-    let assumptions_in_impl_context =
-        assumptions_in_impl_context.predicates.get_slice(subst::TypeSpace);
+    let assumptions_in_impl_context = assumptions_in_impl_context.predicates;
 
     // An earlier version of this code attempted to do this checking
     // via the traits::fulfill machinery. However, it ran into trouble
@@ -190,10 +187,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     // 'a:'b and T:'b into region inference constraints. It is simpler
     // just to look for all the predicates directly.
 
-    assert!(dtor_predicates.predicates.is_empty_in(subst::SelfSpace));
-    assert!(dtor_predicates.predicates.is_empty_in(subst::FnSpace));
-    let predicates = dtor_predicates.predicates.get_slice(subst::TypeSpace);
-    for predicate in predicates {
+    for predicate in &dtor_predicates.predicates {
         // (We do not need to worry about deep analysis of type
         // expressions etc because the Drop impls are already forced
         // to take on a structure that is roughly an alpha-renaming of

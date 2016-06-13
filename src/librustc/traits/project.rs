@@ -811,7 +811,7 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
     // If so, extract what we know from the trait and try to come up with a good answer.
     let trait_predicates = selcx.tcx().lookup_predicates(def_id);
     let bounds = trait_predicates.instantiate(selcx.tcx(), substs);
-    let bounds = elaborate_predicates(selcx.tcx(), bounds.predicates.into_vec());
+    let bounds = elaborate_predicates(selcx.tcx(), bounds.predicates);
     assemble_candidates_from_predicates(selcx,
                                         obligation,
                                         obligation_trait_ref,

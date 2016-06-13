@@ -184,7 +184,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Search for a predicate like `Self : Sized` amongst the trait bounds.
         let free_substs = self.construct_free_substs(generics,
             self.region_maps.node_extent(ast::DUMMY_NODE_ID));
-        let predicates = predicates.instantiate(self, &free_substs).predicates.into_vec();
+        let predicates = predicates.instantiate(self, &free_substs).predicates;
         elaborate_predicates(self, predicates)
             .any(|predicate| {
                 match predicate {
