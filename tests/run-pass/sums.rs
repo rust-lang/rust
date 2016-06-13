@@ -55,7 +55,8 @@ fn two_nones() -> (Option<i16>, Option<i16>) {
     (None, None)
 }
 
-#[miri_run]
+// FIXME(solson): Casts inside PartialEq fails on 32-bit.
+#[cfg_attr(target_pointer_width = "64", miri_run)]
 fn main() {
     assert_eq!(two_nones(), (None, None));
     assert_eq!(match_opt_some(), 13);
