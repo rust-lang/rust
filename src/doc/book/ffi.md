@@ -461,12 +461,11 @@ global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
 ```rust,no_run
-# #![feature(libc)]
-extern crate libc;
+use std::os::raw::c_int;
 
 #[link(name = "readline")]
 extern {
-    static rl_readline_version: libc::c_int;
+    static rl_readline_version: c_int;
 }
 
 fn main() {
@@ -480,15 +479,14 @@ interface. To do this, statics can be declared with `mut` so we can mutate
 them.
 
 ```rust,no_run
-# #![feature(libc)]
-extern crate libc;
 
 use std::ffi::CString;
+use std::os::raw::c_char;
 use std::ptr;
 
 #[link(name = "readline")]
 extern {
-    static mut rl_prompt: *const libc::c_char;
+    static mut rl_prompt: *const c_char;
 }
 
 fn main() {
@@ -513,14 +511,13 @@ calling foreign functions. Some foreign functions, most notably the Windows API,
 conventions. Rust provides a way to tell the compiler which convention to use:
 
 ```rust
-# #![feature(libc)]
-extern crate libc;
+use std::os::raw::c_int;
 
 #[cfg(all(target_os = "win32", target_arch = "x86"))]
 #[link(name = "kernel32")]
 #[allow(non_snake_case)]
 extern "stdcall" {
-    fn SetEnvironmentVariableA(n: *const u8, v: *const u8) -> libc::c_int;
+    fn SetEnvironmentVariableA(n: *const u8, v: *const u8) -> c_int;
 }
 # fn main() { }
 ```
@@ -575,16 +572,45 @@ against `libc` and `libm` by default.
 
 # The "nullable pointer optimization"
 
-Certain types are defined to not be NULL. This includes references (`&T`,
-`&mut T`), boxes (`Box<T>`), and function pointers (`extern "abi" fn()`).
-When interfacing with C, pointers that might be NULL are often used.
-As a special case, a generic `enum` that contains exactly two variants, one of
+Certain Rust types are defined to never be `null`. This includes references (`&T`,
+`&mut T`), boxes (`Box<T>`), and function pointers (`extern "abi" fn()`). When
+interfacing with C, pointers that might be `null` are often used, which would seem to
+require some messy `transmute`s and/or unsafe code to handle conversions to/from Rust types.
+However, the language provides a workaround.
+
+As a special case, an `enum` that contains exactly two variants, one of
 which contains no data and the other containing a single field, is eligible
 for the "nullable pointer optimization". When such an enum is instantiated
-with one of the non-nullable types, it is represented as a single pointer,
-and the non-data variant is represented as the NULL pointer. So
-`Option<extern "C" fn(c_int) -> c_int>` is how one represents a nullable
-function pointer using the C ABI.
+with one of the non-nullable types listed above, it is represented as a single pointer,
+and the non-data variant is represented as the null pointer. This is called an
+"optimization", but unlike other optimizations it is guaranteed to apply to
+eligible types.
+
+The most common type that takes advantage of the nullable pointer optimization is `Option<T>`,
+where `None` corresponds to `null`. So `Option<extern "C" fn(c_int) -> c_int>` is a correct way
+to represent a nullable function pointer using the C ABI (corresponding to the C type
+`int (*)(int)`). (However, generics are not required to get the optimization. A simple
+`enum NullableIntRef { Int(Box<i32>), NotInt }` is also represented as a single pointer.)
+
+Here is an example:
+
+```rust
+use std::os::raw::c_int;
+
+/// This fairly useless function receives a function pointer and an integer
+/// from C, and returns the result of calling the function with the integer.
+/// In case no function is provided, it squares the integer by default.
+#[no_mangle]
+pub extern fn apply(process: Option<extern "C" fn(c_int) -> c_int>, int: c_int) -> c_int {
+    match process {
+        Some(f) => unsafe { f(int) },
+        None    => int * int
+    }
+}
+# fn main() {}
+```
+
+No `tranmsute` required!
 
 # Calling Rust code from C
 
@@ -642,12 +668,11 @@ void bar(void *arg);
 We can represent this in Rust with the `c_void` type:
 
 ```rust
-# #![feature(libc)]
-extern crate libc;
+use std::os::raw::c_void;
 
 extern "C" {
-    pub fn foo(arg: *mut libc::c_void);
-    pub fn bar(arg: *mut libc::c_void);
+    pub fn foo(arg: *mut c_void);
+    pub fn bar(arg: *mut c_void);
 }
 # fn main() {}
 ```
