@@ -6,6 +6,7 @@ use memory::Pointer;
 #[derive(Clone, Debug)]
 pub enum EvalError {
     DanglingPointerDeref,
+    InvalidFunctionPointer,
     InvalidBool,
     InvalidDiscriminant,
     PointerOutOfBounds {
@@ -19,6 +20,8 @@ pub enum EvalError {
     ReadUndefBytes,
     InvalidBoolOp(mir::BinOp),
     Unimplemented(String),
+    DerefFunctionPointer,
+    ExecuteMemory,
 }
 
 pub type EvalResult<T> = Result<T, EvalError>;
@@ -28,6 +31,8 @@ impl Error for EvalError {
         match *self {
             EvalError::DanglingPointerDeref =>
                 "dangling pointer was dereferenced",
+            EvalError::InvalidFunctionPointer =>
+                "tried to use a pointer as a function pointer",
             EvalError::InvalidBool =>
                 "invalid boolean value read",
             EvalError::InvalidDiscriminant =>
@@ -45,6 +50,10 @@ impl Error for EvalError {
             EvalError::InvalidBoolOp(_) =>
                 "invalid boolean operation",
             EvalError::Unimplemented(ref msg) => msg,
+            EvalError::DerefFunctionPointer =>
+                "tried to dereference a function pointer",
+            EvalError::ExecuteMemory =>
+                "tried to treat a memory pointer as a function pointer",
         }
     }
 

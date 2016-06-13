@@ -129,7 +129,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
             mir::Literal::Value { .. } => {}
             mir::Literal::Item { def_id, substs } => {
                 if let ty::TyFnDef(..) = constant.ty.sty {
-                    // No need to do anything here, even if function pointers are implemented,
+                    // No need to do anything here,
                     // because the type is the actual function, not the signature of the function.
                     // Thus we can simply create a zero sized allocation in `evaluate_operand`
                 } else {
