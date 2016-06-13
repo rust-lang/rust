@@ -590,22 +590,42 @@ where `None` corresponds to `null`. So `Option<extern "C" fn(c_int) -> c_int>` i
 to represent a nullable function pointer using the C ABI (corresponding to the C type
 `int (*)(int)`).
 
-Here is an example:
+Here is a contrived example. Let's say some C library has a facility for registering a
+callback, which gets called in certain situations. The callback is passed a function pointer
+and an integer and it is supposed to run the function with the integer as a parameter. So
+we have function pointers flying across the FFI interface in both directions.
 
 ```rust
 use std::os::raw::c_int;
 
+extern "C" {
+    /// Register the callback.
+    fn register(Option<extern "C" fn(Option<extern "C" fn(c_int) -> c_int>, c_int) -> c_int>);
+}
+
 /// This fairly useless function receives a function pointer and an integer
 /// from C, and returns the result of calling the function with the integer.
 /// In case no function is provided, it squares the integer by default.
-#[no_mangle]
-pub extern fn apply(process: Option<extern "C" fn(c_int) -> c_int>, int: c_int) -> c_int {
+extern "C" fn apply(process: Option<extern "C" fn(c_int) -> c_int>, int: c_int) -> c_int {
     match process {
         Some(f) => unsafe { f(int) },
         None    => int * int
     }
 }
-# fn main() {}
+
+fn main() {
+    unsafe {
+        register(Some(apply));
+    }
+}
+```
+
+And the code on the C side looks like this:
+
+```c
+void register(void (*f)(void (*)(int), int)) {
+    ...
+}
 ```
 
 No `tranmsute` required!
