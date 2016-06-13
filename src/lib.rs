@@ -11,6 +11,7 @@
 
 // From rustc.
 #[macro_use] extern crate rustc;
+extern crate rustc_data_structures;
 extern crate rustc_mir;
 extern crate rustc_trans;
 extern crate syntax;

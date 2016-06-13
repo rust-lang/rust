@@ -8,6 +8,7 @@ use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, BareFnTy};
 use rustc::util::nodemap::DefIdMap;
+use rustc_data_structures::indexed_vec::Idx;
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -118,7 +119,7 @@ struct ConstantId<'tcx> {
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 enum ConstantKind {
-    Promoted(usize),
+    Promoted(mir::Promoted),
     /// Statics, constants and associated constants
     Global,
 }
@@ -426,24 +427,38 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         assert_eq!(ptr.offset, 0);
                         let fn_ptr = self.memory.read_ptr(ptr)?;
                         let (def_id, substs) = self.memory.get_fn(fn_ptr.alloc_id)?;
-                        self.eval_fn_call(def_id, substs, bare_fn_ty, return_ptr, args, terminator.span)?
+                        self.eval_fn_call(def_id, substs, bare_fn_ty, return_ptr, args,
+                                          terminator.source_info.span)?
                     },
                     ty::TyFnDef(def_id, substs, fn_ty) => {
-                        self.eval_fn_call(def_id, substs, fn_ty, return_ptr, args, terminator.span)?
+                        self.eval_fn_call(def_id, substs, fn_ty, return_ptr, args,
+                                          terminator.source_info.span)?
                     }
 
                     _ => return Err(EvalError::Unimplemented(format!("can't handle callee of type {:?}", func_ty))),
                 }
             }
 
-            Drop { ref value, target, .. } => {
-                let ptr = self.eval_lvalue(value)?.to_ptr();
-                let ty = self.lvalue_ty(value);
+            Drop { ref location, target, .. } => {
+                let ptr = self.eval_lvalue(location)?.to_ptr();
+                let ty = self.lvalue_ty(location);
                 self.drop(ptr, ty)?;
                 self.frame_mut().next_block = target;
             }
 
+            Assert { ref cond, expected, ref msg, target, cleanup } => {
+                let actual_ptr = self.eval_operand(cond)?;
+                let actual = self.memory.read_bool(actual_ptr)?;
+                if actual == expected {
+                    self.frame_mut().next_block = target;
+                } else {
+                    panic!("unimplemented: jump to {:?} and print {:?}", cleanup, msg);
+                }
+            }
+
+            DropAndReplace { .. } => unimplemented!(),
             Resume => unimplemented!(),
+            Unreachable => unimplemented!(),
         }
 
         Ok(())
@@ -867,6 +882,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_primval(dest, val)?;
             }
 
+            // FIXME(solson): Factor this out with BinaryOp.
+            CheckedBinaryOp(bin_op, ref left, ref right) => {
+                let left_ptr = self.eval_operand(left)?;
+                let left_ty = self.operand_ty(left);
+                let left_val = self.read_primval(left_ptr, left_ty)?;
+
+                let right_ptr = self.eval_operand(right)?;
+                let right_ty = self.operand_ty(right);
+                let right_val = self.read_primval(right_ptr, right_ty)?;
+
+                let val = primval::binary_op(bin_op, left_val, right_val)?;
+                self.memory.write_primval(dest, val)?;
+
+                // FIXME(solson): Find the result type size properly. Perhaps refactor out
+                // Projection calculations so we can do the equivalent of `dest.1` here.
+                let s = self.type_size(left_ty, self.substs());
+                self.memory.write_bool(dest.offset(s as isize), false)?;
+            }
+
             UnaryOp(un_op, ref operand) => {
                 let ptr = self.eval_operand(operand)?;
                 let ty = self.operand_ty(operand);
@@ -1048,7 +1082,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            Slice { .. } => unimplemented!(),
             InlineAsm { .. } => unimplemented!(),
         }
 
@@ -1161,9 +1194,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let ptr = match *lvalue {
             ReturnPointer => self.frame().return_ptr
                 .expect("ReturnPointer used in a function with no return value"),
-            Arg(i) => self.frame().locals[i as usize],
-            Var(i) => self.frame().locals[self.frame().var_offset + i as usize],
-            Temp(i) => self.frame().locals[self.frame().temp_offset + i as usize],
+            Arg(i) => self.frame().locals[i.index()],
+            Var(i) => self.frame().locals[self.frame().var_offset + i.index()],
+            Temp(i) => self.frame().locals[self.frame().temp_offset + i.index()],
 
             Static(def_id) => {
                 let substs = self.tcx.mk_substs(subst::Substs::empty());
@@ -1248,6 +1281,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     ConstantIndex { .. } => unimplemented!(),
+                    Subslice { .. } => unimplemented!(),
                 }
             }
         };

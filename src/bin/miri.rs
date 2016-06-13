@@ -1,5 +1,4 @@
-#![feature(rustc_private, custom_attribute)]
-#![allow(unused_attributes)]
+#![feature(rustc_private)]
 
 extern crate getopts;
 extern crate miri;
@@ -66,21 +65,22 @@ fn interpret_start_points<'a, 'tcx>(
                 ecx.push_stack_frame(tcx.map.local_def_id(id), mir.span, CachedMir::Ref(mir), substs, return_ptr);
 
                 loop {
-                    match (step(&mut ecx), return_ptr) {
-                        (Ok(true), _) => {},
-                        (Ok(false), Some(ptr)) => if log_enabled!(::log::LogLevel::Debug) {
-                            ecx.memory().dump(ptr.alloc_id);
+                    match step(&mut ecx) {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            match return_ptr {
+                                Some(ptr) => if log_enabled!(::log::LogLevel::Debug) {
+                                    ecx.memory().dump(ptr.alloc_id);
+                                },
+                                None => warn!("diverging function returned"),
+                            }
                             break;
-                        },
-                        (Ok(false), None) => {
-                            warn!("diverging function returned");
-                            break;
-                        },
+                        }
                         // FIXME: diverging functions can end up here in some future miri
-                        (Err(e), _) => {
+                        Err(e) => {
                             report(tcx, &ecx, e);
                             break;
-                        },
+                        }
                     }
                 }
             }
@@ -90,11 +90,11 @@ fn interpret_start_points<'a, 'tcx>(
 
 fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
     let frame = ecx.stack().last().expect("stackframe was empty");
-    let block = frame.mir.basic_block_data(frame.next_block);
+    let block = &frame.mir.basic_blocks()[frame.next_block];
     let span = if frame.stmt < block.statements.len() {
-        block.statements[frame.stmt].span
+        block.statements[frame.stmt].source_info.span
     } else {
-        block.terminator().span
+        block.terminator().source_info.span
     };
     let mut err = tcx.sess.struct_span_err(span, &e.to_string());
     for &Frame { def_id, substs, span, .. } in ecx.stack().iter().rev() {
@@ -105,7 +105,7 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
         impl<'tcx> fmt::Display for Instance<'tcx> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[],
-                    |tcx| tcx.lookup_item_type(self.0).generics)
+                    |tcx| Some(tcx.lookup_item_type(self.0).generics))
             }
         }
         err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
@@ -113,14 +113,12 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
     err.emit();
 }
 
-#[miri_run]
 fn main() {
     init_logger();
     let args: Vec<String> = std::env::args().collect();
     rustc_driver::run_compiler(&args, &mut MiriCompilerCalls);
 }
 
-#[miri_run]
 fn init_logger() {
     const NSPACES: usize = 40;
     let format = |record: &log::LogRecord| {

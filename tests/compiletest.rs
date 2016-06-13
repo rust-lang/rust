@@ -27,5 +27,4 @@ fn run_mode(mode: &'static str) {
 fn compile_test() {
     run_mode("compile-fail");
     run_mode("run-pass");
-    run_mode("run-fail");
 }
