@@ -1456,17 +1456,17 @@ Example of erroneous code:
 #[allow(non_snake_case)]
 fn main() {
     let MyNumber = 2; // error: allow(non_snake_case) overruled by outer
-                      // forbid(non_snake_case)
+                      //        forbid(non_snake_case)
 }
 ```
 
-The `forbid` lint setting makes code that fails the lint check result in a
-compilation-terminating error (like `deny`), but also prevents itself from
-being overridden by inner attributes.
+The `forbid` lint setting, like `deny`, turns the corresponding compiler
+warning into a hard error. Unlike `deny`, `forbid` prevents itself from being
+overridden by inner attributes.
 
-You can change `forbid` to `deny` (or use `-D` instead of `-F` if the `forbid`
-setting was given as a command-line option) to allow the inner lint check
-attribute:
+If you're sure you want to override the lint check, you can change `forbid` to
+`deny` (or use `-D` instead of `-F` if the `forbid` setting was given as a
+command-line option) to allow the inner lint check attribute:
 
 ```
 #![deny(non_snake_case)]
@@ -1477,7 +1477,7 @@ fn main() {
 }
 ```
 
-Alternatively, edit the code to pass the lint check, and remove the overruled
+Otherwise, edit the code to pass the lint check, and remove the overruled
 attribute:
 
 ```
