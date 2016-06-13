@@ -23,7 +23,7 @@ fn run_mode(mode: &'static str) {
     for &target in targets {
         let mut config = compiletest::default_config();
         config.host_rustcflags = Some(sysroot_flag.clone());
-        config.mode = mode.parse().ok().expect("Invalid mode");
+        config.mode = mode.parse().expect("Invalid mode");
         config.run_lib_path = format!("{}/lib/rustlib/{}/lib", sysroot, target);
         config.rustc_path = "target/debug/miri".into();
         config.src_base = PathBuf::from(format!("tests/{}", mode));
