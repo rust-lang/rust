@@ -99,17 +99,18 @@ impl<'tcx> Memory<'tcx> {
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
 
-        let alloc = self.get_mut(ptr.alloc_id)?;
-        let size = alloc.bytes.len();
+        let size = self.get_mut(ptr.alloc_id)?.bytes.len();
+
         if new_size > size {
             let amount = new_size - size;
+            let alloc = self.get_mut(ptr.alloc_id)?;
             alloc.bytes.extend(iter::repeat(0).take(amount));
             alloc.undef_mask.grow(amount, false);
         } else if size > new_size {
-            return Err(EvalError::Unimplemented(format!("unimplemented allocation relocation (from {} to {})", size, new_size)));
-            // alloc.bytes.truncate(new_size);
-            // alloc.undef_mask.len = new_size;
-            // TODO: potentially remove relocations
+            self.clear_relocations(ptr.offset(new_size as isize), size - new_size)?;
+            let alloc = self.get_mut(ptr.alloc_id)?;
+            alloc.bytes.truncate(new_size);
+            alloc.undef_mask.truncate(new_size);
         }
 
         Ok(())
@@ -386,7 +387,7 @@ impl<'tcx> Memory<'tcx> {
         -> EvalResult<btree_map::Range<usize, AllocId>>
     {
         let start = ptr.offset.saturating_sub(self.pointer_size - 1);
-        let end = start + size;
+        let end = ptr.offset + size;
         Ok(self.get(ptr.alloc_id)?.relocations.range(Included(&start), Excluded(&end)))
     }
 
@@ -535,11 +536,12 @@ impl UndefMask {
         self.len += amount;
         self.set_range_inbounds(start, start + amount, new_state);
     }
-}
 
-// fn uniform_block(state: bool) -> Block {
-//     if state { !0 } else { 0 }
-// }
+    fn truncate(&mut self, length: usize) {
+        self.len = length;
+        self.blocks.truncate(self.len / BLOCK_SIZE + 1);
+    }
+}
 
 fn bit_index(bits: usize) -> (usize, usize) {
     (bits / BLOCK_SIZE, bits % BLOCK_SIZE)
