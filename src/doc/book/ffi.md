@@ -578,19 +578,17 @@ interfacing with C, pointers that might be `null` are often used, which would se
 require some messy `transmute`s and/or unsafe code to handle conversions to/from Rust types.
 However, the language provides a workaround.
 
-As a special case, an `enum` that contains exactly two variants, one of
-which contains no data and the other containing a single field, is eligible
-for the "nullable pointer optimization". When such an enum is instantiated
-with one of the non-nullable types listed above, it is represented as a single pointer,
-and the non-data variant is represented as the null pointer. This is called an
-"optimization", but unlike other optimizations it is guaranteed to apply to
+As a special case, an `enum` is eligible for the "nullable pointer optimization" if it
+contains exactly two variants, one of which contains no data and the other contains
+a single field of one of the non-nullable types listed above. This means it is represented
+as a single pointer, and the non-data variant is represented as the null pointer. This is
+called an "optimization", but unlike other optimizations it is guaranteed to apply to
 eligible types.
 
 The most common type that takes advantage of the nullable pointer optimization is `Option<T>`,
 where `None` corresponds to `null`. So `Option<extern "C" fn(c_int) -> c_int>` is a correct way
 to represent a nullable function pointer using the C ABI (corresponding to the C type
-`int (*)(int)`). (However, generics are not required to get the optimization. A simple
-`enum NullableIntRef { Int(Box<i32>), NotInt }` is also represented as a single pointer.)
+`int (*)(int)`).
 
 Here is an example:
 
