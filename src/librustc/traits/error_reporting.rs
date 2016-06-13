@@ -182,7 +182,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let rps = self.region_vars_for_defs(obligation.cause.span, rps);
         let mut substs = subst::Substs::new(
             subst::VecPerParamSpace::empty(),
-            subst::VecPerParamSpace::new(rps, Vec::new(), Vec::new()));
+            subst::VecPerParamSpace::new(Vec::new(), rps, Vec::new()));
         self.type_vars_for_defs(obligation.cause.span,
                                 TypeSpace,
                                 &mut substs,

@@ -675,8 +675,8 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
                                              source_ty: Ty<'tcx>,
                                              target_ty: Ty<'tcx>)
                                              -> CustomCoerceUnsized {
-    let trait_substs = Substs::new(subst::VecPerParamSpace::new(vec![target_ty],
-                                                                vec![source_ty],
+    let trait_substs = Substs::new(subst::VecPerParamSpace::new(vec![source_ty],
+                                                                vec![target_ty],
                                                                 Vec::new()),
                                    subst::VecPerParamSpace::empty());
 

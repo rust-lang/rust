@@ -37,7 +37,7 @@ impl SomeGenericTrait<u64> for i32 {
 
     // For the non-generic foo(), we should generate a codegen-item even if it
     // is not called anywhere
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::foo[0]<u64, i32>
+    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::foo[0]<i32, u64>
 }
 
 // Non-generic impl of generic trait
@@ -54,16 +54,16 @@ fn main() {
     //~ TRANS_ITEM fn trait_method_default_impl::SomeTrait[0]::bar[0]<i8, &str>
     let _ = 2i8.bar("&str");
 
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<u64, i32, char>
+    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<i32, u64, char>
     0i32.bar(0u64, 'c');
 
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<u64, i32, &str>
+    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<i32, u64, &str>
     0i32.bar(0u64, "&str");
 
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<i8, u32, &[char; 1]>
+    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<u32, i8, &[char; 1]>
     0u32.bar(0i8, &['c']);
 
-    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<i16, u32, ()>
+    //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<u32, i16, ()>
     0u32.bar(0i16, ());
 }
 
