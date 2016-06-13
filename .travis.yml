@@ -11,7 +11,7 @@ install:
   - . $HOME/.nvm/nvm.sh
   - nvm install stable
   - nvm use stable
-  - npm install remark remark-lint
+  - npm install remark-cli remark-lint
 
 script:
  - set -e
