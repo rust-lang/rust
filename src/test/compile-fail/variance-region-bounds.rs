@@ -13,7 +13,7 @@
 #![feature(rustc_attrs)]
 
 #[rustc_variance]
-trait Foo: 'static { //~ ERROR types=[[];[o];[]]
+trait Foo: 'static { //~ ERROR types=[[o];[];[]]
 }
 
 #[rustc_variance]

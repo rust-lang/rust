@@ -14,24 +14,24 @@
 #![feature(rustc_attrs)]
 
 #[rustc_variance]
-struct TestImm<A, B> { //~ ERROR types=[[+, +];[];[]]
+struct TestImm<A, B> { //~ ERROR types=[[];[+, +];[]]
     x: A,
     y: B,
 }
 
 #[rustc_variance]
-struct TestMut<A, B:'static> { //~ ERROR types=[[+, o];[];[]]
+struct TestMut<A, B:'static> { //~ ERROR types=[[];[+, o];[]]
     x: A,
     y: &'static mut B,
 }
 
 #[rustc_variance]
-struct TestIndirect<A:'static, B:'static> { //~ ERROR types=[[+, o];[];[]]
+struct TestIndirect<A:'static, B:'static> { //~ ERROR types=[[];[+, o];[]]
     m: TestMut<A, B>
 }
 
 #[rustc_variance]
-struct TestIndirect2<A:'static, B:'static> { //~ ERROR types=[[o, o];[];[]]
+struct TestIndirect2<A:'static, B:'static> { //~ ERROR types=[[];[o, o];[]]
     n: TestMut<A, B>,
     m: TestMut<B, A>
 }
@@ -68,7 +68,7 @@ trait SetterInTypeBound<A> { //~ ERROR types=[[o];[o];[]]
 }
 
 #[rustc_variance]
-struct TestObject<A, R> { //~ ERROR types=[[o, o];[];[]]
+struct TestObject<A, R> { //~ ERROR types=[[];[o, o];[]]
     n: Box<Setter<A>+Send>,
     m: Box<Getter<R>+Send>,
 }

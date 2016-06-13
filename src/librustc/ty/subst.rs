@@ -48,8 +48,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                     r: Vec<ty::Region>)
                     -> Substs<'tcx>
     {
-        Substs::new(VecPerParamSpace::new(t, Vec::new(), Vec::new()),
-                    VecPerParamSpace::new(r, Vec::new(), Vec::new()))
+        Substs::new(VecPerParamSpace::new(vec![], t, vec![]),
+                    VecPerParamSpace::new(vec![], r, vec![]))
     }
 
     pub fn new_trait(t: Vec<Ty<'tcx>>,
@@ -57,8 +57,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                      s: Ty<'tcx>)
                     -> Substs<'tcx>
     {
-        Substs::new(VecPerParamSpace::new(t, vec!(s), Vec::new()),
-                    VecPerParamSpace::new(r, Vec::new(), Vec::new()))
+        Substs::new(VecPerParamSpace::new(vec![s], t, vec![]),
+                    VecPerParamSpace::new(vec![], r, vec![]))
     }
 
     pub fn empty() -> Substs<'tcx> {
@@ -169,28 +169,28 @@ impl<'tcx> Decodable for &'tcx Substs<'tcx> {
 #[derive(PartialOrd, Ord, PartialEq, Eq, Copy,
            Clone, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum ParamSpace {
-    TypeSpace,  // Type parameters attached to a type definition, trait, or impl
     SelfSpace,  // Self parameter on a trait
+    TypeSpace,  // Type parameters attached to a type definition, trait, or impl
     FnSpace,    // Type parameters attached to a method or fn
 }
 
 impl ParamSpace {
     pub fn all() -> [ParamSpace; 3] {
-        [TypeSpace, SelfSpace, FnSpace]
+        [SelfSpace, TypeSpace, FnSpace]
     }
 
     pub fn to_uint(self) -> usize {
         match self {
-            TypeSpace => 0,
-            SelfSpace => 1,
+            SelfSpace => 0,
+            TypeSpace => 1,
             FnSpace => 2,
         }
     }
 
     pub fn from_uint(u: usize) -> ParamSpace {
         match u {
-            0 => TypeSpace,
-            1 => SelfSpace,
+            0 => SelfSpace,
+            1 => TypeSpace,
             2 => FnSpace,
             _ => bug!("Invalid ParamSpace: {}", u)
         }
@@ -209,19 +209,19 @@ pub struct VecPerParamSpace<T> {
     // Here is how the representation corresponds to the abstraction
     // i.e. the "abstraction function" AF:
     //
-    // AF(self) = (self.content[..self.type_limit],
-    //             self.content[self.type_limit..self.self_limit],
-    //             self.content[self.self_limit..])
-    type_limit: usize,
+    // AF(self) = (self.content[..self.self_limit],
+    //             self.content[self.self_limit..self.type_limit],
+    //             self.content[self.type_limit..])
     self_limit: usize,
+    type_limit: usize,
     content: Vec<T>,
 }
 
 impl<T: fmt::Debug> fmt::Debug for VecPerParamSpace<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[{:?};{:?};{:?}]",
-               self.get_slice(TypeSpace),
                self.get_slice(SelfSpace),
+               self.get_slice(TypeSpace),
                self.get_slice(FnSpace))
     }
 }
@@ -229,44 +229,44 @@ impl<T: fmt::Debug> fmt::Debug for VecPerParamSpace<T> {
 impl<T> VecPerParamSpace<T> {
     fn limits(&self, space: ParamSpace) -> (usize, usize) {
         match space {
-            TypeSpace => (0, self.type_limit),
-            SelfSpace => (self.type_limit, self.self_limit),
-            FnSpace => (self.self_limit, self.content.len()),
+            SelfSpace => (0, self.self_limit),
+            TypeSpace => (self.self_limit, self.type_limit),
+            FnSpace => (self.type_limit, self.content.len()),
         }
     }
 
     pub fn empty() -> VecPerParamSpace<T> {
         VecPerParamSpace {
-            type_limit: 0,
             self_limit: 0,
+            type_limit: 0,
             content: Vec::new()
         }
     }
 
-    /// `t` is the type space.
     /// `s` is the self space.
+    /// `t` is the type space.
     /// `f` is the fn space.
-    pub fn new(t: Vec<T>, s: Vec<T>, f: Vec<T>) -> VecPerParamSpace<T> {
-        let type_limit = t.len();
-        let self_limit = type_limit + s.len();
+    pub fn new(s: Vec<T>, t: Vec<T>, f: Vec<T>) -> VecPerParamSpace<T> {
+        let self_limit = s.len();
+        let type_limit = self_limit + t.len();
 
-        let mut content = t;
-        content.extend(s);
+        let mut content = s;
+        content.extend(t);
         content.extend(f);
 
         VecPerParamSpace {
-            type_limit: type_limit,
             self_limit: self_limit,
+            type_limit: type_limit,
             content: content,
         }
     }
 
-    fn new_internal(content: Vec<T>, type_limit: usize, self_limit: usize)
+    fn new_internal(content: Vec<T>, self_limit: usize, type_limit: usize)
                     -> VecPerParamSpace<T>
     {
         VecPerParamSpace {
-            type_limit: type_limit,
             self_limit: self_limit,
+            type_limit: type_limit,
             content: content,
         }
     }
@@ -278,8 +278,8 @@ impl<T> VecPerParamSpace<T> {
     pub fn push(&mut self, space: ParamSpace, value: T) {
         let (_, limit) = self.limits(space);
         match space {
-            TypeSpace => { self.type_limit += 1; self.self_limit += 1; }
-            SelfSpace => { self.self_limit += 1; }
+            SelfSpace => { self.type_limit += 1; self.self_limit += 1; }
+            TypeSpace => { self.type_limit += 1; }
             FnSpace => { }
         }
         self.content.insert(limit, value);
@@ -302,8 +302,8 @@ impl<T> VecPerParamSpace<T> {
             None
         } else {
             match space {
-                TypeSpace => { self.type_limit -= 1; self.self_limit -= 1; }
-                SelfSpace => { self.self_limit -= 1; }
+                SelfSpace => { self.type_limit -= 1; self.self_limit -= 1; }
+                TypeSpace => { self.type_limit -= 1; }
                 FnSpace => {}
             }
             if self.content.is_empty() {
@@ -388,8 +388,7 @@ impl<T> VecPerParamSpace<T> {
     pub fn all_vecs<P>(&self, mut pred: P) -> bool where
         P: FnMut(&[T]) -> bool,
     {
-        let spaces = [TypeSpace, SelfSpace, FnSpace];
-        spaces.iter().all(|&space| { pred(self.get_slice(space)) })
+        ParamSpace::all().iter().all(|&space| { pred(self.get_slice(space)) })
     }
 
     pub fn all<P>(&self, pred: P) -> bool where P: FnMut(&T) -> bool {
@@ -407,8 +406,8 @@ impl<T> VecPerParamSpace<T> {
     pub fn map<U, P>(&self, pred: P) -> VecPerParamSpace<U> where P: FnMut(&T) -> U {
         let result = self.iter().map(pred).collect();
         VecPerParamSpace::new_internal(result,
-                                       self.type_limit,
-                                       self.self_limit)
+                                       self.self_limit,
+                                       self.type_limit)
     }
 
     pub fn map_enumerated<U, P>(&self, pred: P) -> VecPerParamSpace<U> where
@@ -416,8 +415,8 @@ impl<T> VecPerParamSpace<T> {
     {
         let result = self.iter_enumerated().map(pred).collect();
         VecPerParamSpace::new_internal(result,
-                                       self.type_limit,
-                                       self.self_limit)
+                                       self.self_limit,
+                                       self.type_limit)
     }
 
     pub fn with_slice(mut self, space: ParamSpace, slice: &[T])
