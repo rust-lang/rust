@@ -570,7 +570,7 @@ fn push_type_params<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     output.push('<');
 
-    for &type_parameter in types {
+    for &type_parameter in types.as_full_slice() {
         push_unique_type_name(tcx, type_parameter, output);
         output.push_str(", ");
     }

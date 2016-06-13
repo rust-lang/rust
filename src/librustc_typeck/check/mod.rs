@@ -888,7 +888,8 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         // `{Self}` is allowed
                         Position::ArgumentNamed(s) if s == "Self" => (),
                         // So is `{A}` if A is a type parameter
-                        Position::ArgumentNamed(s) => match types.iter().find(|t| {
+                        Position::ArgumentNamed(s) => match types.as_full_slice()
+                                                                 .iter().find(|t| {
                             t.name.as_str() == s
                         }) {
                             Some(_) => (),
@@ -1895,7 +1896,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Registers obligations that all types appearing in `substs` are well-formed.
     pub fn add_wf_bounds(&self, substs: &Substs<'tcx>, expr: &hir::Expr)
     {
-        for &ty in &substs.types {
+        for &ty in substs.types.as_full_slice() {
             self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
         }
     }

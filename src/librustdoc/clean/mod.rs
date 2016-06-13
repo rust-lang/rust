@@ -788,8 +788,9 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
 impl<'tcx> Clean<Option<Vec<TyParamBound>>> for subst::Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();
-        v.extend(self.regions.iter().filter_map(|r| r.clean(cx)).map(RegionBound));
-        v.extend(self.types.iter().map(|t| TraitBound(PolyTrait {
+        v.extend(self.regions.as_full_slice().iter().filter_map(|r| r.clean(cx))
+                     .map(RegionBound));
+        v.extend(self.types.as_full_slice().iter().map(|t| TraitBound(PolyTrait {
             trait_: t.clean(cx),
             lifetimes: vec![]
         }, hir::TraitBoundModifier::None)));

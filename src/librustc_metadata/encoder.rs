@@ -515,7 +515,7 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
 {
     rbml_w.start_tag(tag);
 
-    for param in &generics.types {
+    for param in generics.types.as_full_slice() {
         rbml_w.start_tag(tag_type_param_def);
         tyencode::enc_type_param_def(rbml_w.writer, &ecx.ty_str_ctxt(), param);
         rbml_w.mark_stable_position();
@@ -523,7 +523,7 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
     }
 
     // Region parameters
-    for param in &generics.regions {
+    for param in generics.regions.as_full_slice() {
         rbml_w.start_tag(tag_region_param_def);
         tyencode::enc_region_param_def(rbml_w.writer, &ecx.ty_str_ctxt(), param);
         rbml_w.mark_stable_position();
