@@ -26,7 +26,6 @@ use rustc::hir::def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
 use rustc::dep_graph::{DepGraph, DepNode, DepTask};
-use rustc::ty::subst;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::util::IntTypeExt;
@@ -541,14 +540,8 @@ fn encode_predicates_in_current_doc<'a,'tcx>(rbml_w: &mut Encoder,
                                              index: &mut CrateIndex<'a, 'tcx>,
                                              predicates: &ty::GenericPredicates<'tcx>)
 {
-    for (space, _, predicate) in predicates.predicates.iter_enumerated() {
-        let tag = match space {
-            subst::TypeSpace => tag_type_predicate,
-            subst::SelfSpace => tag_self_predicate,
-            subst::FnSpace => tag_fn_predicate
-        };
-
-        rbml_w.wr_tagged_u32(tag,
+    for predicate in &predicates.predicates {
+        rbml_w.wr_tagged_u32(tag_predicate,
             index.add_xref(XRef::Predicate(predicate.clone())));
     }
 }

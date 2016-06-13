@@ -65,7 +65,7 @@ use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::{eval_const_expr_partial, report_const_eval_err};
-use rustc::ty::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
+use rustc::ty::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace};
 use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
 use rustc::ty::{VariantKind};
@@ -1185,9 +1185,7 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
         // generic types:
         let trait_def = trait_def_of_item(ccx, item);
         let self_predicate = ty::GenericPredicates {
-            predicates: VecPerParamSpace::new(vec![],
-                                              vec![trait_def.trait_ref.to_predicate()],
-                                              vec![])
+            predicates: vec![trait_def.trait_ref.to_predicate()]
         };
         let scope = &(generics, &self_predicate);
 
@@ -1209,7 +1207,7 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
         // Combine the two lists to form the complete set of superbounds:
         let superbounds = superbounds1.into_iter().chain(superbounds2).collect();
         let superpredicates = ty::GenericPredicates {
-            predicates: VecPerParamSpace::new(superbounds, vec![], vec![])
+            predicates: superbounds
         };
         debug!("superpredicates for trait {:?} = {:?}",
                tcx.map.local_def_id(item.id),
@@ -1368,7 +1366,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
     // Add in a predicate that `Self:Trait` (where `Trait` is the
     // current trait).  This is needed for builtin bounds.
     let self_predicate = trait_def.trait_ref.to_poly_trait_ref().to_predicate();
-    base_predicates.predicates.push(SelfSpace, self_predicate);
+    base_predicates.predicates.push(self_predicate);
 
     // add in the explicit where-clauses
     let mut trait_predicates =
@@ -1379,7 +1377,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
                                                            &trait_predicates,
                                                            trait_def.trait_ref,
                                                            items);
-    trait_predicates.predicates.extend(TypeSpace, assoc_predicates.into_iter());
+    trait_predicates.predicates.extend(assoc_predicates);
 
     let prev_predicates = tcx.predicates.borrow_mut().insert(def_id, trait_predicates);
     assert!(prev_predicates.is_none());
@@ -1784,8 +1782,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                     SizedByDefault::Yes,
                                     None,
                                     param.span);
-        let predicates = bounds.predicates(ccx.tcx, param_ty);
-        result.predicates.extend(space, predicates.into_iter());
+        result.predicates.extend(bounds.predicates(ccx.tcx, param_ty));
     }
 
     // Collect the region predicates that were declared inline as
@@ -1803,7 +1800,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         for bound in &param.bounds {
             let bound_region = ast_region_to_region(ccx.tcx, bound);
             let outlives = ty::Binder(ty::OutlivesPredicate(region, bound_region));
-            result.predicates.push(space, outlives.to_predicate());
+            result.predicates.push(outlives.to_predicate());
         }
     }
 
@@ -1827,17 +1824,17 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                                     poly_trait_ref,
                                                     &mut projections);
 
-                            result.predicates.push(space, trait_ref.to_predicate());
+                            result.predicates.push(trait_ref.to_predicate());
 
                             for projection in &projections {
-                                result.predicates.push(space, projection.to_predicate());
+                                result.predicates.push(projection.to_predicate());
                             }
                         }
 
                         &hir::TyParamBound::RegionTyParamBound(ref lifetime) => {
                             let region = ast_region_to_region(tcx, lifetime);
                             let pred = ty::Binder(ty::OutlivesPredicate(ty, region));
-                            result.predicates.push(space, ty::Predicate::TypeOutlives(pred))
+                            result.predicates.push(ty::Predicate::TypeOutlives(pred))
                         }
                     }
                 }
@@ -1848,7 +1845,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 for bound in &region_pred.bounds {
                     let r2 = ast_region_to_region(tcx, bound);
                     let pred = ty::Binder(ty::OutlivesPredicate(r1, r2));
-                    result.predicates.push(space, ty::Predicate::RegionOutlives(pred))
+                    result.predicates.push(ty::Predicate::RegionOutlives(pred))
                 }
             }
 
@@ -1861,7 +1858,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         }
     }
 
-    return result;
+    result
 }
 
 fn ty_generics<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
@@ -2221,9 +2218,6 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let impl_scheme = ccx.tcx.lookup_item_type(impl_def_id);
     let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
 
-    assert!(impl_predicates.predicates.is_empty_in(FnSpace));
-    assert!(impl_predicates.predicates.is_empty_in(SelfSpace));
-
     // The trait reference is an input, so find all type parameters
     // reachable from there, to start (if this is an inherent impl,
     // then just examine the self type).
@@ -2233,7 +2227,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         input_parameters.extend(ctp::parameters_for(trait_ref, false));
     }
 
-    ctp::setup_constraining_predicates(impl_predicates.predicates.get_mut_slice(TypeSpace),
+    ctp::setup_constraining_predicates(&mut impl_predicates.predicates,
                                        impl_trait_ref,
                                        &mut input_parameters);
 

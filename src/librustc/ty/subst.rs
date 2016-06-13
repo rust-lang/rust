@@ -217,14 +217,6 @@ pub struct VecPerParamSpace<T> {
     content: Vec<T>,
 }
 
-/// The `split` function converts one `VecPerParamSpace` into this
-/// `SeparateVecsPerParamSpace` structure.
-pub struct SeparateVecsPerParamSpace<T> {
-    pub types: Vec<T>,
-    pub selfs: Vec<T>,
-    pub fns: Vec<T>,
-}
-
 impl<T: fmt::Debug> fmt::Debug for VecPerParamSpace<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[{:?};{:?};{:?}]",
@@ -426,18 +418,6 @@ impl<T> VecPerParamSpace<T> {
         VecPerParamSpace::new_internal(result,
                                        self.type_limit,
                                        self.self_limit)
-    }
-
-    pub fn split(self) -> SeparateVecsPerParamSpace<T> {
-        let VecPerParamSpace { type_limit, self_limit, content } = self;
-
-        let mut content_iter = content.into_iter();
-
-        SeparateVecsPerParamSpace {
-            types: content_iter.by_ref().take(type_limit).collect(),
-            selfs: content_iter.by_ref().take(self_limit - type_limit).collect(),
-            fns: content_iter.collect()
-        }
     }
 
     pub fn with_slice(mut self, space: ParamSpace, slice: &[T])

@@ -917,7 +917,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     let mut first = true;
                     let mut is_sized = false;
                     write!(f, "impl")?;
-                    for predicate in bounds.predicates.into_vec() {
+                    for predicate in bounds.predicates {
                         if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
                             // Don't print +Sized, but rather +?Sized if absent.
                             if Some(trait_ref.def_id()) == tcx.lang_items.sized_trait() {

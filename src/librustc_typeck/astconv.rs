@@ -56,7 +56,6 @@ use hir::print as pprust;
 use middle::resolve_lifetime as rl;
 use rustc::lint;
 use rustc::ty::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
-use rustc::ty::subst::VecPerParamSpace;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
@@ -1778,7 +1777,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     let predicates = bounds.predicates(tcx, ty);
                     let predicates = tcx.lift_to_global(&predicates).unwrap();
                     tcx.predicates.borrow_mut().insert(def_id, ty::GenericPredicates {
-                        predicates: VecPerParamSpace::new(vec![], vec![], predicates)
+                        predicates: predicates
                     });
 
                     ty

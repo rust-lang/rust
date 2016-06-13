@@ -799,7 +799,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
             let trait_predicates = self.tcx.lookup_predicates(def_id);
             let bounds = trait_predicates.instantiate(self.tcx, substs);
-            let predicates = bounds.predicates.into_vec();
+            let predicates = bounds.predicates;
             debug!("assemble_projection_candidates: predicates={:?}",
                    predicates);
             for poly_bound in
