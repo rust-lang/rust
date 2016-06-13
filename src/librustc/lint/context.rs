@@ -29,7 +29,7 @@ use dep_graph::DepNode;
 use middle::privacy::AccessLevels;
 use ty::TyCtxt;
 use session::{config, early_error, Session};
-use lint::{Level, LevelSource, Lint, LintId, LintPass};
+use lint::{Level, LevelSource, Lint, LintId, LintPass, LintSource};
 use lint::{EarlyLintPassObject, LateLintPassObject};
 use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
 use lint::builtin;
@@ -599,13 +599,23 @@ pub trait LintContext: Sized {
             };
 
             for (lint_id, level, span) in v {
-                let now = self.lints().get_level_source(lint_id).0;
+                let (now, now_source) = self.lints().get_level_source(lint_id);
                 if now == Forbid && level != Forbid {
                     let lint_name = lint_id.as_str();
-                    span_err!(self.sess(), span, E0453,
-                              "{}({}) overruled by outer forbid({})",
-                              level.as_str(), lint_name,
-                              lint_name);
+                    let mut diag_builder = struct_span_err!(self.sess(), span, E0453,
+                                                            "{}({}) overruled by outer forbid({})",
+                                                            level.as_str(), lint_name,
+                                                            lint_name);
+                    match now_source {
+                        LintSource::Default => &mut diag_builder,
+                        LintSource::Node(forbid_source_span) => {
+                            diag_builder.span_note(forbid_source_span,
+                                                   "`forbid` lint level set here")
+                        },
+                        LintSource::CommandLine => {
+                            diag_builder.note("`forbid` lint level was set on command line")
+                        }
+                    }.emit()
                 } else if now != level {
                     let src = self.lints().get_level_source(lint_id).1;
                     self.level_stack().push((lint_id, (now, src)));
