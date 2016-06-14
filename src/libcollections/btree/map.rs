@@ -1898,6 +1898,12 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
         &self.key
     }
 
+    /// Take ownership of the key.
+    #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
+    pub fn into_key(self) -> K {
+        self.key
+    }
+
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1948,6 +1954,12 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         self.handle.reborrow().into_kv().0
+    }
+
+    /// Take ownership of the key and value from the map.
+    #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
+    pub fn remove_pair(self) -> (K, V) {
+        self.remove_kv()
     }
 
     /// Gets a reference to the value in the entry.

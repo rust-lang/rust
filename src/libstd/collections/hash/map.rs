@@ -1552,6 +1552,12 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
         self.elem.read().0
     }
 
+    /// Take the ownership of the key and value from the map.
+    #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
+    pub fn remove_pair(self) -> (K, V) {
+        pop_internal(self.elem)
+    }
+
     /// Gets a reference to the value in the entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> &V {
@@ -1584,6 +1590,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     pub fn remove(self) -> V {
         pop_internal(self.elem).1
     }
+
     /// Returns a key that was used for search.
     ///
     /// The key was retained for further use.
@@ -1598,6 +1605,12 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         &self.key
+    }
+
+    /// Take ownership of the key.
+    #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
+    pub fn into_key(self) -> K {
+        self.key
     }
 
     /// Sets the value of the entry with the VacantEntry's key,
