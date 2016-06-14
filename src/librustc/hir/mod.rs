@@ -55,6 +55,7 @@ use std::fmt;
 /// of `Vec` to avoid keeping extra capacity.
 pub type HirVec<T> = P<[T]>;
 
+#[rustc_unsafe_macro]
 macro_rules! hir_vec {
     ($elem:expr; $n:expr) => (
         $crate::hir::HirVec::from(vec![$elem; $n])

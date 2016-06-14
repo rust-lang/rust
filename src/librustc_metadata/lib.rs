@@ -20,6 +20,7 @@
 #![feature(box_patterns)]
 #![feature(enumset)]
 #![feature(quote)]
+#![feature(rustc_attrs)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[rustc_unsafe_macro]
 macro_rules! enum_from_u32 {
     ($(#[$attr:meta])* pub enum $name:ident {
         $($variant:ident = $e:expr,)*

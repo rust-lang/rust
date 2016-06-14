@@ -28,6 +28,7 @@
 #![feature(const_fn)]
 #![feature(filling_drop)]
 #![feature(libc)]
+#![feature(rustc_attrs)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(str_escape)]
