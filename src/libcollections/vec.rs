@@ -684,6 +684,44 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns false.
+    /// This method operates in place and preserves the order of the retained
+    /// elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec = vec![1, 2, 3, 4];
+    /// vec.retain_mut(|x| {
+    ///     *x -= 1;
+    ///     *x % 2 == 0
+    /// });
+    /// assert_eq!(vec, [0, 2]);
+    /// ```
+    #[unstable(feature = "retain_mut", reason = "recently added", issue = "00000")]
+    pub fn retain_mut<F>(&mut self, mut f: F)
+        where F: FnMut(&mut T) -> bool
+    {
+        let len = self.len();
+        let mut del = 0;
+        {
+            let v = &mut **self;
+
+            for i in 0..len {
+                if !f(&mut v[i]) {
+                    del += 1;
+                } else if del > 0 {
+                    v.swap(i - del, i);
+                }
+            }
+        }
+        if del > 0 {
+            self.truncate(len - del);
+        }
+    }
+
     /// Appends an element to the back of a collection.
     ///
     /// # Panics

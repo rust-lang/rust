@@ -213,6 +213,16 @@ fn test_retain() {
 }
 
 #[test]
+fn test_retain_mut() {
+    let mut vec = vec![1, 2, 3, 4];
+    vec.retain_mut(|x| {
+        *x -= 1;
+        *x % 2 == 0
+    });
+    assert_eq!(vec, [0, 2]);
+}
+
+#[test]
 fn zero_sized_values() {
     let mut v = Vec::new();
     assert_eq!(v.len(), 0);
