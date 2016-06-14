@@ -504,6 +504,9 @@ fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String
 
 impl Rewrite for ast::Block {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        // width is used only for the single line case: either the empty block `{}`,
+        // or an unsafe expression `unsafe { e }`.
+
         let user_str = context.snippet(self.span);
         if user_str == "{}" && width >= 2 {
             return Some(user_str);
@@ -674,9 +677,15 @@ impl<'a> Rewrite for Loop<'a> {
             ControlBraceStyle::AlwaysNextLine => alt_block_sep.as_str(),
             ControlBraceStyle::AlwaysSameLine => " ",
         };
+
+        // This is used only for the empty block case: `{}`
+        let block_width = try_opt!(width.checked_sub(label_string.len() + self.keyword.len() +
+                                                     extra_offset(&pat_expr_string, inner_offset) +
+                                                     1));
+
         // FIXME: this drops any comment between "loop" and the block.
         self.block
-            .rewrite(context, width, offset)
+            .rewrite(context, block_width, offset)
             .map(|result| {
                 format!("{}{}{}{}{}",
                         label_string,
