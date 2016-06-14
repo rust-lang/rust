@@ -2796,9 +2796,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("impl_self_ty: tps={:?} rps={:?} raw_ty={:?}", tps, rps, raw_ty);
 
         let rps = self.region_vars_for_defs(span, rps);
-        let mut substs = subst::Substs::new(
-            VecPerParamSpace::empty(),
-            VecPerParamSpace::new(Vec::new(), rps, Vec::new()));
+        let mut substs = subst::Substs::new_type(vec![], rps);
         self.type_vars_for_defs(span, ParamSpace::TypeSpace, &mut substs, tps);
         let substd_ty = self.instantiate_type_scheme(span, &substs, &raw_ty);
 

@@ -39,7 +39,7 @@ use rustc::cfg;
 use rustc::hir::def_id::DefId;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::hir::pat_util::simple_name;
-use rustc::ty::subst::{self, Substs};
+use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::adjustment::CustomCoerceUnsized;
@@ -675,10 +675,7 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
                                              source_ty: Ty<'tcx>,
                                              target_ty: Ty<'tcx>)
                                              -> CustomCoerceUnsized {
-    let trait_substs = Substs::new(subst::VecPerParamSpace::new(vec![source_ty],
-                                                                vec![target_ty],
-                                                                Vec::new()),
-                                   subst::VecPerParamSpace::empty());
+    let trait_substs = Substs::new_trait(vec![target_ty], vec![], source_ty);
 
     let trait_ref = ty::Binder(ty::TraitRef {
         def_id: scx.tcx().lang_items.coerce_unsized_trait().unwrap(),

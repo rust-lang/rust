@@ -15,7 +15,6 @@
 //! optimal solution to the constraints. The final variance for each
 //! inferred is then written into the `variance_map` in the tcx.
 
-use rustc::ty::subst::VecPerParamSpace;
 use rustc::ty;
 use std::rc::Rc;
 
@@ -109,8 +108,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         let num_inferred = self.terms_cx.num_inferred();
         while index < num_inferred {
             let item_id = inferred_infos[index].item_id;
-            let mut types = VecPerParamSpace::empty();
-            let mut regions = VecPerParamSpace::empty();
+            let mut item_variances = ty::ItemVariances::empty();
 
             while index < num_inferred && inferred_infos[index].item_id == item_id {
                 let info = &inferred_infos[index];
@@ -118,17 +116,13 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 debug!("Index {} Info {} / {:?} / {:?} Variance {:?}",
                        index, info.index, info.kind, info.space, variance);
                 match info.kind {
-                    TypeParam => { types.push(info.space, variance); }
-                    RegionParam => { regions.push(info.space, variance); }
+                    TypeParam => { item_variances.types.push(info.space, variance); }
+                    RegionParam => { item_variances.regions.push(info.space, variance); }
                 }
 
                 index += 1;
             }
 
-            let item_variances = ty::ItemVariances {
-                types: types,
-                regions: regions
-            };
             debug!("item_id={} item_variances={:?}",
                     item_id,
                     item_variances);
