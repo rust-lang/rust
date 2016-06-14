@@ -35,7 +35,6 @@ use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex};
 use middle::lang_items;
-use rustc::ty::subst;
 use rustc::ty::{ImplContainer, TraitContainer};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, VariantKind};
 
@@ -1580,25 +1579,24 @@ fn doc_generics<'a, 'tcx>(base_doc: rbml::Doc,
 {
     let doc = reader::get_doc(base_doc, tag);
 
-    let mut types = subst::VecPerParamSpace::empty();
+    let mut generics = ty::Generics::empty();
     for p in reader::tagged_docs(doc, tag_type_param_def) {
         let bd =
             TyDecoder::with_doc(tcx, cdata.cnum, p,
                                 &mut |did| translate_def_id(cdata, did))
             .parse_type_param_def();
-        types.push(bd.space, bd);
+        generics.types.push(bd.space, bd);
     }
 
-    let mut regions = subst::VecPerParamSpace::empty();
     for p in reader::tagged_docs(doc, tag_region_param_def) {
         let bd =
             TyDecoder::with_doc(tcx, cdata.cnum, p,
                                 &mut |did| translate_def_id(cdata, did))
             .parse_region_param_def();
-        regions.push(bd.space, bd);
+        generics.regions.push(bd.space, bd);
     }
 
-    ty::Generics { types: types, regions: regions }
+    generics
 }
 
 fn doc_predicate<'a, 'tcx>(cdata: Cmd,

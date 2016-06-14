@@ -21,7 +21,7 @@
 
 use arena::TypedArena;
 use dep_graph::DepTrackingMapConfig;
-use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace};
+use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::ItemVariances;
 use std::fmt;
@@ -112,10 +112,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
 
         // cache and share the variance struct used for items with
         // no type/region parameters
-        empty_variances: Rc::new(ty::ItemVariances {
-            types: VecPerParamSpace::empty(),
-            regions: VecPerParamSpace::empty()
-        })
+        empty_variances: Rc::new(ty::ItemVariances::empty())
     };
 
     // See README.md for a discussion on dep-graph management.

@@ -41,6 +41,14 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         Substs { types: t, regions: r }
     }
 
+    pub fn new_fn(t: Vec<Ty<'tcx>>,
+                  r: Vec<ty::Region>)
+                  -> Substs<'tcx>
+    {
+        Substs::new(VecPerParamSpace::new(vec![], vec![], t),
+                    VecPerParamSpace::new(vec![], vec![], r))
+    }
+
     pub fn new_type(t: Vec<Ty<'tcx>>,
                     r: Vec<ty::Region>)
                     -> Substs<'tcx>

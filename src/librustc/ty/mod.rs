@@ -429,6 +429,15 @@ pub struct ItemVariances {
     pub regions: VecPerParamSpace<Variance>,
 }
 
+impl ItemVariances {
+    pub fn empty() -> ItemVariances {
+        ItemVariances {
+            types: VecPerParamSpace::empty(),
+            regions: VecPerParamSpace::empty(),
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Copy)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
@@ -2864,22 +2873,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn construct_free_substs(self, generics: &Generics<'gcx>,
                                  free_id_outlive: CodeExtent) -> Substs<'gcx> {
         // map T => T
-        let mut types = VecPerParamSpace::empty();
-        for def in generics.types.as_full_slice() {
+        let types = generics.types.map(|def| {
             debug!("construct_parameter_environment(): push_types_from_defs: def={:?}",
                     def);
-            types.push(def.space, self.global_tcx().mk_param_from_def(def));
-        }
+            self.global_tcx().mk_param_from_def(def)
+        });
 
         // map bound 'a => free 'a
-        let mut regions = VecPerParamSpace::empty();
-        for def in generics.regions.as_full_slice() {
+        let regions = generics.regions.map(|def| {
             let region =
                 ReFree(FreeRegion { scope: free_id_outlive,
                                     bound_region: def.to_bound_region() });
             debug!("push_region_params {:?}", region);
-            regions.push(def.space, region);
-        }
+            region
+        });
 
         Substs {
             types: types,
