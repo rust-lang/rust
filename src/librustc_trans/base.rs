@@ -2252,17 +2252,14 @@ pub fn update_linkage(ccx: &CrateContext,
 }
 
 fn set_global_section(ccx: &CrateContext, llval: ValueRef, i: &hir::Item) {
-    match attr::first_attr_value_str_by_name(&i.attrs, "link_section") {
-        Some(sect) => {
-            if contains_null(&sect) {
-                ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`", &sect));
-            }
-            unsafe {
-                let buf = CString::new(sect.as_bytes()).unwrap();
-                llvm::LLVMSetSection(llval, buf.as_ptr());
-            }
-        },
-        None => ()
+    if let Some(sect) = attr::first_attr_value_str_by_name(&i.attrs, "link_section") {
+        if contains_null(&sect) {
+            ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`", &sect));
+        }
+        unsafe {
+            let buf = CString::new(sect.as_bytes()).unwrap();
+            llvm::LLVMSetSection(llval, buf.as_ptr());
+        }
     }
 }
 
