@@ -5430,18 +5430,15 @@ impl<'a> Parser<'a> {
                               name: String,
                               id_sp: Span) -> PResult<'a, (ast::ItemKind, Vec<ast::Attribute> )> {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
-        match included_mod_stack.iter().position(|p| *p == path) {
-            Some(i) => {
-                let mut err = String::from("circular modules: ");
-                let len = included_mod_stack.len();
-                for p in &included_mod_stack[i.. len] {
-                    err.push_str(&p.to_string_lossy());
-                    err.push_str(" -> ");
-                }
-                err.push_str(&path.to_string_lossy());
-                return Err(self.span_fatal(id_sp, &err[..]));
+        if let Some(i) = included_mod_stack.iter().position(|p| *p == path) {
+            let mut err = String::from("circular modules: ");
+            let len = included_mod_stack.len();
+            for p in &included_mod_stack[i.. len] {
+                err.push_str(&p.to_string_lossy());
+                err.push_str(" -> ");
             }
-            None => ()
+            err.push_str(&path.to_string_lossy());
+            return Err(self.span_fatal(id_sp, &err[..]));
         }
         included_mod_stack.push(path.clone());
         drop(included_mod_stack);

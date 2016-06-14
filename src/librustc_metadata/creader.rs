@@ -929,29 +929,26 @@ impl<'a> LocalCrateReader<'a> {
                     return;
                 }
 
-                match self.creader.extract_crate_info(i) {
-                    Some(info) => {
-                        let (cnum, _, _) = self.creader.resolve_crate(&None,
-                                                                      &info.ident,
-                                                                      &info.name,
-                                                                      None,
-                                                                      i.span,
-                                                                      PathKind::Crate,
-                                                                      true);
+                if let Some(info) = self.creader.extract_crate_info(i) {
+                    let (cnum, _, _) = self.creader.resolve_crate(&None,
+                                                                  &info.ident,
+                                                                  &info.name,
+                                                                  None,
+                                                                  i.span,
+                                                                  PathKind::Crate,
+                                                                  true);
 
-                        let def_id = self.definitions.opt_local_def_id(i.id).unwrap();
-                        let len = self.definitions.def_path(def_id.index).data.len();
+                    let def_id = self.definitions.opt_local_def_id(i.id).unwrap();
+                    let len = self.definitions.def_path(def_id.index).data.len();
 
-                        self.creader.update_extern_crate(cnum,
-                                                         ExternCrate {
-                                                             def_id: def_id,
-                                                             span: i.span,
-                                                             direct: true,
-                                                             path_len: len,
-                                                         });
-                        self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
-                    }
-                    None => ()
+                    self.creader.update_extern_crate(cnum,
+                                                     ExternCrate {
+                                                         def_id: def_id,
+                                                         span: i.span,
+                                                         direct: true,
+                                                         path_len: len,
+                                                     });
+                    self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
                 }
             }
             ast::ItemKind::ForeignMod(ref fm) => self.process_foreign_mod(i, fm),
