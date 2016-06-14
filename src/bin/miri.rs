@@ -19,11 +19,7 @@ use miri::{
 use rustc::session::Session;
 use rustc_driver::{driver, CompilerCalls};
 use rustc::ty::{TyCtxt, subst};
-use rustc::mir::mir_map::MirMap;
-use rustc::mir::repr::Mir;
 use rustc::hir::def_id::DefId;
-use rustc::hir::{map, ItemFn, Item};
-use syntax::codemap::Span;
 
 struct MiriCompilerCalls;
 
@@ -40,9 +36,12 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
 
             let tcx = state.tcx.unwrap();
             let mir_map = state.mir_map.unwrap();
-            let (span, mir, def_id) = get_main(tcx, mir_map);
+
+            let (node_id, span) = state.session.entry_fn.borrow().expect("no main or start function found");
             println!("found `main` function at: {:?}", span);
 
+            let mir = mir_map.map.get(&node_id).expect("no mir for main function");
+            let def_id = tcx.map.local_def_id(node_id);
             let mut ecx = EvalContext::new(tcx, mir_map);
             let substs = tcx.mk_substs(subst::Substs::empty());
             let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs).expect("main function should not be diverging");
@@ -64,19 +63,6 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
 
         control
     }
-}
-
-fn get_main<'a, 'b, 'tcx: 'b>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'b MirMap<'tcx>) -> (Span, &'b Mir<'tcx>, DefId) {
-    for (&id, mir) in &mir_map.map {
-        if let map::Node::NodeItem(&Item { name, span, ref node, .. }) = tcx.map.get(id) {
-            if let ItemFn(..) = *node {
-                if name.as_str() == "main" {
-                    return (span, mir, tcx.map.local_def_id(id));
-                }
-            }
-        }
-    }
-    panic!("no main function found");
 }
 
 fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
