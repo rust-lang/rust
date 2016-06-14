@@ -659,6 +659,10 @@ span.since {
     margin-bottom: 25px;
 }
 
+.variant, .structfield {
+    display: block;
+}
+
 :target > code {
    background: #FDFFD3;
 }
