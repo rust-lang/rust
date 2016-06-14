@@ -598,17 +598,21 @@ we have function pointers flying across the FFI boundary in both directions.
 ```rust
 use std::os::raw::c_int;
 
+# #[cfg(hidden)]
 extern "C" {
     /// Register the callback.
     fn register(cb: Option<extern "C" fn(Option<extern "C" fn(c_int) -> c_int>, c_int) -> c_int>);
 }
+# unsafe fn register(_: Option<extern "C" fn(Option<extern "C" fn(c_int) -> c_int>,
+#                                            c_int) -> c_int>)
+# {}
 
 /// This fairly useless function receives a function pointer and an integer
 /// from C, and returns the result of calling the function with the integer.
 /// In case no function is provided, it squares the integer by default.
 extern "C" fn apply(process: Option<extern "C" fn(c_int) -> c_int>, int: c_int) -> c_int {
     match process {
-        Some(f) => unsafe { f(int) },
+        Some(f) => f(int),
         None    => int * int
     }
 }
