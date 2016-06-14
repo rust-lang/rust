@@ -839,7 +839,7 @@ impl HasAttrs for StmtKind {
     fn attrs(&self) -> &[Attribute] {
         match *self {
             StmtKind::Local(ref local) => local.attrs(),
-            StmtKind::Item(ref item) => item.attrs(),
+            StmtKind::Item(..) => &[],
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.attrs(),
             StmtKind::Mac(ref mac) => {
                 let (_, _, ref attrs) = **mac;
@@ -851,7 +851,7 @@ impl HasAttrs for StmtKind {
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
         match self {
             StmtKind::Local(local) => StmtKind::Local(local.map_attrs(f)),
-            StmtKind::Item(item) => StmtKind::Item(item.map_attrs(f)),
+            StmtKind::Item(..) => self,
             StmtKind::Expr(expr) => StmtKind::Expr(expr.map_attrs(f)),
             StmtKind::Semi(expr) => StmtKind::Semi(expr.map_attrs(f)),
             StmtKind::Mac(mac) => StmtKind::Mac(mac.map(|(mac, style, attrs)| {
