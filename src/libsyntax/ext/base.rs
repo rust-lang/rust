@@ -617,22 +617,6 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn backtrace(&self) -> ExpnId { self.backtrace }
 
-    /// Original span that caused the current exapnsion to happen.
-    pub fn original_span(&self) -> Span {
-        let mut expn_id = self.backtrace;
-        let mut call_site = None;
-        loop {
-            match self.codemap().with_expn_info(expn_id, |ei| ei.map(|ei| ei.call_site)) {
-                None => break,
-                Some(cs) => {
-                    call_site = Some(cs);
-                    expn_id = cs.expn_id;
-                }
-            }
-        }
-        call_site.expect("missing expansion backtrace")
-    }
-
     /// Returns span for the macro which originally caused the current expansion to happen.
     ///
     /// Stops backtracing at include! boundary.

@@ -32,7 +32,6 @@ fn main() {
 
     foo::blah!(); //~ ERROR
 
-    format!(); //~ ERROR
     format!(invalid); //~ ERROR
 
     include!(invalid); //~ ERROR

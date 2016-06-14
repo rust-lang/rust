@@ -236,14 +236,8 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                     },
                 });
 
-                // The span that we pass to the expanders we want to
-                // be the root of the call stack. That's the most
-                // relevant span and it's the actual invocation of
-                // the macro.
-                let mac_span = fld.cx.original_span();
-
                 let marked_tts = mark_tts(&tts[..], mark);
-                Some(expandfun.expand(fld.cx, mac_span, &marked_tts))
+                Some(expandfun.expand(fld.cx, call_site, &marked_tts))
             }
 
             IdentTT(ref expander, tt_span, allow_internal_unstable) => {
