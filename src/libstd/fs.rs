@@ -1771,6 +1771,15 @@ mod tests {
     }
 
     #[test]
+    fn file_create_new_already_exists_error() {
+        let tmpdir = tmpdir();
+        let file = &tmpdir.join("file_create_new_error_exists");
+        check!(fs::File::create(file));
+        let e = fs::OpenOptions::new().write(true).create_new(true).open(file).unwrap_err();
+        assert_eq!(e.kind(), ErrorKind::AlreadyExists);
+    }
+
+    #[test]
     fn mkdir_path_already_exists_error() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("mkdir_error_twice");
