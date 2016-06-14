@@ -1628,7 +1628,7 @@ Functions within external blocks may be called by Rust code, just like
 functions defined in Rust. The Rust compiler automatically translates between
 the Rust ABI and the foreign ABI.
 
-A number of [attributes](#attributes) control the behavior of external blocks.
+A number of [attributes](#ffi-attributes) control the behavior of external blocks.
 
 By default external blocks assume that the library they are calling uses the
 standard C "cdecl" ABI. Other ABIs may be specified using an `abi` string, as
