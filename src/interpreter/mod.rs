@@ -18,14 +18,14 @@ use syntax::attr;
 use syntax::codemap::{self, DUMMY_SP, Span};
 
 use error::{EvalError, EvalResult};
-use memory::{Memory, Pointer};
+use memory::{Memory, Pointer, FunctionDefinition};
 use primval::{self, PrimVal};
 
 use std::collections::HashMap;
 
 mod stepper;
 
-pub fn step<'ecx, 'a: 'ecx, 'tcx: 'a>(ecx: &'ecx mut EvalContext<'a, 'tcx>) -> EvalResult<bool> {
+pub fn step<'ecx, 'a: 'ecx, 'tcx: 'a>(ecx: &'ecx mut EvalContext<'a, 'tcx>) -> EvalResult<'tcx, bool> {
     stepper::Stepper::new(ecx).step()
 }
 
@@ -159,7 +159,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     // TODO(solson): Try making const_to_primval instead.
-    fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<Pointer> {
+    fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<'tcx, Pointer> {
         use rustc::middle::const_val::ConstVal::*;
         match *const_val {
             Float(_f) => unimplemented!(),
@@ -368,7 +368,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>)
-            -> EvalResult<()> {
+            -> EvalResult<'tcx, ()> {
         use rustc::mir::repr::TerminatorKind::*;
         match terminator.kind {
             Return => self.pop_stack_frame(),
@@ -434,7 +434,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let ptr = self.eval_operand(func)?;
                         assert_eq!(ptr.offset, 0);
                         let fn_ptr = self.memory.read_ptr(ptr)?;
-                        let (def_id, substs) = self.memory.get_fn(fn_ptr.alloc_id)?;
+                        let FunctionDefinition { def_id, substs, fn_ty } = self.memory.get_fn(fn_ptr.alloc_id)?;
+                        if fn_ty != bare_fn_ty {
+                            return Err(EvalError::FunctionPointerTyMismatch(fn_ty, bare_fn_ty));
+                        }
                         self.eval_fn_call(def_id, substs, bare_fn_ty, return_ptr, args,
                                           terminator.source_info.span)?
                     },
@@ -480,7 +483,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         return_ptr: Option<Pointer>,
         args: &[mir::Operand<'tcx>],
         span: Span,
-    ) -> EvalResult<()> {
+    ) -> EvalResult<'tcx, ()> {
         use syntax::abi::Abi;
         match fn_ty.abi {
             Abi::RustIntrinsic => {
@@ -559,7 +562,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn drop(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<()> {
+    fn drop(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
         if !self.type_needs_drop(ty) {
             debug!("no need to drop {:?}", ty);
             return Ok(());
@@ -601,7 +604,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<u64> {
+    fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty);
 
@@ -629,7 +632,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(discr_val)
     }
 
-    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u64) -> EvalResult<u64> {
+    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u64) -> EvalResult<'tcx, u64> {
         let not_null = match self.memory.read_usize(ptr) {
             Ok(0) => false,
             Ok(_) | Err(EvalError::ReadPointerAsBytes) => true,
@@ -646,7 +649,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         args: &[mir::Operand<'tcx>],
         dest: Pointer,
         dest_size: usize
-    ) -> EvalResult<()> {
+    ) -> EvalResult<'tcx, ()> {
         let args_res: EvalResult<Vec<Pointer>> = args.iter()
             .map(|arg| self.eval_operand(arg))
             .collect();
@@ -792,7 +795,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         args: &[mir::Operand<'tcx>],
         dest: Pointer,
         dest_size: usize,
-    ) -> EvalResult<()> {
+    ) -> EvalResult<'tcx, ()> {
         let name = self.tcx.item_name(def_id);
         let attrs = self.tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
@@ -855,7 +858,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest: Pointer,
         offsets: I,
         operands: &[mir::Operand<'tcx>],
-    ) -> EvalResult<()> {
+    ) -> EvalResult<'tcx, ()> {
         for (offset, operand) in offsets.into_iter().zip(operands) {
             let src = self.eval_operand(operand)?;
             let src_ty = self.operand_ty(operand);
@@ -866,7 +869,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn eval_assignment(&mut self, lvalue: &mir::Lvalue<'tcx>, rvalue: &mir::Rvalue<'tcx>)
-        -> EvalResult<()>
+        -> EvalResult<'tcx, ()>
     {
         let dest = self.eval_lvalue(lvalue)?.to_ptr();
         let dest_ty = self.lvalue_ty(lvalue);
@@ -1095,8 +1098,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     ReifyFnPointer => match self.operand_ty(operand).sty {
-                        ty::TyFnDef(def_id, substs, _) => {
-                            let fn_ptr = self.memory.create_fn_ptr(def_id, substs);
+                        ty::TyFnDef(def_id, substs, fn_ty) => {
+                            let fn_ptr = self.memory.create_fn_ptr(def_id, substs, fn_ty);
                             self.memory.write_ptr(dest, fn_ptr)?;
                         },
                         ref other => panic!("reify fn pointer on {:?}", other),
@@ -1112,7 +1115,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn nonnull_offset(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> EvalResult<Size> {
+    fn nonnull_offset(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> EvalResult<'tcx, Size> {
         // Skip the constant 0 at the start meant for LLVM GEP.
         let mut path = discrfield.iter().skip(1).map(|&i| i as usize);
 
@@ -1133,7 +1136,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.field_path_offset(inner_ty, path)
     }
 
-    fn field_path_offset<I: Iterator<Item = usize>>(&self, mut ty: Ty<'tcx>, path: I) -> EvalResult<Size> {
+    fn field_path_offset<I: Iterator<Item = usize>>(&self, mut ty: Ty<'tcx>, path: I) -> EvalResult<'tcx, Size> {
         let mut offset = Size::from_bytes(0);
 
         // Skip the initial 0 intended for LLVM GEP.
@@ -1146,7 +1149,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(offset)
     }
 
-    fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<Ty<'tcx>> {
+    fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
         match ty.sty {
             ty::TyStruct(adt_def, substs) => {
                 Ok(adt_def.struct_variant().fields[field_index].ty(self.tcx, substs))
@@ -1162,7 +1165,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn get_field_offset(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<Size> {
+    fn get_field_offset(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Size> {
         let layout = self.type_layout(ty);
 
         use rustc::ty::layout::Layout::*;
@@ -1179,7 +1182,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
+    fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Pointer> {
         use rustc::mir::repr::Operand::*;
         match *op {
             Consume(ref lvalue) => Ok(self.eval_lvalue(lvalue)?.to_ptr()),
@@ -1213,7 +1216,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<Lvalue> {
+    fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue> {
         use rustc::mir::repr::Lvalue::*;
         let ptr = match *lvalue {
             ReturnPointer => self.frame().return_ptr
@@ -1321,7 +1324,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.monomorphize(self.mir().operand_ty(self.tcx, operand), self.substs())
     }
 
-    fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<()> {
+    fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
         let size = self.type_size(ty);
         self.memory.copy(src, dest, size)?;
         if self.type_needs_drop(ty) {
@@ -1330,7 +1333,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<PrimVal> {
+    pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         use syntax::ast::{IntTy, UintTy};
         let val = match (self.memory.pointer_size, &ty.sty) {
             (_, &ty::TyBool)              => PrimVal::Bool(self.memory.read_bool(ptr)?),

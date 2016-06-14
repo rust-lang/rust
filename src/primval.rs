@@ -13,7 +13,7 @@ pub enum PrimVal {
     IntegerPtr(u64),
 }
 
-pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResult<PrimVal> {
+pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResult<'tcx, PrimVal> {
     use rustc::mir::repr::BinOp::*;
     use self::PrimVal::*;
 
@@ -43,7 +43,7 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResul
         })
     }
 
-    fn unrelated_ptr_ops(bin_op: mir::BinOp) -> EvalResult<PrimVal> {
+    fn unrelated_ptr_ops<'tcx>(bin_op: mir::BinOp) -> EvalResult<'tcx, PrimVal> {
         use rustc::mir::repr::BinOp::*;
         match bin_op {
             Eq => Ok(Bool(false)),
@@ -108,7 +108,7 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResul
     Ok(val)
 }
 
-pub fn unary_op(un_op: mir::UnOp, val: PrimVal) -> EvalResult<PrimVal> {
+pub fn unary_op<'tcx>(un_op: mir::UnOp, val: PrimVal) -> EvalResult<'tcx, PrimVal> {
     use rustc::mir::repr::UnOp::*;
     use self::PrimVal::*;
     match (un_op, val) {
