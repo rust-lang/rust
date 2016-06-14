@@ -23,8 +23,9 @@ fn main() {
     // of the below being caught.
 
     macro_rules! expando {
-        ($x: ident) => { trace_macros!($x) }
+        ($x: ident) => { trace_macros!($x) } //~ ERROR `trace_macros` is not stable
     }
 
-    expando!(true); //~ ERROR `trace_macros` is not stable
+    expando!(true); //~ NOTE in this expansion
+                    //~^ NOTE in this expansion
 }
