@@ -600,7 +600,7 @@ use std::os::raw::c_int;
 
 extern "C" {
     /// Register the callback.
-    fn register(Option<extern "C" fn(Option<extern "C" fn(c_int) -> c_int>, c_int) -> c_int>);
+    fn register(cb: Option<extern "C" fn(Option<extern "C" fn(c_int) -> c_int>, c_int) -> c_int>);
 }
 
 /// This fairly useless function receives a function pointer and an integer
