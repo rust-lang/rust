@@ -114,12 +114,8 @@ Non-doc comments are interpreted as a form of whitespace.
 
 ## Whitespace
 
-Whitespace is any non-empty string containing only the following characters:
-
-- `U+0020` (space, `' '`)
-- `U+0009` (tab, `'\t'`)
-- `U+000A` (LF, `'\n'`)
-- `U+000D` (CR, `'\r'`)
+Whitespace is any non-empty string containing only characters that have the
+`Pattern_White_Space` Unicode property.
 
 Rust is a "free-form" language, meaning that all forms of whitespace serve only
 to separate _tokens_ in the grammar, and have no semantic significance.
