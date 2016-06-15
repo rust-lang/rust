@@ -1,10 +1,12 @@
 use std::error::Error;
 use std::fmt;
 use rustc::mir::repr as mir;
+use rustc::ty::BareFnTy;
 use memory::Pointer;
 
 #[derive(Clone, Debug)]
-pub enum EvalError {
+pub enum EvalError<'tcx> {
+    FunctionPointerTyMismatch(&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>),
     DanglingPointerDeref,
     InvalidFunctionPointer,
     InvalidBool,
@@ -24,11 +26,13 @@ pub enum EvalError {
     ExecuteMemory,
 }
 
-pub type EvalResult<T> = Result<T, EvalError>;
+pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
 
-impl Error for EvalError {
+impl<'tcx> Error for EvalError<'tcx> {
     fn description(&self) -> &str {
         match *self {
+            EvalError::FunctionPointerTyMismatch(..) =>
+                "tried to call a function through a function pointer of a different type",
             EvalError::DanglingPointerDeref =>
                 "dangling pointer was dereferenced",
             EvalError::InvalidFunctionPointer =>
@@ -60,13 +64,15 @@ impl Error for EvalError {
     fn cause(&self) -> Option<&Error> { None }
 }
 
-impl fmt::Display for EvalError {
+impl<'tcx> fmt::Display for EvalError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             EvalError::PointerOutOfBounds { ptr, size, allocation_size } => {
                 write!(f, "memory access of {}..{} outside bounds of allocation {} which has size {}",
                        ptr.offset, ptr.offset + size, ptr.alloc_id, allocation_size)
             },
+            EvalError::FunctionPointerTyMismatch(expected, got) =>
+                write!(f, "tried to call a function of type {:?} through a function pointer of type {:?}", expected, got),
             _ => write!(f, "{}", self.description()),
         }
     }

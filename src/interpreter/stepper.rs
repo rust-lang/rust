@@ -23,7 +23,7 @@ impl<'ecx, 'a, 'tcx> Stepper<'ecx, 'a, 'tcx> {
         }
     }
 
-    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<()> {
+    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<'tcx, ()> {
         trace!("{:?}", stmt);
         let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
         self.ecx.eval_assignment(lvalue, rvalue)?;
@@ -31,7 +31,7 @@ impl<'ecx, 'a, 'tcx> Stepper<'ecx, 'a, 'tcx> {
         Ok(())
     }
 
-    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<()> {
+    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx, ()> {
         // after a terminator we go to a new block
         self.ecx.frame_mut().stmt = 0;
         trace!("{:?}", terminator.kind);
@@ -43,7 +43,7 @@ impl<'ecx, 'a, 'tcx> Stepper<'ecx, 'a, 'tcx> {
     }
 
     // returns true as long as there are more things to do
-    pub(super) fn step(&mut self) -> EvalResult<bool> {
+    pub(super) fn step(&mut self) -> EvalResult<'tcx, bool> {
         if self.ecx.stack.is_empty() {
             return Ok(false);
         }
