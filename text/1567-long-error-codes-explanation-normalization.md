@@ -1,9 +1,8 @@
 
 Start Date: 2016-01-04
 
-RFC PR:
-
-Rust Issue: N/A
+- RFC PR: [rust-lang/rfcs#1567](https://github.com/rust-lang/rfcs/pull/1567)
+- Rust Issue: N/A
 
 # Summary
 
