@@ -444,6 +444,52 @@ impl SomeTrait for Foo { // ok!
 ```
 "##,
 
+E0406: r##"
+A function is referring to an associated type which hasn't been declared in
+the trait. Example of erroneous code:
+
+```compile_fail
+trait Foo {
+    type Bar;
+
+    // error: function signature contains a reference to `Self::Baz`, but
+    //        `Baz` hasn't been declared as an associated type of the trait
+    fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
+}
+```
+You tried to use an associated type which hasn't been declared in the
+trait body. All associated types must be declared with the
+type keyword, e.g. `type a;` before being used.
+
+One solution might be to declare the associated type in the trait:
+
+```
+trait Foo {
+    type Bar;
+    type Baz; // declare `Baz`
+
+    fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
+}
+```
+
+Alternatively, you could remove the input variable
+corresponding to the associated type from the function signature:
+
+```
+trait Foo {
+    type Bar;
+
+    // `&Self::Baz` has been removed
+    fn return_bool(&self, &Self::Bar) -> bool;
+}
+```
+
+For more on associated types, refer to the associated types section
+of the Rust book:
+
+https://doc.rust-lang.org/book/associated-types.html
+"##,
+
 E0407: r##"
 A definition of a method not in the implemented trait was given in a trait
 implementation. Example of erroneous code:
@@ -1105,7 +1151,6 @@ register_diagnostics! {
 //  E0257,
 //  E0258,
     E0402, // cannot use an outer type parameter in this context
-    E0406, // undeclared associated type
 //  E0410, merged into 408
 //  E0413, merged into 530
 //  E0414, merged into 530
