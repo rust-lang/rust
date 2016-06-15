@@ -37,7 +37,7 @@ impl<'ecx, 'a, 'tcx> Stepper<'ecx, 'a, 'tcx> {
         trace!("{:?}", terminator.kind);
         self.ecx.eval_terminator(terminator)?;
         if !self.ecx.stack.is_empty() {
-            trace!("// {:?}", self.ecx.frame().next_block);
+            trace!("// {:?}", self.ecx.frame().block);
         }
         Ok(())
     }
@@ -48,7 +48,7 @@ impl<'ecx, 'a, 'tcx> Stepper<'ecx, 'a, 'tcx> {
             return Ok(false);
         }
 
-        let block = self.ecx.frame().next_block;
+        let block = self.ecx.frame().block;
         let stmt = self.ecx.frame().stmt;
         let mir = self.ecx.mir();
         let basic_block = &mir.basic_blocks()[block];

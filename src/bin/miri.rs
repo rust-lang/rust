@@ -78,7 +78,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
 
 fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
     let frame = ecx.stack().last().expect("stackframe was empty");
-    let block = &frame.mir.basic_blocks()[frame.next_block];
+    let block = &frame.mir.basic_blocks()[frame.block];
     let span = if frame.stmt < block.statements.len() {
         block.statements[frame.stmt].source_info.span
     } else {
@@ -99,12 +99,6 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
         err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
     }
     err.emit();
-}
-
-fn main() {
-    init_logger();
-    let args: Vec<String> = std::env::args().collect();
-    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls);
 }
 
 fn init_logger() {
@@ -129,4 +123,29 @@ fn init_logger() {
     }
 
     builder.init().unwrap();
+}
+
+fn find_sysroot() -> String {
+    // Taken from https://github.com/Manishearth/rust-clippy/pull/911.
+    let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
+    let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
+    match (home, toolchain) {
+        (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
+        _ => option_env!("RUST_SYSROOT")
+            .expect("need to specify RUST_SYSROOT env var or use rustup or multirust")
+            .to_owned(),
+    }
+}
+
+fn main() {
+    init_logger();
+    let mut args: Vec<String> = std::env::args().collect();
+
+    let sysroot_flag = String::from("--sysroot");
+    if !args.contains(&sysroot_flag) {
+        args.push(sysroot_flag);
+        args.push(find_sysroot());
+    }
+
+    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls);
 }
