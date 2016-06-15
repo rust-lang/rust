@@ -38,7 +38,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
             let mir_map = state.mir_map.unwrap();
 
             let (node_id, span) = state.session.entry_fn.borrow().expect("no main or start function found");
-            println!("found `main` function at: {:?}", span);
+            debug!("found `main` function at: {:?}", span);
 
             let mir = mir_map.map.get(&node_id).expect("no mir for main function");
             let def_id = tcx.map.local_def_id(node_id);
