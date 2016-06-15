@@ -1,6 +1,6 @@
 % Whitespace [FIXME: needs RFC]
 
-* Lines must not exceed 99 characters.
+* Lines must not exceed 120 characters.
 * Use 4 spaces for indentation, _not_ tabs.
 * No trailing whitespace at the end of lines or files.
 
