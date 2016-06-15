@@ -10,8 +10,8 @@ use rustc_const_math::ConstFloat;
 use syntax::codemap::{Span, Spanned, ExpnFormat};
 use syntax::ptr::P;
 use utils::{
-    get_item_name, get_parent_expr, implements_trait, is_integer_literal, match_path, snippet,
-    span_lint, span_lint_and_then, walk_ptrs_ty
+    get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path,
+    snippet, span_lint, span_lint_and_then, walk_ptrs_ty
 };
 
 /// **What it does:** This lint checks for function arguments and let bindings denoted as `ref`.
@@ -405,15 +405,18 @@ impl LateLintPass for UsedUnderscoreBinding {
         }
         let binding = match expr.node {
             ExprPath(_, ref path) => {
-                let segment = path.segments
+                let binding = path.segments
                                 .last()
                                 .expect("path should always have at least one segment")
-                                .name;
-                if segment.as_str().starts_with('_') &&
-                   !segment.as_str().starts_with("__") &&
-                   segment != segment.unhygienize() && // not in bang macro
-                   is_used(cx, expr) {
-                    Some(segment.as_str())
+                                .name
+                                .as_str();
+                if binding.starts_with('_') &&
+                   !binding.starts_with("__") &&
+                   binding != "_result" && // FIXME: #944
+                   is_used(cx, expr) &&
+                   // don't lint if the declaration is in a macro
+                   non_macro_local(cx, &cx.tcx.expect_def(expr.id)) {
+                    Some(binding)
                 } else {
                     None
                 }
@@ -429,13 +432,11 @@ impl LateLintPass for UsedUnderscoreBinding {
             _ => None,
         };
         if let Some(binding) = binding {
-            if binding != "_result" { // FIXME: #944
-                span_lint(cx,
-                          USED_UNDERSCORE_BINDING,
-                          expr.span,
-                          &format!("used binding `{}` which is prefixed with an underscore. A leading \
-                                    underscore signals that a binding will not be used.", binding));
-            }
+            span_lint(cx,
+                      USED_UNDERSCORE_BINDING,
+                      expr.span,
+                      &format!("used binding `{}` which is prefixed with an underscore. A leading \
+                                underscore signals that a binding will not be used.", binding));
         }
     }
 }
@@ -462,4 +463,18 @@ fn in_attributes_expansion(cx: &LateContext, expr: &Expr) -> bool {
             matches!(info.callee.format, ExpnFormat::MacroAttribute(_))
         })
     })
+}
+
+/// Test whether `def` is a variable defined outside a macro.
+fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
+    match *def {
+        def::Def::Local(_, id) | def::Def::Upvar(_, id, _, _) => {
+            if let Some(span) = cx.tcx.map.opt_span(id) {
+                !in_macro(cx, span)
+            } else {
+                true
+            }
+        }
+        _ => false,
+    }
 }

@@ -5,14 +5,27 @@
 #![allow(blacklisted_name)]
 #![deny(used_underscore_binding)]
 
+macro_rules! test_macro {
+    () => {{
+        let _foo = 42;
+        _foo + 1
+    }}
+}
+
 /// Test that we lint if we use a binding with a single leading underscore
 fn prefix_underscore(_foo: u32) -> u32 {
     _foo + 1 //~ ERROR used binding `_foo` which is prefixed with an underscore
 }
 
-/// Test that we lint even if the use is within a macro expansion
+/// Test that we lint if we use a `_`-variable defined outside within a macro expansion
 fn in_macro(_foo: u32) {
-    println!("{}", _foo); //~ ERROR used binding `_foo` which is prefixed with an underscore
+    println!("{}", _foo);
+    //~^ ERROR used binding `_foo` which is prefixed with an underscore
+    assert_eq!(_foo, _foo);
+    //~^ ERROR used binding `_foo` which is prefixed with an underscore
+    //~| ERROR used binding `_foo` which is prefixed with an underscore
+
+    test_macro!() + 1;
 }
 
 // Struct for testing use of fields prefixed with an underscore
