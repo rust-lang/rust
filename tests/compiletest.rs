@@ -21,6 +21,9 @@ fn run_mode(mode: &'static str) {
     let targets = &["x86_64-unknown-linux-gnu", "i686-unknown-linux-gnu"];
 
     for &target in targets {
+        use std::io::Write;
+        let stderr = std::io::stderr();
+        write!(stderr.lock(), "running tests for target {}", target).unwrap();
         let mut config = compiletest::default_config();
         config.host_rustcflags = Some(flags.clone());
         config.mode = mode.parse().expect("Invalid mode");

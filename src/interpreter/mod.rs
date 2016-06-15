@@ -154,6 +154,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &self.memory
     }
 
+    pub fn memory_mut(&mut self) -> &mut Memory<'tcx> {
+        &mut self.memory
+    }
+
     pub fn stack(&self) -> &[Frame] {
         &self.stack
     }
@@ -1373,7 +1377,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
-    fn frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
+    pub fn frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
 

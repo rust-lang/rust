@@ -1,6 +1,9 @@
 #![feature(start)]
 
 #[start]
-fn foo(_nargs: isize, _args: *const *const u8) -> isize {
-    return 0;
+fn foo(nargs: isize, args: *const *const u8) -> isize {
+    if nargs > 0 {
+        assert!(unsafe{*args} as usize != 0);
+    }
+    0
 }

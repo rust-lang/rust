@@ -48,6 +48,17 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
 
             ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, Some(return_ptr));
 
+            if mir.arg_decls.len() == 2 {
+                // start function
+                let ptr_size = ecx.memory().pointer_size;
+                let nargs = ecx.memory_mut().allocate(ptr_size);
+                ecx.memory_mut().write_usize(nargs, 0).unwrap();
+                let args = ecx.memory_mut().allocate(ptr_size);
+                ecx.memory_mut().write_usize(args, 0).unwrap();
+                ecx.frame_mut().locals[0] = nargs;
+                ecx.frame_mut().locals[1] = args;
+            }
+
             loop {
                 match step(&mut ecx) {
                     Ok(true) => {}
