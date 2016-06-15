@@ -1343,12 +1343,12 @@ impl Context {
             } else {
                 let mut url = repeat("../").take(cx.current.len())
                                            .collect::<String>();
-                if let Some(&(ref names, _)) = cache().paths.get(&it.def_id) {
+                if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {
                     for name in &names[..names.len() - 1] {
                         url.push_str(name);
                         url.push_str("/");
                     }
-                    url.push_str(&item_path(it));
+                    url.push_str(&item_path(ty, names.last().unwrap()));
                     layout::redirect(writer, &url)?;
                 }
             }
@@ -1409,7 +1409,8 @@ impl Context {
             render(&mut buf, self, &item, true).unwrap();
             // buf will be empty if the item is stripped and there is no redirect for it
             if !buf.is_empty() {
-                let joint_dst = self.dst.join(&item_path(&item));
+                let joint_dst = self.dst.join(&item_path(shortty(&item),
+                                                         item.name.as_ref().unwrap()));
                 try_err!(fs::create_dir_all(&self.dst), &self.dst);
                 let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
                 try_err!(dst.write_all(&buf), &joint_dst);
@@ -1531,7 +1532,7 @@ impl<'a> Item<'a> {
             Some(format!("{root}{path}/{file}?gotosrc={goto}",
                          root = root,
                          path = path[..path.len() - 1].join("/"),
-                         file = item_path(self.item),
+                         file = item_path(shortty(self.item), self.item.name.as_ref().unwrap()),
                          goto = self.item.def_id.index.as_usize()))
         }
     }
@@ -1623,13 +1624,10 @@ impl<'a> fmt::Display for Item<'a> {
     }
 }
 
-fn item_path(item: &clean::Item) -> String {
-    if item.is_mod() {
-        format!("{}/index.html", item.name.as_ref().unwrap())
-    } else {
-        format!("{}.{}.html",
-                shortty(item).to_static_str(),
-                *item.name.as_ref().unwrap())
+fn item_path(ty: ItemType, name: &str) -> String {
+    match ty {
+        ItemType::Module => format!("{}/index.html", name),
+        _ => format!("{}.{}.html", ty.to_static_str(), name),
     }
 }
 
@@ -1821,7 +1819,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        docs = shorter(Some(&Markdown(doc_value).to_string())),
                        class = shortty(myitem),
                        stab = myitem.stability_class(),
-                       href = item_path(myitem),
+                       href = item_path(shortty(myitem), myitem.name.as_ref().unwrap()),
                        title = full_path(cx, myitem))?;
             }
         }
