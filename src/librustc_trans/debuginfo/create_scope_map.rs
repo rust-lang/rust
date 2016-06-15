@@ -51,7 +51,7 @@ pub fn create_scope_map(cx: &CrateContext,
     for arg in args {
         pat_util::pat_bindings(&arg.pat, |_, node_id, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
-                                               name: Some(path1.node.unhygienize()) });
+                                               name: Some(path1.node) });
             scope_map.insert(node_id, fn_metadata);
         })
     }
@@ -260,7 +260,7 @@ fn walk_pattern(cx: &CrateContext,
             // N.B.: this comparison must be UNhygienic... because
             // gdb knows nothing about the context, so any two
             // variables with the same name will cause the problem.
-            let name = path1.node.unhygienize();
+            let name = path1.node;
             let need_new_scope = scope_stack
                 .iter()
                 .any(|entry| entry.name == Some(name));

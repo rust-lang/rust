@@ -51,10 +51,9 @@ use std::collections::BTreeMap;
 use std::iter;
 use syntax::ast::*;
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
-use syntax::ext::mtwt;
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned, Span};
-use syntax::parse::token::{self, keywords};
+use syntax::parse::token;
 use syntax::std_inject;
 use syntax::visit::{self, Visitor};
 
@@ -184,16 +183,8 @@ impl<'a> LoweringContext<'a> {
         result
     }
 
-    fn lower_ident(&mut self, ident: Ident) -> Name {
-        if ident.name != keywords::Invalid.name() {
-            mtwt::resolve(ident)
-        } else {
-            ident.name
-        }
-    }
-
     fn lower_opt_sp_ident(&mut self, o_id: Option<Spanned<Ident>>) -> Option<Spanned<Name>> {
-        o_id.map(|sp_ident| respan(sp_ident.span, self.lower_ident(sp_ident.node)))
+        o_id.map(|sp_ident| respan(sp_ident.span, sp_ident.node.name))
     }
 
     fn lower_attrs(&mut self, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
@@ -338,28 +329,20 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_path_full(&mut self, p: &Path, rename: bool) -> hir::Path {
+    fn lower_path(&mut self, p: &Path) -> hir::Path {
         hir::Path {
             global: p.global,
             segments: p.segments
                        .iter()
                        .map(|&PathSegment { identifier, ref parameters }| {
                            hir::PathSegment {
-                               name: if rename {
-                                   self.lower_ident(identifier)
-                               } else {
-                                   identifier.name
-                               },
+                               name: identifier.name,
                                parameters: self.lower_path_parameters(parameters),
                            }
                        })
                        .collect(),
             span: p.span,
         }
-    }
-
-    fn lower_path(&mut self, p: &Path) -> hir::Path {
-        self.lower_path_full(p, false)
     }
 
     fn lower_path_parameters(&mut self, path_parameters: &PathParameters) -> hir::PathParameters {
@@ -870,8 +853,7 @@ impl<'a> LoweringContext<'a> {
                             // `None` can occur in body-less function signatures
                             None | Some(Def::Local(..)) => {
                                 hir::PatKind::Binding(this.lower_binding_mode(binding_mode),
-                                                      respan(pth1.span,
-                                                             this.lower_ident(pth1.node)),
+                                                      respan(pth1.span, pth1.node.name),
                                                       sub.as_ref().map(|x| this.lower_pat(x)))
                             }
                             _ => hir::PatKind::Path(hir::Path::from_name(pth1.span, pth1.node.name))
@@ -1238,12 +1220,7 @@ impl<'a> LoweringContext<'a> {
                             position: position,
                         }
                     });
-                    // Only local variables are renamed
-                    let rename = match self.resolver.get_resolution(e.id).map(|d| d.base_def) {
-                        Some(Def::Local(..)) | Some(Def::Upvar(..)) => true,
-                        _ => false,
-                    };
-                    hir::ExprPath(hir_qself, self.lower_path_full(path, rename))
+                    hir::ExprPath(hir_qself, self.lower_path(path))
                 }
                 ExprKind::Break(opt_ident) => hir::ExprBreak(self.lower_opt_sp_ident(opt_ident)),
                 ExprKind::Again(opt_ident) => hir::ExprAgain(self.lower_opt_sp_ident(opt_ident)),

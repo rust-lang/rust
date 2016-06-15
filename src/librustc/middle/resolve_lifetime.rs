@@ -456,8 +456,7 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Block) {
     fn expression_label(ex: &hir::Expr) -> Option<(ast::Name, Span)> {
         match ex.node {
             hir::ExprWhile(_, _, Some(label)) |
-            hir::ExprLoop(_, Some(label)) => Some((label.node.unhygienize(),
-                                                   label.span)),
+            hir::ExprLoop(_, Some(label)) => Some((label.node, label.span)),
             _ => None,
         }
     }
