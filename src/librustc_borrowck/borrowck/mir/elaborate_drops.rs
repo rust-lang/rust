@@ -548,17 +548,26 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     ///     ELAB(drop location.2 [target=`c.unwind])
     fn drop_ladder<'a>(&mut self,
                        c: &DropCtxt<'a, 'tcx>,
-                       fields: &[(Lvalue<'tcx>, Option<MovePathIndex>)])
+                       fields: Vec<(Lvalue<'tcx>, Option<MovePathIndex>)>)
                        -> BasicBlock
     {
         debug!("drop_ladder({:?}, {:?})", c, fields);
+
+        let mut fields = fields;
+        fields.retain(|&(ref lvalue, _)| {
+            let ty = self.mir.lvalue_ty(self.tcx, lvalue).to_ty(self.tcx);
+            self.tcx.type_needs_drop_given_env(ty, self.param_env())
+        });
+
+        debug!("drop_ladder - fields needing drop: {:?}", fields);
+
         let unwind_ladder = if c.is_cleanup {
             None
         } else {
             Some(self.drop_halfladder(c, None, c.unwind.unwrap(), &fields, true))
         };
 
-        self.drop_halfladder(c, unwind_ladder, c.succ, fields, c.is_cleanup)
+        self.drop_halfladder(c, unwind_ladder, c.succ, &fields, c.is_cleanup)
             .last().cloned().unwrap_or(c.succ)
     }
 
@@ -567,7 +576,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     {
         debug!("open_drop_for_tuple({:?}, {:?})", c, tys);
 
-        let fields: Vec<_> = tys.iter().enumerate().map(|(i, &ty)| {
+        let fields = tys.iter().enumerate().map(|(i, &ty)| {
             (c.lvalue.clone().field(Field::new(i), ty),
              super::move_path_children_matching(
                  &self.move_data().move_paths, c.path, |proj| match proj {
@@ -579,7 +588,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             ))
         }).collect();
 
-        self.drop_ladder(c, &fields)
+        self.drop_ladder(c, fields)
     }
 
     fn open_drop_for_box<'a>(&mut self, c: &DropCtxt<'a, 'tcx>, ty: Ty<'tcx>)
@@ -634,7 +643,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 variant_path,
                 &adt.variants[variant_index],
                 substs);
-            self.drop_ladder(c, &fields)
+            self.drop_ladder(c, fields)
         } else {
             // variant not found - drop the entire enum
             if let None = *drop_block {
@@ -659,7 +668,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                     &adt.variants[0],
                     substs
                 );
-                self.drop_ladder(c, &fields)
+                self.drop_ladder(c, fields)
             }
             _ => {
                 let variant_drops : Vec<BasicBlock> =
