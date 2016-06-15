@@ -2459,12 +2459,9 @@ impl<'a> State<'a> {
                     }
                 }
                 self.print_ident(path1.node)?;
-                match *sub {
-                    Some(ref p) => {
-                        word(&mut self.s, "@")?;
-                        self.print_pat(&p)?;
-                    }
-                    None => ()
+                if let Some(ref p) = *sub {
+                    word(&mut self.s, "@")?;
+                    self.print_pat(&p)?;
                 }
             }
             PatKind::TupleStruct(ref path, ref elts, ddpos) => {
@@ -3008,20 +3005,19 @@ impl<'a> State<'a> {
             Some(cm) => cm,
             _ => return Ok(())
         };
-        match self.next_comment() {
-            Some(ref cmnt) => {
-                if (*cmnt).style != comments::Trailing { return Ok(()) }
-                let span_line = cm.lookup_char_pos(span.hi);
-                let comment_line = cm.lookup_char_pos((*cmnt).pos);
-                let mut next = (*cmnt).pos + BytePos(1);
-                match next_pos { None => (), Some(p) => next = p }
-                if span.hi < (*cmnt).pos && (*cmnt).pos < next &&
-                    span_line.line == comment_line.line {
-                        self.print_comment(cmnt)?;
-                        self.cur_cmnt_and_lit.cur_cmnt += 1;
-                    }
+        if let Some(ref cmnt) = self.next_comment() {
+            if (*cmnt).style != comments::Trailing { return Ok(()) }
+            let span_line = cm.lookup_char_pos(span.hi);
+            let comment_line = cm.lookup_char_pos((*cmnt).pos);
+            let mut next = (*cmnt).pos + BytePos(1);
+            if let Some(p) = next_pos {
+                next = p;
             }
-            _ => ()
+            if span.hi < (*cmnt).pos && (*cmnt).pos < next &&
+               span_line.line == comment_line.line {
+                self.print_comment(cmnt)?;
+                self.cur_cmnt_and_lit.cur_cmnt += 1;
+            }
         }
         Ok(())
     }

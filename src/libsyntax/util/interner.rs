@@ -47,9 +47,8 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
 
     pub fn intern(&self, val: T) -> Name {
         let mut map = self.map.borrow_mut();
-        match (*map).get(&val) {
-            Some(&idx) => return idx,
-            None => (),
+        if let Some(&idx) = (*map).get(&val) {
+            return idx;
         }
 
         let mut vect = self.vect.borrow_mut();
@@ -161,9 +160,8 @@ impl StrInterner {
 
     pub fn intern(&self, val: &str) -> Name {
         let mut map = self.map.borrow_mut();
-        match map.get(val) {
-            Some(&idx) => return idx,
-            None => (),
+        if let Some(&idx) = map.get(val) {
+            return idx;
         }
 
         let new_idx = Name(self.len() as u32);

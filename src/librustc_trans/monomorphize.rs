@@ -50,12 +50,9 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let mono_ty = apply_param_substs(ccx.tcx(), psubsts, &item_ty);
     debug!("mono_ty = {:?} (post-substitution)", mono_ty);
 
-    match ccx.instances().borrow().get(&instance) {
-        Some(&val) => {
-            debug!("leaving monomorphic fn {:?}", instance);
-            return (val, mono_ty);
-        }
-        None => ()
+    if let Some(&val) = ccx.instances().borrow().get(&instance) {
+        debug!("leaving monomorphic fn {:?}", instance);
+        return (val, mono_ty);
     }
 
     debug!("monomorphic_fn({:?})", instance);

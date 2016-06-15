@@ -874,9 +874,8 @@ pub fn unknown_file_metadata(cx: &CrateContext) -> DIFile {
 }
 
 fn file_metadata_(cx: &CrateContext, key: &str, file_name: &str, work_dir: &str) -> DIFile {
-    match debug_context(cx).created_files.borrow().get(key) {
-        Some(file_metadata) => return *file_metadata,
-        None => ()
+    if let Some(file_metadata) = debug_context(cx).created_files.borrow().get(key) {
+        return *file_metadata;
     }
 
     debug!("file_metadata: file_name: {}, work_dir: {}", file_name, work_dir);
