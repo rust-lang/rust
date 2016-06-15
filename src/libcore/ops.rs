@@ -1475,7 +1475,7 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 ///     assert_eq!(arr[1..3], [  1,2  ]);
 /// }
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
 
@@ -1506,7 +1506,7 @@ impl fmt::Debug for RangeFull {
 ///     assert_eq!(arr[1..3], [  1,2  ]);  // Range
 /// }
 /// ```
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -1570,7 +1570,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///     assert_eq!(arr[1..3], [  1,2  ]);
 /// }
 /// ```
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
@@ -1619,7 +1619,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 ///     assert_eq!(arr[1..3], [  1,2  ]);
 /// }
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
@@ -1669,7 +1669,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 ///     assert_eq!(arr[1...2], [  1,2  ]);  // RangeInclusive
 /// }
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub enum RangeInclusive<Idx> {
     /// Empty range (iteration has finished)
@@ -1774,7 +1774,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 ///     assert_eq!(arr[1...2], [  1,2  ]);
 /// }
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub struct RangeToInclusive<Idx> {
     /// The upper bound of the range (inclusive)
