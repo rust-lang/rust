@@ -90,7 +90,7 @@ fn interpret_start_points<'a, 'tcx>(
 
 fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
     let frame = ecx.stack().last().expect("stackframe was empty");
-    let block = &frame.mir.basic_blocks()[frame.next_block];
+    let block = &frame.mir.basic_blocks()[frame.block];
     let span = if frame.stmt < block.statements.len() {
         block.statements[frame.stmt].source_info.span
     } else {

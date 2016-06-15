@@ -42,7 +42,7 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     /// The virtual memory system.
     memory: Memory<'tcx>,
 
-    /// Precomputed statics, constants and promoteds
+    /// Precomputed statics, constants and promoteds.
     statics: HashMap<ConstantId<'tcx>, Pointer>,
 
     /// The virtual call stack.
@@ -51,20 +51,25 @@ pub struct EvalContext<'a, 'tcx: 'a> {
 
 /// A stack frame.
 pub struct Frame<'a, 'tcx: 'a> {
-    /// The def_id of the current function
-    pub def_id: DefId,
-
-    /// The span of the call site
-    pub span: codemap::Span,
-
-    /// type substitutions for the current function invocation
-    pub substs: &'tcx Substs<'tcx>,
+    ////////////////////////////////////////////////////////////////////////////////
+    // Function and callsite information
+    ////////////////////////////////////////////////////////////////////////////////
 
     /// The MIR for the function called on this frame.
     pub mir: CachedMir<'a, 'tcx>,
 
-    /// The block that is currently executed (or will be executed after the above call stacks return)
-    pub next_block: mir::BasicBlock,
+    /// The def_id of the current function.
+    pub def_id: DefId,
+
+    /// type substitutions for the current function invocation.
+    pub substs: &'tcx Substs<'tcx>,
+
+    /// The span of the call site.
+    pub span: codemap::Span,
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // Return pointer and local allocations
+    ////////////////////////////////////////////////////////////////////////////////
 
     /// A pointer for writing the return value of the current call if it's not a diverging call.
     pub return_ptr: Option<Pointer>,
@@ -80,7 +85,15 @@ pub struct Frame<'a, 'tcx: 'a> {
     /// The offset of the first temporary in `self.locals`.
     pub temp_offset: usize,
 
-    /// The index of the currently evaluated statment
+    ////////////////////////////////////////////////////////////////////////////////
+    // Current position within the function
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /// The block that is currently executed (or will be executed after the above call stacks
+    /// return).
+    pub block: mir::BasicBlock,
+
+    /// The index of the currently evaluated statment.
     pub stmt: usize,
 }
 
@@ -349,7 +362,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         self.stack.push(Frame {
             mir: mir.clone(),
-            next_block: mir::START_BLOCK,
+            block: mir::START_BLOCK,
             return_ptr: return_ptr,
             locals: locals,
             var_offset: num_args,
@@ -374,13 +387,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Return => self.pop_stack_frame(),
 
             Goto { target } => {
-                self.frame_mut().next_block = target;
+                self.frame_mut().block = target;
             },
 
             If { ref cond, targets: (then_target, else_target) } => {
                 let cond_ptr = self.eval_operand(cond)?;
                 let cond_val = self.memory.read_bool(cond_ptr)?;
-                self.frame_mut().next_block = if cond_val { then_target } else { else_target };
+                self.frame_mut().block = if cond_val { then_target } else { else_target };
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
@@ -403,7 +416,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 }
 
-                self.frame_mut().next_block = target_block;
+                self.frame_mut().block = target_block;
             }
 
             Switch { ref discr, ref targets, adt_def } => {
@@ -415,7 +428,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 match matching {
                     Some(i) => {
-                        self.frame_mut().next_block = targets[i];
+                        self.frame_mut().block = targets[i];
                     },
                     None => return Err(EvalError::InvalidDiscriminant),
                 }
@@ -424,7 +437,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Call { ref func, ref args, ref destination, .. } => {
                 let mut return_ptr = None;
                 if let Some((ref lv, target)) = *destination {
-                    self.frame_mut().next_block = target;
+                    self.frame_mut().block = target;
                     return_ptr = Some(self.eval_lvalue(lv)?.to_ptr());
                 }
 
@@ -451,14 +464,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = self.eval_lvalue(location)?.to_ptr();
                 let ty = self.lvalue_ty(location);
                 self.drop(ptr, ty)?;
-                self.frame_mut().next_block = target;
+                self.frame_mut().block = target;
             }
 
             Assert { ref cond, expected, ref msg, target, cleanup } => {
                 let actual_ptr = self.eval_operand(cond)?;
                 let actual = self.memory.read_bool(actual_ptr)?;
                 if actual == expected {
-                    self.frame_mut().next_block = target;
+                    self.frame_mut().block = target;
                 } else {
                     panic!("unimplemented: jump to {:?} and print {:?}", cleanup, msg);
                 }
