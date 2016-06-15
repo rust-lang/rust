@@ -9,9 +9,10 @@ before_script:
   pip install 'travis-cargo<0.2' --user &&
   export PATH=$HOME/.local/bin:$PATH
 script:
-- |
-  travis-cargo build &&
-  env RUST_SYSROOT=$HOME/rust travis-cargo test
+- set -e
+- travis-cargo build
+- RUST_SYSROOT=$HOME/rust
+- travis-cargo test
 notifications:
   email:
     on_success: never

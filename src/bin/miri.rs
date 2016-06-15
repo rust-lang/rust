@@ -17,7 +17,7 @@ use miri::{
     Frame,
 };
 use rustc::session::Session;
-use rustc_driver::{driver, CompilerCalls};
+use rustc_driver::{driver, CompilerCalls, Compilation};
 use rustc::ty::{TyCtxt, subst};
 use rustc::hir::def_id::DefId;
 
@@ -31,6 +31,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
     ) -> driver::CompileController<'a> {
         let mut control = driver::CompileController::basic();
 
+        control.after_analysis.stop = Compilation::Stop;
         control.after_analysis.callback = Box::new(|state| {
             state.session.abort_if_errors();
 
@@ -70,6 +71,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
                     }
                 }
             }
+            state.session.abort_if_errors();
         });
 
         control
