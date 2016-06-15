@@ -1,8 +1,6 @@
-#![feature(custom_attribute, box_syntax)]
-#![allow(dead_code, unused_attributes)]
+#![feature(box_syntax)]
 
-#[miri_run]
-fn deref_fn_ptr() {
+fn main() {
     //FIXME: this span is wrong
     let x = box 42; //~ ERROR: tried to treat a memory pointer as a function pointer
     unsafe {
@@ -10,5 +8,3 @@ fn deref_fn_ptr() {
         f()
     }
 }
-
-fn main() {}

@@ -1,11 +1,7 @@
-#![feature(custom_attribute, box_syntax)]
-#![allow(dead_code, unused_attributes)]
-
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::Arc;
 
-#[miri_run]
 fn rc_cell() -> Rc<Cell<i32>> {
     let r = Rc::new(Cell::new(42));
     let x = r.get();
@@ -15,7 +11,6 @@ fn rc_cell() -> Rc<Cell<i32>> {
 
 // TODO(solson): also requires destructors to run for the second borrow to work
 // TODO(solson): needs StructWrappedNullablePointer support
-// #[miri_run]
 // fn rc_refcell() -> i32 {
 //     let r = Rc::new(RefCell::new(42));
 //     *r.borrow_mut() += 10;
@@ -23,19 +18,17 @@ fn rc_cell() -> Rc<Cell<i32>> {
 //     x
 // }
 
-#[miri_run]
 fn arc() -> Arc<i32> {
     let a = Arc::new(42);
     a
 }
 
-#[miri_run]
 fn true_assert() {
     assert_eq!(1, 1);
 }
 
-#[miri_run]
 fn main() {
     assert_eq!(*arc(), 42);
     assert_eq!(rc_cell().get(), 84);
+    true_assert();
 }

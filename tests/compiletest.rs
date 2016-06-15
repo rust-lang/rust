@@ -15,20 +15,23 @@ fn run_mode(mode: &'static str) {
             .expect("need to specify RUST_SYSROOT env var or use rustup or multirust")
             .to_owned(),
     };
-    let sysroot_flag = format!("--sysroot {}", sysroot);
+    let flags = format!("--sysroot {} -Dwarnings", sysroot);
 
     // FIXME: read directories in sysroot/lib/rustlib and generate the test targets from that
     let targets = &["x86_64-unknown-linux-gnu", "i686-unknown-linux-gnu"];
 
     for &target in targets {
+        use std::io::Write;
+        let stderr = std::io::stderr();
+        write!(stderr.lock(), "running tests for target {}", target).unwrap();
         let mut config = compiletest::default_config();
-        config.host_rustcflags = Some(sysroot_flag.clone());
+        config.host_rustcflags = Some(flags.clone());
         config.mode = mode.parse().expect("Invalid mode");
         config.run_lib_path = format!("{}/lib/rustlib/{}/lib", sysroot, target);
         config.rustc_path = "target/debug/miri".into();
         config.src_base = PathBuf::from(format!("tests/{}", mode));
         config.target = target.to_owned();
-        config.target_rustcflags = Some(sysroot_flag.clone());
+        config.target_rustcflags = Some(flags.clone());
         compiletest::run_tests(&config);
     }
 }
