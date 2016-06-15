@@ -163,7 +163,7 @@ impl LateLintPass for NonShorthandFieldPatterns {
                     continue;
                 }
                 if let PatKind::Binding(_, ident, None) = fieldpat.node.pat.node {
-                    if ident.node.unhygienize() == fieldpat.node.name {
+                    if ident.node == fieldpat.node.name {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant and can \
                                               be removed", ident.node))

@@ -60,10 +60,6 @@ impl Name {
     pub fn as_str(self) -> token::InternedString {
         token::InternedString::new_from_name(self)
     }
-
-    pub fn unhygienize(self) -> Name {
-        token::intern(&self.as_str())
-    }
 }
 
 impl fmt::Debug for Name {
