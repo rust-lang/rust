@@ -26,7 +26,7 @@ fn for_all_targets<F: Fn(String)>(sysroot: &str, f: F) {
         if !target.metadata().unwrap().is_dir() {
             continue;
         }
-        let target = target.path().iter().rev().next().unwrap().to_str().unwrap().to_owned();
+        let target = target.file_name().into_string().unwrap();
         if target == "etc" {
             continue;
         }
