@@ -56,16 +56,25 @@ fn compile_test() {
             }
             let file = file.path();
             let stderr = std::io::stderr();
-            writeln!(stderr.lock(), "test [miri-pass] {}", file.to_str().unwrap()).unwrap();
+            write!(stderr.lock(), "test [miri-pass] {} ", file.to_str().unwrap()).unwrap();
             let mut cmd = std::process::Command::new("target/debug/miri");
             cmd.arg(file);
             cmd.arg(format!("--sysroot={}", sysroot));
             cmd.arg("-Dwarnings");
-            cmd.arg(format!("-target={}", target));
+            cmd.arg(format!("--target={}", target));
             let libs = Path::new(&sysroot).join("lib");
             let sysroot = libs.join("rustlib").join(&target).join("lib");
             let paths = std::env::join_paths(&[libs, sysroot]).unwrap();
             cmd.env(compiletest::procsrv::dylib_env_var(), paths);
+            match cmd.output() {
+                Ok(ref output) if output.status.success() => writeln!(stderr.lock(), "ok").unwrap(),
+                Ok(output) => {
+                    writeln!(stderr.lock(), "FAILED with exit code {}", output.status.code().unwrap_or(0)).unwrap();
+                    writeln!(stderr.lock(), "stdout: \n {}", std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+                    writeln!(stderr.lock(), "stderr: \n {}", std::str::from_utf8(&output.stderr).unwrap()).unwrap();
+                }
+                Err(e) => writeln!(stderr.lock(), "FAILED: {}", e).unwrap(),
+            }
         }
         let stderr = std::io::stderr();
         writeln!(stderr.lock(), "").unwrap();
