@@ -787,8 +787,6 @@ fn decorate(a: Annotatable, fld: &mut MacroExpander) -> SmallVector<Annotatable>
     let mut decorator_items = SmallVector::zero();
     let mut new_attrs = Vec::new();
     expand_decorators(a.clone(), fld, &mut decorator_items, &mut new_attrs);
-    let decorator_items =
-        decorator_items.into_iter().flat_map(|a| expand_annotatable(a, fld)).collect();
 
     let mut new_items = SmallVector::one(a.fold_attrs(new_attrs));
     new_items.push_all(decorator_items);
