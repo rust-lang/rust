@@ -18,7 +18,6 @@ use errors::DiagnosticBuilder;
 use ext;
 use ext::expand;
 use ext::tt::macro_rules;
-use feature_gate::GatedCfgAttr;
 use parse;
 use parse::parser;
 use parse::token;
@@ -556,7 +555,6 @@ pub struct ExtCtxt<'a> {
     pub backtrace: ExpnId,
     pub ecfg: expand::ExpansionConfig<'a>,
     pub crate_root: Option<&'static str>,
-    pub feature_gated_cfgs: &'a mut Vec<GatedCfgAttr>,
     pub loader: &'a mut MacroLoader,
 
     pub mod_path: Vec<ast::Ident> ,
@@ -573,7 +571,6 @@ pub struct ExtCtxt<'a> {
 impl<'a> ExtCtxt<'a> {
     pub fn new(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
                ecfg: expand::ExpansionConfig<'a>,
-               feature_gated_cfgs: &'a mut Vec<GatedCfgAttr>,
                loader: &'a mut MacroLoader)
                -> ExtCtxt<'a> {
         let env = initial_syntax_expander_table(&ecfg);
@@ -584,7 +581,6 @@ impl<'a> ExtCtxt<'a> {
             mod_path: Vec::new(),
             ecfg: ecfg,
             crate_root: None,
-            feature_gated_cfgs: feature_gated_cfgs,
             exported_macros: Vec::new(),
             loader: loader,
             syntax_env: env,
