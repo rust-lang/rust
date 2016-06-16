@@ -18,8 +18,8 @@ It allows safe inner-mutability of non-`Copy` types without the overhead of `Ref
 
 ```rust
 impl<T> Cell<T> {
-    fn set(&mut self, val: T);
-    fn replace(&mut self, val: T) -> T;
+    fn set(&self, val: T);
+    fn replace(&self, val: T) -> T;
     fn into_inner(self) -> T;
 }
 
@@ -28,7 +28,7 @@ impl<T: Copy> Cell<T> {
 }
 
 impl<T: Default> Cell<T> {
-    fn take(&mut self) -> T;
+    fn take(&self) -> T;
 }
 ```
 
