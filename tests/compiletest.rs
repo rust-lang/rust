@@ -38,6 +38,7 @@ fn for_all_targets<F: Fn(String)>(sysroot: &str, f: F) {
 
 #[test]
 fn compile_test() {
+    let mut failed = false;
     // Taken from https://github.com/Manishearth/rust-clippy/pull/911.
     let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
@@ -69,14 +70,21 @@ fn compile_test() {
             match cmd.output() {
                 Ok(ref output) if output.status.success() => writeln!(stderr.lock(), "ok").unwrap(),
                 Ok(output) => {
+                    failed = true;
                     writeln!(stderr.lock(), "FAILED with exit code {}", output.status.code().unwrap_or(0)).unwrap();
                     writeln!(stderr.lock(), "stdout: \n {}", std::str::from_utf8(&output.stdout).unwrap()).unwrap();
                     writeln!(stderr.lock(), "stderr: \n {}", std::str::from_utf8(&output.stderr).unwrap()).unwrap();
                 }
-                Err(e) => writeln!(stderr.lock(), "FAILED: {}", e).unwrap(),
+                Err(e) => {
+                    failed = true;
+                    writeln!(stderr.lock(), "FAILED: {}", e).unwrap();
+                },
             }
         }
         let stderr = std::io::stderr();
         writeln!(stderr.lock(), "").unwrap();
     })
+    if failed {
+        panic!("some tests failed");
+    }
 }
