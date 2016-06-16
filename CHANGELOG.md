@@ -172,6 +172,7 @@ All notable changes to this project will be documented in this file.
 [`invalid_upcast_comparisons`]: https://github.com/Manishearth/rust-clippy/wiki#invalid_upcast_comparisons
 [`items_after_statements`]: https://github.com/Manishearth/rust-clippy/wiki#items_after_statements
 [`iter_next_loop`]: https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop
+[`iter_nth`]: https://github.com/Manishearth/rust-clippy/wiki#iter_nth
 [`len_without_is_empty`]: https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty
 [`len_zero`]: https://github.com/Manishearth/rust-clippy/wiki#len_zero
 [`let_and_return`]: https://github.com/Manishearth/rust-clippy/wiki#let_and_return

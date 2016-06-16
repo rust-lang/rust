@@ -349,6 +349,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::CLONE_ON_COPY,
         methods::EXTEND_FROM_SLICE,
         methods::FILTER_NEXT,
+        methods::ITER_NTH,
         methods::NEW_RET_NO_SELF,
         methods::OK_EXPECT,
         methods::OPTION_MAP_UNWRAP_OR,
