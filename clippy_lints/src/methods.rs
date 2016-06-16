@@ -312,9 +312,10 @@ declare_lint! {
     "getting the inner pointer of a temporary `CString`"
 }
 
-/// **What it does:** This lint checks for use of `.iter().nth()` on a slice or Vec.
+/// **What it does:** This lint checks for use of `.iter().nth()` (and the related
+/// `.iter_mut().nth()`) on standard library types with O(1) element access.
 ///
-/// **Why is this bad?** `.get()` is more efficient and more readable.
+/// **Why is this bad?** `.get()` and `.get_mut()` are more efficient and more readable.
 ///
 /// **Known problems:** None.
 ///
@@ -333,7 +334,7 @@ declare_lint! {
 declare_lint! {
     pub ITER_NTH,
     Warn,
-    "using `.iter().nth()` on a slice or Vec"
+    "using `.iter().nth()` on a standard library type with O(1) element access"
 }
 
 impl LintPass for Pass {
@@ -389,7 +390,9 @@ impl LateLintPass for Pass {
                 } else if let Some(arglists) = method_chain_args(expr, &["unwrap", "as_ptr"]) {
                     lint_cstring_as_ptr(cx, expr, &arglists[0][0], &arglists[1][0]);
                 } else if let Some(arglists) = method_chain_args(expr, &["iter", "nth"]) {
-                    lint_iter_nth(cx, expr, arglists[0]);
+                    lint_iter_nth(cx, expr, arglists[0], false);
+                } else if let Some(arglists) = method_chain_args(expr, &["iter_mut", "nth"]) {
+                    lint_iter_nth(cx, expr, arglists[0], true);
                 }
 
                 lint_or_fun_call(cx, expr, &name.node.as_str(), args);
@@ -645,21 +648,28 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
 
 #[allow(ptr_arg)]
 // Type of MethodArgs is potentially a Vec
-fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs){
-    // lint if the caller of `.iter().nth()` is a `slice`
+fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs, is_mut: bool){
+    let caller_type;
+    let mut_str = if is_mut { "_mut" } else {""};
     if let Some(_) = derefs_to_slice(cx, &iter_args[0], &cx.tcx.expr_ty(&iter_args[0])) {
-        span_lint(cx,
-                  ITER_NTH,
-                  expr.span,
-                  "called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable");
+        caller_type = "slice";
     }
-    // lint if the caller of `.iter().nth()` is a `Vec`
     else if match_type(cx, cx.tcx.expr_ty(&iter_args[0]), &paths::VEC) {
-        span_lint(cx,
-                  ITER_NTH,
-                  expr.span,
-                  "called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable");
+        caller_type = "Vec";
     }
+    else if match_type(cx, cx.tcx.expr_ty(&iter_args[0]), &paths::VEC_DEQUE) {
+        caller_type = "VecDeque";
+    }
+    else {
+        return; // caller is not a type that we want to lint
+    }
+    span_lint(
+        cx,
+        ITER_NTH,
+        expr.span,
+        &format!("called `.iter{0}().nth()` on a {1}. Calling `.get{0}()` is both faster and more readable",
+                 mut_str, caller_type)
+    );
 }
 
 fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: &ty::Ty) -> Option<(Span, &'static str)> {

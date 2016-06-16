@@ -8,6 +8,7 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::VecDeque;
 use std::ops::Mul;
 
 struct T;
@@ -134,6 +135,10 @@ struct HasIter;
 
 impl HasIter {
     fn iter(self) -> IteratorFalsePositives {
+        IteratorFalsePositives { foo: 0 }
+    }
+
+    fn iter_mut(self) -> IteratorFalsePositives {
         IteratorFalsePositives { foo: 0 }
     }
 }
@@ -325,15 +330,37 @@ fn or_fun_call() {
 
 /// Checks implementation of `ITER_NTH` lint
 fn iter_nth() {
-    let some_vec = vec![0, 1, 2, 3];
-    let bad_vec = some_vec.iter().nth(3);
-    //~^ERROR called `.iter().nth()` on a Vec.
-    let bad_slice = &some_vec[..].iter().nth(3);
-    //~^ERROR called `.iter().nth()` on a slice.
+    let mut some_vec = vec![0, 1, 2, 3];
+    let mut some_vec_deque: VecDeque<_> = some_vec.iter().cloned().collect();
 
+    {
+        // Make sure we lint `.iter()` for relevant types
+        let bad_vec = some_vec.iter().nth(3);
+        //~^ERROR called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
+        let bad_slice = &some_vec[..].iter().nth(3);
+        //~^ERROR called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
+        let bad_vec_deque = some_vec_deque.iter().nth(3);
+        //~^ERROR called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
+    }
+
+    {
+        // Make sure we lint `.iter_mut()` for relevant types
+        let bad_vec = some_vec.iter_mut().nth(3);
+        //~^ERROR called `.iter_mut().nth()` on a Vec. Calling `.get_mut()` is both faster and more readable
+    }
+    {
+        let bad_slice = &some_vec[..].iter_mut().nth(3);
+        //~^ERROR called `.iter_mut().nth()` on a slice. Calling `.get_mut()` is both faster and more readable
+    }
+    {
+        let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
+        //~^ERROR called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both faster and more readable
+    }
+
+    // Make sure we don't lint for non-relevant types
     let false_positive = HasIter;
     let ok = false_positive.iter().nth(3);
-    // ^This should be okay, because false_positive is not a slice or Vec
+    let ok_mut = false_positive.iter_mut().nth(3);
 }
 
 #[allow(similar_names)]
