@@ -70,7 +70,9 @@ pub fn check(build: &mut Build) {
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in build.config.target.iter() {
         need_cmd(build.cc(target).as_ref());
-        need_cmd(build.ar(target).as_ref());
+        if let Some(ar) = build.ar(target) {
+            need_cmd(ar.as_ref());
+        }
     }
     for host in build.config.host.iter() {
         need_cmd(build.cxx(host).as_ref());
