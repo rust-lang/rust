@@ -63,6 +63,7 @@ fn compile_test() {
             cmd.arg(format!("--sysroot={}", sysroot));
             cmd.arg("-Dwarnings");
             cmd.arg(format!("--target={}", target));
+            cmd.env("RUST_SYSROOT", sysroot);
             let libs = Path::new(&sysroot).join("lib");
             let sysroot = libs.join("rustlib").join(&target).join("lib");
             let paths = std::env::join_paths(&[libs, sysroot]).unwrap();
