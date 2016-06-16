@@ -321,6 +321,7 @@ pub struct MethodData {
     pub span: SpanData,
     pub scope: DefId,
     pub value: String,
+    pub decl_id: Option<DefId>,
 }
 
 impl Lower for data::MethodData {
@@ -334,6 +335,7 @@ impl Lower for data::MethodData {
             id: make_def_id(self.id, &tcx.map),
             qualname: self.qualname,
             value: self.value,
+            decl_id: self.decl_id,
         }
     }
 }

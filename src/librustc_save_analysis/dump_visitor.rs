@@ -30,7 +30,7 @@
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, ImplOrTraitItem, ImplOrTraitItemContainer};
 
 use std::collections::HashSet;
 use std::hash::*;
@@ -381,24 +381,42 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
             let sig_str = ::make_signature(&sig.decl, &sig.generics);
             if body.is_some() {
-                if !self.span.filter_generated(Some(method_data.span), span) {
-                    let mut data = method_data.clone();
-                    data.value = sig_str;
-                    self.dumper.function(data.lower(self.tcx));
-                }
                 self.process_formals(&sig.decl.inputs, &method_data.qualname);
-            } else {
-                if !self.span.filter_generated(Some(method_data.span), span) {
-                    self.dumper.method(MethodData {
-                        id: method_data.id,
-                        name: method_data.name,
-                        span: method_data.span,
-                        scope: method_data.scope,
-                        qualname: method_data.qualname.clone(),
-                        value: sig_str,
-                    }.lower(self.tcx));
-                }
             }
+
+            // If the method is defined in an impl, then try and find the corresponding
+            // method decl in a trait, and if there is one, make a decl_id for it. This
+            // requires looking up the impl, then the trait, then searching for a method
+            // with the right name.
+            if !self.span.filter_generated(Some(method_data.span), span) {
+                let container =
+                    self.tcx.impl_or_trait_item(self.tcx.map.local_def_id(id)).container();
+                let decl_id = if let ImplOrTraitItemContainer::ImplContainer(id) = container {
+                    self.tcx.trait_id_of_impl(id).and_then(|id| {
+                        for item in &**self.tcx.trait_items(id) {
+                            if let &ImplOrTraitItem::MethodTraitItem(ref m) = item {
+                                if m.name == name {
+                                    return Some(m.def_id);
+                                }
+                            }
+                        }
+                        None
+                    })
+                } else {
+                    None
+                };
+
+                self.dumper.method(MethodData {
+                    id: method_data.id,
+                    name: method_data.name,
+                    span: method_data.span,
+                    scope: method_data.scope,
+                    qualname: method_data.qualname.clone(),
+                    value: sig_str,
+                    decl_id: decl_id,
+                }.lower(self.tcx));
+            }
+
             self.process_generic_params(&sig.generics, span, &method_data.qualname, id);
         }
 

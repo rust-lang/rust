@@ -182,6 +182,7 @@ struct Def {
     qualname: String,
     value: String,
     children: Vec<Id>,
+    decl_id: Option<Id>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -221,6 +222,7 @@ impl From<EnumData> for Def {
             qualname: data.qualname,
             value: data.value,
             children: data.variants.into_iter().map(|id| From::from(id)).collect(),
+            decl_id: None,
         }
     }
 }
@@ -235,6 +237,7 @@ impl From<TupleVariantData> for Def {
             qualname: data.qualname,
             value: data.value,
             children: vec![],
+            decl_id: None,
         }
     }
 }
@@ -248,6 +251,7 @@ impl From<StructVariantData> for Def {
             qualname: data.qualname,
             value: data.value,
             children: vec![],
+            decl_id: None,
         }
     }
 }
@@ -261,6 +265,7 @@ impl From<StructData> for Def {
             qualname: data.qualname,
             value: data.value,
             children: data.fields.into_iter().map(|id| From::from(id)).collect(),
+            decl_id: None,
         }
     }
 }
@@ -274,6 +279,7 @@ impl From<TraitData> for Def {
             qualname: data.qualname,
             value: data.value,
             children: data.items.into_iter().map(|id| From::from(id)).collect(),
+            decl_id: None,
         }
     }
 }
@@ -287,6 +293,7 @@ impl From<FunctionData> for Def {
             qualname: data.qualname,
             value: data.value,
             children: vec![],
+            decl_id: None,
         }
     }
 }
@@ -300,6 +307,7 @@ impl From<MethodData> for Def {
             qualname: data.qualname,
             value: data.value,
             children: vec![],
+            decl_id: data.decl_id.map(|id| From::from(id)),
         }
     }
 }
@@ -313,6 +321,7 @@ impl From<MacroData> for Def {
             qualname: data.qualname,
             value: String::new(),
             children: vec![],
+            decl_id: None,
         }
     }
 }
@@ -326,6 +335,7 @@ impl From<ModData> for Def {
             qualname: data.qualname,
             value: data.filename,
             children: data.items.into_iter().map(|id| From::from(id)).collect(),
+            decl_id: None,
         }
     }
 }
@@ -339,6 +349,7 @@ impl From<TypeDefData> for Def {
             qualname: data.qualname,
             value: data.value,
             children: vec![],
+            decl_id: None,
         }
     }
 }
@@ -357,6 +368,7 @@ impl From<VariableData> for Def {
             qualname: data.qualname,
             value: data.value,
             children: vec![],
+            decl_id: None,
         }
     }
 }

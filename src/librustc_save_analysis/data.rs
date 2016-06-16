@@ -214,6 +214,7 @@ pub struct MethodData {
     pub span: Span,
     pub scope: NodeId,
     pub value: String,
+    pub decl_id: Option<DefId>,
 }
 
 /// Data for modules.
