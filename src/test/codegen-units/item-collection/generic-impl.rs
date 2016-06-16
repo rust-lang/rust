@@ -77,5 +77,3 @@ fn main() {
     //~ TRANS_ITEM fn generic_impl::id[0]<generic_impl::Struct[0]<&str>>
     let _ = (Struct::new(Struct::new("str")).f)(Struct::new("str"));
 }
-
-//~ TRANS_ITEM drop-glue i8
