@@ -9,36 +9,24 @@
 // except according to those terms.
 
 use attr::{AttrMetaMethods, HasAttrs};
-use errors::Handler;
-use feature_gate::GatedCfgAttr;
+use feature_gate::{emit_feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
 use fold::Folder;
 use {ast, fold, attr};
 use codemap::{Spanned, respan};
-use parse::token;
+use parse::{ParseSess, token};
 use ptr::P;
 
 use util::small_vector::SmallVector;
 
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
-    diag: CfgDiagReal<'a, 'a>,
-    should_test: bool,
-    config: &'a ast::CrateConfig,
+    pub config: &'a ast::CrateConfig,
+    pub should_test: bool,
+    pub sess: &'a ParseSess,
+    pub features: Option<&'a Features>,
 }
 
 impl<'a> StripUnconfigured<'a> {
-    pub fn new(config: &'a ast::CrateConfig,
-               should_test: bool,
-               diagnostic: &'a Handler,
-               feature_gated_cfgs: &'a mut Vec<GatedCfgAttr>)
-               -> Self {
-        StripUnconfigured {
-            config: config,
-            should_test: should_test,
-            diag: CfgDiagReal { diag: diagnostic, feature_gated_cfgs: feature_gated_cfgs },
-        }
-    }
-
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
         let node = self.process_cfg_attrs(node);
         if self.in_cfg(node.attrs()) { Some(node) } else { None }
@@ -59,7 +47,7 @@ impl<'a> StripUnconfigured<'a> {
             Some(attr_list) => attr_list,
             None => {
                 let msg = "expected `#[cfg_attr(<cfg pattern>, <attr>)]`";
-                self.diag.diag.span_err(attr.span, msg);
+                self.sess.span_diagnostic.span_err(attr.span, msg);
                 return None;
             }
         };
@@ -67,12 +55,12 @@ impl<'a> StripUnconfigured<'a> {
             (2, Some(cfg), Some(mi)) => (cfg, mi),
             _ => {
                 let msg = "expected `#[cfg_attr(<cfg pattern>, <attr>)]`";
-                self.diag.diag.span_err(attr.span, msg);
+                self.sess.span_diagnostic.span_err(attr.span, msg);
                 return None;
             }
         };
 
-        if attr::cfg_matches(self.config, &cfg, &mut self.diag) {
+        if attr::cfg_matches(self.config, &cfg, self.sess, self.features) {
             self.process_cfg_attr(respan(mi.span, ast::Attribute_ {
                 id: attr::mk_attr_id(),
                 style: attr.node.style,
@@ -98,13 +86,11 @@ impl<'a> StripUnconfigured<'a> {
             };
 
             if mis.len() != 1 {
-                self.diag.emit_error(|diagnostic| {
-                    diagnostic.span_err(attr.span, "expected 1 cfg-pattern");
-                });
+                self.sess.span_diagnostic.span_err(attr.span, "expected 1 cfg-pattern");
                 return true;
             }
 
-            attr::cfg_matches(self.config, &mis[0], &mut self.diag)
+            attr::cfg_matches(self.config, &mis[0], self.sess, self.features)
         })
     }
 
@@ -112,27 +98,43 @@ impl<'a> StripUnconfigured<'a> {
     fn visit_stmt_or_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
         // flag the offending attributes
         for attr in attrs.iter() {
-            self.diag.feature_gated_cfgs.push(GatedCfgAttr::GatedAttr(attr.span));
-        }
-    }
-
-    // Visit unremovable (non-optional) expressions -- c.f. `fold_expr` vs `fold_opt_expr`.
-    fn visit_unremovable_expr(&mut self, expr: &ast::Expr) {
-        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a) || is_test_or_bench(a)) {
-            let msg = "removing an expression is not supported in this position";
-            self.diag.diag.span_err(attr.span, msg);
+            if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
+                emit_feature_err(&self.sess.span_diagnostic,
+                                 "stmt_expr_attributes",
+                                 attr.span,
+                                 GateIssue::Language,
+                                 EXPLAIN_STMT_ATTR_SYNTAX);
+            }
         }
     }
 }
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
-pub fn strip_unconfigured_items(diagnostic: &Handler, krate: ast::Crate, should_test: bool,
-                                feature_gated_cfgs: &mut Vec<GatedCfgAttr>)
-                                -> ast::Crate
-{
-    let config = &krate.config.clone();
-    StripUnconfigured::new(config, should_test, diagnostic, feature_gated_cfgs).fold_crate(krate)
+pub fn strip_unconfigured_items(mut krate: ast::Crate, sess: &ParseSess, should_test: bool)
+                                -> (ast::Crate, Features) {
+    let features;
+    {
+        let mut strip_unconfigured = StripUnconfigured {
+            config: &krate.config.clone(),
+            should_test: should_test,
+            sess: sess,
+            features: None,
+        };
+
+        let err_count = sess.span_diagnostic.err_count();
+        let krate_attrs = strip_unconfigured.process_cfg_attrs(krate.attrs.clone());
+        features = get_features(&sess.span_diagnostic, &krate_attrs);
+        if err_count < sess.span_diagnostic.err_count() {
+            krate.attrs = krate_attrs.clone(); // Avoid reconfiguring malformed `cfg_attr`s
+        }
+
+        strip_unconfigured.features = Some(&features);
+        krate = strip_unconfigured.fold_crate(krate);
+        krate.attrs = krate_attrs;
+    }
+
+    (krate, features)
 }
 
 impl<'a> fold::Folder for StripUnconfigured<'a> {
@@ -188,6 +190,7 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
 
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
         self.visit_stmt_or_expr_attrs(expr.attrs());
+
         // If an expr is valid to cfg away it will have been removed by the
         // outer stmt or expression folder before descending in here.
         // Anything else is always required, and thus has to error out
@@ -195,7 +198,11 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
         //
         // NB: This is intentionally not part of the fold_expr() function
         //     in order for fold_opt_expr() to be able to avoid this check
-        self.visit_unremovable_expr(&expr);
+        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a) || is_test_or_bench(a)) {
+            let msg = "removing an expression is not supported in this position";
+            self.sess.span_diagnostic.span_err(attr.span, msg);
+        }
+
         let expr = self.process_cfg_attrs(expr);
         fold_expr(self, expr)
     }
@@ -272,23 +279,4 @@ fn is_cfg(attr: &ast::Attribute) -> bool {
 
 fn is_test_or_bench(attr: &ast::Attribute) -> bool {
     attr.check_name("test") || attr.check_name("bench")
-}
-
-pub trait CfgDiag {
-    fn emit_error<F>(&mut self, f: F) where F: FnMut(&Handler);
-    fn flag_gated<F>(&mut self, f: F) where F: FnMut(&mut Vec<GatedCfgAttr>);
-}
-
-pub struct CfgDiagReal<'a, 'b> {
-    pub diag: &'a Handler,
-    pub feature_gated_cfgs: &'b mut Vec<GatedCfgAttr>,
-}
-
-impl<'a, 'b> CfgDiag for CfgDiagReal<'a, 'b> {
-    fn emit_error<F>(&mut self, mut f: F) where F: FnMut(&Handler) {
-        f(self.diag)
-    }
-    fn flag_gated<F>(&mut self, mut f: F) where F: FnMut(&mut Vec<GatedCfgAttr>) {
-        f(self.feature_gated_cfgs)
-    }
 }

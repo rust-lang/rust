@@ -270,14 +270,12 @@ fn generate_test_harness(sess: &ParseSess,
     let mut cleaner = EntryPointCleaner { depth: 0 };
     let krate = cleaner.fold_crate(krate);
 
-    let mut feature_gated_cfgs = vec![];
     let mut loader = DummyMacroLoader;
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, vec![],
                              ExpansionConfig::default("test".to_string()),
-                             &mut feature_gated_cfgs,
                              &mut loader),
         path: Vec::new(),
         testfns: Vec::new(),

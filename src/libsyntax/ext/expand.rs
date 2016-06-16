@@ -998,10 +998,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     fn strip_unconfigured(&mut self) -> StripUnconfigured {
-        StripUnconfigured::new(&self.cx.cfg,
-                               self.cx.ecfg.should_test,
-                               &self.cx.parse_sess.span_diagnostic,
-                               self.cx.feature_gated_cfgs)
+        StripUnconfigured {
+            config: &self.cx.cfg,
+            should_test: self.cx.ecfg.should_test,
+            sess: self.cx.parse_sess,
+            features: self.cx.ecfg.features,
+        }
     }
 
     fn load_macros<T: MacroGenerable>(&mut self, node: &T) {
@@ -1331,8 +1333,8 @@ mod tests {
             src,
             Vec::new(), &sess).unwrap();
         // should fail:
-        let (mut gated_cfgs, mut loader) = (vec![], DummyMacroLoader);
-        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs, &mut loader);
+        let mut loader = DummyMacroLoader;
+        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
         expand_crate(ecx, vec![], crate_ast);
     }
 
@@ -1346,8 +1348,8 @@ mod tests {
             "<test>".to_string(),
             src,
             Vec::new(), &sess).unwrap();
-        let (mut gated_cfgs, mut loader) = (vec![], DummyMacroLoader);
-        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs, &mut loader);
+        let mut loader = DummyMacroLoader;
+        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
         expand_crate(ecx, vec![], crate_ast);
     }
 
@@ -1360,8 +1362,8 @@ mod tests {
             "<test>".to_string(),
             src,
             Vec::new(), &sess).unwrap();
-        let (mut gated_cfgs, mut loader) = (vec![], DummyMacroLoader);
-        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs, &mut loader);
+        let mut loader = DummyMacroLoader;
+        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
         expand_crate(ecx, vec![], crate_ast);
     }
 
@@ -1369,8 +1371,8 @@ mod tests {
         let ps = parse::ParseSess::new();
         let crate_ast = panictry!(string_to_parser(&ps, crate_str).parse_crate_mod());
         // the cfg argument actually does matter, here...
-        let (mut gated_cfgs, mut loader) = (vec![], DummyMacroLoader);
-        let ecx = ExtCtxt::new(&ps, vec![], test_ecfg(), &mut gated_cfgs, &mut loader);
+        let mut loader = DummyMacroLoader;
+        let ecx = ExtCtxt::new(&ps, vec![], test_ecfg(), &mut loader);
         expand_crate(ecx, vec![], crate_ast).0
     }
 
