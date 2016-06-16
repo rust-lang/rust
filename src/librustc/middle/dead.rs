@@ -160,12 +160,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             }
             scanned.insert(id);
 
-            match self.tcx.map.find(id) {
-                Some(ref node) => {
-                    self.live_symbols.insert(id);
-                    self.visit_node(node);
-                }
-                None => (),
+            if let Some(ref node) = self.tcx.map.find(id) {
+                self.live_symbols.insert(id);
+                self.visit_node(node);
             }
         }
     }
@@ -372,9 +369,8 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     // Seed entry point
-    match *tcx.sess.entry_fn.borrow() {
-        Some((id, _)) => worklist.push(id),
-        None => ()
+    if let Some((id, _)) = *tcx.sess.entry_fn.borrow() {
+        worklist.push(id);
     }
 
     // Seed implemented trait items
@@ -464,16 +460,14 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // method of a private type is used, but the type itself is never
         // called directly.
         let impl_items = self.tcx.impl_items.borrow();
-        match self.tcx.inherent_impls.borrow().get(&self.tcx.map.local_def_id(id)) {
-            None => (),
-            Some(impl_list) => {
-                for impl_did in impl_list.iter() {
-                    for item_did in impl_items.get(impl_did).unwrap().iter() {
-                        if let Some(item_node_id) =
-                                self.tcx.map.as_local_node_id(item_did.def_id()) {
-                            if self.live_symbols.contains(&item_node_id) {
-                                return true;
-                            }
+        if let Some(impl_list) =
+                self.tcx.inherent_impls.borrow().get(&self.tcx.map.local_def_id(id)) {
+            for impl_did in impl_list.iter() {
+                for item_did in impl_items.get(impl_did).unwrap().iter() {
+                    if let Some(item_node_id) =
+                            self.tcx.map.as_local_node_id(item_did.def_id()) {
+                        if self.live_symbols.contains(&item_node_id) {
+                            return true;
                         }
                     }
                 }

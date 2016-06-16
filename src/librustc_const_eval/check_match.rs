@@ -247,8 +247,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
             if let ty::TyEnum(edef, _) = pat_ty.sty {
                 if let Def::Local(..) = cx.tcx.expect_def(p.id) {
                     if edef.variants.iter().any(|variant|
-                        variant.name == name.node.unhygienize()
-                            && variant.kind() == VariantKind::Unit
+                        variant.name == name.node && variant.kind() == VariantKind::Unit
                     ) {
                         let ty_path = cx.tcx.item_path_str(edef.did);
                         let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
