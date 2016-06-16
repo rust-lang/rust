@@ -512,7 +512,7 @@ impl OpenOptions {
     /// No file is allowed to exist at the target location, also no (dangling)
     /// symlink.
     ///
-    /// This option is useful because it as atomic. Otherwise between checking
+    /// This option is useful because it is atomic. Otherwise between checking
     /// whether a file exists and creating a new one, the file may have been
     /// created by another process (a TOCTOU race condition / attack).
     ///
@@ -1768,6 +1768,15 @@ mod tests {
             check!(fs::remove_file(&f));
         }
         check!(fs::remove_dir(dir));
+    }
+
+    #[test]
+    fn file_create_new_already_exists_error() {
+        let tmpdir = tmpdir();
+        let file = &tmpdir.join("file_create_new_error_exists");
+        check!(fs::File::create(file));
+        let e = fs::OpenOptions::new().write(true).create_new(true).open(file).unwrap_err();
+        assert_eq!(e.kind(), ErrorKind::AlreadyExists);
     }
 
     #[test]

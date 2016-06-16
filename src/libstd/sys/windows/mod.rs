@@ -68,6 +68,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno as c::DWORD {
         c::ERROR_ACCESS_DENIED => return ErrorKind::PermissionDenied,
         c::ERROR_ALREADY_EXISTS => return ErrorKind::AlreadyExists,
+        c::ERROR_FILE_EXISTS => return ErrorKind::AlreadyExists,
         c::ERROR_BROKEN_PIPE => return ErrorKind::BrokenPipe,
         c::ERROR_FILE_NOT_FOUND => return ErrorKind::NotFound,
         c::ERROR_PATH_NOT_FOUND => return ErrorKind::NotFound,

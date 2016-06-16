@@ -122,15 +122,12 @@ fn gather_move<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
     let potentially_illegal_move =
                 check_and_get_illegal_move_origin(bccx, &move_info.cmt);
-    match potentially_illegal_move {
-        Some(illegal_move_origin) => {
-            debug!("illegal_move_origin={:?}", illegal_move_origin);
-            let error = MoveError::with_move_info(illegal_move_origin,
-                                                  move_info.span_path_opt);
-            move_error_collector.add_error(error);
-            return
-        }
-        None => ()
+    if let Some(illegal_move_origin) = potentially_illegal_move {
+        debug!("illegal_move_origin={:?}", illegal_move_origin);
+        let error = MoveError::with_move_info(illegal_move_origin,
+                                              move_info.span_path_opt);
+        move_error_collector.add_error(error);
+        return;
     }
 
     match opt_loan_path(&move_info.cmt) {
