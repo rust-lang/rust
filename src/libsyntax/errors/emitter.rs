@@ -668,7 +668,7 @@ mod test {
         tolv
         dreizehn
         ";
-        let file = cm.new_filemap_and_lines("dummy.txt", content);
+        let file = cm.new_filemap_and_lines("dummy.txt", None, content);
         let start = file.lines.borrow()[10];
         let end = file.lines.borrow()[11];
         let sp = mk_sp(start, end);
@@ -694,7 +694,7 @@ mod test {
         let cm = CodeMap::new();
         let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
         let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-        cm.new_filemap_and_lines("blork.rs", inputtext);
+        cm.new_filemap_and_lines("blork.rs", None, inputtext);
         let sp = span_from_selection(inputtext, selection);
         let msp: MultiSpan = sp.into();
 
@@ -717,7 +717,7 @@ mod test {
         let inputtext  = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
         let selection1 = "     \n      \n   \n          \n ~ \n"; // intentionally out of order
         let selection2 = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-        cm.new_filemap_and_lines("blork.rs", inputtext);
+        cm.new_filemap_and_lines("blork.rs", None, inputtext);
         let sp1 = span_from_selection(inputtext, selection1);
         let sp2 = span_from_selection(inputtext, selection2);
         let msp: MultiSpan = MultiSpan::from_spans(vec![sp1, sp2]);
@@ -757,7 +757,7 @@ mod test {
             assert_eq!(&cm.span_to_snippet(sp).unwrap(), expected);
             sp
         };
-        cm.new_filemap_and_lines("dummy.txt", inp);
+        cm.new_filemap_and_lines("dummy.txt", None, inp);
         let sp1 = span(sp1, "aaaaaa");
         let sp2 = span(sp2, "bbbbbb");
         let sp3 = span(sp3, "ccccc");
@@ -802,7 +802,7 @@ mod test {
                    ddd__eee_\n\
                    elided\n\
                    __f_gg";
-        let file = cm.new_filemap_and_lines("dummy.txt", inp);
+        let file = cm.new_filemap_and_lines("dummy.txt", None, inp);
 
         let span = |lo, hi, (off_lo, off_hi)| {
             let lines = file.lines.borrow();

@@ -563,7 +563,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     assert!(member_descriptions.len() == member_llvm_types.len());
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, &loc.file.name);
+    let file_metadata = file_metadata(cx, &loc.file.name, &loc.file.abs_path);
 
     let metadata = composite_type_metadata(cx,
                                            slice_llvm_type,
@@ -853,17 +853,19 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     metadata
 }
 
-pub fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
+pub fn file_metadata(cx: &CrateContext, path: &str, full_path: &Option<String>) -> DIFile {
     // FIXME (#9639): This needs to handle non-utf8 paths
     let work_dir = cx.sess().working_dir.to_str().unwrap();
     let file_name =
-        if full_path.starts_with(work_dir) {
-            &full_path[work_dir.len() + 1..full_path.len()]
-        } else {
-            full_path
-        };
+        full_path.as_ref().map(|p| p.as_str()).unwrap_or_else(|| {
+            if path.starts_with(work_dir) {
+                &path[work_dir.len() + 1..path.len()]
+            } else {
+                path
+            }
+        });
 
-    file_metadata_(cx, full_path, file_name, &work_dir)
+    file_metadata_(cx, path, file_name, &work_dir)
 }
 
 pub fn unknown_file_metadata(cx: &CrateContext) -> DIFile {
@@ -1849,7 +1851,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 
     let (file_metadata, line_number) = if span != codemap::DUMMY_SP {
         let loc = span_start(cx, span);
-        (file_metadata(cx, &loc.file.name), loc.line as c_uint)
+        (file_metadata(cx, &loc.file.name, &loc.file.abs_path), loc.line as c_uint)
     } else {
         (NO_FILE_METADATA, UNKNOWN_LINE_NUMBER)
     };
