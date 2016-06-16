@@ -60,7 +60,6 @@ fn compile_test() {
             write!(stderr.lock(), "test [miri-pass] {} ", file.to_str().unwrap()).unwrap();
             let mut cmd = std::process::Command::new("target/debug/miri");
             cmd.arg(file);
-            cmd.arg(format!("--sysroot={}", sysroot));
             cmd.arg("-Dwarnings");
             cmd.arg(format!("--target={}", target));
             let libs = Path::new(&sysroot).join("lib");
