@@ -11,8 +11,7 @@ before_script:
 script:
 - set -e
 - travis-cargo build
-- RUST_SYSROOT=$HOME/rust
-- travis-cargo test
+- env RUST_SYSROOT=$HOME/rust travis-cargo test
 notifications:
   email:
     on_success: never
