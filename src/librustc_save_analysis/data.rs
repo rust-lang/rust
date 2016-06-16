@@ -102,6 +102,8 @@ pub struct EnumData {
     pub qualname: String,
     pub span: Span,
     pub scope: NodeId,
+    pub variants: Vec<NodeId>,
+
 }
 
 /// Data for extern crates.
@@ -212,6 +214,7 @@ pub struct MethodData {
     pub span: Span,
     pub scope: NodeId,
     pub value: String,
+    pub decl_id: Option<DefId>,
 }
 
 /// Data for modules.
@@ -223,6 +226,7 @@ pub struct ModData {
     pub span: Span,
     pub scope: NodeId,
     pub filename: String,
+    pub items: Vec<NodeId>,
 }
 
 /// Data for a reference to a module.
@@ -242,7 +246,8 @@ pub struct StructData {
     pub ctor_id: NodeId,
     pub qualname: String,
     pub scope: NodeId,
-    pub value: String
+    pub value: String,
+    pub fields: Vec<NodeId>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -263,7 +268,8 @@ pub struct TraitData {
     pub name: String,
     pub qualname: String,
     pub scope: NodeId,
-    pub value: String
+    pub value: String,
+    pub items: Vec<NodeId>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -317,12 +323,21 @@ pub struct UseGlobData {
 #[derive(Debug, RustcEncodable)]
 pub struct VariableData {
     pub id: NodeId,
+    pub kind: VariableKind,
     pub name: String,
     pub qualname: String,
     pub span: Span,
     pub scope: NodeId,
     pub value: String,
     pub type_value: String,
+}
+
+#[derive(Debug, RustcEncodable)]
+pub enum VariableKind {
+    Static,
+    Const,
+    Local,
+    Field,
 }
 
 /// Data for the use of some item (e.g., the use of a local variable, which
