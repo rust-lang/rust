@@ -309,6 +309,15 @@ fn or_fun_call() {
     //~|SUGGESTION btree.entry(42).or_insert_with(String::new);
 }
 
+/// Checks implementation of `SLICE_ITER_NTH` lint
+fn slice_iter_nth() {
+    let some_vec = vec![0, 1, 2, 3];
+    let bad = &some_vec[..].iter().nth(3);
+    //~^ERROR called `.iter().nth()` on a slice.
+
+    let ok = some_vec.iter().nth(3); // This should be okay, since some_vec is not a slice
+}
+
 #[allow(similar_names)]
 fn main() {
     use std::io;
