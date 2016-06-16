@@ -94,6 +94,7 @@ use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::repr::*;
 use syntax::codemap::Span;
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::fnv::FnvHashMap;
 
 pub struct Scope<'tcx> {
     /// the scope-id within the scope_auxiliary
@@ -127,12 +128,8 @@ pub struct Scope<'tcx> {
     /// stage.
     free: Option<FreeData<'tcx>>,
 
-    /// The cached block for the cleanups-on-diverge path. This block
-    /// contains a block that will just do a RESUME to an appropriate
-    /// place. This block does not execute any of the drops or free:
-    /// each of those has their own cached-blocks, which will branch
-    /// to this point.
-    cached_block: Option<BasicBlock>
+    /// The cache for drop chain on “normal” exit into a particular BasicBlock.
+    cached_exits: FnvHashMap<(BasicBlock, CodeExtent), BasicBlock>,
 }
 
 struct DropData<'tcx> {
@@ -172,7 +169,7 @@ pub struct LoopScope {
     pub continue_block: BasicBlock,
     /// Block to branch into when the loop terminates (either by being `break`-en out from, or by
     /// having its condition to become false)
-    pub break_block: BasicBlock, // where to go on a `break
+    pub break_block: BasicBlock,
     /// Indicates the reachability of the break_block for this loop
     pub might_break: bool
 }
@@ -183,7 +180,7 @@ impl<'tcx> Scope<'tcx> {
     /// Should always be run for all inner scopes when a drop is pushed into some scope enclosing a
     /// larger extent of code.
     fn invalidate_cache(&mut self) {
-        self.cached_block = None;
+        self.cached_exits = FnvHashMap();
         for dropdata in &mut self.drops {
             dropdata.cached_block = None;
         }
@@ -192,7 +189,7 @@ impl<'tcx> Scope<'tcx> {
         }
     }
 
-    /// Returns the cached block for this scope.
+    /// Returns the cached entrypoint for diverging exit from this scope.
     ///
     /// Precondition: the caches must be fully filled (i.e. diverge_cleanup is called) in order for
     /// this method to work correctly.
@@ -270,7 +267,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             extent: extent,
             drops: vec![],
             free: None,
-            cached_block: None,
+            cached_exits: FnvHashMap()
         });
         self.scope_auxiliary.push(ScopeAuxiliary {
             extent: extent,
@@ -314,13 +311,25 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                                       .unwrap_or_else(||{
             span_bug!(span, "extent {:?} does not enclose", extent)
         });
-
+        let len = self.scopes.len();
+        assert!(scope_count < len, "should not use `exit_scope` to pop ALL scopes");
         let tmp = self.get_unit_temp();
-        for (idx, ref scope) in self.scopes.iter().enumerate().rev().take(scope_count) {
-            unpack!(block = build_scope_drops(&mut self.cfg,
-                                              scope,
-                                              &self.scopes[..idx],
-                                              block));
+        {
+        let mut rest = &mut self.scopes[(len - scope_count)..];
+        while let Some((scope, rest_)) = {rest}.split_last_mut() {
+            rest = rest_;
+            block = if let Some(&e) = scope.cached_exits.get(&(target, extent)) {
+                self.cfg.terminate(block, scope.source_info(span),
+                                   TerminatorKind::Goto { target: e });
+                return;
+            } else {
+                let b = self.cfg.start_new_block();
+                self.cfg.terminate(block, scope.source_info(span),
+                                   TerminatorKind::Goto { target: b });
+                scope.cached_exits.insert((target, extent), b);
+                b
+            };
+            unpack!(block = build_scope_drops(&mut self.cfg, scope, rest, block));
             if let Some(ref free_data) = scope.free {
                 let next = self.cfg.start_new_block();
                 let free = build_free(self.hir.tcx(), &tmp, free_data, next);
@@ -331,14 +340,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 .postdoms
                 .push(self.cfg.current_location(block));
         }
-
-        assert!(scope_count < self.scopes.len(),
-                "should never use `exit_scope` to pop *ALL* scopes");
-        let scope = self.scopes.iter().rev().skip(scope_count)
-                                            .next()
-                                            .unwrap();
-        self.cfg.terminate(block,
-                           scope.source_info(span),
+        }
+        let scope = &self.scopes[len - scope_count];
+        self.cfg.terminate(block, scope.source_info(span),
                            TerminatorKind::Goto { target: target });
     }
 
@@ -506,10 +510,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             resumeblk
         };
 
-        for scope in scopes {
+        for scope in scopes.iter_mut().filter(|s| !s.drops.is_empty() || s.free.is_some()) {
             target = build_diverge_scope(hir.tcx(), cfg, &unit_temp, scope, target);
         }
-
         Some(target)
     }
 
@@ -534,7 +537,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         next_target.unit()
     }
 
-
+    /// Utility function for *non*-scope code to build their own drops
     pub fn build_drop_and_replace(&mut self,
                                   block: BasicBlock,
                                   span: Span,
