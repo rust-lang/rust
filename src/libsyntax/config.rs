@@ -73,7 +73,7 @@ impl<'a> StripUnconfigured<'a> {
         };
 
         if attr::cfg_matches(self.config, &cfg, &mut self.diag) {
-            Some(respan(mi.span, ast::Attribute_ {
+            self.process_cfg_attr(respan(mi.span, ast::Attribute_ {
                 id: attr::mk_attr_id(),
                 style: attr.node.style,
                 value: mi.clone(),
