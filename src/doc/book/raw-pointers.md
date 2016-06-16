@@ -17,7 +17,7 @@ Here are some things to remember about raw pointers that are different than
 other pointer types. They:
 
 - are not guaranteed to point to valid memory and are not even
-  guaranteed to be non-null (unlike both `Box` and `&`);
+  guaranteed to be non-NULL (unlike both `Box` and `&`);
 - do not have any automatic clean-up, unlike `Box`, and so require
   manual resource management;
 - are plain-old-data, that is, they don't move ownership, again unlike
