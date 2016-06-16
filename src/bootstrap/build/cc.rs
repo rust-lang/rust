@@ -57,7 +57,9 @@ pub fn find(build: &mut Build) {
         let compiler = cfg.get_compiler();
         let ar = cc2ar(compiler.path(), target);
         build.verbose(&format!("CC_{} = {:?}", target, compiler.path()));
-        build.verbose(&format!("AR_{} = {:?}", target, ar));
+        if let Some(ref ar) = ar {
+            build.verbose(&format!("AR_{} = {:?}", target, ar));
+        }
         build.cc.insert(target.to_string(), (compiler, ar));
     }
 
