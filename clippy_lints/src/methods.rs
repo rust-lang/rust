@@ -649,17 +649,14 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
 #[allow(ptr_arg)]
 // Type of MethodArgs is potentially a Vec
 fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs, is_mut: bool){
-    // lint if the caller of `.iter().nth()` is a `slice`
     let caller_type;
     let mut_str = if is_mut { "_mut" } else {""};
     if let Some(_) = derefs_to_slice(cx, &iter_args[0], &cx.tcx.expr_ty(&iter_args[0])) {
         caller_type = "slice";
     }
-    // lint if the caller of `.iter().nth()` is a `Vec`
     else if match_type(cx, cx.tcx.expr_ty(&iter_args[0]), &paths::VEC) {
         caller_type = "Vec";
     }
-    // lint if the caller of `.iter().nth()` is a `VecDeque`
     else if match_type(cx, cx.tcx.expr_ty(&iter_args[0]), &paths::VEC_DEQUE) {
         caller_type = "VecDeque";
     }
