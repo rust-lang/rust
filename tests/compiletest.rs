@@ -20,7 +20,7 @@ fn run_mode(dir: &'static str, mode: &'static str, sysroot: &str) {
     });
 }
 
-fn for_all_targets<F: Fn(String)>(sysroot: &str, f: F) {
+fn for_all_targets<F: FnMut(String)>(sysroot: &str, mut f: F) {
     for target in std::fs::read_dir(format!("{}/lib/rustlib/", sysroot)).unwrap() {
         let target = target.unwrap();
         if !target.metadata().unwrap().is_dir() {
@@ -63,7 +63,7 @@ fn compile_test() {
             cmd.arg(format!("--sysroot={}", sysroot));
             cmd.arg("-Dwarnings");
             cmd.arg(format!("--target={}", target));
-            cmd.env("RUST_SYSROOT", sysroot);
+            cmd.env("RUST_SYSROOT", &sysroot);
             let libs = Path::new(&sysroot).join("lib");
             let sysroot = libs.join("rustlib").join(&target).join("lib");
             let paths = std::env::join_paths(&[libs, sysroot]).unwrap();
@@ -84,7 +84,7 @@ fn compile_test() {
         }
         let stderr = std::io::stderr();
         writeln!(stderr.lock(), "").unwrap();
-    })
+    });
     if failed {
         panic!("some tests failed");
     }
