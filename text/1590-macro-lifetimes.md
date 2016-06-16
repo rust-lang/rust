@@ -1,7 +1,7 @@
 - Feature Name: Allow `lifetime` specifiers to be passed to macros
 - Start Date: 2016-04-22
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1590
+- Rust Issue: https://github.com/rust-lang/rust/issues/34303
 
 # Summary
 [summary]: #summary
