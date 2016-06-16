@@ -41,6 +41,7 @@ trait MacroGenerable: Sized {
 
     // Fold this node or list of nodes using the given folder.
     fn fold_with<F: Folder>(self, folder: &mut F) -> Self;
+    fn visit_with<'v, V: Visitor<'v>>(&'v self, visitor: &mut V);
 
     // Return a placeholder expansion to allow compilation to continue after an erroring expansion.
     fn dummy(span: Span) -> Self;
@@ -50,7 +51,9 @@ trait MacroGenerable: Sized {
 }
 
 macro_rules! impl_macro_generable {
-    ($($ty:ty: $kind_name:expr, .$make:ident, $(.$fold:ident)* $(lift .$fold_elt:ident)*,
+    ($($ty:ty: $kind_name:expr, .$make:ident,
+               $(.$fold:ident)*  $(lift .$fold_elt:ident)*,
+               $(.$visit:ident)* $(lift .$visit_elt:ident)*,
                |$span:ident| $dummy:expr;)*) => { $(
         impl MacroGenerable for $ty {
             fn kind_name() -> &'static str { $kind_name }
@@ -59,21 +62,27 @@ macro_rules! impl_macro_generable {
                 $( folder.$fold(self) )*
                 $( self.into_iter().flat_map(|item| folder. $fold_elt (item)).collect() )*
             }
+            fn visit_with<'v, V: Visitor<'v>>(&'v self, visitor: &mut V) {
+                $( visitor.$visit(self) )*
+                $( for item in self.as_slice() { visitor. $visit_elt (item) } )*
+            }
             fn dummy($span: Span) -> Self { $dummy }
         }
     )* }
 }
 
 impl_macro_generable! {
-    P<ast::Expr>: "expression", .make_expr, .fold_expr, |span| DummyResult::raw_expr(span);
-    P<ast::Pat>:  "pattern",    .make_pat,  .fold_pat,  |span| P(DummyResult::raw_pat(span));
-    P<ast::Ty>:   "type",       .make_ty,   .fold_ty,   |span| DummyResult::raw_ty(span);
-    SmallVector<ast::ImplItem>:
-        "impl item", .make_impl_items, lift .fold_impl_item, |_span| SmallVector::zero();
-    SmallVector<P<ast::Item>>:
-        "item",      .make_items,      lift .fold_item,      |_span| SmallVector::zero();
+    P<ast::Pat>: "pattern", .make_pat, .fold_pat, .visit_pat, |span| P(DummyResult::raw_pat(span));
+    P<ast::Ty>:  "type",    .make_ty,  .fold_ty,  .visit_ty,  |span| DummyResult::raw_ty(span);
+    P<ast::Expr>:
+        "expression", .make_expr, .fold_expr, .visit_expr, |span| DummyResult::raw_expr(span);
     SmallVector<ast::Stmt>:
-        "statement", .make_stmts,      lift .fold_stmt,      |_span| SmallVector::zero();
+        "statement",  .make_stmts, lift .fold_stmt, lift .visit_stmt, |_span| SmallVector::zero();
+    SmallVector<P<ast::Item>>:
+        "item",       .make_items, lift .fold_item, lift .visit_item, |_span| SmallVector::zero();
+    SmallVector<ast::ImplItem>:
+        "impl item",  .make_impl_items, lift .fold_impl_item, lift .visit_impl_item,
+        |_span| SmallVector::zero();
 }
 
 impl MacroGenerable for Option<P<ast::Expr>> {
@@ -84,6 +93,9 @@ impl MacroGenerable for Option<P<ast::Expr>> {
     }
     fn fold_with<F: Folder>(self, folder: &mut F) -> Self {
         self.and_then(|expr| folder.fold_opt_expr(expr))
+    }
+    fn visit_with<'v, V: Visitor<'v>>(&'v self, visitor: &mut V) {
+        self.as_ref().map(|expr| visitor.visit_expr(expr));
     }
 }
 
@@ -320,6 +332,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
 
     let marked = expanded.fold_with(&mut Marker { mark: mark, expn_id: Some(fld.cx.backtrace()) });
     let configured = marked.fold_with(&mut fld.strip_unconfigured());
+    fld.load_macros(&configured);
     let fully_expanded = configured.fold_with(fld);
     fld.cx.bt_pop();
     fully_expanded
@@ -742,15 +755,6 @@ fn expand_annotatable(a: Annotatable,
                 }
                 result
             },
-            ast::ItemKind::ExternCrate(_) => {
-                // We need to error on `#[macro_use] extern crate` when it isn't at the
-                // crate root, because `$crate` won't work properly.
-                let allows_macros = fld.cx.syntax_env.is_crate_root();
-                for def in fld.cx.loader.load_crate(&it, allows_macros) {
-                    fld.cx.insert_macro(def);
-                }
-                SmallVector::one(it)
-            },
             _ => noop_fold_item(it, fld),
         }.into_iter().map(|i| Annotatable::Item(i)).collect(),
 
@@ -999,6 +1003,40 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                &self.cx.parse_sess.span_diagnostic,
                                self.cx.feature_gated_cfgs)
     }
+
+    fn load_macros<T: MacroGenerable>(&mut self, node: &T) {
+        struct MacroLoadingVisitor<'a, 'b: 'a>{
+            cx: &'a mut ExtCtxt<'b>,
+            at_crate_root: bool,
+        }
+
+        impl<'a, 'b, 'v> Visitor<'v> for MacroLoadingVisitor<'a, 'b> {
+            fn visit_mac(&mut self, _: &'v ast::Mac) {}
+            fn visit_item(&mut self, item: &'v ast::Item) {
+                if let ast::ItemKind::ExternCrate(..) = item.node {
+                    // We need to error on `#[macro_use] extern crate` when it isn't at the
+                    // crate root, because `$crate` won't work properly.
+                    for def in self.cx.loader.load_crate(item, self.at_crate_root) {
+                        self.cx.insert_macro(def);
+                    }
+                } else {
+                    let at_crate_root = ::std::mem::replace(&mut self.at_crate_root, false);
+                    visit::walk_item(self, item);
+                    self.at_crate_root = at_crate_root;
+                }
+            }
+            fn visit_block(&mut self, block: &'v ast::Block) {
+                let at_crate_root = ::std::mem::replace(&mut self.at_crate_root, false);
+                visit::walk_block(self, block);
+                self.at_crate_root = at_crate_root;
+            }
+        }
+
+        node.visit_with(&mut MacroLoadingVisitor {
+            at_crate_root: self.cx.syntax_env.is_crate_root(),
+            cx: self.cx,
+        });
+    }
 }
 
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
@@ -1142,7 +1180,7 @@ impl<'feat> ExpansionConfig<'feat> {
 
 pub fn expand_crate(mut cx: ExtCtxt,
                     user_exts: Vec<NamedSyntaxExtension>,
-                    c: Crate) -> (Crate, HashSet<Name>) {
+                    mut c: Crate) -> (Crate, HashSet<Name>) {
     if std_inject::no_core(&c) {
         cx.crate_root = None;
     } else if std_inject::no_std(&c) {
@@ -1156,6 +1194,10 @@ pub fn expand_crate(mut cx: ExtCtxt,
         for (name, extension) in user_exts {
             expander.cx.syntax_env.insert(name, extension);
         }
+
+        let items = SmallVector::many(c.module.items);
+        expander.load_macros(&items);
+        c.module.items = items.into();
 
         let err_count = cx.parse_sess.span_diagnostic.err_count();
         let mut ret = expander.fold_crate(c);

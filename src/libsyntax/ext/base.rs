@@ -928,6 +928,6 @@ impl SyntaxEnv {
     pub fn is_crate_root(&mut self) -> bool {
         // The first frame is pushed in `SyntaxEnv::new()` and the second frame is
         // pushed when folding the crate root pseudo-module (c.f. noop_fold_crate).
-        self.chain.len() == 2
+        self.chain.len() <= 2
     }
 }
