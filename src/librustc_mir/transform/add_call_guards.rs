@@ -13,8 +13,6 @@ use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
-use pretty;
-
 pub struct AddCallGuards;
 
 /**
@@ -38,7 +36,7 @@ pub struct AddCallGuards;
  */
 
 impl<'tcx> MirPass<'tcx> for AddCallGuards {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
         let pred_count: IndexVec<_, _> =
             mir.predecessors().iter().map(|ps| ps.len()).collect();
 
@@ -75,7 +73,6 @@ impl<'tcx> MirPass<'tcx> for AddCallGuards {
             }
         }
 
-        pretty::dump_mir(tcx, "break_cleanup_edges", &0, src, mir, None);
         debug!("Broke {} N edges", new_blocks.len());
 
         mir.basic_blocks_mut().extend(new_blocks);
