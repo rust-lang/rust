@@ -21,10 +21,11 @@ pub use self::ExpnFormat::*;
 
 use std::cell::{Cell, RefCell};
 use std::ops::{Add, Sub};
-use std::path::Path;
+use std::path::{Path,PathBuf};
 use std::rc::Rc;
 use std::cmp;
 
+use std::env;
 use std::{fmt, fs};
 use std::io::{self, Read};
 
@@ -508,6 +509,8 @@ pub struct FileMap {
     /// originate from files has names between angle brackets by convention,
     /// e.g. `<anon>`
     pub name: FileName,
+    /// The absolute path of the file that the source came from.
+    pub abs_path: Option<FileName>,
     /// The complete source code
     pub src: Option<Rc<String>>,
     /// The start position of this source in the CodeMap
@@ -522,11 +525,12 @@ pub struct FileMap {
 
 impl Encodable for FileMap {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("FileMap", 5, |s| {
+        s.emit_struct("FileMap", 6, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
-            s.emit_struct_field("start_pos", 1, |s| self.start_pos.encode(s))?;
-            s.emit_struct_field("end_pos", 2, |s| self.end_pos.encode(s))?;
-            s.emit_struct_field("lines", 3, |s| {
+            s.emit_struct_field("abs_path", 1, |s| self.abs_path.encode(s))?;
+            s.emit_struct_field("start_pos", 2, |s| self.start_pos.encode(s))?;
+            s.emit_struct_field("end_pos", 3, |s| self.end_pos.encode(s))?;
+            s.emit_struct_field("lines", 4, |s| {
                 let lines = self.lines.borrow();
                 // store the length
                 s.emit_u32(lines.len() as u32)?;
@@ -572,7 +576,7 @@ impl Encodable for FileMap {
 
                 Ok(())
             })?;
-            s.emit_struct_field("multibyte_chars", 4, |s| {
+            s.emit_struct_field("multibyte_chars", 5, |s| {
                 (*self.multibyte_chars.borrow()).encode(s)
             })
         })
@@ -582,11 +586,13 @@ impl Encodable for FileMap {
 impl Decodable for FileMap {
     fn decode<D: Decoder>(d: &mut D) -> Result<FileMap, D::Error> {
 
-        d.read_struct("FileMap", 5, |d| {
+        d.read_struct("FileMap", 6, |d| {
             let name: String = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
-            let start_pos: BytePos = d.read_struct_field("start_pos", 1, |d| Decodable::decode(d))?;
-            let end_pos: BytePos = d.read_struct_field("end_pos", 2, |d| Decodable::decode(d))?;
-            let lines: Vec<BytePos> = d.read_struct_field("lines", 3, |d| {
+            let abs_path: Option<String> =
+                d.read_struct_field("abs_path", 1, |d| Decodable::decode(d))?;
+            let start_pos: BytePos = d.read_struct_field("start_pos", 2, |d| Decodable::decode(d))?;
+            let end_pos: BytePos = d.read_struct_field("end_pos", 3, |d| Decodable::decode(d))?;
+            let lines: Vec<BytePos> = d.read_struct_field("lines", 4, |d| {
                 let num_lines: u32 = Decodable::decode(d)?;
                 let mut lines = Vec::with_capacity(num_lines as usize);
 
@@ -615,9 +621,10 @@ impl Decodable for FileMap {
                 Ok(lines)
             })?;
             let multibyte_chars: Vec<MultiByteChar> =
-                d.read_struct_field("multibyte_chars", 4, |d| Decodable::decode(d))?;
+                d.read_struct_field("multibyte_chars", 5, |d| Decodable::decode(d))?;
             Ok(FileMap {
                 name: name,
+                abs_path: abs_path,
                 start_pos: start_pos,
                 end_pos: end_pos,
                 src: None,
@@ -703,6 +710,9 @@ pub trait FileLoader {
     /// Query the existence of a file.
     fn file_exists(&self, path: &Path) -> bool;
 
+    /// Return an absolute path to a file, if possible.
+    fn abs_path(&self, path: &Path) -> Option<PathBuf>;
+
     /// Read the contents of an UTF-8 file into memory.
     fn read_file(&self, path: &Path) -> io::Result<String>;
 }
@@ -713,6 +723,16 @@ pub struct RealFileLoader;
 impl FileLoader for RealFileLoader {
     fn file_exists(&self, path: &Path) -> bool {
         fs::metadata(path).is_ok()
+    }
+
+    fn abs_path(&self, path: &Path) -> Option<PathBuf> {
+        if path.is_absolute() {
+            Some(path.to_path_buf())
+        } else {
+            env::current_dir()
+                .ok()
+                .map(|cwd| cwd.join(path))
+        }
     }
 
     fn read_file(&self, path: &Path) -> io::Result<String> {
@@ -755,7 +775,8 @@ impl CodeMap {
 
     pub fn load_file(&self, path: &Path) -> io::Result<Rc<FileMap>> {
         let src = self.file_loader.read_file(path)?;
-        Ok(self.new_filemap(path.to_str().unwrap().to_string(), src))
+        let abs_path = self.file_loader.abs_path(path).map(|p| p.to_str().unwrap().to_string());
+        Ok(self.new_filemap(path.to_str().unwrap().to_string(), abs_path, src))
     }
 
     fn next_start_pos(&self) -> usize {
@@ -770,7 +791,8 @@ impl CodeMap {
 
     /// Creates a new filemap without setting its line information. If you don't
     /// intend to set the line information yourself, you should use new_filemap_and_lines.
-    pub fn new_filemap(&self, filename: FileName, mut src: String) -> Rc<FileMap> {
+    pub fn new_filemap(&self, filename: FileName, abs_path: Option<FileName>,
+                       mut src: String) -> Rc<FileMap> {
         let start_pos = self.next_start_pos();
         let mut files = self.files.borrow_mut();
 
@@ -783,6 +805,7 @@ impl CodeMap {
 
         let filemap = Rc::new(FileMap {
             name: filename,
+            abs_path: abs_path,
             src: Some(Rc::new(src)),
             start_pos: Pos::from_usize(start_pos),
             end_pos: Pos::from_usize(end_pos),
@@ -796,8 +819,11 @@ impl CodeMap {
     }
 
     /// Creates a new filemap and sets its line information.
-    pub fn new_filemap_and_lines(&self, filename: &str, src: &str) -> Rc<FileMap> {
-        let fm = self.new_filemap(filename.to_string(), src.to_owned());
+    pub fn new_filemap_and_lines(&self, filename: &str, abs_path: Option<&str>,
+                                 src: &str) -> Rc<FileMap> {
+        let fm = self.new_filemap(filename.to_string(),
+                                  abs_path.map(|s| s.to_owned()),
+                                  src.to_owned());
         let mut byte_pos: u32 = fm.start_pos.0;
         for line in src.lines() {
             // register the start of this line
@@ -816,6 +842,7 @@ impl CodeMap {
     /// information for things inlined from other crates.
     pub fn new_imported_filemap(&self,
                                 filename: FileName,
+                                abs_path: Option<FileName>,
                                 source_len: usize,
                                 mut file_local_lines: Vec<BytePos>,
                                 mut file_local_multibyte_chars: Vec<MultiByteChar>)
@@ -836,6 +863,7 @@ impl CodeMap {
 
         let filemap = Rc::new(FileMap {
             name: filename,
+            abs_path: abs_path,
             src: None,
             start_pos: start_pos,
             end_pos: end_pos,
@@ -1422,6 +1450,7 @@ mod tests {
     fn t1 () {
         let cm = CodeMap::new();
         let fm = cm.new_filemap("blork.rs".to_string(),
+                                None,
                                 "first line.\nsecond line".to_string());
         fm.next_line(BytePos(0));
         // Test we can get lines with partial line info.
@@ -1438,6 +1467,7 @@ mod tests {
     fn t2 () {
         let cm = CodeMap::new();
         let fm = cm.new_filemap("blork.rs".to_string(),
+                                None,
                                 "first line.\nsecond line".to_string());
         // TESTING *REALLY* BROKEN BEHAVIOR:
         fm.next_line(BytePos(0));
@@ -1448,10 +1478,13 @@ mod tests {
     fn init_code_map() -> CodeMap {
         let cm = CodeMap::new();
         let fm1 = cm.new_filemap("blork.rs".to_string(),
+                                 None,
                                  "first line.\nsecond line".to_string());
         let fm2 = cm.new_filemap("empty.rs".to_string(),
+                                 None,
                                  "".to_string());
         let fm3 = cm.new_filemap("blork2.rs".to_string(),
+                                 None,
                                  "first line.\nsecond line".to_string());
 
         fm1.next_line(BytePos(0));
@@ -1514,8 +1547,10 @@ mod tests {
         // € is a three byte utf8 char.
         let fm1 =
             cm.new_filemap("blork.rs".to_string(),
+                           None,
                            "fir€st €€€€ line.\nsecond line".to_string());
         let fm2 = cm.new_filemap("blork2.rs".to_string(),
+                                 None,
                                  "first line€€.\n€ second line".to_string());
 
         fm1.next_line(BytePos(0));
@@ -1583,7 +1618,7 @@ mod tests {
         let cm = CodeMap::new();
         let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
         let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-        cm.new_filemap_and_lines("blork.rs", inputtext);
+        cm.new_filemap_and_lines("blork.rs", None, inputtext);
         let span = span_from_selection(inputtext, selection);
 
         // check that we are extracting the text we thought we were extracting

@@ -154,7 +154,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             // dependency information
             let filename = format!("{}", file.display());
             let interned = token::intern_and_get_ident(&src[..]);
-            cx.codemap().new_filemap_and_lines(&filename, &src);
+            cx.codemap().new_filemap_and_lines(&filename, None, &src);
 
             base::MacEager::expr(cx.expr_str(sp, interned))
         }
@@ -185,7 +185,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             // Add this input file to the code map to make it available as
             // dependency information, but don't enter it's contents
             let filename = format!("{}", file.display());
-            cx.codemap().new_filemap_and_lines(&filename, "");
+            cx.codemap().new_filemap_and_lines(&filename, None, "");
 
             base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Rc::new(bytes))))
         }
