@@ -249,7 +249,8 @@ impl LateLintPass for LoopsPass {
                     match *source {
                         MatchSource::Normal |
                         MatchSource::IfLetDesugar { .. } => {
-                            if arms.len() == 2 && arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
+                            if arms.len() == 2 &&
+                               arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
                                arms[1].pats.len() == 1 && arms[1].guard.is_none() &&
                                is_break_expr(&arms[1].body) {
                                 if in_external_macro(cx, expr.span) {
@@ -787,12 +788,11 @@ fn extract_expr_from_first_stmt(block: &Block) -> Option<&Expr> {
 /// If a block begins with an expression (with or without semicolon), return it.
 fn extract_first_expr(block: &Block) -> Option<&Expr> {
     match block.expr {
-        Some(ref expr) => Some(expr),
+        Some(ref expr) if block.stmts.is_empty() => Some(expr),
         None if !block.stmts.is_empty() => {
             match block.stmts[0].node {
-                StmtExpr(ref expr, _) |
-                StmtSemi(ref expr, _) => Some(expr),
-                _ => None,
+                StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => Some(expr),
+                StmtDecl(..) => None,
             }
         }
         _ => None,
@@ -803,7 +803,6 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
 fn is_break_expr(expr: &Expr) -> bool {
     match expr.node {
         ExprBreak(None) => true,
-        // there won't be a `let <pat> = break` and so we can safely ignore the StmtDecl case
         ExprBlock(ref b) => {
             match extract_first_expr(b) {
                 Some(ref subexpr) => is_break_expr(subexpr),

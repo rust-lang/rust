@@ -150,3 +150,18 @@ fn no_panic<T>(slice: &[T]) {
         loop {} //~ERROR empty `loop {}` detected.
     }
 }
+
+fn issue1017() {
+    let r: Result<u32, u32> = Ok(42);
+    let mut len = 1337;
+
+    loop {
+        match r {
+            Err(_) => len = 0,
+            Ok(length) => {
+                len = length;
+                break
+            }
+        }
+    }
+}
