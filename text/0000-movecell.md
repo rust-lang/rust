@@ -24,7 +24,7 @@ impl<T> Cell<T> {
 }
 
 impl<T: Copy> Cell<T> {
-    fn get(&self);
+    fn get(&self) -> T;
 }
 
 impl<T: Default> Cell<T> {
@@ -42,6 +42,8 @@ Finally, a `take` method is added which is equivalent to `self.replace(Default::
 [drawbacks]: #drawbacks
 
 It makes the `Cell` type more complicated.
+
+`Cell` will only be able to derive traits like `Eq` and `Ord` for types that are `Copy`, since there is no way to non-destructively read the contents of a non-`Copy` `Cell`.
 
 # Alternatives
 [alternatives]: #alternatives
