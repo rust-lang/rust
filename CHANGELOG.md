@@ -172,6 +172,7 @@ All notable changes to this project will be documented in this file.
 [`invalid_upcast_comparisons`]: https://github.com/Manishearth/rust-clippy/wiki#invalid_upcast_comparisons
 [`items_after_statements`]: https://github.com/Manishearth/rust-clippy/wiki#items_after_statements
 [`iter_next_loop`]: https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop
+[`iter_nth`]: https://github.com/Manishearth/rust-clippy/wiki#iter_nth
 [`len_without_is_empty`]: https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty
 [`len_zero`]: https://github.com/Manishearth/rust-clippy/wiki#len_zero
 [`let_and_return`]: https://github.com/Manishearth/rust-clippy/wiki#let_and_return
@@ -234,7 +235,6 @@ All notable changes to this project will be documented in this file.
 [`single_char_pattern`]: https://github.com/Manishearth/rust-clippy/wiki#single_char_pattern
 [`single_match`]: https://github.com/Manishearth/rust-clippy/wiki#single_match
 [`single_match_else`]: https://github.com/Manishearth/rust-clippy/wiki#single_match_else
-[`slice_iter_nth`]: https://github.com/Manishearth/rust-clippy/wiki#slice_iter_nth
 [`str_to_string`]: https://github.com/Manishearth/rust-clippy/wiki#str_to_string
 [`string_add`]: https://github.com/Manishearth/rust-clippy/wiki#string_add
 [`string_add_assign`]: https://github.com/Manishearth/rust-clippy/wiki#string_add_assign

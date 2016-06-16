@@ -78,6 +78,7 @@ name                                                                            
 [invalid_upcast_comparisons](https://github.com/Manishearth/rust-clippy/wiki#invalid_upcast_comparisons)             | allow   | a comparison involving an upcast which is always true or false
 [items_after_statements](https://github.com/Manishearth/rust-clippy/wiki#items_after_statements)                     | allow   | finds blocks where an item comes after a statement
 [iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                                     | warn    | for-looping over `_.next()` which is probably not intended
+[iter_nth](https://github.com/Manishearth/rust-clippy/wiki#iter_nth)                                                 | warn    | using `.iter().nth()` on a slice or Vec
 [len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)                         | warn    | traits and impls that have `.len()` but not `.is_empty()`
 [len_zero](https://github.com/Manishearth/rust-clippy/wiki#len_zero)                                                 | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
 [let_and_return](https://github.com/Manishearth/rust-clippy/wiki#let_and_return)                                     | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block
@@ -140,7 +141,6 @@ name                                                                            
 [single_char_pattern](https://github.com/Manishearth/rust-clippy/wiki#single_char_pattern)                           | warn    | using a single-character str where a char could be used, e.g. `_.split("x")`
 [single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                                         | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
 [single_match_else](https://github.com/Manishearth/rust-clippy/wiki#single_match_else)                               | allow   | a match statement with a two arms where the second arm's pattern is a wildcard; recommends `if let` instead
-[slice_iter_nth](https://github.com/Manishearth/rust-clippy/wiki#slice_iter_nth)                                     | warn    | using `.iter().nth()` on a slice
 [string_add](https://github.com/Manishearth/rust-clippy/wiki#string_add)                                             | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_add_assign](https://github.com/Manishearth/rust-clippy/wiki#string_add_assign)                               | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_lit_as_bytes](https://github.com/Manishearth/rust-clippy/wiki#string_lit_as_bytes)                           | warn    | calling `as_bytes` on a string literal; suggests using a byte string literal instead

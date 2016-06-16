@@ -128,6 +128,16 @@ fn option_methods() {
 
 }
 
+/// Struct to generate false positives for things with .iter()
+#[derive(Copy, Clone)]
+struct HasIter;
+
+impl HasIter {
+    fn iter(self) -> IteratorFalsePositives {
+        IteratorFalsePositives { foo: 0 }
+    }
+}
+
 /// Struct to generate false positive for Iterator-based lints
 #[derive(Copy, Clone)]
 struct IteratorFalsePositives {
@@ -152,6 +162,10 @@ impl IteratorFalsePositives {
     }
 
     fn rposition(self) -> Option<u32> {
+        Some(self.foo)
+    }
+
+    fn nth(self, n: usize) -> Option<u32> {
         Some(self.foo)
     }
 }
@@ -309,13 +323,17 @@ fn or_fun_call() {
     //~|SUGGESTION btree.entry(42).or_insert_with(String::new);
 }
 
-/// Checks implementation of `SLICE_ITER_NTH` lint
-fn slice_iter_nth() {
+/// Checks implementation of `ITER_NTH` lint
+fn iter_nth() {
     let some_vec = vec![0, 1, 2, 3];
-    let bad = &some_vec[..].iter().nth(3);
+    let bad_vec = some_vec.iter().nth(3);
+    //~^ERROR called `.iter().nth()` on a Vec.
+    let bad_slice = &some_vec[..].iter().nth(3);
     //~^ERROR called `.iter().nth()` on a slice.
 
-    let ok = some_vec.iter().nth(3); // This should be okay, since some_vec is not a slice
+    let false_positive = HasIter;
+    let ok = false_positive.iter().nth(3);
+    // ^This should be okay, because false_positive is not a slice or Vec
 }
 
 #[allow(similar_names)]
