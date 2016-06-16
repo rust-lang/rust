@@ -205,9 +205,9 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct LoopsPass;
+pub struct Pass;
 
-impl LintPass for LoopsPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RANGE_LOOP,
                     EXPLICIT_ITER_LOOP,
@@ -222,7 +222,7 @@ impl LintPass for LoopsPass {
     }
 }
 
-impl LateLintPass for LoopsPass {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let Some((pat, arg, body)) = recover_for_loop(expr) {
             check_for_loop(cx, pat, arg, body, expr);

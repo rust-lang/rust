@@ -18,15 +18,15 @@ declare_lint! {
     "finds C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`"
 }
 
-pub struct EnumClikeUnportableVariant;
+pub struct UnportableVariant;
 
-impl LintPass for EnumClikeUnportableVariant {
+impl LintPass for UnportableVariant {
     fn get_lints(&self) -> LintArray {
         lint_array!(ENUM_CLIKE_UNPORTABLE_VARIANT)
     }
 }
 
-impl LateLintPass for EnumClikeUnportableVariant {
+impl LateLintPass for UnportableVariant {
     #[allow(cast_possible_truncation, cast_sign_loss)]
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemEnum(ref def, _) = item.node {

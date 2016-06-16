@@ -23,15 +23,15 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct FormatMacLint;
+pub struct Pass;
 
-impl LintPass for FormatMacLint {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array![USELESS_FORMAT]
     }
 }
 
-impl LateLintPass for FormatMacLint {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let Some(span) = is_expn_of(cx, expr.span, "format") {
             match expr.node {

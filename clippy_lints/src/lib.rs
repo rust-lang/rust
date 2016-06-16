@@ -132,7 +132,7 @@ mod reexport {
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
-    let conf = match utils::conf::conf_file(reg.args()) {
+    let conf = match utils::conf::file(reg.args()) {
         Ok(file_name) => {
             // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
             // do not require the file to exist
@@ -142,7 +142,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
                 ("clippy.toml", false)
             };
 
-            let (conf, errors) = utils::conf::read_conf(file_name, must_exist);
+            let (conf, errors) = utils::conf::read(file_name, must_exist);
 
             // all conf errors are non-fatal, we just use the default conf in case of error
             for error in errors {
@@ -171,14 +171,14 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box misc::TopLevelRefPass);
     reg.register_late_lint_pass(box misc::CmpNan);
     reg.register_late_lint_pass(box eq_op::EqOp);
-    reg.register_early_lint_pass(box enum_variants::EnumVariantNames);
+    reg.register_early_lint_pass(box enum_variants::EnumVariantNames::default());
     reg.register_late_lint_pass(box enum_glob_use::EnumGlobUse);
-    reg.register_late_lint_pass(box enum_clike::EnumClikeUnportableVariant);
+    reg.register_late_lint_pass(box enum_clike::UnportableVariant);
     reg.register_late_lint_pass(box bit_mask::BitMask);
     reg.register_late_lint_pass(box ptr_arg::PtrArg);
     reg.register_late_lint_pass(box needless_bool::NeedlessBool);
     reg.register_late_lint_pass(box needless_bool::BoolComparison);
-    reg.register_late_lint_pass(box approx_const::ApproxConstant);
+    reg.register_late_lint_pass(box approx_const::Pass);
     reg.register_late_lint_pass(box misc::FloatCmp);
     reg.register_early_lint_pass(box precedence::Precedence);
     reg.register_late_lint_pass(box eta_reduction::EtaPass);
@@ -195,11 +195,11 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box unicode::Unicode);
     reg.register_late_lint_pass(box strings::StringAdd);
     reg.register_early_lint_pass(box returns::ReturnPass);
-    reg.register_late_lint_pass(box methods::MethodsPass);
-    reg.register_late_lint_pass(box shadow::ShadowPass);
+    reg.register_late_lint_pass(box methods::Pass);
+    reg.register_late_lint_pass(box shadow::Pass);
     reg.register_late_lint_pass(box types::LetPass);
     reg.register_late_lint_pass(box types::UnitCmp);
-    reg.register_late_lint_pass(box loops::LoopsPass);
+    reg.register_late_lint_pass(box loops::Pass);
     reg.register_late_lint_pass(box lifetimes::LifetimePass);
     reg.register_late_lint_pass(box entry::HashMapLint);
     reg.register_late_lint_pass(box ranges::StepByZero);
@@ -208,35 +208,35 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box matches::MatchPass);
     reg.register_late_lint_pass(box misc::PatternPass);
     reg.register_late_lint_pass(box minmax::MinMaxPass);
-    reg.register_late_lint_pass(box open_options::NonSensicalOpenOptions);
-    reg.register_late_lint_pass(box zero_div_zero::ZeroDivZeroPass);
+    reg.register_late_lint_pass(box open_options::NonSensical);
+    reg.register_late_lint_pass(box zero_div_zero::Pass);
     reg.register_late_lint_pass(box mutex_atomic::MutexAtomic);
-    reg.register_late_lint_pass(box needless_update::NeedlessUpdatePass);
+    reg.register_late_lint_pass(box needless_update::Pass);
     reg.register_late_lint_pass(box needless_borrow::NeedlessBorrow);
-    reg.register_late_lint_pass(box no_effect::NoEffectPass);
-    reg.register_late_lint_pass(box map_clone::MapClonePass);
-    reg.register_late_lint_pass(box temporary_assignment::TemporaryAssignmentPass);
+    reg.register_late_lint_pass(box no_effect::Pass);
+    reg.register_late_lint_pass(box map_clone::Pass);
+    reg.register_late_lint_pass(box temporary_assignment::Pass);
     reg.register_late_lint_pass(box transmute::Transmute);
     reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold));
-    reg.register_late_lint_pass(box escape::EscapePass);
+    reg.register_late_lint_pass(box escape::Pass);
     reg.register_early_lint_pass(box misc_early::MiscEarly);
     reg.register_late_lint_pass(box misc::UsedUnderscoreBinding);
     reg.register_late_lint_pass(box array_indexing::ArrayIndexing);
-    reg.register_late_lint_pass(box panic::PanicPass);
+    reg.register_late_lint_pass(box panic::Pass);
     reg.register_late_lint_pass(box strings::StringLitAsBytes);
     reg.register_late_lint_pass(box derive::Derive);
     reg.register_late_lint_pass(box types::CharLitAsU8);
-    reg.register_late_lint_pass(box print::PrintLint);
-    reg.register_late_lint_pass(box vec::UselessVec);
+    reg.register_late_lint_pass(box print::Pass);
+    reg.register_late_lint_pass(box vec::Pass);
     reg.register_early_lint_pass(box non_expressive_names::NonExpressiveNames {
         max_single_char_names: conf.max_single_char_names,
     });
-    reg.register_late_lint_pass(box drop_ref::DropRefPass);
+    reg.register_late_lint_pass(box drop_ref::Pass);
     reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);
     reg.register_late_lint_pass(box types::InvalidUpcastComparisons);
-    reg.register_late_lint_pass(box regex::RegexPass::default());
+    reg.register_late_lint_pass(box regex::Pass::default());
     reg.register_late_lint_pass(box copies::CopyAndPaste);
-    reg.register_late_lint_pass(box format::FormatMacLint);
+    reg.register_late_lint_pass(box format::Pass);
     reg.register_early_lint_pass(box formatting::Formatting);
     reg.register_late_lint_pass(box swap::Swap);
     reg.register_early_lint_pass(box if_not_else::IfNotElse);
@@ -263,6 +263,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         array_indexing::INDEXING_SLICING,
         booleans::NONMINIMAL_BOOL,
         enum_glob_use::ENUM_GLOB_USE,
+        enum_variants::STUTTER,
         if_not_else::IF_NOT_ELSE,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         matches::SINGLE_MATCH_ELSE,

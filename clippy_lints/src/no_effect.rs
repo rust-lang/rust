@@ -78,15 +78,15 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
 }
 
 #[derive(Copy, Clone)]
-pub struct NoEffectPass;
+pub struct Pass;
 
-impl LintPass for NoEffectPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NO_EFFECT, UNNECESSARY_OPERATION)
     }
 }
 
-impl LateLintPass for NoEffectPass {
+impl LateLintPass for Pass {
     fn check_stmt(&mut self, cx: &LateContext, stmt: &Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if has_no_effect(cx, expr) {

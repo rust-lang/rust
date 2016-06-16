@@ -17,15 +17,15 @@ declare_lint! {
 }
 
 #[allow(missing_copy_implementations)]
-pub struct PanicPass;
+pub struct Pass;
 
-impl LintPass for PanicPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(PANIC_PARAMS)
     }
 }
 
-impl LateLintPass for PanicPass {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_let_chain! {[
             let ExprBlock(ref block) = expr.node,

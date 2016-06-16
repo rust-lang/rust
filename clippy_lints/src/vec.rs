@@ -22,15 +22,15 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct UselessVec;
+pub struct Pass;
 
-impl LintPass for UselessVec {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(USELESS_VEC)
     }
 }
 
-impl LateLintPass for UselessVec {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_let_chain!{[
@@ -51,12 +51,12 @@ impl LateLintPass for UselessVec {
 }
 
 fn check_vec_macro(cx: &LateContext, vec: &Expr, span: Span) {
-    if let Some(vec_args) = unexpand_vec(cx, vec) {
+    if let Some(vec_args) = unexpand(cx, vec) {
         let snippet = match vec_args {
-            VecArgs::Repeat(elem, len) => {
+            Args::Repeat(elem, len) => {
                 format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len")).into()
             }
-            VecArgs::Vec(args) => {
+            Args::Vec(args) => {
                 if let Some(last) = args.iter().last() {
                     let span = Span {
                         lo: args[0].span.lo,
@@ -78,7 +78,7 @@ fn check_vec_macro(cx: &LateContext, vec: &Expr, span: Span) {
 }
 
 /// Represent the pre-expansion arguments of a `vec!` invocation.
-pub enum VecArgs<'a> {
+pub enum Args<'a> {
     /// `vec![elem; len]`
     Repeat(&'a P<Expr>, &'a P<Expr>),
     /// `vec![a, b, c]`
@@ -86,7 +86,7 @@ pub enum VecArgs<'a> {
 }
 
 /// Returns the arguments of the `vec!` macro if this expression was expanded from `vec!`.
-pub fn unexpand_vec<'e>(cx: &LateContext, expr: &'e Expr) -> Option<VecArgs<'e>> {
+pub fn unexpand<'e>(cx: &LateContext, expr: &'e Expr) -> Option<Args<'e>> {
     if_let_chain!{[
         let ExprCall(ref fun, ref args) = expr.node,
         let ExprPath(_, ref path) = fun.node,
@@ -94,7 +94,7 @@ pub fn unexpand_vec<'e>(cx: &LateContext, expr: &'e Expr) -> Option<VecArgs<'e>>
     ], {
         return if match_path(path, &paths::VEC_FROM_ELEM) && args.len() == 2 {
             // `vec![elem; size]` case
-            Some(VecArgs::Repeat(&args[0], &args[1]))
+            Some(Args::Repeat(&args[0], &args[1]))
         }
         else if match_path(path, &["into_vec"]) && args.len() == 1 {
             // `vec![a, b, c]` case
@@ -102,7 +102,7 @@ pub fn unexpand_vec<'e>(cx: &LateContext, expr: &'e Expr) -> Option<VecArgs<'e>>
                 let ExprBox(ref boxed) = args[0].node,
                 let ExprVec(ref args) = boxed.node
             ], {
-                return Some(VecArgs::Vec(&*args));
+                return Some(Args::Vec(&*args));
             }}
 
             None

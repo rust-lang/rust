@@ -31,15 +31,15 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct PrintLint;
+pub struct Pass;
 
-impl LintPass for PrintLint {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(PRINT_STDOUT, USE_DEBUG)
     }
 }
 
-impl LateLintPass for PrintLint {
+impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprCall(ref fun, ref args) = expr.node {
             if let ExprPath(_, ref path) = fun.node {

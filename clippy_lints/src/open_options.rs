@@ -19,15 +19,15 @@ declare_lint! {
 
 
 #[derive(Copy,Clone)]
-pub struct NonSensicalOpenOptions;
+pub struct NonSensical;
 
-impl LintPass for NonSensicalOpenOptions {
+impl LintPass for NonSensical {
     fn get_lints(&self) -> LintArray {
         lint_array!(NONSENSICAL_OPEN_OPTIONS)
     }
 }
 
-impl LateLintPass for NonSensicalOpenOptions {
+impl LateLintPass for NonSensical {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprMethodCall(ref name, _, ref arguments) = e.node {
             let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&arguments[0]));
