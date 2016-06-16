@@ -28,7 +28,6 @@ use mir::CachedMir;
 use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
-use collector::TransItemState;
 use trans_item::TransItem;
 use type_::{Type, TypeNames};
 use rustc::ty::subst::{Substs, VecPerParamSpace};
@@ -37,7 +36,7 @@ use session::config::NoDebugInfo;
 use session::Session;
 use symbol_map::SymbolMap;
 use util::sha2::Sha256;
-use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap};
+use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -85,7 +84,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 
     use_dll_storage_attrs: bool,
 
-    translation_items: RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>>,
+    translation_items: RefCell<FnvHashSet<TransItem<'tcx>>>,
     trait_cache: RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>>,
 }
 
@@ -419,7 +418,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             check_overflow: check_overflow,
             check_drop_flag_for_sanity: check_drop_flag_for_sanity,
             use_dll_storage_attrs: use_dll_storage_attrs,
-            translation_items: RefCell::new(FnvHashMap()),
+            translation_items: RefCell::new(FnvHashSet()),
             trait_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
         }
     }
@@ -482,7 +481,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         }
     }
 
-    pub fn translation_items(&self) -> &RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>> {
+    pub fn translation_items(&self) -> &RefCell<FnvHashSet<TransItem<'tcx>>> {
         &self.translation_items
     }
 
@@ -902,22 +901,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &*self.local().symbol_map
     }
 
-    pub fn translation_items(&self) -> &RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>> {
+    pub fn translation_items(&self) -> &RefCell<FnvHashSet<TransItem<'tcx>>> {
         &self.shared.translation_items
-    }
-
-    pub fn record_translation_item_as_generated(&self, cgi: TransItem<'tcx>) {
-        if self.sess().opts.debugging_opts.print_trans_items.is_none() {
-            return;
-        }
-
-        let mut codegen_items = self.translation_items().borrow_mut();
-
-        if codegen_items.contains_key(&cgi) {
-            codegen_items.insert(cgi, TransItemState::PredictedAndGenerated);
-        } else {
-            codegen_items.insert(cgi, TransItemState::NotPredictedButGenerated);
-        }
     }
 
     /// Given the def-id of some item that has no type parameters, make

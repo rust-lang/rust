@@ -123,7 +123,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }) => {
             let trans_item = TransItem::Fn(instance);
 
-            if ccx.shared().translation_items().borrow().contains_key(&trans_item) {
+            if ccx.shared().translation_items().borrow().contains(&trans_item) {
                 attributes::from_fn_attrs(ccx, attrs, lldecl);
                 llvm::SetLinkage(lldecl, llvm::ExternalLinkage);
             } else {
