@@ -21,7 +21,6 @@ use rustc::hir::map as hir_map;
 use {abi, adt, closure, debuginfo, expr, machine};
 use base::{self, push_ctxt};
 use callee::Callee;
-use collector;
 use trans_item::TransItem;
 use common::{type_is_sized, C_nil, const_get_elt};
 use common::{CrateContext, C_integral, C_floating, C_bool, C_str_slice, C_bytes, val_ty};
@@ -1140,11 +1139,6 @@ pub fn trans_static(ccx: &CrateContext,
                     id: ast::NodeId,
                     attrs: &[ast::Attribute])
                     -> Result<ValueRef, ConstEvalErr> {
-
-    if collector::collecting_debug_information(ccx.shared()) {
-        ccx.record_translation_item_as_generated(TransItem::Static(id));
-    }
-
     unsafe {
         let _icx = push_ctxt("trans_static");
         let def_id = ccx.tcx().map.local_def_id(id);

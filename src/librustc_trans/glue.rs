@@ -27,7 +27,6 @@ use build::*;
 use callee::{Callee, ArgVals};
 use cleanup;
 use cleanup::CleanupMethods;
-use collector;
 use common::*;
 use debuginfo::DebugLoc;
 use expr;
@@ -482,11 +481,6 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
 fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueKind<'tcx>)
                               -> Block<'blk, 'tcx> {
-    if collector::collecting_debug_information(bcx.ccx().shared()) {
-        bcx.ccx()
-           .record_translation_item_as_generated(TransItem::DropGlue(g));
-    }
-
     let t = g.ty();
 
     let skip_dtor = match g { DropGlueKind::Ty(_) => false, DropGlueKind::TyContents(_) => true };

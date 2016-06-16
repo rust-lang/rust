@@ -58,7 +58,7 @@ use callee::{Callee, CallArgs, ArgExprs, ArgVals};
 use cleanup::{self, CleanupMethods, DropHint};
 use closure;
 use common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_uint, C_integral};
-use collector::{self, TransItemState, TransItemCollectionMode};
+use collector::{self, TransItemCollectionMode};
 use common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use common::{CrateContext, DropFlagHintsMap, Field, FunctionContext};
 use common::{Result, NodeIdAndSpan, VariantInfo};
@@ -1830,10 +1830,6 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                closure_env: closure::ClosureEnv) {
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
-    if collector::collecting_debug_information(ccx.shared()) {
-        ccx.record_translation_item_as_generated(TransItem::Fn(instance));
-    }
-
     let _icx = push_ctxt("trans_closure");
     if !ccx.sess().no_landing_pads() {
         attributes::emit_uwtable(llfndecl, true);
@@ -2661,7 +2657,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    collector::print_collection_results(&shared_ccx);
     symbol_names_test::report_symbol_names(&shared_ccx);
 
     {
@@ -2881,7 +2876,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         let mut ccx_map = scx.translation_items().borrow_mut();
 
         for trans_item in items.iter().cloned() {
-            ccx_map.insert(trans_item, TransItemState::PredictedButNotGenerated);
+            ccx_map.insert(trans_item);
         }
     }
 
