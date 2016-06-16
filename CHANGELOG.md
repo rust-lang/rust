@@ -240,6 +240,7 @@ All notable changes to this project will be documented in this file.
 [`string_add_assign`]: https://github.com/Manishearth/rust-clippy/wiki#string_add_assign
 [`string_lit_as_bytes`]: https://github.com/Manishearth/rust-clippy/wiki#string_lit_as_bytes
 [`string_to_string`]: https://github.com/Manishearth/rust-clippy/wiki#string_to_string
+[`stutter`]: https://github.com/Manishearth/rust-clippy/wiki#stutter
 [`suspicious_assignment_formatting`]: https://github.com/Manishearth/rust-clippy/wiki#suspicious_assignment_formatting
 [`suspicious_else_formatting`]: https://github.com/Manishearth/rust-clippy/wiki#suspicious_else_formatting
 [`temporary_assignment`]: https://github.com/Manishearth/rust-clippy/wiki#temporary_assignment

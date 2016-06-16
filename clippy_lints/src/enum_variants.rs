@@ -19,6 +19,18 @@ declare_lint! {
     "finds enums where all variants share a prefix/postfix"
 }
 
+/// **What it does:** Warns on type names that are prefixed or suffixed by the containing module's name
+///
+/// **Why is this bad?** It requires the user to type the module name twice
+///
+/// **Known problems:** None
+///
+/// **Example:** mod cake { struct BlackForestCake; }
+declare_lint! {
+    pub STUTTER, Allow,
+    "finds type names prefixed/postfixed with their containing module's name"
+}
+
 #[derive(Default)]
 pub struct EnumVariantNames {
     modules: Vec<String>,
@@ -26,7 +38,7 @@ pub struct EnumVariantNames {
 
 impl LintPass for EnumVariantNames {
     fn get_lints(&self) -> LintArray {
-        lint_array!(ENUM_VARIANT_NAMES)
+        lint_array!(ENUM_VARIANT_NAMES, STUTTER)
     }
 }
 
@@ -143,10 +155,10 @@ impl EarlyLintPass for EnumVariantNames {
                     let rmatching = partial_rmatch(mod_camel, &item_camel);
                     let nchars = mod_camel.chars().count();
                     if matching == nchars {
-                        span_lint(cx, ENUM_VARIANT_NAMES, item.span, &format!("Item name ({}) starts with its containing module's name ({})", item_camel, mod_camel));
+                        span_lint(cx, STUTTER, item.span, &format!("Item name ({}) starts with its containing module's name ({})", item_camel, mod_camel));
                     }
                     if rmatching == nchars {
-                        span_lint(cx, ENUM_VARIANT_NAMES, item.span, &format!("Item name ({}) ends with its containing module's name ({})", item_camel, mod_camel));
+                        span_lint(cx, STUTTER, item.span, &format!("Item name ({}) ends with its containing module's name ({})", item_camel, mod_camel));
                     }
                 }
             }

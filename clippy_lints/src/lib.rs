@@ -263,6 +263,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         array_indexing::INDEXING_SLICING,
         booleans::NONMINIMAL_BOOL,
         enum_glob_use::ENUM_GLOB_USE,
+        enum_variants::STUTTER,
         if_not_else::IF_NOT_ELSE,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         matches::SINGLE_MATCH_ELSE,
