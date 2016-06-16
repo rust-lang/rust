@@ -9,7 +9,7 @@ strings also work differently than in some other systems languages, such as C.
 Let’s dig into the details. A ‘string’ is a sequence of Unicode scalar values
 encoded as a stream of UTF-8 bytes. All strings are guaranteed to be a valid
 encoding of UTF-8 sequences. Additionally, unlike some systems languages,
-strings are not null-terminated and can contain null bytes.
+strings are not NUL-terminated and can contain NUL bytes.
 
 Rust has two main types of strings: `&str` and `String`. Let’s talk about
 `&str` first. These are called ‘string slices’. A string slice has a fixed
