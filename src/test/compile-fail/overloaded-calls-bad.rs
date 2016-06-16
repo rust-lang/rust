@@ -36,7 +36,13 @@ fn main() {
         y: 3,
     };
     let ans = s("what");    //~ ERROR mismatched types
-    let ans = s();  //~ ERROR this function takes 1 parameter but 0 parameters were supplied
+    //~^ NOTE expected isize, found &-ptr
+    //~| NOTE expected type
+    //~| NOTE found type
+    let ans = s();
+    //~^ ERROR this function takes 1 parameter but 0 parameters were supplied
+    //~| NOTE the following parameter type was expected
     let ans = s("burma", "shave");
     //~^ ERROR this function takes 1 parameter but 2 parameters were supplied
+    //~| NOTE the following parameter type was expected
 }

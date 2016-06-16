@@ -2402,29 +2402,45 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let mut expected_arg_tys = expected_arg_tys;
         let expected_arg_count = fn_inputs.len();
+
+        fn parameter_count_error<'tcx>(sess: &Session, sp: Span, fn_inputs: &[Ty<'tcx>],
+                                       expected_count: usize, arg_count: usize, error_code: &str,
+                                       variadic: bool) {
+            let mut err = sess.struct_span_err_with_code(sp,
+                &format!("this function takes {}{} parameter{} but {} parameter{} supplied",
+                    if variadic {"at least "} else {""},
+                    expected_count,
+                    if expected_count == 1 {""} else {"s"},
+                    arg_count,
+                    if arg_count == 1 {" was"} else {"s were"}),
+                error_code);
+            let input_types = fn_inputs.iter().map(|i| format!("{:?}", i)).collect::<Vec<String>>();
+            if input_types.len() > 0 {
+                err.note(&format!("the following parameter type{} expected: {}",
+                        if expected_count == 1 {" was"} else {"s were"},
+                        input_types.join(", ")));
+            }
+            err.emit();
+        }
+
         let formal_tys = if tuple_arguments == TupleArguments {
             let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
             match tuple_type.sty {
+                ty::TyTuple(arg_types) if arg_types.len() != args.len() => {
+                    parameter_count_error(tcx.sess, sp, fn_inputs, arg_types.len(), args.len(),
+                                          "E0057", false);
+                    expected_arg_tys = &[];
+                    self.err_args(args.len())
+                }
                 ty::TyTuple(arg_types) => {
-                    if arg_types.len() != args.len() {
-                        span_err!(tcx.sess, sp, E0057,
-                            "this function takes {} parameter{} but {} parameter{} supplied",
-                            arg_types.len(),
-                            if arg_types.len() == 1 {""} else {"s"},
-                            args.len(),
-                            if args.len() == 1 {" was"} else {"s were"});
-                        expected_arg_tys = &[];
-                        self.err_args(args.len())
-                    } else {
-                        expected_arg_tys = match expected_arg_tys.get(0) {
-                            Some(&ty) => match ty.sty {
-                                ty::TyTuple(ref tys) => &tys,
-                                _ => &[]
-                            },
-                            None => &[]
-                        };
-                        arg_types.to_vec()
-                    }
+                    expected_arg_tys = match expected_arg_tys.get(0) {
+                        Some(&ty) => match ty.sty {
+                            ty::TyTuple(ref tys) => &tys,
+                            _ => &[]
+                        },
+                        None => &[]
+                    };
+                    arg_types.to_vec()
                 }
                 _ => {
                     span_err!(tcx.sess, sp, E0059,
@@ -2440,23 +2456,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if supplied_arg_count >= expected_arg_count {
                 fn_inputs.to_vec()
             } else {
-                span_err!(tcx.sess, sp, E0060,
-                    "this function takes at least {} parameter{} \
-                     but {} parameter{} supplied",
-                    expected_arg_count,
-                    if expected_arg_count == 1 {""} else {"s"},
-                    supplied_arg_count,
-                    if supplied_arg_count == 1 {" was"} else {"s were"});
+                parameter_count_error(tcx.sess, sp, fn_inputs, expected_arg_count,
+                                      supplied_arg_count, "E0060", true);
                 expected_arg_tys = &[];
                 self.err_args(supplied_arg_count)
             }
         } else {
-            span_err!(tcx.sess, sp, E0061,
-                "this function takes {} parameter{} but {} parameter{} supplied",
-                expected_arg_count,
-                if expected_arg_count == 1 {""} else {"s"},
-                supplied_arg_count,
-                if supplied_arg_count == 1 {" was"} else {"s were"});
+            parameter_count_error(tcx.sess, sp, fn_inputs, expected_arg_count, supplied_arg_count,
+                                  "E0061", false);
             expected_arg_tys = &[];
             self.err_args(supplied_arg_count)
         };

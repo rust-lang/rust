@@ -17,7 +17,9 @@ extern "C" fn bar(f: isize, x: u8) {}
 fn main() {
     unsafe {
         foo(); //~ ERROR: this function takes at least 2 parameters but 0 parameters were supplied
+        //~^ NOTE the following parameter types were expected
         foo(1); //~ ERROR: this function takes at least 2 parameters but 1 parameter was supplied
+        //~^ NOTE the following parameter types were expected
 
         let x: unsafe extern "C" fn(f: isize, x: u8) = foo;
         //~^ ERROR: mismatched types
