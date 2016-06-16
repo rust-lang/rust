@@ -80,7 +80,8 @@ fn build_libbacktrace(host: &str, target: &str) {
     }
 
     let compiler = gcc::Config::new().get_compiler();
-    let ar = build_helper::cc2ar(compiler.path(), target);
+    // only msvc returns None for ar so unwrap is okay
+    let ar = build_helper::cc2ar(compiler.path(), target).unwrap();
     let cflags = compiler.args().iter().map(|s| s.to_str().unwrap())
                          .collect::<Vec<_>>().join(" ");
     run(Command::new("sh")
