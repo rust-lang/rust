@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 152 lints included in this crate:
+There are 153 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -140,6 +140,7 @@ name                                                                            
 [single_char_pattern](https://github.com/Manishearth/rust-clippy/wiki#single_char_pattern)                           | warn    | using a single-character str where a char could be used, e.g. `_.split("x")`
 [single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                                         | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
 [single_match_else](https://github.com/Manishearth/rust-clippy/wiki#single_match_else)                               | allow   | a match statement with a two arms where the second arm's pattern is a wildcard; recommends `if let` instead
+[slice_iter_nth](https://github.com/Manishearth/rust-clippy/wiki#slice_iter_nth)                                     | warn    | using `.iter().nth()` on a slice
 [string_add](https://github.com/Manishearth/rust-clippy/wiki#string_add)                                             | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_add_assign](https://github.com/Manishearth/rust-clippy/wiki#string_add_assign)                               | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_lit_as_bytes](https://github.com/Manishearth/rust-clippy/wiki#string_lit_as_bytes)                           | warn    | calling `as_bytes` on a string literal; suggests using a byte string literal instead

@@ -234,6 +234,7 @@ All notable changes to this project will be documented in this file.
 [`single_char_pattern`]: https://github.com/Manishearth/rust-clippy/wiki#single_char_pattern
 [`single_match`]: https://github.com/Manishearth/rust-clippy/wiki#single_match
 [`single_match_else`]: https://github.com/Manishearth/rust-clippy/wiki#single_match_else
+[`slice_iter_nth`]: https://github.com/Manishearth/rust-clippy/wiki#slice_iter_nth
 [`str_to_string`]: https://github.com/Manishearth/rust-clippy/wiki#str_to_string
 [`string_add`]: https://github.com/Manishearth/rust-clippy/wiki#string_add
 [`string_add_assign`]: https://github.com/Manishearth/rust-clippy/wiki#string_add_assign
