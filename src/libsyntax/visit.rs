@@ -64,7 +64,6 @@ pub trait Visitor<'v> : Sized {
     fn visit_stmt(&mut self, s: &'v Stmt) { walk_stmt(self, s) }
     fn visit_arm(&mut self, a: &'v Arm) { walk_arm(self, a) }
     fn visit_pat(&mut self, p: &'v Pat) { walk_pat(self, p) }
-    fn visit_decl(&mut self, d: &'v Decl) { walk_decl(self, d) }
     fn visit_expr(&mut self, ex: &'v Expr) { walk_expr(self, ex) }
     fn visit_expr_post(&mut self, _ex: &'v Expr) { }
     fn visit_ty(&mut self, t: &'v Ty) { walk_ty(self, t) }
@@ -613,23 +612,18 @@ pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
 
 pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
     match statement.node {
-        StmtKind::Decl(ref declaration, _) => visitor.visit_decl(declaration),
-        StmtKind::Expr(ref expression, _) | StmtKind::Semi(ref expression, _) => {
+        StmtKind::Local(ref local) => visitor.visit_local(local),
+        StmtKind::Item(ref item) => visitor.visit_item(item),
+        StmtKind::Expr(ref expression) | StmtKind::Semi(ref expression) => {
             visitor.visit_expr(expression)
         }
-        StmtKind::Mac(ref mac, _, ref attrs) => {
+        StmtKind::Mac(ref mac) => {
+            let (ref mac, _, ref attrs) = **mac;
             visitor.visit_mac(mac);
             for attr in attrs.as_attr_slice() {
                 visitor.visit_attribute(attr);
             }
         }
-    }
-}
-
-pub fn walk_decl<'v, V: Visitor<'v>>(visitor: &mut V, declaration: &'v Decl) {
-    match declaration.node {
-        DeclKind::Local(ref local) => visitor.visit_local(local),
-        DeclKind::Item(ref item) => visitor.visit_item(item),
     }
 }
 

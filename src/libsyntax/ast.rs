@@ -29,7 +29,6 @@ use ptr::P;
 
 use std::fmt;
 use std::rc::Rc;
-use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -795,10 +794,7 @@ pub struct Stmt {
 
 impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "stmt({}: {})",
-               self.node.id()
-                   .map_or(Cow::Borrowed("<macro>"),|id|Cow::Owned(id.to_string())),
-               pprust::stmt_to_string(self))
+        write!(f, "stmt({}: {})", self.id.to_string(), pprust::stmt_to_string(self))
     }
 }
 
@@ -821,15 +817,6 @@ pub enum StmtKind {
 }
 
 impl StmtKind {
-    pub fn id(&self) -> Option<NodeId> {
-        match *self {
-            StmtKind::Decl(_, id) => Some(id),
-            StmtKind::Expr(_, id) => Some(id),
-            StmtKind::Semi(_, id) => Some(id),
-            StmtKind::Mac(..) => None,
-        }
-    }
-
     pub fn attrs(&self) -> &[Attribute] {
         HasAttrs::attrs(self)
     }
@@ -863,12 +850,6 @@ pub struct Local {
 }
 
 impl Local {
-    pub fn attrs(&self) -> &[Attribute] {
-        HasAttrs::attrs(self)
-    }
-}
-
-impl Decl {
     pub fn attrs(&self) -> &[Attribute] {
         HasAttrs::attrs(self)
     }

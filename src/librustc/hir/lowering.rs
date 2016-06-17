@@ -237,19 +237,6 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_decl(&mut self, d: &Decl) -> P<hir::Decl> {
-        match d.node {
-            DeclKind::Local(ref l) => P(Spanned {
-                node: hir::DeclLocal(self.lower_local(l)),
-                span: d.span,
-            }),
-            DeclKind::Item(ref it) => P(Spanned {
-                node: hir::DeclItem(self.lower_item_id(it)),
-                span: d.span,
-            }),
-        }
-    }
-
     fn lower_ty_binding(&mut self, b: &TypeBinding) -> hir::TypeBinding {
         hir::TypeBinding {
             id: b.id,
@@ -1579,21 +1566,29 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_stmt(&mut self, s: &Stmt) -> hir::Stmt {
         match s.node {
-            StmtKind::Decl(ref d, id) => {
+            StmtKind::Local(ref l) => Spanned {
+                node: hir::StmtDecl(P(Spanned {
+                    node: hir::DeclLocal(self.lower_local(l)),
+                    span: s.span,
+                }), s.id),
+                span: s.span,
+            },
+            StmtKind::Item(ref it) => Spanned {
+                node: hir::StmtDecl(P(Spanned {
+                    node: hir::DeclItem(self.lower_item_id(it)),
+                    span: s.span,
+                }), s.id),
+                span: s.span,
+            },
+            StmtKind::Expr(ref e) => {
                 Spanned {
-                    node: hir::StmtDecl(self.lower_decl(d), id),
+                    node: hir::StmtExpr(self.lower_expr(e), s.id),
                     span: s.span,
                 }
             }
-            StmtKind::Expr(ref e, id) => {
+            StmtKind::Semi(ref e) => {
                 Spanned {
-                    node: hir::StmtExpr(self.lower_expr(e), id),
-                    span: s.span,
-                }
-            }
-            StmtKind::Semi(ref e, id) => {
-                Spanned {
-                    node: hir::StmtSemi(self.lower_expr(e), id),
+                    node: hir::StmtSemi(self.lower_expr(e), s.id),
                     span: s.span,
                 }
             }

@@ -202,10 +202,11 @@ impl<F> IdentMacroExpander for F
 // Use a macro because forwarding to a simple function has type system issues
 macro_rules! make_stmts_default {
     ($me:expr) => {
-        $me.make_expr().map(|e| {
-            SmallVector::one(codemap::respan(
-                e.span, ast::StmtKind::Expr(e, ast::DUMMY_NODE_ID)))
-        })
+        $me.make_expr().map(|e| SmallVector::one(ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            span: e.span,
+            node: ast::StmtKind::Expr(e),
+        }))
     }
 }
 
@@ -399,10 +400,11 @@ impl MacResult for DummyResult {
     }
 
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVector<ast::Stmt>> {
-        Some(SmallVector::one(
-            codemap::respan(self.span,
-                            ast::StmtKind::Expr(DummyResult::raw_expr(self.span),
-                                                ast::DUMMY_NODE_ID))))
+        Some(SmallVector::one(ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span)),
+            span: self.span,
+        }))
     }
 }
 

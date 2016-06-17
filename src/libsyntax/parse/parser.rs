@@ -16,7 +16,7 @@ use ast::{Mod, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
 use ast::{BlockCheckMode, CaptureBy};
 use ast::{Constness, Crate, CrateConfig};
-use ast::{Decl, DeclKind, Defaultness};
+use ast::Defaultness;
 use ast::{EMPTY_CTXT, EnumDef};
 use ast::{Expr, ExprKind, RangeLimits};
 use ast::{Field, FnDecl};
@@ -3804,13 +3804,6 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// Parse a "let" stmt
-    fn parse_let(&mut self, attrs: ThinAttributes) -> PResult<'a, P<Decl>> {
-        let lo = self.span.lo;
-        let local = self.parse_local(attrs)?;
-        Ok(P(spanned(lo, self.last_span.hi, DeclKind::Local(local))))
-    }
-
     /// Parse a structure field
     fn parse_name_and_ty(&mut self, pr: Visibility,
                          attrs: Vec<Attribute> ) -> PResult<'a, StructField> {
@@ -3923,12 +3916,12 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
 
-        Ok(Some(if self.check_keyword(keywords::Let) {
-            self.expect_keyword(keywords::Let)?;
-            let decl = self.parse_let(attrs.into_thin_attrs())?;
-            let hi = decl.span.hi;
-            let stmt = StmtKind::Decl(decl, ast::DUMMY_NODE_ID);
-            spanned(lo, hi, stmt)
+        Ok(Some(if self.eat_keyword(keywords::Let) {
+            Stmt {
+                id: ast::DUMMY_NODE_ID,
+                node: StmtKind::Local(self.parse_local(attrs.into_thin_attrs())?),
+                span: mk_sp(lo, self.last_span.hi),
+            }
         } else if self.token.is_ident()
             && !self.token.is_any_keyword()
             && self.look_ahead(1, |t| *t == token::Not) {
@@ -3979,9 +3972,12 @@ impl<'a> Parser<'a> {
             };
 
             if id.name == keywords::Invalid.name() {
-                let mac = P(spanned(lo, hi, Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT }));
-                let stmt = StmtKind::Mac(mac, style, attrs.into_thin_attrs());
-                spanned(lo, hi, stmt)
+                let mac = spanned(lo, hi, Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT });
+                Stmt {
+                    id: ast::DUMMY_NODE_ID,
+                    node: StmtKind::Mac(P((mac, style, attrs.into_thin_attrs()))),
+                    span: mk_sp(lo, hi),
+                }
             } else {
                 // if it has a special ident, it's definitely an item
                 //
@@ -3995,25 +3991,28 @@ impl<'a> Parser<'a> {
                                        followed by a semicolon");
                     }
                 }
-                spanned(lo, hi, StmtKind::Decl(
-                    P(spanned(lo, hi, DeclKind::Item(
+                Stmt {
+                    id: ast::DUMMY_NODE_ID,
+                    span: mk_sp(lo, hi),
+                    node: StmtKind::Item({
                         self.mk_item(
                             lo, hi, id /*id is good here*/,
                             ItemKind::Mac(spanned(lo, hi,
                                             Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
-                            Visibility::Inherited, attrs)))),
-                    ast::DUMMY_NODE_ID))
+                            Visibility::Inherited, attrs)
+                    }),
+                }
             }
         } else {
             // FIXME: Bad copy of attrs
             let restrictions = self.restrictions | Restrictions::NO_NONINLINE_MOD;
             match self.with_res(restrictions,
                                 |this| this.parse_item_(attrs.clone(), false, true))? {
-                Some(i) => {
-                    let hi = i.span.hi;
-                    let decl = P(spanned(lo, hi, DeclKind::Item(i)));
-                    spanned(lo, hi, StmtKind::Decl(decl, ast::DUMMY_NODE_ID))
-                }
+                Some(i) => Stmt {
+                    id: ast::DUMMY_NODE_ID,
+                    span: mk_sp(lo, i.span.hi),
+                    node: StmtKind::Item(i),
+                },
                 None => {
                     let unused_attrs = |attrs: &[_], s: &mut Self| {
                         if attrs.len() > 0 {
@@ -4037,9 +4036,11 @@ impl<'a> Parser<'a> {
                     // Remainder are line-expr stmts.
                     let e = self.parse_expr_res(
                         Restrictions::RESTRICTION_STMT_EXPR, Some(attrs.into_thin_attrs()))?;
-                    let hi = e.span.hi;
-                    let stmt = StmtKind::Expr(e, ast::DUMMY_NODE_ID);
-                    spanned(lo, hi, stmt)
+                    Stmt {
+                        id: ast::DUMMY_NODE_ID,
+                        span: mk_sp(lo, e.span.hi),
+                        node: StmtKind::Expr(e),
+                    }
                 }
             }
         }))
@@ -4085,7 +4086,7 @@ impl<'a> Parser<'a> {
         let mut expr = None;
 
         while !self.eat(&token::CloseDelim(token::Brace)) {
-            let Spanned {node, span} = if let Some(s) = self.parse_stmt_() {
+            let Stmt {node, span, ..} = if let Some(s) = self.parse_stmt_() {
                 s
             } else if self.token == token::Eof {
                 break;
@@ -4093,60 +4094,13 @@ impl<'a> Parser<'a> {
                 // Found only `;` or `}`.
                 continue;
             };
+
             match node {
-                StmtKind::Expr(e, _) => {
+                StmtKind::Expr(e) => {
                     self.handle_expression_like_statement(e, span, &mut stmts, &mut expr)?;
                 }
-                StmtKind::Mac(mac, MacStmtStyle::NoBraces, attrs) => {
-                    // statement macro without braces; might be an
-                    // expr depending on whether a semicolon follows
-                    match self.token {
-                        token::Semi => {
-                            stmts.push(Spanned {
-                                node: StmtKind::Mac(mac, MacStmtStyle::Semicolon, attrs),
-                                span: mk_sp(span.lo, self.span.hi),
-                            });
-                            self.bump();
-                        }
-                        _ => {
-                            let e = self.mk_mac_expr(span.lo, span.hi,
-                                                     mac.and_then(|m| m.node),
-                                                     None);
-                            let lo = e.span.lo;
-                            let e = self.parse_dot_or_call_expr_with(e, lo, attrs)?;
-                            let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
-                            self.handle_expression_like_statement(
-                                e,
-                                span,
-                                &mut stmts,
-                                &mut expr)?;
-                        }
-                    }
-                }
-                StmtKind::Mac(m, style, attrs) => {
-                    // statement macro; might be an expr
-                    match self.token {
-                        token::Semi => {
-                            stmts.push(Spanned {
-                                node: StmtKind::Mac(m, MacStmtStyle::Semicolon, attrs),
-                                span: mk_sp(span.lo, self.span.hi),
-                            });
-                            self.bump();
-                        }
-                        token::CloseDelim(token::Brace) => {
-                            // if a block ends in `m!(arg)` without
-                            // a `;`, it must be an expr
-                            expr = Some(self.mk_mac_expr(span.lo, span.hi,
-                                                         m.and_then(|x| x.node),
-                                                         attrs));
-                        }
-                        _ => {
-                            stmts.push(Spanned {
-                                node: StmtKind::Mac(m, style, attrs),
-                                span: span
-                            });
-                        }
-                    }
+                StmtKind::Mac(mac) => {
+                    self.handle_macro_in_block(mac.unwrap(), span, &mut stmts, &mut expr)?;
                 }
                 _ => { // all other kinds of statements:
                     let mut hi = span.hi;
@@ -4155,7 +4109,8 @@ impl<'a> Parser<'a> {
                         hi = self.last_span.hi;
                     }
 
-                    stmts.push(Spanned {
+                    stmts.push(Stmt {
+                        id: ast::DUMMY_NODE_ID,
                         node: node,
                         span: mk_sp(span.lo, hi)
                     });
@@ -4170,6 +4125,60 @@ impl<'a> Parser<'a> {
             rules: s,
             span: mk_sp(lo, self.last_span.hi),
         }))
+    }
+
+    fn handle_macro_in_block(&mut self,
+                             (mac, style, attrs): (ast::Mac, MacStmtStyle, ThinAttributes),
+                             span: Span,
+                             stmts: &mut Vec<Stmt>,
+                             last_block_expr: &mut Option<P<Expr>>)
+                             -> PResult<'a, ()> {
+        if style == MacStmtStyle::NoBraces {
+            // statement macro without braces; might be an
+            // expr depending on whether a semicolon follows
+            match self.token {
+                token::Semi => {
+                    stmts.push(Stmt {
+                        id: ast::DUMMY_NODE_ID,
+                        node: StmtKind::Mac(P((mac, MacStmtStyle::Semicolon, attrs))),
+                        span: mk_sp(span.lo, self.span.hi),
+                    });
+                    self.bump();
+                }
+                _ => {
+                    let e = self.mk_mac_expr(span.lo, span.hi, mac.node, None);
+                    let lo = e.span.lo;
+                    let e = self.parse_dot_or_call_expr_with(e, lo, attrs)?;
+                    let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
+                    self.handle_expression_like_statement(e, span, stmts, last_block_expr)?;
+                }
+            }
+        } else {
+            // statement macro; might be an expr
+            match self.token {
+                token::Semi => {
+                    stmts.push(Stmt {
+                        id: ast::DUMMY_NODE_ID,
+                        node: StmtKind::Mac(P((mac, MacStmtStyle::Semicolon, attrs))),
+                        span: mk_sp(span.lo, self.span.hi),
+                    });
+                    self.bump();
+                }
+                token::CloseDelim(token::Brace) => {
+                    // if a block ends in `m!(arg)` without
+                    // a `;`, it must be an expr
+                    *last_block_expr = Some(self.mk_mac_expr(span.lo, span.hi, mac.node, attrs));
+                }
+                _ => {
+                    stmts.push(Stmt {
+                        id: ast::DUMMY_NODE_ID,
+                        node: StmtKind::Mac(P((mac, style, attrs))),
+                        span: span
+                    });
+                }
+            }
+        }
+        Ok(())
     }
 
     fn handle_expression_like_statement(&mut self,
@@ -4197,15 +4206,17 @@ impl<'a> Parser<'a> {
                     hi: self.last_span.hi,
                     expn_id: span.expn_id,
                 };
-                stmts.push(Spanned {
-                    node: StmtKind::Semi(e, ast::DUMMY_NODE_ID),
+                stmts.push(Stmt {
+                    id: ast::DUMMY_NODE_ID,
+                    node: StmtKind::Semi(e),
                     span: span_with_semi,
                 });
             }
             token::CloseDelim(token::Brace) => *last_block_expr = Some(e),
             _ => {
-                stmts.push(Spanned {
-                    node: StmtKind::Expr(e, ast::DUMMY_NODE_ID),
+                stmts.push(Stmt {
+                    id: ast::DUMMY_NODE_ID,
+                    node: StmtKind::Expr(e),
                     span: span
                 });
             }
