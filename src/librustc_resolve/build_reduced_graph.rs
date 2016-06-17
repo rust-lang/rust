@@ -31,10 +31,10 @@ use syntax::attr;
 use syntax::parse::token;
 use syntax::codemap::{Span, DUMMY_SP};
 
-use syntax::ast::{Block, Crate, DeclKind};
+use syntax::ast::{Block, Crate};
 use syntax::ast::{ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, PathListItemKind};
-use syntax::ast::{Stmt, StmtKind, TraitItemKind};
+use syntax::ast::{StmtKind, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::visit::{self, Visitor};
 
@@ -84,17 +84,11 @@ impl<'b> Resolver<'b> {
     }
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
-        fn is_item(statement: &Stmt) -> bool {
-            if let StmtKind::Decl(ref declaration, _) = statement.node {
-                if let DeclKind::Item(_) = declaration.node {
-                    return true;
-                }
-            }
-            false
-        }
-
         // If any statements are items, we need to create an anonymous module
-        block.stmts.iter().any(is_item)
+        block.stmts.iter().any(|statement| match statement.node {
+            StmtKind::Item(_) => true,
+            _ => false,
+        })
     }
 
     /// Constructs the reduced graph for one item.

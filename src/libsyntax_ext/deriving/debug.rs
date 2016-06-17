@@ -13,7 +13,7 @@ use deriving::generic::ty::*;
 
 use syntax::ast;
 use syntax::ast::{MetaItem, Expr};
-use syntax::codemap::{Span, respan, DUMMY_SP};
+use syntax::codemap::{Span, DUMMY_SP};
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
@@ -151,6 +151,9 @@ fn stmt_let_undescore(cx: &mut ExtCtxt,
         span: sp,
         attrs: None,
     });
-    let decl = respan(sp, ast::DeclKind::Local(local));
-    respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))
+    ast::Stmt {
+        id: ast::DUMMY_NODE_ID,
+        node: ast::StmtKind::Local(local),
+        span: sp,
+    }
 }

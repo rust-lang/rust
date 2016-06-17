@@ -841,7 +841,7 @@ mod tests {
 
     #[test] fn parse_stmt_1 () {
         assert!(string_to_stmt("b;".to_string()) ==
-                   Some(Spanned{
+                   Some(ast::Stmt {
                        node: ast::StmtKind::Expr(P(ast::Expr {
                            id: ast::DUMMY_NODE_ID,
                            node: ast::ExprKind::Path(None, ast::Path {
@@ -855,8 +855,8 @@ mod tests {
                                ),
                             }),
                            span: sp(0,1),
-                           attrs: None}),
-                                           ast::DUMMY_NODE_ID),
+                           attrs: None})),
+                       id: ast::DUMMY_NODE_ID,
                        span: sp(0,1)}))
 
     }
@@ -932,7 +932,7 @@ mod tests {
                                         }
                                     },
                                     P(ast::Block {
-                                        stmts: vec!(Spanned{
+                                        stmts: vec!(ast::Stmt {
                                             node: ast::StmtKind::Semi(P(ast::Expr{
                                                 id: ast::DUMMY_NODE_ID,
                                                 node: ast::ExprKind::Path(None,
@@ -950,8 +950,8 @@ mod tests {
                                                         ),
                                                       }),
                                                 span: sp(17,18),
-                                                attrs: None,}),
-                                                ast::DUMMY_NODE_ID),
+                                                attrs: None,})),
+                                            id: ast::DUMMY_NODE_ID,
                                             span: sp(17,19)}),
                                         expr: None,
                                         id: ast::DUMMY_NODE_ID,
