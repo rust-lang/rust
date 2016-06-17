@@ -3980,6 +3980,39 @@ impl SpaceLlama for i32 {
 ```
 "##,
 
+E0527: r##"
+The number of elements in an array or slice pattern differed from the number of
+elements in the array being matched.
+
+Example of erroneous code:
+
+```compile_fail,E0527
+#![feature(slice_patterns)]
+
+let r = &[1, 2, 3, 4];
+match r {
+    &[a, b] => { // error: pattern requires 2 elements but array
+                 //        has 4
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+
+Ensure that the pattern is consistent with the size of the matched
+array. Additional elements can be matched with `..`:
+
+```
+#![feature(slice_patterns)]
+
+let r = &[1, 2, 3, 4];
+match r {
+    &[a, b, ..] => { // ok!
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+"##,
+
 E0529: r##"
 An array or slice pattern was matched against some other type.
 
@@ -4131,7 +4164,6 @@ register_diagnostics! {
     E0436, // functional record update requires a struct
     E0513, // no type for local variable ..
     E0521, // redundant default implementations of trait
-    E0527, // expected {} elements, found {}
     E0528, // expected at least {} elements, found {}
     E0533, // `{}` does not name a unit variant, unit struct or a constant
 }
