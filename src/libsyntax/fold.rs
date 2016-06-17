@@ -1238,7 +1238,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 respan(folder.new_span(label.span),
                        folder.fold_ident(label.node)))
             ),
-            ExprKind::Again(opt_ident) => ExprKind::Again(opt_ident.map(|label|
+            ExprKind::Continue(opt_ident) => ExprKind::Continue(opt_ident.map(|label|
                 respan(folder.new_span(label.span),
                        folder.fold_ident(label.node)))
             ),

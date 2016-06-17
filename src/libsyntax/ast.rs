@@ -1020,7 +1020,7 @@ pub enum ExprKind {
     /// A `break`, with an optional label to break
     Break(Option<SpannedIdent>),
     /// A `continue`, with an optional label
-    Again(Option<SpannedIdent>),
+    Continue(Option<SpannedIdent>),
     /// A `return`, with an optional value to be returned
     Ret(Option<P<Expr>>),
 

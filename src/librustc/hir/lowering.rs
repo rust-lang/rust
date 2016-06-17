@@ -1210,7 +1210,7 @@ impl<'a> LoweringContext<'a> {
                     hir::ExprPath(hir_qself, self.lower_path(path))
                 }
                 ExprKind::Break(opt_ident) => hir::ExprBreak(self.lower_opt_sp_ident(opt_ident)),
-                ExprKind::Again(opt_ident) => hir::ExprAgain(self.lower_opt_sp_ident(opt_ident)),
+                ExprKind::Continue(opt_ident) => hir::ExprAgain(self.lower_opt_sp_ident(opt_ident)),
                 ExprKind::Ret(ref e) => hir::ExprRet(e.as_ref().map(|x| self.lower_expr(x))),
                 ExprKind::InlineAsm(InlineAsm {
                         ref inputs,
