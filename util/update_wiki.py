@@ -52,6 +52,11 @@ def parse_file(d, f):
                 elif line.startswith("declare_lint!"):
                     comment = False
                     deprecated = False
+                    restriction = False
+                elif line.startswith("declare_restriction_lint!"):
+                    comment = False
+                    deprecated = False
+                    restriction = True
                 elif line.startswith("declare_deprecated_lint!"):
                     comment = False
                     deprecated = True
@@ -65,7 +70,7 @@ def parse_file(d, f):
                     name = m.group(1).lower()
 
                     # Intentionally either a never looping or infinite loop
-                    while not deprecated:
+                    while not deprecated and not restriction:
                         m = re.search(level_re, line)
                         if m:
                             level = m.group(0)
@@ -75,6 +80,8 @@ def parse_file(d, f):
 
                     if deprecated:
                         level = "Deprecated"
+                    elif restriction:
+                        level = "Allow"
 
                     print("found %s with level %s in %s" % (name, level, f))
                     d[name] = (level, last_comment)
@@ -162,6 +169,7 @@ def check_wiki_page(d, c, f):
 
 def main():
     (d, c) = parse_path()
+    print('Found %s lints' % len(d))
     if "-c" in sys.argv:
         check_wiki_page(d, c, "../rust-clippy.wiki/Home.md")
     else:
