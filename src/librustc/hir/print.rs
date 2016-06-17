@@ -911,8 +911,9 @@ impl<'a> State<'a> {
             if struct_def.is_tuple() {
                 self.popen()?;
                 self.commasep(Inconsistent, struct_def.fields(), |s, field| {
-                    s.print_visibility(&field.vis)?;
                     s.maybe_print_comment(field.span.lo)?;
+                    s.print_outer_attributes(&field.attrs)?;
+                    s.print_visibility(&field.vis)?;
                     s.print_type(&field.ty)
                 })?;
                 self.pclose()?;
