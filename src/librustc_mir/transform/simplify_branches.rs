@@ -60,4 +60,7 @@ impl<'l> Pass for SimplifyBranches<'l> {
     fn disambiguator<'a>(&'a self) -> Option<Box<fmt::Display+'a>> {
         Some(Box::new(self.label))
     }
+
+    // avoid calling `type_name` - it contains `<'static>`
+    fn name(&self) -> &str { "SimplifyBranches" }
 }

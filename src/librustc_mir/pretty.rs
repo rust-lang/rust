@@ -61,8 +61,13 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return;
     }
 
-    let file_name = format!("rustc.node{}.{}.{}.mir",
-                            node_id, pass_name, disambiguator);
+    let promotion_id = match src {
+        MirSource::Promoted(_, id) => format!("-{:?}", id),
+        _ => String::new()
+    };
+
+    let file_name = format!("rustc.node{}{}.{}.{}.mir",
+                            node_id, promotion_id, pass_name, disambiguator);
     let _ = fs::File::create(&file_name).and_then(|mut file| {
         try!(writeln!(file, "// MIR for `{}`", node_path));
         try!(writeln!(file, "// node_id = {}", node_id));
@@ -93,7 +98,7 @@ pub fn write_mir_pretty<'a, 'b, 'tcx, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
         let src = MirSource::from_node(tcx, id);
         write_mir_fn(tcx, src, mir, w, None)?;
 
-        for (i, mir) in mir.promoted.iter().enumerate() {
+        for (i, mir) in mir.promoted.iter_enumerated() {
             writeln!(w, "")?;
             write_mir_fn(tcx, MirSource::Promoted(id, i), mir, w, None)?;
         }
@@ -287,7 +292,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
         MirSource::Const(_) => write!(w, "const")?,
         MirSource::Static(_, hir::MutImmutable) => write!(w, "static")?,
         MirSource::Static(_, hir::MutMutable) => write!(w, "static mut")?,
-        MirSource::Promoted(_, i) => write!(w, "promoted{} in", i)?
+        MirSource::Promoted(_, i) => write!(w, "{:?} in", i)?
     }
 
     write!(w, " {}", tcx.node_path_str(src.item_id()))?;
