@@ -14,6 +14,7 @@
 extern crate rustc_data_structures;
 extern crate rustc_mir;
 extern crate rustc_trans;
+extern crate rustc_const_math;
 extern crate syntax;
 #[macro_use] extern crate log;
 extern crate log_settings;

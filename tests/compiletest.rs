@@ -79,11 +79,11 @@ fn compile_test() {
                     writeln!(stderr.lock(), "FAILED: {}", e).unwrap();
                 },
             }
+            if failed {
+                panic!("some tests failed");
+            }
         }
         let stderr = std::io::stderr();
         writeln!(stderr.lock(), "").unwrap();
     });
-    if failed {
-        panic!("some tests failed");
-    }
 }

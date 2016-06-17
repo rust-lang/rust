@@ -474,15 +474,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.frame_mut().block = target;
             }
 
-            Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let actual_ptr = self.eval_operand(cond)?;
-                let actual = self.memory.read_bool(actual_ptr)?;
-                if actual == expected {
+            Assert { ref cond, expected, ref msg, target, .. } => {
+                let cond_ptr = self.eval_operand(cond)?;
+                if expected == self.memory.read_bool(cond_ptr)? {
                     self.frame_mut().block = target;
                 } else {
-                    panic!("unimplemented: jump to {:?} and print {:?}", cleanup, msg);
+                    return match *msg {
+                        mir::AssertMessage::BoundsCheck { ref len, ref index } => {
+                            let len = self.eval_operand(len).expect("can't eval len");
+                            let len = self.memory.read_usize(len).expect("can't read len");
+                            let index = self.eval_operand(index).expect("can't eval index");
+                            let index = self.memory.read_usize(index).expect("can't read index");
+                            Err(EvalError::ArrayIndexOutOfBounds(terminator.source_info.span, len, index))
+                        },
+                        mir::AssertMessage::Math(ref err) => Err(EvalError::Math(terminator.source_info.span, err.clone())),
+                    }
                 }
-            }
+            },
 
             DropAndReplace { .. } => unimplemented!(),
             Resume => unimplemented!(),
@@ -922,13 +930,28 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let right_ty = self.operand_ty(right);
                 let right_val = self.read_primval(right_ptr, right_ty)?;
 
-                let val = primval::binary_op(bin_op, left_val, right_val)?;
-                self.memory.write_primval(dest, val)?;
+                use rustc::ty::layout::Layout::*;
+                let tup_layout = match *dest_layout {
+                    Univariant { ref variant, .. } => variant,
+                    _ => panic!("checked bin op returns something other than a tuple"),
+                };
 
-                // FIXME(solson): Find the result type size properly. Perhaps refactor out
-                // Projection calculations so we can do the equivalent of `dest.1` here.
-                let s = self.type_size(left_ty);
-                self.memory.write_bool(dest.offset(s as isize), false)?;
+                match primval::binary_op(bin_op, left_val, right_val) {
+                    Ok(val) => {
+                        let offset = tup_layout.field_offset(0).bytes() as isize;
+                        self.memory.write_primval(dest.offset(offset), val)?;
+                        let offset = tup_layout.field_offset(1).bytes() as isize;
+                        self.memory.write_bool(dest.offset(offset), false)?;
+                    },
+                    Err(EvalError::Overflow(l, r, op, val)) => {
+                        debug!("mathematical operation overflowed: {:?} {} {:?} => {:?}", l, op.to_hir_binop().as_str(), r, val);
+                        let offset = tup_layout.field_offset(0).bytes() as isize;
+                        self.memory.write_primval(dest.offset(offset), val)?;
+                        let offset = tup_layout.field_offset(1).bytes() as isize;
+                        self.memory.write_bool(dest.offset(offset), true)?;
+                    },
+                    Err(other) => return Err(other),
+                }
             }
 
             UnaryOp(un_op, ref operand) => {
