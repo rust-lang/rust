@@ -443,6 +443,10 @@ impl MacResult for DummyResult {
             span: self.span,
         }))
     }
+
+    fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
+        Some(DummyResult::raw_ty(self.span))
+    }
 }
 
 /// An enum representing the different kinds of syntax extensions.
