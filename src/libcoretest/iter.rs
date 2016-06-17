@@ -13,6 +13,7 @@ use core::{i8, i16, isize};
 use core::usize;
 
 use test::Bencher;
+use test::black_box;
 
 #[test]
 fn test_lt() {
@@ -1029,4 +1030,34 @@ fn bench_max(b: &mut Bencher) {
         let it = 0..100;
         it.map(scatter).max()
     })
+}
+
+pub fn copy_zip(xs: &[u8], ys: &mut [u8]) {
+    for (a, b) in ys.iter_mut().zip(xs) {
+        *a = *b;
+    }
+}
+
+pub fn add_zip(xs: &[f32], ys: &mut [f32]) {
+    for (a, b) in ys.iter_mut().zip(xs) {
+        *a += *b;
+    }
+}
+
+#[bench]
+fn bench_zip_copy(b: &mut Bencher) {
+    let source = vec![0u8; 16 * 1024];
+    let mut dst = black_box(vec![0u8; 16 * 1024]);
+    b.iter(|| {
+        copy_zip(&source, &mut dst)
+    })
+}
+
+#[bench]
+fn bench_zip_add(b: &mut Bencher) {
+    let source = vec![1.; 16 * 1024];
+    let mut dst = vec![0.; 16 * 1024];
+    b.iter(|| {
+        add_zip(&source, &mut dst)
+    });
 }
