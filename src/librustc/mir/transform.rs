@@ -13,7 +13,7 @@ use hir;
 use hir::map::DefPathData;
 use hir::def_id::DefId;
 use mir::mir_map::MirMap;
-use mir::repr::Mir;
+use mir::repr::{Mir, Promoted};
 use ty::TyCtxt;
 use syntax::ast::NodeId;
 
@@ -32,7 +32,7 @@ pub enum MirSource {
     Static(NodeId, hir::Mutability),
 
     /// Promoted rvalues within a function.
-    Promoted(NodeId, usize)
+    Promoted(NodeId, Promoted)
 }
 
 impl<'a, 'tcx> MirSource {
@@ -77,7 +77,12 @@ pub trait Pass {
         DepNode::MirPass(def_id)
     }
     fn name(&self) -> &str {
-        unsafe { ::std::intrinsics::type_name::<Self>() }
+        let name = unsafe { ::std::intrinsics::type_name::<Self>() };
+        if let Some(tail) = name.rfind(":") {
+            &name[tail+1..]
+        } else {
+            name
+        }
     }
     fn disambiguator<'a>(&'a self) -> Option<Box<fmt::Display+'a>> { None }
 }
@@ -104,11 +109,6 @@ pub trait MirPassHook<'tcx>: Pass {
 
 /// A pass which inspects Mir of functions in isolation.
 pub trait MirPass<'tcx>: Pass {
-    fn run_pass_on_promoted<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                item_id: NodeId, index: usize,
-                                mir: &mut Mir<'tcx>) {
-        self.run_pass(tcx, MirSource::Promoted(item_id, index), mir);
-    }
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     src: MirSource, mir: &mut Mir<'tcx>);
 }
@@ -133,11 +133,12 @@ impl<'tcx, T: MirPass<'tcx>> MirMapPass<'tcx> for T {
                 hook.on_mir_pass(tcx, src, mir, self, true);
             }
 
-            for (i, mir) in mir.promoted.iter_mut().enumerate() {
+            for (i, mir) in mir.promoted.iter_enumerated_mut() {
+                let src = MirSource::Promoted(id, i);
                 for hook in &mut *hooks {
                     hook.on_mir_pass(tcx, src, mir, self, false);
                 }
-                self.run_pass_on_promoted(tcx, id, i, mir);
+                MirPass::run_pass(self, tcx, src, mir);
                 for hook in &mut *hooks {
                     hook.on_mir_pass(tcx, src, mir, self, true);
                 }
