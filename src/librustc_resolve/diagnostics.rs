@@ -1105,7 +1105,7 @@ register_diagnostics! {
 //  E0257,
 //  E0258,
     E0402, // cannot use an outer type parameter in this context
-    E0406, // undeclared associated type
+//  E0406, merged into 420
 //  E0410, merged into 408
 //  E0413, merged into 530
 //  E0414, merged into 530
