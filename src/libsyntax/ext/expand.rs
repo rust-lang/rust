@@ -43,18 +43,19 @@ trait MacroGenerable: Sized {
     fn fold_with<F: Folder>(self, folder: &mut F) -> Self;
     fn visit_with<V: Visitor>(&self, visitor: &mut V);
 
-    // Return a placeholder expansion to allow compilation to continue after an erroring expansion.
-    fn dummy(span: Span) -> Self;
-
     // The user-friendly name of the node type (e.g. "expression", "item", etc.) for diagnostics.
     fn kind_name() -> &'static str;
+
+    // Return a placeholder expansion to allow compilation to continue after an erroring expansion.
+    fn dummy(span: Span) -> Self {
+        Self::make_with(DummyResult::any(span)).unwrap()
+    }
 }
 
 macro_rules! impl_macro_generable {
     ($($ty:ty: $kind_name:expr, .$make:ident,
                $(.$fold:ident)*  $(lift .$fold_elt:ident)*,
-               $(.$visit:ident)* $(lift .$visit_elt:ident)*,
-               |$span:ident| $dummy:expr;)*) => { $(
+               $(.$visit:ident)* $(lift .$visit_elt:ident)*;)*) => { $(
         impl MacroGenerable for $ty {
             fn kind_name() -> &'static str { $kind_name }
             fn make_with<'a>(result: Box<MacResult + 'a>) -> Option<Self> { result.$make() }
@@ -66,31 +67,24 @@ macro_rules! impl_macro_generable {
                 $( visitor.$visit(self) )*
                 $( for item in self.as_slice() { visitor. $visit_elt (item) } )*
             }
-            fn dummy($span: Span) -> Self { $dummy }
         }
     )* }
 }
 
 impl_macro_generable! {
-    P<ast::Pat>: "pattern", .make_pat, .fold_pat, .visit_pat, |span| P(DummyResult::raw_pat(span));
-    P<ast::Ty>:  "type",    .make_ty,  .fold_ty,  .visit_ty,  |span| DummyResult::raw_ty(span);
-    P<ast::Expr>:
-        "expression", .make_expr, .fold_expr, .visit_expr, |span| DummyResult::raw_expr(span);
-    SmallVector<ast::Stmt>:
-        "statement",  .make_stmts, lift .fold_stmt, lift .visit_stmt, |_span| SmallVector::zero();
-    SmallVector<P<ast::Item>>:
-        "item",       .make_items, lift .fold_item, lift .visit_item, |_span| SmallVector::zero();
+    P<ast::Expr>: "expression", .make_expr, .fold_expr, .visit_expr;
+    P<ast::Pat>:  "pattern",    .make_pat,  .fold_pat,  .visit_pat;
+    P<ast::Ty>:   "type",       .make_ty,   .fold_ty,   .visit_ty;
+    SmallVector<ast::Stmt>: "statement", .make_stmts, lift .fold_stmt, lift .visit_stmt;
+    SmallVector<P<ast::Item>>: "item",   .make_items, lift .fold_item, lift .visit_item;
     SmallVector<ast::TraitItem>:
-        "trait item", .make_trait_items, lift .fold_trait_item, lift .visit_trait_item,
-        |_span| SmallVector::zero();
+        "trait item", .make_trait_items, lift .fold_trait_item, lift .visit_trait_item;
     SmallVector<ast::ImplItem>:
-        "impl item",  .make_impl_items,  lift .fold_impl_item,  lift .visit_impl_item,
-        |_span| SmallVector::zero();
+        "impl item",  .make_impl_items,  lift .fold_impl_item,  lift .visit_impl_item;
 }
 
 impl MacroGenerable for Option<P<ast::Expr>> {
     fn kind_name() -> &'static str { "expression" }
-    fn dummy(_span: Span) -> Self { None }
     fn make_with<'a>(result: Box<MacResult + 'a>) -> Option<Self> {
         result.make_expr().map(Some)
     }
