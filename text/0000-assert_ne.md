@@ -7,13 +7,13 @@
 [summary]: #summary
 
 `assert_ne` is a macro that takes 2 arguments and panics if they are equal. It
-works and is implemented identically to `assert_eq` and serves as its compliment.
+works and is implemented identically to `assert_eq` and serves as its complement.
 
 # Motivation
 [motivation]: #motivation
 
 This feature, among other reasons, makes testing more readable and consistent as
-it compliments `asset_eq`. It gives the same style panic message as `assert_eq`,
+it complements `asset_eq`. It gives the same style panic message as `assert_eq`,
 which eliminates the need to write it yourself.
 
 # Detailed design
