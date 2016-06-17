@@ -1656,12 +1656,8 @@ fn plain_summary_line(s: Option<&str>) -> String {
 }
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
-    for stability in short_stability(item, cx, true) {
-        write!(w, "<div class='stability'>{}</div>", stability)?;
-    }
-    if let Some(s) = item.doc_value() {
-        write!(w, "<div class='docblock'>{}</div>", Markdown(s))?;
-    }
+    document_stability(w, cx, item)?;
+    document_full(w, item)?;
     Ok(())
 }
 
@@ -1674,6 +1670,20 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
             format!("{}", &plain_summary_line(Some(s)))
         };
         write!(w, "<div class='docblock'>{}</div>", Markdown(&markdown))?;
+    }
+    Ok(())
+}
+
+fn document_full(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
+    if let Some(s) = item.doc_value() {
+        write!(w, "<div class='docblock'>{}</div>", Markdown(s))?;
+    }
+    Ok(())
+}
+
+fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
+    for stability in short_stability(item, cx, true) {
+        write!(w, "<div class='stability'>{}</div>", stability)?;
     }
     Ok(())
 }
@@ -2638,20 +2648,23 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
         if !is_static || render_static {
             if !is_default_item {
-
-                if item.doc_value().is_some() {
-                    document(w, cx, item)?;
-                } else {
-                    // In case the item isn't documented,
-                    // provide short documentation from the trait
-                    if let Some(t) = trait_ {
-                        if let Some(it) = t.items.iter()
-                                           .find(|i| i.name == item.name) {
-                            document_short(w, it, link)?;
-                        }
+                if let Some(t) = trait_ {
+                    let it = t.items.iter().find(|i| i.name == item.name).unwrap();
+                    // We need the stability of the item from the trait because
+                    // impls can't have a stability.
+                    document_stability(w, cx, it)?;
+                    if item.doc_value().is_some() {
+                        document_full(w, item)?;
+                    } else {
+                        // In case the item isn't documented,
+                        // provide short documentation from the trait.
+                        document_short(w, it, link)?;
                     }
+                } else {
+                    document(w, cx, item)?;
                 }
             } else {
+                document_stability(w, cx, item)?;
                 document_short(w, item, link)?;
             }
         }
