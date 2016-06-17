@@ -30,7 +30,7 @@
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, ImplOrTraitItem, ImplOrTraitItemContainer};
 
 use std::collections::HashSet;
 use std::hash::*;
@@ -356,6 +356,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 if !self.span.filter_generated(sub_span, p.span) {
                     self.dumper.variable(VariableData {
                         id: id,
+                        kind: VariableKind::Local,
                         span: sub_span.expect("No span found for variable"),
                         name: path_to_string(p),
                         qualname: format!("{}::{}", qualname, path_to_string(p)),
@@ -380,24 +381,42 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
             let sig_str = ::make_signature(&sig.decl, &sig.generics);
             if body.is_some() {
-                if !self.span.filter_generated(Some(method_data.span), span) {
-                    let mut data = method_data.clone();
-                    data.value = sig_str;
-                    self.dumper.function(data.lower(self.tcx));
-                }
                 self.process_formals(&sig.decl.inputs, &method_data.qualname);
-            } else {
-                if !self.span.filter_generated(Some(method_data.span), span) {
-                    self.dumper.method(MethodData {
-                        id: method_data.id,
-                        name: method_data.name,
-                        span: method_data.span,
-                        scope: method_data.scope,
-                        qualname: method_data.qualname.clone(),
-                        value: sig_str,
-                    }.lower(self.tcx));
-                }
             }
+
+            // If the method is defined in an impl, then try and find the corresponding
+            // method decl in a trait, and if there is one, make a decl_id for it. This
+            // requires looking up the impl, then the trait, then searching for a method
+            // with the right name.
+            if !self.span.filter_generated(Some(method_data.span), span) {
+                let container =
+                    self.tcx.impl_or_trait_item(self.tcx.map.local_def_id(id)).container();
+                let decl_id = if let ImplOrTraitItemContainer::ImplContainer(id) = container {
+                    self.tcx.trait_id_of_impl(id).and_then(|id| {
+                        for item in &**self.tcx.trait_items(id) {
+                            if let &ImplOrTraitItem::MethodTraitItem(ref m) = item {
+                                if m.name == name {
+                                    return Some(m.def_id);
+                                }
+                            }
+                        }
+                        None
+                    })
+                } else {
+                    None
+                };
+
+                self.dumper.method(MethodData {
+                    id: method_data.id,
+                    name: method_data.name,
+                    span: method_data.span,
+                    scope: method_data.scope,
+                    qualname: method_data.qualname.clone(),
+                    value: sig_str,
+                    decl_id: decl_id,
+                }.lower(self.tcx));
+            }
+
             self.process_generic_params(&sig.generics, span, &method_data.qualname, id);
         }
 
@@ -519,6 +538,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         if !self.span.filter_generated(sub_span, span) {
             self.dumper.variable(VariableData {
                 span: sub_span.expect("No span found for variable"),
+                kind: VariableKind::Const,
                 id: id,
                 name: name.to_string(),
                 qualname: qualname,
@@ -542,17 +562,18 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Struct);
-        let val = if let ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _) =
-                    item.node {
+        let (val, fields) =
+            if let ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _) = item.node
+        {
             let fields_str = fields.iter()
                                    .enumerate()
                                    .map(|(i, f)| f.ident.map(|i| i.to_string())
                                                   .unwrap_or(i.to_string()))
                                    .collect::<Vec<_>>()
                                    .join(", ");
-            format!("{} {{ {} }}", name, fields_str)
+            (format!("{} {{ {} }}", name, fields_str), fields.iter().map(|f| f.id).collect())
         } else {
-            String::new()
+            (String::new(), vec![])
         };
 
         if !self.span.filter_generated(sub_span, item.span) {
@@ -563,7 +584,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 ctor_id: def.id(),
                 qualname: qualname.clone(),
                 scope: self.cur_scope,
-                value: val
+                value: val,
+                fields: fields,
             }.lower(self.tcx));
         }
 
@@ -718,7 +740,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 name: name,
                 qualname: qualname.clone(),
                 scope: self.cur_scope,
-                value: val
+                value: val,
+                items: methods.iter().map(|i| i.id).collect(),
             }.lower(self.tcx));
         }
 
@@ -958,6 +981,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             if !self.span.filter_generated(sub_span, p.span) {
                 self.dumper.variable(VariableData {
                     span: sub_span.expect("No span found for variable"),
+                    kind: VariableKind::Local,
                     id: id,
                     name: path_to_string(p),
                     qualname: format!("{}${}", path_to_string(p), id),
@@ -1366,6 +1390,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                     if !self.span.filter_generated(Some(p.span), p.span) {
                         self.dumper.variable(VariableData {
                             span: p.span,
+                            kind: VariableKind::Local,
                             id: id,
                             name: path_to_string(p),
                             qualname: format!("{}${}", path_to_string(p), id),

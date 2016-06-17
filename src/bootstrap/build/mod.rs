@@ -119,7 +119,7 @@ pub struct Build {
     lldb_python_dir: Option<String>,
 
     // Runtime state filled in later on
-    cc: HashMap<String, (gcc::Tool, PathBuf)>,
+    cc: HashMap<String, (gcc::Tool, Option<PathBuf>)>,
     cxx: HashMap<String, gcc::Tool>,
     compiler_rt_built: RefCell<HashMap<String, PathBuf>>,
 }
@@ -549,7 +549,7 @@ impl Build {
         // FIXME: the guard against msvc shouldn't need to be here
         if !target.contains("msvc") {
             cargo.env(format!("CC_{}", target), self.cc(target))
-                 .env(format!("AR_{}", target), self.ar(target))
+                 .env(format!("AR_{}", target), self.ar(target).unwrap()) // only msvc is None
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
         }
 
@@ -825,8 +825,8 @@ impl Build {
     }
 
     /// Returns the path to the `ar` archive utility for the target specified.
-    fn ar(&self, target: &str) -> &Path {
-        &self.cc[target].1
+    fn ar(&self, target: &str) -> Option<&Path> {
+        self.cc[target].1.as_ref().map(|p| &**p)
     }
 
     /// Returns the path to the C++ compiler for the target specified, may panic
