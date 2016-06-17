@@ -13,7 +13,7 @@ conf_re = re.compile(r'''define_Conf! {\n([^}]*)\n}''', re.MULTILINE)
 confvar_re = re.compile(r'''/// Lint: (\w+). (.*).*\n *\("([^"]*)", (?:[^,]*), (.*) => (.*)\),''')
 
 
-def parse_path(p="src"):
+def parse_path(p="clippy_lints/src"):
     d = {}
     for f in os.listdir(p):
         if f.endswith(".rs"):
