@@ -4013,6 +4013,40 @@ match r {
 ```
 "##,
 
+E0528: r##"
+An array or slice pattern required more elements than were present in the
+matched array.
+
+Example of erroneous code:
+
+```compile_fail,E0528
+#![feature(slice_patterns)]
+
+let r = &[1, 2];
+match r {
+    &[a, b, c, rest..] => { // error: pattern requires at least 3
+                            //        elements but array has 2
+        println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
+    }
+}
+```
+
+Ensure that the matched array has at least as many elements as the pattern
+requires. You can match an arbitrary number of remaining elements with `..`:
+
+```
+#![feature(slice_patterns)]
+
+let r = &[1, 2, 3, 4, 5];
+match r {
+    &[a, b, c, rest..] => { // ok!
+        // prints `a=1, b=2, c=3 rest=[4, 5]`
+        println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
+    }
+}
+```
+"##,
+
 E0529: r##"
 An array or slice pattern was matched against some other type.
 
@@ -4164,6 +4198,5 @@ register_diagnostics! {
     E0436, // functional record update requires a struct
     E0513, // no type for local variable ..
     E0521, // redundant default implementations of trait
-    E0528, // expected at least {} elements, found {}
     E0533, // `{}` does not name a unit variant, unit struct or a constant
 }
