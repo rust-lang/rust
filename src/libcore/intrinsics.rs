@@ -606,6 +606,7 @@ extern "rust-intrinsic" {
 }
 
 #[cfg(not(stage0))]
+#[cfg(arch = "nvptx")]
 extern "rust-intrinsic" {
     pub fn thread_idx_x() -> i32;
     pub fn thread_idx_y() -> i32;
