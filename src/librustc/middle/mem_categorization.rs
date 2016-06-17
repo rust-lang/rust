@@ -1145,8 +1145,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                     }
                 }
                 Some(Def::Struct(..)) => {
-                    let expected_len = match self.pat_ty(&pat) {
-                        Ok(&ty::TyS{sty: ty::TyStruct(adt_def, _), ..}) => {
+                    let expected_len = match self.pat_ty(&pat)?.sty {
+                        ty::TyStruct(adt_def, _) => {
                             adt_def.struct_variant().fields.len()
                         }
                         ref ty => {
@@ -1196,8 +1196,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
           PatKind::Tuple(ref subpats, ddpos) => {
             // (p1, ..., pN)
-            let expected_len = match self.pat_ty(&pat) {
-                Ok(&ty::TyS{sty: ty::TyTuple(ref tys), ..}) => tys.len(),
+            let expected_len = match self.pat_ty(&pat)?.sty {
+                ty::TyTuple(ref tys) => tys.len(),
                 ref ty => span_bug!(pat.span, "tuple pattern unexpected type {:?}", ty),
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
