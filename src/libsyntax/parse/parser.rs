@@ -2285,14 +2285,14 @@ impl<'a> Parser<'a> {
                 }
                 if self.eat_keyword(keywords::Continue) {
                     let ex = if self.token.is_lifetime() {
-                        let ex = ExprKind::Again(Some(Spanned{
+                        let ex = ExprKind::Continue(Some(Spanned{
                             node: self.get_lifetime(),
                             span: self.span
                         }));
                         self.bump();
                         ex
                     } else {
-                        ExprKind::Again(None)
+                        ExprKind::Continue(None)
                     };
                     let hi = self.last_span.hi;
                     return Ok(self.mk_expr(lo, hi, ex, attrs));
