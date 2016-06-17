@@ -3,21 +3,30 @@ extern crate compiletest_rs as compiletest;
 use std::path::{PathBuf, Path};
 use std::io::Write;
 
-fn run_mode(dir: &'static str, mode: &'static str, sysroot: &str) {
+fn compile_fail(sysroot: &str) {
     // Disable rustc's new error fomatting. It breaks these tests.
     std::env::remove_var("RUST_NEW_ERROR_FORMAT");
     let flags = format!("--sysroot {} -Dwarnings", sysroot);
     for_all_targets(sysroot, |target| {
         let mut config = compiletest::default_config();
         config.host_rustcflags = Some(flags.clone());
-        config.mode = mode.parse().expect("Invalid mode");
+        config.mode = "compile-fail".parse().expect("Invalid mode");
         config.run_lib_path = Path::new(sysroot).join("lib").join("rustlib").join(&target).join("lib");
         config.rustc_path = "target/debug/miri".into();
-        config.src_base = PathBuf::from(format!("tests/{}", dir));
+        config.src_base = PathBuf::from("tests/compile-fail".to_string());
         config.target = target.to_owned();
         config.target_rustcflags = Some(flags.clone());
         compiletest::run_tests(&config);
     });
+}
+
+fn run_pass() {
+    // Disable rustc's new error fomatting. It breaks these tests.
+    std::env::remove_var("RUST_NEW_ERROR_FORMAT");
+    let mut config = compiletest::default_config();
+    config.mode = "run-pass".parse().expect("Invalid mode");
+    config.src_base = PathBuf::from("tests/run-pass".to_string());
+    compiletest::run_tests(&config);
 }
 
 fn for_all_targets<F: FnMut(String)>(sysroot: &str, mut f: F) {
@@ -47,7 +56,8 @@ fn compile_test() {
             .expect("need to specify RUST_SYSROOT env var or use rustup or multirust")
             .to_owned(),
     };
-    run_mode("compile-fail", "compile-fail", &sysroot);
+    compile_fail(&sysroot);
+    run_pass();
     for_all_targets(&sysroot, |target| {
         for file in std::fs::read_dir("tests/run-pass").unwrap() {
             let file = file.unwrap();
