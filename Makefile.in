@@ -277,7 +277,9 @@ endif
 
 # CTAGS building
 ifneq ($(strip $(findstring TAGS.emacs,$(MAKECMDGOALS)) \
-               $(findstring TAGS.vi,$(MAKECMDGOALS))),)
+               $(findstring TAGS.vi,$(MAKECMDGOALS)) \
+               $(findstring TAGS.rustc.emacs,$(MAKECMDGOALS)) \
+               $(findstring TAGS.rustc.vi,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including ctags rules)
   include $(CFG_SRC_DIR)mk/ctags.mk
 endif
