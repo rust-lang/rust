@@ -1144,7 +1144,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         ref other => panic!("reify fn pointer on {:?}", other),
                     },
 
-                    _ => return Err(EvalError::Unimplemented(format!("can't handle cast: {:?}", rvalue))),
+                    UnsafeFnPointer => match dest_ty.sty {
+                        ty::TyFnPtr(unsafe_fn_ty) => {
+                            let src = self.eval_operand(operand)?;
+                            let ptr = self.memory.read_ptr(src)?;
+                            let fn_def = self.memory.get_fn(ptr.alloc_id)?;
+                            let fn_ptr = self.memory.create_fn_ptr(fn_def.def_id, fn_def.substs, unsafe_fn_ty);
+                            self.memory.write_ptr(dest, fn_ptr)?;
+                        },
+                        ref other => panic!("fn to unsafe fn cast on {:?}", other),
+                    },
                 }
             }
 
