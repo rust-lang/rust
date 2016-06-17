@@ -153,6 +153,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 filter!(self.span_utils, sub_span, item.span, None);
                 Some(Data::VariableData(VariableData {
                     id: item.id,
+                    kind: VariableKind::Static,
                     name: item.ident.to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
@@ -167,6 +168,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 filter!(self.span_utils, sub_span, item.span, None);
                 Some(Data::VariableData(VariableData {
                     id: item.id,
+                    kind: VariableKind::Const,
                     name: item.ident.to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
@@ -190,6 +192,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
                     filename: filename,
+                    items: m.items.iter().map(|i| i.id).collect(),
                 }))
             }
             ast::ItemKind::Enum(ref def, _) => {
@@ -209,6 +212,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     span: sub_span.unwrap(),
                     qualname: qualname,
                     scope: self.enclosing_scope(item.id),
+                    variants: def.variants.iter().map(|v| v.node.data.id()).collect(),
                 }))
             }
             ast::ItemKind::Impl(_, _, _, ref trait_ref, ref typ, _) => {
@@ -266,6 +270,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             filter!(self.span_utils, sub_span, field.span, None);
             Some(VariableData {
                 id: field.id,
+                kind: VariableKind::Field,
                 name: ident.to_string(),
                 qualname: qualname,
                 span: sub_span.unwrap(),
