@@ -301,7 +301,9 @@
 
 use clone::Clone;
 use cmp;
+use default::Default;
 use fmt;
+use iter_private::TrustedRandomAccess;
 use ops::FnMut;
 use option::Option::{self, Some, None};
 use usize;
@@ -622,7 +624,8 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Zip<A, B> {
     a: A,
-    b: B
+    b: B,
+    spec: <(A, B) as ZipImplData>::Data,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -631,29 +634,13 @@ impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
     type Item = (A::Item, B::Item);
 
     #[inline]
-    fn next(&mut self) -> Option<(A::Item, B::Item)> {
-        self.a.next().and_then(|x| {
-            self.b.next().and_then(|y| {
-                Some((x, y))
-            })
-        })
+    fn next(&mut self) -> Option<Self::Item> {
+        ZipImpl::next(self)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (a_lower, a_upper) = self.a.size_hint();
-        let (b_lower, b_upper) = self.b.size_hint();
-
-        let lower = cmp::min(a_lower, b_lower);
-
-        let upper = match (a_upper, b_upper) {
-            (Some(x), Some(y)) => Some(cmp::min(x,y)),
-            (Some(x), None) => Some(x),
-            (None, Some(y)) => Some(y),
-            (None, None) => None
-        };
-
-        (lower, upper)
+        ZipImpl::size_hint(self)
     }
 }
 
@@ -664,6 +651,61 @@ impl<A, B> DoubleEndedIterator for Zip<A, B> where
 {
     #[inline]
     fn next_back(&mut self) -> Option<(A::Item, B::Item)> {
+        ZipImpl::next_back(self)
+    }
+}
+
+// Zip specialization trait
+#[doc(hidden)]
+trait ZipImpl<A, B> {
+    type Item;
+    fn new(a: A, b: B) -> Self;
+    fn next(&mut self) -> Option<Self::Item>;
+    fn size_hint(&self) -> (usize, Option<usize>);
+    fn next_back(&mut self) -> Option<Self::Item>
+        where A: DoubleEndedIterator + ExactSizeIterator,
+              B: DoubleEndedIterator + ExactSizeIterator;
+}
+
+// Zip specialization data members
+#[doc(hidden)]
+trait ZipImplData {
+    type Data: 'static + Clone + Default + fmt::Debug;
+}
+
+#[doc(hidden)]
+impl<T> ZipImplData for T {
+    default type Data = ();
+}
+
+// General Zip impl
+#[doc(hidden)]
+impl<A, B> ZipImpl<A, B> for Zip<A, B>
+    where A: Iterator, B: Iterator
+{
+    type Item = (A::Item, B::Item);
+    default fn new(a: A, b: B) -> Self {
+        Zip {
+            a: a,
+            b: b,
+            spec: Default::default(), // unused
+        }
+    }
+
+    #[inline]
+    default fn next(&mut self) -> Option<(A::Item, B::Item)> {
+        self.a.next().and_then(|x| {
+            self.b.next().and_then(|y| {
+                Some((x, y))
+            })
+        })
+    }
+
+    #[inline]
+    default fn next_back(&mut self) -> Option<(A::Item, B::Item)>
+        where A: DoubleEndedIterator + ExactSizeIterator,
+              B: DoubleEndedIterator + ExactSizeIterator
+    {
         let a_sz = self.a.len();
         let b_sz = self.b.len();
         if a_sz != b_sz {
@@ -680,11 +722,105 @@ impl<A, B> DoubleEndedIterator for Zip<A, B> where
             _ => unreachable!(),
         }
     }
+
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        let (a_lower, a_upper) = self.a.size_hint();
+        let (b_lower, b_upper) = self.b.size_hint();
+
+        let lower = cmp::min(a_lower, b_lower);
+
+        let upper = match (a_upper, b_upper) {
+            (Some(x), Some(y)) => Some(cmp::min(x,y)),
+            (Some(x), None) => Some(x),
+            (None, Some(y)) => Some(y),
+            (None, None) => None
+        };
+
+        (lower, upper)
+    }
+}
+
+#[doc(hidden)]
+#[derive(Default, Debug, Clone)]
+struct ZipImplFields {
+    index: usize,
+    len: usize,
+}
+
+#[doc(hidden)]
+impl<A, B> ZipImplData for (A, B)
+    where A: TrustedRandomAccess, B: TrustedRandomAccess
+{
+    type Data = ZipImplFields;
+}
+
+#[doc(hidden)]
+impl<A, B> ZipImpl<A, B> for Zip<A, B>
+    where A: TrustedRandomAccess, B: TrustedRandomAccess
+{
+    fn new(a: A, b: B) -> Self {
+        let len = cmp::min(a.len(), b.len());
+        Zip {
+            a: a,
+            b: b,
+            spec: ZipImplFields {
+                index: 0,
+                len: len,
+            }
+        }
+    }
+
+    #[inline]
+    fn next(&mut self) -> Option<(A::Item, B::Item)> {
+        if self.spec.index < self.spec.len {
+            let i = self.spec.index;
+            self.spec.index += 1;
+            unsafe {
+                Some((self.a.get_unchecked(i), self.b.get_unchecked(i)))
+            }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.spec.len - self.spec.index;
+        (len, Some(len))
+    }
+
+    #[inline]
+    fn next_back(&mut self) -> Option<(A::Item, B::Item)>
+        where A: DoubleEndedIterator + ExactSizeIterator,
+              B: DoubleEndedIterator + ExactSizeIterator
+    {
+        if self.spec.index < self.spec.len {
+            self.spec.len -= 1;
+            let i = self.spec.len;
+            unsafe {
+                Some((self.a.get_unchecked(i), self.b.get_unchecked(i)))
+            }
+        } else {
+            None
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> ExactSizeIterator for Zip<A, B>
     where A: ExactSizeIterator, B: ExactSizeIterator {}
+
+#[doc(hidden)]
+unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
+    where A: TrustedRandomAccess,
+          B: TrustedRandomAccess,
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> (A::Item, B::Item) {
+        (self.a.get_unchecked(i), self.b.get_unchecked(i))
+    }
+
+}
 
 /// An iterator that maps the values of `iter` with `f`.
 ///
@@ -981,6 +1117,15 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Enumerate<I> where I: ExactSizeIterator {}
+
+#[doc(hidden)]
+unsafe impl<I> TrustedRandomAccess for Enumerate<I>
+    where I: TrustedRandomAccess
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> (usize, I::Item) {
+        (self.count + i, self.iter.get_unchecked(i))
+    }
+}
 
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.

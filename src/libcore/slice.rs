@@ -50,6 +50,7 @@ use result::Result::{Ok, Err};
 use ptr;
 use mem;
 use marker::{Copy, Send, Sync, self};
+use iter_private::TrustedRandomAccess;
 
 #[repr(C)]
 struct Repr<T> {
@@ -1942,3 +1943,17 @@ macro_rules! impl_marker_for {
 
 impl_marker_for!(BytewiseEquality,
                  u8 i8 u16 i16 u32 i32 u64 i64 usize isize char bool);
+
+#[doc(hidden)]
+unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> &'a T {
+        &*self.ptr.offset(i as isize)
+    }
+}
+
+#[doc(hidden)]
+unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut T {
+        &mut *self.ptr.offset(i as isize)
+    }
+}
