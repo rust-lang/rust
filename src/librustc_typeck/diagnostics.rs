@@ -3980,6 +3980,37 @@ impl SpaceLlama for i32 {
 ```
 "##,
 
+E0529: r##"
+An array or slice pattern was matched against some other type.
+
+Example of erroneous code:
+
+```compile_fail,E0529
+#![feature(slice_patterns)]
+
+let r: f32 = 1.0;
+match r {
+    [a, b] => { // error: expected an array or slice, found `f32`
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+
+Ensure that the pattern and the expression being matched on are of consistent
+types:
+
+```
+#![feature(slice_patterns)]
+
+let r = [1.0, 2.0];
+match r {
+    [a, b] => { // ok!
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+"##,
+
 E0559: r##"
 An unknown field was specified into an enum's structure variant.
 
@@ -4102,6 +4133,5 @@ register_diagnostics! {
     E0521, // redundant default implementations of trait
     E0527, // expected {} elements, found {}
     E0528, // expected at least {} elements, found {}
-    E0529, // slice pattern expects array or slice, not `{}`
     E0533, // `{}` does not name a unit variant, unit struct or a constant
 }
