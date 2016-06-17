@@ -1127,9 +1127,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                         // Hack to support fat pointer -> thin pointer casts to keep tests for
                         // other things passing for now.
-                        let is_fat_ptr_cast = pointee_type(src_ty).map(|ty| {
-                            !self.type_is_sized(ty)
-                        }).unwrap_or(false);
+                        let is_fat_ptr_cast = pointee_type(src_ty).map_or(false, |ty| !self.type_is_sized(ty));
 
                         if dest_size == src_size || is_fat_ptr_cast {
                             self.memory.copy(src, dest, dest_size)?;
