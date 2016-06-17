@@ -515,9 +515,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let name = self.tcx.item_name(def_id).as_str();
                 match fn_ty.sig.0.output {
                     ty::FnConverging(ty) => {
-                        let size = self.type_size(ty);
+                        let layout = self.type_layout(ty);
                         let ret = return_ptr.unwrap();
-                        self.call_intrinsic(&name, substs, args, ret, size)
+                        self.call_intrinsic(&name, substs, args, ret, layout)
                     }
                     ty::FnDiverging => unimplemented!(),
                 }
@@ -667,87 +667,126 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(if not_null { nndiscr } else { 1 - nndiscr })
     }
 
+    fn intrinsic_with_overflow(
+        &mut self,
+        op: mir::BinOp,
+        left: &mir::Operand<'tcx>,
+        right: &mir::Operand<'tcx>,
+        dest: Pointer,
+        dest_layout: &'tcx Layout,
+    ) -> EvalResult<'tcx, ()> {
+        use rustc::ty::layout::Layout::*;
+        let tup_layout = match *dest_layout {
+            Univariant { ref variant, .. } => variant,
+            _ => panic!("checked bin op returns something other than a tuple"),
+        };
+
+        let overflowed = self.intrinsic_overflowing(op, left, right, dest)?;
+        let offset = tup_layout.field_offset(1).bytes() as isize;
+        self.memory.write_bool(dest.offset(offset), overflowed)
+    }
+
+    fn math(
+        &mut self,
+        op: mir::BinOp,
+        left: &mir::Operand<'tcx>,
+        right: &mir::Operand<'tcx>,
+    ) -> EvalResult<'tcx, PrimVal> {
+        let left_ptr = self.eval_operand(left)?;
+        let left_ty = self.operand_ty(left);
+        let left_val = self.read_primval(left_ptr, left_ty)?;
+
+        let right_ptr = self.eval_operand(right)?;
+        let right_ty = self.operand_ty(right);
+        let right_val = self.read_primval(right_ptr, right_ty)?;
+
+        primval::binary_op(op, left_val, right_val)
+    }
+
+    fn intrinsic_overflowing(
+        &mut self,
+        op: mir::BinOp,
+        left: &mir::Operand<'tcx>,
+        right: &mir::Operand<'tcx>,
+        dest: Pointer,
+    ) -> EvalResult<'tcx, bool> {
+        match self.math(op, left, right) {
+            Ok(val) => {
+                self.memory.write_primval(dest, val)?;
+                Ok(false)
+            },
+            Err(EvalError::Overflow(l, r, op, val)) => {
+                debug!("operation overflowed: {:?} {} {:?} => {:?}", l, op.to_hir_binop().as_str(), r, val);
+                self.memory.write_primval(dest, val)?;
+                Ok(true)
+            },
+            Err(other) => Err(other),
+        }
+    }
+
     fn call_intrinsic(
         &mut self,
         name: &str,
         substs: &'tcx Substs<'tcx>,
         args: &[mir::Operand<'tcx>],
         dest: Pointer,
-        dest_size: usize
+        dest_layout: &'tcx Layout,
     ) -> EvalResult<'tcx, ()> {
         let args_res: EvalResult<Vec<Pointer>> = args.iter()
             .map(|arg| self.eval_operand(arg))
             .collect();
-        let args = args_res?;
+        let args_ptrs = args_res?;
+
+        let pointer_size = self.memory.pointer_size;
 
         match name {
-            // FIXME(solson): Handle different integer types correctly.
-            "add_with_overflow" => {
-                let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty);
-                let left = self.memory.read_int(args[0], size)?;
-                let right = self.memory.read_int(args[1], size)?;
-                let (n, overflowed) = unsafe {
-                    ::std::intrinsics::add_with_overflow::<i64>(left, right)
-                };
-                self.memory.write_int(dest, n, size)?;
-                self.memory.write_bool(dest.offset(size as isize), overflowed)?;
-            }
+            "add_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Add, &args[0], &args[1], dest, dest_layout)?,
+            "sub_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Sub, &args[0], &args[1], dest, dest_layout)?,
+            "mul_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Mul, &args[0], &args[1], dest, dest_layout)?,
 
+            // FIXME: turn into an assertion to catch wrong `assume` that would cause UB in llvm
             "assume" => {}
 
             "copy_nonoverlapping" => {
                 let elem_ty = *substs.types.get(subst::FnSpace, 0);
                 let elem_size = self.type_size(elem_ty);
-                let src = self.memory.read_ptr(args[0])?;
-                let dest = self.memory.read_ptr(args[1])?;
-                let count = self.memory.read_isize(args[2])?;
+                let src = self.memory.read_ptr(args_ptrs[0])?;
+                let dest = self.memory.read_ptr(args_ptrs[1])?;
+                let count = self.memory.read_isize(args_ptrs[2])?;
                 self.memory.copy(src, dest, count as usize * elem_size)?;
             }
 
             "discriminant_value" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let adt_ptr = self.memory.read_ptr(args[0])?;
+                let adt_ptr = self.memory.read_ptr(args_ptrs[0])?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
-                self.memory.write_uint(dest, discr_val, dest_size)?;
+                self.memory.write_uint(dest, discr_val, 8)?;
             }
 
             "forget" => {
                 let arg_ty = *substs.types.get(subst::FnSpace, 0);
                 let arg_size = self.type_size(arg_ty);
-                self.memory.drop_fill(args[0], arg_size)?;
+                self.memory.drop_fill(args_ptrs[0], arg_size)?;
             }
 
-            "init" => self.memory.write_repeat(dest, 0, dest_size)?,
+            "init" => self.memory.write_repeat(dest, 0, dest_layout.size(&self.tcx.data_layout).bytes() as usize)?,
 
             "min_align_of" => {
-                self.memory.write_int(dest, 1, dest_size)?;
+                // FIXME: use correct value
+                self.memory.write_int(dest, 1, pointer_size)?;
             }
 
             "move_val_init" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let ptr = self.memory.read_ptr(args[0])?;
-                self.move_(args[1], ptr, ty)?;
-            }
-
-            // FIXME(solson): Handle different integer types correctly.
-            "mul_with_overflow" => {
-                let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty);
-                let left = self.memory.read_int(args[0], size)?;
-                let right = self.memory.read_int(args[1], size)?;
-                let (n, overflowed) = unsafe {
-                    ::std::intrinsics::mul_with_overflow::<i64>(left, right)
-                };
-                self.memory.write_int(dest, n, size)?;
-                self.memory.write_bool(dest.offset(size as isize), overflowed)?;
+                let ptr = self.memory.read_ptr(args_ptrs[0])?;
+                self.move_(args_ptrs[1], ptr, ty)?;
             }
 
             "offset" => {
                 let pointee_ty = *substs.types.get(subst::FnSpace, 0);
                 let pointee_size = self.type_size(pointee_ty) as isize;
-                let ptr_arg = args[0];
-                let offset = self.memory.read_isize(args[1])?;
+                let ptr_arg = args_ptrs[0];
+                let offset = self.memory.read_isize(args_ptrs[1])?;
 
                 match self.memory.read_ptr(ptr_arg) {
                     Ok(ptr) => {
@@ -763,35 +802,35 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            // FIXME(solson): Handle different integer types correctly. Use primvals?
             "overflowing_sub" => {
-                let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty);
-                let left = self.memory.read_int(args[0], size)?;
-                let right = self.memory.read_int(args[1], size)?;
-                let n = left.wrapping_sub(right);
-                self.memory.write_int(dest, n, size)?;
+                self.intrinsic_overflowing(mir::BinOp::Sub, &args[0], &args[1], dest)?;
+            }
+            "overflowing_mul" => {
+                self.intrinsic_overflowing(mir::BinOp::Mul, &args[0], &args[1], dest)?;
+            }
+            "overflowing_add" => {
+                self.intrinsic_overflowing(mir::BinOp::Add, &args[0], &args[1], dest)?;
             }
 
             "size_of" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty) as u64;
-                self.memory.write_uint(dest, size, dest_size)?;
+                self.memory.write_uint(dest, size, pointer_size)?;
             }
 
             "size_of_val" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 if self.type_is_sized(ty) {
                     let size = self.type_size(ty) as u64;
-                    self.memory.write_uint(dest, size, dest_size)?;
+                    self.memory.write_uint(dest, size, pointer_size)?;
                 } else {
                     match ty.sty {
                         ty::TySlice(_) | ty::TyStr => {
                             let elem_ty = ty.sequence_element_type(self.tcx);
                             let elem_size = self.type_size(elem_ty) as u64;
                             let ptr_size = self.memory.pointer_size as isize;
-                            let n = self.memory.read_usize(args[0].offset(ptr_size))?;
-                            self.memory.write_uint(dest, n * elem_size, dest_size)?;
+                            let n = self.memory.read_usize(args_ptrs[0].offset(ptr_size))?;
+                            self.memory.write_uint(dest, n * elem_size, pointer_size)?;
                         }
 
                         _ => return Err(EvalError::Unimplemented(format!("unimplemented: size_of_val::<{:?}>", ty))),
@@ -801,9 +840,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "transmute" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                self.move_(args[0], dest, ty)?;
+                self.move_(args_ptrs[0], dest, ty)?;
             }
-            "uninit" => self.memory.mark_definedness(dest, dest_size, false)?,
+            "uninit" => self.memory.mark_definedness(dest, dest_layout.size(&self.tcx.data_layout).bytes() as usize, false)?,
 
             name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),
         }
@@ -908,50 +947,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
-                let left_ptr = self.eval_operand(left)?;
-                let left_ty = self.operand_ty(left);
-                let left_val = self.read_primval(left_ptr, left_ty)?;
-
-                let right_ptr = self.eval_operand(right)?;
-                let right_ty = self.operand_ty(right);
-                let right_val = self.read_primval(right_ptr, right_ty)?;
-
-                let val = primval::binary_op(bin_op, left_val, right_val)?;
-                self.memory.write_primval(dest, val)?;
+                let result = self.math(bin_op, left, right)?;
+                self.memory.write_primval(dest, result)?;
             }
 
-            // FIXME(solson): Factor this out with BinaryOp.
             CheckedBinaryOp(bin_op, ref left, ref right) => {
-                let left_ptr = self.eval_operand(left)?;
-                let left_ty = self.operand_ty(left);
-                let left_val = self.read_primval(left_ptr, left_ty)?;
-
-                let right_ptr = self.eval_operand(right)?;
-                let right_ty = self.operand_ty(right);
-                let right_val = self.read_primval(right_ptr, right_ty)?;
-
-                use rustc::ty::layout::Layout::*;
-                let tup_layout = match *dest_layout {
-                    Univariant { ref variant, .. } => variant,
-                    _ => panic!("checked bin op returns something other than a tuple"),
-                };
-
-                match primval::binary_op(bin_op, left_val, right_val) {
-                    Ok(val) => {
-                        let offset = tup_layout.field_offset(0).bytes() as isize;
-                        self.memory.write_primval(dest.offset(offset), val)?;
-                        let offset = tup_layout.field_offset(1).bytes() as isize;
-                        self.memory.write_bool(dest.offset(offset), false)?;
-                    },
-                    Err(EvalError::Overflow(l, r, op, val)) => {
-                        debug!("mathematical operation overflowed: {:?} {} {:?} => {:?}", l, op.to_hir_binop().as_str(), r, val);
-                        let offset = tup_layout.field_offset(0).bytes() as isize;
-                        self.memory.write_primval(dest.offset(offset), val)?;
-                        let offset = tup_layout.field_offset(1).bytes() as isize;
-                        self.memory.write_bool(dest.offset(offset), true)?;
-                    },
-                    Err(other) => return Err(other),
-                }
+                self.intrinsic_with_overflow(bin_op, left, right, dest, dest_layout)?;
             }
 
             UnaryOp(un_op, ref operand) => {
