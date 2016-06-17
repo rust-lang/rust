@@ -1031,7 +1031,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "_"));
             }
             ast::TyKind::ImplicitSelf => {
-                unreachable!();
+                try!(word(&mut self.s, "Self"));
             }
             ast::TyKind::Mac(ref m) => {
                 try!(self.print_mac(m, token::Paren));
