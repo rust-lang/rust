@@ -28,4 +28,5 @@ pretty!(A, v);
 
 fn main() {
     assert_eq!(format!("Pretty: {}", A { v: 3 }.pretty()), "Pretty: <A:3>");
+    println!("{}", A{ v: 42 }.pretty());
 }
