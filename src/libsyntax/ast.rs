@@ -786,7 +786,12 @@ impl UnOp {
 }
 
 /// A statement
-pub type Stmt = Spanned<StmtKind>;
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
+pub struct Stmt {
+    pub id: NodeId,
+    pub node: StmtKind,
+    pub span: Span,
+}
 
 impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -800,16 +805,19 @@ impl fmt::Debug for Stmt {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub enum StmtKind {
-    /// Could be an item or a local (let) binding:
-    Decl(P<Decl>, NodeId),
+    /// A local (let) binding:
+    Local(P<Local>),
+
+    /// An item binding
+    Item(P<Item>),
 
     /// Expr without trailing semi-colon (must have unit type):
-    Expr(P<Expr>, NodeId),
+    Expr(P<Expr>),
 
     /// Expr with trailing semi-colon (may have any type):
-    Semi(P<Expr>, NodeId),
+    Semi(P<Expr>),
 
-    Mac(P<Mac>, MacStmtStyle, ThinAttributes),
+    Mac(P<(Mac, MacStmtStyle, ThinAttributes)>),
 }
 
 impl StmtKind {
@@ -858,16 +866,6 @@ impl Local {
     pub fn attrs(&self) -> &[Attribute] {
         HasAttrs::attrs(self)
     }
-}
-
-pub type Decl = Spanned<DeclKind>;
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum DeclKind {
-    /// A local (let) binding:
-    Local(P<Local>),
-    /// An item binding:
-    Item(P<Item>),
 }
 
 impl Decl {
