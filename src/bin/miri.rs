@@ -106,15 +106,22 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
 fn init_logger() {
     const NSPACES: usize = 40;
     let format = |record: &log::LogRecord| {
-        // prepend spaces to indent the final string
-        let indentation = log_settings::settings().indentation;
-        format!("{lvl}:{module}{depth:2}{indent:<indentation$} {text}",
-            lvl = record.level(),
-            module = record.location().module_path(),
-            depth = indentation / NSPACES,
-            indentation = indentation % NSPACES,
-            indent = "",
-            text = record.args())
+        if record.level() == log::LogLevel::Trace {
+            // prepend spaces to indent the final string
+            let indentation = log_settings::settings().indentation;
+            format!("{lvl}:{module}{depth:2}{indent:<indentation$} {text}",
+                lvl = record.level(),
+                module = record.location().module_path(),
+                depth = indentation / NSPACES,
+                indentation = indentation % NSPACES,
+                indent = "",
+                text = record.args())
+        } else {
+            format!("{lvl}:{module}: {text}",
+                lvl = record.level(),
+                module = record.location().module_path(),
+                text = record.args())
+        }
     };
 
     let mut builder = env_logger::LogBuilder::new();
