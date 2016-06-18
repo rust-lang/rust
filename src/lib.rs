@@ -32,10 +32,11 @@ pub use error::{
 };
 
 pub use interpreter::{
-    EvalContext,
-    step,
-    Frame,
     CachedMir,
+    EvalContext,
+    Frame,
+    eval_main,
+    step,
 };
 
 pub use memory::Memory;

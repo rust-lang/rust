@@ -1507,3 +1507,65 @@ impl StructExt for layout::Struct {
         }
     }
 }
+
+pub fn eval_main<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir_map: &'a MirMap<'tcx>,
+    node_id: ast::NodeId,
+) {
+    let mir = mir_map.map.get(&node_id).expect("no mir for main function");
+    let def_id = tcx.map.local_def_id(node_id);
+    let mut ecx = EvalContext::new(tcx, mir_map);
+    let substs = tcx.mk_substs(subst::Substs::empty());
+    let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs).expect("main function should not be diverging");
+
+    ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, Some(return_ptr));
+
+    if mir.arg_decls.len() == 2 {
+        // start function
+        let ptr_size = ecx.memory().pointer_size;
+        let nargs = ecx.memory_mut().allocate(ptr_size);
+        ecx.memory_mut().write_usize(nargs, 0).unwrap();
+        let args = ecx.memory_mut().allocate(ptr_size);
+        ecx.memory_mut().write_usize(args, 0).unwrap();
+        ecx.frame_mut().locals[0] = nargs;
+        ecx.frame_mut().locals[1] = args;
+    }
+
+    loop {
+        match step(&mut ecx) {
+            Ok(true) => {}
+            Ok(false) => break,
+            // FIXME: diverging functions can end up here in some future miri
+            Err(e) => {
+                report(tcx, &ecx, e);
+                break;
+            }
+        }
+    }
+}
+
+fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
+    let frame = ecx.stack().last().expect("stackframe was empty");
+    let block = &frame.mir.basic_blocks()[frame.block];
+    let span = if frame.stmt < block.statements.len() {
+        block.statements[frame.stmt].source_info.span
+    } else {
+        block.terminator().source_info.span
+    };
+    let mut err = tcx.sess.struct_span_err(span, &e.to_string());
+    for &Frame { def_id, substs, span, .. } in ecx.stack().iter().rev() {
+        // FIXME(solson): Find a way to do this without this Display impl hack.
+        use rustc::util::ppaux;
+        use std::fmt;
+        struct Instance<'tcx>(DefId, &'tcx subst::Substs<'tcx>);
+        impl<'tcx> fmt::Display for Instance<'tcx> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[],
+                    |tcx| Some(tcx.lookup_item_type(self.0).generics))
+            }
+        }
+        err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
+    }
+    err.emit();
+}
