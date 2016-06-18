@@ -14,7 +14,6 @@
 use hir::*;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, Attribute, Attribute_, MetaItem};
 use syntax::ast::MetaItemKind;
-use syntax::attr::ThinAttributesExt;
 use hir;
 use syntax::codemap::{respan, Span, Spanned};
 use syntax::ptr::P;
@@ -292,8 +291,11 @@ pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<
     })
 }
 
-pub fn fold_attrs<T: Folder>(attrs: HirVec<Attribute>, fld: &mut T) -> HirVec<Attribute> {
-    attrs.move_flat_map(|x| fld.fold_attribute(x))
+pub fn fold_attrs<T, F>(attrs: T, fld: &mut F) -> T
+    where T: Into<Vec<Attribute>> + From<Vec<Attribute>>,
+          F: Folder,
+{
+    attrs.into().move_flat_map(|x| fld.fold_attribute(x)).into()
 }
 
 pub fn noop_fold_arm<T: Folder>(Arm { attrs, pats, guard, body }: Arm, fld: &mut T) -> Arm {
@@ -461,7 +463,7 @@ pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
             pat: fld.fold_pat(pat),
             init: init.map(|e| fld.fold_expr(e)),
             span: fld.new_span(span),
-            attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs.into(), fld).into()),
+            attrs: fold_attrs(attrs, fld),
         }
     })
 }
@@ -1078,7 +1080,7 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
             }
         },
         span: folder.new_span(span),
-        attrs: attrs.map_thin_attrs(|attrs| fold_attrs(attrs.into(), folder).into()),
+        attrs: fold_attrs(attrs, folder),
     }
 }
 

@@ -16,7 +16,7 @@ use ast;
 use ext::mtwt;
 use ext::build::AstBuilder;
 use attr;
-use attr::{AttrMetaMethods, WithAttrs, ThinAttributesExt};
+use attr::{AttrMetaMethods, WithAttrs};
 use codemap;
 use codemap::{Span, Spanned, ExpnInfo, ExpnId, NameAndSpan, MacroBang, MacroAttribute};
 use config::StripUnconfigured;
@@ -104,7 +104,7 @@ pub fn expand_expr(expr: ast::Expr, fld: &mut MacroExpander) -> P<ast::Expr> {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
         ast::ExprKind::Mac(mac) => {
-            expand_mac_invoc(mac, None, expr.attrs.into_attr_vec(), expr.span, fld)
+            expand_mac_invoc(mac, None, expr.attrs.into(), expr.span, fld)
         }
 
         ast::ExprKind::While(cond, body, opt_ident) => {
@@ -449,7 +449,7 @@ fn expand_stmt(stmt: Stmt, fld: &mut MacroExpander) -> SmallVector<Stmt> {
     };
 
     let mut fully_expanded: SmallVector<ast::Stmt> =
-        expand_mac_invoc(mac.unwrap(), None, attrs.into_attr_vec(), stmt.span, fld);
+        expand_mac_invoc(mac.unwrap(), None, attrs.into(), stmt.span, fld);
 
     // If this is a macro invocation with a semicolon, then apply that
     // semicolon to the final statement produced by expansion.
@@ -1054,7 +1054,7 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         expr.and_then(|expr| match expr.node {
             ast::ExprKind::Mac(mac) =>
-                expand_mac_invoc(mac, None, expr.attrs.into_attr_vec(), expr.span, self),
+                expand_mac_invoc(mac, None, expr.attrs.into(), expr.span, self),
             _ => Some(expand_expr(expr, self)),
         })
     }

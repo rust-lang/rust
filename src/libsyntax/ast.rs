@@ -14,8 +14,9 @@ pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
+pub use util::ThinVec;
 
-use attr::{ThinAttributes, HasAttrs};
+use attr::HasAttrs;
 use codemap::{mk_sp, respan, Span, Spanned, DUMMY_SP, ExpnId};
 use abi::Abi;
 use errors;
@@ -809,7 +810,7 @@ pub enum StmtKind {
     /// Expr with trailing semi-colon (may have any type):
     Semi(P<Expr>, NodeId),
 
-    Mac(P<Mac>, MacStmtStyle, ThinAttributes),
+    Mac(P<Mac>, MacStmtStyle, ThinVec<Attribute>),
 }
 
 impl StmtKind {
@@ -851,7 +852,7 @@ pub struct Local {
     pub init: Option<P<Expr>>,
     pub id: NodeId,
     pub span: Span,
-    pub attrs: ThinAttributes,
+    pub attrs: ThinVec<Attribute>,
 }
 
 impl Local {
@@ -912,7 +913,7 @@ pub struct Expr {
     pub id: NodeId,
     pub node: ExprKind,
     pub span: Span,
-    pub attrs: ThinAttributes
+    pub attrs: ThinVec<Attribute>
 }
 
 impl Expr {

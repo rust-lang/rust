@@ -260,6 +260,6 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             expn_id: expn_id,
         }),
         span: sp,
-        attrs: None,
+        attrs: ast::ThinVec::new(),
     }))
 }

@@ -149,7 +149,7 @@ fn stmt_let_undescore(cx: &mut ExtCtxt,
         init: Some(expr),
         id: ast::DUMMY_NODE_ID,
         span: sp,
-        attrs: None,
+        attrs: ast::ThinVec::new(),
     });
     let decl = respan(sp, ast::DeclKind::Local(local));
     respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))

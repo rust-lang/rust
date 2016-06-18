@@ -40,9 +40,9 @@ use syntax::codemap::{self, mk_sp, respan, Span, Spanned, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
-use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::parse::token::{keywords, InternedString};
 use syntax::ptr::P;
+use syntax::util::ThinVec;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -732,7 +732,7 @@ impl Stmt_ {
         match *self {
             StmtDecl(ref d, _) => d.node.attrs(),
             StmtExpr(ref e, _) |
-            StmtSemi(ref e, _) => e.attrs.as_attr_slice(),
+            StmtSemi(ref e, _) => &e.attrs,
         }
     }
 
@@ -756,7 +756,7 @@ pub struct Local {
     pub init: Option<P<Expr>>,
     pub id: NodeId,
     pub span: Span,
-    pub attrs: ThinAttributes,
+    pub attrs: ThinVec<Attribute>,
 }
 
 pub type Decl = Spanned<Decl_>;
@@ -772,7 +772,7 @@ pub enum Decl_ {
 impl Decl_ {
     pub fn attrs(&self) -> &[Attribute] {
         match *self {
-            DeclLocal(ref l) => l.attrs.as_attr_slice(),
+            DeclLocal(ref l) => &l.attrs,
             DeclItem(_) => &[]
         }
     }
@@ -817,7 +817,7 @@ pub struct Expr {
     pub id: NodeId,
     pub node: Expr_,
     pub span: Span,
-    pub attrs: ThinAttributes,
+    pub attrs: ThinVec<Attribute>,
 }
 
 impl fmt::Debug for Expr {

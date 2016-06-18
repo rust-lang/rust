@@ -672,6 +672,7 @@ mod tests {
     use ptr::P;
     use util::parser_testing::{string_to_tts, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item, string_to_stmt};
+    use util::ThinVec;
 
     // produce a codemap::span
     fn sp(a: u32, b: u32) -> Span {
@@ -693,7 +694,7 @@ mod tests {
                         ),
                     }),
                     span: sp(0, 1),
-                    attrs: None,
+                    attrs: ThinVec::new(),
                    }))
     }
 
@@ -716,7 +717,7 @@ mod tests {
                             )
                         }),
                     span: sp(0, 6),
-                    attrs: None,
+                    attrs: ThinVec::new(),
                    }))
     }
 
@@ -832,10 +833,10 @@ mod tests {
                             ),
                         }),
                         span:sp(7,8),
-                        attrs: None,
+                        attrs: ThinVec::new(),
                     }))),
                     span:sp(0,8),
-                    attrs: None,
+                    attrs: ThinVec::new(),
                    }))
     }
 
@@ -855,7 +856,7 @@ mod tests {
                                ),
                             }),
                            span: sp(0,1),
-                           attrs: None}),
+                           attrs: ThinVec::new()}),
                                            ast::DUMMY_NODE_ID),
                        span: sp(0,1)}))
 
@@ -950,7 +951,7 @@ mod tests {
                                                         ),
                                                       }),
                                                 span: sp(17,18),
-                                                attrs: None,}),
+                                                attrs: ThinVec::new(),}),
                                                 ast::DUMMY_NODE_ID),
                                             span: sp(17,19)}),
                                         expr: None,
