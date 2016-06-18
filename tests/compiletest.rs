@@ -52,20 +52,23 @@ fn compile_test() {
     for_all_targets(&sysroot, |target| {
         for file in std::fs::read_dir("tests/run-pass").unwrap() {
             let file = file.unwrap();
-            if !file.metadata().unwrap().is_file() {
+            let path = file.path();
+
+            if !file.metadata().unwrap().is_file() || !path.to_str().unwrap().ends_with(".rs") {
                 continue;
             }
-            let file = file.path();
+
             let stderr = std::io::stderr();
-            write!(stderr.lock(), "test [miri-pass] {} ", file.to_str().unwrap()).unwrap();
+            write!(stderr.lock(), "test [miri-pass] {} ... ", path.display()).unwrap();
             let mut cmd = std::process::Command::new("target/debug/miri");
-            cmd.arg(file);
+            cmd.arg(path);
             cmd.arg("-Dwarnings");
             cmd.arg(format!("--target={}", target));
             let libs = Path::new(&sysroot).join("lib");
             let sysroot = libs.join("rustlib").join(&target).join("lib");
             let paths = std::env::join_paths(&[libs, sysroot]).unwrap();
             cmd.env(compiletest::procsrv::dylib_env_var(), paths);
+
             match cmd.output() {
                 Ok(ref output) if output.status.success() => writeln!(stderr.lock(), "ok").unwrap(),
                 Ok(output) => {
