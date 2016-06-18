@@ -1403,8 +1403,9 @@ impl<'a> State<'a> {
                 try!(self.commasep(
                     Inconsistent, struct_def.fields(),
                     |s, field| {
-                        try!(s.print_visibility(&field.vis));
                         try!(s.maybe_print_comment(field.span.lo));
+                        try!(s.print_outer_attributes(&field.attrs));
+                        try!(s.print_visibility(&field.vis));
                         s.print_type(&field.ty)
                     }
                 ));
