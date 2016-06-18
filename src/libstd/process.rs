@@ -713,16 +713,17 @@ impl Child {
     /// ```should_panic
     /// use std::process::{Command, Stdio};
     ///
-    /// let mut child = Command::new("/bin/cat")
-    ///                         .arg("file.txt")
-    ///                         .stdout(Stdio::piped())
-    ///                         .spawn()
-    ///                         .expect("failed to execute child");
+    /// let child = Command::new("/bin/cat")
+    ///     .arg("file.txt")
+    ///     .stdout(Stdio::piped())
+    ///     .spawn()
+    ///     .expect("failed to execute child");
     ///
-    /// let ecode = child.wait_with_output()
-    ///                  .expect("failed to wait on child");
+    /// let output = child
+    ///     .wait_with_output()
+    ///     .expect("failed to wait on child");
     ///
-    /// assert!(ecode.status.success());
+    /// assert!(output.status.success());
     /// ```
     ///
     #[stable(feature = "process", since = "1.0.0")]
