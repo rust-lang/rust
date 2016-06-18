@@ -1549,12 +1549,18 @@ impl<'a> fmt::Display for Item<'a> {
                 } else {
                     write!(fmt, "Module ")?;
                 },
-            clean::FunctionItem(..) => write!(fmt, "Function ")?,
+            clean::FunctionItem(..) | clean::ForeignFunctionItem(..) =>
+                write!(fmt, "Function ")?,
             clean::TraitItem(..) => write!(fmt, "Trait ")?,
             clean::StructItem(..) => write!(fmt, "Struct ")?,
             clean::EnumItem(..) => write!(fmt, "Enum ")?,
+            clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
+            clean::MacroItem(..) => write!(fmt, "Macro ")?,
             clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
-            _ => {}
+            clean::StaticItem(..) | clean::ForeignStaticItem(..) =>
+                write!(fmt, "Static ")?,
+            clean::ConstantItem(..) => write!(fmt, "Constant ")?,
+            _ => unreachable!(),
         }
         let is_primitive = match self.item.inner {
             clean::PrimitiveItem(..) => true,
