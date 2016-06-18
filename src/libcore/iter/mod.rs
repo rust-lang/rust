@@ -374,6 +374,8 @@ impl<I> ExactSizeIterator for Rev<I>
 /// This `struct` is created by the [`cloned()`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
+/// This iterator is fused if its interior iterator is fused.
+///
 /// [`cloned()`]: trait.Iterator.html#method.cloned
 /// [`Iterator`]: trait.Iterator.html
 #[stable(feature = "iter_cloned", since = "1.1.0")]
@@ -417,6 +419,8 @@ impl<'a, I, T: 'a> ExactSizeIterator for Cloned<I>
 /// This `struct` is created by the [`cycle()`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
+/// This iterator is fused because it never returns `None`.
+///
 /// [`cycle()`]: trait.Iterator.html#method.cycle
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
@@ -455,6 +459,8 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
 /// This `struct` is created by the [`chain()`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
+/// This iterator is fused.
+///
 /// [`chain()`]: trait.Iterator.html#method.chain
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
@@ -476,9 +482,7 @@ pub struct Chain<A, B> {
 //  - Both: `a` and `b` are remaining
 //  - Front: `a` remaining
 //  - Back: `b` remaining
-//
-//  The fourth state (neither iterator is remaining) only occurs after Chain has
-//  returned None once, so we don't need to store this state.
+//  - Neither: Neither iterator is remaining.
 #[derive(Clone, Debug)]
 enum ChainState {
     // both front and back iterator are remaining
@@ -487,6 +491,8 @@ enum ChainState {
     Front,
     // only back is remaining
     Back,
+    // neither
+    Neither,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -508,6 +514,7 @@ impl<A, B> Iterator for Chain<A, B> where
             },
             ChainState::Front => self.a.next(),
             ChainState::Back => self.b.next(),
+            ChainState::Neither => None,
         }
     }
 
@@ -518,6 +525,7 @@ impl<A, B> Iterator for Chain<A, B> where
             ChainState::Both => self.a.count() + self.b.count(),
             ChainState::Front => self.a.count(),
             ChainState::Back => self.b.count(),
+            ChainState::Neither => 0,
         }
     }
 
@@ -536,6 +544,7 @@ impl<A, B> Iterator for Chain<A, B> where
                 }
             }
             ChainState::Back => {}
+            ChainState::Neither => return None,
         }
         if let ChainState::Back = self.state {
             self.b.nth(n)
@@ -558,6 +567,7 @@ impl<A, B> Iterator for Chain<A, B> where
             },
             ChainState::Front => self.a.find(predicate),
             ChainState::Back => self.b.find(predicate),
+            ChainState::Neither => None,
         }
     }
 
@@ -571,12 +581,19 @@ impl<A, B> Iterator for Chain<A, B> where
                 b_last.or(a_last)
             },
             ChainState::Front => self.a.last(),
-            ChainState::Back => self.b.last()
+            ChainState::Back => self.b.last(),
+            ChainState::Neither => None,
         }
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.state {
+            ChainState::Both => {},
+            ChainState::Front => return self.a.size_hint(),
+            ChainState::Back => return self.b.size_hint(),
+            ChainState::Neither => return (0, Some(0)),
+        }
         let (a_lower, a_upper) = self.a.size_hint();
         let (b_lower, b_upper) = self.b.size_hint();
 
@@ -608,6 +625,7 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
             },
             ChainState::Front => self.a.next_back(),
             ChainState::Back => self.b.next_back(),
+            ChainState::Neither => None,
         }
     }
 }
@@ -616,6 +634,8 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
 ///
 /// This `struct` is created by the [`zip()`] method on [`Iterator`]. See its
 /// documentation for more.
+///
+/// This iterator is fused if both interior iterators are fused.
 ///
 /// [`zip()`]: trait.Iterator.html#method.zip
 /// [`Iterator`]: trait.Iterator.html
@@ -629,8 +649,7 @@ pub struct Zip<A, B> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
-{
+impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator {
     type Item = (A::Item, B::Item);
 
     #[inline]
@@ -872,6 +891,8 @@ unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
 ///     println!("{:?}", pair);
 /// }
 /// ```
+///
+/// This iterator is fused if its interior iterator is fused.
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
@@ -922,6 +943,8 @@ impl<B, I: ExactSizeIterator, F> ExactSizeIterator for Map<I, F>
 ///
 /// This `struct` is created by the [`filter()`] method on [`Iterator`]. See its
 /// documentation for more.
+///
+/// This iterator is fused if its interior iterator is fused.
 ///
 /// [`filter()`]: trait.Iterator.html#method.filter
 /// [`Iterator`]: trait.Iterator.html
@@ -982,6 +1005,8 @@ impl<I: DoubleEndedIterator, P> DoubleEndedIterator for Filter<I, P>
 ///
 /// This `struct` is created by the [`filter_map()`] method on [`Iterator`]. See its
 /// documentation for more.
+///
+/// This iterator is fused if its interior iterator is fused.
 ///
 /// [`filter_map()`]: trait.Iterator.html#method.filter_map
 /// [`Iterator`]: trait.Iterator.html
@@ -1044,6 +1069,8 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
 ///
 /// This `struct` is created by the [`enumerate()`] method on [`Iterator`]. See its
 /// documentation for more.
+///
+/// This iterator is fused if its interior iterator is fused.
 ///
 /// [`enumerate()`]: trait.Iterator.html#method.enumerate
 /// [`Iterator`]: trait.Iterator.html
@@ -1132,6 +1159,8 @@ unsafe impl<I> TrustedRandomAccess for Enumerate<I>
 ///
 /// This `struct` is created by the [`peekable()`] method on [`Iterator`]. See its
 /// documentation for more.
+///
+/// This iterator is fused if its interior iterator is fused.
 ///
 /// [`peekable()`]: trait.Iterator.html#method.peekable
 /// [`Iterator`]: trait.Iterator.html
@@ -1335,6 +1364,8 @@ impl<I: Iterator, P> Iterator for SkipWhile<I, P>
 /// This `struct` is created by the [`take_while()`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
+/// This iterator is fused if its interior iterator is fused.
+///
 /// [`take_while()`]: trait.Iterator.html#method.take_while
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
@@ -1389,6 +1420,8 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
 ///
 /// This `struct` is created by the [`skip()`] method on [`Iterator`]. See its
 /// documentation for more.
+///
+/// This iterator is fused if its interior iterator is fused.
 ///
 /// [`skip()`]: trait.Iterator.html#method.skip
 /// [`Iterator`]: trait.Iterator.html
@@ -1481,6 +1514,8 @@ impl<I> DoubleEndedIterator for Skip<I> where I: DoubleEndedIterator + ExactSize
 /// This `struct` is created by the [`take()`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
+/// This iterator is fused.
+///
 /// [`take()`]: trait.Iterator.html#method.take
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
@@ -1543,6 +1578,8 @@ impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
 /// This `struct` is created by the [`scan()`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
+/// This iterator is fused if its interior iterator is fused.
+///
 /// [`scan()`]: trait.Iterator.html#method.scan
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
@@ -1588,6 +1625,8 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
 ///
 /// This `struct` is created by the [`flat_map()`] method on [`Iterator`]. See its
 /// documentation for more.
+///
+/// This iterator is fused if the iterator yielding the iterators is fused.
 ///
 /// [`flat_map()`]: trait.Iterator.html#method.flat_map
 /// [`Iterator`]: trait.Iterator.html
@@ -1674,6 +1713,8 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
 ///
 /// This `struct` is created by the [`fuse()`] method on [`Iterator`]. See its
 /// documentation for more.
+///
+/// This iterator is fused.
 ///
 /// [`fuse()`]: trait.Iterator.html#method.fuse
 /// [`Iterator`]: trait.Iterator.html

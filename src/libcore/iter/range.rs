@@ -144,6 +144,8 @@ step_impl_no_between!(u64 i64);
 /// The resulting iterator handles overflow by stopping. The `A`
 /// parameter is the type being iterated over, while `R` is the range
 /// type (usually one of `std::ops::{Range, RangeFrom, RangeInclusive}`.
+///
+/// This iterator is fused if the underlying range iterator is fused.
 #[derive(Clone, Debug)]
 #[unstable(feature = "step_by", reason = "recent addition",
            issue = "27741")]

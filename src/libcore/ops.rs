@@ -1489,6 +1489,8 @@ impl fmt::Debug for RangeFull {
 /// A (half-open) range which is bounded at both ends: { x | start <= x < end }.
 /// Use `start..end` (two dots) for its shorthand.
 ///
+/// This iterator is fused.
+///
 /// See the [`contains()`](#method.contains) method for its characterization.
 ///
 /// # Examples
@@ -1554,6 +1556,8 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// implementation; if you use an integer range and the integer overflows, it
 /// might panic in debug mode or create an endless loop in release mode. This
 /// overflow behavior might change in the future.
+///
+/// This iterator is fused because it never returns `None`.
 ///
 /// # Examples
 ///
@@ -1653,6 +1657,8 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 
 /// An inclusive range which is bounded at both ends: { x | start <= x <= end }.
 /// Use `start...end` (three dots) for its shorthand.
+///
+/// This iterator is fused.
 ///
 /// See the [`contains()`](#method.contains) method for its characterization.
 ///

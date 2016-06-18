@@ -320,6 +320,8 @@ Section: Iterators
 ///
 /// Created with the method [`chars()`].
 ///
+/// This iterator is fused.
+///
 /// [`chars()`]: ../../std/primitive.str.html#method.chars
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -467,6 +469,8 @@ impl<'a> Chars<'a> {
 }
 
 /// Iterator for a string's characters and their byte offsets.
+///
+/// This iterator is fused.
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CharIndices<'a> {
@@ -529,6 +533,8 @@ impl<'a> CharIndices<'a> {
 /// Use with the `std::iter` module.
 ///
 /// Created with the method [`bytes()`].
+///
+/// This iterator is fused.
 ///
 /// [`bytes()`]: ../../std/primitive.str.html#method.bytes
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -850,10 +856,14 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`split()`].
         ///
+        /// This iterator is fused.
+        ///
         /// [`split()`]: ../../std/primitive.str.html#method.split
         struct Split;
     reverse:
         /// Created with the method [`rsplit()`].
+        ///
+        /// This iterator is fused.
         ///
         /// [`rsplit()`]: ../../std/primitive.str.html#method.rsplit
         struct RSplit;
@@ -868,10 +878,14 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`split_terminator()`].
         ///
+        /// This iterator is fused.
+        ///
         /// [`split_terminator()`]: ../../std/primitive.str.html#method.split_terminator
         struct SplitTerminator;
     reverse:
         /// Created with the method [`rsplit_terminator()`].
+        ///
+        /// This iterator is fused.
         ///
         /// [`rsplit_terminator()`]: ../../std/primitive.str.html#method.rsplit_terminator
         struct RSplitTerminator;
@@ -928,10 +942,14 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`splitn()`].
         ///
+        /// This iterator is fused.
+        ///
         /// [`splitn()`]: ../../std/primitive.str.html#method.splitn
         struct SplitN;
     reverse:
         /// Created with the method [`rsplitn()`].
+        ///
+        /// This iterator is fused.
         ///
         /// [`rsplitn()`]: ../../std/primitive.str.html#method.rsplitn
         struct RSplitN;
@@ -979,10 +997,14 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`match_indices()`].
         ///
+        /// This iterator is fused.
+        ///
         /// [`match_indices()`]: ../../std/primitive.str.html#method.match_indices
         struct MatchIndices;
     reverse:
         /// Created with the method [`rmatch_indices()`].
+        ///
+        /// This iterator is fused.
         ///
         /// [`rmatch_indices()`]: ../../std/primitive.str.html#method.rmatch_indices
         struct RMatchIndices;
@@ -1032,10 +1054,14 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`matches()`].
         ///
+        /// This iterator is fused.
+        ///
         /// [`matches()`]: ../../std/primitive.str.html#method.matches
         struct Matches;
     reverse:
         /// Created with the method [`rmatches()`].
+        ///
+        /// This iterator is fused.
         ///
         /// [`rmatches()`]: ../../std/primitive.str.html#method.rmatches
         struct RMatches;
@@ -1047,6 +1073,8 @@ generate_pattern_iterators! {
 }
 
 /// Created with the method [`lines()`].
+///
+/// This iterator is fused.
 ///
 /// [`lines()`]: ../../std/primitive.str.html#method.lines
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1077,6 +1105,8 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 }
 
 /// Created with the method [`lines_any()`].
+///
+/// This iterator is fused.
 ///
 /// [`lines_any()`]: ../../std/primitive.str.html#method.lines_any
 #[stable(feature = "rust1", since = "1.0.0")]

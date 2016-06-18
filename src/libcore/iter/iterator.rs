@@ -626,6 +626,9 @@ pub trait Iterator {
     /// `next` is called on the underlying iterator, hence any side effects of
     /// the `next` method will occur.
     ///
+    /// If the iterator is exhausted by peeking, calling `next` or `peek` again
+    /// has unspecified results if the iterator isn't fused.
+    ///
     /// [`peek()`]: struct.Peekable.html#method.peek
     ///
     /// # Examples
