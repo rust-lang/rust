@@ -1,7 +1,3 @@
-#![feature(custom_attribute, test)]
-#![feature(rustc_private)]
-#![allow(unused_attributes)]
-
 extern crate getopts;
 extern crate miri;
 extern crate rustc;
@@ -32,7 +28,7 @@ fn find_sysroot() -> String {
 pub fn run(filename: &str, bencher: &mut Bencher) {
     let args = &[
         "miri".to_string(),
-        format!("benches/{}.rs", filename),
+        format!("benches/helpers/{}.rs", filename),
         "--sysroot".to_string(),
         find_sysroot()
     ];
