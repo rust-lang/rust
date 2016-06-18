@@ -32,7 +32,9 @@ impl<T: Default> Cell<T> {
 }
 ```
 
-The `get` method is kept but is only available for `T: Copy`. The `set` method is available for all `T`.
+The `get` method is kept but is only available for `T: Copy`.
+
+The `set` method is available for all `T`. It will need to be implemented by calling `replace` and dropping the returned value. Dropping the old value in-place is unsound since the `Drop` impl will hold a mutable reference to the cell contents.
 
 The `into_inner` and `replace` methods are added, which allow the value in a cell to be read even if `T` is not `Copy`. The `get` method can't be used since the cell must always contain a valid value.
 
