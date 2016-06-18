@@ -25,7 +25,6 @@
 
 use abi::Abi;
 use ast::*;
-use attr::ThinAttributesExt;
 use codemap::{Span, Spanned};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -185,7 +184,7 @@ pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod) {
 }
 
 pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
-    for attr in local.attrs.as_attr_slice() {
+    for attr in local.attrs.iter() {
         visitor.visit_attribute(attr);
     }
     visitor.visit_pat(&local.pat);
@@ -619,7 +618,7 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
         }
         StmtKind::Mac(ref mac, _, ref attrs) => {
             visitor.visit_mac(mac);
-            for attr in attrs.as_attr_slice() {
+            for attr in attrs.iter() {
                 visitor.visit_attribute(attr);
             }
         }
@@ -638,7 +637,7 @@ pub fn walk_mac<'v, V: Visitor<'v>>(_: &mut V, _: &'v Mac) {
 }
 
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
-    for attr in expression.attrs.as_attr_slice() {
+    for attr in expression.attrs.iter() {
         visitor.visit_attribute(attr);
     }
     match expression.node {

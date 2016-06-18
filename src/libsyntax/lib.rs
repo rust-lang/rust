@@ -73,6 +73,9 @@ pub mod util {
     pub mod parser_testing;
     pub mod small_vector;
     pub mod move_map;
+
+    mod thin_vec;
+    pub use self::thin_vec::ThinVec;
 }
 
 pub mod diagnostics {

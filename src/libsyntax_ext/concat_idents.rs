@@ -70,7 +70,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
                 id: ast::DUMMY_NODE_ID,
                 node: ast::ExprKind::Path(None, self.path()),
                 span: self.span,
-                attrs: None,
+                attrs: ast::ThinVec::new(),
             }))
         }
 

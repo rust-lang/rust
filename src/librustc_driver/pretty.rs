@@ -672,7 +672,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
                 node: ast::ExprKind::Loop(empty_block, None),
                 id: ast::DUMMY_NODE_ID,
                 span: codemap::DUMMY_SP,
-                attrs: None,
+                attrs: ast::ThinVec::new(),
             });
 
             expr_to_block(b.rules, Some(loop_expr))

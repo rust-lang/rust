@@ -350,7 +350,7 @@ impl DummyResult {
             id: ast::DUMMY_NODE_ID,
             node: ast::ExprKind::Lit(P(codemap::respan(sp, ast::LitKind::Bool(false)))),
             span: sp,
-            attrs: None,
+            attrs: ast::ThinVec::new(),
         })
     }
 
