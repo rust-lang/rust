@@ -104,8 +104,6 @@ enum ResolutionError<'a> {
     IsNotATrait(&'a str),
     /// error E0405: use of undeclared trait name
     UndeclaredTraitName(&'a str, SuggestedCandidates),
-    /// error E0406: undeclared associated type
-    UndeclaredAssociatedType,
     /// error E0407: method is not a member of trait
     MethodNotMemberOfTrait(Name, &'a str),
     /// error E0437: type is not a member of trait
@@ -228,9 +226,6 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             show_candidates(&mut err, &candidates);
             err.span_label(span, &format!("`{}` is not in scope", name));
             err
-        }
-        ResolutionError::UndeclaredAssociatedType => {
-            struct_span_err!(resolver.session, span, E0406, "undeclared associated type")
         }
         ResolutionError::MethodNotMemberOfTrait(method, trait_) => {
             struct_span_err!(resolver.session,
@@ -518,9 +513,6 @@ impl<'a, 'v> Visitor<'v> for Resolver<'a> {
     }
     fn visit_ty(&mut self, ty: &Ty) {
         self.resolve_type(ty);
-    }
-    fn visit_generics(&mut self, generics: &Generics) {
-        self.resolve_generics(generics);
     }
     fn visit_poly_trait_ref(&mut self, tref: &ast::PolyTraitRef, m: &ast::TraitBoundModifier) {
         match self.resolve_trait_reference(tref.trait_ref.ref_id, &tref.trait_ref.path, 0) {
@@ -1848,30 +1840,6 @@ impl<'a> Resolver<'a> {
 
             resolve_error(self, trait_path.span, error);
         })
-    }
-
-    fn resolve_generics(&mut self, generics: &Generics) {
-        for predicate in &generics.where_clause.predicates {
-            match predicate {
-                &ast::WherePredicate::BoundPredicate(_) |
-                &ast::WherePredicate::RegionPredicate(_) => {}
-                &ast::WherePredicate::EqPredicate(ref eq_pred) => {
-                    self.resolve_path(eq_pred.id, &eq_pred.path, 0, TypeNS).and_then(|path_res| {
-                        if let PathResolution { base_def: Def::TyParam(..), .. } = path_res {
-                            Ok(self.record_def(eq_pred.id, path_res))
-                        } else {
-                            Err(false)
-                        }
-                    }).map_err(|error_reported| {
-                        self.record_def(eq_pred.id, err_path_resolution());
-                        if error_reported { return }
-                        let error_variant = ResolutionError::UndeclaredAssociatedType;
-                        resolve_error(self, eq_pred.span, error_variant);
-                    }).unwrap_or(());
-                }
-            }
-        }
-        visit::walk_generics(self, generics);
     }
 
     fn with_current_self_type<T, F>(&mut self, self_type: &Ty, f: F) -> T
