@@ -1519,20 +1519,23 @@ impl<'a> Item<'a> {
         // located, then we return `None`.
         } else {
             let cache = cache();
-            let path = match cache.external_paths.get(&self.item.def_id) {
+            let external_path = match cache.external_paths.get(&self.item.def_id) {
                 Some(path) => path,
                 None => return None,
             };
-            let root = match cache.extern_locations.get(&self.item.def_id.krate) {
+            let mut path = match cache.extern_locations.get(&self.item.def_id.krate) {
                 Some(&(_, Remote(ref s))) => s.to_string(),
                 Some(&(_, Local)) => self.cx.root_path.clone(),
                 Some(&(_, Unknown)) => return None,
                 None => return None,
             };
-            Some(format!("{root}{path}/{file}?gotosrc={goto}",
-                         root = root,
-                         path = path[..path.len() - 1].join("/"),
-                         file = item_path(shortty(self.item), self.item.name.as_ref().unwrap()),
+            for item in &external_path[..external_path.len() - 1] {
+                path.push_str(item);
+                path.push_str("/");
+            }
+            Some(format!("{path}{file}?gotosrc={goto}",
+                         path = path,
+                         file = item_path(shortty(self.item), external_path.last().unwrap()),
                          goto = self.item.def_id.index.as_usize()))
         }
     }
