@@ -104,7 +104,8 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
 }
 
 fn init_logger() {
-    const NSPACES: usize = 40;
+    const MAX_INDENT: usize = 40;
+
     let format = |record: &log::LogRecord| {
         if record.level() == log::LogLevel::Trace {
             // prepend spaces to indent the final string
@@ -112,8 +113,8 @@ fn init_logger() {
             format!("{lvl}:{module}{depth:2}{indent:<indentation$} {text}",
                 lvl = record.level(),
                 module = record.location().module_path(),
-                depth = indentation / NSPACES,
-                indentation = indentation % NSPACES,
+                depth = indentation / MAX_INDENT,
+                indentation = indentation % MAX_INDENT,
                 indent = "",
                 text = record.args())
         } else {
