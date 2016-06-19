@@ -321,6 +321,35 @@ pub fn yield_now() {
 }
 
 /// Determines whether the current thread is unwinding because of panic.
+///
+/// # Examples
+///
+/// ```rust,should_panic
+/// use std::thread;
+///
+/// struct SomeStruct;
+///
+/// impl Drop for SomeStruct {
+///     fn drop(&mut self) {
+///         if thread::panicking() {
+///             println!("dropped while unwinding");
+///         } else {
+///             println!("dropped while not unwinding");
+///         }
+///     }
+/// }
+///
+/// {
+///     print!("a: ");
+///     let a = SomeStruct;
+/// }
+///
+/// {
+///     print!("b: ");
+///     let b = SomeStruct;
+///     panic!()
+/// }
+/// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn panicking() -> bool {
