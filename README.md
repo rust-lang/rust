@@ -1,13 +1,9 @@
-# Miri
+# Miri [[slides](https://solson.me/miri-slides.pdf)] [[report](https://solson.me/miri-report.pdf)] [![Build Status](https://travis-ci.org/solson/miri.svg?branch=master)](https://travis-ci.org/solson/miri)
 
-[[slides](https://solson.me/miri-slides.pdf)]
-[[report](https://solson.me/miri-report.pdf)]
 
 An experimental interpreter for [Rust][rust]'s [mid-level intermediate
 representation][mir] (MIR). This project began as part of my work for the
 undergraduate research course at the [University of Saskatchewan][usask].
-
-[![Build Status](https://travis-ci.org/solson/miri.svg?branch=master)](https://travis-ci.org/solson/miri)
 
 ## Installing Rust
 
