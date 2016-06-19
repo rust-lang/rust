@@ -52,7 +52,7 @@ levels such as `warn`.
 Check out the issues on this GitHub repository for some ideas. There's lots that
 needs to be done that I haven't documented in the issues yet, however. For more
 ideas or help with running or hacking on Miri, you can contact me (`scott`) on
-Mozilla IRC in any of the Rust IRC channels (`#rust`, `#rust-offtopic`, etc).`
+Mozilla IRC in any of the Rust IRC channels (`#rust`, `#rust-offtopic`, etc).
 
 ## License
 
