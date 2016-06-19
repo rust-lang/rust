@@ -2287,24 +2287,25 @@ impl<'a> Resolver<'a> {
                 PatKind::Ident(bmode, ref ident, ref opt_pat) => {
                     // First try to resolve the identifier as some existing
                     // entity, then fall back to a fresh binding.
-                    let resolution = if let Ok(resolution) = self.resolve_path(pat.id,
-                                &Path::from_ident(ident.span, ident.node), 0, ValueNS) {
+                    let local_def = self.resolve_identifier(ident.node, ValueNS, true);
+                    let resolution = if let Some(LocalDef { def, .. }) = local_def {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
                                              bmode != BindingMode::ByValue(Mutability::Immutable);
-                        match resolution.base_def {
+                        match def {
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
                                 // A constant, unit variant, etc pattern.
-                                resolution
+                                PathResolution::new(def)
                             }
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) | Def::Static(..) => {
                                 // A fresh binding that shadows something unacceptable.
+                                let kind_name = PathResolution::new(def).kind_name();
                                 resolve_error(
                                     self,
                                     ident.span,
                                     ResolutionError::BindingShadowsSomethingUnacceptable(
-                                        pat_src.descr(), resolution.kind_name(), ident.node.name)
+                                        pat_src.descr(), kind_name, ident.node.name)
                                 );
                                 err_path_resolution()
                             }
