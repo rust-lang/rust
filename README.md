@@ -9,44 +9,54 @@ undergraduate research course at the [University of Saskatchewan][usask].
 
 [![Build Status](https://travis-ci.org/solson/miri.svg?branch=master)](https://travis-ci.org/solson/miri)
 
-## Download Rust nightly
+## Installing Rust
 
-I currently recommend that you install [multirust][multirust] and then use it to
-install the current rustc nightly version:
+I recommend that you install [rustup][rustup] and then use it to install the
+current Rust nightly version:
 
 ```sh
-multirust update nightly
+rustup update nightly
 ```
 
-## Build
+You should also make `nightly` the default version for your Miri directory by
+running the following command while you're in it. If you don't do this, you can
+run the later `cargo` commands by prefixing them with `rustup run nightly`.
 
 ```sh
-multirust run nightly cargo build
+rustup override add nightly
+```
+
+## Building Miri
+
+```sh
+cargo build
 ```
 
 If Miri fails to build, it's likely because a change in the latest nightly
-compiler broke it. You could try an older nightly with `multirust update
+compiler broke it. You could try an older nightly with `rustup update
 nightly-<date>` where `<date>` is a few days or weeks ago, e.g. `2016-05-20` for
 May 20th. Otherwise, you could notify me in an issue or on IRC. Or, if you know
 how to fix it, you could send a PR. :smile:
 
-## Run a test
+## Running tests
 
 ```sh
-multirust run nightly cargo run -- \
-  --sysroot $HOME/.multirust/toolchains/nightly \
-  test/filename.rs
+cargo run tests/run-pass/vecs.rs # Or whatever test you like.
 ```
 
-If you are using [rustup][rustup] (the name of the multirust rewrite in Rust),
-the `sysroot` path will also include your build target (e.g.
-`$HOME/.multirust/toolchains/nightly-x86_64-apple-darwin`). You can see the
-current toolchain's directory by running `rustup which cargo` (ignoring the
-trailing `/bin/cargo`).
+## Debugging
 
-If you installed without using multirust or rustup, you'll need to adjust the
-command to run your cargo and set the `sysroot` to the directory where your
-Rust compiler is installed (`$sysroot/bin/rustc` should be a valid path).
+You can get detailed, statement-by-statement traces by setting the `MIRI_RUN`
+environment variable to `trace`. These traces are indented based on call stack
+depth. You can get a much less verbose set of information with other logging
+levels such as `warn`.
+
+## Contributing and getting help
+
+Check out the issues on this GitHub repository for some ideas. There's lots that
+needs to be done that I haven't documented in the issues yet, however. For more
+ideas or help with running or hacking on Miri, you can contact me (`scott`) on
+Mozilla IRC in any of the Rust IRC channels (`#rust`, `#rust-offtopic`, etc).`
 
 ## License
 
@@ -65,5 +75,4 @@ additional terms or conditions.
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
 [usask]: https://www.usask.ca/
-[multirust]: https://github.com/brson/multirust
 [rustup]: https://www.rustup.rs
