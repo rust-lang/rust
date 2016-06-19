@@ -125,16 +125,25 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        let mut ts = libc::timespec {
-            tv_sec: dur.as_secs() as libc::time_t,
-            tv_nsec: dur.subsec_nanos() as libc::c_long,
-        };
+        let mut secs = dur.as_secs();
+        let mut nsecs = dur.subsec_nanos() as libc::c_long;
 
         // If we're awoken with a signal then the return value will be -1 and
         // nanosleep will fill in `ts` with the remaining time.
         unsafe {
-            while libc::nanosleep(&ts, &mut ts) == -1 {
-                assert_eq!(os::errno(), libc::EINTR);
+            while secs > 0 || nsecs > 0 {
+                let mut ts = libc::timespec {
+                    tv_sec: cmp::min(libc::time_t::max_value() as u64, secs) as libc::time_t,
+                    tv_nsec: nsecs,
+                };
+                secs -= ts.tv_sec as u64;
+                if libc::nanosleep(&ts, &mut ts) == -1 {
+                    assert_eq!(os::errno(), libc::EINTR);
+                    secs += ts.tv_sec as u64;
+                    nsecs = ts.tv_nsec;
+                } else {
+                    nsecs = 0;
+                }
             }
         }
     }
