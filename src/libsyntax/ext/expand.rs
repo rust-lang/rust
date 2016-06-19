@@ -791,8 +791,6 @@ fn decorate(a: Annotatable, fld: &mut MacroExpander) -> SmallVector<Annotatable>
     let mut decorator_items = SmallVector::zero();
     let mut new_attrs = Vec::new();
     expand_decorators(a.clone(), fld, &mut decorator_items, &mut new_attrs);
-    let decorator_items =
-        decorator_items.into_iter().flat_map(|a| expand_annotatable(a, fld)).collect();
 
     let mut new_items = SmallVector::one(a.fold_attrs(new_attrs));
     new_items.push_all(decorator_items);
@@ -845,16 +843,18 @@ fn expand_decorators(a: Annotatable,
                         }
                     });
 
-                    // we'd ideally decorator_items.push_all(expand_annotatable(ann, fld)),
-                    // but that double-mut-borrows fld
                     let mut items: SmallVector<Annotatable> = SmallVector::zero();
                     dec.expand(fld.cx,
                                attr.span,
                                &attr.node.value,
                                &a,
                                &mut |ann| items.push(ann));
-                    decorator_items.extend(items.into_iter()
-                        .flat_map(|ann| expand_annotatable(ann, fld).into_iter()));
+
+                    for item in items {
+                        for configured_item in item.fold_with(&mut fld.strip_unconfigured()) {
+                            decorator_items.extend(expand_annotatable(configured_item, fld));
+                        }
+                    }
 
                     fld.cx.bt_pop();
                 }

@@ -94,6 +94,16 @@ impl Annotatable {
             _ => panic!("expected Item")
         }
     }
+
+    pub fn fold_with<F: Folder>(self, folder: &mut F) -> SmallVector<Self> {
+        match self {
+            Annotatable::Item(item) => folder.fold_item(item).map(Annotatable::Item),
+            Annotatable::ImplItem(item) =>
+                folder.fold_impl_item(item.unwrap()).map(|item| Annotatable::ImplItem(P(item))),
+            Annotatable::TraitItem(item) =>
+                folder.fold_trait_item(item.unwrap()).map(|item| Annotatable::TraitItem(P(item))),
+        }
+    }
 }
 
 // A more flexible ItemDecorator.
