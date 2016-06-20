@@ -147,7 +147,7 @@ project developers, and particularly members of the relevant [sub-team]
 is a good indication that the RFC is worth pursuing.
 
 [issues]: https://github.com/rust-lang/rfcs/issues
-[discuss]: http://discuss.rust-lang.org/
+[discuss]: http://internals.rust-lang.org/
 
 
 ## What the process is
