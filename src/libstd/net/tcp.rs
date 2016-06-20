@@ -138,8 +138,9 @@ impl TcpStream {
     /// a result of setting this option. For example Unix typically returns an
     /// error of the kind `WouldBlock`, but Windows may return `TimedOut`.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
-    pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.0.set_read_timeout(dur)
+    pub fn set_read_timeout<D>(&self, dur: D) -> io::Result<()>
+        where D: Into<Option<Duration>> {
+        self.0.set_read_timeout(dur.into())
     }
 
     /// Sets the write timeout to the timeout specified.
@@ -154,8 +155,9 @@ impl TcpStream {
     /// as a result of setting this option. For example Unix typically returns
     /// an error of the kind `WouldBlock`, but Windows may return `TimedOut`.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
-    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.0.set_write_timeout(dur)
+    pub fn set_write_timeout<D>(&self, dur: D) -> io::Result<()>
+        where D: Into<Option<Duration>> {
+        self.0.set_write_timeout(dur.into())
     }
 
     /// Returns the read timeout of this socket.
@@ -1038,12 +1040,12 @@ mod tests {
 
         assert_eq!(None, t!(stream.read_timeout()));
 
-        t!(stream.set_read_timeout(Some(dur)));
+        t!(stream.set_read_timeout(dur));
         assert_eq!(Some(dur), t!(stream.read_timeout()));
 
         assert_eq!(None, t!(stream.write_timeout()));
 
-        t!(stream.set_write_timeout(Some(dur)));
+        t!(stream.set_write_timeout(dur));
         assert_eq!(Some(dur), t!(stream.write_timeout()));
 
         t!(stream.set_read_timeout(None));
@@ -1060,7 +1062,7 @@ mod tests {
         let listener = t!(TcpListener::bind(&addr));
 
         let mut stream = t!(TcpStream::connect(&("localhost", addr.port())));
-        t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
+        t!(stream.set_read_timeout(Duration::from_millis(1000)));
 
         let mut buf = [0; 10];
         let start = Instant::now();
@@ -1076,7 +1078,7 @@ mod tests {
         let listener = t!(TcpListener::bind(&addr));
 
         let mut stream = t!(TcpStream::connect(&("localhost", addr.port())));
-        t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
+        t!(stream.set_read_timeout(Duration::from_millis(1000)));
 
         let mut other_end = t!(listener.accept()).0;
         t!(other_end.write_all(b"hello world"));

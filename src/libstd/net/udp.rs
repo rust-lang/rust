@@ -105,8 +105,9 @@ impl UdpSocket {
     /// a result of setting this option. For example Unix typically returns an
     /// error of the kind `WouldBlock`, but Windows may return `TimedOut`.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
-    pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.0.set_read_timeout(dur)
+    pub fn set_read_timeout<D>(&self, dur: D) -> io::Result<()>
+        where D: Into<Option<Duration>> {
+        self.0.set_read_timeout(dur.into())
     }
 
     /// Sets the write timeout to the timeout specified.
@@ -121,8 +122,9 @@ impl UdpSocket {
     /// as a result of setting this option. For example Unix typically returns
     /// an error of the kind `WouldBlock`, but Windows may return `TimedOut`.
     #[stable(feature = "socket_timeout", since = "1.4.0")]
-    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.0.set_write_timeout(dur)
+    pub fn set_write_timeout<D>(&self, dur: D) -> io::Result<()>
+        where D: Into<Option<Duration>> {
+        self.0.set_write_timeout(dur.into())
     }
 
     /// Returns the read timeout of this socket.
@@ -544,12 +546,12 @@ mod tests {
 
         assert_eq!(None, t!(stream.read_timeout()));
 
-        t!(stream.set_read_timeout(Some(dur)));
+        t!(stream.set_read_timeout(dur));
         assert_eq!(Some(dur), t!(stream.read_timeout()));
 
         assert_eq!(None, t!(stream.write_timeout()));
 
-        t!(stream.set_write_timeout(Some(dur)));
+        t!(stream.set_write_timeout(dur));
         assert_eq!(Some(dur), t!(stream.write_timeout()));
 
         t!(stream.set_read_timeout(None));
@@ -564,7 +566,7 @@ mod tests {
         let addr = next_test_ip4();
 
         let stream = t!(UdpSocket::bind(&addr));
-        t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
+        t!(stream.set_read_timeout(Duration::from_millis(1000)));
 
         let mut buf = [0; 10];
 
@@ -579,7 +581,7 @@ mod tests {
         let addr = next_test_ip4();
 
         let stream = t!(UdpSocket::bind(&addr));
-        t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
+        t!(stream.set_read_timeout(Duration::from_millis(1000)));
 
         t!(stream.send_to(b"hello world", &addr));
 
