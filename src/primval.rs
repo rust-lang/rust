@@ -10,6 +10,7 @@ pub enum PrimVal {
     U8(u8), U16(u16), U32(u32), U64(u64),
 
     AbstractPtr(Pointer),
+    FnPtr(Pointer),
     IntegerPtr(u64),
 }
 
@@ -130,8 +131,19 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
 
         (IntegerPtr(l), IntegerPtr(r)) => int_binops!(IntegerPtr, l, r),
 
-        (AbstractPtr(_), IntegerPtr(_)) | (IntegerPtr(_), AbstractPtr(_)) =>
+        (AbstractPtr(_), IntegerPtr(_)) |
+        (IntegerPtr(_), AbstractPtr(_)) |
+        (FnPtr(_), AbstractPtr(_)) |
+        (AbstractPtr(_), FnPtr(_)) |
+        (FnPtr(_), IntegerPtr(_)) |
+        (IntegerPtr(_), FnPtr(_)) =>
             return unrelated_ptr_ops(bin_op),
+
+        (FnPtr(l_ptr), FnPtr(r_ptr)) => match bin_op {
+            Eq => Bool(l_ptr == r_ptr),
+            Ne => Bool(l_ptr != r_ptr),
+            _ => return Err(EvalError::Unimplemented(format!("unimplemented fn ptr comparison: {:?}", bin_op))),
+        },
 
         (AbstractPtr(l_ptr), AbstractPtr(r_ptr)) => {
             if l_ptr.alloc_id != r_ptr.alloc_id {

@@ -1404,6 +1404,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             (8, &ty::TyUint(UintTy::Us)) |
             (_, &ty::TyUint(UintTy::U64)) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
 
+            (_, &ty::TyFnDef(def_id, substs, fn_ty)) => {
+                PrimVal::FnPtr(self.memory.create_fn_ptr(def_id, substs, fn_ty))
+            },
+            (_, &ty::TyFnPtr(_)) => self.memory.read_ptr(ptr).map(PrimVal::FnPtr)?,
             (_, &ty::TyRef(_, ty::TypeAndMut { ty, .. })) |
             (_, &ty::TyRawPtr(ty::TypeAndMut { ty, .. })) => {
                 if self.type_is_sized(ty) {
