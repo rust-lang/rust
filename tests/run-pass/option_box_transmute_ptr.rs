@@ -1,9 +1,4 @@
-#![feature(custom_attribute)]
-#![allow(dead_code, unused_attributes)]
-
 // This tests that the size of Option<Box<i32>> is the same as *const i32.
-
-#[miri_run]
 fn option_box_deref() -> i32 {
     let val = Some(Box::new(42));
     unsafe {
@@ -12,4 +7,6 @@ fn option_box_deref() -> i32 {
     }
 }
 
-fn main() {}
+fn main() {
+    assert_eq!(option_box_deref(), 42);
+}

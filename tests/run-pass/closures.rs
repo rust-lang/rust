@@ -1,14 +1,9 @@
-#![feature(custom_attribute)]
-#![allow(dead_code, unused_attributes)]
-
-#[miri_run]
 fn simple() -> i32 {
     let y = 10;
     let f = |x| x + y;
     f(2)
 }
 
-#[miri_run]
 fn crazy_closure() -> (i32, i32, i32) {
     fn inner<T: Copy>(t: T) -> (i32, T, T) {
         struct NonCopy;
@@ -26,7 +21,7 @@ fn crazy_closure() -> (i32, i32, i32) {
     inner(10)
 }
 
-// #[miri_run]
+// TODO(solson): Implement closure argument adjustment and uncomment this test.
 // fn closure_arg_adjustment_problem() -> i64 {
 //     fn once<F: FnOnce(i64)>(f: F) { f(2); }
 //     let mut y = 1;
@@ -37,7 +32,7 @@ fn crazy_closure() -> (i32, i32, i32) {
 //     y
 // }
 
-#[miri_run]
 fn main() {
     assert_eq!(simple(), 12);
+    assert_eq!(crazy_closure(), (84, 10, 10));
 }

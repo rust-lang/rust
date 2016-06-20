@@ -1,29 +1,27 @@
-#![feature(custom_attribute)]
-#![allow(dead_code, unused_attributes)]
-
-#[miri_run]
 fn empty() -> &'static str {
     ""
 }
 
-#[miri_run]
 fn hello() -> &'static str {
     "Hello, world!"
 }
 
-#[miri_run]
 fn hello_bytes() -> &'static [u8; 13] {
     b"Hello, world!"
 }
 
-#[miri_run]
 fn hello_bytes_fat() -> &'static [u8] {
     b"Hello, world!"
 }
 
-#[miri_run]
 fn fat_pointer_on_32_bit() {
     Some(5).expect("foo");
 }
 
-fn main() {}
+fn main() {
+    assert_eq!(empty(), "");
+    assert_eq!(hello(), "Hello, world!");
+    assert_eq!(hello_bytes(), b"Hello, world!");
+    assert_eq!(hello_bytes_fat(), b"Hello, world!");
+    fat_pointer_on_32_bit(); // Should run without crashing.
+}

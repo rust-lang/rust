@@ -1,11 +1,9 @@
-#![feature(custom_attribute, test)]
-#![feature(rustc_private)]
-#![allow(unused_attributes)]
+#![feature(test, rustc_private)]
 
 extern crate test;
 use test::Bencher;
-
-mod smoke_helper;
+mod helpers;
+use helpers::*;
 
 #[bench]
 fn noop(bencher: &mut Bencher) {
@@ -32,8 +30,6 @@ fn noop_miri_full(bencher: &mut Bencher) {
     })
 }
 */
-
-mod miri_helper;
 
 #[bench]
 fn noop_miri_interpreter(bencher: &mut Bencher) {

@@ -1,5 +1,5 @@
-#![feature(custom_attribute)]
-#![allow(dead_code, unused_attributes)]
+// FIXME(solson): 32-bit mode doesn't test anything currently.
+#![cfg_attr(target_pointer_width = "32", allow(dead_code))]
 
 #[derive(Debug, PartialEq)]
 enum Unit { Unit(()) } // Force non-C-enum representation.
