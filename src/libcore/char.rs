@@ -429,35 +429,10 @@ impl Iterator for EscapeUnicode {
     type Item = char;
 
     fn next(&mut self) -> Option<char> {
-        match self.state {
-            EscapeUnicodeState::Backslash => {
-                self.state = EscapeUnicodeState::Type;
-                Some('\\')
-            }
-            EscapeUnicodeState::Type => {
-                self.state = EscapeUnicodeState::LeftBrace;
-                Some('u')
-            }
-            EscapeUnicodeState::LeftBrace => {
-                self.state = EscapeUnicodeState::Value;
-                Some('{')
-            }
-            EscapeUnicodeState::Value => {
-                let hex_digit = ((self.c as u32) >> (self.hex_digit_idx * 4)) & 0xf;
-                let c = from_digit(hex_digit, 16).unwrap();
-                if self.hex_digit_idx == 0 {
-                    self.state = EscapeUnicodeState::RightBrace;
-                } else {
-                    self.hex_digit_idx -= 1;
-                }
-                Some(c)
-            }
-            EscapeUnicodeState::RightBrace => {
-                self.state = EscapeUnicodeState::Done;
-                Some('}')
-            }
-            EscapeUnicodeState::Done => None,
-        }
+        let state = self.state_len();
+        let hex_digit_idx = self.hex_digit_idx;
+
+        self.step(state, hex_digit_idx)
     }
 
     #[inline]
@@ -469,6 +444,23 @@ impl Iterator for EscapeUnicode {
     #[inline]
     fn count(self) -> usize {
         self.len()
+    }
+
+    fn nth(&mut self, n: usize) -> Option<char> {
+        let remaining = self.len().saturating_sub(n);
+
+        // hex_digit_idx = (number of hex digits still to be emitted) - 1
+        // It can be computed from the remaining number of items by keeping
+        // into account that:
+        // - hex_digit_idx can never increase
+        // - the last 2 items (last hex digit, '}') are not counted in hex_digit_idx
+        let hex_digit_idx = ::cmp::min(self.hex_digit_idx, remaining.saturating_sub(2));
+
+        // state = number of items to be emitted for the state (as per state_len())
+        // It can be computed because (remaining number of items) = state + hex_digit_idx
+        let state = remaining - hex_digit_idx;
+
+        self.step(state, hex_digit_idx)
     }
 
     fn last(self) -> Option<char> {
@@ -488,14 +480,58 @@ impl Iterator for EscapeUnicode {
 impl ExactSizeIterator for EscapeUnicode {
     #[inline]
     fn len(&self) -> usize {
+        self.hex_digit_idx + self.state_len()
+    }
+}
+
+impl EscapeUnicode {
+    #[inline]
+    fn state_len(&self) -> usize {
         // The match is a single memory access with no branching
-        self.hex_digit_idx + match self.state {
+        match self.state {
             EscapeUnicodeState::Done => 0,
             EscapeUnicodeState::RightBrace => 1,
             EscapeUnicodeState::Value => 2,
             EscapeUnicodeState::LeftBrace => 3,
             EscapeUnicodeState::Type => 4,
             EscapeUnicodeState::Backslash => 5,
+        }
+    }
+
+    #[inline]
+    fn step(&mut self, state: usize, hex_digit_idx: usize) -> Option<char> {
+        self.hex_digit_idx = hex_digit_idx;
+
+        match state {
+            5 => {
+                self.state = EscapeUnicodeState::Type;
+                Some('\\')
+            }
+            4 => {
+                self.state = EscapeUnicodeState::LeftBrace;
+                Some('u')
+            }
+            3 => {
+                self.state = EscapeUnicodeState::Value;
+                Some('{')
+            }
+            2 => {
+                self.state = if hex_digit_idx == 0 {
+                    EscapeUnicodeState::RightBrace
+                } else {
+                    self.hex_digit_idx -= 1;
+                    EscapeUnicodeState::Value
+                };
+                from_digit(((self.c as u32) >> (hex_digit_idx * 4)) & 0xf, 16)
+            }
+            1 => {
+                self.state = EscapeUnicodeState::Done;
+                Some('}')
+            }
+            _ => {
+                self.state = EscapeUnicodeState::Done;
+                None
+            }
         }
     }
 }
@@ -515,7 +551,7 @@ pub struct EscapeDefault {
 
 #[derive(Clone, Debug)]
 enum EscapeDefaultState {
-    Done,
+    Done(char),
     Char(char),
     Backslash(char),
     Unicode(EscapeUnicode),
@@ -526,17 +562,10 @@ impl Iterator for EscapeDefault {
     type Item = char;
 
     fn next(&mut self) -> Option<char> {
-        match self.state {
-            EscapeDefaultState::Backslash(c) => {
-                self.state = EscapeDefaultState::Char(c);
-                Some('\\')
-            }
-            EscapeDefaultState::Char(c) => {
-                self.state = EscapeDefaultState::Done;
-                Some(c)
-            }
-            EscapeDefaultState::Done => None,
-            EscapeDefaultState::Unicode(ref mut iter) => iter.next(),
+        if let EscapeDefaultState::Unicode(ref mut iter) = self.state {
+            iter.next()
+        } else {
+            self.step(0)
         }
     }
 
@@ -552,37 +581,13 @@ impl Iterator for EscapeDefault {
     }
 
     fn nth(&mut self, n: usize) -> Option<char> {
-        match self.state {
-            EscapeDefaultState::Backslash(c) if n == 0 => {
-                self.state = EscapeDefaultState::Char(c);
-                Some('\\')
-            },
-            EscapeDefaultState::Backslash(c) if n == 1 => {
-                self.state = EscapeDefaultState::Done;
-                Some(c)
-            },
-            EscapeDefaultState::Backslash(_) => {
-                self.state = EscapeDefaultState::Done;
-                None
-            },
-            EscapeDefaultState::Char(c) => {
-                self.state = EscapeDefaultState::Done;
-
-                if n == 0 {
-                    Some(c)
-                } else {
-                    None
-                }
-            },
-            EscapeDefaultState::Done => return None,
-            EscapeDefaultState::Unicode(ref mut i) => return i.nth(n),
-        }
+        self.step(n)
     }
 
     fn last(self) -> Option<char> {
         match self.state {
             EscapeDefaultState::Unicode(iter) => iter.last(),
-            EscapeDefaultState::Done => None,
+            EscapeDefaultState::Done(_) => None,
             EscapeDefaultState::Backslash(c) | EscapeDefaultState::Char(c) => Some(c),
         }
     }
@@ -592,10 +597,37 @@ impl Iterator for EscapeDefault {
 impl ExactSizeIterator for EscapeDefault {
     fn len(&self) -> usize {
         match self.state {
-            EscapeDefaultState::Done => 0,
+            EscapeDefaultState::Done(_) => 0,
             EscapeDefaultState::Char(_) => 1,
             EscapeDefaultState::Backslash(_) => 2,
             EscapeDefaultState::Unicode(ref iter) => iter.len(),
+        }
+    }
+}
+
+impl EscapeDefault {
+    #[inline]
+    fn step(&mut self, n: usize) -> Option<char> {
+        let (remaining, c) = match self.state {
+            EscapeDefaultState::Done(c) => (0usize, c),
+            EscapeDefaultState::Char(c) => (1, c),
+            EscapeDefaultState::Backslash(c) => (2, c),
+            EscapeDefaultState::Unicode(ref mut iter) => return iter.nth(n),
+        };
+
+        match remaining.saturating_sub(n) {
+            2 => {
+                self.state = EscapeDefaultState::Char(c);
+                Some('\\')
+            }
+            1 => {
+                self.state = EscapeDefaultState::Done(c);
+                Some(c)
+            }
+            _ => {
+                self.state = EscapeDefaultState::Done(c);
+                None
+            }
         }
     }
 }
