@@ -681,7 +681,7 @@ pub struct IdentRenamer<'a> {
 
 impl<'a> Folder for IdentRenamer<'a> {
     fn fold_ident(&mut self, id: Ident) -> Ident {
-        Ident::new(id.name, mtwt::apply_renames(self.renames, id.ctxt))
+        mtwt::apply_renames(self.renames, id)
     }
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
         fold::noop_fold_mac(mac, self)
@@ -705,8 +705,7 @@ impl<'a> Folder for PatIdentRenamer<'a> {
 
         pat.map(|ast::Pat {id, node, span}| match node {
             PatKind::Ident(binding_mode, Spanned{span: sp, node: ident}, sub) => {
-                let new_ident = Ident::new(ident.name,
-                                           mtwt::apply_renames(self.renames, ident.ctxt));
+                let new_ident = mtwt::apply_renames(self.renames, ident);
                 let new_node =
                     PatKind::Ident(binding_mode,
                                   Spanned{span: sp, node: new_ident},

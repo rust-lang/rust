@@ -25,34 +25,22 @@ use std::collections::HashMap;
 /// The SCTable contains a table of SyntaxContext_'s. It
 /// represents a flattened tree structure, to avoid having
 /// managed pointers everywhere (that caused an ICE).
-/// the mark_memo and rename_memo fields are side-tables
+/// the `marks` and `renames` fields are side-tables
 /// that ensure that adding the same mark to the same context
-/// gives you back the same context as before. This shouldn't
-/// change the semantics--everything here is immutable--but
-/// it should cut down on memory use *a lot*; applying a mark
-/// to a tree containing 50 identifiers would otherwise generate
-/// 50 new contexts
+/// gives you back the same context as before. This should cut
+/// down on memory use *a lot*; applying a mark to a tree containing
+/// 50 identifiers would otherwise generate 50 new contexts.
 pub struct SCTable {
     table: RefCell<Vec<SyntaxContext_>>,
-    mark_memo: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
-    // The pair (Name,SyntaxContext) is actually one Ident, but it needs to be hashed and
-    // compared as pair (name, ctxt) and not as an Ident
-    rename_memo: RefCell<HashMap<(SyntaxContext,(Name,SyntaxContext),Name),SyntaxContext>>,
+    marks: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
+    renames: RefCell<HashMap<Name,SyntaxContext>>,
 }
 
 #[derive(PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy, Clone)]
 pub enum SyntaxContext_ {
     EmptyCtxt,
     Mark (Mrk,SyntaxContext),
-    /// flattening the name and syntaxcontext into the rename...
-    /// HIDDEN INVARIANTS:
-    /// 1) the first name in a Rename node
-    /// can only be a programmer-supplied name.
-    /// 2) Every Rename node with a given Name in the
-    /// "to" slot must have the same name and context
-    /// in the "from" slot. In essence, they're all
-    /// pointers to a single "rename" event node.
-    Rename (Ident,Name,SyntaxContext),
+    Rename (Name),
     /// actually, IllegalCtxt may not be necessary.
     IllegalCtxt
 }
@@ -67,37 +55,39 @@ pub fn apply_mark(m: Mrk, ctxt: SyntaxContext) -> SyntaxContext {
 
 /// Extend a syntax context with a given mark and sctable (explicit memoization)
 fn apply_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxContext {
-    let key = (ctxt, m);
-    *table.mark_memo.borrow_mut().entry(key).or_insert_with(|| {
-        SyntaxContext(idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt)))
-    })
+    let ctxts = &mut *table.table.borrow_mut();
+    match ctxts[ctxt.0 as usize] {
+        // Applying the same mark twice is a no-op.
+        Mark(outer_mark, prev_ctxt) if outer_mark == m => return prev_ctxt,
+        _ => *table.marks.borrow_mut().entry((ctxt, m)).or_insert_with(|| {
+            SyntaxContext(idx_push(ctxts, Mark(m, ctxt)))
+        }),
+    }
 }
 
 /// Extend a syntax context with a given rename
-pub fn apply_rename(id: Ident, to:Name,
-                  ctxt: SyntaxContext) -> SyntaxContext {
-    with_sctable(|table| apply_rename_internal(id, to, ctxt, table))
+pub fn apply_rename(from: Ident, to: Name, ident: Ident) -> Ident {
+    with_sctable(|table| apply_rename_internal(from, to, ident, table))
 }
 
 /// Extend a syntax context with a given rename and sctable (explicit memoization)
-fn apply_rename_internal(id: Ident,
-                       to: Name,
-                       ctxt: SyntaxContext,
-                       table: &SCTable) -> SyntaxContext {
-    let key = (ctxt, (id.name, id.ctxt), to);
-
-    *table.rename_memo.borrow_mut().entry(key).or_insert_with(|| {
-            SyntaxContext(idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt)))
-    })
+fn apply_rename_internal(from: Ident, to: Name, ident: Ident, table: &SCTable) -> Ident {
+    if (ident.name, ident.ctxt) != (from.name, from.ctxt) {
+        return ident;
+    }
+    let ctxt = *table.renames.borrow_mut().entry(to).or_insert_with(|| {
+        SyntaxContext(idx_push(&mut *table.table.borrow_mut(), Rename(to)))
+    });
+    Ident { ctxt: ctxt, ..ident }
 }
 
 /// Apply a list of renamings to a context
 // if these rename lists get long, it would make sense
 // to consider memoizing this fold. This may come up
 // when we add hygiene to item names.
-pub fn apply_renames(renames: &RenameList, ctxt: SyntaxContext) -> SyntaxContext {
-    renames.iter().fold(ctxt, |ctxt, &(from, to)| {
-        apply_rename(from, to, ctxt)
+pub fn apply_renames(renames: &RenameList, ident: Ident) -> Ident {
+    renames.iter().fold(ident, |ident, &(from, to)| {
+        apply_rename(from, to, ident)
     })
 }
 
@@ -114,8 +104,8 @@ pub fn with_sctable<T, F>(op: F) -> T where
 fn new_sctable_internal() -> SCTable {
     SCTable {
         table: RefCell::new(vec!(EmptyCtxt, IllegalCtxt)),
-        mark_memo: RefCell::new(HashMap::new()),
-        rename_memo: RefCell::new(HashMap::new()),
+        marks: RefCell::new(HashMap::new()),
+        renames: RefCell::new(HashMap::new()),
     }
 }
 
@@ -131,20 +121,18 @@ pub fn display_sctable(table: &SCTable) {
 pub fn clear_tables() {
     with_sctable(|table| {
         *table.table.borrow_mut() = Vec::new();
-        *table.mark_memo.borrow_mut() = HashMap::new();
-        *table.rename_memo.borrow_mut() = HashMap::new();
+        *table.marks.borrow_mut() = HashMap::new();
+        *table.renames.borrow_mut() = HashMap::new();
     });
-    with_resolve_table_mut(|table| *table = HashMap::new());
 }
 
 /// Reset the tables to their initial state
 pub fn reset_tables() {
     with_sctable(|table| {
         *table.table.borrow_mut() = vec!(EmptyCtxt, IllegalCtxt);
-        *table.mark_memo.borrow_mut() = HashMap::new();
-        *table.rename_memo.borrow_mut() = HashMap::new();
+        *table.marks.borrow_mut() = HashMap::new();
+        *table.renames.borrow_mut() = HashMap::new();
     });
-    with_resolve_table_mut(|table| *table = HashMap::new());
 }
 
 /// Add a value to the end of a vec, return its index
@@ -156,103 +144,19 @@ fn idx_push<T>(vec: &mut Vec<T>, val: T) -> u32 {
 /// Resolve a syntax object to a name, per MTWT.
 pub fn resolve(id: Ident) -> Name {
     with_sctable(|sctable| {
-        with_resolve_table_mut(|resolve_table| {
-            resolve_internal(id, sctable, resolve_table)
-        })
+        resolve_internal(id, sctable)
     })
-}
-
-type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
-
-// okay, I admit, putting this in TLS is not so nice:
-// fetch the SCTable from TLS, create one if it doesn't yet exist.
-fn with_resolve_table_mut<T, F>(op: F) -> T where
-    F: FnOnce(&mut ResolveTable) -> T,
-{
-    thread_local!(static RESOLVE_TABLE_KEY: RefCell<ResolveTable> = {
-        RefCell::new(HashMap::new())
-    });
-
-    RESOLVE_TABLE_KEY.with(move |slot| op(&mut *slot.borrow_mut()))
 }
 
 /// Resolve a syntax object to a name, per MTWT.
 /// adding memoization to resolve 500+ seconds in resolve for librustc (!)
-fn resolve_internal(id: Ident,
-                    table: &SCTable,
-                    resolve_table: &mut ResolveTable) -> Name {
-    let key = (id.name, id.ctxt);
-
-    match resolve_table.get(&key) {
-        Some(&name) => return name,
-        None => {}
-    }
-
-    let resolved = {
-        let result = (*table.table.borrow())[id.ctxt.0 as usize];
-        match result {
-            EmptyCtxt => id.name,
-            // ignore marks here:
-            Mark(_,subctxt) =>
-                resolve_internal(Ident::new(id.name, subctxt),
-                                 table, resolve_table),
-            // do the rename if necessary:
-            Rename(Ident{name, ctxt}, toname, subctxt) => {
-                let resolvedfrom =
-                    resolve_internal(Ident::new(name, ctxt),
-                                     table, resolve_table);
-                let resolvedthis =
-                    resolve_internal(Ident::new(id.name, subctxt),
-                                     table, resolve_table);
-                if (resolvedthis == resolvedfrom)
-                    && (marksof_internal(ctxt, resolvedthis, table)
-                        == marksof_internal(subctxt, resolvedthis, table)) {
-                    toname
-                } else {
-                    resolvedthis
-                }
-            }
-            IllegalCtxt => panic!("expected resolvable context, got IllegalCtxt")
-        }
-    };
-    resolve_table.insert(key, resolved);
-    resolved
-}
-
-/// Compute the marks associated with a syntax context.
-pub fn marksof(ctxt: SyntaxContext, stopname: Name) -> Vec<Mrk> {
-    with_sctable(|table| marksof_internal(ctxt, stopname, table))
-}
-
-// the internal function for computing marks
-// it's not clear to me whether it's better to use a [] mutable
-// vector or a cons-list for this.
-fn marksof_internal(ctxt: SyntaxContext,
-                    stopname: Name,
-                    table: &SCTable) -> Vec<Mrk> {
-    let mut result = Vec::new();
-    let mut loopvar = ctxt;
-    loop {
-        let table_entry = (*table.table.borrow())[loopvar.0 as usize];
-        match table_entry {
-            EmptyCtxt => {
-                return result;
-            },
-            Mark(mark, tl) => {
-                xor_push(&mut result, mark);
-                loopvar = tl;
-            },
-            Rename(_,name,tl) => {
-                // see MTWT for details on the purpose of the stopname.
-                // short version: it prevents duplication of effort.
-                if name == stopname {
-                    return result;
-                } else {
-                    loopvar = tl;
-                }
-            }
-            IllegalCtxt => panic!("expected resolvable context, got IllegalCtxt")
-        }
+fn resolve_internal(id: Ident, table: &SCTable) -> Name {
+    match table.table.borrow()[id.ctxt.0 as usize] {
+        EmptyCtxt => id.name,
+        // ignore marks here:
+        Mark(_, subctxt) => resolve_internal(Ident::new(id.name, subctxt), table),
+        Rename(name) => name,
+        IllegalCtxt => panic!("expected resolvable context, got IllegalCtxt")
     }
 }
 
@@ -265,16 +169,6 @@ pub fn outer_mark(ctxt: SyntaxContext) -> Mrk {
             _ => panic!("can't retrieve outer mark when outside is not a mark")
         }
     })
-}
-
-/// Push a name... unless it matches the one on top, in which
-/// case pop and discard (so two of the same marks cancel)
-fn xor_push(marks: &mut Vec<Mrk>, mark: Mrk) {
-    if (!marks.is_empty()) && (*marks.last().unwrap() == mark) {
-        marks.pop().unwrap();
-    } else {
-        marks.push(mark);
-    }
 }
 
 #[cfg(test)]
