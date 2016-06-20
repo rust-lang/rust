@@ -23,6 +23,7 @@ use syntax::parse::token::intern;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
 use syntax::ast::AsmDialect;
+use syntax::tokenstream;
 
 enum State {
     Asm,
@@ -48,7 +49,7 @@ impl State {
 
 const OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
-pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
                        -> Box<base::MacResult+'cx> {
     if !cx.ecfg.enable_asm() {
         feature_gate::emit_feature_err(
@@ -62,8 +63,8 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     // parsed as `asm!(z)` with `z = "x": y` which is type ascription.
     let first_colon = tts.iter().position(|tt| {
         match *tt {
-            ast::TokenTree::Token(_, token::Colon) |
-            ast::TokenTree::Token(_, token::ModSep) => true,
+            tokenstream::TokenTree::Token(_, token::Colon) |
+            tokenstream::TokenTree::Token(_, token::ModSep) => true,
             _ => false
         }
     }).unwrap_or(tts.len());

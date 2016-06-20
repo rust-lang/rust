@@ -13,12 +13,13 @@ use syntax::codemap;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
+use syntax::tokenstream;
 
 use std::string::String;
 
 pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                          sp: codemap::Span,
-                         tts: &[ast::TokenTree])
+                         tts: &[tokenstream::TokenTree])
                          -> Box<base::MacResult+'static> {
     let es = match base::get_exprs_from_tts(cx, sp, tts) {
         Some(e) => e,

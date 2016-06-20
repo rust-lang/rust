@@ -11,7 +11,6 @@
 use ast::{Block, Crate, DeclKind, PatKind};
 use ast::{Local, Ident, Mac_, Name, SpannedIdent};
 use ast::{MacStmtStyle, Mrk, Stmt, StmtKind, ItemKind};
-use ast::TokenTree;
 use ast;
 use ext::mtwt;
 use ext::build::AstBuilder;
@@ -27,6 +26,7 @@ use fold::*;
 use util::move_map::MoveMap;
 use parse::token::{fresh_mark, fresh_name, intern, keywords};
 use ptr::P;
+use tokenstream::TokenTree;
 use util::small_vector::SmallVector;
 use visit;
 use visit::Visitor;

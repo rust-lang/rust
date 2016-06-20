@@ -17,6 +17,7 @@ use parse::parser::Parser;
 use parse::token::InternedString;
 use ptr::P;
 use str::char_at;
+use tokenstream;
 
 use std::cell::RefCell;
 use std::iter;
@@ -160,7 +161,7 @@ pub fn parse_tts_from_source_str<'a>(name: String,
                                      source: String,
                                      cfg: ast::CrateConfig,
                                      sess: &'a ParseSess)
-                                     -> PResult<'a, Vec<ast::TokenTree>> {
+                                     -> PResult<'a, Vec<tokenstream::TokenTree>> {
     let mut p = new_parser_from_source_str(
         sess,
         cfg,
@@ -222,7 +223,7 @@ pub fn filemap_to_parser<'a>(sess: &'a ParseSess,
 // compiler expands into it
 pub fn new_parser_from_tts<'a>(sess: &'a ParseSess,
                                cfg: ast::CrateConfig,
-                               tts: Vec<ast::TokenTree>) -> Parser<'a> {
+                               tts: Vec<tokenstream::TokenTree>) -> Parser<'a> {
     tts_to_parser(sess, tts, cfg)
 }
 
@@ -247,7 +248,7 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 
 /// Given a filemap, produce a sequence of token-trees
 pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
-    -> Vec<ast::TokenTree> {
+    -> Vec<tokenstream::TokenTree> {
     // it appears to me that the cfg doesn't matter here... indeed,
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = Vec::new();
@@ -258,7 +259,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
 
 /// Given tts and cfg, produce a parser
 pub fn tts_to_parser<'a>(sess: &'a ParseSess,
-                         tts: Vec<ast::TokenTree>,
+                         tts: Vec<tokenstream::TokenTree>,
                          cfg: ast::CrateConfig) -> Parser<'a> {
     let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, None, tts);
     let mut p = Parser::new(sess, cfg, Box::new(trdr));
@@ -662,7 +663,7 @@ mod tests {
     use super::*;
     use std::rc::Rc;
     use codemap::{Span, BytePos, Pos, Spanned, NO_EXPANSION};
-    use ast::{self, TokenTree, PatKind};
+    use ast::{self, PatKind};
     use abi::Abi;
     use attr::{first_attr_value_str_by_name, AttrMetaMethods};
     use parse;
@@ -670,6 +671,7 @@ mod tests {
     use parse::token::{str_to_ident};
     use print::pprust::item_to_string;
     use ptr::P;
+    use tokenstream::{self, TokenTree};
     use util::parser_testing::{string_to_tts, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item, string_to_stmt};
 
@@ -729,7 +731,7 @@ mod tests {
     #[test]
     fn string_to_tts_macro () {
         let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
-        let tts: &[ast::TokenTree] = &tts[..];
+        let tts: &[tokenstream::TokenTree] = &tts[..];
 
         match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
             (
@@ -789,7 +791,7 @@ mod tests {
             TokenTree::Token(sp(3, 4), token::Ident(str_to_ident("a"))),
             TokenTree::Delimited(
                 sp(5, 14),
-                Rc::new(ast::Delimited {
+                Rc::new(tokenstream::Delimited {
                     delim: token::DelimToken::Paren,
                     open_span: sp(5, 6),
                     tts: vec![
@@ -801,7 +803,7 @@ mod tests {
                 })),
             TokenTree::Delimited(
                 sp(15, 21),
-                Rc::new(ast::Delimited {
+                Rc::new(tokenstream::Delimited {
                     delim: token::DelimToken::Brace,
                     open_span: sp(15, 16),
                     tts: vec![

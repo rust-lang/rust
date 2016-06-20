@@ -24,6 +24,7 @@ use attr::{ThinAttributes, ThinAttributesExt};
 use codemap::{respan, Span, Spanned};
 use parse::token::{self, keywords};
 use ptr::P;
+use tokenstream::*;
 use util::small_vector::SmallVector;
 use util::move_map::MoveMap;
 
