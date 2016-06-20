@@ -25,6 +25,7 @@ use syntax::ext::base::{TTMacroExpander, ExtCtxt, MacResult, MacEager, NormalTT}
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
+use syntax::tokenstream;
 use rustc_plugin::Registry;
 
 struct Expander {
@@ -35,7 +36,7 @@ impl TTMacroExpander for Expander {
     fn expand<'cx>(&self,
                    ecx: &'cx mut ExtCtxt,
                    sp: Span,
-                   _: &[ast::TokenTree]) -> Box<MacResult+'cx> {
+                   _: &[tokenstream::TokenTree]) -> Box<MacResult+'cx> {
         let args = self.args.iter().map(|i| pprust::meta_item_to_string(&*i))
             .collect::<Vec<_>>().join(", ");
         let interned = token::intern_and_get_ident(&args[..]);

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, TokenTree};
+use ast;
 use codemap::{Span, DUMMY_SP};
 use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
@@ -21,6 +21,7 @@ use parse::token::{self, gensym_ident, NtTT, Token};
 use parse::token::Token::*;
 use print;
 use ptr::P;
+use tokenstream::{self, TokenTree};
 
 use util::small_vector::SmallVector;
 
@@ -248,22 +249,22 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     let match_rhs_tok = MatchNt(rhs_nm, token::str_to_ident("tt"));
     let argument_gram = vec!(
         TokenTree::Sequence(DUMMY_SP,
-                   Rc::new(ast::SequenceRepetition {
+                   Rc::new(tokenstream::SequenceRepetition {
                        tts: vec![
                            TokenTree::Token(DUMMY_SP, match_lhs_tok),
                            TokenTree::Token(DUMMY_SP, token::FatArrow),
                            TokenTree::Token(DUMMY_SP, match_rhs_tok)],
                        separator: Some(token::Semi),
-                       op: ast::KleeneOp::OneOrMore,
+                       op: tokenstream::KleeneOp::OneOrMore,
                        num_captures: 2
                    })),
         //to phase into semicolon-termination instead of
         //semicolon-separation
         TokenTree::Sequence(DUMMY_SP,
-                   Rc::new(ast::SequenceRepetition {
+                   Rc::new(tokenstream::SequenceRepetition {
                        tts: vec![TokenTree::Token(DUMMY_SP, token::Semi)],
                        separator: None,
-                       op: ast::KleeneOp::ZeroOrMore,
+                       op: tokenstream::KleeneOp::ZeroOrMore,
                        num_captures: 0
                    })));
 
@@ -427,7 +428,7 @@ impl FirstSets {
                         }
 
                         // Reverse scan: Sequence comes before `first`.
-                        if subfirst.maybe_empty || seq_rep.op == ast::KleeneOp::ZeroOrMore {
+                        if subfirst.maybe_empty || seq_rep.op == tokenstream::KleeneOp::ZeroOrMore {
                             // If sequence is potentially empty, then
                             // union them (preserving first emptiness).
                             first.add_all(&TokenSet { maybe_empty: true, ..subfirst });
@@ -474,7 +475,8 @@ impl FirstSets {
 
                             assert!(first.maybe_empty);
                             first.add_all(subfirst);
-                            if subfirst.maybe_empty || seq_rep.op == ast::KleeneOp::ZeroOrMore {
+                            if subfirst.maybe_empty ||
+                               seq_rep.op == tokenstream::KleeneOp::ZeroOrMore {
                                 // continue scanning for more first
                                 // tokens, but also make sure we
                                 // restore empty-tracking state

@@ -38,11 +38,12 @@ use util::nodemap::{NodeMap, FnvHashSet};
 
 use syntax::codemap::{self, mk_sp, respan, Span, Spanned, ExpnId};
 use syntax::abi::Abi;
-use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
+use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::parse::token::{keywords, InternedString};
 use syntax::ptr::P;
+use syntax::tokenstream::TokenTree;
 
 use std::collections::BTreeMap;
 use std::fmt;

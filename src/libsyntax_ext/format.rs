@@ -21,6 +21,7 @@ use syntax::ext::build::AstBuilder;
 use syntax::fold::Folder;
 use syntax::parse::token::{self, keywords};
 use syntax::ptr::P;
+use syntax::tokenstream;
 
 use std::collections::HashMap;
 
@@ -80,7 +81,7 @@ struct Context<'a, 'b:'a> {
 /// Some((fmtstr, unnamed arguments, ordering of named arguments,
 ///       named arguments))
 /// ```
-fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
               -> Option<(P<ast::Expr>, Vec<P<ast::Expr>>, Vec<String>,
                          HashMap<String, P<ast::Expr>>)> {
     let mut args = Vec::new();
@@ -606,7 +607,7 @@ impl<'a, 'b> Context<'a, 'b> {
 }
 
 pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt, sp: Span,
-                               tts: &[ast::TokenTree])
+                               tts: &[tokenstream::TokenTree])
                                -> Box<base::MacResult+'cx> {
 
     match parse_args(ecx, sp, tts) {

@@ -79,7 +79,7 @@ pub use self::ParseResult::*;
 use self::TokenTreeOrTokenTreeVec::*;
 
 use ast;
-use ast::{TokenTree, Name, Ident};
+use ast::{Name, Ident};
 use codemap::{BytePos, mk_sp, Span, Spanned};
 use codemap;
 use errors::FatalError;
@@ -91,6 +91,7 @@ use parse::token::{Token, Nonterminal};
 use parse::token;
 use print::pprust;
 use ptr::P;
+use tokenstream::{self, TokenTree};
 
 use std::mem;
 use std::rc::Rc;
@@ -102,8 +103,8 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 #[derive(Clone)]
 enum TokenTreeOrTokenTreeVec {
-    Tt(ast::TokenTree),
-    TtSeq(Rc<Vec<ast::TokenTree>>),
+    Tt(tokenstream::TokenTree),
+    TtSeq(Rc<Vec<tokenstream::TokenTree>>),
 }
 
 impl TokenTreeOrTokenTreeVec {
@@ -374,7 +375,7 @@ pub fn parse(sess: &ParseSess,
                 match ei.top_elts.get_tt(idx) {
                     /* need to descend into sequence */
                     TokenTree::Sequence(sp, seq) => {
-                        if seq.op == ast::KleeneOp::ZeroOrMore {
+                        if seq.op == tokenstream::KleeneOp::ZeroOrMore {
                             let mut new_ei = ei.clone();
                             new_ei.match_cur += seq.num_captures;
                             new_ei.idx += 1;

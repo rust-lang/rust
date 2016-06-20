@@ -19,7 +19,8 @@ extern crate rustc_plugin;
 
 use syntax::codemap::Span;
 use syntax::parse::token::{self, str_to_ident, NtExpr, NtPat};
-use syntax::ast::{TokenTree, Pat};
+use syntax::ast::{Pat};
+use syntax::tokenstream::{TokenTree};
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
