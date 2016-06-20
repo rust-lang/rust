@@ -1,3 +1,5 @@
+#![feature(specialization)]
+
 trait IsUnit {
     fn is_unit() -> bool;
 }
