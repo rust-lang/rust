@@ -69,32 +69,30 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
     match bin_op {
         // can have rhs with a different numeric type
         Shl | Shr => {
-            // these numbers are the maximum number of bits a bitshift rhs could possibly have
-            // e.g. u16 can be bitshifted by 0..16, so 2^4 - 1 is the largest possible bitshift
-            let mask_bits = match left {
-                I8(_) => 3,
-                I16(_) => 4,
-                I32(_) => 5,
-                I64(_) => 6,
-                U8(_) => 3,
-                U16(_) => 4,
-                U32(_) => 5,
-                U64(_) => 6,
+            // these numbers are the maximum number a bitshift rhs could possibly have
+            // e.g. u16 can be bitshifted by 0..16, so masking with 0b1111 (16 - 1) will ensure we are in that range
+            let type_bits: u32 = match left {
+                I8(_) | U8(_) => 8,
+                I16(_) | U16(_) => 16,
+                I32(_) | U32(_) => 32,
+                I64(_) | U64(_) => 64,
                 _ => unreachable!(),
             };
-            let mask = (1 << mask_bits) - 1;
+            assert!(type_bits.is_power_of_two());
+            // turn into `u32` because `overflowing_sh{l,r}` only take `u32`
             let r = match right {
-                I8(i) => i as u8 & mask,
-                I16(i) => i as u8 & mask,
-                I32(i) => i as u8 & mask,
-                I64(i) => i as u8 & mask,
-                U8(i) => i as u8 & mask,
-                U16(i) => i as u8 & mask,
-                U32(i) => i as u8 & mask,
-                U64(i) => i as u8 & mask,
+                I8(i) => i as u32,
+                I16(i) => i as u32,
+                I32(i) => i as u32,
+                I64(i) => i as u32,
+                U8(i) => i as u32,
+                U16(i) => i as u32,
+                U32(i) => i as u32,
+                U64(i) => i as u32,
                 _ => panic!("bad MIR: bitshift rhs is not integral"),
             };
-            let r = r as u32;
+            // apply mask
+            let r = r & (type_bits - 1);
             macro_rules! shift {
                 ($v:ident, $l:ident, $r:ident) => ({
                     match bin_op {
