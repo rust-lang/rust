@@ -28,6 +28,7 @@ pub enum EvalError<'tcx> {
     ExecuteMemory,
     ArrayIndexOutOfBounds(Span, u64, u64),
     Math(Span, ConstMathErr),
+    InvalidChar(u32),
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -66,6 +67,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "array index out of bounds",
             EvalError::Math(..) =>
                 "mathematical operation failed",
+            EvalError::InvalidChar(..) =>
+                "tried to interpret an invalid 32-bit value as a char",
         }
     }
 
@@ -85,6 +88,8 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "array index {} out of bounds {} at {:?}", index, len, span),
             EvalError::Math(span, ref err) =>
                 write!(f, "mathematical operation at {:?} failed with {:?}", span, err),
+            EvalError::InvalidChar(c) =>
+                write!(f, "invalid utf8 character: {}", c),
             _ => write!(f, "{}", self.description()),
         }
     }

@@ -208,7 +208,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_bool(ptr, b)?;
                 Ok(ptr)
             }
-            Char(_c)          => unimplemented!(),
+            Char(c) => {
+                let ptr = self.memory.allocate(4);
+                self.memory.write_uint(ptr, c as u32 as u64, 4)?;
+                Ok(ptr)
+            },
             Struct(_node_id)  => unimplemented!(),
             Tuple(_node_id)   => unimplemented!(),
             Function(_def_id) => unimplemented!(),
@@ -1371,6 +1375,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use syntax::ast::{IntTy, UintTy};
         let val = match (self.memory.pointer_size, &ty.sty) {
             (_, &ty::TyBool)              => PrimVal::Bool(self.memory.read_bool(ptr)?),
+            (_, &ty::TyChar)              => {
+                let c = self.memory.read_uint(ptr, 4)? as u32;
+                match ::std::char::from_u32(c) {
+                    Some(ch) => PrimVal::Char(ch),
+                    None => return Err(EvalError::InvalidChar(c)),
+                }
+            }
             (_, &ty::TyInt(IntTy::I8))    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
             (2, &ty::TyInt(IntTy::Is)) |
             (_, &ty::TyInt(IntTy::I16))   => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
