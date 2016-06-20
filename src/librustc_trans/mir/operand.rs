@@ -21,7 +21,7 @@ use type_::Type;
 
 use std::fmt;
 
-use super::{MirContext, TempRef};
+use super::{MirContext, LocalRef};
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -112,6 +112,8 @@ impl<'bcx, 'tcx> OperandRef<'tcx> {
         if let OperandValue::Immediate(llval) = self.val {
             // Deconstruct the immediate aggregate.
             if common::type_is_imm_pair(bcx.ccx(), self.ty) {
+                debug!("Operand::unpack_if_pair: unpacking {:?}", self);
+
                 let mut a = bcx.extract_value(llval, 0);
                 let mut b = bcx.extract_value(llval, 1);
 
@@ -171,17 +173,17 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     {
         debug!("trans_consume(lvalue={:?})", lvalue);
 
-        // watch out for temporaries that do not have an
+        // watch out for locals that do not have an
         // alloca; they are handled somewhat differently
-        if let &mir::Lvalue::Temp(index) = lvalue {
-            match self.temps[index] {
-                TempRef::Operand(Some(o)) => {
+        if let Some(index) = self.mir.local_index(lvalue) {
+            match self.locals[index] {
+                LocalRef::Operand(Some(o)) => {
                     return o;
                 }
-                TempRef::Operand(None) => {
+                LocalRef::Operand(None) => {
                     bug!("use of {:?} before def", lvalue);
                 }
-                TempRef::Lvalue(..) => {
+                LocalRef::Lvalue(..) => {
                     // use path below
                 }
             }
@@ -189,9 +191,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         // Moves out of pair fields are trivial.
         if let &mir::Lvalue::Projection(ref proj) = lvalue {
-            if let mir::Lvalue::Temp(index) = proj.base {
-                let temp_ref = &self.temps[index];
-                if let &TempRef::Operand(Some(o)) = temp_ref {
+            if let Some(index) = self.mir.local_index(&proj.base) {
+                if let LocalRef::Operand(Some(o)) = self.locals[index] {
                     match (o.val, &proj.elem) {
                         (OperandValue::Pair(a, b),
                          &mir::ProjectionElem::Field(ref f, ty)) => {

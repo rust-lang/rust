@@ -84,16 +84,13 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     /// Cached unreachable block
     unreachable_block: Option<Block<'bcx, 'tcx>>,
 
-    /// An LLVM alloca for each MIR `VarDecl`
-    vars: IndexVec<mir::Var, LvalueRef<'tcx>>,
-
-    /// The location where each MIR `TempDecl` is stored. This is
+    /// The location where each MIR arg/var/tmp/ret is stored. This is
     /// usually an `LvalueRef` representing an alloca, but not always:
     /// sometimes we can skip the alloca and just store the value
     /// directly using an `OperandRef`, which makes for tighter LLVM
     /// IR. The conditions for using an `OperandRef` are as follows:
     ///
-    /// - the type of the temporary must be judged "immediate" by `type_is_immediate`
+    /// - the type of the local must be judged "immediate" by `type_is_immediate`
     /// - the operand must never be referenced indirectly
     ///     - we should not take its address using the `&` operator
     ///     - nor should it appear in an lvalue path like `tmp.a`
@@ -102,12 +99,7 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     ///
     /// Avoiding allocs can also be important for certain intrinsics,
     /// notably `expect`.
-    temps: IndexVec<mir::Temp, TempRef<'tcx>>,
-
-    /// The arguments to the function; as args are lvalues, these are
-    /// always indirect, though we try to avoid creating an alloca
-    /// when we can (and just reuse the pointer the caller provided).
-    args: IndexVec<mir::Arg, LvalueRef<'tcx>>,
+    locals: IndexVec<mir::Local, LocalRef<'tcx>>,
 
     /// Debug information for MIR scopes.
     scopes: IndexVec<mir::VisibilityScope, DIScope>
@@ -119,14 +111,14 @@ impl<'blk, 'tcx> MirContext<'blk, 'tcx> {
     }
 }
 
-enum TempRef<'tcx> {
+enum LocalRef<'tcx> {
     Lvalue(LvalueRef<'tcx>),
     Operand(Option<OperandRef<'tcx>>),
 }
 
-impl<'tcx> TempRef<'tcx> {
+impl<'tcx> LocalRef<'tcx> {
     fn new_operand<'bcx>(ccx: &CrateContext<'bcx, 'tcx>,
-                         ty: ty::Ty<'tcx>) -> TempRef<'tcx> {
+                         ty: ty::Ty<'tcx>) -> LocalRef<'tcx> {
         if common::type_is_zero_size(ccx, ty) {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
@@ -142,9 +134,9 @@ impl<'tcx> TempRef<'tcx> {
                 val: val,
                 ty: ty
             };
-            TempRef::Operand(Some(op))
+            LocalRef::Operand(Some(op))
         } else {
-            TempRef::Operand(None)
+            LocalRef::Operand(None)
         }
     }
 }
@@ -157,8 +149,8 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
     // Analyze the temps to determine which must be lvalues
     // FIXME
-    let (lvalue_temps, cleanup_kinds) = bcx.with_block(|bcx| {
-        (analyze::lvalue_temps(bcx, &mir),
+    let (lvalue_locals, cleanup_kinds) = bcx.with_block(|bcx| {
+        (analyze::lvalue_locals(bcx, &mir),
          analyze::cleanup_kinds(bcx, &mir))
     });
 
@@ -166,37 +158,49 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let scopes = debuginfo::create_mir_scopes(fcx);
 
     // Allocate variable and temp allocas
-    let args = arg_value_refs(&bcx, &mir, &scopes);
-    let vars = mir.var_decls.iter()
-                            .map(|decl| (bcx.monomorphize(&decl.ty), decl))
-                            .map(|(mty, decl)| {
-        let lvalue = LvalueRef::alloca(&bcx, mty, &decl.name.as_str());
+    let locals = {
+        let args = arg_local_refs(&bcx, &mir, &scopes, &lvalue_locals);
+        let vars = mir.var_decls.iter().enumerate().map(|(i, decl)| {
+            let ty = bcx.monomorphize(&decl.ty);
+            let scope = scopes[decl.source_info.scope];
+            let dbg = !scope.is_null() && bcx.sess().opts.debuginfo == FullDebugInfo;
 
-        let scope = scopes[decl.source_info.scope];
-        if !scope.is_null() && bcx.sess().opts.debuginfo == FullDebugInfo {
-            bcx.with_block(|bcx| {
-                declare_local(bcx, decl.name, mty, scope,
-                              VariableAccess::DirectVariable { alloca: lvalue.llval },
-                              VariableKind::LocalVariable, decl.source_info.span);
-            });
-        }
+            let local = mir.local_index(&mir::Lvalue::Var(mir::Var::new(i))).unwrap();
+            if !lvalue_locals.contains(local.index()) && !dbg {
+                return LocalRef::new_operand(bcx.ccx(), ty);
+            }
 
-        lvalue
-    }).collect();
-    let temps = mir.temp_decls.iter()
-                              .map(|decl| bcx.monomorphize(&decl.ty))
-                              .enumerate()
-                              .map(|(i, mty)| if lvalue_temps.contains(i) {
-                                  TempRef::Lvalue(LvalueRef::alloca(&bcx,
-                                                                    mty,
-                                                                    &format!("temp{:?}", i)))
-                              } else {
-                                  // If this is an immediate temp, we do not create an
-                                  // alloca in advance. Instead we wait until we see the
-                                  // definition and update the operand there.
-                                  TempRef::new_operand(bcx.ccx(), mty)
-                              })
-                              .collect();
+            let lvalue = LvalueRef::alloca(&bcx, ty, &decl.name.as_str());
+            if dbg {
+                bcx.with_block(|bcx| {
+                    declare_local(bcx, decl.name, ty, scope,
+                                VariableAccess::DirectVariable { alloca: lvalue.llval },
+                                VariableKind::LocalVariable, decl.source_info.span);
+                });
+            }
+            LocalRef::Lvalue(lvalue)
+        });
+
+        let locals = mir.temp_decls.iter().enumerate().map(|(i, decl)| {
+            (mir::Lvalue::Temp(mir::Temp::new(i)), decl.ty)
+        }).chain(mir.return_ty.maybe_converging().map(|ty| (mir::Lvalue::ReturnPointer, ty)));
+
+        args.into_iter().chain(vars).chain(locals.map(|(lvalue, ty)| {
+            let ty = bcx.monomorphize(&ty);
+            let local = mir.local_index(&lvalue).unwrap();
+            if lvalue == mir::Lvalue::ReturnPointer && fcx.fn_ty.ret.is_indirect() {
+                let llretptr = llvm::get_param(fcx.llfn, 0);
+                LocalRef::Lvalue(LvalueRef::new_sized(llretptr, LvalueTy::from_ty(ty)))
+            } else if lvalue_locals.contains(local.index()) {
+                LocalRef::Lvalue(LvalueRef::alloca(&bcx, ty, &format!("{:?}", lvalue)))
+            } else {
+                // If this is an immediate local, we do not create an
+                // alloca in advance. Instead we wait until we see the
+                // definition and update the operand there.
+                LocalRef::new_operand(bcx.ccx(), ty)
+            }
+        })).collect()
+    };
 
     // Allocate a `Block` for every basic block
     let block_bcxs: IndexVec<mir::BasicBlock, Block<'blk,'tcx>> =
@@ -225,9 +229,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         unreachable_block: None,
         cleanup_kinds: cleanup_kinds,
         landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
-        vars: vars,
-        temps: temps,
-        args: args,
+        locals: locals,
         scopes: scopes
     };
 
@@ -266,10 +268,11 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 /// Produce, for each argument, a `ValueRef` pointing at the
 /// argument's value. As arguments are lvalues, these are always
 /// indirect.
-fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
+fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                               mir: &mir::Mir<'tcx>,
-                              scopes: &IndexVec<mir::VisibilityScope, DIScope>)
-                              -> IndexVec<mir::Arg, LvalueRef<'tcx>> {
+                              scopes: &IndexVec<mir::VisibilityScope, DIScope>,
+                              lvalue_locals: &BitVector)
+                              -> Vec<LocalRef<'tcx>> {
     let fcx = bcx.fcx();
     let tcx = bcx.tcx();
     let mut idx = 0;
@@ -285,6 +288,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
 
     mir.arg_decls.iter().enumerate().map(|(arg_index, arg_decl)| {
         let arg_ty = bcx.monomorphize(&arg_decl.ty);
+        let local = mir.local_index(&mir::Lvalue::Arg(mir::Arg::new(arg_index))).unwrap();
         if arg_decl.spread {
             // This argument (e.g. the last argument in the "rust-call" ABI)
             // is a tuple that was spread at the ABI level and now we have
@@ -305,8 +309,8 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 let arg = &fcx.fn_ty.args[idx];
                 idx += 1;
                 if common::type_is_fat_ptr(tcx, tupled_arg_ty) {
-                        // We pass fat pointers as two words, but inside the tuple
-                        // they are the two sub-fields of a single aggregate field.
+                    // We pass fat pointers as two words, but inside the tuple
+                    // they are the two sub-fields of a single aggregate field.
                     let meta = &fcx.fn_ty.args[idx];
                     idx += 1;
                     arg.store_fn_arg(bcx, &mut llarg_idx, get_dataptr(bcx, dst));
@@ -335,7 +339,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                                   bcx.fcx().span.unwrap_or(DUMMY_SP));
                 }));
             }
-            return LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty));
+            return LocalRef::Lvalue(LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty)));
         }
 
         let arg = &fcx.fn_ty.args[idx];
@@ -345,9 +349,42 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
             // already put it in a temporary alloca and gave it up, unless
             // we emit extra-debug-info, which requires local allocas :(.
             // FIXME: lifetimes
+            if arg.pad.is_some() {
+                llarg_idx += 1;
+            }
             let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
             llarg_idx += 1;
             llarg
+        } else if !lvalue_locals.contains(local.index()) &&
+                  !arg.is_indirect() && arg.cast.is_none() &&
+                  arg_scope.is_none() {
+            if arg.is_ignore() {
+                return LocalRef::new_operand(bcx.ccx(), arg_ty);
+            }
+
+            // We don't have to cast or keep the argument in the alloca.
+            // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
+            // of putting everything in allocas just so we can use llvm.dbg.declare.
+            if arg.pad.is_some() {
+                llarg_idx += 1;
+            }
+            let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
+            llarg_idx += 1;
+            let val = if common::type_is_fat_ptr(tcx, arg_ty) {
+                let meta = &fcx.fn_ty.args[idx];
+                idx += 1;
+                assert_eq!((meta.cast, meta.pad), (None, None));
+                let llmeta = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
+                llarg_idx += 1;
+                OperandValue::Pair(llarg, llmeta)
+            } else {
+                OperandValue::Immediate(llarg)
+            };
+            let operand = OperandRef {
+                val: val,
+                ty: arg_ty
+            };
+            return LocalRef::Operand(Some(operand.unpack_if_pair(bcx)));
         } else {
             let lltemp = bcx.with_block(|bcx| {
                 base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
@@ -441,7 +478,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                               bcx.fcx().span.unwrap_or(DUMMY_SP));
             }
         }));
-        LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty))
+        LocalRef::Lvalue(LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty)))
     }).collect()
 }
 

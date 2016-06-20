@@ -26,7 +26,7 @@ use Disr;
 
 use std::ptr;
 
-use super::{MirContext, TempRef};
+use super::{MirContext, LocalRef};
 use super::operand::OperandValue;
 
 #[derive(Copy, Clone, Debug)]
@@ -88,39 +88,29 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         -> LvalueRef<'tcx> {
         debug!("trans_lvalue(lvalue={:?})", lvalue);
 
-        let fcx = bcx.fcx();
         let ccx = bcx.ccx();
         let tcx = bcx.tcx();
+
+        if let Some(index) = self.mir.local_index(lvalue) {
+            match self.locals[index] {
+                LocalRef::Lvalue(lvalue) => {
+                    return lvalue;
+                }
+                LocalRef::Operand(..) => {
+                    bug!("using operand local {:?} as lvalue", lvalue);
+                }
+            }
+        }
+
         let result = match *lvalue {
-            mir::Lvalue::Var(var) => self.vars[var],
-            mir::Lvalue::Temp(temp) => match self.temps[temp] {
-                TempRef::Lvalue(lvalue) =>
-                    lvalue,
-                TempRef::Operand(..) =>
-                    bug!("using operand temp {:?} as lvalue", lvalue),
-            },
-            mir::Lvalue::Arg(arg) => self.args[arg],
+            mir::Lvalue::Var(_) |
+            mir::Lvalue::Temp(_) |
+            mir::Lvalue::Arg(_) |
+            mir::Lvalue::ReturnPointer => bug!(), // handled above
             mir::Lvalue::Static(def_id) => {
                 let const_ty = self.lvalue_ty(lvalue);
                 LvalueRef::new_sized(consts::get_static(ccx, def_id).val,
                                      LvalueTy::from_ty(const_ty))
-            },
-            mir::Lvalue::ReturnPointer => {
-                let llval = if !fcx.fn_ty.ret.is_ignore() {
-                    bcx.with_block(|bcx| {
-                        fcx.get_ret_slot(bcx, "")
-                    })
-                } else {
-                    // This is a void return; that is, there’s no place to store the value and
-                    // there cannot really be one (or storing into it doesn’t make sense, anyway).
-                    // Ergo, we return an undef ValueRef, so we do not have to special-case every
-                    // place using lvalues, and could use it the same way you use a regular
-                    // ReturnPointer LValue (i.e. store into it, load from it etc).
-                    C_undef(fcx.fn_ty.ret.original_ty.ptr_to())
-                };
-                let fn_return_ty = bcx.monomorphize(&self.mir.return_ty);
-                let return_ty = fn_return_ty.unwrap();
-                LvalueRef::new_sized(llval, LvalueTy::from_ty(return_ty))
             },
             mir::Lvalue::Projection(box mir::Projection {
                 ref base,
@@ -240,44 +230,41 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     // Perform an action using the given Lvalue.
-    // If the Lvalue is an empty TempRef::Operand, then a temporary stack slot
+    // If the Lvalue is an empty LocalRef::Operand, then a temporary stack slot
     // is created first, then used as an operand to update the Lvalue.
     pub fn with_lvalue_ref<F, U>(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>,
                                  lvalue: &mir::Lvalue<'tcx>, f: F) -> U
     where F: FnOnce(&mut Self, LvalueRef<'tcx>) -> U
     {
-        match *lvalue {
-            mir::Lvalue::Temp(temp) => {
-                match self.temps[temp] {
-                    TempRef::Lvalue(lvalue) => f(self, lvalue),
-                    TempRef::Operand(None) => {
-                        let lvalue_ty = self.lvalue_ty(lvalue);
-                        let lvalue = LvalueRef::alloca(bcx,
-                                                       lvalue_ty,
-                                                       "lvalue_temp");
-                        let ret = f(self, lvalue);
-                        let op = self.trans_load(bcx, lvalue.llval, lvalue_ty);
-                        self.temps[temp] = TempRef::Operand(Some(op));
-                        ret
-                    }
-                    TempRef::Operand(Some(_)) => {
-                        // See comments in TempRef::new_operand as to why
-                        // we always have Some in a ZST TempRef::Operand.
-                        let ty = self.lvalue_ty(lvalue);
-                        if common::type_is_zero_size(bcx.ccx(), ty) {
-                            // Pass an undef pointer as no stores can actually occur.
-                            let llptr = C_undef(type_of(bcx.ccx(), ty).ptr_to());
-                            f(self, LvalueRef::new_sized(llptr, LvalueTy::from_ty(ty)))
-                        } else {
-                            bug!("Lvalue temp already set");
-                        }
+        if let Some(index) = self.mir.local_index(lvalue) {
+            match self.locals[index] {
+                LocalRef::Lvalue(lvalue) => f(self, lvalue),
+                LocalRef::Operand(None) => {
+                    let lvalue_ty = self.lvalue_ty(lvalue);
+                    let lvalue = LvalueRef::alloca(bcx,
+                                                   lvalue_ty,
+                                                   "lvalue_temp");
+                    let ret = f(self, lvalue);
+                    let op = self.trans_load(bcx, lvalue.llval, lvalue_ty);
+                    self.locals[index] = LocalRef::Operand(Some(op));
+                    ret
+                }
+                LocalRef::Operand(Some(_)) => {
+                    // See comments in LocalRef::new_operand as to why
+                    // we always have Some in a ZST LocalRef::Operand.
+                    let ty = self.lvalue_ty(lvalue);
+                    if common::type_is_zero_size(bcx.ccx(), ty) {
+                        // Pass an undef pointer as no stores can actually occur.
+                        let llptr = C_undef(type_of(bcx.ccx(), ty).ptr_to());
+                        f(self, LvalueRef::new_sized(llptr, LvalueTy::from_ty(ty)))
+                    } else {
+                        bug!("Lvalue local already set");
                     }
                 }
             }
-            _ => {
-                let lvalue = self.trans_lvalue(bcx, lvalue);
-                f(self, lvalue)
-            }
+        } else {
+            let lvalue = self.trans_lvalue(bcx, lvalue);
+            f(self, lvalue)
         }
     }
 

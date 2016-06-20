@@ -203,17 +203,8 @@ struct MirConstContext<'a, 'tcx: 'a> {
     /// Type parameters for const fn and associated constants.
     substs: &'tcx Substs<'tcx>,
 
-    /// Arguments passed to a const fn.
-    args: IndexVec<mir::Arg, Const<'tcx>>,
-
-    /// Variable values - specifically, argument bindings of a const fn.
-    vars: IndexVec<mir::Var, Option<Const<'tcx>>>,
-
-    /// Temp values.
-    temps: IndexVec<mir::Temp, Option<Const<'tcx>>>,
-
-    /// Value assigned to Return, which is the resulting constant.
-    return_value: Option<Const<'tcx>>
+    /// Values of locals in a constant or const fn.
+    locals: IndexVec<mir::Local, Option<Const<'tcx>>>
 }
 
 
@@ -223,15 +214,17 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
            substs: &'tcx Substs<'tcx>,
            args: IndexVec<mir::Arg, Const<'tcx>>)
            -> MirConstContext<'a, 'tcx> {
-        MirConstContext {
+        let mut context = MirConstContext {
             ccx: ccx,
             mir: mir,
             substs: substs,
-            args: args,
-            vars: IndexVec::from_elem(None, &mir.var_decls),
-            temps: IndexVec::from_elem(None, &mir.temp_decls),
-            return_value: None
+            locals: (0..mir.count_locals()).map(|_| None).collect(),
+        };
+        for (i, arg) in args.into_iter().enumerate() {
+            let index = mir.local_index(&mir::Lvalue::Arg(mir::Arg::new(i))).unwrap();
+            context.locals[index] = Some(arg);
         }
+        context
     }
 
     fn trans_def(ccx: &'a CrateContext<'a, 'tcx>,
@@ -302,9 +295,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 mir::TerminatorKind::Goto { target } => target,
                 mir::TerminatorKind::Return => {
                     failure?;
-                    return Ok(self.return_value.unwrap_or_else(|| {
+                    let index = self.mir.local_index(&mir::Lvalue::ReturnPointer).unwrap();
+                    return Ok(self.locals[index].unwrap_or_else(|| {
                         span_bug!(span, "no returned value in constant");
-                    }))
+                    }));
                 }
 
                 mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, .. } => {
@@ -366,39 +360,34 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     }
 
     fn store(&mut self, dest: &mir::Lvalue<'tcx>, value: Const<'tcx>, span: Span) {
-        let dest = match *dest {
-            mir::Lvalue::Var(var) => &mut self.vars[var],
-            mir::Lvalue::Temp(temp) => &mut self.temps[temp],
-            mir::Lvalue::ReturnPointer => &mut self.return_value,
-            _ => span_bug!(span, "assignment to {:?} in constant", dest)
-        };
-        *dest = Some(value);
+        if let Some(index) = self.mir.local_index(dest) {
+            self.locals[index] = Some(value);
+        } else {
+            span_bug!(span, "assignment to {:?} in constant", dest);
+        }
     }
 
     fn const_lvalue(&self, lvalue: &mir::Lvalue<'tcx>, span: Span)
                     -> Result<ConstLvalue<'tcx>, ConstEvalFailure> {
         let tcx = self.ccx.tcx();
+
+        if let Some(index) = self.mir.local_index(lvalue) {
+            return Ok(self.locals[index].unwrap_or_else(|| {
+                span_bug!(span, "{:?} not initialized", lvalue)
+            }).as_lvalue());
+        }
+
         let lvalue = match *lvalue {
-            mir::Lvalue::Var(var) => {
-                self.vars[var].unwrap_or_else(|| {
-                    span_bug!(span, "{:?} not initialized", var)
-                }).as_lvalue()
-            }
-            mir::Lvalue::Temp(temp) => {
-                self.temps[temp].unwrap_or_else(|| {
-                    span_bug!(span, "{:?} not initialized", temp)
-                }).as_lvalue()
-            }
-            mir::Lvalue::Arg(arg) => self.args[arg].as_lvalue(),
+            mir::Lvalue::Var(_) |
+            mir::Lvalue::Temp(_) |
+            mir::Lvalue::Arg(_) |
+            mir::Lvalue::ReturnPointer => bug!(), // handled above
             mir::Lvalue::Static(def_id) => {
                 ConstLvalue {
                     base: Base::Static(consts::get_static(self.ccx, def_id).val),
                     llextra: ptr::null_mut(),
                     ty: self.mir.lvalue_ty(tcx, lvalue).to_ty(tcx)
                 }
-            }
-            mir::Lvalue::ReturnPointer => {
-                span_bug!(span, "accessing Lvalue::ReturnPointer in constant")
             }
             mir::Lvalue::Projection(ref projection) => {
                 let tr_base = self.const_lvalue(&projection.base, span)?;
