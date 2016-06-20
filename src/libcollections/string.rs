@@ -1391,27 +1391,11 @@ impl Clone for String {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl FromIterator<char> for String {
-    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
-    }
-}
-
-#[stable(feature = "extend_string", since = "1.4.0")]
-impl FromIterator<String> for String {
-    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {
+#[stable(feature = "from_iterator_dry", since = "1.11.0")]
+impl<T> FromIterator<T> for String
+    where String: Extend<T>
+{
+    default fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> String {
         let mut buf = String::new();
         buf.extend(iter);
         buf
