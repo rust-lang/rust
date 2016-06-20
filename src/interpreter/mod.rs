@@ -688,14 +688,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.memory.write_bool(dest.offset(offset), overflowed)
     }
 
-    /// Extracts the lhs and rhs primval from the operands and applies the binary op.
-    /// Returns the result and whether the operation overflowed
-    fn eval_binop(
+    /// Applies the binary operation `op` to the arguments and writes the result to the destination.
+    /// Returns `true` if the operation overflowed.
+    fn intrinsic_overflowing(
         &mut self,
         op: mir::BinOp,
         left: &mir::Operand<'tcx>,
         right: &mir::Operand<'tcx>,
-    ) -> EvalResult<'tcx, (PrimVal, bool)> {
+        dest: Pointer,
+    ) -> EvalResult<'tcx, bool> {
         let left_ptr = self.eval_operand(left)?;
         let left_ty = self.operand_ty(left);
         let left_val = self.read_primval(left_ptr, left_ty)?;
@@ -704,18 +705,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let right_ty = self.operand_ty(right);
         let right_val = self.read_primval(right_ptr, right_ty)?;
 
-        primval::binary_op(op, left_val, right_val)
-    }
-
-    /// applies the binary operation `op` to the arguments and writes the result to the destination
-    fn intrinsic_overflowing(
-        &mut self,
-        op: mir::BinOp,
-        left: &mir::Operand<'tcx>,
-        right: &mir::Operand<'tcx>,
-        dest: Pointer,
-    ) -> EvalResult<'tcx, bool> {
-        let (val, overflow) = self.eval_binop(op, left, right)?;
+        let (val, overflow) = primval::binary_op(op, left_val, right_val)?;
         self.memory.write_primval(dest, val)?;
         Ok(overflow)
     }
@@ -944,8 +934,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             BinaryOp(bin_op, ref left, ref right) => {
                 // ignore overflow bit, rustc inserts check branches for us
-                let result = self.eval_binop(bin_op, left, right)?.0;
-                self.memory.write_primval(dest, result)?;
+                self.intrinsic_overflowing(bin_op, left, right, dest)?;
             }
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
