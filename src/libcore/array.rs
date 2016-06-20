@@ -22,13 +22,15 @@
 use borrow::{Borrow, BorrowMut};
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
-use convert::{AsRef, AsMut};
+use convert::{AsRef, AsMut, Into};
 use default::Default;
 use fmt;
 use hash::{Hash, self};
 use iter::IntoIterator;
 use marker::{Copy, Sized, Unsize};
+use mem;
 use option::Option;
+use ptr;
 use slice::{Iter, IterMut, SliceExt};
 
 /// Utility trait implemented only on arrays of fixed size
@@ -220,10 +222,10 @@ array_impls! {
     30 31 32
 }
 
-// The Default impls cannot be generated using the array_impls! macro because
-// they require array literals.
+// These impls cannot be generated using the array_impls! macro because
+// they require repeating code by the size of the array.
 
-macro_rules! array_impl_default {
+macro_rules! array_impls_with_ts {
     {$n:expr, $t:ident $($ts:ident)*} => {
         #[stable(since = "1.4.0", feature = "array_default")]
         impl<T> Default for [T; $n] where T: Default {
@@ -231,14 +233,60 @@ macro_rules! array_impl_default {
                 [$t::default(), $($ts::default()),*]
             }
         }
-        array_impl_default!{($n - 1), $($ts)*}
+
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> AsRef<( $t, $($ts),* )> for [T; $n] {
+            fn as_ref(&self) -> &( $t, $($ts),* ) {
+                unsafe { &*(self as *const Self as *const _) }
+            }
+        }
+
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> AsMut<( $t, $($ts),* )> for [T; $n] {
+            fn as_mut(&mut self) -> &mut ( $t, $($ts),* ) {
+                unsafe { &mut *(self as *mut Self as *mut _) }
+            }
+        }
+
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> Into<( $t, $($ts),* )> for [T; $n] {
+            fn into(self) -> ( $t, $($ts),* ) {
+                let transmuted = unsafe { ptr::read(&self as *const Self as *const _) };
+                mem::forget(self);
+                transmuted
+            }
+        }
+
+        array_impls_with_ts!{($n - 1), $($ts)*}
     };
     {$n:expr,} => {
         #[stable(since = "1.4.0", feature = "array_default")]
         impl<T> Default for [T; $n] {
             fn default() -> [T; $n] { [] }
         }
+
+
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> AsRef<()> for [T; $n] {
+            fn as_ref(&self) -> &() {
+                unsafe { &*(self as *const Self as *const _) }
+            }
+        }
+
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> AsMut<()> for [T; $n] {
+            fn as_mut(&mut self) -> &mut () {
+                unsafe { &mut *(self as *mut Self as *mut _) }
+            }
+        }
+
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> Into<()> for [T; $n] {
+            fn into(self) -> () {
+                ()
+            }
+        }
     };
 }
 
-array_impl_default!{32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+array_impls_with_ts!{32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}

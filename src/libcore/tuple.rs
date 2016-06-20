@@ -13,9 +13,12 @@
 use clone::Clone;
 use cmp::*;
 use cmp::Ordering::*;
+use convert::{AsRef, AsMut, Into};
 use default::Default;
+use mem;
 use option::Option;
 use option::Option::Some;
+use ptr;
 
 // FIXME(#19630) Remove this work-around
 macro_rules! e {
@@ -231,3 +234,57 @@ tuple_impls! {
         (11) -> L
     }
 }
+
+macro_rules! uniform_tuple_impl {
+    {$n:expr, $t:ident $($ts:ident)*} => {
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> AsRef<[T; $n]> for ( $t, $($ts),* ) {
+            fn as_ref(&self) -> &[T; $n] {
+                unsafe { &*(self as *const Self as *const _) }
+            }
+        }
+
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> AsMut<[T; $n]> for ( $t, $($ts),* ) {
+            fn as_mut(&mut self) -> &mut [T; $n] {
+                unsafe { &mut *(self as *mut Self as *mut _) }
+            }
+        }
+
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> Into<[T; $n]> for ( $t, $($ts),* ) {
+            fn into(self) -> [T; $n] {
+                let transmuted = unsafe { ptr::read(&self as *const Self as *const _) };
+                mem::forget(self);
+                transmuted
+            }
+        }
+
+        uniform_tuple_impl!{($n - 1), $($ts)*}
+    };
+    {$n:expr,} => {
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> AsRef<[T; $n]> for () {
+            fn as_ref(&self) -> &[T; $n] {
+                unsafe { &*(self as *const Self as *const _) }
+            }
+        }
+
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> AsMut<[T; $n]> for () {
+            fn as_mut(&mut self) -> &mut [T; $n] {
+                unsafe { &mut *(self as *mut Self as *mut _) }
+            }
+        }
+
+        #[unstable(feature = "array_tuple_conversions", issue = "0")]  // FIXME: file tracking issue
+        impl<T> Into<[T; $n]> for () {
+            fn into(self) -> [T; $n] {
+                []
+            }
+        }
+    };
+}
+
+
+uniform_tuple_impl!{32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
