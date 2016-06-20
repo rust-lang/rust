@@ -667,6 +667,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(if not_null { nndiscr } else { 1 - nndiscr })
     }
 
+    /// applies the binary operation `op` to the two operands and writes a tuple of the result
+    /// and a boolean signifying the potential overflow to the destination
     fn intrinsic_with_overflow(
         &mut self,
         op: mir::BinOp,
@@ -686,7 +688,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.memory.write_bool(dest.offset(offset), overflowed)
     }
 
-    fn math(
+    /// extracts the lhs and rhs primval from the operands and applies the binary op
+    fn eval_binop(
         &mut self,
         op: mir::BinOp,
         left: &mir::Operand<'tcx>,
@@ -703,6 +706,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         primval::binary_op(op, left_val, right_val)
     }
 
+    /// applies the binary operation `op` to the arguments and writes the result to the destination
     fn intrinsic_overflowing(
         &mut self,
         op: mir::BinOp,
@@ -710,7 +714,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         right: &mir::Operand<'tcx>,
         dest: Pointer,
     ) -> EvalResult<'tcx, bool> {
-        match self.math(op, left, right) {
+        match self.eval_binop(op, left, right) {
             Ok(val) => {
                 self.memory.write_primval(dest, val)?;
                 Ok(false)
@@ -947,7 +951,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
-                let result = self.math(bin_op, left, right)?;
+                let result = self.eval_binop(bin_op, left, right)?;
                 self.memory.write_primval(dest, result)?;
             }
 
