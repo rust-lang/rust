@@ -13,6 +13,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use marker::Sized;
+use mem;
 
 /// A trait for giving a type a useful default value.
 ///
@@ -126,6 +127,38 @@ pub trait Default: Sized {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Self;
+
+    /// Replace the value with the default and return the original value.
+    ///
+    /// # Examples
+    ///
+    /// Seamlessly take ownership of a vector:
+    ///
+    /// ```
+    /// #![feature(replace_default)]
+    /// let mut x = vec![1, 2, 3];
+    /// let y = x.replace_default();
+    /// assert!(x.is_empty()); // empty, but still usable
+    /// assert_eq!(y.len(), 3);
+    /// ```
+    ///
+    /// Extract and reset all values from a map:
+    ///
+    /// ```
+    /// #![feature(replace_default)]
+    /// # use std::collections::HashMap;
+    /// # use std::hash::Hash;
+    /// fn take_values<K: Eq + Hash, V: Default>(map: &mut HashMap<K, V>) -> Vec<V> {
+    ///     map.iter_mut().map(|(_, v)| {
+    ///         v.replace_default()
+    ///     }).collect()
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "replace_default", issue = "0")]
+    fn replace_default(&mut self) -> Self {
+        mem::replace(self, Default::default())
+    }
 }
 
 macro_rules! default_impl {
