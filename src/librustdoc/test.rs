@@ -176,7 +176,7 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
 fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
            externs: core::Externs,
            should_panic: bool, no_run: bool, as_test_harness: bool,
-           compile_fail: bool, opts: &TestOptions) {
+           compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = maketest(test, Some(cratename), as_test_harness, opts);
@@ -232,7 +232,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
                                                       None,
                                                       codemap.clone());
     let old = io::set_panic(box Sink(data.clone()));
-    let _bomb = Bomb(data, old.unwrap_or(box io::stdout()));
+    let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
     // Compile the code
     let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
@@ -273,13 +273,28 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
                     } else if count == 0 && compile_fail == true {
                         panic!("test compiled while it wasn't supposed to")
                     }
+                    if count > 0 && error_codes.len() > 0 {
+                        let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
+                        error_codes.retain(|err| !out.contains(err));
+                    }
                 }
                 Ok(()) if compile_fail => panic!("test compiled while it wasn't supposed to"),
                 _ => {}
             }
         }
-        Err(_) if compile_fail == false => panic!("couldn't compile the test"),
-        _ => {}
+        Err(_) => {
+            if compile_fail == false {
+                panic!("couldn't compile the test");
+            }
+            if error_codes.len() > 0 {
+                let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
+                error_codes.retain(|err| !out.contains(err));
+            }
+        }
+    }
+
+    if error_codes.len() > 0 {
+        panic!("Some expected error codes were not found: {:?}", error_codes);
     }
 
     if no_run { return }
@@ -411,7 +426,7 @@ impl Collector {
 
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
-                    as_test_harness: bool, compile_fail: bool) {
+                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>) {
         let name = if self.use_headers {
             let s = self.current_header.as_ref().map(|s| &**s).unwrap_or("");
             format!("{}_{}", s, self.cnt)
@@ -442,6 +457,7 @@ impl Collector {
                         no_run,
                         as_test_harness,
                         compile_fail,
+                        error_codes,
                         &opts);
             })
         });
