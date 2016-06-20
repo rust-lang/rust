@@ -118,7 +118,7 @@ pub struct CrateAnalysis<'a> {
     pub glob_map: Option<hir::GlobMap>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum DtorKind {
     NoDtor,
     TraitDtor(bool)
