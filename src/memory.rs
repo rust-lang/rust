@@ -60,7 +60,7 @@ pub struct Memory<'tcx> {
     /// we can figure out what they point to.
     functions: HashMap<AllocId, FunctionDefinition<'tcx>>,
     /// Inverse map of `functions` so we don't allocate a new pointer every time we need one
-    function_definitions: HashMap<FunctionDefinition<'tcx>, AllocId>,
+    function_alloc_cache: HashMap<FunctionDefinition<'tcx>, AllocId>,
     next_id: AllocId,
     pub pointer_size: usize,
 }
@@ -71,7 +71,7 @@ impl<'tcx> Memory<'tcx> {
         Memory {
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
-            function_definitions: HashMap::new(),
+            function_alloc_cache: HashMap::new(),
             next_id: AllocId(0),
             pointer_size: pointer_size,
         }
@@ -83,7 +83,7 @@ impl<'tcx> Memory<'tcx> {
             substs: substs,
             fn_ty: fn_ty,
         };
-        if let Some(&alloc_id) = self.function_definitions.get(&def) {
+        if let Some(&alloc_id) = self.function_alloc_cache.get(&def) {
             return Pointer {
                 alloc_id: alloc_id,
                 offset: 0,
@@ -93,7 +93,7 @@ impl<'tcx> Memory<'tcx> {
         debug!("creating fn ptr: {}", id);
         self.next_id.0 += 1;
         self.functions.insert(id, def);
-        self.function_definitions.insert(def, id);
+        self.function_alloc_cache.insert(def, id);
         Pointer {
             alloc_id: id,
             offset: 0,
