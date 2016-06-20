@@ -68,7 +68,7 @@ fn main() {
     let host = env::var("HOST").unwrap();
     let is_crossed = target != host;
 
-    let optional_components = ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl"];
+    let optional_components = ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl", "nvptx"];
 
     // FIXME: surely we don't need all these components, right? Stuff like mcjit
     //        or interpreter the compiler itself never uses.

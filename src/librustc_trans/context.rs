@@ -1097,6 +1097,19 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
     ifn!("llvm.localrecover", fn(i8p, i8p, t_i32) -> i8p);
     ifn!("llvm.x86.seh.recoverfp", fn(i8p, i8p) -> i8p);
 
+    ifn!("llvm.cuda.syncthreads", fn() -> void);
+    ifn!("llvm.nvvm.read.ptx.sreg.tid.x", fn() -> t_i32);
+    ifn!("llvm.nvvm.read.ptx.sreg.tid.y", fn() -> t_i32);
+    ifn!("llvm.nvvm.read.ptx.sreg.tid.z", fn() -> t_i32);
+    ifn!("llvm.nvvm.read.ptx.sreg.ctaid.x", fn() -> t_i32);
+    ifn!("llvm.nvvm.read.ptx.sreg.ctaid.y", fn() -> t_i32);
+    ifn!("llvm.nvvm.read.ptx.sreg.ctaid.z", fn() -> t_i32);
+    ifn!("llvm.nvvm.read.ptx.sreg.ntid.x", fn() -> t_i32);
+    ifn!("llvm.nvvm.read.ptx.sreg.ntid.y", fn() -> t_i32);
+    ifn!("llvm.nvvm.read.ptx.sreg.ntid.z", fn() -> t_i32);
+    ifn!("llvm.nvvm.read.ptx.sreg.nctaid.x", fn() -> t_i32);
+    ifn!("llvm.nvvm.read.ptx.sreg.nctaid.y", fn() -> t_i32);
+    ifn!("llvm.nvvm.read.ptx.sreg.nctaid.z", fn() -> t_i32);
     ifn!("llvm.assume", fn(i1) -> void);
 
     if ccx.sess().opts.debuginfo != NoDebugInfo {

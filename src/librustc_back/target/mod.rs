@@ -141,7 +141,9 @@ supported_targets! {
     ("i586-pc-windows-msvc", i586_pc_windows_msvc),
 
     ("le32-unknown-nacl", le32_unknown_nacl),
-    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten)
+    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
+    ("nvptx-unknown-unknown", nvptx_unknown_unknown),
+    ("nvptx64-unknown-unknown", nvptx64_unknown_unknown)
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
