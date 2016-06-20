@@ -69,15 +69,26 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
     match bin_op {
         // can have rhs with a different numeric type
         Shl | Shr => {
+            let mask_bits = match left {
+                I8(_) => 3,
+                I16(_) => 4,
+                I32(_) => 5,
+                I64(_) => 6,
+                U8(_) => 3,
+                U16(_) => 4,
+                U32(_) => 5,
+                U64(_) => 6,
+                _ => unreachable!(),
+            };
             let r = match right {
-                I8(i) if i >= 0 => i as u32,
-                I16(i) if i >= 0 => i as u32,
-                I32(i) if i >= 0 => i as u32,
-                I64(i) if i >= 0 && i as i32 as i64 == i => i as u32,
-                U8(i) => i as u32,
-                U16(i) => i as u32,
-                U32(i) => i,
-                U64(i) if i as u32 as u64 == i => i as u32,
+                I8(i) => (i & ((1 << mask_bits) - 1)) as u32,
+                I16(i) => (i & ((1 << mask_bits) - 1)) as u32,
+                I32(i) => (i & ((1 << mask_bits) - 1)) as u32,
+                I64(i) => (i & ((1 << mask_bits) - 1)) as u32,
+                U8(i) => (i & ((1 << mask_bits) - 1)) as u32,
+                U16(i) => (i & ((1 << mask_bits) - 1)) as u32,
+                U32(i) => (i & ((1 << mask_bits) - 1)) as u32,
+                U64(i) => (i & ((1 << mask_bits) - 1)) as u32,
                 _ => return Err(EvalError::InvalidBitShiftRhs(right)),
             };
             macro_rules! shift {

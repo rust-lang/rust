@@ -69,7 +69,7 @@ impl<'tcx> Error for EvalError<'tcx> {
             EvalError::Math(..) =>
                 "mathematical operation failed",
             EvalError::InvalidBitShiftRhs(..) =>
-                "bit shift rhs negative or not an int",
+                "bit shift rhs not an int",
         }
     }
 
