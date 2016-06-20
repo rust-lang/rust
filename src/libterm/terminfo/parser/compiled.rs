@@ -323,8 +323,9 @@ pub fn parse(file: &mut io::Read, longnames: bool) -> Result<TermInfo, String> {
     })
 }
 
-/// Create a dummy TermInfo struct for msys terminals
-pub fn msys_terminfo() -> TermInfo {
+/// Create a dummy TermInfo struct which only supports ISO 6429 (ANSI) color sequences. This is
+/// used for msys and when CLICOLOR(_FORCE) is set.
+pub fn ansi_terminfo() -> TermInfo {
     let mut strings = HashMap::new();
     strings.insert("sgr0".to_string(), b"\x1B[0m".to_vec());
     strings.insert("bold".to_string(), b"\x1B[1m".to_vec());
