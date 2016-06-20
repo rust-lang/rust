@@ -391,7 +391,7 @@ impl Handler {
                             treat_err_as_bug: bool,
                             cm: Rc<codemap::CodeMap>)
                             -> Handler {
-        let emitter = Box::new(EmitterWriter::stderr(color_config, registry, cm));
+        let emitter = Box::new(EmitterWriter::stderr(color_config, treat_err_as_bug, registry, cm));
         Handler::with_emitter(can_emit_warnings, treat_err_as_bug, emitter)
     }
 
