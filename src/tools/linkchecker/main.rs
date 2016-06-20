@@ -249,15 +249,15 @@ fn load_file(cache: &mut Cache,
             None
         }
         Entry::Vacant(entry) => {
-            let mut fp = try!(File::open(file.clone()).map_err(|err| {
+            let mut fp = File::open(file.clone()).map_err(|err| {
                 if let FromRedirect(true) = redirect {
                     LoadError::BrokenRedirect(file.clone(), err)
                 } else {
                     LoadError::IOError(err)
                 }
-            }));
-            try!(fp.read_to_string(&mut contents)
-                   .map_err(|err| LoadError::IOError(err)));
+            })?;
+            fp.read_to_string(&mut contents)
+              .map_err(|err| LoadError::IOError(err))?;
 
             let maybe = maybe_redirect(&contents);
             if maybe.is_some() {

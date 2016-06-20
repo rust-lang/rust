@@ -146,7 +146,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
         // Load up the hashes for the def-ids from this crate.
         let mut decoder = Decoder::new(data, 0);
-        let serialized_hashes = try!(SerializedMetadataHashes::decode(&mut decoder));
+        let serialized_hashes = SerializedMetadataHashes::decode(&mut decoder)?;
         for serialized_hash in serialized_hashes.hashes {
             // the hashes are stored with just a def-index, which is
             // always relative to the old crate; convert that to use
