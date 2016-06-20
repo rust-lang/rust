@@ -30,7 +30,6 @@ pub enum EvalError<'tcx> {
     ArrayIndexOutOfBounds(Span, u64, u64),
     Math(Span, ConstMathErr),
     InvalidBitShiftRhs(PrimVal),
-    Overflow(PrimVal, PrimVal, mir::BinOp, PrimVal),
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -71,8 +70,6 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "mathematical operation failed",
             EvalError::InvalidBitShiftRhs(..) =>
                 "bit shift rhs negative or not an int",
-            EvalError::Overflow(..) =>
-                "mathematical operation overflowed",
         }
     }
 
@@ -92,8 +89,6 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "array index {} out of bounds {} at {:?}", index, len, span),
             EvalError::Math(span, ref err) =>
                 write!(f, "mathematical operation at {:?} failed with {:?}", span, err),
-            EvalError::Overflow(l, r, op, val) =>
-                write!(f, "mathematical operation overflowed: {:?} {} {:?} => {:?}", l, op.to_hir_binop().as_str(), r, val),
             _ => write!(f, "{}", self.description()),
         }
     }

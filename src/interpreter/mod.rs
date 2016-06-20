@@ -688,13 +688,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.memory.write_bool(dest.offset(offset), overflowed)
     }
 
-    /// extracts the lhs and rhs primval from the operands and applies the binary op
+    /// Extracts the lhs and rhs primval from the operands and applies the binary op.
+    /// Returns the result and whether the operation overflowed
     fn eval_binop(
         &mut self,
         op: mir::BinOp,
         left: &mir::Operand<'tcx>,
         right: &mir::Operand<'tcx>,
-    ) -> EvalResult<'tcx, PrimVal> {
+    ) -> EvalResult<'tcx, (PrimVal, bool)> {
         let left_ptr = self.eval_operand(left)?;
         let left_ty = self.operand_ty(left);
         let left_val = self.read_primval(left_ptr, left_ty)?;
@@ -714,18 +715,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         right: &mir::Operand<'tcx>,
         dest: Pointer,
     ) -> EvalResult<'tcx, bool> {
-        match self.eval_binop(op, left, right) {
-            Ok(val) => {
-                self.memory.write_primval(dest, val)?;
-                Ok(false)
-            },
-            Err(EvalError::Overflow(l, r, op, val)) => {
-                debug!("operation overflowed: {:?} {} {:?} => {:?}", l, op.to_hir_binop().as_str(), r, val);
-                self.memory.write_primval(dest, val)?;
-                Ok(true)
-            },
-            Err(other) => Err(other),
-        }
+        let (val, overflow) = self.eval_binop(op, left, right)?;
+        self.memory.write_primval(dest, val)?;
+        Ok(overflow)
     }
 
     fn call_intrinsic(
@@ -951,7 +943,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
-                let result = self.eval_binop(bin_op, left, right)?;
+                // ignore overflow bit, rustc inserts check branches for us
+                let result = self.eval_binop(bin_op, left, right)?.0;
                 self.memory.write_primval(dest, result)?;
             }
 

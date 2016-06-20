@@ -14,7 +14,8 @@ pub enum PrimVal {
     IntegerPtr(u64),
 }
 
-pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResult<'tcx, PrimVal> {
+/// returns the result of the operation and whether the operation overflowed
+pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResult<'tcx, (PrimVal, bool)> {
     use rustc::mir::repr::BinOp::*;
     use self::PrimVal::*;
 
@@ -22,7 +23,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
         ($v:ident, $v2:ident, $l:ident, $op:ident, $r:ident) => ({
             let (val, of) = $l.$op($r);
             if of {
-                return Err(EvalError::Overflow($v($l), $v2($r), bin_op, $v(val)));
+                return Ok(($v(val), true));
             } else {
                 $v(val)
             }
@@ -99,7 +100,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 U64(l) => shift!(U64, l, r),
                 _ => unreachable!(),
             };
-            return Ok(val);
+            return Ok((val, false));
         },
         _ => {},
     }
@@ -137,7 +138,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
         (AbstractPtr(_), FnPtr(_)) |
         (FnPtr(_), IntegerPtr(_)) |
         (IntegerPtr(_), FnPtr(_)) =>
-            return unrelated_ptr_ops(bin_op),
+            unrelated_ptr_ops(bin_op)?,
 
         (FnPtr(l_ptr), FnPtr(r_ptr)) => match bin_op {
             Eq => Bool(l_ptr == r_ptr),
@@ -147,7 +148,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
 
         (AbstractPtr(l_ptr), AbstractPtr(r_ptr)) => {
             if l_ptr.alloc_id != r_ptr.alloc_id {
-                return unrelated_ptr_ops(bin_op);
+                return Ok((unrelated_ptr_ops(bin_op)?, false));
             }
 
             let l = l_ptr.offset;
@@ -167,7 +168,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
         (l, r) => return Err(EvalError::Unimplemented(format!("unimplemented binary op: {:?}, {:?}, {:?}", l, r, bin_op))),
     };
 
-    Ok(val)
+    Ok((val, false))
 }
 
 pub fn unary_op<'tcx>(un_op: mir::UnOp, val: PrimVal) -> EvalResult<'tcx, PrimVal> {
