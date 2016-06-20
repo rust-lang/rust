@@ -2999,11 +2999,17 @@ impl<'a> Parser<'a> {
                 let rhs = self.parse_ty()?;
                 lhs = self.mk_expr(lhs_span.lo, rhs.span.hi,
                                    ExprKind::Cast(lhs, rhs), None);
+                if self.check(&token::Dot) {
+                    lhs = self.parse_dot_or_call_expr_with(lhs, lhs_span.lo, None)?;
+                }
                 continue
             } else if op == AssocOp::Colon {
                 let rhs = self.parse_ty()?;
                 lhs = self.mk_expr(lhs_span.lo, rhs.span.hi,
                                    ExprKind::Type(lhs, rhs), None);
+                if self.check(&token::Dot) {
+                    lhs = self.parse_dot_or_call_expr_with(lhs, lhs_span.lo, None)?;
+                }
                 continue
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotDot {
                 // If we didn’t have to handle `x..`/`x...`, it would be pretty easy to
