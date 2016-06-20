@@ -286,10 +286,12 @@ fn format_ast<F>(krate: &ast::Crate,
                  main_file: &Path,
                  config: &Config,
                  mut after_file: F)
-                 -> Result<FileMap, io::Error>
-    where F: FnMut(&str, &mut StringBuffer) -> Result<(), io::Error>
+                 -> Result<(FileMap, bool), io::Error>
+    where F: FnMut(&str, &mut StringBuffer) -> Result<bool, io::Error>
 {
     let mut result = FileMap::new();
+    // diff mode: check if any files are differing
+    let mut has_diff = false;
 
     // We always skip children for the "Plain" write mode, since there is
     // nothing to distinguish the nested module contents.
@@ -305,12 +307,12 @@ fn format_ast<F>(krate: &ast::Crate,
         let mut visitor = FmtVisitor::from_codemap(parse_session, config);
         visitor.format_separate_mod(module);
 
-        try!(after_file(path, &mut visitor.buffer));
+        has_diff |= try!(after_file(path, &mut visitor.buffer));
 
         result.push((path.to_owned(), visitor.buffer));
     }
 
-    Ok(result)
+    Ok((result, has_diff))
 }
 
 // Formatting done on a char by char or line by line basis.
@@ -458,13 +460,17 @@ pub fn format_input<T: Write>(input: Input,
         format_lines(file, file_name, config, &mut report);
 
         if let Some(ref mut out) = out {
-            try!(filemap::write_file(file, file_name, out, config));
+            return filemap::write_file(file, file_name, out, config);
         }
-        Ok(())
+        Ok(false)
     }) {
-        Ok(file_map) => {
+        Ok((file_map, has_diff)) => {
             if report.has_warnings() {
                 summary.add_formatting_error();
+            }
+
+            if has_diff {
+                summary.add_diff();
             }
 
             Ok((summary, file_map, report))

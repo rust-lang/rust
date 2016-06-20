@@ -9,6 +9,9 @@ pub struct Summary {
 
     // Code is valid, but it is impossible to format it properly.
     has_formatting_errors: bool,
+
+    // Formatted code differs from existing code (write-mode diff only).
+    pub has_diff: bool,
 }
 
 impl Summary {
@@ -17,6 +20,7 @@ impl Summary {
             has_operational_errors: false,
             has_parsing_errors: false,
             has_formatting_errors: false,
+            has_diff: false,
         }
     }
 
@@ -44,13 +48,19 @@ impl Summary {
         self.has_formatting_errors = true;
     }
 
+    pub fn add_diff(&mut self) {
+        self.has_diff = true;
+    }
+
     pub fn has_no_errors(&self) -> bool {
-        !(self.has_operational_errors || self.has_parsing_errors || self.has_formatting_errors)
+        !(self.has_operational_errors || self.has_parsing_errors || self.has_formatting_errors ||
+          self.has_diff)
     }
 
     pub fn add(&mut self, other: Summary) {
         self.has_operational_errors |= other.has_operational_errors;
         self.has_formatting_errors |= other.has_formatting_errors;
         self.has_parsing_errors |= other.has_parsing_errors;
+        self.has_diff |= other.has_diff;
     }
 }
