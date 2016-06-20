@@ -1,5 +1,7 @@
 % Meet Safe and Unsafe
 
+![safe and unsafe](safeandunsafe.svg)
+
 Programmers in safe "high-level" languages face a fundamental dilemma. On one
 hand, it would be *really* great to just say what you want and not worry about
 how it's done. On the other hand, that can lead to unacceptably poor
