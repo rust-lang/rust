@@ -91,7 +91,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 U16(i) => (i & ((1 << mask_bits) - 1)) as u32,
                 U32(i) => (i & ((1 << mask_bits) - 1)) as u32,
                 U64(i) => (i & ((1 << mask_bits) - 1)) as u32,
-                _ => return Err(EvalError::InvalidBitShiftRhs(right)),
+                _ => panic!("bad MIR: bitshift rhs is not integral"),
             };
             macro_rules! shift {
                 ($v:ident, $l:ident, $r:ident) => ({

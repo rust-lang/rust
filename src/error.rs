@@ -5,7 +5,6 @@ use rustc::ty::BareFnTy;
 use memory::Pointer;
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
-use primval::PrimVal;
 
 #[derive(Clone, Debug)]
 pub enum EvalError<'tcx> {
@@ -29,7 +28,6 @@ pub enum EvalError<'tcx> {
     ExecuteMemory,
     ArrayIndexOutOfBounds(Span, u64, u64),
     Math(Span, ConstMathErr),
-    InvalidBitShiftRhs(PrimVal),
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -68,8 +66,6 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "array index out of bounds",
             EvalError::Math(..) =>
                 "mathematical operation failed",
-            EvalError::InvalidBitShiftRhs(..) =>
-                "bit shift rhs not an int",
         }
     }
 
