@@ -728,7 +728,7 @@ pub trait Read {
     /// # fn foo() -> io::Result<()> {
     /// let mut f = try!(File::open("foo.txt"));
     ///
-    /// for c in f.chars() {
+    /// for c in f.utf8_chars() {
     ///     println!("{}", c.unwrap());
     /// }
     /// # Ok(())
@@ -738,8 +738,15 @@ pub trait Read {
                                          of where errors happen is currently \
                                          unclear and may change",
                issue = "27802")]
-    fn chars(self) -> Chars<Self> where Self: Sized {
-        Chars { inner: self }
+    fn utf8_chars(self) -> Utf8Chars<Self> where Self: Sized {
+        Utf8Chars { inner: self }
+    }
+
+    /// Former name of the `utf8_chars` method.
+    #[rustc_deprecated(since = "1.10.0", reason = "renamed to `utf8_chars`")]
+    #[unstable(feature = "io", reason = "renamed while unstable", issue = "27802")]
+    fn chars(self) -> Utf8Chars<Self> where Self: Sized {
+        self.utf8_chars()
     }
 
     /// Creates an adaptor which will chain this stream with another.
@@ -1549,22 +1556,22 @@ impl<R: Read> Iterator for Bytes<R> {
 
 /// An iterator over the `char`s of a reader.
 ///
-/// This struct is generally created by calling [`chars()`][chars] on a reader.
-/// Please see the documentation of `chars()` for more details.
+/// This struct is generally created by calling [`utf8_chars()`][utf8_chars] on a reader.
+/// Please see the documentation of `utf8_chars()` for more details.
 ///
-/// [chars]: trait.Read.html#method.chars
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+/// [utf8_chars]: trait.Read.html#method.utf8_chars
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars",
            issue = "27802")]
-pub struct Chars<R> {
+pub struct Utf8Chars<R> {
     inner: R,
 }
 
-/// An enumeration of possible errors that can be generated from the `Chars`
+/// An enumeration of possible errors that can be generated from the `Utf8Chars`
 /// adapter.
 #[derive(Debug)]
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars",
            issue = "27802")]
-pub enum CharsError {
+pub enum Utf8CharsError {
     /// Variant representing that the underlying stream was read successfully
     /// but it did not contain valid utf8 data.
     NotUtf8,
@@ -1573,65 +1580,65 @@ pub enum CharsError {
     Other(Error),
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars",
            issue = "27802")]
-impl<R: Read> Iterator for Chars<R> {
-    type Item = result::Result<char, CharsError>;
+impl<R: Read> Iterator for Utf8Chars<R> {
+    type Item = result::Result<char, Utf8CharsError>;
 
-    fn next(&mut self) -> Option<result::Result<char, CharsError>> {
+    fn next(&mut self) -> Option<result::Result<char, Utf8CharsError>> {
         let mut buf = [0];
         let first_byte = match self.inner.read(&mut buf) {
             Ok(0) => return None,
             Ok(..) => buf[0],
-            Err(e) => return Some(Err(CharsError::Other(e))),
+            Err(e) => return Some(Err(Utf8CharsError::Other(e))),
         };
         let width = core_str::utf8_char_width(first_byte);
         if width == 1 { return Some(Ok(first_byte as char)) }
-        if width == 0 { return Some(Err(CharsError::NotUtf8)) }
+        if width == 0 { return Some(Err(Utf8CharsError::NotUtf8)) }
         let mut buf = [first_byte, 0, 0, 0];
         {
             let mut start = 1;
             while start < width {
                 match self.inner.read(&mut buf[start..width]) {
-                    Ok(0) => return Some(Err(CharsError::NotUtf8)),
+                    Ok(0) => return Some(Err(Utf8CharsError::NotUtf8)),
                     Ok(n) => start += n,
-                    Err(e) => return Some(Err(CharsError::Other(e))),
+                    Err(e) => return Some(Err(Utf8CharsError::Other(e))),
                 }
             }
         }
         Some(match str::from_utf8(&buf[..width]).ok() {
             Some(s) => Ok(s.chars().next().unwrap()),
-            None => Err(CharsError::NotUtf8),
+            None => Err(Utf8CharsError::NotUtf8),
         })
     }
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars",
            issue = "27802")]
-impl std_error::Error for CharsError {
+impl std_error::Error for Utf8CharsError {
     fn description(&self) -> &str {
         match *self {
-            CharsError::NotUtf8 => "invalid utf8 encoding",
-            CharsError::Other(ref e) => std_error::Error::description(e),
+            Utf8CharsError::NotUtf8 => "invalid utf8 encoding",
+            Utf8CharsError::Other(ref e) => std_error::Error::description(e),
         }
     }
     fn cause(&self) -> Option<&std_error::Error> {
         match *self {
-            CharsError::NotUtf8 => None,
-            CharsError::Other(ref e) => e.cause(),
+            Utf8CharsError::NotUtf8 => None,
+            Utf8CharsError::Other(ref e) => e.cause(),
         }
     }
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of Read::utf8_chars",
            issue = "27802")]
-impl fmt::Display for CharsError {
+impl fmt::Display for Utf8CharsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            CharsError::NotUtf8 => {
+            Utf8CharsError::NotUtf8 => {
                 "byte stream did not contain valid utf8".fmt(f)
             }
-            CharsError::Other(ref e) => e.fmt(f),
+            Utf8CharsError::Other(ref e) => e.fmt(f),
         }
     }
 }
