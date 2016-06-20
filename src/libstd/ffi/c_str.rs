@@ -75,7 +75,7 @@ use vec::Vec;
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
-    inner: Box<[u8]>,
+    inner: Box<[u8]>
 }
 
 /// Representation of a borrowed C string.
