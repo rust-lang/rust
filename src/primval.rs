@@ -82,17 +82,19 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 U64(_) => 6,
                 _ => unreachable!(),
             };
+            let mask = (1 << mask_bits) - 1;
             let r = match right {
-                I8(i) => (i & ((1 << mask_bits) - 1)) as u32,
-                I16(i) => (i & ((1 << mask_bits) - 1)) as u32,
-                I32(i) => (i & ((1 << mask_bits) - 1)) as u32,
-                I64(i) => (i & ((1 << mask_bits) - 1)) as u32,
-                U8(i) => (i & ((1 << mask_bits) - 1)) as u32,
-                U16(i) => (i & ((1 << mask_bits) - 1)) as u32,
-                U32(i) => (i & ((1 << mask_bits) - 1)) as u32,
-                U64(i) => (i & ((1 << mask_bits) - 1)) as u32,
+                I8(i) => i as u8 & mask,
+                I16(i) => i as u8 & mask,
+                I32(i) => i as u8 & mask,
+                I64(i) => i as u8 & mask,
+                U8(i) => i as u8 & mask,
+                U16(i) => i as u8 & mask,
+                U32(i) => i as u8 & mask,
+                U64(i) => i as u8 & mask,
                 _ => panic!("bad MIR: bitshift rhs is not integral"),
             };
+            let r = r as u32;
             macro_rules! shift {
                 ($v:ident, $l:ident, $r:ident) => ({
                     match bin_op {
