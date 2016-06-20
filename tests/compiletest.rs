@@ -4,8 +4,6 @@ use std::path::{PathBuf, Path};
 use std::io::Write;
 
 fn compile_fail(sysroot: &str) {
-    // Disable rustc's new error fomatting. It breaks these tests.
-    std::env::remove_var("RUST_NEW_ERROR_FORMAT");
     let flags = format!("--sysroot {} -Dwarnings", sysroot);
     for_all_targets(sysroot, |target| {
         let mut config = compiletest::default_config();
@@ -21,8 +19,6 @@ fn compile_fail(sysroot: &str) {
 }
 
 fn run_pass() {
-    // Disable rustc's new error fomatting. It breaks these tests.
-    std::env::remove_var("RUST_NEW_ERROR_FORMAT");
     let mut config = compiletest::default_config();
     config.mode = "run-pass".parse().expect("Invalid mode");
     config.src_base = PathBuf::from("tests/run-pass".to_string());
