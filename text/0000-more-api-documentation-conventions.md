@@ -167,7 +167,7 @@ documentation for more details."
 Instead, module-level documentation should show a high-level summary of
 everything in the module, and each type should document itself fully. It is
 okay if there is some small amount of duplication here. Module-level
-documentation should be broad, and not go into a lot of detail, which is left
+documentation should be broad and not go into a lot of detail. That is left
 to the type's documentation.
 
 ## Example
@@ -410,7 +410,7 @@ mod test {
 
 Within doc comments, use Markdown to format your documentation.
 
-Use top level headings # to indicate sections within your comment. Common headings:
+Use top level headings (`#`) to indicate sections within your comment. Common headings:
 
 * Examples
 * Panics
@@ -419,12 +419,18 @@ Use top level headings # to indicate sections within your comment. Common headin
 * Aborts
 * Undefined Behavior
 
+An example:
+
+```rust
+/// # Examples
+```
+
 Even if you only include one example, use the plural form: ‘Examples’ rather
 than ‘Example’. Future tooling is easier this way.
 
 Use backticks (`) to denote a code fragment within a sentence.
 
-Use backticks (```) to write longer examples, like this:
+Use triple backticks (```) to write longer examples, like this:
 
     This code does something cool.
 
