@@ -69,6 +69,8 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
     match bin_op {
         // can have rhs with a different numeric type
         Shl | Shr => {
+            // these numbers are the maximum number of bits a bitshift rhs could possibly have
+            // e.g. u16 can be bitshifted by 0..16, so 2^4 - 1 is the largest possible bitshift
             let mask_bits = match left {
                 I8(_) => 3,
                 I16(_) => 4,
