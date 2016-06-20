@@ -703,6 +703,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "dump MIR state at various points in translation"),
     orbit: bool = (false, parse_bool,
           "get MIR where it belongs - everywhere; most importantly, in orbit"),
+    rust_debuginfo: bool = (false, parse_bool,
+          "emit Rust-specific debuginfo instead of fallback encoding"),
 }
 
 pub fn default_lib_output() -> CrateType {

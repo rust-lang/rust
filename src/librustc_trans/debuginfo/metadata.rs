@@ -52,6 +52,8 @@ use syntax::parse::token;
 // From DWARF 5.
 // See http://www.dwarfstd.org/ShowIssue.php?issue=140129.1
 const DW_LANG_RUST: c_uint = 0x1c;
+const DW_LANG_UNKNOWN: c_uint = 0x0;
+
 #[allow(non_upper_case_globals)]
 const DW_ATE_boolean: c_uint = 0x02;
 #[allow(non_upper_case_globals)]
@@ -1013,10 +1015,17 @@ pub fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
     let producer = CString::new(producer).unwrap();
     let flags = "\0";
     let split_name = "\0";
+
+    let language = if cx.sess().opts.debugging_opts.rust_debuginfo {
+        DW_LANG_RUST
+    } else {
+        DW_LANG_UNKNOWN
+    };
+
     return unsafe {
         llvm::LLVMDIBuilderCreateCompileUnit(
             debug_context(cx).builder,
-            DW_LANG_RUST,
+            language,
             compile_unit_name,
             work_dir.as_ptr(),
             producer.as_ptr(),
