@@ -42,7 +42,7 @@ impl Pointer {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
 pub struct FunctionDefinition<'tcx> {
     pub def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
@@ -59,6 +59,8 @@ pub struct Memory<'tcx> {
     /// Function "allocations". They exist solely so pointers have something to point to, and
     /// we can figure out what they point to.
     functions: HashMap<AllocId, FunctionDefinition<'tcx>>,
+    /// Inverse map of `functions` so we don't allocate a new pointer every time we need one
+    function_alloc_cache: HashMap<FunctionDefinition<'tcx>, AllocId>,
     next_id: AllocId,
     pub pointer_size: usize,
 }
@@ -69,22 +71,29 @@ impl<'tcx> Memory<'tcx> {
         Memory {
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
+            function_alloc_cache: HashMap::new(),
             next_id: AllocId(0),
             pointer_size: pointer_size,
         }
     }
 
-    // FIXME: never create two pointers to the same def_id + substs combination
-    // maybe re-use the statics cache of the EvalContext?
     pub fn create_fn_ptr(&mut self, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
-        let id = self.next_id;
-        debug!("creating fn ptr: {}", id);
-        self.next_id.0 += 1;
-        self.functions.insert(id, FunctionDefinition {
+        let def = FunctionDefinition {
             def_id: def_id,
             substs: substs,
             fn_ty: fn_ty,
-        });
+        };
+        if let Some(&alloc_id) = self.function_alloc_cache.get(&def) {
+            return Pointer {
+                alloc_id: alloc_id,
+                offset: 0,
+            };
+        }
+        let id = self.next_id;
+        debug!("creating fn ptr: {}", id);
+        self.next_id.0 += 1;
+        self.functions.insert(id, def);
+        self.function_alloc_cache.insert(def, id);
         Pointer {
             alloc_id: id,
             offset: 0,
@@ -361,6 +370,7 @@ impl<'tcx> Memory<'tcx> {
             PrimVal::U32(n)  => self.write_uint(ptr, n as u64, 4),
             PrimVal::U64(n)  => self.write_uint(ptr, n as u64, 8),
             PrimVal::IntegerPtr(n) => self.write_uint(ptr, n as u64, pointer_size),
+            PrimVal::FnPtr(_p) |
             PrimVal::AbstractPtr(_p) => unimplemented!(),
         }
     }

@@ -10,28 +10,41 @@ pub enum PrimVal {
     U8(u8), U16(u16), U32(u32), U64(u64),
 
     AbstractPtr(Pointer),
+    FnPtr(Pointer),
     IntegerPtr(u64),
 }
 
-pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResult<'tcx, PrimVal> {
+/// returns the result of the operation and whether the operation overflowed
+pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResult<'tcx, (PrimVal, bool)> {
     use rustc::mir::repr::BinOp::*;
     use self::PrimVal::*;
+
+    macro_rules! overflow {
+        ($v:ident, $v2:ident, $l:ident, $op:ident, $r:ident) => ({
+            let (val, of) = $l.$op($r);
+            if of {
+                return Ok(($v(val), true));
+            } else {
+                $v(val)
+            }
+        })
+    }
 
     macro_rules! int_binops {
         ($v:ident, $l:ident, $r:ident) => ({
             match bin_op {
-                Add    => $v($l + $r),
-                Sub    => $v($l - $r),
-                Mul    => $v($l * $r),
-                Div    => $v($l / $r),
-                Rem    => $v($l % $r),
+                Add    => overflow!($v, $v, $l, overflowing_add, $r),
+                Sub    => overflow!($v, $v, $l, overflowing_sub, $r),
+                Mul    => overflow!($v, $v, $l, overflowing_mul, $r),
+                Div    => overflow!($v, $v, $l, overflowing_div, $r),
+                Rem    => overflow!($v, $v, $l, overflowing_rem, $r),
                 BitXor => $v($l ^ $r),
                 BitAnd => $v($l & $r),
                 BitOr  => $v($l | $r),
 
-                // TODO(solson): Can have differently-typed RHS.
-                Shl => $v($l << $r),
-                Shr => $v($l >> $r),
+                // these have already been handled
+                Shl => unreachable!(),
+                Shr => unreachable!(),
 
                 Eq => Bool($l == $r),
                 Ne => Bool($l != $r),
@@ -51,6 +64,58 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
             Lt | Le | Gt | Ge => Err(EvalError::InvalidPointerMath),
             _ => unimplemented!(),
         }
+    }
+
+    match bin_op {
+        // can have rhs with a different numeric type
+        Shl | Shr => {
+            // these numbers are the maximum number a bitshift rhs could possibly have
+            // e.g. u16 can be bitshifted by 0..16, so masking with 0b1111 (16 - 1) will ensure we are in that range
+            let type_bits: u32 = match left {
+                I8(_) | U8(_) => 8,
+                I16(_) | U16(_) => 16,
+                I32(_) | U32(_) => 32,
+                I64(_) | U64(_) => 64,
+                _ => unreachable!(),
+            };
+            assert!(type_bits.is_power_of_two());
+            // turn into `u32` because `overflowing_sh{l,r}` only take `u32`
+            let r = match right {
+                I8(i) => i as u32,
+                I16(i) => i as u32,
+                I32(i) => i as u32,
+                I64(i) => i as u32,
+                U8(i) => i as u32,
+                U16(i) => i as u32,
+                U32(i) => i as u32,
+                U64(i) => i as u32,
+                _ => panic!("bad MIR: bitshift rhs is not integral"),
+            };
+            // apply mask
+            let r = r & (type_bits - 1);
+            macro_rules! shift {
+                ($v:ident, $l:ident, $r:ident) => ({
+                    match bin_op {
+                        Shl => overflow!($v, U32, $l, overflowing_shl, $r),
+                        Shr => overflow!($v, U32, $l, overflowing_shr, $r),
+                        _ => unreachable!(),
+                    }
+                })
+            }
+            let val = match left {
+                I8(l) => shift!(I8, l, r),
+                I16(l) => shift!(I16, l, r),
+                I32(l) => shift!(I32, l, r),
+                I64(l) => shift!(I64, l, r),
+                U8(l) => shift!(U8, l, r),
+                U16(l) => shift!(U16, l, r),
+                U32(l) => shift!(U32, l, r),
+                U64(l) => shift!(U64, l, r),
+                _ => unreachable!(),
+            };
+            return Ok((val, false));
+        },
+        _ => {},
     }
 
     let val = match (left, right) {
@@ -80,12 +145,23 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
 
         (IntegerPtr(l), IntegerPtr(r)) => int_binops!(IntegerPtr, l, r),
 
-        (AbstractPtr(_), IntegerPtr(_)) | (IntegerPtr(_), AbstractPtr(_)) =>
-            return unrelated_ptr_ops(bin_op),
+        (AbstractPtr(_), IntegerPtr(_)) |
+        (IntegerPtr(_), AbstractPtr(_)) |
+        (FnPtr(_), AbstractPtr(_)) |
+        (AbstractPtr(_), FnPtr(_)) |
+        (FnPtr(_), IntegerPtr(_)) |
+        (IntegerPtr(_), FnPtr(_)) =>
+            unrelated_ptr_ops(bin_op)?,
+
+        (FnPtr(l_ptr), FnPtr(r_ptr)) => match bin_op {
+            Eq => Bool(l_ptr == r_ptr),
+            Ne => Bool(l_ptr != r_ptr),
+            _ => return Err(EvalError::Unimplemented(format!("unimplemented fn ptr comparison: {:?}", bin_op))),
+        },
 
         (AbstractPtr(l_ptr), AbstractPtr(r_ptr)) => {
             if l_ptr.alloc_id != r_ptr.alloc_id {
-                return unrelated_ptr_ops(bin_op);
+                return Ok((unrelated_ptr_ops(bin_op)?, false));
             }
 
             let l = l_ptr.offset;
@@ -105,7 +181,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
         (l, r) => return Err(EvalError::Unimplemented(format!("unimplemented binary op: {:?}, {:?}, {:?}", l, r, bin_op))),
     };
 
-    Ok(val)
+    Ok((val, false))
 }
 
 pub fn unary_op<'tcx>(un_op: mir::UnOp, val: PrimVal) -> EvalResult<'tcx, PrimVal> {

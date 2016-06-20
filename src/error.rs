@@ -3,6 +3,8 @@ use std::fmt;
 use rustc::mir::repr as mir;
 use rustc::ty::BareFnTy;
 use memory::Pointer;
+use rustc_const_math::ConstMathErr;
+use syntax::codemap::Span;
 
 #[derive(Clone, Debug)]
 pub enum EvalError<'tcx> {
@@ -24,6 +26,8 @@ pub enum EvalError<'tcx> {
     Unimplemented(String),
     DerefFunctionPointer,
     ExecuteMemory,
+    ArrayIndexOutOfBounds(Span, u64, u64),
+    Math(Span, ConstMathErr),
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -58,6 +62,10 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "tried to dereference a function pointer",
             EvalError::ExecuteMemory =>
                 "tried to treat a memory pointer as a function pointer",
+            EvalError::ArrayIndexOutOfBounds(..) =>
+                "array index out of bounds",
+            EvalError::Math(..) =>
+                "mathematical operation failed",
         }
     }
 
@@ -73,6 +81,10 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
             },
             EvalError::FunctionPointerTyMismatch(expected, got) =>
                 write!(f, "tried to call a function of type {:?} through a function pointer of type {:?}", expected, got),
+            EvalError::ArrayIndexOutOfBounds(span, len, index) =>
+                write!(f, "array index {} out of bounds {} at {:?}", index, len, span),
+            EvalError::Math(span, ref err) =>
+                write!(f, "mathematical operation at {:?} failed with {:?}", span, err),
             _ => write!(f, "{}", self.description()),
         }
     }
