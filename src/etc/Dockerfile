@@ -4,6 +4,8 @@ FROM ubuntu:xenial
 #   Download stage0, see src/bootstrap/bootstrap.py
 # g++
 #   Compile LLVM binding in src/rustllvm
+# gdb
+#   Used to run tests in src/test/debuginfo
 # git
 #   Get commit hash and commit date in version string
 # make
@@ -17,7 +19,7 @@ FROM ubuntu:xenial
 #   FileCheck is used to run tests in src/test/codegen
 
 RUN apt-get update && apt-get -y install \
-    curl g++ git make \
+    curl g++ gdb git make \
     libedit-dev zlib1g-dev \
     llvm-3.7-tools
 
