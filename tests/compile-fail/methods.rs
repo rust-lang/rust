@@ -181,11 +181,11 @@ fn filter_next() {
 
     // check single-line case
     let _ = v.iter().filter(|&x| *x < 0).next();
-    //~^ ERROR called `filter(p).next()` on an Iterator.
+    //~^ ERROR called `filter(p).next()` on an `Iterator`.
     //~| NOTE replace `filter(|&x| *x < 0).next()`
 
     // check multi-line case
-    let _ = v.iter().filter(|&x| { //~ERROR called `filter(p).next()` on an Iterator.
+    let _ = v.iter().filter(|&x| { //~ERROR called `filter(p).next()` on an `Iterator`.
                                 *x < 0
                             }
                    ).next();
