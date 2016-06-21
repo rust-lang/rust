@@ -129,7 +129,8 @@ pub fn main() {
     };
 
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
-        let mut metadata = cargo::metadata().expect("could not obtain cargo metadata");
+        let manifest_path = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
+        let mut metadata = cargo::metadata(manifest_path).expect("could not obtain cargo metadata");
         assert_eq!(metadata.version, 1);
         for target in metadata.packages.remove(0).targets {
             let args = std::env::args().skip(2);
