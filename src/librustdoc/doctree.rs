@@ -13,7 +13,6 @@
 pub use self::StructType::*;
 pub use self::TypeBound::*;
 
-use syntax;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast::{Name, NodeId};

@@ -6002,8 +6002,8 @@ impl<'a> Parser<'a> {
             // single-variant-enum... :
             let m = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m,
-                                                    span: mk_sp(mac_lo,
-                                                                self.last_span.hi) };
+                                                 span: mk_sp(mac_lo,
+                                                             self.last_span.hi) };
 
             if delim != token::Brace {
                 if !self.eat(&token::Semi) {
