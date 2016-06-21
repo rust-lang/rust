@@ -210,7 +210,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
             Char(c) => {
                 let ptr = self.memory.allocate(4);
-                self.memory.write_uint(ptr, c as u32 as u64, 4)?;
+                self.memory.write_uint(ptr, c as u64, 4)?;
                 Ok(ptr)
             },
             Struct(_node_id)  => unimplemented!(),

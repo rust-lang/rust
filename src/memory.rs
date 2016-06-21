@@ -369,7 +369,7 @@ impl<'tcx> Memory<'tcx> {
             PrimVal::U16(n)  => self.write_uint(ptr, n as u64, 2),
             PrimVal::U32(n)  => self.write_uint(ptr, n as u64, 4),
             PrimVal::U64(n)  => self.write_uint(ptr, n as u64, 8),
-            PrimVal::Char(c) => self.write_uint(ptr, c as u32 as u64, 4),
+            PrimVal::Char(c) => self.write_uint(ptr, c as u64, 4),
             PrimVal::IntegerPtr(n) => self.write_uint(ptr, n as u64, pointer_size),
             PrimVal::FnPtr(_p) |
             PrimVal::AbstractPtr(_p) => unimplemented!(),
