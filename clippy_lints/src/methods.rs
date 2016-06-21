@@ -159,6 +159,42 @@ declare_lint! {
     "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
 }
 
+/// **What it does:** This lint `Warn`s on `_.filter(_).map(_)`.
+///
+/// **Why is this bad?** Readability, this can be written more concisely as `_.filter_map(_)`.
+///
+/// **Known problems:** Often requires a condition + Option creation in `filter_map`
+///
+/// **Example:** `iter.filter(|x| x == 0).map(|x| x * 2)`
+declare_lint! {
+    pub FILTER_MAP, Allow,
+    "using `filter(_).map(_)`, which is more succinctly expressed as `.filter_map(_)`"
+}
+
+/// **What it does:** This lint `Warn`s on `_.filter(_).flat_map(_)`.
+///
+/// **Why is this bad?** Readability, this just needs the `flat_map` to return an empty iterator, if the value should be filtered.
+///
+/// **Known problems:** Often requires a condition + Iterator creation in `flat_map`
+///
+/// **Example:** `iter.filter(|x| x == 0).flat_map(|x| x.bits())`
+declare_lint! {
+    pub FILTER_FLAT_MAP, Allow,
+    "using `filter(_).flat_map(_)`, which can be rewritten using just the flat_map"
+}
+
+/// **What it does:** This lint `Warn`s on `_.filter_map(_).flat_map(_)`.
+///
+/// **Why is this bad?** Readability, this just needs the `flat_map` to return an empty iterator, if the value should be filtered.
+///
+/// **Known problems:** Often requires a condition + Iterator creation in `flat_map`
+///
+/// **Example:** `iter.filter_map(|x| x.process()).flat_map(|x| x.bits())`
+declare_lint! {
+    pub FILTER_MAP_FLAT_MAP, Allow,
+    "using `filter_map(_).flat_map(_)`, which can be rewritten using just the flat_map"
+}
+
 /// **What it does:** This lint `Warn`s on an iterator search (such as `find()`, `position()`, or
 /// `rposition()`) followed by a call to `is_some()`.
 ///
@@ -356,6 +392,9 @@ impl LintPass for Pass {
                     SINGLE_CHAR_PATTERN,
                     SEARCH_IS_SOME,
                     TEMPORARY_CSTRING_AS_PTR,
+                    FILTER_MAP,
+                    FILTER_FLAT_MAP,
+                    FILTER_MAP_FLAT_MAP,
                     ITER_NTH)
     }
 }
@@ -847,7 +886,7 @@ fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).map(q)` on an Iterator. This is more succinctly expressed by calling `.filter_map(..)` \
                    instead.";
-        span_lint(cx, FILTER_NEXT, expr.span, msg);
+        span_lint(cx, FILTER_MAP, expr.span, msg);
     }
 }
 
@@ -858,7 +897,7 @@ fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &Metho
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).flat_map(q)` on an Iterator. This is more succinctly expressed by calling `.flat_map(..)` \
                    and filtering by returning an empty Iterator.";
-        span_lint(cx, FILTER_NEXT, expr.span, msg);
+        span_lint(cx, FILTER_FLAT_MAP, expr.span, msg);
     }
 }
 
@@ -867,9 +906,9 @@ fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &Metho
 fn lint_filter_map_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
     // lint if caller of `.filter_map().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(p).flat_map(q)` on an Iterator. This is more succinctly expressed by calling `.flat_map(..)` \
+        let msg = "called `filter_map(p).flat_map(q)` on an Iterator. This is more succinctly expressed by calling `.flat_map(..)` \
                    and filtering by returning an empty Iterator.";
-        span_lint(cx, FILTER_NEXT, expr.span, msg);
+        span_lint(cx, FILTER_MAP_FLAT_MAP, expr.span, msg);
     }
 }
 
