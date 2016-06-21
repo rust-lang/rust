@@ -334,31 +334,30 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
 /// Get all arms that are unbounded `PatRange`s.
 fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
     arms.iter()
-        .filter_map(|arm| {
+        .flat_map(|arm| {
             if let Arm { ref pats, guard: None, .. } = *arm {
-                Some(pats.iter().filter_map(|pat| {
-                    if_let_chain! {[
-                        let PatKind::Range(ref lhs, ref rhs) = pat.node,
-                        let Ok(lhs) = eval_const_expr_partial(cx.tcx, lhs, ExprTypeChecked, None),
-                        let Ok(rhs) = eval_const_expr_partial(cx.tcx, rhs, ExprTypeChecked, None)
-                    ], {
-                        return Some(SpannedRange { span: pat.span, node: (lhs, rhs) });
-                    }}
-
-                    if_let_chain! {[
-                        let PatKind::Lit(ref value) = pat.node,
-                        let Ok(value) = eval_const_expr_partial(cx.tcx, value, ExprTypeChecked, None)
-                    ], {
-                        return Some(SpannedRange { span: pat.span, node: (value.clone(), value) });
-                    }}
-
-                    None
-                }))
+                pats.iter()
             } else {
+                [].iter()
+            }.filter_map(|pat| {
+                if_let_chain! {[
+                    let PatKind::Range(ref lhs, ref rhs) = pat.node,
+                    let Ok(lhs) = eval_const_expr_partial(cx.tcx, lhs, ExprTypeChecked, None),
+                    let Ok(rhs) = eval_const_expr_partial(cx.tcx, rhs, ExprTypeChecked, None)
+                ], {
+                    return Some(SpannedRange { span: pat.span, node: (lhs, rhs) });
+                }}
+
+                if_let_chain! {[
+                    let PatKind::Lit(ref value) = pat.node,
+                    let Ok(value) = eval_const_expr_partial(cx.tcx, value, ExprTypeChecked, None)
+                ], {
+                    return Some(SpannedRange { span: pat.span, node: (value.clone(), value) });
+                }}
+
                 None
-            }
+            })
         })
-        .flat_map(IntoIterator::into_iter)
         .collect()
 }
 
