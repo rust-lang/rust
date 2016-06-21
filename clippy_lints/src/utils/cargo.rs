@@ -65,13 +65,8 @@ impl From<json::DecoderError> for Error {
     }
 }
 
-pub fn metadata(manifest_path: Option<String>) -> Result<Metadata, Error> {
-    let mut cmd = Command::new("cargo");
-    cmd.arg("metadata").arg("--no-deps");
-    if let Some(ref mani) = manifest_path {
-        cmd.arg(mani);
-    }
-    let output = cmd.output()?;
+pub fn metadata() -> Result<Metadata, Error> {
+    let output = Command::new("cargo").args(&["metadata", "--no-deps"]).output()?;
     let stdout = from_utf8(&output.stdout)?;
     Ok(json::decode(stdout)?)
 }
