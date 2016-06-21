@@ -507,6 +507,37 @@ impl Thread {
     }
 
     /// Gets the thread's name.
+    ///
+    /// # Examples
+    ///
+    /// Threads by default have no name specified:
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new();
+    ///
+    /// let handler = builder.spawn(|| {
+    ///     assert!(thread::current().name().is_none());
+    /// }).unwrap();
+    ///
+    /// handler.join().unwrap();
+    /// ```
+    ///
+    /// Thread with a specified name:
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new()
+    ///     .name("foo".into());
+    ///
+    /// let handler = builder.spawn(|| {
+    ///     assert_eq!(thread::current().name(), Some("foo"))
+    /// }).unwrap();
+    ///
+    /// handler.join().unwrap();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(&self) -> Option<&str> {
         self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) } )

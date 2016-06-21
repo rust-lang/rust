@@ -509,6 +509,38 @@ impl CStr {
     /// The returned pointer will be valid for as long as `self` is and points
     /// to a contiguous region of memory terminated with a 0 byte to represent
     /// the end of the string.
+    ///
+    /// **WARNING**
+    ///
+    /// It is your responsibility to make sure that the underlying memory is not
+    /// freed too early. For example, the following code will cause undefined
+    /// behaviour when `ptr` is used inside the `unsafe` block:
+    ///
+    /// ```no_run
+    /// use std::ffi::{CString};
+    ///
+    /// let ptr = CString::new("Hello").unwrap().as_ptr();
+    /// unsafe {
+    ///     // `ptr` is dangling
+    ///     *ptr;
+    /// }
+    /// ```
+    ///
+    /// This happens because the pointer returned by `as_ptr` does not carry any
+    /// lifetime information and the string is deallocated immediately after
+    /// the `CString::new("Hello").unwrap().as_ptr()` expression is evaluated.
+    /// To fix the problem, bind the string to a local variable:
+    ///
+    /// ```no_run
+    /// use std::ffi::{CString};
+    ///
+    /// let hello = CString::new("Hello").unwrap();
+    /// let ptr = hello.as_ptr();
+    /// unsafe {
+    ///     // `ptr` is valid because `hello` is in scope
+    ///     *ptr;
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_ptr(&self) -> *const c_char {
         self.inner.as_ptr()
