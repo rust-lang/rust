@@ -19,7 +19,7 @@ script:
  - python util/update_lints.py -c
  - cargo build --features debugging
  - cargo test --features debugging
- - SYSROOT=~/rust cargo install
+ - cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
  - cargo clippy -- -D clippy
  - cd clippy_lints && cargo clippy -- -D clippy && cd ..
 
