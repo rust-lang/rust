@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 * New lints: [`wrong_transmute`]
 * For compatibility, `cargo clippy` does not defines the `clippy` feature
   introduced in 0.0.76 anymore
+* [`collapsible_if`] now considers `if let`
 
 ## 0.0.77 — 2016-06-21
 * Rustup to *rustc 1.11.0-nightly (5522e678b 2016-06-20)*
