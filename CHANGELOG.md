@@ -154,6 +154,9 @@ All notable changes to this project will be documented in this file.
 [`explicit_counter_loop`]: https://github.com/Manishearth/rust-clippy/wiki#explicit_counter_loop
 [`explicit_iter_loop`]: https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop
 [`extend_from_slice`]: https://github.com/Manishearth/rust-clippy/wiki#extend_from_slice
+[`filter_flat_map`]: https://github.com/Manishearth/rust-clippy/wiki#filter_flat_map
+[`filter_map`]: https://github.com/Manishearth/rust-clippy/wiki#filter_map
+[`filter_map_flat_map`]: https://github.com/Manishearth/rust-clippy/wiki#filter_map_flat_map
 [`filter_next`]: https://github.com/Manishearth/rust-clippy/wiki#filter_next
 [`float_arithmetic`]: https://github.com/Manishearth/rust-clippy/wiki#float_arithmetic
 [`float_cmp`]: https://github.com/Manishearth/rust-clippy/wiki#float_cmp
