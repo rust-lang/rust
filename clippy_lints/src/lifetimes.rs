@@ -71,19 +71,17 @@ enum RefLt {
     Named(Name),
 }
 
-fn bound_lifetimes(bound: &TyParamBound) -> Option<HirVec<&Lifetime>> {
+fn bound_lifetimes(bound: &TyParamBound) -> HirVec<&Lifetime> {
     if let TraitTyParamBound(ref trait_ref, _) = *bound {
-        let lt = trait_ref.trait_ref
-                          .path
-                          .segments
-                          .last()
-                          .expect("a path must have at least one segment")
-                          .parameters
-                          .lifetimes();
-
-        Some(lt)
+        trait_ref.trait_ref
+                 .path
+                 .segments
+                 .last()
+                 .expect("a path must have at least one segment")
+                 .parameters
+                 .lifetimes()
     } else {
-        None
+        HirVec::new()
     }
 }
 
@@ -94,7 +92,7 @@ fn check_fn_inner(cx: &LateContext, decl: &FnDecl, generics: &Generics, span: Sp
 
     let bounds_lts = generics.ty_params
                              .iter()
-                             .flat_map(|ref typ| typ.bounds.iter().filter_map(bound_lifetimes).flat_map(|lts| lts));
+                             .flat_map(|typ| typ.bounds.iter().flat_map(bound_lifetimes));
 
     if could_use_elision(cx, decl, &generics.lifetimes, bounds_lts) {
         span_lint(cx,
