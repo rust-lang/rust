@@ -14,7 +14,7 @@ use std::env;
 
 use ast;
 use ast::{Ident, Name, TokenTree};
-use codemap::Span;
+use syntax_pos::Span;
 use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
 use parse::token;

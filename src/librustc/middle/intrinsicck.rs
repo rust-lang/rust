@@ -18,7 +18,7 @@ use ty::layout::{LayoutError, Pointer, SizeSkeleton};
 
 use syntax::abi::Abi::RustIntrinsic;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use hir::intravisit::{self, Visitor, FnKind};
 use hir;
 

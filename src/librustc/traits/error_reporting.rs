@@ -37,8 +37,8 @@ use std::cmp;
 use std::fmt;
 use syntax::ast;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
-use syntax::codemap::Span;
-use syntax::errors::DiagnosticBuilder;
+use syntax_pos::Span;
+use errors::DiagnosticBuilder;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct TraitErrorKey<'tcx> {

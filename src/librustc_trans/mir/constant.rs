@@ -34,7 +34,7 @@ use type_of;
 use type_::Type;
 use value::Value;
 
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 
 use std::ptr;
 

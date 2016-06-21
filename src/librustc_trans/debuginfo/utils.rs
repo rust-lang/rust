@@ -21,8 +21,8 @@ use machine;
 use common::{CrateContext, FunctionContext};
 use type_::Type;
 
-use syntax::codemap::Span;
-use syntax::{ast, codemap};
+use syntax_pos::{self, Span};
+use syntax::ast;
 
 pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
 {
@@ -44,8 +44,8 @@ pub fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     };
 }
 
-/// Return codemap::Loc corresponding to the beginning of the span
-pub fn span_start(cx: &CrateContext, span: Span) -> codemap::Loc {
+/// Return syntax_pos::Loc corresponding to the beginning of the span
+pub fn span_start(cx: &CrateContext, span: Span) -> syntax_pos::Loc {
     cx.sess().codemap().lookup_char_pos(span.lo)
 }
 
@@ -88,7 +88,7 @@ pub fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: DefId)
     // Try to get some span information, if we have an inlined item.
     let definition_span = match cx.external().borrow().get(&def_id) {
         Some(&Some(node_id)) => cx.tcx().map.span(node_id),
-        _ => cx.tcx().map.def_id_span(def_id, codemap::DUMMY_SP)
+        _ => cx.tcx().map.def_id_span(def_id, syntax_pos::DUMMY_SP)
     };
 
     (containing_scope, definition_span)

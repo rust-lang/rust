@@ -23,7 +23,7 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use std::cmp::Ordering;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {

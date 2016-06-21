@@ -18,8 +18,9 @@ use syntax::ast;
 use syntax::ast::{Expr, Generics, Ident, SelfKind};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
-use syntax::codemap::{Span,respan};
+use syntax::codemap::respan;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 /// The types of pointers
 #[derive(Clone, Eq, PartialEq)]

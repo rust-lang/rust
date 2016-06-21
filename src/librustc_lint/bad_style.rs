@@ -15,7 +15,7 @@ use lint::{LintPass, LateLintPass};
 
 use syntax::ast;
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::FnKind;

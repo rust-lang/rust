@@ -44,8 +44,8 @@ use std::slice;
 use std::vec::IntoIter;
 use syntax::ast::{self, CrateNum, Name, NodeId};
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
+use syntax_pos::{DUMMY_SP, Span};
 
 use rustc_const_math::ConstInt;
 

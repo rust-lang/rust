@@ -17,9 +17,10 @@
 extern crate syntax;
 
 use syntax::ast;
-use syntax::codemap::{self, DUMMY_SP};
+use syntax::codemap;
 use syntax::parse;
 use syntax::print::pprust;
+use syntax_pos::DUMMY_SP;
 
 fn main() {
     let ps = syntax::parse::ParseSess::new();

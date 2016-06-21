@@ -49,7 +49,7 @@ use ty::relate::{RelateResult, TypeRelation};
 use traits::PredicateObligations;
 
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 #[derive(Clone)]
 pub struct CombineFields<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {

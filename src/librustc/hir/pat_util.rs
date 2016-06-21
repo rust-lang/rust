@@ -14,7 +14,8 @@ use hir::{self, PatKind};
 use ty::TyCtxt;
 use util::nodemap::FnvHashMap;
 use syntax::ast;
-use syntax::codemap::{Span, Spanned, DUMMY_SP};
+use syntax::codemap::Spanned;
+use syntax_pos::{Span, DUMMY_SP};
 
 use std::iter::{Enumerate, ExactSizeIterator};
 

@@ -19,6 +19,8 @@ rustc_back = { path = "../librustc_back" }
 rustc_bitflags = { path = "../librustc_bitflags" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_errors = { path = "../librustc_errors" }
 rustc_llvm = { path = "../librustc_llvm" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
+syntax_pos = { path "../libsyntax_pos" }

@@ -18,7 +18,8 @@ use attr::ThinAttributesExt;
 use util::parser::AssocOp;
 use attr;
 use attr::{AttrMetaMethods, AttributeMethods};
-use codemap::{self, CodeMap, BytePos};
+use codemap::{self, CodeMap};
+use syntax_pos::{self, BytePos};
 use errors;
 use parse::token::{self, keywords, BinOpToken, Token, InternedString};
 use parse::lexer::comments;
@@ -842,11 +843,11 @@ impl<'a> State<'a> {
         self.end() // close the head-box
     }
 
-    pub fn bclose_(&mut self, span: codemap::Span,
+    pub fn bclose_(&mut self, span: syntax_pos::Span,
                    indented: usize) -> io::Result<()> {
         self.bclose_maybe_open(span, indented, true)
     }
-    pub fn bclose_maybe_open(&mut self, span: codemap::Span,
+    pub fn bclose_maybe_open(&mut self, span: syntax_pos::Span,
                              indented: usize, close_box: bool) -> io::Result<()> {
         try!(self.maybe_print_comment(span.hi));
         try!(self.break_offset_if_not_bol(1, -(indented as isize)));
@@ -856,7 +857,7 @@ impl<'a> State<'a> {
         }
         Ok(())
     }
-    pub fn bclose(&mut self, span: codemap::Span) -> io::Result<()> {
+    pub fn bclose(&mut self, span: syntax_pos::Span) -> io::Result<()> {
         self.bclose_(span, INDENT_UNIT)
     }
 
@@ -900,7 +901,7 @@ impl<'a> State<'a> {
                                   mut op: F,
                                   mut get_span: G) -> io::Result<()> where
         F: FnMut(&mut State, &T) -> io::Result<()>,
-        G: FnMut(&T) -> codemap::Span,
+        G: FnMut(&T) -> syntax_pos::Span,
     {
         try!(self.rbox(0, b));
         let len = elts.len();
@@ -1352,7 +1353,7 @@ impl<'a> State<'a> {
 
     pub fn print_enum_def(&mut self, enum_definition: &ast::EnumDef,
                           generics: &ast::Generics, ident: ast::Ident,
-                          span: codemap::Span,
+                          span: syntax_pos::Span,
                           visibility: &ast::Visibility) -> io::Result<()> {
         try!(self.head(&visibility_qualified(visibility, "enum")));
         try!(self.print_ident(ident));
@@ -1364,7 +1365,7 @@ impl<'a> State<'a> {
 
     pub fn print_variants(&mut self,
                           variants: &[ast::Variant],
-                          span: codemap::Span) -> io::Result<()> {
+                          span: syntax_pos::Span) -> io::Result<()> {
         try!(self.bopen());
         for v in variants {
             try!(self.space_if_not_bol());
@@ -1393,7 +1394,7 @@ impl<'a> State<'a> {
                         struct_def: &ast::VariantData,
                         generics: &ast::Generics,
                         ident: ast::Ident,
-                        span: codemap::Span,
+                        span: syntax_pos::Span,
                         print_finalizer: bool) -> io::Result<()> {
         try!(self.print_ident(ident));
         try!(self.print_generics(generics));
@@ -2999,7 +3000,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    pub fn maybe_print_trailing_comment(&mut self, span: codemap::Span,
+    pub fn maybe_print_trailing_comment(&mut self, span: syntax_pos::Span,
                                         next_pos: Option<BytePos>)
         -> io::Result<()> {
         let cm = match self.cm {
@@ -3111,7 +3112,7 @@ mod tests {
 
         let decl = ast::FnDecl {
             inputs: Vec::new(),
-            output: ast::FunctionRetTy::Default(codemap::DUMMY_SP),
+            output: ast::FunctionRetTy::Default(syntax_pos::DUMMY_SP),
             variadic: false
         };
         let generics = ast::Generics::default();
@@ -3125,7 +3126,7 @@ mod tests {
     fn test_variant_to_string() {
         let ident = token::str_to_ident("principal_skinner");
 
-        let var = codemap::respan(codemap::DUMMY_SP, ast::Variant_ {
+        let var = syntax_pos::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
             name: ident,
             attrs: Vec::new(),
             // making this up as I go.... ?

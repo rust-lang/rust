@@ -21,7 +21,6 @@ extern crate rustc_plugin;
 
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::Span;
 use syntax::ext::base::{MultiDecorator, ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
@@ -29,6 +28,7 @@ use syntax::ptr::P;
 use syntax_ext::deriving::generic::{cs_fold, TraitDef, MethodDef, combine_substructure};
 use syntax_ext::deriving::generic::{Substructure, Struct, EnumMatching};
 use syntax_ext::deriving::generic::ty::{Literal, LifetimeBounds, Path, borrowed_explicit_self};
+use syntax_pos::Span;
 use rustc_plugin::Registry;
 
 #[plugin_registrar]

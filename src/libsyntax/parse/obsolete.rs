@@ -13,7 +13,7 @@
 //!
 //! Obsolete syntax that becomes too hard to parse can be removed.
 
-use codemap::Span;
+use syntax_pos::Span;
 use parse::parser;
 
 /// The specific types of unsupported syntax

@@ -20,8 +20,8 @@ use {CrateCtxt, require_same_types};
 use std::collections::{HashMap};
 use syntax::abi::Abi;
 use syntax::ast;
-use syntax::codemap::Span;
 use syntax::parse::token;
+use syntax_pos::Span;
 
 use rustc::hir;
 

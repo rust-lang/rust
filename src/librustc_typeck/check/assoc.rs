@@ -13,7 +13,7 @@ use rustc::traits::{self, FulfillmentContext, Normalized, MiscObligation,
                      SelectionContext, ObligationCause};
 use rustc::ty::fold::TypeFoldable;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 //FIXME(@jroesch): Ideally we should be able to drop the fulfillment_cx argument.
 pub fn normalize_associated_types_in<'a, 'gcx, 'tcx, T>(

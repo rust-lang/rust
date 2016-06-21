@@ -12,7 +12,7 @@
 use rustc::ty;
 
 use std::cell::Cell;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 #[derive(Clone)]
 pub struct ElisionFailureInfo {

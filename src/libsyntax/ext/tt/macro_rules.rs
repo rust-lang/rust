@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{self, TokenTree};
-use codemap::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};

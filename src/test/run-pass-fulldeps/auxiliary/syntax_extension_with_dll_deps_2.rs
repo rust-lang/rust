@@ -19,8 +19,8 @@ extern crate rustc;
 extern crate rustc_plugin;
 
 use syntax::ast::{TokenTree, Item, MetaItem};
-use syntax::codemap::Span;
 use syntax::ext::base::*;
+use syntax_pos::Span;
 use rustc_plugin::Registry;
 
 #[plugin_registrar]

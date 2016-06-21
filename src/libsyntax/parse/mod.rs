@@ -11,7 +11,8 @@
 //! The main parser interface
 
 use ast;
-use codemap::{self, Span, CodeMap, FileMap};
+use codemap::CodeMap;
+use syntax_pos::{self, Span, FileMap};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use parse::parser::Parser;
 use parse::token::InternedString;
@@ -211,8 +212,8 @@ pub fn filemap_to_parser<'a>(sess: &'a ParseSess,
     let end_pos = filemap.end_pos;
     let mut parser = tts_to_parser(sess, filemap_to_tts(sess, filemap), cfg);
 
-    if parser.token == token::Eof && parser.span == codemap::DUMMY_SP {
-        parser.span = codemap::mk_sp(end_pos, end_pos);
+    if parser.token == token::Eof && parser.span == syntax_pos::DUMMY_SP {
+        parser.span = syntax_pos::mk_sp(end_pos, end_pos);
     }
 
     parser
@@ -661,7 +662,7 @@ pub fn integer_lit(s: &str,
 mod tests {
     use super::*;
     use std::rc::Rc;
-    use codemap::{Span, BytePos, Pos, Spanned, NO_EXPANSION};
+    use syntax_pos::{Span, BytePos, Pos, Spanned, NO_EXPANSION};
     use ast::{self, TokenTree, PatKind};
     use abi::Abi;
     use attr::{first_attr_value_str_by_name, AttrMetaMethods};
@@ -673,7 +674,7 @@ mod tests {
     use util::parser_testing::{string_to_tts, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item, string_to_stmt};
 
-    // produce a codemap::span
+    // produce a syntax_pos::span
     fn sp(a: u32, b: u32) -> Span {
         Span {lo: BytePos(a), hi: BytePos(b), expn_id: NO_EXPANSION}
     }

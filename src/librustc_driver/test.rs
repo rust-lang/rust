@@ -31,12 +31,13 @@ use rustc::session::{self, config};
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::codemap::{CodeMap, DUMMY_SP};
-use syntax::errors;
-use syntax::errors::emitter::{CoreEmitter, Emitter};
-use syntax::errors::{Level, RenderSpan};
+use syntax::codemap::CodeMap;
+use errors;
+use errors::emitter::{CoreEmitter, Emitter};
+use errors::{Level, RenderSpan};
 use syntax::parse::token;
 use syntax::feature_gate::UnstableFeatures;
+use syntax_pos::DUMMY_SP;
 
 use rustc::hir;
 

@@ -81,8 +81,9 @@ use type_::Type;
 
 use rustc::hir;
 
-use syntax::{ast, codemap};
+use syntax::ast;
 use syntax::parse::token::InternedString;
+use syntax_pos;
 use std::fmt;
 use std::mem;
 
@@ -454,7 +455,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                              span: codemap::Span,
+                              span: syntax_pos::Span,
                               source: Datum<'tcx, Rvalue>,
                               target: Datum<'tcx, Rvalue>)
                               -> Block<'blk, 'tcx> {
@@ -1265,7 +1266,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             fields: &[hir::Field],
                             base: Option<&hir::Expr>,
-                            expr_span: codemap::Span,
+                            expr_span: syntax_pos::Span,
                             expr_id: ast::NodeId,
                             ty: Ty<'tcx>,
                             dest: Dest) -> Block<'blk, 'tcx> {

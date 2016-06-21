@@ -45,6 +45,7 @@ extern crate rustc;
 extern crate log;
 extern crate rustc_back;
 extern crate rustc_const_eval;
+extern crate syntax_pos;
 
 pub use rustc::lint as lint;
 pub use rustc::middle as middle;

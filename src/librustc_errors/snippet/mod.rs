@@ -10,8 +10,9 @@
 
 // Code for annotating snippets.
 
-use codemap::{CharPos, CodeMap, FileMap, LineInfo, Span};
-use errors::check_old_skool;
+use syntax_pos::{Span, FileMap, CharPos, LineInfo};
+use check_old_skool;
+use CodeMapper;
 use std::cmp;
 use std::rc::Rc;
 use std::mem;
@@ -20,7 +21,7 @@ mod test;
 
 #[derive(Clone)]
 pub struct SnippetData {
-    codemap: Rc<CodeMap>,
+    codemap: Rc<CodeMapper>,
     files: Vec<FileInfo>,
 }
 
@@ -111,7 +112,7 @@ pub enum RenderedLineKind {
 }
 
 impl SnippetData {
-    pub fn new(codemap: Rc<CodeMap>,
+    pub fn new(codemap: Rc<CodeMapper>,
                primary_span: Option<Span>) // (*)
                -> Self {
         // (*) The primary span indicates the file that must appear
@@ -454,7 +455,7 @@ impl FileInfo {
         return line_index - first_line_index;
     }
 
-    fn render_file_lines(&self, codemap: &Rc<CodeMap>) -> Vec<RenderedLine> {
+    fn render_file_lines(&self, codemap: &Rc<CodeMapper>) -> Vec<RenderedLine> {
         let old_school = check_old_skool();
 
         // As a first step, we elide any instance of more than one

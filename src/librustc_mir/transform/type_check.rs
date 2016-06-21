@@ -22,7 +22,7 @@ use rustc::mir::tcx::LvalueTy;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::visit::{self, Visitor};
 use std::fmt;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_data_structures::indexed_vec::Idx;
 

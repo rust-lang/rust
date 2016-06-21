@@ -26,10 +26,11 @@ use middle::cstore;
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::errors::{ColorConfig, Handler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
+
+use errors::{ColorConfig, Handler};
 
 use getopts;
 use std::collections::HashMap;

@@ -11,7 +11,8 @@
 use attr::{AttrMetaMethods, HasAttrs};
 use feature_gate::{emit_feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
 use fold::Folder;
-use {ast, fold, attr};
+use {fold, attr};
+use ast;
 use codemap::{Spanned, respan};
 use parse::{ParseSess, token};
 use ptr::P;

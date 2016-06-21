@@ -33,7 +33,7 @@ pub use self::LintSource::*;
 
 use std::hash;
 use std::ascii::AsciiExt;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use hir::intravisit::FnKind;
 use syntax::visit as ast_visit;
 use syntax::ast;

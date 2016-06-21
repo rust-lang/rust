@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{self, Arg, Arm, Block, Expr, Item, Pat, Stmt, TokenTree, Ty};
-use codemap::Span;
+use syntax_pos::Span;
 use ext::base::ExtCtxt;
 use ext::base;
 use ext::build::AstBuilder;
@@ -36,7 +36,8 @@ pub mod rt {
     use ast::TokenTree;
 
     pub use parse::new_parser_from_tts;
-    pub use codemap::{BytePos, Span, dummy_spanned, DUMMY_SP};
+    pub use syntax_pos::{BytePos, Span, DUMMY_SP};
+    pub use codemap::{dummy_spanned};
 
     pub trait ToTokens {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree>;

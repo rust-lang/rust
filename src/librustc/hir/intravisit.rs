@@ -28,7 +28,8 @@
 use syntax::abi::Abi;
 use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
 use syntax::attr::ThinAttributesExt;
-use syntax::codemap::{Span, Spanned};
+use syntax::codemap::Spanned;
+use syntax_pos::Span;
 use hir::*;
 
 use std::cmp;

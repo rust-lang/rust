@@ -20,9 +20,9 @@ use std::env;
 use std::mem;
 use std::path::PathBuf;
 use syntax::ast;
-use syntax::codemap::{Span, COMMAND_LINE_SP};
 use syntax::ptr::P;
 use syntax::attr::AttrMetaMethods;
+use syntax_pos::{Span, COMMAND_LINE_SP};
 
 /// Pointer to a registrar function.
 pub type PluginRegistrarFun =
