@@ -1,7 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.76 — TBD
+## 0.0.77 — 2016-06-21
+* Rustup to *rustc 1.11.0-nightly (5522e678b 2016-06-20)*
+* New lints: [`stutter`] and [`iter_nth`]
+
+## 0.0.76 — 2016-06-10
 * Rustup to *rustc 1.11.0-nightly (7d2f75a95 2016-06-09)*
 * `cargo clippy` now automatically defines the `clippy` feature
 
