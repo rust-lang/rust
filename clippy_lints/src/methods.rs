@@ -858,7 +858,7 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &Method
 
 #[allow(ptr_arg)]
 // Type of MethodArgs is potentially a Vec
-/// lint use of `filter().next() for Iterators`
+/// lint use of `filter().next()` for `Iterators`
 fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &MethodArgs) {
     // lint if caller of `.filter().next()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
@@ -880,7 +880,7 @@ fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &MethodArgs
 }
 
 // Type of MethodArgs is potentially a Vec
-/// lint use of `filter().map() for Iterators`
+/// lint use of `filter().map()` for `Iterators`
 fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
@@ -891,7 +891,7 @@ fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs
 }
 
 // Type of MethodArgs is potentially a Vec
-/// lint use of `filter().flat_map() for Iterators`
+/// lint use of `filter().flat_map()` for `Iterators`
 fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
     // lint if caller of `.filter().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
@@ -902,7 +902,7 @@ fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &Metho
 }
 
 // Type of MethodArgs is potentially a Vec
-/// lint use of `filter_map().flat_map() for Iterators`
+/// lint use of `filter_map().flat_map()` for `Iterators`
 fn lint_filter_map_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
     // lint if caller of `.filter_map().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
