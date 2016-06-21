@@ -34,7 +34,7 @@ use CrateCtxt;
 use rustc::infer::{self, InferCtxt, TypeOrigin};
 use std::cell::RefCell;
 use std::rc::Rc;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use util::nodemap::{DefIdMap, FnvHashMap};
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;

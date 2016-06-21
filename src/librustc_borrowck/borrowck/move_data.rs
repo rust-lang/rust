@@ -28,7 +28,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::usize;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 

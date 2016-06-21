@@ -18,8 +18,8 @@ use ext::mtwt;
 use ext::build::AstBuilder;
 use attr;
 use attr::{AttrMetaMethods, WithAttrs, ThinAttributesExt};
-use codemap;
-use codemap::{Span, Spanned, ExpnInfo, ExpnId, NameAndSpan, MacroBang, MacroAttribute};
+use codemap::{Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
+use syntax_pos::{self, Span, ExpnId};
 use config::StripUnconfigured;
 use ext::base::*;
 use feature_gate::{self, Features};
@@ -1040,7 +1040,7 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
                 result = expand_item(item, self);
                 self.pop_mod_path();
             } else {
-                let filename = if inner != codemap::DUMMY_SP {
+                let filename = if inner != syntax_pos::DUMMY_SP {
                     Some(self.cx.parse_sess.codemap().span_to_filename(inner))
                 } else { None };
                 let orig_filename = replace(&mut self.cx.filename, filename);
@@ -1271,7 +1271,7 @@ mod tests {
     }
 
     impl<'v> Visitor<'v> for IdentFinder {
-        fn visit_ident(&mut self, _: codemap::Span, id: ast::Ident){
+        fn visit_ident(&mut self, _: syntax_pos::Span, id: ast::Ident){
             self.ident_accumulator.push(id);
         }
     }

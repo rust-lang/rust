@@ -28,10 +28,11 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
-
+extern crate syntax_pos;
 extern crate flate;
 extern crate rbml;
 extern crate serialize as rustc_serialize; // used by deriving
+extern crate rustc_errors as errors;
 
 #[macro_use]
 extern crate rustc;

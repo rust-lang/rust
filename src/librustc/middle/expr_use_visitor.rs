@@ -30,7 +30,7 @@ use hir::{self, PatKind};
 
 use syntax::ast;
 use syntax::ptr::P;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait

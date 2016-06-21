@@ -32,9 +32,9 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::ast::Name;
 use syntax::codemap;
-use syntax::codemap::Pos;
 use syntax::parse::token::{self, BinOpToken, DelimToken, Lit, Token};
 use syntax::parse::lexer::TokenAndSpan;
+use syntax_pos::Pos;
 
 fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
     fn id() -> token::Token {
@@ -233,10 +233,10 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>, surrogate_
     lo -= surrogate_pairs_pos.binary_search(&(lo as usize)).unwrap_or_else(|x| x) as u32;
     hi -= surrogate_pairs_pos.binary_search(&(hi as usize)).unwrap_or_else(|x| x) as u32;
 
-    let sp = codemap::Span {
-        lo: codemap::BytePos(lo),
-        hi: codemap::BytePos(hi),
-        expn_id: codemap::NO_EXPANSION
+    let sp = syntax_pos::Span {
+        lo: syntax_pos::BytePos(lo),
+        hi: syntax_pos::BytePos(hi),
+        expn_id: syntax_pos::NO_EXPANSION
     };
 
     TokenAndSpan {

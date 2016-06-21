@@ -30,6 +30,7 @@ extern crate serialize as rustc_serialize;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
+extern crate syntax_pos;
 
 mod assert_dep_graph;
 mod calculate_svh;

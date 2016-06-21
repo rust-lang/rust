@@ -37,9 +37,10 @@ use middle::region;
 use rustc::ty::subst;
 use rustc::ty::{self, Ty, TyCtxt};
 
-use syntax::{ast, codemap};
+use syntax::ast;
 use syntax::ast::NodeIdAssigner;
 use syntax::ptr::P;
+use syntax_pos;
 
 use std::cell::Cell;
 use std::io::SeekFrom;
@@ -115,7 +116,7 @@ impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
     fn new_def_id(&self, def_id: DefId) -> DefId {
         self.tr_def_id(def_id)
     }
-    fn new_span(&self, span: codemap::Span) -> codemap::Span {
+    fn new_span(&self, span: syntax_pos::Span) -> syntax_pos::Span {
         self.tr_span(span)
     }
 }
@@ -206,7 +207,7 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
 
     /// Translates a `Span` from an extern crate to the corresponding `Span`
     /// within the local crate's codemap.
-    pub fn tr_span(&self, span: codemap::Span) -> codemap::Span {
+    pub fn tr_span(&self, span: syntax_pos::Span) -> syntax_pos::Span {
         decoder::translate_span(self.cdata,
                                 self.tcx.sess.codemap(),
                                 &self.last_filemap_index,
@@ -226,8 +227,8 @@ impl tr for Option<DefId> {
     }
 }
 
-impl tr for codemap::Span {
-    fn tr(&self, dcx: &DecodeContext) -> codemap::Span {
+impl tr for syntax_pos::Span {
+    fn tr(&self, dcx: &DecodeContext) -> syntax_pos::Span {
         dcx.tr_span(*self)
     }
 }
@@ -1268,7 +1269,7 @@ fn decode_item_ast(item_doc: rbml::Doc) -> hir::Item {
 
 #[cfg(test)]
 trait FakeExtCtxt {
-    fn call_site(&self) -> codemap::Span;
+    fn call_site(&self) -> syntax_pos::Span;
     fn cfg(&self) -> ast::CrateConfig;
     fn ident_of(&self, st: &str) -> ast::Ident;
     fn name_of(&self, st: &str) -> ast::Name;
@@ -1277,11 +1278,11 @@ trait FakeExtCtxt {
 
 #[cfg(test)]
 impl FakeExtCtxt for parse::ParseSess {
-    fn call_site(&self) -> codemap::Span {
-        codemap::Span {
-            lo: codemap::BytePos(0),
-            hi: codemap::BytePos(0),
-            expn_id: codemap::NO_EXPANSION,
+    fn call_site(&self) -> syntax_pos::Span {
+        syntax_pos::Span {
+            lo: syntax_pos::BytePos(0),
+            hi: syntax_pos::BytePos(0),
+            expn_id: syntax_pos::NO_EXPANSION,
         }
     }
     fn cfg(&self) -> ast::CrateConfig { Vec::new() }

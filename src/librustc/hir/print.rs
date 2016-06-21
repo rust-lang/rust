@@ -12,8 +12,7 @@ pub use self::AnnNode::*;
 
 use syntax::abi::Abi;
 use syntax::ast;
-use syntax::codemap::{self, CodeMap, BytePos, Spanned};
-use syntax::errors;
+use syntax::codemap::{CodeMap, Spanned};
 use syntax::parse::token::{self, keywords, BinOpToken};
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, break_offset, word, space, hardbreak};
@@ -21,6 +20,8 @@ use syntax::print::pp::{Breaks, eof};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
+use syntax_pos::{self, BytePos};
+use errors;
 
 use hir;
 use hir::{Crate, PatKind, RegionTyParamBound, SelfKind, TraitTyParamBound, TraitBoundModifier};
@@ -368,11 +369,11 @@ impl<'a> State<'a> {
         self.end() // close the head-box
     }
 
-    pub fn bclose_(&mut self, span: codemap::Span, indented: usize) -> io::Result<()> {
+    pub fn bclose_(&mut self, span: syntax_pos::Span, indented: usize) -> io::Result<()> {
         self.bclose_maybe_open(span, indented, true)
     }
     pub fn bclose_maybe_open(&mut self,
-                             span: codemap::Span,
+                             span: syntax_pos::Span,
                              indented: usize,
                              close_box: bool)
                              -> io::Result<()> {
@@ -384,7 +385,7 @@ impl<'a> State<'a> {
         }
         Ok(())
     }
-    pub fn bclose(&mut self, span: codemap::Span) -> io::Result<()> {
+    pub fn bclose(&mut self, span: syntax_pos::Span) -> io::Result<()> {
         self.bclose_(span, indent_unit)
     }
 
@@ -432,7 +433,7 @@ impl<'a> State<'a> {
                                   mut get_span: G)
                                   -> io::Result<()>
         where F: FnMut(&mut State, &T) -> io::Result<()>,
-              G: FnMut(&T) -> codemap::Span
+              G: FnMut(&T) -> syntax_pos::Span
     {
         self.rbox(0, b)?;
         let len = elts.len();
@@ -859,7 +860,7 @@ impl<'a> State<'a> {
                           enum_definition: &hir::EnumDef,
                           generics: &hir::Generics,
                           name: ast::Name,
-                          span: codemap::Span,
+                          span: syntax_pos::Span,
                           visibility: &hir::Visibility)
                           -> io::Result<()> {
         self.head(&visibility_qualified(visibility, "enum"))?;
@@ -872,7 +873,7 @@ impl<'a> State<'a> {
 
     pub fn print_variants(&mut self,
                           variants: &[hir::Variant],
-                          span: codemap::Span)
+                          span: syntax_pos::Span)
                           -> io::Result<()> {
         self.bopen()?;
         for v in variants {
@@ -902,7 +903,7 @@ impl<'a> State<'a> {
                         struct_def: &hir::VariantData,
                         generics: &hir::Generics,
                         name: ast::Name,
-                        span: codemap::Span,
+                        span: syntax_pos::Span,
                         print_finalizer: bool)
                         -> io::Result<()> {
         self.print_name(name)?;
@@ -2237,7 +2238,7 @@ impl<'a> State<'a> {
     }
 
     pub fn maybe_print_trailing_comment(&mut self,
-                                        span: codemap::Span,
+                                        span: syntax_pos::Span,
                                         next_pos: Option<BytePos>)
                                         -> io::Result<()> {
         let cm = match self.cm {

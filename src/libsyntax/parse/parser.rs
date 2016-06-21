@@ -40,7 +40,8 @@ use ast::{Visibility, WhereClause};
 use attr::{ThinAttributes, ThinAttributesExt, AttributesExt};
 use ast::{BinOpKind, UnOp};
 use ast;
-use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp, CodeMap};
+use codemap::{self, CodeMap, Spanned, spanned};
+use syntax_pos::{self, Span, BytePos, mk_sp};
 use errors::{self, DiagnosticBuilder};
 use ext::tt::macro_parser;
 use parse;
@@ -344,7 +345,7 @@ impl<'a> Parser<'a> {
     {
         let tok0 = rdr.real_token();
         let span = tok0.sp;
-        let filename = if span != codemap::DUMMY_SP {
+        let filename = if span != syntax_pos::DUMMY_SP {
             Some(sess.codemap().span_to_filename(span))
         } else { None };
         let placeholder = TokenAndSpan {
@@ -3500,7 +3501,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse the fields of a struct-like pattern
-    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<codemap::Spanned<ast::FieldPat>> , bool)> {
+    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<codemap::Spanned<ast::FieldPat>>, bool)> {
         let mut fields = Vec::new();
         let mut etc = false;
         let mut first = true;
@@ -3570,9 +3571,9 @@ impl<'a> Parser<'a> {
             };
 
             fields.push(codemap::Spanned { span: mk_sp(lo, hi),
-                                           node: ast::FieldPat { ident: fieldname,
-                                                                 pat: subpat,
-                                                                 is_shorthand: is_shorthand }});
+                                              node: ast::FieldPat { ident: fieldname,
+                                                                    pat: subpat,
+                                                                    is_shorthand: is_shorthand }});
         }
         return Ok((fields, etc));
     }
@@ -3663,7 +3664,7 @@ impl<'a> Parser<'a> {
                             SeqSep::none(), |p| p.parse_token_tree())?;
                         let mac = Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT };
                         pat = PatKind::Mac(codemap::Spanned {node: mac,
-                                                       span: mk_sp(lo, self.last_span.hi)});
+                                                               span: mk_sp(lo, self.last_span.hi)});
                     } else {
                         // Parse ident @ pat
                         // This can give false positives and parse nullary enums,
@@ -4915,8 +4916,8 @@ impl<'a> Parser<'a> {
                                             |p| p.parse_token_tree())?;
             let m_ = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m_,
-                                                span: mk_sp(lo,
-                                                            self.last_span.hi) };
+                                                    span: mk_sp(lo,
+                                                                self.last_span.hi) };
             if delim != token::Brace {
                 self.expect(&token::Semi)?
             }
@@ -5255,7 +5256,7 @@ impl<'a> Parser<'a> {
             return Err(self.fatal(&format!("expected item, found `{}`", token_str)));
         }
 
-        let hi = if self.span == codemap::DUMMY_SP {
+        let hi = if self.span == syntax_pos::DUMMY_SP {
             inner_lo
         } else {
             self.last_span.hi
@@ -6001,8 +6002,8 @@ impl<'a> Parser<'a> {
             // single-variant-enum... :
             let m = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m,
-                                             span: mk_sp(mac_lo,
-                                                         self.last_span.hi) };
+                                                    span: mk_sp(mac_lo,
+                                                                self.last_span.hi) };
 
             if delim != token::Brace {
                 if !self.eat(&token::Semi) {

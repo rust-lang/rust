@@ -13,10 +13,10 @@ use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast::{MetaItem, Expr, Mutability};
-use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             span: Span,

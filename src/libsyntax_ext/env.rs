@@ -15,11 +15,11 @@
  */
 
 use syntax::ast;
-use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
+use syntax_pos::Span;
 
 use std::env;
 

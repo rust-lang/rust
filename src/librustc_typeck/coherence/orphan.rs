@@ -16,7 +16,7 @@ use hir::def_id::DefId;
 use rustc::traits;
 use rustc::ty::{self, TyCtxt};
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use rustc::dep_graph::DepNode;
 use rustc::hir::intravisit;
 use rustc::hir;

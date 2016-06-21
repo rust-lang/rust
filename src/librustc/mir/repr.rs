@@ -25,7 +25,7 @@ use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
 use std::ops::{Index, IndexMut};
 use syntax::ast::{self, Name};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use super::cache::Cache;
 

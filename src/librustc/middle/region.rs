@@ -27,8 +27,9 @@ use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::fmt;
 use std::mem;
-use syntax::codemap::{self, Span};
+use syntax::codemap;
 use syntax::ast::{self, NodeId};
+use syntax_pos::Span;
 
 use hir;
 use hir::intravisit::{self, Visitor, FnKind};

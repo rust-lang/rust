@@ -52,10 +52,11 @@ use std::iter;
 use syntax::ast::*;
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::ptr::P;
-use syntax::codemap::{respan, Spanned, Span};
+use syntax::codemap::{respan, Spanned};
 use syntax::parse::token;
 use syntax::std_inject;
 use syntax::visit::{self, Visitor};
+use syntax_pos::Span;
 
 pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,

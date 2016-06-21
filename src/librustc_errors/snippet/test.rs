@@ -12,7 +12,8 @@
 
 #![cfg(test)]
 
-use codemap::{BytePos, CodeMap, FileMap, NO_EXPANSION, Span};
+use codemap::{CodeMap};
+use syntax_pos::{NO_EXPANSION, Span, FileMap, BytePos};
 use std::rc::Rc;
 use super::{RenderedLine, SnippetData};
 

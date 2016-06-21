@@ -12,7 +12,7 @@
 
 use visit::*;
 use ast::*;
-use codemap::Span;
+use syntax_pos::Span;
 
 pub struct NodeCounter {
     pub count: usize,

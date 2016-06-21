@@ -35,8 +35,8 @@ use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use syntax::codemap::CodeMap;
-use syntax::errors;
-use syntax::errors::emitter::ColorConfig;
+use errors;
+use errors::emitter::ColorConfig;
 use syntax::parse::token;
 
 use core;

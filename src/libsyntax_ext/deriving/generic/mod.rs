@@ -197,12 +197,12 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
-use syntax::codemap::{self, respan, DUMMY_SP};
-use syntax::codemap::Span;
-use syntax::errors::Handler;
+use syntax::codemap::{self, respan};
 use syntax::util::move_map::MoveMap;
 use syntax::parse::token::{keywords, InternedString};
 use syntax::ptr::P;
+use syntax_pos::{Span, DUMMY_SP};
+use errors::Handler;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 

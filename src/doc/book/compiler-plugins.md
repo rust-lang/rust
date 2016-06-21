@@ -45,11 +45,11 @@ extern crate syntax;
 extern crate rustc;
 extern crate rustc_plugin;
 
-use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ast::TokenTree;
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax::ext::build::AstBuilder;  // trait for expr_usize
+use syntax_pos::Span;
 use rustc_plugin::Registry;
 
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])

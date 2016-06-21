@@ -36,7 +36,8 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use util::nodemap::{NodeMap, FnvHashSet};
 
-use syntax::codemap::{self, mk_sp, respan, Span, Spanned, ExpnId};
+use syntax_pos::{mk_sp, Span, ExpnId};
+use syntax::codemap::{self, respan, Spanned};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};

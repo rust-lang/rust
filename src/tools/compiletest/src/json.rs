@@ -15,7 +15,7 @@ use std::path::Path;
 use runtest::{ProcRes};
 
 // These structs are a subset of the ones found in
-// `syntax::errors::json`.
+// `syntax::json`.
 
 #[derive(RustcEncodable, RustcDecodable)]
 struct Diagnostic {

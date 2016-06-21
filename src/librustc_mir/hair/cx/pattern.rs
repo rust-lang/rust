@@ -17,8 +17,8 @@ use rustc::hir::pat_util::{EnumerateAndAdjustIterator, pat_is_resolved_const};
 use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
 use rustc::hir::{self, PatKind};
-use syntax::codemap::Span;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 /// When there are multiple patterns in a single arm, each one has its
 /// own node-ids for the bindings.  References to the variables always

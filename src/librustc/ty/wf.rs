@@ -16,7 +16,7 @@ use traits;
 use ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use util::common::ErrorReported;
 
 /// Returns the set of obligations needed to make `ty` well-formed.

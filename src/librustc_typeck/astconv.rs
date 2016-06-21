@@ -73,10 +73,10 @@ use util::nodemap::{NodeMap, FnvHashSet};
 use rustc_const_math::ConstInt;
 use std::cell::RefCell;
 use syntax::{abi, ast};
-use syntax::codemap::{Span, Pos};
-use syntax::errors::DiagnosticBuilder;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token::{self, keywords};
+use syntax_pos::{Span, Pos};
+use errors::DiagnosticBuilder;
 
 pub trait AstConv<'gcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;

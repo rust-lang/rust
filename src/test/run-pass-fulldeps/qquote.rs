@@ -14,9 +14,9 @@
 
 extern crate syntax;
 
-use syntax::codemap::DUMMY_SP;
 use syntax::print::pprust::*;
 use syntax::parse::token::intern;
+use syntax_pos::DUMMY_SP;
 
 fn main() {
     let ps = syntax::parse::ParseSess::new();

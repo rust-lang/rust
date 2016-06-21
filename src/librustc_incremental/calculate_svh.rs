@@ -114,8 +114,8 @@ mod svh_visitor {
     pub use self::SawStmtComponent::*;
     use self::SawAbiComponent::*;
     use syntax::ast::{self, Name, NodeId};
-    use syntax::codemap::Span;
     use syntax::parse::token;
+    use syntax_pos::Span;
     use rustc::ty::TyCtxt;
     use rustc::hir;
     use rustc::hir::*;

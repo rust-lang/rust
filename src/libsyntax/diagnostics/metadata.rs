@@ -20,7 +20,7 @@ use std::io::Write;
 use std::error::Error;
 use rustc_serialize::json::as_json;
 
-use codemap::Span;
+use syntax_pos::Span;
 use ext::base::ExtCtxt;
 use diagnostics::plugin::{ErrorMap, ErrorInfo};
 

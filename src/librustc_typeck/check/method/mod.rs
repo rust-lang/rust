@@ -20,7 +20,7 @@ use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use rustc::infer;
 
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use rustc::hir;
 

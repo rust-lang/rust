@@ -10,7 +10,7 @@
 
 use syntax::abi::{Abi};
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::repr::{self, Mir};

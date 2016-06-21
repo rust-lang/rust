@@ -19,9 +19,10 @@ use rustc::ty::{self, Ty, TyCtxt};
 
 use std::collections::HashSet;
 use syntax::ast;
-use syntax::codemap::{Span};
-use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::keywords;
+use syntax_pos::Span;
+use errors::DiagnosticBuilder;
+
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir;
 

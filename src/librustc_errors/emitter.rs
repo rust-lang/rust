@@ -10,14 +10,14 @@
 
 use self::Destination::*;
 
-use codemap::{self, COMMAND_LINE_SP, DUMMY_SP, Span, MultiSpan};
-use diagnostics;
+use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, Span, MultiSpan, LineInfo};
+use registry;
 
-use errors::check_old_skool;
-use errors::{Level, RenderSpan, CodeSuggestion, DiagnosticBuilder};
-use errors::RenderSpan::*;
-use errors::Level::*;
-use errors::snippet::{RenderedLineKind, SnippetData, Style};
+use check_old_skool;
+use {Level, RenderSpan, CodeSuggestion, DiagnosticBuilder, CodeMapper};
+use RenderSpan::*;
+use Level::*;
+use snippet::{RenderedLineKind, SnippetData, Style};
 
 use std::{cmp, fmt};
 use std::io::prelude::*;
@@ -151,8 +151,8 @@ impl BasicEmitter {
 
 pub struct EmitterWriter {
     dst: Destination,
-    registry: Option<diagnostics::registry::Registry>,
-    cm: Rc<codemap::CodeMap>,
+    registry: Option<registry::Registry>,
+    cm: Rc<CodeMapper>,
 
     /// Is this the first error emitted thus far? If not, we emit a
     /// `\n` before the top-level errors.
@@ -193,8 +193,8 @@ macro_rules! println_maybe_styled {
 
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
-                  registry: Option<diagnostics::registry::Registry>,
-                  code_map: Rc<codemap::CodeMap>)
+                  registry: Option<registry::Registry>,
+                  code_map: Rc<CodeMapper>)
                   -> EmitterWriter {
         let old_school = check_old_skool();
         if color_config.use_color() {
@@ -214,8 +214,8 @@ impl EmitterWriter {
     }
 
     pub fn new(dst: Box<Write + Send>,
-               registry: Option<diagnostics::registry::Registry>,
-               code_map: Rc<codemap::CodeMap>)
+               registry: Option<registry::Registry>,
+               code_map: Rc<CodeMapper>)
                -> EmitterWriter {
         let old_school = check_old_skool();
         EmitterWriter { dst: Raw(dst),
@@ -326,11 +326,13 @@ impl EmitterWriter {
 
     fn highlight_suggestion(&mut self, suggestion: &CodeSuggestion) -> io::Result<()>
     {
+        use std::borrow::Borrow;
+
         let primary_span = suggestion.msp.primary_span().unwrap();
         let lines = self.cm.span_to_lines(primary_span).unwrap();
         assert!(!lines.lines.is_empty());
 
-        let complete = suggestion.splice_lines(&self.cm);
+        let complete = suggestion.splice_lines(self.cm.borrow());
         let line_count = cmp::min(lines.lines.len(), MAX_HIGHLIGHT_LINES);
         let display_lines = &lines.lines[..line_count];
 
@@ -430,7 +432,7 @@ impl EmitterWriter {
     }
 }
 
-fn line_num_max_digits(line: &codemap::LineInfo) -> usize {
+fn line_num_max_digits(line: &LineInfo) -> usize {
     let mut max_line_num = line.line_index + 1;
     let mut digits = 0;
     while max_line_num > 0 {
@@ -623,7 +625,8 @@ impl Write for Destination {
 mod test {
     use errors::{Level, CodeSuggestion};
     use super::EmitterWriter;
-    use codemap::{mk_sp, CodeMap, Span, MultiSpan, BytePos, NO_EXPANSION};
+    use codemap::CodeMap;
+    use syntax_pos::{mk_sp, Span, MultiSpan, BytePos, NO_EXPANSION};
     use std::sync::{Arc, Mutex};
     use std::io::{self, Write};
     use std::str::from_utf8;

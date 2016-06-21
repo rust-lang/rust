@@ -14,13 +14,14 @@ use self::Position::*;
 use fmt_macros as parse;
 
 use syntax::ast;
-use syntax::codemap::{Span, respan, DUMMY_SP};
+use syntax::codemap::respan;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
 use syntax::fold::Folder;
 use syntax::parse::token::{self, keywords};
 use syntax::ptr::P;
+use syntax_pos::{Span, DUMMY_SP};
 
 use std::collections::HashMap;
 

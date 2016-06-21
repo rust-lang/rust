@@ -21,7 +21,7 @@ use debuginfo::{self, declare_local, DebugLoc, VariableAccess, VariableKind};
 use machine;
 use type_of;
 
-use syntax::codemap::DUMMY_SP;
+use syntax_pos::DUMMY_SP;
 use syntax::parse::token::keywords;
 
 use std::ops::Deref;
