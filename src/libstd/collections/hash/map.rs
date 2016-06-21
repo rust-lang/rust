@@ -14,7 +14,7 @@ use self::VacantEntryState::*;
 use borrow::Borrow;
 use cmp::max;
 use fmt::{self, Debug};
-use hash::{Hash, SipHasher, BuildHasher};
+use hash::{Hash, Hasher, BuildHasher, SipHasher13};
 use iter::FromIterator;
 use mem::{self, replace};
 use ops::{Deref, Index};
@@ -1711,10 +1711,30 @@ impl RandomState {
 
 #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
 impl BuildHasher for RandomState {
-    type Hasher = SipHasher;
+    type Hasher = DefaultHasher;
     #[inline]
-    fn build_hasher(&self) -> SipHasher {
-        SipHasher::new_with_keys(self.k0, self.k1)
+    fn build_hasher(&self) -> DefaultHasher {
+        DefaultHasher(SipHasher13::new_with_keys(self.k0, self.k1))
+    }
+}
+
+/// The default `Hasher` used by `RandomState`.
+///
+/// The internal algorithm is not specified, and so it and its hashes should
+/// not be relied upon over releases.
+#[unstable(feature = "hashmap_default_hasher", issue = "0")]
+pub struct DefaultHasher(SipHasher13);
+
+#[unstable(feature = "hashmap_default_hasher", issue = "0")]
+impl Hasher for DefaultHasher {
+    #[inline]
+    fn write(&mut self, msg: &[u8]) {
+        self.0.write(msg)
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0.finish()
     }
 }
 

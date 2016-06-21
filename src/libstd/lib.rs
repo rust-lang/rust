@@ -255,6 +255,7 @@
 #![feature(reflect_marker)]
 #![feature(rustc_attrs)]
 #![feature(shared)]
+#![feature(sip_hash_13)]
 #![feature(slice_bytes)]
 #![feature(slice_concat_ext)]
 #![feature(slice_patterns)]
