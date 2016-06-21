@@ -862,7 +862,7 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &Method
 fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &MethodArgs) {
     // lint if caller of `.filter().next()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(p).next()` on an Iterator. This is more succinctly expressed by calling `.find(p)` \
+        let msg = "called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` \
                    instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
@@ -884,7 +884,7 @@ fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &MethodArgs
 fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(p).map(q)` on an Iterator. This is more succinctly expressed by calling `.filter_map(..)` \
+        let msg = "called `filter(p).map(q)` on an `Iterator`. This is more succinctly expressed by calling `.filter_map(..)` \
                    instead.";
         span_lint(cx, FILTER_MAP, expr.span, msg);
     }
@@ -895,7 +895,7 @@ fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs
 fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
     // lint if caller of `.filter().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(p).flat_map(q)` on an Iterator. This is more succinctly expressed by calling `.flat_map(..)` \
+        let msg = "called `filter(p).flat_map(q)` on an `Iterator`. This is more succinctly expressed by calling `.flat_map(..)` \
                    and filtering by returning an empty Iterator.";
         span_lint(cx, FILTER_FLAT_MAP, expr.span, msg);
     }
@@ -906,7 +906,7 @@ fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &Metho
 fn lint_filter_map_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
     // lint if caller of `.filter_map().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter_map(p).flat_map(q)` on an Iterator. This is more succinctly expressed by calling `.flat_map(..)` \
+        let msg = "called `filter_map(p).flat_map(q)` on an `Iterator`. This is more succinctly expressed by calling `.flat_map(..)` \
                    and filtering by returning an empty Iterator.";
         span_lint(cx, FILTER_MAP_FLAT_MAP, expr.span, msg);
     }
@@ -919,7 +919,7 @@ fn lint_search_is_some(cx: &LateContext, expr: &hir::Expr, search_method: &str, 
                        is_some_args: &MethodArgs) {
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &*is_some_args[0], &paths::ITERATOR) {
-        let msg = format!("called `is_some()` after searching an iterator with {}. This is more succinctly expressed \
+        let msg = format!("called `is_some()` after searching an `Iterator` with {}. This is more succinctly expressed \
                            by calling `any()`.",
                           search_method);
         let search_snippet = snippet(cx, search_args[1].span, "..");
