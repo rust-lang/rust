@@ -34,7 +34,7 @@ code that manipulates syntax trees at
 compile time.
 
 Let's write a plugin
-[`roman_numerals.rs`](https://github.com/rust-lang/rust/tree/master/src/test/auxiliary/roman_numerals.rs)
+[`roman_numerals.rs`](https://github.com/rust-lang/rust/blob/master/src/test/run-pass-fulldeps/auxiliary/roman_numerals.rs)
 that implements Roman numeral integer literals.
 
 ```rust,ignore
@@ -166,7 +166,8 @@ quasiquote as an ordinary plugin library.
 
 Plugins can extend [Rust's lint
 infrastructure](../reference.html#lint-check-attributes) with additional checks for
-code style, safety, etc. Now let's write a plugin [`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/auxiliary/lint_plugin_test.rs)
+code style, safety, etc. Now let's write a plugin
+[`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/run-pass-fulldeps/auxiliary/lint_plugin_test.rs)
 that warns about any item named `lintme`.
 
 ```rust,ignore
