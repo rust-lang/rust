@@ -12,6 +12,7 @@ pub enum PrimVal {
     AbstractPtr(Pointer),
     FnPtr(Pointer),
     IntegerPtr(u64),
+    Char(char),
 }
 
 /// returns the result of the operation and whether the operation overflowed
@@ -127,6 +128,15 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
         (U16(l), U16(r)) => int_binops!(U16, l, r),
         (U32(l), U32(r)) => int_binops!(U32, l, r),
         (U64(l), U64(r)) => int_binops!(U64, l, r),
+        (Char(l), Char(r)) => match bin_op {
+            Eq => Bool(l == r),
+            Ne => Bool(l != r),
+            Lt => Bool(l < r),
+            Le => Bool(l <= r),
+            Gt => Bool(l > r),
+            Ge => Bool(l >= r),
+            _ => panic!("invalid char op: {:?}", bin_op),
+        },
 
         (Bool(l), Bool(r)) => {
             Bool(match bin_op {

@@ -208,7 +208,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_bool(ptr, b)?;
                 Ok(ptr)
             }
-            Char(_c)          => unimplemented!(),
+            Char(c) => {
+                let ptr = self.memory.allocate(4);
+                self.memory.write_uint(ptr, c as u64, 4)?;
+                Ok(ptr)
+            },
             Struct(_node_id)  => unimplemented!(),
             Tuple(_node_id)   => unimplemented!(),
             Function(_def_id) => unimplemented!(),
@@ -402,11 +406,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
                 let discr_ptr = self.eval_lvalue(discr)?.to_ptr();
+                let discr_ty = self.lvalue_ty(discr);
                 let discr_size = self
-                    .type_layout(self.lvalue_ty(discr))
+                    .type_layout(discr_ty)
                     .size(&self.tcx.data_layout)
                     .bytes() as usize;
                 let discr_val = self.memory.read_uint(discr_ptr, discr_size)?;
+                if let ty::TyChar = discr_ty.sty {
+                    if ::std::char::from_u32(discr_val as u32).is_none() {
+                        return Err(EvalError::InvalidChar(discr_val as u32));
+                    }
+                }
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
@@ -1371,6 +1381,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use syntax::ast::{IntTy, UintTy};
         let val = match (self.memory.pointer_size, &ty.sty) {
             (_, &ty::TyBool)              => PrimVal::Bool(self.memory.read_bool(ptr)?),
+            (_, &ty::TyChar)              => {
+                let c = self.memory.read_uint(ptr, 4)? as u32;
+                match ::std::char::from_u32(c) {
+                    Some(ch) => PrimVal::Char(ch),
+                    None => return Err(EvalError::InvalidChar(c)),
+                }
+            }
             (_, &ty::TyInt(IntTy::I8))    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
             (2, &ty::TyInt(IntTy::Is)) |
             (_, &ty::TyInt(IntTy::I16))   => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
