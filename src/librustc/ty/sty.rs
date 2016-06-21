@@ -492,6 +492,13 @@ impl<'tcx> FnOutput<'tcx> {
             ty::FnDiverging => def
         }
     }
+
+    pub fn maybe_converging(self) -> Option<Ty<'tcx>> {
+        match self {
+            ty::FnConverging(t) => Some(t),
+            ty::FnDiverging => None
+        }
+    }
 }
 
 pub type PolyFnOutput<'tcx> = Binder<FnOutput<'tcx>>;

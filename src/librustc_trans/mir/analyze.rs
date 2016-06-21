@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An analysis to determine which temporaries require allocas and
+//! An analysis to determine which locals require allocas and
 //! which do not.
 
 use rustc_data_structures::bitvec::BitVector;
@@ -18,18 +18,23 @@ use rustc::mir::repr::TerminatorKind;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use common::{self, Block, BlockAndBuilder};
+use glue;
 use super::rvalue;
 
-pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
-                               mir: &mir::Mir<'tcx>) -> BitVector {
+pub fn lvalue_locals<'bcx, 'tcx>(bcx: Block<'bcx,'tcx>,
+                                 mir: &mir::Mir<'tcx>) -> BitVector {
     let bcx = bcx.build();
-    let mut analyzer = TempAnalyzer::new(mir, &bcx, mir.temp_decls.len());
+    let mut analyzer = LocalAnalyzer::new(mir, &bcx);
 
     analyzer.visit_mir(mir);
 
-    for (index, temp_decl) in mir.temp_decls.iter().enumerate() {
-        let ty = bcx.monomorphize(&temp_decl.ty);
-        debug!("temp {:?} has type {:?}", index, ty);
+    let local_types = mir.arg_decls.iter().map(|a| a.ty)
+               .chain(mir.var_decls.iter().map(|v| v.ty))
+               .chain(mir.temp_decls.iter().map(|t| t.ty))
+               .chain(mir.return_ty.maybe_converging());
+    for (index, ty) in local_types.enumerate() {
+        let ty = bcx.monomorphize(&ty);
+        debug!("local {} has type {:?}", index, ty);
         if ty.is_scalar() ||
             ty.is_unique() ||
             ty.is_region_ptr() ||
@@ -49,64 +54,85 @@ pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
             // (e.g. structs) into an alloca unconditionally, just so
             // that we don't have to deal with having two pathways
             // (gep vs extractvalue etc).
-            analyzer.mark_as_lvalue(index);
+            analyzer.mark_as_lvalue(mir::Local::new(index));
         }
     }
 
-    analyzer.lvalue_temps
+    analyzer.lvalue_locals
 }
 
-struct TempAnalyzer<'mir, 'bcx: 'mir, 'tcx: 'bcx> {
+struct LocalAnalyzer<'mir, 'bcx: 'mir, 'tcx: 'bcx> {
     mir: &'mir mir::Mir<'tcx>,
     bcx: &'mir BlockAndBuilder<'bcx, 'tcx>,
-    lvalue_temps: BitVector,
+    lvalue_locals: BitVector,
     seen_assigned: BitVector
 }
 
-impl<'mir, 'bcx, 'tcx> TempAnalyzer<'mir, 'bcx, 'tcx> {
+impl<'mir, 'bcx, 'tcx> LocalAnalyzer<'mir, 'bcx, 'tcx> {
     fn new(mir: &'mir mir::Mir<'tcx>,
-           bcx: &'mir BlockAndBuilder<'bcx, 'tcx>,
-           temp_count: usize) -> TempAnalyzer<'mir, 'bcx, 'tcx> {
-        TempAnalyzer {
+           bcx: &'mir BlockAndBuilder<'bcx, 'tcx>)
+           -> LocalAnalyzer<'mir, 'bcx, 'tcx> {
+        let local_count = mir.count_locals();
+        LocalAnalyzer {
             mir: mir,
             bcx: bcx,
-            lvalue_temps: BitVector::new(temp_count),
-            seen_assigned: BitVector::new(temp_count)
+            lvalue_locals: BitVector::new(local_count),
+            seen_assigned: BitVector::new(local_count)
         }
     }
 
-    fn mark_as_lvalue(&mut self, temp: usize) {
-        debug!("marking temp {} as lvalue", temp);
-        self.lvalue_temps.insert(temp);
+    fn mark_as_lvalue(&mut self, local: mir::Local) {
+        debug!("marking {:?} as lvalue", local);
+        self.lvalue_locals.insert(local.index());
     }
 
-    fn mark_assigned(&mut self, temp: usize) {
-        if !self.seen_assigned.insert(temp) {
-            self.mark_as_lvalue(temp);
+    fn mark_assigned(&mut self, local: mir::Local) {
+        if !self.seen_assigned.insert(local.index()) {
+            self.mark_as_lvalue(local);
         }
     }
 }
 
-impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
+impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,
                     lvalue: &mir::Lvalue<'tcx>,
                     rvalue: &mir::Rvalue<'tcx>) {
         debug!("visit_assign(block={:?}, lvalue={:?}, rvalue={:?})", block, lvalue, rvalue);
 
-        match *lvalue {
-            mir::Lvalue::Temp(temp) => {
-                self.mark_assigned(temp.index());
-                if !rvalue::rvalue_creates_operand(self.mir, self.bcx, rvalue) {
-                    self.mark_as_lvalue(temp.index());
-                }
+        if let Some(index) = self.mir.local_index(lvalue) {
+            self.mark_assigned(index);
+            if !rvalue::rvalue_creates_operand(self.mir, self.bcx, rvalue) {
+                self.mark_as_lvalue(index);
             }
-            _ => {
-                self.visit_lvalue(lvalue, LvalueContext::Store);
-            }
+        } else {
+            self.visit_lvalue(lvalue, LvalueContext::Store);
         }
 
         self.visit_rvalue(rvalue);
+    }
+
+    fn visit_terminator_kind(&mut self,
+                             block: mir::BasicBlock,
+                             kind: &mir::TerminatorKind<'tcx>) {
+        match *kind {
+            mir::TerminatorKind::Call {
+                func: mir::Operand::Constant(mir::Constant {
+                    literal: mir::Literal::Item { def_id, .. }, ..
+                }),
+                ref args, ..
+            } if Some(def_id) == self.bcx.tcx().lang_items.box_free_fn() => {
+                // box_free(x) shares with `drop x` the property that it
+                // is not guaranteed to be statically dominated by the
+                // definition of x, so x must always be in an alloca.
+                if let mir::Operand::Consume(ref lvalue) = args[0] {
+                    self.visit_lvalue(lvalue, LvalueContext::Drop);
+                }
+            }
+            _ => {}
+        }
+
+        self.super_terminator_kind(block, kind);
     }
 
     fn visit_lvalue(&mut self,
@@ -116,9 +142,9 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
 
         // Allow uses of projections of immediate pair fields.
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
-            if let mir::Lvalue::Temp(temp) = proj.base {
-                let ty = self.mir.temp_decls[temp].ty;
-                let ty = self.bcx.monomorphize(&ty);
+            if self.mir.local_index(&proj.base).is_some() {
+                let ty = self.mir.lvalue_ty(self.bcx.tcx(), &proj.base);
+                let ty = self.bcx.monomorphize(&ty.to_ty(self.bcx.tcx()));
                 if common::type_is_imm_pair(self.bcx.ccx(), ty) {
                     if let mir::ProjectionElem::Field(..) = proj.elem {
                         if let LvalueContext::Consume = context {
@@ -129,25 +155,36 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
             }
         }
 
-        match *lvalue {
-            mir::Lvalue::Temp(temp) => {
-                match context {
-                    LvalueContext::Call => {
-                        self.mark_assigned(temp.index());
-                    }
-                    LvalueContext::Consume => {
-                    }
-                    LvalueContext::Store |
-                    LvalueContext::Drop |
-                    LvalueContext::Inspect |
-                    LvalueContext::Borrow { .. } |
-                    LvalueContext::Slice { .. } |
-                    LvalueContext::Projection => {
-                        self.mark_as_lvalue(temp.index());
+        if let Some(index) = self.mir.local_index(lvalue) {
+            match context {
+                LvalueContext::Call => {
+                    self.mark_assigned(index);
+                }
+                LvalueContext::Consume => {
+                }
+                LvalueContext::Store |
+                LvalueContext::Inspect |
+                LvalueContext::Borrow { .. } |
+                LvalueContext::Slice { .. } |
+                LvalueContext::Projection => {
+                    self.mark_as_lvalue(index);
+                }
+                LvalueContext::Drop => {
+                    let ty = self.mir.lvalue_ty(self.bcx.tcx(), lvalue);
+                    let ty = self.bcx.monomorphize(&ty.to_ty(self.bcx.tcx()));
+
+                    // Only need the lvalue if we're actually dropping it.
+                    if glue::type_needs_drop(self.bcx.tcx(), ty) {
+                        self.mark_as_lvalue(index);
                     }
                 }
             }
-            _ => {
+        }
+
+        // A deref projection only reads the pointer, never needs the lvalue.
+        if let mir::Lvalue::Projection(ref proj) = *lvalue {
+            if let mir::ProjectionElem::Deref = proj.elem {
+                return self.visit_lvalue(&proj.base, LvalueContext::Consume);
             }
         }
 
