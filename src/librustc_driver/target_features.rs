@@ -33,7 +33,6 @@ const X86_WHITELIST: &'static [&'static str] = &[
     "bmi\0",                       // BMI instructions.
     "bmi2\0",                      // BMI2 instructions.
     "sse\0",                       // SSE instructions.
-    "sse-unaligned-mem\0",         // Allow unaligned memory operands with SSE instructions.
     "sse2\0",                      // SSE2 instructions.
     "sse3\0",                      // SSE3 instructions.
     "sse4.1\0",                    // SSE 4.1 instructions.
