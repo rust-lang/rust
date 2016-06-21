@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.0.76"
+version = "0.0.77"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>",
@@ -25,7 +25,7 @@ test = false
 [dependencies]
 regex_macros = { version = "0.1.33", optional = true }
 # begin automatic update
-clippy_lints = { version = "0.0.76", path = "clippy_lints" }
+clippy_lints = { version = "0.0.77", path = "clippy_lints" }
 # end automatic update
 
 [dev-dependencies]
