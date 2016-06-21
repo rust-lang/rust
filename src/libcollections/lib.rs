@@ -49,7 +49,6 @@
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(step_by)]
-#![feature(str_char)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
