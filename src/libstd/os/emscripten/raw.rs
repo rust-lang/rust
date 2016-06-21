@@ -25,7 +25,8 @@ use os::raw::{c_long, c_short, c_uint, c_ulong};
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type dev_t = u64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type mode_t = u32;
 
-#[unstable(feature = "pthread_t", issue = "29791")] pub type pthread_t = c_ulong;
+#[stable(feature = "pthread_t", since = "1.8.0")]
+pub type pthread_t = c_ulong;
 
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = u64;
