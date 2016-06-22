@@ -1,4 +1,4 @@
-- Feature Name: `ergonomic_format_args`
+- Feature Name: (not applicable)
 - Start Date: 2016-05-17
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -7,6 +7,9 @@
 [summary]: #summary
 
 Removes the one-type-only restriction on `format_args!` arguments.
+Expressions like `format_args!("{0:x} {0:o}", foo)` now work as intended,
+where each argument is still evaluated only once, in order of appearance
+(i.e. left-to-right).
 
 # Motivation
 [motivation]: #motivation
@@ -29,8 +32,6 @@ so the mechanism as a whole certainly needs more love.
 # Detailed design
 [design]: #detailed-design
 
-## Overview
-
 Formatting is done during both compile-time (expansion-time to be pedantic)
 and runtime in Rust. As we are concerned with format string parsing, not
 outputting, this RFC only touches the compile-time side of the existing
@@ -39,17 +40,22 @@ formatting mechanism which is `libsyntax_ext` and `libfmt_macros`.
 Before continuing with the details, it is worth noting that the core flow of
 current Rust formatting is *mapping arguments to placeholders to format specs*.
 For clarity, we distinguish among *placeholders*, *macro arguments* and
-*generated `ArgumentV1` objects*. They are all *italicized* to provide some
+*argument objects*. They are all *italicized* to provide some
 visual hint for distinction.
 
-To implement the proposed design, first we resolve all implicit references to
-the next argument (*next-references* for short) during parse; then we modify
-the macro expansion to make use of the now explicit argument references,
-preserving the mapping.
+To implement the proposed design, the following changes in behavior are made:
 
-## Parse-time next-reference resolution
+* implicit references are resolved during parse of format string;
+* named *macro arguments* are resolved into positional ones;
+* placeholder types are remembered and de-duplicated for each *macro argument*,
+* the *argument objects* are emitted with information gathered in steps above.
 
-Currently two forms of next-references exist: `ArgumentNext` and
+As most of the details is best described in the code itself, we only
+illustrate some of the high-level changes below.
+
+## Implicit reference resolution
+
+Currently two forms of implicit references exist: `ArgumentNext` and
 `CountIsNextParam`. Both take a positional *macro argument* and advance the
 same internal pointer, but format is parsed before position, as shown in
 format strings like `"{foo:.*} {} {:.*}"` which is in every way equivalent to
@@ -58,68 +64,23 @@ format strings like `"{foo:.*} {} {:.*}"` which is in every way equivalent to
 As the rule is already known even at compile-time, and does not require the
 whole format string to be known beforehand, the resolution can happen just
 inside the parser after a *placeholder* is successfully parsed. As a natural
-consequence, both forms of next-reference can be removed from the rest of the
-compiler, simplifying work later.
+consequence, both forms can be removed from the rest of the compiler,
+simplifying work later.
 
-## Expansion-time argument mapping
+## Named argument resolution
 
-There are two kinds of *macro arguments*, positional and named. Because of the
-apparent type difference, two maps are needed to track *placeholder* types
-(known as `ArgumentType`s in the code). In the current implementation,
-`Vec<Option<ArgumentType>>` is for positional *macro arguments* and
-`HashMap<String, ArgumentType>` is for named *macro arguments*, apparently
-neither of which supports multiple types for one *macro argument*. Also, for
-constructing the `__STATIC_FMTARGS` we need to first figure out the order for
-every *placeholder* in the list of *generated `ArgumentV1` objects*. So we
-first classify *placeholders* according to their associated *macro arguments*,
-which are all explicit now, then assign each of them a correct index.
+Not seen elsewhere in Rust, named arguments in format macros are best seen as
+syntactic sugar, and we'd better actually treat them as such. Just after
+successfully parsing the *macro arguments*, we immediately rewrite every name
+to its respective position in the argument list, which again simplifies the
+process.
 
-### Placeholder type collection
+## Processing and expansion
 
-In the proposed design, lists of `ArgumentType`s are used to store
-*placeholder* types for each *macro argument* in order. During verification
-the *placeholder* type seen for a *macro argument* is simply pushed into the
-respective list. This does not remove the ability to sense unused
-*macro arguments*, as the list would simply be empty when checked later, just
-as it would be `None` in the old `Option<ArgumentType>` version.
-
-### Mapping construction
-
-For consistency with the current implementation, named *macro arguments* are
-still put at the end of *generated `ArgumentV1` objects*. Which means we have
-to consume all of format string in order to know how many *placeholders* there
-are referencing to positional *macro arguments*. As such, the verification
-and translation of pieces are now separated with mapping construction in
-between.
-
-Obviously, the orders used during mapping and actual expansion must agree, but
-fortunately the rules are very simple now only explicit references remain.
-We iterate over the list of known positional *macro arguments*, recording the
-index at which every bunch of *generated `ArgumentV1` objects* would begin for
-each positional *macro argument*. After that, we also record the total number
-for mapping the named *macro arguments*, as the relative offsets of named
-*placeholders* are already recorded during verification.
-
-### Expansion
-
-With mapping between *placeholders* and *generated `ArgumentV1` objects*
-ready at hand, it is easy to emit correct `Argument`s. Scratch space is
-provided to `trans_piece` for remembering how many *placeholders* for a given
-*macro argument* have been processed. This information is then used to rewrite
-all references from using *macro argument* indices to
-*generated `ArgumentV1` object* indices, namely:
-
-* `ArgumentIs(i)`
-* `ArgumentNamed(n)`
-* `CountIsParam(i)`
-* `CountIsName(n)`
-
-For the count references, some may suggest that they are now potentially
-ambiguous. However considering the implementation of `verify_count`, the
-parameter used by each `Count` is individually injected into the list of
-*generated `ArgumentV1` objects* as if it were explicitly specified. Also it
-is *macro arguments* to be referenced, not the potentially multiple
-*placeholders*, so there are in fact no ambiguities.
+We only have absolute positional references to *macro arguments* at this point,
+and it's straightforward to remember all unique *placeholders* encountered for
+each. The unique *placeholders* are emitted into *argument objects* in order,
+to preserve evaluation order, but no difference in behavior otherwise.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -182,5 +143,4 @@ ergonomics is simply bad and the code becomes unnecessarily convoluted.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-* Does the *generated `ArgumentV1` objects* need deduplication?
-* Will it break the ABI if handling of next-references in `libcore/fmt` is removed as well?
+None.
