@@ -168,7 +168,7 @@ declare_lint! {
 /// **Example:** `iter.filter(|x| x == 0).map(|x| x * 2)`
 declare_lint! {
     pub FILTER_MAP, Allow,
-    "using `filter(_).map(_)`, which is more succinctly expressed as `.filter_map(_)`"
+    "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call"
 }
 
 /// **What it does:** This lint `Warn`s on an iterator search (such as `find()`, `position()`, or
