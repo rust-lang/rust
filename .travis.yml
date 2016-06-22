@@ -22,7 +22,7 @@ script:
  - mkdir -p ~/rust/cargo/bin
  - cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
  - PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy
- - PATH=$PATH:~/rust/cargo/bin cd clippy_lints && cargo clippy -- -D clippy && cd ..
+ - cd clippy_lints && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ..
 
 after_success:
 # only test regex_macros if it compiles
