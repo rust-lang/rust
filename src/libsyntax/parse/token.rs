@@ -633,8 +633,3 @@ pub fn fresh_name(src: ast::Ident) -> ast::Name {
     /*let num = rand::thread_rng().gen_uint_range(0,0xffff);
     gensym(format!("{}_{}",ident_to_string(src),num))*/
 }
-
-// create a fresh mark.
-pub fn fresh_mark() -> ast::Mrk {
-    gensym("mark").0
-}

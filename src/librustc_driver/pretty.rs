@@ -456,7 +456,7 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
                 pp::space(&mut s.s)?;
                 // FIXME #16420: this doesn't display the connections
                 // between syntax contexts
-                s.synth_comment(format!("{}#{}", nm, ctxt.0))
+                s.synth_comment(format!("{}{:?}", nm, ctxt))
             }
             pprust::NodeName(&ast::Name(nm)) => {
                 pp::space(&mut s.s)?;
