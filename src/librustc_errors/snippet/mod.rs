@@ -17,8 +17,6 @@ use std::cmp;
 use std::rc::Rc;
 use std::mem;
 
-mod test;
-
 #[derive(Clone)]
 pub struct SnippetData {
     codemap: Rc<CodeMapper>,

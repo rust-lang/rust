@@ -828,6 +828,12 @@ impl CodeMapper for CodeMap {
 mod tests {
     use super::*;
     use syntax_pos::*;
+    use errors::{Level, CodeSuggestion};
+    use errors::emitter::EmitterWriter;
+    use std::sync::{Arc, Mutex};
+    use std::io::{self, Write};
+    use std::str::from_utf8;
+    use std::rc::Rc;
 
     #[test]
     fn t1 () {
@@ -1149,5 +1155,234 @@ r"blork2.rs:2:1: 2:12
       `first line.`
 ";
         assert_eq!(sstr, res_str);
+    }
+
+    struct Sink(Arc<Mutex<Vec<u8>>>);
+    impl Write for Sink {
+        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+            Write::write(&mut *self.0.lock().unwrap(), data)
+        }
+        fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    }
+
+    // Diagnostic doesn't align properly in span where line number increases by one digit
+    #[test]
+    fn test_hilight_suggestion_issue_11715() {
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let cm = Rc::new(CodeMap::new());
+        let mut ew = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
+        let content = "abcdefg
+        koksi
+        line3
+        line4
+        cinq
+        line6
+        line7
+        line8
+        line9
+        line10
+        e-lä-vän
+        tolv
+        dreizehn
+        ";
+        let file = cm.new_filemap_and_lines("dummy.txt", None, content);
+        let start = file.lines.borrow()[10];
+        let end = file.lines.borrow()[11];
+        let sp = mk_sp(start, end);
+        let lvl = Level::Error;
+        println!("highlight_lines");
+        ew.highlight_lines(&sp.into(), lvl).unwrap();
+        println!("done");
+        let vec = data.lock().unwrap().clone();
+        let vec: &[u8] = &vec;
+        let str = from_utf8(vec).unwrap();
+        println!("r#\"\n{}\"#", str);
+        assert_eq!(str, &r#"
+  --> dummy.txt:11:1
+   |>
+11 |>         e-lä-vän
+   |> ^
+"#[1..]);
+    }
+
+    #[test]
+    fn test_single_span_splice() {
+        // Test that a `MultiSpan` containing a single span splices a substition correctly
+        let cm = CodeMap::new();
+        let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
+        let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
+        cm.new_filemap_and_lines("blork.rs", None, inputtext);
+        let sp = span_from_selection(inputtext, selection);
+        let msp: MultiSpan = sp.into();
+
+        // check that we are extracting the text we thought we were extracting
+        assert_eq!(&cm.span_to_snippet(sp).unwrap(), "BB\nCCC\nDDDDD");
+
+        let substitute = "ZZZZZZ".to_owned();
+        let expected = "bbbbZZZZZZddddd";
+        let suggest = CodeSuggestion {
+            msp: msp,
+            substitutes: vec![substitute],
+        };
+        assert_eq!(suggest.splice_lines(&cm), expected);
+    }
+
+    #[test]
+    fn test_multi_span_splice() {
+        // Test that a `MultiSpan` containing multiple spans splices a substition correctly
+        let cm = CodeMap::new();
+        let inputtext  = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
+        let selection1 = "     \n      \n   \n          \n ~ \n"; // intentionally out of order
+        let selection2 = "     \n    ~~\n~~~\n~~~~~     \n   \n";
+        cm.new_filemap_and_lines("blork.rs", None, inputtext);
+        let sp1 = span_from_selection(inputtext, selection1);
+        let sp2 = span_from_selection(inputtext, selection2);
+        let msp: MultiSpan = MultiSpan::from_spans(vec![sp1, sp2]);
+
+        let expected = "bbbbZZZZZZddddd\neXYZe";
+        let suggest = CodeSuggestion {
+            msp: msp,
+            substitutes: vec!["ZZZZZZ".to_owned(),
+                              "XYZ".to_owned()]
+        };
+
+        assert_eq!(suggest.splice_lines(&cm), expected);
+    }
+
+    #[test]
+    fn test_multispan_highlight() {
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let cm = Rc::new(CodeMap::new());
+        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
+
+        let inp =       "_____aaaaaa____bbbbbb__cccccdd_";
+        let sp1 =       "     ~~~~~~                    ";
+        let sp2 =       "               ~~~~~~          ";
+        let sp3 =       "                       ~~~~~   ";
+        let sp4 =       "                          ~~~~ ";
+        let sp34 =      "                       ~~~~~~~ ";
+
+        let expect_start = &r#"
+ --> dummy.txt:1:6
+  |>
+1 |> _____aaaaaa____bbbbbb__cccccdd_
+  |>      ^^^^^^    ^^^^^^  ^^^^^^^
+"#[1..];
+
+        let span = |sp, expected| {
+            let sp = span_from_selection(inp, sp);
+            assert_eq!(&cm.span_to_snippet(sp).unwrap(), expected);
+            sp
+        };
+        cm.new_filemap_and_lines("dummy.txt", None, inp);
+        let sp1 = span(sp1, "aaaaaa");
+        let sp2 = span(sp2, "bbbbbb");
+        let sp3 = span(sp3, "ccccc");
+        let sp4 = span(sp4, "ccdd");
+        let sp34 = span(sp34, "cccccdd");
+
+        let spans = vec![sp1, sp2, sp3, sp4];
+
+        let test = |expected, highlight: &mut FnMut()| {
+            data.lock().unwrap().clear();
+            highlight();
+            let vec = data.lock().unwrap().clone();
+            let actual = from_utf8(&vec[..]).unwrap();
+            println!("actual=\n{}", actual);
+            assert_eq!(actual, expected);
+        };
+
+        let msp = MultiSpan::from_spans(vec![sp1, sp2, sp34]);
+        test(expect_start, &mut || {
+            diag.highlight_lines(&msp, Level::Error).unwrap();
+        });
+        test(expect_start, &mut || {
+            let msp = MultiSpan::from_spans(spans.clone());
+            diag.highlight_lines(&msp, Level::Error).unwrap();
+        });
+    }
+
+    #[test]
+    fn test_huge_multispan_highlight() {
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let cm = Rc::new(CodeMap::new());
+        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
+
+        let inp = "aaaaa\n\
+                   aaaaa\n\
+                   aaaaa\n\
+                   bbbbb\n\
+                   ccccc\n\
+                   xxxxx\n\
+                   yyyyy\n\
+                   _____\n\
+                   ddd__eee_\n\
+                   elided\n\
+                   __f_gg";
+        let file = cm.new_filemap_and_lines("dummy.txt", None, inp);
+
+        let span = |lo, hi, (off_lo, off_hi)| {
+            let lines = file.lines.borrow();
+            let (mut lo, mut hi): (BytePos, BytePos) = (lines[lo], lines[hi]);
+            lo.0 += off_lo;
+            hi.0 += off_hi;
+            mk_sp(lo, hi)
+        };
+        let sp0 = span(4, 6, (0, 5));
+        let sp1 = span(0, 6, (0, 5));
+        let sp2 = span(8, 8, (0, 3));
+        let sp3 = span(8, 8, (5, 8));
+        let sp4 = span(10, 10, (2, 3));
+        let sp5 = span(10, 10, (4, 6));
+
+        let expect0 = &r#"
+   --> dummy.txt:5:1
+    |>
+5   |> ccccc
+    |> ^
+...
+9   |> ddd__eee_
+    |> ^^^  ^^^
+10  |> elided
+11  |> __f_gg
+    |>   ^ ^^
+"#[1..];
+
+        let expect = &r#"
+   --> dummy.txt:1:1
+    |>
+1   |> aaaaa
+    |> ^
+...
+9   |> ddd__eee_
+    |> ^^^  ^^^
+10  |> elided
+11  |> __f_gg
+    |>   ^ ^^
+"#[1..];
+
+        macro_rules! test {
+            ($expected: expr, $highlight: expr) => ({
+                data.lock().unwrap().clear();
+                $highlight();
+                let vec = data.lock().unwrap().clone();
+                let actual = from_utf8(&vec[..]).unwrap();
+                println!("actual:");
+                println!("{}", actual);
+                println!("expected:");
+                println!("{}", $expected);
+                assert_eq!(&actual[..], &$expected[..]);
+            });
+        }
+
+        let msp0 = MultiSpan::from_spans(vec![sp0, sp2, sp3, sp4, sp5]);
+        let msp = MultiSpan::from_spans(vec![sp1, sp2, sp3, sp4, sp5]);
+
+        test!(expect0, || {
+            diag.highlight_lines(&msp0, Level::Error).unwrap();
+        });
+        test!(expect, || {
+            diag.highlight_lines(&msp, Level::Error).unwrap();
+        });
     }
 }
