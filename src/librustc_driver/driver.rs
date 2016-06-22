@@ -479,9 +479,8 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session,
                                input: &Input)
                                -> PResult<'a, ast::Crate> {
     // These may be left in an incoherent state after a previous compile.
-    // `clear_tables` and `clear_ident_interner` can be used to free
-    // memory, but they do not restore the initial state.
-    syntax::ext::mtwt::reset_tables();
+    syntax::ext::mtwt::reset_hygiene_data();
+    // `clear_ident_interner` can be used to free memory, but it does not restore the initial state.
     token::reset_ident_interner();
     let continue_after_error = sess.opts.continue_parse_after_error;
     sess.diagnostic().set_continue_after_error(continue_after_error);
@@ -763,7 +762,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
 
     // Discard MTWT tables that aren't required past lowering to HIR.
     if !keep_mtwt_tables(sess) {
-        syntax::ext::mtwt::clear_tables();
+        syntax::ext::mtwt::reset_hygiene_data();
     }
 
     Ok(ExpansionResult {

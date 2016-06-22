@@ -15,107 +15,104 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 http://dx.doi.org/10.1017/S0956796812000093
 
-pub use self::SyntaxContext_::*;
-
-use ast::{Ident, Mrk, SyntaxContext};
-
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt;
 
-/// The SCTable contains a table of SyntaxContext_'s. It
-/// represents a flattened tree structure, to avoid having
-/// managed pointers everywhere (that caused an ICE).
-/// The `marks` ensures that adding the same mark to the
-/// same context gives you back the same context as before.
-pub struct SCTable {
-    table: RefCell<Vec<SyntaxContext_>>,
-    marks: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
+/// A SyntaxContext represents a chain of macro expansions (represented by marks).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Default)]
+pub struct SyntaxContext(u32);
+
+#[derive(Copy, Clone)]
+pub struct SyntaxContextData {
+    pub outer_mark: Mark,
+    pub prev_ctxt: SyntaxContext,
 }
 
-#[derive(PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy, Clone)]
-pub enum SyntaxContext_ {
-    EmptyCtxt,
-    Mark (Mrk,SyntaxContext),
-}
+/// A mark represents a unique id associated with a macro expansion.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+pub struct Mark(u32);
 
-/// Extend a syntax context with a given mark
-pub fn apply_mark(m: Mrk, ctxt: SyntaxContext) -> SyntaxContext {
-    with_sctable(|table| apply_mark_internal(m, ctxt, table))
-}
-
-/// Extend a syntax context with a given mark and sctable (explicit memoization)
-fn apply_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxContext {
-    let ctxts = &mut *table.table.borrow_mut();
-    match ctxts[ctxt.0 as usize] {
-        // Applying the same mark twice is a no-op.
-        Mark(outer_mark, prev_ctxt) if outer_mark == m => return prev_ctxt,
-        _ => *table.marks.borrow_mut().entry((ctxt, m)).or_insert_with(|| {
-            SyntaxContext(idx_push(ctxts, Mark(m, ctxt)))
-        }),
+impl Mark {
+    pub fn fresh() -> Self {
+        HygieneData::with(|data| {
+            let next_mark = Mark(data.next_mark.0 + 1);
+            ::std::mem::replace(&mut data.next_mark, next_mark)
+        })
     }
 }
 
-/// Fetch the SCTable from TLS, create one if it doesn't yet exist.
-pub fn with_sctable<T, F>(op: F) -> T where
-    F: FnOnce(&SCTable) -> T,
-{
-    thread_local!(static SCTABLE_KEY: SCTable = new_sctable_internal());
-    SCTABLE_KEY.with(move |slot| op(slot))
+struct HygieneData {
+    syntax_contexts: Vec<SyntaxContextData>,
+    markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
+    next_mark: Mark,
 }
 
-// Make a fresh syntax context table with EmptyCtxt in slot zero.
-fn new_sctable_internal() -> SCTable {
-    SCTable {
-        table: RefCell::new(vec![EmptyCtxt]),
-        marks: RefCell::new(HashMap::new()),
+impl HygieneData {
+    fn new() -> Self {
+        HygieneData {
+            syntax_contexts: vec![SyntaxContextData {
+                outer_mark: Mark(0), // the null mark
+                prev_ctxt: SyntaxContext(0), // the empty context
+            }],
+            markings: HashMap::new(),
+            next_mark: Mark(1),
+        }
+    }
+
+    fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
+        thread_local! {
+            static HYGIENE_DATA: RefCell<HygieneData> = RefCell::new(HygieneData::new());
+        }
+        HYGIENE_DATA.with(|data| f(&mut *data.borrow_mut()))
     }
 }
 
-/// Clear the tables from TLD to reclaim memory.
-pub fn clear_tables() {
-    with_sctable(|table| {
-        *table.table.borrow_mut() = Vec::new();
-        *table.marks.borrow_mut() = HashMap::new();
-    });
+pub fn reset_hygiene_data() {
+    HygieneData::with(|data| *data = HygieneData::new())
 }
 
-/// Reset the tables to their initial state
-pub fn reset_tables() {
-    with_sctable(|table| {
-        *table.table.borrow_mut() = vec![EmptyCtxt];
-        *table.marks.borrow_mut() = HashMap::new();
-    });
-}
+impl SyntaxContext {
+    pub const fn empty() -> Self {
+        SyntaxContext(0)
+    }
 
-/// Add a value to the end of a vec, return its index
-fn idx_push<T>(vec: &mut Vec<T>, val: T) -> u32 {
-    vec.push(val);
-    (vec.len() - 1) as u32
-}
+    pub fn data(self) -> SyntaxContextData {
+        HygieneData::with(|data| data.syntax_contexts[self.0 as usize])
+    }
 
-/// Return the outer mark for a context with a mark at the outside.
-/// FAILS when outside is not a mark.
-pub fn outer_mark(ctxt: SyntaxContext) -> Mrk {
-    with_sctable(|sctable| {
-        match (*sctable.table.borrow())[ctxt.0 as usize] {
-            Mark(mrk, _) => mrk,
-            _ => panic!("can't retrieve outer mark when outside is not a mark")
+    /// Extend a syntax context with a given mark
+    pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
+        // Applying the same mark twice is a no-op
+        let ctxt_data = self.data();
+        if mark == ctxt_data.outer_mark {
+            return ctxt_data.prev_ctxt;
         }
-    })
+
+        HygieneData::with(|data| {
+            let syntax_contexts = &mut data.syntax_contexts;
+            *data.markings.entry((self, mark)).or_insert_with(|| {
+                syntax_contexts.push(SyntaxContextData {
+                    outer_mark: mark,
+                    prev_ctxt: self,
+                });
+                SyntaxContext(syntax_contexts.len() as u32 - 1)
+            })
+        })
+    }
+
+   /// If `ident` is macro expanded, return the source ident from the macro definition
+   /// and the mark of the expansion that created the macro definition.
+   pub fn source(self) -> (Self /* source context */, Mark /* source macro */) {
+        let macro_def_ctxt = self.data().prev_ctxt.data();
+        (macro_def_ctxt.prev_ctxt, macro_def_ctxt.outer_mark)
+   }
 }
 
-/// If `ident` is macro expanded, return the source ident from the macro definition
-/// and the mark of the expansion that created the macro definition.
-pub fn source(ident: Ident) -> Option<(Ident /* source ident */, Mrk /* source macro */)> {
-    with_sctable(|sctable| {
-        let ctxts = sctable.table.borrow();
-        if let Mark(_expansion_mark, macro_ctxt) = ctxts[ident.ctxt.0 as usize] {
-            if let Mark(definition_mark, orig_ctxt) = ctxts[macro_ctxt.0 as usize] {
-                return Some((Ident::new(ident.name, orig_ctxt), definition_mark));
-            }
-        }
-        None
-    })
+impl fmt::Debug for SyntaxContext {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "#{}", self.0)
+    }
 }
 
 #[cfg(test)]
