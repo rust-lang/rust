@@ -26,18 +26,19 @@ SPEC = re.compile(
 class PlatformInfo(object):
     def __init__(self, json):
         self._platform = json['platform']
-        self._intrinsic_prefix = json['intrinsic_prefix']
 
-    def intrinsic_prefix(self):
-        return self._intrinsic_prefix
+    def platform_prefix(self):
+        return self._platform
 
 class IntrinsicSet(object):
     def __init__(self, platform, json):
+        
         self._llvm_prefix = json['llvm_prefix']
         self._type_info = json['number_info']
         self._intrinsics = json['intrinsics']
         self._widths = json['width_info']
         self._platform = platform
+        self._intrinsic_prefix = json['intrinsic_prefix']
 
     def intrinsics(self):
         for raw in self._intrinsics:
@@ -47,6 +48,9 @@ class IntrinsicSet(object):
 
     def platform(self):
         return self._platform
+
+    def intrinsic_prefix(self):
+        return self._intrinsic_prefix
 
     def llvm_prefix(self):
         return self._llvm_prefix
@@ -538,8 +542,14 @@ class MonomorphicIntrinsic(object):
                                       *self._args,
                                       width = self._width)
 
+    def platform_prefix(self):
+        return self._platform.platform().platform_prefix()
+
+    def intrinsic_set_name(self):
+        return self._platform.intrinsic_prefix()
+
     def intrinsic_name(self):
-        return self._platform.platform().intrinsic_prefix() + self.intrinsic_suffix()
+        return self._platform.intrinsic_prefix() + self.intrinsic_suffix()
 
     def compiler_args(self):
         return ', '.join(arg.compiler_ctor_ref() for arg in self._args_raw)
@@ -751,8 +761,9 @@ class ExternBlock(object):
         return 'extern "platform-intrinsic" {'
 
     def render(self, mono):
-        return '    fn {}{};'.format(mono.intrinsic_name(),
-                                     mono.intrinsic_signature())
+        return '    fn {}{}{};'.format(mono.platform_prefix(),
+                                       mono.intrinsic_name(),
+                                       mono.intrinsic_signature())
 
     def close(self):
         return '}'
@@ -786,7 +797,7 @@ use IntrinsicDef::Named;
 #[inline(never)]
 pub fn find(name: &str) -> Option<Intrinsic> {{
     if !name.starts_with("{0}") {{ return None }}
-    Some(match &name["{0}".len()..] {{'''.format(platform.intrinsic_prefix())
+    Some(match &name["{0}".len()..] {{'''.format(platform.platform_prefix())
 
     def render(self, mono):
         return '''\
@@ -794,7 +805,7 @@ pub fn find(name: &str) -> Option<Intrinsic> {{
             inputs: {{ static INPUTS: [&'static Type; {}] = [{}]; &INPUTS }},
             output: {},
             definition: Named("{}")
-        }},'''.format(mono.intrinsic_suffix(),
+        }},'''.format(mono.intrinsic_set_name() + mono.intrinsic_suffix(),
                       len(mono._args_raw),
                       mono.compiler_args(),
                       mono.compiler_ret(),
