@@ -24,7 +24,6 @@ use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID, };
 use syntax::codemap::Spanned;
-use syntax::visit;
 use syntax_pos::Span;
 
 use hir::*;
@@ -780,12 +779,6 @@ impl<F: FoldOps> Folder for IdAndSpanUpdater<F> {
     }
 }
 
-pub fn collect_definitions<'ast>(krate: &'ast ast::Crate) -> Definitions {
-    let mut def_collector = DefCollector::root();
-    visit::walk_crate(&mut def_collector, krate);
-    def_collector.definitions
-}
-
 pub fn map_crate<'ast>(forest: &'ast mut Forest,
                        definitions: Definitions)
                        -> Map<'ast> {
@@ -842,13 +835,12 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     let ii = map.forest.inlined_items.alloc(ii);
     let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
 
-    let defs = mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new());
+    let defs = &mut *map.definitions.borrow_mut();
     let mut def_collector = DefCollector::extend(ii_parent_id,
                                                  parent_def_path.clone(),
                                                  parent_def_id,
                                                  defs);
     def_collector.walk_item(ii, map.krate());
-    *map.definitions.borrow_mut() = def_collector.definitions;
 
     let mut collector = NodeCollector::extend(map.krate(),
                                               ii,
