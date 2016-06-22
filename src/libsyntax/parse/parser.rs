@@ -1399,6 +1399,8 @@ impl<'a> Parser<'a> {
             } else {
                 TyKind::Tup(ts)
             }
+        } else if self.eat(&token::Not) {
+            TyKind::Empty
         } else if self.check(&token::BinOp(token::Star)) {
             // STAR POINTER (bare pointer?)
             self.bump();
