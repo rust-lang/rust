@@ -12,6 +12,7 @@
 
 #![feature(binary_heap_extras)]
 #![feature(binary_heap_append)]
+#![feature(binary_heap_peek_mut)]
 #![feature(box_syntax)]
 #![feature(btree_append)]
 #![feature(btree_split_off)]

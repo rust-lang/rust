@@ -82,6 +82,18 @@ fn test_peek_and_pop() {
 }
 
 #[test]
+fn test_peek_mut() {
+    let data = vec![2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
+    let mut heap = BinaryHeap::from(data);
+    assert_eq!(heap.peek(), Some(&10));
+    {
+        let mut top = heap.peek_mut().unwrap();
+        *top -= 2;
+    }
+    assert_eq!(heap.peek(), Some(&9));
+}
+
+#[test]
 fn test_push() {
     let mut heap = BinaryHeap::from(vec![2, 4, 9]);
     assert_eq!(heap.len(), 3);
@@ -190,6 +202,12 @@ fn test_empty_pop() {
 fn test_empty_peek() {
     let empty = BinaryHeap::<i32>::new();
     assert!(empty.peek().is_none());
+}
+
+#[test]
+fn test_empty_peek_mut() {
+    let mut empty = BinaryHeap::<i32>::new();
+    assert!(empty.peek_mut().is_none());
 }
 
 #[test]
