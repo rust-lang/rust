@@ -561,6 +561,27 @@ def parse_args():
         formatter_class = argparse.RawDescriptionHelpFormatter,
         description = 'Render an intrinsic definition JSON to various formats.',
         epilog = textwrap.dedent('''\
+        Quick How-To:
+
+        There are two operating modes: single file and multiple files.
+
+        For example, ARM is specified as a single file. To generate the
+        compiler-definitions for ARM just pass the script the "arm.json" file:
+
+        python generator.py --format compiler-defs arm.json
+
+        The X86 architecture is specified as multiple files (for the different
+        instruction sets that x86 supports). To generate the compiler
+        definitions one needs to pass the script a "platform information file"
+        (with the -i flag) next to the files of the different intruction sets.
+        For example, to generate the X86 compiler-definitions for SSE4.2, just:
+
+        python generator.py --format compiler-defs -i x86/info.json sse42.json
+
+        And to generate the compiler-definitions for SSE4.1 and SSE4.2, just:
+
+        python generator.py --format compiler-defs -i x86/info.json sse41.json sse42.json
+
         An intrinsic definition consists of a map with fields:
         - intrinsic: pattern for the name(s) of the vendor's C intrinsic(s)
         - llvm: pattern for the name(s) of the internal llvm intrinsic(s)
