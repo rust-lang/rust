@@ -15,7 +15,6 @@ pub use self::Lit::*;
 pub use self::Token::*;
 
 use ast::{self, BinOpKind};
-use ext::mtwt;
 use ptr::P;
 use util::interner::{RcStr, StrInterner};
 use util::interner;
@@ -311,17 +310,6 @@ impl Token {
             Ident(id) => id.name >= keywords::Abstract.name() &&
                          id.name <= keywords::Yield.name(),
             _ => false,
-        }
-    }
-
-    /// Hygienic identifier equality comparison.
-    ///
-    /// See `styntax::ext::mtwt`.
-    pub fn mtwt_eq(&self, other : &Token) -> bool {
-        match (self, other) {
-            (&Ident(id1), &Ident(id2)) | (&Lifetime(id1), &Lifetime(id2)) =>
-                mtwt::resolve(id1) == mtwt::resolve(id2),
-            _ => *self == *other
         }
     }
 }

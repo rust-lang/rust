@@ -53,7 +53,6 @@ use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
-use syntax::ext::mtwt;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
 use syntax::parse::token::{self, keywords};
@@ -462,7 +461,7 @@ struct BindingInfo {
 }
 
 // Map from the name in a pattern to its binding mode.
-type BindingMap = HashMap<Name, BindingInfo>;
+type BindingMap = HashMap<ast::Ident, BindingInfo>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum PatternSource {
@@ -668,7 +667,7 @@ enum ModulePrefixResult<'a> {
 /// One local scope.
 #[derive(Debug)]
 struct Rib<'a> {
-    bindings: HashMap<Name, Def>,
+    bindings: HashMap<ast::Ident, Def>,
     kind: RibKind<'a>,
 }
 
@@ -1385,15 +1384,17 @@ impl<'a> Resolver<'a> {
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
     fn resolve_ident_in_lexical_scope(&mut self,
-                                      ident: ast::Ident,
+                                      mut ident: ast::Ident,
                                       ns: Namespace,
                                       record_used: bool)
                                       -> Option<LexicalScopeBinding<'a>> {
-        let name = match ns { ValueNS => mtwt::resolve(ident), TypeNS => ident.name };
+        if ns == TypeNS {
+            ident = ast::Ident::with_empty_ctxt(ident.name);
+        }
 
         // Walk backwards up the ribs in scope.
         for i in (0 .. self.get_ribs(ns).len()).rev() {
-            if let Some(def) = self.get_ribs(ns)[i].bindings.get(&name).cloned() {
+            if let Some(def) = self.get_ribs(ns)[i].bindings.get(&ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::LocalDef(LocalDef {
                     ribs: Some((ns, i)),
@@ -1556,7 +1557,7 @@ impl<'a> Resolver<'a> {
 
     /// Searches the current set of local scopes for labels.
     /// Stops after meeting a closure.
-    fn search_label(&self, name: Name) -> Option<Def> {
+    fn search_label(&self, ident: ast::Ident) -> Option<Def> {
         for rib in self.label_ribs.iter().rev() {
             match rib.kind {
                 NormalRibKind => {
@@ -1567,7 +1568,7 @@ impl<'a> Resolver<'a> {
                     return None;
                 }
             }
-            let result = rib.bindings.get(&name).cloned();
+            let result = rib.bindings.get(&ident).cloned();
             if result.is_some() {
                 return result;
             }
@@ -1716,7 +1717,7 @@ impl<'a> Resolver<'a> {
                     // plain insert (no renaming)
                     let def_id = self.definitions.local_def_id(type_parameter.id);
                     let def = Def::TyParam(space, index as u32, def_id, name);
-                    function_type_rib.bindings.insert(name, def);
+                    function_type_rib.bindings.insert(ast::Ident::with_empty_ctxt(name), def);
                 }
                 self.type_ribs.push(function_type_rib);
             }
@@ -1887,7 +1888,7 @@ impl<'a> Resolver<'a> {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
         // plain insert (no renaming, types are not currently hygienic....)
-        self_type_rib.bindings.insert(keywords::SelfType.name(), self_def);
+        self_type_rib.bindings.insert(keywords::SelfType.ident(), self_def);
         self.type_ribs.push(self_type_rib);
         f(self);
         self.type_ribs.pop();
@@ -1998,7 +1999,7 @@ impl<'a> Resolver<'a> {
                     _ => false,
                 } {
                     let binding_info = BindingInfo { span: ident.span, binding_mode: binding_mode };
-                    binding_map.insert(mtwt::resolve(ident.node), binding_info);
+                    binding_map.insert(ident.node, binding_info);
                 }
             }
             true
@@ -2020,15 +2021,14 @@ impl<'a> Resolver<'a> {
             for (&key, &binding_0) in &map_0 {
                 match map_i.get(&key) {
                     None => {
-                        resolve_error(self,
-                                      p.span,
-                                      ResolutionError::VariableNotBoundInPattern(key, 1, i + 1));
+                        let error = ResolutionError::VariableNotBoundInPattern(key.name, 1, i + 1);
+                        resolve_error(self, p.span, error);
                     }
                     Some(binding_i) => {
                         if binding_0.binding_mode != binding_i.binding_mode {
                             resolve_error(self,
                                           binding_i.span,
-                                          ResolutionError::VariableBoundWithDifferentMode(key,
+                                          ResolutionError::VariableBoundWithDifferentMode(key.name,
                                                                                           i + 1));
                         }
                     }
@@ -2039,7 +2039,7 @@ impl<'a> Resolver<'a> {
                 if !map_0.contains_key(&key) {
                     resolve_error(self,
                                   binding.span,
-                                  ResolutionError::VariableNotBoundInPattern(key, i + 1, 1));
+                                  ResolutionError::VariableNotBoundInPattern(key.name, i + 1, 1));
                 }
             }
         }
@@ -2173,16 +2173,15 @@ impl<'a> Resolver<'a> {
                      pat_id: NodeId,
                      outer_pat_id: NodeId,
                      pat_src: PatternSource,
-                     bindings: &mut HashMap<Name, NodeId>)
+                     bindings: &mut HashMap<ast::Ident, NodeId>)
                      -> PathResolution {
         // Add the binding to the local ribs, if it
         // doesn't already exist in the bindings map. (We
         // must not add it if it's in the bindings map
         // because that breaks the assumptions later
         // passes make about or-patterns.)
-        let renamed = mtwt::resolve(ident.node);
         let mut def = Def::Local(self.definitions.local_def_id(pat_id), pat_id);
-        match bindings.get(&renamed).cloned() {
+        match bindings.get(&ident.node).cloned() {
             Some(id) if id == outer_pat_id => {
                 // `Variant(a, a)`, error
                 resolve_error(
@@ -2204,7 +2203,7 @@ impl<'a> Resolver<'a> {
             Some(..) if pat_src == PatternSource::Match => {
                 // `Variant1(a) | Variant2(a)`, ok
                 // Reuse definition from the first `a`.
-                def = self.value_ribs.last_mut().unwrap().bindings[&renamed];
+                def = self.value_ribs.last_mut().unwrap().bindings[&ident.node];
             }
             Some(..) => {
                 span_bug!(ident.span, "two bindings with the same name from \
@@ -2213,8 +2212,8 @@ impl<'a> Resolver<'a> {
             None => {
                 // A completely fresh binding, add to the lists if it's valid.
                 if ident.node.name != keywords::Invalid.name() {
-                    bindings.insert(renamed, outer_pat_id);
-                    self.value_ribs.last_mut().unwrap().bindings.insert(renamed, def);
+                    bindings.insert(ident.node, outer_pat_id);
+                    self.value_ribs.last_mut().unwrap().bindings.insert(ident.node, def);
                 }
             }
         }
@@ -2275,7 +2274,7 @@ impl<'a> Resolver<'a> {
                        pat_src: PatternSource,
                        // Maps idents to the node ID for the
                        // outermost pattern that binds them.
-                       bindings: &mut HashMap<Name, NodeId>) {
+                       bindings: &mut HashMap<ast::Ident, NodeId>) {
         // Visit all direct subpatterns of this pattern.
         let outer_pat_id = pat.id;
         pat.walk(&mut |pat| {
@@ -2748,7 +2747,7 @@ impl<'a> Resolver<'a> {
         let names = self.value_ribs
                     .iter()
                     .rev()
-                    .flat_map(|rib| rib.bindings.keys());
+                    .flat_map(|rib| rib.bindings.keys().map(|ident| &ident.name));
 
         if let Some(found) = find_best_match_for_name(names, name, None) {
             if name != found {
@@ -2759,7 +2758,7 @@ impl<'a> Resolver<'a> {
 
     fn resolve_labeled_block(&mut self, label: Option<ast::Ident>, id: NodeId, block: &Block) {
         if let Some(label) = label {
-            let (label, def) = (mtwt::resolve(label), Def::Label(id));
+            let def = Def::Label(id);
             self.with_label_rib(|this| {
                 this.label_ribs.last_mut().unwrap().bindings.insert(label, def);
                 this.visit_block(block);
@@ -2966,7 +2965,7 @@ impl<'a> Resolver<'a> {
 
                     {
                         let rib = this.label_ribs.last_mut().unwrap();
-                        rib.bindings.insert(mtwt::resolve(label.node), def);
+                        rib.bindings.insert(label.node, def);
                     }
 
                     visit::walk_expr(this, expr);
@@ -2974,7 +2973,7 @@ impl<'a> Resolver<'a> {
             }
 
             ExprKind::Break(Some(label)) | ExprKind::Continue(Some(label)) => {
-                match self.search_label(mtwt::resolve(label.node)) {
+                match self.search_label(label.node) {
                     None => {
                         self.record_def(expr.id, err_path_resolution());
                         resolve_error(self,
