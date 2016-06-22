@@ -3105,6 +3105,7 @@ mod tests {
     use ast;
     use codemap;
     use parse::token;
+    use syntax_pos;
 
     #[test]
     fn test_fun_to_string() {
@@ -3126,7 +3127,7 @@ mod tests {
     fn test_variant_to_string() {
         let ident = token::str_to_ident("principal_skinner");
 
-        let var = syntax_pos::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
+        let var = codemap::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
             name: ident,
             attrs: Vec::new(),
             // making this up as I go.... ?
