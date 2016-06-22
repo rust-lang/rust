@@ -143,8 +143,14 @@ pub fn load_attrs<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
     if let Some(tcx) = cx.tcx_opt() {
         let crate_name = tcx.sess.cstore.crate_name(did.krate).to_string();
-        let relative = tcx.def_path(did).data.into_iter().map(|elem| {
-            elem.data.to_string()
+        let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| {
+            // extern blocks have an empty name
+            let s = elem.data.to_string();
+            if !s.is_empty() {
+                Some(s)
+            } else {
+                None
+            }
         });
         let fqn = once(crate_name).chain(relative).collect();
         cx.renderinfo.borrow_mut().external_paths.insert(did, (fqn, kind));
