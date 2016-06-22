@@ -49,13 +49,11 @@ use std::ffi::{OsString, OsStr};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use syntax::ast::{self, NodeIdAssigner};
+use syntax::{ast, diagnostics, visit};
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::diagnostics;
 use syntax::fold::Folder;
 use syntax::parse::{self, PResult, token};
 use syntax::util::node_count::NodeCounter;
-use syntax::visit;
 use syntax;
 use syntax_ext;
 
@@ -823,7 +821,7 @@ pub fn lower_and_resolve<'a>(sess: &Session,
 
         // Lower ast -> hir.
         let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
-            hir_map::Forest::new(lower_crate(sess, krate, sess, &mut resolver), dep_graph)
+            hir_map::Forest::new(lower_crate(sess, krate, &mut resolver), dep_graph)
         });
 
         (ty::CrateAnalysis {
