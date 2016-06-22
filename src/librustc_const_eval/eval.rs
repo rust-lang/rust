@@ -1116,6 +1116,7 @@ fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstVal, ty: ty::Ty) 
             ty::TyRawPtr(_) => {
                 Err(ErrKind::UnimplementedConstVal("casting a bytestr to a raw ptr"))
             },
+            ty::TyRef(..) => Err(ErrKind::UnimplementedConstVal("casting a bytestr to slice")),
             _ => Err(CannotCast),
         },
         _ => Err(CannotCast),
