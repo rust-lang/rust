@@ -19,9 +19,10 @@ script:
  - python util/update_lints.py -c
  - cargo build --features debugging
  - cargo test --features debugging
- - SYSROOT=~/rust cargo install
- - cargo clippy -- -D clippy
- - cd clippy_lints && cargo clippy -- -D clippy && cd ..
+ - mkdir -p ~/rust/cargo/bin
+ - cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
+ - PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy
+ - cd clippy_lints && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ..
 
 after_success:
 # only test regex_macros if it compiles
