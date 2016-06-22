@@ -19,6 +19,7 @@ script:
  - python util/update_lints.py -c
  - cargo build --features debugging
  - cargo test --features debugging
+ - mkdir -p ~/rust/cargo/bin
  - cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
  - cargo clippy -- -D clippy
  - cd clippy_lints && cargo clippy -- -D clippy && cd ..
