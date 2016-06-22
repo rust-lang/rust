@@ -82,7 +82,7 @@ pub fn write_file<T>(text: &StringBuffer,
                      filename: &str,
                      out: &mut T,
                      config: &Config)
-                     -> Result<Option<String>, io::Error>
+                     -> Result<bool, io::Error>
     where T: Write
 {
 
@@ -146,8 +146,10 @@ pub fn write_file<T>(text: &StringBuffer,
         WriteMode::Diff => {
             println!("Diff of {}:\n", filename);
             if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
-                print_diff(make_diff(&ori, &fmt, 3),
-                           |line_num| format!("\nDiff at line {}:", line_num));
+                let mismatch = make_diff(&ori, &fmt, 3);
+                let has_diff = !mismatch.is_empty();
+                print_diff(mismatch, |line_num| format!("\nDiff at line {}:", line_num));
+                return Ok(has_diff);
             }
         }
         WriteMode::Checkstyle => {
@@ -156,5 +158,6 @@ pub fn write_file<T>(text: &StringBuffer,
         }
     }
 
-    Ok(None)
+    // when we are not in diff mode, don't indicate differing files
+    Ok(false)
 }

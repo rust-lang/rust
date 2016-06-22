@@ -269,6 +269,9 @@ fn main() {
                 2
             } else if summary.has_formatting_errors() {
                 3
+            } else if summary.has_diff {
+                // should only happen in diff mode
+                4
             } else {
                 assert!(summary.has_no_errors());
                 0
