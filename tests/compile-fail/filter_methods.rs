@@ -17,4 +17,9 @@ fn main() {
                                 .filter_map(|x| x.checked_mul(2))
                                 .flat_map(|x| x.checked_mul(2))
                                 .collect();
+
+    let _: Vec<_> = vec![5i8; 6].into_iter() //~ERROR called `filter_map(p).map(q)` on an `Iterator`
+                                .filter_map(|x| x.checked_mul(2))
+                                .map(|x| x.checked_mul(2))
+                                .collect();
 }
