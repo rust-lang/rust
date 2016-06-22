@@ -276,7 +276,7 @@ pub mod builtin {
     /// // fn concat_idents!(new, fun, name) { } // not usable in this way!
     /// # }
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "concat_idents", issue = "29599")]
     #[macro_export]
     macro_rules! concat_idents {
         ($($e:ident),*) => ({ /* compiler built-in */ })
