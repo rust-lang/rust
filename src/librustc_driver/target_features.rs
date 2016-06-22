@@ -28,15 +28,19 @@ const ARM_WHITELIST: &'static [&'static str] = &[
 ];
 
 const X86_WHITELIST: &'static [&'static str] = &[
-    "avx\0",
-    "avx2\0",
-    "sse\0",
-    "sse2\0",
-    "sse3\0",
-    "sse4.1\0",
-    "sse4.2\0",
-    "ssse3\0",
-];
+    "avx\0",                       // AVX instructions.
+    "avx2\0",                      // AVX2 instructions.
+    "bmi\0",                       // BMI instructions.
+    "bmi2\0",                      // BMI2 instructions.
+    "sse\0",                       // SSE instructions.
+    "sse2\0",                      // SSE2 instructions.
+    "sse3\0",                      // SSE3 instructions.
+    "sse4.1\0",                    // SSE 4.1 instructions.
+    "sse4.2\0",                    // SSE 4.2 instructions.
+    "sse4a\0",                     // SSE 4a instructions.
+    "ssse3\0",                     // SSSE3 instructions.
+    "tbm\0",                       // TBM instructions.
+ ];
 
 /// Add `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
