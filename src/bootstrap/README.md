@@ -50,7 +50,7 @@ compiler. What actually happens when you invoke rustbuild is:
 1. The entry point script, `src/bootstrap/bootstrap.py` is run. This script is
    responsible for downloading the stage0 compiler/Cargo binaries, and it then
    compiles the build system itself (this folder). Finally, it then invokes the
-   actual `boostrap` binary build system.
+   actual `bootstrap` binary build system.
 2. In Rust, `bootstrap` will slurp up all configuration, perform a number of
    sanity checks (compilers exist for example), and then start building the
    stage0 artifacts.
