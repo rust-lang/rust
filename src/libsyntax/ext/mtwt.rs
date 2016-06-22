@@ -41,8 +41,6 @@ pub enum SyntaxContext_ {
     EmptyCtxt,
     Mark (Mrk,SyntaxContext),
     Rename (Name),
-    /// actually, IllegalCtxt may not be necessary.
-    IllegalCtxt
 }
 
 /// A list of ident->name renamings
@@ -99,11 +97,10 @@ pub fn with_sctable<T, F>(op: F) -> T where
     SCTABLE_KEY.with(move |slot| op(slot))
 }
 
-// Make a fresh syntax context table with EmptyCtxt in slot zero
-// and IllegalCtxt in slot one.
+// Make a fresh syntax context table with EmptyCtxt in slot zero.
 fn new_sctable_internal() -> SCTable {
     SCTable {
-        table: RefCell::new(vec!(EmptyCtxt, IllegalCtxt)),
+        table: RefCell::new(vec![EmptyCtxt]),
         marks: RefCell::new(HashMap::new()),
         renames: RefCell::new(HashMap::new()),
     }
@@ -129,7 +126,7 @@ pub fn clear_tables() {
 /// Reset the tables to their initial state
 pub fn reset_tables() {
     with_sctable(|table| {
-        *table.table.borrow_mut() = vec!(EmptyCtxt, IllegalCtxt);
+        *table.table.borrow_mut() = vec![EmptyCtxt];
         *table.marks.borrow_mut() = HashMap::new();
         *table.renames.borrow_mut() = HashMap::new();
     });
@@ -156,7 +153,6 @@ fn resolve_internal(id: Ident, table: &SCTable) -> Name {
         // ignore marks here:
         Mark(_, subctxt) => resolve_internal(Ident::new(id.name, subctxt), table),
         Rename(name) => name,
-        IllegalCtxt => panic!("expected resolvable context, got IllegalCtxt")
     }
 }
 
@@ -192,11 +188,11 @@ mod tests {
     #[test] fn unfold_marks_test() {
         let mut t = new_sctable_internal();
 
-        assert_eq!(unfold_marks(vec!(3,7),EMPTY_CTXT,&mut t),SyntaxContext(3));
+        assert_eq!(unfold_marks(vec!(3,7),EMPTY_CTXT,&mut t),SyntaxContext(2));
         {
             let table = t.table.borrow();
-            assert!((*table)[2] == Mark(7,EMPTY_CTXT));
-            assert!((*table)[3] == Mark(3,SyntaxContext(2)));
+            assert!((*table)[1] == Mark(7,EMPTY_CTXT));
+            assert!((*table)[2] == Mark(3,SyntaxContext(1)));
         }
     }
 
@@ -209,10 +205,10 @@ mod tests {
     #[test]
     fn hashing_tests () {
         let mut t = new_sctable_internal();
-        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),SyntaxContext(2));
-        assert_eq!(apply_mark_internal(13,EMPTY_CTXT,&mut t),SyntaxContext(3));
+        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),SyntaxContext(1));
+        assert_eq!(apply_mark_internal(13,EMPTY_CTXT,&mut t),SyntaxContext(2));
         // using the same one again should result in the same index:
-        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),SyntaxContext(2));
+        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),SyntaxContext(1));
         // I'm assuming that the rename table will behave the same....
     }
 }
