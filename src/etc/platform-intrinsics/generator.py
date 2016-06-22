@@ -32,7 +32,6 @@ class PlatformInfo(object):
 
 class IntrinsicSet(object):
     def __init__(self, platform, json):
-        
         self._llvm_prefix = json['llvm_prefix']
         self._type_info = json['number_info']
         self._intrinsics = json['intrinsics']
