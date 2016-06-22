@@ -83,6 +83,7 @@ mod diagnostics;
 mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
+mod assign_ids;
 
 enum SuggestionType {
     Macro(String),
