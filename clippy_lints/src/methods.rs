@@ -159,6 +159,18 @@ declare_lint! {
     "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
 }
 
+/// **What it does:** This lint `Warn`s on `_.filter(_).map(_)`, `_.filter(_).flat_map(_)`, `_.filter_map(_).flat_map(_)` and similar.
+///
+/// **Why is this bad?** Readability, this can be written more concisely as a single method call
+///
+/// **Known problems:** Often requires a condition + Option/Iterator creation inside the closure
+///
+/// **Example:** `iter.filter(|x| x == 0).map(|x| x * 2)`
+declare_lint! {
+    pub FILTER_MAP, Allow,
+    "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call"
+}
+
 /// **What it does:** This lint `Warn`s on an iterator search (such as `find()`, `position()`, or
 /// `rposition()`) followed by a call to `is_some()`.
 ///
@@ -356,6 +368,7 @@ impl LintPass for Pass {
                     SINGLE_CHAR_PATTERN,
                     SEARCH_IS_SOME,
                     TEMPORARY_CSTRING_AS_PTR,
+                    FILTER_MAP,
                     ITER_NTH)
     }
 }
@@ -379,6 +392,14 @@ impl LateLintPass for Pass {
                     lint_map_unwrap_or_else(cx, expr, arglists[0], arglists[1]);
                 } else if let Some(arglists) = method_chain_args(expr, &["filter", "next"]) {
                     lint_filter_next(cx, expr, arglists[0]);
+                } else if let Some(arglists) = method_chain_args(expr, &["filter", "map"]) {
+                    lint_filter_map(cx, expr, arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["filter_map", "map"]) {
+                    lint_filter_map_map(cx, expr, arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["filter", "flat_map"]) {
+                    lint_filter_flat_map(cx, expr, arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["filter_map", "flat_map"]) {
+                    lint_filter_map_flat_map(cx, expr, arglists[0], arglists[1]);
                 } else if let Some(arglists) = method_chain_args(expr, &["find", "is_some"]) {
                     lint_search_is_some(cx, expr, "find", arglists[0], arglists[1]);
                 } else if let Some(arglists) = method_chain_args(expr, &["position", "is_some"]) {
@@ -813,11 +834,11 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &Method
 
 #[allow(ptr_arg)]
 // Type of MethodArgs is potentially a Vec
-/// lint use of `filter().next() for Iterators`
+/// lint use of `filter().next()` for `Iterators`
 fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &MethodArgs) {
     // lint if caller of `.filter().next()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(p).next()` on an Iterator. This is more succinctly expressed by calling `.find(p)` \
+        let msg = "called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` \
                    instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
@@ -834,6 +855,52 @@ fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &MethodArgs
     }
 }
 
+// Type of MethodArgs is potentially a Vec
+/// lint use of `filter().map()` for `Iterators`
+fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
+    // lint if caller of `.filter().map()` is an Iterator
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+        let msg = "called `filter(p).map(q)` on an `Iterator`. \
+                   This is more succinctly expressed by calling `.filter_map(..)` instead.";
+        span_lint(cx, FILTER_MAP, expr.span, msg);
+    }
+}
+
+// Type of MethodArgs is potentially a Vec
+/// lint use of `filter().map()` for `Iterators`
+fn lint_filter_map_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
+    // lint if caller of `.filter().map()` is an Iterator
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+        let msg = "called `filter_map(p).map(q)` on an `Iterator`. \
+                   This is more succinctly expressed by only calling `.filter_map(..)` instead.";
+        span_lint(cx, FILTER_MAP, expr.span, msg);
+    }
+}
+
+// Type of MethodArgs is potentially a Vec
+/// lint use of `filter().flat_map()` for `Iterators`
+fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
+    // lint if caller of `.filter().flat_map()` is an Iterator
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+        let msg = "called `filter(p).flat_map(q)` on an `Iterator`. \
+                   This is more succinctly expressed by calling `.flat_map(..)` \
+                   and filtering by returning an empty Iterator.";
+        span_lint(cx, FILTER_MAP, expr.span, msg);
+    }
+}
+
+// Type of MethodArgs is potentially a Vec
+/// lint use of `filter_map().flat_map()` for `Iterators`
+fn lint_filter_map_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &MethodArgs, _map_args: &MethodArgs) {
+    // lint if caller of `.filter_map().flat_map()` is an Iterator
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+        let msg = "called `filter_map(p).flat_map(q)` on an `Iterator`. \
+                   This is more succinctly expressed by calling `.flat_map(..)` \
+                   and filtering by returning an empty Iterator.";
+        span_lint(cx, FILTER_MAP, expr.span, msg);
+    }
+}
+
 #[allow(ptr_arg)]
 // Type of MethodArgs is potentially a Vec
 /// lint searching an Iterator followed by `is_some()`
@@ -841,7 +908,7 @@ fn lint_search_is_some(cx: &LateContext, expr: &hir::Expr, search_method: &str, 
                        is_some_args: &MethodArgs) {
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &*is_some_args[0], &paths::ITERATOR) {
-        let msg = format!("called `is_some()` after searching an iterator with {}. This is more succinctly expressed \
+        let msg = format!("called `is_some()` after searching an `Iterator` with {}. This is more succinctly expressed \
                            by calling `any()`.",
                           search_method);
         let search_snippet = snippet(cx, search_args[1].span, "..");

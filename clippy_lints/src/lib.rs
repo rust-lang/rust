@@ -268,6 +268,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         matches::SINGLE_MATCH_ELSE,
         mem_forget::MEM_FORGET,
+        methods::FILTER_MAP,
         methods::OPTION_UNWRAP_USED,
         methods::RESULT_UNWRAP_USED,
         methods::WRONG_PUB_SELF_CONVENTION,

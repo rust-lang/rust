@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 154 lints included in this crate:
+There are 155 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -60,6 +60,7 @@ name                                                                            
 [explicit_counter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_counter_loop)                       | warn    | for-looping with an explicit counter when `_.enumerate()` would do
 [explicit_iter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop)                             | warn    | for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do
 [extend_from_slice](https://github.com/Manishearth/rust-clippy/wiki#extend_from_slice)                               | warn    | `.extend_from_slice(_)` is a faster way to extend a Vec by a slice
+[filter_map](https://github.com/Manishearth/rust-clippy/wiki#filter_map)                                             | allow   | using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call
 [filter_next](https://github.com/Manishearth/rust-clippy/wiki#filter_next)                                           | warn    | using `filter(p).next()`, which is more succinctly expressed as `.find(p)`
 [float_arithmetic](https://github.com/Manishearth/rust-clippy/wiki#float_arithmetic)                                 | allow   | Any floating-point arithmetic statement
 [float_cmp](https://github.com/Manishearth/rust-clippy/wiki#float_cmp)                                               | warn    | using `==` or `!=` on float values (as floating-point operations usually involve rounding errors, it is always better to check for approximate equality within small bounds)
