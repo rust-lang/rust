@@ -47,7 +47,7 @@ use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::ty;
 use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
@@ -1100,12 +1100,9 @@ impl Named for hir::PathSegment {
 }
 
 impl<'a> Resolver<'a> {
-    pub fn new(session: &'a Session,
-               definitions: Definitions,
-               make_glob_map: MakeGlobMap,
-               arenas: &'a ResolverArenas<'a>)
+    pub fn new(session: &'a Session, make_glob_map: MakeGlobMap, arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
-        let root_def_id = definitions.local_def_id(CRATE_NODE_ID);
+        let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let graph_root =
             ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, arenas);
         let graph_root = arenas.alloc_module(graph_root);
@@ -1115,7 +1112,7 @@ impl<'a> Resolver<'a> {
         Resolver {
             session: session,
 
-            definitions: definitions,
+            definitions: Definitions::new(),
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.

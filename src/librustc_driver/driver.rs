@@ -726,13 +726,16 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
 
     krate = assign_node_ids(sess, krate);
 
-    // Collect defintions for def ids.
-    let defs =
-        time(sess.time_passes(), "collecting defs", || hir_map::collect_definitions(&krate));
+    let resolver_arenas = Resolver::arenas();
+    let mut resolver = Resolver::new(sess, make_glob_map, &resolver_arenas);
 
-    time(sess.time_passes(),
-         "external crate/lib resolution",
-         || read_local_crates(sess, &cstore, &defs, &krate, crate_name, &sess.dep_graph));
+    // Collect defintions for def ids.
+    time(sess.time_passes(), "collecting defs", || resolver.definitions.collect(&krate));
+
+    time(sess.time_passes(), "external crate/lib resolution", || {
+        let defs = &resolver.definitions;
+        read_local_crates(sess, &cstore, defs, &krate, crate_name, &sess.dep_graph)
+    });
 
     time(sess.time_passes(),
          "early lint checks",
@@ -741,9 +744,6 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
     time(sess.time_passes(),
          "AST validation",
          || ast_validation::check_crate(sess, &krate));
-
-    let resolver_arenas = Resolver::arenas();
-    let mut resolver = Resolver::new(sess, defs, make_glob_map, &resolver_arenas);
 
     time(sess.time_passes(), "name resolution", || {
         resolver.resolve_crate(&krate);
