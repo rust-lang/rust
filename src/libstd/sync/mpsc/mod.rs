@@ -134,9 +134,9 @@
 // senders. Under the hood, however, there are actually three flavors of
 // channels in play.
 //
-// * Flavor::Oneshots - these channels are highly optimized for the one-send use case.
-//              They contain as few atomics as possible and involve one and
-//              exactly one allocation.
+// * Flavor::Oneshots - these channels are highly optimized for the one-send use
+//                      case. They contain as few atomics as possible and
+//                      involve one and exactly one allocation.
 // * Streams - these channels are optimized for the non-shared use case. They
 //             use a different concurrent queue that is more tailored for this
 //             use case. The initial allocation of this flavor of channel is not
@@ -148,9 +148,9 @@
 //
 // ## Concurrent queues
 //
-// The basic idea of Rust's Sender/Receiver types is that send() never blocks, but
-// recv() obviously blocks. This means that under the hood there must be some
-// shared and concurrent queue holding all of the actual data.
+// The basic idea of Rust's Sender/Receiver types is that send() never blocks,
+// but recv() obviously blocks. This means that under the hood there must be
+// some shared and concurrent queue holding all of the actual data.
 //
 // With two flavors of channels, two flavors of queues are also used. We have
 // chosen to use queues from a well-known author that are abbreviated as SPSC
@@ -271,6 +271,7 @@ use fmt;
 use mem;
 use cell::UnsafeCell;
 use marker::Reflect;
+use time::{Duration, Instant};
 
 #[unstable(feature = "mpsc_select", issue = "27800")]
 pub use self::select::{Select, Handle};
@@ -376,6 +377,19 @@ pub enum TryRecvError {
     /// This channel's sending half has become disconnected, and there will
     /// never be any more data received on this channel
     #[stable(feature = "rust1", since = "1.0.0")]
+    Disconnected,
+}
+
+/// This enumeration is the list of possible errors that `recv_timeout` could
+/// not return data when called.
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[unstable(feature = "mpsc_recv_timeout", issue = "34029")]
+pub enum RecvTimeoutError {
+    /// This channel is currently empty, but the sender(s) have not yet
+    /// disconnected, so data may yet become available.
+    Timeout,
+    /// This channel's sending half has become disconnected, and there will
+    /// never be any more data received on this channel
     Disconnected,
 }
 
@@ -838,34 +852,126 @@ impl<T> Receiver<T> {
         loop {
             let new_port = match *unsafe { self.inner() } {
                 Flavor::Oneshot(ref p) => {
-                    match unsafe { (*p.get()).recv() } {
+                    match unsafe { (*p.get()).recv(None) } {
                         Ok(t) => return Ok(t),
-                        Err(oneshot::Empty) => return unreachable!(),
                         Err(oneshot::Disconnected) => return Err(RecvError),
                         Err(oneshot::Upgraded(rx)) => rx,
+                        Err(oneshot::Empty) => unreachable!(),
                     }
                 }
                 Flavor::Stream(ref p) => {
-                    match unsafe { (*p.get()).recv() } {
+                    match unsafe { (*p.get()).recv(None) } {
                         Ok(t) => return Ok(t),
-                        Err(stream::Empty) => return unreachable!(),
                         Err(stream::Disconnected) => return Err(RecvError),
                         Err(stream::Upgraded(rx)) => rx,
+                        Err(stream::Empty) => unreachable!(),
                     }
                 }
                 Flavor::Shared(ref p) => {
-                    match unsafe { (*p.get()).recv() } {
+                    match unsafe { (*p.get()).recv(None) } {
                         Ok(t) => return Ok(t),
-                        Err(shared::Empty) => return unreachable!(),
                         Err(shared::Disconnected) => return Err(RecvError),
+                        Err(shared::Empty) => unreachable!(),
                     }
                 }
                 Flavor::Sync(ref p) => return unsafe {
-                    (*p.get()).recv().map_err(|()| RecvError)
+                    (*p.get()).recv(None).map_err(|_| RecvError)
                 }
             };
             unsafe {
                 mem::swap(self.inner_mut(), new_port.inner_mut());
+            }
+        }
+    }
+
+    /// Attempts to wait for a value on this receiver, returning an error if the
+    /// corresponding channel has hung up, or if it waits more than `timeout`.
+    ///
+    /// This function will always block the current thread if there is no data
+    /// available and it's possible for more data to be sent. Once a message is
+    /// sent to the corresponding `Sender`, then this receiver will wake up and
+    /// return that message.
+    ///
+    /// If the corresponding `Sender` has disconnected, or it disconnects while
+    /// this call is blocking, this call will wake up and return `Err` to
+    /// indicate that no more messages can ever be received on this channel.
+    /// However, since channels are buffered, messages sent before the disconnect
+    /// will still be properly received.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(mpsc_recv_timeout)]
+    ///
+    /// use std::sync::mpsc::{self, RecvTimeoutError};
+    /// use std::time::Duration;
+    ///
+    /// let (send, recv) = mpsc::channel::<()>();
+    ///
+    /// let timeout = Duration::from_millis(100);
+    /// assert_eq!(Err(RecvTimeoutError::Timeout), recv.recv_timeout(timeout));
+    /// ```
+    #[unstable(feature = "mpsc_recv_timeout", issue = "34029")]
+    pub fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
+        // Do an optimistic try_recv to avoid the performance impact of
+        // Instant::now() in the full-channel case.
+        match self.try_recv() {
+            Ok(result)
+                => Ok(result),
+            Err(TryRecvError::Disconnected)
+                => Err(RecvTimeoutError::Disconnected),
+            Err(TryRecvError::Empty)
+                => self.recv_max_until(Instant::now() + timeout)
+        }
+    }
+
+    fn recv_max_until(&self, deadline: Instant) -> Result<T, RecvTimeoutError> {
+        use self::RecvTimeoutError::*;
+
+        loop {
+            let port_or_empty = match *unsafe { self.inner() } {
+                Flavor::Oneshot(ref p) => {
+                    match unsafe { (*p.get()).recv(Some(deadline)) } {
+                        Ok(t) => return Ok(t),
+                        Err(oneshot::Disconnected) => return Err(Disconnected),
+                        Err(oneshot::Upgraded(rx)) => Some(rx),
+                        Err(oneshot::Empty) => None,
+                    }
+                }
+                Flavor::Stream(ref p) => {
+                    match unsafe { (*p.get()).recv(Some(deadline)) } {
+                        Ok(t) => return Ok(t),
+                        Err(stream::Disconnected) => return Err(Disconnected),
+                        Err(stream::Upgraded(rx)) => Some(rx),
+                        Err(stream::Empty) => None,
+                    }
+                }
+                Flavor::Shared(ref p) => {
+                    match unsafe { (*p.get()).recv(Some(deadline)) } {
+                        Ok(t) => return Ok(t),
+                        Err(shared::Disconnected) => return Err(Disconnected),
+                        Err(shared::Empty) => None,
+                    }
+                }
+                Flavor::Sync(ref p) => {
+                    match unsafe { (*p.get()).recv(Some(deadline)) } {
+                        Ok(t) => return Ok(t),
+                        Err(sync::Disconnected) => return Err(Disconnected),
+                        Err(sync::Empty) => None,
+                    }
+                }
+            };
+
+            if let Some(new_port) = port_or_empty {
+                unsafe {
+                    mem::swap(self.inner_mut(), new_port.inner_mut());
+                }
+            }
+
+            // If we're already passed the deadline, and we're here without
+            // data, return a timeout, else try again.
+            if Instant::now() >= deadline {
+                return Err(Timeout);
             }
         }
     }
@@ -1141,6 +1247,7 @@ mod tests {
     use env;
     use super::*;
     use thread;
+    use time::{Duration, Instant};
 
     pub fn stress_factor() -> usize {
         match env::var("RUST_TEST_STRESS") {
@@ -1540,11 +1647,110 @@ mod tests {
     }
 
     #[test]
+    fn oneshot_single_thread_recv_timeout() {
+        let (tx, rx) = channel();
+        tx.send(()).unwrap();
+        assert_eq!(rx.recv_timeout(Duration::from_millis(1)), Ok(()));
+        assert_eq!(rx.recv_timeout(Duration::from_millis(1)), Err(RecvTimeoutError::Timeout));
+        tx.send(()).unwrap();
+        assert_eq!(rx.recv_timeout(Duration::from_millis(1)), Ok(()));
+    }
+
+    #[test]
+    fn stress_recv_timeout_two_threads() {
+        let (tx, rx) = channel();
+        let stress = stress_factor() + 100;
+        let timeout = Duration::from_millis(100);
+
+        thread::spawn(move || {
+            for i in 0..stress {
+                if i % 2 == 0 {
+                    thread::sleep(timeout * 2);
+                }
+                tx.send(1usize).unwrap();
+            }
+        });
+
+        let mut recv_count = 0;
+        loop {
+            match rx.recv_timeout(timeout) {
+                Ok(n) => {
+                    assert_eq!(n, 1usize);
+                    recv_count += 1;
+                }
+                Err(RecvTimeoutError::Timeout) => continue,
+                Err(RecvTimeoutError::Disconnected) => break,
+            }
+        }
+
+        assert_eq!(recv_count, stress);
+    }
+
+    #[test]
+    fn recv_timeout_upgrade() {
+        let (tx, rx) = channel::<()>();
+        let timeout = Duration::from_millis(1);
+        let _tx_clone = tx.clone();
+
+        let start = Instant::now();
+        assert_eq!(rx.recv_timeout(timeout), Err(RecvTimeoutError::Timeout));
+        assert!(Instant::now() >= start + timeout);
+    }
+
+    #[test]
+    fn stress_recv_timeout_shared() {
+        let (tx, rx) = channel();
+        let stress = stress_factor() + 100;
+
+        for i in 0..stress {
+            let tx = tx.clone();
+            thread::spawn(move || {
+                thread::sleep(Duration::from_millis(i as u64 * 10));
+                tx.send(1usize).unwrap();
+            });
+        }
+
+        drop(tx);
+
+        let mut recv_count = 0;
+        loop {
+            match rx.recv_timeout(Duration::from_millis(10)) {
+                Ok(n) => {
+                    assert_eq!(n, 1usize);
+                    recv_count += 1;
+                }
+                Err(RecvTimeoutError::Timeout) => continue,
+                Err(RecvTimeoutError::Disconnected) => break,
+            }
+        }
+
+        assert_eq!(recv_count, stress);
+    }
+
+    #[test]
     fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
         let (tx, rx) = channel();
         for _ in 0..10000 { tx.send(()).unwrap(); }
         for _ in 0..10000 { rx.recv().unwrap(); }
+    }
+
+    #[test]
+    fn shared_recv_timeout() {
+        let (tx, rx) = channel();
+        let total = 5;
+        for _ in 0..total {
+            let tx = tx.clone();
+            thread::spawn(move|| {
+                tx.send(()).unwrap();
+            });
+        }
+
+        for _ in 0..total { rx.recv().unwrap(); }
+
+        assert_eq!(rx.recv_timeout(Duration::from_millis(1)), Err(RecvTimeoutError::Timeout));
+        tx.send(()).unwrap();
+        assert_eq!(rx.recv_timeout(Duration::from_millis(1)), Ok(()));
     }
 
     #[test]
@@ -1689,6 +1895,7 @@ mod sync_tests {
     use env;
     use thread;
     use super::*;
+    use time::Duration;
 
     pub fn stress_factor() -> usize {
         match env::var("RUST_TEST_STRESS") {
@@ -1718,6 +1925,14 @@ mod sync_tests {
         let tx = tx.clone();
         tx.send(1).unwrap();
         assert_eq!(rx.recv().unwrap(), 1);
+    }
+
+    #[test]
+    fn recv_timeout() {
+        let (tx, rx) = sync_channel::<i32>(1);
+        assert_eq!(rx.recv_timeout(Duration::from_millis(1)), Err(RecvTimeoutError::Timeout));
+        tx.send(1).unwrap();
+        assert_eq!(rx.recv_timeout(Duration::from_millis(1)), Ok(1));
     }
 
     #[test]
@@ -1799,6 +2014,67 @@ mod sync_tests {
         for _ in 0..10000 {
             assert_eq!(rx.recv().unwrap(), 1);
         }
+    }
+
+    #[test]
+    fn stress_recv_timeout_two_threads() {
+        let (tx, rx) = sync_channel::<i32>(0);
+
+        thread::spawn(move|| {
+            for _ in 0..10000 { tx.send(1).unwrap(); }
+        });
+
+        let mut recv_count = 0;
+        loop {
+            match rx.recv_timeout(Duration::from_millis(1)) {
+                Ok(v) => {
+                    assert_eq!(v, 1);
+                    recv_count += 1;
+                },
+                Err(RecvTimeoutError::Timeout) => continue,
+                Err(RecvTimeoutError::Disconnected) => break,
+            }
+        }
+
+        assert_eq!(recv_count, 10000);
+    }
+
+    #[test]
+    fn stress_recv_timeout_shared() {
+        const AMT: u32 = 1000;
+        const NTHREADS: u32 = 8;
+        let (tx, rx) = sync_channel::<i32>(0);
+        let (dtx, drx) = sync_channel::<()>(0);
+
+        thread::spawn(move|| {
+            let mut recv_count = 0;
+            loop {
+                match rx.recv_timeout(Duration::from_millis(10)) {
+                    Ok(v) => {
+                        assert_eq!(v, 1);
+                        recv_count += 1;
+                    },
+                    Err(RecvTimeoutError::Timeout) => continue,
+                    Err(RecvTimeoutError::Disconnected) => break,
+                }
+            }
+
+            assert_eq!(recv_count, AMT * NTHREADS);
+            assert!(rx.try_recv().is_err());
+
+            dtx.send(()).unwrap();
+        });
+
+        for _ in 0..NTHREADS {
+            let tx = tx.clone();
+            thread::spawn(move|| {
+                for _ in 0..AMT { tx.send(1).unwrap(); }
+            });
+        }
+
+        drop(tx);
+
+        drx.recv().unwrap();
     }
 
     #[test]
