@@ -1040,37 +1040,6 @@ if [ -n "$CFG_ENABLE_CLANG" ]
 then
     case "$CC" in
         (''|*clang)
-        CFG_CLANG_REPORTED_VERSION=$($CFG_CC --version | grep version)
-
-        if echo $CFG_CLANG_REPORTED_VERSION | grep -q "(based on LLVM "; then
-            CFG_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*(based on LLVM \(.*\))/\1/')
-        elif echo $CFG_CLANG_REPORTED_VERSION | grep -q "Apple LLVM"; then
-            CFG_OSX_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*version \(.*\) .*/\1/')
-        else
-            CFG_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*version \(.*\) .*/\1/')
-        fi
-
-        if [ -n "$CFG_OSX_CLANG_VERSION" ]
-        then
-            case $CFG_OSX_CLANG_VERSION in
-                (7.0* | 7.1* | 7.2* | 7.3* | 8.0*)
-                step_msg "found ok version of APPLE CLANG: $CFG_OSX_CLANG_VERSION"
-                ;;
-                (*)
-                err "bad APPLE CLANG version: $CFG_OSX_CLANG_VERSION, need >=7.0"
-                ;;
-            esac
-        else
-            case $CFG_CLANG_VERSION in
-                (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7* | 3.8* | 3.9*)
-                step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
-                ;;
-                (*)
-                err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
-                ;;
-            esac
-        fi
-
         if [ -z "$CC" ]
         then
             CFG_CC="clang"
