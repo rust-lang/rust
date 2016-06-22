@@ -925,7 +925,7 @@ impl PrimitiveTypeTable {
 pub struct Resolver<'a> {
     session: &'a Session,
 
-    definitions: &'a mut Definitions,
+    pub definitions: Definitions,
 
     graph_root: Module<'a>,
 
@@ -1001,7 +1001,7 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
 }
 
-struct ResolverArenas<'a> {
+pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleS<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
@@ -1079,7 +1079,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
     }
 
     fn definitions(&mut self) -> Option<&mut Definitions> {
-        Some(self.definitions)
+        Some(&mut self.definitions)
     }
 }
 
@@ -1100,11 +1100,11 @@ impl Named for hir::PathSegment {
 }
 
 impl<'a> Resolver<'a> {
-    fn new(session: &'a Session,
-           definitions: &'a mut Definitions,
-           make_glob_map: MakeGlobMap,
-           arenas: &'a ResolverArenas<'a>)
-           -> Resolver<'a> {
+    pub fn new(session: &'a Session,
+               definitions: Definitions,
+               make_glob_map: MakeGlobMap,
+               arenas: &'a ResolverArenas<'a>)
+               -> Resolver<'a> {
         let root_def_id = definitions.local_def_id(CRATE_NODE_ID);
         let graph_root =
             ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, arenas);
@@ -1158,7 +1158,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn arenas() -> ResolverArenas<'a> {
+    pub fn arenas() -> ResolverArenas<'a> {
         ResolverArenas {
             modules: arena::TypedArena::new(),
             local_modules: RefCell::new(Vec::new()),
@@ -1166,6 +1166,27 @@ impl<'a> Resolver<'a> {
             import_directives: arena::TypedArena::new(),
             name_resolutions: arena::TypedArena::new(),
         }
+    }
+
+    /// Entry point to crate resolution.
+    pub fn resolve_crate(&mut self, krate: &Crate) {
+        // Currently, we ignore the name resolution data structures for
+        // the purposes of dependency tracking. Instead we will run name
+        // resolution and include its output in the hash of each item,
+        // much like we do for macro expansion. In other words, the hash
+        // reflects not just its contents but the results of name
+        // resolution on those contents. Hopefully we'll push this back at
+        // some point.
+        let _ignore = self.session.dep_graph.in_ignore();
+
+        self.build_reduced_graph(krate);
+        resolve_imports::resolve_imports(self);
+
+        self.current_module = self.graph_root;
+        visit::walk_crate(self, krate);
+
+        check_unused::check_crate(self, krate);
+        self.report_privacy_errors();
     }
 
     fn new_module(&self, parent_link: ParentLink<'a>, def: Option<Def>, external: bool)
@@ -1566,12 +1587,6 @@ impl<'a> Resolver<'a> {
             }
         }
         None
-    }
-
-    fn resolve_crate(&mut self, krate: &Crate) {
-        debug!("(resolving crate) starting");
-        self.current_module = self.graph_root;
-        visit::walk_crate(self, krate);
     }
 
     fn resolve_item(&mut self, item: &Item) {
@@ -3453,36 +3468,6 @@ fn err_path_resolution() -> PathResolution {
 pub enum MakeGlobMap {
     Yes,
     No,
-}
-
-/// Entry point to crate resolution.
-pub fn resolve_crate<'a, 'b>(resolver: &'b mut Resolver<'a>, krate: &'b Crate) {
-    // Currently, we ignore the name resolution data structures for
-    // the purposes of dependency tracking. Instead we will run name
-    // resolution and include its output in the hash of each item,
-    // much like we do for macro expansion. In other words, the hash
-    // reflects not just its contents but the results of name
-    // resolution on those contents. Hopefully we'll push this back at
-    // some point.
-    let _ignore = resolver.session.dep_graph.in_ignore();
-
-    resolver.build_reduced_graph(krate);
-    resolve_imports::resolve_imports(resolver);
-    resolver.resolve_crate(krate);
-
-    check_unused::check_crate(resolver, krate);
-    resolver.report_privacy_errors();
-}
-
-pub fn with_resolver<'a, T, F>(session: &'a Session,
-                               definitions: &'a mut Definitions,
-                               make_glob_map: MakeGlobMap,
-                               f: F) -> T
-    where F: for<'b> FnOnce(Resolver<'b>) -> T,
-{
-    let arenas = Resolver::arenas();
-    let resolver = Resolver::new(session, definitions, make_glob_map, &arenas);
-    f(resolver)
 }
 
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }
