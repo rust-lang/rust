@@ -1677,7 +1677,7 @@ fn ident_continue(c: Option<char>) -> bool {
 mod tests {
     use super::*;
 
-    use codemap::{BytePos, Span, NO_EXPANSION};
+    use syntax_pos::{BytePos, Span, NO_EXPANSION};
     use codemap::CodeMap;
     use errors;
     use parse::token;

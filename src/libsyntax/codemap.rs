@@ -827,6 +827,7 @@ impl CodeMapper for CodeMap {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use syntax_pos::*;
 
     #[test]
     fn t1 () {

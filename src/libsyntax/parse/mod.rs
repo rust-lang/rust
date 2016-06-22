@@ -662,7 +662,8 @@ pub fn integer_lit(s: &str,
 mod tests {
     use super::*;
     use std::rc::Rc;
-    use syntax_pos::{Span, BytePos, Pos, Spanned, NO_EXPANSION};
+    use syntax_pos::{Span, BytePos, Pos, NO_EXPANSION};
+    use codemap::Spanned;
     use ast::{self, TokenTree, PatKind};
     use abi::Abi;
     use attr::{first_attr_value_str_by_name, AttrMetaMethods};

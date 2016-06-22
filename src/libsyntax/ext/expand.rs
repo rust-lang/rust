@@ -1229,7 +1229,7 @@ mod tests {
     use super::{PatIdentFinder, IdentRenamer, PatIdentRenamer, ExpansionConfig};
     use ast;
     use ast::Name;
-    use codemap;
+    use syntax_pos;
     use ext::base::{ExtCtxt, DummyMacroLoader};
     use ext::mtwt;
     use fold::Folder;
