@@ -6,7 +6,7 @@ use std::{fmt, iter, mem, ptr};
 use rustc::hir::def_id::DefId;
 use rustc::ty::BareFnTy;
 use rustc::ty::subst::Substs;
-use rustc::ty::layout::{Size, TargetDataLayout};
+use rustc::ty::layout::TargetDataLayout;
 
 use error::{EvalError, EvalResult};
 use primval::PrimVal;
@@ -154,6 +154,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
 
         Ok(())
+    }
+
+    pub fn pointer_size(&self) -> usize {
+        self.layout.pointer_size.bytes() as usize
     }
 }
 
