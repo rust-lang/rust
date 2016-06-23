@@ -444,9 +444,10 @@ impl<'a, 'b> Context<'a, 'b> {
         let decl = respan(sp, ast::DeclKind::Item(item));
 
         // Wrap the declaration in a block so that it forms a single expression.
-        ecx.expr_block(ecx.block(sp,
-            vec![respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))],
-            Some(ecx.expr_ident(sp, name))))
+        ecx.expr_block(ecx.block(sp, vec![
+            respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID)),
+            ecx.stmt_expr(ecx.expr_ident(sp, name)),
+        ]))
     }
 
     /// Actually builds the expression which the iformat! block will be expanded

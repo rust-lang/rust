@@ -587,10 +587,23 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_block(&mut self, b: &Block) -> P<hir::Block> {
+        let mut stmts = Vec::new();
+        let mut expr = None;
+
+        if let Some((last, rest)) = b.stmts.split_last() {
+            stmts = rest.iter().map(|s| self.lower_stmt(s)).collect::<Vec<_>>();
+            let last = self.lower_stmt(last);
+            if let hir::StmtExpr(e, _) = last.node {
+                expr = Some(e);
+            } else {
+                stmts.push(last);
+            }
+        }
+
         P(hir::Block {
             id: b.id,
-            stmts: b.stmts.iter().map(|s| self.lower_stmt(s)).collect(),
-            expr: b.expr.as_ref().map(|ref x| self.lower_expr(x)),
+            stmts: stmts.into(),
+            expr: expr,
             rules: self.lower_block_check_mode(&b.rules),
             span: b.span,
         })
