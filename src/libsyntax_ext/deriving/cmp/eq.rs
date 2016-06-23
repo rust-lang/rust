@@ -30,7 +30,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                 // create `a.<method>(); b.<method>(); c.<method>(); ...`
                 // (where method is `assert_receiver_is_total_eq`)
                 let stmts = exprs.into_iter().map(|e| cx.stmt_expr(e)).collect();
-                let block = cx.block(span, stmts, None);
+                let block = cx.block(span, stmts);
                 cx.expr_block(block)
             },
             Box::new(|cx, sp, _, _| {

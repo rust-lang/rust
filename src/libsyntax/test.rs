@@ -474,7 +474,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     let main_attr = ecx.attribute(sp, main_meta);
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(vec![]));
-    let main_body = ecx.block_all(sp, vec![call_test_main], None);
+    let main_body = ecx.block_all(sp, vec![call_test_main]);
     let main = ast::ItemKind::Fn(ecx.fn_decl(vec![], main_ret_ty),
                            ast::Unsafety::Normal,
                            ast::Constness::NotConst,

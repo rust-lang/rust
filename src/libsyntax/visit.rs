@@ -608,7 +608,6 @@ pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
     walk_list!(visitor, visit_stmt, &block.stmts);
-    walk_list!(visitor, visit_expr, &block.expr);
 }
 
 pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {

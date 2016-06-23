@@ -636,23 +636,14 @@ pub fn expand_block(blk: P<Block>, fld: &mut MacroExpander) -> P<Block> {
 
 // expand the elements of a block.
 pub fn expand_block_elts(b: P<Block>, fld: &mut MacroExpander) -> P<Block> {
-    b.map(|Block {id, stmts, expr, rules, span}| {
+    b.map(|Block {id, stmts, rules, span}| {
         let new_stmts = stmts.into_iter().flat_map(|x| {
             // perform pending renames and expand macros in the statement
             fld.fold_stmt(x).into_iter()
         }).collect();
-        let new_expr = expr.map(|x| {
-            let expr = {
-                let pending_renames = &mut fld.cx.syntax_env.info().pending_renames;
-                let mut rename_fld = IdentRenamer{renames:pending_renames};
-                rename_fld.fold_expr(x)
-            };
-            fld.fold_expr(expr)
-        });
         Block {
             id: fld.new_id(id),
             stmts: new_stmts,
-            expr: new_expr,
             rules: rules,
             span: span
         }

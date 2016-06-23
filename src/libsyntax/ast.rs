@@ -528,9 +528,6 @@ impl PartialEq for MetaItemKind {
 pub struct Block {
     /// Statements in a block
     pub stmts: Vec<Stmt>,
-    /// An expression at the end of the block
-    /// without a semicolon, if any
-    pub expr: Option<P<Expr>>,
     pub id: NodeId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
@@ -803,7 +800,7 @@ pub enum StmtKind {
     /// Could be an item or a local (let) binding:
     Decl(P<Decl>, NodeId),
 
-    /// Expr without trailing semi-colon (must have unit type):
+    /// Expr without trailing semi-colon
     Expr(P<Expr>, NodeId),
 
     /// Expr with trailing semi-colon (may have any type):
