@@ -433,7 +433,7 @@ impl<'a> Iterator for Chars<'a> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (len, _) = self.iter.size_hint();
+        let len = self.iter.len();
         // `(len + 3)` can't overflow, because we know that the `slice::Iter`
         // belongs to a slice in memory which has a maximum length of
         // `isize::MAX` (that's well below `usize::MAX`).
@@ -480,12 +480,12 @@ impl<'a> Iterator for CharIndices<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<(usize, char)> {
-        let (pre_len, _) = self.iter.iter.size_hint();
+        let pre_len = self.iter.iter.len();
         match self.iter.next() {
             None => None,
             Some(ch) => {
                 let index = self.front_offset;
-                let (len, _) = self.iter.iter.size_hint();
+                let len = self.iter.iter.len();
                 self.front_offset += pre_len - len;
                 Some((index, ch))
             }
@@ -505,8 +505,7 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
         match self.iter.next_back() {
             None => None,
             Some(ch) => {
-                let (len, _) = self.iter.iter.size_hint();
-                let index = self.front_offset + len;
+                let index = self.front_offset + self.iter.iter.len();
                 Some((index, ch))
             }
         }
