@@ -830,6 +830,7 @@ mod tests {
     use syntax_pos::*;
     use errors::{Level, CodeSuggestion};
     use errors::emitter::EmitterWriter;
+    use errors::snippet::SnippetData;
     use std::sync::{Arc, Mutex};
     use std::io::{self, Write};
     use std::str::from_utf8;
@@ -1075,6 +1076,69 @@ mod tests {
         assert_eq!(sstr,
                    "blork.rs:2:1: 2:12\n`second line`\n  Callsite:\n  \
                     blork.rs:1:1: 1:12\n  `first line.`\n");
+    }
+
+    /// Returns the span corresponding to the `n`th occurrence of
+    /// `substring` in `source_text`.
+    trait CodeMapExtension {
+        fn span_substr(&self,
+                    file: &Rc<FileMap>,
+                    source_text: &str,
+                    substring: &str,
+                    n: usize)
+                    -> Span;
+    }
+
+    impl CodeMapExtension for CodeMap {
+        fn span_substr(&self,
+                    file: &Rc<FileMap>,
+                    source_text: &str,
+                    substring: &str,
+                    n: usize)
+                    -> Span
+        {
+            println!("span_substr(file={:?}/{:?}, substring={:?}, n={})",
+                    file.name, file.start_pos, substring, n);
+            let mut i = 0;
+            let mut hi = 0;
+            loop {
+                let offset = source_text[hi..].find(substring).unwrap_or_else(|| {
+                    panic!("source_text `{}` does not have {} occurrences of `{}`, only {}",
+                        source_text, n, substring, i);
+                });
+                let lo = hi + offset;
+                hi = lo + substring.len();
+                if i == n {
+                    let span = Span {
+                        lo: BytePos(lo as u32 + file.start_pos.0),
+                        hi: BytePos(hi as u32 + file.start_pos.0),
+                        expn_id: NO_EXPANSION,
+                    };
+                    assert_eq!(&self.span_to_snippet(span).unwrap()[..],
+                            substring);
+                    return span;
+                }
+                i += 1;
+            }
+        }
+    }
+
+    fn splice(start: Span, end: Span) -> Span {
+        Span {
+            lo: start.lo,
+            hi: end.hi,
+            expn_id: NO_EXPANSION,
+        }
+    }
+
+    fn make_string(lines: &[RenderedLine]) -> String {
+        lines.iter()
+            .flat_map(|rl| {
+                rl.text.iter()
+                        .map(|s| &s.text[..])
+                        .chain(Some("\n"))
+            })
+            .collect()
     }
 
     fn init_expansion_chain(cm: &CodeMap) -> Span {
