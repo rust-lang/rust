@@ -277,7 +277,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             .collect();
         let args_ptrs = args_res?;
 
-        let pointer_size = self.memory.pointer_size;
+        let pointer_size = self.memory.pointer_size();
 
         match name {
             "add_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Add, &args[0], &args[1], dest, dest_layout)?,
@@ -368,7 +368,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         ty::TySlice(_) | ty::TyStr => {
                             let elem_ty = ty.sequence_element_type(self.tcx);
                             let elem_size = self.type_size(elem_ty) as u64;
-                            let ptr_size = self.memory.pointer_size as isize;
+                            let ptr_size = self.memory.pointer_size() as isize;
                             let n = self.memory.read_usize(args_ptrs[0].offset(ptr_size))?;
                             self.memory.write_uint(dest, n * elem_size, pointer_size)?;
                         }
@@ -557,7 +557,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         self.memory.deallocate(contents_ptr)?;
                     }
                     Err(EvalError::ReadBytesAsPointer) => {
-                        let size = self.memory.pointer_size;
+                        let size = self.memory.pointer_size();
                         let possible_drop_fill = self.memory.read_bytes(ptr, size)?;
                         if possible_drop_fill.iter().all(|&b| b == mem::POST_DROP_U8) {
                             return Ok(());

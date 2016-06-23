@@ -77,7 +77,7 @@ fn compile_test() {
             match cmd.output() {
                 Ok(ref output) if output.status.success() => writeln!(stderr.lock(), "ok").unwrap(),
                 Ok(output) => {
-                    writeln!(stderr.lock(), "FAILED with exit code {}", output.status.code().unwrap_or(0)).unwrap();
+                    writeln!(stderr.lock(), "FAILED with exit code {:?}", output.status.code()).unwrap();
                     writeln!(stderr.lock(), "stdout: \n {}", std::str::from_utf8(&output.stdout).unwrap()).unwrap();
                     writeln!(stderr.lock(), "stderr: \n {}", std::str::from_utf8(&output.stderr).unwrap()).unwrap();
                     panic!("some tests failed");

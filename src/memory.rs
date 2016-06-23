@@ -6,6 +6,7 @@ use std::{fmt, iter, mem, ptr};
 use rustc::hir::def_id::DefId;
 use rustc::ty::BareFnTy;
 use rustc::ty::subst::Substs;
+use rustc::ty::layout::TargetDataLayout;
 
 use error::{EvalError, EvalResult};
 use primval::PrimVal;
@@ -53,7 +54,7 @@ pub struct FunctionDefinition<'tcx> {
 // Top-level interpreter memory
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct Memory<'tcx> {
+pub struct Memory<'a, 'tcx> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations)
     alloc_map: HashMap<AllocId, Allocation>,
     /// Function "allocations". They exist solely so pointers have something to point to, and
@@ -62,18 +63,17 @@ pub struct Memory<'tcx> {
     /// Inverse map of `functions` so we don't allocate a new pointer every time we need one
     function_alloc_cache: HashMap<FunctionDefinition<'tcx>, AllocId>,
     next_id: AllocId,
-    pub pointer_size: usize,
+    pub layout: &'a TargetDataLayout,
 }
 
-impl<'tcx> Memory<'tcx> {
-    // FIXME: pass tcx.data_layout (This would also allow it to use primitive type alignments to diagnose unaligned memory accesses.)
-    pub fn new(pointer_size: usize) -> Self {
+impl<'a, 'tcx> Memory<'a, 'tcx> {
+    pub fn new(layout: &'a TargetDataLayout) -> Self {
         Memory {
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
             function_alloc_cache: HashMap::new(),
             next_id: AllocId(0),
-            pointer_size: pointer_size,
+            layout: layout,
         }
     }
 
@@ -156,10 +156,13 @@ impl<'tcx> Memory<'tcx> {
         Ok(())
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Allocation accessors
-    ////////////////////////////////////////////////////////////////////////////////
+    pub fn pointer_size(&self) -> usize {
+        self.layout.pointer_size.bytes() as usize
+    }
+}
 
+/// Allocation accessors
+impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation> {
         match self.alloc_map.get(&id) {
             Some(alloc) => Ok(alloc),
@@ -235,21 +238,20 @@ impl<'tcx> Memory<'tcx> {
             if !relocations.is_empty() {
                 print!("{:1$}", "", prefix.len()); // Print spaces.
                 let mut pos = 0;
-                let relocation_width = (self.pointer_size - 1) * 3;
+                let relocation_width = (self.pointer_size() - 1) * 3;
                 for (i, target_id) in relocations {
                     print!("{:1$}", "", (i - pos) * 3);
                     print!("└{0:─^1$}┘ ", format!("({})", target_id), relocation_width);
-                    pos = i + self.pointer_size;
+                    pos = i + self.pointer_size();
                 }
                 println!("");
             }
         }
     }
+}
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Byte accessors
-    ////////////////////////////////////////////////////////////////////////////////
-
+/// Byte accessors
+impl<'a, 'tcx> Memory<'a, 'tcx> {
     fn get_bytes_unchecked(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, &[u8]> {
         let alloc = self.get(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
@@ -287,11 +289,10 @@ impl<'tcx> Memory<'tcx> {
         self.mark_definedness(ptr, size, true)?;
         self.get_bytes_unchecked_mut(ptr, size)
     }
+}
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Reading and writing
-    ////////////////////////////////////////////////////////////////////////////////
-
+/// Reading and writing
+impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<'tcx, ()> {
         self.check_relocation_edges(src, size)?;
 
@@ -336,7 +337,7 @@ impl<'tcx> Memory<'tcx> {
     }
 
     pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<'tcx, Pointer> {
-        let size = self.pointer_size;
+        let size = self.pointer_size();
         self.check_defined(ptr, size)?;
         let offset = self.get_bytes_unchecked(ptr, size)?
             .read_uint::<NativeEndian>(size).unwrap() as usize;
@@ -349,7 +350,7 @@ impl<'tcx> Memory<'tcx> {
 
     pub fn write_ptr(&mut self, dest: Pointer, ptr: Pointer) -> EvalResult<'tcx, ()> {
         {
-            let size = self.pointer_size;
+            let size = self.pointer_size();
             let mut bytes = self.get_bytes_mut(dest, size)?;
             bytes.write_uint::<NativeEndian>(ptr.offset as u64, size).unwrap();
         }
@@ -358,7 +359,7 @@ impl<'tcx> Memory<'tcx> {
     }
 
     pub fn write_primval(&mut self, ptr: Pointer, val: PrimVal) -> EvalResult<'tcx, ()> {
-        let pointer_size = self.pointer_size;
+        let pointer_size = self.pointer_size();
         match val {
             PrimVal::Bool(b) => self.write_bool(ptr, b),
             PrimVal::I8(n)   => self.write_int(ptr, n as i64, 1),
@@ -406,31 +407,30 @@ impl<'tcx> Memory<'tcx> {
     }
 
     pub fn read_isize(&self, ptr: Pointer) -> EvalResult<'tcx, i64> {
-        self.read_int(ptr, self.pointer_size)
+        self.read_int(ptr, self.pointer_size())
     }
 
     pub fn write_isize(&mut self, ptr: Pointer, n: i64) -> EvalResult<'tcx, ()> {
-        let size = self.pointer_size;
+        let size = self.pointer_size();
         self.write_int(ptr, n, size)
     }
 
     pub fn read_usize(&self, ptr: Pointer) -> EvalResult<'tcx, u64> {
-        self.read_uint(ptr, self.pointer_size)
+        self.read_uint(ptr, self.pointer_size())
     }
 
     pub fn write_usize(&mut self, ptr: Pointer, n: u64) -> EvalResult<'tcx, ()> {
-        let size = self.pointer_size;
+        let size = self.pointer_size();
         self.write_uint(ptr, n, size)
     }
+}
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Relocations
-    ////////////////////////////////////////////////////////////////////////////////
-
+/// Relocations
+impl<'a, 'tcx> Memory<'a, 'tcx> {
     fn relocations(&self, ptr: Pointer, size: usize)
         -> EvalResult<'tcx, btree_map::Range<usize, AllocId>>
     {
-        let start = ptr.offset.saturating_sub(self.pointer_size - 1);
+        let start = ptr.offset.saturating_sub(self.pointer_size() - 1);
         let end = ptr.offset + size;
         Ok(self.get(ptr.alloc_id)?.relocations.range(Included(&start), Excluded(&end)))
     }
@@ -444,7 +444,7 @@ impl<'tcx> Memory<'tcx> {
         let start = ptr.offset;
         let end = start + size;
         let first = *keys.first().unwrap();
-        let last = *keys.last().unwrap() + self.pointer_size;
+        let last = *keys.last().unwrap() + self.pointer_size();
 
         let alloc = self.get_mut(ptr.alloc_id)?;
 
@@ -478,11 +478,10 @@ impl<'tcx> Memory<'tcx> {
         self.get_mut(dest.alloc_id)?.relocations.extend(relocations);
         Ok(())
     }
+}
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Undefined bytes
-    ////////////////////////////////////////////////////////////////////////////////
-
+/// Undefined bytes
+impl<'a, 'tcx> Memory<'a, 'tcx> {
     // FIXME(solson): This is a very naive, slow version.
     fn copy_undef_mask(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<'tcx, ()> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
