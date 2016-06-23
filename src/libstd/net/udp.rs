@@ -628,4 +628,14 @@ mod tests {
         t!(stream.set_nonblocking(true));
         t!(stream.set_nonblocking(false));
     }
+
+    #[test]
+    fn both_ipv4_and_ipv6() {
+        let port = next_test_ip6().port();
+        let addr_v4 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
+        let addr_v6 = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)), port);
+
+        let _v4 = t!(UdpSocket::bind(&addr_v4));
+        let _v6 = t!(UdpSocket::bind(&addr_v6));
+    }
 }
