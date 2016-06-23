@@ -464,10 +464,6 @@ reflected in what he wrote in the [RFC 1238 alternatives][].)
 
 ## Make dropck "see again" via (focused) where-clauses
 
-(This alternative carries over some ideas from
-[the previous section][blacklist-not-whitelist], but it stands well on
-its own as something to consider, so I am giving it its own section.)
-
 The idea is that we keep the UGEH attribute, blunt hammer that it is.
 You first opt out of the dropck ordering constraints via that, and
 then you add back in ordering constraints via `where` clauses.
