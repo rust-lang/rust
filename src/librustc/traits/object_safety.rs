@@ -228,9 +228,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// otherwise ensure that they cannot be used when `Self=Trait`.
     pub fn is_vtable_safe_method(self,
                                  trait_def_id: DefId,
-                                 method: &ty::Method<'tcx>)
+                                 method: &ty::Method<'gcx>)
                                  -> bool
     {
+        // Any method that has a `Self : Sized` requisite can't be called.
+        if self.generics_require_sized_self(&method.generics, &method.predicates) {
+            return false;
+        }
+
         self.virtual_call_violation_for_method(trait_def_id, method).is_none()
     }
 
