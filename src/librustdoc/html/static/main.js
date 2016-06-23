@@ -884,12 +884,16 @@
             sidebar.append(div);
         }
 
+        block("primitive", "Primitive Types");
         block("mod", "Modules");
+        block("macro", "Macros");
         block("struct", "Structs");
         block("enum", "Enums");
+        block("constant", "Constants");
+        block("static", "Statics");
         block("trait", "Traits");
         block("fn", "Functions");
-        block("macro", "Macros");
+        block("type", "Type Definitions");
     }
 
     window.initSidebarItems = initSidebarItems;
