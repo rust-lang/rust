@@ -513,7 +513,7 @@ pub fn expand_quote_matcher(cx: &mut ExtCtxt,
     let mut vector = mk_stmts_let(cx, sp);
     vector.extend(statements_mk_tts(cx, &tts[..], true));
     vector.push(cx.stmt_expr(cx.expr_ident(sp, id_ext("tt"))));
-    let block = cx.expr_block(cx.block_all(sp, vector));
+    let block = cx.expr_block(cx.block(sp, vector));
 
     let expanded = expand_wrapper(cx, sp, cx_expr, block, &[&["syntax", "ext", "quote", "rt"]]);
     base::MacEager::expr(expanded)
@@ -884,7 +884,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[TokenTree])
     let mut vector = mk_stmts_let(cx, sp);
     vector.extend(statements_mk_tts(cx, &tts[..], false));
     vector.push(cx.stmt_expr(cx.expr_ident(sp, id_ext("tt"))));
-    let block = cx.expr_block(cx.block_all(sp, vector));
+    let block = cx.expr_block(cx.block(sp, vector));
 
     (cx_expr, block)
 }
@@ -905,7 +905,7 @@ fn expand_wrapper(cx: &ExtCtxt,
     }).chain(Some(stmt_let_ext_cx)).collect::<Vec<_>>();
     stmts.push(cx.stmt_expr(expr));
 
-    cx.expr_block(cx.block_all(sp, stmts))
+    cx.expr_block(cx.block(sp, stmts))
 }
 
 fn expand_parse_call(cx: &ExtCtxt,

@@ -1333,7 +1333,7 @@ impl<'a> MethodDef<'a> {
             let all_match = cx.expr_match(sp, match_arg, match_arms);
             let arm_expr = cx.expr_if(sp, discriminant_test, all_match, Some(arm_expr));
             index_let_stmts.push(cx.stmt_expr(arm_expr));
-            cx.expr_block(cx.block_all(sp, index_let_stmts))
+            cx.expr_block(cx.block(sp, index_let_stmts))
         } else if variants.is_empty() {
             // As an additional wrinkle, For a zero-variant enum A,
             // currently the compiler
