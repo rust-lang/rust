@@ -454,7 +454,10 @@ pub fn build_session_with_codemap(sopts: config::Options,
 
     let emitter: Box<Emitter> = match sopts.error_format {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, Some(registry), codemap.clone()))
+            Box::new(EmitterWriter::stderr(color_config,
+                                           Some(registry),
+                                           codemap.clone(),
+                                           errors::snippet::FormatMode::EnvironmentSelected))
         }
         config::ErrorOutputType::Json => {
             Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))

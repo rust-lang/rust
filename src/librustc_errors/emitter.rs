@@ -17,7 +17,7 @@ use check_old_skool;
 use {Level, RenderSpan, CodeSuggestion, DiagnosticBuilder, CodeMapper};
 use RenderSpan::*;
 use Level::*;
-use snippet::{RenderedLineKind, SnippetData, Style};
+use snippet::{RenderedLineKind, SnippetData, Style, FormatMode};
 
 use std::{cmp, fmt};
 use std::io::prelude::*;
@@ -159,7 +159,7 @@ pub struct EmitterWriter {
     first: bool,
 
     // For now, allow an old-school mode while we transition
-    old_school: bool,
+    format_mode: FormatMode
 }
 
 impl CoreEmitter for EmitterWriter {
@@ -194,35 +194,35 @@ macro_rules! println_maybe_styled {
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
                   registry: Option<registry::Registry>,
-                  code_map: Rc<CodeMapper>)
+                  code_map: Rc<CodeMapper>,
+                  format_mode: FormatMode)
                   -> EmitterWriter {
-        let old_school = check_old_skool();
         if color_config.use_color() {
             let dst = Destination::from_stderr();
             EmitterWriter { dst: dst,
                             registry: registry,
                             cm: code_map,
                             first: true,
-                            old_school: old_school }
+                            format_mode: format_mode.clone() }
         } else {
             EmitterWriter { dst: Raw(Box::new(io::stderr())),
                             registry: registry,
                             cm: code_map,
                             first: true,
-                            old_school: old_school }
+                            format_mode: format_mode.clone() }
         }
     }
 
     pub fn new(dst: Box<Write + Send>,
                registry: Option<registry::Registry>,
-               code_map: Rc<CodeMapper>)
+               code_map: Rc<CodeMapper>,
+               format_mode: FormatMode)
                -> EmitterWriter {
-        let old_school = check_old_skool();
         EmitterWriter { dst: Raw(dst),
                         registry: registry,
                         cm: code_map,
                         first: true,
-                        old_school: old_school }
+                        format_mode: format_mode.clone() }
     }
 
     fn emit_message_(&mut self,
@@ -233,11 +233,17 @@ impl EmitterWriter {
                      is_header: bool,
                      show_snippet: bool)
                      -> io::Result<()> {
+        let old_school = match self.format_mode {
+            FormatMode::NewErrorFormat => false,
+            FormatMode::OriginalErrorFormat => true,
+            FormatMode::EnvironmentSelected => check_old_skool()
+        };
+
         if is_header {
             if self.first {
                 self.first = false;
             } else {
-                if !self.old_school {
+                if !old_school {
                     write!(self.dst, "\n")?;
                 }
             }
@@ -248,7 +254,7 @@ impl EmitterWriter {
                                        .and_then(|registry| registry.find_description(code))
                                        .is_some() => {
                 let code_with_explain = String::from("--explain ") + code;
-                if self.old_school {
+                if old_school {
                     let loc = match rsp.span().primary_span() {
                         Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => "".to_string(),
                         Some(ps) => self.cm.span_to_string(ps),
@@ -261,7 +267,7 @@ impl EmitterWriter {
                 }
             }
             _ => {
-                if self.old_school {
+                if old_school {
                     let loc = match rsp.span().primary_span() {
                         Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => "".to_string(),
                         Some(ps) => self.cm.span_to_string(ps),
@@ -303,7 +309,7 @@ impl EmitterWriter {
                 }
             }
         }
-        if self.old_school {
+        if old_school {
             match code {
                 Some(code) if self.registry.as_ref()
                                         .and_then(|registry| registry.find_description(code))
@@ -363,14 +369,22 @@ impl EmitterWriter {
                        lvl: Level)
                        -> io::Result<()>
     {
+        let old_school = match self.format_mode {
+            FormatMode::NewErrorFormat => false,
+            FormatMode::OriginalErrorFormat => true,
+            FormatMode::EnvironmentSelected => check_old_skool()
+        };
+
         let mut snippet_data = SnippetData::new(self.cm.clone(),
-                                                msp.primary_span());
-        if self.old_school {
+                                                msp.primary_span(),
+                                                self.format_mode.clone());
+        if old_school {
             let mut output_vec = vec![];
 
             for span_label in msp.span_labels() {
                 let mut snippet_data = SnippetData::new(self.cm.clone(),
-                                                        Some(span_label.span));
+                                                        Some(span_label.span),
+                                                        self.format_mode.clone());
 
                 snippet_data.push(span_label.span,
                                   span_label.is_primary,
