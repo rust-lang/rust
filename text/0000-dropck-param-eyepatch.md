@@ -1,4 +1,4 @@
-- Feature Name: dropck_eyepatch
+- Feature Name: dropck_eyepatch, generic_param_attrs
 - Start Date: 2015-10-19
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -18,6 +18,9 @@ and type paramters). Atop that capability, this RFC proposes adding a
 `#[may_dangle]` attribute that indicates that a given lifetime or type
 holds data that must not be accessed during the dynamic extent of that
 `drop` invocation.
+
+As a side-effect, enable adding attributes to the formal declarations
+of generic type and lifetime parameters.
 
 [RFC 1238]: https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
 [RFC 769]: https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md
@@ -140,7 +143,7 @@ storage for [cyclic graph structures][dropck_legal_cycles.rs]).
  1. Add the ability to attach attributes to syntax that binds formal
     lifetime or type parmeters. For the purposes of this RFC, the only
     place in the syntax that requires such attributes are `impl`
-    blocks, as in `impl Drop for Type { ... }`
+    blocks, as in `impl<T> Drop for Type<T> { ... }`
 
  2. Add a new fine-grained attribute, `may_dangle`, which is attached
     to the binding sites for lifetime or type parameters on an `Drop`
@@ -162,6 +165,8 @@ storage for [cyclic graph structures][dropck_legal_cycles.rs]).
 ## Attributes on lifetime or type parameters
 
 This is a simple extension to the syntax.
+
+It is guarded by the feature gate `generic_param_attrs`.
 
 Constructions like the following will now become legal.
 
@@ -211,6 +216,8 @@ unsafe impl<'a, X, Y> Drop for Foo<'a, #[may_dangle] X, Y> {
 ## The "eyepatch" attribute
 
 Add a new attribute, `#[may_dangle]` (the "eyepatch").
+
+It is guarded by the feature gate `dropck_eyepatch`.
 
 The eyepatch is similar to `unsafe_destructor_blind_to_params`: it is
 part of the `Drop` implementation, and it is meant
