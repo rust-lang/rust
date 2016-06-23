@@ -23,7 +23,7 @@ use primval::{self, PrimVal};
 
 use std::collections::HashMap;
 
-mod stepper;
+mod step;
 
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
