@@ -36,7 +36,6 @@ pub use interpreter::{
     EvalContext,
     Frame,
     eval_main,
-    step,
 };
 
 pub use memory::Memory;

@@ -25,10 +25,6 @@ use std::collections::HashMap;
 
 mod stepper;
 
-pub fn step<'ecx, 'a: 'ecx, 'tcx: 'a>(ecx: &'ecx mut EvalContext<'a, 'tcx>) -> EvalResult<'tcx, bool> {
-    stepper::Stepper::new(ecx).step()
-}
-
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1571,7 +1567,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     }
 
     loop {
-        match step(&mut ecx) {
+        match ecx.step() {
             Ok(true) => {}
             Ok(false) => break,
             // FIXME: diverging functions can end up here in some future miri

@@ -1,3 +1,7 @@
+//! This module contains the `EvalContext` methods for executing a single step of the interpreter.
+//!
+//! The main entry point is the `step` method.
+
 use super::{
     CachedMir,
     ConstantId,
@@ -12,57 +16,28 @@ use rustc::mir::visit::{Visitor, LvalueContext};
 use syntax::codemap::Span;
 use std::rc::Rc;
 
-pub(super) struct Stepper<'ecx, 'a: 'ecx, 'tcx: 'a>{
-    ecx: &'ecx mut EvalContext<'a, 'tcx>,
-}
-
-impl<'ecx, 'a, 'tcx> Stepper<'ecx, 'a, 'tcx> {
-    pub(super) fn new(ecx: &'ecx mut EvalContext<'a, 'tcx>) -> Self {
-        Stepper {
-            ecx: ecx,
-        }
-    }
-
-    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<'tcx, ()> {
-        trace!("{:?}", stmt);
-        let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-        self.ecx.eval_assignment(lvalue, rvalue)?;
-        self.ecx.frame_mut().stmt += 1;
-        Ok(())
-    }
-
-    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx, ()> {
-        // after a terminator we go to a new block
-        self.ecx.frame_mut().stmt = 0;
-        trace!("{:?}", terminator.kind);
-        self.ecx.eval_terminator(terminator)?;
-        if !self.ecx.stack.is_empty() {
-            trace!("// {:?}", self.ecx.frame().block);
-        }
-        Ok(())
-    }
-
-    // returns true as long as there are more things to do
-    pub(super) fn step(&mut self) -> EvalResult<'tcx, bool> {
-        if self.ecx.stack.is_empty() {
+impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+    /// Returns true as long as there are more things to do.
+    pub fn step(&mut self) -> EvalResult<'tcx, bool> {
+        if self.stack.is_empty() {
             return Ok(false);
         }
 
-        let block = self.ecx.frame().block;
-        let stmt = self.ecx.frame().stmt;
-        let mir = self.ecx.mir();
+        let block = self.frame().block;
+        let stmt = self.frame().stmt;
+        let mir = self.mir();
         let basic_block = &mir.basic_blocks()[block];
 
         if let Some(ref stmt) = basic_block.statements.get(stmt) {
-            let current_stack = self.ecx.stack.len();
+            let current_stack = self.stack.len();
             ConstantExtractor {
                 span: stmt.source_info.span,
-                substs: self.ecx.substs(),
-                def_id: self.ecx.frame().def_id,
-                ecx: self.ecx,
+                substs: self.substs(),
+                def_id: self.frame().def_id,
+                ecx: self,
                 mir: &mir,
             }.visit_statement(block, stmt);
-            if current_stack == self.ecx.stack.len() {
+            if current_stack == self.stack.len() {
                 self.statement(stmt)?;
             } else {
                 // ConstantExtractor added some new frames for statics/constants/promoteds
@@ -73,15 +48,15 @@ impl<'ecx, 'a, 'tcx> Stepper<'ecx, 'a, 'tcx> {
         }
 
         let terminator = basic_block.terminator();
-        let current_stack = self.ecx.stack.len();
+        let current_stack = self.stack.len();
         ConstantExtractor {
             span: terminator.source_info.span,
-            substs: self.ecx.substs(),
-            def_id: self.ecx.frame().def_id,
-            ecx: self.ecx,
+            substs: self.substs(),
+            def_id: self.frame().def_id,
+            ecx: self,
             mir: &mir,
         }.visit_terminator(block, terminator);
-        if current_stack == self.ecx.stack.len() {
+        if current_stack == self.stack.len() {
             self.terminator(terminator)?;
         } else {
             // ConstantExtractor added some new frames for statics/constants/promoteds
@@ -89,6 +64,25 @@ impl<'ecx, 'a, 'tcx> Stepper<'ecx, 'a, 'tcx> {
             assert!(self.step()?);
         }
         Ok(true)
+    }
+
+    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<'tcx, ()> {
+        trace!("{:?}", stmt);
+        let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
+        self.eval_assignment(lvalue, rvalue)?;
+        self.frame_mut().stmt += 1;
+        Ok(())
+    }
+
+    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx, ()> {
+        // after a terminator we go to a new block
+        self.frame_mut().stmt = 0;
+        trace!("{:?}", terminator.kind);
+        self.eval_terminator(terminator)?;
+        if !self.stack.is_empty() {
+            trace!("// {:?}", self.frame().block);
+        }
+        Ok(())
     }
 }
 
