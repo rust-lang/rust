@@ -169,14 +169,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     // TODO(solson): Try making const_to_primval instead.
     fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<'tcx, Pointer> {
         use rustc::middle::const_val::ConstVal::*;
+        use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
+        macro_rules! i2p {
+            ($i:ident, $n:expr) => {{
+                let ptr = self.memory.allocate($n);
+                self.memory.write_int(ptr, $i as i64, $n)?;
+                Ok(ptr)
+            }}
+        }
         match *const_val {
             Float(_f) => unimplemented!(),
-            Integral(int) => {
-                // TODO(solson): Check int constant type.
-                let ptr = self.memory.allocate(8);
-                self.memory.write_uint(ptr, int.to_u64_unchecked(), 8)?;
-                Ok(ptr)
-            }
+            Integral(ConstInt::Infer(_)) => unreachable!(),
+            Integral(ConstInt::InferSigned(_)) => unreachable!(),
+            Integral(ConstInt::I8(i)) => i2p!(i, 1),
+            Integral(ConstInt::U8(i)) => i2p!(i, 1),
+            Integral(ConstInt::I16(i)) => i2p!(i, 2),
+            Integral(ConstInt::U16(i)) => i2p!(i, 2),
+            Integral(ConstInt::I32(i)) => i2p!(i, 4),
+            Integral(ConstInt::U32(i)) => i2p!(i, 4),
+            Integral(ConstInt::I64(i)) => i2p!(i, 8),
+            Integral(ConstInt::U64(i)) => i2p!(i, 8),
+            Integral(ConstInt::Isize(ConstIsize::Is16(i))) => i2p!(i, 2),
+            Integral(ConstInt::Isize(ConstIsize::Is32(i))) => i2p!(i, 4),
+            Integral(ConstInt::Isize(ConstIsize::Is64(i))) => i2p!(i, 8),
+            Integral(ConstInt::Usize(ConstUsize::Us16(i))) => i2p!(i, 2),
+            Integral(ConstInt::Usize(ConstUsize::Us32(i))) => i2p!(i, 4),
+            Integral(ConstInt::Usize(ConstUsize::Us64(i))) => i2p!(i, 8),
             Str(ref s) => {
                 let psize = self.memory.pointer_size();
                 let static_ptr = self.memory.allocate(s.len());
