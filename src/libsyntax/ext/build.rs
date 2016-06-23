@@ -100,7 +100,6 @@ pub trait AstBuilder {
     // blocks
     fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block>;
     fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block>;
-    fn block_all(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block>;
 
     // expressions
     fn expr(&self, span: Span, node: ast::ExprKind) -> P<ast::Expr>;
@@ -553,22 +552,18 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         P(respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID)))
     }
 
-    fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
-        self.block_all(span, stmts)
-    }
-
     fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {
         let decl = respan(sp, ast::DeclKind::Item(item));
         respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))
     }
 
     fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
-        self.block_all(expr.span, vec![Spanned {
+        self.block(expr.span, vec![Spanned {
             span: expr.span,
             node: ast::StmtKind::Expr(expr, ast::DUMMY_NODE_ID),
         }])
     }
-    fn block_all(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
+    fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
         P(ast::Block {
            stmts: stmts,
            id: ast::DUMMY_NODE_ID,
