@@ -830,7 +830,7 @@ mod tests {
     use syntax_pos::*;
     use errors::{Level, CodeSuggestion};
     use errors::emitter::EmitterWriter;
-    use errors::snippet::{SnippetData, RenderedLine};
+    use errors::snippet::{SnippetData, RenderedLine, FormatMode};
     use std::sync::{Arc, Mutex};
     use std::io::{self, Write};
     use std::str::from_utf8;
@@ -1234,7 +1234,10 @@ r"blork2.rs:2:1: 2:12
     fn test_hilight_suggestion_issue_11715() {
         let data = Arc::new(Mutex::new(Vec::new()));
         let cm = Rc::new(CodeMap::new());
-        let mut ew = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
+        let mut ew = EmitterWriter::new(Box::new(Sink(data.clone())),
+                                        None,
+                                        cm.clone(),
+                                        FormatMode::NewErrorFormat);
         let content = "abcdefg
         koksi
         line3
@@ -1317,7 +1320,10 @@ r"blork2.rs:2:1: 2:12
     fn test_multispan_highlight() {
         let data = Arc::new(Mutex::new(Vec::new()));
         let cm = Rc::new(CodeMap::new());
-        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
+        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())),
+                                          None,
+                                          cm.clone(),
+                                          FormatMode::NewErrorFormat);
 
         let inp =       "_____aaaaaa____bbbbbb__cccccdd_";
         let sp1 =       "     ~~~~~~                    ";
@@ -1370,7 +1376,10 @@ r"blork2.rs:2:1: 2:12
     fn test_huge_multispan_highlight() {
         let data = Arc::new(Mutex::new(Vec::new()));
         let cm = Rc::new(CodeMap::new());
-        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
+        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())),
+                                          None,
+                                          cm.clone(),
+                                          FormatMode::NewErrorFormat);
 
         let inp = "aaaaa\n\
                    aaaaa\n\
@@ -1462,7 +1471,7 @@ fn foo() {
         let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
         let span_bar = cm.span_substr(&foo, file_text, "bar", 0);
 
-        let mut snippet = SnippetData::new(cm, Some(span_bar));
+        let mut snippet = SnippetData::new(cm, Some(span_bar), FormatMode::NewErrorFormat);
         snippet.push(span_bar, true, None);
 
         let lines = snippet.render_lines();
@@ -1489,7 +1498,7 @@ fn foo() {
         let span_vec1 = cm.span_substr(&foo, file_text, "vec", 1);
         let span_semi = cm.span_substr(&foo, file_text, ";", 0);
 
-        let mut snippet = SnippetData::new(cm, None);
+        let mut snippet = SnippetData::new(cm, None, FormatMode::NewErrorFormat);
         snippet.push(span_vec0, false, Some(format!("previous borrow of `vec` occurs here")));
         snippet.push(span_vec1, false, Some(format!("error occurs here")));
         snippet.push(span_semi, false, Some(format!("previous borrow ends here")));
@@ -1554,7 +1563,7 @@ fn bar() {
         let span_bar_vec1 = cm.span_substr(&bar_map, file_text_bar, "vec", 1);
         let span_bar_semi = cm.span_substr(&bar_map, file_text_bar, ";", 0);
 
-        let mut snippet = SnippetData::new(cm, Some(span_foo_vec1));
+        let mut snippet = SnippetData::new(cm, Some(span_foo_vec1), FormatMode::NewErrorFormat);
         snippet.push(span_foo_vec0, false, Some(format!("a")));
         snippet.push(span_foo_vec1, true, Some(format!("b")));
         snippet.push(span_foo_semi, false, Some(format!("c")));
@@ -1611,7 +1620,7 @@ fn foo() {
         let span_data1 = cm.span_substr(&foo, file_text, "data", 1);
         let span_rbrace = cm.span_substr(&foo, file_text, "}", 3);
 
-        let mut snippet = SnippetData::new(cm, None);
+        let mut snippet = SnippetData::new(cm, None, FormatMode::NewErrorFormat);
         snippet.push(span_data0, false, Some(format!("immutable borrow begins here")));
         snippet.push(span_data1, false, Some(format!("mutable borrow occurs here")));
         snippet.push(span_rbrace, false, Some(format!("immutable borrow ends here")));
@@ -1651,7 +1660,7 @@ fn foo() {
         let span2 = cm.span_substr(&foo, file_text, "ec.push", 0);
         let span3 = cm.span_substr(&foo, file_text, "unwrap", 0);
 
-        let mut snippet = SnippetData::new(cm, None);
+        let mut snippet = SnippetData::new(cm, None, FormatMode::NewErrorFormat);
         snippet.push(span0, false, Some(format!("A")));
         snippet.push(span1, false, Some(format!("B")));
         snippet.push(span2, false, Some(format!("C")));
@@ -1689,7 +1698,7 @@ fn foo() {
         let span_semi = cm.span_substr(&foo, file_text, ";", 0);
 
         // intentionally don't push the snippets left to right
-        let mut snippet = SnippetData::new(cm, None);
+        let mut snippet = SnippetData::new(cm, None, FormatMode::NewErrorFormat);
         snippet.push(span_vec1, false, Some(format!("error occurs here")));
         snippet.push(span_vec0, false, Some(format!("previous borrow of `vec` occurs here")));
         snippet.push(span_semi, false, Some(format!("previous borrow ends here")));
@@ -1729,7 +1738,7 @@ fn foo() {
         let span_vec0 = cm.span_substr(&foo, file_text, "vec", 3);
         let span_vec1 = cm.span_substr(&foo, file_text, "vec", 8);
 
-        let mut snippet = SnippetData::new(cm, None);
+        let mut snippet = SnippetData::new(cm, None, FormatMode::NewErrorFormat);
         snippet.push(span_vec0, false, Some(format!("`vec` moved here because it \
             has type `collections::vec::Vec<i32>`")));
         snippet.push(span_vec1, false, Some(format!("use of moved value: `vec`")));
@@ -1766,7 +1775,7 @@ fn foo() {
         let cm = Rc::new(CodeMap::new());
         let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
 
-        let mut snippet = SnippetData::new(cm.clone(), None);
+        let mut snippet = SnippetData::new(cm.clone(), None, FormatMode::NewErrorFormat);
         for i in 0..4 {
             let span_veci = cm.span_substr(&foo, file_text, "vec", i);
             snippet.push(span_veci, false, None);
@@ -1800,7 +1809,7 @@ impl SomeTrait for () {
         let cm = Rc::new(CodeMap::new());
         let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
 
-        let mut snippet = SnippetData::new(cm.clone(), None);
+        let mut snippet = SnippetData::new(cm.clone(), None, FormatMode::NewErrorFormat);
         let fn_span = cm.span_substr(&foo, file_text, "fn", 0);
         let rbrace_span = cm.span_substr(&foo, file_text, "}", 0);
         snippet.push(splice(fn_span, rbrace_span), false, None);
@@ -1829,7 +1838,7 @@ impl SomeTrait for () {
         let cm = Rc::new(CodeMap::new());
         let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
 
-        let mut snippet = SnippetData::new(cm.clone(), None);
+        let mut snippet = SnippetData::new(cm.clone(), None, FormatMode::NewErrorFormat);
         let fn_span = cm.span_substr(&foo, file_text, "fn foo(x: u32)", 0);
         let x_span = cm.span_substr(&foo, file_text, "x", 0);
         snippet.push(fn_span, false, Some(format!("fn_span")));
@@ -1864,7 +1873,7 @@ impl SomeTrait for () {
         let cm = Rc::new(CodeMap::new());
         let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
 
-        let mut snippet = SnippetData::new(cm.clone(), None);
+        let mut snippet = SnippetData::new(cm.clone(), None, FormatMode::NewErrorFormat);
         let fn_span = cm.span_substr(&foo, file_text, "fn foo(x", 0);
         let x_span = cm.span_substr(&foo, file_text, "x: u32)", 0);
         snippet.push(fn_span, false, Some(format!("fn_span")));
@@ -1902,7 +1911,7 @@ impl SomeTrait for () {
         let cm = Rc::new(CodeMap::new());
         let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
 
-        let mut snippet = SnippetData::new(cm.clone(), None);
+        let mut snippet = SnippetData::new(cm.clone(), None, FormatMode::NewErrorFormat);
 
         let closure_span = {
             let closure_start_span = cm.span_substr(&foo, file_text, "||", 0);
@@ -1954,7 +1963,9 @@ fn main() {
         let mut rbrace_span = cm.span_substr(&foo, file_text, "}", 1);
         rbrace_span.lo = rbrace_span.hi;
 
-        let mut snippet = SnippetData::new(cm.clone(), Some(rbrace_span));
+        let mut snippet = SnippetData::new(cm.clone(),
+                                           Some(rbrace_span),
+                                           FormatMode::NewErrorFormat);
         snippet.push(rbrace_span, false, None);
         let lines = snippet.render_lines();
         let text: String = make_string(&lines);
