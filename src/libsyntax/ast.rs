@@ -801,16 +801,16 @@ impl fmt::Debug for Stmt {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub enum StmtKind {
-    /// A local (let) binding:
+    /// A local (let) binding.
     Local(P<Local>),
 
-    /// An item binding
+    /// An item definition.
     Item(P<Item>),
 
-    /// Expr without trailing semi-colon (must have unit type):
+    /// Expr without trailing semi-colon (must have unit type).
     Expr(P<Expr>),
 
-    /// Expr with trailing semi-colon (may have any type):
+    /// Expr with trailing semi-colon (may have any type).
     Semi(P<Expr>),
 
     Mac(P<(Mac, MacStmtStyle, ThinAttributes)>),
