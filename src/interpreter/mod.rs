@@ -178,7 +178,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(ptr)
             }
             Str(ref s) => {
-                let psize = self.memory.pointer_size;
+                let psize = self.memory.pointer_size();
                 let static_ptr = self.memory.allocate(s.len());
                 let ptr = self.memory.allocate(psize * 2);
                 self.memory.write_bytes(static_ptr, s.as_bytes())?;
@@ -187,7 +187,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(ptr)
             }
             ByteStr(ref bs) => {
-                let psize = self.memory.pointer_size;
+                let psize = self.memory.pointer_size();
                 let static_ptr = self.memory.allocate(bs.len());
                 let ptr = self.memory.allocate(psize);
                 self.memory.write_bytes(static_ptr, bs)?;
@@ -511,7 +511,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match lv.extra {
                     LvalueExtra::None => {},
                     LvalueExtra::Length(len) => {
-                        let len_ptr = dest.offset(self.memory.pointer_size as isize);
+                        let len_ptr = dest.offset(self.memory.pointer_size() as isize);
                         self.memory.write_usize(len_ptr, len)?;
                     }
                     LvalueExtra::DowncastVariant(..) =>
@@ -537,7 +537,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                                let len_ptr = dest.offset(self.memory.pointer_size as isize);
+                                let len_ptr = dest.offset(self.memory.pointer_size() as isize);
                                 self.memory.write_usize(len_ptr, length as u64)?;
                             }
 
@@ -651,7 +651,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(Size::from_bytes(0))
             }
             FatPointer { .. } => {
-                let bytes = layout::FAT_PTR_ADDR * self.memory.pointer_size;
+                let bytes = layout::FAT_PTR_ADDR * self.memory.pointer_size();
                 Ok(Size::from_bytes(bytes as u64))
             }
             _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, with layout: {:?}", ty, layout))),
@@ -762,7 +762,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let ptr = self.memory.read_ptr(base.ptr)?;
                         let extra = match pointee_ty.sty {
                             ty::TySlice(_) | ty::TyStr => {
-                                let len_ptr = base.ptr.offset(self.memory.pointer_size as isize);
+                                let len_ptr = base.ptr.offset(self.memory.pointer_size() as isize);
                                 let len = self.memory.read_usize(len_ptr)?;
                                 LvalueExtra::Length(len)
                             }
@@ -811,7 +811,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         use syntax::ast::{IntTy, UintTy};
-        let val = match (self.memory.pointer_size, &ty.sty) {
+        let val = match (self.memory.pointer_size(), &ty.sty) {
             (_, &ty::TyBool)              => PrimVal::Bool(self.memory.read_bool(ptr)?),
             (_, &ty::TyChar)              => {
                 let c = self.memory.read_uint(ptr, 4)? as u32;
@@ -919,7 +919,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
 
     if mir.arg_decls.len() == 2 {
         // start function
-        let ptr_size = ecx.memory().pointer_size;
+        let ptr_size = ecx.memory().pointer_size();
         let nargs = ecx.memory_mut().allocate(ptr_size);
         ecx.memory_mut().write_usize(nargs, 0).unwrap();
         let args = ecx.memory_mut().allocate(ptr_size);

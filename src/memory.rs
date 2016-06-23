@@ -238,11 +238,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             if !relocations.is_empty() {
                 print!("{:1$}", "", prefix.len()); // Print spaces.
                 let mut pos = 0;
-                let relocation_width = (self.pointer_size - 1) * 3;
+                let relocation_width = (self.pointer_size() - 1) * 3;
                 for (i, target_id) in relocations {
                     print!("{:1$}", "", (i - pos) * 3);
                     print!("└{0:─^1$}┘ ", format!("({})", target_id), relocation_width);
-                    pos = i + self.pointer_size;
+                    pos = i + self.pointer_size();
                 }
                 println!("");
             }
@@ -337,7 +337,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<'tcx, Pointer> {
-        let size = self.pointer_size;
+        let size = self.pointer_size();
         self.check_defined(ptr, size)?;
         let offset = self.get_bytes_unchecked(ptr, size)?
             .read_uint::<NativeEndian>(size).unwrap() as usize;
@@ -350,7 +350,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn write_ptr(&mut self, dest: Pointer, ptr: Pointer) -> EvalResult<'tcx, ()> {
         {
-            let size = self.pointer_size;
+            let size = self.pointer_size();
             let mut bytes = self.get_bytes_mut(dest, size)?;
             bytes.write_uint::<NativeEndian>(ptr.offset as u64, size).unwrap();
         }
@@ -359,7 +359,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn write_primval(&mut self, ptr: Pointer, val: PrimVal) -> EvalResult<'tcx, ()> {
-        let pointer_size = self.pointer_size;
+        let pointer_size = self.pointer_size();
         match val {
             PrimVal::Bool(b) => self.write_bool(ptr, b),
             PrimVal::I8(n)   => self.write_int(ptr, n as i64, 1),
@@ -407,20 +407,20 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn read_isize(&self, ptr: Pointer) -> EvalResult<'tcx, i64> {
-        self.read_int(ptr, self.pointer_size)
+        self.read_int(ptr, self.pointer_size())
     }
 
     pub fn write_isize(&mut self, ptr: Pointer, n: i64) -> EvalResult<'tcx, ()> {
-        let size = self.pointer_size;
+        let size = self.pointer_size();
         self.write_int(ptr, n, size)
     }
 
     pub fn read_usize(&self, ptr: Pointer) -> EvalResult<'tcx, u64> {
-        self.read_uint(ptr, self.pointer_size)
+        self.read_uint(ptr, self.pointer_size())
     }
 
     pub fn write_usize(&mut self, ptr: Pointer, n: u64) -> EvalResult<'tcx, ()> {
-        let size = self.pointer_size;
+        let size = self.pointer_size();
         self.write_uint(ptr, n, size)
     }
 }
@@ -430,7 +430,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     fn relocations(&self, ptr: Pointer, size: usize)
         -> EvalResult<'tcx, btree_map::Range<usize, AllocId>>
     {
-        let start = ptr.offset.saturating_sub(self.pointer_size - 1);
+        let start = ptr.offset.saturating_sub(self.pointer_size() - 1);
         let end = ptr.offset + size;
         Ok(self.get(ptr.alloc_id)?.relocations.range(Included(&start), Excluded(&end)))
     }
@@ -444,7 +444,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let start = ptr.offset;
         let end = start + size;
         let first = *keys.first().unwrap();
-        let last = *keys.last().unwrap() + self.pointer_size;
+        let last = *keys.last().unwrap() + self.pointer_size();
 
         let alloc = self.get_mut(ptr.alloc_id)?;
 
