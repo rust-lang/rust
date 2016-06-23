@@ -349,11 +349,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn write_ptr(&mut self, dest: Pointer, ptr: Pointer) -> EvalResult<'tcx, ()> {
-        {
-            let size = self.pointer_size();
-            let mut bytes = self.get_bytes_mut(dest, size)?;
-            bytes.write_uint::<NativeEndian>(ptr.offset as u64, size).unwrap();
-        }
+        self.write_usize(dest, ptr.offset as u64)?;
         self.get_mut(dest.alloc_id)?.relocations.insert(dest.offset, ptr.alloc_id);
         Ok(())
     }
