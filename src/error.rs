@@ -16,7 +16,7 @@ pub enum EvalError<'tcx> {
     PointerOutOfBounds {
         ptr: Pointer,
         size: usize,
-        allocation_size: usize,
+        allocation_size: u64,
     },
     ReadPointerAsBytes,
     ReadBytesAsPointer,

@@ -6,6 +6,7 @@ use std::{fmt, iter, mem, ptr};
 use rustc::hir::def_id::DefId;
 use rustc::ty::BareFnTy;
 use rustc::ty::subst::Substs;
+use rustc::ty::layout::{Size, TargetDataLayout};
 
 use error::{EvalError, EvalResult};
 use primval::PrimVal;
@@ -53,7 +54,7 @@ pub struct FunctionDefinition<'tcx> {
 // Top-level interpreter memory
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct Memory<'tcx> {
+pub struct Memory<'a, 'tcx> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations)
     alloc_map: HashMap<AllocId, Allocation>,
     /// Function "allocations". They exist solely so pointers have something to point to, and
@@ -62,18 +63,17 @@ pub struct Memory<'tcx> {
     /// Inverse map of `functions` so we don't allocate a new pointer every time we need one
     function_alloc_cache: HashMap<FunctionDefinition<'tcx>, AllocId>,
     next_id: AllocId,
-    pub pointer_size: usize,
+    pub layout: &'a TargetDataLayout,
 }
 
-impl<'tcx> Memory<'tcx> {
-    // FIXME: pass tcx.data_layout (This would also allow it to use primitive type alignments to diagnose unaligned memory accesses.)
-    pub fn new(pointer_size: usize) -> Self {
+impl<'a, 'tcx> Memory<'a, 'tcx> {
+    pub fn new(layout: &'a TargetDataLayout) -> Self {
         Memory {
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
             function_alloc_cache: HashMap::new(),
             next_id: AllocId(0),
-            pointer_size: pointer_size,
+            layout: layout,
         }
     }
 

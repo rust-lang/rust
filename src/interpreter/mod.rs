@@ -35,7 +35,7 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
 
     /// The virtual memory system.
-    memory: Memory<'tcx>,
+    memory: Memory<'a, 'tcx>,
 
     /// Precomputed statics, constants and promoteds.
     statics: HashMap<ConstantId<'tcx>, Pointer>,
@@ -138,11 +138,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             tcx: tcx,
             mir_map: mir_map,
             mir_cache: RefCell::new(DefIdMap()),
-            memory: Memory::new(tcx.sess
-                                   .target
-                                   .uint_type
-                                   .bit_width()
-                                   .expect("Session::target::uint_type was usize")/8),
+            memory: Memory::new(&tcx.data_layout),
             statics: HashMap::new(),
             stack: Vec::new(),
         }
@@ -162,7 +158,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &self.memory
     }
 
-    pub fn memory_mut(&mut self) -> &mut Memory<'tcx> {
+    pub fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx> {
         &mut self.memory
     }
 
