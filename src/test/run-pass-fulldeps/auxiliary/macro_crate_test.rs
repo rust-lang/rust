@@ -15,6 +15,7 @@
 extern crate syntax;
 extern crate rustc;
 extern crate rustc_plugin;
+extern crate syntax_pos;
 
 use syntax::ast::{self, TokenTree, Item, MetaItem, ImplItem, TraitItem, ItemKind};
 use syntax::ext::base::*;
