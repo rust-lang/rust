@@ -681,7 +681,7 @@ pub struct IdentRenamer<'a> {
 
 impl<'a> Folder for IdentRenamer<'a> {
     fn fold_ident(&mut self, id: Ident) -> Ident {
-        Ident::new(id.name, mtwt::apply_renames(self.renames, id.ctxt))
+        mtwt::apply_renames(self.renames, id)
     }
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
         fold::noop_fold_mac(mac, self)
@@ -705,8 +705,7 @@ impl<'a> Folder for PatIdentRenamer<'a> {
 
         pat.map(|ast::Pat {id, node, span}| match node {
             PatKind::Ident(binding_mode, Spanned{span: sp, node: ident}, sub) => {
-                let new_ident = Ident::new(ident.name,
-                                           mtwt::apply_renames(self.renames, ident.ctxt));
+                let new_ident = mtwt::apply_renames(self.renames, ident);
                 let new_node =
                     PatKind::Ident(binding_mode,
                                   Spanned{span: sp, node: new_ident},
@@ -1266,7 +1265,7 @@ mod tests {
     use ext::mtwt;
     use fold::Folder;
     use parse;
-    use parse::token::{self, keywords};
+    use parse::token;
     use util::parser_testing::{string_to_parser};
     use util::parser_testing::{string_to_pat, string_to_crate, strs_to_idents};
     use visit;
@@ -1396,266 +1395,9 @@ mod tests {
             );
     }
 
-    // renaming tests expand a crate and then check that the bindings match
-    // the right varrefs. The specification of the test case includes the
-    // text of the crate, and also an array of arrays.  Each element in the
-    // outer array corresponds to a binding in the traversal of the AST
-    // induced by visit.  Each of these arrays contains a list of indexes,
-    // interpreted as the varrefs in the varref traversal that this binding
-    // should match.  So, for instance, in a program with two bindings and
-    // three varrefs, the array [[1, 2], [0]] would indicate that the first
-    // binding should match the second two varrefs, and the second binding
-    // should match the first varref.
-    //
-    // Put differently; this is a sparse representation of a boolean matrix
-    // indicating which bindings capture which identifiers.
-    //
-    // Note also that this matrix is dependent on the implicit ordering of
-    // the bindings and the varrefs discovered by the name-finder and the path-finder.
-    //
-    // The comparisons are done post-mtwt-resolve, so we're comparing renamed
-    // names; differences in marks don't matter any more.
-    //
-    // oog... I also want tests that check "bound-identifier-=?". That is,
-    // not just "do these have the same name", but "do they have the same
-    // name *and* the same marks"? Understanding this is really pretty painful.
-    // in principle, you might want to control this boolean on a per-varref basis,
-    // but that would make things even harder to understand, and might not be
-    // necessary for thorough testing.
-    type RenamingTest = (&'static str, Vec<Vec<usize>>, bool);
-
-    #[test]
-    fn automatic_renaming () {
-        let tests: Vec<RenamingTest> =
-            vec!(// b & c should get new names throughout, in the expr too:
-                ("fn a() -> i32 { let b = 13; let c = b; b+c }",
-                 vec!(vec!(0,1),vec!(2)), false),
-                // both x's should be renamed (how is this causing a bug?)
-                ("fn main () {let x: i32 = 13;x;}",
-                 vec!(vec!(0)), false),
-                // the use of b after the + should be renamed, the other one not:
-                ("macro_rules! f (($x:ident) => (b + $x)); fn a() -> i32 { let b = 13; f!(b)}",
-                 vec!(vec!(1)), false),
-                // the b before the plus should not be renamed (requires marks)
-                ("macro_rules! f (($x:ident) => ({let b=9; ($x + b)})); fn a() -> i32 { f!(b)}",
-                 vec!(vec!(1)), false),
-                // the marks going in and out of letty should cancel, allowing that $x to
-                // capture the one following the semicolon.
-                // this was an awesome test case, and caught a *lot* of bugs.
-                ("macro_rules! letty(($x:ident) => (let $x = 15;));
-                  macro_rules! user(($x:ident) => ({letty!($x); $x}));
-                  fn main() -> i32 {user!(z)}",
-                 vec!(vec!(0)), false)
-                );
-        for (idx,s) in tests.iter().enumerate() {
-            run_renaming_test(s,idx);
-        }
-    }
-
-    // no longer a fixme #8062: this test exposes a *potential* bug; our system does
-    // not behave exactly like MTWT, but a conversation with Matthew Flatt
-    // suggests that this can only occur in the presence of local-expand, which
-    // we have no plans to support. ... unless it's needed for item hygiene....
-    #[ignore]
-    #[test]
-    fn issue_8062(){
-        run_renaming_test(
-            &("fn main() {let hrcoo = 19; macro_rules! getx(()=>(hrcoo)); getx!();}",
-              vec!(vec!(0)), true), 0)
-    }
-
-    // FIXME #6994:
-    // the z flows into and out of two macros (g & f) along one path, and one
-    // (just g) along the other, so the result of the whole thing should
-    // be "let z_123 = 3; z_123"
-    #[ignore]
-    #[test]
-    fn issue_6994(){
-        run_renaming_test(
-            &("macro_rules! g (($x:ident) =>
-              ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}));
-              fn a(){g!(z)}",
-              vec!(vec!(0)),false),
-            0)
-    }
-
-    // match variable hygiene. Should expand into
-    // fn z() {match 8 {x_1 => {match 9 {x_2 | x_2 if x_2 == x_1 => x_2 + x_1}}}}
-    #[test]
-    fn issue_9384(){
-        run_renaming_test(
-            &("macro_rules! bad_macro (($ex:expr) => ({match 9 {x | x if x == $ex => x + $ex}}));
-              fn z() {match 8 {x => bad_macro!(x)}}",
-              // NB: the third "binding" is the repeat of the second one.
-              vec!(vec!(1,3),vec!(0,2),vec!(0,2)),
-              true),
-            0)
-    }
-
-    // interpolated nodes weren't getting labeled.
-    // should expand into
-    // fn main(){let g1_1 = 13; g1_1}}
-    #[test]
-    fn pat_expand_issue_15221(){
-        run_renaming_test(
-            &("macro_rules! inner ( ($e:pat ) => ($e));
-              macro_rules! outer ( ($e:pat ) => (inner!($e)));
-              fn main() { let outer!(g) = 13; g;}",
-              vec!(vec!(0)),
-              true),
-            0)
-    }
-
     // create a really evil test case where a $x appears inside a binding of $x
     // but *shouldn't* bind because it was inserted by a different macro....
     // can't write this test case until we have macro-generating macros.
-
-    // method arg hygiene
-    // method expands to fn get_x(&self_0, x_1: i32) {self_0 + self_2 + x_3 + x_1}
-    #[test]
-    fn method_arg_hygiene(){
-        run_renaming_test(
-            &("macro_rules! inject_x (()=>(x));
-              macro_rules! inject_self (()=>(self));
-              struct A;
-              impl A{fn get_x(&self, x: i32) {self + inject_self!() + inject_x!() + x;} }",
-              vec!(vec!(0),vec!(3)),
-              true),
-            0)
-    }
-
-    // ooh, got another bite?
-    // expands to struct A; impl A {fn thingy(&self_1) {self_1;}}
-    #[test]
-    fn method_arg_hygiene_2(){
-        run_renaming_test(
-            &("struct A;
-              macro_rules! add_method (($T:ty) =>
-              (impl $T {  fn thingy(&self) {self;} }));
-              add_method!(A);",
-              vec!(vec!(0)),
-              true),
-            0)
-    }
-
-    // item fn hygiene
-    // expands to fn q(x_1: i32){fn g(x_2: i32){x_2 + x_1};}
-    #[test]
-    fn issue_9383(){
-        run_renaming_test(
-            &("macro_rules! bad_macro (($ex:expr) => (fn g(x: i32){ x + $ex }));
-              fn q(x: i32) { bad_macro!(x); }",
-              vec!(vec!(1),vec!(0)),true),
-            0)
-    }
-
-    // closure arg hygiene (ExprKind::Closure)
-    // expands to fn f(){(|x_1 : i32| {(x_2 + x_1)})(3);}
-    #[test]
-    fn closure_arg_hygiene(){
-        run_renaming_test(
-            &("macro_rules! inject_x (()=>(x));
-            fn f(){(|x : i32| {(inject_x!() + x)})(3);}",
-              vec!(vec!(1)),
-              true),
-            0)
-    }
-
-    // macro_rules in method position. Sadly, unimplemented.
-    #[test]
-    fn macro_in_method_posn(){
-        expand_crate_str(
-            "macro_rules! my_method (() => (fn thirteen(&self) -> i32 {13}));
-            struct A;
-            impl A{ my_method!(); }
-            fn f(){A.thirteen;}".to_string());
-    }
-
-    // another nested macro
-    // expands to impl Entries {fn size_hint(&self_1) {self_1;}
-    #[test]
-    fn item_macro_workaround(){
-        run_renaming_test(
-            &("macro_rules! item { ($i:item) => {$i}}
-              struct Entries;
-              macro_rules! iterator_impl {
-              () => { item!( impl Entries { fn size_hint(&self) { self;}});}}
-              iterator_impl! { }",
-              vec!(vec!(0)), true),
-            0)
-    }
-
-    // run one of the renaming tests
-    fn run_renaming_test(t: &RenamingTest, test_idx: usize) {
-        let invalid_name = keywords::Invalid.name();
-        let (teststr, bound_connections, bound_ident_check) = match *t {
-            (ref str,ref conns, bic) => (str.to_string(), conns.clone(), bic)
-        };
-        let cr = expand_crate_str(teststr.to_string());
-        let bindings = crate_bindings(&cr);
-        let varrefs = crate_varrefs(&cr);
-
-        // must be one check clause for each binding:
-        assert_eq!(bindings.len(),bound_connections.len());
-        for (binding_idx,shouldmatch) in bound_connections.iter().enumerate() {
-            let binding_name = mtwt::resolve(bindings[binding_idx]);
-            let binding_marks = mtwt::marksof(bindings[binding_idx].ctxt, invalid_name);
-            // shouldmatch can't name varrefs that don't exist:
-            assert!((shouldmatch.is_empty()) ||
-                    (varrefs.len() > *shouldmatch.iter().max().unwrap()));
-            for (idx,varref) in varrefs.iter().enumerate() {
-                let print_hygiene_debug_info = || {
-                    // good lord, you can't make a path with 0 segments, can you?
-                    let final_varref_ident = match varref.segments.last() {
-                        Some(pathsegment) => pathsegment.identifier,
-                        None => panic!("varref with 0 path segments?")
-                    };
-                    let varref_name = mtwt::resolve(final_varref_ident);
-                    let varref_idents : Vec<ast::Ident>
-                        = varref.segments.iter().map(|s| s.identifier)
-                        .collect();
-                    println!("varref #{}: {:?}, resolves to {}",idx, varref_idents, varref_name);
-                    println!("varref's first segment's string: \"{}\"", final_varref_ident);
-                    println!("binding #{}: {}, resolves to {}",
-                             binding_idx, bindings[binding_idx], binding_name);
-                    mtwt::with_sctable(|x| mtwt::display_sctable(x));
-                };
-                if shouldmatch.contains(&idx) {
-                    // it should be a path of length 1, and it should
-                    // be free-identifier=? or bound-identifier=? to the given binding
-                    assert_eq!(varref.segments.len(),1);
-                    let varref_name = mtwt::resolve(varref.segments[0].identifier);
-                    let varref_marks = mtwt::marksof(varref.segments[0]
-                                                           .identifier
-                                                           .ctxt,
-                                                     invalid_name);
-                    if !(varref_name==binding_name) {
-                        println!("uh oh, should match but doesn't:");
-                        print_hygiene_debug_info();
-                    }
-                    assert_eq!(varref_name,binding_name);
-                    if bound_ident_check {
-                        // we're checking bound-identifier=?, and the marks
-                        // should be the same, too:
-                        assert_eq!(varref_marks,binding_marks.clone());
-                    }
-                } else {
-                    let varref_name = mtwt::resolve(varref.segments[0].identifier);
-                    let fail = (varref.segments.len() == 1)
-                        && (varref_name == binding_name);
-                    // temp debugging:
-                    if fail {
-                        println!("failure on test {}",test_idx);
-                        println!("text of test case: \"{}\"", teststr);
-                        println!("");
-                        println!("uh oh, matches but shouldn't:");
-                        print_hygiene_debug_info();
-                    }
-                    assert!(!fail);
-                }
-            }
-        }
-    }
 
     #[test]
     fn fmt_in_macro_used_inside_module_macro() {
