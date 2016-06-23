@@ -830,7 +830,7 @@ mod tests {
     use syntax_pos::*;
     use errors::{Level, CodeSuggestion};
     use errors::emitter::EmitterWriter;
-    use errors::snippet::SnippetData;
+    use errors::snippet::{SnippetData, RenderedLine};
     use std::sync::{Arc, Mutex};
     use std::io::{self, Write};
     use std::str::from_utf8;
