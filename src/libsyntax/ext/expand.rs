@@ -13,6 +13,7 @@ use ast::{Local, Ident, Mac_, Name, SpannedIdent};
 use ast::{MacStmtStyle, Mrk, Stmt, StmtKind, ItemKind};
 use ast::TokenTree;
 use ast;
+use attr::HasAttrs;
 use ext::mtwt;
 use ext::build::AstBuilder;
 use attr;
@@ -724,11 +725,7 @@ impl<'a> Folder for PatIdentRenamer<'a> {
     }
 }
 
-fn expand_annotatable(a: Annotatable,
-                      fld: &mut MacroExpander)
-                      -> SmallVector<Annotatable> {
-    let a = expand_item_multi_modifier(a, fld);
-
+fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> SmallVector<Annotatable> {
     let new_items: SmallVector<Annotatable> = match a {
         Annotatable::Item(it) => match it.node {
             ast::ItemKind::Mac(..) => {
@@ -796,29 +793,6 @@ fn decorate(a: Annotatable, fld: &mut MacroExpander) -> SmallVector<Annotatable>
     new_items
 }
 
-// Partition a set of attributes into one kind of attribute, and other kinds.
-macro_rules! partition {
-    ($fn_name: ident, $variant: ident) => {
-        #[allow(deprecated)] // The `allow` is needed because the `Modifier` variant might be used.
-        fn $fn_name(attrs: &[ast::Attribute],
-                    fld: &MacroExpander)
-                     -> (Vec<ast::Attribute>, Vec<ast::Attribute>) {
-            attrs.iter().cloned().partition(|attr| {
-                match fld.cx.syntax_env.find(intern(&attr.name())) {
-                    Some(rc) => match *rc {
-                        $variant(..) => true,
-                        _ => false
-                    },
-                    _ => false
-                }
-            })
-        }
-    }
-}
-
-partition!(multi_modifiers, MultiModifier);
-
-
 fn expand_decorators(a: Annotatable,
                      fld: &mut MacroExpander,
                      decorator_items: &mut SmallVector<Annotatable>,
@@ -864,46 +838,41 @@ fn expand_decorators(a: Annotatable,
     }
 }
 
-fn expand_item_multi_modifier(mut it: Annotatable,
-                              fld: &mut MacroExpander)
-                              -> Annotatable {
-    let (modifiers, other_attrs) = multi_modifiers(it.attrs(), fld);
-
-    // Update the attrs, leave everything else alone. Is this mutation really a good idea?
-    it = it.fold_attrs(other_attrs);
-
-    if modifiers.is_empty() {
-        return it
-    }
-
-    for attr in &modifiers {
-        let mname = intern(&attr.name());
-
-        match fld.cx.syntax_env.find(mname) {
-            Some(rc) => match *rc {
-                MultiModifier(ref mac) => {
-                    attr::mark_used(attr);
-                    fld.cx.bt_push(ExpnInfo {
-                        call_site: attr.span,
-                        callee: NameAndSpan {
-                            format: MacroAttribute(mname),
-                            span: Some(attr.span),
-                            // attributes can do whatever they like,
-                            // for now
-                            allow_internal_unstable: true,
-                        }
-                    });
-                    it = mac.expand(fld.cx, attr.span, &attr.node.value, it);
-                    fld.cx.bt_pop();
+fn expand_annotatable(mut item: Annotatable, fld: &mut MacroExpander) -> SmallVector<Annotatable> {
+    let mut multi_modifier = None;
+    item = item.map_attrs(|mut attrs| {
+        for i in 0..attrs.len() {
+            if let Some(extension) = fld.cx.syntax_env.find(intern(&attrs[i].name())) {
+                if let MultiModifier(..) = *extension {
+                    multi_modifier = Some((attrs.remove(i), extension));
+                    break;
                 }
-                _ => unreachable!()
-            },
-            _ => unreachable!()
+            }
+        }
+        attrs
+    });
+
+    match multi_modifier {
+        None => expand_multi_modified(item, fld),
+        Some((attr, extension)) => match *extension {
+            MultiModifier(ref mac) => {
+                attr::mark_used(&attr);
+                fld.cx.bt_push(ExpnInfo {
+                    call_site: attr.span,
+                    callee: NameAndSpan {
+                        format: MacroAttribute(intern(&attr.name())),
+                        span: Some(attr.span),
+                        // attributes can do whatever they like, for now
+                        allow_internal_unstable: true,
+                    }
+                });
+                let modified = mac.expand(fld.cx, attr.span, &attr.node.value, item);
+                fld.cx.bt_pop();
+                modified.into_iter().flat_map(|it| expand_annotatable(it, fld)).collect()
+            }
+            _ => unreachable!(),
         }
     }
-
-    // Expansion may have added new ItemKind::Modifiers.
-    expand_item_multi_modifier(it, fld)
 }
 
 fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
