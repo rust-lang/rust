@@ -65,7 +65,7 @@ impl FileDesc {
     pub fn set_cloexec(&self) {
         unsafe {
             let ret = libc::ioctl(self.fd, libc::FIOCLEX);
-            debug_assert_eq!(ret, 0);
+            assert_eq!(ret, 0);
         }
     }
     #[cfg(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten"))]
@@ -73,21 +73,21 @@ impl FileDesc {
         unsafe {
             let previous = libc::fcntl(self.fd, libc::F_GETFD);
             let ret = libc::fcntl(self.fd, libc::F_SETFD, previous | libc::FD_CLOEXEC);
-            debug_assert_eq!(ret, 0);
+            assert_eq!(ret, 0);
         }
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) {
         unsafe {
             let previous = libc::fcntl(self.fd, libc::F_GETFL);
-            debug_assert!(previous != -1);
+            assert!(previous != -1);
             let new = if nonblocking {
                 previous | libc::O_NONBLOCK
             } else {
                 previous & !libc::O_NONBLOCK
             };
             let ret = libc::fcntl(self.fd, libc::F_SETFL, new);
-            debug_assert!(ret != -1);
+            assert!(ret != -1);
         }
     }
 
