@@ -155,11 +155,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
         Ok(())
     }
+}
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Allocation accessors
-    ////////////////////////////////////////////////////////////////////////////////
-
+/// Allocation accessors
+impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation> {
         match self.alloc_map.get(&id) {
             Some(alloc) => Ok(alloc),
@@ -245,11 +244,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
         }
     }
+}
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Byte accessors
-    ////////////////////////////////////////////////////////////////////////////////
-
+/// Byte accessors
+impl<'a, 'tcx> Memory<'a, 'tcx> {
     fn get_bytes_unchecked(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, &[u8]> {
         let alloc = self.get(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
@@ -287,11 +285,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.mark_definedness(ptr, size, true)?;
         self.get_bytes_unchecked_mut(ptr, size)
     }
+}
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Reading and writing
-    ////////////////////////////////////////////////////////////////////////////////
-
+/// Reading and writing
+impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<'tcx, ()> {
         self.check_relocation_edges(src, size)?;
 
@@ -422,11 +419,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let size = self.pointer_size;
         self.write_uint(ptr, n, size)
     }
+}
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Relocations
-    ////////////////////////////////////////////////////////////////////////////////
-
+/// Relocations
+impl<'a, 'tcx> Memory<'a, 'tcx> {
     fn relocations(&self, ptr: Pointer, size: usize)
         -> EvalResult<'tcx, btree_map::Range<usize, AllocId>>
     {
@@ -478,11 +474,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.get_mut(dest.alloc_id)?.relocations.extend(relocations);
         Ok(())
     }
+}
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Undefined bytes
-    ////////////////////////////////////////////////////////////////////////////////
-
+/// Undefined bytes
+impl<'a, 'tcx> Memory<'a, 'tcx> {
     // FIXME(solson): This is a very naive, slow version.
     fn copy_undef_mask(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<'tcx, ()> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
