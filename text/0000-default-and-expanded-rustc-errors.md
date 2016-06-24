@@ -31,7 +31,8 @@ src/test/compile-fail/borrowck/borrowck-borrow-from-owned-ptr.rs:31 }
                                                                     ^
 ```
 
-[TODO TODO TODO TODO as an image]
+[as image]
+![Image of new error flow](http://www.jonathanturner.org/images/old_errors_3.png)
 
 *Example of a borrow check error in the current compiler*
 
@@ -57,7 +58,8 @@ error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
    |  - first borrow ends here
 ```
 
-[as image TODO TODO TODO TODO TODO TODO]
+[as image]
+![Image of new error flow](http://www.jonathanturner.org/images/new_errors_3.png)
 
 *Example of the same borrow check error in the proposed format*
 
@@ -105,7 +107,7 @@ You can avoid moving the contents out by working with each part using a referenc
 
 # Detailed design
 
-The RFC is separated into two parts: the format of error messages and the format of expanded error messages (using --explain errors).
+The RFC is separated into two parts: the format of error messages and the format of expanded error messages (using `--explain errors`).
 
 ## Format of error messages
 
