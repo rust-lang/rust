@@ -141,29 +141,21 @@ with other extensions.
 
 ## Syntax
 
-Let's start with the bikeshed: The proposed syntax is `@Trait` in return type
-position, composing like trait objects to forms like `@(Foo+Send+'a)`.
+Let's start with the bikeshed: The proposed syntax is `impl Trait` in return type
+position, composing like trait objects to forms like `impl Foo+Send+'a`.
 
-The reason for choosing a sigil is ergonomics: Whatever the exact final feature
-will be capable of, you'd want it to be as easy to read/write as trait objects,
-or else the more performant and idiomatic option would be the more verbose one,
-and thus probably less used.
+It can be explained as "a type that implements `Trait`",
+and has been used in that form in most earlier discussions and proposals.
 
-The argument can be made this decreases the google-ability of Rust syntax (and
-this doesn't even talk about the _old_ `@T` pointer semantic the internet is
-still littered with), but this would be somewhat mitigated by the feature being
-supposedly used commonly once it lands, and can be explained in the docs as
-being short for `abstract` or `anonym`. And in any case, it's a problem we
-already suffer with `&T` and `&mut T`.
+Initial versions of this RFC proposed `@Trait` for brevity reasons,
+since the feature is supposed to be used commonly once implemented,
+but due to strong negative reactions by the community this has been
+changed back to the current form.
 
-If there are good reasons against `@`, there is also the choice of `~`.
-All points from above still apply, except `~` is a bit rarer in language
-syntaxes in general, and depending on keyboard layout somewhat harder to reach.
-
-Finally, if there is a huge incentive _against_ new (old?) sigils in the language,
-there is also the option of using keyword-based syntax like `impl Trait` or
-`abstract Trait`, but this would add a verbosity overhead for a feature
-that will be used somewhat commonly.
+There are other possibilities, like `abstract Trait` or `~Trait`, with
+good reasons for or against them, but since the concrete choice of syntax
+is not a blocker for the implementation of this RFC, it is intended for
+a possible follow-up RFC to address syntax changes if needed.
 
 ## Semantics
 
@@ -177,7 +169,7 @@ and the *initial limitations* (which are likely to be lifted later).
 
 **Core semantics**:
 
-- If a function returns `@Trait`, its body can return values of any type that
+- If a function returns `impl Trait`, its body can return values of any type that
   implements `Trait`, but all return values need to be of the same type.
 
 - As far as the typesystem and the compiler is concerned, the return type
@@ -201,11 +193,11 @@ and the *initial limitations* (which are likely to be lifted later).
   in the module system. This means type equality behaves like this:
 
   ```rust
-  fn foo<T: Trait>(t: T) -> @Trait {
+  fn foo<T: Trait>(t: T) -> impl Trait {
       t
   }
 
-  fn bar() -> @Trait {
+  fn bar() -> impl Trait {
       123
   }
 
@@ -213,30 +205,30 @@ and the *initial limitations* (which are likely to be lifted later).
 
   equal_type(bar(), bar());                      // OK
   equal_type(foo::<i32>(0), foo::<i32>(0));      // OK
-  equal_type(bar(), foo::<i32>(0));              // ERROR, `@Trait {bar}` is not the same type as `@Trait {foo<i32>}`
-  equal_type(foo::<bool>(false), foo::<i32>(0)); // ERROR, `@Trait {foo<bool>}` is not the same type as `@Trait {foo<i32>}`
+  equal_type(bar(), foo::<i32>(0));              // ERROR, `impl Trait {bar}` is not the same type as `impl Trait {foo<i32>}`
+  equal_type(foo::<bool>(false), foo::<i32>(0)); // ERROR, `impl Trait {foo<bool>}` is not the same type as `impl Trait {foo<i32>}`
   ```
 
 - The code generation passes of the compiler would not draw a distinction
   between the abstract return type and the underlying type, just like they don't
   for generic paramters. This means:
-  - The same trait code would be instantiated, for example, `-> @Any`
+  - The same trait code would be instantiated, for example, `-> impl Any`
     would return the type id of the underlying type.
     - Specialization would specialize based on the underlying type.
 
 **Initial limitations**:
 
-- `@Trait` may only be written within the return type of a freestanding or
+- `impl Trait` may only be written within the return type of a freestanding or
   inherent-impl function, not in trait definitions or any non-return type position. They may also not appear
   in the return type of closure traits or function pointers,
   unless these are themself part of a legal return type.
 
   - Eventually, we will want to allow the feature to be used within traits, and
     like in argument position as well (as an ergonomic improvement over today's generics).
-  - Using `@Trait` multiple times in the same return type would be valid,
-    like for example in `-> (@Foo, @Bar)`.
+  - Using `impl Trait` multiple times in the same return type would be valid,
+    like for example in `-> (impl Foo, impl Bar)`.
 
-- The type produced when a function returns `@Trait` would be effectively
+- The type produced when a function returns `impl Trait` would be effectively
   unnameable, just like closures and function items.
 
   - We will almost certainly want to lift this limitation in the long run, so
@@ -248,7 +240,7 @@ and the *initial limitations* (which are likely to be lifted later).
   would be forbidden just like on the outside:
 
   ```rust
-  fn sum_to(n: u32) -> @Display {
+  fn sum_to(n: u32) -> impl Display {
       if n == 0 {
           0
       } else {
@@ -272,7 +264,7 @@ Trait`.)
 
 The design as choosen in this RFC lies somewhat in between those two, since it
 allows OIBITs to leak through, and allows specialization to "see" the full type
-being returned. That is, `@Trait` does not attempt to be a "tightly sealed"
+being returned. That is, `impl Trait` does not attempt to be a "tightly sealed"
 abstraction boundary. The rationale for this design is a mixture of pragmatics
 and principles.
 
@@ -293,18 +285,18 @@ be prepared to work with any type that meets at least that bound. Again, with
 specialization, the caller may dispatch on additional type information beyond
 those bounds.
 
-In other words, to the extent that returning `@Trait` is intended to be
+In other words, to the extent that returning `impl Trait` is intended to be
 symmetric with taking a generic `T: Trait`, transparency with respect to
 specialization maintains that symmetry.
 
 **Pragmatics for specialization transparency**:
 
-The practical reason we want `@Trait` to be transparent to specialization is the
+The practical reason we want `impl Trait` to be transparent to specialization is the
 same as the reason we want specialization in the first place: to be able to
 break through abstractions with more efficient special-case code.
 
 This is particularly important for one of the primary intended usecases:
-returning `@Iterator`. We are very likely to employ specialization for various
+returning `impl Iterator`. We are very likely to employ specialization for various
 iterator types, and making the underlying return type invisible to
 specialization would lose out on those efficiency wins.
 
@@ -363,11 +355,11 @@ abstract types.
 ### Limitation to only return type position
 
 There have been various proposed additional places where abstract types
-might be usable. For example, `fn x(y: @Trait)` as shorthand for
+might be usable. For example, `fn x(y: impl Trait)` as shorthand for
 `fn x<T: Trait>(y: T)`.
 
 Since the exact semantics and user experience for these locations are yet
-unclear (`@Trait` would effectively behave completely different before and after
+unclear (`impl Trait` would effectively behave completely different before and after
 the `->`), this has also been excluded from this proposal.
 
 ### Type transparency in recursive functions
@@ -376,7 +368,7 @@ Functions with abstract return types can not see through their own return type,
 making code like this not compile:
 
 ```rust
-fn sum_to(n: u32) -> @Display {
+fn sum_to(n: u32) -> impl Display {
     if n == 0 {
         0
     } else {
@@ -399,7 +391,7 @@ specialization makes it uncertain whether this would be sound.
 In any case, it can be initially worked around by defining a local helper function like this:
 
 ```rust
-fn sum_to(n: u32) -> @Display {
+fn sum_to(n: u32) -> impl Display {
     fn sum_to_(n: u32) -> u32 {
         if n == 0 {
             0
@@ -413,13 +405,13 @@ fn sum_to(n: u32) -> @Display {
 
 ### Not legal in function pointers/closure traits
 
-Because `@Trait` defines a type tied to the concrete function body,
+Because `impl Trait` defines a type tied to the concrete function body,
 it does not make much sense to talk about it separately in a function signature,
 so the syntax is forbidden there.
 
 ### Compability with conditional trait bounds
 
-On valid critique for the existing `@Trait` proposal is that it does not
+On valid critique for the existing `impl Trait` proposal is that it does not
 cover more complex scenarios, where the return type would implement
 one or more traits depending on whether a type parameter does so with another.
 
@@ -433,7 +425,7 @@ impl<I: Iterator> Iterator for SkipOne<I> { ... }
 impl<I: DoubleEndedIterator> DoubleEndedIterator for SkipOne<I> { ... }
 ```
 
-Using just `-> @Iterator`, this would not be possible to reproduce.
+Using just `-> impl Iterator`, this would not be possible to reproduce.
 
 Since there has been no proposals so far that would address this in a way
 that would conflict with the fixed-trait-set case, this RFC punts on that issue as well.
@@ -519,12 +511,12 @@ is that it creates a somewhat inconsistent mental model: it forces you to
 understand the feature in a highly special-cased way, rather than as a general
 way to talk about unknown-but-bounded types in function signatures. This could
 be particularly bewildering to newcomers, who must choose between `T: Trait`,
-`Box<Trait>`, and `@Trait`, with the latter only usable in one place.
+`Box<Trait>`, and `impl Trait`, with the latter only usable in one place.
 
 ## Drawbacks due to partial transparency
 
-The fact that specialization and OIBITs can "see through" `@Trait` may be
-surprising, to the extent that one wants to see `@Trait` as an abstraction
+The fact that specialization and OIBITs can "see through" `impl Trait` may be
+surprising, to the extent that one wants to see `impl Trait` as an abstraction
 mechanism. However, as the RFC argued in the rationale section, this design is
 probably the most consistent with our existing post-specialization abstraction
 mechanisms, and lead to the relatively simple story that *privacy* is the way to
