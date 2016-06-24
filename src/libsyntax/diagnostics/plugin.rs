@@ -23,6 +23,8 @@ use util::small_vector::SmallVector;
 
 use diagnostics::metadata::output_metadata;
 
+pub use errors::*;
+
 // Maximum width of any line in an extended error description (inclusive).
 const MAX_DESCRIPTION_WIDTH: usize = 80;
 
