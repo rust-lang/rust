@@ -4,7 +4,7 @@
 - Rust Issue: (leave this empty)
 
 # Summary
-This RFC proposes an update to error reporting in rustc.  Its focus is to change the format of Rust error messages and --explain text to focus on the user's code.  The end goal is for errors and explain text to be more readable, more friendly to new users, while still helping Rust coders fix bugs as quickly as possible.  We expect to follow this RFC with a supplemental RFC that provides a writing style guide for error messages and explain text with a focus on readability and education.
+This RFC proposes an update to error reporting in rustc.  Its focus is to change the format of Rust error messages and improve --explain capabilities to focus on the user's code.  The end goal is for errors and explain text to be more readable, more friendly to new users, while still helping Rust coders fix bugs as quickly as possible.  We expect to follow this RFC with a supplemental RFC that provides a writing style guide for error messages and explain text with a focus on readability and education.
 
 # Motivation
 
@@ -60,7 +60,7 @@ error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
 ```
 
 [as image]
-![Image of new error flow](http://www.jonathanturner.org/images/new_errors_3.png)
+![Image of new error flow](http://www.jonathanturner.org/images/new_errors_3.png =250x)
 
 *Example of the same borrow check error in the proposed format*
 
