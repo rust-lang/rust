@@ -181,12 +181,11 @@ More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/
 
 ## Usage
 
-Clippy will most probably need Rust nightly to compile.
+As a general rule clippy will only work with the *latest* Rust nightly for now.
 
 ### As a Compiler Plugin
 
-Compiler plugins are highly unstable and will only work with a *recent* nightly
-Rust for now.  Since stable Rust is backwards compatible, you should be able to
+Since stable Rust is backwards compatible, you should be able to
 compile your stable programs with nightly Rust with clippy plugged in to
 circumvent this.
 
