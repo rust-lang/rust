@@ -953,7 +953,6 @@ mod tests {
                                                 attrs: None,}),
                                                 ast::DUMMY_NODE_ID),
                                             span: sp(17,19)}),
-                                        expr: None,
                                         id: ast::DUMMY_NODE_ID,
                                         rules: ast::BlockCheckMode::Default, // no idea
                                         span: sp(15,21),
