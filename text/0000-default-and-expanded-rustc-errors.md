@@ -96,12 +96,14 @@ I’m trying to track the ownership of the contents of `tail`, which is borrowed
 
 29  |>             match tail {
 
-In this match, you use an expression of the form [...].  When you do this, it’s like you are opening up the `tail` value and taking out its contents. Because `tail` is borrowed, you can’t safely move the contents.
+In this match, you use an expression of the form [...].  When you do this, it’s like you are opening up the `tail` 
+value and taking out its contents. Because `tail` is borrowed, you can’t safely move the contents.
 
 30  |>                 [Foo { string: aa },
     |>                                ^^ cannot move out of borrowed content
 
-You can avoid moving the contents out by working with each part using a reference rather than a move.  A naive fix might look this:
+You can avoid moving the contents out by working with each part using a reference rather than a move.  A naive fix 
+might look this:
 
 30  |>                 [Foo { string: ref aa },
  
@@ -203,12 +205,14 @@ I’m trying to track the ownership of the contents of `tail`, which is borrowed
 
 29  |>             match tail {
 
-In this match, you use an expression of the form [...].  When you do this, it’s like you are opening up the `tail` value and taking out its contents. Because `tail` is borrowed, you can’t safely move the contents.
+In this match, you use an expression of the form [...].  When you do this, it’s like you are opening up the `tail` 
+value and taking out its contents. Because `tail` is borrowed, you can’t safely move the contents.
 
 30  |>                 [Foo { string: aa },
     |>                                ^^ cannot move out of borrowed content
 
-You can avoid moving the contents out by working with each part using a reference rather than a move.  A naive fix might look this:
+You can avoid moving the contents out by working with each part using a reference rather than a move.  A naive fix 
+might look this:
 
 30  |>                 [Foo { string: ref aa },
 ```
@@ -263,7 +267,8 @@ But the right argument is:
 
 Hint: To append strings in Elm, you need to use the (++) operator, not (+). <http://package.elm-lang.org/packages/elm-lang/core/latest/Basics#++> 
 
-Hint: I always figure out the type of the left argument first and if it is acceptable on its own, I assume it is "correct" in subsequent checks. So the problem may actually be in how the left and right arguments interact. 
+Hint: I always figure out the type of the left argument first and if it is acceptable on its own, I assume it 
+is "correct" in subsequent checks. So the problem may actually be in how the left and right arguments interact. 
 ```
 
 *Example of an Elm error*
