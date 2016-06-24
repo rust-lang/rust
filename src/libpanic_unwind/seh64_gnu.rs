@@ -18,6 +18,7 @@ use alloc::boxed::Box;
 
 use core::any::Any;
 use core::intrinsics;
+use core::ptr;
 use dwarf::eh;
 use windows as c;
 
@@ -50,7 +51,7 @@ pub unsafe fn panic(data: Box<Any + Send>) -> u32 {
 }
 
 pub fn payload() -> *mut u8 {
-    0 as *mut u8
+    ptr::null_mut()
 }
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send> {

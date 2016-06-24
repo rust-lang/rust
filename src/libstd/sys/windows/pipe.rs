@@ -12,9 +12,10 @@ use prelude::v1::*;
 use os::windows::prelude::*;
 
 use ffi::OsStr;
-use path::Path;
 use io;
 use mem;
+use path::Path;
+use ptr;
 use rand::{self, Rng};
 use slice;
 use sys::c;
@@ -66,7 +67,7 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
                                              4096,
                                              4096,
                                              0,
-                                             0 as *mut _);
+                                             ptr::null_mut());
 
             // We pass the FILE_FLAG_FIRST_PIPE_INSTANCE flag above, and we're
             // also just doing a best effort at selecting a unique name. If
