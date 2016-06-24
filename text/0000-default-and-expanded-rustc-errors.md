@@ -105,7 +105,7 @@ You can avoid moving the contents out by working with each part using a referenc
 
 # Detailed design
 
-The RFC is separated into two parts: the format of error messages and the format of expanded error messages (using --explain).
+The RFC is separated into two parts: the format of error messages and the format of expanded error messages (using --explain errors).
 
 ## Format of error messages
 
