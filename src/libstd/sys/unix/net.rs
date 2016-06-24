@@ -77,7 +77,7 @@ impl Socket {
 
             let fd = cvt(libc::socket(fam, ty, 0))?;
             let fd = FileDesc::new(fd);
-            fd.set_cloexec();
+            fd.set_cloexec()?;
             Ok(Socket(fd))
         }
     }
@@ -99,9 +99,9 @@ impl Socket {
 
             cvt(libc::socketpair(fam, ty, 0, fds.as_mut_ptr()))?;
             let a = FileDesc::new(fds[0]);
-            a.set_cloexec();
             let b = FileDesc::new(fds[1]);
-            b.set_cloexec();
+            a.set_cloexec()?;
+            b.set_cloexec()?;
             Ok((Socket(a), Socket(b)))
         }
     }
@@ -132,7 +132,7 @@ impl Socket {
             libc::accept(self.0.raw(), storage, len)
         })?;
         let fd = FileDesc::new(fd);
-        fd.set_cloexec();
+        fd.set_cloexec()?;
         Ok(Socket(fd))
     }
 
