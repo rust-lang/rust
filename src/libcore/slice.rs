@@ -835,7 +835,7 @@ macro_rules! iterator {
 
             #[inline]
             fn count(self) -> usize {
-                self.size_hint().0
+                self.len()
             }
 
             #[inline]
@@ -1444,7 +1444,7 @@ impl<'a, T> Iterator for Windows<'a, T> {
 
     #[inline]
     fn count(self) -> usize {
-        self.size_hint().0
+        self.len()
     }
 
     #[inline]
@@ -1541,7 +1541,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
 
     #[inline]
     fn count(self) -> usize {
-        self.size_hint().0
+        self.len()
     }
 
     #[inline]
@@ -1632,7 +1632,7 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
 
     #[inline]
     fn count(self) -> usize {
-        self.size_hint().0
+        self.len()
     }
 
     #[inline]

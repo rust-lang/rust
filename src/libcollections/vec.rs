@@ -1658,7 +1658,7 @@ impl<T> Iterator for IntoIter<T> {
 
     #[inline]
     fn count(self) -> usize {
-        self.size_hint().0
+        self.len()
     }
 }
 
