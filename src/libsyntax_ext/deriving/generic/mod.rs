@@ -192,7 +192,7 @@ use std::collections::HashSet;
 use std::vec;
 
 use syntax::abi::Abi;
-use syntax::ast::{self, EnumDef, Expr, Ident, Generics, VariantData, BinOpKind, PatKind};
+use syntax::ast::{self, EnumDef, Expr, Ident, Generics, Mac, VariantData, BinOpKind, PatKind};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{ExtCtxt, Annotatable};
@@ -370,6 +370,10 @@ fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast
             }
 
             visit::walk_ty(self, ty)
+        }
+
+        fn visit_mac(&mut self, mac: &'a Mac) {
+            visit::walk_mac(self, mac)
         }
     }
 
