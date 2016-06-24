@@ -189,7 +189,7 @@ Note: We'll talk more about additional style guidance for wording to help create
 
 Currently, --explain text focuses on the error code.  You invoke the compiler with --explain <error code> and receive a verbose description of what causes errors of that number.  The resulting message can be helpful, but it uses generic sample code which makes it feel less connected to the user's code.
 
-We propose changing --explain to no longer take an error code.  Instead, passing --explain to the compiler (or to cargo) will turn the compiler output into an expanded form which incorporates the same source and label information the user saw in the default message with more explanation text.
+We propose adding a new `--explain errors`.  By passing this to the compiler (or to cargo), the compiler will switch to an expanded error form which incorporates the same source and label information the user saw in the default message with more explanation text.
 
 ```
 error: cannot move out of borrowed content
