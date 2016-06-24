@@ -181,6 +181,8 @@ More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/
 
 ## Usage
 
+Clippy will most probably need Rust nightly to compile.
+
 ### As a Compiler Plugin
 
 Compiler plugins are highly unstable and will only work with a *recent* nightly
