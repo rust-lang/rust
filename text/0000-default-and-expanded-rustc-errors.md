@@ -45,6 +45,7 @@ Though a lot of time has been spent on the current error messages, they have a c
 
 This RFC details a redesign of errors to focus more on the source the programmer wrote.  This format addresses the above concerns by eliminating clutter, following a more natural order for help messages, and pointing the user to both "what" the error is and "why" the error is occurring by using color-coded labels.  Below you can see the same error again, this time using the proposed format:
 
+[as text]
 ```
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
   --> src/test/compile-fail/borrowck/borrowck-borrow-from-owned-ptr.rs:29:22
