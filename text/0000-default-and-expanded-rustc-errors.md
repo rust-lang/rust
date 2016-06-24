@@ -60,7 +60,9 @@ error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
 ```
 
 [as image]
-![Image of new error flow](http://www.jonathanturner.org/images/new_errors_3.png =250x)
+![Image of new error flow](http://www.jonathanturner.org/images/new_errors_3.png)
+
+<a href="http://www.jonathanturner.org/images/new_errors_3.png"><img src="http://www.jonathanturner.org/images/new_errors_3.png" align="left" height="500" width="135" ></a>
 
 *Example of the same borrow check error in the proposed format*
 
