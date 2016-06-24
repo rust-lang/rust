@@ -23,7 +23,7 @@
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type pid_t = i32;
 
 #[doc(inline)]
-#[unstable(feature = "pthread_t", issue = "29791")]
+#[stable(feature = "pthread_t", since = "1.8.0")]
 pub use sys::platform::raw::pthread_t;
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]

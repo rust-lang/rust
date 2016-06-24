@@ -1292,22 +1292,6 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0, // 0xFF
 ];
 
-/// Struct that contains a `char` and the index of the first byte of
-/// the next `char` in a string.  This can be used as a data structure
-/// for iterating over the UTF-8 bytes of a string.
-#[derive(Copy, Clone, Debug)]
-#[unstable(feature = "str_char",
-           reason = "existence of this struct is uncertain as it is frequently \
-                     able to be replaced with char.len_utf8() and/or \
-                     char/char_indices iterators",
-           issue = "27754")]
-pub struct CharRange {
-    /// Current `char`
-    pub ch: char,
-    /// Index of the first byte of the next `char`
-    pub next: usize,
-}
-
 /// Mask of the value bits of a continuation byte
 const CONT_MASK: u8 = 0b0011_1111;
 /// Value of the tag bits (tag mask is !CONT_MASK) of a continuation byte
