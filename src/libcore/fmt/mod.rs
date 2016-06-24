@@ -1384,7 +1384,7 @@ impl Debug for str {
         for (i, c) in self.char_indices() {
             let esc = c.escape_default();
             // If char needs escaping, flush backlog so far and write, else skip
-            if esc.size_hint() != (1, Some(1)) {
+            if esc.len() != 1 {
                 f.write_str(&self[from..i])?;
                 for c in esc {
                     f.write_char(c)?;
