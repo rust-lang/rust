@@ -827,7 +827,6 @@ impl CodeMapper for CodeMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use syntax_pos::*;
     use errors::{Level, CodeSuggestion};
     use errors::emitter::EmitterWriter;
     use errors::snippet::{SnippetData, RenderedLine, FormatMode};
