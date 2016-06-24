@@ -40,10 +40,11 @@ extern crate libc;
 #[macro_use] extern crate log;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 extern crate rustc_unicode;
-extern crate rustc_errors as errors;
+pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
 
 extern crate serialize as rustc_serialize; // used by deriving
+
 
 // A variant of 'try!' that panics on an Err. This is used as a crutch on the
 // way towards a non-panic!-prone parser. It should be used for fatal parsing
