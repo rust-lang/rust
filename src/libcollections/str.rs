@@ -37,7 +37,7 @@ use boxed::Box;
 pub use core::str::{FromStr, Utf8Error};
 #[allow(deprecated)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{Lines, LinesAny, CharRange};
+pub use core::str::{Lines, LinesAny};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Split, RSplit};
 #[stable(feature = "rust1", since = "1.0.0")]
