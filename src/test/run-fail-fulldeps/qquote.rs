@@ -15,6 +15,7 @@
 #![feature(quote, rustc_private)]
 
 extern crate syntax;
+extern crate syntax_pos;
 
 use syntax::ast;
 use syntax::codemap;
