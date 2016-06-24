@@ -233,35 +233,98 @@ COMPRT_DEPS := $(wildcard \
               $(S)src/compiler-rt/*/*/*/*)
 endif
 
+# compiler-rt's build system is a godawful mess. Here we figure out
+# the ridiculous platform-specific values and paths necessary to get
+# useful artifacts out of it.
+
 COMPRT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
 COMPRT_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(COMPRT_NAME_$(1))
 COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
 
-ifeq ($$(findstring msvc,$(1)),msvc)
-$$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
-	@$$(call E, cmake: compiler-rt)
-	$$(Q)cd "$$(COMPRT_BUILD_DIR_$(1))"; $$(CFG_CMAKE) "$(S)src/compiler-rt" \
-		-DCMAKE_BUILD_TYPE=$$(LLVM_BUILD_CONFIG_MODE) \
-		-DLLVM_CONFIG_PATH=$$(LLVM_CONFIG_$$(CFG_BUILD)) \
-		-G"$$(CFG_CMAKE_GENERATOR)"
-	$$(Q)$$(CFG_CMAKE) --build "$$(COMPRT_BUILD_DIR_$(1))" \
-		--target lib/builtins/builtins \
-		--config $$(LLVM_BUILD_CONFIG_MODE) \
-		-- //v:m //nologo
-	$$(Q)cp $$(COMPRT_BUILD_DIR_$(1))/lib/windows/$$(LLVM_BUILD_CONFIG_MODE)/clang_rt.builtins-$$(HOST_$(1)).lib $$@
-else
-COMPRT_CC_$(1) := $$(CC_$(1))
-COMPRT_AR_$(1) := $$(AR_$(1))
-# We chomp -Werror here because GCC warns about the type signature of
-# builtins not matching its own and the build fails. It's a bit hacky,
-# but what can we do, we're building libclang-rt using GCC ......
-COMPRT_CFLAGS_$(1) := $$(CFG_GCCISH_CFLAGS_$(1)) -Wno-error -std=c99
+COMPRT_ARCH_$(1) := $$(word 1,$$(subst -, ,$(1)))
 
-# FreeBSD Clang's packaging is problematic; it doesn't copy unwind.h to
-# the standard include directory. This should really be in our changes to
-# compiler-rt, but we override the CFLAGS here so there isn't much choice
-ifeq ($$(findstring freebsd,$(1)),freebsd)
-	COMPRT_CFLAGS_$(1) += -I/usr/include/c++/v1
+# All this is to figure out the path to the compiler-rt bin
+ifeq ($$(findstring windows-msvc,$(1)),windows-msvc)
+COMPRT_DIR_$(1) := windows/Release
+COMPRT_LIB_NAME_$(1) := clang_rt.builtins-$$(patsubst i%86,i386,$$(COMPRT_ARCH_$(1)))
+endif
+
+ifeq ($$(findstring windows-gnu,$(1)),windows-gnu)
+COMPRT_DIR_$(1) := windows
+COMPRT_LIB_NAME_$(1) := clang_rt.builtins-$$(COMPRT_ARCH_$(1))
+endif
+
+ifeq ($$(findstring darwin,$(1)),darwin)
+COMPRT_DIR_$(1) := builtins
+COMPRT_LIB_NAME_$(1) := clang_rt.builtins_$$(patsubst i686,i386,$$(COMPRT_ARCH_$(1)))_osx
+endif
+
+ifeq ($$(findstring ios,$(1)),ios)
+COMPRT_DIR_$(1) := builtins
+COMPRT_ARCH_$(1) := $$(patsubst armv7s,armv7em,$$(COMPRT_ARCH_$(1)))
+COMPRT_LIB_NAME_$(1) := clang_rt.hard_pic_$$(COMPRT_ARCH_$(1))_macho_embedded
+ifeq ($$(COMPRT_ARCH_$(1)),aarch64)
+COMPRT_LIB_NAME_$(1) := clang_rt.builtins_arm64_ios
+endif
+COMPRT_DEFINES_$(1) := -DCOMPILER_RT_ENABLE_IOS=ON
+endif
+
+ifndef COMPRT_DIR_$(1)
+# NB: FreeBSD and NetBSD output to "linux"...
+COMPRT_DIR_$(1) := linux
+COMPRT_ARCH_$(1) := $$(patsubst i586,i386,$$(COMPRT_ARCH_$(1)))
+
+ifeq ($$(findstring android,$(1)),android)
+ifeq ($$(findstring arm,$$(COMPRT_ARCH_$(1))),arm)
+COMPRT_ARCH_$(1) := armhf
+endif
+endif
+
+ifeq ($$(findstring eabihf,$(1)),eabihf)
+ifeq ($$(findstring armv7,$(1)),)
+COMPRT_LIB_NAME_$(1) := clang_rt.builtins-armhf
+endif
+endif
+
+ifndef COMPRT_LIB_NAME_$(1)
+COMPRT_LIB_NAME_$(1) := clang_rt.builtins-$$(COMPRT_ARCH_$(1))
+endif
+endif
+
+
+ifeq ($$(findstring windows-gnu,$(1)),windows-gnu)
+COMPRT_LIB_FILE_$(1) := lib$$(COMPRT_LIB_NAME_$(1)).a
+endif
+
+ifeq ($$(findstring android,$(1)),android)
+ifeq ($$(findstring arm,$(1)),arm)
+COMPRT_LIB_FILE_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$$(COMPRT_LIB_NAME_$(1))-android)
+endif
+endif
+
+ifndef COMPRT_LIB_FILE_$(1)
+COMPRT_LIB_FILE_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$$(COMPRT_LIB_NAME_$(1)))
+endif
+
+COMPRT_OUTPUT_$(1) := $$(COMPRT_BUILD_DIR_$(1))/lib/$$(COMPRT_DIR_$(1))/$$(COMPRT_LIB_FILE_$(1))
+
+ifeq ($$(findstring windows-msvc,$(1)),windows-msvc)
+COMPRT_BUILD_ARGS_$(1) := //v:m //nologo
+COMPRT_BUILD_TARGET_$(1) := lib/builtins/builtins
+COMPRT_BUILD_CC_$(1) :=
+else
+COMPRT_BUILD_ARGS_$(1) :=
+ifndef COMPRT_BUILD_TARGET_$(1)
+COMPRT_BUILD_TARGET_$(1) := $$(COMPRT_LIB_NAME_$(1))
+endif
+COMPRT_BUILD_CC_$(1) := -DCMAKE_C_COMPILER=$$(call FIND_COMPILER,$$(CC_$(1))) \
+			-DCMAKE_CXX_COMPILER=$$(call FIND_COMPILER,$$(CXX_$(1)))
+
+ifeq ($$(findstring ios,$(1)),)
+COMPRT_BUILD_CC_$(1) := $$(COMPRT_BUILD_CC_$(1)) \
+			-DCMAKE_C_FLAGS="$$(CFG_GCCISH_CFLAGS_$(1)) -Wno-error"
+endif
+
 endif
 
 ifeq ($$(findstring emscripten,$(1)),emscripten)
@@ -273,20 +336,26 @@ $$(COMPRT_LIB_$(1)):
 
 else
 
-$$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)
-	@$$(call E, make: compiler-rt)
-	$$(Q)$$(MAKE) -C "$(S)src/compiler-rt" \
-		ProjSrcRoot="$(S)src/compiler-rt" \
-		ProjObjRoot="$$(abspath $$(COMPRT_BUILD_DIR_$(1)))" \
-		CC='$$(COMPRT_CC_$(1))' \
-		AR='$$(COMPRT_AR_$(1))' \
-		RANLIB='$$(COMPRT_AR_$(1)) s' \
-		CFLAGS="$$(COMPRT_CFLAGS_$(1))" \
-		TargetTriple=$(1) \
-		triple-builtins
-	$$(Q)cp $$(COMPRT_BUILD_DIR_$(1))/triple/builtins/libcompiler_rt.a $$@
+$$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
+	@$$(call E, cmake: compiler-rt)
+	$$(Q)rm -rf $$(COMPRT_BUILD_DIR_$(1))
+	$$(Q)mkdir $$(COMPRT_BUILD_DIR_$(1))
+	$$(Q)cd "$$(COMPRT_BUILD_DIR_$(1))"; \
+		$$(CFG_CMAKE) "$(S)src/compiler-rt" \
+		-DCMAKE_BUILD_TYPE=$$(LLVM_BUILD_CONFIG_MODE) \
+		-DLLVM_CONFIG_PATH=$$(LLVM_CONFIG_$$(CFG_BUILD)) \
+		-DCOMPILER_RT_DEFAULT_TARGET_TRIPLE=$(1) \
+		-DCOMPILER_RT_BUILD_SANITIZERS=OFF \
+		-DCOMPILER_RT_BUILD_EMUTLS=OFF \
+		$$(COMPRT_DEFINES_$(1)) \
+		$$(COMPRT_BUILD_CC_$(1)) \
+		-G"$$(CFG_CMAKE_GENERATOR)"
+	$$(Q)$$(CFG_CMAKE) --build "$$(COMPRT_BUILD_DIR_$(1))" \
+		--target $$(COMPRT_BUILD_TARGET_$(1)) \
+		--config $$(LLVM_BUILD_CONFIG_MODE) \
+		-- $$(COMPRT_BUILD_ARGS_$(1)) $$(MFLAGS)
+	$$(Q)cp "$$(COMPRT_OUTPUT_$(1))" $$@
 
-endif # if emscripten
 endif
 
 ################################################################################
@@ -310,20 +379,15 @@ ifeq ($$(findstring darwin,$$(OSTYPE_$(1))),darwin)
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 
-else
-ifeq ($$(findstring ios,$$(OSTYPE_$(1))),ios)
+else ifeq ($$(findstring ios,$$(OSTYPE_$(1))),ios)
 # See comment above
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@
-else
-
-ifeq ($$(findstring msvc,$(1)),msvc)
+else ifeq ($$(findstring msvc,$(1)),msvc)
 # See comment above
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@
-else
-
-ifeq ($$(findstring emscripten,$(1)),emscripten)
+else ifeq ($$(findstring emscripten,$(1)),emscripten)
 # FIXME: libbacktrace doesn't understand the emscripten triple
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@
@@ -376,10 +440,7 @@ $$(BACKTRACE_LIB_$(1)): $$(BACKTRACE_BUILD_DIR_$(1))/Makefile $$(MKFILE_DEPS)
 		INCDIR=$(S)src/libbacktrace
 	$$(Q)cp $$(BACKTRACE_BUILD_DIR_$(1))/.libs/libbacktrace.a $$@
 
-endif # endif for emscripten
-endif # endif for msvc
-endif # endif for ios
-endif # endif for darwin
+endif
 
 ################################################################################
 # libc/libunwind for musl

@@ -775,6 +775,9 @@ probe CFG_BISON            bison
 probe CFG_GDB              gdb
 probe CFG_LLDB             lldb
 
+# For building LLVM
+probe_need CFG_CMAKE cmake
+
 # On MacOS X, invoking `javac` pops up a dialog if the JDK is not
 # installed. Since `javac` is only used if `antlr4` is available,
 # probe for it only in this case.
@@ -1202,9 +1205,6 @@ $ pacman -R python2 && pacman -S mingw-w64-x86_64-python2
 "
             fi
 
-            # MSVC requires cmake because that's how we're going to build LLVM
-            probe_need CFG_CMAKE cmake
-
             # There are three builds of cmake on windows: MSVC, MinGW and Cygwin
             # The Cygwin build does not have generators for Visual Studio, so
             # detect that here and error.
@@ -1477,27 +1477,16 @@ do
     elif [ -z $CFG_LLVM_ROOT ]
     then
         LLVM_BUILD_DIR=${CFG_BUILD_DIR}$t/llvm
-        if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]
-        then
-            LLVM_DBG_OPTS="--enable-debug-symbols --disable-optimized"
-            # Just use LLVM straight from its build directory to
-            # avoid 'make install' time
-            LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug
-        else
-            LLVM_DBG_OPTS="--enable-optimized"
-            LLVM_INST_DIR=$LLVM_BUILD_DIR/Release
-        fi
-        if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
-        then
-            LLVM_ASSERTION_OPTS="--disable-assertions"
-        else
-            LLVM_ASSERTION_OPTS="--enable-assertions"
-
-            # Apparently even if we request assertions be enabled for MSVC,
-            # LLVM's CMake build system ignore this and outputs in `Release`
-            # anyway.
-            if [ ${is_msvc} -eq 0 ]; then
-                LLVM_INST_DIR=${LLVM_INST_DIR}+Asserts
+        LLVM_INST_DIR=$LLVM_BUILD_DIR
+        # For some crazy reason the MSVC output dir is different than Unix
+        if [ ${is_msvc} -ne 0 ]; then
+            if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]
+            then
+                # Just use LLVM straight from its build directory to
+                # avoid 'make install' time
+                LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug
+            else
+                LLVM_INST_DIR=$LLVM_BUILD_DIR/Release
             fi
         fi
     else
@@ -1555,88 +1544,60 @@ do
                 err "can only build LLVM for x86 platforms"
                 ;;
         esac
-        CFG_CMAKE_GENERATOR=$generator
-        putvar CFG_CMAKE_GENERATOR
+    else
+        generator="Unix Makefiles"
     fi
+    CFG_CMAKE_GENERATOR=$generator
+    putvar CFG_CMAKE_GENERATOR
 
-    if [ ${do_reconfigure} -ne 0 ] && [ ${is_msvc} -ne 0 ]
-    then
-        msg "configuring LLVM for $t with cmake"
+    msg "configuring LLVM for $t"
 
-        CMAKE_ARGS="-DLLVM_INCLUDE_TESTS=OFF"
-        if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then
-            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Debug"
-        else
-            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release"
-        fi
-        if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
-        then
-            CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=OFF"
-        else
-            CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=ON"
-        fi
+    LLVM_CFLAGS_32=""
+    LLVM_CXXFLAGS_32=""
+    LLVM_LDFLAGS_32=""
+    LLVM_CFLAGS_64=""
+    LLVM_CXXFLAGS_64=""
+    LLVM_LDFLAGS_64=""
 
-        msg "configuring LLVM with:"
-        msg "$CMAKE_ARGS"
+    case "$CFG_CC" in
+        ("ccache clang")
+            LLVM_CXX_32="ccache"
+            LLVM_CC_32="ccache"
+            LLVM_CXX_32_ARG1="clang++"
+            LLVM_CC_32_ARG1="clang"
+            LLVM_CFLAGS_32="-Qunused-arguments"
+            LLVM_CXXFLAGS_32="-Qunused-arguments"
 
-        (cd $LLVM_BUILD_DIR && "$CFG_CMAKE" $CFG_LLVM_SRC_DIR \
-                                            -G "$CFG_CMAKE_GENERATOR" \
-                                            $CMAKE_ARGS)
-        need_ok "LLVM cmake configure failed"
-    fi
-
-    if [ ${do_reconfigure} -ne 0 ] && [ ${is_msvc} -eq 0 ]
-    then
-        # LLVM's configure doesn't recognize the new Windows triples yet
-        gnu_t=$(to_gnu_triple $t)
-
-        msg "configuring LLVM for $gnu_t"
-
-        LLVM_TARGETS="--enable-targets=x86,x86_64,arm,aarch64,mips,powerpc"
-        LLVM_BUILD="--build=$gnu_t"
-        LLVM_HOST="--host=$gnu_t"
-        LLVM_TARGET="--target=$gnu_t"
-
-        # Disable unused LLVM features
-        LLVM_OPTS="$LLVM_DBG_OPTS $LLVM_ASSERTION_OPTS --disable-docs --enable-bindings=none"
-        # Disable term-info, linkage of which comes in multiple forms,
-        # making our snapshots incompatible (#9334)
-        LLVM_OPTS="$LLVM_OPTS --disable-terminfo"
-        # Try to have LLVM pull in as few dependencies as possible (#9397)
-        LLVM_OPTS="$LLVM_OPTS --disable-zlib --disable-libffi"
-
-        # Use win32 native thread/lock apis instead of pthread wrapper.
-        # (llvm's configure tries to find pthread first, so we have to disable it explicitly.)
-        # Also note that pthreads works badly on mingw-w64 systems: #8996
-        case "$CFG_BUILD" in
-            (*-windows-gnu)
-            LLVM_OPTS="$LLVM_OPTS --disable-pthreads"
+            LLVM_CXX_64="ccache"
+            LLVM_CC_64="ccache"
+            LLVM_CXX_64_ARG1="clang++"
+            LLVM_CC_64_ARG1="clang"
+            LLVM_CFLAGS_64="-Qunused-arguments"
+            LLVM_CXXFLAGS_64="-Qunused-arguments"
             ;;
-        esac
+        ("clang")
+            LLVM_CXX_32="clang++"
+            LLVM_CC_32="clang"
+            LLVM_CFLAGS_32="-Qunused-arguments"
+            LLVM_CXXFLAGS_32="-Qunused-arguments"
 
-        case "$CFG_CC" in
-            ("ccache clang")
-            LLVM_CXX_32="ccache clang++ -Qunused-arguments"
-            LLVM_CC_32="ccache clang -Qunused-arguments"
-
-            LLVM_CXX_64="ccache clang++ -Qunused-arguments"
-            LLVM_CC_64="ccache clang -Qunused-arguments"
+            LLVM_CXX_64="clang++"
+            LLVM_CC_64="clang"
+            LLVM_CFLAGS_64="-Qunused-arguments"
+            LLVM_CXXFLAGS_64="-Qunused-arguments"
             ;;
-            ("clang")
-            LLVM_CXX_32="clang++ -Qunused-arguments"
-            LLVM_CC_32="clang -Qunused-arguments"
+        ("ccache gcc")
+            LLVM_CXX_32="ccache"
+            LLVM_CC_32="ccache"
+            LLVM_CXX_32_ARG1="clang++"
+            LLVM_CC_32_ARG1="clang"
 
-            LLVM_CXX_64="clang++ -Qunused-arguments"
-            LLVM_CC_64="clang -Qunused-arguments"
+            LLVM_CXX_64="ccache"
+            LLVM_CC_64="ccache"
+            LLVM_CXX_64_ARG1="g++"
+            LLVM_CC_64_ARG1="gcc"
             ;;
-            ("ccache gcc")
-            LLVM_CXX_32="ccache g++"
-            LLVM_CC_32="ccache gcc"
-
-            LLVM_CXX_64="ccache g++"
-            LLVM_CC_64="ccache gcc"
-            ;;
-            ("gcc")
+        ("gcc")
             LLVM_CXX_32="g++"
             LLVM_CC_32="gcc"
 
@@ -1644,7 +1605,7 @@ do
             LLVM_CC_64="gcc"
             ;;
 
-            (*)
+        (*)
             msg "inferring LLVM_CXX/CC from CXX/CC = $CXX/$CC"
             if [ -n "$CFG_ENABLE_CCACHE" ]
             then
@@ -1653,11 +1614,15 @@ do
                     err "ccache requested but not found"
                 fi
 
-                LLVM_CXX_32="ccache $CXX"
-                LLVM_CC_32="ccache $CC"
+                LLVM_CXX_32="ccache"
+                LLVM_CC_32="ccache"
+                LLVM_CXX_32_ARG1="$CXX"
+                LLVM_CC_32_ARG1="$CC"
 
-                LLVM_CXX_64="ccache $CXX"
-                LLVM_CC_64="ccache $CC"
+                LLVM_CXX_64="ccache"
+                LLVM_CC_64="ccache"
+                LLVM_CXX_64_ARG1="$CXX"
+                LLVM_CC_64_ARG1="$CC"
             else
                 LLVM_CXX_32="$CXX"
                 LLVM_CC_32="$CC"
@@ -1667,86 +1632,101 @@ do
             fi
 
             ;;
-        esac
+    esac
 
-        case "$CFG_CPUTYPE" in
-            (x86*)
-                LLVM_CXX_32="$LLVM_CXX_32 -m32"
-                LLVM_CC_32="$LLVM_CC_32 -m32"
+    case "$CFG_CPUTYPE" in
+        (x86*)
+            LLVM_CFLAGS_32="$LLVM_CFLAGS_32 -m32"
+            LLVM_CXXFLAGS_32="$LLVM_CXXFLAGS_32 -m32"
+            LLVM_LDFLAGS_32="$LLVM_LDFLAGS_32 -m32"
+            ;;
+    esac
 
-                LLVM_CFLAGS_32="-m32"
-                LLVM_CXXFLAGS_32="-m32"
-                LLVM_LDFLAGS_32="-m32"
+    if echo $t | grep -q x86_64
+    then
+        LLVM_CXX=$LLVM_CXX_64
+        LLVM_CC=$LLVM_CC_64
+        LLVM_CXX_ARG1=$LLVM_CXX_64_ARG1
+        LLVM_CC_ARG1=$LLVM_CC_64_ARG1
+        LLVM_CFLAGS=$LLVM_CFLAGS_64
+        LLVM_CXXFLAGS=$LLVM_CXXFLAGS_64
+        LLVM_LDFLAGS=$LLVM_LDFLAGS_64
+    else
+        LLVM_CXX=$LLVM_CXX_32
+        LLVM_CC=$LLVM_CC_32
+        LLVM_CXX_ARG1=$LLVM_CXX_32_ARG1
+        LLVM_CC_ARG1=$LLVM_CC_32_ARG1
+        LLVM_CFLAGS=$LLVM_CFLAGS_32
+        LLVM_CXXFLAGS=$LLVM_CXXFLAGS_32
+        LLVM_LDFLAGS=$LLVM_LDFLAGS_32
+    fi
 
-                LLVM_CFLAGS_64=""
-                LLVM_CXXFLAGS_64=""
-                LLVM_LDFLAGS_64=""
+    if [ "$CFG_USING_LIBCPP" != "0" ]; then
+        CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_LIBCXX=ON"
+    fi
 
-                LLVM_CXX_32="$LLVM_CXX_32 -m32"
-                LLVM_CC_32="$LLVM_CC_32 -m32"
-                ;;
+    # Turn off things we don't need
+    CMAKE_ARGS="$CMAKE_ARGS -DLLVM_INCLUDE_TESTS=OFF"
+    CMAKE_ARGS="$CMAKE_ARGS -DLLVM_INCLUDE_EXAMPLES=OFF"
+    CMAKE_ARGS="$CMAKE_ARGS -DLLVM_INCLUDE_DOCS=OFF"
+    CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ZLIB=OFF"
+    CMAKE_ARGS="$CMAKE_ARGS -DWITH_POLY=OFF"
+    CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_TERMINFO=OFF"
+    CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_LIBEDIT=OFF"
 
-            (*)
-                LLVM_CFLAGS_32=""
-                LLVM_CXXFLAGS_32=""
-                LLVM_LDFLAGS_32=""
+    arch="$(echo "$t" | cut -d - -f 1)"
 
-                LLVM_CFLAGS_64=""
-                LLVM_CXXFLAGS_64=""
-                LLVM_LDFLAGS_64=""
-                ;;
-        esac
+    if [ "$arch" = i686 ]; then
+        CMAKE_ARGS="$CMAKE_ARGS -DLLVM_BUILD_32_BITS=ON"
+    fi
 
-        if echo $t | grep -q x86_64
-        then
-            LLVM_CXX=$LLVM_CXX_64
-            LLVM_CC=$LLVM_CC_64
-            LLVM_CFLAGS=$LLVM_CFLAGS_64
-            LLVM_CXXFLAGS=$LLVM_CXXFLAGS_64
-            LLVM_LDFLAGS=$LLVM_LDFLAGS_64
-        else
-            LLVM_CXX=$LLVM_CXX_32
-            LLVM_CC=$LLVM_CC_32
-            LLVM_CFLAGS=$LLVM_CFLAGS_32
-            LLVM_CXXFLAGS=$LLVM_CXXFLAGS_32
-            LLVM_LDFLAGS=$LLVM_LDFLAGS_32
+    if [ "$t" != "$CFG_BUILD" ]; then
+        CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_CROSSCOMPILING=True"
+        CMAKE_ARGS="$CMAKE_ARGS -DLLVM_TARGET_ARCH=$arch"
+        CMAKE_ARGS="$CMAKE_ARGS -DLLVM_TABLEGEN=$LLVM_INST_DIR/bin/llvm-tablegen"
+        CMAKE_ARGS="$CMAKE_ARGS -DLLVM_DEFAULT_TARGET_TRIPLE=$t"
+    fi
+
+    # MSVC handles compiler business itself
+    if [ ${is_msvc} -eq 0 ]; then
+        CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_C_COMPILER=$LLVM_CC"
+        CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_CXX_COMPILER=$LLVM_CXX"
+        CMAKE_ARGS="$CMAKE_ARGS '-DCMAKE_C_FLAGS=$LLVM_CFLAGS'"
+        CMAKE_ARGS="$CMAKE_ARGS '-DCMAKE_CXX_FLAGS=$LLVM_CXXFLAGS'"
+        if [ -n "$LLVM_CC_ARG1" ]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_C_COMPILER_ARG1=$LLVM_CC_ARG1"
         fi
-
-        CXX=$LLVM_CXX
-        CC=$LLVM_CC
-        CFLAGS="$CFLAGS $LLVM_CFLAGS"
-        CXXFLAGS="$CXXFLAGS $LLVM_CXXFLAGS"
-        LDFLAGS="$LDFLAGS $LLVM_LDFLAGS"
-
-        if [ "$CFG_USING_LIBCPP" != "0" ]; then
-            LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
+        if [ -n "$LLVM_CXX_ARG1" ]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_CXX_COMPILER_ARG1=$LLVM_CXX_ARG1"
         fi
+        # FIXME: What about LDFLAGS?
+    fi
 
-        LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD \
-                        $LLVM_HOST $LLVM_TARGET --with-python=$CFG_PYTHON"
+    if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then
+        CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Debug"
+    else
+        CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release"
+    fi
+    if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
+    then
+        CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=OFF"
+    else
+        CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=ON"
+    fi
+
+    CMAKE_ARGS="$CMAKE_ARGS -DLLVM_TARGETS_TO_BUILD='X86;ARM;AArch64;Mips;PowerPC'"
+    CMAKE_ARGS="$CMAKE_ARGS -G '$CFG_CMAKE_GENERATOR'"
+    CMAKE_ARGS="$CMAKE_ARGS $CFG_LLVM_SRC_DIR"
+
+    if [ ${do_reconfigure} -ne 0 ]
+    then
+        msg "configuring LLVM for $t with cmake"
 
         msg "configuring LLVM with:"
-        msg "$LLVM_FLAGS"
+        msg "$CMAKE_ARGS"
 
-        export CXX
-        export CC
-        export CFLAGS
-        export CXXFLAGS
-        export LDFLAGS
-
-        cd $LLVM_BUILD_DIR
-        case $CFG_SRC_DIR in
-            /* | [a-z]:* | [A-Z]:*)
-                ${CFG_LLVM_SRC_DIR}configure $LLVM_FLAGS
-                ;;
-            *)
-                ${CFG_BUILD_DIR}${CFG_LLVM_SRC_DIR}configure \
-                    $LLVM_FLAGS
-                ;;
-        esac
-        need_ok "LLVM configure failed"
-
-        cd $CFG_BUILD_DIR
+        (cd $LLVM_BUILD_DIR && eval "$CFG_CMAKE" $CMAKE_ARGS)
+        need_ok "LLVM cmake configure failed"
     fi
 
     # Construct variables for LLVM build and install directories for
