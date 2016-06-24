@@ -13,6 +13,7 @@
 #![feature(quote, rustc_private)]
 
 extern crate syntax;
+extern crate syntax_pos;
 
 use syntax::print::pprust::*;
 use syntax::parse::token::intern;

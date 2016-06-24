@@ -15,6 +15,7 @@
 
 extern crate syntax_extension_with_dll_deps_1 as other;
 extern crate syntax;
+extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
 
