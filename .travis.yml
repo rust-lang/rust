@@ -1,6 +1,7 @@
 language: rust
 rust: nightly
 sudo: false
+cache: cargo
 
 env:
  global:
