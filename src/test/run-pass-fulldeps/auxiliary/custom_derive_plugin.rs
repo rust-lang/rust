@@ -16,6 +16,7 @@
 
 extern crate syntax;
 extern crate syntax_ext;
+extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
 

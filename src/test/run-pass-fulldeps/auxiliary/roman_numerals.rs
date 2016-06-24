@@ -15,6 +15,7 @@
 #![feature(slice_patterns)]
 
 extern crate syntax;
+extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
 
