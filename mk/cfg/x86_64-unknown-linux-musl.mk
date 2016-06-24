@@ -1,6 +1,6 @@
 # x86_64-unknown-linux-musl configuration
 CC_x86_64-unknown-linux-musl=$(CFG_MUSL_ROOT)/bin/musl-gcc
-CXX_x86_64-unknown-linux-musl=notaprogram
+CXX_x86_64-unknown-linux-musl=$(CXX)
 CPP_x86_64-unknown-linux-musl=$(CFG_MUSL_ROOT)/bin/musl-gcc -E
 AR_x86_64-unknown-linux-musl=$(AR)
 CFG_INSTALL_ONLY_RLIB_x86_64-unknown-linux-musl = 1

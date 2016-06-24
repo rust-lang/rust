@@ -1,6 +1,6 @@
 # i686-unknown-linux-musl configuration
 CC_i686-unknown-linux-musl=$(CFG_MUSL_ROOT)/bin/musl-gcc
-CXX_i686-unknown-linux-musl=notaprogram
+CXX_i686-unknown-linux-musl=$(CXX)
 CPP_i686-unknown-linux-musl=$(CFG_MUSL_ROOT)/bin/musl-gcc -E
 AR_i686-unknown-linux-musl=$(AR)
 CFG_INSTALL_ONLY_RLIB_i686-unknown-linux-musl = 1
