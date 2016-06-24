@@ -298,7 +298,7 @@ the pointer, the size of the type would need to be unbounded.
 
 Consider the following erroneous definition of a type for a list of bytes:
 
-```compile_fail
+```compile_fail,E0072
 // error, invalid recursive struct type
 struct ListNode {
     head: u8,
@@ -331,7 +331,7 @@ E0109: r##"
 You tried to give a type parameter to a type which doesn't need it. Erroneous
 code example:
 
-```compile_fail
+```compile_fail,E0109
 type X = u32<i32>; // error: type parameters are not allowed on this type
 ```
 
@@ -352,7 +352,7 @@ E0110: r##"
 You tried to give a lifetime parameter to a type which doesn't need it.
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0110
 type X = u32<'static>; // error: lifetime parameters are not allowed on
                        //        this type
 ```
@@ -370,7 +370,7 @@ Unsafe code was used outside of an unsafe function or block.
 
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0133
 unsafe fn f() { return; } // This is the unsafe code
 
 fn main() {
@@ -410,7 +410,7 @@ More than one function was declared with the `#[main]` attribute.
 
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0137
 #![feature(main)]
 
 #[main]
@@ -437,7 +437,7 @@ More than one function was declared with the `#[start]` attribute.
 
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0138
 #![feature(start)]
 
 #[start]
@@ -460,8 +460,7 @@ fn foo(argc: isize, argv: *const *const u8) -> isize { 0 } // ok!
 ```
 "##,
 
-// FIXME link this to the relevant turpl chapters for instilling fear of the
-//       transmute gods in the user
+// isn't thrown anymore
 E0139: r##"
 There are various restrictions on transmuting between types in Rust; for example
 types being transmuted must have the same size. To apply all these restrictions,
@@ -470,11 +469,13 @@ parameters are involved, this cannot always be done.
 
 So, for example, the following is not allowed:
 
-```compile_fail
+```
+use std::mem::transmute;
+
 struct Foo<T>(Vec<T>);
 
 fn foo<T>(x: Vec<T>) {
-    // we are transmuting between Vec<T> and Foo<T> here
+    // we are transmuting between Vec<T> and Foo<F> here
     let y: Foo<T> = unsafe { transmute(x) };
     // do something with y
 }
@@ -542,7 +543,7 @@ A lang item was redefined.
 
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0152
 #![feature(lang_items)]
 
 #[lang = "panic_fmt"]
@@ -567,7 +568,7 @@ E0229: r##"
 An associated type binding was done outside of the type parameter declaration
 and `where` clause. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0229
 pub trait Foo {
     type A;
     fn boo(&self) -> <Self as Foo>::A;
@@ -604,7 +605,7 @@ used.
 
 These two examples illustrate the problem:
 
-```compile_fail
+```compile_fail,E0261
 // error, use of undeclared lifetime name `'a`
 fn foo(x: &'a str) { }
 
@@ -630,7 +631,7 @@ Declaring certain lifetime names in parameters is disallowed. For example,
 because the `'static` lifetime is a special built-in lifetime name denoting
 the lifetime of the entire program, this is an error:
 
-```compile_fail
+```compile_fail,E0262
 // error, invalid lifetime parameter name `'static`
 fn foo<'static>(x: &'static str) { }
 ```
@@ -640,7 +641,7 @@ E0263: r##"
 A lifetime name cannot be declared more than once in the same scope. For
 example:
 
-```compile_fail
+```compile_fail,E0263
 // error, lifetime name `'a` declared twice in the same scope
 fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) { }
 ```
@@ -649,7 +650,7 @@ fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) { }
 E0264: r##"
 An unknown external lang item was used. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0264
 #![feature(lang_items)]
 
 extern "C" {
@@ -675,12 +676,9 @@ E0269: r##"
 Functions must eventually return a value of their return type. For example, in
 the following function:
 
-```compile_fail
-fn foo(x: u8) -> u8 {
-    if x > 0 {
-        x // alternatively, `return x`
-    }
-    // nothing here
+```compile_fail,E0269
+fn abracada_FAIL() -> String {
+    "this won't work".to_string();
 }
 ```
 
@@ -806,7 +804,7 @@ Examples follow.
 
 Here is a basic example:
 
-```compile_fail
+```compile_fail,E0271
 trait Trait { type AssociatedType; }
 
 fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
@@ -947,6 +945,8 @@ position that needs that trait. For example, when the following code is
 compiled:
 
 ```compile_fail
+#![feature(on_unimplemented)]
+
 fn foo<T: Index<u8>>(x: T){}
 
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
@@ -977,6 +977,8 @@ position that needs that trait. For example, when the following code is
 compiled:
 
 ```compile_fail
+#![feature(on_unimplemented)]
+
 fn foo<T: Index<u8>>(x: T){}
 
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
@@ -1005,6 +1007,8 @@ position that needs that trait. For example, when the following code is
 compiled:
 
 ```compile_fail
+#![feature(on_unimplemented)]
+
 fn foo<T: Index<u8>>(x: T){}
 
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
@@ -1028,7 +1032,7 @@ recursion in resolving some type bounds.
 
 For example, in the following code:
 
-```compile_fail
+```compile_fail,E0275
 trait Foo {}
 
 struct Bar<T>(T);
@@ -1048,7 +1052,7 @@ E0276: r##"
 This error occurs when a bound in an implementation of a trait does not match
 the bounds specified in the original trait. For example:
 
-```compile_fail
+```compile_fail,E0276
 trait Foo {
     fn foo<T>(x: T);
 }
@@ -1070,7 +1074,7 @@ E0277: r##"
 You tried to use a type which doesn't implement some trait in a place which
 expected that trait. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0277
 // here we declare the Foo trait with a bar method
 trait Foo {
     fn bar(&self);
@@ -1113,7 +1117,7 @@ fn main() {
 
 Or in a generic context, an erroneous code example would look like:
 
-```compile_fail
+```compile_fail,E0277
 fn some_func<T>(foo: T) {
     println!("{:?}", foo); // error: the trait `core::fmt::Debug` is not
                            //        implemented for the type `T`
@@ -1159,7 +1163,7 @@ You tried to supply a type which doesn't implement some trait in a location
 which expected that trait. This error typically occurs when working with
 `Fn`-based types. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0281
 fn foo<F: Fn()>(x: F) { }
 
 fn main() {
@@ -1185,7 +1189,7 @@ parameter with a `FromIterator` bound, which for a `char` iterator is
 implemented by `Vec` and `String` among others. Consider the following snippet
 that reverses the characters of a string:
 
-```compile_fail
+```compile_fail,E0282
 let x = "hello".chars().rev().collect();
 ```
 
@@ -1222,7 +1226,7 @@ occur when a type parameter of a struct or trait cannot be inferred. In that
 case it is not always possible to use a type annotation, because all candidates
 have the same return type. For instance:
 
-```compile_fail
+```compile_fail,E0282
 struct Foo<T> {
     num: T,
 }
@@ -1248,7 +1252,7 @@ to unambiguously choose an implementation.
 
 For example:
 
-```compile_fail
+```compile_fail,E0283
 trait Generator {
     fn create() -> u32;
 }
@@ -1296,10 +1300,22 @@ fn main() {
 
 E0296: r##"
 This error indicates that the given recursion limit could not be parsed. Ensure
-that the value provided is a positive integer between quotes, like so:
+that the value provided is a positive integer between quotes.
+
+Erroneous code example:
+
+```compile_fail,E0296
+#![recursion_limit]
+
+fn main() {}
+```
+
+And a working example:
 
 ```
 #![recursion_limit="1000"]
+
+fn main() {}
 ```
 "##,
 
@@ -1312,7 +1328,7 @@ variable.
 
 For example:
 
-```compile_fail
+```compile_fail,E0308
 let x: i32 = "I am not a number!";
 //     ~~~   ~~~~~~~~~~~~~~~~~~~~
 //      |             |
@@ -1325,7 +1341,7 @@ let x: i32 = "I am not a number!";
 Another situation in which this occurs is when you attempt to use the `try!`
 macro inside a function that does not return a `Result<T, E>`:
 
-```compile_fail
+```compile_fail,E0308
 use std::fs::File;
 
 fn main() {
@@ -1353,7 +1369,7 @@ how long the data stored within them is guaranteed to be live. This lifetime
 must be as long as the data needs to be alive, and missing the constraint that
 denotes this will cause this error.
 
-```compile_fail
+```compile_fail,E0309
 // This won't compile because T is not constrained, meaning the data
 // stored in it is not guaranteed to last as long as the reference
 struct Foo<'a, T> {
@@ -1376,7 +1392,7 @@ how long the data stored within them is guaranteed to be live. This lifetime
 must be as long as the data needs to be alive, and missing the constraint that
 denotes this will cause this error.
 
-```compile_fail
+```compile_fail,E0310
 // This won't compile because T is not constrained to the static lifetime
 // the reference needs
 struct Foo<T> {
@@ -1430,7 +1446,7 @@ references (with a maximum lifetime of `'a`).
 E0452: r##"
 An invalid lint attribute has been given. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0452
 #![allow(foo = "")] // error: malformed lint attribute
 ```
 
@@ -1450,7 +1466,7 @@ attribute on an enclosing scope, or on the command line with the `-F` option.
 
 Example of erroneous code:
 
-```compile_fail
+```compile_fail,E0453
 #![forbid(non_snake_case)]
 
 #[allow(non_snake_case)]
@@ -1492,7 +1508,7 @@ fn main() {
 E0496: r##"
 A lifetime name is shadowing another lifetime name. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0496
 struct Foo<'a> {
     a: &'a i32,
 }
@@ -1539,7 +1555,7 @@ E0512: r##"
 Transmute with two differently sized types was attempted. Erroneous code
 example:
 
-```compile_fail
+```compile_fail,E0512
 fn takes_u8(_: u8) {}
 
 fn main() {
@@ -1567,7 +1583,7 @@ unsupported item.
 
 Examples of erroneous code:
 
-```compile_fail
+```compile_fail,E0517
 #[repr(C)]
 type Foo = u8;
 
@@ -1615,7 +1631,7 @@ on something other than a function or method.
 
 Examples of erroneous code:
 
-```compile_fail
+```compile_fail,E0518
 #[inline(always)]
 struct Foo;
 
@@ -1642,7 +1658,7 @@ how the compiler behaves, as well as special functions that may be automatically
 invoked (such as the handler for out-of-bounds accesses when indexing a slice).
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0522
 #![feature(lang_items)]
 
 #[lang = "cookie"]
