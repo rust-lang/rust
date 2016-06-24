@@ -1599,6 +1599,9 @@ impl<'a> State<'a> {
             ast::StmtKind::Expr(ref expr, _) => {
                 try!(self.space_if_not_bol());
                 try!(self.print_expr_outer_attr_style(&expr, false));
+                if parse::classify::expr_requires_semi_to_be_stmt(expr) {
+                    try!(word(&mut self.s, ";"));
+                }
             }
             ast::StmtKind::Semi(ref expr, _) => {
                 try!(self.space_if_not_bol());
@@ -1662,9 +1665,17 @@ impl<'a> State<'a> {
 
         try!(self.print_inner_attributes(attrs));
 
-        for st in &blk.stmts {
-            try!(self.print_stmt(st));
+        for (i, st) in blk.stmts.iter().enumerate() {
+            match st.node {
+                ast::StmtKind::Expr(ref expr, _) if i == blk.stmts.len() - 1 => {
+                    try!(self.space_if_not_bol());
+                    try!(self.print_expr_outer_attr_style(&expr, false));
+                    try!(self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi)));
+                }
+                _ => try!(self.print_stmt(st)),
+            }
         }
+
         try!(self.bclose_maybe_open(blk.span, indented, close_box));
         self.ann.post(self, NodeBlock(blk))
     }

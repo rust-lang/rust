@@ -87,6 +87,7 @@ pub trait AstBuilder {
 
     // statements
     fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt;
+    fn stmt_semi(&self, expr: P<ast::Expr>) -> ast::Stmt;
     fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident, ex: P<ast::Expr>) -> ast::Stmt;
     fn stmt_let_typed(&self,
                       sp: Span,
@@ -505,6 +506,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt {
         respan(expr.span, ast::StmtKind::Expr(expr, ast::DUMMY_NODE_ID))
+    }
+
+    fn stmt_semi(&self, expr: P<ast::Expr>) -> ast::Stmt {
+        respan(expr.span, ast::StmtKind::Semi(expr, ast::DUMMY_NODE_ID))
     }
 
     fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident,
