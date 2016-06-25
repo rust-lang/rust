@@ -1656,8 +1656,10 @@ There are also some platform-specific ABI strings:
 * `extern "stdcall"` -- The default for the Win32 API on x86\_32.
 * `extern "win64"` -- The default for C code on x86\_64 Windows.
 * `extern "aapcs"` -- The default for ARM.
-* `extern "fastcall"`
-* `extern "vectorcall"`
+* `extern "fastcall"` -- The `fastcall` ABI -- corresponds to MSVC's
+  `__fastcall` and GCC and clang's `__attribute__((fastcall))`
+* `extern "vectorcall"` -- The `vectorcall` ABI -- corresponds to MSVC's
+  `__vectorcall` and clang's `__attribute__((vectorcall))`
 
 Finally, there are some rustc-specific ABI strings:
 
