@@ -25,6 +25,7 @@ use syntax_pos::Span;
 use codemap::{Spanned, respan};
 use parse::token::{self, keywords};
 use ptr::P;
+use tokenstream::*;
 use util::small_vector::SmallVector;
 use util::move_map::MoveMap;
 

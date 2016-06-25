@@ -19,6 +19,7 @@ use ext::mtwt;
 use ptr::P;
 use util::interner::{RcStr, StrInterner};
 use util::interner;
+use tokenstream;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
@@ -338,7 +339,7 @@ pub enum Nonterminal {
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::MetaItem>),
     NtPath(Box<ast::Path>),
-    NtTT(P<ast::TokenTree>), // needs P'ed to break a circularity
+    NtTT(P<tokenstream::TokenTree>), // needs P'ed to break a circularity
     // These are not exposed to macros, but are used by quasiquote.
     NtArm(ast::Arm),
     NtImplItem(P<ast::ImplItem>),

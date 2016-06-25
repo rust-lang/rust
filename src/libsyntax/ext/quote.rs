@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, Arg, Arm, Block, Expr, Item, Pat, Stmt, TokenTree, Ty};
+use ast::{self, Arg, Arm, Block, Expr, Item, Pat, Stmt, Ty};
 use syntax_pos::Span;
 use ext::base::ExtCtxt;
 use ext::base;
@@ -17,6 +17,7 @@ use parse::parser::{Parser, PathStyle};
 use parse::token::*;
 use parse::token;
 use ptr::P;
+use tokenstream::{self, TokenTree};
 
 /// Quasiquoting works via token trees.
 ///
@@ -33,7 +34,7 @@ pub mod rt {
     use ptr::P;
     use std::rc::Rc;
 
-    use ast::TokenTree;
+    use tokenstream::{self, TokenTree};
 
     pub use parse::new_parser_from_tts;
     pub use syntax_pos::{BytePos, Span, DUMMY_SP};
@@ -215,7 +216,7 @@ pub mod rt {
             if self.node.style == ast::AttrStyle::Inner {
                 r.push(TokenTree::Token(self.span, token::Not));
             }
-            r.push(TokenTree::Delimited(self.span, Rc::new(ast::Delimited {
+            r.push(TokenTree::Delimited(self.span, Rc::new(tokenstream::Delimited {
                 delim: token::Bracket,
                 open_span: self.span,
                 tts: self.node.value.to_tokens(cx),
@@ -235,7 +236,7 @@ pub mod rt {
 
     impl ToTokens for () {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Delimited(DUMMY_SP, Rc::new(ast::Delimited {
+            vec![TokenTree::Delimited(DUMMY_SP, Rc::new(tokenstream::Delimited {
                 delim: token::Paren,
                 open_span: DUMMY_SP,
                 tts: vec![],
@@ -549,7 +550,7 @@ fn mk_name(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> P<ast::Expr> {
 }
 
 fn mk_tt_path(cx: &ExtCtxt, sp: Span, name: &str) -> P<ast::Expr> {
-    let idents = vec!(id_ext("syntax"), id_ext("ast"), id_ext("TokenTree"), id_ext(name));
+    let idents = vec!(id_ext("syntax"), id_ext("tokenstream"), id_ext("TokenTree"), id_ext(name));
     cx.expr_path(cx.path_global(sp, idents))
 }
 
@@ -773,12 +774,12 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<ast::Stm
                 None => cx.expr_none(sp),
             };
             let e_op = match seq.op {
-                ast::KleeneOp::ZeroOrMore => "ZeroOrMore",
-                ast::KleeneOp::OneOrMore => "OneOrMore",
+                tokenstream::KleeneOp::ZeroOrMore => "ZeroOrMore",
+                tokenstream::KleeneOp::OneOrMore => "OneOrMore",
             };
             let e_op_idents = vec![
                 id_ext("syntax"),
-                id_ext("ast"),
+                id_ext("tokenstream"),
                 id_ext("KleeneOp"),
                 id_ext(e_op),
             ];
@@ -788,7 +789,9 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<ast::Stm
                               cx.field_imm(sp, id_ext("op"), e_op),
                               cx.field_imm(sp, id_ext("num_captures"),
                                                cx.expr_usize(sp, seq.num_captures))];
-            let seq_path = vec![id_ext("syntax"), id_ext("ast"), id_ext("SequenceRepetition")];
+            let seq_path = vec![id_ext("syntax"),
+                                id_ext("tokenstream"),
+                                id_ext("SequenceRepetition")];
             let e_seq_struct = cx.expr_struct(sp, cx.path_global(sp, seq_path), fields);
             let e_rc_new = cx.expr_call_global(sp, vec![id_ext("std"),
                                                         id_ext("rc"),

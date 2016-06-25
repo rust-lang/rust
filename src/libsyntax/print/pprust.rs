@@ -11,7 +11,7 @@
 pub use self::AnnNode::*;
 
 use abi::{self, Abi};
-use ast::{self, TokenTree, BlockCheckMode, PatKind};
+use ast::{self, BlockCheckMode, PatKind};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
 use attr::ThinAttributesExt;
@@ -29,6 +29,7 @@ use print::pp::{Breaks, eof};
 use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 use std_inject;
+use tokenstream::{self, TokenTree};
 
 use std::ascii;
 use std::io::{self, Write, Read};
@@ -331,11 +332,11 @@ pub fn lifetime_to_string(e: &ast::Lifetime) -> String {
     to_string(|s| s.print_lifetime(e))
 }
 
-pub fn tt_to_string(tt: &ast::TokenTree) -> String {
+pub fn tt_to_string(tt: &tokenstream::TokenTree) -> String {
     to_string(|s| s.print_tt(tt))
 }
 
-pub fn tts_to_string(tts: &[ast::TokenTree]) -> String {
+pub fn tts_to_string(tts: &[tokenstream::TokenTree]) -> String {
     to_string(|s| s.print_tts(tts))
 }
 
@@ -1446,7 +1447,7 @@ impl<'a> State<'a> {
     /// appropriate macro, transcribe back into the grammar we just parsed from,
     /// and then pretty-print the resulting AST nodes (so, e.g., we print
     /// expression arguments as expressions). It can be done! I think.
-    pub fn print_tt(&mut self, tt: &ast::TokenTree) -> io::Result<()> {
+    pub fn print_tt(&mut self, tt: &tokenstream::TokenTree) -> io::Result<()> {
         match *tt {
             TokenTree::Token(_, ref tk) => {
                 try!(word(&mut self.s, &token_to_string(tk)));
@@ -1477,14 +1478,14 @@ impl<'a> State<'a> {
                     None => {},
                 }
                 match seq.op {
-                    ast::KleeneOp::ZeroOrMore => word(&mut self.s, "*"),
-                    ast::KleeneOp::OneOrMore => word(&mut self.s, "+"),
+                    tokenstream::KleeneOp::ZeroOrMore => word(&mut self.s, "*"),
+                    tokenstream::KleeneOp::OneOrMore => word(&mut self.s, "+"),
                 }
             }
         }
     }
 
-    pub fn print_tts(&mut self, tts: &[ast::TokenTree]) -> io::Result<()> {
+    pub fn print_tts(&mut self, tts: &[tokenstream::TokenTree]) -> io::Result<()> {
         try!(self.ibox(0));
         for (i, tt) in tts.iter().enumerate() {
             if i != 0 {

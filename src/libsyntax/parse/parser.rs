@@ -33,7 +33,7 @@ use ast::{Stmt, StmtKind};
 use ast::{VariantData, StructField};
 use ast::StrStyle;
 use ast::SelfKind;
-use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
+use ast::{TraitItem, TraitRef};
 use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
@@ -56,6 +56,7 @@ use util::parser::{AssocOp, Fixity};
 use print::pprust;
 use ptr::P;
 use parse::PResult;
+use tokenstream::{self, Delimited, SequenceRepetition, TokenTree};
 
 use std::collections::HashSet;
 use std::mem;
@@ -2746,16 +2747,17 @@ impl<'a> Parser<'a> {
     /// Parse an optional separator followed by a Kleene-style
     /// repetition token (+ or *).
     pub fn parse_sep_and_kleene_op(&mut self)
-                                   -> PResult<'a, (Option<token::Token>, ast::KleeneOp)> {
-        fn parse_kleene_op<'a>(parser: &mut Parser<'a>) -> PResult<'a,  Option<ast::KleeneOp>> {
+                                   -> PResult<'a, (Option<token::Token>, tokenstream::KleeneOp)> {
+        fn parse_kleene_op<'a>(parser: &mut Parser<'a>) ->
+          PResult<'a,  Option<tokenstream::KleeneOp>> {
             match parser.token {
                 token::BinOp(token::Star) => {
                     parser.bump();
-                    Ok(Some(ast::KleeneOp::ZeroOrMore))
+                    Ok(Some(tokenstream::KleeneOp::ZeroOrMore))
                 },
                 token::BinOp(token::Plus) => {
                     parser.bump();
-                    Ok(Some(ast::KleeneOp::OneOrMore))
+                    Ok(Some(tokenstream::KleeneOp::OneOrMore))
                 },
                 _ => Ok(None)
             }

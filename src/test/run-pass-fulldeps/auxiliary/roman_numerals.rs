@@ -19,8 +19,8 @@ extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
 
-use syntax::ast::TokenTree;
 use syntax::parse::token;
+use syntax::tokenstream::TokenTree;
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax::ext::build::AstBuilder;  // trait for expr_usize
 use syntax_pos::Span;
