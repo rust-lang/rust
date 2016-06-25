@@ -1,4 +1,4 @@
-use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian, self};
 use std::collections::Bound::{Included, Excluded};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, mem, ptr};
@@ -6,7 +6,7 @@ use std::{fmt, iter, mem, ptr};
 use rustc::hir::def_id::DefId;
 use rustc::ty::BareFnTy;
 use rustc::ty::subst::Substs;
-use rustc::ty::layout::TargetDataLayout;
+use rustc::ty::layout::{self, TargetDataLayout};
 
 use error::{EvalError, EvalResult};
 use primval::PrimVal;
@@ -158,6 +158,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn pointer_size(&self) -> usize {
         self.layout.pointer_size.bytes() as usize
+    }
+
+    pub fn endianess(&self) -> layout::Endian {
+        self.layout.endian
     }
 }
 
@@ -339,8 +343,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<'tcx, Pointer> {
         let size = self.pointer_size();
         self.check_defined(ptr, size)?;
-        let offset = self.get_bytes_unchecked(ptr, size)?
-            .read_uint::<NativeEndian>(size).unwrap() as usize;
+        let endianess = self.endianess();
+        let bytes = self.get_bytes_unchecked(ptr, size)?;
+        let offset = read_target_uint(endianess, bytes).unwrap() as usize;
         let alloc = self.get(ptr.alloc_id)?;
         match alloc.relocations.get(&ptr.offset) {
             Some(&alloc_id) => Ok(Pointer { alloc_id: alloc_id, offset: offset }),
@@ -349,11 +354,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn write_ptr(&mut self, dest: Pointer, ptr: Pointer) -> EvalResult<'tcx, ()> {
-        {
-            let size = self.pointer_size();
-            let mut bytes = self.get_bytes_mut(dest, size)?;
-            bytes.write_uint::<NativeEndian>(ptr.offset as u64, size).unwrap();
-        }
+        self.write_usize(dest, ptr.offset as u64)?;
         self.get_mut(dest.alloc_id)?.relocations.insert(dest.offset, ptr.alloc_id);
         Ok(())
     }
@@ -391,19 +392,25 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn read_int(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, i64> {
-        self.get_bytes(ptr, size).map(|mut b| b.read_int::<NativeEndian>(size).unwrap())
+        self.get_bytes(ptr, size).map(|b| read_target_int(self.endianess(), b).unwrap())
     }
 
     pub fn write_int(&mut self, ptr: Pointer, n: i64, size: usize) -> EvalResult<'tcx, ()> {
-        self.get_bytes_mut(ptr, size).map(|mut b| b.write_int::<NativeEndian>(n, size).unwrap())
+        let endianess = self.endianess();
+        let b = self.get_bytes_mut(ptr, size)?;
+        write_target_int(endianess, b, n).unwrap();
+        Ok(())
     }
 
     pub fn read_uint(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, u64> {
-        self.get_bytes(ptr, size).map(|mut b| b.read_uint::<NativeEndian>(size).unwrap())
+        self.get_bytes(ptr, size).map(|b| read_target_uint(self.endianess(), b).unwrap())
     }
 
     pub fn write_uint(&mut self, ptr: Pointer, n: u64, size: usize) -> EvalResult<'tcx, ()> {
-        self.get_bytes_mut(ptr, size).map(|mut b| b.write_uint::<NativeEndian>(n, size).unwrap())
+        let endianess = self.endianess();
+        let b = self.get_bytes_mut(ptr, size)?;
+        write_target_uint(endianess, b, n).unwrap();
+        Ok(())
     }
 
     pub fn read_isize(&self, ptr: Pointer) -> EvalResult<'tcx, i64> {
@@ -510,6 +517,38 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let mut alloc = self.get_mut(ptr.alloc_id)?;
         alloc.undef_mask.set_range(ptr.offset, ptr.offset + size, new_state);
         Ok(())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Methods to access integers in the target endianess
+////////////////////////////////////////////////////////////////////////////////
+
+fn write_target_uint(endianess: layout::Endian, mut target: &mut [u8], data: u64) -> Result<(), byteorder::Error> {
+    let len = target.len();
+    match endianess {
+        layout::Endian::Little => target.write_uint::<LittleEndian>(data, len),
+        layout::Endian::Big => target.write_uint::<BigEndian>(data, len),
+    }
+}
+fn write_target_int(endianess: layout::Endian, mut target: &mut [u8], data: i64) -> Result<(), byteorder::Error> {
+    let len = target.len();
+    match endianess {
+        layout::Endian::Little => target.write_int::<LittleEndian>(data, len),
+        layout::Endian::Big => target.write_int::<BigEndian>(data, len),
+    }
+}
+
+fn read_target_uint(endianess: layout::Endian, mut source: &[u8]) -> Result<u64, byteorder::Error> {
+    match endianess {
+        layout::Endian::Little => source.read_uint::<LittleEndian>(source.len()),
+        layout::Endian::Big => source.read_uint::<BigEndian>(source.len()),
+    }
+}
+fn read_target_int(endianess: layout::Endian, mut source: &[u8]) -> Result<i64, byteorder::Error> {
+    match endianess {
+        layout::Endian::Little => source.read_int::<LittleEndian>(source.len()),
+        layout::Endian::Big => source.read_int::<BigEndian>(source.len()),
     }
 }
 
