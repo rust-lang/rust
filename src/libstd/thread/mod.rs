@@ -610,6 +610,36 @@ impl<T> JoinInner<T> {
 /// Due to platform restrictions, it is not possible to `Clone` this
 /// handle: the ability to join a child thread is a uniquely-owned
 /// permission.
+///
+/// This `struct` is created by the [`thread::spawn`] function and the
+/// [`thread::Builder::spawn`] method.
+///
+/// # Examples
+///
+/// Creation from [`thread::spawn`]:
+///
+/// ```rust
+/// use std::thread;
+///
+/// let join_handle: thread::JoinHandle<_> = thread::spawn(|| {
+///     // some work here
+/// });
+/// ```
+///
+/// Creation from [`thread::Builder::spawn`]:
+///
+/// ```rust
+/// use std::thread;
+///
+/// let builder = thread::Builder::new();
+///
+/// let join_handle: thread::JoinHandle<_> = builder.spawn(|| {
+///     // some work here
+/// }).unwrap();
+/// ```
+///
+/// [`thread::spawn`]: fn.spawn.html
+/// [`thread::Builder::spawn`]: struct.Builder.html#method.spawn
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinHandle<T>(JoinInner<T>);
 
