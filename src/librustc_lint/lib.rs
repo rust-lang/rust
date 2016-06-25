@@ -163,7 +163,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         },
         FutureIncompatibleInfo {
             id: LintId::of(INVALID_TYPE_PARAM_DEFAULT),
-            reference: "PR 30742 <https://github.com/rust-lang/rust/pull/30724>",
+            reference: "PR 30724 <https://github.com/rust-lang/rust/pull/30724>",
         },
         FutureIncompatibleInfo {
             id: LintId::of(SUPER_OR_SELF_IN_GLOBAL_PATH),
