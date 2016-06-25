@@ -3740,12 +3740,7 @@ impl<'a> Parser<'a> {
                         pat = PatKind::TupleStruct(path, fields, ddpos)
                       }
                       _ => {
-                        pat = match qself {
-                            // Parse qualified path
-                            Some(qself) => PatKind::QPath(qself, path),
-                            // Parse nullary enum
-                            None => PatKind::Path(path)
-                        };
+                        pat = PatKind::Path(qself, path);
                       }
                     }
                 }

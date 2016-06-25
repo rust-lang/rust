@@ -2333,23 +2333,14 @@ impl<'a> Resolver<'a> {
                     }, "variant or struct");
                 }
 
-                PatKind::Path(ref path) => {
-                    self.resolve_pattern_path(pat.id, None, path, ValueNS, |def| {
+                PatKind::Path(ref qself, ref path) => {
+                    self.resolve_pattern_path(pat.id, qself.as_ref(), path, ValueNS, |def| {
                         match def {
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) | Def::Err => true,
                             _ => false,
                         }
                     }, "variant, struct or constant");
-                }
-
-                PatKind::QPath(ref qself, ref path) => {
-                    self.resolve_pattern_path(pat.id, Some(qself), path, ValueNS, |def| {
-                        match def {
-                            Def::AssociatedConst(..) | Def::Err => true,
-                            _ => false,
-                        }
-                    }, "associated constant");
                 }
 
                 PatKind::Struct(ref path, _, _) => {
