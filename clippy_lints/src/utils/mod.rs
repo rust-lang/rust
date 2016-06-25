@@ -523,8 +523,7 @@ pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint,
 /// Return the base type for references and raw pointers.
 pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
     match ty.sty {
-        ty::TyRef(_, ref tm) |
-        ty::TyRawPtr(ref tm) => walk_ptrs_ty(tm.ty),
+        ty::TyRef(_, ref tm) => walk_ptrs_ty(tm.ty),
         _ => ty,
     }
 }
@@ -533,8 +532,7 @@ pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
 pub fn walk_ptrs_ty_depth(ty: ty::Ty) -> (ty::Ty, usize) {
     fn inner(ty: ty::Ty, depth: usize) -> (ty::Ty, usize) {
         match ty.sty {
-            ty::TyRef(_, ref tm) |
-            ty::TyRawPtr(ref tm) => inner(tm.ty, depth + 1),
+            ty::TyRef(_, ref tm) => inner(tm.ty, depth + 1),
             _ => (ty, depth),
         }
     }

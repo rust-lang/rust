@@ -63,4 +63,10 @@ fn main() {
     x > 0.0;
     x <= 0.0;
     x >= 0.0;
+
+    let xs : [f32; 1] = [0.0];
+    let a: *const f32 = xs.as_ptr();
+    let b: *const f32 = xs.as_ptr();
+
+    assert!(a == b); // no errors
 }
