@@ -171,16 +171,19 @@ impl fmt::Debug for Lifetime {
     }
 }
 
-/// A lifetime definition, eg `'a: 'b+'c+'d`
+/// A lifetime definition, e.g. `'a: 'b+'c+'d`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct LifetimeDef {
     pub lifetime: Lifetime,
     pub bounds: Vec<Lifetime>
 }
 
-/// A "Path" is essentially Rust's notion of a name; for instance:
-/// std::cmp::PartialEq  .  It's represented as a sequence of identifiers,
+/// A "Path" is essentially Rust's notion of a name.
+///
+/// It's represented as a sequence of identifiers,
 /// along with a bunch of supporting information.
+///
+/// E.g. `std::cmp::PartialEq`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Path {
     pub span: Span,
@@ -220,8 +223,9 @@ impl Path {
     }
 }
 
-/// A segment of a path: an identifier, an optional lifetime, and a set of
-/// types.
+/// A segment of a path: an identifier, an optional lifetime, and a set of types.
+///
+/// E.g. `std`, `String` or `Box<T>`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct PathSegment {
     /// The identifier portion of this path segment.
@@ -235,6 +239,9 @@ pub struct PathSegment {
     pub parameters: PathParameters,
 }
 
+/// Parameters of a path segment.
+///
+/// E.g. `<A, B>` as in `Foo<A, B>` or `(A, B)` as in `Foo(A, B)`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum PathParameters {
     /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
@@ -322,7 +329,8 @@ pub struct AngleBracketedParameterData {
     /// The type parameters for this path segment, if present.
     pub types: P<[P<Ty>]>,
     /// Bindings (equality constraints) on associated types, if present.
-    /// e.g., `Foo<A=Bar>`.
+    ///
+    /// E.g., `Foo<A=Bar>`.
     pub bindings: P<[TypeBinding]>,
 }
 
@@ -447,7 +455,9 @@ pub enum WherePredicate {
     EqPredicate(WhereEqPredicate),
 }
 
-/// A type bound, e.g. `for<'c> Foo: Send+Clone+'c`
+/// A type bound.
+///
+/// E.g. `for<'c> Foo: Send+Clone+'c`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereBoundPredicate {
     pub span: Span,
@@ -459,7 +469,9 @@ pub struct WhereBoundPredicate {
     pub bounds: TyParamBounds,
 }
 
-/// A lifetime predicate, e.g. `'a: 'b+'c`
+/// A lifetime predicate.
+///
+/// E.g. `'a: 'b+'c`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereRegionPredicate {
     pub span: Span,
@@ -467,7 +479,9 @@ pub struct WhereRegionPredicate {
     pub bounds: Vec<Lifetime>,
 }
 
-/// An equality predicate (unsupported), e.g. `T=int`
+/// An equality predicate (unsupported).
+///
+/// E.g. `T=int`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereEqPredicate {
     pub id: NodeId,
@@ -489,12 +503,27 @@ pub struct Crate {
     pub exported_macros: Vec<MacroDef>,
 }
 
+/// A spanned compile-time attribute item.
+///
+/// E.g. `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`
 pub type MetaItem = Spanned<MetaItemKind>;
 
+/// A compile-time attribute item.
+///
+/// E.g. `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`
 #[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum MetaItemKind {
+    /// Word meta item.
+    ///
+    /// E.g. `test` as in `#[test]`
     Word(InternedString),
+    /// List meta item.
+    ///
+    /// E.g. `derive(..)` as in `#[derive(..)]`
     List(InternedString, Vec<P<MetaItem>>),
+    /// Name value meta item.
+    ///
+    /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
     NameValue(InternedString, Lit),
 }
 
@@ -524,6 +553,9 @@ impl PartialEq for MetaItemKind {
     }
 }
 
+/// A Block (`{ .. }`).
+///
+/// E.g. `{ .. }` as in `fn foo() { .. }`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Block {
     /// Statements in a block
@@ -876,7 +908,16 @@ impl Decl {
     }
 }
 
-/// represents one arm of a 'match'
+/// An arm of a 'match'.
+///
+/// E.g. `0...10 => { println!("match!") }` as in
+///
+/// ```rust,ignore
+/// match n {
+///     0...10 => { println!("match!") },
+///     // ..
+/// }
+/// ```
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Arm {
     pub attrs: Vec<Attribute>,
@@ -1033,7 +1074,7 @@ pub enum ExprKind {
     /// parameters, e.g. foo::bar::<baz>.
     ///
     /// Optionally "qualified",
-    /// e.g. `<Vec<T> as SomeTrait>::SomeType`.
+    /// E.g. `<Vec<T> as SomeTrait>::SomeType`.
     Path(Option<QSelf>, Path),
 
     /// A referencing operation (`&a` or `&mut a`)
@@ -1075,7 +1116,7 @@ pub enum ExprKind {
 /// separately. `position` represents the index of the associated
 /// item qualified with this Self type.
 ///
-/// ```ignore
+/// ```rust,ignore
 /// <Vec<T> as a::b::Trait>::AssociatedItem
 ///  ^~~~~     ~~~~~~~~~~~~~~^
 ///  ty        position = 3
@@ -1319,6 +1360,9 @@ pub enum LitIntType {
     Unsuffixed,
 }
 
+/// Literal kind.
+///
+/// E.g. `"foo"`, `42`, `12.34` or `bool`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum LitKind {
     /// A string literal (`"foo"`)
@@ -1586,8 +1630,8 @@ pub struct BareFnTy {
     pub decl: P<FnDecl>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 /// The different kinds of types recognized by the compiler
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum TyKind {
     Vec(P<Ty>),
     /// A fixed length array (`[T; n]`)
@@ -1622,12 +1666,18 @@ pub enum TyKind {
     Mac(Mac),
 }
 
+/// Inline assembly dialect.
+///
+/// E.g. `"intel"` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")``
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum AsmDialect {
     Att,
     Intel,
 }
 
+/// Inline assembly.
+///
+/// E.g. `"={eax}"(result)` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")``
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsmOutput {
     pub constraint: InternedString,
@@ -1636,6 +1686,9 @@ pub struct InlineAsmOutput {
     pub is_indirect: bool,
 }
 
+/// Inline assembly.
+///
+/// E.g. `asm!("NOP");`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsm {
     pub asm: InternedString,
@@ -1649,7 +1702,9 @@ pub struct InlineAsm {
     pub expn_id: ExpnId,
 }
 
-/// represents an argument in a function header
+/// An argument in a function header.
+///
+/// E.g. `bar: usize` as in `fn foo(bar: usize)`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Arg {
     pub ty: P<Ty>,
@@ -1658,6 +1713,8 @@ pub struct Arg {
 }
 
 /// Alternative representation for `Arg`s describing `self` parameter of methods.
+///
+/// E.g. `&mut self` as in `fn foo(&mut self)`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum SelfKind {
     /// `self`, `mut self`
@@ -1724,7 +1781,9 @@ impl Arg {
     }
 }
 
-/// Represents the header (not the body) of a function declaration
+/// Header (not the body) of a function declaration.
+///
+/// E.g. `fn foo(bar: baz)`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
@@ -1811,6 +1870,9 @@ impl FunctionRetTy {
     }
 }
 
+/// Module declaration.
+///
+/// E.g. `mod foo;` or `mod foo { .. }`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Mod {
     /// A span from the first token past `{` to the last token until `}`.
@@ -1820,6 +1882,9 @@ pub struct Mod {
     pub items: Vec<P<Item>>,
 }
 
+/// Foreign module declaration.
+///
+/// E.g. `extern { .. }` or `extern C { .. }`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ForeignMod {
     pub abi: Abi,
@@ -1836,7 +1901,7 @@ pub struct Variant_ {
     pub name: Ident,
     pub attrs: Vec<Attribute>,
     pub data: VariantData,
-    /// Explicit discriminant, eg `Foo = 1`
+    /// Explicit discriminant, e.g. `Foo = 1`
     pub disr_expr: Option<P<Expr>>,
 }
 
@@ -1846,12 +1911,12 @@ pub type Variant = Spanned<Variant_>;
 pub enum PathListItemKind {
     Ident {
         name: Ident,
-        /// renamed in list, eg `use foo::{bar as baz};`
+        /// renamed in list, e.g. `use foo::{bar as baz};`
         rename: Option<Ident>,
         id: NodeId
     },
     Mod {
-        /// renamed in list, eg `use foo::{self as baz};`
+        /// renamed in list, e.g. `use foo::{self as baz};`
         rename: Option<Ident>,
         id: NodeId
     }
@@ -1964,6 +2029,9 @@ pub enum Visibility {
     Inherited,
 }
 
+/// Field of a struct.
+///
+/// E.g. `bar: usize` as in `struct Foo { bar: usize }`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct StructField {
     pub span: Span,
@@ -1987,8 +2055,17 @@ pub struct StructField {
 /// Id of the whole struct lives in `Item`.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum VariantData {
+    /// Struct variant.
+    ///
+    /// E.g. `Bar { .. }` as in `enum Foo { Bar { .. } }`
     Struct(Vec<StructField>, NodeId),
+    /// Tuple variant.
+    ///
+    /// E.g. `Bar(..)` as in `enum Foo { Bar(..) }`
     Tuple(Vec<StructField>, NodeId),
+    /// Unit variant.
+    ///
+    /// E.g. `Bar = ..` as in `enum Foo { Bar = .. }`
     Unit(NodeId),
 }
 
@@ -2040,44 +2117,66 @@ impl Item {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ItemKind {
-    /// An`extern crate` item, with optional original crate name,
+    /// An`extern crate` item, with optional original crate name.
     ///
-    /// e.g. `extern crate foo` or `extern crate foo_bar as foo`
+    /// E.g. `extern crate foo` or `extern crate foo_bar as foo`
     ExternCrate(Option<Name>),
-    /// A `use` or `pub use` item
-    Use(P<ViewPath>),
-
-    /// A `static` item
-    Static(P<Ty>, Mutability, P<Expr>),
-    /// A `const` item
-    Const(P<Ty>, P<Expr>),
-    /// A function declaration
-    Fn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Block>),
-    /// A module
-    Mod(Mod),
-    /// An external module
-    ForeignMod(ForeignMod),
-    /// A type alias, e.g. `type Foo = Bar<u8>`
-    Ty(P<Ty>, Generics),
-    /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
-    Enum(EnumDef, Generics),
-    /// A struct definition, e.g. `struct Foo<A> {x: A}`
-    Struct(VariantData, Generics),
-    /// Represents a Trait Declaration
-    Trait(Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
-
-    // Default trait implementations
+    /// A use declaration (`use` or `pub use`) item.
     ///
-    // `impl Trait for .. {}`
+    /// E.g. `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`
+    Use(P<ViewPath>),
+    /// A static item (`static` or `pub static`).
+    ///
+    /// E.g. `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`
+    Static(P<Ty>, Mutability, P<Expr>),
+    /// A constant item (`const` or `pub const`).
+    ///
+    /// E.g. `const FOO: i32 = 42;`
+    Const(P<Ty>, P<Expr>),
+    /// A function declaration (`fn` or `pub fn`).
+    ///
+    /// E.g. `fn foo(bar: usize) -> usize { .. }`
+    Fn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Block>),
+    /// A module declaration (`mod` or `pub mod`).
+    ///
+    /// E.g. `mod foo;` or `mod foo { .. }`
+    Mod(Mod),
+    /// An external module (`extern` or `pub extern`).
+    ///
+    /// E.g. `extern {}` or `extern "C" {}`
+    ForeignMod(ForeignMod),
+    /// A type alias (`type` or `pub type`).
+    ///
+    /// E.g. `type Foo = Bar<u8>;`
+    Ty(P<Ty>, Generics),
+    /// An enum definition (`enum` or `pub enum`).
+    ///
+    /// E.g. `enum Foo<A, B> { C<A>, D<B> }`
+    Enum(EnumDef, Generics),
+    /// A struct definition (`struct` or `pub struct`).
+    ///
+    /// E.g. `struct Foo<A> { x: A }`
+    Struct(VariantData, Generics),
+    /// A Trait declaration (`trait` or `pub trait`).
+    ///
+    /// E.g. `trait Foo { .. }` or `trait Foo<T> { .. }`
+    Trait(Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
+    // Default trait implementation.
+    ///
+    /// E.g. `impl Trait for .. {}` or `impl<T> Trait<T> for .. {}`
     DefaultImpl(Unsafety, TraitRef),
-    /// An implementation, eg `impl<A> Trait for Foo { .. }`
+    /// An implementation.
+    ///
+    /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`
     Impl(Unsafety,
              ImplPolarity,
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
              Vec<ImplItem>),
-    /// A macro invocation (which includes macro definition)
+    /// A macro invocation (which includes macro definition).
+    ///
+    /// E.g. `macro_rules! foo { .. }` or `foo!(..)`
     Mac(Mac),
 }
 
