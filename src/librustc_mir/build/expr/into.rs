@@ -45,6 +45,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Match { discriminant, arms } => {
                 this.match_expr(destination, expr_span, block, discriminant, arms)
             }
+            ExprKind::EmptyToAny { source } => {
+                // TODO(canndrew): Do we need to do this?
+                unpack!(block = this.as_rvalue(block, source));
+
+                this.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+                let end_block = this.cfg.start_new_block();
+                end_block.unit()
+            }
             ExprKind::If { condition: cond_expr, then: then_expr, otherwise: else_expr } => {
                 let operand = unpack!(block = this.as_operand(block, cond_expr));
 

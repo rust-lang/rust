@@ -429,6 +429,9 @@ impl<'tcx, 'container> fmt::Debug for ty::AdtDefData<'tcx, 'container> {
 impl<'tcx> fmt::Debug for ty::adjustment::AutoAdjustment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
+            ty::adjustment::AdjustEmptyToAny(ref target) => {
+                write!(f, "AdjustEmptyToAny({:?})", target)
+            }
             ty::adjustment::AdjustReifyFnPointer => {
                 write!(f, "AdjustReifyFnPointer")
             }
