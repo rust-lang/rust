@@ -1,0 +1,16 @@
+[package]
+name = "mini-macro"
+version = "0.1.0"
+authors = [
+	"Manish Goregaokar <manishsmail@gmail.com>",
+	"Andre Bogus <bogusandre@gmail.com>",
+	"Georg Brandl <georg@python.org>",
+	"Martin Carton <cartonmartin@gmail.com>",
+	"Oliver Schneider <clippy-iethah7aipeen8neex1a@oli-obk.de>"
+]
+
+[lib]
+name = "mini_macro"
+plugin = true
+
+[dependencies]
