@@ -22,10 +22,11 @@ use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
 
-use syntax::{ast, codemap, errors};
-use syntax::errors::emitter::ColorConfig;
+use syntax::{ast, codemap};
 use syntax::feature_gate::UnstableFeatures;
 use syntax::parse::token;
+use errors;
+use errors::emitter::ColorConfig;
 
 use std::cell::{RefCell, Cell};
 use std::collections::{HashMap, HashSet};

@@ -10,18 +10,25 @@
 
 // Code for annotating snippets.
 
-use codemap::{CharPos, CodeMap, FileMap, LineInfo, Span};
-use errors::check_old_skool;
+use syntax_pos::{Span, FileMap, CharPos, LineInfo};
+use check_old_skool;
+use CodeMapper;
 use std::cmp;
 use std::rc::Rc;
 use std::mem;
 
-mod test;
+#[derive(Clone)]
+pub enum FormatMode {
+    NewErrorFormat,
+    OriginalErrorFormat,
+    EnvironmentSelected
+}
 
 #[derive(Clone)]
 pub struct SnippetData {
-    codemap: Rc<CodeMap>,
+    codemap: Rc<CodeMapper>,
     files: Vec<FileInfo>,
+    format_mode: FormatMode,
 }
 
 #[derive(Clone)]
@@ -36,6 +43,10 @@ pub struct FileInfo {
     primary_span: Option<Span>,
 
     lines: Vec<Line>,
+
+    /// The type of error format to render.  We keep it here so that
+    /// it's easy to configure for both tests and regular usage
+    format_mode: FormatMode,
 }
 
 #[derive(Clone, Debug)]
@@ -111,8 +122,9 @@ pub enum RenderedLineKind {
 }
 
 impl SnippetData {
-    pub fn new(codemap: Rc<CodeMap>,
-               primary_span: Option<Span>) // (*)
+    pub fn new(codemap: Rc<CodeMapper>,
+               primary_span: Option<Span>,
+               format_mode: FormatMode) // (*)
                -> Self {
         // (*) The primary span indicates the file that must appear
         // first, and which will have a line number etc in its
@@ -126,7 +138,8 @@ impl SnippetData {
 
         let mut data = SnippetData {
             codemap: codemap.clone(),
-            files: vec![]
+            files: vec![],
+            format_mode: format_mode.clone()
         };
         if let Some(primary_span) = primary_span {
             let lo = codemap.lookup_char_pos(primary_span.lo);
@@ -135,6 +148,7 @@ impl SnippetData {
                     file: lo.file,
                     primary_span: Some(primary_span),
                     lines: vec![],
+                    format_mode: format_mode.clone(),
                 });
         }
         data
@@ -167,6 +181,7 @@ impl SnippetData {
                 file: file_map.clone(),
                 lines: vec![],
                 primary_span: None,
+                format_mode: self.format_mode.clone()
             });
         self.files.last_mut().unwrap()
     }
@@ -178,7 +193,7 @@ impl SnippetData {
             self.files.iter()
                       .flat_map(|f| f.render_file_lines(&self.codemap))
                       .collect();
-        prepend_prefixes(&mut rendered_lines);
+        prepend_prefixes(&mut rendered_lines, &self.format_mode);
         trim_lines(&mut rendered_lines);
         rendered_lines
     }
@@ -454,8 +469,12 @@ impl FileInfo {
         return line_index - first_line_index;
     }
 
-    fn render_file_lines(&self, codemap: &Rc<CodeMap>) -> Vec<RenderedLine> {
-        let old_school = check_old_skool();
+    fn render_file_lines(&self, codemap: &Rc<CodeMapper>) -> Vec<RenderedLine> {
+        let old_school = match self.format_mode {
+            FormatMode::OriginalErrorFormat => true,
+            FormatMode::NewErrorFormat => false,
+            FormatMode::EnvironmentSelected => check_old_skool()
+        };
 
         // As a first step, we elide any instance of more than one
         // continuous unannotated line.
@@ -591,7 +610,12 @@ impl FileInfo {
     }
 
     fn render_line(&self, line: &Line) -> Vec<RenderedLine> {
-        let old_school = check_old_skool();
+        let old_school = match self.format_mode {
+            FormatMode::OriginalErrorFormat => true,
+            FormatMode::NewErrorFormat => false,
+            FormatMode::EnvironmentSelected => check_old_skool()
+        };
+
         let source_string = self.file.get_line(line.line_index)
                                      .unwrap_or("");
         let source_kind = RenderedLineKind::SourceText {
@@ -776,8 +800,12 @@ impl FileInfo {
     }
 }
 
-fn prepend_prefixes(rendered_lines: &mut [RenderedLine]) {
-    let old_school = check_old_skool();
+fn prepend_prefixes(rendered_lines: &mut [RenderedLine], format_mode: &FormatMode) {
+    let old_school = match *format_mode {
+        FormatMode::OriginalErrorFormat => true,
+        FormatMode::NewErrorFormat => false,
+        FormatMode::EnvironmentSelected => check_old_skool()
+    };
     if old_school {
         return;
     }

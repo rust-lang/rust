@@ -49,7 +49,7 @@ use rustc::ty::{self, Ty};
 use rustc::infer::UpvarRegion;
 use std::collections::HashSet;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
 

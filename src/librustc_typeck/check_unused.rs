@@ -13,7 +13,7 @@ use rustc::dep_graph::DepNode;
 use rustc::ty::TyCtxt;
 
 use syntax::ast;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir;
 use rustc::hir::intravisit::Visitor;

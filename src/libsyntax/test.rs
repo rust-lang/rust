@@ -12,6 +12,7 @@
 
 #![allow(dead_code)]
 #![allow(unused_imports)]
+
 use self::HasTestSignature::*;
 
 use std::iter;
@@ -20,9 +21,12 @@ use std::mem;
 use std::vec;
 use attr::AttrMetaMethods;
 use attr;
-use codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
-use codemap;
+use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
+use std::rc::Rc;
+
+use codemap::{self, CodeMap, ExpnInfo, NameAndSpan, MacroAttribute};
 use errors;
+use errors::snippet::{RenderedLine, SnippetData};
 use config;
 use entry::{self, EntryPointType};
 use ext::base::{ExtCtxt, DummyMacroLoader};

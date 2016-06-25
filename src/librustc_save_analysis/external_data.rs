@@ -12,7 +12,8 @@ use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
 use syntax::ast::{CrateNum, NodeId};
-use syntax::codemap::{Span, CodeMap};
+use syntax::codemap::CodeMap;
+use syntax_pos::Span;
 
 use data;
 

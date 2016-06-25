@@ -42,6 +42,7 @@ extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_borrowck;
 extern crate rustc_const_eval;
+extern crate rustc_errors as errors;
 extern crate rustc_passes;
 extern crate rustc_lint;
 extern crate rustc_plugin;
@@ -60,6 +61,7 @@ extern crate log;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_ext;
+extern crate syntax_pos;
 
 use driver::CompileController;
 use pretty::{PpMode, UserIdentifiedItem};
@@ -92,11 +94,12 @@ use std::thread;
 
 use rustc::session::early_error;
 
-use syntax::{ast, errors, diagnostics};
-use syntax::codemap::{CodeMap, FileLoader, RealFileLoader, MultiSpan};
-use syntax::errors::emitter::Emitter;
+use syntax::{ast, json};
+use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult, token};
+use syntax_pos::MultiSpan;
+use errors::emitter::Emitter;
 
 #[cfg(test)]
 pub mod test;
@@ -290,7 +293,7 @@ pub trait CompilerCalls<'a> {
     fn early_callback(&mut self,
                       _: &getopts::Matches,
                       _: &config::Options,
-                      _: &diagnostics::registry::Registry,
+                      _: &errors::registry::Registry,
                       _: ErrorOutputType)
                       -> Compilation {
         Compilation::Continue
@@ -329,7 +332,7 @@ pub trait CompilerCalls<'a> {
                 _: &config::Options,
                 _: &Option<PathBuf>,
                 _: &Option<PathBuf>,
-                _: &diagnostics::registry::Registry)
+                _: &errors::registry::Registry)
                 -> Option<(Input, Option<PathBuf>)> {
         None
     }
@@ -344,7 +347,7 @@ pub trait CompilerCalls<'a> {
 pub struct RustcDefaultCalls;
 
 fn handle_explain(code: &str,
-                  descriptions: &diagnostics::registry::Registry,
+                  descriptions: &errors::registry::Registry,
                   output: ErrorOutputType) {
     let normalised = if code.starts_with("E") {
         code.to_string()
@@ -374,7 +377,7 @@ fn check_cfg(sopts: &config::Options,
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(errors::emitter::BasicEmitter::stderr(color_config))
         }
-        config::ErrorOutputType::Json => Box::new(errors::json::JsonEmitter::basic()),
+        config::ErrorOutputType::Json => Box::new(json::JsonEmitter::basic()),
     };
 
     let mut saw_invalid_predicate = false;
@@ -401,7 +404,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
                       sopts: &config::Options,
-                      descriptions: &diagnostics::registry::Registry,
+                      descriptions: &errors::registry::Registry,
                       output: ErrorOutputType)
                       -> Compilation {
         if let Some(ref code) = matches.opt_str("explain") {
@@ -418,7 +421,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 sopts: &config::Options,
                 odir: &Option<PathBuf>,
                 ofile: &Option<PathBuf>,
-                descriptions: &diagnostics::registry::Registry)
+                descriptions: &errors::registry::Registry)
                 -> Option<(Input, Option<PathBuf>)> {
         match matches.free.len() {
             0 => {
@@ -1081,8 +1084,8 @@ fn exit_on_err() -> ! {
     panic!();
 }
 
-pub fn diagnostics_registry() -> diagnostics::registry::Registry {
-    use syntax::diagnostics::registry::Registry;
+pub fn diagnostics_registry() -> errors::registry::Registry {
+    use errors::registry::Registry;
 
     let mut all_errors = Vec::new();
     all_errors.extend_from_slice(&rustc::DIAGNOSTICS);

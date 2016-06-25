@@ -10,8 +10,8 @@
 
 use ast;
 use attr;
-use codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
-use codemap;
+use syntax_pos::{DUMMY_SP, Span};
+use codemap::{self, ExpnInfo, NameAndSpan, MacroAttribute};
 use parse::token::{intern, InternedString, keywords};
 use parse::{token, ParseSess};
 use ptr::P;

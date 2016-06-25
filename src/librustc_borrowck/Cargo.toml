@@ -12,6 +12,7 @@ test = false
 [dependencies]
 log = { path = "../liblog" }
 syntax = { path = "../libsyntax" }
+syntax_pos = { path = "../libsyntax_pos" }
 graphviz = { path = "../libgraphviz" }
 rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }

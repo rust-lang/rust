@@ -18,7 +18,7 @@ use ty::{self, Ty, TyCtxt};
 use ty::MethodCall;
 
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use hir;
 use hir::intravisit;
 use hir::intravisit::{FnKind, Visitor};

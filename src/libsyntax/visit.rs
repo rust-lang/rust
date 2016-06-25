@@ -26,7 +26,8 @@
 use abi::Abi;
 use ast::*;
 use attr::ThinAttributesExt;
-use codemap::{Span, Spanned};
+use syntax_pos::Span;
+use codemap::Spanned;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {

@@ -24,8 +24,9 @@ use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID, };
 use syntax::attr::ThinAttributesExt;
-use syntax::codemap::{Span, Spanned};
+use syntax::codemap::Spanned;
 use syntax::visit;
+use syntax_pos::Span;
 
 use hir::*;
 use hir::fold::Folder;

@@ -115,11 +115,12 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{self, Span, Spanned};
-use syntax::errors::DiagnosticBuilder;
+use syntax::codemap::{self, Spanned};
 use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax_pos::{self, Span};
+use errors::DiagnosticBuilder;
 
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::{self, PatKind};
@@ -1908,7 +1909,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for ty in &self.unsolved_variables() {
                 if let ty::TyInfer(_) = self.shallow_resolve(ty).sty {
                     debug!("default_type_parameters: defaulting `{:?}` to error", ty);
-                    self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().types.err);
+                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx().types.err);
                 }
             }
             return;
@@ -1919,18 +1920,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if self.type_var_diverges(resolved) {
                 debug!("default_type_parameters: defaulting `{:?}` to `()` because it diverges",
                        resolved);
-                self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx.mk_nil());
+                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_nil());
             } else {
                 match self.type_is_unconstrained_numeric(resolved) {
                     UnconstrainedInt => {
                         debug!("default_type_parameters: defaulting `{:?}` to `i32`",
                                resolved);
-                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx.types.i32)
+                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.i32)
                     },
                     UnconstrainedFloat => {
                         debug!("default_type_parameters: defaulting `{:?}` to `f32`",
                                resolved);
-                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx.types.f64)
+                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.f64)
                     }
                     Neither => { }
                 }
@@ -1993,7 +1994,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for ty in &unsolved_variables {
                 let resolved = self.resolve_type_vars_if_possible(ty);
                 if self.type_var_diverges(resolved) {
-                    self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx.mk_nil());
+                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_nil());
                 } else {
                     match self.type_is_unconstrained_numeric(resolved) {
                         UnconstrainedInt | UnconstrainedFloat => {
@@ -2051,14 +2052,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let _ = self.commit_if_ok(|_: &infer::CombinedSnapshot| {
                 for ty in &unbound_tyvars {
                     if self.type_var_diverges(ty) {
-                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx.mk_nil());
+                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_nil());
                     } else {
                         match self.type_is_unconstrained_numeric(ty) {
                             UnconstrainedInt => {
-                                self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx.types.i32)
+                                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.i32)
                             },
                             UnconstrainedFloat => {
-                                self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx.types.f64)
+                                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.f64)
                             }
                             Neither => {
                                 if let Some(default) = default_map.get(ty) {
@@ -2096,7 +2097,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.find_conflicting_default(&unbound_tyvars, &default_map, conflict)
                             .unwrap_or(type_variable::Default {
                                 ty: self.next_ty_var(),
-                                origin_span: codemap::DUMMY_SP,
+                                origin_span: syntax_pos::DUMMY_SP,
                                 def_id: self.tcx.map.local_def_id(0) // what do I put here?
                             });
 
@@ -2147,14 +2148,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // reporting for more then one conflict.
         for ty in &unbound_tyvars {
             if self.type_var_diverges(ty) {
-                self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx.mk_nil());
+                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_nil());
             } else {
                 match self.type_is_unconstrained_numeric(ty) {
                     UnconstrainedInt => {
-                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx.types.i32)
+                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.i32)
                     },
                     UnconstrainedFloat => {
-                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx.types.f64)
+                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.f64)
                     },
                     Neither => {
                         if let Some(default) = default_map.get(ty) {

@@ -13,3 +13,4 @@ log = { path = "../liblog" }
 rustc = { path = "../librustc" }
 syntax = { path = "../libsyntax" }
 serialize = { path = "../libserialize" }
+syntax_pos = { path = "../libsyntax_pos" }

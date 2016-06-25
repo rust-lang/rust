@@ -15,7 +15,7 @@
 
 use rustc::hir::def_id::DefId;
 use syntax::ast::{CrateNum, NodeId};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 pub struct CrateData {
     pub name: String,

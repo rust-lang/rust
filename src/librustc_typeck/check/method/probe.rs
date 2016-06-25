@@ -22,7 +22,7 @@ use rustc::traits;
 use rustc::ty::{self, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::infer::{InferOk, TypeOrigin};
 use syntax::ast;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 use rustc::hir;
 use std::collections::HashSet;
 use std::mem;

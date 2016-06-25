@@ -17,9 +17,9 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use rustc::infer;
 use rustc::ty::{self, LvaluePreference, Ty};
-use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 use rustc::hir;
 

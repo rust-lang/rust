@@ -49,9 +49,9 @@ use std::borrow::Cow;
 use libc::c_uint;
 use syntax::ast::{self, LitKind};
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 pub type FnArgMap<'a> = Option<&'a NodeMap<ValueRef>>;
 

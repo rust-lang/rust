@@ -18,6 +18,8 @@ extern crate rustc_lint;
 extern crate rustc_llvm as llvm;
 extern crate rustc_metadata;
 extern crate rustc_resolve;
+extern crate rustc_errors;
+extern crate rustc_errors as errors;
 #[macro_use] extern crate syntax;
 
 use std::ffi::{CStr, CString};
@@ -38,7 +40,7 @@ use rustc_metadata::creader::read_local_crates;
 use rustc_metadata::cstore::CStore;
 use libc::c_void;
 
-use syntax::diagnostics::registry::Registry;
+use rustc_errors::registry::Registry;
 use syntax::parse::token;
 
 fn main() {

@@ -17,7 +17,7 @@ use hir::def_id::DefId;
 use middle::cstore::InlinedItem;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 /// A Visitor that walks over the HIR and collects Nodes into a HIR map
 pub struct NodeCollector<'ast> {

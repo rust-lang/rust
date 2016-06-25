@@ -27,6 +27,8 @@
 extern crate log;
 #[macro_use]
 extern crate syntax;
+extern crate syntax_pos;
+extern crate rustc_errors as errors;
 extern crate arena;
 #[macro_use]
 extern crate rustc;
@@ -54,8 +56,6 @@ use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 use syntax::ext::mtwt;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
-use syntax::codemap::{self, Span};
-use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -65,6 +65,9 @@ use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{PathSegment, PathParameters, QSelf, TraitItemKind, TraitRef, Ty, TyKind};
+
+use syntax_pos::Span;
+use errors::DiagnosticBuilder;
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
@@ -177,13 +180,13 @@ enum UnresolvedNameContext<'a> {
 }
 
 fn resolve_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
-                                 span: syntax::codemap::Span,
+                                 span: syntax_pos::Span,
                                  resolution_error: ResolutionError<'c>) {
     resolve_struct_error(resolver, span, resolution_error).emit();
 }
 
 fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
-                                        span: syntax::codemap::Span,
+                                        span: syntax_pos::Span,
                                         resolution_error: ResolutionError<'c>)
                                         -> DiagnosticBuilder<'a> {
     if !resolver.emit_errors {
@@ -1805,10 +1808,10 @@ impl<'a> Resolver<'a> {
                             self.resolve_crate_relative_path(trait_path.span, segments, TypeNS)
                         } else {
                             self.resolve_module_relative_path(trait_path.span, segments, TypeNS)
-                        }.map(|binding| binding.span).unwrap_or(codemap::DUMMY_SP)
+                        }.map(|binding| binding.span).unwrap_or(syntax_pos::DUMMY_SP)
                     };
 
-                    if definition_site != codemap::DUMMY_SP {
+                    if definition_site != syntax_pos::DUMMY_SP {
                         err.span_label(definition_site,
                                        &format!("type aliases cannot be used for traits"));
                     }
@@ -3330,7 +3333,7 @@ impl<'a> Resolver<'a> {
             },
         };
 
-        if old_binding.span != codemap::DUMMY_SP {
+        if old_binding.span != syntax_pos::DUMMY_SP {
             err.span_label(old_binding.span, &format!("previous {} of `{}` here", noun, name));
         }
         err.emit();

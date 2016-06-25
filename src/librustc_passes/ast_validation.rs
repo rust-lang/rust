@@ -19,10 +19,10 @@
 use rustc::lint;
 use rustc::session::Session;
 use syntax::ast::*;
-use syntax::codemap::Span;
-use syntax::errors;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
+use syntax_pos::Span;
+use errors;
 
 struct AstValidator<'a> {
     session: &'a Session,

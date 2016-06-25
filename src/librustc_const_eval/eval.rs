@@ -33,10 +33,10 @@ use syntax::ast;
 use rustc::hir::{Expr, PatKind};
 use rustc::hir;
 use rustc::hir::intravisit::FnKind;
-use syntax::codemap::Span;
 use syntax::ptr::P;
 use syntax::codemap;
 use syntax::attr::IntType;
+use syntax_pos::{self, Span};
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -301,7 +301,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let field_pats =
                 try!(fields.iter()
                            .map(|field| Ok(codemap::Spanned {
-                               span: codemap::DUMMY_SP,
+                               span: syntax_pos::DUMMY_SP,
                                node: hir::FieldPat {
                                    name: field.name.node,
                                    pat: try!(const_expr_to_pat(tcx, &field.expr,

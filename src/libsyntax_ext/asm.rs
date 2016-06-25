@@ -15,7 +15,6 @@ use self::State::*;
 
 use syntax::ast;
 use syntax::codemap;
-use syntax::codemap::Span;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
@@ -23,6 +22,7 @@ use syntax::parse::token::intern;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
 use syntax::ast::AsmDialect;
+use syntax_pos::Span;
 
 enum State {
     Asm,

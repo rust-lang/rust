@@ -44,10 +44,10 @@ use std::rc::Rc;
 use std::u32;
 use syntax::abi::Abi;
 use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID, CrateNum};
-use syntax::codemap::BytePos;
 use syntax::attr;
-use syntax::errors::Handler;
+use errors::Handler;
 use syntax;
+use syntax_pos::BytePos;
 use rbml::writer::Encoder;
 
 use rustc::hir::{self, PatKind};

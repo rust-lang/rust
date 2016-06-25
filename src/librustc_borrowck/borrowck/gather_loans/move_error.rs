@@ -14,8 +14,8 @@ use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
 use rustc::ty;
 use syntax::ast;
-use syntax::codemap;
-use syntax::errors::DiagnosticBuilder;
+use syntax_pos;
+use errors::DiagnosticBuilder;
 use rustc::hir;
 
 pub struct MoveErrorCollector<'tcx> {
@@ -56,7 +56,7 @@ impl<'tcx> MoveError<'tcx> {
 
 #[derive(Clone)]
 pub struct MoveSpanAndPath {
-    pub span: codemap::Span,
+    pub span: syntax_pos::Span,
     pub name: ast::Name,
 }
 
@@ -169,7 +169,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 }
 
 fn note_move_destination(mut err: DiagnosticBuilder,
-                         move_to_span: codemap::Span,
+                         move_to_span: syntax_pos::Span,
                          pat_name: ast::Name,
                          is_first_note: bool) -> DiagnosticBuilder {
     if is_first_note {
