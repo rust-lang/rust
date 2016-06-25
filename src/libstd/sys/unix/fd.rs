@@ -62,32 +62,31 @@ impl FileDesc {
     }
 
     #[cfg(not(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten")))]
-    pub fn set_cloexec(&self) {
+    pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
-            let ret = libc::ioctl(self.fd, libc::FIOCLEX);
-            debug_assert_eq!(ret, 0);
+            cvt(libc::ioctl(self.fd, libc::FIOCLEX))?;
+            Ok(())
         }
     }
     #[cfg(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten"))]
-    pub fn set_cloexec(&self) {
+    pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
-            let previous = libc::fcntl(self.fd, libc::F_GETFD);
-            let ret = libc::fcntl(self.fd, libc::F_SETFD, previous | libc::FD_CLOEXEC);
-            debug_assert_eq!(ret, 0);
+            let previous = cvt(libc::fcntl(self.fd, libc::F_GETFD))?;
+            cvt(libc::fcntl(self.fd, libc::F_SETFD, previous | libc::FD_CLOEXEC))?;
+            Ok(())
         }
     }
 
-    pub fn set_nonblocking(&self, nonblocking: bool) {
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         unsafe {
-            let previous = libc::fcntl(self.fd, libc::F_GETFL);
-            debug_assert!(previous != -1);
+            let previous = cvt(libc::fcntl(self.fd, libc::F_GETFL))?;
             let new = if nonblocking {
                 previous | libc::O_NONBLOCK
             } else {
                 previous & !libc::O_NONBLOCK
             };
-            let ret = libc::fcntl(self.fd, libc::F_SETFL, new);
-            debug_assert!(ret != -1);
+            cvt(libc::fcntl(self.fd, libc::F_SETFL, new))?;
+            Ok(())
         }
     }
 
@@ -114,8 +113,8 @@ impl FileDesc {
 
         let make_filedesc = |fd| {
             let fd = FileDesc::new(fd);
-            fd.set_cloexec();
-            fd
+            fd.set_cloexec()?;
+            Ok(fd)
         };
         static TRY_CLOEXEC: AtomicBool =
             AtomicBool::new(!cfg!(target_os = "android"));
@@ -127,7 +126,7 @@ impl FileDesc {
                 // though it reported doing so on F_DUPFD_CLOEXEC.
                 Ok(fd) => {
                     return Ok(if cfg!(target_os = "linux") {
-                        make_filedesc(fd)
+                        make_filedesc(fd)?
                     } else {
                         FileDesc::new(fd)
                     })
@@ -138,7 +137,7 @@ impl FileDesc {
                 Err(e) => return Err(e),
             }
         }
-        cvt(unsafe { libc::fcntl(fd, libc::F_DUPFD, 0) }).map(make_filedesc)
+        cvt(unsafe { libc::fcntl(fd, libc::F_DUPFD, 0) }).and_then(make_filedesc)
     }
 }
 
