@@ -579,6 +579,8 @@ impl<'a> AsRef<OsStr> for Component<'a> {
 /// See the module documentation for an in-depth explanation of components and
 /// their role in the API.
 ///
+/// This `struct` is created by the [`path::Path::components`] method.
+///
 /// # Examples
 ///
 /// ```
@@ -590,6 +592,8 @@ impl<'a> AsRef<OsStr> for Component<'a> {
 ///     println!("{:?}", component);
 /// }
 /// ```
+///
+/// [`path::Path::components`]: struct.Path.html#method.components
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
