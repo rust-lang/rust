@@ -17,7 +17,7 @@
 /// The entry point for panic of Rust threads.
 ///
 /// This macro is used to inject panic into a Rust thread, causing the thread to
-/// panic entirely. Each thread's panic can be reaped as the `Box<Any>` type,
+/// panic entirely. Each thread's panic can be reaped as the [`Box<Any>`] type,
 /// and the single-argument form of the `panic!` macro will be the value which
 /// is transmitted.
 ///
@@ -33,6 +33,8 @@
 /// panic!(4); // panic with the value of 4 to be collected elsewhere
 /// panic!("this is a {} {message}", "fancy", message = "message");
 /// ```
+///
+/// [`Box<Any>`]: ../../collections/boxed/struct.Box.html
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
@@ -61,7 +63,7 @@ macro_rules! panic {
 
 /// Macro for printing to the standard output.
 ///
-/// Equivalent to the `println!` macro except that a newline is not printed at
+/// Equivalent to the [`println!`] macro except that a newline is not printed at
 /// the end of the message.
 ///
 /// Note that stdout is frequently line-buffered by default so it may be
@@ -91,6 +93,8 @@ macro_rules! panic {
 ///
 /// io::stdout().flush().unwrap();
 /// ```
+///
+/// [`println!`]: ../../std/macro.println!.html
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
@@ -101,7 +105,7 @@ macro_rules! print {
 /// Macro for printing to the standard output, with a newline.
 ///
 /// Use the `format!` syntax to write data to the standard output.
-/// See `std::fmt` for more information.
+/// See [`std::fmt`] for more information.
 ///
 /// # Panics
 ///
@@ -113,6 +117,8 @@ macro_rules! print {
 /// println!("hello there!");
 /// println!("format {} arguments", "some");
 /// ```
+///
+/// [`std::fmt`]: ../../std/fmt/index.html
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! println {
@@ -154,7 +160,9 @@ macro_rules! println {
 /// # drop(rx2.recv());
 /// ```
 ///
-/// For more information about select, see the `std::sync::mpsc::Select` structure.
+/// For more information about select, see the [`std::sync::mpsc::Select`] structure.
+///
+/// [`std::sync::mpsc::Select`]: ../../std/sync/mpsc/struct.Select.html
 #[macro_export]
 #[unstable(feature = "mpsc_select", issue = "27800")]
 macro_rules! select {
