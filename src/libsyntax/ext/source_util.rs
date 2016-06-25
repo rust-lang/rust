@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use ast;
-use codemap::{Pos, Span};
-use codemap;
+use syntax_pos::{self, Pos, Span};
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
@@ -194,7 +193,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
 // resolve a file-system path to an absolute file-system path (if it
 // isn't already)
-fn res_rel_file(cx: &mut ExtCtxt, sp: codemap::Span, arg: &Path) -> PathBuf {
+fn res_rel_file(cx: &mut ExtCtxt, sp: syntax_pos::Span, arg: &Path) -> PathBuf {
     // NB: relative paths are resolved relative to the compilation unit
     if !arg.is_absolute() {
         let mut cu = PathBuf::from(&cx.codemap().span_to_filename(sp));

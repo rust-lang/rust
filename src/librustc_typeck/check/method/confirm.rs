@@ -18,7 +18,7 @@ use rustc::ty::{self, LvaluePreference, NoPreference, PreferMutLvalue, Ty};
 use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk, TypeOrigin};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use rustc::hir;
 
 use std::ops::Deref;

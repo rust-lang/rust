@@ -24,15 +24,14 @@ pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
 pub use self::Visibility::*;
 
-use syntax;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
-use syntax::codemap;
-use syntax::codemap::{DUMMY_SP, Pos, Spanned};
+use syntax::codemap::Spanned;
 use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
+use syntax_pos::{self, DUMMY_SP, Pos};
 
 use rustc_trans::back::link;
 use rustc::middle::cstore;
@@ -533,7 +532,7 @@ impl attr::AttrMetaMethods for Attribute {
         }
     }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
-    fn span(&self) -> codemap::Span { unimplemented!() }
+    fn span(&self) -> syntax_pos::Span { unimplemented!() }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
@@ -1977,7 +1976,7 @@ impl Span {
     }
 }
 
-impl Clean<Span> for syntax::codemap::Span {
+impl Clean<Span> for syntax_pos::Span {
     fn clean(&self, cx: &DocContext) -> Span {
         if *self == DUMMY_SP {
             return Span::empty();
@@ -2543,7 +2542,7 @@ trait ToSource {
     fn to_src(&self, cx: &DocContext) -> String;
 }
 
-impl ToSource for syntax::codemap::Span {
+impl ToSource for syntax_pos::Span {
     fn to_src(&self, cx: &DocContext) -> String {
         debug!("converting span {:?} to snippet", self.clean(cx));
         let sn = match cx.sess().codemap().span_to_snippet(*self) {

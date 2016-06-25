@@ -80,8 +80,8 @@ use self::TokenTreeOrTokenTreeVec::*;
 
 use ast;
 use ast::{TokenTree, Name, Ident};
-use codemap::{BytePos, mk_sp, Span, Spanned};
-use codemap;
+use syntax_pos::{self, BytePos, mk_sp, Span};
+use codemap::Spanned;
 use errors::FatalError;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
@@ -196,7 +196,7 @@ pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: ByteP
 /// token tree it was derived from.
 
 pub enum NamedMatch {
-    MatchedSeq(Vec<Rc<NamedMatch>>, codemap::Span),
+    MatchedSeq(Vec<Rc<NamedMatch>>, syntax_pos::Span),
     MatchedNonterminal(Nonterminal)
 }
 
@@ -204,7 +204,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
             -> ParseResult<HashMap<Name, Rc<NamedMatch>>> {
     fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
              ret_val: &mut HashMap<Name, Rc<NamedMatch>>, idx: &mut usize)
-             -> Result<(), (codemap::Span, String)> {
+             -> Result<(), (syntax_pos::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {
@@ -251,9 +251,9 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
 pub enum ParseResult<T> {
     Success(T),
     /// Arm failed to match
-    Failure(codemap::Span, String),
+    Failure(syntax_pos::Span, String),
     /// Fatal error (malformed macro?). Abort compilation.
-    Error(codemap::Span, String)
+    Error(syntax_pos::Span, String)
 }
 
 pub type NamedParseResult = ParseResult<HashMap<Name, Rc<NamedMatch>>>;

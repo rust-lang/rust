@@ -39,9 +39,8 @@ use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::fmt;
 use syntax::ast;
-use syntax::codemap;
-use syntax::codemap::{Span, DUMMY_SP};
-use syntax::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
+use syntax_pos::{self, Span, DUMMY_SP};
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 
 use self::combine::CombineFields;
@@ -1036,7 +1035,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                          -> UnitResult<'tcx>
     {
         self.probe(|_| {
-            let origin = TypeOrigin::Misc(codemap::DUMMY_SP);
+            let origin = TypeOrigin::Misc(syntax_pos::DUMMY_SP);
             let trace = TypeTrace::types(origin, true, a, b);
             self.sub(true, trace, &a, &b).map(|_| ())
         })
@@ -1813,7 +1812,7 @@ impl<'a, 'gcx, 'tcx> TypeTrace<'tcx> {
 
     pub fn dummy(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
-            origin: TypeOrigin::Misc(codemap::DUMMY_SP),
+            origin: TypeOrigin::Misc(syntax_pos::DUMMY_SP),
             values: Types(ExpectedFound {
                 expected: tcx.types.err,
                 found: tcx.types.err,
@@ -1887,7 +1886,7 @@ impl RegionVariableOrigin {
             Coercion(a) => a,
             EarlyBoundRegion(a, _) => a,
             LateBoundRegion(a, _, _) => a,
-            BoundRegionInCoherence(_) => codemap::DUMMY_SP,
+            BoundRegionInCoherence(_) => syntax_pos::DUMMY_SP,
             UpvarRegion(_, a) => a
         }
     }

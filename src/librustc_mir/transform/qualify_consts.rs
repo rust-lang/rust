@@ -30,8 +30,8 @@ use rustc::mir::transform::{Pass, MirMapPass, MirPassHook, MirSource};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::util::nodemap::DefIdMap;
 use syntax::abi::Abi;
-use syntax::codemap::Span;
 use syntax::feature_gate::UnstableFeatures;
+use syntax_pos::Span;
 
 use std::collections::hash_map::Entry;
 use std::fmt;

@@ -33,7 +33,7 @@ use rustc::util::nodemap::NodeMap;
 use rustc::hir;
 use rustc::hir::intravisit::{self, FnKind, Visitor};
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use std::mem;
 

@@ -26,10 +26,11 @@ use middle::cstore;
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::errors::{ColorConfig, Handler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
+
+use errors::{ColorConfig, Handler};
 
 use getopts;
 use std::collections::HashMap;
@@ -1420,12 +1421,11 @@ mod tests {
     use middle::cstore::DummyCrateStore;
     use session::config::{build_configuration, build_session_options};
     use session::build_session;
-
+    use errors;
     use std::rc::Rc;
     use getopts::{getopts, OptGroup};
     use syntax::attr;
     use syntax::attr::AttrMetaMethods;
-    use syntax::diagnostics;
 
     fn optgroups() -> Vec<OptGroup> {
         super::rustc_optgroups().into_iter()
@@ -1442,7 +1442,7 @@ mod tests {
               Ok(m) => m,
               Err(f) => panic!("test_switch_implies_cfg_test: {}", f)
             };
-        let registry = diagnostics::registry::Registry::new(&[]);
+        let registry = errors::registry::Registry::new(&[]);
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, &dep_graph, None, registry, Rc::new(DummyCrateStore));
         let cfg = build_configuration(&sess);
@@ -1462,7 +1462,7 @@ mod tests {
                 panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f)
               }
             };
-        let registry = diagnostics::registry::Registry::new(&[]);
+        let registry = errors::registry::Registry::new(&[]);
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, &dep_graph, None, registry,
                                  Rc::new(DummyCrateStore));
@@ -1479,7 +1479,7 @@ mod tests {
             let matches = getopts(&[
                 "-Awarnings".to_string()
             ], &optgroups()).unwrap();
-            let registry = diagnostics::registry::Registry::new(&[]);
+            let registry = errors::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, &dep_graph, None, registry,
                                      Rc::new(DummyCrateStore));
@@ -1491,7 +1491,7 @@ mod tests {
                 "-Awarnings".to_string(),
                 "-Dwarnings".to_string()
             ], &optgroups()).unwrap();
-            let registry = diagnostics::registry::Registry::new(&[]);
+            let registry = errors::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, &dep_graph, None, registry,
                                      Rc::new(DummyCrateStore));
@@ -1502,7 +1502,7 @@ mod tests {
             let matches = getopts(&[
                 "-Adead_code".to_string()
             ], &optgroups()).unwrap();
-            let registry = diagnostics::registry::Registry::new(&[]);
+            let registry = errors::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, &dep_graph, None, registry,
                                      Rc::new(DummyCrateStore));

@@ -24,7 +24,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::ty;
 use rustc::mir::repr::*;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, yielding an rvalue.

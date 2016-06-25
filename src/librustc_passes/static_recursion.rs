@@ -18,8 +18,8 @@ use rustc::hir::def::{Def, DefMap};
 use rustc::util::nodemap::NodeMap;
 
 use syntax::{ast};
-use syntax::codemap::Span;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
+use syntax_pos::Span;
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir;
 

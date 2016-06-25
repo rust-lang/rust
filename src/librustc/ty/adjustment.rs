@@ -15,7 +15,7 @@ use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFoldable};
 use ty::LvaluePreference::{NoPreference};
 
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use hir;
 

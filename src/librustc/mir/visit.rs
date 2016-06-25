@@ -16,7 +16,7 @@ use mir::repr::*;
 use rustc_const_math::ConstUsize;
 use rustc_data_structures::tuple_slice::TupleSlice;
 use rustc_data_structures::indexed_vec::Idx;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 // # The MIR Visitor
 //

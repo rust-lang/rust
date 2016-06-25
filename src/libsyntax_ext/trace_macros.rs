@@ -9,12 +9,11 @@
 // except according to those terms.
 
 use syntax::ast::TokenTree;
-use syntax::codemap::Span;
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::base;
 use syntax::feature_gate;
 use syntax::parse::token::keywords;
-
+use syntax_pos::Span;
 
 pub fn expand_trace_macros(cx: &mut ExtCtxt,
                            sp: Span,

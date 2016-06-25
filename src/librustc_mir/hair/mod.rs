@@ -23,7 +23,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtDef, ClosureSubsts, Region, Ty};
 use rustc::hir;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use self::cx::Cx;
 
 pub mod cx;

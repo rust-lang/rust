@@ -16,8 +16,8 @@ use ty::{self, BoundRegion, Region, Ty, TyCtxt};
 use std::fmt;
 use syntax::abi;
 use syntax::ast::{self, Name};
-use syntax::codemap::Span;
-use syntax::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
+use syntax_pos::Span;
 
 use hir;
 

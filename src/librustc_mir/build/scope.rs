@@ -92,7 +92,7 @@ use rustc::middle::lang_items;
 use rustc::ty::subst::{Substs, Subst, VecPerParamSpace};
 use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::repr::*;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::fnv::FnvHashMap;
 

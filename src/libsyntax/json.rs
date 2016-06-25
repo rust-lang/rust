@@ -19,10 +19,10 @@
 
 // FIXME spec the JSON output properly.
 
-
-use codemap::{self, MacroBacktrace, Span, SpanLabel, MultiSpan, CodeMap};
-use diagnostics::registry::Registry;
-use errors::{Level, DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion};
+use codemap::CodeMap;
+use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
+use errors::registry::Registry;
+use errors::{Level, DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion, CodeMapper};
 use errors::emitter::Emitter;
 
 use std::rc::Rc;
@@ -34,7 +34,7 @@ use rustc_serialize::json::as_json;
 pub struct JsonEmitter {
     dst: Box<Write + Send>,
     registry: Option<Registry>,
-    cm: Rc<CodeMap>,
+    cm: Rc<CodeMapper + 'static>,
 }
 
 impl JsonEmitter {
@@ -303,7 +303,7 @@ impl DiagnosticSpan {
 }
 
 impl DiagnosticSpanLine {
-    fn line_from_filemap(fm: &codemap::FileMap,
+    fn line_from_filemap(fm: &syntax_pos::FileMap,
                          index: usize,
                          h_start: usize,
                          h_end: usize)
@@ -354,12 +354,14 @@ impl DiagnosticCode {
 
 impl JsonEmitter {
     fn render(&self, render_span: &RenderSpan) -> Option<String> {
+        use std::borrow::Borrow;
+
         match *render_span {
             RenderSpan::FullSpan(_) => {
                 None
             }
             RenderSpan::Suggestion(ref suggestion) => {
-                Some(suggestion.splice_lines(&self.cm))
+                Some(suggestion.splice_lines(self.cm.borrow()))
             }
         }
     }

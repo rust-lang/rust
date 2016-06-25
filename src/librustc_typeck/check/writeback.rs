@@ -25,7 +25,8 @@ use write_ty_to_tcx;
 use std::cell::Cell;
 
 use syntax::ast;
-use syntax::codemap::{DUMMY_SP, Span};
+use syntax_pos::{DUMMY_SP, Span};
+
 use rustc::hir::print::pat_to_string;
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::{self, PatKind};

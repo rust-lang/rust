@@ -11,7 +11,8 @@
 use abi::Abi;
 use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
 use attr;
-use codemap::{Span, respan, Spanned, DUMMY_SP, Pos};
+use syntax_pos::{Span, DUMMY_SP, Pos};
+use codemap::{respan, Spanned};
 use ext::base::ExtCtxt;
 use parse::token::{self, keywords, InternedString};
 use ptr::P;

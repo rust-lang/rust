@@ -27,7 +27,7 @@ use Namespace::{TypeNS, ValueNS};
 use rustc::lint;
 use syntax::ast::{self, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::visit::{self, Visitor};
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 
 
 struct UnusedImportCheckVisitor<'a, 'b: 'a> {

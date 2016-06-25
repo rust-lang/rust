@@ -21,8 +21,8 @@ use common::{NodeIdAndSpan, CrateContext, FunctionContext};
 
 use libc::c_uint;
 use std::ptr;
-use syntax::codemap::{Span, Pos};
-use syntax::{ast, codemap};
+use syntax_pos::{self, Span, Pos};
+use syntax::ast;
 
 pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                     node_id: ast::NodeId,
@@ -70,7 +70,7 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             if !bytes.is_empty() && &bytes[bytes.len()-1..] == b"}" {
                 cleanup_span = Span {
-                    lo: node_span.hi - codemap::BytePos(1),
+                    lo: node_span.hi - syntax_pos::BytePos(1),
                     hi: node_span.hi,
                     expn_id: node_span.expn_id
                 };

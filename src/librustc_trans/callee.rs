@@ -53,8 +53,8 @@ use Disr;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::hir;
 
-use syntax::codemap::DUMMY_SP;
-use syntax::errors;
+use syntax_pos::DUMMY_SP;
+use errors;
 use syntax::ptr::P;
 
 #[derive(Debug)]

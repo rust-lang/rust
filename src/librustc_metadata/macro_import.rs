@@ -16,12 +16,12 @@ use cstore::CStore;
 use rustc::session::Session;
 
 use std::collections::{HashSet, HashMap};
-use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::ext;
+use syntax_pos::Span;
 
 pub struct MacroLoader<'a> {
     sess: &'a Session,

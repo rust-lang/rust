@@ -16,9 +16,10 @@ use syntax::ext::base::{ExtCtxt, SyntaxEnv, Annotatable};
 use syntax::ext::base::{MultiDecorator, MultiItemDecorator, MultiModifier};
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
-use syntax::codemap::{self, Span};
+use syntax::codemap;
 use syntax::parse::token::{intern, intern_and_get_ident};
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 macro_rules! pathvec {
     ($($x:ident)::+) => (

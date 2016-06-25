@@ -55,6 +55,8 @@ extern crate rustc_const_eval;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
+extern crate syntax_pos;
+extern crate rustc_errors as errors;
 
 pub use rustc::session;
 pub use rustc::middle;

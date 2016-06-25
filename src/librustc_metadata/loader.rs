@@ -225,8 +225,8 @@ use rustc::util::common;
 use rustc_llvm as llvm;
 use rustc_llvm::{False, ObjectFile, mk_section_iter};
 use rustc_llvm::archive_ro::ArchiveRO;
-use syntax::codemap::Span;
-use syntax::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
+use syntax_pos::Span;
 use rustc_back::target::Target;
 
 use std::cmp;

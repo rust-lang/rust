@@ -21,17 +21,16 @@ use util::nodemap::{NodeMap, FnvHashMap};
 use mir::transform as mir_pass;
 
 use syntax::ast::{NodeId, NodeIdAssigner, Name};
-use syntax::codemap::{Span, MultiSpan};
-use syntax::errors::{self, DiagnosticBuilder};
-use syntax::errors::emitter::{Emitter, BasicEmitter, EmitterWriter};
-use syntax::errors::json::JsonEmitter;
-use syntax::diagnostics;
+use errors::{self, DiagnosticBuilder};
+use errors::emitter::{Emitter, BasicEmitter, EmitterWriter};
+use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::parse;
 use syntax::parse::ParseSess;
 use syntax::parse::token;
 use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
+use syntax_pos::{Span, MultiSpan};
 
 use rustc_back::target::Target;
 use llvm;
@@ -424,7 +423,7 @@ fn split_msg_into_multilines(msg: &str) -> Option<String> {
 pub fn build_session(sopts: config::Options,
                      dep_graph: &DepGraph,
                      local_crate_source_file: Option<PathBuf>,
-                     registry: diagnostics::registry::Registry,
+                     registry: errors::registry::Registry,
                      cstore: Rc<for<'a> CrateStore<'a>>)
                      -> Session {
     build_session_with_codemap(sopts,
@@ -438,7 +437,7 @@ pub fn build_session(sopts: config::Options,
 pub fn build_session_with_codemap(sopts: config::Options,
                                   dep_graph: &DepGraph,
                                   local_crate_source_file: Option<PathBuf>,
-                                  registry: diagnostics::registry::Registry,
+                                  registry: errors::registry::Registry,
                                   cstore: Rc<for<'a> CrateStore<'a>>,
                                   codemap: Rc<codemap::CodeMap>)
                                   -> Session {
@@ -455,7 +454,10 @@ pub fn build_session_with_codemap(sopts: config::Options,
 
     let emitter: Box<Emitter> = match sopts.error_format {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, Some(registry), codemap.clone()))
+            Box::new(EmitterWriter::stderr(color_config,
+                                           Some(registry),
+                                           codemap.clone(),
+                                           errors::snippet::FormatMode::EnvironmentSelected))
         }
         config::ErrorOutputType::Json => {
             Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))

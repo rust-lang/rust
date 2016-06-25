@@ -20,7 +20,7 @@ use rustc::traits::ProjectionMode;
 use rustc::hir;
 use rustc::hir::intravisit;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut rvcx = RvalueContext { tcx: tcx };

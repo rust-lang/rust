@@ -19,9 +19,9 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use syntax::ast;
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::Span;
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 use rustc_back::slice;
 use rustc::hir;

@@ -38,6 +38,7 @@ extern crate rustc_back;
 extern crate rustc_bitflags;
 #[macro_use]
 extern crate syntax;
+extern crate syntax_pos;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
 
