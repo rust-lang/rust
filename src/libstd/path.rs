@@ -525,6 +525,26 @@ impl<'a> Hash for PrefixComponent<'a> {
 ///
 /// See the module documentation for an in-depth explanation of components and
 /// their role in the API.
+///
+/// This `enum` is created from iterating over the [`path::Components`]
+/// `struct`.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::path::{Component, Path};
+///
+/// let path = Path::new("/tmp/foo/bar.txt");
+/// let components = path.components().collect::<Vec<_>>();
+/// assert_eq!(&components, &[
+///     Component::RootDir,
+///     Component::Normal("tmp".as_ref()),
+///     Component::Normal("foo".as_ref()),
+///     Component::Normal("bar.txt".as_ref()),
+/// ]);
+/// ```
+///
+/// [`path::Components`]: struct.Components.html
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Component<'a> {
