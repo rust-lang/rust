@@ -482,9 +482,9 @@ pub struct Thread {
 impl Thread {
     // Used only internally to construct a thread object without spawning
     fn new(name: Option<String>) -> Thread {
-        let cname = name.map(|n| CString::new(n).unwrap_or_else(|_| {
-            panic!("thread name may not contain interior null bytes")
-        }));
+        let cname = name.map(|n| {
+            CString::new(n).expect("thread name may not contain interior null bytes")
+        });
         Thread {
             inner: Arc::new(Inner {
                 name: cname,

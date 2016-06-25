@@ -2652,16 +2652,19 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         if !is_static || render_static {
             if !is_default_item {
                 if let Some(t) = trait_ {
-                    let it = t.items.iter().find(|i| i.name == item.name).unwrap();
-                    // We need the stability of the item from the trait because
-                    // impls can't have a stability.
-                    document_stability(w, cx, it)?;
-                    if item.doc_value().is_some() {
-                        document_full(w, item)?;
-                    } else {
-                        // In case the item isn't documented,
-                        // provide short documentation from the trait.
-                        document_short(w, it, link)?;
+                    // The trait item may have been stripped so we might not
+                    // find any documentation or stability for it.
+                    if let Some(it) = t.items.iter().find(|i| i.name == item.name) {
+                        // We need the stability of the item from the trait
+                        // because impls can't have a stability.
+                        document_stability(w, cx, it)?;
+                        if item.doc_value().is_some() {
+                            document_full(w, item)?;
+                        } else {
+                            // In case the item isn't documented,
+                            // provide short documentation from the trait.
+                            document_short(w, it, link)?;
+                        }
                     }
                 } else {
                     document(w, cx, item)?;
