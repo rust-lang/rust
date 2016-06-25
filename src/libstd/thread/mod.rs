@@ -220,6 +220,21 @@ impl Builder {
 
     /// Names the thread-to-be. Currently the name is used for identification
     /// only in panic messages.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new()
+    ///     .name("foo".into());
+    ///
+    /// let handler = builder.spawn(|| {
+    ///     assert_eq!(thread::current().name(), Some("foo"))
+    /// }).unwrap();
+    ///
+    /// handler.join().unwrap();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(mut self, name: String) -> Builder {
         self.name = Some(name);
