@@ -418,7 +418,7 @@ impl File {
         // The CLOEXEC flag, however, is supported on versions of OSX/BSD/etc
         // that we support, so we only do this on Linux currently.
         if cfg!(target_os = "linux") {
-            fd.set_cloexec();
+            fd.set_cloexec()?;
         }
 
         Ok(File(fd))
