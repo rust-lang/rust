@@ -220,6 +220,21 @@ impl Builder {
 
     /// Names the thread-to-be. Currently the name is used for identification
     /// only in panic messages.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new()
+    ///     .name("foo".into());
+    ///
+    /// let handler = builder.spawn(|| {
+    ///     assert_eq!(thread::current().name(), Some("foo"))
+    /// }).unwrap();
+    ///
+    /// handler.join().unwrap();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(mut self, name: String) -> Builder {
         self.name = Some(name);
@@ -379,6 +394,19 @@ pub fn sleep_ms(ms: u32) {
 /// signal being received or a spurious wakeup. Platforms which do not support
 /// nanosecond precision for sleeping will have `dur` rounded up to the nearest
 /// granularity of time they can sleep for.
+///
+/// # Examples
+///
+/// ```
+/// use std::{thread, time};
+///
+/// let ten_millis = time::Duration::from_millis(10);
+/// let now = time::Instant::now();
+///
+/// thread::sleep(ten_millis);
+///
+/// assert!(now.elapsed() >= ten_millis);
+/// ```
 #[stable(feature = "thread_sleep", since = "1.4.0")]
 pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)

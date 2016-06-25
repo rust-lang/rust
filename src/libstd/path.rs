@@ -579,6 +579,8 @@ impl<'a> AsRef<OsStr> for Component<'a> {
 /// See the module documentation for an in-depth explanation of components and
 /// their role in the API.
 ///
+/// This `struct` is created by the [`path::Path::components`] method.
+///
 /// # Examples
 ///
 /// ```
@@ -590,6 +592,8 @@ impl<'a> AsRef<OsStr> for Component<'a> {
 ///     println!("{:?}", component);
 /// }
 /// ```
+///
+/// [`path::Path::components`]: struct.Path.html#method.components
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
@@ -1781,7 +1785,9 @@ impl Path {
     /// This function will traverse symbolic links to query information about the
     /// destination file.
     ///
-    /// This is an alias to `fs::metadata`.
+    /// This is an alias to [`fs::metadata`].
+    ///
+    /// [`fs::metadata`]: ../fs/fn.metadata.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn metadata(&self) -> io::Result<fs::Metadata> {
         fs::metadata(self)
@@ -1789,7 +1795,9 @@ impl Path {
 
     /// Query the metadata about a file without following symlinks.
     ///
-    /// This is an alias to `fs::symlink_metadata`.
+    /// This is an alias to [`fs::symlink_metadata`].
+    ///
+    /// [`fs::symlink_metadata`]: ../fs/fn.symlink_metadata.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn symlink_metadata(&self) -> io::Result<fs::Metadata> {
         fs::symlink_metadata(self)
@@ -1798,7 +1806,9 @@ impl Path {
     /// Returns the canonical form of the path with all intermediate components
     /// normalized and symbolic links resolved.
     ///
-    /// This is an alias to `fs::canonicalize`.
+    /// This is an alias to [`fs::canonicalize`].
+    ///
+    /// [`fs::canonicalize`]: ../fs/fn.canonicalize.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn canonicalize(&self) -> io::Result<PathBuf> {
         fs::canonicalize(self)
@@ -1806,7 +1816,9 @@ impl Path {
 
     /// Reads a symbolic link, returning the file that the link points to.
     ///
-    /// This is an alias to `fs::read_link`.
+    /// This is an alias to [`fs::read_link`].
+    ///
+    /// [`fs::read_link`]: ../fs/fn.read_link.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn read_link(&self) -> io::Result<PathBuf> {
         fs::read_link(self)
@@ -1817,7 +1829,9 @@ impl Path {
     /// The iterator will yield instances of `io::Result<DirEntry>`. New errors may
     /// be encountered after an iterator is initially constructed.
     ///
-    /// This is an alias to `fs::read_dir`.
+    /// This is an alias to [`fs::read_dir`].
+    ///
+    /// [`fs::read_dir`]: ../fs/fn.read_dir.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn read_dir(&self) -> io::Result<fs::ReadDir> {
         fs::read_dir(self)
