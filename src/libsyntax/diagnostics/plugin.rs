@@ -13,12 +13,13 @@ use std::collections::BTreeMap;
 use std::env;
 
 use ast;
-use ast::{Ident, Name, TokenTree};
+use ast::{Ident, Name};
 use syntax_pos::Span;
 use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
+use tokenstream::{TokenTree};
 use util::small_vector::SmallVector;
 
 use diagnostics::metadata::output_metadata;

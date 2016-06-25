@@ -32,6 +32,7 @@ use fold::Folder;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::default::Default;
+use tokenstream;
 
 
 #[derive(Debug,Clone)]
@@ -168,20 +169,22 @@ pub trait TTMacroExpander {
     fn expand<'cx>(&self,
                    ecx: &'cx mut ExtCtxt,
                    span: Span,
-                   token_tree: &[ast::TokenTree])
+                   token_tree: &[tokenstream::TokenTree])
                    -> Box<MacResult+'cx>;
 }
 
 pub type MacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt, Span, &[ast::TokenTree]) -> Box<MacResult+'cx>;
+    for<'cx> fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
+                -> Box<MacResult+'cx>;
 
 impl<F> TTMacroExpander for F
-    where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, &[ast::TokenTree]) -> Box<MacResult+'cx>
+    where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
+                          -> Box<MacResult+'cx>
 {
     fn expand<'cx>(&self,
                    ecx: &'cx mut ExtCtxt,
                    span: Span,
-                   token_tree: &[ast::TokenTree])
+                   token_tree: &[tokenstream::TokenTree])
                    -> Box<MacResult+'cx> {
         (*self)(ecx, span, token_tree)
     }
@@ -192,22 +195,23 @@ pub trait IdentMacroExpander {
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    ident: ast::Ident,
-                   token_tree: Vec<ast::TokenTree> )
+                   token_tree: Vec<tokenstream::TokenTree> )
                    -> Box<MacResult+'cx>;
 }
 
 pub type IdentMacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree>) -> Box<MacResult+'cx>;
+    for<'cx> fn(&'cx mut ExtCtxt, Span, ast::Ident, Vec<tokenstream::TokenTree>)
+                -> Box<MacResult+'cx>;
 
 impl<F> IdentMacroExpander for F
     where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, ast::Ident,
-                          Vec<ast::TokenTree>) -> Box<MacResult+'cx>
+                          Vec<tokenstream::TokenTree>) -> Box<MacResult+'cx>
 {
     fn expand<'cx>(&self,
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    ident: ast::Ident,
-                   token_tree: Vec<ast::TokenTree> )
+                   token_tree: Vec<tokenstream::TokenTree> )
                    -> Box<MacResult+'cx>
     {
         (*self)(cx, sp, ident, token_tree)
@@ -630,7 +634,7 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self)
     }
 
-    pub fn new_parser_from_tts(&self, tts: &[ast::TokenTree])
+    pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree])
         -> parser::Parser<'a> {
         parse::tts_to_parser(self.parse_sess, tts.to_vec(), self.cfg())
     }
@@ -829,7 +833,7 @@ pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
 /// done as rarely as possible).
 pub fn check_zero_tts(cx: &ExtCtxt,
                       sp: Span,
-                      tts: &[ast::TokenTree],
+                      tts: &[tokenstream::TokenTree],
                       name: &str) {
     if !tts.is_empty() {
         cx.span_err(sp, &format!("{} takes no arguments", name));
@@ -840,7 +844,7 @@ pub fn check_zero_tts(cx: &ExtCtxt,
 /// is not a string literal, emit an error and return None.
 pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
                                sp: Span,
-                               tts: &[ast::TokenTree],
+                               tts: &[tokenstream::TokenTree],
                                name: &str)
                                -> Option<String> {
     let mut p = cx.new_parser_from_tts(tts);
@@ -861,7 +865,7 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
 /// parsing error, emit a non-fatal error and return None.
 pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
                           sp: Span,
-                          tts: &[ast::TokenTree]) -> Option<Vec<P<ast::Expr>>> {
+                          tts: &[tokenstream::TokenTree]) -> Option<Vec<P<ast::Expr>>> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
