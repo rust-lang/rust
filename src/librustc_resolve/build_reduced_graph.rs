@@ -313,6 +313,7 @@ impl<'b> Resolver<'b> {
                             (Def::Method(item_def_id), ValueNS)
                         }
                         TraitItemKind::Type(..) => (Def::AssociatedTy(def_id, item_def_id), TypeNS),
+                        TraitItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
                     };
 
                     self.define(module_parent, item.ident.name, ns, (def, item.span, vis));

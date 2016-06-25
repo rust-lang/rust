@@ -568,6 +568,9 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);
         }
+        TraitItemKind::Macro(ref mac) => {
+            visitor.visit_mac(mac);
+        }
     }
 }
 

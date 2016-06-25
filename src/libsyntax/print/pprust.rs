@@ -1550,6 +1550,17 @@ impl<'a> State<'a> {
                 try!(self.print_associated_type(ti.ident, Some(bounds),
                                            default.as_ref().map(|ty| &**ty)));
             }
+            ast::TraitItemKind::Macro(codemap::Spanned { ref node, .. }) => {
+                // code copied from ItemKind::Mac:
+                self.print_path(&node.path, false, 0)?;
+                word(&mut self.s, "! ")?;
+                self.cbox(INDENT_UNIT)?;
+                self.popen()?;
+                self.print_tts(&node.tts[..])?;
+                self.pclose()?;
+                word(&mut self.s, ";")?;
+                self.end()?
+            }
         }
         self.ann.post(self, NodeSubItem(ti.id))
     }

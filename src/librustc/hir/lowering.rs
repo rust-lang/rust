@@ -683,6 +683,7 @@ impl<'a> LoweringContext<'a> {
                         hir::TypeTraitItem(this.lower_bounds(bounds),
                                            default.as_ref().map(|x| this.lower_ty(x)))
                     }
+                    TraitItemKind::Macro(..) => panic!("Shouldn't exist any more"),
                 },
                 span: i.span,
             }

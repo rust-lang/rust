@@ -100,6 +100,21 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         Some(ret)
     }
 
+    fn make_trait_items(self: Box<ParserAnyMacro<'a>>)
+                       -> Option<SmallVector<ast::TraitItem>> {
+        let mut ret = SmallVector::zero();
+        loop {
+            let mut parser = self.parser.borrow_mut();
+            match parser.token {
+                token::Eof => break,
+                _ => ret.push(panictry!(parser.parse_trait_item()))
+            }
+        }
+        self.ensure_complete_parse(false, "item");
+        Some(ret)
+    }
+
+
     fn make_stmts(self: Box<ParserAnyMacro<'a>>)
                  -> Option<SmallVector<ast::Stmt>> {
         let mut ret = SmallVector::zero();
