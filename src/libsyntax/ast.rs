@@ -611,7 +611,6 @@ impl Pat {
             PatKind::Range(_, _) |
             PatKind::Ident(_, _, _) |
             PatKind::Path(..) |
-            PatKind::QPath(_, _) |
             PatKind::Mac(_) => {
                 true
             }
@@ -659,15 +658,11 @@ pub enum PatKind {
     /// 0 <= position <= subpats.len()
     TupleStruct(Path, Vec<P<Pat>>, Option<usize>),
 
-    /// A path pattern.
-    /// Such pattern can be resolved to a unit struct/variant or a constant.
-    Path(Path),
-
-    /// An associated const named using the qualified path `<T>::CONST` or
-    /// `<T as Trait>::CONST`. Associated consts from inherent impls can be
-    /// referred to as simply `T::CONST`, in which case they will end up as
-    /// PatKind::Path, and the resolver will have to sort that out.
-    QPath(QSelf, Path),
+    /// A possibly qualified path pattern.
+    /// Unquailfied path patterns `A::B::C` can legally refer to variants, structs, constants
+    /// or associated constants. Quailfied path patterns `<A>::B::C`/`<A as Trait>::B::C` can
+    /// only legally refer to associated constants.
+    Path(Option<QSelf>, Path),
 
     /// A tuple pattern `(a, b)`.
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
