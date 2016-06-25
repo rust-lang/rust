@@ -174,7 +174,7 @@ Here, we bind the first and last element of the tuple to `x` and `z`, but
 ignore the middle element.
 
 It’s worth noting that using `_` never binds the value in the first place,
-which means a value may not move:
+which means that the value does not move:
 
 ```rust
 let tuple: (u32, String) = (5, String::from("five"));
