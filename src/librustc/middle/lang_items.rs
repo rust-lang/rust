@@ -37,7 +37,7 @@ use hir;
 
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
-macro_rules! lets_do_this {
+macro_rules! language_item_table {
     (
         $( $variant:ident, $name:expr, $method:ident; )*
     ) => {
@@ -269,7 +269,7 @@ pub fn collect_language_items(session: &Session,
     }
 }
 
-lets_do_this! {
+language_item_table! {
 //  Variant name,                    Name,                      Method name;
     CharImplItem,                    "char",                    char_impl;
     StrImplItem,                     "str",                     str_impl;
