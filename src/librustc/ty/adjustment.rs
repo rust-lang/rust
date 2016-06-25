@@ -11,7 +11,7 @@
 pub use self::AutoAdjustment::*;
 pub use self::AutoRef::*;
 
-use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFoldable};
+use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFoldable, TypeVariants};
 use ty::LvaluePreference::{NoPreference};
 
 use syntax::ast;
@@ -21,9 +21,10 @@ use hir;
 
 #[derive(Copy, Clone)]
 pub enum AutoAdjustment<'tcx> {
-    AdjustReifyFnPointer,    // go from a fn-item type to a fn-pointer type
-    AdjustUnsafeFnPointer,   // go from a safe fn pointer to an unsafe fn pointer
-    AdjustMutToConstPointer, // go from a mut raw pointer to a const raw pointer
+    AdjustEmptyToAny(Ty<'tcx>), // go from ! to any type
+    AdjustReifyFnPointer,       // go from a fn-item type to a fn-pointer type
+    AdjustUnsafeFnPointer,      // go from a safe fn pointer to an unsafe fn pointer
+    AdjustMutToConstPointer,    // go from a mut raw pointer to a const raw pointer
     AdjustDerefRef(AutoDerefRef<'tcx>),
 }
 
@@ -106,6 +107,10 @@ pub struct AutoDerefRef<'tcx> {
 impl<'tcx> AutoAdjustment<'tcx> {
     pub fn is_identity(&self) -> bool {
         match *self {
+            AdjustEmptyToAny(ref ty) => match ty.sty {
+                TypeVariants::TyEmpty => true,
+                _ => false,
+            },
             AdjustReifyFnPointer |
             AdjustUnsafeFnPointer |
             AdjustMutToConstPointer => false,
@@ -154,6 +159,8 @@ impl<'a, 'gcx, 'tcx> ty::TyS<'tcx> {
         return match adjustment {
             Some(adjustment) => {
                 match *adjustment {
+                    AdjustEmptyToAny(ref ty) => ty,
+
                     AdjustReifyFnPointer => {
                         match self.sty {
                             ty::TyFnDef(_, _, f) => tcx.mk_fn_ptr(f),

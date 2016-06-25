@@ -69,7 +69,7 @@ use tvec;
 use type_of;
 use value::Value;
 use Disr;
-use rustc::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
+use rustc::ty::adjustment::{AdjustEmptyToAny, AdjustDerefRef, AdjustReifyFnPointer};
 use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -348,6 +348,7 @@ fn adjustment_required<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     match adjustment {
+        AdjustEmptyToAny(..) => true,
         AdjustReifyFnPointer => true,
         AdjustUnsafeFnPointer | AdjustMutToConstPointer => {
             // purely a type-level thing
@@ -380,6 +381,12 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("unadjusted datum for expr {:?}: {:?} adjustment={:?}",
            expr, datum, adjustment);
     match adjustment {
+        AdjustEmptyToAny(..) => {
+            let const_ty = expr_ty(bcx, expr);
+            let llty = type_of::type_of(bcx.ccx(), const_ty);
+            let dummy = C_undef(llty.ptr_to());
+            datum = Datum::new(dummy, const_ty, Rvalue::new(ByRef)).to_expr_datum();
+        }
         AdjustReifyFnPointer => {
             match datum.ty.sty {
                 ty::TyFnDef(def_id, substs, _) => {
