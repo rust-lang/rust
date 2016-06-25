@@ -204,6 +204,7 @@ impl<'ast> visit::Visitor<'ast> for DefCollector<'ast> {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
                 DefPathData::ValueNs(ti.ident.name),
             TraitItemKind::Type(..) => DefPathData::TypeNs(ti.ident.name),
+            TraitItemKind::Macro(..) => DefPathData::MacroDef(ti.ident.name),
         };
 
         let def = self.create_def(ti.id, def_data);
