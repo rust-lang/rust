@@ -843,6 +843,17 @@ Or:
 let unknown_variable = 12u32;
 let x = unknown_variable; // ok!
 ```
+
+If the item is not defined in the current module, it must be imported using a
+`use` statement, like so:
+
+```ignore
+use foo::bar;
+bar();
+```
+
+If the item you are importing is not defined in some super-module of the
+current module, then it must also be declared as public (e.g., `pub fn`).
 "##,
 
 E0426: r##"
