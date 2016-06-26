@@ -71,14 +71,6 @@ fn new_sctable_internal() -> SCTable {
     }
 }
 
-/// Print out an SCTable for debugging
-pub fn display_sctable(table: &SCTable) {
-    error!("SC table:");
-    for (idx,val) in table.table.borrow().iter().enumerate() {
-        error!("{:4} : {:?}",idx,val);
-    }
-}
-
 /// Clear the tables from TLD to reclaim memory.
 pub fn clear_tables() {
     with_sctable(|table| {
@@ -128,13 +120,8 @@ pub fn source(ident: Ident) -> Option<(Ident /* source ident */, Mrk /* source m
 
 #[cfg(test)]
 mod tests {
-    use ast::{EMPTY_CTXT, Ident, Mrk, Name, SyntaxContext};
-    use super::{resolve, apply_mark_internal, new_sctable_internal};
-    use super::{SCTable, Mark};
-
-    fn id(n: u32, s: SyntaxContext) -> Ident {
-        Ident::new(Name(n), s)
-    }
+    use ast::{EMPTY_CTXT, Mrk, SyntaxContext};
+    use super::{apply_mark_internal, new_sctable_internal, Mark, SCTable};
 
     // extend a syntax context with a sequence of marks given
     // in a vector. v[0] will be the outermost mark.
@@ -153,12 +140,6 @@ mod tests {
             assert!((*table)[1] == Mark(7,EMPTY_CTXT));
             assert!((*table)[2] == Mark(3,SyntaxContext(1)));
         }
-    }
-
-    #[test]
-    fn mtwt_resolve_test(){
-        let a = 40;
-        assert_eq!(resolve(id(a,EMPTY_CTXT)),Name(a));
     }
 
     #[test]
