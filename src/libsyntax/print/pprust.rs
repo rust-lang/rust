@@ -1606,19 +1606,34 @@ impl<'a> State<'a> {
     pub fn print_stmt(&mut self, st: &ast::Stmt) -> io::Result<()> {
         try!(self.maybe_print_comment(st.span.lo));
         match st.node {
-            ast::StmtKind::Decl(ref decl, _) => {
-                try!(self.print_decl(&decl));
+            ast::StmtKind::Local(ref loc) => {
+                try!(self.print_outer_attributes(loc.attrs.as_attr_slice()));
+                try!(self.space_if_not_bol());
+                try!(self.ibox(INDENT_UNIT));
+                try!(self.word_nbsp("let"));
+
+                try!(self.ibox(INDENT_UNIT));
+                try!(self.print_local_decl(&loc));
+                try!(self.end());
+                if let Some(ref init) = loc.init {
+                    try!(self.nbsp());
+                    try!(self.word_space("="));
+                    try!(self.print_expr(&init));
+                }
+                self.end()?;
             }
-            ast::StmtKind::Expr(ref expr, _) => {
+            ast::StmtKind::Item(ref item) => self.print_item(&item)?,
+            ast::StmtKind::Expr(ref expr) => {
                 try!(self.space_if_not_bol());
                 try!(self.print_expr_outer_attr_style(&expr, false));
             }
-            ast::StmtKind::Semi(ref expr, _) => {
+            ast::StmtKind::Semi(ref expr) => {
                 try!(self.space_if_not_bol());
                 try!(self.print_expr_outer_attr_style(&expr, false));
                 try!(word(&mut self.s, ";"));
             }
-            ast::StmtKind::Mac(ref mac, style, ref attrs) => {
+            ast::StmtKind::Mac(ref mac) => {
+                let (ref mac, style, ref attrs) = **mac;
                 try!(self.space_if_not_bol());
                 try!(self.print_outer_attributes(attrs.as_attr_slice()));
                 let delim = match style {
@@ -2183,7 +2198,7 @@ impl<'a> State<'a> {
                     try!(space(&mut self.s));
                 }
             }
-            ast::ExprKind::Again(opt_ident) => {
+            ast::ExprKind::Continue(opt_ident) => {
                 try!(word(&mut self.s, "continue"));
                 try!(space(&mut self.s));
                 if let Some(ident) = opt_ident {
@@ -2289,29 +2304,6 @@ impl<'a> State<'a> {
             try!(self.print_type(&ty));
         }
         Ok(())
-    }
-
-    pub fn print_decl(&mut self, decl: &ast::Decl) -> io::Result<()> {
-        try!(self.maybe_print_comment(decl.span.lo));
-        match decl.node {
-            ast::DeclKind::Local(ref loc) => {
-                try!(self.print_outer_attributes(loc.attrs.as_attr_slice()));
-                try!(self.space_if_not_bol());
-                try!(self.ibox(INDENT_UNIT));
-                try!(self.word_nbsp("let"));
-
-                try!(self.ibox(INDENT_UNIT));
-                try!(self.print_local_decl(&loc));
-                try!(self.end());
-                if let Some(ref init) = loc.init {
-                    try!(self.nbsp());
-                    try!(self.word_space("="));
-                    try!(self.print_expr(&init));
-                }
-                self.end()
-            }
-            ast::DeclKind::Item(ref item) => self.print_item(&item)
-        }
     }
 
     pub fn print_ident(&mut self, ident: ast::Ident) -> io::Result<()> {

@@ -63,10 +63,6 @@ impl Visitor for NodeCounter {
         self.count += 1;
         walk_pat(self, p)
     }
-    fn visit_decl(&mut self, d: &Decl) {
-        self.count += 1;
-        walk_decl(self, d)
-    }
     fn visit_expr(&mut self, ex: &Expr) {
         self.count += 1;
         walk_expr(self, ex)

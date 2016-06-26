@@ -65,7 +65,6 @@ pub trait Visitor: Sized {
     fn visit_stmt(&mut self, s: &Stmt) { walk_stmt(self, s) }
     fn visit_arm(&mut self, a: &Arm) { walk_arm(self, a) }
     fn visit_pat(&mut self, p: &Pat) { walk_pat(self, p) }
-    fn visit_decl(&mut self, d: &Decl) { walk_decl(self, d) }
     fn visit_expr(&mut self, ex: &Expr) { walk_expr(self, ex) }
     fn visit_expr_post(&mut self, _ex: &Expr) { }
     fn visit_ty(&mut self, t: &Ty) { walk_ty(self, t) }
@@ -597,23 +596,18 @@ pub fn walk_block<V: Visitor>(visitor: &mut V, block: &Block) {
 
 pub fn walk_stmt<V: Visitor>(visitor: &mut V, statement: &Stmt) {
     match statement.node {
-        StmtKind::Decl(ref declaration, _) => visitor.visit_decl(declaration),
-        StmtKind::Expr(ref expression, _) | StmtKind::Semi(ref expression, _) => {
+        StmtKind::Local(ref local) => visitor.visit_local(local),
+        StmtKind::Item(ref item) => visitor.visit_item(item),
+        StmtKind::Expr(ref expression) | StmtKind::Semi(ref expression) => {
             visitor.visit_expr(expression)
         }
-        StmtKind::Mac(ref mac, _, ref attrs) => {
+        StmtKind::Mac(ref mac) => {
+            let (ref mac, _, ref attrs) = **mac;
             visitor.visit_mac(mac);
             for attr in attrs.as_attr_slice() {
                 visitor.visit_attribute(attr);
             }
         }
-    }
-}
-
-pub fn walk_decl<V: Visitor>(visitor: &mut V, declaration: &Decl) {
-    match declaration.node {
-        DeclKind::Local(ref local) => visitor.visit_local(local),
-        DeclKind::Item(ref item) => visitor.visit_item(item),
     }
 }
 
@@ -745,7 +739,7 @@ pub fn walk_expr<V: Visitor>(visitor: &mut V, expression: &Expr) {
             }
             visitor.visit_path(path, expression.id)
         }
-        ExprKind::Break(ref opt_sp_ident) | ExprKind::Again(ref opt_sp_ident) => {
+        ExprKind::Break(ref opt_sp_ident) | ExprKind::Continue(ref opt_sp_ident) => {
             walk_opt_sp_ident(visitor, opt_sp_ident);
         }
         ExprKind::Ret(ref optional_expression) => {

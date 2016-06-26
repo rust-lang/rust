@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, DeclKind, PatKind};
+use ast::{Block, Crate, PatKind};
 use ast::{Local, Ident, Mac_, Name, SpannedIdent};
 use ast::{MacStmtStyle, Mrk, Stmt, StmtKind, ItemKind};
 use ast;
@@ -439,25 +439,25 @@ fn expand_stmt(stmt: Stmt, fld: &mut MacroExpander) -> SmallVector<Stmt> {
     };
 
     let (mac, style, attrs) = match stmt.node {
-        StmtKind::Mac(mac, style, attrs) => (mac, style, attrs),
+        StmtKind::Mac(mac) => mac.unwrap(),
         _ => return expand_non_macro_stmt(stmt, fld)
     };
 
     let mut fully_expanded: SmallVector<ast::Stmt> =
-        expand_mac_invoc(mac.unwrap(), None, attrs.into_attr_vec(), stmt.span, fld);
+        expand_mac_invoc(mac, None, attrs.into_attr_vec(), stmt.span, fld);
 
     // If this is a macro invocation with a semicolon, then apply that
     // semicolon to the final statement produced by expansion.
     if style == MacStmtStyle::Semicolon {
         if let Some(stmt) = fully_expanded.pop() {
-            let new_stmt = Spanned {
+            fully_expanded.push(Stmt {
+                id: stmt.id,
                 node: match stmt.node {
-                    StmtKind::Expr(e, stmt_id) => StmtKind::Semi(e, stmt_id),
+                    StmtKind::Expr(expr) => StmtKind::Semi(expr),
                     _ => stmt.node /* might already have a semi */
                 },
-                span: stmt.span
-            };
-            fully_expanded.push(new_stmt);
+                span: stmt.span,
+            });
         }
     }
 
@@ -466,73 +466,53 @@ fn expand_stmt(stmt: Stmt, fld: &mut MacroExpander) -> SmallVector<Stmt> {
 
 // expand a non-macro stmt. this is essentially the fallthrough for
 // expand_stmt, above.
-fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroExpander)
+fn expand_non_macro_stmt(stmt: Stmt, fld: &mut MacroExpander)
                          -> SmallVector<Stmt> {
     // is it a let?
-    match node {
-        StmtKind::Decl(decl, node_id) => decl.and_then(|Spanned {node: decl, span}| match decl {
-            DeclKind::Local(local) => {
-                // take it apart:
-                let rewritten_local = local.map(|Local {id, pat, ty, init, span, attrs}| {
-                    // expand the ty since TyKind::FixedLengthVec contains an Expr
-                    // and thus may have a macro use
-                    let expanded_ty = ty.map(|t| fld.fold_ty(t));
-                    // expand the pat (it might contain macro uses):
-                    let expanded_pat = fld.fold_pat(pat);
-                    // find the PatIdents in the pattern:
-                    // oh dear heaven... this is going to include the enum
-                    // names, as well... but that should be okay, as long as
-                    // the new names are gensyms for the old ones.
-                    // generate fresh names, push them to a new pending list
-                    let idents = pattern_bindings(&expanded_pat);
-                    let mut new_pending_renames =
-                        idents.iter().map(|ident| (*ident, fresh_name(*ident))).collect();
-                    // rewrite the pattern using the new names (the old
-                    // ones have already been applied):
-                    let rewritten_pat = {
-                        // nested binding to allow borrow to expire:
-                        let mut rename_fld = IdentRenamer{renames: &mut new_pending_renames};
-                        rename_fld.fold_pat(expanded_pat)
-                    };
-                    // add them to the existing pending renames:
-                    fld.cx.syntax_env.info().pending_renames
-                          .extend(new_pending_renames);
-                    Local {
-                        id: id,
-                        ty: expanded_ty,
-                        pat: rewritten_pat,
-                        // also, don't forget to expand the init:
-                        init: init.map(|e| fld.fold_expr(e)),
-                        span: span,
-                        attrs: fold::fold_thin_attrs(attrs, fld),
-                    }
-                });
-                SmallVector::one(Spanned {
-                    node: StmtKind::Decl(P(Spanned {
-                            node: DeclKind::Local(rewritten_local),
-                            span: span
-                        }),
-                        node_id),
-                    span: stmt_span
-                })
-            }
-            _ => {
-                noop_fold_stmt(Spanned {
-                    node: StmtKind::Decl(P(Spanned {
-                            node: decl,
-                            span: span
-                        }),
-                        node_id),
-                    span: stmt_span
-                }, fld)
-            }
-        }),
-        _ => {
-            noop_fold_stmt(Spanned {
-                node: node,
-                span: stmt_span
-            }, fld)
+    match stmt.node {
+        StmtKind::Local(local) => {
+            // take it apart:
+            let rewritten_local = local.map(|Local {id, pat, ty, init, span, attrs}| {
+                // expand the ty since TyKind::FixedLengthVec contains an Expr
+                // and thus may have a macro use
+                let expanded_ty = ty.map(|t| fld.fold_ty(t));
+                // expand the pat (it might contain macro uses):
+                let expanded_pat = fld.fold_pat(pat);
+                // find the PatIdents in the pattern:
+                // oh dear heaven... this is going to include the enum
+                // names, as well... but that should be okay, as long as
+                // the new names are gensyms for the old ones.
+                // generate fresh names, push them to a new pending list
+                let idents = pattern_bindings(&expanded_pat);
+                let mut new_pending_renames =
+                    idents.iter().map(|ident| (*ident, fresh_name(*ident))).collect();
+                // rewrite the pattern using the new names (the old
+                // ones have already been applied):
+                let rewritten_pat = {
+                    // nested binding to allow borrow to expire:
+                    let mut rename_fld = IdentRenamer{renames: &mut new_pending_renames};
+                    rename_fld.fold_pat(expanded_pat)
+                };
+                // add them to the existing pending renames:
+                fld.cx.syntax_env.info().pending_renames
+                      .extend(new_pending_renames);
+                Local {
+                    id: id,
+                    ty: expanded_ty,
+                    pat: rewritten_pat,
+                    // also, don't forget to expand the init:
+                    init: init.map(|e| fld.fold_expr(e)),
+                    span: span,
+                    attrs: fold::fold_thin_attrs(attrs, fld),
+                }
+            });
+            SmallVector::one(Stmt {
+                id: stmt.id,
+                node: StmtKind::Local(rewritten_local),
+                span: stmt.span,
+            })
         }
+        _ => noop_fold_stmt(stmt, fld),
     }
 }
 

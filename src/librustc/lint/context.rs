@@ -1005,11 +1005,6 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
         ast_visit::walk_arm(self, a);
     }
 
-    fn visit_decl(&mut self, d: &ast::Decl) {
-        run_lints!(self, check_decl, early_passes, d);
-        ast_visit::walk_decl(self, d);
-    }
-
     fn visit_expr_post(&mut self, e: &ast::Expr) {
         run_lints!(self, check_expr_post, early_passes, e);
     }

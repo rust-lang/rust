@@ -213,17 +213,10 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
     }
 
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
-        let is_item = match stmt.node {
-            ast::StmtKind::Decl(ref decl, _) => match decl.node {
-                ast::DeclKind::Item(_) => true,
-                _ => false,
-            },
-            _ => false,
-        };
-
         // avoid calling `visit_stmt_or_expr_attrs` on items
-        if !is_item {
-            self.visit_stmt_or_expr_attrs(stmt.attrs());
+        match stmt.node {
+            ast::StmtKind::Item(_) => {}
+            _ => self.visit_stmt_or_expr_attrs(stmt.attrs()),
         }
 
         self.configure(stmt).map(|stmt| fold::noop_fold_stmt(stmt, self))

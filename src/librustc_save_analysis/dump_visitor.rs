@@ -1423,8 +1423,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
     }
 
     fn visit_stmt(&mut self, s: &ast::Stmt) {
-        let id = s.node.id();
-        self.process_macro_use(s.span, id.unwrap());
+        self.process_macro_use(s.span, s.id);
         visit::walk_stmt(self, s)
     }
 
