@@ -65,7 +65,7 @@ use self::Entry::*;
 /// use std::collections::BTreeMap;
 ///
 /// // type inference lets us omit an explicit type signature (which
-/// // would be [`BTreeMap<&str, &str>`] in this example).
+/// // would be `BTreeMap<&str, &str>` in this example).
 /// let mut movie_reviews = BTreeMap::new();
 ///
 /// // review some movies.
@@ -98,7 +98,7 @@ use self::Entry::*;
 /// }
 /// ```
 ///
-/// [`BTreeMap`] also implements an [`Entry API`](#method.entry), which allows
+/// `BTreeMap` also implements an [`Entry API`](#method.entry), which allows
 /// for more complex methods of getting, setting, updating and removing keys and
 /// their values:
 ///
@@ -106,7 +106,7 @@ use self::Entry::*;
 /// use std::collections::BTreeMap;
 ///
 /// // type inference lets us omit an explicit type signature (which
-/// // would be [`BTreeMap<&str, u8>`] in this example).
+/// // would be `BTreeMap<&str, u8>` in this example).
 /// let mut player_stats = BTreeMap::new();
 ///
 /// fn random_stat_buff() -> u8 {
@@ -127,9 +127,6 @@ use self::Entry::*;
 /// *stat += random_stat_buff();
 /// ```
 ///
-/// [`BTreeMap`]: /std/collections/struct.BTreeMap.html
-/// [`BTreeMap<&str, &str>`]: /std/collections/struct.BTreeMap.html
-/// [`BTreeMap<&str, u8>`]: /std/collections/struct.BTreeMap.html
 /// [`Cell`]: /std/cell/struct.Cell.html
 /// [`Ord`]: /std/cmp/trait.Ord.html
 /// [`RefCell`]: /std/cell/struct.RefCell.html
