@@ -24,7 +24,6 @@ name = "cargo-clippy"
 test = false
 
 [dependencies]
-regex_macros = { version = "0.1.33", optional = true }
 # begin automatic update
 clippy_lints = { version = "0.0.77", path = "clippy_lints" }
 # end automatic update
@@ -32,9 +31,10 @@ clippy_lints = { version = "0.0.77", path = "clippy_lints" }
 [dev-dependencies]
 compiletest_rs = "0.2.0"
 lazy_static = "0.1.15"
-regex = "0.1.56"
+regex = "0.1.71"
 rustc-serialize = "0.3"
+clippy-mini-macro-test = { version = "0.1", path = "mini-macro" }
+
 
 [features]
 debugging = []
-test-regex_macros = ["regex_macros"]
