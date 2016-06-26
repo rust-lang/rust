@@ -33,7 +33,7 @@ compiletest_rs = "0.2.0"
 lazy_static = "0.1.15"
 regex = "0.1.71"
 rustc-serialize = "0.3"
-mini-macro = { version = "0.1", path = "mini-macro" }
+clippy-mini-macro-test = { version = "0.1", path = "mini-macro" }
 
 
 [features]

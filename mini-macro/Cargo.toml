@@ -1,5 +1,5 @@
 [package]
-name = "mini-macro"
+name = "clippy-mini-macro-test"
 version = "0.1.0"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
@@ -8,9 +8,12 @@ authors = [
 	"Martin Carton <cartonmartin@gmail.com>",
 	"Oliver Schneider <clippy-iethah7aipeen8neex1a@oli-obk.de>"
 ]
+license = "MPL-2.0"
+description = "A macro to test clippy's procedural macro checks"
+repository = "https://github.com/Manishearth/rust-clippy"
 
 [lib]
-name = "mini_macro"
+name = "clippy_mini_macro_test"
 plugin = true
 
 [dependencies]
