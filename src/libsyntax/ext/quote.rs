@@ -32,7 +32,6 @@ pub mod rt {
     use ext::base::ExtCtxt;
     use parse::{self, token, classify};
     use ptr::P;
-    use std::rc::Rc;
 
     use tokenstream::{self, TokenTree};
 
@@ -216,12 +215,12 @@ pub mod rt {
             if self.node.style == ast::AttrStyle::Inner {
                 r.push(TokenTree::Token(self.span, token::Not));
             }
-            r.push(TokenTree::Delimited(self.span, Rc::new(tokenstream::Delimited {
+            r.push(TokenTree::Delimited(self.span, tokenstream::Delimited {
                 delim: token::Bracket,
                 open_span: self.span,
                 tts: self.node.value.to_tokens(cx),
                 close_span: self.span,
-            })));
+            }));
             r
         }
     }
@@ -236,12 +235,12 @@ pub mod rt {
 
     impl ToTokens for () {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Delimited(DUMMY_SP, Rc::new(tokenstream::Delimited {
+            vec![TokenTree::Delimited(DUMMY_SP, tokenstream::Delimited {
                 delim: token::Paren,
                 open_span: DUMMY_SP,
                 tts: vec![],
                 close_span: DUMMY_SP,
-            }))]
+            })]
         }
     }
 
@@ -793,14 +792,9 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<ast::Stm
                                 id_ext("tokenstream"),
                                 id_ext("SequenceRepetition")];
             let e_seq_struct = cx.expr_struct(sp, cx.path_global(sp, seq_path), fields);
-            let e_rc_new = cx.expr_call_global(sp, vec![id_ext("std"),
-                                                        id_ext("rc"),
-                                                        id_ext("Rc"),
-                                                        id_ext("new")],
-                                                   vec![e_seq_struct]);
             let e_tok = cx.expr_call(sp,
                                      mk_tt_path(cx, sp, "Sequence"),
-                                     vec!(e_sp, e_rc_new));
+                                     vec!(e_sp, e_seq_struct));
             let e_push =
                 cx.expr_method_call(sp,
                                     cx.expr_ident(sp, id_ext("tt")),

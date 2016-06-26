@@ -57,7 +57,7 @@ impl<'a> AstValidator<'a> {
     }
 }
 
-impl<'a, 'v> Visitor<'v> for AstValidator<'a> {
+impl<'a> Visitor for AstValidator<'a> {
     fn visit_lifetime(&mut self, lt: &Lifetime) {
         if lt.name.as_str() == "'_" {
             self.session.add_lint(

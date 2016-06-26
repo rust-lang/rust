@@ -505,7 +505,7 @@ struct BuildReducedGraphVisitor<'a, 'b: 'a> {
     parent: Module<'b>,
 }
 
-impl<'a, 'b, 'v> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b> {
+impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &Item) {
         let old_parent = self.parent;
         self.resolver.build_reduced_graph_for_item(item, &mut self.parent);

@@ -1038,7 +1038,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 }
 
-impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 'll, D> {
+impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> {
     fn visit_item(&mut self, item: &ast::Item) {
         use syntax::ast::ItemKind::*;
         self.process_macro_use(item.span, item.id);

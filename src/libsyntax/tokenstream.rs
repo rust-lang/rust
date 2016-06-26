@@ -20,7 +20,6 @@ use ext::tt::macro_parser;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::lexer;
 use parse::token;
-use std::rc::Rc;
 
 /// A delimited sequence of token trees
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -95,13 +94,13 @@ pub enum TokenTree {
     /// A single token
     Token(Span, token::Token),
     /// A delimited sequence of token trees
-    Delimited(Span, Rc<Delimited>),
+    Delimited(Span, Delimited),
 
     // This only makes sense in MBE macros.
 
     /// A kleene-style repetition sequence with a span
     // FIXME(eddyb) #12938 Use DST.
-    Sequence(Span, Rc<SequenceRepetition>),
+    Sequence(Span, SequenceRepetition),
 }
 
 impl TokenTree {
@@ -150,7 +149,7 @@ impl TokenTree {
                     Some(*cnt)
                 }).max().unwrap_or(0);
 
-                TokenTree::Delimited(sp, Rc::new(Delimited {
+                TokenTree::Delimited(sp, Delimited {
                     delim: token::Bracket,
                     open_span: sp,
                     tts: vec![TokenTree::Token(sp, token::Ident(token::str_to_ident("doc"))),
@@ -158,7 +157,7 @@ impl TokenTree {
                               TokenTree::Token(sp, token::Literal(
                                   token::StrRaw(token::intern(&stripped), num_of_hashes), None))],
                     close_span: sp,
-                }))
+                })
             }
             (&TokenTree::Delimited(_, ref delimed), _) => {
                 if index == 0 {
