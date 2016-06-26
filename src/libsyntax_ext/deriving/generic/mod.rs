@@ -353,8 +353,8 @@ fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast
         types: Vec<P<ast::Ty>>,
     }
 
-    impl<'a> visit::Visitor<'a> for Visitor<'a> {
-        fn visit_ty(&mut self, ty: &'a ast::Ty) {
+    impl<'a> visit::Visitor for Visitor<'a> {
+        fn visit_ty(&mut self, ty: &ast::Ty) {
             match ty.node {
                 ast::TyKind::Path(_, ref path) if !path.global => {
                     match path.segments.first() {

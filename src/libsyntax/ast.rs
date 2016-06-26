@@ -15,7 +15,7 @@ pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
 
-use attr::{ThinAttributes, HasAttrs};
+use attr::ThinAttributes;
 use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
@@ -846,10 +846,6 @@ impl StmtKind {
             StmtKind::Mac(..) => None,
         }
     }
-
-    pub fn attrs(&self) -> &[Attribute] {
-        HasAttrs::attrs(self)
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -879,12 +875,6 @@ pub struct Local {
     pub attrs: ThinAttributes,
 }
 
-impl Local {
-    pub fn attrs(&self) -> &[Attribute] {
-        HasAttrs::attrs(self)
-    }
-}
-
 pub type Decl = Spanned<DeclKind>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -893,12 +883,6 @@ pub enum DeclKind {
     Local(P<Local>),
     /// An item binding:
     Item(P<Item>),
-}
-
-impl Decl {
-    pub fn attrs(&self) -> &[Attribute] {
-        HasAttrs::attrs(self)
-    }
 }
 
 /// An arm of a 'match'.
@@ -947,12 +931,6 @@ pub struct Expr {
     pub node: ExprKind,
     pub span: Span,
     pub attrs: ThinAttributes
-}
-
-impl Expr {
-    pub fn attrs(&self) -> &[Attribute] {
-        HasAttrs::attrs(self)
-    }
 }
 
 impl fmt::Debug for Expr {
@@ -1143,7 +1121,6 @@ pub type Mac = Spanned<Mac_>;
 pub struct Mac_ {
     pub path: Path,
     pub tts: Vec<TokenTree>,
-    pub ctxt: SyntaxContext,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1914,12 +1891,6 @@ pub struct Item {
     pub node: ItemKind,
     pub vis: Visibility,
     pub span: Span,
-}
-
-impl Item {
-    pub fn attrs(&self) -> &[Attribute] {
-        &self.attrs
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

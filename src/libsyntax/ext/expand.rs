@@ -14,9 +14,8 @@ use ast::{MacStmtStyle, Mrk, Stmt, StmtKind, ItemKind};
 use ast;
 use attr::HasAttrs;
 use ext::mtwt;
-use ext::build::AstBuilder;
 use attr;
-use attr::{AttrMetaMethods, WithAttrs, ThinAttributesExt};
+use attr::{AttrMetaMethods, ThinAttributesExt};
 use codemap::{Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use syntax_pos::{self, Span, ExpnId};
 use config::StripUnconfigured;
@@ -42,7 +41,7 @@ trait MacroGenerable: Sized {
 
     // Fold this node or list of nodes using the given folder.
     fn fold_with<F: Folder>(self, folder: &mut F) -> Self;
-    fn visit_with<'v, V: Visitor<'v>>(&'v self, visitor: &mut V);
+    fn visit_with<V: Visitor>(&self, visitor: &mut V);
 
     // Return a placeholder expansion to allow compilation to continue after an erroring expansion.
     fn dummy(span: Span) -> Self;
@@ -63,7 +62,7 @@ macro_rules! impl_macro_generable {
                 $( folder.$fold(self) )*
                 $( self.into_iter().flat_map(|item| folder. $fold_elt (item)).collect() )*
             }
-            fn visit_with<'v, V: Visitor<'v>>(&'v self, visitor: &mut V) {
+            fn visit_with<V: Visitor>(&self, visitor: &mut V) {
                 $( visitor.$visit(self) )*
                 $( for item in self.as_slice() { visitor. $visit_elt (item) } )*
             }
@@ -98,24 +97,23 @@ impl MacroGenerable for Option<P<ast::Expr>> {
     fn fold_with<F: Folder>(self, folder: &mut F) -> Self {
         self.and_then(|expr| folder.fold_opt_expr(expr))
     }
-    fn visit_with<'v, V: Visitor<'v>>(&'v self, visitor: &mut V) {
+    fn visit_with<V: Visitor>(&self, visitor: &mut V) {
         self.as_ref().map(|expr| visitor.visit_expr(expr));
     }
 }
 
-pub fn expand_expr(expr: ast::Expr, fld: &mut MacroExpander) -> P<ast::Expr> {
+pub fn expand_expr(mut expr: ast::Expr, fld: &mut MacroExpander) -> P<ast::Expr> {
     match expr.node {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
         ast::ExprKind::Mac(mac) => {
-            expand_mac_invoc(mac, None, expr.attrs.into_attr_vec(), expr.span, fld)
+            return expand_mac_invoc(mac, None, expr.attrs.into_attr_vec(), expr.span, fld);
         }
 
         ast::ExprKind::While(cond, body, opt_ident) => {
             let cond = fld.fold_expr(cond);
             let (body, opt_ident) = expand_loop_block(body, opt_ident, fld);
-            fld.cx.expr(expr.span, ast::ExprKind::While(cond, body, opt_ident))
-                .with_attrs(fold_thin_attrs(expr.attrs, fld))
+            expr.node = ast::ExprKind::While(cond, body, opt_ident);
         }
 
         ast::ExprKind::WhileLet(pat, cond, body, opt_ident) => {
@@ -132,14 +130,12 @@ pub fn expand_expr(expr: ast::Expr, fld: &mut MacroExpander) -> P<ast::Expr> {
             });
             assert!(rewritten_pats.len() == 1);
 
-            let wl = ast::ExprKind::WhileLet(rewritten_pats.remove(0), cond, body, opt_ident);
-            fld.cx.expr(expr.span, wl).with_attrs(fold_thin_attrs(expr.attrs, fld))
+            expr.node = ast::ExprKind::WhileLet(rewritten_pats.remove(0), cond, body, opt_ident);
         }
 
         ast::ExprKind::Loop(loop_block, opt_ident) => {
             let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
-            fld.cx.expr(expr.span, ast::ExprKind::Loop(loop_block, opt_ident))
-                .with_attrs(fold_thin_attrs(expr.attrs, fld))
+            expr.node = ast::ExprKind::Loop(loop_block, opt_ident);
         }
 
         ast::ExprKind::ForLoop(pat, head, body, opt_ident) => {
@@ -156,8 +152,7 @@ pub fn expand_expr(expr: ast::Expr, fld: &mut MacroExpander) -> P<ast::Expr> {
             assert!(rewritten_pats.len() == 1);
 
             let head = fld.fold_expr(head);
-            let fl = ast::ExprKind::ForLoop(rewritten_pats.remove(0), head, body, opt_ident);
-            fld.cx.expr(expr.span, fl).with_attrs(fold_thin_attrs(expr.attrs, fld))
+            expr.node = ast::ExprKind::ForLoop(rewritten_pats.remove(0), head, body, opt_ident);
         }
 
         ast::ExprKind::IfLet(pat, sub_expr, body, else_opt) => {
@@ -175,25 +170,21 @@ pub fn expand_expr(expr: ast::Expr, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             let else_opt = else_opt.map(|else_opt| fld.fold_expr(else_opt));
             let sub_expr = fld.fold_expr(sub_expr);
-            let il = ast::ExprKind::IfLet(rewritten_pats.remove(0), sub_expr, body, else_opt);
-            fld.cx.expr(expr.span, il).with_attrs(fold_thin_attrs(expr.attrs, fld))
+            expr.node = ast::ExprKind::IfLet(rewritten_pats.remove(0), sub_expr, body, else_opt);
         }
 
         ast::ExprKind::Closure(capture_clause, fn_decl, block, fn_decl_span) => {
             let (rewritten_fn_decl, rewritten_block)
                 = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
-            let new_node = ast::ExprKind::Closure(capture_clause,
-                                                  rewritten_fn_decl,
-                                                  rewritten_block,
-                                                  fn_decl_span);
-            P(ast::Expr{ id: expr.id,
-                         node: new_node,
-                         span: expr.span,
-                         attrs: fold_thin_attrs(expr.attrs, fld) })
+            expr.node = ast::ExprKind::Closure(capture_clause,
+                                               rewritten_fn_decl,
+                                               rewritten_block,
+                                               fn_decl_span);
         }
 
-        _ => P(noop_fold_expr(expr, fld)),
-    }
+        _ => expr = noop_fold_expr(expr, fld),
+    };
+    P(expr)
 }
 
 /// Expand a macro invocation. Returns the result of expansion.
@@ -252,7 +243,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                     },
                 });
 
-                let marked_tts = mark_tts(&tts[..], mark);
+                let marked_tts = mark_tts(tts, mark);
                 Some(expandfun.expand(fld.cx, call_site, &marked_tts))
             }
 
@@ -272,7 +263,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                     }
                 });
 
-                let marked_tts = mark_tts(&tts, mark);
+                let marked_tts = mark_tts(tts, mark);
                 Some(expander.expand(fld.cx, call_site, ident, marked_tts))
             }
 
@@ -599,7 +590,7 @@ struct PatIdentFinder {
     ident_accumulator: Vec<ast::Ident>
 }
 
-impl<'v> Visitor<'v> for PatIdentFinder {
+impl Visitor for PatIdentFinder {
     fn visit_pat(&mut self, pattern: &ast::Pat) {
         match *pattern {
             ast::Pat { id: _, node: PatKind::Ident(_, ref path1, ref inner), span: _ } => {
@@ -993,9 +984,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             at_crate_root: bool,
         }
 
-        impl<'a, 'b, 'v> Visitor<'v> for MacroLoadingVisitor<'a, 'b> {
-            fn visit_mac(&mut self, _: &'v ast::Mac) {}
-            fn visit_item(&mut self, item: &'v ast::Item) {
+        impl<'a, 'b> Visitor for MacroLoadingVisitor<'a, 'b> {
+            fn visit_mac(&mut self, _: &ast::Mac) {}
+            fn visit_item(&mut self, item: &ast::Item) {
                 if let ast::ItemKind::ExternCrate(..) = item.node {
                     // We need to error on `#[macro_use] extern crate` when it isn't at the
                     // crate root, because `$crate` won't work properly.
@@ -1008,7 +999,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.at_crate_root = at_crate_root;
                 }
             }
-            fn visit_block(&mut self, block: &'v ast::Block) {
+            fn visit_block(&mut self, block: &ast::Block) {
                 let at_crate_root = ::std::mem::replace(&mut self.at_crate_root, false);
                 visit::walk_block(self, block);
                 self.at_crate_root = at_crate_root;
@@ -1215,8 +1206,7 @@ impl Folder for Marker {
         Spanned {
             node: Mac_ {
                 path: self.fold_path(node.path),
-                tts: self.fold_tts(&node.tts),
-                ctxt: mtwt::apply_mark(self.mark, node.ctxt),
+                tts: self.fold_tts(node.tts),
             },
             span: self.new_span(span),
         }
@@ -1231,7 +1221,7 @@ impl Folder for Marker {
 }
 
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
-fn mark_tts(tts: &[TokenTree], m: Mrk) -> Vec<TokenTree> {
+fn mark_tts(tts: Vec<TokenTree>, m: Mrk) -> Vec<TokenTree> {
     noop_fold_tts(tts, &mut Marker{mark:m, expn_id: None})
 }
 
@@ -1261,7 +1251,7 @@ mod tests {
         path_accumulator: Vec<ast::Path> ,
     }
 
-    impl<'v> Visitor<'v> for PathExprFinderContext {
+    impl Visitor for PathExprFinderContext {
         fn visit_expr(&mut self, expr: &ast::Expr) {
             if let ast::ExprKind::Path(None, ref p) = expr.node {
                 self.path_accumulator.push(p.clone());
@@ -1283,7 +1273,7 @@ mod tests {
         ident_accumulator: Vec<ast::Ident>
     }
 
-    impl<'v> Visitor<'v> for IdentFinder {
+    impl Visitor for IdentFinder {
         fn visit_ident(&mut self, _: syntax_pos::Span, id: ast::Ident){
             self.ident_accumulator.push(id);
         }

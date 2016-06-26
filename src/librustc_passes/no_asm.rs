@@ -29,7 +29,7 @@ struct CheckNoAsm<'a> {
     sess: &'a Session,
 }
 
-impl<'a, 'v> Visitor<'v> for CheckNoAsm<'a> {
+impl<'a> Visitor for CheckNoAsm<'a> {
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
             ast::ExprKind::InlineAsm(_) => span_err!(self.sess, e.span, E0472,

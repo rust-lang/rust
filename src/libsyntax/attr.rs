@@ -882,21 +882,6 @@ pub trait HasAttrs: Sized {
     fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self;
 }
 
-/// A cheap way to add Attributes to an AST node.
-pub trait WithAttrs {
-    // FIXME: Could be extended to anything IntoIter<Item=Attribute>
-    fn with_attrs(self, attrs: ThinAttributes) -> Self;
-}
-
-impl<T: HasAttrs> WithAttrs for T {
-    fn with_attrs(self, attrs: ThinAttributes) -> Self {
-        self.map_attrs(|mut orig_attrs| {
-            orig_attrs.extend(attrs.into_attr_vec());
-            orig_attrs
-        })
-    }
-}
-
 impl HasAttrs for Vec<Attribute> {
     fn attrs(&self) -> &[Attribute] {
         &self

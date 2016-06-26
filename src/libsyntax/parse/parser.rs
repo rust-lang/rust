@@ -17,7 +17,7 @@ use ast::Block;
 use ast::{BlockCheckMode, CaptureBy};
 use ast::{Constness, Crate, CrateConfig};
 use ast::{Decl, DeclKind, Defaultness};
-use ast::{EMPTY_CTXT, EnumDef};
+use ast::EnumDef;
 use ast::{Expr, ExprKind, RangeLimits};
 use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
@@ -1273,7 +1273,7 @@ impl<'a> Parser<'a> {
                 let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
                                              SeqSep::none(),
                                              |pp| pp.parse_token_tree())?;
-                let m_ = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
+                let m_ = Mac_ { path: pth, tts: tts };
                 let m: ast::Mac = codemap::Spanned { node: m_,
                                                      span: mk_sp(lo,
                                                                  self.last_span.hi) };
@@ -1494,7 +1494,7 @@ impl<'a> Parser<'a> {
                                                 SeqSep::none(),
                                                 |p| p.parse_token_tree())?;
                 let hi = self.span.hi;
-                TyKind::Mac(spanned(lo, hi, Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT }))
+                TyKind::Mac(spanned(lo, hi, Mac_ { path: path, tts: tts }))
             } else {
                 // NAMED TYPE
                 TyKind::Path(None, path)
@@ -2375,7 +2375,7 @@ impl<'a> Parser<'a> {
 
                         return Ok(self.mk_mac_expr(lo,
                                                    hi,
-                                                   Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT },
+                                                   Mac_ { path: pth, tts: tts },
                                                    attrs));
                     }
                     if self.check(&token::OpenDelim(token::Brace)) {
@@ -2698,13 +2698,12 @@ impl<'a> Parser<'a> {
                     )?;
                     let (sep, repeat) = self.parse_sep_and_kleene_op()?;
                     let name_num = macro_parser::count_names(&seq);
-                    return Ok(TokenTree::Sequence(mk_sp(sp.lo, seq_span.hi),
-                                      Rc::new(SequenceRepetition {
-                                          tts: seq,
-                                          separator: sep,
-                                          op: repeat,
-                                          num_captures: name_num
-                                      })));
+                    return Ok(TokenTree::Sequence(mk_sp(sp.lo, seq_span.hi), SequenceRepetition {
+                        tts: seq,
+                        separator: sep,
+                        op: repeat,
+                        num_captures: name_num
+                    }));
                 } else if self.token.is_keyword(keywords::Crate) {
                     self.bump();
                     return Ok(TokenTree::Token(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar)));
@@ -2860,12 +2859,12 @@ impl<'a> Parser<'a> {
                     _ => {}
                 }
 
-                Ok(TokenTree::Delimited(span, Rc::new(Delimited {
+                Ok(TokenTree::Delimited(span, Delimited {
                     delim: delim,
                     open_span: open_span,
                     tts: tts,
                     close_span: close_span,
-                })))
+                }))
             },
             _ => {
                 // invariants: the current token is not a left-delimiter,
@@ -3689,7 +3688,7 @@ impl<'a> Parser<'a> {
                         let tts = self.parse_seq_to_end(
                             &token::CloseDelim(delim),
                             SeqSep::none(), |p| p.parse_token_tree())?;
-                        let mac = Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT };
+                        let mac = Mac_ { path: path, tts: tts };
                         pat = PatKind::Mac(codemap::Spanned {node: mac,
                                                                span: mk_sp(lo, self.last_span.hi)});
                     } else {
@@ -4002,7 +4001,7 @@ impl<'a> Parser<'a> {
             };
 
             if id.name == keywords::Invalid.name() {
-                let mac = P(spanned(lo, hi, Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT }));
+                let mac = P(spanned(lo, hi, Mac_ { path: pth, tts: tts }));
                 let stmt = StmtKind::Mac(mac, style, attrs.into_thin_attrs());
                 spanned(lo, hi, stmt)
             } else {
@@ -4023,7 +4022,7 @@ impl<'a> Parser<'a> {
                         self.mk_item(
                             lo, hi, id /*id is good here*/,
                             ItemKind::Mac(spanned(lo, hi,
-                                            Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
+                                            Mac_ { path: pth, tts: tts })),
                             Visibility::Inherited, attrs)))),
                     ast::DUMMY_NODE_ID))
             }
@@ -4936,7 +4935,7 @@ impl<'a> Parser<'a> {
             let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
                                             SeqSep::none(),
                                             |p| p.parse_token_tree())?;
-            let m_ = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
+            let m_ = Mac_ { path: pth, tts: tts };
             let m: ast::Mac = codemap::Spanned { node: m_,
                                                     span: mk_sp(lo,
                                                                 self.last_span.hi) };
@@ -6021,7 +6020,7 @@ impl<'a> Parser<'a> {
                                             SeqSep::none(),
                                             |p| p.parse_token_tree())?;
             // single-variant-enum... :
-            let m = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
+            let m = Mac_ { path: pth, tts: tts };
             let m: ast::Mac = codemap::Spanned { node: m,
                                                  span: mk_sp(mac_lo,
                                                              self.last_span.hi) };

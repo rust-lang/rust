@@ -693,7 +693,7 @@ impl PathCollector {
     }
 }
 
-impl<'v> Visitor<'v> for PathCollector {
+impl Visitor for PathCollector {
     fn visit_pat(&mut self, p: &ast::Pat) {
         match p.node {
             PatKind::Struct(ref path, _, _) => {
