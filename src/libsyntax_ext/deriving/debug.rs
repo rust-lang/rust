@@ -78,7 +78,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
 
     let fmt = substr.nonself_args[0].clone();
 
-    let stmts = match *substr.fields {
+    let mut stmts = match *substr.fields {
         Struct(_, ref fields) | EnumMatching(_, _, ref fields) => {
             let mut stmts = vec![];
             if !is_struct {
@@ -136,7 +136,8 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                                    token::str_to_ident("finish"),
                                    vec![]);
 
-    let block = cx.block(span, stmts, Some(expr));
+    stmts.push(cx.stmt_expr(expr));
+    let block = cx.block(span, stmts);
     cx.expr_block(block)
 }
 

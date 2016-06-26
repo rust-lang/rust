@@ -657,8 +657,11 @@ impl fold::Folder for ReplaceBodyWithLoop {
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
         fn expr_to_block(rules: ast::BlockCheckMode, e: Option<P<ast::Expr>>) -> P<ast::Block> {
             P(ast::Block {
-                expr: e,
-                stmts: vec![],
+                stmts: e.map(|e| ast::Stmt {
+                    id: ast::DUMMY_NODE_ID,
+                    span: e.span,
+                    node: ast::StmtKind::Expr(e),
+                }).into_iter().collect(),
                 rules: rules,
                 id: ast::DUMMY_NODE_ID,
                 span: syntax_pos::DUMMY_SP,
