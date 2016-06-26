@@ -15,7 +15,7 @@ use attr::HasAttrs;
 use ext::mtwt;
 use attr;
 use attr::AttrMetaMethods;
-use codemap::{Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
+use codemap::{dummy_spanned, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use syntax_pos::{self, Span, ExpnId};
 use config::StripUnconfigured;
 use ext::base::*;
@@ -105,6 +105,23 @@ pub fn expand_expr(expr: ast::Expr, fld: &mut MacroExpander) -> P<ast::Expr> {
     }
 }
 
+struct MacroScopePlaceholder;
+impl MacResult for MacroScopePlaceholder {
+    fn make_items(self: Box<Self>) -> Option<SmallVector<P<ast::Item>>> {
+        Some(SmallVector::one(P(ast::Item {
+            ident: keywords::Invalid.ident(),
+            attrs: Vec::new(),
+            id: ast::DUMMY_NODE_ID,
+            node: ast::ItemKind::Mac(dummy_spanned(ast::Mac_ {
+                path: ast::Path { span: syntax_pos::DUMMY_SP, global: false, segments: Vec::new() },
+                tts: Vec::new(),
+            })),
+            vis: ast::Visibility::Inherited,
+            span: syntax_pos::DUMMY_SP,
+        })))
+    }
+}
+
 /// Expand a macro invocation. Returns the result of expansion.
 fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attribute>, span: Span,
                        fld: &mut MacroExpander) -> T
@@ -143,6 +160,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
         };
 
         let ident = ident.unwrap_or(keywords::Invalid.ident());
+        let marked_tts = mark_tts(&tts, mark);
         match *extension {
             NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
                 if ident.name != keywords::Invalid.name() {
@@ -161,7 +179,6 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                     },
                 });
 
-                let marked_tts = mark_tts(&tts, mark);
                 Some(expandfun.expand(fld.cx, call_site, &marked_tts))
             }
 
@@ -181,7 +198,6 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                     }
                 });
 
-                let marked_tts = mark_tts(&tts, mark);
                 Some(expander.expand(fld.cx, call_site, ident, marked_tts))
             }
 
@@ -210,15 +226,14 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                     span: call_site,
                     imported_from: None,
                     use_locally: true,
-                    body: tts,
+                    body: marked_tts,
                     export: attr::contains_name(&attrs, "macro_export"),
                     allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
                     attrs: attrs,
                 });
 
                 // macro_rules! has a side effect but expands to nothing.
-                fld.cx.bt_pop();
-                None
+                Some(Box::new(MacroScopePlaceholder))
             }
 
             MultiDecorator(..) | MultiModifier(..) => {
@@ -343,6 +358,12 @@ fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> SmallVector
     match a {
         Annotatable::Item(it) => match it.node {
             ast::ItemKind::Mac(..) => {
+                if match it.node {
+                    ItemKind::Mac(ref mac) => mac.node.path.segments.is_empty(),
+                    _ => unreachable!(),
+                } {
+                    return SmallVector::one(Annotatable::Item(it));
+                }
                 it.and_then(|it| match it.node {
                     ItemKind::Mac(mac) =>
                         expand_mac_invoc(mac, Some(it.ident), it.attrs, it.span, fld),
