@@ -637,21 +637,3 @@ pub fn fresh_name(src: ast::Ident) -> ast::Name {
 pub fn fresh_mark() -> ast::Mrk {
     gensym("mark").0
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ast;
-    use ext::mtwt;
-
-    fn mark_ident(id : ast::Ident, m : ast::Mrk) -> ast::Ident {
-        ast::Ident::new(id.name, mtwt::apply_mark(m, id.ctxt))
-    }
-
-    #[test] fn mtwt_token_eq_test() {
-        assert!(Gt.mtwt_eq(&Gt));
-        let a = str_to_ident("bac");
-        let a1 = mark_ident(a,92);
-        assert!(Ident(a).mtwt_eq(&Ident(a1)));
-    }
-}
