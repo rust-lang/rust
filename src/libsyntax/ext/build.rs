@@ -509,7 +509,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt {
-        respan(expr.span, ast::StmtKind::Semi(expr, ast::DUMMY_NODE_ID))
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            span: expr.span,
+            node: ast::StmtKind::Semi(expr),
+        }
     }
 
     fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident,
@@ -528,8 +532,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             span: sp,
             attrs: None,
         });
-        let decl = respan(sp, ast::DeclKind::Local(local));
-        respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::StmtKind::Local(local),
+            span: sp,
+        }
     }
 
     fn stmt_let_typed(&self,
@@ -553,8 +560,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             span: sp,
             attrs: None,
         });
-        let decl = respan(sp, ast::DeclKind::Local(local));
-        P(respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID)))
+        P(ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::StmtKind::Local(local),
+            span: sp,
+        })
     }
 
     fn block(&self, span: Span, stmts: Vec<ast::Stmt>,
@@ -563,8 +573,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {
-        let decl = respan(sp, ast::DeclKind::Item(item));
-        respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::StmtKind::Item(item),
+            span: sp,
+        }
     }
 
     fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {

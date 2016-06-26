@@ -16,8 +16,7 @@ pub use self::IntType::*;
 
 use ast;
 use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaItemKind};
-use ast::{Stmt, StmtKind, DeclKind};
-use ast::{Expr, Item, Local, Decl};
+use ast::{Expr, Item, Local, Stmt, StmtKind};
 use codemap::{spanned, dummy_spanned, Spanned};
 use syntax_pos::{Span, BytePos};
 use errors::Handler;
@@ -909,38 +908,28 @@ impl<T: HasAttrs + 'static> HasAttrs for P<T> {
     }
 }
 
-impl HasAttrs for DeclKind {
-    fn attrs(&self) -> &[Attribute] {
-        match *self {
-            DeclKind::Local(ref local) => local.attrs(),
-            DeclKind::Item(ref item) => item.attrs(),
-        }
-    }
-
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
-        match self {
-            DeclKind::Local(local) => DeclKind::Local(local.map_attrs(f)),
-            DeclKind::Item(item) => DeclKind::Item(item.map_attrs(f)),
-        }
-    }
-}
-
 impl HasAttrs for StmtKind {
     fn attrs(&self) -> &[Attribute] {
         match *self {
-            StmtKind::Decl(ref decl, _) => decl.attrs(),
-            StmtKind::Expr(ref expr, _) | StmtKind::Semi(ref expr, _) => expr.attrs(),
-            StmtKind::Mac(_, _, ref attrs) => attrs.attrs(),
+            StmtKind::Local(ref local) => local.attrs(),
+            StmtKind::Item(ref item) => item.attrs(),
+            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.attrs(),
+            StmtKind::Mac(ref mac) => {
+                let (_, _, ref attrs) = **mac;
+                attrs.attrs()
+            }
         }
     }
 
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
         match self {
-            StmtKind::Decl(decl, id) => StmtKind::Decl(decl.map_attrs(f), id),
-            StmtKind::Expr(expr, id) => StmtKind::Expr(expr.map_attrs(f), id),
-            StmtKind::Semi(expr, id) => StmtKind::Semi(expr.map_attrs(f), id),
-            StmtKind::Mac(mac, style, attrs) =>
-                StmtKind::Mac(mac, style, attrs.map_attrs(f)),
+            StmtKind::Local(local) => StmtKind::Local(local.map_attrs(f)),
+            StmtKind::Item(item) => StmtKind::Item(item.map_attrs(f)),
+            StmtKind::Expr(expr) => StmtKind::Expr(expr.map_attrs(f)),
+            StmtKind::Semi(expr) => StmtKind::Semi(expr.map_attrs(f)),
+            StmtKind::Mac(mac) => StmtKind::Mac(mac.map(|(mac, style, attrs)| {
+                (mac, style, attrs.map_attrs(f))
+            })),
         }
     }
 }
@@ -967,4 +956,4 @@ derive_has_attrs_from_field! {
     Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::ImplItem, ast::TraitItem, ast::Arm
 }
 
-derive_has_attrs_from_field! { Decl: .node, Stmt: .node, ast::Variant: .node.attrs }
+derive_has_attrs_from_field! { Stmt: .node, ast::Variant: .node.attrs }

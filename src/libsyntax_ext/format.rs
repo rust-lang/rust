@@ -14,7 +14,6 @@ use self::Position::*;
 use fmt_macros as parse;
 
 use syntax::ast;
-use syntax::codemap::respan;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
@@ -443,12 +442,14 @@ impl<'a, 'b> Context<'a, 'b> {
 
         let name = ecx.ident_of(name);
         let item = ecx.item(sp, name, vec![], st);
-        let decl = respan(sp, ast::DeclKind::Item(item));
+        let stmt = ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::StmtKind::Item(item),
+            span: sp,
+        };
 
         // Wrap the declaration in a block so that it forms a single expression.
-        ecx.expr_block(ecx.block(sp,
-            vec![respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))],
-            Some(ecx.expr_ident(sp, name))))
+        ecx.expr_block(ecx.block(sp, vec![stmt], Some(ecx.expr_ident(sp, name))))
     }
 
     /// Actually builds the expression which the iformat! block will be expanded

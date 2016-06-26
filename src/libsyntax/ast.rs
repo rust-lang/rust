@@ -27,7 +27,6 @@ use tokenstream::{TokenTree};
 
 use std::fmt;
 use std::rc::Rc;
-use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -811,41 +810,35 @@ impl UnOp {
 }
 
 /// A statement
-pub type Stmt = Spanned<StmtKind>;
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
+pub struct Stmt {
+    pub id: NodeId,
+    pub node: StmtKind,
+    pub span: Span,
+}
 
 impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "stmt({}: {})",
-               self.node.id()
-                   .map_or(Cow::Borrowed("<macro>"),|id|Cow::Owned(id.to_string())),
-               pprust::stmt_to_string(self))
+        write!(f, "stmt({}: {})", self.id.to_string(), pprust::stmt_to_string(self))
     }
 }
 
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub enum StmtKind {
-    /// Could be an item or a local (let) binding:
-    Decl(P<Decl>, NodeId),
+    /// A local (let) binding.
+    Local(P<Local>),
 
-    /// Expr without trailing semi-colon (must have unit type):
-    Expr(P<Expr>, NodeId),
+    /// An item definition.
+    Item(P<Item>),
 
-    /// Expr with trailing semi-colon (may have any type):
-    Semi(P<Expr>, NodeId),
+    /// Expr without trailing semi-colon (must have unit type).
+    Expr(P<Expr>),
 
-    Mac(P<Mac>, MacStmtStyle, ThinAttributes),
-}
+    /// Expr with trailing semi-colon (may have any type).
+    Semi(P<Expr>),
 
-impl StmtKind {
-    pub fn id(&self) -> Option<NodeId> {
-        match *self {
-            StmtKind::Decl(_, id) => Some(id),
-            StmtKind::Expr(_, id) => Some(id),
-            StmtKind::Semi(_, id) => Some(id),
-            StmtKind::Mac(..) => None,
-        }
-    }
+    Mac(P<(Mac, MacStmtStyle, ThinAttributes)>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -873,16 +866,6 @@ pub struct Local {
     pub id: NodeId,
     pub span: Span,
     pub attrs: ThinAttributes,
-}
-
-pub type Decl = Spanned<DeclKind>;
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum DeclKind {
-    /// A local (let) binding:
-    Local(P<Local>),
-    /// An item binding:
-    Item(P<Item>),
 }
 
 /// An arm of a 'match'.
@@ -1053,7 +1036,7 @@ pub enum ExprKind {
     /// A `break`, with an optional label to break
     Break(Option<SpannedIdent>),
     /// A `continue`, with an optional label
-    Again(Option<SpannedIdent>),
+    Continue(Option<SpannedIdent>),
     /// A `return`, with an optional value to be returned
     Ret(Option<P<Expr>>),
 

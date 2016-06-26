@@ -102,10 +102,6 @@ pub trait Folder : Sized {
         noop_fold_pat(p, self)
     }
 
-    fn fold_decl(&mut self, d: P<Decl>) -> SmallVector<P<Decl>> {
-        noop_fold_decl(d, self)
-    }
-
     fn fold_expr(&mut self, e: P<Expr>) -> P<Expr> {
         e.map(|e| noop_fold_expr(e, self))
     }
@@ -347,19 +343,6 @@ pub fn noop_fold_arm<T: Folder>(Arm {attrs, pats, guard, body}: Arm, fld: &mut T
         guard: guard.map(|x| fld.fold_expr(x)),
         body: fld.fold_expr(body),
     }
-}
-
-pub fn noop_fold_decl<T: Folder>(d: P<Decl>, fld: &mut T) -> SmallVector<P<Decl>> {
-    d.and_then(|Spanned {node, span}| match node {
-        DeclKind::Local(l) => SmallVector::one(P(Spanned {
-            node: DeclKind::Local(fld.fold_local(l)),
-            span: fld.new_span(span)
-        })),
-        DeclKind::Item(it) => fld.fold_item(it).into_iter().map(|i| P(Spanned {
-            node: DeclKind::Item(i),
-            span: fld.new_span(span)
-        })).collect()
-    })
 }
 
 pub fn noop_fold_ty_binding<T: Folder>(b: TypeBinding, fld: &mut T) -> TypeBinding {
@@ -1248,7 +1231,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 respan(folder.new_span(label.span),
                        folder.fold_ident(label.node)))
             ),
-            ExprKind::Again(opt_ident) => ExprKind::Again(opt_ident.map(|label|
+            ExprKind::Continue(opt_ident) => ExprKind::Continue(opt_ident.map(|label|
                 respan(folder.new_span(label.span),
                        folder.fold_ident(label.node)))
             ),
@@ -1305,44 +1288,52 @@ pub fn noop_fold_exprs<T: Folder>(es: Vec<P<Expr>>, folder: &mut T) -> Vec<P<Exp
     es.move_flat_map(|e| folder.fold_opt_expr(e))
 }
 
-pub fn noop_fold_stmt<T: Folder>(Spanned {node, span}: Stmt, folder: &mut T)
+pub fn noop_fold_stmt<T: Folder>(Stmt {node, span, id}: Stmt, folder: &mut T)
                                  -> SmallVector<Stmt> {
+    let id = folder.new_id(id);
     let span = folder.new_span(span);
+
     match node {
-        StmtKind::Decl(d, id) => {
-            let id = folder.new_id(id);
-            folder.fold_decl(d).into_iter().map(|d| Spanned {
-                node: StmtKind::Decl(d, id),
-                span: span
-            }).collect()
-        }
-        StmtKind::Expr(e, id) => {
-            let id = folder.new_id(id);
-            if let Some(e) = folder.fold_opt_expr(e) {
-                SmallVector::one(Spanned {
-                    node: StmtKind::Expr(e, id),
-                    span: span
+        StmtKind::Local(local) => SmallVector::one(Stmt {
+            id: id,
+            node: StmtKind::Local(folder.fold_local(local)),
+            span: span,
+        }),
+        StmtKind::Item(item) => folder.fold_item(item).into_iter().map(|item| Stmt {
+            id: id,
+            node: StmtKind::Item(item),
+            span: span,
+        }).collect(),
+        StmtKind::Expr(expr) => {
+            if let Some(expr) = folder.fold_opt_expr(expr) {
+                SmallVector::one(Stmt {
+                    id: id,
+                    node: StmtKind::Expr(expr),
+                    span: span,
                 })
             } else {
                 SmallVector::zero()
             }
         }
-        StmtKind::Semi(e, id) => {
-            let id = folder.new_id(id);
-            if let Some(e) = folder.fold_opt_expr(e) {
-                SmallVector::one(Spanned {
-                    node: StmtKind::Semi(e, id),
-                    span: span
+        StmtKind::Semi(expr) => {
+            if let Some(expr) = folder.fold_opt_expr(expr) {
+                SmallVector::one(Stmt {
+                    id: id,
+                    node: StmtKind::Semi(expr),
+                    span: span,
                 })
             } else {
                 SmallVector::zero()
             }
         }
-        StmtKind::Mac(mac, semi, attrs) => SmallVector::one(Spanned {
-            node: StmtKind::Mac(mac.map(|m| folder.fold_mac(m)),
-                                semi,
-                                attrs.map_thin_attrs(|v| fold_attrs(v, folder))),
-            span: span
+        StmtKind::Mac(mac) => SmallVector::one(Stmt {
+            id: id,
+            node: StmtKind::Mac(mac.map(|(mac, semi, attrs)| {
+                let mac = folder.fold_mac(mac);
+                let attrs = attrs.map_thin_attrs(|attrs| fold_attrs(attrs, folder));
+                (mac, semi, attrs)
+            })),
+            span: span,
         })
     }
 }
