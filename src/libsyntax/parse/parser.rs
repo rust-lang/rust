@@ -3236,9 +3236,12 @@ impl<'a> Parser<'a> {
                 let body_expr = self.parse_expr()?;
                 P(ast::Block {
                     id: ast::DUMMY_NODE_ID,
-                    stmts: vec![],
                     span: body_expr.span,
-                    expr: Some(body_expr),
+                    stmts: vec![Stmt {
+                        span: body_expr.span,
+                        node: StmtKind::Expr(body_expr),
+                        id: ast::DUMMY_NODE_ID,
+                    }],
                     rules: BlockCheckMode::Default,
                 })
             }
@@ -4098,7 +4101,6 @@ impl<'a> Parser<'a> {
     /// Precondition: already parsed the '{'.
     fn parse_block_tail(&mut self, lo: BytePos, s: BlockCheckMode) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
-        let mut expr = None;
 
         while !self.eat(&token::CloseDelim(token::Brace)) {
             let Stmt {node, span, ..} = if let Some(s) = self.parse_stmt_() {
@@ -4112,10 +4114,10 @@ impl<'a> Parser<'a> {
 
             match node {
                 StmtKind::Expr(e) => {
-                    self.handle_expression_like_statement(e, span, &mut stmts, &mut expr)?;
+                    self.handle_expression_like_statement(e, span, &mut stmts)?;
                 }
                 StmtKind::Mac(mac) => {
-                    self.handle_macro_in_block(mac.unwrap(), span, &mut stmts, &mut expr)?;
+                    self.handle_macro_in_block(mac.unwrap(), span, &mut stmts)?;
                 }
                 _ => { // all other kinds of statements:
                     let mut hi = span.hi;
@@ -4135,7 +4137,6 @@ impl<'a> Parser<'a> {
 
         Ok(P(ast::Block {
             stmts: stmts,
-            expr: expr,
             id: ast::DUMMY_NODE_ID,
             rules: s,
             span: mk_sp(lo, self.last_span.hi),
@@ -4145,8 +4146,7 @@ impl<'a> Parser<'a> {
     fn handle_macro_in_block(&mut self,
                              (mac, style, attrs): (ast::Mac, MacStmtStyle, ThinVec<Attribute>),
                              span: Span,
-                             stmts: &mut Vec<Stmt>,
-                             last_block_expr: &mut Option<P<Expr>>)
+                             stmts: &mut Vec<Stmt>)
                              -> PResult<'a, ()> {
         if style == MacStmtStyle::NoBraces {
             // statement macro without braces; might be an
@@ -4165,7 +4165,7 @@ impl<'a> Parser<'a> {
                     let lo = e.span.lo;
                     let e = self.parse_dot_or_call_expr_with(e, lo, attrs)?;
                     let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
-                    self.handle_expression_like_statement(e, span, stmts, last_block_expr)?;
+                    self.handle_expression_like_statement(e, span, stmts)?;
                 }
             }
         } else {
@@ -4178,11 +4178,6 @@ impl<'a> Parser<'a> {
                         span: mk_sp(span.lo, self.span.hi),
                     });
                     self.bump();
-                }
-                token::CloseDelim(token::Brace) => {
-                    // if a block ends in `m!(arg)` without
-                    // a `;`, it must be an expr
-                    *last_block_expr = Some(self.mk_mac_expr(span.lo, span.hi, mac.node, attrs));
                 }
                 _ => {
                     stmts.push(Stmt {
@@ -4199,8 +4194,7 @@ impl<'a> Parser<'a> {
     fn handle_expression_like_statement(&mut self,
                                         e: P<Expr>,
                                         span: Span,
-                                        stmts: &mut Vec<Stmt>,
-                                        last_block_expr: &mut Option<P<Expr>>)
+                                        stmts: &mut Vec<Stmt>)
                                         -> PResult<'a, ()> {
         // expression without semicolon
         if classify::expr_requires_semi_to_be_stmt(&e) {
@@ -4227,7 +4221,6 @@ impl<'a> Parser<'a> {
                     span: span_with_semi,
                 });
             }
-            token::CloseDelim(token::Brace) => *last_block_expr = Some(e),
             _ => {
                 stmts.push(Stmt {
                     id: ast::DUMMY_NODE_ID,

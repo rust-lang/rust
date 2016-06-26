@@ -1619,12 +1619,16 @@ impl<'a> State<'a> {
                     try!(self.word_space("="));
                     try!(self.print_expr(&init));
                 }
+                try!(word(&mut self.s, ";"));
                 self.end()?;
             }
             ast::StmtKind::Item(ref item) => self.print_item(&item)?,
             ast::StmtKind::Expr(ref expr) => {
                 try!(self.space_if_not_bol());
                 try!(self.print_expr_outer_attr_style(&expr, false));
+                if parse::classify::expr_requires_semi_to_be_stmt(expr) {
+                    try!(word(&mut self.s, ";"));
+                }
             }
             ast::StmtKind::Semi(ref expr) => {
                 try!(self.space_if_not_bol());
@@ -1645,9 +1649,6 @@ impl<'a> State<'a> {
                     _ => try!(word(&mut self.s, ";")),
                 }
             }
-        }
-        if parse::classify::stmt_ends_with_semi(&st.node) {
-            try!(word(&mut self.s, ";"));
         }
         self.maybe_print_trailing_comment(st.span, None)
     }
@@ -1692,17 +1693,17 @@ impl<'a> State<'a> {
 
         try!(self.print_inner_attributes(attrs));
 
-        for st in &blk.stmts {
-            try!(self.print_stmt(st));
-        }
-        match blk.expr {
-            Some(ref expr) => {
-                try!(self.space_if_not_bol());
-                try!(self.print_expr_outer_attr_style(&expr, false));
-                try!(self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi)));
+        for (i, st) in blk.stmts.iter().enumerate() {
+            match st.node {
+                ast::StmtKind::Expr(ref expr) if i == blk.stmts.len() - 1 => {
+                    try!(self.space_if_not_bol());
+                    try!(self.print_expr_outer_attr_style(&expr, false));
+                    try!(self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi)));
+                }
+                _ => try!(self.print_stmt(st)),
             }
-            _ => ()
         }
+
         try!(self.bclose_maybe_open(blk.span, indented, close_box));
         self.ann.post(self, NodeBlock(blk))
     }
@@ -2111,22 +2112,21 @@ impl<'a> State<'a> {
                     _ => false
                 };
 
-                if !default_return || !body.stmts.is_empty() || body.expr.is_none() {
-                    try!(self.print_block_unclosed(&body));
-                } else {
-                    // we extract the block, so as not to create another set of boxes
-                    let i_expr = body.expr.as_ref().unwrap();
-                    match i_expr.node {
-                        ast::ExprKind::Block(ref blk) => {
+                match body.stmts.last().map(|stmt| &stmt.node) {
+                    Some(&ast::StmtKind::Expr(ref i_expr)) if default_return &&
+                                                              body.stmts.len() == 1 => {
+                        // we extract the block, so as not to create another set of boxes
+                        if let ast::ExprKind::Block(ref blk) = i_expr.node {
                             try!(self.print_block_unclosed_with_attrs(&blk, &i_expr.attrs));
-                        }
-                        _ => {
+                        } else {
                             // this is a bare expression
                             try!(self.print_expr(&i_expr));
                             try!(self.end()); // need to close a box
                         }
                     }
+                    _ => try!(self.print_block_unclosed(&body)),
                 }
+
                 // a box will be closed by print_expr, but we didn't want an overall
                 // wrapper so we closed the corresponding opening. so create an
                 // empty box to satisfy the close.

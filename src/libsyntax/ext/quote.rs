@@ -513,10 +513,8 @@ pub fn expand_quote_matcher(cx: &mut ExtCtxt,
     let (cx_expr, tts) = parse_arguments_to_quote(cx, tts);
     let mut vector = mk_stmts_let(cx, sp);
     vector.extend(statements_mk_tts(cx, &tts[..], true));
-    let block = cx.expr_block(
-        cx.block_all(sp,
-                     vector,
-                     Some(cx.expr_ident(sp, id_ext("tt")))));
+    vector.push(cx.stmt_expr(cx.expr_ident(sp, id_ext("tt"))));
+    let block = cx.expr_block(cx.block(sp, vector));
 
     let expanded = expand_wrapper(cx, sp, cx_expr, block, &[&["syntax", "ext", "quote", "rt"]]);
     base::MacEager::expr(expanded)
@@ -766,8 +764,9 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<ast::Stm
             let stmt_let_tt = cx.stmt_let(sp, true, id_ext("tt"), cx.expr_vec_ng(sp));
             let mut tts_stmts = vec![stmt_let_tt];
             tts_stmts.extend(statements_mk_tts(cx, &seq.tts[..], matcher));
-            let e_tts = cx.expr_block(cx.block(sp, tts_stmts,
-                                                   Some(cx.expr_ident(sp, id_ext("tt")))));
+            tts_stmts.push(cx.stmt_expr(cx.expr_ident(sp, id_ext("tt"))));
+            let e_tts = cx.expr_block(cx.block(sp, tts_stmts));
+
             let e_separator = match seq.separator {
                 Some(ref sep) => cx.expr_some(sp, expr_mk_token(cx, sp, sep)),
                 None => cx.expr_none(sp),
@@ -882,10 +881,8 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[TokenTree])
 
     let mut vector = mk_stmts_let(cx, sp);
     vector.extend(statements_mk_tts(cx, &tts[..], false));
-    let block = cx.expr_block(
-        cx.block_all(sp,
-                     vector,
-                     Some(cx.expr_ident(sp, id_ext("tt")))));
+    vector.push(cx.stmt_expr(cx.expr_ident(sp, id_ext("tt"))));
+    let block = cx.expr_block(cx.block(sp, vector));
 
     (cx_expr, block)
 }
@@ -899,13 +896,14 @@ fn expand_wrapper(cx: &ExtCtxt,
     let cx_expr_borrow = cx.expr_addr_of(sp, cx.expr_deref(sp, cx_expr));
     let stmt_let_ext_cx = cx.stmt_let(sp, false, id_ext("ext_cx"), cx_expr_borrow);
 
-    let stmts = imports.iter().map(|path| {
+    let mut stmts = imports.iter().map(|path| {
         // make item: `use ...;`
         let path = path.iter().map(|s| s.to_string()).collect();
         cx.stmt_item(sp, cx.item_use_glob(sp, ast::Visibility::Inherited, ids_ext(path)))
-    }).chain(Some(stmt_let_ext_cx)).collect();
+    }).chain(Some(stmt_let_ext_cx)).collect::<Vec<_>>();
+    stmts.push(cx.stmt_expr(expr));
 
-    cx.expr_block(cx.block_all(sp, stmts, Some(expr)))
+    cx.expr_block(cx.block(sp, stmts))
 }
 
 fn expand_parse_call(cx: &ExtCtxt,

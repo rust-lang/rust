@@ -763,6 +763,9 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
 }
 
 pub fn assign_node_ids(sess: &Session, krate: ast::Crate) -> ast::Crate {
+    use syntax::ptr::P;
+    use syntax::util::move_map::MoveMap;
+
     struct NodeIdAssigner<'a> {
         sess: &'a Session,
     }
@@ -771,6 +774,27 @@ pub fn assign_node_ids(sess: &Session, krate: ast::Crate) -> ast::Crate {
         fn new_id(&mut self, old_id: ast::NodeId) -> ast::NodeId {
             assert_eq!(old_id, ast::DUMMY_NODE_ID);
             self.sess.next_node_id()
+        }
+
+        fn fold_block(&mut self, block: P<ast::Block>) -> P<ast::Block> {
+            block.map(|mut block| {
+                block.id = self.new_id(block.id);
+
+                let stmt = block.stmts.pop();
+                block.stmts = block.stmts.move_flat_map(|s| self.fold_stmt(s).into_iter());
+                if let Some(ast::Stmt { node: ast::StmtKind::Expr(expr), span, .. }) = stmt {
+                    let expr = self.fold_expr(expr);
+                    block.stmts.push(ast::Stmt {
+                        id: expr.id,
+                        node: ast::StmtKind::Expr(expr),
+                        span: span,
+                    });
+                } else if let Some(stmt) = stmt {
+                    block.stmts.extend(self.fold_stmt(stmt));
+                }
+
+                block
+            })
         }
     }
 
