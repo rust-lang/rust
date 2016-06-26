@@ -11,20 +11,27 @@
 use Resolver;
 use rustc::session::Session;
 use syntax::ast;
-use syntax::fold::Folder;
+use syntax::ext::mtwt;
+use syntax::fold::{self, Folder};
 use syntax::ptr::P;
 use syntax::util::move_map::MoveMap;
+use syntax::util::small_vector::SmallVector;
+
+use std::collections::HashMap;
+use std::mem;
 
 impl<'a> Resolver<'a> {
     pub fn assign_node_ids(&mut self, krate: ast::Crate) -> ast::Crate {
         NodeIdAssigner {
             sess: self.session,
+            macros_at_scope: &mut self.macros_at_scope,
         }.fold_crate(krate)
     }
 }
 
 struct NodeIdAssigner<'a> {
     sess: &'a Session,
+    macros_at_scope: &'a mut HashMap<ast::NodeId, Vec<ast::Mrk>>,
 }
 
 impl<'a> Folder for NodeIdAssigner<'a> {
@@ -38,22 +45,48 @@ impl<'a> Folder for NodeIdAssigner<'a> {
             block.id = self.new_id(block.id);
 
             let stmt = block.stmts.pop();
-            block.stmts = block.stmts.move_flat_map(|s| self.fold_stmt(s).into_iter());
-            if let Some(ast::Stmt { node: ast::StmtKind::Expr(expr), span, .. }) = stmt {
+            let mut macros = Vec::new();
+            block.stmts = block.stmts.move_flat_map(|stmt| {
+                if let ast::StmtKind::Item(ref item) = stmt.node {
+                    if let ast::ItemKind::Mac(..) = item.node {
+                        macros.push(mtwt::outer_mark(item.ident.ctxt));
+                        return None;
+                    }
+                }
+
+                let stmt = self.fold_stmt(stmt).pop().unwrap();
+                if !macros.is_empty() {
+                    self.macros_at_scope.insert(stmt.id, mem::replace(&mut macros, Vec::new()));
+                }
+                Some(stmt)
+            });
+
+            stmt.and_then(|mut stmt| {
                 // Avoid wasting a node id on a trailing expression statement,
                 // which shares a HIR node with the expression itself.
-                let expr = self.fold_expr(expr);
-                block.stmts.push(ast::Stmt {
-                    id: expr.id,
-                    node: ast::StmtKind::Expr(expr),
-                    span: span,
-                });
-            } else if let Some(stmt) = stmt {
-                block.stmts.extend(self.fold_stmt(stmt));
-            }
+                if let ast::StmtKind::Expr(expr) = stmt.node {
+                    let expr = self.fold_expr(expr);
+                    stmt.id = expr.id;
+                    stmt.node = ast::StmtKind::Expr(expr);
+                    Some(stmt)
+                } else {
+                    self.fold_stmt(stmt).pop()
+                }
+            }).map(|stmt| {
+                if !macros.is_empty() {
+                    self.macros_at_scope.insert(stmt.id, mem::replace(&mut macros, Vec::new()));
+                }
+                block.stmts.push(stmt);
+            });
 
             block
         })
     }
-}
 
+    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+        match item.node {
+            ast::ItemKind::Mac(..) => SmallVector::zero(),
+            _ => fold::noop_fold_item(item, self),
+        }
+    }
+}

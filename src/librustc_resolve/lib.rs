@@ -53,6 +53,7 @@ use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
+use syntax::ext::mtwt;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
 use syntax::parse::token::{self, keywords};
@@ -651,6 +652,9 @@ enum RibKind<'a> {
 
     // We passed through a module.
     ModuleRibKind(Module<'a>),
+
+    // We passed through a `macro_rules!` statement with the given expansion
+    MacroDefinition(ast::Mrk),
 }
 
 #[derive(Copy, Clone)]
@@ -927,6 +931,10 @@ pub struct Resolver<'a> {
 
     pub definitions: Definitions,
 
+    // Maps the node id of a statement to the expansions of the `macro_rules!`s
+    // immediately above the statement (if appropriate).
+    macros_at_scope: HashMap<NodeId, Vec<ast::Mrk>>,
+
     graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
@@ -1113,6 +1121,7 @@ impl<'a> Resolver<'a> {
             session: session,
 
             definitions: Definitions::new(),
+            macros_at_scope: HashMap::new(),
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
@@ -1419,6 +1428,16 @@ impl<'a> Resolver<'a> {
                         }
                         _ => None,
                     };
+                }
+            }
+
+            if let MacroDefinition(mac) = self.get_ribs(ns)[i].kind {
+                // If an invocation of this macro created `ident`, give up on `ident`
+                // and switch to `ident`'s source from the macro definition.
+                if let Some((source_ident, source_macro)) = mtwt::source(ident) {
+                    if mac == source_macro {
+                        ident = source_ident;
+                    }
                 }
             }
         }
@@ -2069,6 +2088,7 @@ impl<'a> Resolver<'a> {
         let orig_module = self.current_module;
         let anonymous_module = self.module_map.get(&block.id).cloned(); // clones a reference
 
+        let mut num_value_ribs = 1;
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
             self.value_ribs.push(Rib::new(ModuleRibKind(anonymous_module)));
@@ -2079,11 +2099,22 @@ impl<'a> Resolver<'a> {
         }
 
         // Descend into the block.
-        visit::walk_block(self, block);
+        for stmt in &block.stmts {
+            if let Some(marks) = self.macros_at_scope.remove(&stmt.id) {
+                num_value_ribs += marks.len() as u32;
+                for mark in marks {
+                    self.value_ribs.push(Rib::new(MacroDefinition(mark)));
+                }
+            }
+
+            self.visit_stmt(stmt);
+        }
 
         // Move back up.
         self.current_module = orig_module;
-        self.value_ribs.pop();
+        for _ in 0 .. num_value_ribs {
+            self.value_ribs.pop();
+        }
         if let Some(_) = anonymous_module {
             self.type_ribs.pop();
         }
@@ -2497,7 +2528,7 @@ impl<'a> Resolver<'a> {
             Def::Local(_, node_id) => {
                 for rib in ribs {
                     match rib.kind {
-                        NormalRibKind | ModuleRibKind(..) => {
+                        NormalRibKind | ModuleRibKind(..) | MacroDefinition(..) => {
                             // Nothing to do. Continue.
                         }
                         ClosureRibKind(function_id) => {
@@ -2546,7 +2577,7 @@ impl<'a> Resolver<'a> {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | MethodRibKind(_) | ClosureRibKind(..) |
-                        ModuleRibKind(..) => {
+                        ModuleRibKind(..) | MacroDefinition(..) => {
                             // Nothing to do. Continue.
                         }
                         ItemRibKind => {

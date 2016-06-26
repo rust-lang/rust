@@ -17,7 +17,7 @@
 
 pub use self::SyntaxContext_::*;
 
-use ast::{Mrk, SyntaxContext};
+use ast::{Ident, Mrk, SyntaxContext};
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -109,6 +109,20 @@ pub fn outer_mark(ctxt: SyntaxContext) -> Mrk {
             Mark(mrk, _) => mrk,
             _ => panic!("can't retrieve outer mark when outside is not a mark")
         }
+    })
+}
+
+/// If `ident` is macro expanded, return the source ident from the macro definition
+/// and the mark of the expansion that created the macro definition.
+pub fn source(ident: Ident) -> Option<(Ident /* source ident */, Mrk /* source macro */)> {
+    with_sctable(|sctable| {
+        let ctxts = sctable.table.borrow();
+        if let Mark(_expansion_mark, macro_ctxt) = ctxts[ident.ctxt.0 as usize] {
+            if let Mark(definition_mark, orig_ctxt) = ctxts[macro_ctxt.0 as usize] {
+                return Some((Ident::new(ident.name, orig_ctxt), definition_mark));
+            }
+        }
+        None
     })
 }
 
