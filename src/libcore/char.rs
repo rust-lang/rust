@@ -17,6 +17,7 @@
 
 use prelude::v1::*;
 
+use char_private::is_printable;
 use mem::transmute;
 
 // UTF-8 ranges and tags for encoding characters
@@ -320,8 +321,8 @@ impl CharExt for char {
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
             '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
-            '\x20' ... '\x7e' => EscapeDefaultState::Char(self),
-            _ => EscapeDefaultState::Unicode(self.escape_unicode())
+            c if is_printable(c) => EscapeDefaultState::Char(c),
+            c => EscapeDefaultState::Unicode(c.escape_unicode()),
         };
         EscapeDefault { state: init_state }
     }

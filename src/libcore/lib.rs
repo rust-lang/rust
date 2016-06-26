@@ -161,5 +161,6 @@ pub mod hash;
 pub mod fmt;
 
 // note: does not need to be public
+mod char_private;
 mod iter_private;
 mod tuple;

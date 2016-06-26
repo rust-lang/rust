@@ -707,12 +707,14 @@ fn test_escape_unicode() {
 fn test_escape_default() {
     assert_eq!("abc".escape_default(), "abc");
     assert_eq!("a c".escape_default(), "a c");
+    assert_eq!("éèê".escape_default(), "éèê");
     assert_eq!("\r\n\t".escape_default(), "\\r\\n\\t");
     assert_eq!("'\"\\".escape_default(), "\\'\\\"\\\\");
-    assert_eq!("\u{100}\u{ffff}".escape_default(), "\\u{100}\\u{ffff}");
-    assert_eq!("\u{10000}\u{10ffff}".escape_default(), "\\u{10000}\\u{10ffff}");
-    assert_eq!("ab\u{fb00}".escape_default(), "ab\\u{fb00}");
-    assert_eq!("\u{1d4ea}\r".escape_default(), "\\u{1d4ea}\\r");
+    assert_eq!("\u{7f}\u{ff}".escape_default(), "\\u{7f}\u{ff}");
+    assert_eq!("\u{100}\u{ffff}".escape_default(), "\u{100}\\u{ffff}");
+    assert_eq!("\u{10000}\u{10ffff}".escape_default(), "\u{10000}\\u{10ffff}");
+    assert_eq!("ab\u{200b}".escape_default(), "ab\\u{200b}");
+    assert_eq!("\u{10d4ea}\r".escape_default(), "\\u{10d4ea}\\r");
 }
 
 #[test]
