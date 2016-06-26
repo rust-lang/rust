@@ -530,7 +530,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             init: Some(ex),
             id: ast::DUMMY_NODE_ID,
             span: sp,
-            attrs: None,
+            attrs: ast::ThinVec::new(),
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
@@ -558,7 +558,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             init: Some(ex),
             id: ast::DUMMY_NODE_ID,
             span: sp,
-            attrs: None,
+            attrs: ast::ThinVec::new(),
         });
         P(ast::Stmt {
             id: ast::DUMMY_NODE_ID,
@@ -601,7 +601,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             node: node,
             span: span,
-            attrs: None,
+            attrs: ast::ThinVec::new(),
         })
     }
 

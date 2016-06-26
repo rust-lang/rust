@@ -20,7 +20,6 @@
 
 use ast::*;
 use ast;
-use attr::{ThinAttributes, ThinAttributesExt};
 use syntax_pos::Span;
 use codemap::{Spanned, respan};
 use parse::token::{self, keywords};
@@ -332,8 +331,8 @@ pub fn fold_attrs<T: Folder>(attrs: Vec<Attribute>, fld: &mut T) -> Vec<Attribut
     attrs.move_flat_map(|x| fld.fold_attribute(x))
 }
 
-pub fn fold_thin_attrs<T: Folder>(attrs: ThinAttributes, fld: &mut T) -> ThinAttributes {
-    attrs.map_thin_attrs(|v| fold_attrs(v, fld))
+pub fn fold_thin_attrs<T: Folder>(attrs: ThinVec<Attribute>, fld: &mut T) -> ThinVec<Attribute> {
+    fold_attrs(attrs.into(), fld).into()
 }
 
 pub fn noop_fold_arm<T: Folder>(Arm {attrs, pats, guard, body}: Arm, fld: &mut T) -> Arm {
@@ -481,7 +480,7 @@ pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
         pat: fld.fold_pat(pat),
         init: init.map(|e| fld.fold_expr(e)),
         span: fld.new_span(span),
-        attrs: attrs.map_thin_attrs(|v| fold_attrs(v, fld)),
+        attrs: fold_attrs(attrs.into(), fld).into(),
     })
 }
 
@@ -1276,7 +1275,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::Try(ex) => ExprKind::Try(folder.fold_expr(ex)),
         },
         span: folder.new_span(span),
-        attrs: attrs.map_thin_attrs(|v| fold_attrs(v, folder)),
+        attrs: fold_attrs(attrs.into(), folder).into(),
     }
 }
 
@@ -1329,9 +1328,7 @@ pub fn noop_fold_stmt<T: Folder>(Stmt {node, span, id}: Stmt, folder: &mut T)
         StmtKind::Mac(mac) => SmallVector::one(Stmt {
             id: id,
             node: StmtKind::Mac(mac.map(|(mac, semi, attrs)| {
-                let mac = folder.fold_mac(mac);
-                let attrs = attrs.map_thin_attrs(|attrs| fold_attrs(attrs, folder));
-                (mac, semi, attrs)
+                (folder.fold_mac(mac), semi, fold_attrs(attrs.into(), folder).into())
             })),
             span: span,
         })

@@ -86,7 +86,7 @@ fn check_expr_attrs(es: &str, expected: &[&str]) {
     let actual = &e.attrs;
     str_compare(es,
                 &expected.iter().map(|r| attr(r, &ps).unwrap()).collect::<Vec<_>>(),
-                actual.as_attr_slice(),
+                &actual,
                 pprust::attribute_to_string);
 }
 

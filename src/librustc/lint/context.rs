@@ -42,7 +42,6 @@ use std::mem;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::parse::token::InternedString;
 use syntax::ast;
-use syntax::attr::ThinAttributesExt;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 use hir;
@@ -767,7 +766,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, e: &hir::Expr) {
-        self.with_lint_attrs(e.attrs.as_attr_slice(), |cx| {
+        self.with_lint_attrs(&e.attrs, |cx| {
             run_lints!(cx, check_expr, late_passes, e);
             hir_visit::walk_expr(cx, e);
         })
@@ -832,7 +831,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 
     fn visit_local(&mut self, l: &hir::Local) {
-        self.with_lint_attrs(l.attrs.as_attr_slice(), |cx| {
+        self.with_lint_attrs(&l.attrs, |cx| {
             run_lints!(cx, check_local, late_passes, l);
             hir_visit::walk_local(cx, l);
         })
@@ -928,7 +927,7 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
     }
 
     fn visit_expr(&mut self, e: &ast::Expr) {
-        self.with_lint_attrs(e.attrs.as_attr_slice(), |cx| {
+        self.with_lint_attrs(&e.attrs, |cx| {
             run_lints!(cx, check_expr, early_passes, e);
             ast_visit::walk_expr(cx, e);
         })
@@ -988,7 +987,7 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
     }
 
     fn visit_local(&mut self, l: &ast::Local) {
-        self.with_lint_attrs(l.attrs.as_attr_slice(), |cx| {
+        self.with_lint_attrs(&l.attrs, |cx| {
             run_lints!(cx, check_local, early_passes, l);
             ast_visit::walk_local(cx, l);
         })
