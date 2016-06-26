@@ -14,7 +14,6 @@ use abi::{self, Abi};
 use ast::{self, BlockCheckMode, PatKind};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
-use attr::ThinAttributesExt;
 use util::parser::AssocOp;
 use attr;
 use attr::{AttrMetaMethods, AttributeMethods};
@@ -1607,7 +1606,7 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(st.span.lo));
         match st.node {
             ast::StmtKind::Local(ref loc) => {
-                try!(self.print_outer_attributes(loc.attrs.as_attr_slice()));
+                try!(self.print_outer_attributes(&loc.attrs));
                 try!(self.space_if_not_bol());
                 try!(self.ibox(INDENT_UNIT));
                 try!(self.word_nbsp("let"));
@@ -1635,7 +1634,7 @@ impl<'a> State<'a> {
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, style, ref attrs) = **mac;
                 try!(self.space_if_not_bol());
-                try!(self.print_outer_attributes(attrs.as_attr_slice()));
+                try!(self.print_outer_attributes(&attrs));
                 let delim = match style {
                     ast::MacStmtStyle::Braces => token::Brace,
                     _ => token::Paren
@@ -1975,7 +1974,7 @@ impl<'a> State<'a> {
                                   is_inline: bool) -> io::Result<()> {
         try!(self.maybe_print_comment(expr.span.lo));
 
-        let attrs = expr.attrs.as_attr_slice();
+        let attrs = &expr.attrs;
         if is_inline {
             try!(self.print_outer_attributes_inline(attrs));
         } else {
@@ -2119,9 +2118,7 @@ impl<'a> State<'a> {
                     let i_expr = body.expr.as_ref().unwrap();
                     match i_expr.node {
                         ast::ExprKind::Block(ref blk) => {
-                            try!(self.print_block_unclosed_with_attrs(
-                                &blk,
-                                i_expr.attrs.as_attr_slice()));
+                            try!(self.print_block_unclosed_with_attrs(&blk, &i_expr.attrs));
                         }
                         _ => {
                             // this is a bare expression

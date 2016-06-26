@@ -14,8 +14,8 @@ pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
+pub use util::ThinVec;
 
-use attr::ThinAttributes;
 use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
@@ -835,10 +835,9 @@ pub enum StmtKind {
     /// Expr without trailing semi-colon (must have unit type).
     Expr(P<Expr>),
 
-    /// Expr with trailing semi-colon (may have any type).
     Semi(P<Expr>),
 
-    Mac(P<(Mac, MacStmtStyle, ThinAttributes)>),
+    Mac(P<(Mac, MacStmtStyle, ThinVec<Attribute>)>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -865,7 +864,7 @@ pub struct Local {
     pub init: Option<P<Expr>>,
     pub id: NodeId,
     pub span: Span,
-    pub attrs: ThinAttributes,
+    pub attrs: ThinVec<Attribute>,
 }
 
 /// An arm of a 'match'.
@@ -913,7 +912,7 @@ pub struct Expr {
     pub id: NodeId,
     pub node: ExprKind,
     pub span: Span,
-    pub attrs: ThinAttributes
+    pub attrs: ThinVec<Attribute>
 }
 
 impl fmt::Debug for Expr {

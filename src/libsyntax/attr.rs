@@ -25,6 +25,7 @@ use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::token::InternedString;
 use parse::{ParseSess, token};
 use ptr::P;
+use util::ThinVec;
 
 use std::cell::{RefCell, Cell};
 use std::collections::HashSet;
@@ -802,80 +803,6 @@ impl IntType {
     }
 }
 
-/// A list of attributes, behind a optional box as
-/// a space optimization.
-pub type ThinAttributes = Option<Box<Vec<Attribute>>>;
-
-pub trait ThinAttributesExt {
-    fn map_thin_attrs<F>(self, f: F) -> Self
-        where F: FnOnce(Vec<Attribute>) -> Vec<Attribute>;
-    fn prepend(mut self, attrs: Self) -> Self;
-    fn append(mut self, attrs: Self) -> Self;
-    fn update<F>(&mut self, f: F)
-        where Self: Sized,
-              F: FnOnce(Self) -> Self;
-    fn as_attr_slice(&self) -> &[Attribute];
-    fn into_attr_vec(self) -> Vec<Attribute>;
-}
-
-impl ThinAttributesExt for ThinAttributes {
-    fn map_thin_attrs<F>(self, f: F) -> Self
-        where F: FnOnce(Vec<Attribute>) -> Vec<Attribute>
-    {
-        f(self.map(|b| *b).unwrap_or(Vec::new())).into_thin_attrs()
-    }
-
-    fn prepend(self, attrs: ThinAttributes) -> Self {
-        attrs.map_thin_attrs(|mut attrs| {
-            attrs.extend(self.into_attr_vec());
-            attrs
-        })
-    }
-
-    fn append(self, attrs: ThinAttributes) -> Self {
-        self.map_thin_attrs(|mut self_| {
-            self_.extend(attrs.into_attr_vec());
-            self_
-        })
-    }
-
-    fn update<F>(&mut self, f: F)
-        where Self: Sized,
-              F: FnOnce(ThinAttributes) -> ThinAttributes
-    {
-        let self_ = f(self.take());
-        *self = self_;
-    }
-
-    fn as_attr_slice(&self) -> &[Attribute] {
-        match *self {
-            Some(ref b) => b,
-            None => &[],
-        }
-    }
-
-    fn into_attr_vec(self) -> Vec<Attribute> {
-        match self {
-            Some(b) => *b,
-            None => Vec::new(),
-        }
-    }
-}
-
-pub trait AttributesExt {
-    fn into_thin_attrs(self) -> ThinAttributes;
-}
-
-impl AttributesExt for Vec<Attribute> {
-    fn into_thin_attrs(self) -> ThinAttributes {
-        if self.len() == 0 {
-            None
-        } else {
-            Some(Box::new(self))
-        }
-    }
-}
-
 pub trait HasAttrs: Sized {
     fn attrs(&self) -> &[ast::Attribute];
     fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self;
@@ -890,12 +817,12 @@ impl HasAttrs for Vec<Attribute> {
     }
 }
 
-impl HasAttrs for ThinAttributes {
+impl HasAttrs for ThinVec<Attribute> {
     fn attrs(&self) -> &[Attribute] {
-        self.as_attr_slice()
+        &self
     }
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
-        self.map_thin_attrs(f)
+        f(self.into()).into()
     }
 }
 

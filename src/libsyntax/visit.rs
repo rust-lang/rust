@@ -25,7 +25,6 @@
 
 use abi::Abi;
 use ast::*;
-use attr::ThinAttributesExt;
 use syntax_pos::Span;
 use codemap::Spanned;
 
@@ -184,7 +183,7 @@ pub fn walk_mod<V: Visitor>(visitor: &mut V, module: &Mod) {
 }
 
 pub fn walk_local<V: Visitor>(visitor: &mut V, local: &Local) {
-    for attr in local.attrs.as_attr_slice() {
+    for attr in local.attrs.iter() {
         visitor.visit_attribute(attr);
     }
     visitor.visit_pat(&local.pat);
@@ -604,7 +603,7 @@ pub fn walk_stmt<V: Visitor>(visitor: &mut V, statement: &Stmt) {
         StmtKind::Mac(ref mac) => {
             let (ref mac, _, ref attrs) = **mac;
             visitor.visit_mac(mac);
-            for attr in attrs.as_attr_slice() {
+            for attr in attrs.iter() {
                 visitor.visit_attribute(attr);
             }
         }
@@ -616,7 +615,7 @@ pub fn walk_mac<V: Visitor>(_: &mut V, _: &Mac) {
 }
 
 pub fn walk_expr<V: Visitor>(visitor: &mut V, expression: &Expr) {
-    for attr in expression.attrs.as_attr_slice() {
+    for attr in expression.attrs.iter() {
         visitor.visit_attribute(attr);
     }
     match expression.node {
