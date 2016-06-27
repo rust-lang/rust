@@ -23,4 +23,4 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_llvm = { path = "../librustc_llvm" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
-syntax_pos = { path "../libsyntax_pos" }
+syntax_pos = { path = "../libsyntax_pos" }
