@@ -2953,12 +2953,13 @@ This error indicates that not enough type parameters were found in a type or
 trait.
 
 For example, the `Foo` struct below is defined to be generic in `T`, but the
-type parameter is missing in the definition of `Bar`:
+type parameter is missing in the definitions of `Bar` and `baz`:
 
 ```compile_fail
 struct Foo<T> { x: T }
 
 struct Bar { x: Foo }
+fn baz( x: Foo ) {}
 ```
 "##,
 
