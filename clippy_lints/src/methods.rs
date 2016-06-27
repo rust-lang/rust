@@ -536,13 +536,14 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[P<hi
                     };
 
                     if implements_trait(cx, arg_ty, default_trait_id, Vec::new()) {
-                        span_lint(cx,
+                        span_lint_and_then(cx,
                                   OR_FUN_CALL,
                                   span,
-                                  &format!("use of `{}` followed by a call to `{}`", name, path))
-                            .span_suggestion(span,
-                                             "try this",
-                                             format!("{}.unwrap_or_default()", snippet(cx, self_expr.span, "_")));
+                                  &format!("use of `{}` followed by a call to `{}`", name, path),
+                                  |db| {
+                                      db.span_suggestion(span, "try this",
+                                                          format!("{}.unwrap_or_default()", snippet(cx, self_expr.span, "_")));
+                                  });
                         return true;
                     }
                 }
@@ -590,10 +591,11 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[P<hi
             (false, true) => snippet(cx, fun.span, ".."),
         };
 
-        span_lint(cx, OR_FUN_CALL, span, &format!("use of `{}` followed by a function call", name))
-            .span_suggestion(span,
-                             "try this",
-                             format!("{}.{}_{}({})", snippet(cx, self_expr.span, "_"), name, suffix, sugg));
+        span_lint_and_then(cx, OR_FUN_CALL, span, &format!("use of `{}` followed by a function call", name), |db| {
+            db.span_suggestion(span,
+                               "try this",
+                               format!("{}.{}_{}({})", snippet(cx, self_expr.span, "_"), name, suffix, sugg));
+        });
     }
 
     if args.len() == 2 {
@@ -621,15 +623,14 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr) {
 fn lint_clone_double_ref(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, ty: ty::Ty) {
     if let ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) = ty.sty {
         if let ty::TyRef(..) = inner.sty {
-            let mut db = span_lint(cx,
-                                   CLONE_DOUBLE_REF,
-                                   expr.span,
-                                   "using `clone` on a double-reference; \
-                                    this will copy the reference instead of cloning \
-                                    the inner type");
-            if let Some(snip) = snippet_opt(cx, arg.span) {
-                db.span_suggestion(expr.span, "try dereferencing it", format!("(*{}).clone()", snip));
-            }
+            span_lint_and_then(cx,
+                               CLONE_DOUBLE_REF,
+                               expr.span,
+                               "using `clone` on a double-reference; \
+                                this will copy the reference instead of cloning the inner type",
+                               |db| if let Some(snip) = snippet_opt(cx, arg.span) {
+                                   db.span_suggestion(expr.span, "try dereferencing it", format!("(*{}).clone()", snip));
+                               });
         }
     }
 }
@@ -641,13 +642,14 @@ fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
     }
     let arg_ty = cx.tcx.expr_ty(&args[1]);
     if let Some((span, r)) = derefs_to_slice(cx, &args[1], &arg_ty) {
-        span_lint(cx, EXTEND_FROM_SLICE, expr.span, "use of `extend` to extend a Vec by a slice")
-            .span_suggestion(expr.span,
-                             "try this",
-                             format!("{}.extend_from_slice({}{})",
-                                     snippet(cx, args[0].span, "_"),
-                                     r,
-                                     snippet(cx, span, "_")));
+        span_lint_and_then(cx, EXTEND_FROM_SLICE, expr.span, "use of `extend` to extend a Vec by a slice", |db| {
+            db.span_suggestion(expr.span,
+                               "try this",
+                               format!("{}.extend_from_slice({}{})",
+                                       snippet(cx, args[0].span, "_"),
+                                       r,
+                                       snippet(cx, span, "_")));
+        });
     }
 }
 

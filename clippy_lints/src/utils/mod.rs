@@ -12,7 +12,6 @@ use rustc::ty;
 use std::borrow::Cow;
 use std::env;
 use std::mem;
-use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 use syntax::ast::{self, LitKind, RangeLimits};
 use syntax::codemap::{ExpnInfo, Span, ExpnFormat};
@@ -453,71 +452,52 @@ impl<'a> Drop for DiagnosticWrapper<'a> {
     }
 }
 
-impl<'a> DerefMut for DiagnosticWrapper<'a> {
-    fn deref_mut(&mut self) -> &mut DiagnosticBuilder<'a> {
-        &mut self.0
-    }
-}
-
-impl<'a> Deref for DiagnosticWrapper<'a> {
-    type Target = DiagnosticBuilder<'a>;
-    fn deref(&self) -> &DiagnosticBuilder<'a> {
-        &self.0
-    }
-}
-
 impl<'a> DiagnosticWrapper<'a> {
     fn wiki_link(&mut self, lint: &'static Lint) {
         if env::var("CLIPPY_DISABLE_WIKI_LINKS").is_err() {
-            self.help(&format!("for further information visit https://github.com/Manishearth/rust-clippy/wiki#{}",
+            self.0.help(&format!("for further information visit https://github.com/Manishearth/rust-clippy/wiki#{}",
                                lint.name_lower()));
         }
     }
 }
 
-pub fn span_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str) -> DiagnosticWrapper<'a> {
+pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
     if cx.current_level(lint) != Level::Allow {
         db.wiki_link(lint);
     }
-    db
 }
 
-pub fn span_help_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str)
-                                              -> DiagnosticWrapper<'a> {
+// FIXME: needless lifetime doesn't trigger here
+pub fn span_help_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
     if cx.current_level(lint) != Level::Allow {
-        db.help(help);
+        db.0.help(help);
         db.wiki_link(lint);
     }
-    db
 }
 
 pub fn span_note_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, note_span: Span,
-                                              note: &str)
-                                              -> DiagnosticWrapper<'a> {
+                                              note: &str) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
     if cx.current_level(lint) != Level::Allow {
         if note_span == span {
-            db.note(note);
+            db.0.note(note);
         } else {
-            db.span_note(note_span, note);
+            db.0.span_note(note_span, note);
         }
         db.wiki_link(lint);
     }
-    db
 }
 
 pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str, f: F)
-                                                 -> DiagnosticWrapper<'a>
-    where F: FnOnce(&mut DiagnosticWrapper)
+    where F: FnOnce(&mut DiagnosticBuilder<'a>)
 {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
     if cx.current_level(lint) != Level::Allow {
-        f(&mut db);
+        f(&mut db.0);
         db.wiki_link(lint);
     }
-    db
 }
 
 /// Return the base type for references and raw pointers.
