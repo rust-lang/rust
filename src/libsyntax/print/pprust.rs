@@ -11,14 +11,14 @@
 pub use self::AnnNode::*;
 
 use abi::{self, Abi};
-use ast::{self, TokenTree, BlockCheckMode, PatKind};
+use ast::{self, BlockCheckMode, PatKind};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
-use attr::ThinAttributesExt;
 use util::parser::AssocOp;
 use attr;
 use attr::{AttrMetaMethods, AttributeMethods};
-use codemap::{self, CodeMap, BytePos};
+use codemap::{self, CodeMap};
+use syntax_pos::{self, BytePos};
 use errors;
 use parse::token::{self, keywords, BinOpToken, Token, InternedString};
 use parse::lexer::comments;
@@ -28,6 +28,7 @@ use print::pp::{Breaks, eof};
 use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 use std_inject;
+use tokenstream::{self, TokenTree};
 
 use std::ascii;
 use std::io::{self, Write, Read};
@@ -330,11 +331,11 @@ pub fn lifetime_to_string(e: &ast::Lifetime) -> String {
     to_string(|s| s.print_lifetime(e))
 }
 
-pub fn tt_to_string(tt: &ast::TokenTree) -> String {
+pub fn tt_to_string(tt: &tokenstream::TokenTree) -> String {
     to_string(|s| s.print_tt(tt))
 }
 
-pub fn tts_to_string(tts: &[ast::TokenTree]) -> String {
+pub fn tts_to_string(tts: &[tokenstream::TokenTree]) -> String {
     to_string(|s| s.print_tts(tts))
 }
 
@@ -842,11 +843,11 @@ impl<'a> State<'a> {
         self.end() // close the head-box
     }
 
-    pub fn bclose_(&mut self, span: codemap::Span,
+    pub fn bclose_(&mut self, span: syntax_pos::Span,
                    indented: usize) -> io::Result<()> {
         self.bclose_maybe_open(span, indented, true)
     }
-    pub fn bclose_maybe_open(&mut self, span: codemap::Span,
+    pub fn bclose_maybe_open(&mut self, span: syntax_pos::Span,
                              indented: usize, close_box: bool) -> io::Result<()> {
         try!(self.maybe_print_comment(span.hi));
         try!(self.break_offset_if_not_bol(1, -(indented as isize)));
@@ -856,7 +857,7 @@ impl<'a> State<'a> {
         }
         Ok(())
     }
-    pub fn bclose(&mut self, span: codemap::Span) -> io::Result<()> {
+    pub fn bclose(&mut self, span: syntax_pos::Span) -> io::Result<()> {
         self.bclose_(span, INDENT_UNIT)
     }
 
@@ -900,7 +901,7 @@ impl<'a> State<'a> {
                                   mut op: F,
                                   mut get_span: G) -> io::Result<()> where
         F: FnMut(&mut State, &T) -> io::Result<()>,
-        G: FnMut(&T) -> codemap::Span,
+        G: FnMut(&T) -> syntax_pos::Span,
     {
         try!(self.rbox(0, b));
         let len = elts.len();
@@ -1352,7 +1353,7 @@ impl<'a> State<'a> {
 
     pub fn print_enum_def(&mut self, enum_definition: &ast::EnumDef,
                           generics: &ast::Generics, ident: ast::Ident,
-                          span: codemap::Span,
+                          span: syntax_pos::Span,
                           visibility: &ast::Visibility) -> io::Result<()> {
         try!(self.head(&visibility_qualified(visibility, "enum")));
         try!(self.print_ident(ident));
@@ -1364,7 +1365,7 @@ impl<'a> State<'a> {
 
     pub fn print_variants(&mut self,
                           variants: &[ast::Variant],
-                          span: codemap::Span) -> io::Result<()> {
+                          span: syntax_pos::Span) -> io::Result<()> {
         try!(self.bopen());
         for v in variants {
             try!(self.space_if_not_bol());
@@ -1393,7 +1394,7 @@ impl<'a> State<'a> {
                         struct_def: &ast::VariantData,
                         generics: &ast::Generics,
                         ident: ast::Ident,
-                        span: codemap::Span,
+                        span: syntax_pos::Span,
                         print_finalizer: bool) -> io::Result<()> {
         try!(self.print_ident(ident));
         try!(self.print_generics(generics));
@@ -1445,7 +1446,7 @@ impl<'a> State<'a> {
     /// appropriate macro, transcribe back into the grammar we just parsed from,
     /// and then pretty-print the resulting AST nodes (so, e.g., we print
     /// expression arguments as expressions). It can be done! I think.
-    pub fn print_tt(&mut self, tt: &ast::TokenTree) -> io::Result<()> {
+    pub fn print_tt(&mut self, tt: &tokenstream::TokenTree) -> io::Result<()> {
         match *tt {
             TokenTree::Token(_, ref tk) => {
                 try!(word(&mut self.s, &token_to_string(tk)));
@@ -1476,14 +1477,14 @@ impl<'a> State<'a> {
                     None => {},
                 }
                 match seq.op {
-                    ast::KleeneOp::ZeroOrMore => word(&mut self.s, "*"),
-                    ast::KleeneOp::OneOrMore => word(&mut self.s, "+"),
+                    tokenstream::KleeneOp::ZeroOrMore => word(&mut self.s, "*"),
+                    tokenstream::KleeneOp::OneOrMore => word(&mut self.s, "+"),
                 }
             }
         }
     }
 
-    pub fn print_tts(&mut self, tts: &[ast::TokenTree]) -> io::Result<()> {
+    pub fn print_tts(&mut self, tts: &[tokenstream::TokenTree]) -> io::Result<()> {
         try!(self.ibox(0));
         for (i, tt) in tts.iter().enumerate() {
             if i != 0 {
@@ -1550,6 +1551,17 @@ impl<'a> State<'a> {
                 try!(self.print_associated_type(ti.ident, Some(bounds),
                                            default.as_ref().map(|ty| &**ty)));
             }
+            ast::TraitItemKind::Macro(codemap::Spanned { ref node, .. }) => {
+                // code copied from ItemKind::Mac:
+                self.print_path(&node.path, false, 0)?;
+                word(&mut self.s, "! ")?;
+                self.cbox(INDENT_UNIT)?;
+                self.popen()?;
+                self.print_tts(&node.tts[..])?;
+                self.pclose()?;
+                word(&mut self.s, ";")?;
+                self.end()?
+            }
         }
         self.ann.post(self, NodeSubItem(ti.id))
     }
@@ -1593,21 +1605,40 @@ impl<'a> State<'a> {
     pub fn print_stmt(&mut self, st: &ast::Stmt) -> io::Result<()> {
         try!(self.maybe_print_comment(st.span.lo));
         match st.node {
-            ast::StmtKind::Decl(ref decl, _) => {
-                try!(self.print_decl(&decl));
+            ast::StmtKind::Local(ref loc) => {
+                try!(self.print_outer_attributes(&loc.attrs));
+                try!(self.space_if_not_bol());
+                try!(self.ibox(INDENT_UNIT));
+                try!(self.word_nbsp("let"));
+
+                try!(self.ibox(INDENT_UNIT));
+                try!(self.print_local_decl(&loc));
+                try!(self.end());
+                if let Some(ref init) = loc.init {
+                    try!(self.nbsp());
+                    try!(self.word_space("="));
+                    try!(self.print_expr(&init));
+                }
+                try!(word(&mut self.s, ";"));
+                self.end()?;
             }
-            ast::StmtKind::Expr(ref expr, _) => {
+            ast::StmtKind::Item(ref item) => self.print_item(&item)?,
+            ast::StmtKind::Expr(ref expr) => {
                 try!(self.space_if_not_bol());
                 try!(self.print_expr_outer_attr_style(&expr, false));
+                if parse::classify::expr_requires_semi_to_be_stmt(expr) {
+                    try!(word(&mut self.s, ";"));
+                }
             }
-            ast::StmtKind::Semi(ref expr, _) => {
+            ast::StmtKind::Semi(ref expr) => {
                 try!(self.space_if_not_bol());
                 try!(self.print_expr_outer_attr_style(&expr, false));
                 try!(word(&mut self.s, ";"));
             }
-            ast::StmtKind::Mac(ref mac, style, ref attrs) => {
+            ast::StmtKind::Mac(ref mac) => {
+                let (ref mac, style, ref attrs) = **mac;
                 try!(self.space_if_not_bol());
-                try!(self.print_outer_attributes(attrs.as_attr_slice()));
+                try!(self.print_outer_attributes(&attrs));
                 let delim = match style {
                     ast::MacStmtStyle::Braces => token::Brace,
                     _ => token::Paren
@@ -1618,9 +1649,6 @@ impl<'a> State<'a> {
                     _ => try!(word(&mut self.s, ";")),
                 }
             }
-        }
-        if parse::classify::stmt_ends_with_semi(&st.node) {
-            try!(word(&mut self.s, ";"));
         }
         self.maybe_print_trailing_comment(st.span, None)
     }
@@ -1665,17 +1693,17 @@ impl<'a> State<'a> {
 
         try!(self.print_inner_attributes(attrs));
 
-        for st in &blk.stmts {
-            try!(self.print_stmt(st));
-        }
-        match blk.expr {
-            Some(ref expr) => {
-                try!(self.space_if_not_bol());
-                try!(self.print_expr_outer_attr_style(&expr, false));
-                try!(self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi)));
+        for (i, st) in blk.stmts.iter().enumerate() {
+            match st.node {
+                ast::StmtKind::Expr(ref expr) if i == blk.stmts.len() - 1 => {
+                    try!(self.space_if_not_bol());
+                    try!(self.print_expr_outer_attr_style(&expr, false));
+                    try!(self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi)));
+                }
+                _ => try!(self.print_stmt(st)),
             }
-            _ => ()
         }
+
         try!(self.bclose_maybe_open(blk.span, indented, close_box));
         self.ann.post(self, NodeBlock(blk))
     }
@@ -1947,7 +1975,7 @@ impl<'a> State<'a> {
                                   is_inline: bool) -> io::Result<()> {
         try!(self.maybe_print_comment(expr.span.lo));
 
-        let attrs = expr.attrs.as_attr_slice();
+        let attrs = &expr.attrs;
         if is_inline {
             try!(self.print_outer_attributes_inline(attrs));
         } else {
@@ -2084,24 +2112,21 @@ impl<'a> State<'a> {
                     _ => false
                 };
 
-                if !default_return || !body.stmts.is_empty() || body.expr.is_none() {
-                    try!(self.print_block_unclosed(&body));
-                } else {
-                    // we extract the block, so as not to create another set of boxes
-                    let i_expr = body.expr.as_ref().unwrap();
-                    match i_expr.node {
-                        ast::ExprKind::Block(ref blk) => {
-                            try!(self.print_block_unclosed_with_attrs(
-                                &blk,
-                                i_expr.attrs.as_attr_slice()));
-                        }
-                        _ => {
+                match body.stmts.last().map(|stmt| &stmt.node) {
+                    Some(&ast::StmtKind::Expr(ref i_expr)) if default_return &&
+                                                              body.stmts.len() == 1 => {
+                        // we extract the block, so as not to create another set of boxes
+                        if let ast::ExprKind::Block(ref blk) = i_expr.node {
+                            try!(self.print_block_unclosed_with_attrs(&blk, &i_expr.attrs));
+                        } else {
                             // this is a bare expression
                             try!(self.print_expr(&i_expr));
                             try!(self.end()); // need to close a box
                         }
                     }
+                    _ => try!(self.print_block_unclosed(&body)),
                 }
+
                 // a box will be closed by print_expr, but we didn't want an overall
                 // wrapper so we closed the corresponding opening. so create an
                 // empty box to satisfy the close.
@@ -2170,7 +2195,7 @@ impl<'a> State<'a> {
                     try!(space(&mut self.s));
                 }
             }
-            ast::ExprKind::Again(opt_ident) => {
+            ast::ExprKind::Continue(opt_ident) => {
                 try!(word(&mut self.s, "continue"));
                 try!(space(&mut self.s));
                 if let Some(ident) = opt_ident {
@@ -2276,29 +2301,6 @@ impl<'a> State<'a> {
             try!(self.print_type(&ty));
         }
         Ok(())
-    }
-
-    pub fn print_decl(&mut self, decl: &ast::Decl) -> io::Result<()> {
-        try!(self.maybe_print_comment(decl.span.lo));
-        match decl.node {
-            ast::DeclKind::Local(ref loc) => {
-                try!(self.print_outer_attributes(loc.attrs.as_attr_slice()));
-                try!(self.space_if_not_bol());
-                try!(self.ibox(INDENT_UNIT));
-                try!(self.word_nbsp("let"));
-
-                try!(self.ibox(INDENT_UNIT));
-                try!(self.print_local_decl(&loc));
-                try!(self.end());
-                if let Some(ref init) = loc.init {
-                    try!(self.nbsp());
-                    try!(self.word_space("="));
-                    try!(self.print_expr(&init));
-                }
-                self.end()
-            }
-            ast::DeclKind::Item(ref item) => self.print_item(&item)
-        }
     }
 
     pub fn print_ident(&mut self, ident: ast::Ident) -> io::Result<()> {
@@ -2483,10 +2485,10 @@ impl<'a> State<'a> {
                 }
                 try!(self.pclose());
             }
-            PatKind::Path(ref path) => {
+            PatKind::Path(None, ref path) => {
                 try!(self.print_path(path, true, 0));
             }
-            PatKind::QPath(ref qself, ref path) => {
+            PatKind::Path(Some(ref qself), ref path) => {
                 try!(self.print_qpath(path, qself, false));
             }
             PatKind::Struct(ref path, ref fields, etc) => {
@@ -2999,7 +3001,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    pub fn maybe_print_trailing_comment(&mut self, span: codemap::Span,
+    pub fn maybe_print_trailing_comment(&mut self, span: syntax_pos::Span,
                                         next_pos: Option<BytePos>)
         -> io::Result<()> {
         let cm = match self.cm {
@@ -3104,6 +3106,7 @@ mod tests {
     use ast;
     use codemap;
     use parse::token;
+    use syntax_pos;
 
     #[test]
     fn test_fun_to_string() {
@@ -3111,7 +3114,7 @@ mod tests {
 
         let decl = ast::FnDecl {
             inputs: Vec::new(),
-            output: ast::FunctionRetTy::Default(codemap::DUMMY_SP),
+            output: ast::FunctionRetTy::Default(syntax_pos::DUMMY_SP),
             variadic: false
         };
         let generics = ast::Generics::default();
@@ -3125,7 +3128,7 @@ mod tests {
     fn test_variant_to_string() {
         let ident = token::str_to_ident("principal_skinner");
 
-        let var = codemap::respan(codemap::DUMMY_SP, ast::Variant_ {
+        let var = codemap::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
             name: ident,
             attrs: Vec::new(),
             // making this up as I go.... ?

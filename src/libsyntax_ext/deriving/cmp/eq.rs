@@ -12,11 +12,11 @@ use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast::{MetaItem, Expr};
-use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                           span: Span,
@@ -30,7 +30,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                 // create `a.<method>(); b.<method>(); c.<method>(); ...`
                 // (where method is `assert_receiver_is_total_eq`)
                 let stmts = exprs.into_iter().map(|e| cx.stmt_expr(e)).collect();
-                let block = cx.block(span, stmts, None);
+                let block = cx.block(span, stmts);
                 cx.expr_block(block)
             },
             Box::new(|cx, sp, _, _| {

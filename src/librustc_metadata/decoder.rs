@@ -56,10 +56,10 @@ use syntax::attr;
 use syntax::parse::token::{self, IdentInterner};
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::codemap::{self, Span, BytePos, NO_EXPANSION};
+use syntax::codemap;
 use syntax::print::pprust;
 use syntax::ptr::P;
-
+use syntax_pos::{self, Span, BytePos, NO_EXPANSION};
 
 pub type Cmd<'a> = &'a crate_metadata;
 
@@ -1230,7 +1230,7 @@ fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
                         value: meta_item,
                         is_sugared_doc: is_sugared_doc,
                     },
-                    span: codemap::DUMMY_SP
+                    span: syntax_pos::DUMMY_SP
                 }
             }).collect()
         },
@@ -1380,8 +1380,8 @@ fn reverse_translate_def_id(cdata: Cmd, did: DefId) -> Option<DefId> {
 pub fn translate_span(cdata: Cmd,
                       codemap: &codemap::CodeMap,
                       last_filemap_index_hint: &Cell<usize>,
-                      span: codemap::Span)
-                      -> codemap::Span {
+                      span: syntax_pos::Span)
+                      -> syntax_pos::Span {
     let span = if span.lo > span.hi {
         // Currently macro expansion sometimes produces invalid Span values
         // where lo > hi. In order not to crash the compiler when trying to
@@ -1390,7 +1390,7 @@ pub fn translate_span(cdata: Cmd,
         // least some of the time).
         // This workaround is only necessary as long as macro expansion is
         // not fixed. FIXME(#23480)
-        codemap::mk_sp(span.lo, span.lo)
+        syntax_pos::mk_sp(span.lo, span.lo)
     } else {
         span
     };
@@ -1430,7 +1430,7 @@ pub fn translate_span(cdata: Cmd,
     let hi = (span.hi - filemap.original_start_pos) +
               filemap.translated_filemap.start_pos;
 
-    codemap::mk_sp(lo, hi)
+    syntax_pos::mk_sp(lo, hi)
 }
 
 pub fn each_inherent_implementation_for_type<F>(cdata: Cmd,
@@ -1733,7 +1733,7 @@ pub fn is_default_impl(cdata: Cmd, impl_id: DefIndex) -> bool {
     item_family(impl_doc) == Family::DefaultImpl
 }
 
-pub fn get_imported_filemaps(metadata: &[u8]) -> Vec<codemap::FileMap> {
+pub fn get_imported_filemaps(metadata: &[u8]) -> Vec<syntax_pos::FileMap> {
     let crate_doc = rbml::Doc::new(metadata);
     let cm_doc = reader::get_doc(crate_doc, tag_codemap);
 

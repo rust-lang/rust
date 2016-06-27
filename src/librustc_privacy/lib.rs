@@ -23,6 +23,7 @@
 
 extern crate rustc;
 #[macro_use] extern crate syntax;
+extern crate syntax_pos;
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::{self, PatKind};
@@ -35,7 +36,7 @@ use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::NodeSet;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use std::cmp;
 use std::mem::replace;

@@ -11,7 +11,7 @@
 // Characters and their corresponding confusables were collected from
 // http://www.unicode.org/Public/security/revision-06/confusables.txt
 
-use codemap::mk_sp as make_span;
+use syntax_pos::mk_sp as make_span;
 use errors::DiagnosticBuilder;
 use super::StringReader;
 

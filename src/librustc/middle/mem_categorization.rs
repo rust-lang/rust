@@ -83,7 +83,7 @@ use hir::{MutImmutable, MutMutable, PatKind};
 use hir::pat_util::EnumerateAndAdjustIterator;
 use hir;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use std::fmt;
 use std::rc::Rc;

@@ -17,7 +17,7 @@
 use hir::def::Def;
 use ty::{Ty, TyCtxt};
 
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use hir as ast;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {

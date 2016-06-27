@@ -36,6 +36,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::codemap;
 use syntax::parse::token::IdentInterner;
+use syntax_pos;
 
 pub use middle::cstore::{NativeLibraryKind, LinkagePreference};
 pub use middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
@@ -52,15 +53,15 @@ pub enum MetadataBlob {
     MetadataArchive(loader::ArchiveMetadata),
 }
 
-/// Holds information about a codemap::FileMap imported from another crate.
+/// Holds information about a syntax_pos::FileMap imported from another crate.
 /// See creader::import_codemap() for more information.
 pub struct ImportedFileMap {
     /// This FileMap's byte-offset within the codemap of its original crate
-    pub original_start_pos: codemap::BytePos,
+    pub original_start_pos: syntax_pos::BytePos,
     /// The end of this FileMap within the codemap of its original crate
-    pub original_end_pos: codemap::BytePos,
+    pub original_end_pos: syntax_pos::BytePos,
     /// The imported FileMap's representation within the local codemap
-    pub translated_filemap: Rc<codemap::FileMap>
+    pub translated_filemap: Rc<syntax_pos::FileMap>
 }
 
 pub struct crate_metadata {

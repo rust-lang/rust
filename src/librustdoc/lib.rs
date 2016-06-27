@@ -42,9 +42,11 @@ extern crate rustc_back;
 extern crate rustc_metadata;
 extern crate serialize;
 #[macro_use] extern crate syntax;
+extern crate syntax_pos;
 extern crate test as testing;
 extern crate rustc_unicode;
 #[macro_use] extern crate log;
+extern crate rustc_errors as errors;
 
 extern crate serialize as rustc_serialize; // used by deriving
 

@@ -33,7 +33,7 @@ pub use self::LintSource::*;
 
 use std::hash;
 use std::ascii::AsciiExt;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use hir::intravisit::FnKind;
 use syntax::visit as ast_visit;
 use syntax::ast;
@@ -195,7 +195,6 @@ pub trait EarlyLintPass: LintPass {
     fn check_stmt(&mut self, _: &EarlyContext, _: &ast::Stmt) { }
     fn check_arm(&mut self, _: &EarlyContext, _: &ast::Arm) { }
     fn check_pat(&mut self, _: &EarlyContext, _: &ast::Pat) { }
-    fn check_decl(&mut self, _: &EarlyContext, _: &ast::Decl) { }
     fn check_expr(&mut self, _: &EarlyContext, _: &ast::Expr) { }
     fn check_expr_post(&mut self, _: &EarlyContext, _: &ast::Expr) { }
     fn check_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }

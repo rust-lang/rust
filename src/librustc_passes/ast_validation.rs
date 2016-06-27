@@ -19,10 +19,10 @@
 use rustc::lint;
 use rustc::session::Session;
 use syntax::ast::*;
-use syntax::codemap::Span;
-use syntax::errors;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
+use syntax_pos::Span;
+use errors;
 
 struct AstValidator<'a> {
     session: &'a Session,
@@ -57,7 +57,7 @@ impl<'a> AstValidator<'a> {
     }
 }
 
-impl<'a, 'v> Visitor<'v> for AstValidator<'a> {
+impl<'a> Visitor for AstValidator<'a> {
     fn visit_lifetime(&mut self, lt: &Lifetime) {
         if lt.name.as_str() == "'_" {
             self.session.add_lint(
@@ -73,7 +73,7 @@ impl<'a, 'v> Visitor<'v> for AstValidator<'a> {
         match expr.node {
             ExprKind::While(_, _, Some(ident)) | ExprKind::Loop(_, Some(ident)) |
             ExprKind::WhileLet(_, _, _, Some(ident)) | ExprKind::ForLoop(_, _, _, Some(ident)) |
-            ExprKind::Break(Some(ident)) | ExprKind::Again(Some(ident)) => {
+            ExprKind::Break(Some(ident)) | ExprKind::Continue(Some(ident)) => {
                 self.check_label(ident.node, ident.span, expr.id);
             }
             _ => {}

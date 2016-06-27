@@ -9,11 +9,11 @@
 // except according to those terms.
 
 // error-pattern: requires at least a format string argument
-// error-pattern: bad-format-args.rs:19:5: 19:15 note: in this expansion
+// error-pattern: in this expansion
 
 // error-pattern: expected token: `,`
-// error-pattern: bad-format-args.rs:20:5: 20:19 note: in this expansion
-// error-pattern: bad-format-args.rs:21:5: 21:22 note: in this expansion
+// error-pattern: in this expansion
+// error-pattern: in this expansion
 
 fn main() {
     format!();

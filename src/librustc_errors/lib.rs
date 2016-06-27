@@ -8,24 +8,50 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use errors::emitter::ColorConfig;
+#![crate_name = "rustc_errors"]
+#![unstable(feature = "rustc_private", issue = "27812")]
+#![crate_type = "dylib"]
+#![crate_type = "rlib"]
+#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+      html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![cfg_attr(not(stage0), deny(warnings))]
+
+#![feature(custom_attribute)]
+#![allow(unused_attributes)]
+#![feature(rustc_private)]
+#![feature(staged_api)]
+#![feature(question_mark)]
+#![feature(range_contains)]
+#![feature(libc)]
+#![feature(unicode)]
+
+extern crate serialize;
+extern crate term;
+#[macro_use] extern crate log;
+#[macro_use] extern crate libc;
+extern crate rustc_unicode;
+extern crate serialize as rustc_serialize; // used by deriving
+extern crate syntax_pos;
+
+pub use emitter::ColorConfig;
 
 use self::Level::*;
 use self::RenderSpan::*;
 
-use codemap::{self, CodeMap, MultiSpan, NO_EXPANSION, Span};
-use diagnostics;
-use errors::emitter::{Emitter, EmitterWriter};
+use emitter::{Emitter, EmitterWriter};
 
 use std::cell::{RefCell, Cell};
 use std::{error, fmt};
 use std::rc::Rc;
 use std::thread::panicking;
-use term;
 
 pub mod emitter;
-pub mod json;
 pub mod snippet;
+pub mod registry;
+
+use syntax_pos::{BytePos, Loc, FileLinesResult, FileName, MultiSpan, Span, NO_EXPANSION };
+use syntax_pos::{MacroBacktrace};
 
 #[derive(Clone)]
 pub enum RenderSpan {
@@ -43,8 +69,16 @@ pub enum RenderSpan {
 
 #[derive(Clone)]
 pub struct CodeSuggestion {
-    msp: MultiSpan,
-    substitutes: Vec<String>,
+    pub msp: MultiSpan,
+    pub substitutes: Vec<String>,
+}
+
+pub trait CodeMapper {
+    fn lookup_char_pos(&self, pos: BytePos) -> Loc;
+    fn span_to_lines(&self, sp: Span) -> FileLinesResult;
+    fn span_to_string(&self, sp: Span) -> String;
+    fn span_to_filename(&self, sp: Span) -> FileName;
+    fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace>;
 }
 
 impl RenderSpan {
@@ -59,8 +93,8 @@ impl RenderSpan {
 
 impl CodeSuggestion {
     /// Returns the assembled code suggestion.
-    pub fn splice_lines(&self, cm: &CodeMap) -> String {
-        use codemap::{CharPos, Loc, Pos};
+    pub fn splice_lines(&self, cm: &CodeMapper) -> String {
+        use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String, line_opt: Option<&str>,
                          lo: &Loc, hi_opt: Option<&Loc>) {
@@ -181,20 +215,20 @@ impl error::Error for ExplicitBug {
 #[derive(Clone)]
 pub struct DiagnosticBuilder<'a> {
     handler: &'a Handler,
-    level: Level,
-    message: String,
-    code: Option<String>,
-    span: MultiSpan,
-    children: Vec<SubDiagnostic>,
+    pub level: Level,
+    pub message: String,
+    pub code: Option<String>,
+    pub span: MultiSpan,
+    pub children: Vec<SubDiagnostic>,
 }
 
 /// For example a note attached to an error.
 #[derive(Clone)]
-struct SubDiagnostic {
-    level: Level,
-    message: String,
-    span: MultiSpan,
-    render_span: Option<RenderSpan>,
+pub struct SubDiagnostic {
+    pub level: Level,
+    pub message: String,
+    pub span: MultiSpan,
+    pub render_span: Option<RenderSpan>,
 }
 
 impl<'a> DiagnosticBuilder<'a> {
@@ -386,12 +420,13 @@ pub struct Handler {
 
 impl Handler {
     pub fn with_tty_emitter(color_config: ColorConfig,
-                            registry: Option<diagnostics::registry::Registry>,
+                            registry: Option<registry::Registry>,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
-                            cm: Rc<codemap::CodeMap>)
+                            cm: Rc<CodeMapper>)
                             -> Handler {
-        let emitter = Box::new(EmitterWriter::stderr(color_config, registry, cm));
+        let emitter = Box::new(EmitterWriter::stderr(color_config, registry, cm,
+                               snippet::FormatMode::EnvironmentSelected));
         Handler::with_emitter(can_emit_warnings, treat_err_as_bug, emitter)
     }
 
@@ -662,7 +697,7 @@ impl fmt::Display for Level {
 }
 
 impl Level {
-    fn color(self) -> term::color::Color {
+    pub fn color(self) -> term::color::Color {
         match self {
             Bug | Fatal | PhaseFatal | Error => term::color::BRIGHT_RED,
             Warning => term::color::YELLOW,
@@ -672,7 +707,7 @@ impl Level {
         }
     }
 
-    fn to_str(self) -> &'static str {
+    pub fn to_str(self) -> &'static str {
         match self {
             Bug => "error: internal compiler error",
             Fatal | PhaseFatal | Error => "error",

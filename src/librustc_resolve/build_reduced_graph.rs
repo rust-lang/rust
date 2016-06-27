@@ -29,14 +29,15 @@ use rustc::ty::{self, VariantKind};
 use syntax::ast::Name;
 use syntax::attr;
 use syntax::parse::token;
-use syntax::codemap::{Span, DUMMY_SP};
 
-use syntax::ast::{Block, Crate, DeclKind};
+use syntax::ast::{Block, Crate};
 use syntax::ast::{ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, PathListItemKind};
-use syntax::ast::{Stmt, StmtKind, TraitItemKind};
+use syntax::ast::{StmtKind, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::visit::{self, Visitor};
+
+use syntax_pos::{Span, DUMMY_SP};
 
 trait ToNameBinding<'a> {
     fn to_name_binding(self) -> NameBinding<'a>;
@@ -84,17 +85,11 @@ impl<'b> Resolver<'b> {
     }
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
-        fn is_item(statement: &Stmt) -> bool {
-            if let StmtKind::Decl(ref declaration, _) = statement.node {
-                if let DeclKind::Item(_) = declaration.node {
-                    return true;
-                }
-            }
-            false
-        }
-
         // If any statements are items, we need to create an anonymous module
-        block.stmts.iter().any(is_item)
+        block.stmts.iter().any(|statement| match statement.node {
+            StmtKind::Item(_) => true,
+            _ => false,
+        })
     }
 
     /// Constructs the reduced graph for one item.
@@ -313,6 +308,7 @@ impl<'b> Resolver<'b> {
                             (Def::Method(item_def_id), ValueNS)
                         }
                         TraitItemKind::Type(..) => (Def::AssociatedTy(def_id, item_def_id), TypeNS),
+                        TraitItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
                     };
 
                     self.define(module_parent, item.ident.name, ns, (def, item.span, vis));
@@ -503,7 +499,7 @@ struct BuildReducedGraphVisitor<'a, 'b: 'a> {
     parent: Module<'b>,
 }
 
-impl<'a, 'b, 'v> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b> {
+impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &Item) {
         let old_parent = self.parent;
         self.resolver.build_reduced_graph_for_item(item, &mut self.parent);

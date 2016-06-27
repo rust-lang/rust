@@ -14,6 +14,7 @@ extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_lint;
 extern crate rustc_metadata;
+extern crate rustc_errors;
 extern crate syntax;
 
 use rustc::dep_graph::DepGraph;
@@ -21,7 +22,7 @@ use rustc::session::{build_session, Session};
 use rustc::session::config::{basic_options, build_configuration, Input, OutputType};
 use rustc_driver::driver::{compile_input, CompileController, anon_src};
 use rustc_metadata::cstore::CStore;
-use syntax::diagnostics::registry::Registry;
+use rustc_errors::registry::Registry;
 use syntax::parse::token;
 
 use std::path::PathBuf;

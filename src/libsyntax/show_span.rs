@@ -44,7 +44,7 @@ struct ShowSpanVisitor<'a> {
     mode: Mode,
 }
 
-impl<'a, 'v> Visitor<'v> for ShowSpanVisitor<'a> {
+impl<'a> Visitor for ShowSpanVisitor<'a> {
     fn visit_expr(&mut self, e: &ast::Expr) {
         if let Mode::Expression = self.mode {
             self.span_diagnostic.span_warn(e.span, "expression");

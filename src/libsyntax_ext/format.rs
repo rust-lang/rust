@@ -14,13 +14,14 @@ use self::Position::*;
 use fmt_macros as parse;
 
 use syntax::ast;
-use syntax::codemap::{Span, respan, DUMMY_SP};
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
 use syntax::fold::Folder;
 use syntax::parse::token::{self, keywords};
 use syntax::ptr::P;
+use syntax_pos::{Span, DUMMY_SP};
+use syntax::tokenstream;
 
 use std::collections::HashMap;
 
@@ -80,7 +81,7 @@ struct Context<'a, 'b:'a> {
 /// Some((fmtstr, unnamed arguments, ordering of named arguments,
 ///       named arguments))
 /// ```
-fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
               -> Option<(P<ast::Expr>, Vec<P<ast::Expr>>, Vec<String>,
                          HashMap<String, P<ast::Expr>>)> {
     let mut args = Vec::new();
@@ -441,12 +442,14 @@ impl<'a, 'b> Context<'a, 'b> {
 
         let name = ecx.ident_of(name);
         let item = ecx.item(sp, name, vec![], st);
-        let decl = respan(sp, ast::DeclKind::Item(item));
+        let stmt = ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::StmtKind::Item(item),
+            span: sp,
+        };
 
         // Wrap the declaration in a block so that it forms a single expression.
-        ecx.expr_block(ecx.block(sp,
-            vec![respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))],
-            Some(ecx.expr_ident(sp, name))))
+        ecx.expr_block(ecx.block(sp, vec![stmt, ecx.stmt_expr(ecx.expr_ident(sp, name))]))
     }
 
     /// Actually builds the expression which the iformat! block will be expanded
@@ -606,7 +609,7 @@ impl<'a, 'b> Context<'a, 'b> {
 }
 
 pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt, sp: Span,
-                               tts: &[ast::TokenTree])
+                               tts: &[tokenstream::TokenTree])
                                -> Box<base::MacResult+'cx> {
 
     match parse_args(ecx, sp, tts) {

@@ -13,7 +13,7 @@ use self::TypeVariableValue::*;
 use self::UndoEntry::*;
 use hir::def_id::{DefId};
 use ty::{self, Ty};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use std::cmp::min;
 use std::marker::PhantomData;

@@ -44,9 +44,9 @@ use std::ptr;
 use std::rc::Rc;
 use syntax;
 use syntax::util::interner::Interner;
-use syntax::codemap::Span;
-use syntax::{ast, codemap};
+use syntax::ast;
 use syntax::parse::token;
+use syntax_pos::{self, Span};
 
 
 // From DWARF 5.
@@ -660,7 +660,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             &[],
                             containing_scope,
                             NO_FILE_METADATA,
-                            codemap::DUMMY_SP)
+                            syntax_pos::DUMMY_SP)
 }
 
 pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
@@ -1385,7 +1385,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                             &[sole_struct_member_description],
                                             self.containing_scope,
                                             self.file_metadata,
-                                            codemap::DUMMY_SP);
+                                            syntax_pos::DUMMY_SP);
 
                 // Encode the information about the null variant in the union
                 // member's name.
@@ -1615,7 +1615,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let discriminant_base_type_metadata =
                     type_metadata(cx,
                                   adt::ty_of_inttype(cx.tcx(), inttype),
-                                  codemap::DUMMY_SP);
+                                  syntax_pos::DUMMY_SP);
                 let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
 
                 let name = CString::new(discriminant_name.as_bytes()).unwrap();
@@ -1849,7 +1849,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let node_def_id = cx.tcx().map.local_def_id(node_id);
     let (var_scope, span) = get_namespace_and_span_for_item(cx, node_def_id);
 
-    let (file_metadata, line_number) = if span != codemap::DUMMY_SP {
+    let (file_metadata, line_number) = if span != syntax_pos::DUMMY_SP {
         let loc = span_start(cx, span);
         (file_metadata(cx, &loc.file.name, &loc.file.abs_path), loc.line as c_uint)
     } else {

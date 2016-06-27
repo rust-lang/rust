@@ -12,3 +12,5 @@ crate-type = ["dylib"]
 fmt_macros = { path = "../libfmt_macros" }
 log = { path = "../liblog" }
 syntax = { path = "../libsyntax" }
+syntax_pos = { path = "../libsyntax_pos" }
+rustc_errors = { path = "../librustc_errors" }

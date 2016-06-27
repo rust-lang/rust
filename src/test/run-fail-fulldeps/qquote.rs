@@ -15,11 +15,13 @@
 #![feature(quote, rustc_private)]
 
 extern crate syntax;
+extern crate syntax_pos;
 
 use syntax::ast;
-use syntax::codemap::{self, DUMMY_SP};
+use syntax::codemap;
 use syntax::parse;
 use syntax::print::pprust;
+use syntax_pos::DUMMY_SP;
 
 fn main() {
     let ps = syntax::parse::ParseSess::new();

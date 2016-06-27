@@ -203,8 +203,8 @@ use rustc::mir::visit as mir_visit;
 use rustc::mir::visit::Visitor as MirVisitor;
 
 use syntax::abi::Abi;
-use syntax::codemap::DUMMY_SP;
-use syntax::errors;
+use errors;
+use syntax_pos::DUMMY_SP;
 use base::custom_coerce_unsize_info;
 use context::SharedCrateContext;
 use common::{fulfill_obligation, normalize_and_test_predicates, type_is_sized};
