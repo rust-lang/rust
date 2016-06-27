@@ -272,7 +272,7 @@ In your `Cargo.toml`:
 clippy = {version = "*", optional = true}
 
 [features]
-default=[]
+default = []
 ```
 
 And, in your `main.rs` or `lib.rs`:
