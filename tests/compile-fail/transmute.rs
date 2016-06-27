@@ -21,6 +21,21 @@ unsafe fn _generic<'a, T, U: 'a>(t: &'a T) {
     //~^ ERROR transmute from a type (`&'a T`) to itself
 
     let _: &'a U = core::intrinsics::transmute(t);
+
+    let _: *const T = core::intrinsics::transmute(t);
+    //~^ ERROR transmute from a reference to a pointer
+    //~| HELP try
+    //~| SUGGESTION = t as *const T
+
+    let _: *mut T = core::intrinsics::transmute(t);
+    //~^ ERROR transmute from a reference to a pointer
+    //~| HELP try
+    //~| SUGGESTION = t as *const T as *mut T
+
+    let _: *const U = core::intrinsics::transmute(t);
+    //~^ ERROR transmute from a reference to a pointer
+    //~| HELP try
+    //~| SUGGESTION = t as *const T as *const U
 }
 
 #[deny(transmute_ptr_to_ref)]
