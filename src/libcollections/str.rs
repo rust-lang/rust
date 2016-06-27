@@ -10,7 +10,7 @@
 
 //! Unicode string slices.
 //!
-//! *[See also the `str` primitive type](../../std/primitive.str.html).*
+//! *[See also the `str` primitive type](::/std/primitive.str.html).*
 
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -715,7 +715,7 @@ impl str {
     /// a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [`None`]: /std/option/enum.Option.html#variant.None
+    /// [`None`]: ::/std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -760,7 +760,7 @@ impl str {
     /// a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [`None`]: /std/option/enum.Option.html#variant.None
+    /// [`None`]: ::/std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -809,7 +809,7 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, eg, [`char`] but not for `&str`.
     ///
-    /// [`DoubleEndedIterator`]: /std/iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ::/std/iter/trait.DoubleEndedIterator.html
     ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rsplit()`] method can be used.
@@ -922,7 +922,7 @@ impl str {
     /// search, and it will be a [`DoubleEndedIterator`] if a forward/reverse
     /// search yields the same elements.
     ///
-    /// [`DoubleEndedIterator`]: /std/iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ::/std/iter/trait.DoubleEndedIterator.html
     ///
     /// For iterating from the front, the [`split()`] method can be used.
     ///
@@ -979,7 +979,7 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, eg, [`char`] but not for `&str`.
     ///
-    /// [`DoubleEndedIterator`]: /std/iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ::/std/iter/trait.DoubleEndedIterator.html
     /// [`char`]: primitive.char.html
     ///
     /// If the pattern allows a reverse search but its results might differ
@@ -1161,7 +1161,7 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, eg, [`char`] but not for `&str`.
     ///
-    /// [`DoubleEndedIterator`]: /std/iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ::/std/iter/trait.DoubleEndedIterator.html
     /// [`char`]: primitive.char.html
     ///
     /// If the pattern allows a reverse search but its results might differ
@@ -1199,7 +1199,7 @@ impl str {
     /// search, and it will be a [`DoubleEndedIterator`] if a forward/reverse
     /// search yields the same elements.
     ///
-    /// [`DoubleEndedIterator`]: /std/iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ::/std/iter/trait.DoubleEndedIterator.html
     ///
     /// For iterating from the front, the [`matches()`] method can be used.
     ///
@@ -1240,7 +1240,7 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, eg, [`char`] but not for `&str`.
     ///
-    /// [`DoubleEndedIterator`]: /std/iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ::/std/iter/trait.DoubleEndedIterator.html
     ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rmatch_indices()`] method can be used.
@@ -1283,7 +1283,7 @@ impl str {
     /// search, and it will be a [`DoubleEndedIterator`] if a forward/reverse
     /// search yields the same elements.
     ///
-    /// [`DoubleEndedIterator`]: /std/iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ::/std/iter/trait.DoubleEndedIterator.html
     ///
     /// For iterating from the front, the [`match_indices()`] method can be used.
     ///
@@ -1513,14 +1513,14 @@ impl str {
     ///
     /// `parse()` can parse any type that implements the [`FromStr`] trait.
     ///
-    /// [`FromStr`]: /std/str/trait.FromStr.html
+    /// [`FromStr`]: ::/std/str/trait.FromStr.html
     ///
     /// # Errors
     ///
     /// Will return [`Err`] if it's not possible to parse this string slice into
     /// the desired type.
     ///
-    /// [`Err`]: /std/str/trait.FromStr.html#associatedtype.Err
+    /// [`Err`]: ::/std/str/trait.FromStr.html#associatedtype.Err
     ///
     /// # Example
     ///
@@ -1559,7 +1559,7 @@ impl str {
     /// While doing so, it attempts to find matches of a pattern. If it finds any, it
     /// replaces them with the replacement string slice.
     ///
-    /// [`String`]: /std/string/struct.String.html
+    /// [`String`]: ::/std/string/struct.String.html
     ///
     /// # Examples
     ///
@@ -1595,7 +1595,7 @@ impl str {
     /// 'Lowercase' is defined according to the terms of the Unicode Derived Core Property
     /// `Lowercase`.
     ///
-    /// [`String`]: /std/string/struct.String.html
+    /// [`String`]: ::/std/string/struct.String.html
     ///
     /// # Examples
     ///
@@ -1671,7 +1671,7 @@ impl str {
     /// 'Uppercase' is defined according to the terms of the Unicode Derived Core Property
     /// `Uppercase`.
     ///
-    /// [`String`]: /std/string/struct.String.html
+    /// [`String`]: ::/std/string/struct.String.html
     ///
     /// # Examples
     ///
@@ -1715,7 +1715,7 @@ impl str {
 
     /// Converts a `Box<str>` into a [`String`] without copying or allocating.
     ///
-    /// [`String`]: /std/string/struct.String.html
+    /// [`String`]: ::/std/string/struct.String.html
     ///
     /// # Examples
     ///
