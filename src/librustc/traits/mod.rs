@@ -23,7 +23,7 @@ use infer::InferCtxt;
 
 use std::rc::Rc;
 use syntax::ast;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 
 pub use self::error_reporting::TraitErrorKey;
 pub use self::coherence::orphan_check;

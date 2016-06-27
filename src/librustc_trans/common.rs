@@ -52,9 +52,9 @@ use std::ffi::CString;
 use std::cell::{Cell, RefCell};
 
 use syntax::ast;
-use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
+use syntax_pos::{DUMMY_SP, Span};
 
 pub use context::{CrateContext, SharedCrateContext};
 

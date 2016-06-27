@@ -9,13 +9,13 @@
 // except according to those terms.
 
 use syntax::ast;
-use syntax::codemap;
 use syntax::ext::base;
 use syntax::feature_gate;
 use syntax::print;
+use syntax_pos;
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
-                              sp: codemap::Span,
+                              sp: syntax_pos::Span,
                               tts: &[ast::TokenTree])
                               -> Box<base::MacResult+'cx> {
     if !cx.ecfg.enable_log_syntax() {

@@ -30,10 +30,10 @@ use ast::{NodeId, PatKind};
 use ast;
 use attr;
 use attr::AttrMetaMethods;
-use codemap::{CodeMap, Span};
+use codemap::CodeMap;
+use syntax_pos::Span;
 use errors::Handler;
-use visit;
-use visit::{FnKind, Visitor};
+use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
 use parse::token::InternedString;
 

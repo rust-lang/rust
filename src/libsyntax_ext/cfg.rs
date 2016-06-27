@@ -13,12 +13,12 @@
 /// current compilation environment.
 
 use syntax::ast;
-use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
 use syntax::attr;
 use syntax::parse::token;
+use syntax_pos::Span;
 
 pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
                        sp: Span,

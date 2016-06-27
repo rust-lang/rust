@@ -46,7 +46,7 @@ use rustc::lint::builtin::CONST_ERR;
 
 use rustc::hir::{self, PatKind};
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use rustc::hir::intravisit::{self, FnKind, Visitor};
 
 use std::collections::hash_map::Entry;

@@ -12,8 +12,8 @@
 
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::Span;
-use syntax::errors;
+use errors;
+use syntax_pos::Span;
 use rustc::dep_graph::DepNode;
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::Visitor;

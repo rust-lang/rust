@@ -17,9 +17,9 @@ use std::env;
 use std::path::Path;
 
 use syntax::ast;
-use syntax::codemap::*;
 use syntax::parse::lexer::{self, Reader, StringReader};
 use syntax::parse::token::{self, keywords, Token};
+use syntax_pos::*;
 
 #[derive(Clone)]
 pub struct SpanUtils<'a> {

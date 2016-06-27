@@ -29,7 +29,7 @@ use std::{iter, u32};
 use std::ops::{Index, IndexMut};
 use std::vec::IntoIter;
 use syntax::ast::{self, Name};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use super::cache::Cache;
 

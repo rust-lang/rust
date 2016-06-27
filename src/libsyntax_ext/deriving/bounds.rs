@@ -12,8 +12,8 @@ use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast::MetaItem;
-use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
+use syntax_pos::Span;
 
 pub fn expand_deriving_unsafe_bound(cx: &mut ExtCtxt,
                                     span: Span,

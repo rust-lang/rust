@@ -123,9 +123,10 @@ use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
 use syntax::ast::{self, NodeId};
-use syntax::codemap::{BytePos, original_sp, Span};
+use syntax::codemap::original_sp;
 use syntax::parse::token::keywords;
 use syntax::ptr::P;
+use syntax_pos::{BytePos, Span};
 
 use hir::Expr;
 use hir;

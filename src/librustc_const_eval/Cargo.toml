@@ -16,3 +16,4 @@ rustc_back = { path = "../librustc_back" }
 rustc_const_math = { path = "../librustc_const_math" }
 syntax = { path = "../libsyntax" }
 graphviz = { path = "../libgraphviz" }
+syntax_pos = { path = "../libsyntax_pos" }

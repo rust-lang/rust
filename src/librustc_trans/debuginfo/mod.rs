@@ -42,8 +42,8 @@ use std::cell::{Cell, RefCell};
 use std::ffi::CString;
 use std::ptr;
 
-use syntax::codemap::{Span, Pos};
-use syntax::{ast, codemap};
+use syntax_pos::{self, Span, Pos};
+use syntax::ast;
 use syntax::attr::IntType;
 
 pub mod gdb;
@@ -242,7 +242,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let (containing_scope, span) = get_containing_scope_and_span(cx, instance);
 
     // This can be the case for functions inlined from another crate
-    if span == codemap::DUMMY_SP {
+    if span == syntax_pos::DUMMY_SP {
         return FunctionDebugContext::FunctionWithoutDebugInfo;
     }
 
@@ -327,7 +327,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         signature.push(match sig.output {
             ty::FnConverging(ret_ty) => match ret_ty.sty {
                 ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
-                _ => type_metadata(cx, ret_ty, codemap::DUMMY_SP)
+                _ => type_metadata(cx, ret_ty, syntax_pos::DUMMY_SP)
             },
             ty::FnDiverging => diverging_type_metadata(cx)
         });
@@ -340,13 +340,13 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         // Arguments types
         for &argument_type in inputs {
-            signature.push(type_metadata(cx, argument_type, codemap::DUMMY_SP));
+            signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
         }
 
         if abi == Abi::RustCall && !sig.inputs.is_empty() {
             if let ty::TyTuple(args) = sig.inputs[sig.inputs.len() - 1].sty {
                 for &argument_type in args {
-                    signature.push(type_metadata(cx, argument_type, codemap::DUMMY_SP));
+                    signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
                 }
             }
         }
@@ -386,7 +386,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
             generics.types.as_slice().iter().enumerate().map(|(i, param)| {
                 let actual_type = cx.tcx().normalize_associated_type(&actual_types[i]);
-                let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
+                let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
                 let name = CString::new(param.name.as_str().as_bytes()).unwrap();
                 unsafe {
                     llvm::LLVMDIBuilderCreateTemplateTypeParameter(
@@ -420,7 +420,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let impl_self_ty = monomorphize::apply_param_substs(cx.tcx(),
                                                                     instance.substs,
                                                                     &impl_self_ty);
-                Some(type_metadata(cx, impl_self_ty, codemap::DUMMY_SP))
+                Some(type_metadata(cx, impl_self_ty, syntax_pos::DUMMY_SP))
             } else {
                 // For trait method impls we still use the "parallel namespace"
                 // strategy
@@ -441,7 +441,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         // Try to get some span information, if we have an inlined item.
         let definition_span = match cx.external().borrow().get(&instance.def) {
             Some(&Some(node_id)) => cx.tcx().map.span(node_id),
-            _ => cx.tcx().map.def_id_span(instance.def, codemap::DUMMY_SP)
+            _ => cx.tcx().map.def_id_span(instance.def, syntax_pos::DUMMY_SP)
         };
 
         (containing_scope, definition_span)

@@ -36,11 +36,12 @@ use std::collections::HashSet;
 use std::hash::*;
 
 use syntax::ast::{self, NodeId, PatKind};
-use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string, bounds_to_string, generics_to_string};
 use syntax::ptr::P;
+use syntax::codemap::Spanned;
+use syntax_pos::*;
 
 use super::{escape, generated_code, SaveContext, PathCollector};
 use super::data::*;

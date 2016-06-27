@@ -17,7 +17,7 @@ use hir::def_id::DefId;
 use ty::subst::TypeSpace;
 use ty::{self, Ty, TyCtxt};
 use infer::{InferCtxt, TypeOrigin};
-use syntax::codemap::DUMMY_SP;
+use syntax_pos::DUMMY_SP;
 
 #[derive(Copy, Clone)]
 struct InferIsLocal(bool);

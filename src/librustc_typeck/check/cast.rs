@@ -47,7 +47,7 @@ use rustc::traits;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::cast::{CastKind, CastTy};
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use util::common::ErrorReported;
 
 /// Reifies a cast check to be checked once we have full type information for

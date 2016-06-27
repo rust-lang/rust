@@ -43,7 +43,7 @@ use type_::Type;
 use value::Value;
 
 use arena::TypedArena;
-use syntax::codemap::DUMMY_SP;
+use syntax_pos::DUMMY_SP;
 
 pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                            v: ValueRef,

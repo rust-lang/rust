@@ -21,7 +21,8 @@
 use ast::*;
 use ast;
 use attr::{ThinAttributes, ThinAttributesExt};
-use codemap::{respan, Span, Spanned};
+use syntax_pos::Span;
+use codemap::{Spanned, respan};
 use parse::token::{self, keywords};
 use ptr::P;
 use util::small_vector::SmallVector;

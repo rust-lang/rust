@@ -13,11 +13,12 @@ use deriving::generic::ty::*;
 
 use syntax::ast;
 use syntax::ast::{MetaItem, Expr};
-use syntax::codemap::{Span, respan, DUMMY_SP};
+use syntax::codemap::respan;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
 use syntax::ptr::P;
+use syntax_pos::{Span, DUMMY_SP};
 
 pub fn expand_deriving_debug(cx: &mut ExtCtxt,
                             span: Span,

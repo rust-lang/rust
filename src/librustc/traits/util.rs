@@ -12,7 +12,7 @@ use hir::def_id::DefId;
 use infer::InferCtxt;
 use ty::subst::{Subst, Substs};
 use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashSet;
 

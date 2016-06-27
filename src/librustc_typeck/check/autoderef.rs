@@ -20,7 +20,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::hir;
 
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use syntax::parse::token;
 
 #[derive(Copy, Clone, Debug)]

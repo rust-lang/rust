@@ -21,8 +21,9 @@ use session::Session;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
 use syntax::ast;
-use syntax::codemap::{Span, Spanned};
+use syntax::codemap::Spanned;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;

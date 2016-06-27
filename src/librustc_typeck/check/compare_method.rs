@@ -15,7 +15,7 @@ use rustc::traits::{self, ProjectionMode};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace};
 
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use CrateCtxt;
 use super::assoc;

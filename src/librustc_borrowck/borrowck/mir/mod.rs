@@ -12,8 +12,8 @@ use borrowck::BorrowckCtxt;
 
 use syntax::ast::{self, MetaItem};
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{Span, DUMMY_SP};
 use syntax::ptr::P;
+use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir;
 use rustc::hir::intravisit::{FnKind};

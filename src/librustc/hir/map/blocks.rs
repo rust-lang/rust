@@ -29,7 +29,7 @@ use hir::{Block, FnDecl};
 use syntax::ast::{Attribute, Name, NodeId};
 use syntax::attr::ThinAttributesExt;
 use hir as ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use hir::intravisit::FnKind;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl

@@ -19,268 +19,17 @@
 
 pub use self::ExpnFormat::*;
 
-use std::cell::{Cell, RefCell};
-use std::ops::{Add, Sub};
+use std::cell::RefCell;
 use std::path::{Path,PathBuf};
 use std::rc::Rc;
-use std::cmp;
 
 use std::env;
-use std::{fmt, fs};
+use std::fs;
 use std::io::{self, Read};
-
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+pub use syntax_pos::*;
+use errors::CodeMapper;
 
 use ast::Name;
-
-// _____________________________________________________________________________
-// Pos, BytePos, CharPos
-//
-
-pub trait Pos {
-    fn from_usize(n: usize) -> Self;
-    fn to_usize(&self) -> usize;
-}
-
-/// A byte offset. Keep this small (currently 32-bits), as AST contains
-/// a lot of them.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
-pub struct BytePos(pub u32);
-
-/// A character offset. Because of multibyte utf8 characters, a byte offset
-/// is not equivalent to a character offset. The CodeMap will convert BytePos
-/// values to CharPos values as necessary.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
-pub struct CharPos(pub usize);
-
-// FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
-// have been unsuccessful
-
-impl Pos for BytePos {
-    fn from_usize(n: usize) -> BytePos { BytePos(n as u32) }
-    fn to_usize(&self) -> usize { let BytePos(n) = *self; n as usize }
-}
-
-impl Add for BytePos {
-    type Output = BytePos;
-
-    fn add(self, rhs: BytePos) -> BytePos {
-        BytePos((self.to_usize() + rhs.to_usize()) as u32)
-    }
-}
-
-impl Sub for BytePos {
-    type Output = BytePos;
-
-    fn sub(self, rhs: BytePos) -> BytePos {
-        BytePos((self.to_usize() - rhs.to_usize()) as u32)
-    }
-}
-
-impl Encodable for BytePos {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u32(self.0)
-    }
-}
-
-impl Decodable for BytePos {
-    fn decode<D: Decoder>(d: &mut D) -> Result<BytePos, D::Error> {
-        Ok(BytePos(d.read_u32()?))
-    }
-}
-
-impl Pos for CharPos {
-    fn from_usize(n: usize) -> CharPos { CharPos(n) }
-    fn to_usize(&self) -> usize { let CharPos(n) = *self; n }
-}
-
-impl Add for CharPos {
-    type Output = CharPos;
-
-    fn add(self, rhs: CharPos) -> CharPos {
-        CharPos(self.to_usize() + rhs.to_usize())
-    }
-}
-
-impl Sub for CharPos {
-    type Output = CharPos;
-
-    fn sub(self, rhs: CharPos) -> CharPos {
-        CharPos(self.to_usize() - rhs.to_usize())
-    }
-}
-
-// _____________________________________________________________________________
-// Span, MultiSpan, Spanned
-//
-
-/// Spans represent a region of code, used for error reporting. Positions in spans
-/// are *absolute* positions from the beginning of the codemap, not positions
-/// relative to FileMaps. Methods on the CodeMap can be used to relate spans back
-/// to the original source.
-/// You must be careful if the span crosses more than one file - you will not be
-/// able to use many of the functions on spans in codemap and you cannot assume
-/// that the length of the span = hi - lo; there may be space in the BytePos
-/// range between files.
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
-pub struct Span {
-    pub lo: BytePos,
-    pub hi: BytePos,
-    /// Information about where the macro came from, if this piece of
-    /// code was created by a macro expansion.
-    pub expn_id: ExpnId
-}
-
-/// A collection of spans. Spans have two orthogonal attributes:
-///
-/// - they can be *primary spans*. In this case they are the locus of
-///   the error, and would be rendered with `^^^`.
-/// - they can have a *label*. In this case, the label is written next
-///   to the mark in the snippet when we render.
-#[derive(Clone)]
-pub struct MultiSpan {
-    primary_spans: Vec<Span>,
-    span_labels: Vec<(Span, String)>,
-}
-
-#[derive(Clone, Debug)]
-pub struct SpanLabel {
-    /// The span we are going to include in the final snippet.
-    pub span: Span,
-
-    /// Is this a primary span? This is the "locus" of the message,
-    /// and is indicated with a `^^^^` underline, versus `----`.
-    pub is_primary: bool,
-
-    /// What label should we attach to this span (if any)?
-    pub label: Option<String>,
-}
-
-pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_id: NO_EXPANSION };
-
-// Generic span to be used for code originating from the command line
-pub const COMMAND_LINE_SP: Span = Span { lo: BytePos(0),
-                                         hi: BytePos(0),
-                                         expn_id: COMMAND_LINE_EXPN };
-
-impl Span {
-    /// Returns a new span representing just the end-point of this span
-    pub fn end_point(self) -> Span {
-        let lo = cmp::max(self.hi.0 - 1, self.lo.0);
-        Span { lo: BytePos(lo), hi: self.hi, expn_id: self.expn_id}
-    }
-
-    /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
-    pub fn substitute_dummy(self, other: Span) -> Span {
-        if self.source_equal(&DUMMY_SP) { other } else { self }
-    }
-
-    pub fn contains(self, other: Span) -> bool {
-        self.lo <= other.lo && other.hi <= self.hi
-    }
-
-    /// Return true if the spans are equal with regards to the source text.
-    ///
-    /// Use this instead of `==` when either span could be generated code,
-    /// and you only care that they point to the same bytes of source text.
-    pub fn source_equal(&self, other: &Span) -> bool {
-        self.lo == other.lo && self.hi == other.hi
-    }
-
-    /// Returns `Some(span)`, a union of `self` and `other`, on overlap.
-    pub fn merge(self, other: Span) -> Option<Span> {
-        if self.expn_id != other.expn_id {
-            return None;
-        }
-
-        if (self.lo <= other.lo && self.hi > other.lo) ||
-           (self.lo >= other.lo && self.lo < other.hi) {
-            Some(Span {
-                lo: cmp::min(self.lo, other.lo),
-                hi: cmp::max(self.hi, other.hi),
-                expn_id: self.expn_id,
-            })
-        } else {
-            None
-        }
-    }
-
-    /// Returns `Some(span)`, where the start is trimmed by the end of `other`
-    pub fn trim_start(self, other: Span) -> Option<Span> {
-        if self.hi > other.hi {
-            Some(Span { lo: cmp::max(self.lo, other.hi), .. self })
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub struct Spanned<T> {
-    pub node: T,
-    pub span: Span,
-}
-
-impl Encodable for Span {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("Span", 2, |s| {
-            s.emit_struct_field("lo", 0, |s| {
-                self.lo.encode(s)
-            })?;
-
-            s.emit_struct_field("hi", 1, |s| {
-                self.hi.encode(s)
-            })
-        })
-    }
-}
-
-impl Decodable for Span {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Span, D::Error> {
-        d.read_struct("Span", 2, |d| {
-            let lo = d.read_struct_field("lo", 0, |d| {
-                BytePos::decode(d)
-            })?;
-
-            let hi = d.read_struct_field("hi", 1, |d| {
-                BytePos::decode(d)
-            })?;
-
-            Ok(mk_sp(lo, hi))
-        })
-    }
-}
-
-fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "Span {{ lo: {:?}, hi: {:?}, expn_id: {:?} }}",
-           span.lo, span.hi, span.expn_id)
-}
-
-thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter) -> fmt::Result> =
-                Cell::new(default_span_debug));
-
-impl fmt::Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        SPAN_DEBUG.with(|span_debug| span_debug.get()(*self, f))
-    }
-}
-
-pub fn spanned<T>(lo: BytePos, hi: BytePos, t: T) -> Spanned<T> {
-    respan(mk_sp(lo, hi), t)
-}
-
-pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
-    Spanned {node: t, span: sp}
-}
-
-pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
-    respan(DUMMY_SP, t)
-}
-
-/* assuming that we're not in macro expansion */
-pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
-    Span {lo: lo, hi: hi, expn_id: NO_EXPANSION}
-}
 
 /// Return the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
@@ -295,116 +44,6 @@ pub fn original_sp(cm: &CodeMap, sp: Span, enclosing_sp: Span) -> Span {
     }
 }
 
-impl MultiSpan {
-    pub fn new() -> MultiSpan {
-        MultiSpan {
-            primary_spans: vec![],
-            span_labels: vec![]
-        }
-    }
-
-    pub fn from_span(primary_span: Span) -> MultiSpan {
-        MultiSpan {
-            primary_spans: vec![primary_span],
-            span_labels: vec![]
-        }
-    }
-
-    pub fn from_spans(vec: Vec<Span>) -> MultiSpan {
-        MultiSpan {
-            primary_spans: vec,
-            span_labels: vec![]
-        }
-    }
-
-    pub fn push_span_label(&mut self, span: Span, label: String) {
-        self.span_labels.push((span, label));
-    }
-
-    /// Selects the first primary span (if any)
-    pub fn primary_span(&self) -> Option<Span> {
-        self.primary_spans.first().cloned()
-    }
-
-    /// Returns all primary spans.
-    pub fn primary_spans(&self) -> &[Span] {
-        &self.primary_spans
-    }
-
-    /// Returns the strings to highlight. We always ensure that there
-    /// is an entry for each of the primary spans -- for each primary
-    /// span P, if there is at least one label with span P, we return
-    /// those labels (marked as primary). But otherwise we return
-    /// `SpanLabel` instances with empty labels.
-    pub fn span_labels(&self) -> Vec<SpanLabel> {
-        let is_primary = |span| self.primary_spans.contains(&span);
-        let mut span_labels = vec![];
-
-        for &(span, ref label) in &self.span_labels {
-            span_labels.push(SpanLabel {
-                span: span,
-                is_primary: is_primary(span),
-                label: Some(label.clone())
-            });
-        }
-
-        for &span in &self.primary_spans {
-            if !span_labels.iter().any(|sl| sl.span == span) {
-                span_labels.push(SpanLabel {
-                    span: span,
-                    is_primary: true,
-                    label: None
-                });
-            }
-        }
-
-        span_labels
-    }
-}
-
-impl From<Span> for MultiSpan {
-    fn from(span: Span) -> MultiSpan {
-        MultiSpan::from_span(span)
-    }
-}
-
-// _____________________________________________________________________________
-// Loc, LocWithOpt, FileMapAndLine, FileMapAndBytePos
-//
-
-/// A source code location used for error reporting
-#[derive(Debug)]
-pub struct Loc {
-    /// Information about the original source
-    pub file: Rc<FileMap>,
-    /// The (1-based) line number
-    pub line: usize,
-    /// The (0-based) column offset
-    pub col: CharPos
-}
-
-/// A source code location used as the result of lookup_char_pos_adj
-// Actually, *none* of the clients use the filename *or* file field;
-// perhaps they should just be removed.
-#[derive(Debug)]
-pub struct LocWithOpt {
-    pub filename: FileName,
-    pub line: usize,
-    pub col: CharPos,
-    pub file: Option<Rc<FileMap>>,
-}
-
-// used to be structural records. Better names, anyone?
-#[derive(Debug)]
-pub struct FileMapAndLine { pub fm: Rc<FileMap>, pub line: usize }
-#[derive(Debug)]
-pub struct FileMapAndBytePos { pub fm: Rc<FileMap>, pub pos: BytePos }
-
-
-// _____________________________________________________________________________
-// ExpnFormat, NameAndSpan, ExpnInfo, ExpnId
-//
-
 /// The source of expansion.
 #[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub enum ExpnFormat {
@@ -412,6 +51,24 @@ pub enum ExpnFormat {
     MacroAttribute(Name),
     /// e.g. `format!()`
     MacroBang(Name),
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub struct Spanned<T> {
+    pub node: T,
+    pub span: Span,
+}
+
+pub fn spanned<T>(lo: BytePos, hi: BytePos, t: T) -> Spanned<T> {
+    respan(mk_sp(lo, hi), t)
+}
+
+pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
+    Spanned {node: t, span: sp}
+}
+
+pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
+    respan(DUMMY_SP, t)
 }
 
 #[derive(Clone, Hash, Debug)]
@@ -454,256 +111,9 @@ pub struct ExpnInfo {
     pub callee: NameAndSpan
 }
 
-#[derive(PartialEq, Eq, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Copy)]
-pub struct ExpnId(u32);
-
-pub const NO_EXPANSION: ExpnId = ExpnId(!0);
-// For code appearing from the command line
-pub const COMMAND_LINE_EXPN: ExpnId = ExpnId(!1);
-
-impl ExpnId {
-    pub fn from_u32(id: u32) -> ExpnId {
-        ExpnId(id)
-    }
-
-    pub fn into_u32(self) -> u32 {
-        self.0
-    }
-}
-
 // _____________________________________________________________________________
 // FileMap, MultiByteChar, FileName, FileLines
 //
-
-pub type FileName = String;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct LineInfo {
-    /// Index of line, starting from 0.
-    pub line_index: usize,
-
-    /// Column in line where span begins, starting from 0.
-    pub start_col: CharPos,
-
-    /// Column in line where span ends, starting from 0, exclusive.
-    pub end_col: CharPos,
-}
-
-pub struct FileLines {
-    pub file: Rc<FileMap>,
-    pub lines: Vec<LineInfo>
-}
-
-/// Identifies an offset of a multi-byte character in a FileMap
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Eq, PartialEq)]
-pub struct MultiByteChar {
-    /// The absolute offset of the character in the CodeMap
-    pub pos: BytePos,
-    /// The number of bytes, >=2
-    pub bytes: usize,
-}
-
-/// A single source in the CodeMap.
-pub struct FileMap {
-    /// The name of the file that the source came from, source that doesn't
-    /// originate from files has names between angle brackets by convention,
-    /// e.g. `<anon>`
-    pub name: FileName,
-    /// The absolute path of the file that the source came from.
-    pub abs_path: Option<FileName>,
-    /// The complete source code
-    pub src: Option<Rc<String>>,
-    /// The start position of this source in the CodeMap
-    pub start_pos: BytePos,
-    /// The end position of this source in the CodeMap
-    pub end_pos: BytePos,
-    /// Locations of lines beginnings in the source code
-    pub lines: RefCell<Vec<BytePos>>,
-    /// Locations of multi-byte characters in the source code
-    pub multibyte_chars: RefCell<Vec<MultiByteChar>>,
-}
-
-impl Encodable for FileMap {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("FileMap", 6, |s| {
-            s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
-            s.emit_struct_field("abs_path", 1, |s| self.abs_path.encode(s))?;
-            s.emit_struct_field("start_pos", 2, |s| self.start_pos.encode(s))?;
-            s.emit_struct_field("end_pos", 3, |s| self.end_pos.encode(s))?;
-            s.emit_struct_field("lines", 4, |s| {
-                let lines = self.lines.borrow();
-                // store the length
-                s.emit_u32(lines.len() as u32)?;
-
-                if !lines.is_empty() {
-                    // In order to preserve some space, we exploit the fact that
-                    // the lines list is sorted and individual lines are
-                    // probably not that long. Because of that we can store lines
-                    // as a difference list, using as little space as possible
-                    // for the differences.
-                    let max_line_length = if lines.len() == 1 {
-                        0
-                    } else {
-                        lines.windows(2)
-                             .map(|w| w[1] - w[0])
-                             .map(|bp| bp.to_usize())
-                             .max()
-                             .unwrap()
-                    };
-
-                    let bytes_per_diff: u8 = match max_line_length {
-                        0 ... 0xFF => 1,
-                        0x100 ... 0xFFFF => 2,
-                        _ => 4
-                    };
-
-                    // Encode the number of bytes used per diff.
-                    bytes_per_diff.encode(s)?;
-
-                    // Encode the first element.
-                    lines[0].encode(s)?;
-
-                    let diff_iter = (&lines[..]).windows(2)
-                                                .map(|w| (w[1] - w[0]));
-
-                    match bytes_per_diff {
-                        1 => for diff in diff_iter { (diff.0 as u8).encode(s)? },
-                        2 => for diff in diff_iter { (diff.0 as u16).encode(s)? },
-                        4 => for diff in diff_iter { diff.0.encode(s)? },
-                        _ => unreachable!()
-                    }
-                }
-
-                Ok(())
-            })?;
-            s.emit_struct_field("multibyte_chars", 5, |s| {
-                (*self.multibyte_chars.borrow()).encode(s)
-            })
-        })
-    }
-}
-
-impl Decodable for FileMap {
-    fn decode<D: Decoder>(d: &mut D) -> Result<FileMap, D::Error> {
-
-        d.read_struct("FileMap", 6, |d| {
-            let name: String = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
-            let abs_path: Option<String> =
-                d.read_struct_field("abs_path", 1, |d| Decodable::decode(d))?;
-            let start_pos: BytePos = d.read_struct_field("start_pos", 2, |d| Decodable::decode(d))?;
-            let end_pos: BytePos = d.read_struct_field("end_pos", 3, |d| Decodable::decode(d))?;
-            let lines: Vec<BytePos> = d.read_struct_field("lines", 4, |d| {
-                let num_lines: u32 = Decodable::decode(d)?;
-                let mut lines = Vec::with_capacity(num_lines as usize);
-
-                if num_lines > 0 {
-                    // Read the number of bytes used per diff.
-                    let bytes_per_diff: u8 = Decodable::decode(d)?;
-
-                    // Read the first element.
-                    let mut line_start: BytePos = Decodable::decode(d)?;
-                    lines.push(line_start);
-
-                    for _ in 1..num_lines {
-                        let diff = match bytes_per_diff {
-                            1 => d.read_u8()? as u32,
-                            2 => d.read_u16()? as u32,
-                            4 => d.read_u32()?,
-                            _ => unreachable!()
-                        };
-
-                        line_start = line_start + BytePos(diff);
-
-                        lines.push(line_start);
-                    }
-                }
-
-                Ok(lines)
-            })?;
-            let multibyte_chars: Vec<MultiByteChar> =
-                d.read_struct_field("multibyte_chars", 5, |d| Decodable::decode(d))?;
-            Ok(FileMap {
-                name: name,
-                abs_path: abs_path,
-                start_pos: start_pos,
-                end_pos: end_pos,
-                src: None,
-                lines: RefCell::new(lines),
-                multibyte_chars: RefCell::new(multibyte_chars)
-            })
-        })
-    }
-}
-
-impl fmt::Debug for FileMap {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "FileMap({})", self.name)
-    }
-}
-
-impl FileMap {
-    /// EFFECT: register a start-of-line offset in the
-    /// table of line-beginnings.
-    /// UNCHECKED INVARIANT: these offsets must be added in the right
-    /// order and must be in the right places; there is shared knowledge
-    /// about what ends a line between this file and parse.rs
-    /// WARNING: pos param here is the offset relative to start of CodeMap,
-    /// and CodeMap will append a newline when adding a filemap without a newline at the end,
-    /// so the safe way to call this is with value calculated as
-    /// filemap.start_pos + newline_offset_relative_to_the_start_of_filemap.
-    pub fn next_line(&self, pos: BytePos) {
-        // the new charpos must be > the last one (or it's the first one).
-        let mut lines = self.lines.borrow_mut();
-        let line_len = lines.len();
-        assert!(line_len == 0 || ((*lines)[line_len - 1] < pos));
-        lines.push(pos);
-    }
-
-    /// get a line from the list of pre-computed line-beginnings.
-    /// line-number here is 0-based.
-    pub fn get_line(&self, line_number: usize) -> Option<&str> {
-        match self.src {
-            Some(ref src) => {
-                let lines = self.lines.borrow();
-                lines.get(line_number).map(|&line| {
-                    let begin: BytePos = line - self.start_pos;
-                    let begin = begin.to_usize();
-                    // We can't use `lines.get(line_number+1)` because we might
-                    // be parsing when we call this function and thus the current
-                    // line is the last one we have line info for.
-                    let slice = &src[begin..];
-                    match slice.find('\n') {
-                        Some(e) => &slice[..e],
-                        None => slice
-                    }
-                })
-            }
-            None => None
-        }
-    }
-
-    pub fn record_multibyte_char(&self, pos: BytePos, bytes: usize) {
-        assert!(bytes >=2 && bytes <= 4);
-        let mbc = MultiByteChar {
-            pos: pos,
-            bytes: bytes,
-        };
-        self.multibyte_chars.borrow_mut().push(mbc);
-    }
-
-    pub fn is_real_file(&self) -> bool {
-        !(self.name.starts_with("<") &&
-          self.name.ends_with(">"))
-    }
-
-    pub fn is_imported(&self) -> bool {
-        self.src.is_none()
-    }
-
-    fn count_lines(&self) -> usize {
-        self.lines.borrow().len()
-    }
-}
 
 /// An abstraction over the fs operations used by the Parser.
 pub trait FileLoader {
@@ -1392,51 +802,23 @@ impl CodeMap {
     }
 }
 
-pub struct MacroBacktrace {
-    /// span where macro was applied to generate this code
-    pub call_site: Span,
-
-    /// name of macro that was applied (e.g., "foo!" or "#[derive(Eq)]")
-    pub macro_decl_name: String,
-
-    /// span where macro was defined (if known)
-    pub def_site_span: Option<Span>,
+impl CodeMapper for CodeMap {
+    fn lookup_char_pos(&self, pos: BytePos) -> Loc {
+        self.lookup_char_pos(pos)
+    }
+    fn span_to_lines(&self, sp: Span) -> FileLinesResult {
+        self.span_to_lines(sp)
+    }
+    fn span_to_string(&self, sp: Span) -> String {
+        self.span_to_string(sp)
+    }
+    fn span_to_filename(&self, sp: Span) -> FileName {
+        self.span_to_filename(sp)
+    }
+    fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace> {
+        self.macro_backtrace(span)
+    }
 }
-
-// _____________________________________________________________________________
-// SpanLinesError, SpanSnippetError, DistinctSources, MalformedCodemapPositions
-//
-
-pub type FileLinesResult = Result<FileLines, SpanLinesError>;
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum SpanLinesError {
-    IllFormedSpan(Span),
-    DistinctSources(DistinctSources),
-}
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum SpanSnippetError {
-    IllFormedSpan(Span),
-    DistinctSources(DistinctSources),
-    MalformedForCodemap(MalformedCodemapPositions),
-    SourceNotAvailable { filename: String }
-}
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct DistinctSources {
-    begin: (String, BytePos),
-    end: (String, BytePos)
-}
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct MalformedCodemapPositions {
-    name: String,
-    source_len: usize,
-    begin_pos: BytePos,
-    end_pos: BytePos
-}
-
 
 // _____________________________________________________________________________
 // Tests
@@ -1445,6 +827,13 @@ pub struct MalformedCodemapPositions {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use errors::{Level, CodeSuggestion};
+    use errors::emitter::EmitterWriter;
+    use errors::snippet::{SnippetData, RenderedLine, FormatMode};
+    use std::sync::{Arc, Mutex};
+    use std::io::{self, Write};
+    use std::str::from_utf8;
+    use std::rc::Rc;
 
     #[test]
     fn t1 () {
@@ -1688,6 +1077,69 @@ mod tests {
                     blork.rs:1:1: 1:12\n  `first line.`\n");
     }
 
+    /// Returns the span corresponding to the `n`th occurrence of
+    /// `substring` in `source_text`.
+    trait CodeMapExtension {
+        fn span_substr(&self,
+                    file: &Rc<FileMap>,
+                    source_text: &str,
+                    substring: &str,
+                    n: usize)
+                    -> Span;
+    }
+
+    impl CodeMapExtension for CodeMap {
+        fn span_substr(&self,
+                    file: &Rc<FileMap>,
+                    source_text: &str,
+                    substring: &str,
+                    n: usize)
+                    -> Span
+        {
+            println!("span_substr(file={:?}/{:?}, substring={:?}, n={})",
+                    file.name, file.start_pos, substring, n);
+            let mut i = 0;
+            let mut hi = 0;
+            loop {
+                let offset = source_text[hi..].find(substring).unwrap_or_else(|| {
+                    panic!("source_text `{}` does not have {} occurrences of `{}`, only {}",
+                        source_text, n, substring, i);
+                });
+                let lo = hi + offset;
+                hi = lo + substring.len();
+                if i == n {
+                    let span = Span {
+                        lo: BytePos(lo as u32 + file.start_pos.0),
+                        hi: BytePos(hi as u32 + file.start_pos.0),
+                        expn_id: NO_EXPANSION,
+                    };
+                    assert_eq!(&self.span_to_snippet(span).unwrap()[..],
+                            substring);
+                    return span;
+                }
+                i += 1;
+            }
+        }
+    }
+
+    fn splice(start: Span, end: Span) -> Span {
+        Span {
+            lo: start.lo,
+            hi: end.hi,
+            expn_id: NO_EXPANSION,
+        }
+    }
+
+    fn make_string(lines: &[RenderedLine]) -> String {
+        lines.iter()
+            .flat_map(|rl| {
+                rl.text.iter()
+                        .map(|s| &s.text[..])
+                        .chain(Some("\n"))
+            })
+            .collect()
+    }
+
     fn init_expansion_chain(cm: &CodeMap) -> Span {
         // Creates an expansion chain containing two recursive calls
         // root -> expA -> expA -> expB -> expB -> end
@@ -1766,5 +1218,762 @@ r"blork2.rs:2:1: 2:12
       `first line.`
 ";
         assert_eq!(sstr, res_str);
+    }
+
+    struct Sink(Arc<Mutex<Vec<u8>>>);
+    impl Write for Sink {
+        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+            Write::write(&mut *self.0.lock().unwrap(), data)
+        }
+        fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    }
+
+    // Diagnostic doesn't align properly in span where line number increases by one digit
+    #[test]
+    fn test_hilight_suggestion_issue_11715() {
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let cm = Rc::new(CodeMap::new());
+        let mut ew = EmitterWriter::new(Box::new(Sink(data.clone())),
+                                        None,
+                                        cm.clone(),
+                                        FormatMode::NewErrorFormat);
+        let content = "abcdefg
+        koksi
+        line3
+        line4
+        cinq
+        line6
+        line7
+        line8
+        line9
+        line10
+        e-lä-vän
+        tolv
+        dreizehn
+        ";
+        let file = cm.new_filemap_and_lines("dummy.txt", None, content);
+        let start = file.lines.borrow()[10];
+        let end = file.lines.borrow()[11];
+        let sp = mk_sp(start, end);
+        let lvl = Level::Error;
+        println!("highlight_lines");
+        ew.highlight_lines(&sp.into(), lvl).unwrap();
+        println!("done");
+        let vec = data.lock().unwrap().clone();
+        let vec: &[u8] = &vec;
+        let str = from_utf8(vec).unwrap();
+        println!("r#\"\n{}\"#", str);
+        assert_eq!(str, &r#"
+  --> dummy.txt:11:1
+   |>
+11 |>         e-lä-vän
+   |> ^
+"#[1..]);
+    }
+
+    #[test]
+    fn test_single_span_splice() {
+        // Test that a `MultiSpan` containing a single span splices a substition correctly
+        let cm = CodeMap::new();
+        let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
+        let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
+        cm.new_filemap_and_lines("blork.rs", None, inputtext);
+        let sp = span_from_selection(inputtext, selection);
+        let msp: MultiSpan = sp.into();
+
+        // check that we are extracting the text we thought we were extracting
+        assert_eq!(&cm.span_to_snippet(sp).unwrap(), "BB\nCCC\nDDDDD");
+
+        let substitute = "ZZZZZZ".to_owned();
+        let expected = "bbbbZZZZZZddddd";
+        let suggest = CodeSuggestion {
+            msp: msp,
+            substitutes: vec![substitute],
+        };
+        assert_eq!(suggest.splice_lines(&cm), expected);
+    }
+
+    #[test]
+    fn test_multi_span_splice() {
+        // Test that a `MultiSpan` containing multiple spans splices a substition correctly
+        let cm = CodeMap::new();
+        let inputtext  = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
+        let selection1 = "     \n      \n   \n          \n ~ \n"; // intentionally out of order
+        let selection2 = "     \n    ~~\n~~~\n~~~~~     \n   \n";
+        cm.new_filemap_and_lines("blork.rs", None, inputtext);
+        let sp1 = span_from_selection(inputtext, selection1);
+        let sp2 = span_from_selection(inputtext, selection2);
+        let msp: MultiSpan = MultiSpan::from_spans(vec![sp1, sp2]);
+
+        let expected = "bbbbZZZZZZddddd\neXYZe";
+        let suggest = CodeSuggestion {
+            msp: msp,
+            substitutes: vec!["ZZZZZZ".to_owned(),
+                              "XYZ".to_owned()]
+        };
+
+        assert_eq!(suggest.splice_lines(&cm), expected);
+    }
+
+    #[test]
+    fn test_multispan_highlight() {
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let cm = Rc::new(CodeMap::new());
+        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())),
+                                          None,
+                                          cm.clone(),
+                                          FormatMode::NewErrorFormat);
+
+        let inp =       "_____aaaaaa____bbbbbb__cccccdd_";
+        let sp1 =       "     ~~~~~~                    ";
+        let sp2 =       "               ~~~~~~          ";
+        let sp3 =       "                       ~~~~~   ";
+        let sp4 =       "                          ~~~~ ";
+        let sp34 =      "                       ~~~~~~~ ";
+
+        let expect_start = &r#"
+ --> dummy.txt:1:6
+  |>
+1 |> _____aaaaaa____bbbbbb__cccccdd_
+  |>      ^^^^^^    ^^^^^^  ^^^^^^^
+"#[1..];
+
+        let span = |sp, expected| {
+            let sp = span_from_selection(inp, sp);
+            assert_eq!(&cm.span_to_snippet(sp).unwrap(), expected);
+            sp
+        };
+        cm.new_filemap_and_lines("dummy.txt", None, inp);
+        let sp1 = span(sp1, "aaaaaa");
+        let sp2 = span(sp2, "bbbbbb");
+        let sp3 = span(sp3, "ccccc");
+        let sp4 = span(sp4, "ccdd");
+        let sp34 = span(sp34, "cccccdd");
+
+        let spans = vec![sp1, sp2, sp3, sp4];
+
+        let test = |expected, highlight: &mut FnMut()| {
+            data.lock().unwrap().clear();
+            highlight();
+            let vec = data.lock().unwrap().clone();
+            let actual = from_utf8(&vec[..]).unwrap();
+            println!("actual=\n{}", actual);
+            assert_eq!(actual, expected);
+        };
+
+        let msp = MultiSpan::from_spans(vec![sp1, sp2, sp34]);
+        test(expect_start, &mut || {
+            diag.highlight_lines(&msp, Level::Error).unwrap();
+        });
+        test(expect_start, &mut || {
+            let msp = MultiSpan::from_spans(spans.clone());
+            diag.highlight_lines(&msp, Level::Error).unwrap();
+        });
+    }
+
+    #[test]
+    fn test_huge_multispan_highlight() {
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let cm = Rc::new(CodeMap::new());
+        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())),
+                                          None,
+                                          cm.clone(),
+                                          FormatMode::NewErrorFormat);
+
+        let inp = "aaaaa\n\
+                   aaaaa\n\
+                   aaaaa\n\
+                   bbbbb\n\
+                   ccccc\n\
+                   xxxxx\n\
+                   yyyyy\n\
+                   _____\n\
+                   ddd__eee_\n\
+                   elided\n\
+                   __f_gg";
+        let file = cm.new_filemap_and_lines("dummy.txt", None, inp);
+
+        let span = |lo, hi, (off_lo, off_hi)| {
+            let lines = file.lines.borrow();
+            let (mut lo, mut hi): (BytePos, BytePos) = (lines[lo], lines[hi]);
+            lo.0 += off_lo;
+            hi.0 += off_hi;
+            mk_sp(lo, hi)
+        };
+        let sp0 = span(4, 6, (0, 5));
+        let sp1 = span(0, 6, (0, 5));
+        let sp2 = span(8, 8, (0, 3));
+        let sp3 = span(8, 8, (5, 8));
+        let sp4 = span(10, 10, (2, 3));
+        let sp5 = span(10, 10, (4, 6));
+
+        let expect0 = &r#"
+   --> dummy.txt:5:1
+    |>
+5   |> ccccc
+    |> ^
+...
+9   |> ddd__eee_
+    |> ^^^  ^^^
+10  |> elided
+11  |> __f_gg
+    |>   ^ ^^
+"#[1..];
+
+        let expect = &r#"
+   --> dummy.txt:1:1
+    |>
+1   |> aaaaa
+    |> ^
+...
+9   |> ddd__eee_
+    |> ^^^  ^^^
+10  |> elided
+11  |> __f_gg
+    |>   ^ ^^
+"#[1..];
+
+        macro_rules! test {
+            ($expected: expr, $highlight: expr) => ({
+                data.lock().unwrap().clear();
+                $highlight();
+                let vec = data.lock().unwrap().clone();
+                let actual = from_utf8(&vec[..]).unwrap();
+                println!("actual:");
+                println!("{}", actual);
+                println!("expected:");
+                println!("{}", $expected);
+                assert_eq!(&actual[..], &$expected[..]);
+            });
+        }
+
+        let msp0 = MultiSpan::from_spans(vec![sp0, sp2, sp3, sp4, sp5]);
+        let msp = MultiSpan::from_spans(vec![sp1, sp2, sp3, sp4, sp5]);
+
+        test!(expect0, || {
+            diag.highlight_lines(&msp0, Level::Error).unwrap();
+        });
+        test!(expect, || {
+            diag.highlight_lines(&msp, Level::Error).unwrap();
+        });
+    }
+
+    #[test]
+    fn tab() {
+        let file_text = "
+fn foo() {
+\tbar;
+}
+";
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+        let span_bar = cm.span_substr(&foo, file_text, "bar", 0);
+
+        let mut snippet = SnippetData::new(cm, Some(span_bar), FormatMode::NewErrorFormat);
+        snippet.push(span_bar, true, None);
+
+        let lines = snippet.render_lines();
+        let text = make_string(&lines);
+        assert_eq!(&text[..], &"
+ --> foo.rs:3:2
+  |>
+3 |> \tbar;
+  |> \t^^^
+"[1..]);
+    }
+
+    #[test]
+    fn one_line() {
+        let file_text = r#"
+fn foo() {
+    vec.push(vec.pop().unwrap());
+}
+"#;
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+        let span_vec0 = cm.span_substr(&foo, file_text, "vec", 0);
+        let span_vec1 = cm.span_substr(&foo, file_text, "vec", 1);
+        let span_semi = cm.span_substr(&foo, file_text, ";", 0);
+
+        let mut snippet = SnippetData::new(cm, None, FormatMode::NewErrorFormat);
+        snippet.push(span_vec0, false, Some(format!("previous borrow of `vec` occurs here")));
+        snippet.push(span_vec1, false, Some(format!("error occurs here")));
+        snippet.push(span_semi, false, Some(format!("previous borrow ends here")));
+
+        let lines = snippet.render_lines();
+        println!("{:#?}", lines);
+
+        let text: String = make_string(&lines);
+
+        println!("text=\n{}", text);
+        assert_eq!(&text[..], &r#"
+ ::: foo.rs
+  |>
+3 |>     vec.push(vec.pop().unwrap());
+  |>     ---      ---                - previous borrow ends here
+  |>     |        |
+  |>     |        error occurs here
+  |>     previous borrow of `vec` occurs here
+"#[1..]);
+    }
+
+    #[test]
+    fn two_files() {
+        let file_text_foo = r#"
+fn foo() {
+    vec.push(vec.pop().unwrap());
+}
+"#;
+
+        let file_text_bar = r#"
+fn bar() {
+    // these blank links here
+    // serve to ensure that the line numbers
+    // from bar.rs
+    // require more digits
+
+
+
+
+
+
+
+
+
+
+    vec.push();
+
+    // this line will get elided
+
+    vec.pop().unwrap());
+}
+"#;
+
+        let cm = Rc::new(CodeMap::new());
+        let foo_map = cm.new_filemap_and_lines("foo.rs", None, file_text_foo);
+        let span_foo_vec0 = cm.span_substr(&foo_map, file_text_foo, "vec", 0);
+        let span_foo_vec1 = cm.span_substr(&foo_map, file_text_foo, "vec", 1);
+        let span_foo_semi = cm.span_substr(&foo_map, file_text_foo, ";", 0);
+
+        let bar_map = cm.new_filemap_and_lines("bar.rs", None, file_text_bar);
+        let span_bar_vec0 = cm.span_substr(&bar_map, file_text_bar, "vec", 0);
+        let span_bar_vec1 = cm.span_substr(&bar_map, file_text_bar, "vec", 1);
+        let span_bar_semi = cm.span_substr(&bar_map, file_text_bar, ";", 0);
+
+        let mut snippet = SnippetData::new(cm, Some(span_foo_vec1), FormatMode::NewErrorFormat);
+        snippet.push(span_foo_vec0, false, Some(format!("a")));
+        snippet.push(span_foo_vec1, true, Some(format!("b")));
+        snippet.push(span_foo_semi, false, Some(format!("c")));
+        snippet.push(span_bar_vec0, false, Some(format!("d")));
+        snippet.push(span_bar_vec1, false, Some(format!("e")));
+        snippet.push(span_bar_semi, false, Some(format!("f")));
+
+        let lines = snippet.render_lines();
+        println!("{:#?}", lines);
+
+        let text: String = make_string(&lines);
+
+        println!("text=\n{}", text);
+
+        // Note that the `|>` remain aligned across both files:
+        assert_eq!(&text[..], &r#"
+   --> foo.rs:3:14
+    |>
+3   |>     vec.push(vec.pop().unwrap());
+    |>     ---      ^^^                - c
+    |>     |        |
+    |>     |        b
+    |>     a
+   ::: bar.rs
+    |>
+17  |>     vec.push();
+    |>     ---       - f
+    |>     |
+    |>     d
+...
+21  |>     vec.pop().unwrap());
+    |>     --- e
+"#[1..]);
+    }
+
+    #[test]
+    fn multi_line() {
+        let file_text = r#"
+fn foo() {
+    let name = find_id(&data, 22).unwrap();
+
+    // Add one more item we forgot to the vector. Silly us.
+    data.push(Data { name: format!("Hera"), id: 66 });
+
+    // Print everything out.
+    println!("Name: {:?}", name);
+    println!("Data: {:?}", data);
+}
+"#;
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+        let span_data0 = cm.span_substr(&foo, file_text, "data", 0);
+        let span_data1 = cm.span_substr(&foo, file_text, "data", 1);
+        let span_rbrace = cm.span_substr(&foo, file_text, "}", 3);
+
+        let mut snippet = SnippetData::new(cm, None, FormatMode::NewErrorFormat);
+        snippet.push(span_data0, false, Some(format!("immutable borrow begins here")));
+        snippet.push(span_data1, false, Some(format!("mutable borrow occurs here")));
+        snippet.push(span_rbrace, false, Some(format!("immutable borrow ends here")));
+
+        let lines = snippet.render_lines();
+        println!("{:#?}", lines);
+
+        let text: String = make_string(&lines);
+
+        println!("text=\n{}", text);
+        assert_eq!(&text[..], &r#"
+   ::: foo.rs
+    |>
+3   |>     let name = find_id(&data, 22).unwrap();
+    |>                         ---- immutable borrow begins here
+...
+6   |>     data.push(Data { name: format!("Hera"), id: 66 });
+    |>     ---- mutable borrow occurs here
+...
+11  |> }
+    |> - immutable borrow ends here
+"#[1..]);
+    }
+
+    #[test]
+    fn overlapping() {
+        let file_text = r#"
+fn foo() {
+    vec.push(vec.pop().unwrap());
+}
+"#;
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+        let span0 = cm.span_substr(&foo, file_text, "vec.push", 0);
+        let span1 = cm.span_substr(&foo, file_text, "vec", 0);
+        let span2 = cm.span_substr(&foo, file_text, "ec.push", 0);
+        let span3 = cm.span_substr(&foo, file_text, "unwrap", 0);
+
+        let mut snippet = SnippetData::new(cm, None, FormatMode::NewErrorFormat);
+        snippet.push(span0, false, Some(format!("A")));
+        snippet.push(span1, false, Some(format!("B")));
+        snippet.push(span2, false, Some(format!("C")));
+        snippet.push(span3, false, Some(format!("D")));
+
+        let lines = snippet.render_lines();
+        println!("{:#?}", lines);
+        let text: String = make_string(&lines);
+
+        println!("text=r#\"\n{}\".trim_left()", text);
+        assert_eq!(&text[..], &r#"
+ ::: foo.rs
+  |>
+3 |>     vec.push(vec.pop().unwrap());
+  |>     --------           ------ D
+  |>     ||
+  |>     |C
+  |>     A
+  |>     B
+"#[1..]);
+    }
+
+    #[test]
+    fn one_line_out_of_order() {
+        let file_text = r#"
+fn foo() {
+    vec.push(vec.pop().unwrap());
+}
+"#;
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+        let span_vec0 = cm.span_substr(&foo, file_text, "vec", 0);
+        let span_vec1 = cm.span_substr(&foo, file_text, "vec", 1);
+        let span_semi = cm.span_substr(&foo, file_text, ";", 0);
+
+        // intentionally don't push the snippets left to right
+        let mut snippet = SnippetData::new(cm, None, FormatMode::NewErrorFormat);
+        snippet.push(span_vec1, false, Some(format!("error occurs here")));
+        snippet.push(span_vec0, false, Some(format!("previous borrow of `vec` occurs here")));
+        snippet.push(span_semi, false, Some(format!("previous borrow ends here")));
+
+        let lines = snippet.render_lines();
+        println!("{:#?}", lines);
+        let text: String = make_string(&lines);
+
+        println!("text=r#\"\n{}\".trim_left()", text);
+        assert_eq!(&text[..], &r#"
+ ::: foo.rs
+  |>
+3 |>     vec.push(vec.pop().unwrap());
+  |>     ---      ---                - previous borrow ends here
+  |>     |        |
+  |>     |        error occurs here
+  |>     previous borrow of `vec` occurs here
+"#[1..]);
+    }
+
+    #[test]
+    fn elide_unnecessary_lines() {
+        let file_text = r#"
+fn foo() {
+    let mut vec = vec![0, 1, 2];
+    let mut vec2 = vec;
+    vec2.push(3);
+    vec2.push(4);
+    vec2.push(5);
+    vec2.push(6);
+    vec.push(7);
+}
+"#;
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+        let span_vec0 = cm.span_substr(&foo, file_text, "vec", 3);
+        let span_vec1 = cm.span_substr(&foo, file_text, "vec", 8);
+
+        let mut snippet = SnippetData::new(cm, None, FormatMode::NewErrorFormat);
+        snippet.push(span_vec0, false, Some(format!("`vec` moved here because it \
+            has type `collections::vec::Vec<i32>`")));
+        snippet.push(span_vec1, false, Some(format!("use of moved value: `vec`")));
+
+        let lines = snippet.render_lines();
+        println!("{:#?}", lines);
+        let text: String = make_string(&lines);
+        println!("text=r#\"\n{}\".trim_left()", text);
+        assert_eq!(&text[..], &r#"
+   ::: foo.rs
+    |>
+4   |>     let mut vec2 = vec;
+    |>                    --- `vec` moved here because it has type `collections::vec::Vec<i32>`
+...
+9   |>     vec.push(7);
+    |>     --- use of moved value: `vec`
+"#[1..]);
+    }
+
+    #[test]
+    fn spans_without_labels() {
+        let file_text = r#"
+fn foo() {
+    let mut vec = vec![0, 1, 2];
+    let mut vec2 = vec;
+    vec2.push(3);
+    vec2.push(4);
+    vec2.push(5);
+    vec2.push(6);
+    vec.push(7);
+}
+"#;
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+
+        let mut snippet = SnippetData::new(cm.clone(), None, FormatMode::NewErrorFormat);
+        for i in 0..4 {
+            let span_veci = cm.span_substr(&foo, file_text, "vec", i);
+            snippet.push(span_veci, false, None);
+        }
+
+        let lines = snippet.render_lines();
+        let text: String = make_string(&lines);
+        println!("text=&r#\"\n{}\n\"#[1..]", text);
+        assert_eq!(text, &r#"
+ ::: foo.rs
+  |>
+3 |>     let mut vec = vec![0, 1, 2];
+  |>             ---   ---
+4 |>     let mut vec2 = vec;
+  |>             ---    ---
+"#[1..]);
+    }
+
+    #[test]
+    fn span_long_selection() {
+        let file_text = r#"
+impl SomeTrait for () {
+    fn foo(x: u32) {
+        // impl 1
+        // impl 2
+        // impl 3
+    }
+}
+"#;
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+
+        let mut snippet = SnippetData::new(cm.clone(), None, FormatMode::NewErrorFormat);
+        let fn_span = cm.span_substr(&foo, file_text, "fn", 0);
+        let rbrace_span = cm.span_substr(&foo, file_text, "}", 0);
+        snippet.push(splice(fn_span, rbrace_span), false, None);
+        let lines = snippet.render_lines();
+        let text: String = make_string(&lines);
+        println!("r#\"\n{}\"", text);
+        assert_eq!(text, &r#"
+ ::: foo.rs
+  |>
+3 |>     fn foo(x: u32) {
+  |>     -
+"#[1..]);
+    }
+
+    #[test]
+    fn span_overlap_label() {
+        // Test that we don't put `x_span` to the right of its highlight,
+        // since there is another highlight that overlaps it.
+
+        let file_text = r#"
+    fn foo(x: u32) {
+    }
+}
+"#;
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+
+        let mut snippet = SnippetData::new(cm.clone(), None, FormatMode::NewErrorFormat);
+        let fn_span = cm.span_substr(&foo, file_text, "fn foo(x: u32)", 0);
+        let x_span = cm.span_substr(&foo, file_text, "x", 0);
+        snippet.push(fn_span, false, Some(format!("fn_span")));
+        snippet.push(x_span, false, Some(format!("x_span")));
+        let lines = snippet.render_lines();
+        let text: String = make_string(&lines);
+        println!("r#\"\n{}\"", text);
+        assert_eq!(text, &r#"
+ ::: foo.rs
+  |>
+2 |>     fn foo(x: u32) {
+  |>     --------------
+  |>     |      |
+  |>     |      x_span
+  |>     fn_span
+"#[1..]);
+    }
+
+    #[test]
+    fn span_overlap_label2() {
+        // Test that we don't put `x_span` to the right of its highlight,
+        // since there is another highlight that overlaps it. In this
+        // case, the overlap is only at the beginning, but it's still
+        // better to show the beginning more clearly.
+
+        let file_text = r#"
+    fn foo(x: u32) {
+    }
+}
+"#;
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+
+        let mut snippet = SnippetData::new(cm.clone(), None, FormatMode::NewErrorFormat);
+        let fn_span = cm.span_substr(&foo, file_text, "fn foo(x", 0);
+        let x_span = cm.span_substr(&foo, file_text, "x: u32)", 0);
+        snippet.push(fn_span, false, Some(format!("fn_span")));
+        snippet.push(x_span, false, Some(format!("x_span")));
+        let lines = snippet.render_lines();
+        let text: String = make_string(&lines);
+        println!("r#\"\n{}\"", text);
+        assert_eq!(text, &r#"
+ ::: foo.rs
+  |>
+2 |>     fn foo(x: u32) {
+  |>     --------------
+  |>     |      |
+  |>     |      x_span
+  |>     fn_span
+"#[1..]);
+    }
+
+    #[test]
+    fn span_overlap_label3() {
+        // Test that we don't put `x_span` to the right of its highlight,
+        // since there is another highlight that overlaps it. In this
+        // case, the overlap is only at the beginning, but it's still
+        // better to show the beginning more clearly.
+
+        let file_text = r#"
+    fn foo() {
+       let closure = || {
+           inner
+       };
+    }
+}
+"#;
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+
+        let mut snippet = SnippetData::new(cm.clone(), None, FormatMode::NewErrorFormat);
+
+        let closure_span = {
+            let closure_start_span = cm.span_substr(&foo, file_text, "||", 0);
+            let closure_end_span = cm.span_substr(&foo, file_text, "}", 0);
+            splice(closure_start_span, closure_end_span)
+        };
+
+        let inner_span = cm.span_substr(&foo, file_text, "inner", 0);
+
+        snippet.push(closure_span, false, Some(format!("foo")));
+        snippet.push(inner_span, false, Some(format!("bar")));
+
+        let lines = snippet.render_lines();
+        let text: String = make_string(&lines);
+        println!("r#\"\n{}\"", text);
+        assert_eq!(text, &r#"
+ ::: foo.rs
+  |>
+3 |>        let closure = || {
+  |>                      - foo
+4 |>            inner
+  |>            ----- bar
+"#[1..]);
+    }
+
+    #[test]
+    fn span_empty() {
+        // In one of the unit tests, we found that the parser sometimes
+        // gives empty spans, and in particular it supplied an EOF span
+        // like this one, which points at the very end. We want to
+        // fallback gracefully in this case.
+
+        let file_text = r#"
+fn main() {
+    struct Foo;
+
+    impl !Sync for Foo {}
+
+    unsafe impl Send for &'static Foo {
+    // error: cross-crate traits with a default impl, like `core::marker::Send`,
+    //        can only be implemented for a struct/enum type, not
+    //        `&'static Foo`
+}"#;
+
+
+        let cm = Rc::new(CodeMap::new());
+        let foo = cm.new_filemap_and_lines("foo.rs", None, file_text);
+
+        let mut rbrace_span = cm.span_substr(&foo, file_text, "}", 1);
+        rbrace_span.lo = rbrace_span.hi;
+
+        let mut snippet = SnippetData::new(cm.clone(),
+                                           Some(rbrace_span),
+                                           FormatMode::NewErrorFormat);
+        snippet.push(rbrace_span, false, None);
+        let lines = snippet.render_lines();
+        let text: String = make_string(&lines);
+        println!("r#\"\n{}\"", text);
+        assert_eq!(text, &r#"
+  --> foo.rs:11:2
+   |>
+11 |> }
+   |>  -
+"#[1..]);
     }
 }

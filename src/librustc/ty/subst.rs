@@ -22,7 +22,7 @@ use std::fmt;
 use std::iter::IntoIterator;
 use std::slice::Iter;
 use std::vec::{Vec, IntoIter};
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 
 ///////////////////////////////////////////////////////////////////////////
 

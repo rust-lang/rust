@@ -88,9 +88,10 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::rc::Rc;
 
 use syntax::{abi, ast, attr};
-use syntax::codemap::Span;
 use syntax::parse::token::keywords;
 use syntax::ptr::P;
+use syntax_pos::Span;
+
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit;
 use rustc::hir::print as pprust;

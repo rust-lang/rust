@@ -11,7 +11,7 @@ use self::LockstepIterSize::*;
 
 use ast;
 use ast::{TokenTree, Ident, Name};
-use codemap::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 use errors::{Handler, DiagnosticBuilder};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{DocComment, MatchNt, SubstNt};

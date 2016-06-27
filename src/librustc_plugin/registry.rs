@@ -18,11 +18,11 @@ use rustc::mir::transform::MirMapPass;
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
 use syntax::ext::base::{IdentTT, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroExpanderFn, MacroRulesTT};
-use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::ast;
 use syntax::feature_gate::AttributeType;
+use syntax_pos::Span;
 
 use std::collections::HashMap;
 use std::borrow::ToOwned;

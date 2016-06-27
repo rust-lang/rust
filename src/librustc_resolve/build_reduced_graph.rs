@@ -29,7 +29,6 @@ use rustc::ty::{self, VariantKind};
 use syntax::ast::Name;
 use syntax::attr;
 use syntax::parse::token;
-use syntax::codemap::{Span, DUMMY_SP};
 
 use syntax::ast::{Block, Crate, DeclKind};
 use syntax::ast::{ForeignItem, ForeignItemKind, Item, ItemKind};
@@ -37,6 +36,8 @@ use syntax::ast::{Mutability, PathListItemKind};
 use syntax::ast::{Stmt, StmtKind, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::visit::{self, Visitor};
+
+use syntax_pos::{Span, DUMMY_SP};
 
 trait ToNameBinding<'a> {
     fn to_name_binding(self) -> NameBinding<'a>;

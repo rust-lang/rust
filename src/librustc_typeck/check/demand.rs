@@ -13,7 +13,7 @@ use check::FnCtxt;
 use rustc::ty::Ty;
 use rustc::infer::{InferOk, TypeOrigin};
 
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use rustc::hir;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
