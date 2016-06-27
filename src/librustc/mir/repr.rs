@@ -15,6 +15,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
 use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
+use rustc_data_structures::control_flow_graph::transpose::TransposedGraph;
 use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
@@ -1226,6 +1227,80 @@ impl<'a, 'b> GraphPredecessors<'b> for Mir<'a> {
 }
 
 impl<'a, 'b>  GraphSuccessors<'b> for Mir<'a> {
+    type Item = BasicBlock;
+    type Iter = IntoIter<BasicBlock>;
+}
+
+struct MirWithExit<'m> {
+    mir: &'m Mir<'m>,
+    exit_node: BasicBlock,
+    exit_node_predecessors: Vec<BasicBlock>,
+}
+
+impl<'m> MirWithExit<'m> {
+    fn new(mir: &'m Mir<'m>) -> Self {
+        let exit_node = BasicBlock(mir.basic_blocks().len() as u32);
+        let mut exit_node_preds = Vec::new();
+        for (idx, ref data) in mir.basic_blocks().iter().enumerate() {
+            if data.terminator().successors().len() == 0 {
+                exit_node_preds.push(BasicBlock::new(idx));
+            }
+        };
+        MirWithExit {mir: mir, 
+                     exit_node: exit_node,
+                     exit_node_predecessors: exit_node_preds,
+        }
+    }
+    fn transpose_graph(&self) -> TransposedGraph<&Self> {
+        TransposedGraph::with_start(self, self.exit_node)
+    }
+    fn predecessors_for(&self, node: BasicBlock) -> IntoIter<BasicBlock> {
+        if node == self.exit_node {
+            self.exit_node_predecessors.clone().into_iter()
+        } else {
+            self.mir.predecessors_for(node).clone().into_iter()
+        }
+    }
+    fn successors_for(&self, node: BasicBlock) -> Cow<[BasicBlock]> {
+        if node == self.exit_node {
+            vec![].into_cow()
+        } else {
+            let succs = self.mir.basic_blocks()[node].terminator().successors();
+            if succs.len() == 0 {
+                vec![self.exit_node].into_cow()
+            } else {
+                succs
+            }
+        }
+    }
+}
+
+impl<'tcx> ControlFlowGraph for MirWithExit<'tcx> {
+
+    type Node = BasicBlock;
+
+    fn num_nodes(&self) -> usize { self.mir.basic_blocks().len() + 1 }
+
+    fn start_node(&self) -> Self::Node { START_BLOCK }
+
+    fn predecessors<'graph>(&'graph self, node: Self::Node)
+                            -> <Self as GraphPredecessors<'graph>>::Iter
+    {
+        self.predecessors_for(node).clone().into_iter()
+    }
+    fn successors<'graph>(&'graph self, node: Self::Node)
+                          -> <Self as GraphSuccessors<'graph>>::Iter
+    {
+        self.successors_for(node).into_owned().into_iter()
+    }
+}
+
+impl<'a, 'b> GraphPredecessors<'b> for MirWithExit<'a> {
+    type Item = BasicBlock;
+    type Iter = IntoIter<BasicBlock>;
+}
+
+impl<'a, 'b>  GraphSuccessors<'b> for MirWithExit<'a> {
     type Item = BasicBlock;
     type Iter = IntoIter<BasicBlock>;
 }
