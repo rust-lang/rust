@@ -6,7 +6,7 @@ use rustc::ty;
 use syntax::ast;
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, same_tys, span_lint};
+use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, same_tys, span_lint_and_then};
 
 /// **What it does:** This lints about type with a `fn new() -> Self` method
 /// and no implementation of
@@ -112,24 +112,26 @@ impl LateLintPass for NewWithoutDefault {
                     !implements_trait(cx, self_ty, default_trait_id, Vec::new())
                 ], {
                     if can_derive_default(self_ty, cx, default_trait_id) {
-                        span_lint(cx,
-                                  NEW_WITHOUT_DEFAULT_DERIVE, span,
-                                  &format!("you should consider deriving a \
-                                           `Default` implementation for `{}`",
-                                           self_ty)).
-                                  span_suggestion(span,
-                                                  "try this",
-                                                  "#[derive(Default)]".into());
+                        span_lint_and_then(cx,
+                                           NEW_WITHOUT_DEFAULT_DERIVE, span,
+                                           &format!("you should consider deriving a \
+                                                     `Default` implementation for `{}`",
+                                                    self_ty),
+                                           |db| {
+                                               db.span_suggestion(span, "try this", "#[derive(Default)]".into());
+                                           });
                     } else {
-                        span_lint(cx,
-                                  NEW_WITHOUT_DEFAULT, span,
-                                  &format!("you should consider adding a \
-                                           `Default` implementation for `{}`",
-                                           self_ty)).
-                                  span_suggestion(span,
-                                                  "try this",
-                             format!("impl Default for {} {{ fn default() -> \
-                                    Self {{ {}::new() }} }}", self_ty, self_ty));
+                        span_lint_and_then(cx,
+                                           NEW_WITHOUT_DEFAULT, span,
+                                           &format!("you should consider adding a \
+                                                    `Default` implementation for `{}`",
+                                                    self_ty),
+                                           |db| {
+                                               db.span_suggestion(span,
+                                                                  "try this",
+                                                                  format!("impl Default for {} {{ fn default() -> \
+                                                                          Self {{ {}::new() }} }}", self_ty, self_ty));
+                                           });
                     }
                 }}
             }

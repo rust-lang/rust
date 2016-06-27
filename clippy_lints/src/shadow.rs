@@ -5,7 +5,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, FnKind};
 use std::ops::Deref;
 use syntax::codemap::Span;
-use utils::{is_from_for_desugar, in_external_macro, snippet, span_lint, span_note_and_lint, DiagnosticWrapper};
+use utils::{is_from_for_desugar, in_external_macro, snippet, span_lint_and_then};
 
 /// **What it does:** This lint checks for bindings that shadow other bindings already in scope, while just changing reference level or mutability.
 ///
@@ -197,49 +197,46 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
 fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, pattern_span: Span, init: &Option<T>, prev_span: Span)
     where T: Deref<Target = Expr>
 {
-    fn note_orig(cx: &LateContext, mut db: DiagnosticWrapper, lint: &'static Lint, span: Span) {
-        if cx.current_level(lint) != Level::Allow {
-            db.span_note(span, "previous binding is here");
-        }
-    }
     if let Some(ref expr) = *init {
         if is_self_shadow(name, expr) {
-            let db = span_lint(cx,
+            span_lint_and_then(cx,
                                SHADOW_SAME,
                                span,
                                &format!("`{}` is shadowed by itself in `{}`",
                                         snippet(cx, pattern_span, "_"),
-                                        snippet(cx, expr.span, "..")));
-
-            note_orig(cx, db, SHADOW_SAME, prev_span);
+                                        snippet(cx, expr.span, "..")),
+                               |db| { db.span_note(prev_span, "previous binding is here"); },
+            );
         } else if contains_self(name, expr) {
-            let db = span_note_and_lint(cx,
-                                        SHADOW_REUSE,
-                                        pattern_span,
-                                        &format!("`{}` is shadowed by `{}` which reuses the original value",
-                                                 snippet(cx, pattern_span, "_"),
-                                                 snippet(cx, expr.span, "..")),
-                                        expr.span,
-                                        "initialization happens here");
-            note_orig(cx, db, SHADOW_REUSE, prev_span);
+            span_lint_and_then(cx,
+                               SHADOW_REUSE,
+                               pattern_span,
+                               &format!("`{}` is shadowed by `{}` which reuses the original value",
+                                        snippet(cx, pattern_span, "_"),
+                                        snippet(cx, expr.span, "..")),
+                               |db| {
+                                   db.span_note(expr.span, "initialization happens here");
+                                   db.span_note(prev_span, "previous binding is here");
+                               });
         } else {
-            let db = span_note_and_lint(cx,
-                                        SHADOW_UNRELATED,
-                                        pattern_span,
-                                        &format!("`{}` is shadowed by `{}`",
-                                                 snippet(cx, pattern_span, "_"),
-                                                 snippet(cx, expr.span, "..")),
-                                        expr.span,
-                                        "initialization happens here");
-            note_orig(cx, db, SHADOW_UNRELATED, prev_span);
+            span_lint_and_then(cx,
+                               SHADOW_UNRELATED,
+                               pattern_span,
+                               &format!("`{}` is shadowed by `{}`",
+                                        snippet(cx, pattern_span, "_"),
+                                        snippet(cx, expr.span, "..")),
+                               |db| {
+                                   db.span_note(expr.span, "initialization happens here");
+                                   db.span_note(prev_span, "previous binding is here");
+                               });
         }
 
     } else {
-        let db = span_lint(cx,
+        span_lint_and_then(cx,
                            SHADOW_UNRELATED,
                            span,
-                           &format!("{} shadows a previous declaration", snippet(cx, pattern_span, "_")));
-        note_orig(cx, db, SHADOW_UNRELATED, prev_span);
+                           &format!("{} shadows a previous declaration", snippet(cx, pattern_span, "_")),
+                           |db| { db.span_note(prev_span, "previous binding is here"); });
     }
 }
 
