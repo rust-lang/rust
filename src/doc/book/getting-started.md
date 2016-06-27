@@ -126,8 +126,6 @@ you’ll see this appear:
 Rust is ready to roll.
 ```
 
-From here, press `y` for ‘yes’, and then follow the rest of the prompts.
-
 ## Installing on Windows
 
 If you're on Windows, please download the appropriate [installer][install-page].
