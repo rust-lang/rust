@@ -29,8 +29,8 @@ use ty;
 use std::fmt;
 use std::mem::replace;
 use syntax::ast;
-use syntax::codemap::Span;
 use syntax::parse::token::keywords;
+use syntax_pos::Span;
 use util::nodemap::NodeMap;
 
 use rustc_data_structures::fnv::FnvHashSet;

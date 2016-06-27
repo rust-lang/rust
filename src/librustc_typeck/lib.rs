@@ -85,6 +85,7 @@ This API is completely unstable and subject to change.
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
+extern crate syntax_pos;
 
 extern crate arena;
 extern crate fmt_macros;
@@ -93,6 +94,7 @@ extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
+extern crate rustc_errors as errors;
 
 pub use rustc::dep_graph;
 pub use rustc::hir;
@@ -110,9 +112,9 @@ use rustc::traits::ProjectionMode;
 use session::{config, CompileResult};
 use util::common::time;
 
-use syntax::codemap::Span;
 use syntax::ast;
 use syntax::abi::Abi;
+use syntax_pos::Span;
 
 use std::cell::RefCell;
 use util::nodemap::NodeMap;

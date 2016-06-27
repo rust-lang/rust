@@ -19,3 +19,5 @@ rustc_back = { path = "../librustc_back" }
 rustc_const_eval = { path = "../librustc_const_eval" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
+syntax_pos = { path = "../libsyntax_pos" }
+rustc_errors = { path = "../librustc_errors" }

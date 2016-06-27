@@ -22,7 +22,7 @@ use common::CrateContext;
 use libc::c_uint;
 use std::ffi::CString;
 use std::ptr;
-use syntax::codemap::DUMMY_SP;
+use syntax_pos::DUMMY_SP;
 
 pub fn mangled_name_of_item(ccx: &CrateContext, def_id: DefId, extra: &str) -> String {
     fn fill_nested(ccx: &CrateContext, def_id: DefId, extra: &str, output: &mut String) {

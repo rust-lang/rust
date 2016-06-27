@@ -26,10 +26,11 @@ use std::fmt::Display;
 use std::io;
 use std::io::prelude::*;
 
-use syntax::codemap::{CodeMap, Span};
+use syntax::codemap::CodeMap;
 use syntax::parse::lexer::{self, Reader, TokenAndSpan};
 use syntax::parse::token;
 use syntax::parse;
+use syntax_pos::Span;
 
 /// Highlights `src`, returning the HTML output.
 pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>) -> String {

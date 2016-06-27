@@ -45,7 +45,7 @@ use std::collections::HashSet;
 
 use syntax::{ast};
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::{self, Span};
+use syntax_pos::{self, Span};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::FnKind;
@@ -1140,9 +1140,9 @@ impl LateLintPass for DropWithReprExtern {
                     if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
                         self_type_def.dtor_kind().has_drop_flag() {
                         let drop_impl_span = ctx.tcx.map.def_id_span(drop_impl_did,
-                                                                     codemap::DUMMY_SP);
+                                                                     syntax_pos::DUMMY_SP);
                         let self_defn_span = ctx.tcx.map.def_id_span(self_type_did,
-                                                                     codemap::DUMMY_SP);
+                                                                     syntax_pos::DUMMY_SP);
                         ctx.span_lint_note(DROP_WITH_REPR_EXTERN,
                                            drop_impl_span,
                                            "implementing Drop adds hidden state to types, \

@@ -15,8 +15,8 @@ use session::Session;
 use middle::lang_items;
 
 use syntax::ast;
-use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
+use syntax_pos::Span;
 use hir::intravisit::Visitor;
 use hir::intravisit;
 use hir;

@@ -27,9 +27,8 @@ use hir::map::{self, Node};
 use syntax::abi;
 use hir::{Block, FnDecl};
 use syntax::ast::{Attribute, Name, NodeId};
-use syntax::attr::ThinAttributesExt;
 use hir as ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use hir::intravisit::FnKind;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
@@ -257,11 +256,7 @@ impl<'a> FnLikeNode<'a> {
             }
             map::NodeExpr(e) => match e.node {
                 ast::ExprClosure(_, ref decl, ref block, _fn_decl_span) =>
-                    closure(ClosureParts::new(&decl,
-                                              &block,
-                                              e.id,
-                                              e.span,
-                                              e.attrs.as_attr_slice())),
+                    closure(ClosureParts::new(&decl, &block, e.id, e.span, &e.attrs)),
                 _ => bug!("expr FnLikeNode that is not fn-like"),
             },
             _ => bug!("other FnLikeNode that is not fn-like"),

@@ -28,7 +28,7 @@ use rustc::util::ppaux;
 use rustc::hir;
 
 use syntax::attr;
-use syntax::errors;
+use errors;
 
 use std::fmt;
 

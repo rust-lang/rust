@@ -19,9 +19,9 @@ use llvm::SMDiagnosticRef;
 use {CrateTranslation, ModuleTranslation};
 use util::common::time;
 use util::common::path2cstr;
-use syntax::codemap::MultiSpan;
-use syntax::errors::{self, Handler, Level, RenderSpan};
-use syntax::errors::emitter::CoreEmitter;
+use errors::{self, Handler, Level, RenderSpan};
+use errors::emitter::CoreEmitter;
+use syntax_pos::MultiSpan;
 
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
@@ -357,7 +357,7 @@ struct HandlerFreeVars<'a> {
 unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<'a>,
                                                msg: &'b str,
                                                cookie: c_uint) {
-    use syntax::codemap::ExpnId;
+    use syntax_pos::ExpnId;
 
     match cgcx.lto_ctxt {
         Some((sess, _)) => {

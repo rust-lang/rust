@@ -21,7 +21,7 @@ use util::common::slice_pat;
 
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
-use syntax::codemap::DUMMY_SP;
+use syntax_pos::DUMMY_SP;
 
 use std::cmp;
 use std::fmt;

@@ -16,12 +16,12 @@ use deriving::generic::ty::*;
 
 use syntax::ast;
 use syntax::ast::{MetaItem, Expr, Mutability};
-use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
                                        span: Span,

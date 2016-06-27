@@ -10,14 +10,14 @@
 
 use self::Destination::*;
 
-use codemap::{self, COMMAND_LINE_SP, DUMMY_SP, Span, MultiSpan};
-use diagnostics;
+use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, Span, MultiSpan, LineInfo};
+use registry;
 
-use errors::check_old_skool;
-use errors::{Level, RenderSpan, CodeSuggestion, DiagnosticBuilder};
-use errors::RenderSpan::*;
-use errors::Level::*;
-use errors::snippet::{RenderedLineKind, SnippetData, Style};
+use check_old_skool;
+use {Level, RenderSpan, CodeSuggestion, DiagnosticBuilder, CodeMapper};
+use RenderSpan::*;
+use Level::*;
+use snippet::{RenderedLineKind, SnippetData, Style, FormatMode};
 
 use std::{cmp, fmt};
 use std::io::prelude::*;
@@ -151,15 +151,15 @@ impl BasicEmitter {
 
 pub struct EmitterWriter {
     dst: Destination,
-    registry: Option<diagnostics::registry::Registry>,
-    cm: Rc<codemap::CodeMap>,
+    registry: Option<registry::Registry>,
+    cm: Rc<CodeMapper>,
 
     /// Is this the first error emitted thus far? If not, we emit a
     /// `\n` before the top-level errors.
     first: bool,
 
     // For now, allow an old-school mode while we transition
-    old_school: bool,
+    format_mode: FormatMode
 }
 
 impl CoreEmitter for EmitterWriter {
@@ -193,36 +193,36 @@ macro_rules! println_maybe_styled {
 
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
-                  registry: Option<diagnostics::registry::Registry>,
-                  code_map: Rc<codemap::CodeMap>)
+                  registry: Option<registry::Registry>,
+                  code_map: Rc<CodeMapper>,
+                  format_mode: FormatMode)
                   -> EmitterWriter {
-        let old_school = check_old_skool();
         if color_config.use_color() {
             let dst = Destination::from_stderr();
             EmitterWriter { dst: dst,
                             registry: registry,
                             cm: code_map,
                             first: true,
-                            old_school: old_school }
+                            format_mode: format_mode.clone() }
         } else {
             EmitterWriter { dst: Raw(Box::new(io::stderr())),
                             registry: registry,
                             cm: code_map,
                             first: true,
-                            old_school: old_school }
+                            format_mode: format_mode.clone() }
         }
     }
 
     pub fn new(dst: Box<Write + Send>,
-               registry: Option<diagnostics::registry::Registry>,
-               code_map: Rc<codemap::CodeMap>)
+               registry: Option<registry::Registry>,
+               code_map: Rc<CodeMapper>,
+               format_mode: FormatMode)
                -> EmitterWriter {
-        let old_school = check_old_skool();
         EmitterWriter { dst: Raw(dst),
                         registry: registry,
                         cm: code_map,
                         first: true,
-                        old_school: old_school }
+                        format_mode: format_mode.clone() }
     }
 
     fn emit_message_(&mut self,
@@ -233,11 +233,17 @@ impl EmitterWriter {
                      is_header: bool,
                      show_snippet: bool)
                      -> io::Result<()> {
+        let old_school = match self.format_mode {
+            FormatMode::NewErrorFormat => false,
+            FormatMode::OriginalErrorFormat => true,
+            FormatMode::EnvironmentSelected => check_old_skool()
+        };
+
         if is_header {
             if self.first {
                 self.first = false;
             } else {
-                if !self.old_school {
+                if !old_school {
                     write!(self.dst, "\n")?;
                 }
             }
@@ -248,7 +254,7 @@ impl EmitterWriter {
                                        .and_then(|registry| registry.find_description(code))
                                        .is_some() => {
                 let code_with_explain = String::from("--explain ") + code;
-                if self.old_school {
+                if old_school {
                     let loc = match rsp.span().primary_span() {
                         Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => "".to_string(),
                         Some(ps) => self.cm.span_to_string(ps),
@@ -261,7 +267,7 @@ impl EmitterWriter {
                 }
             }
             _ => {
-                if self.old_school {
+                if old_school {
                     let loc = match rsp.span().primary_span() {
                         Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => "".to_string(),
                         Some(ps) => self.cm.span_to_string(ps),
@@ -303,7 +309,7 @@ impl EmitterWriter {
                 }
             }
         }
-        if self.old_school {
+        if old_school {
             match code {
                 Some(code) if self.registry.as_ref()
                                         .and_then(|registry| registry.find_description(code))
@@ -326,11 +332,13 @@ impl EmitterWriter {
 
     fn highlight_suggestion(&mut self, suggestion: &CodeSuggestion) -> io::Result<()>
     {
+        use std::borrow::Borrow;
+
         let primary_span = suggestion.msp.primary_span().unwrap();
         let lines = self.cm.span_to_lines(primary_span).unwrap();
         assert!(!lines.lines.is_empty());
 
-        let complete = suggestion.splice_lines(&self.cm);
+        let complete = suggestion.splice_lines(self.cm.borrow());
         let line_count = cmp::min(lines.lines.len(), MAX_HIGHLIGHT_LINES);
         let display_lines = &lines.lines[..line_count];
 
@@ -356,19 +364,27 @@ impl EmitterWriter {
         Ok(())
     }
 
-    fn highlight_lines(&mut self,
+    pub fn highlight_lines(&mut self,
                        msp: &MultiSpan,
                        lvl: Level)
                        -> io::Result<()>
     {
+        let old_school = match self.format_mode {
+            FormatMode::NewErrorFormat => false,
+            FormatMode::OriginalErrorFormat => true,
+            FormatMode::EnvironmentSelected => check_old_skool()
+        };
+
         let mut snippet_data = SnippetData::new(self.cm.clone(),
-                                                msp.primary_span());
-        if self.old_school {
+                                                msp.primary_span(),
+                                                self.format_mode.clone());
+        if old_school {
             let mut output_vec = vec![];
 
             for span_label in msp.span_labels() {
                 let mut snippet_data = SnippetData::new(self.cm.clone(),
-                                                        Some(span_label.span));
+                                                        Some(span_label.span),
+                                                        self.format_mode.clone());
 
                 snippet_data.push(span_label.span,
                                   span_label.is_primary,
@@ -430,7 +446,7 @@ impl EmitterWriter {
     }
 }
 
-fn line_num_max_digits(line: &codemap::LineInfo) -> usize {
+fn line_num_max_digits(line: &LineInfo) -> usize {
     let mut max_line_num = line.line_index + 1;
     let mut digits = 0;
     while max_line_num > 0 {
@@ -615,257 +631,5 @@ impl Write for Destination {
             Terminal(ref mut t) => t.flush(),
             Raw(ref mut w) => w.flush(),
         }
-    }
-}
-
-
-#[cfg(test)]
-mod test {
-    use errors::{Level, CodeSuggestion};
-    use super::EmitterWriter;
-    use codemap::{mk_sp, CodeMap, Span, MultiSpan, BytePos, NO_EXPANSION};
-    use std::sync::{Arc, Mutex};
-    use std::io::{self, Write};
-    use std::str::from_utf8;
-    use std::rc::Rc;
-
-    struct Sink(Arc<Mutex<Vec<u8>>>);
-    impl Write for Sink {
-        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-            Write::write(&mut *self.0.lock().unwrap(), data)
-        }
-        fn flush(&mut self) -> io::Result<()> { Ok(()) }
-    }
-
-    /// Given a string like " ^~~~~~~~~~~~ ", produces a span
-    /// coverting that range. The idea is that the string has the same
-    /// length as the input, and we uncover the byte positions.  Note
-    /// that this can span lines and so on.
-    fn span_from_selection(input: &str, selection: &str) -> Span {
-        assert_eq!(input.len(), selection.len());
-        let left_index = selection.find('~').unwrap() as u32;
-        let right_index = selection.rfind('~').map(|x|x as u32).unwrap_or(left_index);
-        Span { lo: BytePos(left_index), hi: BytePos(right_index + 1), expn_id: NO_EXPANSION }
-    }
-
-    // Diagnostic doesn't align properly in span where line number increases by one digit
-    #[test]
-    fn test_hilight_suggestion_issue_11715() {
-        let data = Arc::new(Mutex::new(Vec::new()));
-        let cm = Rc::new(CodeMap::new());
-        let mut ew = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
-        let content = "abcdefg
-        koksi
-        line3
-        line4
-        cinq
-        line6
-        line7
-        line8
-        line9
-        line10
-        e-lä-vän
-        tolv
-        dreizehn
-        ";
-        let file = cm.new_filemap_and_lines("dummy.txt", None, content);
-        let start = file.lines.borrow()[10];
-        let end = file.lines.borrow()[11];
-        let sp = mk_sp(start, end);
-        let lvl = Level::Error;
-        println!("highlight_lines");
-        ew.highlight_lines(&sp.into(), lvl).unwrap();
-        println!("done");
-        let vec = data.lock().unwrap().clone();
-        let vec: &[u8] = &vec;
-        let str = from_utf8(vec).unwrap();
-        println!("r#\"\n{}\"#", str);
-        assert_eq!(str, &r#"
-  --> dummy.txt:11:1
-   |>
-11 |>         e-lä-vän
-   |> ^
-"#[1..]);
-    }
-
-    #[test]
-    fn test_single_span_splice() {
-        // Test that a `MultiSpan` containing a single span splices a substition correctly
-        let cm = CodeMap::new();
-        let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
-        let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-        cm.new_filemap_and_lines("blork.rs", None, inputtext);
-        let sp = span_from_selection(inputtext, selection);
-        let msp: MultiSpan = sp.into();
-
-        // check that we are extracting the text we thought we were extracting
-        assert_eq!(&cm.span_to_snippet(sp).unwrap(), "BB\nCCC\nDDDDD");
-
-        let substitute = "ZZZZZZ".to_owned();
-        let expected = "bbbbZZZZZZddddd";
-        let suggest = CodeSuggestion {
-            msp: msp,
-            substitutes: vec![substitute],
-        };
-        assert_eq!(suggest.splice_lines(&cm), expected);
-    }
-
-    #[test]
-    fn test_multi_span_splice() {
-        // Test that a `MultiSpan` containing multiple spans splices a substition correctly
-        let cm = CodeMap::new();
-        let inputtext  = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
-        let selection1 = "     \n      \n   \n          \n ~ \n"; // intentionally out of order
-        let selection2 = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-        cm.new_filemap_and_lines("blork.rs", None, inputtext);
-        let sp1 = span_from_selection(inputtext, selection1);
-        let sp2 = span_from_selection(inputtext, selection2);
-        let msp: MultiSpan = MultiSpan::from_spans(vec![sp1, sp2]);
-
-        let expected = "bbbbZZZZZZddddd\neXYZe";
-        let suggest = CodeSuggestion {
-            msp: msp,
-            substitutes: vec!["ZZZZZZ".to_owned(),
-                              "XYZ".to_owned()]
-        };
-
-        assert_eq!(suggest.splice_lines(&cm), expected);
-    }
-
-    #[test]
-    fn test_multispan_highlight() {
-        let data = Arc::new(Mutex::new(Vec::new()));
-        let cm = Rc::new(CodeMap::new());
-        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
-
-        let inp =       "_____aaaaaa____bbbbbb__cccccdd_";
-        let sp1 =       "     ~~~~~~                    ";
-        let sp2 =       "               ~~~~~~          ";
-        let sp3 =       "                       ~~~~~   ";
-        let sp4 =       "                          ~~~~ ";
-        let sp34 =      "                       ~~~~~~~ ";
-
-        let expect_start = &r#"
- --> dummy.txt:1:6
-  |>
-1 |> _____aaaaaa____bbbbbb__cccccdd_
-  |>      ^^^^^^    ^^^^^^  ^^^^^^^
-"#[1..];
-
-        let span = |sp, expected| {
-            let sp = span_from_selection(inp, sp);
-            assert_eq!(&cm.span_to_snippet(sp).unwrap(), expected);
-            sp
-        };
-        cm.new_filemap_and_lines("dummy.txt", None, inp);
-        let sp1 = span(sp1, "aaaaaa");
-        let sp2 = span(sp2, "bbbbbb");
-        let sp3 = span(sp3, "ccccc");
-        let sp4 = span(sp4, "ccdd");
-        let sp34 = span(sp34, "cccccdd");
-
-        let spans = vec![sp1, sp2, sp3, sp4];
-
-        let test = |expected, highlight: &mut FnMut()| {
-            data.lock().unwrap().clear();
-            highlight();
-            let vec = data.lock().unwrap().clone();
-            let actual = from_utf8(&vec[..]).unwrap();
-            println!("actual=\n{}", actual);
-            assert_eq!(actual, expected);
-        };
-
-        let msp = MultiSpan::from_spans(vec![sp1, sp2, sp34]);
-        test(expect_start, &mut || {
-            diag.highlight_lines(&msp, Level::Error).unwrap();
-        });
-        test(expect_start, &mut || {
-            let msp = MultiSpan::from_spans(spans.clone());
-            diag.highlight_lines(&msp, Level::Error).unwrap();
-        });
-    }
-
-    #[test]
-    fn test_huge_multispan_highlight() {
-        let data = Arc::new(Mutex::new(Vec::new()));
-        let cm = Rc::new(CodeMap::new());
-        let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())), None, cm.clone());
-
-        let inp = "aaaaa\n\
-                   aaaaa\n\
-                   aaaaa\n\
-                   bbbbb\n\
-                   ccccc\n\
-                   xxxxx\n\
-                   yyyyy\n\
-                   _____\n\
-                   ddd__eee_\n\
-                   elided\n\
-                   __f_gg";
-        let file = cm.new_filemap_and_lines("dummy.txt", None, inp);
-
-        let span = |lo, hi, (off_lo, off_hi)| {
-            let lines = file.lines.borrow();
-            let (mut lo, mut hi): (BytePos, BytePos) = (lines[lo], lines[hi]);
-            lo.0 += off_lo;
-            hi.0 += off_hi;
-            mk_sp(lo, hi)
-        };
-        let sp0 = span(4, 6, (0, 5));
-        let sp1 = span(0, 6, (0, 5));
-        let sp2 = span(8, 8, (0, 3));
-        let sp3 = span(8, 8, (5, 8));
-        let sp4 = span(10, 10, (2, 3));
-        let sp5 = span(10, 10, (4, 6));
-
-        let expect0 = &r#"
-   --> dummy.txt:5:1
-    |>
-5   |> ccccc
-    |> ^
-...
-9   |> ddd__eee_
-    |> ^^^  ^^^
-10  |> elided
-11  |> __f_gg
-    |>   ^ ^^
-"#[1..];
-
-        let expect = &r#"
-   --> dummy.txt:1:1
-    |>
-1   |> aaaaa
-    |> ^
-...
-9   |> ddd__eee_
-    |> ^^^  ^^^
-10  |> elided
-11  |> __f_gg
-    |>   ^ ^^
-"#[1..];
-
-        macro_rules! test {
-            ($expected: expr, $highlight: expr) => ({
-                data.lock().unwrap().clear();
-                $highlight();
-                let vec = data.lock().unwrap().clone();
-                let actual = from_utf8(&vec[..]).unwrap();
-                println!("actual:");
-                println!("{}", actual);
-                println!("expected:");
-                println!("{}", $expected);
-                assert_eq!(&actual[..], &$expected[..]);
-            });
-        }
-
-        let msp0 = MultiSpan::from_spans(vec![sp0, sp2, sp3, sp4, sp5]);
-        let msp = MultiSpan::from_spans(vec![sp1, sp2, sp3, sp4, sp5]);
-
-        test!(expect0, || {
-            diag.highlight_lines(&msp0, Level::Error).unwrap();
-        });
-        test!(expect, || {
-            diag.highlight_lines(&msp, Level::Error).unwrap();
-        });
     }
 }

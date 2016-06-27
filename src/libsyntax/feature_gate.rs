@@ -30,10 +30,10 @@ use ast::{NodeId, PatKind};
 use ast;
 use attr;
 use attr::AttrMetaMethods;
-use codemap::{CodeMap, Span};
+use codemap::CodeMap;
+use syntax_pos::Span;
 use errors::Handler;
-use visit;
-use visit::{FnKind, Visitor};
+use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
 use parse::token::InternedString;
 
@@ -800,7 +800,7 @@ macro_rules! gate_feature_post {
     }}
 }
 
-impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
+impl<'a> Visitor for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         if !self.context.cm.span_allows_unstable(attr.span) {
             self.context.check_attribute(attr, false);
@@ -996,9 +996,9 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_fn(&mut self,
-                fn_kind: FnKind<'v>,
-                fn_decl: &'v ast::FnDecl,
-                block: &'v ast::Block,
+                fn_kind: FnKind,
+                fn_decl: &ast::FnDecl,
+                block: &ast::Block,
                 span: Span,
                 _node_id: NodeId) {
         // check for const fn declarations
@@ -1037,7 +1037,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         visit::walk_fn(self, fn_kind, fn_decl, block, span);
     }
 
-    fn visit_trait_item(&mut self, ti: &'v ast::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
         match ti.node {
             ast::TraitItemKind::Const(..) => {
                 gate_feature_post!(&self, associated_consts,
@@ -1058,7 +1058,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         visit::walk_trait_item(self, ti);
     }
 
-    fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
         if ii.defaultness == ast::Defaultness::Default {
             gate_feature_post!(&self, specialization,
                               ii.span,
@@ -1081,7 +1081,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         visit::walk_impl_item(self, ii);
     }
 
-    fn visit_vis(&mut self, vis: &'v ast::Visibility) {
+    fn visit_vis(&mut self, vis: &ast::Visibility) {
         let span = match *vis {
             ast::Visibility::Crate(span) => span,
             ast::Visibility::Restricted { ref path, .. } => path.span,

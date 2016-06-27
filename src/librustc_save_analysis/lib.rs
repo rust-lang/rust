@@ -27,6 +27,7 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 extern crate serialize as rustc_serialize;
+extern crate syntax_pos;
 
 mod csv_dumper;
 mod json_dumper;
@@ -49,10 +50,11 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, NodeId, PatKind};
-use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{ty_to_string, arg_to_string};
+use syntax::codemap::MacroAttribute;
+use syntax_pos::*;
 
 pub use self::csv_dumper::CsvDumper;
 pub use self::json_dumper::JsonDumper;
@@ -691,7 +693,7 @@ impl PathCollector {
     }
 }
 
-impl<'v> Visitor<'v> for PathCollector {
+impl Visitor for PathCollector {
     fn visit_pat(&mut self, p: &ast::Pat) {
         match p.node {
             PatKind::Struct(ref path, _, _) => {
@@ -699,8 +701,7 @@ impl<'v> Visitor<'v> for PathCollector {
                                            ast::Mutability::Mutable, recorder::TypeRef));
             }
             PatKind::TupleStruct(ref path, _, _) |
-            PatKind::Path(ref path) |
-            PatKind::QPath(_, ref path) => {
+            PatKind::Path(_, ref path) => {
                 self.collected_paths.push((p.id, path.clone(),
                                            ast::Mutability::Mutable, recorder::VarRef));
             }

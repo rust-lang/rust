@@ -133,8 +133,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         if let mir::AggregateKind::Closure(def_id, substs) = *kind {
                             use rustc::hir;
                             use syntax::ast::DUMMY_NODE_ID;
-                            use syntax::codemap::DUMMY_SP;
                             use syntax::ptr::P;
+                            use syntax_pos::DUMMY_SP;
                             use closure;
 
                             closure::trans_closure_expr(closure::Dest::Ignore(bcx.ccx()),

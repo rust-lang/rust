@@ -25,8 +25,8 @@ use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
 
 use syntax::ast;
-use syntax::codemap::Span;
 use syntax::ast::NodeId;
+use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::Expr;
 use rustc::hir::intravisit;

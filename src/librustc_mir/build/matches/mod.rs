@@ -21,7 +21,7 @@ use rustc::ty::{AdtDef, Ty};
 use rustc::mir::repr::*;
 use hair::*;
 use syntax::ast::{Name, NodeId};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 // helper functions, broken out by category:
 mod simplify;

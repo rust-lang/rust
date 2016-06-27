@@ -38,7 +38,7 @@
 extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate graphviz;
-
+extern crate syntax_pos;
 extern crate serialize as rustc_serialize; // used by deriving
 
 // NB: This module needs to be declared first so diagnostics are

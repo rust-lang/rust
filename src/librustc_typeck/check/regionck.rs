@@ -99,7 +99,7 @@ use rustc::ty::wf::ImpliedBound;
 use std::mem;
 use std::ops::Deref;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::{self, PatKind};
 

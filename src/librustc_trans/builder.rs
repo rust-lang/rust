@@ -24,7 +24,7 @@ use libc::{c_uint, c_char};
 
 use std::ffi::CString;
 use std::ptr;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 pub struct Builder<'a, 'tcx: 'a> {
     pub llbuilder: BuilderRef,

@@ -36,7 +36,7 @@ use value::Value;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use syntax::ast::Name;
-use syntax::codemap::DUMMY_SP;
+use syntax_pos::DUMMY_SP;
 
 // drop_glue pointer, size, align.
 const VTABLE_OFFSET: usize = 3;

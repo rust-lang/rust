@@ -29,7 +29,7 @@ use rustc::hir;
 
 use syntax::abi::Abi;
 use syntax::ast;
-use syntax::errors::Handler;
+use errors::Handler;
 
 use rbml::leb128;
 use encoder;

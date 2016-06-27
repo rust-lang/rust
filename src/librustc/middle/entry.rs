@@ -15,8 +15,8 @@ use hir::def_id::{CRATE_DEF_INDEX};
 use session::{config, Session};
 use syntax::ast::NodeId;
 use syntax::attr;
-use syntax::codemap::Span;
 use syntax::entry::EntryPointType;
+use syntax_pos::Span;
 use hir::{Item, ItemFn};
 use hir::intravisit::Visitor;
 

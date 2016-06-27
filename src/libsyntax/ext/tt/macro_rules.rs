@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, TokenTree};
-use codemap::{Span, DUMMY_SP};
+use ast;
+use syntax_pos::{Span, DUMMY_SP};
 use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};
@@ -21,13 +21,13 @@ use parse::token::{self, gensym_ident, NtTT, Token};
 use parse::token::Token::*;
 use print;
 use ptr::P;
+use tokenstream::{self, TokenTree};
 
 use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
 use std::collections::{HashMap};
 use std::collections::hash_map::{Entry};
-use std::rc::Rc;
 
 struct ParserAnyMacro<'a> {
     parser: RefCell<Parser<'a>>,
@@ -99,6 +99,21 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         self.ensure_complete_parse(false, "item");
         Some(ret)
     }
+
+    fn make_trait_items(self: Box<ParserAnyMacro<'a>>)
+                       -> Option<SmallVector<ast::TraitItem>> {
+        let mut ret = SmallVector::zero();
+        loop {
+            let mut parser = self.parser.borrow_mut();
+            match parser.token {
+                token::Eof => break,
+                _ => ret.push(panictry!(parser.parse_trait_item()))
+            }
+        }
+        self.ensure_complete_parse(false, "item");
+        Some(ret)
+    }
+
 
     fn make_stmts(self: Box<ParserAnyMacro<'a>>)
                  -> Option<SmallVector<ast::Stmt>> {
@@ -246,27 +261,25 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     // These spans won't matter, anyways
     let match_lhs_tok = MatchNt(lhs_nm, token::str_to_ident("tt"));
     let match_rhs_tok = MatchNt(rhs_nm, token::str_to_ident("tt"));
-    let argument_gram = vec!(
-        TokenTree::Sequence(DUMMY_SP,
-                   Rc::new(ast::SequenceRepetition {
-                       tts: vec![
-                           TokenTree::Token(DUMMY_SP, match_lhs_tok),
-                           TokenTree::Token(DUMMY_SP, token::FatArrow),
-                           TokenTree::Token(DUMMY_SP, match_rhs_tok)],
-                       separator: Some(token::Semi),
-                       op: ast::KleeneOp::OneOrMore,
-                       num_captures: 2
-                   })),
-        //to phase into semicolon-termination instead of
-        //semicolon-separation
-        TokenTree::Sequence(DUMMY_SP,
-                   Rc::new(ast::SequenceRepetition {
-                       tts: vec![TokenTree::Token(DUMMY_SP, token::Semi)],
-                       separator: None,
-                       op: ast::KleeneOp::ZeroOrMore,
-                       num_captures: 0
-                   })));
-
+    let argument_gram = vec![
+        TokenTree::Sequence(DUMMY_SP, tokenstream::SequenceRepetition {
+            tts: vec![
+                TokenTree::Token(DUMMY_SP, match_lhs_tok),
+                TokenTree::Token(DUMMY_SP, token::FatArrow),
+                TokenTree::Token(DUMMY_SP, match_rhs_tok),
+            ],
+            separator: Some(token::Semi),
+            op: tokenstream::KleeneOp::OneOrMore,
+            num_captures: 2,
+        }),
+        // to phase into semicolon-termination instead of semicolon-separation
+        TokenTree::Sequence(DUMMY_SP, tokenstream::SequenceRepetition {
+            tts: vec![TokenTree::Token(DUMMY_SP, token::Semi)],
+            separator: None,
+            op: tokenstream::KleeneOp::ZeroOrMore,
+            num_captures: 0
+        }),
+    ];
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
     let arg_reader = new_tt_reader(&cx.parse_sess().span_diagnostic,
@@ -427,7 +440,7 @@ impl FirstSets {
                         }
 
                         // Reverse scan: Sequence comes before `first`.
-                        if subfirst.maybe_empty || seq_rep.op == ast::KleeneOp::ZeroOrMore {
+                        if subfirst.maybe_empty || seq_rep.op == tokenstream::KleeneOp::ZeroOrMore {
                             // If sequence is potentially empty, then
                             // union them (preserving first emptiness).
                             first.add_all(&TokenSet { maybe_empty: true, ..subfirst });
@@ -474,7 +487,8 @@ impl FirstSets {
 
                             assert!(first.maybe_empty);
                             first.add_all(subfirst);
-                            if subfirst.maybe_empty || seq_rep.op == ast::KleeneOp::ZeroOrMore {
+                            if subfirst.maybe_empty ||
+                               seq_rep.op == tokenstream::KleeneOp::ZeroOrMore {
                                 // continue scanning for more first
                                 // tokens, but also make sure we
                                 // restore empty-tracking state
