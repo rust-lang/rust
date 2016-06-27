@@ -12,6 +12,7 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
 use std::cmp;
+use std::mem;
 use std::string::String;
 use std::usize;
 
@@ -29,7 +30,8 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
     // strip all #[doc(hidden)] items
     let krate = {
         struct Stripper<'a> {
-            retained: &'a mut DefIdSet
+            retained: &'a mut DefIdSet,
+            update_retained: bool,
         }
         impl<'a> fold::DocFolder for Stripper<'a> {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
@@ -38,17 +40,25 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
                     // use a dedicated hidden item for given item type if any
                     match i.inner {
                         clean::StructFieldItem(..) | clean::ModuleItem(..) => {
-                            return Strip(i).fold()
+                            // We need to recurse into stripped modules to
+                            // strip things like impl methods but when doing so
+                            // we must not add any items to the `retained` set.
+                            let old = mem::replace(&mut self.update_retained, false);
+                            let ret = Strip(self.fold_item_recur(i).unwrap()).fold();
+                            self.update_retained = old;
+                            return ret;
                         }
                         _ => return None,
                     }
                 } else {
-                    self.retained.insert(i.def_id);
+                    if self.update_retained {
+                        self.retained.insert(i.def_id);
+                    }
                 }
                 self.fold_item_recur(i)
             }
         }
-        let mut stripper = Stripper{ retained: &mut retained };
+        let mut stripper = Stripper{ retained: &mut retained, update_retained: true };
         stripper.fold_crate(krate)
     };
 
@@ -69,6 +79,7 @@ pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
         let mut stripper = Stripper {
             retained: &mut retained,
             access_levels: &access_levels,
+            update_retained: true,
         };
         krate = ImportStripper.fold_crate(stripper.fold_crate(krate));
     }
@@ -81,12 +92,21 @@ pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
 struct Stripper<'a> {
     retained: &'a mut DefIdSet,
     access_levels: &'a AccessLevels<DefId>,
+    update_retained: bool,
 }
 
 impl<'a> fold::DocFolder for Stripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
-            clean::StrippedItem(..) => return Some(i),
+            clean::StrippedItem(..) => {
+                // We need to recurse into stripped modules to strip things
+                // like impl methods but when doing so we must not add any
+                // items to the `retained` set.
+                let old = mem::replace(&mut self.update_retained, false);
+                let ret = self.fold_item_recur(i);
+                self.update_retained = old;
+                return ret;
+            }
             // These items can all get re-exported
             clean::TypedefItem(..) | clean::StaticItem(..) |
             clean::StructItem(..) | clean::EnumItem(..) |
@@ -109,18 +129,13 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             clean::ModuleItem(..) => {
                 if i.def_id.is_local() && i.visibility != Some(clean::Public) {
-                    return Strip(self.fold_item_recur(i).unwrap()).fold()
+                    let old = mem::replace(&mut self.update_retained, false);
+                    let ret = Strip(self.fold_item_recur(i).unwrap()).fold();
+                    self.update_retained = old;
+                    return ret;
                 }
             }
 
-            // trait impls for private items should be stripped
-            clean::ImplItem(clean::Impl{
-                for_: clean::ResolvedPath{ did, is_generic, .. }, ..
-            }) => {
-                if did.is_local() && !is_generic && !self.access_levels.is_exported(did) {
-                    return None;
-                }
-            }
             // handled in the `strip-priv-imports` pass
             clean::ExternCrateItem(..) | clean::ImportItem(..) => {}
 
@@ -152,7 +167,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
         };
 
         let i = if fastreturn {
-            self.retained.insert(i.def_id);
+            if self.update_retained {
+                self.retained.insert(i.def_id);
+            }
             return Some(i);
         } else {
             self.fold_item_recur(i)
@@ -160,13 +177,14 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
         i.and_then(|i| {
             match i.inner {
-                // emptied modules/impls have no need to exist
+                // emptied modules have no need to exist
                 clean::ModuleItem(ref m)
                     if m.items.is_empty() &&
                        i.doc_value().is_none() => None,
-                clean::ImplItem(ref i) if i.items.is_empty() => None,
                 _ => {
-                    self.retained.insert(i.def_id);
+                    if self.update_retained {
+                        self.retained.insert(i.def_id);
+                    }
                     Some(i)
                 }
             }
@@ -182,6 +200,10 @@ struct ImplStripper<'a> {
 impl<'a> fold::DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = i.inner {
+            // emptied none trait impls can be stripped
+            if imp.trait_.is_none() && imp.items.is_empty() {
+                return None;
+            }
             if let Some(did) = imp.for_.def_id() {
                 if did.is_local() && !imp.for_.is_generic() &&
                     !self.retained.contains(&did)
