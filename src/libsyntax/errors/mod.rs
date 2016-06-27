@@ -184,7 +184,7 @@ pub struct DiagnosticBuilder<'a> {
     level: Level,
     message: String,
     code: Option<String>,
-    span: MultiSpan,
+    pub span: MultiSpan,
     children: Vec<SubDiagnostic>,
 }
 
@@ -302,11 +302,6 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
-    pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
-        self.span = sp.into();
-        self
-    }
-
     pub fn code(&mut self, s: String) -> &mut Self {
         self.code = Some(s);
         self
@@ -421,7 +416,7 @@ impl Handler {
                                                     msg: &str)
                                                     -> DiagnosticBuilder<'a> {
         let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
-        result.set_span(sp);
+        result.span = sp.into();
         if !self.can_emit_warnings {
             result.cancel();
         }
@@ -433,7 +428,7 @@ impl Handler {
                                                               code: &str)
                                                               -> DiagnosticBuilder<'a> {
         let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
-        result.set_span(sp);
+        result.span = sp.into();
         result.code(code.to_owned());
         if !self.can_emit_warnings {
             result.cancel();
@@ -453,7 +448,7 @@ impl Handler {
                                                    -> DiagnosticBuilder<'a> {
         self.bump_err_count();
         let mut result = DiagnosticBuilder::new(self, Level::Error, msg);
-        result.set_span(sp);
+        result.span = sp.into();
         result
     }
     pub fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
@@ -463,7 +458,7 @@ impl Handler {
                                                              -> DiagnosticBuilder<'a> {
         self.bump_err_count();
         let mut result = DiagnosticBuilder::new(self, Level::Error, msg);
-        result.set_span(sp);
+        result.span = sp.into();
         result.code(code.to_owned());
         result
     }
@@ -477,7 +472,7 @@ impl Handler {
                                                      -> DiagnosticBuilder<'a> {
         self.bump_err_count();
         let mut result = DiagnosticBuilder::new(self, Level::Fatal, msg);
-        result.set_span(sp);
+        result.span = sp.into();
         result
     }
     pub fn struct_span_fatal_with_code<'a, S: Into<MultiSpan>>(&'a self,
@@ -487,7 +482,7 @@ impl Handler {
                                                                -> DiagnosticBuilder<'a> {
         self.bump_err_count();
         let mut result = DiagnosticBuilder::new(self, Level::Fatal, msg);
-        result.set_span(sp);
+        result.span = sp.into();
         result.code(code.to_owned());
         result
     }
@@ -496,10 +491,10 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Fatal, msg)
     }
 
-    pub fn cancel(&mut self, err: &mut DiagnosticBuilder) {
+    pub fn cancel(&self, err: &mut DiagnosticBuilder) {
         if err.level == Level::Error || err.level == Level::Fatal {
             assert!(self.has_errors());
-            self.err_count.set(self.err_count.get() + 1);
+            self.err_count.set(self.err_count.get() - 1);
         }
         err.cancel();
     }
