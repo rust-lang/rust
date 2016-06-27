@@ -21,5 +21,5 @@ impl<T, A = Heap> Vec<T, A> {
 
 fn main() {
     Vec::<isize, Heap, bool>::new();
-    //~^ ERROR wrong number of type arguments
+    //~^ ERROR wrong number of generic type arguments
 }

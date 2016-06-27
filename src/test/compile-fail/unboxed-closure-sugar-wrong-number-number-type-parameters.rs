@@ -13,7 +13,7 @@
 trait Zero { fn dummy(&self); }
 
 fn foo(_: Zero())
-    //~^ ERROR wrong number of type arguments
+    //~^ ERROR wrong number of generic type arguments
     //~| ERROR associated type `Output` not found for `Zero`
 {}
 

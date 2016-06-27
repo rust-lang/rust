@@ -2263,7 +2263,7 @@ fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
             "expected"
         };
         span_err!(tcx.sess, span, E0243,
-                  "wrong number of type arguments: {} {}, found {}",
+                  "wrong number of generic type arguments: {} {}, found {}",
                   expected, required, supplied);
     } else if supplied > accepted {
         let expected = if required < accepted {
@@ -2272,7 +2272,7 @@ fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
             "expected"
         };
         span_err!(tcx.sess, span, E0244,
-                  "wrong number of type arguments: {} {}, found {}",
+                  "wrong number of generic type arguments: {} {}, found {}",
                   expected,
                   accepted,
                   supplied);

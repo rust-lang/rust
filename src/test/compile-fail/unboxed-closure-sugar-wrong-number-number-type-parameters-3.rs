@@ -13,7 +13,7 @@
 trait Three<A,B,C> { fn dummy(&self) -> (A,B,C); }
 
 fn foo(_: &Three())
-//~^ ERROR wrong number of type arguments
+//~^ ERROR wrong number of generic type arguments
 //~| ERROR associated type `Output` not found
 {}
 

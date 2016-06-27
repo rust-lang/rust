@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:wrong number of type arguments
+// error-pattern:wrong number of generic type arguments
 
 enum quux<T> { bar }
 
