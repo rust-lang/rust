@@ -94,18 +94,18 @@ error: cannot move out of borrowed content
 
 I’m trying to track the ownership of the contents of `tail`, which is borrowed, through this match statement:
 
-29  |>             match tail {
+29  |              match tail {
 
 In this match, you use an expression of the form [...].  When you do this, it’s like you are opening up the `tail` 
 value and taking out its contents. Because `tail` is borrowed, you can’t safely move the contents.
 
-30  |>                 [Foo { string: aa },
-    |>                                ^^ cannot move out of borrowed content
+30  |                  [Foo { string: aa },
+    |                                 ^^ cannot move out of borrowed content
 
 You can avoid moving the contents out by working with each part using a reference rather than a move.  A naive fix 
 might look this:
 
-30  |>                 [Foo { string: ref aa },
+30  |                  [Foo { string: ref aa },
  
 ```
 
@@ -203,18 +203,18 @@ error: cannot move out of borrowed content
 
 I’m trying to track the ownership of the contents of `tail`, which is borrowed, through this match statement:
 
-29  |>             match tail {
+29  |              match tail {
 
 In this match, you use an expression of the form [...].  When you do this, it’s like you are opening up the `tail` 
 value and taking out its contents. Because `tail` is borrowed, you can’t safely move the contents.
 
-30  |>                 [Foo { string: aa },
-    |>                                ^^ cannot move out of borrowed content
+30  |                  [Foo { string: aa },
+    |                                 ^^ cannot move out of borrowed content
 
 You can avoid moving the contents out by working with each part using a reference rather than a move.  A naive fix 
 might look this:
 
-30  |>                 [Foo { string: ref aa },
+30  |                  [Foo { string: ref aa },
 ```
 
 *Example of an expanded error message*
