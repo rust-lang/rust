@@ -269,6 +269,7 @@ impl FnType {
             Vectorcall => llvm::X86_VectorCall,
             C => llvm::CCallConv,
             Win64 => llvm::X86_64_Win64,
+            SysV64 => llvm::X86_64_SysV,
 
             // These API constants ought to be more specific...
             Cdecl => llvm::CCallConv,
