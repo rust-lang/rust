@@ -72,6 +72,23 @@ impl LateLintPass for Transmute {
                             e.span,
                             &format!("transmute from a type (`{}`) to itself", from_ty),
                         ),
+                        (&TyRef(_, rty), &TyRawPtr(ptr_ty)) => span_lint_and_then(
+                            cx,
+                            USELESS_TRANSMUTE,
+                            e.span,
+                            "transmute from a reference to a pointer",
+                            |db| {
+                                if let Some(arg) = snippet_opt(cx, args[0].span) {
+                                    let sugg = if ptr_ty == rty {
+                                        format!("{} as {}", arg, to_ty)
+                                    } else {
+                                        format!("{} as {} as {}", arg, cx.tcx.mk_ptr(rty), to_ty)
+                                    };
+
+                                    db.span_suggestion(e.span, "try", sugg);
+                                }
+                            },
+                        ),
                         (&TyRawPtr(from_ptr), _) if from_ptr.ty == to_ty => span_lint(
                             cx,
                             CROSSPOINTER_TRANSMUTE,
