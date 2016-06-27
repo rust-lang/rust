@@ -1,7 +1,7 @@
 # The Rust Programming Language
 
-This is the main source code repository for [Rust]. It contains the compiler, standard library,
-and documentation.
+This is the main source code repository for [Rust]. It contains the compiler,
+standard library, and documentation.
 
 [Rust]: https://www.rust-lang.org
 
@@ -114,6 +114,19 @@ $ ./configure
 $ make && make install
 ```
 
+#### MSVC with rustbuild
+
+For those who don't want the hassle of MSYS or MinGW, you can invoke rustbuild
+directly. All you need are Python 2, CMake, and Git in your PATH (make sure you
+do __not__ use the ones from MSYS!). You'll also need Visual Studio 2013 or
+newer with the C++ tools. Then all you need to do is invoke the appropriate
+vcvars bat file and kick off rustbuild.
+
+```bat
+CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
+python .\src\bootstrap\bootstrap.py
+```
+
 ## Building Documentation
 
 If you’d like to build the documentation, it’s almost the same:
@@ -154,8 +167,8 @@ Snapshot binaries are currently built and tested on several platforms:
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.
 
-Rust currently needs between 600MiB and 1.5GiB to build, depending on platform. If it hits
-swap, it will take a very long time to build.
+Rust currently needs between 600MiB and 1.5GiB to build, depending on platform.
+If it hits swap, it will take a very long time to build.
 
 There is more advice about hacking on Rust in [CONTRIBUTING.md].
 
@@ -192,4 +205,5 @@ Rust is primarily distributed under the terms of both the MIT license
 and the Apache License (Version 2.0), with portions covered by various
 BSD-like licenses.
 
-See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and [COPYRIGHT](COPYRIGHT) for details.
+See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
+[COPYRIGHT](COPYRIGHT) for details.
