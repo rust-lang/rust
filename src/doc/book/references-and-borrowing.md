@@ -123,7 +123,7 @@ let v = vec![];
 foo(&v);
 ```
 
-errors with:
+will give us this error:
 
 ```text
 error: cannot borrow immutable borrowed content `*v` as mutable
