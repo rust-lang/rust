@@ -146,6 +146,16 @@ pub struct Sink { _priv: () }
 ///
 /// All calls to `write` on the returned instance will return `Ok(buf.len())`
 /// and the contents of the buffer will not be inspected.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::io::{self, Write};
+///
+/// let mut buffer = vec![1, 2, 3, 5, 8];
+/// let num_bytes = io::sink().write(&mut buffer).unwrap();
+/// assert_eq!(num_bytes, 5);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn sink() -> Sink { Sink { _priv: () } }
 
