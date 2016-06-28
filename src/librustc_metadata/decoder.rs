@@ -15,7 +15,7 @@
 use self::Family::*;
 
 use astencode::decode_inlined_item;
-use cstore::{self, crate_metadata};
+use cstore::{self, CrateMetadata};
 use common::*;
 use def_key;
 use encoder::def_to_u64;
@@ -30,7 +30,7 @@ use rustc::util::nodemap::FnvHashMap;
 use rustc::hir;
 use rustc::session::config::PanicStrategy;
 
-use middle::cstore::{LOCAL_CRATE, FoundAst, InlinedItem, LinkagePreference};
+use middle::cstore::{FoundAst, InlinedItem, LinkagePreference};
 use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex};
@@ -61,9 +61,9 @@ use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax_pos::{self, Span, BytePos, NO_EXPANSION};
 
-pub type Cmd<'a> = &'a crate_metadata;
+pub type Cmd<'a> = &'a CrateMetadata;
 
-impl crate_metadata {
+impl CrateMetadata {
     fn get_item(&self, item_id: DefIndex) -> Option<rbml::Doc> {
         self.index.lookup_item(self.data(), item_id).map(|pos| {
             reader::doc_at(self.data(), pos as usize).unwrap().doc
@@ -663,7 +663,7 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
                                      mut get_crate_data: G,
                                      mut callback: F) where
     F: FnMut(DefLike, ast::Name, ty::Visibility),
-    G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
+    G: FnMut(ast::CrateNum) -> Rc<CrateMetadata>,
 {
     // Iterate over all children.
     for child_info_doc in reader::tagged_docs(item_doc, tag_mod_child) {
@@ -758,7 +758,7 @@ pub fn each_child_of_item<F, G>(intr: Rc<IdentInterner>,
                                get_crate_data: G,
                                callback: F) where
     F: FnMut(DefLike, ast::Name, ty::Visibility),
-    G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
+    G: FnMut(ast::CrateNum) -> Rc<CrateMetadata>,
 {
     // Find the item.
     let item_doc = match cdata.get_item(id) {
@@ -779,7 +779,7 @@ pub fn each_top_level_item_of_crate<F, G>(intr: Rc<IdentInterner>,
                                           get_crate_data: G,
                                           callback: F) where
     F: FnMut(DefLike, ast::Name, ty::Visibility),
-    G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
+    G: FnMut(ast::CrateNum) -> Rc<CrateMetadata>,
 {
     let root_doc = rbml::Doc::new(cdata.data());
     let misc_info_doc = reader::get_doc(root_doc, tag_misc_info);
@@ -1348,25 +1348,16 @@ pub fn translate_def_id(cdata: Cmd, did: DefId) -> DefId {
         return DefId { krate: cdata.cnum, index: did.index };
     }
 
-    match cdata.cnum_map.borrow().get(&did.krate) {
-        Some(&n) => {
-            DefId {
-                krate: n,
-                index: did.index,
-            }
-        }
-        None => bug!("didn't find a crate in the cnum_map")
+    DefId {
+        krate: cdata.cnum_map.borrow()[did.krate],
+        index: did.index
     }
 }
 
 // Translate a DefId from the current compilation environment to a DefId
 // for an external crate.
 fn reverse_translate_def_id(cdata: Cmd, did: DefId) -> Option<DefId> {
-    if did.krate == cdata.cnum {
-        return Some(DefId { krate: LOCAL_CRATE, index: did.index });
-    }
-
-    for (&local, &global) in cdata.cnum_map.borrow().iter() {
+    for (local, &global) in cdata.cnum_map.borrow().iter_enumerated() {
         if global == did.krate {
             return Some(DefId { krate: local, index: did.index });
         }
@@ -1545,10 +1536,7 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
         let cnum = spec.split(':').nth(0).unwrap();
         let link = spec.split(':').nth(1).unwrap();
         let cnum: ast::CrateNum = cnum.parse().unwrap();
-        let cnum = match cdata.cnum_map.borrow().get(&cnum) {
-            Some(&n) => n,
-            None => bug!("didn't find a crate in the cnum_map")
-        };
+        let cnum = cdata.cnum_map.borrow()[cnum];
         result.push((cnum, if link == "d" {
             LinkagePreference::RequireDynamic
         } else {

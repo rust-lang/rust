@@ -1505,7 +1505,7 @@ fn encode_polarity(rbml_w: &mut Encoder, polarity: hir::ImplPolarity) {
 
 fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {
     fn get_ordered_deps(cstore: &cstore::CStore)
-                        -> Vec<(CrateNum, Rc<cstore::crate_metadata>)> {
+                        -> Vec<(CrateNum, Rc<cstore::CrateMetadata>)> {
         // Pull the cnums and name,vers,hash out of cstore
         let mut deps = Vec::new();
         cstore.iter_crate_data(|cnum, val| {
@@ -1736,7 +1736,7 @@ fn encode_reachable(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 }
 
 fn encode_crate_dep(rbml_w: &mut Encoder,
-                    dep: &cstore::crate_metadata) {
+                    dep: &cstore::CrateMetadata) {
     rbml_w.start_tag(tag_crate_dep);
     rbml_w.wr_tagged_str(tag_crate_dep_crate_name, &dep.name());
     let hash = decoder::get_crate_hash(dep.data());
