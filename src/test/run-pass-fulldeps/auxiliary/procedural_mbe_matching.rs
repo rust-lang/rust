@@ -14,17 +14,19 @@
 #![feature(plugin_registrar, quote, rustc_private)]
 
 extern crate syntax;
+extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
 
-use syntax::codemap::Span;
 use syntax::parse::token::{self, str_to_ident, NtExpr, NtPat};
-use syntax::ast::{TokenTree, Pat};
+use syntax::ast::{Pat};
+use syntax::tokenstream::{TokenTree};
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use syntax::ext::tt::macro_parser::{Success, Failure, Error};
 use syntax::ptr::P;
+use syntax_pos::Span;
 use rustc_plugin::Registry;
 
 fn expand_mbe_matches(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])

@@ -13,15 +13,18 @@ use std::collections::BTreeMap;
 use std::env;
 
 use ast;
-use ast::{Ident, Name, TokenTree};
-use codemap::Span;
+use ast::{Ident, Name};
+use syntax_pos::Span;
 use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
+use tokenstream::{TokenTree};
 use util::small_vector::SmallVector;
 
 use diagnostics::metadata::output_metadata;
+
+pub use errors::*;
 
 // Maximum width of any line in an extended error description (inclusive).
 const MAX_DESCRIPTION_WIDTH: usize = 80;

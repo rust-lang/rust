@@ -15,12 +15,14 @@
 extern crate syntax;
 extern crate rustc;
 extern crate rustc_plugin;
+extern crate syntax_pos;
 
-use syntax::ast::{self, TokenTree, Item, MetaItem, ImplItem, TraitItem, ItemKind};
-use syntax::codemap::Span;
+use syntax::ast::{self, Item, MetaItem, ImplItem, TraitItem, ItemKind};
 use syntax::ext::base::*;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
+use syntax::tokenstream::TokenTree;
+use syntax_pos::Span;
 use rustc_plugin::Registry;
 
 #[macro_export]

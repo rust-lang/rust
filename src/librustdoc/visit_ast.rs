@@ -18,7 +18,7 @@ use syntax::abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;

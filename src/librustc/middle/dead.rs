@@ -26,6 +26,7 @@ use lint;
 use std::collections::HashSet;
 use syntax::{ast, codemap};
 use syntax::attr;
+use syntax_pos;
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live NodeItem that is a
@@ -215,7 +216,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
 
     fn visit_variant_data(&mut self, def: &hir::VariantData, _: ast::Name,
-                        _: &hir::Generics, _: ast::NodeId, _: codemap::Span) {
+                        _: &hir::Generics, _: ast::NodeId, _: syntax_pos::Span) {
         let has_extern_repr = self.struct_has_extern_repr;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let live_fields = def.fields().iter().filter(|f| {
@@ -478,7 +479,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
 
     fn warn_dead_code(&mut self,
                       id: ast::NodeId,
-                      span: codemap::Span,
+                      span: syntax_pos::Span,
                       name: ast::Name,
                       node_type: &str) {
         let name = name.as_str();

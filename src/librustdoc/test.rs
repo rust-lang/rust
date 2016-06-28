@@ -35,8 +35,8 @@ use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use syntax::codemap::CodeMap;
-use syntax::errors;
-use syntax::errors::emitter::ColorConfig;
+use errors;
+use errors::emitter::ColorConfig;
 use syntax::parse::token;
 
 use core;
@@ -229,8 +229,9 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let data = Arc::new(Mutex::new(Vec::new()));
     let codemap = Rc::new(CodeMap::new());
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
-                                                      None,
-                                                      codemap.clone());
+                                                None,
+                                                codemap.clone(),
+                                                errors::snippet::FormatMode::EnvironmentSelected);
     let old = io::set_panic(box Sink(data.clone()));
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 

@@ -26,6 +26,8 @@ extern crate fmt_macros;
 #[macro_use] extern crate log;
 #[macro_use]
 extern crate syntax;
+extern crate syntax_pos;
+extern crate rustc_errors as errors;
 
 use syntax::ext::base::{MacroExpanderFn, NormalTT};
 use syntax::ext::base::{SyntaxEnv, SyntaxExtension};

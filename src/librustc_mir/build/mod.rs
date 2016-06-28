@@ -16,8 +16,8 @@ use rustc::util::nodemap::NodeMap;
 use rustc::hir;
 use syntax::abi::Abi;
 use syntax::ast;
-use syntax::codemap::Span;
 use syntax::parse::token::keywords;
+use syntax_pos::Span;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 

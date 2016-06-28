@@ -26,7 +26,7 @@ use rustc::mir::repr::*;
 use rustc::mir::visit::{LvalueContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
 use rustc::ty::{self, TyCtxt};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use build::Location;
 

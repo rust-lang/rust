@@ -36,11 +36,12 @@ use std::collections::HashSet;
 use std::hash::*;
 
 use syntax::ast::{self, NodeId, PatKind};
-use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string, bounds_to_string, generics_to_string};
 use syntax::ptr::P;
+use syntax::codemap::Spanned;
+use syntax_pos::*;
 
 use super::{escape, generated_code, SaveContext, PathCollector};
 use super::data::*;
@@ -1037,7 +1038,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 }
 
-impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 'll, D> {
+impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> {
     fn visit_item(&mut self, item: &ast::Item) {
         use syntax::ast::ItemKind::*;
         self.process_macro_use(item.span, item.id);
@@ -1215,7 +1216,8 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                                     trait_item.span);
             }
             ast::TraitItemKind::Const(_, None) |
-            ast::TraitItemKind::Type(..) => {}
+            ast::TraitItemKind::Type(..) |
+            ast::TraitItemKind::Macro(_) => {}
         }
     }
 
@@ -1421,8 +1423,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
     }
 
     fn visit_stmt(&mut self, s: &ast::Stmt) {
-        let id = s.node.id();
-        self.process_macro_use(s.span, id.unwrap());
+        self.process_macro_use(s.span, s.id);
         visit::walk_stmt(self, s)
     }
 

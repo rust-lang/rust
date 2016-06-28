@@ -22,7 +22,7 @@ use rustc::util::nodemap::NodeMap;
 use libc::c_uint;
 use std::ptr;
 
-use syntax::codemap::{Span, Pos};
+use syntax_pos::{Span, Pos};
 use syntax::{ast, codemap};
 
 use rustc_data_structures::bitvec::BitVector;

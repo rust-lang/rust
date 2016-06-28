@@ -13,7 +13,7 @@ use build::scope::LoopScope;
 use hair::*;
 use rustc::middle::region::CodeExtent;
 use rustc::mir::repr::*;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 

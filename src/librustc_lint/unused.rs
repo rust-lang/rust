@@ -19,9 +19,9 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use syntax::ast;
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::Span;
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 use rustc_back::slice;
 use rustc::hir;
@@ -365,12 +365,9 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_stmt(&mut self, cx: &EarlyContext, s: &ast::Stmt) {
         let (value, msg) = match s.node {
-            ast::StmtKind::Decl(ref decl, _) => match decl.node {
-                ast::DeclKind::Local(ref local) => match local.init {
-                    Some(ref value) => (value, "assigned value"),
-                    None => return
-                },
-                _ => return
+            ast::StmtKind::Local(ref local) => match local.init {
+                Some(ref value) => (value, "assigned value"),
+                None => return
             },
             _ => return
         };

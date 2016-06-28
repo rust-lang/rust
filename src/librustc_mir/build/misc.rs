@@ -19,7 +19,7 @@ use rustc::ty::{self, Ty};
 
 use rustc::mir::repr::*;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Add a new temporary value of type `ty` storing the result of

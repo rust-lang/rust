@@ -16,7 +16,7 @@ use llvm::{AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate};
 use llvm::{ValueRef, BasicBlockRef};
 use common::*;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use builder::Builder;
 use type_::Type;

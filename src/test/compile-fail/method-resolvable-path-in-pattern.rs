@@ -19,6 +19,6 @@ impl MyTrait for Foo {}
 fn main() {
     match 0u32 {
         <Foo as MyTrait>::trait_bar => {}
-        //~^ ERROR expected associated constant, found method `trait_bar`
+        //~^ ERROR expected variant, struct or constant, found method `trait_bar`
     }
 }

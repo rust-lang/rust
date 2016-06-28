@@ -24,10 +24,10 @@ use rustc::ty::subst::Substs;
 use rustc::traits::{Obligation, SelectionContext};
 use util::nodemap::{FnvHashSet};
 
-
 use syntax::ast;
-use syntax::codemap::Span;
-use syntax::errors::DiagnosticBuilder;
+use errors::DiagnosticBuilder;
+use syntax_pos::Span;
+
 use rustc::hir::print as pprust;
 use rustc::hir;
 use rustc::hir::Expr_;

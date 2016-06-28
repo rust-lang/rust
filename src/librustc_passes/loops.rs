@@ -15,7 +15,7 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Context {

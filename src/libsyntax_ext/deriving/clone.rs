@@ -13,11 +13,11 @@ use deriving::generic::ty::*;
 
 use syntax::ast::{Expr, ItemKind, Generics, MetaItem, VariantData};
 use syntax::attr;
-use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 #[derive(PartialEq)]
 enum Mode { Deep, Shallow }
@@ -145,12 +145,10 @@ fn cs_clone(
 
     match mode {
         Mode::Shallow => {
-            cx.expr_block(cx.block(trait_span,
-                                   all_fields.iter()
-                                             .map(subcall)
-                                             .map(|e| cx.stmt_expr(e))
-                                             .collect(),
-                                   Some(cx.expr_deref(trait_span, cx.expr_self(trait_span)))))
+            let mut stmts: Vec<_> =
+                all_fields.iter().map(subcall).map(|e| cx.stmt_expr(e)).collect();
+            stmts.push(cx.stmt_expr(cx.expr_deref(trait_span, cx.expr_self(trait_span))));
+            cx.expr_block(cx.block(trait_span, stmts))
         }
         Mode::Deep => {
             match *vdata {

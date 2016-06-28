@@ -91,10 +91,10 @@ use std::cell::{Cell, RefCell};
 use std::char::from_u32;
 use std::fmt;
 use syntax::ast;
-use syntax::errors::{DiagnosticBuilder, check_old_skool};
-use syntax::codemap::{self, Pos, Span};
 use syntax::parse::token;
 use syntax::ptr::P;
+use syntax_pos::{self, Pos, Span};
+use errors::{DiagnosticBuilder, check_old_skool};
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
@@ -1933,6 +1933,6 @@ impl LifeGiver {
 
 fn name_to_dummy_lifetime(name: ast::Name) -> hir::Lifetime {
     hir::Lifetime { id: ast::DUMMY_NODE_ID,
-                    span: codemap::DUMMY_SP,
+                    span: syntax_pos::DUMMY_SP,
                     name: name }
 }

@@ -15,7 +15,7 @@ use mir::repr::{Mir, BasicBlock};
 
 use rustc_serialize as serialize;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Cache {
     predecessors: RefCell<Option<IndexVec<BasicBlock, Vec<BasicBlock>>>>
 }

@@ -40,11 +40,10 @@ use std::cmp;
 use std::default::Default as StdDefault;
 use std::mem;
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::Span;
-use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ast;
-use syntax::attr::ThinAttributesExt;
+use syntax_pos::Span;
+use errors::DiagnosticBuilder;
 use hir;
 use hir::intravisit as hir_visit;
 use hir::intravisit::{IdVisitor, IdVisitingOperation};
@@ -767,7 +766,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, e: &hir::Expr) {
-        self.with_lint_attrs(e.attrs.as_attr_slice(), |cx| {
+        self.with_lint_attrs(&e.attrs, |cx| {
             run_lints!(cx, check_expr, late_passes, e);
             hir_visit::walk_expr(cx, e);
         })
@@ -832,7 +831,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 
     fn visit_local(&mut self, l: &hir::Local) {
-        self.with_lint_attrs(l.attrs.as_attr_slice(), |cx| {
+        self.with_lint_attrs(&l.attrs, |cx| {
             run_lints!(cx, check_local, late_passes, l);
             hir_visit::walk_local(cx, l);
         })
@@ -905,7 +904,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
+impl<'a> ast_visit::Visitor for EarlyContext<'a> {
     fn visit_item(&mut self, it: &ast::Item) {
         self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_item, early_passes, it);
@@ -928,7 +927,7 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     }
 
     fn visit_expr(&mut self, e: &ast::Expr) {
-        self.with_lint_attrs(e.attrs.as_attr_slice(), |cx| {
+        self.with_lint_attrs(&e.attrs, |cx| {
             run_lints!(cx, check_expr, early_passes, e);
             ast_visit::walk_expr(cx, e);
         })
@@ -939,8 +938,8 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
         ast_visit::walk_stmt(self, s);
     }
 
-    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, decl: &'v ast::FnDecl,
-                body: &'v ast::Block, span: Span, id: ast::NodeId) {
+    fn visit_fn(&mut self, fk: ast_visit::FnKind, decl: &ast::FnDecl,
+                body: &ast::Block, span: Span, id: ast::NodeId) {
         run_lints!(self, check_fn, early_passes, fk, decl, body, span, id);
         ast_visit::walk_fn(self, fk, decl, body, span);
         run_lints!(self, check_fn_post, early_passes, fk, decl, body, span, id);
@@ -988,7 +987,7 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     }
 
     fn visit_local(&mut self, l: &ast::Local) {
-        self.with_lint_attrs(l.attrs.as_attr_slice(), |cx| {
+        self.with_lint_attrs(&l.attrs, |cx| {
             run_lints!(cx, check_local, early_passes, l);
             ast_visit::walk_local(cx, l);
         })
@@ -1003,11 +1002,6 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     fn visit_arm(&mut self, a: &ast::Arm) {
         run_lints!(self, check_arm, early_passes, a);
         ast_visit::walk_arm(self, a);
-    }
-
-    fn visit_decl(&mut self, d: &ast::Decl) {
-        run_lints!(self, check_decl, early_passes, d);
-        ast_visit::walk_decl(self, d);
     }
 
     fn visit_expr_post(&mut self, e: &ast::Expr) {

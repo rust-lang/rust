@@ -9,15 +9,15 @@
 // except according to those terms.
 use self::LockstepIterSize::*;
 
-use ast;
-use ast::{TokenTree, Ident, Name};
-use codemap::{Span, DUMMY_SP};
+use ast::{Ident, Name};
+use syntax_pos::{Span, DUMMY_SP};
 use errors::{Handler, DiagnosticBuilder};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, NtIdent, SpecialMacroVar};
 use parse::token;
 use parse::lexer::TokenAndSpan;
+use tokenstream::{self, TokenTree};
 
 use std::rc::Rc;
 use std::ops::Add;
@@ -59,7 +59,7 @@ pub struct TtReader<'a> {
 pub fn new_tt_reader(sp_diag: &Handler,
                      interp: Option<HashMap<Name, Rc<NamedMatch>>>,
                      imported_from: Option<Ident>,
-                     src: Vec<ast::TokenTree>)
+                     src: Vec<tokenstream::TokenTree>)
                      -> TtReader {
     new_tt_reader_with_doc_flag(sp_diag, interp, imported_from, src, false)
 }
@@ -73,17 +73,17 @@ pub fn new_tt_reader(sp_diag: &Handler,
 pub fn new_tt_reader_with_doc_flag(sp_diag: &Handler,
                                    interp: Option<HashMap<Name, Rc<NamedMatch>>>,
                                    imported_from: Option<Ident>,
-                                   src: Vec<ast::TokenTree>,
+                                   src: Vec<tokenstream::TokenTree>,
                                    desugar_doc_comments: bool)
                                    -> TtReader {
     let mut r = TtReader {
         sp_diag: sp_diag,
         stack: vec!(TtFrame {
-            forest: TokenTree::Sequence(DUMMY_SP, Rc::new(ast::SequenceRepetition {
+            forest: TokenTree::Sequence(DUMMY_SP, tokenstream::SequenceRepetition {
                 tts: src,
                 // doesn't matter. This merely holds the root unzipping.
-                separator: None, op: ast::KleeneOp::ZeroOrMore, num_captures: 0
-            })),
+                separator: None, op: tokenstream::KleeneOp::ZeroOrMore, num_captures: 0
+            }),
             idx: 0,
             dotdotdoted: false,
             sep: None,
@@ -259,7 +259,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                     }
                     LisConstraint(len, _) => {
                         if len == 0 {
-                            if seq.op == ast::KleeneOp::OneOrMore {
+                            if seq.op == tokenstream::KleeneOp::OneOrMore {
                                 // FIXME #2887 blame invoker
                                 panic!(r.sp_diag.span_fatal(sp.clone(),
                                                      "this must repeat at least once"));

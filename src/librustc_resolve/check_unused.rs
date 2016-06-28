@@ -27,7 +27,7 @@ use Namespace::{TypeNS, ValueNS};
 use rustc::lint;
 use syntax::ast::{self, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::visit::{self, Visitor};
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 
 
 struct UnusedImportCheckVisitor<'a, 'b: 'a> {
@@ -71,7 +71,7 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     }
 }
 
-impl<'a, 'b, 'v> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b> {
+impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &ast::Item) {
         visit::walk_item(self, item);
         // Ignore is_public import statements because there's no way to be sure

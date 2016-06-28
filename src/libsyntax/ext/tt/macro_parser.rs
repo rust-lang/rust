@@ -79,9 +79,9 @@ pub use self::ParseResult::*;
 use self::TokenTreeOrTokenTreeVec::*;
 
 use ast;
-use ast::{TokenTree, Name, Ident};
-use codemap::{BytePos, mk_sp, Span, Spanned};
-use codemap;
+use ast::{Name, Ident};
+use syntax_pos::{self, BytePos, mk_sp, Span};
+use codemap::Spanned;
 use errors::FatalError;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
@@ -91,6 +91,7 @@ use parse::token::{Token, Nonterminal};
 use parse::token;
 use print::pprust;
 use ptr::P;
+use tokenstream::{self, TokenTree};
 
 use std::mem;
 use std::rc::Rc;
@@ -102,8 +103,8 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 #[derive(Clone)]
 enum TokenTreeOrTokenTreeVec {
-    Tt(ast::TokenTree),
-    TtSeq(Rc<Vec<ast::TokenTree>>),
+    Tt(tokenstream::TokenTree),
+    TtSeq(Rc<Vec<tokenstream::TokenTree>>),
 }
 
 impl TokenTreeOrTokenTreeVec {
@@ -196,7 +197,7 @@ pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: ByteP
 /// token tree it was derived from.
 
 pub enum NamedMatch {
-    MatchedSeq(Vec<Rc<NamedMatch>>, codemap::Span),
+    MatchedSeq(Vec<Rc<NamedMatch>>, syntax_pos::Span),
     MatchedNonterminal(Nonterminal)
 }
 
@@ -204,7 +205,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
             -> ParseResult<HashMap<Name, Rc<NamedMatch>>> {
     fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
              ret_val: &mut HashMap<Name, Rc<NamedMatch>>, idx: &mut usize)
-             -> Result<(), (codemap::Span, String)> {
+             -> Result<(), (syntax_pos::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {
@@ -251,9 +252,9 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
 pub enum ParseResult<T> {
     Success(T),
     /// Arm failed to match
-    Failure(codemap::Span, String),
+    Failure(syntax_pos::Span, String),
     /// Fatal error (malformed macro?). Abort compilation.
-    Error(codemap::Span, String)
+    Error(syntax_pos::Span, String)
 }
 
 pub type NamedParseResult = ParseResult<HashMap<Name, Rc<NamedMatch>>>;
@@ -374,7 +375,7 @@ pub fn parse(sess: &ParseSess,
                 match ei.top_elts.get_tt(idx) {
                     /* need to descend into sequence */
                     TokenTree::Sequence(sp, seq) => {
-                        if seq.op == ast::KleeneOp::ZeroOrMore {
+                        if seq.op == tokenstream::KleeneOp::ZeroOrMore {
                             let mut new_ei = ei.clone();
                             new_ei.match_cur += seq.num_captures;
                             new_ei.idx += 1;

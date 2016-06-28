@@ -27,7 +27,7 @@ use std::cmp;
 use std::hash::{Hash, SipHasher, Hasher};
 use syntax::ast::{self, Name};
 use syntax::attr::{self, SignedInt, UnsignedInt};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use hir;
 

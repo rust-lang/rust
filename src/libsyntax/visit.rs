@@ -25,8 +25,8 @@
 
 use abi::Abi;
 use ast::*;
-use attr::ThinAttributesExt;
-use codemap::{Span, Spanned};
+use syntax_pos::Span;
+use codemap::Spanned;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
@@ -49,57 +49,56 @@ pub enum FnKind<'a> {
 /// explicitly, you need to override each method.  (And you also need
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
-pub trait Visitor<'v> : Sized {
+pub trait Visitor: Sized {
     fn visit_name(&mut self, _span: Span, _name: Name) {
         // Nothing to do.
     }
     fn visit_ident(&mut self, span: Span, ident: Ident) {
         walk_ident(self, span, ident);
     }
-    fn visit_mod(&mut self, m: &'v Mod, _s: Span, _n: NodeId) { walk_mod(self, m) }
-    fn visit_foreign_item(&mut self, i: &'v ForeignItem) { walk_foreign_item(self, i) }
-    fn visit_item(&mut self, i: &'v Item) { walk_item(self, i) }
-    fn visit_local(&mut self, l: &'v Local) { walk_local(self, l) }
-    fn visit_block(&mut self, b: &'v Block) { walk_block(self, b) }
-    fn visit_stmt(&mut self, s: &'v Stmt) { walk_stmt(self, s) }
-    fn visit_arm(&mut self, a: &'v Arm) { walk_arm(self, a) }
-    fn visit_pat(&mut self, p: &'v Pat) { walk_pat(self, p) }
-    fn visit_decl(&mut self, d: &'v Decl) { walk_decl(self, d) }
-    fn visit_expr(&mut self, ex: &'v Expr) { walk_expr(self, ex) }
-    fn visit_expr_post(&mut self, _ex: &'v Expr) { }
-    fn visit_ty(&mut self, t: &'v Ty) { walk_ty(self, t) }
-    fn visit_generics(&mut self, g: &'v Generics) { walk_generics(self, g) }
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: &'v Block, s: Span, _: NodeId) {
+    fn visit_mod(&mut self, m: &Mod, _s: Span, _n: NodeId) { walk_mod(self, m) }
+    fn visit_foreign_item(&mut self, i: &ForeignItem) { walk_foreign_item(self, i) }
+    fn visit_item(&mut self, i: &Item) { walk_item(self, i) }
+    fn visit_local(&mut self, l: &Local) { walk_local(self, l) }
+    fn visit_block(&mut self, b: &Block) { walk_block(self, b) }
+    fn visit_stmt(&mut self, s: &Stmt) { walk_stmt(self, s) }
+    fn visit_arm(&mut self, a: &Arm) { walk_arm(self, a) }
+    fn visit_pat(&mut self, p: &Pat) { walk_pat(self, p) }
+    fn visit_expr(&mut self, ex: &Expr) { walk_expr(self, ex) }
+    fn visit_expr_post(&mut self, _ex: &Expr) { }
+    fn visit_ty(&mut self, t: &Ty) { walk_ty(self, t) }
+    fn visit_generics(&mut self, g: &Generics) { walk_generics(self, g) }
+    fn visit_fn(&mut self, fk: FnKind, fd: &FnDecl, b: &Block, s: Span, _: NodeId) {
         walk_fn(self, fk, fd, b, s)
     }
-    fn visit_trait_item(&mut self, ti: &'v TraitItem) { walk_trait_item(self, ti) }
-    fn visit_impl_item(&mut self, ii: &'v ImplItem) { walk_impl_item(self, ii) }
-    fn visit_trait_ref(&mut self, t: &'v TraitRef) { walk_trait_ref(self, t) }
-    fn visit_ty_param_bound(&mut self, bounds: &'v TyParamBound) {
+    fn visit_trait_item(&mut self, ti: &TraitItem) { walk_trait_item(self, ti) }
+    fn visit_impl_item(&mut self, ii: &ImplItem) { walk_impl_item(self, ii) }
+    fn visit_trait_ref(&mut self, t: &TraitRef) { walk_trait_ref(self, t) }
+    fn visit_ty_param_bound(&mut self, bounds: &TyParamBound) {
         walk_ty_param_bound(self, bounds)
     }
-    fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef, m: &'v TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, t: &PolyTraitRef, m: &TraitBoundModifier) {
         walk_poly_trait_ref(self, t, m)
     }
-    fn visit_variant_data(&mut self, s: &'v VariantData, _: Ident,
-                        _: &'v Generics, _: NodeId, _: Span) {
+    fn visit_variant_data(&mut self, s: &VariantData, _: Ident,
+                          _: &Generics, _: NodeId, _: Span) {
         walk_struct_def(self, s)
     }
-    fn visit_struct_field(&mut self, s: &'v StructField) { walk_struct_field(self, s) }
-    fn visit_enum_def(&mut self, enum_definition: &'v EnumDef,
-                      generics: &'v Generics, item_id: NodeId, _: Span) {
+    fn visit_struct_field(&mut self, s: &StructField) { walk_struct_field(self, s) }
+    fn visit_enum_def(&mut self, enum_definition: &EnumDef,
+                      generics: &Generics, item_id: NodeId, _: Span) {
         walk_enum_def(self, enum_definition, generics, item_id)
     }
-    fn visit_variant(&mut self, v: &'v Variant, g: &'v Generics, item_id: NodeId) {
+    fn visit_variant(&mut self, v: &Variant, g: &Generics, item_id: NodeId) {
         walk_variant(self, v, g, item_id)
     }
-    fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &Lifetime) {
         walk_lifetime(self, lifetime)
     }
-    fn visit_lifetime_def(&mut self, lifetime: &'v LifetimeDef) {
+    fn visit_lifetime_def(&mut self, lifetime: &LifetimeDef) {
         walk_lifetime_def(self, lifetime)
     }
-    fn visit_mac(&mut self, _mac: &'v Mac) {
+    fn visit_mac(&mut self, _mac: &Mac) {
         panic!("visit_mac disabled by default");
         // NB: see note about macros above.
         // if you really want a visitor that
@@ -107,26 +106,26 @@ pub trait Visitor<'v> : Sized {
         // definition in your trait impl:
         // visit::walk_mac(self, _mac)
     }
-    fn visit_path(&mut self, path: &'v Path, _id: NodeId) {
+    fn visit_path(&mut self, path: &Path, _id: NodeId) {
         walk_path(self, path)
     }
-    fn visit_path_list_item(&mut self, prefix: &'v Path, item: &'v PathListItem) {
+    fn visit_path_list_item(&mut self, prefix: &Path, item: &PathListItem) {
         walk_path_list_item(self, prefix, item)
     }
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v PathSegment) {
+    fn visit_path_segment(&mut self, path_span: Span, path_segment: &PathSegment) {
         walk_path_segment(self, path_span, path_segment)
     }
-    fn visit_path_parameters(&mut self, path_span: Span, path_parameters: &'v PathParameters) {
+    fn visit_path_parameters(&mut self, path_span: Span, path_parameters: &PathParameters) {
         walk_path_parameters(self, path_span, path_parameters)
     }
-    fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding) {
+    fn visit_assoc_type_binding(&mut self, type_binding: &TypeBinding) {
         walk_assoc_type_binding(self, type_binding)
     }
-    fn visit_attribute(&mut self, _attr: &'v Attribute) {}
-    fn visit_macro_def(&mut self, macro_def: &'v MacroDef) {
+    fn visit_attribute(&mut self, _attr: &Attribute) {}
+    fn visit_macro_def(&mut self, macro_def: &MacroDef) {
         walk_macro_def(self, macro_def)
     }
-    fn visit_vis(&mut self, vis: &'v Visibility) {
+    fn visit_vis(&mut self, vis: &Visibility) {
         walk_vis(self, vis)
     }
 }
@@ -145,47 +144,46 @@ macro_rules! walk_list {
     }
 }
 
-pub fn walk_opt_name<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, opt_name: Option<Name>) {
+pub fn walk_opt_name<V: Visitor>(visitor: &mut V, span: Span, opt_name: Option<Name>) {
     if let Some(name) = opt_name {
         visitor.visit_name(span, name);
     }
 }
 
-pub fn walk_opt_ident<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, opt_ident: Option<Ident>) {
+pub fn walk_opt_ident<V: Visitor>(visitor: &mut V, span: Span, opt_ident: Option<Ident>) {
     if let Some(ident) = opt_ident {
         visitor.visit_ident(span, ident);
     }
 }
 
-pub fn walk_opt_sp_ident<'v, V: Visitor<'v>>(visitor: &mut V,
-                                             opt_sp_ident: &Option<Spanned<Ident>>) {
+pub fn walk_opt_sp_ident<V: Visitor>(visitor: &mut V, opt_sp_ident: &Option<Spanned<Ident>>) {
     if let Some(ref sp_ident) = *opt_sp_ident {
         visitor.visit_ident(sp_ident.span, sp_ident.node);
     }
 }
 
-pub fn walk_ident<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, ident: Ident) {
+pub fn walk_ident<V: Visitor>(visitor: &mut V, span: Span, ident: Ident) {
     visitor.visit_name(span, ident.name);
 }
 
-pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate) {
+pub fn walk_crate<V: Visitor>(visitor: &mut V, krate: &Crate) {
     visitor.visit_mod(&krate.module, krate.span, CRATE_NODE_ID);
     walk_list!(visitor, visit_attribute, &krate.attrs);
     walk_list!(visitor, visit_macro_def, &krate.exported_macros);
 }
 
-pub fn walk_macro_def<'v, V: Visitor<'v>>(visitor: &mut V, macro_def: &'v MacroDef) {
+pub fn walk_macro_def<V: Visitor>(visitor: &mut V, macro_def: &MacroDef) {
     visitor.visit_ident(macro_def.span, macro_def.ident);
     walk_opt_ident(visitor, macro_def.span, macro_def.imported_from);
     walk_list!(visitor, visit_attribute, &macro_def.attrs);
 }
 
-pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod) {
+pub fn walk_mod<V: Visitor>(visitor: &mut V, module: &Mod) {
     walk_list!(visitor, visit_item, &module.items);
 }
 
-pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
-    for attr in local.attrs.as_attr_slice() {
+pub fn walk_local<V: Visitor>(visitor: &mut V, local: &Local) {
+    for attr in local.attrs.iter() {
         visitor.visit_attribute(attr);
     }
     visitor.visit_pat(&local.pat);
@@ -193,33 +191,27 @@ pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
     walk_list!(visitor, visit_expr, &local.init);
 }
 
-pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime) {
+pub fn walk_lifetime<V: Visitor>(visitor: &mut V, lifetime: &Lifetime) {
     visitor.visit_name(lifetime.span, lifetime.name);
 }
 
-pub fn walk_lifetime_def<'v, V: Visitor<'v>>(visitor: &mut V,
-                                              lifetime_def: &'v LifetimeDef) {
+pub fn walk_lifetime_def<V: Visitor>(visitor: &mut V, lifetime_def: &LifetimeDef) {
     visitor.visit_lifetime(&lifetime_def.lifetime);
     walk_list!(visitor, visit_lifetime, &lifetime_def.bounds);
 }
 
-pub fn walk_poly_trait_ref<'v, V>(visitor: &mut V,
-                                  trait_ref: &'v PolyTraitRef,
-                                  _modifier: &'v TraitBoundModifier)
-    where V: Visitor<'v>
+pub fn walk_poly_trait_ref<V>(visitor: &mut V, trait_ref: &PolyTraitRef, _: &TraitBoundModifier)
+    where V: Visitor,
 {
     walk_list!(visitor, visit_lifetime_def, &trait_ref.bound_lifetimes);
     visitor.visit_trait_ref(&trait_ref.trait_ref);
 }
 
-pub fn walk_trait_ref<'v,V>(visitor: &mut V,
-                                   trait_ref: &'v TraitRef)
-    where V: Visitor<'v>
-{
+pub fn walk_trait_ref<V: Visitor>(visitor: &mut V, trait_ref: &TraitRef) {
     visitor.visit_path(&trait_ref.path, trait_ref.ref_id)
 }
 
-pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
+pub fn walk_item<V: Visitor>(visitor: &mut V, item: &Item) {
     visitor.visit_vis(&item.vis);
     visitor.visit_ident(item.span, item.ident);
     match item.node {
@@ -298,17 +290,16 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     walk_list!(visitor, visit_attribute, &item.attrs);
 }
 
-pub fn walk_enum_def<'v, V: Visitor<'v>>(visitor: &mut V,
-                                         enum_definition: &'v EnumDef,
-                                         generics: &'v Generics,
-                                         item_id: NodeId) {
+pub fn walk_enum_def<V: Visitor>(visitor: &mut V,
+                                 enum_definition: &EnumDef,
+                                 generics: &Generics,
+                                 item_id: NodeId) {
     walk_list!(visitor, visit_variant, &enum_definition.variants, generics, item_id);
 }
 
-pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
-                                        variant: &'v Variant,
-                                        generics: &'v Generics,
-                                        item_id: NodeId) {
+pub fn walk_variant<V>(visitor: &mut V, variant: &Variant, generics: &Generics, item_id: NodeId)
+    where V: Visitor,
+{
     visitor.visit_ident(variant.span, variant.node.name);
     visitor.visit_variant_data(&variant.node.data, variant.node.name,
                              generics, item_id, variant.span);
@@ -316,7 +307,7 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
     walk_list!(visitor, visit_attribute, &variant.node.attrs);
 }
 
-pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
+pub fn walk_ty<V: Visitor>(visitor: &mut V, typ: &Ty) {
     match typ.node {
         TyKind::Vec(ref ty) | TyKind::Paren(ref ty) => {
             visitor.visit_ty(ty)
@@ -362,28 +353,25 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
     }
 }
 
-pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
+pub fn walk_path<V: Visitor>(visitor: &mut V, path: &Path) {
     for segment in &path.segments {
         visitor.visit_path_segment(path.span, segment);
     }
 }
 
-pub fn walk_path_list_item<'v, V: Visitor<'v>>(visitor: &mut V, _prefix: &'v Path,
-                                               item: &'v PathListItem) {
+pub fn walk_path_list_item<V: Visitor>(visitor: &mut V, _prefix: &Path, item: &PathListItem) {
     walk_opt_ident(visitor, item.span, item.node.name());
     walk_opt_ident(visitor, item.span, item.node.rename());
 }
 
-pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
-                                             path_span: Span,
-                                             segment: &'v PathSegment) {
+pub fn walk_path_segment<V: Visitor>(visitor: &mut V, path_span: Span, segment: &PathSegment) {
     visitor.visit_ident(path_span, segment.identifier);
     visitor.visit_path_parameters(path_span, &segment.parameters);
 }
 
-pub fn walk_path_parameters<'v, V: Visitor<'v>>(visitor: &mut V,
-                                                _path_span: Span,
-                                                path_parameters: &'v PathParameters) {
+pub fn walk_path_parameters<V>(visitor: &mut V, _path_span: Span, path_parameters: &PathParameters)
+    where V: Visitor,
+{
     match *path_parameters {
         PathParameters::AngleBracketed(ref data) => {
             walk_list!(visitor, visit_ty, &data.types);
@@ -397,23 +385,21 @@ pub fn walk_path_parameters<'v, V: Visitor<'v>>(visitor: &mut V,
     }
 }
 
-pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V,
-                                                   type_binding: &'v TypeBinding) {
+pub fn walk_assoc_type_binding<V: Visitor>(visitor: &mut V, type_binding: &TypeBinding) {
     visitor.visit_ident(type_binding.span, type_binding.ident);
     visitor.visit_ty(&type_binding.ty);
 }
 
-pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
+pub fn walk_pat<V: Visitor>(visitor: &mut V, pattern: &Pat) {
     match pattern.node {
         PatKind::TupleStruct(ref path, ref children, _) => {
             visitor.visit_path(path, pattern.id);
             walk_list!(visitor, visit_pat, children);
         }
-        PatKind::Path(ref path) => {
-            visitor.visit_path(path, pattern.id);
-        }
-        PatKind::QPath(ref qself, ref path) => {
-            visitor.visit_ty(&qself.ty);
+        PatKind::Path(ref opt_qself, ref path) => {
+            if let Some(ref qself) = *opt_qself {
+                visitor.visit_ty(&qself.ty);
+            }
             visitor.visit_path(path, pattern.id)
         }
         PatKind::Struct(ref path, ref fields, _) => {
@@ -449,8 +435,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
     }
 }
 
-pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V,
-                                             foreign_item: &'v ForeignItem) {
+pub fn walk_foreign_item<V: Visitor>(visitor: &mut V, foreign_item: &ForeignItem) {
     visitor.visit_vis(&foreign_item.vis);
     visitor.visit_ident(foreign_item.span, foreign_item.ident);
 
@@ -465,8 +450,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V,
     walk_list!(visitor, visit_attribute, &foreign_item.attrs);
 }
 
-pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V,
-                                               bound: &'v TyParamBound) {
+pub fn walk_ty_param_bound<V: Visitor>(visitor: &mut V, bound: &TyParamBound) {
     match *bound {
         TraitTyParamBound(ref typ, ref modifier) => {
             visitor.visit_poly_trait_ref(typ, modifier);
@@ -477,7 +461,7 @@ pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V,
     }
 }
 
-pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics) {
+pub fn walk_generics<V: Visitor>(visitor: &mut V, generics: &Generics) {
     for param in &generics.ty_params {
         visitor.visit_ident(param.span, param.ident);
         walk_list!(visitor, visit_ty_param_bound, &param.bounds);
@@ -511,13 +495,13 @@ pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics
     }
 }
 
-pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FunctionRetTy) {
+pub fn walk_fn_ret_ty<V: Visitor>(visitor: &mut V, ret_ty: &FunctionRetTy) {
     if let FunctionRetTy::Ty(ref output_ty) = *ret_ty {
         visitor.visit_ty(output_ty)
     }
 }
 
-pub fn walk_fn_decl<'v, V: Visitor<'v>>(visitor: &mut V, function_declaration: &'v FnDecl) {
+pub fn walk_fn_decl<V: Visitor>(visitor: &mut V, function_declaration: &FnDecl) {
     for argument in &function_declaration.inputs {
         visitor.visit_pat(&argument.pat);
         visitor.visit_ty(&argument.ty)
@@ -525,8 +509,7 @@ pub fn walk_fn_decl<'v, V: Visitor<'v>>(visitor: &mut V, function_declaration: &
     walk_fn_ret_ty(visitor, &function_declaration.output)
 }
 
-pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V,
-                                        function_kind: FnKind<'v>) {
+pub fn walk_fn_kind<V: Visitor>(visitor: &mut V, function_kind: FnKind) {
     match function_kind {
         FnKind::ItemFn(_, generics, _, _, _, _) => {
             visitor.visit_generics(generics);
@@ -538,17 +521,15 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V,
     }
 }
 
-pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
-                                   function_kind: FnKind<'v>,
-                                   function_declaration: &'v FnDecl,
-                                   function_body: &'v Block,
-                                   _span: Span) {
-    walk_fn_decl(visitor, function_declaration);
-    walk_fn_kind(visitor, function_kind);
-    visitor.visit_block(function_body)
+pub fn walk_fn<V>(visitor: &mut V, kind: FnKind, declaration: &FnDecl, body: &Block, _span: Span)
+    where V: Visitor,
+{
+    walk_fn_decl(visitor, declaration);
+    walk_fn_kind(visitor, kind);
+    visitor.visit_block(body)
 }
 
-pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem) {
+pub fn walk_trait_item<V: Visitor>(visitor: &mut V, trait_item: &TraitItem) {
     visitor.visit_ident(trait_item.span, trait_item.ident);
     walk_list!(visitor, visit_attribute, &trait_item.attrs);
     match trait_item.node {
@@ -568,10 +549,13 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);
         }
+        TraitItemKind::Macro(ref mac) => {
+            visitor.visit_mac(mac);
+        }
     }
 }
 
-pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem) {
+pub fn walk_impl_item<V: Visitor>(visitor: &mut V, impl_item: &ImplItem) {
     visitor.visit_vis(&impl_item.vis);
     visitor.visit_ident(impl_item.span, impl_item.ident);
     walk_list!(visitor, visit_attribute, &impl_item.attrs);
@@ -593,52 +577,44 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
     }
 }
 
-pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V,
-                                           struct_definition: &'v VariantData) {
+pub fn walk_struct_def<V: Visitor>(visitor: &mut V, struct_definition: &VariantData) {
     walk_list!(visitor, visit_struct_field, struct_definition.fields());
 }
 
-pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V,
-                                             struct_field: &'v StructField) {
+pub fn walk_struct_field<V: Visitor>(visitor: &mut V, struct_field: &StructField) {
     visitor.visit_vis(&struct_field.vis);
     walk_opt_ident(visitor, struct_field.span, struct_field.ident);
     visitor.visit_ty(&struct_field.ty);
     walk_list!(visitor, visit_attribute, &struct_field.attrs);
 }
 
-pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
+pub fn walk_block<V: Visitor>(visitor: &mut V, block: &Block) {
     walk_list!(visitor, visit_stmt, &block.stmts);
-    walk_list!(visitor, visit_expr, &block.expr);
 }
 
-pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
+pub fn walk_stmt<V: Visitor>(visitor: &mut V, statement: &Stmt) {
     match statement.node {
-        StmtKind::Decl(ref declaration, _) => visitor.visit_decl(declaration),
-        StmtKind::Expr(ref expression, _) | StmtKind::Semi(ref expression, _) => {
+        StmtKind::Local(ref local) => visitor.visit_local(local),
+        StmtKind::Item(ref item) => visitor.visit_item(item),
+        StmtKind::Expr(ref expression) | StmtKind::Semi(ref expression) => {
             visitor.visit_expr(expression)
         }
-        StmtKind::Mac(ref mac, _, ref attrs) => {
+        StmtKind::Mac(ref mac) => {
+            let (ref mac, _, ref attrs) = **mac;
             visitor.visit_mac(mac);
-            for attr in attrs.as_attr_slice() {
+            for attr in attrs.iter() {
                 visitor.visit_attribute(attr);
             }
         }
     }
 }
 
-pub fn walk_decl<'v, V: Visitor<'v>>(visitor: &mut V, declaration: &'v Decl) {
-    match declaration.node {
-        DeclKind::Local(ref local) => visitor.visit_local(local),
-        DeclKind::Item(ref item) => visitor.visit_item(item),
-    }
-}
-
-pub fn walk_mac<'v, V: Visitor<'v>>(_: &mut V, _: &'v Mac) {
+pub fn walk_mac<V: Visitor>(_: &mut V, _: &Mac) {
     // Empty!
 }
 
-pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
-    for attr in expression.attrs.as_attr_slice() {
+pub fn walk_expr<V: Visitor>(visitor: &mut V, expression: &Expr) {
+    for attr in expression.attrs.iter() {
         visitor.visit_attribute(attr);
     }
     match expression.node {
@@ -761,7 +737,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             }
             visitor.visit_path(path, expression.id)
         }
-        ExprKind::Break(ref opt_sp_ident) | ExprKind::Again(ref opt_sp_ident) => {
+        ExprKind::Break(ref opt_sp_ident) | ExprKind::Continue(ref opt_sp_ident) => {
             walk_opt_sp_ident(visitor, opt_sp_ident);
         }
         ExprKind::Ret(ref optional_expression) => {
@@ -787,14 +763,14 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
     visitor.visit_expr_post(expression)
 }
 
-pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm) {
+pub fn walk_arm<V: Visitor>(visitor: &mut V, arm: &Arm) {
     walk_list!(visitor, visit_pat, &arm.pats);
     walk_list!(visitor, visit_expr, &arm.guard);
     visitor.visit_expr(&arm.body);
     walk_list!(visitor, visit_attribute, &arm.attrs);
 }
 
-pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility) {
+pub fn walk_vis<V: Visitor>(visitor: &mut V, vis: &Visibility) {
     if let Visibility::Restricted { ref path, id } = *vis {
         visitor.visit_path(path, id);
     }

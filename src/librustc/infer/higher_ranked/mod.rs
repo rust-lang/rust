@@ -23,7 +23,7 @@ use super::region_inference::{TaintDirections};
 use ty::{self, TyCtxt, Binder, TypeFoldable};
 use ty::error::TypeError;
 use ty::relate::{Relate, RelateResult, TypeRelation};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 pub struct HrMatchResult<U> {
