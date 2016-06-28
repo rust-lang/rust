@@ -238,7 +238,7 @@ impl<T:Copy> Cell<T> {
     /// This call borrows `Cell` mutably (at compile-time) which guarantees
     /// that we possess the only reference.
     #[inline]
-    #[unstable(feature = "cell_get_mut", issue = "33444")]
+    #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
         unsafe {
             &mut *self.value.get()
@@ -509,7 +509,7 @@ impl<T: ?Sized> RefCell<T> {
     /// This call borrows `RefCell` mutably (at compile-time) so there is no
     /// need for dynamic checks.
     #[inline]
-    #[unstable(feature = "cell_get_mut", issue="33444")]
+    #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
         unsafe {
             &mut *self.value.get()

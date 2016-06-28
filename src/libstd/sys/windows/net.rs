@@ -17,8 +17,6 @@ use io::{self, Read};
 use libc::{c_int, c_void, c_ulong};
 use mem;
 use net::{SocketAddr, Shutdown};
-use num::One;
-use ops::Neg;
 use ptr;
 use sync::Once;
 use sys::c;
@@ -60,11 +58,26 @@ fn last_error() -> io::Error {
     io::Error::from_raw_os_error(unsafe { c::WSAGetLastError() })
 }
 
+#[doc(hidden)]
+pub trait IsMinusOne {
+    fn is_minus_one(&self) -> bool;
+}
+
+macro_rules! impl_is_minus_one {
+    ($($t:ident)*) => ($(impl IsMinusOne for $t {
+        fn is_minus_one(&self) -> bool {
+            *self == -1
+        }
+    })*)
+}
+
+impl_is_minus_one! { i8 i16 i32 i64 isize }
+
 /// Checks if the signed integer is the Windows constant `SOCKET_ERROR` (-1)
 /// and if so, returns the last error from the Windows socket interface. This
 /// function must be called before another call to the socket API is made.
-pub fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
-    if t == -T::one() {
+pub fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
+    if t.is_minus_one() {
         Err(last_error())
     } else {
         Ok(t)
@@ -82,7 +95,8 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 
 /// Just to provide the same interface as sys/unix/net.rs
 pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
-    where T: One + PartialEq + Neg<Output=T>, F: FnMut() -> T
+    where T: IsMinusOne,
+          F: FnMut() -> T
 {
     cvt(f())
 }

@@ -168,7 +168,7 @@ impl Float for f64 {
     /// Returns `true` if the number is infinite.
     #[inline]
     fn is_infinite(self) -> bool {
-        self == Float::infinity() || self == Float::neg_infinity()
+        self == INFINITY || self == NEG_INFINITY
     }
 
     /// Returns `true` if the number is neither infinite or NaN.
@@ -230,7 +230,7 @@ impl Float for f64 {
     #[inline]
     fn signum(self) -> f64 {
         if self.is_nan() {
-            Float::nan()
+            NAN
         } else {
             unsafe { intrinsics::copysignf64(1.0, self) }
         }
@@ -240,14 +240,14 @@ impl Float for f64 {
     /// `Float::infinity()`.
     #[inline]
     fn is_sign_positive(self) -> bool {
-        self > 0.0 || (1.0 / self) == Float::infinity()
+        self > 0.0 || (1.0 / self) == INFINITY
     }
 
     /// Returns `true` if `self` is negative, including `-0.0` and
     /// `Float::neg_infinity()`.
     #[inline]
     fn is_sign_negative(self) -> bool {
-        self < 0.0 || (1.0 / self) == Float::neg_infinity()
+        self < 0.0 || (1.0 / self) == NEG_INFINITY
     }
 
     /// Returns the reciprocal (multiplicative inverse) of the number.

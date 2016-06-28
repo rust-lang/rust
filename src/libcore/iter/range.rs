@@ -11,7 +11,6 @@
 use clone::Clone;
 use cmp::PartialOrd;
 use mem;
-use num::{Zero, One};
 use ops::{self, Add, Sub};
 use option::Option::{self, Some, None};
 use marker::Sized;
@@ -36,6 +35,24 @@ pub trait Step: PartialOrd + Sized {
     /// Returns `None` if it is not possible to calculate `steps_between`
     /// without overflow.
     fn steps_between(start: &Self, end: &Self, by: &Self) -> Option<usize>;
+
+    /// Same as `steps_between`, but with a `by` of 1
+    fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize>;
+
+    /// Tests whether this step is negative or not (going backwards)
+    fn is_negative(&self) -> bool;
+
+    /// Replaces this step with `1`, returning itself
+    fn replace_one(&mut self) -> Self;
+
+    /// Replaces this step with `0`, returning itself
+    fn replace_zero(&mut self) -> Self;
+
+    /// Adds one to this step, returning the result
+    fn add_one(&self) -> Self;
+
+    /// Subtracts one to this step, returning the result
+    fn sub_one(&self) -> Self;
 }
 
 macro_rules! step_impl_unsigned {
@@ -64,6 +81,36 @@ macro_rules! step_impl_unsigned {
                 } else {
                     Some(0)
                 }
+            }
+
+            #[inline]
+            fn is_negative(&self) -> bool {
+                false
+            }
+
+            #[inline]
+            fn replace_one(&mut self) -> Self {
+                mem::replace(self, 0)
+            }
+
+            #[inline]
+            fn replace_zero(&mut self) -> Self {
+                mem::replace(self, 1)
+            }
+
+            #[inline]
+            fn add_one(&self) -> Self {
+                *self + 1
+            }
+
+            #[inline]
+            fn sub_one(&self) -> Self {
+                *self - 1
+            }
+
+            #[inline]
+            fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize> {
+                Self::steps_between(start, end, &1)
             }
         }
     )*)
@@ -106,6 +153,36 @@ macro_rules! step_impl_signed {
                     Some(diff / by_u)
                 }
             }
+
+            #[inline]
+            fn is_negative(&self) -> bool {
+                *self < 0
+            }
+
+            #[inline]
+            fn replace_one(&mut self) -> Self {
+                mem::replace(self, 0)
+            }
+
+            #[inline]
+            fn replace_zero(&mut self) -> Self {
+                mem::replace(self, 1)
+            }
+
+            #[inline]
+            fn add_one(&self) -> Self {
+                *self + 1
+            }
+
+            #[inline]
+            fn sub_one(&self) -> Self {
+                *self - 1
+            }
+
+            #[inline]
+            fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize> {
+                Self::steps_between(start, end, &1)
+            }
         }
     )*)
 }
@@ -123,6 +200,37 @@ macro_rules! step_impl_no_between {
             #[inline]
             fn steps_between(_a: &$t, _b: &$t, _by: &$t) -> Option<usize> {
                 None
+            }
+
+            #[inline]
+            #[allow(unused_comparisons)]
+            fn is_negative(&self) -> bool {
+                *self < 0
+            }
+
+            #[inline]
+            fn replace_one(&mut self) -> Self {
+                mem::replace(self, 0)
+            }
+
+            #[inline]
+            fn replace_zero(&mut self) -> Self {
+                mem::replace(self, 1)
+            }
+
+            #[inline]
+            fn add_one(&self) -> Self {
+                *self + 1
+            }
+
+            #[inline]
+            fn sub_one(&self) -> Self {
+                *self - 1
+            }
+
+            #[inline]
+            fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize> {
+                Self::steps_between(start, end, &1)
             }
         }
     )*)
@@ -269,12 +377,12 @@ impl<A> Iterator for StepBy<A, ops::RangeFrom<A>> where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step + Zero + Clone> Iterator for StepBy<A, ops::Range<A>> {
+impl<A: Step + Clone> Iterator for StepBy<A, ops::Range<A>> {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let rev = self.step_by < A::zero();
+        let rev = self.step_by.is_negative();
         if (rev && self.range.start > self.range.end) ||
            (!rev && self.range.start < self.range.end)
         {
@@ -308,7 +416,7 @@ impl<A: Step + Zero + Clone> Iterator for StepBy<A, ops::Range<A>> {
 #[unstable(feature = "inclusive_range",
            reason = "recently added, follows RFC",
            issue = "28237")]
-impl<A: Step + Zero + Clone> Iterator for StepBy<A, ops::RangeInclusive<A>> {
+impl<A: Step + Clone> Iterator for StepBy<A, ops::RangeInclusive<A>> {
     type Item = A;
 
     #[inline]
@@ -322,8 +430,7 @@ impl<A: Step + Zero + Clone> Iterator for StepBy<A, ops::RangeInclusive<A>> {
             Empty { .. } => return None, // empty iterators yield no values
 
             NonEmpty { ref mut start, ref mut end } => {
-                let zero = A::zero();
-                let rev = self.step_by < zero;
+                let rev = self.step_by.is_negative();
 
                 // march start towards (maybe past!) end and yield the old value
                 if (rev && start >= end) ||
@@ -342,7 +449,7 @@ impl<A: Step + Zero + Clone> Iterator for StepBy<A, ops::RangeInclusive<A>> {
                     }
                 } else {
                     // found range in inconsistent state (start at or past end), so become empty
-                    (Some(mem::replace(end, zero)), None)
+                    (Some(end.replace_zero()), None)
                 }
             }
         };
@@ -386,7 +493,7 @@ macro_rules! range_exact_iter_impl {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step + One> Iterator for ops::Range<A> where
+impl<A: Step> Iterator for ops::Range<A> where
     for<'a> &'a A: Add<&'a A, Output = A>
 {
     type Item = A;
@@ -394,7 +501,7 @@ impl<A: Step + One> Iterator for ops::Range<A> where
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.start < self.end {
-            let mut n = &self.start + &A::one();
+            let mut n = self.start.add_one();
             mem::swap(&mut n, &mut self.start);
             Some(n)
         } else {
@@ -404,7 +511,7 @@ impl<A: Step + One> Iterator for ops::Range<A> where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match Step::steps_between(&self.start, &self.end, &A::one()) {
+        match Step::steps_between_by_one(&self.start, &self.end) {
             Some(hint) => (hint, Some(hint)),
             None => (0, None)
         }
@@ -416,14 +523,14 @@ impl<A: Step + One> Iterator for ops::Range<A> where
 range_exact_iter_impl!(usize u8 u16 u32 isize i8 i16 i32);
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step + One + Clone> DoubleEndedIterator for ops::Range<A> where
+impl<A: Step + Clone> DoubleEndedIterator for ops::Range<A> where
     for<'a> &'a A: Add<&'a A, Output = A>,
     for<'a> &'a A: Sub<&'a A, Output = A>
 {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.start < self.end {
-            self.end = &self.end - &A::one();
+            self.end = self.end.sub_one();
             Some(self.end.clone())
         } else {
             None
@@ -432,21 +539,21 @@ impl<A: Step + One + Clone> DoubleEndedIterator for ops::Range<A> where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step + One> Iterator for ops::RangeFrom<A> where
+impl<A: Step> Iterator for ops::RangeFrom<A> where
     for<'a> &'a A: Add<&'a A, Output = A>
 {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let mut n = &self.start + &A::one();
+        let mut n = self.start.add_one();
         mem::swap(&mut n, &mut self.start);
         Some(n)
     }
 }
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-impl<A: Step + One> Iterator for ops::RangeInclusive<A> where
+impl<A: Step> Iterator for ops::RangeInclusive<A> where
     for<'a> &'a A: Add<&'a A, Output = A>
 {
     type Item = A;
@@ -463,23 +570,22 @@ impl<A: Step + One> Iterator for ops::RangeInclusive<A> where
 
             NonEmpty { ref mut start, ref mut end } => {
                 if start == end {
-                    (Some(mem::replace(end, A::one())), Some(mem::replace(start, A::one())))
+                    (Some(end.replace_one()), Some(start.replace_one()))
                 } else if start < end {
-                    let one = A::one();
-                    let mut n = &*start + &one;
+                    let mut n = start.add_one();
                     mem::swap(&mut n, start);
 
-                    // if the iterator is done iterating, it will change from NonEmpty to Empty
-                    // to avoid unnecessary drops or clones, we'll reuse either start or end
-                    // (they are equal now, so it doesn't matter which)
-                    // to pull out end, we need to swap something back in -- use the previously
-                    // created A::one() as a dummy value
+                    // if the iterator is done iterating, it will change from
+                    // NonEmpty to Empty to avoid unnecessary drops or clones,
+                    // we'll reuse either start or end (they are equal now, so
+                    // it doesn't matter which) to pull out end, we need to swap
+                    // something back in
 
-                    (if n == *end { Some(mem::replace(end, one)) } else { None },
+                    (if n == *end { Some(end.replace_one()) } else { None },
                     // ^ are we done yet?
                     Some(n)) // < the value to output
                 } else {
-                    (Some(mem::replace(start, A::one())), None)
+                    (Some(start.replace_one()), None)
                 }
             }
         };
@@ -500,7 +606,7 @@ impl<A: Step + One> Iterator for ops::RangeInclusive<A> where
             Empty { .. } => (0, Some(0)),
 
             NonEmpty { ref start, ref end } =>
-                match Step::steps_between(start, end, &A::one()) {
+                match Step::steps_between_by_one(start, end) {
                     Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
                     None => (0, None),
                 }
@@ -509,7 +615,7 @@ impl<A: Step + One> Iterator for ops::RangeInclusive<A> where
 }
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-impl<A: Step + One> DoubleEndedIterator for ops::RangeInclusive<A> where
+impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> where
     for<'a> &'a A: Add<&'a A, Output = A>,
     for<'a> &'a A: Sub<&'a A, Output = A>
 {
@@ -524,16 +630,15 @@ impl<A: Step + One> DoubleEndedIterator for ops::RangeInclusive<A> where
 
             NonEmpty { ref mut start, ref mut end } => {
                 if start == end {
-                    (Some(mem::replace(start, A::one())), Some(mem::replace(end, A::one())))
+                    (Some(start.replace_one()), Some(end.replace_one()))
                 } else if start < end {
-                    let one = A::one();
-                    let mut n = &*end - &one;
+                    let mut n = end.sub_one();
                     mem::swap(&mut n, end);
 
-                    (if n == *start { Some(mem::replace(start, one)) } else { None },
+                    (if n == *start { Some(start.replace_one()) } else { None },
                      Some(n))
                 } else {
-                    (Some(mem::replace(end, A::one())), None)
+                    (Some(end.replace_one()), None)
                 }
             }
         };
