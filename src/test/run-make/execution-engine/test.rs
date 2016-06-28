@@ -241,8 +241,9 @@ fn compile_program(input: &str, sysroot: PathBuf)
         let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
 
         let driver::ExpansionResult { defs, analysis, resolutions, mut hir_forest, .. } = {
-            driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None, MakeGlobMap::No)
-                .expect("phase_2 returned `None`")
+            driver::phase_2_configure_and_expand(
+                &sess, &cstore, krate, &id, None, MakeGlobMap::No, |_| Ok(()),
+            ).expect("phase_2 returned `None`")
         };
 
         let arenas = ty::CtxtArenas::new();

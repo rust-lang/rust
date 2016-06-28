@@ -30,6 +30,12 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use std::cell::{Cell, RefCell};
 
+impl<'a> Resolver<'a> {
+    pub fn resolve_imports(&mut self) {
+        ImportResolver { resolver: self }.resolve_imports();
+    }
+}
+
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
 pub enum ImportDirectiveSubclass {
@@ -721,9 +727,4 @@ fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass) -> St
         SingleImport { source, .. } => source.to_string(),
         GlobImport { .. } => "*".to_string(),
     }
-}
-
-pub fn resolve_imports(resolver: &mut Resolver) {
-    let mut import_resolver = ImportResolver { resolver: resolver };
-    import_resolver.resolve_imports();
 }
