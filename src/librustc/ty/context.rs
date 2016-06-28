@@ -862,7 +862,7 @@ pub mod tls {
 
     use std::cell::Cell;
     use std::fmt;
-    use syntax::codemap;
+    use syntax_pos;
 
     /// Marker types used for the scoped TLS slot.
     /// The type context cannot be used directly because the scoped TLS
@@ -875,7 +875,7 @@ pub mod tls {
                                      *const ThreadLocalInterners)>> = Cell::new(None)
     }
 
-    fn span_debug(span: codemap::Span, f: &mut fmt::Formatter) -> fmt::Result {
+    fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter) -> fmt::Result {
         with(|tcx| {
             write!(f, "{}", tcx.sess.codemap().span_to_string(span))
         })
@@ -884,7 +884,7 @@ pub mod tls {
     pub fn enter_global<'gcx, F, R>(gcx: GlobalCtxt<'gcx>, f: F) -> R
         where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'gcx>) -> R
     {
-        codemap::SPAN_DEBUG.with(|span_dbg| {
+        syntax_pos::SPAN_DEBUG.with(|span_dbg| {
             let original_span_debug = span_dbg.get();
             span_dbg.set(span_debug);
             let result = enter(&gcx, &gcx.global_interners, f);

@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast::{self, TokenTree};
-use syntax::codemap::Span;
+use syntax::ast;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::parse::token::str_to_ident;
 use syntax::ptr::P;
+use syntax_pos::Span;
+use syntax::tokenstream::TokenTree;
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
                               -> Box<base::MacResult+'cx> {
@@ -70,7 +71,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
                 id: ast::DUMMY_NODE_ID,
                 node: ast::ExprKind::Path(None, self.path()),
                 span: self.span,
-                attrs: None,
+                attrs: ast::ThinVec::new(),
             }))
         }
 

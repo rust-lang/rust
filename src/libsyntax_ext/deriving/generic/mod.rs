@@ -197,12 +197,12 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
-use syntax::codemap::{self, respan, DUMMY_SP};
-use syntax::codemap::Span;
-use syntax::errors::Handler;
+use syntax::codemap::{self, respan};
 use syntax::util::move_map::MoveMap;
 use syntax::parse::token::{keywords, InternedString};
 use syntax::ptr::P;
+use syntax_pos::{Span, DUMMY_SP};
+use errors::Handler;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -353,8 +353,8 @@ fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast
         types: Vec<P<ast::Ty>>,
     }
 
-    impl<'a> visit::Visitor<'a> for Visitor<'a> {
-        fn visit_ty(&mut self, ty: &'a ast::Ty) {
+    impl<'a> visit::Visitor for Visitor<'a> {
+        fn visit_ty(&mut self, ty: &ast::Ty) {
             match ty.node {
                 ast::TyKind::Path(_, ref path) if !path.global => {
                     match path.segments.first() {
@@ -1332,8 +1332,8 @@ impl<'a> MethodDef<'a> {
             //  }
             let all_match = cx.expr_match(sp, match_arg, match_arms);
             let arm_expr = cx.expr_if(sp, discriminant_test, all_match, Some(arm_expr));
-            cx.expr_block(
-                cx.block_all(sp, index_let_stmts, Some(arm_expr)))
+            index_let_stmts.push(cx.stmt_expr(arm_expr));
+            cx.expr_block(cx.block(sp, index_let_stmts))
         } else if variants.is_empty() {
             // As an additional wrinkle, For a zero-variant enum A,
             // currently the compiler

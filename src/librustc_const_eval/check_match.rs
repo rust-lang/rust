@@ -37,7 +37,8 @@ use rustc::hir::intravisit::{self, IdVisitor, IdVisitingOperation, Visitor, FnKi
 use rustc_back::slice;
 
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
-use syntax::codemap::{Span, Spanned, DUMMY_SP};
+use syntax::codemap::Spanned;
+use syntax_pos::{Span, DUMMY_SP};
 use rustc::hir::fold::{Folder, noop_fold_pat};
 use rustc::hir::print::pat_to_string;
 use syntax::ptr::P;
@@ -451,7 +452,7 @@ fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
         id: 0,
         node: hir::ExprLit(P(Spanned { node: node, span: DUMMY_SP })),
         span: DUMMY_SP,
-        attrs: None,
+        attrs: ast::ThinVec::new(),
     })
 }
 

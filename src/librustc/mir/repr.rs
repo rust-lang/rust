@@ -12,6 +12,9 @@ use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
+use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
+use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
@@ -24,8 +27,9 @@ use std::cell::Ref;
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
 use std::ops::{Index, IndexMut};
+use std::vec::IntoIter;
 use syntax::ast::{self, Name};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 use super::cache::Cache;
 
@@ -54,7 +58,7 @@ macro_rules! newtype_index {
 }
 
 /// Lowered representation of a single function.
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
@@ -143,6 +147,11 @@ impl<'tcx> Mir<'tcx> {
     #[inline]
     pub fn predecessors_for(&self, bb: BasicBlock) -> Ref<Vec<BasicBlock>> {
         Ref::map(self.predecessors(), |p| &p[bb])
+    }
+
+    #[inline]
+    pub fn dominators(&self) -> Dominators<BasicBlock> {
+        dominators(self)
     }
 
     /// Maps locals (Arg's, Var's, Temp's and ReturnPointer, in that order)
@@ -1189,4 +1198,34 @@ fn node_to_string(node_id: ast::NodeId) -> String {
 
 fn item_path_str(def_id: DefId) -> String {
     ty::tls::with(|tcx| tcx.item_path_str(def_id))
+}
+
+impl<'tcx> ControlFlowGraph for Mir<'tcx> {
+
+    type Node = BasicBlock;
+
+    fn num_nodes(&self) -> usize { self.basic_blocks.len() }
+
+    fn start_node(&self) -> Self::Node { START_BLOCK }
+
+    fn predecessors<'graph>(&'graph self, node: Self::Node)
+                            -> <Self as GraphPredecessors<'graph>>::Iter
+    {
+        self.predecessors_for(node).clone().into_iter()
+    }
+    fn successors<'graph>(&'graph self, node: Self::Node)
+                          -> <Self as GraphSuccessors<'graph>>::Iter
+    {
+        self.basic_blocks[node].terminator().successors().into_owned().into_iter()
+    }
+}
+
+impl<'a, 'b> GraphPredecessors<'b> for Mir<'a> {
+    type Item = BasicBlock;
+    type Iter = IntoIter<BasicBlock>;
+}
+
+impl<'a, 'b>  GraphSuccessors<'b> for Mir<'a> {
+    type Item = BasicBlock;
+    type Iter = IntoIter<BasicBlock>;
 }

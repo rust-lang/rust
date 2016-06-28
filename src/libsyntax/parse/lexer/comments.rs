@@ -11,7 +11,8 @@
 pub use self::CommentStyle::*;
 
 use ast;
-use codemap::{BytePos, CharPos, CodeMap, Pos};
+use codemap::CodeMap;
+use syntax_pos::{BytePos, CharPos, Pos};
 use errors;
 use parse::lexer::is_block_doc_comment;
 use parse::lexer::{StringReader, TokenAndSpan};

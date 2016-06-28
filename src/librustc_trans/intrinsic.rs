@@ -44,7 +44,7 @@ use syntax::ptr::P;
 use syntax::parse::token;
 
 use rustc::session::Session;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 
 use std::cmp::Ordering;
 

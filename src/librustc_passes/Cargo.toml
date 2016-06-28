@@ -14,3 +14,5 @@ rustc = { path = "../librustc" }
 rustc_const_eval = { path = "../librustc_const_eval" }
 rustc_const_math = { path = "../librustc_const_math" }
 syntax = { path = "../libsyntax" }
+syntax_pos = { path = "../libsyntax_pos" }
+rustc_errors = { path = "../librustc_errors" }

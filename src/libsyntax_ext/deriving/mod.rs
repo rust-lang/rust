@@ -16,9 +16,10 @@ use syntax::ext::base::{ExtCtxt, SyntaxEnv, Annotatable};
 use syntax::ext::base::{MultiDecorator, MultiItemDecorator, MultiModifier};
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
-use syntax::codemap::{self, Span};
+use syntax::codemap;
 use syntax::parse::token::{intern, intern_and_get_ident};
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 macro_rules! pathvec {
     ($($x:ident)::+) => (
@@ -297,8 +298,7 @@ fn call_intrinsic(cx: &ExtCtxt,
     let call = cx.expr_call_global(span, path, args);
 
     cx.expr_block(P(ast::Block {
-        stmts: vec![],
-        expr: Some(call),
+        stmts: vec![cx.stmt_expr(call)],
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
         span: span }))

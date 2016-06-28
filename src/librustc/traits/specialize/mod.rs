@@ -27,7 +27,7 @@ use middle::region;
 use ty::subst::{Subst, Substs};
 use traits::{self, ProjectionMode, ObligationCause, Normalized};
 use ty::{self, TyCtxt};
-use syntax::codemap::DUMMY_SP;
+use syntax_pos::DUMMY_SP;
 
 pub mod specialization_graph;
 

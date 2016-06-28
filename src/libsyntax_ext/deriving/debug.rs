@@ -13,11 +13,11 @@ use deriving::generic::ty::*;
 
 use syntax::ast;
 use syntax::ast::{MetaItem, Expr};
-use syntax::codemap::{Span, respan, DUMMY_SP};
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
 use syntax::ptr::P;
+use syntax_pos::{Span, DUMMY_SP};
 
 pub fn expand_deriving_debug(cx: &mut ExtCtxt,
                             span: Span,
@@ -78,7 +78,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
 
     let fmt = substr.nonself_args[0].clone();
 
-    let stmts = match *substr.fields {
+    let mut stmts = match *substr.fields {
         Struct(_, ref fields) | EnumMatching(_, _, ref fields) => {
             let mut stmts = vec![];
             if !is_struct {
@@ -136,7 +136,8 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                                    token::str_to_ident("finish"),
                                    vec![]);
 
-    let block = cx.block(span, stmts, Some(expr));
+    stmts.push(cx.stmt_expr(expr));
+    let block = cx.block(span, stmts);
     cx.expr_block(block)
 }
 
@@ -149,8 +150,11 @@ fn stmt_let_undescore(cx: &mut ExtCtxt,
         init: Some(expr),
         id: ast::DUMMY_NODE_ID,
         span: sp,
-        attrs: None,
+        attrs: ast::ThinVec::new(),
     });
-    let decl = respan(sp, ast::DeclKind::Local(local));
-    respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))
+    ast::Stmt {
+        id: ast::DUMMY_NODE_ID,
+        node: ast::StmtKind::Local(local),
+        span: sp,
+    }
 }

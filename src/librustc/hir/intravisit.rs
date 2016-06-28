@@ -27,8 +27,8 @@
 
 use syntax::abi::Abi;
 use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
-use syntax::attr::ThinAttributesExt;
-use syntax::codemap::{Span, Spanned};
+use syntax::codemap::Spanned;
+use syntax_pos::Span;
 use hir::*;
 
 use std::cmp;
@@ -756,7 +756,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             walk_list!(visitor, visit_arm, arms);
         }
         ExprClosure(_, ref function_declaration, ref body, _fn_decl_span) => {
-            visitor.visit_fn(FnKind::Closure(expression.attrs.as_attr_slice()),
+            visitor.visit_fn(FnKind::Closure(&expression.attrs),
                              function_declaration,
                              body,
                              expression.span,

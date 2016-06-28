@@ -19,7 +19,7 @@ use rustc::middle::region;
 use rustc::ty;
 
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 type R = Result<(),()>;
 

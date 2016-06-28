@@ -13,13 +13,13 @@
 pub use self::StructType::*;
 pub use self::TypeBound::*;
 
-use syntax;
-use syntax::codemap::Span;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast::{Name, NodeId};
 use syntax::attr;
 use syntax::ptr::P;
+use syntax_pos::{self, Span};
+
 use rustc::hir;
 
 pub struct Module {
@@ -56,8 +56,8 @@ impl Module {
             vis: hir::Inherited,
             stab: None,
             depr: None,
-            where_outer: syntax::codemap::DUMMY_SP,
-            where_inner: syntax::codemap::DUMMY_SP,
+            where_outer: syntax_pos::DUMMY_SP,
+            where_inner: syntax_pos::DUMMY_SP,
             attrs      : hir::HirVec::new(),
             extern_crates: Vec::new(),
             imports    : Vec::new(),

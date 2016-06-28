@@ -17,6 +17,7 @@ rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
 rustc_borrowck = { path = "../librustc_borrowck" }
 rustc_const_eval = { path = "../librustc_const_eval" }
+rustc_errors = { path = "../librustc_errors" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_llvm = { path = "../librustc_llvm" }
 rustc_mir = { path = "../librustc_mir" }
@@ -32,3 +33,4 @@ rustc_metadata = { path = "../librustc_metadata" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_ext = { path = "../libsyntax_ext" }
+syntax_pos = { path = "../libsyntax_pos" }

@@ -43,8 +43,8 @@ use std::mem;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{MultiSpan, Span};
-use syntax::errors::DiagnosticBuilder;
+use syntax_pos::{MultiSpan, Span};
+use errors::DiagnosticBuilder;
 
 use rustc::hir;
 use rustc::hir::{FnDecl, Block};

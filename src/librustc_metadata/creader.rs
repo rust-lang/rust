@@ -34,12 +34,13 @@ use std::fs;
 
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::codemap::{self, Span, mk_sp, Pos};
+use syntax::codemap;
 use syntax::parse;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;
 use syntax::visit;
+use syntax_pos::{self, Span, mk_sp, Pos};
 use log;
 
 struct LocalCrateReader<'a> {
@@ -58,8 +59,8 @@ pub struct CrateReader<'a> {
     local_crate_name: String,
 }
 
-impl<'a, 'ast> visit::Visitor<'ast> for LocalCrateReader<'a> {
-    fn visit_item(&mut self, a: &'ast ast::Item) {
+impl<'a> visit::Visitor for LocalCrateReader<'a> {
+    fn visit_item(&mut self, a: &ast::Item) {
         self.process_item(a);
         visit::walk_item(self, a);
     }
@@ -726,7 +727,7 @@ impl<'a> CrateReader<'a> {
         info!("panic runtime not found -- loading {}", name);
 
         let (cnum, data, _) = self.resolve_crate(&None, name, name, None,
-                                                 codemap::DUMMY_SP,
+                                                 syntax_pos::DUMMY_SP,
                                                  PathKind::Crate, false);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
@@ -807,7 +808,7 @@ impl<'a> CrateReader<'a> {
             &self.sess.target.target.options.exe_allocation_crate
         };
         let (cnum, data, _) = self.resolve_crate(&None, name, name, None,
-                                                 codemap::DUMMY_SP,
+                                                 syntax_pos::DUMMY_SP,
                                                  PathKind::Crate, false);
 
         // Sanity check the crate we loaded to ensure that it is indeed an
@@ -1076,7 +1077,7 @@ pub fn import_codemap(local_codemap: &codemap::CodeMap,
             None => {
                 // We can't reuse an existing FileMap, so allocate a new one
                 // containing the information we need.
-                let codemap::FileMap {
+                let syntax_pos::FileMap {
                     name,
                     abs_path,
                     start_pos,
@@ -1118,8 +1119,8 @@ pub fn import_codemap(local_codemap: &codemap::CodeMap,
 
     return imported_filemaps;
 
-    fn are_equal_modulo_startpos(fm1: &codemap::FileMap,
-                                 fm2: &codemap::FileMap)
+    fn are_equal_modulo_startpos(fm1: &syntax_pos::FileMap,
+                                 fm2: &syntax_pos::FileMap)
                                  -> bool {
         if fm1.name != fm2.name {
             return false;

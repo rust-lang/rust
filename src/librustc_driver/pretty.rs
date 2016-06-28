@@ -31,12 +31,12 @@ use rustc_mir::pretty::write_mir_pretty;
 use rustc_mir::graphviz::write_mir_graphviz;
 
 use syntax::ast::{self, BlockCheckMode};
-use syntax::codemap;
 use syntax::fold::{self, Folder};
 use syntax::print::{pp, pprust};
 use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
 use syntax::util::small_vector::SmallVector;
+use syntax_pos;
 
 use graphviz as dot;
 
@@ -657,11 +657,14 @@ impl fold::Folder for ReplaceBodyWithLoop {
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
         fn expr_to_block(rules: ast::BlockCheckMode, e: Option<P<ast::Expr>>) -> P<ast::Block> {
             P(ast::Block {
-                expr: e,
-                stmts: vec![],
+                stmts: e.map(|e| ast::Stmt {
+                    id: ast::DUMMY_NODE_ID,
+                    span: e.span,
+                    node: ast::StmtKind::Expr(e),
+                }).into_iter().collect(),
                 rules: rules,
                 id: ast::DUMMY_NODE_ID,
-                span: codemap::DUMMY_SP,
+                span: syntax_pos::DUMMY_SP,
             })
         }
 
@@ -671,8 +674,8 @@ impl fold::Folder for ReplaceBodyWithLoop {
             let loop_expr = P(ast::Expr {
                 node: ast::ExprKind::Loop(empty_block, None),
                 id: ast::DUMMY_NODE_ID,
-                span: codemap::DUMMY_SP,
-                attrs: None,
+                span: syntax_pos::DUMMY_SP,
+                attrs: ast::ThinVec::new(),
             });
 
             expr_to_block(b.rules, Some(loop_expr))

@@ -230,7 +230,7 @@ use std::fmt;
 use std::rc::Rc;
 use rustc::hir::{self, PatKind};
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use rustc::hir::fold::Folder;
 use syntax::ptr::P;
 

@@ -57,8 +57,8 @@ use std::fs::File;
 use std::io::Write;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
+use syntax_pos::Span;
 
 const IF_THIS_CHANGED: &'static str = "rustc_if_this_changed";
 const THEN_THIS_WOULD_NEED: &'static str = "rustc_then_this_would_need";

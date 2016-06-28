@@ -14,3 +14,5 @@ log = { path = "../liblog" }
 syntax = { path = "../libsyntax" }
 rustc = { path = "../librustc" }
 arena = { path = "../libarena" }
+rustc_errors = { path = "../librustc_errors" }
+syntax_pos = { path = "../libsyntax_pos" }
