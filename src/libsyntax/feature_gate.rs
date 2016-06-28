@@ -48,7 +48,6 @@ macro_rules! setter {
     }}
 }
 
-#[rustc_unsafe_macro]
 macro_rules! declare_features {
     ($((active, $feature: ident, $ver: expr, $issue: expr)),+) => {
         /// Represents active features that are currently being implemented or

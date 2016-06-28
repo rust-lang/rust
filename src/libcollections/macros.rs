@@ -42,7 +42,6 @@
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
-#[rustc_unsafe_macro]
 macro_rules! vec {
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)
@@ -58,7 +57,6 @@ macro_rules! vec {
 // `slice::into_vec`  function which is only available with cfg(test)
 // NB see the slice::hack module in slice.rs for more information
 #[cfg(test)]
-#[rustc_unsafe_macro]
 macro_rules! vec {
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)

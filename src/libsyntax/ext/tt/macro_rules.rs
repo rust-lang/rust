@@ -26,7 +26,7 @@ use tokenstream::{self, TokenTree};
 use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
-use std::collections::{HashMap};
+use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::{Entry};
 
 struct ParserAnyMacro<'a> {
@@ -366,7 +366,7 @@ fn check_lhs_firsts(cx: &ExtCtxt, lhs: &TokenTree, lhs_: &TokenTree)
     match (lhs, lhs_) {
         (&TokenTree::Delimited(_, ref tta),
          &TokenTree::Delimited(_, ref ttb)) =>
-            check_matcher_firsts(cx, &tta.tts, &ttb.tts),
+            check_matcher_firsts(cx, &tta.tts, &ttb.tts, &mut HashSet::new()),
         _ => cx.span_bug(lhs.get_span(), "malformed macro lhs")
     }
 }
@@ -593,7 +593,8 @@ enum AnalysisResult {
     Error
 }
 
-fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree])
+fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree],
+                        visited_spans: &mut HashSet<(Span, Span)>)
                         -> AnalysisResult {
     use self::AnalysisResult::*;
     let mut need_disambiguation = false;
@@ -611,7 +612,13 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree])
     //   matches A will never match B or vice-versa
     // * we find a case that is too complex to handle and reject it
     // * we reach the end of the macro
-    for ((idx_a, ta), tb) in ma.iter().enumerate().zip(mb.iter()) {
+    for ((idx_a, ta), (idx_b, tb)) in ma.iter().enumerate().zip(mb.iter().enumerate()) {
+        if visited_spans.contains(&(ta.get_span(), tb.get_span())) {
+            break
+        }
+
+        visited_spans.insert((ta.get_span(), tb.get_span()));
+
         if match_same_input(ta, tb) {
             continue;
         }
@@ -625,6 +632,96 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree])
         // not tt, ident, or block (that is, either A or B could match several
         // token trees), we cannot know where we should continue the analysis.
         match (ta, tb) {
+            (&TokenTree::Sequence(sp_a, ref seq_a), &TokenTree::Sequence(sp_b, ref seq_b)) => {
+                let new_tt_a = TokenTree::Sequence(sp_a, tokenstream::SequenceRepetition { op: tokenstream::KleeneOp::ZeroOrMore, .. seq_a.clone() });
+                let mut new_a = seq_a.tts.iter().map(|x| x.clone()).collect::<Vec<_>>();
+                if let Some(ref sep) = seq_a.separator { new_a.push(TokenTree::Token(sp_a, sep.clone())) };
+                new_a.push(new_tt_a);
+                new_a.extend(ma[idx_a + 1 ..].iter().map(|x| x.clone()));
+
+                let new_tt_b = TokenTree::Sequence(sp_b, tokenstream::SequenceRepetition { op: tokenstream::KleeneOp::ZeroOrMore, .. seq_b.clone() });
+                let mut new_b = seq_b.tts.iter().map(|x| x.clone()).collect::<Vec<_>>();
+                if let Some(ref sep) = seq_b.separator { new_b.push(TokenTree::Token(sp_b, sep.clone())) };
+                new_b.push(new_tt_b);
+                new_b.extend(mb[idx_b + 1 ..].iter().map(|x| x.clone()));
+
+                let mut ret = match check_matcher_firsts(cx, &new_a, &mb[idx_b ..], visited_spans) {
+                    Error => return Error,
+                    ret => ret
+                };
+
+                match check_matcher_firsts(cx, &ma[idx_a ..], &new_b, visited_spans) {
+                    Error => return Error,
+                    Unsure => ret = Unsure,
+                    Ok => ()
+                };
+
+                if seq_a.op == tokenstream::KleeneOp::ZeroOrMore {
+                    match check_matcher_firsts(cx, &ma[idx_a + 1 ..], &mb[idx_b ..], visited_spans) {
+                        Error => return Error,
+                        Unsure => ret = Unsure,
+                        Ok => ()
+                    };
+                }
+
+                if seq_b.op == tokenstream::KleeneOp::ZeroOrMore {
+                    match check_matcher_firsts(cx, &ma[idx_a ..], &mb[idx_b + 1 ..], visited_spans) {
+                        Error => return Error,
+                        Unsure => ret = Unsure,
+                        Ok => ()
+                    };
+                }
+
+                return ret;
+            }
+
+            (&TokenTree::Sequence(sp, ref seq), _) => {
+                // unroll 1 step.
+                let new_tt = TokenTree::Sequence(sp, tokenstream::SequenceRepetition { op: tokenstream::KleeneOp::ZeroOrMore, .. seq.clone() });
+                let mut new_a = seq.tts.iter().map(|x| x.clone()).collect::<Vec<_>>();
+                if let Some(ref sep) = seq.separator { new_a.push(TokenTree::Token(sp, sep.clone())) };
+                new_a.push(new_tt);
+                new_a.extend(ma[idx_a + 1 ..].iter().map(|x| x.clone()));
+                let mut ret = match check_matcher_firsts(cx, &new_a, &mb[idx_b ..], visited_spans) {
+                    Error => return Error,
+                    ret => ret
+                };
+
+                if seq.op == tokenstream::KleeneOp::ZeroOrMore {
+                    match check_matcher_firsts(cx, &ma[idx_a + 1 ..], &mb[idx_b ..], visited_spans) {
+                        Error => return Error,
+                        Unsure => ret = Unsure,
+                        Ok => ()
+                    };
+                }
+
+                return ret;
+            }
+
+            (_, &TokenTree::Sequence(sp, ref seq)) => {
+                // unroll 1 step.
+                let new_tt = TokenTree::Sequence(sp, tokenstream::SequenceRepetition { op: tokenstream::KleeneOp::ZeroOrMore, .. seq.clone() });
+                let mut new_b = seq.tts.iter().map(|x| x.clone()).collect::<Vec<_>>();
+                if let Some(ref sep) = seq.separator { new_b.push(TokenTree::Token(sp, sep.clone())) };
+                new_b.push(new_tt);
+                new_b.extend(mb[idx_b + 1 ..].iter().map(|x| x.clone()));
+                let mut ret = match check_matcher_firsts(cx, &ma[idx_a ..], &new_b, visited_spans) {
+                    Error => return Error,
+                    ret => ret
+                };
+
+                if seq.op == tokenstream::KleeneOp::ZeroOrMore {
+                    match check_matcher_firsts(cx, &ma[idx_a ..], &mb[idx_b + 1 ..], visited_spans) {
+                        Error => return Error,
+                        Unsure => ret = Unsure,
+                        Ok => ()
+                    };
+
+                }
+
+                return ret;
+            }
+
             (&TokenTree::Token(_, MatchNt(_, nta)),
              &TokenTree::Token(_, MatchNt(_, ntb))) =>
                 if !(nt_is_single_tt(nta) && nt_is_single_tt(ntb)) {
@@ -637,12 +734,6 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree])
             // super specific corner case: if one arm is always one token,
             // followed by the end of the macro invocation, then we can accept
             // it.
-
-            (&TokenTree::Sequence(_, _), _) |
-            (_, &TokenTree::Sequence(_, _)) =>
-                return if only_simple_tokens(&ma[idx_a..]) && !need_disambiguation {
-                    Unsure
-                } else { Error },
 
             (_ ,&TokenTree::Token(_, MatchNt(_, nt))) if !nt_is_single_tt(nt) =>
                 return if only_simple_tokens(&ma[idx_a..]) && !need_disambiguation {
@@ -714,7 +805,7 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree])
             (&TokenTree::Delimited(_, ref d1),
              &TokenTree::Delimited(_, ref d2)) => {
                 // they have the same delim. as above.
-                match check_matcher_firsts(cx, &d1.tts, &d2.tts) {
+                match check_matcher_firsts(cx, &d1.tts, &d2.tts, visited_spans) {
                     Ok => return Ok,
                     Unsure => continue,
                     Error => {
