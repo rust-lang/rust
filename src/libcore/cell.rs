@@ -847,6 +847,20 @@ impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefM
 /// The `UnsafeCell<T>` type is the only legal way to obtain aliasable data that is considered
 /// mutable. In general, transmuting an `&T` type into an `&mut T` is considered undefined behavior.
 ///
+/// The compiler makes optimizations based on the knowledge that `&T` is not mutably aliased or
+/// mutated, and that `&mut T` is unique. When building abstractions like `Cell`, `RefCell`,
+/// `Mutex`, etc, you need to turn these optimizations off. `UnsafeCell` is the only legal way
+/// to do this. When `UnsafeCell<T>` is immutably aliased, it is still safe to obtain a mutable
+/// reference to its interior and/or to mutate it. However, it is up to the abstraction designer
+/// to ensure that no two mutable references obtained this way are active at the same time, and
+/// that there are no active mutable references or mutations when an immutable reference is obtained
+/// from the cell. This is often done via runtime checks.
+///
+/// Note that while mutating or mutably aliasing the contents of an `& UnsafeCell<T>` is
+/// okay (provided you enforce the invariants some other way); it is still undefined behavior
+/// to have multiple `&mut UnsafeCell<T>` aliases.
+///
+///
 /// Types like `Cell<T>` and `RefCell<T>` use this type to wrap their internal data.
 ///
 /// # Examples
@@ -915,6 +929,11 @@ impl<T> UnsafeCell<T> {
 
 impl<T: ?Sized> UnsafeCell<T> {
     /// Gets a mutable pointer to the wrapped value.
+    ///
+    /// This can be cast to a pointer of any kind.
+    /// Ensure that the access is unique when casting to
+    /// `&mut T`, and ensure that there are no mutations or mutable
+    /// aliases going on when casting to `&T`
     ///
     /// # Examples
     ///
