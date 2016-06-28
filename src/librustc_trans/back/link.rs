@@ -136,14 +136,17 @@ pub fn build_link_meta<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     return r;
 }
 
-pub fn get_linker(sess: &Session) -> (String, Command) {
+// The third parameter is for an extra path to add to PATH for MSVC
+// cross linkers for host toolchain DLL dependencies
+pub fn get_linker(sess: &Session) -> (String, Command, Option<PathBuf>) {
     if let Some(ref linker) = sess.opts.cg.linker {
-        (linker.clone(), Command::new(linker))
+        (linker.clone(), Command::new(linker), None)
     } else if sess.target.target.options.is_like_msvc {
-        ("link.exe".to_string(), msvc::link_exe_cmd(sess))
+        let (cmd, host) = msvc::link_exe_cmd(sess);
+        ("link.exe".to_string(), cmd, host)
     } else {
         (sess.target.target.options.linker.clone(),
-         Command::new(&sess.target.target.options.linker))
+         Command::new(&sess.target.target.options.linker), None)
     }
 }
 
@@ -153,7 +156,7 @@ pub fn get_ar_prog(sess: &Session) -> String {
     })
 }
 
-fn command_path(sess: &Session) -> OsString {
+fn command_path(sess: &Session, extra: Option<PathBuf>) -> OsString {
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
     let mut new_path = sess.host_filesearch(PathKind::All)
@@ -161,9 +164,7 @@ fn command_path(sess: &Session) -> OsString {
     if let Some(path) = env::var_os("PATH") {
         new_path.extend(env::split_paths(&path));
     }
-    if sess.target.target.options.is_like_msvc {
-        new_path.extend(msvc::host_dll_path());
-    }
+    new_path.extend(extra);
     env::join_paths(new_path).unwrap()
 }
 
@@ -379,7 +380,7 @@ fn archive_config<'a>(sess: &'a Session,
         src: input.map(|p| p.to_path_buf()),
         lib_search_paths: archive_search_paths(sess),
         ar_prog: get_ar_prog(sess),
-        command_path: command_path(sess),
+        command_path: command_path(sess, None),
     }
 }
 
@@ -616,8 +617,8 @@ fn link_natively(sess: &Session,
     info!("preparing {:?} from {:?} to {:?}", crate_type, objects, out_filename);
 
     // The invocations of cc share some flags across platforms
-    let (pname, mut cmd) = get_linker(sess);
-    cmd.env("PATH", command_path(sess));
+    let (pname, mut cmd, extra) = get_linker(sess);
+    cmd.env("PATH", command_path(sess, extra));
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
@@ -682,10 +683,15 @@ fn link_natively(sess: &Session,
             info!("linker stdout:\n{}", escape_string(&prog.stdout[..]));
         },
         Err(e) => {
-            // Trying to diagnose https://github.com/rust-lang/rust/issues/33844
             sess.struct_err(&format!("could not exec the linker `{}`: {}", pname, e))
                 .note(&format!("{:?}", &cmd))
                 .emit();
+            if sess.target.target.options.is_like_msvc && e.kind() == io::ErrorKind::NotFound {
+                sess.note_without_error("the msvc targets depend on the msvc linker \
+                    but `link.exe` was not found");
+                sess.note_without_error("please ensure that VS 2013 or VS 2015 was installed \
+                    with the Visual C++ option");
+            }
             sess.abort_if_errors();
         }
     }
