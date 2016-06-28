@@ -110,6 +110,16 @@ pub struct Repeat { byte: u8 }
 ///
 /// All reads from this reader will succeed by filling the specified buffer with
 /// the given byte.
+///
+/// # Examples
+///
+/// ```
+/// use std::io::{self, Read};
+///
+/// let mut buffer = [0; 3];
+/// io::repeat(0b101).read_exact(&mut buffer).unwrap();
+/// assert_eq!(buffer, [0b101, 0b101, 0b101]);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn repeat(byte: u8) -> Repeat { Repeat { byte: byte } }
 
