@@ -67,7 +67,7 @@ Vectors have a [generic type][generics] `Vec<T>`, so in this example `v` will ha
 
 [arrays]: primitive-types.html#arrays
 [vectors]: vectors.html
-[heap]: the-stack-and-the-heap.html
+[heap]: the-stack-and-the-heap.html#the-heap
 [stack]: the-stack-and-the-heap.html#the-stack
 [bindings]: variable-bindings.html
 [generics]: generics.html
@@ -135,6 +135,8 @@ let x = 10;
 Rust allocates memory for an integer [i32] on the [stack][sh], copies the bit
 pattern representing the value of 10 to the allocated memory and binds the
 variable name x to this memory region for future reference.
+
+[i32]: primitive-types.html#numeric-types
 
 Now consider the following code fragment:
 

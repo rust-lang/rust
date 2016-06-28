@@ -147,23 +147,23 @@ impl f64 {
     /// [subnormal][subnormal], or `NaN`.
     ///
     /// ```
-    /// use std::f32;
+    /// use std::f64;
     ///
-    /// let min = f32::MIN_POSITIVE; // 1.17549435e-38f64
-    /// let max = f32::MAX;
-    /// let lower_than_min = 1.0e-40_f32;
-    /// let zero = 0.0f32;
+    /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308f64
+    /// let max = f64::MAX;
+    /// let lower_than_min = 1.0e-308_f64;
+    /// let zero = 0.0f64;
     ///
     /// assert!(min.is_normal());
     /// assert!(max.is_normal());
     ///
     /// assert!(!zero.is_normal());
-    /// assert!(!f32::NAN.is_normal());
-    /// assert!(!f32::INFINITY.is_normal());
+    /// assert!(!f64::NAN.is_normal());
+    /// assert!(!f64::INFINITY.is_normal());
     /// // Values between `0` and `min` are Subnormal.
     /// assert!(!lower_than_min.is_normal());
     /// ```
-    /// [subnormal]: http://en.wikipedia.org/wiki/Denormal_number
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_normal(self) -> bool { num::Float::is_normal(self) }
@@ -655,9 +655,9 @@ impl f64 {
     /// ```
     /// #![feature(float_extras)]
     ///
-    /// let x = 1.0f32;
+    /// let x = 1.0f64;
     ///
-    /// let abs_diff = (x.next_after(2.0) - 1.00000011920928955078125_f32).abs();
+    /// let abs_diff = (x.next_after(2.0) - 1.0000000000000002220446049250313_f64).abs();
     ///
     /// assert!(abs_diff < 1e-10);
     /// ```

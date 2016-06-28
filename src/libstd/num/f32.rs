@@ -217,7 +217,7 @@ impl f32 {
     /// // Values between `0` and `min` are Subnormal.
     /// assert!(!lower_than_min.is_normal());
     /// ```
-    /// [subnormal]: http://en.wikipedia.org/wiki/Denormal_number
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_normal(self) -> bool { num::Float::is_normal(self) }
@@ -923,12 +923,12 @@ impl f32 {
     /// Computes the tangent of a number (in radians).
     ///
     /// ```
-    /// use std::f64;
+    /// use std::f32;
     ///
-    /// let x = f64::consts::PI/4.0;
+    /// let x = f32::consts::PI / 4.0;
     /// let abs_difference = (x.tan() - 1.0).abs();
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert!(abs_difference <= f32::EPSILON);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1052,12 +1052,14 @@ impl f32 {
     /// number is close to zero.
     ///
     /// ```
-    /// let x = 7.0f64;
+    /// use std::f32;
     ///
-    /// // e^(ln(7)) - 1
-    /// let abs_difference = (x.ln().exp_m1() - 6.0).abs();
+    /// let x = 6.0f32;
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// // e^(ln(6)) - 1
+    /// let abs_difference = (x.ln().exp_m1() - 5.0).abs();
+    ///
+    /// assert!(abs_difference <= f32::EPSILON);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]

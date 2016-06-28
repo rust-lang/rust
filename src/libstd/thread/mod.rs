@@ -394,6 +394,19 @@ pub fn sleep_ms(ms: u32) {
 /// signal being received or a spurious wakeup. Platforms which do not support
 /// nanosecond precision for sleeping will have `dur` rounded up to the nearest
 /// granularity of time they can sleep for.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use std::{thread, time};
+///
+/// let ten_millis = time::Duration::from_millis(10);
+/// let now = time::Instant::now();
+///
+/// thread::sleep(ten_millis);
+///
+/// assert!(now.elapsed() >= ten_millis);
+/// ```
 #[stable(feature = "thread_sleep", since = "1.4.0")]
 pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)
