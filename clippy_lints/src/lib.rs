@@ -403,6 +403,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         transmute::CROSSPOINTER_TRANSMUTE,
         transmute::TRANSMUTE_PTR_TO_REF,
         transmute::USELESS_TRANSMUTE,
+        transmute::WRONG_TRANSMUTE,
         types::ABSURD_EXTREME_COMPARISONS,
         types::BOX_VEC,
         types::CHAR_LIT_AS_U8,

@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 155 lints included in this crate:
+There are 156 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -168,12 +168,13 @@ name                                                                            
 [used_underscore_binding](https://github.com/Manishearth/rust-clippy/wiki#used_underscore_binding)                   | allow   | using a binding which is prefixed with an underscore
 [useless_format](https://github.com/Manishearth/rust-clippy/wiki#useless_format)                                     | warn    | useless use of `format!`
 [useless_let_if_seq](https://github.com/Manishearth/rust-clippy/wiki#useless_let_if_seq)                             | warn    | Checks for unidiomatic `let mut` declaration followed by initialization in `if`
-[useless_transmute](https://github.com/Manishearth/rust-clippy/wiki#useless_transmute)                               | warn    | transmutes that have the same to and from types
+[useless_transmute](https://github.com/Manishearth/rust-clippy/wiki#useless_transmute)                               | warn    | transmutes that have the same to and from types or could be a cast/coercion
 [useless_vec](https://github.com/Manishearth/rust-clippy/wiki#useless_vec)                                           | warn    | useless `vec!`
 [while_let_loop](https://github.com/Manishearth/rust-clippy/wiki#while_let_loop)                                     | warn    | `loop { if let { ... } else break }` can be written as a `while let` loop
 [while_let_on_iterator](https://github.com/Manishearth/rust-clippy/wiki#while_let_on_iterator)                       | warn    | using a while-let loop instead of a for loop on an iterator
 [wrong_pub_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_pub_self_convention)               | allow   | defining a public method named with an established prefix (like "into_") that takes `self` with the wrong convention
 [wrong_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_self_convention)                       | warn    | defining a method named with an established prefix (like "into_") that takes `self` with the wrong convention
+[wrong_transmute](https://github.com/Manishearth/rust-clippy/wiki#wrong_transmute)                                   | warn    | transmutes that are confusing at best, undefined behaviour at worst and always useless
 [zero_divided_by_zero](https://github.com/Manishearth/rust-clippy/wiki#zero_divided_by_zero)                         | warn    | usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN
 [zero_width_space](https://github.com/Manishearth/rust-clippy/wiki#zero_width_space)                                 | deny    | using a zero-width space in a string literal, which is confusing
 
