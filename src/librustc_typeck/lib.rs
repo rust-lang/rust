@@ -76,7 +76,6 @@ This API is completely unstable and subject to change.
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(iter_arith)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]

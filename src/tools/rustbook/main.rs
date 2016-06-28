@@ -10,7 +10,6 @@
 
 #![deny(warnings)]
 
-#![feature(iter_arith)]
 #![feature(rustc_private)]
 #![feature(rustdoc)]
 #![feature(question_mark)]

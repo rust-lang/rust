@@ -9,8 +9,23 @@
 // except according to those terms.
 
 use std::f64;
+use std::mem;
 use core::num::diy_float::Fp;
 use core::num::dec2flt::rawfp::{fp_to_float, prev_float, next_float, round_normal};
+
+fn integer_decode(f: f64) -> (u64, i16, i8) {
+    let bits: u64 = unsafe { mem::transmute(f) };
+    let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
+    let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
+    let mantissa = if exponent == 0 {
+        (bits & 0xfffffffffffff) << 1
+    } else {
+        (bits & 0xfffffffffffff) | 0x10000000000000
+    };
+    // Exponent bias + mantissa shift
+    exponent -= 1023 + 52;
+    (mantissa, exponent, sign)
+}
 
 #[test]
 fn fp_to_float_half_to_even() {
@@ -21,12 +36,12 @@ fn fp_to_float_half_to_even() {
 
     fn conv(sig: u64) -> u64 {
         // The significands are perfectly in range, so the exponent should not matter
-        let (m1, e1, _) = fp_to_float::<f64>(Fp { f: sig, e: 0 }).integer_decode();
+        let (m1, e1, _) = integer_decode(fp_to_float::<f64>(Fp { f: sig, e: 0 }));
         assert_eq!(e1, 0 + 64 - 53);
-        let (m2, e2, _) = fp_to_float::<f64>(Fp { f: sig, e: 55 }).integer_decode();
+        let (m2, e2, _) = integer_decode(fp_to_float::<f64>(Fp { f: sig, e: 55 }));
         assert_eq!(e2, 55 + 64 - 53);
         assert_eq!(m2, m1);
-        let (m3, e3, _) = fp_to_float::<f64>(Fp { f: sig, e: -78 }).integer_decode();
+        let (m3, e3, _) = integer_decode(fp_to_float::<f64>(Fp { f: sig, e: -78 }));
         assert_eq!(e3, -78 + 64 - 53);
         assert_eq!(m3, m2);
         m3
@@ -65,7 +80,7 @@ const SOME_FLOATS: [f64; 9] =
 #[test]
 fn human_f64_roundtrip() {
     for &x in &SOME_FLOATS {
-        let (f, e, _) = x.integer_decode();
+        let (f, e, _) = integer_decode(x);
         let fp = Fp { f: f, e: e};
         assert_eq!(fp_to_float::<f64>(fp), x);
     }
