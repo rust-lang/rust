@@ -970,7 +970,7 @@ fn run_work_multithreaded(sess: &Session,
 }
 
 pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
-    let (pname, mut cmd) = get_linker(sess);
+    let (pname, mut cmd, _) = get_linker(sess);
 
     cmd.arg("-c").arg("-o").arg(&outputs.path(OutputType::Object))
                            .arg(&outputs.temp_path(OutputType::Assembly));
