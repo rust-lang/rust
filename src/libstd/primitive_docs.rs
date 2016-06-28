@@ -490,9 +490,6 @@ mod prim_tuple { }
 ///
 /// *[See also the `std::f32` module](f32/index.html).*
 ///
-/// However, please note that examples are shared between the `f64` and `f32`
-/// primitive types. So it's normal if you see usage of `f64` in there.
-///
 mod prim_f32 { }
 
 #[doc(primitive = "f64")]
@@ -500,9 +497,6 @@ mod prim_f32 { }
 /// The 64-bit floating point type.
 ///
 /// *[See also the `std::f64` module](f64/index.html).*
-///
-/// However, please note that examples are shared between the `f64` and `f32`
-/// primitive types. So it's normal if you see usage of `f32` in there.
 ///
 mod prim_f64 { }
 
