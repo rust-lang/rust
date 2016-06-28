@@ -1,11 +1,25 @@
 use rustc::lint::*;
 use rustc::ty::TypeVariants::{TyRawPtr, TyRef};
+use rustc::ty;
 use rustc::hir::*;
 use utils::{match_def_path, paths, snippet_opt, span_lint, span_lint_and_then};
 
-/// **What it does:** This lint checks for transmutes to the original type of the object.
+/// **What it does:** This lint checks for transmutes that can't ever be correct on any architecture
 ///
-/// **Why is this bad?** Readability. The code tricks people into thinking that the original value was of some other type.
+/// **Why is this bad?** It's basically guaranteed to be undefined behaviour
+///
+/// **Known problems:** When accessing C, users might want to store pointer sized objects in `extradata` arguments to save an allocation.
+///
+/// **Example:** `let ptr: *const T = core::intrinsics::transmute('x')`.
+declare_lint! {
+    pub WRONG_TRANSMUTE,
+    Warn,
+    "transmutes that are confusing at best, undefined behaviour at worst and always useless"
+}
+
+/// **What it does:** This lint checks for transmutes to the original type of the object and transmutes that could be a cast.
+///
+/// **Why is this bad?** Readability. The code tricks people into thinking that something complex is going on
 ///
 /// **Known problems:** None.
 ///
@@ -13,7 +27,7 @@ use utils::{match_def_path, paths, snippet_opt, span_lint, span_lint_and_then};
 declare_lint! {
     pub USELESS_TRANSMUTE,
     Warn,
-    "transmutes that have the same to and from types"
+    "transmutes that have the same to and from types or could be a cast/coercion"
 }
 
 /// **What it does:*** This lint checks for transmutes between a type `T` and `*T`.
@@ -51,7 +65,7 @@ pub struct Transmute;
 
 impl LintPass for Transmute {
     fn get_lints(&self) -> LintArray {
-        lint_array![CROSSPOINTER_TRANSMUTE, TRANSMUTE_PTR_TO_REF, USELESS_TRANSMUTE]
+        lint_array![CROSSPOINTER_TRANSMUTE, TRANSMUTE_PTR_TO_REF, USELESS_TRANSMUTE, WRONG_TRANSMUTE]
     }
 }
 
@@ -88,6 +102,27 @@ impl LateLintPass for Transmute {
                                     db.span_suggestion(e.span, "try", sugg);
                                 }
                             },
+                        ),
+                        (&ty::TyInt(_), &TyRawPtr(_)) |
+                        (&ty::TyUint(_), &TyRawPtr(_)) => span_lint_and_then(
+                            cx,
+                            USELESS_TRANSMUTE,
+                            e.span,
+                            "transmute from an integer to a pointer",
+                            |db| {
+                                if let Some(arg) = snippet_opt(cx, args[0].span) {
+                                    db.span_suggestion(e.span, "try", format!("{} as {}", arg, to_ty));
+                                }
+                            },
+                        ),
+                        (&ty::TyFloat(_), &TyRef(..)) |
+                        (&ty::TyFloat(_), &TyRawPtr(_)) |
+                        (&ty::TyChar, &TyRef(..)) |
+                        (&ty::TyChar, &TyRawPtr(_)) => span_lint(
+                            cx,
+                            WRONG_TRANSMUTE,
+                            e.span,
+                            &format!("transmute from a `{}` to a pointer", from_ty),
                         ),
                         (&TyRawPtr(from_ptr), _) if from_ptr.ty == to_ty => span_lint(
                             cx,

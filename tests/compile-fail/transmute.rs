@@ -6,8 +6,8 @@ extern crate core;
 use std::mem::transmute as my_transmute;
 use std::vec::Vec as MyVec;
 
-fn my_int() -> usize {
-    42
+fn my_int() -> Usize {
+    Usize(42)
 }
 
 fn my_vec() -> MyVec<i32> {
@@ -105,27 +105,34 @@ fn useless() {
         let _: Vec<u32> = std::intrinsics::transmute(my_vec());
         let _: Vec<u32> = std::mem::transmute(my_vec());
         let _: Vec<u32> = my_transmute(my_vec());
+
+        let _: *const usize = std::mem::transmute(5_isize);
+        //~^ ERROR transmute from an integer to a pointer
+        //~| HELP try
+        //~| SUGGESTION 5_isize as *const usize
     }
 }
 
+struct Usize(usize);
+
 #[deny(crosspointer_transmute)]
 fn crosspointer() {
-    let mut int: usize = 0;
-    let int_const_ptr: *const usize = &int as *const usize;
-    let int_mut_ptr: *mut usize = &mut int as *mut usize;
+    let mut int: Usize = Usize(0);
+    let int_const_ptr: *const Usize = &int as *const Usize;
+    let int_mut_ptr: *mut Usize = &mut int as *mut Usize;
 
     unsafe {
-        let _: usize = core::intrinsics::transmute(int_const_ptr);
-        //~^ ERROR transmute from a type (`*const usize`) to the type that it points to (`usize`)
+        let _: Usize = core::intrinsics::transmute(int_const_ptr);
+        //~^ ERROR transmute from a type (`*const Usize`) to the type that it points to (`Usize`)
 
-        let _: usize = core::intrinsics::transmute(int_mut_ptr);
-        //~^ ERROR transmute from a type (`*mut usize`) to the type that it points to (`usize`)
+        let _: Usize = core::intrinsics::transmute(int_mut_ptr);
+        //~^ ERROR transmute from a type (`*mut Usize`) to the type that it points to (`Usize`)
 
-        let _: *const usize = core::intrinsics::transmute(my_int());
-        //~^ ERROR transmute from a type (`usize`) to a pointer to that type (`*const usize`)
+        let _: *const Usize = core::intrinsics::transmute(my_int());
+        //~^ ERROR transmute from a type (`Usize`) to a pointer to that type (`*const Usize`)
 
-        let _: *mut usize = core::intrinsics::transmute(my_int());
-        //~^ ERROR transmute from a type (`usize`) to a pointer to that type (`*mut usize`)
+        let _: *mut Usize = core::intrinsics::transmute(my_int());
+        //~^ ERROR transmute from a type (`Usize`) to a pointer to that type (`*mut Usize`)
     }
 }
 
