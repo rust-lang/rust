@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use analysisdiff;
 use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
-use common::{Incremental, RunMake, Ui};
+use common::{Incremental, RunMake, SaveAnalysis, Ui};
 use errors::{self, ErrorKind, Error};
 use json;
 use header::TestProps;
@@ -116,6 +117,7 @@ impl<'test> TestCx<'test> {
             CodegenUnits => self.run_codegen_units_test(),
             Incremental => self.run_incremental_test(),
             RunMake => self.run_rmake_test(),
+            SaveAnalysis => self.run_save_analysis_test(),
             Ui => self.run_ui_test(),
         }
     }
@@ -1140,6 +1142,19 @@ actual:\n\
         self.compose_and_run_compiler(args, None)
     }
 
+    // Run the compiler in order to produce the save-analysis information
+    fn analyze(&self) -> ProcRes {
+        let args = vec!["-Zsave-analysis".to_owned(), "-Zno-trans".to_owned()];
+        let args = self.make_compile_args(args,
+                                          &self.testpaths.file,
+                                          TargetLocation::ThisDirectory(
+                                              self.output_base_name().parent()
+                                                                     .unwrap()
+                                                                     .to_path_buf()));
+
+        self.compose_and_run_compiler(args, None)
+    }
+
     fn exec_compiled_test(&self) -> ProcRes {
         let env = self.props.exec_env.clone();
 
@@ -1343,7 +1358,8 @@ actual:\n\
             Rustdoc |
             RunMake |
             Ui |
-            CodegenUnits => {
+            CodegenUnits |
+            SaveAnalysis => {
                 // do not use JSON output
             }
         }
@@ -2107,6 +2123,39 @@ actual:\n\
             }
         }
         fs::remove_dir(path)
+    }
+
+    fn run_save_analysis_test(&self) {
+        assert!(self.revision.is_none(), "revisions not relevant here");
+
+        // Generate the save-analysis information in JSON
+        let proc_res = self.analyze();
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("save-analysis failed!", &proc_res);
+        }
+
+        let json_expected = self.testpaths.file.with_extension("json");
+        let json_output = {
+            // `save-analysis` dumps the json file to `save-analysis-temp/<file_name>.json`
+            let file_name = self.testpaths.file.file_name().unwrap();
+            self.output_base_name().join("save-analysis-temp")
+                                   .join(file_name)
+                                   .with_extension("json")
+        };
+
+        // Compare the output and the expected JSON
+        let mismatches = analysisdiff::compare_analysis(&json_output, &json_expected);
+        if mismatches.len() != 0 {
+            println!("Mismatches found:");
+
+            for m in mismatches {
+                let found = m.found.map_or("[Nothing]".to_string(), |f| f.to_string());
+                println!("Path: {}. Expected: {}. Found: {}",
+                         m.path.join("."), m.expected, found);
+            }
+
+            self.fatal("save-analysis test failed");
+        }
     }
 
     fn run_ui_test(&self) {

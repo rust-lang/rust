@@ -1,0 +1,166 @@
+{
+  "prelude": {
+    "crate_name": "functions",
+    "span": {
+      "file_name": "functions.rs",
+      "byte_start": 0,
+      "byte_end": 149,
+      "line_start": 1,
+      "line_end": 18,
+      "column_start": 1,
+      "column_end": 1
+    }
+  },
+  "imports": [
+    {
+      "kind": "Use",
+      "span": {
+        "file_name": "functions.rs",
+        "byte_start": 9,
+        "byte_end": 12,
+        "line_start": 1,
+        "line_end": 1,
+        "column_start": 10,
+        "column_end": 13
+      },
+      "name": "bar"
+    }
+  ],
+  "defs": [
+    {
+      "kind": "Mod",
+      "span": {
+        "file_name": "functions.rs",
+        "byte_start": 21,
+        "byte_end": 24,
+        "line_start": 3,
+        "line_end": 3,
+        "column_start": 5,
+        "column_end": 8
+      },
+      "name": "foo",
+      "qualname": "::foo",
+      "value": "functions.rs"
+    },
+    {
+      "kind": "Function",
+      "span": {
+        "file_name": "functions.rs",
+        "byte_start": 39,
+        "byte_end": 42,
+        "line_start": 4,
+        "line_end": 4,
+        "column_start": 12,
+        "column_end": 15
+      },
+      "name": "bar",
+      "qualname": "::foo::bar",
+    },
+    {
+      "kind": "Mod",
+      "span": {
+        "file_name": "functions.rs",
+        "byte_start": 66,
+        "byte_end": 69,
+        "line_start": 9,
+        "line_end": 9,
+        "column_start": 5,
+        "column_end": 8
+      },
+      "name": "baz",
+      "qualname": "::baz",
+      "value": "functions.rs"
+    },
+    {
+      "kind": "Function",
+      "span": {
+        "file_name": "functions.rs",
+        "byte_start": 84,
+        "byte_end": 87,
+        "line_start": 10,
+        "line_end": 10,
+        "column_start": 12,
+        "column_end": 15
+      },
+      "name": "bar",
+      "qualname": "::baz::bar",
+    },
+    {
+      "kind": "Function",
+      "span": {
+        "file_name": "functions.rs",
+        "byte_start": 110,
+        "byte_end": 114,
+        "line_start": 15,
+        "line_end": 15,
+        "column_start": 4,
+        "column_end": 8
+      },
+      "name": "main",
+      "qualname": "::main",
+      "value": "()"
+    }
+  ],
+  "refs": [
+    {
+      "kind": "Function",
+      "span": {
+        "file_name": "functions.rs",
+        "byte_start": 9,
+        "byte_end": 12,
+        "line_start": 1,
+        "line_end": 1,
+        "column_start": 10,
+        "column_end": 13
+      },
+    },
+    {
+      "kind": "Mod",
+      "span": {
+        "file_name": "functions.rs",
+        "byte_start": 4,
+        "byte_end": 7,
+        "line_start": 1,
+        "line_end": 1,
+        "column_start": 5,
+        "column_end": 8
+      },
+    },
+    {
+      "kind": "Function",
+      "span": {
+        "file_name": "functions.rs",
+        "byte_start": 124,
+        "byte_end": 127,
+        "line_start": 16,
+        "line_end": 16,
+        "column_start": 5,
+        "column_end": 8
+      },
+    },
+    {
+      "kind": "Function",
+      "span": {
+        "file_name": "functions.rs",
+        "byte_start": 141,
+        "byte_end": 144,
+        "line_start": 17,
+        "line_end": 17,
+        "column_start": 10,
+        "column_end": 13
+      },
+    },
+    {
+      "kind": "Mod",
+      "span": {
+        "file_name": "functions.rs",
+        "byte_start": 136,
+        "byte_end": 139,
+        "line_start": 17,
+        "line_end": 17,
+        "column_start": 5,
+        "column_end": 8
+      },
+    }
+  ]
+}
