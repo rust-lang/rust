@@ -919,7 +919,7 @@ pub enum Expr_ {
     /// Inline assembly (from `asm!`), with its outputs and inputs.
     ExprInlineAsm(InlineAsm, Vec<P<Expr>>, Vec<P<Expr>>),
 
-    /// A struct or enum variant literal expression.
+    /// A struct or struct-like variant literal expression.
     ///
     /// For example, `Foo {x: 1, y: 2}`, or
     /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
@@ -955,12 +955,12 @@ pub struct QSelf {
 pub enum MatchSource {
     /// A `match _ { .. }`
     Normal,
-    /// An `if let _ = _ { .. }` (optionally with `else { .. }`
+    /// An `if let _ = _ { .. }` (optionally with `else { .. }`)
     IfLetDesugar {
         contains_else_clause: bool,
     },
     /// A `while let _ = _ { .. }` (which was desugared to a
-    /// `loop { match _ { .. } }`
+    /// `loop { match _ { .. } }`)
     WhileLetDesugar,
     /// A desugared `for _ in _ { .. }` loop
     ForLoopDesugar,
