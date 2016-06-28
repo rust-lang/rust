@@ -160,6 +160,9 @@ pub struct Config {
     // status whether android device available or not
     pub adb_device_status: bool,
 
+    // Name with which to invoke Node for asmjs targets
+    pub node_path: Option<String>,
+
     // the path containing LLDB's Python module
     pub lldb_python_dir: Option<String>,
 
