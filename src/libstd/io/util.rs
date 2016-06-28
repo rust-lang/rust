@@ -78,14 +78,11 @@ pub struct Empty { _priv: () }
 /// A slightly sad example of not reading anything into a buffer:
 ///
 /// ```
-/// use std::io;
-/// use std::io::Read;
+/// use std::io::{self, Read};
 ///
-/// # fn foo() -> io::Result<String> {
 /// let mut buffer = String::new();
-/// try!(io::empty().read_to_string(&mut buffer));
-/// # Ok(buffer)
-/// # }
+/// io::empty().read_to_string(&mut buffer).unwrap();
+/// assert!(buffer.is_empty());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn empty() -> Empty { Empty { _priv: () } }
