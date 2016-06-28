@@ -28,6 +28,7 @@
 //! format!("{:?}", (3, 4));          // => "(3, 4)"
 //! format!("{value}", value=4);      // => "4"
 //! format!("{} {}", 1, 2);           // => "1 2"
+//! format!("{:04}", 42);             // => "0042" with leading zeros
 //! ```
 //!
 //! From these, you can see that the first argument is a format string. It is
