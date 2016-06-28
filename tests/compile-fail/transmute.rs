@@ -58,6 +58,11 @@ unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
     //~| SUGGESTION = &*m;
     let _: &T = &*m;
 
+    let _: &mut T = std::mem::transmute(p as *mut T);
+    //~^ ERROR transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
+    //~| HELP try
+    //~| SUGGESTION = &mut *(p as *mut T);
+
     let _: &T = std::mem::transmute(o);
     //~^ ERROR transmute from a pointer type (`*const U`) to a reference type (`&T`)
     //~| HELP try
