@@ -128,6 +128,7 @@ pub struct Build {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
+#[derive(Clone, Copy)]
 pub enum Mode {
     /// This cargo is going to build the standard library, placing output in the
     /// "stageN-std" directory.
@@ -383,8 +384,7 @@ impl Build {
                                        "ui", "ui");
                 }
                 CheckDebuginfo { compiler } => {
-                    if target.target.contains("msvc") ||
-                       target.target.contains("android") {
+                    if target.target.contains("msvc") {
                         // nothing to do
                     } else if target.target.contains("apple") {
                         check::compiletest(self, &compiler, target.target,
@@ -434,8 +434,14 @@ impl Build {
                                            target.target);
                 }
 
+                AndroidCopyLibs { compiler } => {
+                    check::android_copy_libs(self, &compiler, target.target);
+                }
+
+                // pseudo-steps
                 Dist { .. } |
-                Doc { .. } | // pseudo-steps
+                Doc { .. } |
+                CheckTarget { .. } |
                 Check { .. } => {}
             }
         }
