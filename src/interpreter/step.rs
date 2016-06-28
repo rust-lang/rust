@@ -39,11 +39,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }.visit_statement(block, stmt);
             if current_stack == self.stack.len() {
                 self.statement(stmt)?;
-            } else {
-                // ConstantExtractor added some new frames for statics/constants/promoteds
-                // self.step() can't be "done", so it can't return false
-                assert!(self.step()?);
             }
+            // if ConstantExtractor added new frames, we don't execute anything here
+            // but await the next call to step
             return Ok(true);
         }
 
@@ -58,11 +56,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }.visit_terminator(block, terminator);
         if current_stack == self.stack.len() {
             self.terminator(terminator)?;
-        } else {
-            // ConstantExtractor added some new frames for statics/constants/promoteds
-            // self.step() can't be "done", so it can't return false
-            assert!(self.step()?);
         }
+        // if ConstantExtractor added new frames, we don't execute anything here
+        // but await the next call to step
         Ok(true)
     }
 
