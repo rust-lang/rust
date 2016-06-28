@@ -122,7 +122,13 @@ impl LateLintPass for Transmute {
 
 
                                     let sugg = if from_pty.ty == to_rty.ty {
-                                        format!("{}{}", deref, arg)
+                                        // Put things in parentheses if they are more complex
+                                        match args[0].node {
+                                            ExprPath(..) | ExprCall(..) | ExprMethodCall(..) | ExprBlock(..) => {
+                                                format!("{}{}", deref, arg)
+                                            }
+                                            _ => format!("{}({})", deref, arg)
+                                        }
                                     } else {
                                         format!("{}({} as {} {})", deref, arg, cast, to_rty.ty)
                                     };
