@@ -1236,7 +1236,7 @@ impl<'a, 'b>  GraphSuccessors<'b> for Mir<'a> {
 
 pub struct MirWithExit<'m> {
     mir: &'m Mir<'m>,
-    exit_node: BasicBlock,
+    pub exit_node: BasicBlock,
     exit_node_predecessors: Vec<BasicBlock>,
 }
 
