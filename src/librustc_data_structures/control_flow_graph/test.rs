@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::collections::{HashMap, HashSet};
-//use std::cmp::max;
 use std::slice;
 use std::iter;
 
