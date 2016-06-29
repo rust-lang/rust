@@ -124,7 +124,7 @@ impl<Node: Idx> Dominators<Node> {
     pub fn immediate_dominator(&self, node: Node) -> Option<Node> {
         self.immediate_dominators[node]
     }
- 
+
     pub fn dominators(&self, node: Node) -> Iter<Node> {
         Iter {
             dominators: self,

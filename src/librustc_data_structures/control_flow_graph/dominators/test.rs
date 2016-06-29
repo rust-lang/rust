@@ -101,7 +101,7 @@ fn infinite_loop() {
 #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: UnreachableNode")]
 fn transpose_infinite_loop() {
     // If we transpose the graph from `infinite_loop`
-    // we get a graph with an unreachable loop 
+    // we get a graph with an unreachable loop
     // in this case there are unreachable nodes and dominators
     // should return a error.
     // This is simulating transposing the Mir CFG
