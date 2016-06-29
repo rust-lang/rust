@@ -5,7 +5,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, FnKind};
 use std::ops::Deref;
 use syntax::codemap::Span;
-use utils::{is_from_for_desugar, in_external_macro, snippet, span_lint_and_then};
+use utils::{higher, in_external_macro, snippet, span_lint_and_then};
 
 /// **What it does:** This lint checks for bindings that shadow other bindings already in scope, while just changing reference level or mutability.
 ///
@@ -91,7 +91,7 @@ fn check_decl(cx: &LateContext, decl: &Decl, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx, decl.span) {
         return;
     }
-    if is_from_for_desugar(decl) {
+    if higher::is_from_for_desugar(decl) {
         return;
     }
     if let DeclLocal(ref local) = decl.node {

@@ -15,7 +15,7 @@ use syntax::ast;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro,
             span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, higher,
-            walk_ptrs_ty, recover_for_loop};
+            walk_ptrs_ty};
 use utils::paths;
 
 /// **What it does:** This lint checks for looping over the range of `0..len` of some collection just to get the values by index.
@@ -223,7 +223,7 @@ impl LintPass for Pass {
 
 impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let Some((pat, arg, body)) = recover_for_loop(expr) {
+        if let Some((pat, arg, body)) = higher::for_loop(expr) {
             check_for_loop(cx, pat, arg, body, expr);
         }
         // check for `loop { if let {} else break }` that could be `while let`

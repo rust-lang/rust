@@ -3,7 +3,7 @@ use rustc::ty::TypeVariants;
 use rustc::hir::*;
 use syntax::codemap::Span;
 use syntax::ptr::P;
-use utils::{is_expn_of, match_path, paths, recover_for_loop, snippet, span_lint_and_then};
+use utils::{higher, is_expn_of, match_path, paths, snippet, span_lint_and_then};
 
 /// **What it does:** This lint warns about using `&vec![..]` when using `&[..]` would be possible.
 ///
@@ -42,7 +42,7 @@ impl LateLintPass for Pass {
         }}
 
         // search for `for _ in vec![…]`
-        if let Some((_, arg, _)) = recover_for_loop(expr) {
+        if let Some((_, arg, _)) = higher::for_loop(expr) {
             // report the error around the `vec!` not inside `<std macros>:`
             let span = cx.sess().codemap().source_callsite(arg.span);
             check_vec_macro(cx, arg, span);

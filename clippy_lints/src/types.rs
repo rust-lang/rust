@@ -6,7 +6,7 @@ use rustc::ty;
 use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::codemap::Span;
-use utils::{comparisons, in_external_macro, in_macro, is_from_for_desugar, match_def_path, snippet,
+use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet,
             span_help_and_lint, span_lint};
 use utils::paths;
 
@@ -106,7 +106,7 @@ fn check_let_unit(cx: &LateContext, decl: &Decl) {
             if in_external_macro(cx, decl.span) || in_macro(cx, local.pat.span) {
                 return;
             }
-            if is_from_for_desugar(decl) {
+            if higher::is_from_for_desugar(decl) {
                 return;
             }
             span_lint(cx,

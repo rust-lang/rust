@@ -115,3 +115,36 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
     }
 }
 
+/// Checks if a `let` decl is from a `for` loop desugaring.
+pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
+    if_let_chain! {[
+        let hir::DeclLocal(ref loc) = decl.node,
+        let Some(ref expr) = loc.init,
+        let hir::ExprMatch(_, _, hir::MatchSource::ForLoopDesugar) = expr.node,
+    ], {
+        return true;
+    }}
+    false
+}
+
+/// Recover the essential nodes of a desugared for loop:
+/// `for pat in arg { body }` becomes `(pat, arg, body)`.
+pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)> {
+    if_let_chain! {[
+        let hir::ExprMatch(ref iterexpr, ref arms, _) = expr.node,
+        let hir::ExprCall(_, ref iterargs) = iterexpr.node,
+        iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none(),
+        let hir::ExprLoop(ref block, _) = arms[0].body.node,
+        block.stmts.is_empty(),
+        let Some(ref loopexpr) = block.expr,
+        let hir::ExprMatch(_, ref innerarms, hir::MatchSource::ForLoopDesugar) = loopexpr.node,
+        innerarms.len() == 2 && innerarms[0].pats.len() == 1,
+        let hir::PatKind::TupleStruct(_, ref somepats, _) = innerarms[0].pats[0].node,
+        somepats.len() == 1
+    ], {
+        return Some((&somepats[0],
+                     &iterargs[0],
+                     &innerarms[0].body));
+    }}
+    None
+}
