@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(type_macros, concat_idents, rustc_attrs)]
-#![allow(unused)]
+#![feature(type_macros, concat_idents)]
 
-#[derive(Debug)] struct FooBar;
-#[derive(Debug)] struct Baz<T>(T, concat_idents!(Foo, Bar));
+#[derive(Debug)] //~ NOTE in this expansion
+struct Baz<T>(
+    concat_idents!(Foo, Bar) //~ ERROR `derive` cannot be used on items with type macros
+);
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+fn main() {}

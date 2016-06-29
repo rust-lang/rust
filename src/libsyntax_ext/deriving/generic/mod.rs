@@ -345,15 +345,18 @@ pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
 /// This method helps to extract all the type parameters referenced from a
 /// type. For a type parameter `<T>`, it looks for either a `TyPath` that
 /// is not global and starts with `T`, or a `TyQPath`.
-fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast::Ty>> {
+fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name], span: Span, cx: &ExtCtxt)
+                        -> Vec<P<ast::Ty>> {
     use syntax::visit;
 
-    struct Visitor<'a> {
+    struct Visitor<'a, 'b: 'a> {
+        cx: &'a ExtCtxt<'b>,
+        span: Span,
         ty_param_names: &'a [ast::Name],
         types: Vec<P<ast::Ty>>,
     }
 
-    impl<'a> visit::Visitor for Visitor<'a> {
+    impl<'a, 'b> visit::Visitor for Visitor<'a, 'b> {
         fn visit_ty(&mut self, ty: &ast::Ty) {
             match ty.node {
                 ast::TyKind::Path(_, ref path) if !path.global => {
@@ -371,11 +374,18 @@ fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast
 
             visit::walk_ty(self, ty)
         }
+
+        fn visit_mac(&mut self, mac: &ast::Mac) {
+            let span = Span { expn_id: self.span.expn_id, ..mac.span };
+            self.cx.span_err(span, "`derive` cannot be used on items with type macros");
+        }
     }
 
     let mut visitor = Visitor {
         ty_param_names: ty_param_names,
         types: Vec::new(),
+        span: span,
+        cx: cx,
     };
 
     visit::Visitor::visit_ty(&mut visitor, ty);
@@ -556,7 +566,7 @@ impl<'a> TraitDef<'a> {
 
             let mut processed_field_types = HashSet::new();
             for field_ty in field_tys {
-                let tys = find_type_parameters(&field_ty, &ty_param_names);
+                let tys = find_type_parameters(&field_ty, &ty_param_names, self.span, cx);
 
                 for ty in tys {
                     // if we have already handled this type, skip it
