@@ -12,7 +12,7 @@ use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
+//use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
 use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use rustc_data_structures::control_flow_graph::transpose::TransposedGraph;
@@ -150,10 +150,13 @@ impl<'tcx> Mir<'tcx> {
         Ref::map(self.predecessors(), |p| &p[bb])
     }
 
-    #[inline]
-    pub fn dominators(&self) -> Dominators<BasicBlock> {
-        dominators(self)
-    }
+    // #[inline]
+    // pub fn dominators(&self) -> Dominators<BasicBlock> {
+    //     // For the normal Mir CFG the dominators
+    //     // will succeed because all nodes should be reachable
+    //     // from the start node
+    //     dominators(self, self.basic_blocks).unwrap()
+    // }
 
     /// Maps locals (Arg's, Var's, Temp's and ReturnPointer, in that order)
     /// to their index in the whole list of locals. This is useful if you
@@ -1231,14 +1234,14 @@ impl<'a, 'b>  GraphSuccessors<'b> for Mir<'a> {
     type Iter = IntoIter<BasicBlock>;
 }
 
-struct MirWithExit<'m> {
+pub struct MirWithExit<'m> {
     mir: &'m Mir<'m>,
     exit_node: BasicBlock,
     exit_node_predecessors: Vec<BasicBlock>,
 }
 
 impl<'m> MirWithExit<'m> {
-    fn new(mir: &'m Mir<'m>) -> Self {
+    pub fn new(mir: &'m Mir<'m>) -> Self {
         let exit_node = BasicBlock(mir.basic_blocks().len() as u32);
         let mut exit_node_preds = Vec::new();
         for (idx, ref data) in mir.basic_blocks().iter().enumerate() {
@@ -1251,7 +1254,7 @@ impl<'m> MirWithExit<'m> {
                      exit_node_predecessors: exit_node_preds,
         }
     }
-    fn transpose_graph(&self) -> TransposedGraph<&Self> {
+    pub fn transpose_graph(&self) -> TransposedGraph<&Self> {
         TransposedGraph::with_start(self, self.exit_node)
     }
     fn predecessors_for(&self, node: BasicBlock) -> IntoIter<BasicBlock> {

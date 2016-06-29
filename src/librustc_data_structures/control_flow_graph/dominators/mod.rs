@@ -23,10 +23,19 @@ use std::fmt;
 #[cfg(test)]
 mod test;
 
-pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
+pub fn dominators<G: ControlFlowGraph>(graph: &G, 
+                                       nodes: &[G::Node]) 
+                                       -> Result<Dominators<G::Node>, UnreachableNode> 
+    {
     let start_node = graph.start_node();
     let rpo = reverse_post_order(graph, start_node);
-    dominators_given_rpo(graph, &rpo)
+    let dominators = dominators_given_rpo(graph, &rpo);
+    for &n in nodes {
+        if !dominators.is_reachable(n) {
+            return Err(UnreachableNode);
+        };
+    };
+    Ok(dominators)
 }
 
 pub fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
@@ -105,6 +114,9 @@ fn intersect<Node: Idx>(post_order_rank: &IndexVec<Node, usize>,
     return node1;
 }
 
+#[derive(Debug)]
+pub struct UnreachableNode;
+
 #[derive(Clone, Debug)]
 pub struct Dominators<N: Idx> {
     post_order_rank: IndexVec<N, usize>,
@@ -116,17 +128,15 @@ impl<Node: Idx> Dominators<Node> {
         self.immediate_dominators[node].is_some()
     }
 
-    pub fn immediate_dominator(&self, node: Node) -> Node {
-        assert!(self.is_reachable(node), "node {:?} is not reachable", node);
-        self.immediate_dominators[node].unwrap()
+    pub fn immediate_dominator(&self, node: Node) -> Option<Node> {
+        self.immediate_dominators[node]
     }
-
+    
     pub fn dominators(&self, node: Node) -> Iter<Node> {
-        assert!(self.is_reachable(node), "node {:?} is not reachable", node);
         Iter {
             dominators: self,
             node: Some(node),
-        }
+        } 
     }
 
     pub fn is_dominated_by(&self, node: Node, dom: Node) -> bool {
@@ -135,18 +145,15 @@ impl<Node: Idx> Dominators<Node> {
     }
 
     pub fn mutual_dominator_node(&self, node1: Node, node2: Node) -> Node {
-        assert!(self.is_reachable(node1),
-                "node {:?} is not reachable",
-                node1);
-        assert!(self.is_reachable(node2),
-                "node {:?} is not reachable",
-                node2);
-        intersect::<Node>(&self.post_order_rank,
+        intersect(&self.post_order_rank,
                   &self.immediate_dominators,
                   node1,
                   node2)
     }
 
+    // `mutal_dominator` only returns None when iter has only one element
+    // otherwise any combination of nodes have some mutual dominator,
+    // the start node in the degenerate case
     pub fn mutual_dominator<I>(&self, iter: I) -> Option<Node>
         where I: IntoIterator<Item = Node>
     {
@@ -196,7 +203,7 @@ impl<'dom, Node: Idx> Iterator for Iter<'dom, Node> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(node) = self.node {
-            let dom = self.dominators.immediate_dominator(node);
+            let dom = self.dominators.immediate_dominator(node).unwrap();
             if dom == node {
                 self.node = None; // reached the root
             } else {

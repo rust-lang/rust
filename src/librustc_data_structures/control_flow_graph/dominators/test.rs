@@ -21,7 +21,7 @@ fn diamond() {
         (2, 3),
     ]);
 
-    let dominators = dominators(&graph);
+    let dominators = dominators(&graph, &[0,1,2,3]).unwrap();
     let immediate_dominators = dominators.all_immediate_dominators();
     assert_eq!(immediate_dominators[0], Some(0));
     assert_eq!(immediate_dominators[1], Some(0));
@@ -44,9 +44,9 @@ fn paper() {
         (2, 1),
     ]);
 
-    let dominators = dominators(&graph);
+    let dominators = dominators(&graph, &[1,2,3,4,5,6]).unwrap();
     let immediate_dominators = dominators.all_immediate_dominators();
-    assert_eq!(immediate_dominators[0], None); // <-- note that 0 is not in graph
+    assert_eq!(immediate_dominators[0], None); // <-- notice 0 is not in the graph
     assert_eq!(immediate_dominators[1], Some(6));
     assert_eq!(immediate_dominators[2], Some(6));
     assert_eq!(immediate_dominators[3], Some(6));
@@ -55,3 +55,21 @@ fn paper() {
     assert_eq!(immediate_dominators[6], Some(6));
 }
 
+#[test]
+#[should_panic(expected = "called `Result::unwrap()` on an `Err` value: UnreachableNode")]
+fn no_start() {
+    // Test error handling for graphs without a start node
+    // 0 -> 1
+    //      v
+    // 2 -> 3
+    // Dominators for this graph are undefined because there is
+    // no start node which every path begins with
+    let graph = TestGraph::new(0, &[
+        (0, 1),
+        (1, 3),
+        (2, 3),
+    ]);
+    // this should panic:
+    let dominators = dominators(&graph, &[0,1,2,3]).unwrap();
+    assert_eq!(dominators.is_dominated_by(1, 0), false);
+}
