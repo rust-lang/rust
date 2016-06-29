@@ -149,14 +149,11 @@ pub fn main() {
             }
         }
     } else {
-        let mut args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
+        let args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
             env::args().collect()
         } else {
             env::args().chain(Some("--sysroot".to_owned())).chain(Some(sys_root)).collect()
         };
-
-        args.extend_from_slice(&["--cfg".to_owned(), r#"feature="clippy""#.to_owned()]);
-
         let (result, _) = rustc_driver::run_compiler(&args, &mut ClippyCompilerCalls::new());
 
         if let Err(err_count) = result {
@@ -187,8 +184,6 @@ fn process<P, I>(old_args: I, dep_path: P, sysroot: &str) -> Result<(), i32>
     args.push(String::from("--sysroot"));
     args.push(sysroot.to_owned());
     args.push("-Zno-trans".to_owned());
-    args.push("--cfg".to_owned());
-    args.push(r#"feature="clippy""#.to_owned());
 
     let path = std::env::current_exe().expect("current executable path invalid");
     let exit_status = std::process::Command::new("cargo")

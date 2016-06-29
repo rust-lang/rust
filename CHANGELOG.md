@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 
 ## 0.0.78 - TBA
 * New lints: [`wrong_transmute`]
+* For compatibility, `cargo clippy` does not defines the `clippy` feature
+  introduced in 0.0.76 anymore
 
 ## 0.0.77 — 2016-06-21
 * Rustup to *rustc 1.11.0-nightly (5522e678b 2016-06-20)*
