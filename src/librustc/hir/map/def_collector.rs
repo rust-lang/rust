@@ -25,15 +25,15 @@ pub struct DefCollector<'ast> {
     // If we are walking HIR (c.f., AST), we need to keep a reference to the
     // crate.
     hir_crate: Option<&'ast hir::Crate>,
-    pub definitions: Definitions,
+    definitions: &'ast mut Definitions,
     parent_def: Option<DefIndex>,
 }
 
 impl<'ast> DefCollector<'ast> {
-    pub fn root() -> DefCollector<'ast> {
+    pub fn root(definitions: &'ast mut Definitions) -> DefCollector<'ast> {
         let mut collector = DefCollector {
             hir_crate: None,
-            definitions: Definitions::new(),
+            definitions: definitions,
             parent_def: None,
         };
         let root = collector.create_def_with_parent(None, CRATE_NODE_ID, DefPathData::CrateRoot);
@@ -48,7 +48,7 @@ impl<'ast> DefCollector<'ast> {
     pub fn extend(parent_node: NodeId,
                   parent_def_path: DefPath,
                   parent_def_id: DefId,
-                  definitions: Definitions)
+                  definitions: &'ast mut Definitions)
                   -> DefCollector<'ast> {
         let mut collector = DefCollector {
             hir_crate: None,
