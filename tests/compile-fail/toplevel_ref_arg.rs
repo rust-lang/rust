@@ -20,10 +20,15 @@ fn main() {
   //~| HELP try
   //~| SUGGESTION let x = &1;
 
-  let ref y : (&_, u8) = (&1, 2);
+  let ref y: (&_, u8) = (&1, 2);
   //~^ ERROR `ref` on an entire `let` pattern is discouraged
   //~| HELP try
   //~| SUGGESTION let y: (&_, u8) = &(&1, 2);
+
+  let ref z = 1 + 2;
+  //~^ ERROR `ref` on an entire `let` pattern is discouraged
+  //~| HELP try
+  //~| SUGGESTION let z = &(1 + 2);
 
   let (ref x, _) = (1,2); // okay, not top level
   println!("The answer is {}.", x);

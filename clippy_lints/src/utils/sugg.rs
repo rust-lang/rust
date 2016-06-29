@@ -114,6 +114,11 @@ impl<'a> Sugg<'a> {
     pub fn and(&self, rhs: &Self) -> Sugg<'static> {
         make_binop(ast::BinOpKind::And, self, rhs)
     }
+
+    /// Convenience method to create the `&<expr>` suggestion.
+    pub fn addr(&self) -> Sugg<'static> {
+        make_unop("&", self)
+    }
 }
 
 impl<'a, 'b> std::ops::Sub<&'b Sugg<'b>> for &'a Sugg<'a> {

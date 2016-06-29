@@ -72,12 +72,13 @@ impl LateLintPass for TopLevelRefPass {
                 l.pat.span,
                 "`ref` on an entire `let` pattern is discouraged, take a reference with & instead",
                 |db| {
+                    let init = &Sugg::hir(cx, init, "..");
                     db.span_suggestion(s.span,
                                        "try",
-                                       format!("let {}{} = &{};",
+                                       format!("let {}{} = {};",
                                                snippet(cx, i.span, "_"),
                                                tyopt,
-                                               snippet(cx, init.span, "_")));
+                                               init.addr()));
                 }
             );
         }}
