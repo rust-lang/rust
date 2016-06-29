@@ -23,6 +23,42 @@ fn main() {
         }
     }
 
+    if x == "hello" && x == "world" {
+    //~^ ERROR this if statement can be collapsed
+    //~| HELP try
+    //~| SUGGESTION if x == "hello" && x == "world" && (y == "world" || y == "hello") {
+        if y == "world" || y == "hello" {
+            println!("Hello world!");
+        }
+    }
+
+    if x == "hello" || x == "world" {
+    //~^ ERROR this if statement can be collapsed
+    //~| HELP try
+    //~| SUGGESTION if (x == "hello" || x == "world") && y == "world" && y == "hello" {
+        if y == "world" && y == "hello" {
+            println!("Hello world!");
+        }
+    }
+
+    if x == "hello" && x == "world" {
+    //~^ ERROR this if statement can be collapsed
+    //~| HELP try
+    //~| SUGGESTION if x == "hello" && x == "world" && y == "world" && y == "hello" {
+        if y == "world" && y == "hello" {
+            println!("Hello world!");
+        }
+    }
+
+    if 42 == 1337 {
+    //~^ ERROR this if statement can be collapsed
+    //~| HELP try
+    //~| SUGGESTION if 42 == 1337 && 'a' != 'A' {
+        if 'a' != 'A' {
+            println!("world!")
+        }
+    }
+
     // Collaspe `else { if .. }` to `else if ..`
     if x == "hello" {
         print!("Hello ");
