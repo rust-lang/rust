@@ -344,6 +344,9 @@ impl hash::Hash for SocketAddrV6 {
 /// some other type (e.g. a string) just for it to be converted back to
 /// `SocketAddr` in constructor methods is pointless.
 ///
+/// Addresses returned by the operating system that are not IP addresses are
+/// silently ignored.
+///
 /// Some examples:
 ///
 /// ```no_run
