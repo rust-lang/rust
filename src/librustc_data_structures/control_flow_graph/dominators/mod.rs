@@ -23,18 +23,11 @@ use std::fmt;
 #[cfg(test)]
 mod test;
 
-pub fn dominators<G: ControlFlowGraph>(graph: &G, 
-                                       nodes: &[G::Node]) 
-                                       -> Result<Dominators<G::Node>, UnreachableNode> 
-    {
+pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Result<Dominators<G::Node>, UnreachableNode> {
     let start_node = graph.start_node();
     let rpo = reverse_post_order(graph, start_node);
     let dominators = dominators_given_rpo(graph, &rpo);
-    for &n in nodes {
-        if !dominators.is_reachable(n) {
-            return Err(UnreachableNode);
-        };
-    };
+    if rpo.len() < graph.num_nodes() { return Err(UnreachableNode); }
     Ok(dominators)
 }
 

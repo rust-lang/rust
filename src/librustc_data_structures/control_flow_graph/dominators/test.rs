@@ -21,7 +21,7 @@ fn diamond() {
         (2, 3),
     ]);
 
-    let dominators = dominators(&graph, &[0,1,2,3]).unwrap();
+    let dominators = dominators(&graph).unwrap();
     let immediate_dominators = dominators.all_immediate_dominators();
     assert_eq!(immediate_dominators[0], Some(0));
     assert_eq!(immediate_dominators[1], Some(0));
@@ -31,8 +31,9 @@ fn diamond() {
 
 #[test]
 fn paper() {
-    // example from the paper:
+    // example from the paper (with 0 exit node added):
     let graph = TestGraph::new(6, &[
+        (3, 0), // this is the added edge
         (6, 5),
         (6, 4),
         (5, 1),
@@ -44,9 +45,8 @@ fn paper() {
         (2, 1),
     ]);
 
-    let dominators = dominators(&graph, &[1,2,3,4,5,6]).unwrap();
+    let dominators = dominators(&graph).unwrap();
     let immediate_dominators = dominators.all_immediate_dominators();
-    assert_eq!(immediate_dominators[0], None); // <-- notice 0 is not in the graph
     assert_eq!(immediate_dominators[1], Some(6));
     assert_eq!(immediate_dominators[2], Some(6));
     assert_eq!(immediate_dominators[3], Some(6));
@@ -70,6 +70,6 @@ fn no_start() {
         (2, 3),
     ]);
     // this should panic:
-    let dominators = dominators(&graph, &[0,1,2,3]).unwrap();
+    let dominators = dominators(&graph).unwrap();
     assert_eq!(dominators.is_dominated_by(1, 0), false);
 }
