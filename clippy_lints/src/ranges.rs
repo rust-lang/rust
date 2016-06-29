@@ -1,7 +1,8 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use syntax::codemap::Spanned;
-use utils::{is_integer_literal, match_type, paths, snippet, span_lint, unsugar_range, UnsugaredRange};
+use utils::{is_integer_literal, match_type, paths, snippet, span_lint};
+use utils::higher;
 
 /// **What it does:** This lint checks for iterating over ranges with a `.step_by(0)`, which never terminates.
 ///
@@ -54,7 +55,7 @@ impl LateLintPass for StepByZero {
                     let ExprMethodCall( Spanned { node: ref iter_name, .. }, _, ref iter_args ) = *iter,
                     iter_name.as_str() == "iter",
                     // range expression in .zip() call: 0..x.len()
-                    let Some(UnsugaredRange { start: Some(ref start), end: Some(ref end), .. }) = unsugar_range(zip_arg),
+                    let Some(higher::Range { start: Some(ref start), end: Some(ref end), .. }) = higher::range(zip_arg),
                     is_integer_literal(start, 0),
                     // .len() call
                     let ExprMethodCall(Spanned { node: ref len_name, .. }, _, ref len_args) = end.node,

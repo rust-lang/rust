@@ -14,10 +14,9 @@ use std::collections::HashMap;
 use syntax::ast;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro,
-            span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, unsugar_range,
+            span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, higher,
             walk_ptrs_ty, recover_for_loop};
 use utils::paths;
-use utils::UnsugaredRange;
 
 /// **What it does:** This lint checks for looping over the range of `0..len` of some collection just to get the values by index.
 ///
@@ -333,7 +332,7 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
 fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
-    if let Some(UnsugaredRange { start: Some(ref start), ref end, .. }) = unsugar_range(arg) {
+    if let Some(higher::Range { start: Some(ref start), ref end, .. }) = higher::range(arg) {
         // the var must be a single name
         if let PatKind::Binding(_, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
@@ -427,7 +426,7 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
 
 fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     // if this for loop is iterating over a two-sided range...
-    if let Some(UnsugaredRange { start: Some(ref start), end: Some(ref end), limits }) = unsugar_range(arg) {
+    if let Some(higher::Range { start: Some(ref start), end: Some(ref end), limits }) = higher::range(arg) {
         // ...and both sides are compile-time constant integers...
         if let Ok(start_idx) = eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None) {
             if let Ok(end_idx) = eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None) {
