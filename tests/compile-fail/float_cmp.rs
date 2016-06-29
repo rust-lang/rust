@@ -44,12 +44,12 @@ fn main() {
     //~^ ERROR strict comparison of f32 or f64
     //~| HELP within some error
     //~| SUGGESTION (ONE - 1f32).abs() < error
-    ONE == (1.0 + 0.0);
+    ONE == 1.0 + 0.0;
     //~^ ERROR strict comparison of f32 or f64
     //~| HELP within some error
     //~| SUGGESTION (ONE - (1.0 + 0.0)).abs() < error
 
-    ONE + ONE == (ZERO + ONE + ONE);
+    ONE + ONE == ZERO + ONE + ONE;
     //~^ ERROR strict comparison of f32 or f64
     //~| HELP within some error
     //~| SUGGESTION (ONE + ONE - (ZERO + ONE + ONE)).abs() < error

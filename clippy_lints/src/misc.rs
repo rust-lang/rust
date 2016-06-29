@@ -13,6 +13,7 @@ use utils::{
     get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path,
     snippet, span_lint, span_lint_and_then, walk_ptrs_ty
 };
+use utils::sugg::Sugg;
 
 /// **What it does:** This lint checks for function arguments and let bindings denoted as `ref`.
 ///
@@ -169,11 +170,12 @@ impl LateLintPass for FloatCmp {
                                    expr.span,
                                    "strict comparison of f32 or f64",
                                    |db| {
+                    let lhs = &Sugg::hir(cx, left, "..");
+                    let rhs = &Sugg::hir(cx, right, "..");
+
                     db.span_suggestion(expr.span,
                                        "consider comparing them within some error",
-                                       format!("({} - {}).abs() < error",
-                                               snippet(cx, left.span, ".."),
-                                               snippet(cx, right.span, "..")));
+                                       format!("({}).abs() < error", lhs - rhs));
                     db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
                 });
             }
