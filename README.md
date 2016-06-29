@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 156 lints included in this crate:
+There are 157 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -49,6 +49,7 @@ name                                                                            
 [deprecated_semver](https://github.com/Manishearth/rust-clippy/wiki#deprecated_semver)                               | warn    | `Warn` on `#[deprecated(since = "x")]` where x is not semver
 [derive_hash_xor_eq](https://github.com/Manishearth/rust-clippy/wiki#derive_hash_xor_eq)                             | warn    | deriving `Hash` but implementing `PartialEq` explicitly
 [doc_markdown](https://github.com/Manishearth/rust-clippy/wiki#doc_markdown)                                         | warn    | checks for the presence of `_`, `::` or camel-case outside ticks in documentation
+[double_neg](https://github.com/Manishearth/rust-clippy/wiki#double_neg)                                             | warn    | --x is a double negation of x and not a pre-decrement as in C or C++
 [drop_ref](https://github.com/Manishearth/rust-clippy/wiki#drop_ref)                                                 | warn    | call to `std::mem::drop` with a reference instead of an owned value, which will not call the `Drop::drop` method on the underlying value
 [duplicate_underscore_argument](https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument)       | warn    | Function arguments having names which only differ by an underscore
 [empty_loop](https://github.com/Manishearth/rust-clippy/wiki#empty_loop)                                             | warn    | empty `loop {}` detected
