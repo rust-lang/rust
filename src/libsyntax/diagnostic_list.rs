@@ -19,36 +19,36 @@ E0533: r##"
 ```compile_fail,E0533
 #[export_name]
 pub fn something() {}
+
+fn main() {}
 ```
 "##,
 
 }
 
-
 register_diagnostics! {
-    E0534,
-    E0535,
-    E0536,
-    E0537,
-    E0538,
-    E0539,
-    E0540,
-    E0541,
-    E0542,
-    E0543,
-    E0544,
-    E0545,
-    E0546,
-    E0547,
-    E0548,
-    E0549,
-    E0550,
-    E0551,
-    E0552,
-    E0553,
-    E0554,
-    E0555,
-    E0556,
-    E0557,
-    E0558,
+    E0534, // expected one argument
+    E0535, // invalid argument
+    E0536, // expected 1 cfg-pattern
+    E0537, // invalid predicate
+    E0538, // multiple [same] items
+    E0539, // incorrect meta item
+    E0540, // multiple rustc_deprecated attributes
+    E0541, // unknown meta item
+    E0542, // missing 'since'
+    E0543, // missing 'reason'
+    E0544, // multiple stability levels
+    E0545, // incorrect 'issue'
+    E0546, // missing 'feature'
+    E0547, // missing 'issue'
+    E0548, // incorrect stability attribute type
+    E0549, // rustc_deprecated attribute must be paired with either stable or unstable attribute
+    E0550, // multiple deprecated attributes
+    E0551, // incorrect meta item
+    E0552, // unrecognized representation hint
+    E0553, // unrecognized enum representation hint
+    E0554, // #[feature] may not be used on the [] release channel
+    E0555, // malformed feature attribute, expected #![feature(...)]
+    E0556, // malformed feature, expected just one word
+    E0557, // feature has been removed
 }

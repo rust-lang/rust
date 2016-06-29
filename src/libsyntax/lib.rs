@@ -138,4 +138,4 @@ pub mod ext {
     }
 }
 
-__build_diagnostic_array! { libsyntax, DIAGNOSTICS }
+// __build_diagnostic_array! { libsyntax, DIAGNOSTICS }
