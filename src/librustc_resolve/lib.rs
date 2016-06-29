@@ -3207,7 +3207,9 @@ impl<'a> Resolver<'a> {
                     if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
-                        worklist.push((module, path_segments, is_extern));
+                        if !worklist.iter().any(|&(m, _, _)| m.def == module.def) {
+                            worklist.push((module, path_segments, is_extern));
+                        }
                     }
                 }
             })
