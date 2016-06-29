@@ -1,4 +1,4 @@
-//error-pattern: no mir for `std
+//error-pattern: no mir for `std::env::args`
 
 fn main() {
     let x = std::env::args();
