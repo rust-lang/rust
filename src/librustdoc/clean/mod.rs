@@ -1682,6 +1682,7 @@ impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext) -> Type {
         use rustc::hir::*;
         match self.node {
+            TyEmpty => Bottom,
             TyPtr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
             TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
@@ -1790,6 +1791,7 @@ impl Clean<Type> for hir::Ty {
 impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         match self.sty {
+            ty::TyEmpty => Bottom,
             ty::TyBool => Primitive(Bool),
             ty::TyChar => Primitive(Char),
             ty::TyInt(ast::IntTy::Is) => Primitive(Isize),
