@@ -164,15 +164,18 @@ impl LateLintPass for FloatCmp {
                         return;
                     }
                 }
-                span_lint(cx,
-                          FLOAT_CMP,
-                          expr.span,
-                          &format!("{}-comparison of f32 or f64 detected. Consider changing this to `({} - {}).abs() < \
-                                    epsilon` for some suitable value of epsilon. \
-                                    std::f32::EPSILON and std::f64::EPSILON are available.",
-                                   op.as_str(),
-                                   snippet(cx, left.span, ".."),
-                                   snippet(cx, right.span, "..")));
+                span_lint_and_then(cx,
+                                   FLOAT_CMP,
+                                   expr.span,
+                                   "strict comparison of f32 or f64",
+                                   |db| {
+                    db.span_suggestion(expr.span,
+                                       "consider comparing them within some error",
+                                       format!("({} - {}).abs() < error",
+                                               snippet(cx, left.span, ".."),
+                                               snippet(cx, right.span, "..")));
+                    db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
+                });
             }
         }
     }
