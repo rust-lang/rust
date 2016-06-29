@@ -326,13 +326,6 @@ You can add options  to `allow`/`warn`/`deny`:
 
 Note: `deny` produces errors instead of warnings.
 
-For convenience, `cargo clippy` automatically defines a `clippy` features. This
-lets you set lints level and compile with or without clippy transparently:
-
-```rust
-#[cfg_attr(feature = "clippy", allow(needless_lifetimes))]
-```
-
 ## Link with clippy service
 
 `clippy-service` is a rust web initiative providing `rust-clippy` as a web service.
