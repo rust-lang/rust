@@ -70,7 +70,7 @@ impl LateLintPass for TopLevelRefPass {
             span_lint_and_then(cx,
                 TOPLEVEL_REF_ARG,
                 l.pat.span,
-                "`ref` on an entire `let` pattern is discouraged, take a reference with & instead",
+                "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
                 |db| {
                     let init = &Sugg::hir(cx, init, "..");
                     db.span_suggestion(s.span,
