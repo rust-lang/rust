@@ -3,6 +3,7 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(custom_attribute)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(iter_arith)]
 #![feature(question_mark)]
 #![feature(rustc_private)]

@@ -18,12 +18,14 @@ use syntax::codemap::{ExpnInfo, Span, ExpnFormat};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 
+pub mod cargo;
 pub mod comparisons;
 pub mod conf;
+pub mod higher;
 mod hir;
 pub mod paths;
+pub mod sugg;
 pub use self::hir::{SpanlessEq, SpanlessHash};
-pub mod cargo;
 
 pub type MethodArgs = HirVec<P<Expr>>;
 
