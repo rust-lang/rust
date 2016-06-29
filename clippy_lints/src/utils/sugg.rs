@@ -123,6 +123,13 @@ impl<'a, 'b> std::ops::Sub<&'b Sugg<'b>> for &'a Sugg<'a> {
     }
 }
 
+impl<'a> std::ops::Not for &'a Sugg<'a> {
+    type Output = Sugg<'static>;
+    fn not(self) -> Sugg<'static> {
+        make_unop("!", self)
+    }
+}
+
 struct ParenHelper<T> {
     paren: bool,
     wrapped: T,
@@ -145,6 +152,15 @@ impl<T: std::fmt::Display> std::fmt::Display for ParenHelper<T> {
             self.wrapped.fmt(f)
         }
     }
+}
+
+/// Build the string for `<op> <expr>` adding parenthesis when necessary.
+///
+/// For convenience, the operator is taken as a string because all unary operators have the same
+/// precedence.
+pub fn make_unop(op: &str, expr: &Sugg) -> Sugg<'static> {
+    let needs_paren = !matches!(*expr, Sugg::NonParen(..));
+    Sugg::MaybeParen(format!("{}{}", op, ParenHelper::new(needs_paren, expr)).into())
 }
 
 /// Build the string for `<lhs> <op> <rhs>` adding parenthesis when necessary.

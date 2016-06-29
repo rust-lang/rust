@@ -10,6 +10,7 @@ use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use utils::paths;
 use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
+use utils::sugg::Sugg;
 
 /// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice.
 ///
@@ -262,8 +263,9 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
                         Some(format!("if {} {}", snippet(cx, ex.span, "b"), expr_block(cx, true_expr, None, "..")))
                     }
                     (true, false) => {
-                        Some(format!("try\nif !{} {}",
-                                     snippet(cx, ex.span, "b"),
+                        let test = &Sugg::hir(cx, ex, "..");
+                        Some(format!("if {} {}",
+                                     !test,
                                      expr_block(cx, false_expr, None, "..")))
                     }
                     (true, true) => None,

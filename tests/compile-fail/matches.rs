@@ -130,7 +130,7 @@ fn match_bool() {
     match test {
     //~^ ERROR you seem to be trying to match on a boolean expression
     //~| HELP try
-    //~^^ SUGGESTION if !test { println!("Noooo!"); };
+    //~| SUGGESTION if !test { println!("Noooo!"); };
         true => (),
         false => { println!("Noooo!"); }
     };
@@ -138,7 +138,16 @@ fn match_bool() {
     match test {
     //~^ ERROR you seem to be trying to match on a boolean expression
     //~| HELP try
-    //~^^ SUGGESTION if !test { println!("Noooo!"); };
+    //~| SUGGESTION if !test { println!("Noooo!"); };
+        false => { println!("Noooo!"); }
+        _ => (),
+    };
+
+    match test && test {
+    //~^ ERROR you seem to be trying to match on a boolean expression
+    //~| HELP try
+    //~| SUGGESTION if !(test && test) { println!("Noooo!"); };
+    //~| ERROR equal expressions as operands
         false => { println!("Noooo!"); }
         _ => (),
     };
