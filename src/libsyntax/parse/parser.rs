@@ -553,10 +553,6 @@ impl<'a> Parser<'a> {
         self.expect_one_of(edible, inedible)
     }
 
-    pub fn commit_stmt_expecting(&mut self, edible: token::Token) -> PResult<'a, ()> {
-        self.commit_stmt(&[edible], &[])
-    }
-
     /// returns the span of expr, if it was not interpolated or the span of the interpolated token
     fn interpolated_or_expr_span(&self,
                                  expr: PResult<'a, P<Expr>>)
@@ -4122,7 +4118,7 @@ impl<'a> Parser<'a> {
                 _ => { // all other kinds of statements:
                     let mut hi = span.hi;
                     if classify::stmt_ends_with_semi(&node) {
-                        self.commit_stmt_expecting(token::Semi)?;
+                        self.commit_stmt(&[token::Semi], &[])?;
                         hi = self.last_span.hi;
                     }
 
