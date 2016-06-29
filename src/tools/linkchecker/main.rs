@@ -138,22 +138,6 @@ fn check(cache: &mut Cache,
         return None;
     }
 
-    if file.ends_with("std/sys/ext/index.html") {
-        return None;
-    }
-
-    if let Some(file) = file.to_str() {
-        // FIXME(#31948)
-        if file.contains("ParseFloatError") {
-            return None;
-        }
-        // weird reexports, but this module is on its way out, so chalk it up to
-        // "rustdoc weirdness" and move on from there
-        if file.contains("scoped_tls") {
-            return None;
-        }
-    }
-
     let mut parser = UrlParser::new();
     parser.base_url(base);
 
@@ -170,12 +154,24 @@ fn check(cache: &mut Cache,
 
     // Search for anything that's the regex 'href[ ]*=[ ]*".*?"'
     with_attrs_in_source(&contents, " href", |url, i| {
+        // Ignore external URLs
+        if url.starts_with("http:") || url.starts_with("https:") ||
+           url.starts_with("javascript:") || url.starts_with("ftp:") ||
+           url.starts_with("irc:") || url.starts_with("data:") {
+            return;
+        }
         // Once we've plucked out the URL, parse it using our base url and
-        // then try to extract a file path. If either of these fail then we
-        // just keep going.
+        // then try to extract a file path.
         let (parsed_url, path) = match url_to_file_path(&parser, url) {
             Some((url, path)) => (url, PathBuf::from(path)),
-            None => return,
+            None => {
+                *errors = true;
+                println!("{}:{}: invalid link - {}",
+                         pretty_file.display(),
+                         i + 1,
+                         url);
+                return;
+            }
         };
 
         // Alright, if we've found a file name then this file had better
@@ -197,10 +193,11 @@ fn check(cache: &mut Cache,
                 Ok(res) => res,
                 Err(LoadError::IOError(err)) => panic!(format!("{}", err)),
                 Err(LoadError::BrokenRedirect(target, _)) => {
-                    print!("{}:{}: broken redirect to {}",
-                           pretty_file.display(),
-                           i + 1,
-                           target.display());
+                    *errors = true;
+                    println!("{}:{}: broken redirect to {}",
+                             pretty_file.display(),
+                             i + 1,
+                             target.display());
                     return;
                 }
                 Err(LoadError::IsRedirect) => unreachable!(),
