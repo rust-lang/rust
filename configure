@@ -1681,9 +1681,10 @@ do
     fi
 
     if [ "$t" != "$CFG_BUILD" ]; then
+        # see http://llvm.org/docs/HowToCrossCompileLLVM.html
         CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_CROSSCOMPILING=True"
         CMAKE_ARGS="$CMAKE_ARGS -DLLVM_TARGET_ARCH=$arch"
-        CMAKE_ARGS="$CMAKE_ARGS -DLLVM_TABLEGEN=$LLVM_INST_DIR/bin/llvm-tablegen"
+        CMAKE_ARGS="$CMAKE_ARGS -DLLVM_TABLEGEN=$CFG_BUILD_DIR/$CFG_BUILD/llvm/bin/llvm-tblgen"
         CMAKE_ARGS="$CMAKE_ARGS -DLLVM_DEFAULT_TARGET_TRIPLE=$t"
     fi
 
