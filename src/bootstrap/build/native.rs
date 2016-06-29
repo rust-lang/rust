@@ -20,14 +20,14 @@
 
 use std::path::Path;
 use std::process::Command;
-use std::fs;
+use std::fs::{self, File};
 
 use build_helper::output;
 use cmake;
 use gcc;
 
 use build::Build;
-use build::util::{exe, staticlib, up_to_date};
+use build::util::{staticlib, up_to_date};
 
 /// Compile LLVM for `target`.
 pub fn llvm(build: &Build, target: &str) {
@@ -43,9 +43,9 @@ pub fn llvm(build: &Build, target: &str) {
     // artifacts are missing) then we keep going, otherwise we bail out.
     let dst = build.llvm_out(target);
     let stamp = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
-    let llvm_config = dst.join("bin").join(exe("llvm-config", target));
+    let done_stamp = dst.join("llvm-finished-building");
     build.clear_if_dirty(&dst, &stamp);
-    if fs::metadata(llvm_config).is_ok() {
+    if fs::metadata(&done_stamp).is_ok() {
         return
     }
 
@@ -111,6 +111,8 @@ pub fn llvm(build: &Build, target: &str) {
     //        tools. Figure out how to filter them down and only build the right
     //        tools and libs on all platforms.
     cfg.build();
+
+    t!(File::create(&done_stamp));
 }
 
 fn check_llvm_version(build: &Build, llvm_config: &Path) {
