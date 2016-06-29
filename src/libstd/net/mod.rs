@@ -107,6 +107,9 @@ impl Iterator for LookupHost {
 /// This method may perform a DNS query to resolve `host` and may also inspect
 /// system configuration to resolve the specified hostname.
 ///
+/// The returned iterator will skip over any unknown addresses returned by the
+/// operating system.
+///
 /// # Examples
 ///
 /// ```no_run
@@ -116,7 +119,7 @@ impl Iterator for LookupHost {
 ///
 /// # fn foo() -> std::io::Result<()> {
 /// for host in try!(net::lookup_host("rust-lang.org")) {
-///     println!("found address: {}", try!(host));
+///     println!("found address: {}", host);
 /// }
 /// # Ok(())
 /// # }
