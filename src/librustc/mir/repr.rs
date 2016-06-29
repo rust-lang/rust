@@ -12,7 +12,7 @@ use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-//use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
+use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
 use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use rustc_data_structures::control_flow_graph::transpose::TransposedGraph;
@@ -150,13 +150,13 @@ impl<'tcx> Mir<'tcx> {
         Ref::map(self.predecessors(), |p| &p[bb])
     }
 
-    // #[inline]
-    // pub fn dominators(&self) -> Dominators<BasicBlock> {
-    //     // For the normal Mir CFG the dominators
-    //     // will succeed because all nodes should be reachable
-    //     // from the start node
-    //     dominators(self, self.basic_blocks).unwrap()
-    // }
+    #[inline]
+    pub fn dominators(&self) -> Dominators<BasicBlock> {
+        // For the normal Mir CFG the dominators
+        // will succeed because all nodes should be reachable
+        // from the start node
+        dominators(self, self.basic_blocks).unwrap()
+    }
 
     /// Maps locals (Arg's, Var's, Temp's and ReturnPointer, in that order)
     /// to their index in the whole list of locals. This is useful if you
