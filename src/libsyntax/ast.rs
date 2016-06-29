@@ -19,7 +19,6 @@ pub use util::ThinVec;
 use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
-use errors;
 use parse::token::{self, keywords, InternedString};
 use print::pprust;
 use ptr::P;
@@ -361,15 +360,6 @@ pub const CRATE_NODE_ID: NodeId = 0;
 /// node value. Then later, in the renumber pass, we renumber them to have
 /// small, positive ids.
 pub const DUMMY_NODE_ID: NodeId = !0;
-
-pub trait NodeIdAssigner {
-    fn next_node_id(&self) -> NodeId;
-    fn peek_node_id(&self) -> NodeId;
-
-    fn diagnostic(&self) -> &errors::Handler {
-        panic!("this ID assigner cannot emit diagnostics")
-    }
-}
 
 /// The AST represents all type param bounds as types.
 /// typeck::collect::compute_bounds matches these against

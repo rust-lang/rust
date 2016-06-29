@@ -50,6 +50,7 @@ use session::Session;
 use std::collections::BTreeMap;
 use std::iter;
 use syntax::ast::*;
+use syntax::errors;
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned};
 use syntax::parse::token;
@@ -60,7 +61,7 @@ use syntax_pos::Span;
 pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
     // Use to assign ids to hir nodes that do not directly correspond to an ast node
-    id_assigner: &'a NodeIdAssigner,
+    sess: Option<&'a Session>,
     // As we walk the AST we must keep track of the current 'parent' def id (in
     // the form of a DefIndex) so that if we create a new node which introduces
     // a definition, then we can properly create the def id.
@@ -99,7 +100,6 @@ impl Resolver for DummyResolver {
 
 pub fn lower_crate(sess: &Session,
                    krate: &Crate,
-                   id_assigner: &NodeIdAssigner,
                    resolver: &mut Resolver)
                    -> hir::Crate {
     // We're constructing the HIR here; we don't care what we will
@@ -115,17 +115,17 @@ pub fn lower_crate(sess: &Session,
         } else {
             Some("std")
         },
-        id_assigner: id_assigner,
+        sess: Some(sess),
         parent_def: None,
         resolver: resolver,
     }.lower_crate(krate)
 }
 
 impl<'a> LoweringContext<'a> {
-    pub fn testing_context(id_assigner: &'a NodeIdAssigner, resolver: &'a mut Resolver) -> Self {
+    pub fn testing_context(resolver: &'a mut Resolver) -> Self {
         LoweringContext {
             crate_root: None,
-            id_assigner: id_assigner,
+            sess: None,
             parent_def: None,
             resolver: resolver,
         }
@@ -161,7 +161,12 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn next_id(&self) -> NodeId {
-        self.id_assigner.next_node_id()
+        self.sess.map(Session::next_node_id).unwrap_or(0)
+    }
+
+    fn diagnostic(&self) -> &errors::Handler {
+        self.sess.map(Session::diagnostic)
+                 .unwrap_or_else(|| panic!("this lowerer cannot emit diagnostics"))
     }
 
     fn str_to_ident(&self, s: &'static str) -> Name {
@@ -786,7 +791,7 @@ impl<'a> LoweringContext<'a> {
         if let Some(SelfKind::Explicit(..)) = sig.decl.get_self().map(|eself| eself.node) {
             match hir_sig.decl.get_self().map(|eself| eself.node) {
                 Some(hir::SelfKind::Value(..)) | Some(hir::SelfKind::Region(..)) => {
-                    self.id_assigner.diagnostic().span_err(sig.decl.inputs[0].ty.span,
+                    self.diagnostic().span_err(sig.decl.inputs[0].ty.span,
                         "the type placeholder `_` is not allowed within types on item signatures");
                 }
                 _ => {}
@@ -1212,7 +1217,7 @@ impl<'a> LoweringContext<'a> {
                             make_struct(self, e, &["RangeInclusive", "NonEmpty"],
                                                  &[("start", e1), ("end", e2)]),
 
-                        _ => panic!(self.id_assigner.diagnostic()
+                        _ => panic!(self.diagnostic()
                                         .span_fatal(e.span, "inclusive range with no end")),
                     };
                 }

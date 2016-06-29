@@ -10,8 +10,9 @@
 
 use middle::cstore::LOCAL_CRATE;
 use hir::def_id::{DefId, DefIndex};
+use hir::map::def_collector::DefCollector;
 use rustc_data_structures::fnv::FnvHashMap;
-use syntax::ast;
+use syntax::{ast, visit};
 use syntax::parse::token::InternedString;
 use util::nodemap::NodeMap;
 
@@ -187,6 +188,11 @@ impl Definitions {
             key_map: FnvHashMap(),
             node_map: NodeMap(),
         }
+    }
+
+    pub fn collect(&mut self, krate: &ast::Crate) {
+        let mut def_collector = DefCollector::root(self);
+        visit::walk_crate(&mut def_collector, krate);
     }
 
     /// Get the number of definitions.

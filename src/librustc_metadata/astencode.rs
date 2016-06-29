@@ -38,7 +38,6 @@ use rustc::ty::subst;
 use rustc::ty::{self, Ty, TyCtxt};
 
 use syntax::ast;
-use syntax::ast::NodeIdAssigner;
 use syntax::ptr::P;
 use syntax_pos;
 
@@ -56,7 +55,6 @@ use rustc_serialize::{Encodable, EncoderHelpers};
 
 #[cfg(test)] use std::io::Cursor;
 #[cfg(test)] use syntax::parse;
-#[cfg(test)] use syntax::ast::NodeId;
 #[cfg(test)] use rustc::hir::print as pprust;
 #[cfg(test)] use rustc::hir::lowering::{LoweringContext, DummyResolver};
 
@@ -1296,31 +1294,14 @@ impl FakeExtCtxt for parse::ParseSess {
 }
 
 #[cfg(test)]
-struct FakeNodeIdAssigner;
-
-#[cfg(test)]
-// It should go without saying that this may give unexpected results. Avoid
-// lowering anything which needs new nodes.
-impl NodeIdAssigner for FakeNodeIdAssigner {
-    fn next_node_id(&self) -> NodeId {
-        0
-    }
-
-    fn peek_node_id(&self) -> NodeId {
-        0
-    }
-}
-
-#[cfg(test)]
 fn mk_ctxt() -> parse::ParseSess {
     parse::ParseSess::new()
 }
 
 #[cfg(test)]
 fn with_testing_context<T, F: FnOnce(&mut LoweringContext) -> T>(f: F) -> T {
-    let assigner = FakeNodeIdAssigner;
     let mut resolver = DummyResolver;
-    let mut lcx = LoweringContext::testing_context(&assigner, &mut resolver);
+    let mut lcx = LoweringContext::testing_context(&mut resolver);
     f(&mut lcx)
 }
 
