@@ -155,7 +155,7 @@ impl<'tcx> Mir<'tcx> {
         // For the normal Mir CFG the dominators
         // will succeed because all nodes should be reachable
         // from the start node
-        dominators(self, self.basic_blocks).unwrap()
+        dominators(self).unwrap()
     }
 
     /// Maps locals (Arg's, Var's, Temp's and ReturnPointer, in that order)
