@@ -521,7 +521,7 @@ against `libc` and `libm` by default.
 
 # The "nullable pointer optimization"
 
-Certain types are defined to not be `NULL`. This includes references (`&T`,
+Certain types are defined to not be NULL. This includes references (`&T`,
 `&mut T`), boxes (`Box<T>`), and function pointers (`extern "abi" fn()`).
 When interfacing with C, pointers that might be NULL are often used.
 As a special case, a generic `enum` that contains exactly two variants, one of
