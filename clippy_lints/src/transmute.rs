@@ -3,6 +3,7 @@ use rustc::ty::TypeVariants::{TyRawPtr, TyRef};
 use rustc::ty;
 use rustc::hir::*;
 use utils::{match_def_path, paths, snippet_opt, span_lint, span_lint_and_then};
+use utils::sugg;
 
 /// **What it does:** This lint checks for transmutes that can't ever be correct on any architecture
 ///
@@ -148,28 +149,21 @@ impl LateLintPass for Transmute {
                                     from_ty,
                                     to_ty),
                             |db| {
-                                if let Some(arg) = snippet_opt(cx, args[0].span) {
-                                    let (deref, cast) = if to_rty.mutbl == Mutability::MutMutable {
-                                        ("&mut *", "*mut")
-                                    } else {
-                                        ("&*", "*const")
-                                    };
+                                let arg = &sugg::Sugg::hir(cx, &args[0], "..");
+                                let (deref, cast) = if to_rty.mutbl == Mutability::MutMutable {
+                                    ("&mut *", "*mut")
+                                } else {
+                                    ("&*", "*const")
+                                };
 
 
-                                    let sugg = if from_pty.ty == to_rty.ty {
-                                        // Put things in parentheses if they are more complex
-                                        match args[0].node {
-                                            ExprPath(..) | ExprCall(..) | ExprMethodCall(..) | ExprBlock(..) => {
-                                                format!("{}{}", deref, arg)
-                                            }
-                                            _ => format!("{}({})", deref, arg)
-                                        }
-                                    } else {
-                                        format!("{}({} as {} {})", deref, arg, cast, to_rty.ty)
-                                    };
+                                let sugg = if from_pty.ty == to_rty.ty {
+                                    sugg::make_unop(deref, arg).to_string()
+                                } else {
+                                    format!("{}({} as {} {})", deref, arg, cast, to_rty.ty)
+                                };
 
-                                    db.span_suggestion(e.span, "try", sugg);
-                                }
+                                db.span_suggestion(e.span, "try", sugg);
                             },
                         ),
                         _ => return,
