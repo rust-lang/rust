@@ -202,7 +202,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                                           &fld.cx.ecfg.features.unwrap());
         }
 
-        if path.segments.len() > 1 {
+        if path.segments.len() > 1 || path.global || !path.segments[0].parameters.is_empty() {
             fld.cx.span_err(path.span, "expected macro name without module separators");
             return None;
         }
