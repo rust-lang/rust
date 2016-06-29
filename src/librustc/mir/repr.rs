@@ -1249,7 +1249,7 @@ impl<'m> MirWithExit<'m> {
                 exit_node_preds.push(BasicBlock::new(idx));
             }
         };
-        MirWithExit {mir: mir, 
+        MirWithExit {mir: mir,
                      exit_node: exit_node,
                      exit_node_predecessors: exit_node_preds,
         }
