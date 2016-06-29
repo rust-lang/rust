@@ -2453,6 +2453,19 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                expected_trait_ref: ty::PolyTraitRef<'tcx>)
                                -> Result<(), SelectionError<'tcx>>
     {
+        if self.projection_mode().is_any() {
+            // Issue #33364: `ProjectionMode::Any` means trans. This
+            // method is not looking up a vtable, so its feasible to
+            // skip confirmation.
+            //
+            // (Skipping confirmation sidesteps ICE in #33364. Even if
+            // that were fixed by other means, skipping is still good
+            // since redundant confirmations wastes compile-time.)
+
+            debug!("confirm_poly_trait_refs skip confirm unconditionally");
+            return Ok(());
+        }
+
         let origin = TypeOrigin::RelateOutputImplTypes(obligation_cause.span);
 
         let obligation_trait_ref = obligation_trait_ref.clone();

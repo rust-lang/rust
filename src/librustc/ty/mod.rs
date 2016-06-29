@@ -563,6 +563,10 @@ pub struct TyS<'tcx> {
     region_depth: u32,
 }
 
+impl<'tcx> TyS<'tcx> {
+    pub fn region_depth(&self) -> u32 { self.region_depth }
+}
+
 impl<'tcx> PartialEq for TyS<'tcx> {
     #[inline]
     fn eq(&self, other: &TyS<'tcx>) -> bool {

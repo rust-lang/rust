@@ -1247,6 +1247,34 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
                                               fn_sig,
                                               flag);
 
+    if selcx.projection_mode().is_any() {
+        // Issue #33364: `ProjectionMode::Any` means trans, during
+        // which there is no (good) reason for confirmation to fail
+        // (because type check has already admitted the source code).
+        //
+        // The only reason trans needs to run confirm is finding
+        // solutions for outstanding unification variables. (For now,
+        // that empirically appears to be necessary in some cases).
+        //
+        // So: if we can prove there is no reason to confirm, skip it.
+        //
+        // (Skipping confirmation sidesteps ICE in #33364. Even if
+        // that were fixed by other means, skipping is still good
+        // since redundant confirmations wastes compile-time.)
+
+        let unsolved_tys = trait_ref.substs.types.iter().any(|t| t.is_ty_var());
+        if unsolved_tys || ret_type.region_depth() > 0 {
+            debug!("confirm_callable_candidate need confirm for \
+                    unsolved_tys: {} ret_type: {:?} region_depth {}",
+                   unsolved_tys, ret_type, ret_type.region_depth());
+        } else {
+            debug!("confirm_callable_candidate skip confirm for \
+                    trait_ref: {:?} ret_type: {:?}",
+                   trait_ref, ret_type);
+            return Progress { ty: ret_type, obligations: vec![], cacheable: false, };
+        }
+    }
+
     let predicate = ty::Binder(ty::ProjectionPredicate { // (1) recreate binder here
         projection_ty: ty::ProjectionTy {
             trait_ref: trait_ref,
