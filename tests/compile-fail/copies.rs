@@ -8,6 +8,7 @@
 #![allow(unused_variables)]
 #![allow(cyclomatic_complexity)]
 #![allow(blacklisted_name)]
+#![allow(collapsible_if)]
 
 fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }

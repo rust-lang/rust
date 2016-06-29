@@ -18,34 +18,38 @@ enum ExprNode {
 
 static NODE: ExprNode = ExprNode::Unicorns;
 
+fn dummy() {
+}
+
 fn unwrap_addr() -> Option<&'static ExprNode> {
-    match ExprNode::Butterflies {   //~ ERROR you seem to be trying to use match
-                                    //~^ HELP try
+    match ExprNode::Butterflies {
+        //~^ ERROR you seem to be trying to use match
+        //~| HELP try
+        //~| SUGGESTION if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else { let x = 5; None }
         ExprNode::ExprAddrOf => Some(&NODE),
-        _ => {
-            let x = 5;
-            None
-        },
+        _ => { let x = 5; None },
     }
 }
 
 fn single_match(){
     let x = Some(1u8);
 
-    match x {  //~ ERROR you seem to be trying to use match
-               //~^ HELP try
-        Some(y) => {
-            println!("{:?}", y);
-        }
+    match x {
+        //~^ ERROR you seem to be trying to use match
+        //~| HELP try
+        //~| SUGGESTION if let Some(y) = x { println!("{:?}", y); };
+        Some(y) => { println!("{:?}", y); }
         _ => ()
-    }
+    };
 
     let z = (1u8,1u8);
-    match z { //~ ERROR you seem to be trying to use match
-              //~^ HELP try
-        (2...3, 7...9) => println!("{:?}", z),
+    match z {
+        //~^ ERROR you seem to be trying to use match
+        //~| HELP try
+        //~| SUGGESTION if let (2...3, 7...9) = z { dummy() };
+        (2...3, 7...9) => dummy(),
         _ => {}
-    }
+    };
 
     // Not linted (pattern guards used)
     match x {
@@ -64,25 +68,31 @@ fn single_match_know_enum() {
     let x = Some(1u8);
     let y : Result<_, i8> = Ok(1i8);
 
-    match x { //~ ERROR you seem to be trying to use match
-              //~^ HELP try
-        Some(y) => println!("{:?}", y),
+    match x {
+        //~^ ERROR you seem to be trying to use match
+        //~| HELP try
+        //~| SUGGESTION if let Some(y) = x { dummy() };
+        Some(y) => dummy(),
         None => ()
-    }
+    };
 
-    match y { //~ ERROR you seem to be trying to use match
-              //~^ HELP try
-        Ok(y) => println!("{:?}", y),
+    match y {
+        //~^ ERROR you seem to be trying to use match
+        //~| HELP try
+        //~| SUGGESTION if let Ok(y) = y { dummy() };
+        Ok(y) => dummy(),
         Err(..) => ()
-    }
+    };
 
     let c = Cow::Borrowed("");
 
-    match c { //~ ERROR you seem to be trying to use match
-              //~^ HELP try
-        Cow::Borrowed(..) => println!("42"),
+    match c {
+        //~^ ERROR you seem to be trying to use match
+        //~| HELP try
+        //~| SUGGESTION if let Cow::Borrowed(..) = c { dummy() };
+        Cow::Borrowed(..) => dummy(),
         Cow::Owned(..) => (),
-    }
+    };
 
     let z = Foo::Bar;
     // no warning
@@ -209,19 +219,19 @@ fn overlapping() {
 
     match 42 {
         0 ... 10 => println!("0 ... 10"), //~ERROR: some ranges overlap
-        0 ... 11 => println!("0 ... 10"),
+        0 ... 11 => println!("0 ... 10"), //~NOTE overlaps with this
         _ => (),
     }
 
     match 42 {
         0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
         6 ... 7 => println!("6 ... 7"),
-        FOO ... 11 => println!("0 ... 10"),
+        FOO ... 11 => println!("0 ... 10"), //~NOTE overlaps with this
         _ => (),
     }
 
     match 42 {
-        2 => println!("2"),
+        2 => println!("2"), //~NOTE overlaps with this
         0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
         _ => (),
     }

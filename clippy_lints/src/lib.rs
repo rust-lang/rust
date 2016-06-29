@@ -189,7 +189,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box len_zero::LenZero);
     reg.register_late_lint_pass(box misc::CmpOwned);
     reg.register_late_lint_pass(box attrs::AttrPass);
-    reg.register_late_lint_pass(box collapsible_if::CollapsibleIf);
+    reg.register_early_lint_pass(box collapsible_if::CollapsibleIf);
     reg.register_late_lint_pass(box block_in_if_condition::BlockInIfCondition);
     reg.register_late_lint_pass(box misc::ModuloOne);
     reg.register_late_lint_pass(box unicode::Unicode);
