@@ -691,7 +691,7 @@ impl<'a> Folder for PatIdentRenamer<'a> {
 }
 
 fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> SmallVector<Annotatable> {
-    let new_items: SmallVector<Annotatable> = match a {
+    match a {
         Annotatable::Item(it) => match it.node {
             ast::ItemKind::Mac(..) => {
                 it.and_then(|it| match it.node {
@@ -728,63 +728,6 @@ fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> SmallVector
             expand_impl_item(ii.unwrap(), fld).into_iter().
                 map(|ii| Annotatable::ImplItem(P(ii))).collect()
         }
-    };
-
-    new_items.into_iter().flat_map(|a| decorate(a, fld)).collect()
-}
-
-fn decorate(a: Annotatable, fld: &mut MacroExpander) -> SmallVector<Annotatable> {
-    let mut decorator_items = SmallVector::zero();
-    let mut new_attrs = Vec::new();
-    expand_decorators(a.clone(), fld, &mut decorator_items, &mut new_attrs);
-
-    let mut new_items = SmallVector::one(a.fold_attrs(new_attrs));
-    new_items.push_all(decorator_items);
-    new_items
-}
-
-fn expand_decorators(a: Annotatable,
-                     fld: &mut MacroExpander,
-                     decorator_items: &mut SmallVector<Annotatable>,
-                     new_attrs: &mut Vec<ast::Attribute>)
-{
-    for attr in a.attrs() {
-        let mname = intern(&attr.name());
-        match fld.cx.syntax_env.find(mname) {
-            Some(rc) => match *rc {
-                MultiDecorator(ref dec) => {
-                    attr::mark_used(&attr);
-
-                    fld.cx.bt_push(ExpnInfo {
-                        call_site: attr.span,
-                        callee: NameAndSpan {
-                            format: MacroAttribute(mname),
-                            span: Some(attr.span),
-                            // attributes can do whatever they like,
-                            // for now.
-                            allow_internal_unstable: true,
-                        }
-                    });
-
-                    let mut items: SmallVector<Annotatable> = SmallVector::zero();
-                    dec.expand(fld.cx,
-                               attr.span,
-                               &attr.node.value,
-                               &a,
-                               &mut |ann| items.push(ann));
-
-                    for item in items {
-                        for configured_item in item.fold_with(&mut fld.strip_unconfigured()) {
-                            decorator_items.extend(expand_annotatable(configured_item, fld));
-                        }
-                    }
-
-                    fld.cx.bt_pop();
-                }
-                _ => new_attrs.push((*attr).clone()),
-            },
-            _ => new_attrs.push((*attr).clone()),
-        }
     }
 }
 
@@ -793,9 +736,12 @@ fn expand_annotatable(mut item: Annotatable, fld: &mut MacroExpander) -> SmallVe
     item = item.map_attrs(|mut attrs| {
         for i in 0..attrs.len() {
             if let Some(extension) = fld.cx.syntax_env.find(intern(&attrs[i].name())) {
-                if let MultiModifier(..) = *extension {
-                    multi_modifier = Some((attrs.remove(i), extension));
-                    break;
+                match *extension {
+                    MultiModifier(..) | MultiDecorator(..) => {
+                        multi_modifier = Some((attrs.remove(i), extension));
+                        break;
+                    }
+                    _ => {}
                 }
             }
         }
@@ -804,23 +750,32 @@ fn expand_annotatable(mut item: Annotatable, fld: &mut MacroExpander) -> SmallVe
 
     match multi_modifier {
         None => expand_multi_modified(item, fld),
-        Some((attr, extension)) => match *extension {
-            MultiModifier(ref mac) => {
-                attr::mark_used(&attr);
-                fld.cx.bt_push(ExpnInfo {
-                    call_site: attr.span,
-                    callee: NameAndSpan {
-                        format: MacroAttribute(intern(&attr.name())),
-                        span: Some(attr.span),
-                        // attributes can do whatever they like, for now
-                        allow_internal_unstable: true,
-                    }
-                });
-                let modified = mac.expand(fld.cx, attr.span, &attr.node.value, item);
-                fld.cx.bt_pop();
-                modified.into_iter().flat_map(|it| expand_annotatable(it, fld)).collect()
-            }
-            _ => unreachable!(),
+        Some((attr, extension)) => {
+            attr::mark_used(&attr);
+            fld.cx.bt_push(ExpnInfo {
+                call_site: attr.span,
+                callee: NameAndSpan {
+                    format: MacroAttribute(intern(&attr.name())),
+                    span: Some(attr.span),
+                    // attributes can do whatever they like, for now
+                    allow_internal_unstable: true,
+                }
+            });
+
+            let modified = match *extension {
+                MultiModifier(ref mac) => mac.expand(fld.cx, attr.span, &attr.node.value, item),
+                MultiDecorator(ref mac) => {
+                    let mut items = Vec::new();
+                    mac.expand(fld.cx, attr.span, &attr.node.value, &item,
+                               &mut |item| items.push(item));
+                    items.push(item);
+                    items
+                }
+                _ => unreachable!(),
+            };
+
+            fld.cx.bt_pop();
+            modified.into_iter().flat_map(|it| expand_annotatable(it, fld)).collect()
         }
     }
 }
