@@ -31,7 +31,7 @@ pub const MANTISSA_DIGITS: u32 = 53;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const DIGITS: u32 = 15;
 
-/// A very small number.
+/// Difference between `1.0` and the next largest representable number.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
 
@@ -45,7 +45,7 @@ pub const MIN_POSITIVE: f64 = 2.2250738585072014e-308_f64;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX: f64 = 1.7976931348623157e+308_f64;
 
-/// Minimum possible normal power of 2 exponent.
+/// One greater than the minimum possible normal power of 2 exponent.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_EXP: i32 = -1021;
 /// Maximum possible power of 2 exponent.
