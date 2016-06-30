@@ -21,6 +21,9 @@ use std::path::Path;
 use build::Build;
 
 pub fn clean(build: &Build) {
+    rm_rf(build, "tmp".as_ref());
+    rm_rf(build, &build.out.join("tmp"));
+
     for host in build.config.host.iter() {
 
         let out = build.out.join(host);
