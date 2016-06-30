@@ -225,6 +225,8 @@ pub fn compile_input(sess: &Session,
                             phase5_result);
     phase5_result?;
 
+    write::cleanup_llvm(&trans);
+
     phase_6_link_output(sess, &trans, &outputs);
 
     Ok(())
