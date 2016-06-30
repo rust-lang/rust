@@ -13,12 +13,13 @@ use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 // use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::visit::{Visitor, LvalueContext};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 //use std::collections::hash_map::Entry;
 use rustc_data_structures::tuple_slice::TupleSlice;
 //use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use rustc_data_structures::control_flow_graph::dominators::{dominators, Dominators};
 use rustc_data_structures::control_flow_graph::transpose::TransposedGraph;
+use rustc_data_structures::bitvec::BitVector;
 //use rustc_data_structures::control_flow_graph::reference;
 
 pub struct MoveUpPropagation;
@@ -80,7 +81,7 @@ impl<'tcx> MirPass<'tcx> for MoveUpPropagation {
             return false;
         }).collect();
         let mut old_2_new = HashMap::new();
-        let mut dead = HashSet::new();
+        let mut dead = HashMap::new();
         for &(_, lists) in work_list.iter() {
             let ldef = lists.defs.first().expect("we already checked the list had one element?");
             let luse = lists.uses.first().expect("we already checked the list had one element?");
@@ -90,8 +91,9 @@ impl<'tcx> MirPass<'tcx> for MoveUpPropagation {
                     let StatementKind::Assign(ref use_lval, _) = bb_mut[luse.basic_block].statements[use_idx].kind;
                     let StatementKind::Assign(_, ref def_rval) = bb_mut[ldef.basic_block].statements[def_idx].kind;
                     let new_statement = StatementKind::Assign(use_lval.clone(), def_rval.clone());
-                    old_2_new.insert(ldef, new_statement);
-                    dead.insert(luse);
+                    let num_statements = bb_mut[luse.basic_block].statements.len();
+                    old_2_new.entry(ldef.basic_block).or_insert(HashMap::new()).insert(def_idx, new_statement);
+                    dead.entry(luse.basic_block).or_insert(BitVector::new(num_statements)).insert(use_idx);
                     continue;
                 }
             }
@@ -100,45 +102,28 @@ impl<'tcx> MirPass<'tcx> for MoveUpPropagation {
 
         {
             let bbs = mir.basic_blocks_mut();
-            for (&loc, repl) in old_2_new {
-                // find basic block
-                // replace basic_block.statements[loc.idx] with out new one
-                let bb = loc.basic_block;
-                match loc.inner_location {
-                    InnerLocation::StatementIndex(idx) => {
-                        let new_stmts: Vec<_> = bbs[bb].statements.iter().enumerate().map(|(stmt_idx, orig_stmt)| {
-                            if idx == stmt_idx {     
-                                let repl_stmt = Statement { kind: repl.clone(), source_info: orig_stmt.source_info };
-                                debug!("replacing {:?} with {:?}", orig_stmt, repl_stmt);
-                                repl_stmt
-                            } else {
-                                debug!("repl idx: {:?} didnt match {:?}", idx, stmt_idx);
-                                orig_stmt.clone()
-                            }
-                        }).collect();
-                        bbs[bb] = BasicBlockData {
-                            statements: new_stmts,
-                            terminator: bbs[bb].terminator.clone(),
-                            is_cleanup: bbs[bb].is_cleanup,
-                        };
-                        // }).collect();
-                        // let src_info = bb_data.statements[idx].source_info.clone();
-                        // bb_data.statements[idx] = Statement { kind: repl.clone(), source_info: src_info };
-                    }, 
-                    _ => panic!("we only replace statements"),
-                }
+            for (bb, repls) in old_2_new {
+                let new_stmts: Vec<_> = bbs[bb].statements.iter().enumerate().map(|(stmt_idx, orig_stmt)| {
+                    if let Some(repl) = repls.get(&stmt_idx) {     
+                        let repl_stmt = Statement { kind: repl.clone(), source_info: orig_stmt.source_info };
+                        debug!("replacing {:?} with {:?}", orig_stmt, repl_stmt);
+                        repl_stmt
+                    } else {
+                        //debug!("repl idx: {:?} didnt match {:?}", idx, stmt_idx);
+                        orig_stmt.clone()
+                    }
+                }).collect();
+                bbs[bb] = BasicBlockData {
+                    statements: new_stmts,
+                    terminator: bbs[bb].terminator.clone(),
+                    is_cleanup: bbs[bb].is_cleanup,
+                };
             }
 
-            for &loc in dead {
-                // find basic_block
-                // retain all basic_block.statements except loc.idx
-                let stmt_idx = match loc.inner_location {
-                    InnerLocation::StatementIndex(idx) => idx,
-                    _ => panic!("we only replace statements"),
-                };
+            for (bb, dead_idxs) in dead {
                 let mut idx_cnt = 0;
-                bbs[loc.basic_block].statements.retain(|_| {
-                    let dead = idx_cnt == stmt_idx;
+                bbs[bb].statements.retain(|_| {
+                    let dead = dead_idxs.contains(idx_cnt);
                     idx_cnt += 1;
                     !dead
                 });
