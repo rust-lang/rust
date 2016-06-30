@@ -317,6 +317,9 @@ impl Item {
     pub fn is_ty_method(&self) -> bool {
         ItemType::from_item(self) == ItemType::TyMethod
     }
+    pub fn is_primitive(&self) -> bool {
+        ItemType::from_item(self) == ItemType::Primitive
+    }
     pub fn is_stripped(&self) -> bool {
         match self.inner { StrippedItem(..) => true, _ => false }
     }
