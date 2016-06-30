@@ -16,7 +16,7 @@ use primval::PrimVal;
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct AllocId(u64);
+pub struct AllocId(pub u64);
 
 impl fmt::Display for AllocId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -75,6 +75,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             next_id: AllocId(0),
             layout: layout,
         }
+    }
+
+    pub fn allocations<'b>(&'b self) -> ::std::collections::hash_map::Iter<'b, AllocId, Allocation> {
+        self.alloc_map.iter()
     }
 
     pub fn create_fn_ptr(&mut self, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
@@ -576,7 +580,7 @@ impl UndefMask {
     }
 
     /// Check whether the range `start..end` (end-exclusive) is entirely defined.
-    fn is_range_defined(&self, start: usize, end: usize) -> bool {
+    pub fn is_range_defined(&self, start: usize, end: usize) -> bool {
         if end > self.len { return false; }
         for i in start..end {
             if !self.get(i) { return false; }

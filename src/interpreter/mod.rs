@@ -154,7 +154,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub fn memory(&self) -> &Memory {
+    pub fn memory(&self) -> &Memory<'a, 'tcx> {
         &self.memory
     }
 
@@ -162,7 +162,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self.memory
     }
 
-    pub fn stack(&self) -> &[Frame] {
+    pub fn stack(&self) -> &[Frame<'a, 'tcx>] {
         &self.stack
     }
 
@@ -235,7 +235,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
     }
 
-    fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
+    pub fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
         match self.tcx.map.as_local_node_id(def_id) {
             Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
             None => {
@@ -255,7 +255,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn monomorphize(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         let substituted = ty.subst(self.tcx, substs);
         self.tcx.normalize_associated_type(&substituted)
     }
