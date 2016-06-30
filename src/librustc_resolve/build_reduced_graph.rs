@@ -45,13 +45,21 @@ trait ToNameBinding<'a> {
 
 impl<'a> ToNameBinding<'a> for (Module<'a>, Span, ty::Visibility) {
     fn to_name_binding(self) -> NameBinding<'a> {
-        NameBinding { kind: NameBindingKind::Module(self.0), span: self.1, vis: self.2 }
+        NameBinding {
+            kind: NameBindingKind::Module(self.0),
+            span: self.1,
+            vis: self.2,
+        }
     }
 }
 
 impl<'a> ToNameBinding<'a> for (Def, Span, ty::Visibility) {
     fn to_name_binding(self) -> NameBinding<'a> {
-        NameBinding { kind: NameBindingKind::Def(self.0), span: self.1, vis: self.2 }
+        NameBinding {
+            kind: NameBindingKind::Def(self.0),
+            span: self.1,
+            vis: self.2,
+        }
     }
 }
 
@@ -108,20 +116,20 @@ impl<'b> Resolver<'b> {
                 let module_path: Vec<Name> = match view_path.node {
                     ViewPathSimple(_, ref full_path) => {
                         full_path.segments
-                                 .split_last()
-                                 .unwrap()
-                                 .1
-                                 .iter()
-                                 .map(|seg| seg.identifier.name)
-                                 .collect()
+                            .split_last()
+                            .unwrap()
+                            .1
+                            .iter()
+                            .map(|seg| seg.identifier.name)
+                            .collect()
                     }
 
                     ViewPathGlob(ref module_ident_path) |
                     ViewPathList(ref module_ident_path, _) => {
                         module_ident_path.segments
-                                         .iter()
-                                         .map(|seg| seg.identifier.name)
-                                         .collect()
+                            .iter()
+                            .map(|seg| seg.identifier.name)
+                            .collect()
                     }
                 };
 
@@ -144,12 +152,14 @@ impl<'b> Resolver<'b> {
                     }
                     ViewPathList(_, ref source_items) => {
                         // Make sure there's at most one `mod` import in the list.
-                        let mod_spans = source_items.iter().filter_map(|item| {
-                            match item.node {
-                                PathListItemKind::Mod { .. } => Some(item.span),
-                                _ => None,
-                            }
-                        }).collect::<Vec<Span>>();
+                        let mod_spans = source_items.iter()
+                            .filter_map(|item| {
+                                match item.node {
+                                    PathListItemKind::Mod { .. } => Some(item.span),
+                                    _ => None,
+                                }
+                            })
+                            .collect::<Vec<Span>>();
 
                         if mod_spans.len() > 1 {
                             let mut e = resolve_struct_error(self,
@@ -163,8 +173,9 @@ impl<'b> Resolver<'b> {
 
                         for source_item in source_items {
                             let (module_path, name, rename) = match source_item.node {
-                                PathListItemKind::Ident { name, rename, .. } =>
-                                    (module_path.clone(), name.name, rename.unwrap_or(name).name),
+                                PathListItemKind::Ident { name, rename, .. } => {
+                                    (module_path.clone(), name.name, rename.unwrap_or(name).name)
+                                }
                                 PathListItemKind::Mod { rename, .. } => {
                                     let name = match module_path.last() {
                                         Some(name) => *name,
@@ -221,7 +232,7 @@ impl<'b> Resolver<'b> {
                 let module = self.new_module(parent_link, Some(def), false);
                 module.no_implicit_prelude.set({
                     parent.no_implicit_prelude.get() ||
-                        attr::contains_name(&item.attrs, "no_implicit_prelude")
+                    attr::contains_name(&item.attrs, "no_implicit_prelude")
                 });
                 self.define(parent, name, TypeNS, (module, sp, vis));
                 self.module_map.insert(item.id, module);
@@ -277,16 +288,22 @@ impl<'b> Resolver<'b> {
                 }
 
                 // Record the def ID and fields of this struct.
-                let field_names = struct_def.fields().iter().enumerate().map(|(index, field)| {
-                    self.resolve_visibility(&field.vis);
-                    field.ident.map(|ident| ident.name)
-                               .unwrap_or_else(|| token::intern(&index.to_string()))
-                }).collect();
+                let field_names = struct_def.fields()
+                    .iter()
+                    .enumerate()
+                    .map(|(index, field)| {
+                        self.resolve_visibility(&field.vis);
+                        field.ident
+                            .map(|ident| ident.name)
+                            .unwrap_or_else(|| token::intern(&index.to_string()))
+                    })
+                    .collect();
                 let item_def_id = self.definitions.local_def_id(item.id);
                 self.structs.insert(item_def_id, field_names);
             }
 
-            ItemKind::DefaultImpl(_, _) | ItemKind::Impl(..) => {}
+            ItemKind::DefaultImpl(_, _) |
+            ItemKind::Impl(..) => {}
 
             ItemKind::Trait(_, _, _, ref items) => {
                 let def_id = self.definitions.local_def_id(item.id);
@@ -336,7 +353,8 @@ impl<'b> Resolver<'b> {
 
         // Variants are always treated as importable to allow them to be glob used.
         // All variants are defined in both type and value namespaces as future-proofing.
-        let def = Def::Variant(item_id, self.definitions.local_def_id(variant.node.data.id()));
+        let def = Def::Variant(item_id,
+                               self.definitions.local_def_id(variant.node.data.id()));
         self.define(parent, name, ValueNS, (def, variant.span, vis));
         self.define(parent, name, TypeNS, (def, variant.span, vis));
     }
@@ -348,9 +366,7 @@ impl<'b> Resolver<'b> {
         let name = foreign_item.ident.name;
 
         let def = match foreign_item.node {
-            ForeignItemKind::Fn(..) => {
-                Def::Fn(self.definitions.local_def_id(foreign_item.id))
-            }
+            ForeignItemKind::Fn(..) => Def::Fn(self.definitions.local_def_id(foreign_item.id)),
             ForeignItemKind::Static(_, m) => {
                 Def::Static(self.definitions.local_def_id(foreign_item.id), m)
             }
@@ -376,7 +392,9 @@ impl<'b> Resolver<'b> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'b>, xcdef: ChildItem) {
+    fn build_reduced_graph_for_external_crate_def(&mut self,
+                                                  parent: Module<'b>,
+                                                  xcdef: ChildItem) {
         let def = match xcdef.def {
             DlDef(def) => def,
             _ => return,
@@ -391,18 +409,26 @@ impl<'b> Resolver<'b> {
         }
 
         let name = xcdef.name;
-        let vis = if parent.is_trait() { ty::Visibility::Public } else { xcdef.vis };
+        let vis = if parent.is_trait() {
+            ty::Visibility::Public
+        } else {
+            xcdef.vis
+        };
 
         match def {
-            Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) => {
+            Def::Mod(_) |
+            Def::ForeignMod(_) |
+            Def::Enum(..) => {
                 debug!("(building reduced graph for external crate) building module {} {:?}",
-                       name, vis);
+                       name,
+                       vis);
                 let parent_link = ModuleParentLink(parent, name);
                 let module = self.new_module(parent_link, Some(def), true);
                 self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::Variant(_, variant_id) => {
-                debug!("(building reduced graph for external crate) building variant {}", name);
+                debug!("(building reduced graph for external crate) building variant {}",
+                       name);
                 // Variants are always treated as importable to allow them to be glob used.
                 // All variants are defined in both type and value namespaces as future-proofing.
                 self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
@@ -422,15 +448,15 @@ impl<'b> Resolver<'b> {
                 self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
             }
             Def::Trait(def_id) => {
-                debug!("(building reduced graph for external crate) building type {}", name);
+                debug!("(building reduced graph for external crate) building type {}",
+                       name);
 
                 // If this is a trait, add all the trait item names to the trait
                 // info.
 
                 let trait_item_def_ids = self.session.cstore.trait_item_def_ids(def_id);
                 for trait_item_def in &trait_item_def_ids {
-                    let trait_item_name =
-                        self.session.cstore.item_name(trait_item_def.def_id());
+                    let trait_item_name = self.session.cstore.item_name(trait_item_def.def_id());
 
                     debug!("(building reduced graph for external crate) ... adding trait item \
                             '{}'",
@@ -443,13 +469,18 @@ impl<'b> Resolver<'b> {
                 let module = self.new_module(parent_link, Some(def), true);
                 self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
-            Def::TyAlias(..) | Def::AssociatedTy(..) => {
-                debug!("(building reduced graph for external crate) building type {}", name);
+            Def::TyAlias(..) |
+            Def::AssociatedTy(..) => {
+                debug!("(building reduced graph for external crate) building type {}",
+                       name);
                 self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
             }
-            Def::Struct(def_id)
-                if self.session.cstore.tuple_struct_definition_if_ctor(def_id).is_none() => {
-                debug!("(building reduced graph for external crate) building type and value for {}",
+            Def::Struct(def_id) if self.session
+                .cstore
+                .tuple_struct_definition_if_ctor(def_id)
+                .is_none() => {
+                debug!("(building reduced graph for external crate) building type and value for \
+                        {}",
                        name);
                 self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
                 if let Some(ctor_def_id) = self.session.cstore.struct_ctor_def_id(def_id) {
@@ -462,13 +493,8 @@ impl<'b> Resolver<'b> {
                 self.structs.insert(def_id, fields);
             }
             Def::Struct(..) => {}
-            Def::Local(..) |
-            Def::PrimTy(..) |
-            Def::TyParam(..) |
-            Def::Upvar(..) |
-            Def::Label(..) |
-            Def::SelfTy(..) |
-            Def::Err => {
+            Def::Local(..) | Def::PrimTy(..) | Def::TyParam(..) | Def::Upvar(..) |
+            Def::Label(..) | Def::SelfTy(..) | Def::Err => {
                 bug!("didn't expect `{:?}`", def);
             }
         }
@@ -486,7 +512,9 @@ impl<'b> Resolver<'b> {
     /// Ensures that the reduced graph rooted at the given external module
     /// is built, building it if it is not.
     pub fn populate_module_if_necessary(&mut self, module: Module<'b>) {
-        if module.populated.get() { return }
+        if module.populated.get() {
+            return;
+        }
         for child in self.session.cstore.item_children(module.def_id().unwrap()) {
             self.build_reduced_graph_for_external_crate_def(module, child);
         }
