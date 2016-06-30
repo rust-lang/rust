@@ -423,8 +423,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "__rust_reallocate" => {
                 let ptr = self.memory.read_ptr(args[0])?;
                 let size = self.memory.read_usize(args[2])?;
-                self.memory.reallocate(ptr, size as usize)?;
-                self.memory.write_ptr(dest, ptr)?;
+                let new_ptr = self.memory.reallocate(ptr, size as usize)?;
+                self.memory.write_ptr(dest, new_ptr)?;
             }
 
             "memcmp" => {
