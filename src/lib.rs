@@ -38,4 +38,8 @@ pub use interpreter::{
     eval_main,
 };
 
-pub use memory::Memory;
+pub use memory::{
+    Memory,
+    Pointer,
+    AllocId,
+};
