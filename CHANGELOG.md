@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 
 ## 0.0.78 - TBA
-* New lints: [`wrong_transmute`]
+* New lints: [`wrong_transmute`, `double_neg`]
 * For compatibility, `cargo clippy` does not defines the `clippy` feature
   introduced in 0.0.76 anymore
 * [`collapsible_if`] now considers `if let`
@@ -153,6 +153,7 @@ All notable changes to this project will be documented in this file.
 [`deprecated_semver`]: https://github.com/Manishearth/rust-clippy/wiki#deprecated_semver
 [`derive_hash_xor_eq`]: https://github.com/Manishearth/rust-clippy/wiki#derive_hash_xor_eq
 [`doc_markdown`]: https://github.com/Manishearth/rust-clippy/wiki#doc_markdown
+[`double_neg`]: https://github.com/Manishearth/rust-clippy/wiki#double_neg
 [`drop_ref`]: https://github.com/Manishearth/rust-clippy/wiki#drop_ref
 [`duplicate_underscore_argument`]: https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument
 [`empty_loop`]: https://github.com/Manishearth/rust-clippy/wiki#empty_loop
