@@ -23,7 +23,7 @@ use super::{PredicateObligation, TraitObligation, ObligationCause};
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
 use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
 use super::{ObjectCastObligation, Obligation};
-use super::ProjectionMode;
+use super::Reveal;
 use super::TraitNotObjectSafe;
 use super::Selection;
 use super::SelectionResult;
@@ -343,7 +343,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.infcx
     }
 
-    pub fn projection_mode(&self) -> ProjectionMode {
+    pub fn projection_mode(&self) -> Reveal {
         self.infcx.projection_mode()
     }
 

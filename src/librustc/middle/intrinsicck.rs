@@ -12,7 +12,7 @@ use dep_graph::DepNode;
 use hir::def::Def;
 use hir::def_id::DefId;
 use infer::InferCtxt;
-use traits::ProjectionMode;
+use traits::Reveal;
 use ty::{self, Ty, TyCtxt};
 use ty::layout::{LayoutError, Pointer, SizeSkeleton};
 
@@ -36,7 +36,7 @@ struct ItemVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ItemVisitor<'a, 'tcx> {
     fn visit_const(&mut self, item_id: ast::NodeId, expr: &hir::Expr) {
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, item_id);
-        self.tcx.infer_ctxt(None, Some(param_env), ProjectionMode::Any).enter(|infcx| {
+        self.tcx.infer_ctxt(None, Some(param_env), Reveal::All).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx
             };
@@ -114,7 +114,7 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
     // const, static and N in [T; N].
     fn visit_expr(&mut self, expr: &hir::Expr) {
-        self.tcx.infer_ctxt(None, None, ProjectionMode::Any).enter(|infcx| {
+        self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx
             };
@@ -144,7 +144,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
             span_bug!(s, "intrinsicck: closure outside of function")
         }
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
-        self.tcx.infer_ctxt(None, Some(param_env), ProjectionMode::Any).enter(|infcx| {
+        self.tcx.infer_ctxt(None, Some(param_env), Reveal::All).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx
             };

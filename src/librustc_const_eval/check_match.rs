@@ -25,7 +25,7 @@ use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization::{cmt};
 use rustc::hir::pat_util::*;
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use rustc::ty::*;
 use rustc::ty;
 use std::cmp::Ordering;
@@ -1133,7 +1133,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                 let pat_ty = cx.tcx.node_id_to_type(p.id);
                 //FIXME: (@jroesch) this code should be floated up as well
                 cx.tcx.infer_ctxt(None, Some(cx.param_env.clone()),
-                                  ProjectionMode::AnyFinal).enter(|infcx| {
+                                  Reveal::NotSpecializable).enter(|infcx| {
                     if infcx.type_moves_by_default(pat_ty, pat.span) {
                         check_move(p, sub.as_ref().map(|p| &**p));
                     }
@@ -1149,7 +1149,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
                                          guard: &hir::Expr) {
     cx.tcx.infer_ctxt(None, Some(cx.param_env.clone()),
-                      ProjectionMode::AnyFinal).enter(|infcx| {
+                      Reveal::NotSpecializable).enter(|infcx| {
         let mut checker = MutationChecker {
             cx: cx,
         };

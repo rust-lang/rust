@@ -107,7 +107,7 @@ use hir::map as hir_map;
 use rustc::infer::TypeOrigin;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use session::{config, CompileResult};
 use util::common::time;
 
@@ -190,7 +190,7 @@ fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 t1: Ty<'tcx>,
                                 t2: Ty<'tcx>)
                                 -> bool {
-    ccx.tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
+    ccx.tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
         if let Err(err) = infcx.eq_types(false, origin.clone(), t1, t2) {
             infcx.report_mismatched_types(origin, t1, t2, err);
             false

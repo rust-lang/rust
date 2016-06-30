@@ -89,7 +89,7 @@ use hir::def_id::DefId;
 use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
-use rustc::traits::{self, ProjectionMode};
+use rustc::traits::{self, Reveal};
 use rustc::ty::{GenericPredicates, TypeScheme};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
@@ -390,7 +390,7 @@ impl<'a, 'gcx, 'tcx> CrateCtxt<'a, 'gcx> {
             ccx: self,
             infcx: self.tcx.infer_ctxt(Some(ty::Tables::empty()),
                                        param_env,
-                                       ProjectionMode::AnyFinal)
+                                       Reveal::NotSpecializable)
         }
     }
 }

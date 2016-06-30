@@ -115,7 +115,7 @@ pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match t.sty {
         ty::TyBox(typ) if !type_needs_drop(tcx, typ)
                          && type_is_sized(tcx, typ) => {
-            tcx.normalizing_infer_ctxt(traits::ProjectionMode::Any).enter(|infcx| {
+            tcx.normalizing_infer_ctxt(traits::Reveal::All).enter(|infcx| {
                 let layout = t.layout(&infcx).unwrap();
                 if layout.size(&tcx.data_layout).bytes() == 0 {
                     // `Box<ZeroSizeType>` does not allocate.

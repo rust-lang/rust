@@ -16,7 +16,7 @@ use abi::FnType;
 use adt;
 use common::*;
 use machine;
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TypeFoldable};
 
 use type_::Type;
@@ -123,7 +123,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
 
     // FIXME(eddyb) Temporary sanity check for ty::layout.
-    let layout = cx.tcx().normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+    let layout = cx.tcx().normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
         t.layout(&infcx)
     });
     match layout {

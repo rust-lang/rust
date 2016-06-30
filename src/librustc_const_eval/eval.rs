@@ -24,7 +24,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util::def_to_path;
 use rustc::ty::{self, Ty, TyCtxt, subst};
 use rustc::ty::util::IntTypeExt;
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 use rustc::lint;
@@ -1055,7 +1055,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            trait_ref);
 
     tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
-    tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
+    tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
         let mut selcx = traits::SelectionContext::new(&infcx);
         let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
                                                  trait_ref.to_poly_trait_predicate());
@@ -1073,9 +1073,9 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         // NOTE: this code does not currently account for specialization, but when
-        // it does so, it should hook into the ProjectionMode to determine when the
+        // it does so, it should hook into the Reveal to determine when the
         // constant should resolve; this will also require plumbing through to this
-        // function whether we are in "trans mode" to pick the right ProjectionMode
+        // function whether we are in "trans mode" to pick the right Reveal
         // when constructing the inference context above.
         match selection {
             traits::VtableImpl(ref impl_data) => {
