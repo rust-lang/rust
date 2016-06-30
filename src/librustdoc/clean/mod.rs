@@ -346,6 +346,43 @@ impl Item {
     pub fn stable_since(&self) -> Option<&str> {
         self.stability.as_ref().map(|s| &s.since[..])
     }
+
+    // Huge simplification over item in order to get only information we care about.
+    pub fn to_resolved_path(&self) -> Option<Type> {
+        if let Some(ref n) = self.name {
+            let (lifetimes, ty_params) = match self.inner {
+                StructItem(ref s) => (s.generics.lifetimes.clone(),
+                                      s.generics.type_params.iter().map(|ref x| {
+                                          TypeBinding {
+                                              name: String::new(),
+                                              ty: Type::Generic(x.name.clone()),
+                                          }
+                                      }).collect()),
+                _ => (vec!(), vec!())
+            };
+
+            Some(ResolvedPath {
+                path: Path {
+                    global: false,
+                    segments: vec![
+                        PathSegment {
+                            name: n.clone(),
+                            params: PathParameters::AngleBracketed {
+                                lifetimes: lifetimes,
+                                types: vec!(),
+                                bindings: ty_params,
+                            },
+                        }
+                    ],
+                },
+                typarams: None,
+                did: self.def_id,
+                is_generic: false,
+            })
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -2905,7 +2942,7 @@ fn lang_struct(cx: &DocContext, did: Option<DefId>,
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Debug)]
 pub struct TypeBinding {
     pub name: String,
-    pub ty: Type
+    pub ty: Type,
 }
 
 impl Clean<TypeBinding> for hir::TypeBinding {
