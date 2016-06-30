@@ -35,12 +35,17 @@ impl<'tcx> MirPass<'tcx> for MoveUpPropagation {
         
         //let doms = mir.dominators();
 
-        let post_dominators = {
+        let post_dominators_res = {
             let mir_e = MirWithExit::new(mir);
             let exit = mir_e.exit_node.clone();
             let tgraph = TransposedGraph::with_start(mir_e, exit);
             dominators(&tgraph)
-        };   
+        }; 
+
+        let post_dominators = match post_dominators_res {
+            Ok(pdoms) => pdoms,
+            Err(_) => return, // we cant do the optimization when finding the post dominators fails
+        };
 
         //let transposed_mir = TransposedGraph::new(mir_clone);
         //let dominators = dominators(&transposed_mir);
@@ -99,16 +104,26 @@ impl<'tcx> MirPass<'tcx> for MoveUpPropagation {
                 // find basic block
                 // replace basic_block.statements[loc.idx] with out new one
                 let bb = loc.basic_block;
-                let ref bb_data = bbs[bb];
                 match loc.inner_location {
                     InnerLocation::StatementIndex(idx) => {
-                        let new_stmts: Vec<_> = bb_data.statements.iter().enumerate().map(|(stmt_idx, orig_stmt)| {
-                            if idx == stmt_idx {
-                                Statement { kind: repl.clone(), source_info: orig_stmt.source_info }
+                        let new_stmts: Vec<_> = bbs[bb].statements.iter().enumerate().map(|(stmt_idx, orig_stmt)| {
+                            if idx == stmt_idx {     
+                                let repl_stmt = Statement { kind: repl.clone(), source_info: orig_stmt.source_info };
+                                debug!("replacing {:?} with {:?}", orig_stmt, repl_stmt);
+                                repl_stmt
                             } else {
+                                debug!("repl idx: {:?} didnt match {:?}", idx, stmt_idx);
                                 orig_stmt.clone()
                             }
                         }).collect();
+                        bbs[bb] = BasicBlockData {
+                            statements: new_stmts,
+                            terminator: bbs[bb].terminator.clone(),
+                            is_cleanup: bbs[bb].is_cleanup,
+                        };
+                        // }).collect();
+                        // let src_info = bb_data.statements[idx].source_info.clone();
+                        // bb_data.statements[idx] = Statement { kind: repl.clone(), source_info: src_info };
                     }, 
                     _ => panic!("we only replace statements"),
                 }
@@ -117,6 +132,16 @@ impl<'tcx> MirPass<'tcx> for MoveUpPropagation {
             for &loc in dead {
                 // find basic_block
                 // retain all basic_block.statements except loc.idx
+                let stmt_idx = match loc.inner_location {
+                    InnerLocation::StatementIndex(idx) => idx,
+                    _ => panic!("we only replace statements"),
+                };
+                let mut idx_cnt = 0;
+                bbs[loc.basic_block].statements.retain(|_| {
+                    let dead = idx_cnt == stmt_idx;
+                    idx_cnt += 1;
+                    !dead
+                });
             }
         }
 
@@ -201,6 +226,9 @@ fn any_funny_business(ldef: &UseDefLocation,
 
     // we really only know how to replace statements for now ...
     if let InnerLocation::Terminator = ldef.inner_location {
+        return true;
+    }
+    if let InnerLocation::Terminator = luse.inner_location {
         return true;
     }
 
