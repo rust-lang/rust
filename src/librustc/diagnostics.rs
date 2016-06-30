@@ -673,45 +673,35 @@ extern "C" {
 "##,
 
 E0269: r##"
-Functions must eventually return a value of their return type. For example, in
-the following function:
+A returned value was expected but not all control paths return one.
+
+Erroneous code example:
 
 ```compile_fail,E0269
 fn abracada_FAIL() -> String {
     "this won't work".to_string();
+    // error: not all control paths return a value
 }
 ```
 
-If the condition is true, the value `x` is returned, but if the condition is
-false, control exits the `if` block and reaches a place where nothing is being
-returned. All possible control paths must eventually return a `u8`, which is not
-happening here.
+In the previous code, the function is supposed to return a `String`, however,
+the code returns nothing (because of the ';'). Another erroneous code would be:
 
-An easy fix for this in a complicated function is to specify a default return
-value, if possible:
-
-```ignore
-fn foo(x: u8) -> u8 {
-    if x > 0 {
-        x // alternatively, `return x`
+```compile_fail
+fn abracada_FAIL(b: bool) -> u32 {
+    if b {
+        0
+    } else {
+        "a" // It fails because an `u32` was expected and something else is
+            // returned.
     }
-    // lots of other if branches
-    0 // return 0 if all else fails
 }
 ```
 
 It is advisable to find out what the unhandled cases are and check for them,
 returning an appropriate value or panicking if necessary. Check if you need
-to remove a semicolon from the last expression, like in this case:
-
-```ignore
-fn foo(x: u8) -> u8 {
-    inner(2*x + 1);
-}
-```
-
-The semicolon discards the return value of `inner`, instead of returning
-it from `foo`.
+to remove a semicolon from the last expression, like in the first erroneous
+code example.
 "##,
 
 E0270: r##"

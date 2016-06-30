@@ -135,39 +135,7 @@ pub fn compiler_rt(build: &Build, target: &str) {
     let dst = build.compiler_rt_out(target);
     let arch = target.split('-').next().unwrap();
     let mode = if build.config.rust_optimize {"Release"} else {"Debug"};
-    let (dir, build_target, libname) = if target.contains("linux") ||
-                                          target.contains("freebsd") ||
-                                          target.contains("netbsd") {
-        let os = if target.contains("android") {"-android"} else {""};
-        let arch = if arch.starts_with("arm") && target.contains("eabihf") {
-            "armhf"
-        } else {
-            arch
-        };
-        let target = format!("clang_rt.builtins-{}{}", arch, os);
-        ("linux".to_string(), target.clone(), target)
-    } else if target.contains("darwin") {
-        let target = format!("clang_rt.builtins_{}_osx", arch);
-        ("builtins".to_string(), target.clone(), target)
-    } else if target.contains("windows-gnu") {
-        let target = format!("clang_rt.builtins-{}", arch);
-        ("windows".to_string(), target.clone(), target)
-    } else if target.contains("windows-msvc") {
-        (format!("windows/{}", mode),
-         "lib/builtins/builtins".to_string(),
-         format!("clang_rt.builtins-{}", arch.replace("i686", "i386")))
-    } else {
-        panic!("can't get os from target: {}", target)
-    };
-    let output = dst.join("build/lib").join(dir)
-                    .join(staticlib(&libname, target));
-    build.compiler_rt_built.borrow_mut().insert(target.to_string(),
-                                                output.clone());
-    if fs::metadata(&output).is_ok() {
-        return
-    }
-    let _ = fs::remove_dir_all(&dst);
-    t!(fs::create_dir_all(&dst));
+
     let build_llvm_config = build.llvm_config(&build.config.build);
     let mut cfg = cmake::Config::new(build.src.join("src/compiler-rt"));
     cfg.target(target)
@@ -181,8 +149,63 @@ pub fn compiler_rt(build: &Build, target: &str) {
        // inform about c/c++ compilers, the c++ compiler isn't actually used but
        // it's needed to get the initial configure to work on all platforms.
        .define("CMAKE_C_COMPILER", build.cc(target))
-       .define("CMAKE_CXX_COMPILER", build.cc(target))
-       .build_target(&build_target);
+       .define("CMAKE_CXX_COMPILER", build.cc(target));
+
+    let (dir, build_target, libname) = if target.contains("linux") ||
+                                          target.contains("freebsd") ||
+                                          target.contains("netbsd") {
+        let os_extra = if target.contains("android") && target.contains("arm") {
+            "-android"
+        } else {
+            ""
+        };
+        let builtins_arch = match arch {
+            "i586" => "i386",
+            "arm" | "armv7" if target.contains("android") => "armhf",
+            "arm" if target.contains("eabihf") => "armhf",
+            _ => arch,
+        };
+        let target = format!("clang_rt.builtins-{}{}", builtins_arch, os_extra);
+        ("linux".to_string(), target.clone(), target)
+    } else if target.contains("apple-darwin") {
+        let builtins_arch = match arch {
+            "i686" => "i386",
+            _ => arch,
+        };
+        let target = format!("clang_rt.builtins_{}_osx", builtins_arch);
+        ("builtins".to_string(), target.clone(), target)
+    } else if target.contains("apple-ios") {
+        cfg.define("COMPILER_RT_ENABLE_IOS", "ON");
+        let target = match arch {
+            "armv7s" => "hard_pic_armv7em_macho_embedded".to_string(),
+            "aarch64" => "builtins_arm64_ios".to_string(),
+            _ => format!("hard_pic_{}_macho_embedded", arch),
+        };
+        ("builtins".to_string(), target.clone(), target)
+    } else if target.contains("windows-gnu") {
+        let target = format!("clang_rt.builtins-{}", arch);
+        ("windows".to_string(), target.clone(), target)
+    } else if target.contains("windows-msvc") {
+        let builtins_arch = match arch {
+            "i586" | "i686" => "i386",
+            _ => arch,
+        };
+        (format!("windows/{}", mode),
+         "lib/builtins/builtins".to_string(),
+         format!("clang_rt.builtins-{}", builtins_arch))
+    } else {
+        panic!("can't get os from target: {}", target)
+    };
+    let output = dst.join("build/lib").join(dir)
+                    .join(staticlib(&libname, target));
+    build.compiler_rt_built.borrow_mut().insert(target.to_string(),
+                                                output.clone());
+    if fs::metadata(&output).is_ok() {
+        return
+    }
+    let _ = fs::remove_dir_all(&dst);
+    t!(fs::create_dir_all(&dst));
+    cfg.build_target(&build_target);
     cfg.build();
 }
 
