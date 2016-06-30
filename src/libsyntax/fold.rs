@@ -1102,7 +1102,6 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
 
 pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mut T) -> Expr {
     Expr {
-        id: folder.new_id(id),
         node: match node {
             ExprKind::Box(e) => {
                 ExprKind::Box(folder.fold_expr(e))
@@ -1270,9 +1269,19 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                         fields.move_map(|x| folder.fold_field(x)),
                         maybe_expr.map(|x| folder.fold_expr(x)))
             },
-            ExprKind::Paren(ex) => ExprKind::Paren(folder.fold_expr(ex)),
+            ExprKind::Paren(ex) => {
+                let sub_expr = folder.fold_expr(ex);
+                return Expr {
+                    // Nodes that are equal modulo `Paren` sugar no-ops should have the same ids.
+                    id: sub_expr.id,
+                    node: ExprKind::Paren(sub_expr),
+                    span: folder.new_span(span),
+                    attrs: fold_attrs(attrs.into(), folder).into(),
+                };
+            }
             ExprKind::Try(ex) => ExprKind::Try(folder.fold_expr(ex)),
         },
+        id: folder.new_id(id),
         span: folder.new_span(span),
         attrs: fold_attrs(attrs.into(), folder).into(),
     }

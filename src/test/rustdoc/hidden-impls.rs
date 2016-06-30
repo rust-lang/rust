@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    globnar::brotz!(); //~ ERROR expected macro name without module separators
-    ::foo!(); //~ ERROR expected macro name without module separators
-    foo::<T>!(); //~ ERROR expected macro name without module separators
+#![crate_name = "foo"]
+
+mod hidden {
+    #[derive(Clone)]
+    pub struct Foo;
 }
+
+#[doc(hidden)]
+pub mod __hidden {
+    pub use hidden::Foo;
+}
+
+// @has foo/trait.Clone.html
+// @!has - 'Foo'
+// @has implementors/foo/trait.Clone.js
+// @!has - 'Foo'
+pub use std::clone::Clone;

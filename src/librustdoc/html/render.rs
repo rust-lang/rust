@@ -1696,6 +1696,9 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     document(w, cx, item)?;
 
     let mut indices = (0..items.len()).filter(|i| {
+        if let clean::DefaultImplItem(..) = items[*i].inner {
+            return false;
+        }
         !cx.maybe_ignore_item(&items[*i])
     }).collect::<Vec<usize>>();
 
