@@ -1726,7 +1726,7 @@ do
         msg "configuring LLVM with:"
         msg "$CMAKE_ARGS"
 
-        (cd $LLVM_BUILD_DIR && eval "$CFG_CMAKE" $CMAKE_ARGS)
+        (cd $LLVM_BUILD_DIR && eval "\"$CFG_CMAKE\"" $CMAKE_ARGS)
         need_ok "LLVM cmake configure failed"
     fi
 

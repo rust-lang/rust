@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,6 @@
 
 // pp-exact
 
-fn f<'a, 'b, T>(t: T) -> isize where T: 'a, 'a: 'b, T: Eq { 0 }
+fn f1<'a, 'b, 'c>(_x: &'a u32, _y: &'b u32, _z: &'c u32) where 'c: 'a + 'b { }
 
 fn main() { }

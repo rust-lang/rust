@@ -399,7 +399,6 @@ fn init_ids() -> HashMap<String, usize> {
      "methods",
      "deref-methods",
      "implementations",
-     "derived_implementations"
      ].into_iter().map(|id| (String::from(*id), 1)).collect()
 }
 
@@ -2527,24 +2526,10 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         }
         write!(w, "<h2 id='implementations'>Trait \
                    Implementations</h2>")?;
-        let (derived, manual): (Vec<_>, Vec<&Impl>) = traits.iter().partition(|i| {
-            i.inner_impl().derived
-        });
-        for i in &manual {
+        for i in &traits {
             let did = i.trait_did().unwrap();
             let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
             render_impl(w, cx, i, assoc_link, true, containing_item.stable_since())?;
-        }
-        if !derived.is_empty() {
-            write!(w, "<h3 id='derived_implementations'>\
-                           Derived Implementations \
-                       </h3>")?;
-            for i in &derived {
-                let did = i.trait_did().unwrap();
-                let assoc_link = AssocItemLink::GotoSource(did,
-                                                           &i.inner_impl().provided_trait_methods);
-                render_impl(w, cx, i, assoc_link, true, containing_item.stable_since())?;
-            }
         }
     }
     Ok(())
