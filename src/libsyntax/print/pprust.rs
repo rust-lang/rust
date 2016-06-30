@@ -1338,7 +1338,7 @@ impl<'a> State<'a> {
                 if comma {
                     try!(self.word_space(","))
                 }
-                try!(self.print_lifetime_def(lifetime_def));
+                try!(self.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds));
                 comma = true;
             }
             try!(word(&mut self.s, ">"));
@@ -2749,16 +2749,20 @@ impl<'a> State<'a> {
         self.print_name(lifetime.name)
     }
 
-    pub fn print_lifetime_def(&mut self,
-                              lifetime: &ast::LifetimeDef)
-                              -> io::Result<()>
+    pub fn print_lifetime_bounds(&mut self,
+                                 lifetime: &ast::Lifetime,
+                                 bounds: &[ast::Lifetime])
+                                 -> io::Result<()>
     {
-        try!(self.print_lifetime(&lifetime.lifetime));
-        let mut sep = ":";
-        for v in &lifetime.bounds {
-            try!(word(&mut self.s, sep));
-            try!(self.print_lifetime(v));
-            sep = "+";
+        try!(self.print_lifetime(lifetime));
+        if !bounds.is_empty() {
+            try!(word(&mut self.s, ": "));
+            for (i, bound) in bounds.iter().enumerate() {
+                if i != 0 {
+                    try!(word(&mut self.s, " + "));
+                }
+                try!(self.print_lifetime(bound));
+            }
         }
         Ok(())
     }
@@ -2781,8 +2785,8 @@ impl<'a> State<'a> {
 
         try!(self.commasep(Inconsistent, &ints[..], |s, &idx| {
             if idx < generics.lifetimes.len() {
-                let lifetime = &generics.lifetimes[idx];
-                s.print_lifetime_def(lifetime)
+                let lifetime_def = &generics.lifetimes[idx];
+                s.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds)
             } else {
                 let idx = idx - generics.lifetimes.len();
                 let param = &generics.ty_params[idx];
@@ -2833,16 +2837,7 @@ impl<'a> State<'a> {
                 ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
                                                                                ref bounds,
                                                                                ..}) => {
-                    try!(self.print_lifetime(lifetime));
-                    try!(word(&mut self.s, ":"));
-
-                    for (i, bound) in bounds.iter().enumerate() {
-                        try!(self.print_lifetime(bound));
-
-                        if i != 0 {
-                            try!(word(&mut self.s, ":"));
-                        }
-                    }
+                    try!(self.print_lifetime_bounds(lifetime, bounds));
                 }
                 ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
                     try!(self.print_path(path, false, 0));

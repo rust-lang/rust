@@ -432,7 +432,6 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
     ret.push(clean::Item {
         inner: clean::ImplItem(clean::Impl {
             unsafety: hir::Unsafety::Normal, // FIXME: this should be decoded
-            derived: clean::detect_derived(&attrs),
             provided_trait_methods: provided,
             trait_: trait_,
             for_: for_,
