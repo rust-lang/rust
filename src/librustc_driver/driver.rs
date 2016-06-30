@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::{map as hir_map, FreevarMap, TraitMap};
 use rustc::hir::def::DefMap;
@@ -27,7 +26,7 @@ use rustc::util::nodemap::NodeSet;
 use rustc_back::sha2::{Sha256, Digest};
 use rustc_borrowck as borrowck;
 use rustc_incremental;
-use rustc_resolve as resolve;
+use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::macro_import;
 use rustc_metadata::creader::read_local_crates;
 use rustc_metadata::cstore::CStore;
@@ -49,13 +48,11 @@ use std::ffi::{OsString, OsStr};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use syntax::ast::{self, NodeIdAssigner};
+use syntax::{ast, diagnostics, visit};
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::diagnostics;
 use syntax::fold::Folder;
 use syntax::parse::{self, PResult, token};
 use syntax::util::node_count::NodeCounter;
-use syntax::visit;
 use syntax;
 use syntax_ext;
 
@@ -293,7 +290,7 @@ pub struct CompileController<'a> {
     pub after_analysis: PhaseController<'a>,
     pub after_llvm: PhaseController<'a>,
 
-    pub make_glob_map: resolve::MakeGlobMap,
+    pub make_glob_map: MakeGlobMap,
 }
 
 impl<'a> CompileController<'a> {
@@ -305,7 +302,7 @@ impl<'a> CompileController<'a> {
             after_hir_lowering: PhaseController::basic(),
             after_analysis: PhaseController::basic(),
             after_llvm: PhaseController::basic(),
-            make_glob_map: resolve::MakeGlobMap::No,
+            make_glob_map: MakeGlobMap::No,
         }
     }
 }
@@ -564,7 +561,7 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
                                         mut krate: ast::Crate,
                                         crate_name: &'a str,
                                         addl_plugins: Option<Vec<String>>,
-                                        make_glob_map: resolve::MakeGlobMap)
+                                        make_glob_map: MakeGlobMap)
                                         -> Result<ExpansionResult<'a>, usize> {
     let time_passes = sess.time_passes();
 
@@ -729,13 +726,16 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
 
     krate = assign_node_ids(sess, krate);
 
-    // Collect defintions for def ids.
-    let mut defs =
-        time(sess.time_passes(), "collecting defs", || hir_map::collect_definitions(&krate));
+    let resolver_arenas = Resolver::arenas();
+    let mut resolver = Resolver::new(sess, make_glob_map, &resolver_arenas);
 
-    time(sess.time_passes(),
-         "external crate/lib resolution",
-         || read_local_crates(sess, &cstore, &defs, &krate, crate_name, &sess.dep_graph));
+    // Collect defintions for def ids.
+    time(sess.time_passes(), "collecting defs", || resolver.definitions.collect(&krate));
+
+    time(sess.time_passes(), "external crate/lib resolution", || {
+        let defs = &resolver.definitions;
+        read_local_crates(sess, &cstore, defs, &krate, crate_name, &sess.dep_graph)
+    });
 
     time(sess.time_passes(),
          "early lint checks",
@@ -745,8 +745,14 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
          "AST validation",
          || ast_validation::check_crate(sess, &krate));
 
-    let (analysis, resolutions, hir_forest) =
-        lower_and_resolve(sess, crate_name, &mut defs, &krate, &sess.dep_graph, make_glob_map);
+    time(sess.time_passes(), "name resolution", || {
+        resolver.resolve_crate(&krate);
+    });
+
+    // Lower ast -> hir.
+    let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
+        hir_map::Forest::new(lower_crate(sess, &krate, &mut resolver), &sess.dep_graph)
+    });
 
     // Discard MTWT tables that aren't required past lowering to HIR.
     if !keep_mtwt_tables(sess) {
@@ -755,9 +761,20 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
 
     Ok(ExpansionResult {
         expanded_crate: krate,
-        defs: defs,
-        analysis: analysis,
-        resolutions: resolutions,
+        defs: resolver.definitions,
+        analysis: ty::CrateAnalysis {
+            export_map: resolver.export_map,
+            access_levels: AccessLevels::default(),
+            reachable: NodeSet(),
+            name: crate_name,
+            glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
+        },
+        resolutions: Resolutions {
+            def_map: resolver.def_map,
+            freevars: resolver.freevars,
+            trait_map: resolver.trait_map,
+            maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
+        },
         hir_forest: hir_forest
     })
 }
@@ -807,38 +824,6 @@ pub fn assign_node_ids(sess: &Session, krate: ast::Crate) -> ast::Crate {
     }
 
     krate
-}
-
-pub fn lower_and_resolve<'a>(sess: &Session,
-                             id: &'a str,
-                             defs: &mut hir_map::Definitions,
-                             krate: &ast::Crate,
-                             dep_graph: &DepGraph,
-                             make_glob_map: resolve::MakeGlobMap)
-                             -> (ty::CrateAnalysis<'a>, Resolutions, hir_map::Forest) {
-    resolve::with_resolver(sess, defs, make_glob_map, |mut resolver| {
-        time(sess.time_passes(), "name resolution", || {
-            resolve::resolve_crate(&mut resolver, krate);
-        });
-
-        // Lower ast -> hir.
-        let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
-            hir_map::Forest::new(lower_crate(sess, krate, sess, &mut resolver), dep_graph)
-        });
-
-        (ty::CrateAnalysis {
-            export_map: resolver.export_map,
-            access_levels: AccessLevels::default(),
-            reachable: NodeSet(),
-            name: &id,
-            glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
-        }, Resolutions {
-            def_map: resolver.def_map,
-            freevars: resolver.freevars,
-            trait_map: resolver.trait_map,
-            maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
-        }, hir_forest)
-    })
 }
 
 /// Run the resolution, typechecking, region checking and other

@@ -20,7 +20,7 @@ use ty::tls;
 use util::nodemap::{NodeMap, FnvHashMap};
 use mir::transform as mir_pass;
 
-use syntax::ast::{NodeId, NodeIdAssigner, Name};
+use syntax::ast::{NodeId, Name};
 use errors::{self, DiagnosticBuilder};
 use errors::emitter::{Emitter, BasicEmitter, EmitterWriter};
 use syntax::json::JsonEmitter;
@@ -272,6 +272,9 @@ impl Session {
 
         id
     }
+    pub fn next_node_id(&self) -> NodeId {
+        self.reserve_node_ids(1)
+    }
     pub fn diagnostic<'a>(&'a self) -> &'a errors::Handler {
         &self.parse_sess.span_diagnostic
     }
@@ -342,20 +345,6 @@ impl Session {
             config::host_triple(),
             &self.opts.search_paths,
             kind)
-    }
-}
-
-impl NodeIdAssigner for Session {
-    fn next_node_id(&self) -> NodeId {
-        self.reserve_node_ids(1)
-    }
-
-    fn peek_node_id(&self) -> NodeId {
-        self.next_node_id.get().checked_add(1).unwrap()
-    }
-
-    fn diagnostic(&self) -> &errors::Handler {
-        self.diagnostic()
     }
 }
 

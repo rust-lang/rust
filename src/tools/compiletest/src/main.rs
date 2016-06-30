@@ -254,6 +254,17 @@ pub fn run_tests(config: &Config) {
 
     match config.mode {
         DebugInfoLldb => {
+            if let Some(lldb_version) = config.lldb_version.as_ref() {
+                if is_blacklisted_lldb_version(&lldb_version[..]) {
+                    println!("WARNING: The used version of LLDB ({}) has a \
+                              known issue that breaks debuginfo tests. See \
+                              issue #32520 for more information. Skipping all \
+                              LLDB-based tests!",
+                             lldb_version);
+                    return
+                }
+            }
+
             // Some older versions of LLDB seem to have problems with multiple
             // instances running in parallel, so only run one test thread at a
             // time.
@@ -523,4 +534,8 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
         }
     }
     None
+}
+
+fn is_blacklisted_lldb_version(version: &str) -> bool {
+    version == "350"
 }

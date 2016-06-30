@@ -47,7 +47,7 @@ use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::ty;
 use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
@@ -925,7 +925,7 @@ impl PrimitiveTypeTable {
 pub struct Resolver<'a> {
     session: &'a Session,
 
-    definitions: &'a mut Definitions,
+    pub definitions: Definitions,
 
     graph_root: Module<'a>,
 
@@ -1001,7 +1001,7 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
 }
 
-struct ResolverArenas<'a> {
+pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleS<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
@@ -1079,7 +1079,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
     }
 
     fn definitions(&mut self) -> Option<&mut Definitions> {
-        Some(self.definitions)
+        Some(&mut self.definitions)
     }
 }
 
@@ -1100,12 +1100,9 @@ impl Named for hir::PathSegment {
 }
 
 impl<'a> Resolver<'a> {
-    fn new(session: &'a Session,
-           definitions: &'a mut Definitions,
-           make_glob_map: MakeGlobMap,
-           arenas: &'a ResolverArenas<'a>)
-           -> Resolver<'a> {
-        let root_def_id = definitions.local_def_id(CRATE_NODE_ID);
+    pub fn new(session: &'a Session, make_glob_map: MakeGlobMap, arenas: &'a ResolverArenas<'a>)
+               -> Resolver<'a> {
+        let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let graph_root =
             ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, arenas);
         let graph_root = arenas.alloc_module(graph_root);
@@ -1115,7 +1112,7 @@ impl<'a> Resolver<'a> {
         Resolver {
             session: session,
 
-            definitions: definitions,
+            definitions: Definitions::new(),
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
@@ -1158,7 +1155,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn arenas() -> ResolverArenas<'a> {
+    pub fn arenas() -> ResolverArenas<'a> {
         ResolverArenas {
             modules: arena::TypedArena::new(),
             local_modules: RefCell::new(Vec::new()),
@@ -1166,6 +1163,27 @@ impl<'a> Resolver<'a> {
             import_directives: arena::TypedArena::new(),
             name_resolutions: arena::TypedArena::new(),
         }
+    }
+
+    /// Entry point to crate resolution.
+    pub fn resolve_crate(&mut self, krate: &Crate) {
+        // Currently, we ignore the name resolution data structures for
+        // the purposes of dependency tracking. Instead we will run name
+        // resolution and include its output in the hash of each item,
+        // much like we do for macro expansion. In other words, the hash
+        // reflects not just its contents but the results of name
+        // resolution on those contents. Hopefully we'll push this back at
+        // some point.
+        let _ignore = self.session.dep_graph.in_ignore();
+
+        self.build_reduced_graph(krate);
+        resolve_imports::resolve_imports(self);
+
+        self.current_module = self.graph_root;
+        visit::walk_crate(self, krate);
+
+        check_unused::check_crate(self, krate);
+        self.report_privacy_errors();
     }
 
     fn new_module(&self, parent_link: ParentLink<'a>, def: Option<Def>, external: bool)
@@ -1566,12 +1584,6 @@ impl<'a> Resolver<'a> {
             }
         }
         None
-    }
-
-    fn resolve_crate(&mut self, krate: &Crate) {
-        debug!("(resolving crate) starting");
-        self.current_module = self.graph_root;
-        visit::walk_crate(self, krate);
     }
 
     fn resolve_item(&mut self, item: &Item) {
@@ -2287,24 +2299,25 @@ impl<'a> Resolver<'a> {
                 PatKind::Ident(bmode, ref ident, ref opt_pat) => {
                     // First try to resolve the identifier as some existing
                     // entity, then fall back to a fresh binding.
-                    let resolution = if let Ok(resolution) = self.resolve_path(pat.id,
-                                &Path::from_ident(ident.span, ident.node), 0, ValueNS) {
+                    let local_def = self.resolve_identifier(ident.node, ValueNS, true);
+                    let resolution = if let Some(LocalDef { def, .. }) = local_def {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
                                              bmode != BindingMode::ByValue(Mutability::Immutable);
-                        match resolution.base_def {
+                        match def {
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
                                 // A constant, unit variant, etc pattern.
-                                resolution
+                                PathResolution::new(def)
                             }
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) | Def::Static(..) => {
                                 // A fresh binding that shadows something unacceptable.
+                                let kind_name = PathResolution::new(def).kind_name();
                                 resolve_error(
                                     self,
                                     ident.span,
                                     ResolutionError::BindingShadowsSomethingUnacceptable(
-                                        pat_src.descr(), resolution.kind_name(), ident.node.name)
+                                        pat_src.descr(), kind_name, ident.node.name)
                                 );
                                 err_path_resolution()
                             }
@@ -3194,7 +3207,9 @@ impl<'a> Resolver<'a> {
                     if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
-                        worklist.push((module, path_segments, is_extern));
+                        if !worklist.iter().any(|&(m, _, _)| m.def == module.def) {
+                            worklist.push((module, path_segments, is_extern));
+                        }
                     }
                 }
             })
@@ -3452,36 +3467,6 @@ fn err_path_resolution() -> PathResolution {
 pub enum MakeGlobMap {
     Yes,
     No,
-}
-
-/// Entry point to crate resolution.
-pub fn resolve_crate<'a, 'b>(resolver: &'b mut Resolver<'a>, krate: &'b Crate) {
-    // Currently, we ignore the name resolution data structures for
-    // the purposes of dependency tracking. Instead we will run name
-    // resolution and include its output in the hash of each item,
-    // much like we do for macro expansion. In other words, the hash
-    // reflects not just its contents but the results of name
-    // resolution on those contents. Hopefully we'll push this back at
-    // some point.
-    let _ignore = resolver.session.dep_graph.in_ignore();
-
-    resolver.build_reduced_graph(krate);
-    resolve_imports::resolve_imports(resolver);
-    resolver.resolve_crate(krate);
-
-    check_unused::check_crate(resolver, krate);
-    resolver.report_privacy_errors();
-}
-
-pub fn with_resolver<'a, T, F>(session: &'a Session,
-                               definitions: &'a mut Definitions,
-                               make_glob_map: MakeGlobMap,
-                               f: F) -> T
-    where F: for<'b> FnOnce(Resolver<'b>) -> T,
-{
-    let arenas = Resolver::arenas();
-    let resolver = Resolver::new(session, definitions, make_glob_map, &arenas);
-    f(resolver)
 }
 
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }
