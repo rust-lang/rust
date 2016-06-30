@@ -42,15 +42,16 @@ use util::logv;
 
 use self::header::EarlyProps;
 
-pub mod procsrv;
-pub mod util;
-mod json;
-pub mod header;
-pub mod runtest;
+mod analysisdiff;
 pub mod common;
 pub mod errors;
+pub mod header;
+mod json;
 mod raise_fd_limit;
+pub mod runtest;
+pub mod procsrv;
 mod uidiff;
+pub mod util;
 
 fn main() {
     #[cfg(cargobuild)]
@@ -86,7 +87,8 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET"),
           reqopt("", "mode", "which sort of compile tests to run",
                  "(compile-fail|parse-fail|run-fail|run-pass|\
-                  run-pass-valgrind|pretty|debug-info|incremental)"),
+                  run-pass-valgrind|pretty|debug-info|incremental|\
+                  save-analysis)"),
           optflag("", "ignored", "run tests marked as ignored"),
           optopt("", "runtool", "supervisor program to run tests under \
                                  (eg. emulator, valgrind)", "PROGRAM"),
@@ -252,14 +254,11 @@ pub fn run_tests(config: &Config) {
         env::set_var("RUST_TEST_THREADS","1");
     }
 
-    match config.mode {
-        DebugInfoLldb => {
-            // Some older versions of LLDB seem to have problems with multiple
-            // instances running in parallel, so only run one test thread at a
-            // time.
-            env::set_var("RUST_TEST_THREADS", "1");
-        }
-        _ => { /* proceed */ }
+    if let DebugInfoLldb = config.mode {
+        // Some older versions of LLDB seem to have problems with multiple
+        // instances running in parallel, so only run one test thread at a
+        // time.
+        env::set_var("RUST_TEST_THREADS", "1");
     }
 
     // FIXME(#33435) Avoid spurious failures in codegen-units/partitioning tests.
@@ -303,8 +302,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
 }
 
 pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
-    debug!("making tests from {:?}",
-           config.src_base.display());
+    debug!("making tests from {:?}", config.src_base.display());
     let mut tests = Vec::new();
     collect_tests_from_dir(config,
                            &config.src_base,
