@@ -1,8 +1,10 @@
 //! This module contains functions for retrieve the original AST from lowered `hir`.
 
 use rustc::hir;
+use rustc::lint::LateContext;
 use syntax::ast;
-use utils::{match_path, paths};
+use syntax::ptr::P;
+use utils::{is_expn_of, match_path, paths};
 
 /// Convert a hir binary operator to the corresponding `ast` type.
 pub fn binop(op: hir::BinOp_) -> ast::BinOpKind {
@@ -146,5 +148,43 @@ pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)>
                      &iterargs[0],
                      &innerarms[0].body));
     }}
+    None
+}
+
+/// Represent the pre-expansion arguments of a `vec!` invocation.
+pub enum VecArgs<'a> {
+    /// `vec![elem; len]`
+    Repeat(&'a P<hir::Expr>, &'a P<hir::Expr>),
+    /// `vec![a, b, c]`
+    Vec(&'a [P<hir::Expr>]),
+}
+
+/// Returns the arguments of the `vec!` macro if this expression was expanded from `vec!`.
+pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e>> {
+    if_let_chain!{[
+        let hir::ExprCall(ref fun, ref args) = expr.node,
+        let hir::ExprPath(_, ref path) = fun.node,
+        is_expn_of(cx, fun.span, "vec").is_some()
+    ], {
+        return if match_path(path, &paths::VEC_FROM_ELEM) && args.len() == 2 {
+            // `vec![elem; size]` case
+            Some(VecArgs::Repeat(&args[0], &args[1]))
+        }
+        else if match_path(path, &["into_vec"]) && args.len() == 1 {
+            // `vec![a, b, c]` case
+            if_let_chain!{[
+                let hir::ExprBox(ref boxed) = args[0].node,
+                let hir::ExprVec(ref args) = boxed.node
+            ], {
+                return Some(VecArgs::Vec(&*args));
+            }}
+
+            None
+        }
+        else {
+            None
+        };
+    }}
+
     None
 }
