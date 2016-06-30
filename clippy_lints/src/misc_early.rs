@@ -49,7 +49,7 @@ declare_lint! {
 /// **Example:** `--x;`
 declare_lint! {
     pub DOUBLE_NEG, Warn,
-    "--x is a double negation of x and not a pre-decrement as in C or C++"
+    "`--x` is a double negation of `x` and not a pre-decrement as in C or C++"
 }
 
 
