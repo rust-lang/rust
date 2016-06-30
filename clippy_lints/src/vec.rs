@@ -51,26 +51,26 @@ impl LateLintPass for Pass {
 
 fn check_vec_macro(cx: &LateContext, vec: &Expr, span: Span) {
     if let Some(vec_args) = higher::vec_macro(cx, vec) {
-        let snippet = match vec_args {
-            higher::VecArgs::Repeat(elem, len) => {
-                format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len")).into()
-            }
-            higher::VecArgs::Vec(args) => {
-                if let Some(last) = args.iter().last() {
-                    let span = Span {
-                        lo: args[0].span.lo,
-                        hi: last.span.hi,
-                        expn_id: args[0].span.expn_id,
-                    };
-
-                    format!("&[{}]", snippet(cx, span, "..")).into()
-                } else {
-                    "&[]".into()
-                }
-            }
-        };
-
         span_lint_and_then(cx, USELESS_VEC, span, "useless use of `vec!`", |db| {
+            let snippet = match vec_args {
+                higher::VecArgs::Repeat(elem, len) => {
+                    format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len")).into()
+                }
+                higher::VecArgs::Vec(args) => {
+                    if let Some(last) = args.iter().last() {
+                        let span = Span {
+                            lo: args[0].span.lo,
+                            hi: last.span.hi,
+                            expn_id: args[0].span.expn_id,
+                        };
+
+                        format!("&[{}]", snippet(cx, span, "..")).into()
+                    } else {
+                        "&[]".into()
+                    }
+                }
+            };
+
             db.span_suggestion(span, "you can use a slice directly", snippet);
         });
     }
