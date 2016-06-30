@@ -80,6 +80,7 @@ impl<'tcx> MirPass<'tcx> for MoveUpPropagation {
             }
             return false;
         }).collect();
+        debug!("we're going to do {:?} replacements", work_list.len());
         let mut old_2_new = HashMap::new();
         let mut dead = HashMap::new();
         for &(_, lists) in work_list.iter() {
