@@ -38,7 +38,7 @@ use std::rc::Rc;
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ProjectionMode {
+pub enum Reveal {
     /// FIXME (#32205)
     /// At coherence-checking time, we're still constructing the
     /// specialization graph, and thus we only project
@@ -67,7 +67,7 @@ pub enum ProjectionMode {
     ///
     /// The projection would succeed if `Output` had been defined
     /// directly in the impl for `u8`.
-    Topmost,
+    ExactMatch,
 
     /// At type-checking time, we refuse to project any associated
     /// type that is marked `default`. Non-`default` ("final") types
@@ -91,35 +91,11 @@ pub enum ProjectionMode {
     /// fn main() {
     ///     let <() as Assoc>::Output = true;
     /// }
-    AnyFinal,
+    NotSpecializable,
 
     /// At trans time, all projections will succeed.
-    Any,
+    All,
 }
-
-impl ProjectionMode {
-    pub fn is_topmost(&self) -> bool {
-        match *self {
-            ProjectionMode::Topmost => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_any_final(&self) -> bool {
-        match *self {
-            ProjectionMode::AnyFinal => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_any(&self) -> bool {
-        match *self {
-            ProjectionMode::Any => true,
-            _ => false,
-        }
-    }
-}
-
 
 pub type PolyProjectionObligation<'tcx> =
     Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
@@ -902,7 +878,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
 
                 candidate_set.vec.push(ProjectionTyCandidate::Select);
             }
-            super::VtableImpl(ref impl_data) if !selcx.projection_mode().is_any() => {
+            super::VtableImpl(ref impl_data) if selcx.projection_mode() != Reveal::All => {
                 // We have to be careful when projecting out of an
                 // impl because of specialization. If we are not in
                 // trans (i.e., projection mode is not "any"), and the
@@ -1008,7 +984,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
             }
             super::VtableImpl(_) => {
                 // In trans mode, we can just project out of impls, no prob.
-                assert!(selcx.projection_mode().is_any());
+                assert!(selcx.projection_mode() == Reveal::All);
                 candidate_set.vec.push(ProjectionTyCandidate::Select);
             }
             super::VtableParam(..) => {
@@ -1332,7 +1308,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
 /// starting from the given impl.
 ///
 /// Based on the "projection mode", this lookup may in fact only examine the
-/// topmost impl. See the comments for `ProjectionMode` for more details.
+/// topmost impl. See the comments for `Reveal` for more details.
 fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     selcx: &SelectionContext<'cx, 'gcx, 'tcx>,
     impl_def_id: DefId,
@@ -1341,7 +1317,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 {
     let trait_def_id = selcx.tcx().impl_trait_ref(impl_def_id).unwrap().def_id;
 
-    if selcx.projection_mode().is_topmost() {
+    if selcx.projection_mode() == Reveal::ExactMatch {
         let impl_node = specialization_graph::Node::Impl(impl_def_id);
         for item in impl_node.items(selcx.tcx()) {
             if let ty::TypeTraitItem(assoc_ty) = item {

@@ -14,7 +14,7 @@ use hir::def_id::DefId;
 use ty::subst;
 use infer::InferCtxt;
 use hir::pat_util;
-use traits::{self, ProjectionMode};
+use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::{Disr, ParameterEnvironment};
 use ty::fold::TypeVisitor;
@@ -137,8 +137,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                        self_type: Ty<'tcx>, span: Span)
                                        -> Result<(),CopyImplementationError> {
         // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt(None, Some(self.clone()),
-                       ProjectionMode::Topmost).enter(|infcx| {
+        tcx.infer_ctxt(None, Some(self.clone()), Reveal::ExactMatch).enter(|infcx| {
             let adt = match self_type.sty {
                 ty::TyStruct(struct_def, substs) => {
                     for field in struct_def.all_fields() {
@@ -533,7 +532,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                    param_env: &ParameterEnvironment<'tcx>,
                    bound: ty::BuiltinBound, span: Span) -> bool
     {
-        tcx.infer_ctxt(None, Some(param_env.clone()), ProjectionMode::Topmost).enter(|infcx| {
+        tcx.infer_ctxt(None, Some(param_env.clone()), Reveal::ExactMatch).enter(|infcx| {
             traits::type_known_to_meet_builtin_bound(&infcx, self, bound, span)
         })
     }

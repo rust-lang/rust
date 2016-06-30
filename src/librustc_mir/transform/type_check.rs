@@ -12,7 +12,7 @@
 #![allow(unreachable_code)]
 
 use rustc::infer::{self, InferCtxt, InferOk};
-use rustc::traits::{self, ProjectionMode};
+use rustc::traits::{self, Reveal};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::repr::*;
@@ -695,7 +695,7 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
             return;
         }
         let param_env = ty::ParameterEnvironment::for_item(tcx, src.item_id());
-        tcx.infer_ctxt(None, Some(param_env), ProjectionMode::AnyFinal).enter(|infcx| {
+        tcx.infer_ctxt(None, Some(param_env), Reveal::NotSpecializable).enter(|infcx| {
             let mut checker = TypeChecker::new(&infcx);
             {
                 let mut verifier = TypeVerifier::new(&mut checker, mir);

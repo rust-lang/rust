@@ -19,7 +19,7 @@ use hir::def_id::DefId;
 use middle::lang_items::UnsizeTraitLangItem;
 use rustc::ty::subst::{self, Subst};
 use rustc::ty::{self, TyCtxt, TypeFoldable};
-use rustc::traits::{self, ProjectionMode};
+use rustc::traits::{self, Reveal};
 use rustc::ty::{ImplOrTraitItemId, ConstTraitItemId};
 use rustc::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
 use rustc::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
@@ -399,7 +399,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (free)",
                    source, target);
 
-            tcx.infer_ctxt(None, Some(param_env), ProjectionMode::Topmost).enter(|infcx| {
+            tcx.infer_ctxt(None, Some(param_env), Reveal::ExactMatch).enter(|infcx| {
                 let origin = TypeOrigin::Misc(span);
                 let check_mutbl = |mt_a: ty::TypeAndMut<'gcx>, mt_b: ty::TypeAndMut<'gcx>,
                                    mk_ptr: &Fn(Ty<'gcx>) -> Ty<'gcx>| {
@@ -536,7 +536,7 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, sp: Span, trait_def_id: Def
 
 pub fn check_coherence(ccx: &CrateCtxt) {
     let _task = ccx.tcx.dep_graph.in_task(DepNode::Coherence);
-    ccx.tcx.infer_ctxt(None, None, ProjectionMode::Topmost).enter(|infcx| {
+    ccx.tcx.infer_ctxt(None, None, Reveal::ExactMatch).enter(|infcx| {
         CoherenceChecker {
             crate_context: ccx,
             inference_context: infcx,

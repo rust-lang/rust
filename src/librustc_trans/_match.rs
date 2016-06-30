@@ -217,7 +217,7 @@ use type_of;
 use Disr;
 use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use session::config::NoDebugInfo;
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
@@ -1471,7 +1471,7 @@ fn is_discr_reassigned(bcx: Block, discr: &hir::Expr, body: &hir::Expr) -> bool 
         field: field,
         reassigned: false
     };
-    bcx.tcx().normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+    bcx.tcx().normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
         let mut visitor = euv::ExprUseVisitor::new(&mut rc, &infcx);
         visitor.walk_expr(body);
     });

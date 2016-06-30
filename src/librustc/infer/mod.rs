@@ -34,7 +34,7 @@ use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::relate::{Relate, RelateResult, TypeRelation};
-use traits::{self, PredicateObligations, ProjectionMode};
+use traits::{self, PredicateObligations, Reveal};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::fmt;
@@ -147,8 +147,8 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     // Sadly, the behavior of projection varies a bit depending on the
     // stage of compilation. The specifics are given in the
-    // documentation for `ProjectionMode`.
-    projection_mode: ProjectionMode,
+    // documentation for `Reveal`.
+    projection_mode: Reveal,
 
     // When an error occurs, we want to avoid reporting "derived"
     // errors that are due to this original failure. Normally, we
@@ -459,7 +459,7 @@ pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     arenas: ty::CtxtArenas<'tcx>,
     tables: Option<RefCell<ty::Tables<'tcx>>>,
     param_env: Option<ty::ParameterEnvironment<'gcx>>,
-    projection_mode: ProjectionMode,
+    projection_mode: Reveal,
     normalize: bool
 }
 
@@ -467,7 +467,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
     pub fn infer_ctxt(self,
                       tables: Option<ty::Tables<'tcx>>,
                       param_env: Option<ty::ParameterEnvironment<'gcx>>,
-                      projection_mode: ProjectionMode)
+                      projection_mode: Reveal)
                       -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
@@ -479,7 +479,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
         }
     }
 
-    pub fn normalizing_infer_ctxt(self, projection_mode: ProjectionMode)
+    pub fn normalizing_infer_ctxt(self, projection_mode: Reveal)
                                   -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
@@ -509,7 +509,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
             reported_trait_errors: RefCell::new(FnvHashSet()),
             normalize: false,
-            projection_mode: ProjectionMode::AnyFinal,
+            projection_mode: Reveal::NotSpecializable,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
             obligations_in_snapshot: Cell::new(false),
@@ -641,7 +641,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt(None, None, ProjectionMode::Any).enter(|infcx| {
+        self.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
             value.trans_normalize(&infcx)
         })
     }
@@ -659,7 +659,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt(None, Some(env.clone()), ProjectionMode::Any).enter(|infcx| {
+        self.infer_ctxt(None, Some(env.clone()), Reveal::All).enter(|infcx| {
             value.trans_normalize(&infcx)
        })
     }
@@ -736,7 +736,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         Ok(self.tcx.erase_regions(&result))
     }
 
-    pub fn projection_mode(&self) -> ProjectionMode {
+    pub fn projection_mode(&self) -> Reveal {
         self.projection_mode
     }
 
