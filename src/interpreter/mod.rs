@@ -980,6 +980,25 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
     err.emit();
 }
 
+pub fn run_mir_passes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &mut MirMap<'tcx>) {
+    let mut passes = ::rustc::mir::transform::Passes::new();
+    passes.push_hook(Box::new(::rustc_mir::transform::dump_mir::DumpMir));
+    passes.push_pass(Box::new(::rustc_mir::transform::no_landing_pads::NoLandingPads));
+    passes.push_pass(Box::new(::rustc_mir::transform::simplify_cfg::SimplifyCfg::new("no-landing-pads")));
+
+    passes.push_pass(Box::new(::rustc_mir::transform::erase_regions::EraseRegions));
+
+    passes.push_pass(Box::new(::rustc_mir::transform::add_call_guards::AddCallGuards));
+    passes.push_pass(Box::new(::rustc_borrowck::ElaborateDrops));
+    passes.push_pass(Box::new(::rustc_mir::transform::no_landing_pads::NoLandingPads));
+    passes.push_pass(Box::new(::rustc_mir::transform::simplify_cfg::SimplifyCfg::new("elaborate-drops")));
+
+    passes.push_pass(Box::new(::rustc_mir::transform::add_call_guards::AddCallGuards));
+    passes.push_pass(Box::new(::rustc_mir::transform::dump_mir::Marker("PreMiri")));
+
+    passes.run_passes(tcx, mir_map);
+}
+
 // TODO(solson): Upstream these methods into rustc::ty::layout.
 
 trait IntegerExt {

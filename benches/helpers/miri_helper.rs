@@ -4,8 +4,9 @@ extern crate rustc;
 extern crate rustc_driver;
 extern crate test;
 
-use self::miri::eval_main;
+use self::miri::{eval_main, run_mir_passes};
 use self::rustc::session::Session;
+use self::rustc::mir::mir_map::MirMap;
 use self::rustc_driver::{driver, CompilerCalls, Compilation};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -55,7 +56,9 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls<'a> {
             let (node_id, _) = state.session.entry_fn.borrow()
                 .expect("no main or start function found");
 
-            bencher.borrow_mut().iter(|| { eval_main(tcx, mir_map, node_id); });
+            let mut mir_map = MirMap { map: mir_map.map.clone() };
+            run_mir_passes(tcx, &mut mir_map);
+            bencher.borrow_mut().iter(|| { eval_main(tcx, &mir_map, node_id); });
 
             state.session.abort_if_errors();
         });

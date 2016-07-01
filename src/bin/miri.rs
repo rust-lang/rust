@@ -9,8 +9,9 @@ extern crate log_settings;
 extern crate syntax;
 #[macro_use] extern crate log;
 
-use miri::eval_main;
+use miri::{eval_main, run_mir_passes};
 use rustc::session::Session;
+use rustc::mir::mir_map::MirMap;
 use rustc_driver::{driver, CompilerCalls, Compilation};
 
 struct MiriCompilerCalls;
@@ -31,7 +32,10 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
             let mir_map = state.mir_map.unwrap();
             let (node_id, _) = state.session.entry_fn.borrow()
                 .expect("no main or start function found");
-            eval_main(tcx, mir_map, node_id);
+
+            let mut mir_map = MirMap { map: mir_map.map.clone() };
+            run_mir_passes(tcx, &mut mir_map);
+            eval_main(tcx, &mir_map, node_id);
 
             state.session.abort_if_errors();
         });

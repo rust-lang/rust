@@ -9,6 +9,7 @@
 
 // From rustc.
 #[macro_use] extern crate rustc;
+extern crate rustc_borrowck;
 extern crate rustc_data_structures;
 extern crate rustc_mir;
 extern crate rustc_trans;
@@ -35,6 +36,7 @@ pub use interpreter::{
     EvalContext,
     Frame,
     eval_main,
+    run_mir_passes,
 };
 
 pub use memory::{
