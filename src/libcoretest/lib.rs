@@ -26,6 +26,7 @@
 #![feature(nonzero)]
 #![feature(rand)]
 #![feature(raw)]
+#![feature(sip_hash_13)]
 #![feature(slice_patterns)]
 #![feature(step_by)]
 #![feature(test)]

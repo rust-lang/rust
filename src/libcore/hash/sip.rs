@@ -8,12 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An implementation of SipHash 2-4.
+//! An implementation of SipHash.
 
 use prelude::v1::*;
 
+use marker::PhantomData;
 use ptr;
-use super::Hasher;
+
+/// An implementation of SipHash 1-3.
+///
+/// See: https://131002.net/siphash/
+#[unstable(feature = "sip_hash_13", issue = "29754")]
+#[derive(Debug, Clone, Default)]
+pub struct SipHasher13 {
+    hasher: Hasher<Sip13Rounds>,
+}
+
+/// An implementation of SipHash 2-4.
+///
+/// See: https://131002.net/siphash/
+#[unstable(feature = "sip_hash_13", issue = "29754")]
+#[derive(Debug, Clone, Default)]
+pub struct SipHasher24 {
+    hasher: Hasher<Sip24Rounds>,
+}
 
 /// An implementation of SipHash 2-4.
 ///
@@ -30,22 +48,31 @@ use super::Hasher;
 /// Although the SipHash algorithm is considered to be generally strong,
 /// it is not intended for cryptographic purposes. As such, all
 /// cryptographic uses of this implementation are _strongly discouraged_.
-#[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct SipHasher {
+#[derive(Debug, Clone, Default)]
+pub struct SipHasher(SipHasher24);
+
+#[derive(Debug)]
+struct Hasher<S: Sip> {
     k0: u64,
     k1: u64,
     length: usize, // how many bytes we've processed
+    state: State, // hash State
+    tail: u64, // unprocessed bytes le
+    ntail: usize, // how many bytes in tail are valid
+    _marker: PhantomData<S>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct State {
     // v0, v2 and v1, v3 show up in pairs in the algorithm,
     // and simd implementations of SipHash will use vectors
     // of v02 and v13. By placing them in this order in the struct,
     // the compiler can pick up on just a few simd optimizations by itself.
-    v0: u64, // hash state
+    v0: u64,
     v2: u64,
     v1: u64,
     v3: u64,
-    tail: u64, // unprocessed bytes le
-    ntail: usize, // how many bytes in tail are valid
 }
 
 // sadly, these macro definitions can't appear later,
@@ -93,6 +120,9 @@ macro_rules! rotl {
 }
 
 macro_rules! compress {
+    ($state:expr) => ({
+        compress!($state.v0, $state.v1, $state.v2, $state.v3)
+    });
     ($v0:expr, $v1:expr, $v2:expr, $v3:expr) =>
     ({
         $v0 = $v0.wrapping_add($v1); $v1 = rotl!($v1, 13); $v1 ^= $v0;
@@ -101,7 +131,7 @@ macro_rules! compress {
         $v0 = $v0.wrapping_add($v3); $v3 = rotl!($v3, 21); $v3 ^= $v0;
         $v2 = $v2.wrapping_add($v1); $v1 = rotl!($v1, 17); $v1 ^= $v2;
         $v2 = rotl!($v2, 32);
-    })
+    });
 }
 
 impl SipHasher {
@@ -116,16 +146,63 @@ impl SipHasher {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
-        let mut state = SipHasher {
+        SipHasher(SipHasher24::new_with_keys(key0, key1))
+    }
+}
+
+
+impl SipHasher13 {
+    /// Creates a new `SipHasher13` with the two initial keys set to 0.
+    #[inline]
+    #[unstable(feature = "sip_hash_13", issue = "29754")]
+    pub fn new() -> SipHasher13 {
+        SipHasher13::new_with_keys(0, 0)
+    }
+
+    /// Creates a `SipHasher13` that is keyed off the provided keys.
+    #[inline]
+    #[unstable(feature = "sip_hash_13", issue = "29754")]
+    pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
+        SipHasher13 {
+            hasher: Hasher::new_with_keys(key0, key1)
+        }
+    }
+}
+
+impl SipHasher24 {
+    /// Creates a new `SipHasher24` with the two initial keys set to 0.
+    #[inline]
+    #[unstable(feature = "sip_hash_13", issue = "29754")]
+    pub fn new() -> SipHasher24 {
+        SipHasher24::new_with_keys(0, 0)
+    }
+
+    /// Creates a `SipHasher24` that is keyed off the provided keys.
+    #[inline]
+    #[unstable(feature = "sip_hash_13", issue = "29754")]
+    pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher24 {
+        SipHasher24 {
+            hasher: Hasher::new_with_keys(key0, key1)
+        }
+    }
+}
+
+impl<S: Sip> Hasher<S> {
+    #[inline]
+    fn new_with_keys(key0: u64, key1: u64) -> Hasher<S> {
+        let mut state = Hasher {
             k0: key0,
             k1: key1,
             length: 0,
-            v0: 0,
-            v1: 0,
-            v2: 0,
-            v3: 0,
+            state: State {
+                v0: 0,
+                v1: 0,
+                v2: 0,
+                v3: 0,
+            },
             tail: 0,
             ntail: 0,
+            _marker: PhantomData,
         };
         state.reset();
         state
@@ -134,16 +211,54 @@ impl SipHasher {
     #[inline]
     fn reset(&mut self) {
         self.length = 0;
-        self.v0 = self.k0 ^ 0x736f6d6570736575;
-        self.v1 = self.k1 ^ 0x646f72616e646f6d;
-        self.v2 = self.k0 ^ 0x6c7967656e657261;
-        self.v3 = self.k1 ^ 0x7465646279746573;
+        self.state.v0 = self.k0 ^ 0x736f6d6570736575;
+        self.state.v1 = self.k1 ^ 0x646f72616e646f6d;
+        self.state.v2 = self.k0 ^ 0x6c7967656e657261;
+        self.state.v3 = self.k1 ^ 0x7465646279746573;
         self.ntail = 0;
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Hasher for SipHasher {
+impl super::Hasher for SipHasher {
+    #[inline]
+    fn write(&mut self, msg: &[u8]) {
+        self.0.write(msg)
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0.finish()
+    }
+}
+
+#[unstable(feature = "sip_hash_13", issue = "29754")]
+impl super::Hasher for SipHasher13 {
+    #[inline]
+    fn write(&mut self, msg: &[u8]) {
+        self.hasher.write(msg)
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.hasher.finish()
+    }
+}
+
+#[unstable(feature = "sip_hash_13", issue = "29754")]
+impl super::Hasher for SipHasher24 {
+    #[inline]
+    fn write(&mut self, msg: &[u8]) {
+        self.hasher.write(msg)
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.hasher.finish()
+    }
+}
+
+impl<S: Sip> super::Hasher for Hasher<S> {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         let length = msg.len();
@@ -161,10 +276,9 @@ impl Hasher for SipHasher {
 
             let m = self.tail | u8to64_le!(msg, 0, needed) << 8 * self.ntail;
 
-            self.v3 ^= m;
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            self.v0 ^= m;
+            self.state.v3 ^= m;
+            S::c_rounds(&mut self.state);
+            self.state.v0 ^= m;
 
             self.ntail = 0;
         }
@@ -177,10 +291,9 @@ impl Hasher for SipHasher {
         while i < len - left {
             let mi = unsafe { load_u64_le(msg, i) };
 
-            self.v3 ^= mi;
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            self.v0 ^= mi;
+            self.state.v3 ^= mi;
+            S::c_rounds(&mut self.state);
+            self.state.v0 ^= mi;
 
             i += 8;
         }
@@ -191,49 +304,81 @@ impl Hasher for SipHasher {
 
     #[inline]
     fn finish(&self) -> u64 {
-        let mut v0 = self.v0;
-        let mut v1 = self.v1;
-        let mut v2 = self.v2;
-        let mut v3 = self.v3;
+        let mut state = self.state;
 
         let b: u64 = ((self.length as u64 & 0xff) << 56) | self.tail;
 
-        v3 ^= b;
-        compress!(v0, v1, v2, v3);
-        compress!(v0, v1, v2, v3);
-        v0 ^= b;
+        state.v3 ^= b;
+        S::c_rounds(&mut state);
+        state.v0 ^= b;
 
-        v2 ^= 0xff;
-        compress!(v0, v1, v2, v3);
-        compress!(v0, v1, v2, v3);
-        compress!(v0, v1, v2, v3);
-        compress!(v0, v1, v2, v3);
+        state.v2 ^= 0xff;
+        S::d_rounds(&mut state);
 
-        v0 ^ v1 ^ v2 ^ v3
+        state.v0 ^ state.v1 ^ state.v2 ^ state.v3
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Clone for SipHasher {
+impl<S: Sip> Clone for Hasher<S> {
     #[inline]
-    fn clone(&self) -> SipHasher {
-        SipHasher {
+    fn clone(&self) -> Hasher<S> {
+        Hasher {
             k0: self.k0,
             k1: self.k1,
             length: self.length,
-            v0: self.v0,
-            v1: self.v1,
-            v2: self.v2,
-            v3: self.v3,
+            state: self.state,
             tail: self.tail,
             ntail: self.ntail,
+            _marker: self._marker,
         }
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Default for SipHasher {
-    fn default() -> SipHasher {
-        SipHasher::new()
+impl<S: Sip> Default for Hasher<S> {
+    #[inline]
+    fn default() -> Hasher<S> {
+        Hasher::new_with_keys(0, 0)
+    }
+}
+
+#[doc(hidden)]
+trait Sip {
+    fn c_rounds(&mut State);
+    fn d_rounds(&mut State);
+}
+
+#[derive(Debug, Clone, Default)]
+struct Sip13Rounds;
+
+impl Sip for Sip13Rounds {
+    #[inline]
+    fn c_rounds(state: &mut State) {
+        compress!(state);
+    }
+
+    #[inline]
+    fn d_rounds(state: &mut State) {
+        compress!(state);
+        compress!(state);
+        compress!(state);
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct Sip24Rounds;
+
+impl Sip for Sip24Rounds {
+    #[inline]
+    fn c_rounds(state: &mut State) {
+        compress!(state);
+        compress!(state);
+    }
+
+    #[inline]
+    fn d_rounds(state: &mut State) {
+        compress!(state);
+        compress!(state);
+        compress!(state);
+        compress!(state);
     }
 }
