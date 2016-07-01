@@ -38,6 +38,7 @@ extern crate quine_mc_cluskey;
 
 extern crate rustc_serialize;
 
+extern crate rustc_errors;
 extern crate rustc_plugin;
 extern crate rustc_const_eval;
 extern crate rustc_const_math;

@@ -9,12 +9,13 @@ use rustc::traits::ProjectionMode;
 use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty;
+use rustc_errors;
 use std::borrow::Cow;
 use std::env;
 use std::mem;
 use std::str::FromStr;
 use syntax::ast::{self, LitKind};
-use syntax::codemap::{ExpnInfo, Span, ExpnFormat};
+use syntax::codemap::{ExpnFormat, ExpnInfo, MultiSpan, Span};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 
@@ -488,6 +489,25 @@ pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint,
         f(&mut db.0);
         db.wiki_link(lint);
     }
+}
+
+/// Create a suggestion made from several `span → replacement`.
+///
+/// Note: in the JSON format (used by `compiletest_rs`), the help message will appear once per
+/// replacement. In human-readable format though, it only appears once before the whole suggestion.
+pub fn multispan_sugg(db: &mut DiagnosticBuilder, help_msg: String, sugg: &[(Span, &str)]) {
+    let sugg = rustc_errors::RenderSpan::Suggestion(rustc_errors::CodeSuggestion {
+        msp: MultiSpan::from_spans(sugg.iter().map(|&(span, _)| span).collect()),
+        substitutes: sugg.iter().map(|&(_, subs)| subs.to_owned()).collect(),
+    });
+
+    let sub = rustc_errors::SubDiagnostic {
+        level: rustc_errors::Level::Help,
+        message: help_msg,
+        span: MultiSpan::new(),
+        render_span: Some(sugg),
+    };
+    db.children.push(sub);
 }
 
 /// Return the base type for references and raw pointers.
