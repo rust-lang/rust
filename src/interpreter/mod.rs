@@ -820,9 +820,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
         let size = self.type_size(ty);
         self.memory.copy(src, dest, size)?;
-        if self.type_needs_drop(ty) {
-            self.memory.drop_fill(src, size)?;
-        }
         Ok(())
     }
 

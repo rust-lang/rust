@@ -1,7 +1,7 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian, self};
 use std::collections::Bound::{Included, Excluded};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
-use std::{fmt, iter, mem, ptr};
+use std::{fmt, iter, ptr};
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::BareFnTy;
@@ -338,10 +338,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let bytes = self.get_bytes_mut(ptr, count)?;
         for b in bytes { *b = val; }
         Ok(())
-    }
-
-    pub fn drop_fill(&mut self, ptr: Pointer, size: usize) -> EvalResult<'tcx, ()> {
-        self.write_repeat(ptr, mem::POST_DROP_U8, size)
     }
 
     pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<'tcx, Pointer> {

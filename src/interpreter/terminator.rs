@@ -6,7 +6,7 @@ use rustc::ty::layout::Layout;
 use rustc::ty::subst::{self, Substs};
 use rustc::ty::{self, Ty, TyCtxt, BareFnTy};
 use std::rc::Rc;
-use std::{iter, mem};
+use std::iter;
 use syntax::{ast, attr};
 use syntax::codemap::{DUMMY_SP, Span};
 
@@ -303,11 +303,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_uint(dest, discr_val, 8)?;
             }
 
-            "forget" => {
-                let arg_ty = *substs.types.get(subst::FnSpace, 0);
-                let arg_size = self.type_size(arg_ty);
-                self.memory.drop_fill(args_ptrs[0], arg_size)?;
-            }
+            "forget" => {}
 
             "init" => self.memory.write_repeat(dest, 0, dest_layout.size(&self.tcx.data_layout).bytes() as usize)?,
 
@@ -549,34 +545,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // TODO(solson): Call user-defined Drop::drop impls.
 
         match ty.sty {
-            ty::TyBox(contents_ty) => {
-                match self.memory.read_ptr(ptr) {
-                    Ok(contents_ptr) => {
-                        self.drop(contents_ptr, contents_ty)?;
-                        trace!("-deallocating box");
-                        self.memory.deallocate(contents_ptr)?;
-                    }
-                    Err(EvalError::ReadBytesAsPointer) => {
-                        let size = self.memory.pointer_size();
-                        let possible_drop_fill = self.memory.read_bytes(ptr, size)?;
-                        if possible_drop_fill.iter().all(|&b| b == mem::POST_DROP_U8) {
-                            return Ok(());
-                        } else {
-                            return Err(EvalError::ReadBytesAsPointer);
-                        }
-                    }
-                    Err(e) => return Err(e),
-                }
+            ty::TyBox(_contents_ty) => {
+                let contents_ptr = self.memory.read_ptr(ptr)?;
+                // self.drop(contents_ptr, contents_ty)?;
+                trace!("-deallocating box");
+                self.memory.deallocate(contents_ptr)?;
             }
 
             // TODO(solson): Implement drop for other relevant types (e.g. aggregates).
             _ => {}
         }
-
-        // Filling drop.
-        // FIXME(solson): Trait objects (with no static size) probably get filled, too.
-        let size = self.type_size(ty);
-        self.memory.drop_fill(ptr, size)?;
 
         Ok(())
     }
