@@ -13,7 +13,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use syntax::ast;
 
-use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro,
+use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg, in_external_macro,
             span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, higher,
             walk_ptrs_ty};
 use utils::paths;
@@ -377,17 +377,16 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                 };
 
                 if visitor.nonindex {
-                    span_lint(cx,
-                              NEEDLESS_RANGE_LOOP,
-                              expr.span,
-                              &format!("the loop variable `{}` is used to index `{}`. Consider using `for ({}, \
-                                        item) in {}.iter().enumerate(){}{}` or similar iterators",
-                                       ident.node,
-                                       indexed,
-                                       ident.node,
-                                       indexed,
-                                       take,
-                                       skip));
+                    span_lint_and_then(cx,
+                                       NEEDLESS_RANGE_LOOP,
+                                       expr.span,
+                                       &format!("the loop variable `{}` is used to index `{}`", ident.node, indexed),
+                                       |db| {
+                        multispan_sugg(db, "consider using an iterator".to_string(), &[
+                            (pat.span, &format!("({}, <item>)", ident.node)),
+                            (arg.span, &format!("{}.iter().enumerate(){}{}", indexed, take, skip)),
+                        ]);
+                    });
                 } else {
                     let repl = if starts_at_zero && take.is_empty() {
                         format!("&{}", indexed)
@@ -395,14 +394,16 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                         format!("{}.iter(){}{}", indexed, take, skip)
                     };
 
-                    span_lint(cx,
-                              NEEDLESS_RANGE_LOOP,
-                              expr.span,
-                              &format!("the loop variable `{}` is only used to index `{}`. \
-                                        Consider using `for item in {}` or similar iterators",
-                                       ident.node,
-                                       indexed,
-                                       repl));
+                    span_lint_and_then(cx,
+                                       NEEDLESS_RANGE_LOOP,
+                                       expr.span,
+                                       &format!("the loop variable `{}` is only used to index `{}`.", ident.node, indexed),
+                                       |db| {
+                        multispan_sugg(db, "consider using an iterator".to_string(), &[
+                            (pat.span, "<item>"),
+                            (arg.span, &repl),
+                        ]);
+                    });
                 }
             }
         }
