@@ -40,12 +40,25 @@ declare_lint! {
     "Closures should not be called in the expression they are defined"
 }
 
+/// **What it does:** This lint detects expressions of the form `--x`
+///
+/// **Why is this bad?** It can mislead C/C++ programmers to think `x` was decremented.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `--x;`
+declare_lint! {
+    pub DOUBLE_NEG, Warn,
+    "`--x` is a double negation of `x` and not a pre-decrement as in C or C++"
+}
+
+
 #[derive(Copy, Clone)]
 pub struct MiscEarly;
 
 impl LintPass for MiscEarly {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL)
+        lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL, DOUBLE_NEG)
     }
 }
 
@@ -126,36 +139,46 @@ impl EarlyLintPass for MiscEarly {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
-        if let ExprKind::Call(ref paren, _) = expr.node {
-            if let ExprKind::Paren(ref closure) = paren.node {
-                if let ExprKind::Closure(_, ref decl, ref block, _) = closure.node {
-                    span_lint_and_then(cx,
-                                       REDUNDANT_CLOSURE_CALL,
-                                       expr.span,
-                                       "Try not to call a closure in the expression where it is declared.",
-                                       |db| {
-                                           if decl.inputs.is_empty() {
-                                               let hint = format!("{}", snippet(cx, block.span, ".."));
-                                               db.span_suggestion(expr.span, "Try doing something like: ", hint);
-                                           }
-                                       });
+        match expr.node {
+            ExprKind::Call(ref paren, _) => {
+                if let ExprKind::Paren(ref closure) = paren.node {
+                    if let ExprKind::Closure(_, ref decl, ref block, _) = closure.node {
+                        span_lint_and_then(cx,
+                                           REDUNDANT_CLOSURE_CALL,
+                                           expr.span,
+                                           "Try not to call a closure in the expression where it is declared.",
+                                           |db| {
+                                               if decl.inputs.is_empty() {
+                                                   let hint = format!("{}", snippet(cx, block.span, ".."));
+                                                   db.span_suggestion(expr.span, "Try doing something like: ", hint);
+                                               }
+                                           });
+                    }
                 }
             }
+            ExprKind::Unary(UnOp::Neg, ref inner) => {
+                if let ExprKind::Unary(UnOp::Neg, _) = inner.node {
+                    span_lint(cx,
+                              DOUBLE_NEG,
+                              expr.span,
+                              "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op");
+    }
+            }
+            _ => ()
         }
     }
 
     fn check_block(&mut self, cx: &EarlyContext, block: &Block) {
         for w in block.stmts.windows(2) {
             if_let_chain! {[
-                let StmtKind::Decl(ref first, _) = w[0].node,
-                let DeclKind::Local(ref local) = first.node,
+                let StmtKind::Local(ref local) = w[0].node,
                 let Option::Some(ref t) = local.init,
-                let ExprKind::Closure(_,_,_,_) = t.node,
-                let PatKind::Ident(_,sp_ident,_) = local.pat.node,
-                let StmtKind::Semi(ref second,_) = w[1].node,
-                let ExprKind::Assign(_,ref call) = second.node,
-                let ExprKind::Call(ref closure,_) = call.node,
-                let ExprKind::Path(_,ref path) = closure.node
+                let ExprKind::Closure(_, _, _, _) = t.node,
+                let PatKind::Ident(_, sp_ident, _) = local.pat.node,
+                let StmtKind::Semi(ref second) = w[1].node,
+                let ExprKind::Assign(_, ref call) = second.node,
+                let ExprKind::Call(ref closure, _) = call.node,
+                let ExprKind::Path(_, ref path) = closure.node
             ], {
                 if sp_ident.node == (&path.segments[0]).identifier {
                     span_lint(cx, REDUNDANT_CLOSURE_CALL, second.span, "Closure called just once immediately after it was declared");

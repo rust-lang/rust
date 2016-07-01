@@ -59,19 +59,11 @@ impl EarlyLintPass for Formatting {
     fn check_block(&mut self, cx: &EarlyContext, block: &ast::Block) {
         for w in block.stmts.windows(2) {
             match (&w[0].node, &w[1].node) {
-                (&ast::StmtKind::Expr(ref first, _), &ast::StmtKind::Expr(ref second, _)) |
-                (&ast::StmtKind::Expr(ref first, _), &ast::StmtKind::Semi(ref second, _)) => {
+                (&ast::StmtKind::Expr(ref first), &ast::StmtKind::Expr(ref second)) |
+                (&ast::StmtKind::Expr(ref first), &ast::StmtKind::Semi(ref second)) => {
                     check_consecutive_ifs(cx, first, second);
                 }
                 _ => (),
-            }
-        }
-
-        if let Some(ref expr) = block.expr {
-            if let Some(ref stmt) = block.stmts.iter().last() {
-                if let ast::StmtKind::Expr(ref first, _) = stmt.node {
-                    check_consecutive_ifs(cx, first, expr);
-                }
             }
         }
     }

@@ -2,17 +2,17 @@
 #![feature(box_syntax)]
 #![feature(rustc_private)]
 
-extern crate rustc_driver;
+extern crate clippy_lints;
 extern crate getopts;
 extern crate rustc;
-extern crate syntax;
+extern crate rustc_driver;
+extern crate rustc_errors;
 extern crate rustc_plugin;
-extern crate clippy_lints;
+extern crate syntax;
 
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 use rustc::session::{config, Session};
 use rustc::session::config::{Input, ErrorOutputType};
-use syntax::diagnostics;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -36,7 +36,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
                       sopts: &config::Options,
-                      descriptions: &diagnostics::registry::Registry,
+                      descriptions: &rustc_errors::registry::Registry,
                       output: ErrorOutputType)
                       -> Compilation {
         self.0.early_callback(matches, sopts, descriptions, output)
@@ -46,7 +46,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
                 sopts: &config::Options,
                 odir: &Option<PathBuf>,
                 ofile: &Option<PathBuf>,
-                descriptions: &diagnostics::registry::Registry)
+                descriptions: &rustc_errors::registry::Registry)
                 -> Option<(Input, Option<PathBuf>)> {
         self.0.no_input(matches, sopts, odir, ofile, descriptions)
     }

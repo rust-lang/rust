@@ -370,6 +370,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         misc::MODULO_ONE,
         misc::REDUNDANT_PATTERN,
         misc::TOPLEVEL_REF_ARG,
+        misc_early::DOUBLE_NEG,
         misc_early::DUPLICATE_UNDERSCORE_ARGUMENT,
         misc_early::REDUNDANT_CLOSURE_CALL,
         misc_early::UNNEEDED_FIELD_PATTERN,

@@ -175,4 +175,9 @@ fn main() {
             println!("world!")
         }
     }
+
+    if true {
+    } else {
+        assert!(true); // assert! is just an `if`
+    }
 }

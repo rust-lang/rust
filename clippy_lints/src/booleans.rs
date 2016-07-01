@@ -3,6 +3,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit::*;
 use syntax::ast::{LitKind, DUMMY_NODE_ID};
 use syntax::codemap::{DUMMY_SP, dummy_spanned};
+use syntax::util::ThinVec;
 use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
 
 /// **What it does:** This lint checks for boolean expressions that can be written more concisely
@@ -99,7 +100,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                         Expr {
                             id: DUMMY_NODE_ID,
                             span: DUMMY_SP,
-                            attrs: None,
+                            attrs: ThinVec::new(),
                             node: ExprBinary(dummy_spanned(op), lhs.clone(), rhs.clone()),
                         }
                     };
