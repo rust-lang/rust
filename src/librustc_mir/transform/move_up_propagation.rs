@@ -366,7 +366,8 @@ impl TempDefUseFinder {
         for (k, ref v) in self.lists.iter() {
             debug!("{:?} defs:", k);
             debug!("{:?}", v.defs);
-            assert!(v.defs.len() > 0); // every temp should have at least one def
+            // this may be too strict? maybe the def was optimized out?
+            //assert!(v.defs.len() > 0); // every temp should have at least one def
             v.defs.iter().map(|e| UseDefLocation::print(&e, mir)).count();
         }
     }
