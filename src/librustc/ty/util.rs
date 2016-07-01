@@ -626,7 +626,6 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         }
 
         let layout = Layout::compute_uncached(self, infcx)?;
-        let layout = tcx.intern_layout(layout);
         if can_cache {
             tcx.layout_cache.borrow_mut().insert(self, layout);
         }
