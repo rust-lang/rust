@@ -93,7 +93,7 @@ pub enum Reveal {
     /// }
     NotSpecializable,
 
-    /// At trans time, all projections will succeed.
+    /// At trans time, all monomorphic projections will succeed.
     All,
 }
 
@@ -878,7 +878,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
 
                 candidate_set.vec.push(ProjectionTyCandidate::Select);
             }
-            super::VtableImpl(ref impl_data) if selcx.projection_mode() != Reveal::All => {
+            super::VtableImpl(ref impl_data) => {
                 // We have to be careful when projecting out of an
                 // impl because of specialization. If we are not in
                 // trans (i.e., projection mode is not "any"), and the
@@ -902,37 +902,43 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                                                  impl_data.impl_def_id,
                                                  obligation.predicate.item_name);
                 let new_candidate = if let Some(node_item) = opt_node_item {
-                    if node_item.node.is_from_trait() {
-                        if node_item.item.ty.is_some() {
-                            // The impl inherited a `type Foo =
-                            // Bar` given in the trait, which is
-                            // implicitly default. No candidate.
-                            None
-                        } else {
-                            // The impl did not specify `type` and neither
-                            // did the trait:
-                            //
-                            // ```rust
-                            // trait Foo { type T; }
-                            // impl Foo for Bar { }
-                            // ```
-                            //
-                            // This is an error, but it will be
-                            // reported in `check_impl_items_against_trait`.
-                            // We accept it here but will flag it as
-                            // an error when we confirm the candidate
-                            // (which will ultimately lead to `normalize_to_error`
-                            // being invoked).
-                            Some(ProjectionTyCandidate::Select)
-                        }
-                    } else if node_item.item.defaultness.is_default() {
-                        // The impl specified `default type Foo =
-                        // Bar`. No candidate.
-                        None
+                    let is_default = if node_item.node.is_from_trait() {
+                        // If true, the impl inherited a `type Foo = Bar`
+                        // given in the trait, which is implicitly default.
+                        // Otherwise, the impl did not specify `type` and
+                        // neither did the trait:
+                        //
+                        // ```rust
+                        // trait Foo { type T; }
+                        // impl Foo for Bar { }
+                        // ```
+                        //
+                        // This is an error, but it will be
+                        // reported in `check_impl_items_against_trait`.
+                        // We accept it here but will flag it as
+                        // an error when we confirm the candidate
+                        // (which will ultimately lead to `normalize_to_error`
+                        // being invoked).
+                        node_item.item.ty.is_some()
                     } else {
-                        // The impl specified `type Foo = Bar`
-                        // with no default. Add a candidate.
+                        node_item.item.defaultness.is_default()
+                    };
+
+                    // Only reveal a specializable default if we're past type-checking
+                    // and the obligations is monomorphic, otherwise passes such as
+                    // transmute checking and polymorphic MIR optimizations could
+                    // get a result which isn't correct for all monomorphizations.
+                    if !is_default {
                         Some(ProjectionTyCandidate::Select)
+                    } else if selcx.projection_mode() == Reveal::All {
+                        assert!(!poly_trait_ref.needs_infer());
+                        if !poly_trait_ref.needs_subst() {
+                            Some(ProjectionTyCandidate::Select)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
                     }
                 } else {
                     // This is saying that neither the trait nor
@@ -981,11 +987,6 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                           coherence checking, which is currently not supported.");
                 };
                 candidate_set.vec.extend(new_candidate);
-            }
-            super::VtableImpl(_) => {
-                // In trans mode, we can just project out of impls, no prob.
-                assert!(selcx.projection_mode() == Reveal::All);
-                candidate_set.vec.push(ProjectionTyCandidate::Select);
             }
             super::VtableParam(..) => {
                 // This case tell us nothing about the value of an
