@@ -169,8 +169,7 @@ pub struct Instance<'tcx> {
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        ppaux::parameterized(f, &self.substs, self.def, ppaux::Ns::Value, &[],
-                             |tcx| Some(tcx.lookup_item_type(self.def).generics))
+        ppaux::parameterized(f, &self.substs, self.def, ppaux::Ns::Value, &[], |_| None)
     }
 }
 
