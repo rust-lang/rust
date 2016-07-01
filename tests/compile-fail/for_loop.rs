@@ -2,6 +2,7 @@
 #![plugin(clippy)]
 
 use std::collections::*;
+use std::rc::Rc;
 
 static STATIC: [usize; 4] = [ 0,  1,  8, 16 ];
 const CONST: [usize; 4] = [ 0,  1,  8, 16 ];
@@ -388,8 +389,20 @@ fn main() {
     for (_, v) in &m {
         //~^ you seem to want to iterate on a map's values
         //~| HELP use the corresponding method
-        //~| SUGGESTION for v in m.values()
+        //~| HELP use the corresponding method
+        //~| SUGGESTION for v in m.values() {
         let _v = v;
+    }
+
+    let m : Rc<HashMap<u64, u64>> = Rc::new(HashMap::new());
+    for (_, v) in &*m {
+        //~^ you seem to want to iterate on a map's values
+        //~| HELP use the corresponding method
+        //~| HELP use the corresponding method
+        //~| SUGGESTION for v in (*m).values() {
+        let _v = v;
+        // Here the `*` is not actually necesarry, but the test tests that we don't suggest
+        // `in *m.values()` as we used to
     }
 
     let mut m : HashMap<u64, u64> = HashMap::new();
@@ -403,7 +416,8 @@ fn main() {
     for (k, _value) in rm {
         //~^ you seem to want to iterate on a map's keys
         //~| HELP use the corresponding method
-        //~| SUGGESTION for k in rm.keys()
+        //~| HELP use the corresponding method
+        //~| SUGGESTION for k in rm.keys() {
         let _k = k;
     }
 

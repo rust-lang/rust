@@ -596,18 +596,20 @@ fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, ex
 
 /// Check for the `FOR_KV_MAP` lint.
 fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
+    let pat_span = pat.span;
+
     if let PatKind::Tuple(ref pat, _) = pat.node {
         if pat.len() == 2 {
-            let (pat_span, kind) = match (&pat[0].node, &pat[1].node) {
-                (key, _) if pat_is_wild(key, body) => (&pat[1].span, "values"),
-                (_, value) if pat_is_wild(value, body) => (&pat[0].span, "keys"),
+            let (new_pat_span, kind) = match (&pat[0].node, &pat[1].node) {
+                (key, _) if pat_is_wild(key, body) => (pat[1].span, "value"),
+                (_, value) if pat_is_wild(value, body) => (pat[0].span, "key"),
                 _ => return,
             };
 
-            let arg_span = match arg.node {
-                ExprAddrOf(MutImmutable, ref expr) => expr.span,
+            let (arg_span, arg) = match arg.node {
+                ExprAddrOf(MutImmutable, ref expr) => (arg.span, &**expr),
                 ExprAddrOf(MutMutable, _) => return, // for _ in &mut _, there is no {values,keys}_mut method
-                _ => arg.span,
+                _ => (arg.span, arg),
             };
 
             let ty = walk_ptrs_ty(cx.tcx.expr_ty(arg));
@@ -615,14 +617,13 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
                 span_lint_and_then(cx,
                                    FOR_KV_MAP,
                                    expr.span,
-                                   &format!("you seem to want to iterate on a map's {}", kind),
+                                   &format!("you seem to want to iterate on a map's {}s", kind),
                                    |db| {
-                    db.span_suggestion(expr.span,
-                                       "use the corresponding method",
-                                       format!("for {} in {}.{}() {{ .. }}",
-                                               snippet(cx, *pat_span, ".."),
-                                               snippet(cx, arg_span, ".."),
-                                               kind));
+                    let map = sugg::Sugg::hir(cx, arg, "map");
+                    multispan_sugg(db, "use the corresponding method".into(), &[
+                        (pat_span, &snippet(cx, new_pat_span, kind)),
+                        (arg_span, &format!("{}.{}s()", map.maybe_par(), kind)),
+                    ]);
                 });
             }
         }

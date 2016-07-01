@@ -149,7 +149,7 @@ impl LateLintPass for Transmute {
                                     from_ty,
                                     to_ty),
                             |db| {
-                                let arg = &sugg::Sugg::hir(cx, &args[0], "..");
+                                let arg = sugg::Sugg::hir(cx, &args[0], "..");
                                 let (deref, cast) = if to_rty.mutbl == Mutability::MutMutable {
                                     ("&mut *", "*mut")
                                 } else {

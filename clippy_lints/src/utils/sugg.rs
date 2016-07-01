@@ -121,7 +121,7 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to create the `&<expr>` suggestion.
     pub fn addr(self) -> Sugg<'static> {
-        make_unop("&", &self)
+        make_unop("&", self)
     }
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>` suggestion.
@@ -129,6 +129,15 @@ impl<'a> Sugg<'a> {
         match limit {
             ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, &end),
             ast::RangeLimits::Closed => make_assoc(AssocOp::DotDotDot, &self, &end),
+        }
+    }
+
+    /// Add parenthesis to any expression that might need them. Suitable to the `self` argument of
+    /// a method call (eg. to build `bar.foo()` or `(1 + 2).foo()`).
+    pub fn maybe_par(self) -> Self {
+        match self {
+            Sugg::NonParen(..) => self,
+            Sugg::MaybeParen(sugg) | Sugg::BinOp(_, sugg) => Sugg::NonParen(format!("({})", sugg).into()),
         }
     }
 }
@@ -150,7 +159,7 @@ impl<'a, 'b> std::ops::Sub<Sugg<'b>> for Sugg<'a> {
 impl<'a> std::ops::Not for Sugg<'a> {
     type Output = Sugg<'static>;
     fn not(self) -> Sugg<'static> {
-        make_unop("!", &self)
+        make_unop("!", self)
     }
 }
 
@@ -178,13 +187,12 @@ impl<T: std::fmt::Display> std::fmt::Display for ParenHelper<T> {
     }
 }
 
-/// Build the string for `<op> <expr>` adding parenthesis when necessary.
+/// Build the string for `<op><expr>` adding parenthesis when necessary.
 ///
 /// For convenience, the operator is taken as a string because all unary operators have the same
 /// precedence.
-pub fn make_unop(op: &str, expr: &Sugg) -> Sugg<'static> {
-    let needs_paren = !matches!(*expr, Sugg::NonParen(..));
-    Sugg::MaybeParen(format!("{}{}", op, ParenHelper::new(needs_paren, expr)).into())
+pub fn make_unop(op: &str, expr: Sugg) -> Sugg<'static> {
+    Sugg::MaybeParen(format!("{}{}", op, expr.maybe_par()).into())
 }
 
 /// Build the string for `<lhs> <op> <rhs>` adding parenthesis when necessary.
