@@ -263,7 +263,7 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
                         Some(format!("if {} {}", snippet(cx, ex.span, "b"), expr_block(cx, true_expr, None, "..")))
                     }
                     (true, false) => {
-                        let test = &Sugg::hir(cx, ex, "..");
+                        let test = Sugg::hir(cx, ex, "..");
                         Some(format!("if {} {}",
                                      !test,
                                      expr_block(cx, false_expr, None, "..")))

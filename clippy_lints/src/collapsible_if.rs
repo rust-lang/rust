@@ -107,7 +107,7 @@ fn check_collapsible_no_if_let(
             db.span_suggestion(expr.span,
                                "try",
                                format!("if {} {}",
-                                       lhs.and(&rhs),
+                                       lhs.and(rhs),
                                        snippet_block(cx, content.span, "..")));
         });
     }}

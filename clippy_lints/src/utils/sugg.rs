@@ -5,6 +5,7 @@ use std;
 use syntax::ast;
 use syntax::util::parser::AssocOp;
 use utils::{higher, snippet};
+use syntax::print::pprust::binop_to_string;
 
 /// A helper type to build suggestion correctly handling parenthesis.
 pub enum Sugg<'a> {
@@ -15,6 +16,9 @@ pub enum Sugg<'a> {
     /// A binary operator expression, including `as`-casts and explicit type coercion.
     BinOp(AssocOp, Cow<'a, str>),
 }
+
+/// Literal constant `1`, for convenience.
+pub const ONE: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("1"));
 
 impl<'a> std::fmt::Display for Sugg<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
@@ -110,28 +114,43 @@ impl<'a> Sugg<'a> {
         }
     }
 
-    /// Convenience method to create the `lhs && rhs` suggestion.
-    pub fn and(&self, rhs: &Self) -> Sugg<'static> {
-        make_binop(ast::BinOpKind::And, self, rhs)
+    /// Convenience method to create the `<lhs> && <rhs>` suggestion.
+    pub fn and(self, rhs: Self) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::And, &self, &rhs)
     }
 
     /// Convenience method to create the `&<expr>` suggestion.
-    pub fn addr(&self) -> Sugg<'static> {
-        make_unop("&", self)
+    pub fn addr(self) -> Sugg<'static> {
+        make_unop("&", &self)
+    }
+
+    /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>` suggestion.
+    pub fn range(self, end: Self, limit: ast::RangeLimits) -> Sugg<'static> {
+        match limit {
+            ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, &end),
+            ast::RangeLimits::Closed => make_assoc(AssocOp::DotDotDot, &self, &end),
+        }
     }
 }
 
-impl<'a, 'b> std::ops::Sub<&'b Sugg<'b>> for &'a Sugg<'a> {
+impl<'a, 'b> std::ops::Add<Sugg<'b>> for Sugg<'a> {
     type Output = Sugg<'static>;
-    fn sub(self, rhs: &'b Sugg<'b>) -> Sugg<'static> {
-        make_binop(ast::BinOpKind::Sub, self, rhs)
+    fn add(self, rhs: Sugg<'b>) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::Add, &self, &rhs)
     }
 }
 
-impl<'a> std::ops::Not for &'a Sugg<'a> {
+impl<'a, 'b> std::ops::Sub<Sugg<'b>> for Sugg<'a> {
+    type Output = Sugg<'static>;
+    fn sub(self, rhs: Sugg<'b>) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::Sub, &self, &rhs)
+    }
+}
+
+impl<'a> std::ops::Not for Sugg<'a> {
     type Output = Sugg<'static>;
     fn not(self) -> Sugg<'static> {
-        make_unop("!", self)
+        make_unop("!", &self)
     }
 }
 
@@ -172,7 +191,7 @@ pub fn make_unop(op: &str, expr: &Sugg) -> Sugg<'static> {
 ///
 /// Precedence of shift operator relative to other arithmetic operation is often confusing so
 /// parenthesis will always be added for a mix of these.
-pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
+pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
     fn is_shift(op: &AssocOp) -> bool {
         matches!(*op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
     }
@@ -190,25 +209,54 @@ pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
              is_shift(other) && is_arith(op)
     }
 
-    let aop = AssocOp::from_ast_binop(op);
-
     let lhs_paren = if let Sugg::BinOp(ref lop, _) = *lhs {
-        needs_paren(&aop, lop, Associativity::Left)
+        needs_paren(&op, lop, Associativity::Left)
     } else {
         false
     };
 
     let rhs_paren = if let Sugg::BinOp(ref rop, _) = *rhs {
-        needs_paren(&aop, rop, Associativity::Right)
+        needs_paren(&op, rop, Associativity::Right)
     } else {
         false
     };
 
-    Sugg::BinOp(aop,
-                format!("{} {} {}",
-                        ParenHelper::new(lhs_paren, lhs),
-                        op.to_string(),
-                        ParenHelper::new(rhs_paren, rhs)).into())
+    let lhs = ParenHelper::new(lhs_paren, lhs);
+    let rhs = ParenHelper::new(rhs_paren, rhs);
+    let sugg = match op {
+        AssocOp::Add |
+        AssocOp::BitAnd |
+        AssocOp::BitOr |
+        AssocOp::BitXor |
+        AssocOp::Divide |
+        AssocOp::Equal |
+        AssocOp::Greater |
+        AssocOp::GreaterEqual |
+        AssocOp::LAnd |
+        AssocOp::LOr |
+        AssocOp::Less |
+        AssocOp::LessEqual |
+        AssocOp::Modulus |
+        AssocOp::Multiply |
+        AssocOp::NotEqual |
+        AssocOp::ShiftLeft |
+        AssocOp::ShiftRight |
+        AssocOp::Subtract => format!("{} {} {}", lhs, op.to_ast_binop().expect("Those are AST ops").to_string(), rhs),
+        AssocOp::Inplace => format!("in ({}) {}", lhs, rhs),
+        AssocOp::Assign => format!("{} = {}", lhs, rhs),
+        AssocOp::AssignOp(op) => format!("{} {}= {}", lhs, binop_to_string(op), rhs),
+        AssocOp::As => format!("{} as {}", lhs, rhs),
+        AssocOp::DotDot => format!("{}..{}", lhs, rhs),
+        AssocOp::DotDotDot => format!("{}...{}", lhs, rhs),
+        AssocOp::Colon => format!("{}: {}", lhs, rhs),
+    };
+
+    Sugg::BinOp(op, sugg.into())
+}
+
+/// Convinience wrapper arround `make_assoc` and `AssocOp::from_ast_binop`.
+pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
+    make_assoc(AssocOp::from_ast_binop(op), lhs, rhs)
 }
 
 #[derive(PartialEq, Eq)]

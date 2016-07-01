@@ -72,7 +72,7 @@ impl LateLintPass for TopLevelRefPass {
                 l.pat.span,
                 "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
                 |db| {
-                    let init = &Sugg::hir(cx, init, "..");
+                    let init = Sugg::hir(cx, init, "..");
                     db.span_suggestion(s.span,
                                        "try",
                                        format!("let {}{} = {};",
@@ -171,8 +171,8 @@ impl LateLintPass for FloatCmp {
                                    expr.span,
                                    "strict comparison of f32 or f64",
                                    |db| {
-                    let lhs = &Sugg::hir(cx, left, "..");
-                    let rhs = &Sugg::hir(cx, right, "..");
+                    let lhs = Sugg::hir(cx, left, "..");
+                    let rhs = Sugg::hir(cx, right, "..");
 
                     db.span_suggestion(expr.span,
                                        "consider comparing them within some error",
