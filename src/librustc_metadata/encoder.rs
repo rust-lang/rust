@@ -1351,6 +1351,7 @@ fn my_visit_expr(expr: &hir::Expr,
 
             rbml_w.start_tag(tag_items_data_item);
             encode_def_id_and_key(ecx, rbml_w, def_id);
+            encode_name(rbml_w, syntax::parse::token::intern("<closure>"));
 
             rbml_w.start_tag(tag_items_closure_ty);
             write_closure_type(ecx, rbml_w, &ecx.tcx.tables.borrow().closure_tys[&def_id]);
