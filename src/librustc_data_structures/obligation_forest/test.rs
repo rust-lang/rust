@@ -418,3 +418,43 @@ fn orphan() {
     let errors = forest.to_errors(());
     assert_eq!(errors.len(), 0);
 }
+
+#[test]
+fn simultaneous_register_and_error() {
+    // check that registering a failed obligation works correctly
+    let mut forest = ObligationForest::new();
+    forest.register_obligation("A");
+    forest.register_obligation("B");
+
+    let Outcome { completed: ok, errors: err, .. } =
+        forest.process_obligations(&mut C(|obligation| {
+            match *obligation {
+                "A" => Err("An error"),
+                "B" => Ok(Some(vec!["A"])),
+                _ => unreachable!(),
+            }
+        }, |_|{}));
+    assert_eq!(ok.len(), 0);
+    assert_eq!(err, vec![super::Error {
+        error: "An error",
+        backtrace: vec!["A"]
+    }]);
+
+    let mut forest = ObligationForest::new();
+    forest.register_obligation("B");
+    forest.register_obligation("A");
+
+    let Outcome { completed: ok, errors: err, .. } =
+        forest.process_obligations(&mut C(|obligation| {
+            match *obligation {
+                "A" => Err("An error"),
+                "B" => Ok(Some(vec!["A"])),
+                _ => unreachable!(),
+            }
+        }, |_|{}));
+    assert_eq!(ok.len(), 0);
+    assert_eq!(err, vec![super::Error {
+        error: "An error",
+        backtrace: vec!["A"]
+    }]);
+}

@@ -208,11 +208,17 @@ impl<O: ForestObligation> ObligationForest<O> {
     ///
     /// This CAN be done in a snapshot
     pub fn register_obligation(&mut self, obligation: O) {
-        self.register_obligation_at(obligation, None)
+        // Ignore errors here - there is no guarantee of success.
+        let _ = self.register_obligation_at(obligation, None);
     }
 
-    fn register_obligation_at(&mut self, obligation: O, parent: Option<NodeIndex>) {
-        if self.done_cache.contains(obligation.as_predicate()) { return }
+    // returns Err(()) if we already know this obligation failed.
+    fn register_obligation_at(&mut self, obligation: O, parent: Option<NodeIndex>)
+                              -> Result<(), ()>
+    {
+        if self.done_cache.contains(obligation.as_predicate()) {
+            return Ok(())
+        }
 
         match self.waiting_cache.entry(obligation.as_predicate().clone()) {
             Entry::Occupied(o) => {
@@ -226,6 +232,11 @@ impl<O: ForestObligation> ObligationForest<O> {
                         self.nodes[o.get().get()].dependents.push(parent);
                     }
                 }
+                if let NodeState::Error = self.nodes[o.get().get()].state.get() {
+                    Err(())
+                } else {
+                    Ok(())
+                }
             }
             Entry::Vacant(v) => {
                 debug!("register_obligation_at({:?}, {:?}) - ok",
@@ -233,8 +244,9 @@ impl<O: ForestObligation> ObligationForest<O> {
                 v.insert(NodeIndex::new(self.nodes.len()));
                 self.cache_list.push(obligation.as_predicate().clone());
                 self.nodes.push(Node::new(parent, obligation));
+                Ok(())
             }
-        };
+        }
     }
 
     /// Convert all remaining obligations to the given error.
@@ -306,12 +318,19 @@ impl<O: ForestObligation> ObligationForest<O> {
                 Ok(Some(children)) => {
                     // if we saw a Some(_) result, we are not (yet) stalled
                     stalled = false;
-                    for child in children {
-                        self.register_obligation_at(child,
-                                                    Some(NodeIndex::new(index)));
-                    }
-
                     self.nodes[index].state.set(NodeState::Success);
+
+                    for child in children {
+                        let st = self.register_obligation_at(
+                            child,
+                            Some(NodeIndex::new(index))
+                        );
+                        if let Err(()) = st {
+                            // error already reported - propagate it
+                            // to our node.
+                            self.error_at(index);
+                        }
+                    }
                 }
                 Err(err) => {
                     let backtrace = self.error_at(index);
