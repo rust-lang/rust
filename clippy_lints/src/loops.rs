@@ -9,9 +9,9 @@ use rustc::middle::region::CodeExtent;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
-use std::borrow::Cow;
 use std::collections::HashMap;
 use syntax::ast;
+use utils::sugg;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg, in_external_macro,
             span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, higher,
@@ -332,7 +332,7 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
 fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
-    if let Some(higher::Range { start: Some(ref start), ref end, .. }) = higher::range(arg) {
+    if let Some(higher::Range { start: Some(ref start), ref end, limits }) = higher::range(arg) {
         // the var must be a single name
         if let PatKind::Binding(_, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
@@ -360,20 +360,28 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
 
                 let starts_at_zero = is_integer_literal(start, 0);
 
-                let skip: Cow<_> = if starts_at_zero {
-                    "".into()
+                let skip = if starts_at_zero {
+                    "".to_owned()
                 } else {
-                    format!(".skip({})", snippet(cx, start.span, "..")).into()
+                    format!(".skip({})", snippet(cx, start.span, ".."))
                 };
 
-                let take: Cow<_> = if let Some(ref end) = *end {
+                let take = if let Some(ref end) = *end {
                     if is_len_call(end, &indexed) {
-                        "".into()
+                        "".to_owned()
                     } else {
-                        format!(".take({})", snippet(cx, end.span, "..")).into()
+                        match limits {
+                            ast::RangeLimits::Closed => {
+                                let end = sugg::Sugg::hir(cx, end, "<count>");
+                                format!(".take({})", end + sugg::ONE)
+                            }
+                            ast::RangeLimits::HalfOpen => {
+                                format!(".take({})", snippet(cx, end.span, ".."))
+                            }
+                        }
                     }
                 } else {
-                    "".into()
+                    "".to_owned()
                 };
 
                 if visitor.nonindex {

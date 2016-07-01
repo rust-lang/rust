@@ -165,7 +165,7 @@ fn main() {
         //~^ ERROR `i` is only used to index `vec`
         //~| HELP consider
         //~| HELP consider
-        //~| SUGGESTION for <item> in vec.iter().take(MAX_LEN) {
+        //~| SUGGESTION for <item> in vec.iter().take(MAX_LEN + 1) {
         println!("{}", vec[i]);
     }
 
@@ -181,7 +181,7 @@ fn main() {
         //~^ ERROR `i` is only used to index `vec`
         //~| HELP consider
         //~| HELP consider
-        //~| SUGGESTION for <item> in vec.iter().take(10).skip(5) {
+        //~| SUGGESTION for <item> in vec.iter().take(10 + 1).skip(5) {
         println!("{}", vec[i]);
     }
 
