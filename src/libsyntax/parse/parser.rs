@@ -495,64 +495,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Check for erroneous `ident { }`; if matches, signal error and
-    /// recover (without consuming any expected input token).  Returns
-    /// true if and only if input was consumed for recovery.
-    pub fn check_for_erroneous_unit_struct_expecting(&mut self,
-                                                     expected: &[token::Token])
-                                                     -> bool {
-        if self.token == token::OpenDelim(token::Brace)
-            && expected.iter().all(|t| *t != token::OpenDelim(token::Brace))
-            && self.look_ahead(1, |t| *t == token::CloseDelim(token::Brace)) {
-            // matched; signal non-fatal error and recover.
-            let span = self.span;
-            self.span_err(span, "unit-like struct construction is written with no trailing `{ }`");
-            self.eat(&token::OpenDelim(token::Brace));
-            self.eat(&token::CloseDelim(token::Brace));
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Commit to parsing a complete expression `e` expected to be
-    /// followed by some token from the set edible + inedible.  Recover
-    /// from anticipated input errors, discarding erroneous characters.
-    pub fn commit_expr(&mut self, e: &Expr, edible: &[token::Token],
-                       inedible: &[token::Token]) -> PResult<'a, ()> {
-        debug!("commit_expr {:?}", e);
-        if let ExprKind::Path(..) = e.node {
-            // might be unit-struct construction; check for recoverableinput error.
-            let expected = edible.iter()
-                .cloned()
-                .chain(inedible.iter().cloned())
-                .collect::<Vec<_>>();
-            self.check_for_erroneous_unit_struct_expecting(&expected[..]);
-        }
-        self.expect_one_of(edible, inedible)
-    }
-
-    pub fn commit_expr_expecting(&mut self, e: &Expr, edible: token::Token) -> PResult<'a, ()> {
-        self.commit_expr(e, &[edible], &[])
-    }
-
-    /// Commit to parsing a complete statement `s`, which expects to be
-    /// followed by some token from the set edible + inedible.  Check
-    /// for recoverable input errors, discarding erroneous characters.
-    pub fn commit_stmt(&mut self, edible: &[token::Token],
-                       inedible: &[token::Token]) -> PResult<'a, ()> {
-        if self.last_token
-               .as_ref()
-               .map_or(false, |t| t.is_ident() || t.is_path()) {
-            let expected = edible.iter()
-                .cloned()
-                .chain(inedible.iter().cloned())
-                .collect::<Vec<_>>();
-            self.check_for_erroneous_unit_struct_expecting(&expected);
-        }
-        self.expect_one_of(edible, inedible)
-    }
-
     /// returns the span of expr, if it was not interpolated or the span of the interpolated token
     fn interpolated_or_expr_span(&self,
                                  expr: PResult<'a, P<Expr>>)
@@ -1247,7 +1189,7 @@ impl<'a> Parser<'a> {
             let default = if self.check(&token::Eq) {
                 self.bump();
                 let expr = self.parse_expr()?;
-                self.commit_expr_expecting(&expr, token::Semi)?;
+                self.expect(&token::Semi)?;
                 Some(expr)
             } else {
                 self.expect(&token::Semi)?;
@@ -2195,8 +2137,7 @@ impl<'a> Parser<'a> {
                 let mut trailing_comma = false;
                 while self.token != token::CloseDelim(token::Paren) {
                     es.push(self.parse_expr()?);
-                    self.commit_expr(&es.last().unwrap(), &[],
-                                     &[token::Comma, token::CloseDelim(token::Paren)])?;
+                    self.expect_one_of(&[], &[token::Comma, token::CloseDelim(token::Paren)])?;
                     if self.check(&token::Comma) {
                         trailing_comma = true;
 
@@ -2407,9 +2348,8 @@ impl<'a> Parser<'a> {
                                     }
                                 }
 
-                                match self.commit_expr(&fields.last().unwrap().expr,
-                                                       &[token::Comma],
-                                                       &[token::CloseDelim(token::Brace)]) {
+                                match self.expect_one_of(&[token::Comma],
+                                                         &[token::CloseDelim(token::Brace)]) {
                                     Ok(()) => {}
                                     Err(mut e) => {
                                         e.emit();
@@ -2662,7 +2602,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let ix = self.parse_expr()?;
                 hi = self.span.hi;
-                self.commit_expr_expecting(&ix, token::CloseDelim(token::Bracket))?;
+                self.expect(&token::CloseDelim(token::Bracket))?;
                 let index = self.mk_index(e, ix);
                 e = self.mk_expr(lo, hi, index, ThinVec::new())
               }
@@ -3329,8 +3269,7 @@ impl<'a> Parser<'a> {
         let lo = self.last_span.lo;
         let discriminant = self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL,
                                                None)?;
-        if let Err(mut e) = self.commit_expr_expecting(&discriminant,
-                                                       token::OpenDelim(token::Brace)) {
+        if let Err(mut e) = self.expect(&token::OpenDelim(token::Brace)) {
             if self.token == token::Token::Semi {
                 e.span_note(match_span, "did you mean to remove this `match` keyword?");
             }
@@ -3376,7 +3315,7 @@ impl<'a> Parser<'a> {
             && self.token != token::CloseDelim(token::Brace);
 
         if require_comma {
-            self.commit_expr(&expr, &[token::Comma], &[token::CloseDelim(token::Brace)])?;
+            self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)])?;
         } else {
             self.eat(&token::Comma);
         }
@@ -4118,7 +4057,7 @@ impl<'a> Parser<'a> {
                 _ => { // all other kinds of statements:
                     let mut hi = span.hi;
                     if classify::stmt_ends_with_semi(&node) {
-                        self.commit_stmt(&[token::Semi], &[])?;
+                        self.expect(&token::Semi)?;
                         hi = self.last_span.hi;
                     }
 
@@ -4196,7 +4135,7 @@ impl<'a> Parser<'a> {
         if classify::expr_requires_semi_to_be_stmt(&e) {
             // Just check for errors and recover; do not eat semicolon yet.
             if let Err(mut e) =
-                self.commit_stmt(&[], &[token::Semi, token::CloseDelim(token::Brace)])
+                self.expect_one_of(&[], &[token::Semi, token::CloseDelim(token::Brace)])
             {
                 e.emit();
                 self.recover_stmt();
@@ -4863,7 +4802,7 @@ impl<'a> Parser<'a> {
             let typ = self.parse_ty_sum()?;
             self.expect(&token::Eq)?;
             let expr = self.parse_expr()?;
-            self.commit_expr_expecting(&expr, token::Semi)?;
+            self.expect(&token::Semi)?;
             (name, ast::ImplItemKind::Const(typ, expr))
         } else {
             let (name, inner_attrs, node) = self.parse_impl_method(&vis)?;
@@ -5287,7 +5226,7 @@ impl<'a> Parser<'a> {
         let ty = self.parse_ty_sum()?;
         self.expect(&token::Eq)?;
         let e = self.parse_expr()?;
-        self.commit_expr_expecting(&e, token::Semi)?;
+        self.expect(&token::Semi)?;
         let item = match m {
             Some(m) => ItemKind::Static(ty, m, e),
             None => ItemKind::Const(ty, e),
