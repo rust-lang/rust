@@ -37,8 +37,11 @@ endif
 ifeq ($(CFG_LLVM_ROOT),)
 
 LLVM_STAMP_$(1) = $$(CFG_LLVM_BUILD_DIR_$(1))/llvm-auto-clean-stamp
+LLVM_DONE_$(1) = $$(CFG_LLVM_BUILD_DIR_$(1))/llvm-finished-building
 
-$$(LLVM_CONFIG_$(1)): $$(LLVM_DEPS_TARGET_$(1)) $$(LLVM_STAMP_$(1))
+$$(LLVM_CONFIG_$(1)): $$(LLVM_DONE_$(1))
+
+$$(LLVM_DONE_$(1)): $$(LLVM_DEPS_TARGET_$(1)) $$(LLVM_STAMP_$(1))
 	@$$(call E, cmake: llvm)
 ifeq ($$(findstring msvc,$(1)),msvc)
 	$$(Q)$$(CFG_CMAKE) --build $$(CFG_LLVM_BUILD_DIR_$(1)) \
@@ -46,7 +49,7 @@ ifeq ($$(findstring msvc,$(1)),msvc)
 else
 	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1))
 endif
-	$$(Q)touch $$(LLVM_CONFIG_$(1))
+	$$(Q)touch $$@
 
 ifeq ($$(findstring msvc,$(1)),msvc)
 clean-llvm$(1):
