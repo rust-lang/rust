@@ -80,6 +80,9 @@ use mem;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sip::SipHasher;
 
+#[unstable(feature = "sip_hash_13", issue = "29754")]
+pub use self::sip::{SipHasher13, SipHasher24};
+
 mod sip;
 
 /// A hashable type.
