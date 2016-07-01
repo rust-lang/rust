@@ -42,7 +42,7 @@ impl Pointer {
         Pointer { offset: (self.offset as isize + i) as usize, ..self }
     }
     pub fn points_to_zst(&self) -> bool {
-        self.alloc_id.0 == 0
+        self.alloc_id == ZST_ALLOC_ID
     }
     fn zst_ptr() -> Self {
         Pointer {
