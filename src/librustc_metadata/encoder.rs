@@ -1851,10 +1851,6 @@ fn encode_panic_strategy(rbml_w: &mut Encoder, ecx: &EncodeContext) {
     }
 }
 
-// NB: Increment this as you change the metadata encoding version.
-#[allow(non_upper_case_globals)]
-pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 2 ];
-
 pub fn encode_metadata(ecx: EncodeContext, krate: &hir::Crate) -> Vec<u8> {
     let mut wr = Cursor::new(Vec::new());
 
