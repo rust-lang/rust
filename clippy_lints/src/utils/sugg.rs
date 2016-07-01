@@ -77,10 +77,10 @@ impl<'a> Sugg<'a> {
             ast::ExprKind::InPlace(..) |
             ast::ExprKind::Unary(..) |
             ast::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
-            ast::ExprKind::Again(..) |
             ast::ExprKind::Block(..) |
             ast::ExprKind::Break(..) |
             ast::ExprKind::Call(..) |
+            ast::ExprKind::Continue(..) |
             ast::ExprKind::Field(..) |
             ast::ExprKind::ForLoop(..) |
             ast::ExprKind::Index(..) |
