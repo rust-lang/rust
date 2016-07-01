@@ -317,6 +317,7 @@ impl Config {
                 ("OPTIMIZE_TESTS", self.rust_optimize_tests),
                 ("DEBUGINFO_TESTS", self.rust_debuginfo_tests),
                 ("LOCAL_REBUILD", self.local_rebuild),
+                ("NINJA", self.ninja),
             }
 
             match key {
