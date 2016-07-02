@@ -278,65 +278,74 @@ extern "rust-intrinsic" {
     /// Moves a value out of scope without running drop glue.
     pub fn forget<T>(_: T) -> ();
 
-    /// Bitcasts a value of one type to another. Both types must have the same
-    /// size.
+    /// Reinterprets the bits of a value of one type as another type. Both types
+    /// must have the same size. Neither the original, nor the result, may be an
+    /// invalid value, or else you'll have UB on your hands.
     ///
     /// `transmute::<T, U>(t)` is semantically equivalent to the following:
     ///
     /// ```
+    /// // assuming that T and U are the same size
     /// fn transmute<T, U>(t: T) -> U {
-    ///   let u: U = std::mem::uninitialized();
-    ///   std::ptr::copy_nonoverlapping(&t as *const T as *const u8,
-    ///                                 &mut u as *mut U as *mut u8,
-    ///                                 std::mem::size_of::<T>());
-    ///   std::mem::forget(t);
-    ///   u
+    ///     let u: U = std::mem::uninitialized();
+    ///     std::ptr::copy_nonoverlapping(&t as *const T as *const u8,
+    ///                                   &mut u as *mut U as *mut u8,
+    ///                                   std::mem::size_of::<T>());
+    ///     std::mem::forget(t);
+    ///     u
     /// }
     /// ```
     ///
-    /// `transmute` is incredibly unsafe. There are an incredible number of ways
-    /// to cause undefined behavior with this function. `transmute` should be
+    /// `transmute` is incredibly unsafe. There are a vast number of ways to
+    /// cause undefined behavior with this function. `transmute` should be
     /// the absolute last resort.
     ///
     /// The following is more complete documentation. Read it before using
     /// `transmute`:
     /// [nomicon](https://doc.rust-lang.org/nomicon/transmutes.html)
     ///
-    /// # Examples
+    /// # Alternatives
+    ///
+    /// There are very few good cases for `transmute`. Most can be achieved
+    /// through other means. Some more or less common uses, and a better way,
+    /// are as follows:
     ///
     /// ```
     /// use std::mem;
     ///
-    /// let slice: &[u8] = unsafe { mem::transmute::<&str, &[u8]>("Rust") };
+    /// // turning a pointer into a usize
+    /// let ptr = &0;
+    /// let ptr_num_transmute = std::mem::transmute::<&i32, usize>(ptr);
+    /// // now with more `as`
+    /// let ptr_num_cast = ptr as *const i32 as usize;
+    ///
+    ///
+    /// // Turning a *mut T into an &mut T
+    /// let ptr: *mut i32 = &mut 0;
+    /// let ref_transmuted = std::mem::transmute::<*mut i32, &mut i32>(ptr);
+    /// // Use reborrows
+    /// let ref_casted = &mut *ptr;
+    ///
+    ///
+    /// // Turning an &mut T into an &mut U
+    /// let ptr = &mut 0;
+    /// let val_transmuted = std::mem::transmute::<&mut i32, &mut u32>(ptr);
+    /// // Reborrowing continues to play a role here, but now we add `as` casts
+    /// let val_casts = &mut *(ptr as *mut i32 as *mut u32);
+    ///
+    ///
+    /// // Turning an `&str` into an `&[u8]`
+    /// let slice = unsafe { mem::transmute::<&str, &[u8]>("Rust") };
     /// assert_eq!(slice, [82, 117, 115, 116]);
     /// // this is not a good way to do this.
     /// // use .as_bytes()
     /// let slice = "Rust".as_bytes();
     /// assert_eq!(slice, [82, 117, 115, 116]);
-    /// // Or, just use a byte string
+    /// // Or, just use a byte string, if you have control over the string
+    /// // literal
     /// assert_eq!(b"Rust", [82, 117, 116, 116]);
-    /// ```
     ///
-    /// There are very few good cases for `transmute`. Most can be achieved
-    /// through other means. Some commone uses, and the less unsafe way, are as
-    /// follows:
     ///
-    /// ```
-    /// // Turning a *mut T into an &mut T
-    /// let ptr: *mut i32 = &mut 0;
-    /// let reF_transmuted = std::mem::transmute::<*mut i32, &mut i32>(ptr);
-    /// let ref_casted = &mut *ptr;
-    /// ```
-    ///
-    /// ```
-    /// // Turning an &mut T into an &mut U
-    /// let ptr = &mut 0;
-    /// let val_transmuted = std::mem::transmute::<&mut i32, &mut u32>(ptr);
-    /// // There is a better way, using `as` and reborrowing:
-    /// let val_casts = &mut *(ptr as *mut T as *mut U);
-    /// ```
-    ///
-    /// ```
     /// // Copying an `&mut T` to reslice:
     /// fn split_at_mut_transmute<T>(slice: &mut [T], index: usize)
     ///                              -> (&mut [T], &mut [T]) {
@@ -345,7 +354,7 @@ extern "rust-intrinsic" {
     ///     let slice2 = std::mem::transmute::<&mut [T], &mut [T]>(slice);
     ///     (slice[0..index], slice2[index..len])
     /// }
-    /// // or:
+    /// // Again, use `as` and reborrowing
     /// fn split_at_mut_casts<T>(slice: &mut [T], index: usize)
     ///                          -> (&mut [T], &mut [T]) {
     ///     let len = slice.len();
@@ -355,11 +364,14 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     ///
-    /// There are valid uses of transmute.
+    /// # Examples
+    ///
+    /// There are valid uses of transmute, though they are few and far between.
     ///
     /// ```
     /// // getting the bitpattern of a floating point type
     /// let x = std::mem::transmute::<f32, u32>(0.0/0.0)
+    ///
     ///
     /// // turning a pointer into a function pointer
     /// // in file.c: `int foo(void) { ... }`
@@ -372,6 +384,7 @@ extern "rust-intrinsic" {
     ///                                 extern fn() -> libc::c_int>(foo);
     /// println!("{}", foo());
     ///
+    ///
     /// // extending an invariant lifetime; this is advanced, very unsafe rust
     /// struct T<'a>(&'a i32);
     /// let value = 0;
@@ -379,8 +392,6 @@ extern "rust-intrinsic" {
     /// let ptr = &mut t;
     /// let ptr_extended = std::mem::transmute::<&mut T, &mut T<'static>>(ptr);
     /// ```
-    ///
-    /// But these are few and far between.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn transmute<T, U>(e: T) -> U;
 
