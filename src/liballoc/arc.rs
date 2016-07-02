@@ -936,6 +936,35 @@ impl<T: ?Sized + Hash> Hash for Arc<T> {
     }
 }
 
+#[stable(feature = "fn_smart_ptr", since = "1.11.0")]
+impl<I, F: ?Sized> Fn<I> for Arc<F>
+    where F: Fn<I>
+{
+    extern "rust-call" fn call(&self, args: I) -> Self::Output {
+        (&**self).call(args)
+    }
+}
+
+#[stable(feature = "fn_smart_ptr", since = "1.11.0")]
+impl<I, F: ?Sized> FnMut<I> for Arc<F>
+    where F: Fn<I>
+{
+    extern "rust-call" fn call_mut(&mut self, args: I) -> Self::Output {
+        self.call(args)
+    }
+}
+
+#[stable(feature = "fn_smart_ptr", since = "1.11.0")]
+impl<I, F: ?Sized> FnOnce<I> for Arc<F>
+    where F: Fn<I>
+{
+    type Output = F::Output;
+    extern "rust-call" fn call_once(self, args: I) -> Self::Output {
+        self.call(args)
+    }
+}
+
+
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Arc<T> {
     fn from(t: T) -> Self {
@@ -1170,6 +1199,12 @@ mod tests {
     fn show_arc() {
         let a = Arc::new(5);
         assert_eq!(format!("{:?}", a), "5");
+    }
+
+    #[test]
+    fn test_fn() {
+        let f = Arc::new(|i: i32| -> i32 { i + 1 });
+        assert_eq!(Some(1).map(f), Some(2));
     }
 
     // Make sure deriving works with Arc<T>
