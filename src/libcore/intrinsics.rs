@@ -280,7 +280,8 @@ extern "rust-intrinsic" {
 
     /// Reinterprets the bits of a value of one type as another type. Both types
     /// must have the same size. Neither the original, nor the result, may be an
-    /// invalid value, or else you'll have UB on your hands.
+    /// [invalid value]
+    /// (https://doc.rust-lang.org/nomicon/meet-safe-and-unsafe.html).
     ///
     /// `transmute::<T, U>(t)` is semantically equivalent to the following:
     ///
@@ -300,9 +301,8 @@ extern "rust-intrinsic" {
     /// cause undefined behavior with this function. `transmute` should be
     /// the absolute last resort.
     ///
-    /// The following is more complete documentation. Read it before using
-    /// `transmute`:
-    /// [nomicon](https://doc.rust-lang.org/nomicon/transmutes.html)
+    /// The [nomicon](https://doc.rust-lang.org/nomicon/transmutes.html) has
+    /// more complete documentation. Read it before using `transmute`.
     ///
     /// # Alternatives
     ///
