@@ -804,6 +804,19 @@ pub struct Stmt {
     pub span: Span,
 }
 
+impl Stmt {
+    pub fn add_trailing_semicolon(mut self) -> Self {
+        self.node = match self.node {
+            StmtKind::Expr(expr) => StmtKind::Semi(expr),
+            StmtKind::Mac(mac) => StmtKind::Mac(mac.map(|(mac, _style, attrs)| {
+                (mac, MacStmtStyle::Semicolon, attrs)
+            })),
+            node @ _ => node,
+        };
+        self
+    }
+}
+
 impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "stmt({}: {})", self.id.to_string(), pprust::stmt_to_string(self))

@@ -444,14 +444,7 @@ fn expand_stmt(stmt: Stmt, fld: &mut MacroExpander) -> SmallVector<Stmt> {
     // semicolon to the final statement produced by expansion.
     if style == MacStmtStyle::Semicolon {
         if let Some(stmt) = fully_expanded.pop() {
-            fully_expanded.push(Stmt {
-                id: stmt.id,
-                node: match stmt.node {
-                    StmtKind::Expr(expr) => StmtKind::Semi(expr),
-                    _ => stmt.node /* might already have a semi */
-                },
-                span: stmt.span,
-            });
+            fully_expanded.push(stmt.add_trailing_semicolon());
         }
     }
 
