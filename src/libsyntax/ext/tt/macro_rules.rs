@@ -118,12 +118,18 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
 
     fn make_stmts(self: Box<ParserAnyMacro<'a>>)
                  -> Option<SmallVector<ast::Stmt>> {
+        let parse_stmt = |parser: &mut Parser<'a>| -> ::parse::PResult<'a, _> {
+            Ok(match parser.parse_stmt()? {
+                Some(stmt) => Some(parser.finish_parsing_statement(stmt)?),
+                None => None,
+            })
+        };
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();
             match parser.token {
                 token::Eof => break,
-                _ => match parser.parse_stmt() {
+                _ => match parse_stmt(&mut parser) {
                     Ok(maybe_stmt) => match maybe_stmt {
                         Some(stmt) => ret.push(stmt),
                         None => (),
