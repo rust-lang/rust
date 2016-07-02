@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std;
 use syntax::ast;
 use syntax::util::parser::AssocOp;
-use utils::{higher, snippet};
+use utils::{higher, snippet, snippet_opt};
 use syntax::print::pprust::binop_to_string;
 
 /// A helper type to build suggestion correctly handling parenthesis.
@@ -31,43 +31,48 @@ impl<'a> std::fmt::Display for Sugg<'a> {
 }
 
 impl<'a> Sugg<'a> {
-    pub fn hir(cx: &LateContext, expr: &'a hir::Expr, default: &'a str) -> Sugg<'a> {
-        let snippet = snippet(cx, expr.span, default);
-
-        match expr.node {
-            hir::ExprAddrOf(..) |
-            hir::ExprBox(..) |
-            hir::ExprClosure(..) |
-            hir::ExprIf(..) |
-            hir::ExprUnary(..) |
-            hir::ExprMatch(..) => Sugg::MaybeParen(snippet),
-            hir::ExprAgain(..) |
-            hir::ExprBlock(..) |
-            hir::ExprBreak(..) |
-            hir::ExprCall(..) |
-            hir::ExprField(..) |
-            hir::ExprIndex(..) |
-            hir::ExprInlineAsm(..) |
-            hir::ExprLit(..) |
-            hir::ExprLoop(..) |
-            hir::ExprMethodCall(..) |
-            hir::ExprPath(..) |
-            hir::ExprRepeat(..) |
-            hir::ExprRet(..) |
-            hir::ExprStruct(..) |
-            hir::ExprTup(..) |
-            hir::ExprTupField(..) |
-            hir::ExprVec(..) |
-            hir::ExprWhile(..) => Sugg::NonParen(snippet),
-            hir::ExprAssign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
-            hir::ExprAssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
-            hir::ExprBinary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
-            hir::ExprCast(..) => Sugg::BinOp(AssocOp::As, snippet),
-            hir::ExprType(..) => Sugg::BinOp(AssocOp::Colon, snippet),
-        }
+    pub fn hir_opt(cx: &LateContext, expr: &hir::Expr) -> Option<Sugg<'a>> {
+        snippet_opt(cx, expr.span).map(|snippet| {
+            let snippet = Cow::Owned(snippet);
+            match expr.node {
+                hir::ExprAddrOf(..) |
+                hir::ExprBox(..) |
+                hir::ExprClosure(..) |
+                hir::ExprIf(..) |
+                hir::ExprUnary(..) |
+                hir::ExprMatch(..) => Sugg::MaybeParen(snippet),
+                hir::ExprAgain(..) |
+                hir::ExprBlock(..) |
+                hir::ExprBreak(..) |
+                hir::ExprCall(..) |
+                hir::ExprField(..) |
+                hir::ExprIndex(..) |
+                hir::ExprInlineAsm(..) |
+                hir::ExprLit(..) |
+                hir::ExprLoop(..) |
+                hir::ExprMethodCall(..) |
+                hir::ExprPath(..) |
+                hir::ExprRepeat(..) |
+                hir::ExprRet(..) |
+                hir::ExprStruct(..) |
+                hir::ExprTup(..) |
+                hir::ExprTupField(..) |
+                hir::ExprVec(..) |
+                hir::ExprWhile(..) => Sugg::NonParen(snippet),
+                hir::ExprAssign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
+                hir::ExprAssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
+                hir::ExprBinary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
+                hir::ExprCast(..) => Sugg::BinOp(AssocOp::As, snippet),
+                hir::ExprType(..) => Sugg::BinOp(AssocOp::Colon, snippet),
+            }
+        })
     }
 
-    pub fn ast(cx: &EarlyContext, expr: &'a ast::Expr, default: &'a str) -> Sugg<'a> {
+    pub fn hir(cx: &LateContext, expr: &hir::Expr, default: &'a str) -> Sugg<'a> {
+        Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
+    }
+
+    pub fn ast(cx: &EarlyContext, expr: &ast::Expr, default: &'a str) -> Sugg<'a> {
         use syntax::ast::RangeLimits;
 
         let snippet = snippet(cx, expr.span, default);
@@ -122,6 +127,11 @@ impl<'a> Sugg<'a> {
     /// Convenience method to create the `&<expr>` suggestion.
     pub fn addr(self) -> Sugg<'static> {
         make_unop("&", self)
+    }
+
+    /// Convenience method to create the `&mut <expr>` suggestion.
+    pub fn mut_addr(self) -> Sugg<'static> {
+        make_unop("&mut ", self)
     }
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>` suggestion.
