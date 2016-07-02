@@ -114,6 +114,18 @@ If a union contains multiple fields of different sizes, assigning to a field
 smaller than the entire union must not change the memory of the union outside
 that field.
 
+Union fields will normally not implement `Drop`, and by default, declaring a
+union with a field type that implements `Drop` will produce a lint warning.
+Assigning to a field with a type that implements `Drop` will call `drop()` on
+the previous value of that field.  This matches the behavior of `struct` fields
+that implement `Drop`.  To avoid this, such as if interpreting the union's
+value via that field and dropping it would produce incorrect behavior, Rust
+code can assign to the entire union instead of the field.  A union does not
+implicitly implement `Drop` even if its field types do.
+
+The lint warning produced when declaring a union field of a type that
+implements `Drop` should document this caveat in its explanatory text.
+
 ## Pattern matching
 
 Unsafe code may pattern match on union fields, using the same syntax as a
@@ -244,10 +256,12 @@ A union may have trait implementations, using the same `impl` syntax as a
 struct.
 
 The compiler should provide a lint if a union field has a type that implements
-the `Drop` trait.  The compiler may optionally provide a pragma to disable that
-lint, for code that intentionally stores a type with Drop in a union.  The
-compiler must never implicitly generate a Drop implementation for the union
-itself, though Rust code may explicitly implement Drop for a union type.
+the `Drop` trait.  The explanation for that lint should include an explanation
+of the caveat documented in the section "Writing fields".  The compiler may
+optionally provide a pragma to disable that lint, for code that intentionally
+stores a type with Drop in a union.  The compiler must never implicitly
+generate a Drop implementation for the union itself, though Rust code may
+explicitly implement Drop for a union type.
 
 ## Generic unions
 
