@@ -71,7 +71,7 @@ use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
-use html::markdown::{self, Markdown};
+use html::markdown::{self, MarkdownRelative};
 use html::{highlight, layout};
 
 /// A pair of name and its optional document.
@@ -1659,11 +1659,12 @@ fn plain_summary_line(s: Option<&str>) -> String {
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
     document_stability(w, cx, item)?;
-    document_full(w, item)?;
+    document_full(w, cx, item)?;
     Ok(())
 }
 
-fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink) -> fmt::Result {
+fn document_short(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item, link: AssocItemLink)
+    -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
             format!("{} [Read more]({})",
@@ -1671,14 +1672,14 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
-        write!(w, "<div class='docblock'>{}</div>", Markdown(&markdown))?;
+        write!(w, "<div class='docblock'>{}</div>", MarkdownRelative(&markdown, &cx.root_path))?;
     }
     Ok(())
 }
 
-fn document_full(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
+fn document_full(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
     if let Some(s) = item.doc_value() {
-        write!(w, "<div class='docblock'>{}</div>", Markdown(s))?;
+        write!(w, "<div class='docblock'>{}</div>", MarkdownRelative(s, &cx.root_path))?;
     }
     Ok(())
 }
@@ -1831,7 +1832,9 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
                        stab_docs = stab_docs,
-                       docs = shorter(Some(&Markdown(doc_value).to_string())),
+                       docs = shorter(
+                          Some(&MarkdownRelative(doc_value, &cx.root_path).to_string())
+                       ),
                        class = shortty(myitem),
                        stab = myitem.stability_class(),
                        href = item_path(shortty(myitem), myitem.name.as_ref().unwrap()),
@@ -1861,7 +1864,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Deprecated{}{}", since, Markdown(&reason));
+            let text = format!("Deprecated{}{}", since, MarkdownRelative(&reason, &cx.root_path));
             stability.push(format!("<em class='stab deprecated'>{}</em>", text))
         };
 
@@ -1881,7 +1884,8 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Unstable{}{}", unstable_extra, Markdown(&reason));
+            let text = format!("Unstable{}{}", unstable_extra,
+                MarkdownRelative(&reason, &cx.root_path));
             stability.push(format!("<em class='stab unstable'>{}</em>", text))
         };
     } else if let Some(depr) = item.deprecation.as_ref() {
@@ -1896,7 +1900,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             String::new()
         };
 
-        let text = format!("Deprecated{}{}", since, Markdown(&note));
+        let text = format!("Deprecated{}{}", since, MarkdownRelative(&note, &cx.root_path));
         stability.push(format!("<em class='stab deprecated'>{}</em>", text))
     }
 
@@ -2579,7 +2583,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
         if let Some(ref dox) = i.impl_item.attrs.value("doc") {
-            write!(w, "<div class='docblock'>{}</div>", Markdown(dox))?;
+            write!(w, "<div class='docblock'>{}</div>", MarkdownRelative(dox, &cx.root_path))?;
         }
     }
 
@@ -2647,11 +2651,11 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         // because impls can't have a stability.
                         document_stability(w, cx, it)?;
                         if item.doc_value().is_some() {
-                            document_full(w, item)?;
+                            document_full(w, cx, item)?;
                         } else {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, it, link)?;
+                            document_short(w, cx, it, link)?;
                         }
                     }
                 } else {
@@ -2659,7 +2663,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 }
             } else {
                 document_stability(w, cx, item)?;
-                document_short(w, item, link)?;
+                document_short(w, cx, item, link)?;
             }
         }
         Ok(())

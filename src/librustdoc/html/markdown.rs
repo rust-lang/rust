@@ -47,9 +47,12 @@ use test;
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 pub struct Markdown<'a>(pub &'a str);
-/// A unit struct like `Markdown`, that renders the markdown with a
+/// A unit struct like `Markdown`, that can expand '::/...' links
+/// using the root prefix provided in the second string.
+pub struct MarkdownRelative<'a>(pub &'a str, pub &'a str);
+/// A unit struct like `MarkdownRelative`, that renders the markdown with a
 /// table of contents.
-pub struct MarkdownWithToc<'a>(pub &'a str);
+pub struct MarkdownWithToc<'a>(pub &'a str, pub &'a str);
 
 const DEF_OUNIT: libc::size_t = 64;
 const HOEDOWN_EXT_NO_INTRA_EMPHASIS: libc::c_uint = 1 << 11;
@@ -143,9 +146,13 @@ struct html_toc_data {
     nesting_level: libc::c_int,
 }
 
-struct MyOpaque {
+struct MyOpaque<'a> {
     dfltblk: extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                            *const hoedown_buffer, *const hoedown_renderer_data),
+    dfltlink: extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                            *const hoedown_buffer, *const hoedown_buffer,
+                            *const hoedown_renderer_data) -> libc::c_int,
+    root_path: &'a str,
     toc_builder: Option<TocBuilder>,
 }
 
@@ -219,7 +226,7 @@ thread_local!(pub static PLAYGROUND_KRATE: RefCell<Option<Option<String>>> = {
     RefCell::new(None)
 });
 
-pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
+pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool, root_path: &str) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,
                     lang: *const hoedown_buffer, data: *const hoedown_renderer_data) {
         unsafe {
@@ -349,11 +356,50 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         1
     }
 
+    // Intercept the default link logic to process mod-relative links starting with '::/'
+    extern fn link(
+        ob: *mut hoedown_buffer,
+        content: *const hoedown_buffer,
+        link: *const hoedown_buffer,
+        title: *const hoedown_buffer,
+        data: *const hoedown_renderer_data,
+    ) -> libc::c_int {
+
+        let my_opaque : &MyOpaque = unsafe {
+            let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
+            &*((*opaque).opaque as *const MyOpaque)
+        };
+
+        if link.is_null() {
+            return (my_opaque.dfltlink)(ob, content, link, title, data);
+        }
+
+        let bytes = unsafe { (*link).as_bytes() };
+        let link_str = str::from_utf8(bytes).unwrap().to_owned();
+
+        if !link_str.starts_with("::/") {
+            return (my_opaque.dfltlink)(ob, content, link, title, data);
+        }
+
+        let new_link = my_opaque.root_path.to_owned() + &link_str[3..];
+        let new_link = CString::new(new_link).unwrap();
+
+        unsafe {
+            let link_buffer = hoedown_buffer_new(DEF_OUNIT);
+            hoedown_buffer_puts(link_buffer, new_link.as_ptr());
+            let result = (my_opaque.dfltlink)(ob, content, link_buffer, title, data);
+            hoedown_buffer_free(link_buffer);
+            result
+        }
+    }
+
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
         let renderer = hoedown_html_renderer_new(0, 0);
         let mut opaque = MyOpaque {
             dfltblk: (*renderer).blockcode.unwrap(),
+            dfltlink: (*renderer).link.unwrap(),
+            root_path: root_path,
             toc_builder: if print_toc {Some(TocBuilder::new())} else {None}
         };
         (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
@@ -361,6 +407,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         (*renderer).blockcode = Some(block);
         (*renderer).header = Some(header);
         (*renderer).codespan = Some(codespan);
+        (*renderer).link = Some(link);
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, s.as_ptr(),
@@ -524,14 +571,23 @@ impl<'a> fmt::Display for Markdown<'a> {
         let Markdown(md) = *self;
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
-        render(fmt, md, false)
+        render(fmt, md, false, "")
+    }
+}
+
+impl<'a> fmt::Display for MarkdownRelative<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let MarkdownRelative(md, root_path) = *self;
+        // This is actually common enough to special-case
+        if md.is_empty() { return Ok(()) }
+        render(fmt, md, false, root_path)
     }
 }
 
 impl<'a> fmt::Display for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let MarkdownWithToc(md) = *self;
-        render(fmt, md, true)
+        let MarkdownWithToc(md, root_path) = *self;
+        render(fmt, md, true, root_path)
     }
 }
 
@@ -690,4 +746,18 @@ mod tests {
         t("# top header", "top header");
         t("## header", "header");
     }
+
+    #[test]
+    fn test_root_relative_links() {
+        fn t(input: &str, root: &str, expect: &str) {
+            let output = format!("{}", MarkdownRelative(input, root));
+            assert_eq!(output, format!("<p><a href=\"{}\">Link</a></p>\n", expect));
+        }
+
+        t("[Link](::/path/file.html)", "", "path/file.html");
+        t("[Link](::/path/file.html)", "../", "../path/file.html");
+        t("[Link](::/path/file.html)", "../../", "../../path/file.html");
+        t("[Link]\n[Link]: ::/path/file.html", "../", "../path/file.html");
+    }
+
 }
