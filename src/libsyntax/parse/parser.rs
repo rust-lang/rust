@@ -4064,7 +4064,7 @@ impl<'a> Parser<'a> {
 
     /// Finish parsing expressions that start with macros and handle trailing semicolons
     /// (or the lack thereof) -- c.f. `parse_stmt`.
-    fn finish_parsing_statement(&mut self, mut stmt: Stmt) -> PResult<'a, Stmt> {
+    pub fn finish_parsing_statement(&mut self, mut stmt: Stmt) -> PResult<'a, Stmt> {
         if let StmtKind::Mac(mac) = stmt.node {
             if mac.1 != MacStmtStyle::NoBraces || self.token == token::Semi {
                 stmt.node = StmtKind::Mac(mac);
@@ -4082,7 +4082,7 @@ impl<'a> Parser<'a> {
 
     fn handle_trailing_semicolon(&mut self, mut stmt: Stmt) -> PResult<'a, Stmt> {
         match stmt.node {
-            StmtKind::Expr(ref expr) => {
+            StmtKind::Expr(ref expr) if self.token != token::Eof => {
                 // expression without semicolon
                 if classify::expr_requires_semi_to_be_stmt(expr) {
                     // Just check for errors and recover; do not eat semicolon yet.
