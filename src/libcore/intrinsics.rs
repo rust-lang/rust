@@ -346,6 +346,29 @@ extern "rust-intrinsic" {
     /// assert_eq!(b"Rust", [82, 117, 116, 116]);
     ///
     ///
+    /// // Turning a Vec<&T> into a Vec<Option<&T>>
+    /// let store = [0, 1, 2, 3];
+    /// let v_orig = store.iter().collect::<Vec<&i32>>();
+    /// // Using transmute; Undefined Behavior
+    /// let v_transmuted = mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(
+    ///     v_orig);
+    /// // The suggested, safe way
+    /// let v_collected = v_orig.into_iter()
+    ///                         .map(|r| Some(r))
+    ///                         .collect::<Vec<Option<&i32>>>();
+    /// // The no-copy, unsafe way, still using transmute, but not UB
+    /// let v_no_copy = Vec::from_raw_parts(v_orig.as_mut_ptr(),
+    ///                                     v_orig.len(),
+    ///                                     v_orig.capacity());
+    /// mem::forget(v_orig);
+    /// // This is equivalent to the original, but safer, and reuses the same
+    /// // Vec internals. Therefore the new inner type must have the exact same
+    /// // size, and the same or lesser alignment, as the old type.
+    /// // The same caveats exist for this method as transmute, for the original
+    /// // inner type (`&i32`) to the converted inner type (`Option<&i32>`), so
+    /// // read the nomicon page linked above.
+    ///
+    ///
     /// // Copying an `&mut T` to reslice:
     /// fn split_at_mut_transmute<T>(slice: &mut [T], index: usize)
     ///                              -> (&mut [T], &mut [T]) {
