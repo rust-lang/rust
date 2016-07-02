@@ -316,7 +316,7 @@ extern "rust-intrinsic" {
     /// // turning a pointer into a usize
     /// let ptr = &0;
     /// let ptr_num_transmute = std::mem::transmute::<&i32, usize>(ptr);
-    /// // now with more `as`
+    /// // Use `as` casts instead
     /// let ptr_num_cast = ptr as *const i32 as usize;
     ///
     ///
@@ -330,15 +330,15 @@ extern "rust-intrinsic" {
     /// // Turning an &mut T into an &mut U
     /// let ptr = &mut 0;
     /// let val_transmuted = std::mem::transmute::<&mut i32, &mut u32>(ptr);
-    /// // Reborrowing continues to play a role here, but now we add `as` casts
+    /// // Now let's put together `as` and reborrowing
     /// let val_casts = &mut *(ptr as *mut i32 as *mut u32);
     ///
     ///
     /// // Turning an `&str` into an `&[u8]`
+    /// // this is not a good way to do this.
     /// let slice = unsafe { mem::transmute::<&str, &[u8]>("Rust") };
     /// assert_eq!(slice, [82, 117, 115, 116]);
-    /// // this is not a good way to do this.
-    /// // use .as_bytes()
+    /// // You could use `str::as_bytes`
     /// let slice = "Rust".as_bytes();
     /// assert_eq!(slice, [82, 117, 115, 116]);
     /// // Or, just use a byte string, if you have control over the string
