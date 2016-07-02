@@ -23,6 +23,9 @@ use build_helper::output;
 use bootstrap::{dylib_path, dylib_path_var};
 
 use build::{Build, Compiler, Mode};
+use build::util;
+
+const ADB_TEST_DIR: &'static str = "/data/tmp";
 
 /// Runs the `linkchecker` tool as compiled in `stage` by the `host` compiler.
 ///
@@ -88,6 +91,7 @@ pub fn compiletest(build: &Build,
                    target: &str,
                    mode: &str,
                    suite: &str) {
+    println!("Check compiletest {} ({} -> {})", suite, compiler.host, target);
     let mut cmd = build.tool_cmd(compiler, "compiletest");
 
     // compiletest currently has... a lot of arguments, so let's just pass all
@@ -105,21 +109,23 @@ pub fn compiletest(build: &Build,
     cmd.arg("--host").arg(compiler.host);
     cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(&build.config.build));
 
-    let mut flags = format!("-Crpath");
+    let mut flags = vec!["-Crpath".to_string()];
     if build.config.rust_optimize_tests {
-        flags.push_str(" -O");
+        flags.push("-O".to_string());
     }
     if build.config.rust_debuginfo_tests {
-        flags.push_str(" -g");
+        flags.push("-g".to_string());
     }
 
-    cmd.arg("--host-rustcflags").arg(&flags);
+    let mut hostflags = build.rustc_flags(&compiler.host);
+    hostflags.extend(flags.clone());
+    cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
-    let linkflag = format!("-Lnative={}", build.test_helpers_out(target).display());
-    cmd.arg("--target-rustcflags").arg(format!("{} {}", flags, linkflag));
-
-    // FIXME: needs android support
-    cmd.arg("--android-cross-path").arg("");
+    let mut targetflags = build.rustc_flags(&target);
+    targetflags.extend(flags);
+    targetflags.push(format!("-Lnative={}",
+                             build.test_helpers_out(target).display()));
+    cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
 
     // FIXME: CFG_PYTHON should probably be detected more robustly elsewhere
     let python_default = "python";
@@ -179,6 +185,16 @@ pub fn compiletest(build: &Build,
         }
     }
     build.add_bootstrap_key(compiler, &mut cmd);
+
+    cmd.arg("--adb-path").arg("adb");
+    cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
+    if target.contains("android") {
+        // Assume that cc for this target comes from the android sysroot
+        cmd.arg("--android-cross-path")
+           .arg(build.cc(target).parent().unwrap().parent().unwrap());
+    } else {
+        cmd.arg("--android-cross-path").arg("");
+    }
 
     build.run(&mut cmd);
 }
@@ -302,7 +318,97 @@ pub fn krate(build: &Build,
     let mut dylib_path = dylib_path();
     dylib_path.insert(0, build.sysroot_libdir(compiler, target));
     cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
-    cargo.args(&build.flags.args);
 
-    build.run(&mut cargo);
+    if target.contains("android") {
+        build.run(cargo.arg("--no-run"));
+        krate_android(build, compiler, target, mode);
+    } else {
+        cargo.args(&build.flags.args);
+        build.run(&mut cargo);
+    }
+}
+
+fn krate_android(build: &Build,
+                 compiler: &Compiler,
+                 target: &str,
+                 mode: Mode) {
+    let mut tests = Vec::new();
+    let out_dir = build.cargo_out(compiler, mode, target);
+    find_tests(&out_dir, target, &mut tests);
+    find_tests(&out_dir.join("deps"), target, &mut tests);
+
+    for test in tests {
+        build.run(Command::new("adb").arg("push").arg(&test).arg(ADB_TEST_DIR));
+
+        let test_file_name = test.file_name().unwrap().to_string_lossy();
+        let log = format!("{}/check-stage{}-T-{}-H-{}-{}.log",
+                          ADB_TEST_DIR,
+                          compiler.stage,
+                          target,
+                          compiler.host,
+                          test_file_name);
+        let program = format!("(cd {dir}; \
+                                LD_LIBRARY_PATH=./{target} ./{test} \
+                                    --logfile {log} \
+                                    {args})",
+                              dir = ADB_TEST_DIR,
+                              target = target,
+                              test = test_file_name,
+                              log = log,
+                              args = build.flags.args.join(" "));
+
+        let output = output(Command::new("adb").arg("shell").arg(&program));
+        println!("{}", output);
+        build.run(Command::new("adb")
+                          .arg("pull")
+                          .arg(&log)
+                          .arg(build.out.join("tmp")));
+        build.run(Command::new("adb").arg("shell").arg("rm").arg(&log));
+        if !output.contains("result: ok") {
+            panic!("some tests failed");
+        }
+    }
+}
+
+fn find_tests(dir: &Path,
+              target: &str,
+              dst: &mut Vec<PathBuf>) {
+    for e in t!(dir.read_dir()).map(|e| t!(e)) {
+        let file_type = t!(e.file_type());
+        if !file_type.is_file() {
+            continue
+        }
+        let filename = e.file_name().into_string().unwrap();
+        if (target.contains("windows") && filename.ends_with(".exe")) ||
+           (!target.contains("windows") && !filename.contains(".")) {
+            dst.push(e.path());
+        }
+    }
+}
+
+pub fn android_copy_libs(build: &Build,
+                         compiler: &Compiler,
+                         target: &str) {
+    println!("Android copy libs to emulator ({})", target);
+    build.run(Command::new("adb").arg("remount"));
+    build.run(Command::new("adb").args(&["shell", "rm", "-r", ADB_TEST_DIR]));
+    build.run(Command::new("adb").args(&["shell", "mkdir", ADB_TEST_DIR]));
+    build.run(Command::new("adb")
+                      .arg("push")
+                      .arg(build.src.join("src/etc/adb_run_wrapper.sh"))
+                      .arg(ADB_TEST_DIR));
+
+    let target_dir = format!("{}/{}", ADB_TEST_DIR, target);
+    build.run(Command::new("adb").args(&["shell", "mkdir", &target_dir[..]]));
+
+    for f in t!(build.sysroot_libdir(compiler, target).read_dir()) {
+        let f = t!(f);
+        let name = f.file_name().into_string().unwrap();
+        if util::is_dylib(&name) {
+            build.run(Command::new("adb")
+                              .arg("push")
+                              .arg(f.path())
+                              .arg(&target_dir));
+        }
+    }
 }

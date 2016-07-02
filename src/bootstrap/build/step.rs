@@ -102,6 +102,7 @@ macro_rules! targets {
             // Steps for running tests. The 'check' target is just a pseudo
             // target to depend on a bunch of others.
             (check, Check { stage: u32, compiler: Compiler<'a> }),
+            (check_target, CheckTarget { stage: u32, compiler: Compiler<'a> }),
             (check_linkcheck, CheckLinkcheck { stage: u32 }),
             (check_cargotest, CheckCargoTest { stage: u32 }),
             (check_tidy, CheckTidy { stage: u32 }),
@@ -138,6 +139,9 @@ macro_rules! targets {
             (dist_mingw, DistMingw { _dummy: () }),
             (dist_rustc, DistRustc { stage: u32 }),
             (dist_std, DistStd { compiler: Compiler<'a> }),
+
+            // Misc targets
+            (android_copy_libs, AndroidCopyLibs { compiler: Compiler<'a> }),
         }
     }
 }
@@ -382,37 +386,80 @@ impl<'a> Step<'a> {
                      self.doc_error_index(stage)]
             }
             Source::Check { stage, compiler } => {
-                vec![
+                // Check is just a pseudo step which means check all targets,
+                // so just depend on checking all targets.
+                build.config.target.iter().map(|t| {
+                    self.target(t).check_target(stage, compiler)
+                }).collect()
+            }
+            Source::CheckTarget { stage, compiler } => {
+                // CheckTarget here means run all possible test suites for this
+                // target. Most of the time, however, we can't actually run
+                // anything if we're not the build triple as we could be cross
+                // compiling.
+                //
+                // As a result, the base set of targets here is quite stripped
+                // down from the standard set of targets. These suites have
+                // their own internal logic to run in cross-compiled situations
+                // if they'll run at all. For example compiletest knows that
+                // when testing Android targets we ship artifacts to the
+                // emulator.
+                //
+                // When in doubt the rule of thumb for adding to this list is
+                // "should this test suite run on the android bot?"
+                let mut base = vec![
                     self.check_rpass(compiler),
-                    self.check_rpass_full(compiler),
                     self.check_rfail(compiler),
-                    self.check_rfail_full(compiler),
-                    self.check_cfail(compiler),
-                    self.check_cfail_full(compiler),
-                    self.check_pfail(compiler),
-                    self.check_incremental(compiler),
-                    self.check_ui(compiler),
                     self.check_crate_std(compiler),
                     self.check_crate_test(compiler),
-                    self.check_crate_rustc(compiler),
-                    self.check_codegen(compiler),
-                    self.check_codegen_units(compiler),
                     self.check_debuginfo(compiler),
-                    self.check_rustdoc(compiler),
-                    self.check_pretty(compiler),
-                    self.check_pretty_rpass(compiler),
-                    self.check_pretty_rpass_full(compiler),
-                    self.check_pretty_rfail(compiler),
-                    self.check_pretty_rfail_full(compiler),
-                    self.check_pretty_rpass_valgrind(compiler),
-                    self.check_rpass_valgrind(compiler),
-                    self.check_error_index(compiler),
-                    self.check_docs(compiler),
-                    self.check_rmake(compiler),
-                    self.check_linkcheck(stage),
-                    self.check_tidy(stage),
                     self.dist(stage),
-                ]
+                ];
+
+                // If we're testing the build triple, then we know we can
+                // actually run binaries and such, so we run all possible tests
+                // that we know about.
+                if self.target == build.config.build {
+                    base.extend(vec![
+                        // docs-related
+                        self.check_docs(compiler),
+                        self.check_error_index(compiler),
+                        self.check_rustdoc(compiler),
+
+                        // UI-related
+                        self.check_cfail(compiler),
+                        self.check_pfail(compiler),
+                        self.check_ui(compiler),
+
+                        // codegen-related
+                        self.check_incremental(compiler),
+                        self.check_codegen(compiler),
+                        self.check_codegen_units(compiler),
+
+                        // misc compiletest-test suites
+                        self.check_rpass_full(compiler),
+                        self.check_rfail_full(compiler),
+                        self.check_cfail_full(compiler),
+                        self.check_pretty_rpass_full(compiler),
+                        self.check_pretty_rfail_full(compiler),
+                        self.check_rpass_valgrind(compiler),
+                        self.check_rmake(compiler),
+
+                        // crates
+                        self.check_crate_rustc(compiler),
+
+                        // pretty
+                        self.check_pretty(compiler),
+                        self.check_pretty_rpass(compiler),
+                        self.check_pretty_rfail(compiler),
+                        self.check_pretty_rpass_valgrind(compiler),
+
+                        // misc
+                        self.check_linkcheck(stage),
+                        self.check_tidy(stage),
+                    ]);
+                }
+                return base
             }
             Source::CheckLinkcheck { stage } => {
                 vec![self.tool_linkchecker(stage), self.doc(stage)]
@@ -437,16 +484,20 @@ impl<'a> Step<'a> {
             Source::CheckCFail { compiler } |
             Source::CheckRPassValgrind { compiler } |
             Source::CheckRPass { compiler } => {
-                vec![
+                let mut base = vec![
                     self.libtest(compiler),
-                    self.tool_compiletest(compiler.stage),
+                    self.target(compiler.host).tool_compiletest(compiler.stage),
                     self.test_helpers(()),
-                ]
+                ];
+                if self.target.contains("android") {
+                    base.push(self.android_copy_libs(compiler));
+                }
+                base
             }
             Source::CheckDebuginfo { compiler } => {
                 vec![
                     self.libtest(compiler),
-                    self.tool_compiletest(compiler.stage),
+                    self.target(compiler.host).tool_compiletest(compiler.stage),
                     self.test_helpers(()),
                     self.debugger_scripts(compiler.stage),
                 ]
@@ -459,13 +510,14 @@ impl<'a> Step<'a> {
             Source::CheckPrettyRPassValgrind { compiler } |
             Source::CheckRMake { compiler } => {
                 vec![self.librustc(compiler),
-                     self.tool_compiletest(compiler.stage)]
+                     self.target(compiler.host).tool_compiletest(compiler.stage)]
             }
             Source::CheckDocs { compiler } => {
                 vec![self.libstd(compiler)]
             }
             Source::CheckErrorIndex { compiler } => {
-                vec![self.libstd(compiler), self.tool_error_index(compiler.stage)]
+                vec![self.libstd(compiler),
+                     self.target(compiler.host).tool_error_index(compiler.stage)]
             }
             Source::CheckCrateStd { compiler } => {
                 vec![self.libtest(compiler)]
@@ -528,6 +580,10 @@ impl<'a> Step<'a> {
                     }
                 }
                 return base
+            }
+
+            Source::AndroidCopyLibs { compiler } => {
+                vec![self.libtest(compiler)]
             }
         }
     }

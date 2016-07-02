@@ -135,7 +135,6 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
 
     // Prepare the overlay which is part of the tarball but won't actually be
     // installed
-    t!(fs::create_dir_all(&overlay));
     let cp = |file: &str| {
         install(&build.src.join(file), &overlay, 0o644);
     };
@@ -199,7 +198,6 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
 
         // Copy runtime DLLs needed by the compiler
         if libdir != "bin" {
-            t!(fs::create_dir_all(image.join(libdir)));
             for entry in t!(src.join(libdir).read_dir()).map(|e| t!(e)) {
                 let name = entry.file_name();
                 if let Some(s) = name.to_str() {
@@ -221,7 +219,6 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
         let cp = |file: &str| {
             install(&build.src.join(file), &image.join("share/doc/rust"), 0o644);
         };
-        t!(fs::create_dir_all(&image.join("share/doc/rust")));
         cp("COPYRIGHT");
         cp("LICENSE-APACHE");
         cp("LICENSE-MIT");
@@ -289,6 +286,7 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
 
 fn install(src: &Path, dstdir: &Path, perms: u32) {
     let dst = dstdir.join(src.file_name().unwrap());
+    t!(fs::create_dir_all(dstdir));
     t!(fs::copy(src, &dst));
     chmod(&dst, perms);
 }
