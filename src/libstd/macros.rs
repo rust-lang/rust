@@ -17,7 +17,7 @@
 /// The entry point for panic of Rust threads.
 ///
 /// This macro is used to inject panic into a Rust thread, causing the thread to
-/// panic entirely. Each thread's panic can be reaped as the `Box<Any>` type,
+/// panic entirely. Each thread's panic can be reaped as the [`Box<Any>`] type,
 /// and the single-argument form of the `panic!` macro will be the value which
 /// is transmitted.
 ///
@@ -33,6 +33,8 @@
 /// panic!(4); // panic with the value of 4 to be collected elsewhere
 /// panic!("this is a {} {message}", "fancy", message = "message");
 /// ```
+///
+/// [`Box<Any>`]: ../../collections/boxed/struct.Box.html
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
@@ -61,7 +63,7 @@ macro_rules! panic {
 
 /// Macro for printing to the standard output.
 ///
-/// Equivalent to the `println!` macro except that a newline is not printed at
+/// Equivalent to the [`println!`] macro except that a newline is not printed at
 /// the end of the message.
 ///
 /// Note that stdout is frequently line-buffered by default so it may be
@@ -91,6 +93,8 @@ macro_rules! panic {
 ///
 /// io::stdout().flush().unwrap();
 /// ```
+///
+/// [`println!`]: ../../std/macro.println!.html
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
@@ -101,7 +105,7 @@ macro_rules! print {
 /// Macro for printing to the standard output, with a newline.
 ///
 /// Use the `format!` syntax to write data to the standard output.
-/// See `std::fmt` for more information.
+/// See [`std::fmt`] for more information.
 ///
 /// # Panics
 ///
@@ -113,6 +117,8 @@ macro_rules! print {
 /// println!("hello there!");
 /// println!("format {} arguments", "some");
 /// ```
+///
+/// [`std::fmt`]: ../../std/fmt/index.html
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! println {
@@ -154,7 +160,9 @@ macro_rules! println {
 /// # drop(rx2.recv());
 /// ```
 ///
-/// For more information about select, see the `std::sync::mpsc::Select` structure.
+/// For more information about select, see the [`std::sync::mpsc::Select`] structure.
+///
+/// [`std::sync::mpsc::Select`]: ../../std/sync/mpsc/struct.Select.html
 #[macro_export]
 #[unstable(feature = "mpsc_select", issue = "27800")]
 macro_rules! select {
@@ -192,11 +200,11 @@ pub mod builtin {
     /// The core macro for formatted string creation & output.
     ///
     /// This macro produces a value of type `fmt::Arguments`. This value can be
-    /// passed to the functions in `std::fmt` for performing useful functions.
-    /// All other formatting macros (`format!`, `write!`, `println!`, etc) are
+    /// passed to the functions in [`std::fmt`] for performing useful functions.
+    /// All other formatting macros (`format!`, `write!`, [`println!`], etc) are
     /// proxied through this one.
     ///
-    /// For more information, see the documentation in `std::fmt`.
+    /// For more information, see the documentation in [`std::fmt`].
     ///
     /// # Examples
     ///
@@ -207,6 +215,9 @@ pub mod builtin {
     /// assert_eq!(s, format!("hello {}", "world"));
     ///
     /// ```
+    ///
+    /// [`println!`]: ../../std/macro.println!.html
+    /// [`std::fmt`]: ../../std/fmt/index.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! format_args { ($fmt:expr, $($args:tt)*) => ({
@@ -219,7 +230,7 @@ pub mod builtin {
     /// compile time, yielding an expression of type `&'static str`.
     ///
     /// If the environment variable is not defined, then a compilation error
-    /// will be emitted.  To not emit a compile error, use the `option_env!`
+    /// will be emitted.  To not emit a compile error, use the [`option_env!`]
     /// macro instead.
     ///
     /// # Examples
@@ -228,6 +239,8 @@ pub mod builtin {
     /// let path: &'static str = env!("PATH");
     /// println!("the $PATH variable at the time of compiling was: {}", path);
     /// ```
+    ///
+    /// [`option_env!`]: ../../std/macro.option_env!.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! env { ($name:expr) => ({ /* compiler built-in */ }) }
@@ -235,7 +248,7 @@ pub mod builtin {
     /// Optionally inspect an environment variable at compile time.
     ///
     /// If the named environment variable is present at compile time, this will
-    /// expand into an expression of type `Option<&'static str>` whose value is
+    /// expand into an expression of type [`Option<&'static str>`] whose value is
     /// `Some` of the value of the environment variable. If the environment
     /// variable is not present, then this will expand to `None`.
     ///
@@ -248,6 +261,8 @@ pub mod builtin {
     /// let key: Option<&'static str> = option_env!("SECRET_KEY");
     /// println!("the secret key might be: {:?}", key);
     /// ```
+    ///
+    /// [`Option<&'static str>`]: ../../std/option/enum.Option.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! option_env { ($name:expr) => ({ /* compiler built-in */ }) }
@@ -303,7 +318,7 @@ pub mod builtin {
 
     /// A macro which expands to the line number on which it was invoked.
     ///
-    /// The expanded expression has type `u32`, and the returned line is not
+    /// The expanded expression has type [`u32`], and the returned line is not
     /// the invocation of the `line!()` macro itself, but rather the first macro
     /// invocation leading up to the invocation of the `line!()` macro.
     ///
@@ -313,13 +328,15 @@ pub mod builtin {
     /// let current_line = line!();
     /// println!("defined on line: {}", current_line);
     /// ```
+    ///
+    /// [`u32`]: ../../std/primitive.u32.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! line { () => ({ /* compiler built-in */ }) }
 
     /// A macro which expands to the column number on which it was invoked.
     ///
-    /// The expanded expression has type `u32`, and the returned column is not
+    /// The expanded expression has type [`u32`], and the returned column is not
     /// the invocation of the `column!()` macro itself, but rather the first macro
     /// invocation leading up to the invocation of the `column!()` macro.
     ///
@@ -329,6 +346,8 @@ pub mod builtin {
     /// let current_col = column!();
     /// println!("defined on column: {}", current_col);
     /// ```
+    ///
+    /// [`u32`]: ../../std/primitive.u32.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! column { () => ({ /* compiler built-in */ }) }
