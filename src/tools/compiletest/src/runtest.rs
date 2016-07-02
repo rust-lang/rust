@@ -1012,8 +1012,7 @@ actual:\n\
 
         // Parse the JSON output from the compiler and extract out the messages.
         let actual_errors = json::parse_output(&file_name, &proc_res.stderr, &proc_res);
-        let mut unexpected = 0;
-        let mut not_found = 0;
+        let mut unexpected = Vec::new();
         let mut found = vec![false; expected_errors.len()];
         for actual_error in &actual_errors {
             let opt_index =
@@ -1045,12 +1044,13 @@ actual:\n\
                                      .map_or(String::from("message"),
                                              |k| k.to_string()),
                                      actual_error.msg));
-                        unexpected += 1;
+                        unexpected.push(actual_error.clone());
                     }
                 }
             }
         }
 
+        let mut not_found = Vec::new();
         // anything not yet found is a problem
         for (index, expected_error) in expected_errors.iter().enumerate() {
             if !found[index] {
@@ -1062,18 +1062,22 @@ actual:\n\
                              .map_or("message".into(),
                                      |k| k.to_string()),
                              expected_error.msg));
-                not_found += 1;
+                not_found.push(expected_error.clone());
             }
         }
 
-        if unexpected > 0 || not_found > 0 {
+        if unexpected.len() > 0 || not_found.len() > 0 {
             self.error(
                 &format!("{} unexpected errors found, {} expected errors not found",
-                         unexpected, not_found));
+                         unexpected.len(), not_found.len()));
             print!("status: {}\ncommand: {}\n",
                    proc_res.status, proc_res.cmdline);
-            println!("actual errors (from JSON output): {:#?}\n", actual_errors);
-            println!("expected errors (from test file): {:#?}\n", expected_errors);
+            if unexpected.len() > 0 {
+                println!("unexpected errors (from JSON output): {:#?}\n", unexpected);
+            }
+            if not_found.len() > 0 {
+                println!("not found errors (from test file): {:#?}\n", not_found);
+            }
             panic!();
         }
     }

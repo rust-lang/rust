@@ -1103,17 +1103,16 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
 
         match attr.meta_item_list() {
             None => {
-                span_handler.span_err(attr.span, "malformed feature attribute, \
-                                                  expected #![feature(...)]");
+                span_err!(span_handler, attr.span, E0555,
+                          "malformed feature attribute, expected #![feature(...)]");
             }
             Some(list) => {
                 for mi in list {
                     let name = match mi.node {
                         ast::MetaItemKind::Word(ref word) => (*word).clone(),
                         _ => {
-                            span_handler.span_err(mi.span,
-                                                  "malformed feature, expected just \
-                                                   one word");
+                            span_err!(span_handler, mi.span, E0556,
+                                      "malformed feature, expected just one word");
                             continue
                         }
                     };
@@ -1123,7 +1122,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
                     }
                     else if let Some(&(_, _, _)) = REMOVED_FEATURES.iter()
                         .find(|& &(n, _, _)| name == n) {
-                        span_handler.span_err(mi.span, "feature has been removed");
+                        span_err!(span_handler, mi.span, E0557, "feature has been removed");
                     }
                     else if let Some(&(_, _, _)) = ACCEPTED_FEATURES.iter()
                         .find(|& &(n, _, _)| name == n) {
@@ -1179,9 +1178,9 @@ fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate,
         for attr in &krate.attrs {
             if attr.check_name("feature") {
                 let release_channel = option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)");
-                let ref msg = format!("#[feature] may not be used on the {} release channel",
-                                      release_channel);
-                span_handler.span_err(attr.span, msg);
+                span_err!(span_handler, attr.span, E0554,
+                          "#[feature] may not be used on the {} release channel",
+                          release_channel);
             }
         }
     }

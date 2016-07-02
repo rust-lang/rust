@@ -368,13 +368,13 @@ impl Config {
                     target.ndk = Some(PathBuf::from(value));
                 }
                 "CFG_I686_LINUX_ANDROID_NDK" if value.len() > 0 => {
-                    let target = "i686-linux-androideabi".to_string();
+                    let target = "i686-linux-android".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));
                 }
                 "CFG_AARCH64_LINUX_ANDROID_NDK" if value.len() > 0 => {
-                    let target = "aarch64-linux-androideabi".to_string();
+                    let target = "aarch64-linux-android".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
                     target.ndk = Some(PathBuf::from(value));
