@@ -1851,10 +1851,6 @@ fn encode_panic_strategy(rbml_w: &mut Encoder, ecx: &EncodeContext) {
     }
 }
 
-// NB: Increment this as you change the metadata encoding version.
-#[allow(non_upper_case_globals)]
-pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 2 ];
-
 pub fn encode_metadata(ecx: EncodeContext, krate: &hir::Crate) -> Vec<u8> {
     let mut wr = Cursor::new(Vec::new());
 
@@ -1888,12 +1884,25 @@ pub fn encode_metadata(ecx: EncodeContext, krate: &hir::Crate) -> Vec<u8> {
     // the length of the metadata to the start of the metadata. Later on this
     // will allow us to slice the metadata to the precise length that we just
     // generated regardless of trailing bytes that end up in it.
-    let len = v.len() as u32;
-    v.insert(0, (len >>  0) as u8);
-    v.insert(0, (len >>  8) as u8);
-    v.insert(0, (len >> 16) as u8);
-    v.insert(0, (len >> 24) as u8);
-    return v;
+    //
+    // We also need to store the metadata encoding version here, because
+    // rlibs don't have it. To get older versions of rustc to ignore
+    // this metadata, there are 4 zero bytes at the start, which are
+    // treated as a length of 0 by old compilers.
+
+    let len = v.len();
+    let mut result = vec![];
+    result.push(0);
+    result.push(0);
+    result.push(0);
+    result.push(0);
+    result.extend(metadata_encoding_version.iter().cloned());
+    result.push((len >> 24) as u8);
+    result.push((len >> 16) as u8);
+    result.push((len >>  8) as u8);
+    result.push((len >>  0) as u8);
+    result.extend(v);
+    result
 }
 
 fn encode_metadata_inner(rbml_w: &mut Encoder,

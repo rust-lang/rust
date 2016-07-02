@@ -213,8 +213,8 @@
 //! metadata::loader or metadata::creader for all the juicy details!
 
 use cstore::{MetadataBlob, MetadataVec, MetadataArchive};
+use common::{metadata_encoding_version, rustc_version};
 use decoder;
-use encoder;
 
 use rustc::hir::svh::Svh;
 use rustc::session::Session;
@@ -260,6 +260,7 @@ pub struct Context<'a> {
     pub rejected_via_hash: Vec<CrateMismatch>,
     pub rejected_via_triple: Vec<CrateMismatch>,
     pub rejected_via_kind: Vec<CrateMismatch>,
+    pub rejected_via_version: Vec<CrateMismatch>,
     pub should_match_name: bool,
 }
 
@@ -336,6 +337,10 @@ impl<'a> Context<'a> {
             struct_span_err!(self.sess, self.span, E0462,
                              "found staticlib `{}` instead of rlib or dylib{}",
                              self.ident, add)
+        } else if !self.rejected_via_version.is_empty() {
+            struct_span_err!(self.sess, self.span, E0514,
+                             "found crate `{}` compiled by an incompatible version of rustc{}",
+                             self.ident, add)
         } else {
             struct_span_err!(self.sess, self.span, E0463,
                              "can't find crate for `{}`{}",
@@ -350,7 +355,7 @@ impl<'a> Context<'a> {
             }
         }
         if !self.rejected_via_hash.is_empty() {
-            err.note("perhaps this crate needs to be recompiled?");
+            err.note("perhaps that crate needs to be recompiled?");
             let mismatches = self.rejected_via_hash.iter();
             for (i, &CrateMismatch{ ref path, .. }) in mismatches.enumerate() {
                 err.note(&format!("crate `{}` path #{}: {}",
@@ -367,11 +372,20 @@ impl<'a> Context<'a> {
             }
         }
         if !self.rejected_via_kind.is_empty() {
-            err.help("please recompile this crate using --crate-type lib");
+            err.help("please recompile that crate using --crate-type lib");
             let mismatches = self.rejected_via_kind.iter();
             for (i, &CrateMismatch { ref path, .. }) in mismatches.enumerate() {
                 err.note(&format!("crate `{}` path #{}: {}",
                                   self.ident, i+1, path.display()));
+            }
+        }
+        if !self.rejected_via_version.is_empty() {
+            err.help(&format!("please recompile that crate using this compiler ({})",
+                              rustc_version()));
+            let mismatches = self.rejected_via_version.iter();
+            for (i, &CrateMismatch { ref path, ref got }) in mismatches.enumerate() {
+                err.note(&format!("crate `{}` path #{}: {} compiled by {:?}",
+                                  self.ident, i+1, path.display(), got));
             }
         }
 
@@ -591,6 +605,17 @@ impl<'a> Context<'a> {
     }
 
     fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> Option<Svh> {
+        let crate_rustc_version = decoder::crate_rustc_version(crate_data);
+        if crate_rustc_version != Some(rustc_version()) {
+            let message = crate_rustc_version.unwrap_or(format!("an unknown compiler"));
+            info!("Rejecting via version: expected {} got {}", rustc_version(), message);
+            self.rejected_via_version.push(CrateMismatch {
+                path: libpath.to_path_buf(),
+                got: message
+            });
+            return None;
+        }
+
         if self.should_match_name {
             match decoder::maybe_get_crate_name(crate_data) {
                 Some(ref name) if self.crate_name == *name => {}
@@ -742,6 +767,21 @@ impl ArchiveMetadata {
     pub fn as_slice<'a>(&'a self) -> &'a [u8] { unsafe { &*self.data } }
 }
 
+fn verify_decompressed_encoding_version(blob: &MetadataBlob, filename: &Path)
+                                        -> Result<(), String>
+{
+    let data = blob.as_slice_raw();
+    if data.len() < 4+metadata_encoding_version.len() ||
+        !<[u8]>::eq(&data[..4], &[0, 0, 0, 0]) ||
+        &data[4..4+metadata_encoding_version.len()] != metadata_encoding_version
+    {
+        Err((format!("incompatible metadata version found: '{}'",
+                     filename.display())))
+    } else {
+        Ok(())
+    }
+}
+
 // Just a small wrapper to time how long reading metadata takes.
 fn get_metadata_section(target: &Target, flavor: CrateFlavor, filename: &Path)
                         -> Result<MetadataBlob, String> {
@@ -772,7 +812,10 @@ fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Pat
         return match ArchiveMetadata::new(archive).map(|ar| MetadataArchive(ar)) {
             None => Err(format!("failed to read rlib metadata: '{}'",
                                 filename.display())),
-            Some(blob) => Ok(blob)
+            Some(blob) => {
+                try!(verify_decompressed_encoding_version(&blob, filename));
+                Ok(blob)
+            }
         };
     }
     unsafe {
@@ -801,12 +844,12 @@ fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Pat
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as usize;
                 let cvbuf: *const u8 = cbuf as *const u8;
-                let vlen = encoder::metadata_encoding_version.len();
+                let vlen = metadata_encoding_version.len();
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);
                 let minsz = cmp::min(vlen, csz);
                 let buf0 = slice::from_raw_parts(cvbuf, minsz);
-                let version_ok = buf0 == encoder::metadata_encoding_version;
+                let version_ok = buf0 == metadata_encoding_version;
                 if !version_ok {
                     return Err((format!("incompatible metadata version found: '{}'",
                                         filename.display())));
@@ -817,7 +860,11 @@ fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Pat
                        csz - vlen);
                 let bytes = slice::from_raw_parts(cvbuf1, csz - vlen);
                 match flate::inflate_bytes(bytes) {
-                    Ok(inflated) => return Ok(MetadataVec(inflated)),
+                    Ok(inflated) => {
+                        let blob = MetadataVec(inflated);
+                        try!(verify_decompressed_encoding_version(&blob, filename));
+                        return Ok(blob);
+                    }
                     Err(_) => {}
                 }
             }

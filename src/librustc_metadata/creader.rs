@@ -12,7 +12,6 @@
 
 //! Validates all used crates and extern libraries and loads their metadata
 
-use common::rustc_version;
 use cstore::{self, CStore, CrateSource, MetadataBlob};
 use decoder;
 use loader::{self, CratePaths};
@@ -234,25 +233,6 @@ impl<'a> CrateReader<'a> {
         return ret;
     }
 
-    fn verify_rustc_version(&self,
-                            name: &str,
-                            span: Span,
-                            metadata: &MetadataBlob) {
-        let crate_rustc_version = decoder::crate_rustc_version(metadata.as_slice());
-        if crate_rustc_version != Some(rustc_version()) {
-            let mut err = struct_span_fatal!(self.sess, span, E0514,
-                                             "the crate `{}` has been compiled with {}, which is \
-                                              incompatible with this version of rustc",
-                                              name,
-                                              crate_rustc_version
-                                              .as_ref().map(|s| &**s)
-                                              .unwrap_or("an old version of rustc"));
-            err.help("consider removing the compiled binaries and recompiling \
-                      with your current version of rustc");
-            err.emit();
-        }
-    }
-
     fn verify_no_symbol_conflicts(&self,
                                   span: Span,
                                   metadata: &MetadataBlob) {
@@ -294,7 +274,6 @@ impl<'a> CrateReader<'a> {
                       explicitly_linked: bool)
                       -> (ast::CrateNum, Rc<cstore::crate_metadata>,
                           cstore::CrateSource) {
-        self.verify_rustc_version(name, span, &lib.metadata);
         self.verify_no_symbol_conflicts(span, &lib.metadata);
 
         // Claim this crate number and cache it
@@ -379,6 +358,7 @@ impl<'a> CrateReader<'a> {
                     rejected_via_hash: vec!(),
                     rejected_via_triple: vec!(),
                     rejected_via_kind: vec!(),
+                    rejected_via_version: vec!(),
                     should_match_name: true,
                 };
                 match self.load(&mut load_ctxt) {
@@ -506,6 +486,7 @@ impl<'a> CrateReader<'a> {
             rejected_via_hash: vec!(),
             rejected_via_triple: vec!(),
             rejected_via_kind: vec!(),
+            rejected_via_version: vec!(),
             should_match_name: true,
         };
         let library = self.load(&mut load_ctxt).or_else(|| {
