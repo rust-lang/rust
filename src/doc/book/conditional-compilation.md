@@ -41,8 +41,12 @@ they get set in the [`[features]` section][features] of your `Cargo.toml`:
 # no features by default
 default = []
 
+# Add feature "foo" here, then you can use it. 
+# Our "foo" feature depends on nothings else.
+foo = []
+
 # The “secure-password” feature depends on the bcrypt package.
-secure-password = ["bcrypt"]
+# secure-password = ["bcrypt"]
 ```
 
 When you do this, Cargo passes along a flag to `rustc`:
