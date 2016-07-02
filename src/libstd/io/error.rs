@@ -214,6 +214,30 @@ impl Error {
     }
 
     /// Creates a new instance of an `Error` from a particular OS error code.
+    ///
+    /// # Examples
+    ///
+    /// On Linux:
+    ///
+    /// ```
+    /// # if cfg!(target_os = "linux") {
+    /// use std::io;
+    ///
+    /// let error = io::Error::from_raw_os_error(98);
+    /// assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
+    /// # }
+    /// ```
+    ///
+    /// On Windows:
+    ///
+    /// ```
+    /// # if cfg!(windows) {
+    /// use std::io;
+    ///
+    /// let error = io::Error::from_raw_os_error(10048);
+    /// assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_raw_os_error(code: i32) -> Error {
         Error { repr: Repr::Os(code) }
