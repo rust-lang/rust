@@ -68,8 +68,8 @@ const WHITELIST: &'static [&'static [&'static str]] = &[
 
 struct SimilarNamesNameVisitor<'a, 'b: 'a, 'c: 'b>(&'a mut SimilarNamesLocalVisitor<'b, 'c>);
 
-impl<'v, 'a, 'b, 'c> Visitor<'v> for SimilarNamesNameVisitor<'a, 'b, 'c> {
-    fn visit_pat(&mut self, pat: &'v Pat) {
+impl<'a, 'b, 'c> Visitor for SimilarNamesNameVisitor<'a, 'b, 'c> {
+    fn visit_pat(&mut self, pat: &Pat) {
         match pat.node {
             PatKind::Ident(_, id, _) => self.check_name(id.span, id.node.name),
             PatKind::Struct(_, ref fields, _) => {
@@ -226,25 +226,25 @@ impl<'a, 'b> SimilarNamesLocalVisitor<'a, 'b> {
     }
 }
 
-impl<'v, 'a, 'b> Visitor<'v> for SimilarNamesLocalVisitor<'a, 'b> {
-    fn visit_local(&mut self, local: &'v Local) {
+impl<'a, 'b> Visitor for SimilarNamesLocalVisitor<'a, 'b> {
+    fn visit_local(&mut self, local: &Local) {
         if let Some(ref init) = local.init {
             self.apply(|this| walk_expr(this, &**init));
         }
         // add the pattern after the expression because the bindings aren't available yet in the init expression
         SimilarNamesNameVisitor(self).visit_pat(&*local.pat);
     }
-    fn visit_block(&mut self, blk: &'v Block) {
+    fn visit_block(&mut self, blk: &Block) {
         self.apply(|this| walk_block(this, blk));
     }
-    fn visit_arm(&mut self, arm: &'v Arm) {
+    fn visit_arm(&mut self, arm: &Arm) {
         self.apply(|this| {
             // just go through the first pattern, as either all patterns bind the same bindings or rustc would have errored much earlier
             SimilarNamesNameVisitor(this).visit_pat(&arm.pats[0]);
             this.apply(|this| walk_expr(this, &arm.body));
         });
     }
-    fn visit_item(&mut self, _: &'v Item) {
+    fn visit_item(&mut self, _: &Item) {
         // do not recurse into inner items
     }
 }

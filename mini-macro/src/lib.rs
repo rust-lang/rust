@@ -5,7 +5,7 @@ extern crate rustc;
 extern crate rustc_plugin;
 
 use syntax::codemap::Span;
-use syntax::ast::TokenTree;
+use syntax::tokenstream::TokenTree;
 use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
 use syntax::ext::build::AstBuilder;  // trait for expr_usize
 use rustc_plugin::Registry;

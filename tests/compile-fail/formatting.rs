@@ -16,7 +16,9 @@ fn main() {
     //~| NOTE add the missing `else` or
     }
 
-    let _ = {
+    let _ = { // if as the last expression
+        let _ = 0;
+
         if foo() {
         } if foo() {
         //~^ ERROR this looks like an `else if` but the `else` is missing
@@ -24,6 +26,18 @@ fn main() {
         }
         else {
         }
+    };
+
+    let _ = { // if in the middle of a block
+        if foo() {
+        } if foo() {
+        //~^ ERROR this looks like an `else if` but the `else` is missing
+        //~| NOTE add the missing `else` or
+        }
+        else {
+        }
+
+        let _ = 0;
     };
 
     if foo() {

@@ -14,6 +14,7 @@ use syntax::ast::{LitIntType, LitKind, StrStyle};
 use syntax::codemap::{Spanned, COMMAND_LINE_SP};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
+use syntax::util::ThinVec;
 
 fn spanned<T>(t: T) -> Spanned<T> {
     Spanned {
@@ -27,7 +28,7 @@ fn expr(n: Expr_) -> Expr {
         id: 1,
         node: n,
         span: COMMAND_LINE_SP,
-        attrs: None,
+        attrs: ThinVec::new(),
     }
 }
 
