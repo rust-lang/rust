@@ -213,6 +213,7 @@ dependencies = [
  "rustc_back 0.0.0",
  "rustc_bitflags 0.0.0",
  "rustc_const_math 0.0.0",
+ "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_llvm 0.0.0",
  "serialize 0.0.0",

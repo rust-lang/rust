@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use cstore;
+use common;
 use decoder;
 use encoder;
 use loader;
@@ -588,7 +589,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn metadata_encoding_version(&self) -> &[u8]
     {
-        encoder::metadata_encoding_version
+        common::metadata_encoding_version
     }
 
     /// Returns a map from a sufficiently visible external item (i.e. an external item that is
