@@ -79,6 +79,8 @@ use rustc_metadata::loader;
 use rustc_metadata::cstore::CStore;
 use rustc::util::common::time;
 
+use serialize::json::ToJson;
+
 use std::cmp::max;
 use std::cmp::Ordering::Equal;
 use std::default::Default;
@@ -605,6 +607,7 @@ impl RustcDefaultCalls {
                     println!("{}", targets.join("\n"));
                 },
                 PrintRequest::Sysroot => println!("{}", sess.sysroot().display()),
+                PrintRequest::TargetSpec => println!("{}", sess.target.target.to_json().pretty()),
                 PrintRequest::FileNames |
                 PrintRequest::CrateName => {
                     let input = match input {
