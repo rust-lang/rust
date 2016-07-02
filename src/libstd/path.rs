@@ -1057,7 +1057,6 @@ impl PathBuf {
         self._push(path.as_ref())
     }
 
-    #[allow(deprecated)]
     fn _push(&mut self, path: &Path) {
         // in general, a separator is needed if the rightmost byte is not a separator
         let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep_byte(*c)).unwrap_or(false);

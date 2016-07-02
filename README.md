@@ -119,7 +119,7 @@ $ make && make install
 If you’d like to build the documentation, it’s almost the same:
 
 ```sh
-./configure
+$ ./configure
 $ make docs
 ```
 
