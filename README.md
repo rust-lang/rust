@@ -64,37 +64,37 @@ build.
 
 #### MinGW
 
-[MSYS2](http://msys2.github.io/) can be used to easily build Rust on Windows:
+[MSYS2][msys2] can be used to easily build Rust on Windows:
 
-1. Grab the latest MSYS2 installer and go through the installer.
+msys2: https://msys2.github.io/
 
-2. From the MSYS2 terminal, install the `mingw64` toolchain and other required
-   tools.
+1. Grab the latest [MSYS2 installer][msys2] and go through the installer.
+
+2. Run `mingw32_shell.bat` or `mingw64_shell.bat` from wherever you installed
+   MSYS2 (i.e. `C:\msys64`), depending on whether you want 32-bit or 64-bit
+   Rust. (As of the latest version of MSYS2 you have to run `msys2_shell.cmd
+   -mingw32` or `msys2_shell.cmd -mingw64` from the command line instead)
+
+3. From this terminal, install the required tools:
 
    ```sh
    # Update package mirrors (may be needed if you have a fresh install of MSYS2)
    $ pacman -Sy pacman-mirrors
+
+   # Install build tools needed for Rust. If you're building a 32-bit compiler,
+   # then replace "x86_64" below with "i686". If you've already got git, python,
+   # or CMake installed and in PATH you can remove them from this list. Note
+   # that it is important that the `python2` and `cmake` packages **not** used.
+   # The build has historically been known to fail with these packages.
+   $ pacman -S git \
+               make \
+               diffutils \
+               mingw-w64-x86_64-python2 \
+               mingw-w64-x86_64-cmake \
+               mingw-w64-x86_64-gcc
    ```
 
-   Download [MinGW from
-   here](http://mingw-w64.org/doku.php/download/mingw-builds), and choose the
-   `version=4.9.x,threads=win32,exceptions=dwarf/seh` flavor when installing. Also, make sure to install to a path without spaces in it. After installing,
-   add its `bin` directory to your `PATH`. This is due to [#28260](https://github.com/rust-lang/rust/issues/28260), in the future,
-   installing from pacman should be just fine.
-
-   ```sh
-   # Make git available in MSYS2 (if not already available on path)
-   $ pacman -S git
-
-   $ pacman -S base-devel
-   ```
-
-3. Run `mingw32_shell.bat` or `mingw64_shell.bat` from wherever you installed
-   MSYS2 (i.e. `C:\msys`), depending on whether you want 32-bit or 64-bit Rust.
-   (As of the latest version of MSYS2 you have to run `msys2_shell.cmd -mingw32`
-   or `msys2_shell.cmd -mingw64` from the command line instead)
-
-4. Navigate to Rust's source code, configure and build it:
+4. Navigate to Rust's source code (or clone it), then configure and build it:
 
    ```sh
    $ ./configure

@@ -1178,33 +1178,6 @@ do
             ;;
 
         *-msvc)
-            # There are some MSYS python builds which will auto-translate
-            # windows-style paths to MSYS-style paths in Python itself.
-            # Unfortunately this breaks LLVM's build system as somewhere along
-            # the line LLVM prints a path into a file from Python and then CMake
-            # later tries to interpret that path. If Python prints a MSYS path
-            # and CMake tries to use it as a Windows path, you're gonna have a
-            # Bad Time.
-            #
-            # Consequently here we try to detect when that happens and print an
-            # error if it does.
-            if $CFG_PYTHON -c 'import sys; print sys.argv[1]' `pwd` | grep '^/' > /dev/null
-            then
-                err "
-
-python is silently translating windows paths to MSYS paths \
-and the build will fail if this python is used.
-
-Either an official python install must be used or an \
-alternative python package in MinGW must be used.
-
-If you are building under msys2 try installing the mingw-w64-x86_64-python2 \
-package instead of python2:
-
-$ pacman -R python2 && pacman -S mingw-w64-x86_64-python2
-"
-            fi
-
             # There are three builds of cmake on windows: MSVC, MinGW and Cygwin
             # The Cygwin build does not have generators for Visual Studio, so
             # detect that here and error.
@@ -1287,6 +1260,36 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             ;;
     esac
 done
+
+if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ]
+then
+    # There are some MSYS python builds which will auto-translate
+    # windows-style paths to MSYS-style paths in Python itself.
+    # Unfortunately this breaks LLVM's build system as somewhere along
+    # the line LLVM prints a path into a file from Python and then CMake
+    # later tries to interpret that path. If Python prints a MSYS path
+    # and CMake tries to use it as a Windows path, you're gonna have a
+    # Bad Time.
+    #
+    # Consequently here we try to detect when that happens and print an
+    # error if it does.
+    if $CFG_PYTHON -c 'import sys; print sys.argv[1]' `pwd` | grep '^/' > /dev/null
+    then
+        err "
+
+python is silently translating windows paths to MSYS paths \
+and the build will fail if this python is used.
+
+Either an official python install must be used or an \
+alternative python package in MinGW must be used.
+
+If you are building under msys2 try installing the mingw-w64-x86_64-python2 \
+package instead of python2:
+
+$ pacman -S mingw-w64-x86_64-python2
+"
+    fi
+fi
 
 if [ -n "$CFG_PERF" ]
 then
