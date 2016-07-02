@@ -1769,6 +1769,12 @@ extern {
     /// Returns a string describing the last error caused by an LLVMRust* call.
     pub fn LLVMRustGetLastError() -> *const c_char;
 
+    pub fn LLVMInstallFatalErrorHandler(handler: extern fn(*const c_char) -> c_void) -> c_void;
+
+    pub fn LLVMRemoveFatalErrorHandler() -> c_void;
+
+    pub fn LLVMSysRunInterruptHandlers() -> c_void;
+
     /// Print the pass timings since static dtors aren't picking them up.
     pub fn LLVMRustPrintPassTimings();
 
@@ -2431,6 +2437,24 @@ pub fn last_error() -> Option<String> {
             Some(err)
         }
     }
+}
+
+// The default behaviour of llvm's report fatal error method outputs to
+// stderr, runs interrupt handlers, and then call's `exit(1)`.
+// This alters this slightly, and calls panic! instead.
+extern "C" fn handle_llvm_error(reason: *const c_char) -> c_void {
+    let reason = unsafe {
+        CStr::from_ptr(reason).to_string_lossy()
+    };
+
+    unsafe { LLVMSysRunInterruptHandlers() };
+    panic!("{}", reason);
+}
+
+pub fn install_default_llvm_error_handler() {
+    unsafe {
+        LLVMInstallFatalErrorHandler(handle_llvm_error)
+    };
 }
 
 pub struct OperandBundleDef {

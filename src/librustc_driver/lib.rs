@@ -1027,6 +1027,9 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
         }
     }
 
+    // Install LLVM fatal error handler
+    ::llvm::install_default_llvm_error_handler();
+
     let data = Arc::new(Mutex::new(Vec::new()));
     let err = Sink(data.clone());
 
