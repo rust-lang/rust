@@ -108,6 +108,9 @@ pub unsafe trait Searcher<'a> {
     /// Will always return the same `&str`
     fn haystack(&self) -> &'a str;
 
+    /// Getter for the rest of the iterator
+    fn as_str(&self) -> &'a str;
+
     /// Performs the next search step starting from the front.
     ///
     /// - Returns `Match(a, b)` if `haystack[a..b]` matches the pattern.
@@ -305,6 +308,10 @@ unsafe impl<'a, C: CharEq> Searcher<'a> for CharEqSearcher<'a, C> {
         self.haystack
     }
 
+    fn as_str(&self) -> &'a str {
+        self.char_indices.as_str()
+    }
+
     #[inline]
     fn next(&mut self) -> SearchStep {
         let s = &mut self.char_indices;
@@ -381,6 +388,10 @@ macro_rules! searcher_methods {
         #[inline]
         fn haystack(&self) -> &'a str {
             self.0.haystack()
+        }
+        #[inline]
+        fn as_str(&self) -> &'a str {
+            self.0.as_str()
         }
         #[inline]
         fn next(&mut self) -> SearchStep {
@@ -595,6 +606,17 @@ impl<'a, 'b> StrSearcher<'a, 'b> {
 
 unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
     fn haystack(&self) -> &'a str { self.haystack }
+
+    fn as_str(&self) -> &'a str {
+        match self.searcher {
+            StrSearcherImpl::Empty(ref searcher) => {
+                &self.haystack[searcher.position..searcher.end]
+            },
+            StrSearcherImpl::TwoWay(ref searcher) => {
+                &self.haystack[searcher.position..searcher.end]
+            },
+        }
+    }
 
     #[inline]
     fn next(&mut self) -> SearchStep {
