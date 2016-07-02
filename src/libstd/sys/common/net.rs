@@ -119,14 +119,22 @@ pub struct LookupHost {
 }
 
 impl Iterator for LookupHost {
-    type Item = io::Result<SocketAddr>;
-    fn next(&mut self) -> Option<io::Result<SocketAddr>> {
-        unsafe {
-            if self.cur.is_null() { return None }
-            let ret = sockaddr_to_addr(mem::transmute((*self.cur).ai_addr),
-                                       (*self.cur).ai_addrlen as usize);
-            self.cur = (*self.cur).ai_next as *mut c::addrinfo;
-            Some(ret)
+    type Item = SocketAddr;
+    fn next(&mut self) -> Option<SocketAddr> {
+        loop {
+            unsafe {
+                let cur = match self.cur.as_ref() {
+                    None => return None,
+                    Some(c) => c,
+                };
+                self.cur = cur.ai_next;
+                match sockaddr_to_addr(mem::transmute(cur.ai_addr),
+                                       cur.ai_addrlen as usize)
+                {
+                    Ok(addr) => return Some(addr),
+                    Err(_) => continue,
+                }
+            }
         }
     }
 }
