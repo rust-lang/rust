@@ -22,7 +22,7 @@
 
 extern crate uta;
 extern crate utb; //~ ERROR: found possibly newer version of crate `uta` which `utb` depends
-//~| NOTE: perhaps this crate needs to be recompiled?
+//~| NOTE: perhaps that crate needs to be recompiled?
 //~| NOTE: crate `uta` path #1:
 //~| NOTE: crate `utb` path #1:
 
