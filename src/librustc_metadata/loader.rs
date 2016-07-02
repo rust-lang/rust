@@ -767,6 +767,21 @@ impl ArchiveMetadata {
     pub fn as_slice<'a>(&'a self) -> &'a [u8] { unsafe { &*self.data } }
 }
 
+fn verify_decompressed_encoding_version(blob: &MetadataBlob, filename: &Path)
+                                        -> Result<(), String>
+{
+    let data = blob.as_slice_raw();
+    if data.len() < 4+metadata_encoding_version.len() ||
+        !<[u8]>::eq(&data[..4], &[0, 0, 0, 0]) ||
+        &data[4..4+metadata_encoding_version.len()] != metadata_encoding_version
+    {
+        Err((format!("incompatible metadata version found: '{}'",
+                     filename.display())))
+    } else {
+        Ok(())
+    }
+}
+
 // Just a small wrapper to time how long reading metadata takes.
 fn get_metadata_section(target: &Target, flavor: CrateFlavor, filename: &Path)
                         -> Result<MetadataBlob, String> {
@@ -797,7 +812,10 @@ fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Pat
         return match ArchiveMetadata::new(archive).map(|ar| MetadataArchive(ar)) {
             None => Err(format!("failed to read rlib metadata: '{}'",
                                 filename.display())),
-            Some(blob) => Ok(blob)
+            Some(blob) => {
+                try!(verify_decompressed_encoding_version(&blob, filename));
+                Ok(blob)
+            }
         };
     }
     unsafe {
@@ -842,7 +860,11 @@ fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Pat
                        csz - vlen);
                 let bytes = slice::from_raw_parts(cvbuf1, csz - vlen);
                 match flate::inflate_bytes(bytes) {
-                    Ok(inflated) => return Ok(MetadataVec(inflated)),
+                    Ok(inflated) => {
+                        let blob = MetadataVec(inflated);
+                        try!(verify_decompressed_encoding_version(&blob, filename));
+                        return Ok(blob);
+                    }
                     Err(_) => {}
                 }
             }

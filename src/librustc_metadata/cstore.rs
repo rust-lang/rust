@@ -15,6 +15,7 @@
 
 pub use self::MetadataBlob::*;
 
+use common;
 use creader;
 use decoder;
 use index;
@@ -311,20 +312,25 @@ impl crate_metadata {
 }
 
 impl MetadataBlob {
-    pub fn as_slice<'a>(&'a self) -> &'a [u8] {
-        let slice = match *self {
+    pub fn as_slice_raw<'a>(&'a self) -> &'a [u8] {
+        match *self {
             MetadataVec(ref vec) => &vec[..],
             MetadataArchive(ref ar) => ar.as_slice(),
-        };
-        if slice.len() < 4 {
+        }
+    }
+
+    pub fn as_slice<'a>(&'a self) -> &'a [u8] {
+        let slice = self.as_slice_raw();
+        let len_offset = 4 + common::metadata_encoding_version.len();
+        if slice.len() < len_offset+4 {
             &[] // corrupt metadata
         } else {
-            let len = (((slice[0] as u32) << 24) |
-                       ((slice[1] as u32) << 16) |
-                       ((slice[2] as u32) << 8) |
-                       ((slice[3] as u32) << 0)) as usize;
-            if len + 4 <= slice.len() {
-                &slice[4.. len + 4]
+            let len = (((slice[len_offset+0] as u32) << 24) |
+                       ((slice[len_offset+1] as u32) << 16) |
+                       ((slice[len_offset+2] as u32) << 8) |
+                       ((slice[len_offset+3] as u32) << 0)) as usize;
+            if len <= slice.len() - 4 - len_offset {
+                &slice[len_offset + 4..len_offset + len + 4]
             } else {
                 &[] // corrupt or old metadata
             }
