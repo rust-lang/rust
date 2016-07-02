@@ -59,6 +59,10 @@ clean-llvm$(1):
 	$$(Q)$$(CFG_NINJA) -C $$(CFG_LLVM_BUILD_DIR_$(1)) -t clean
 else ifeq ($$(findstring msvc,$(1)),msvc)
 clean-llvm$(1):
+	@$$(call E, clean: llvm)
+	$$(Q)$$(CFG_CMAKE) --build $$(CFG_LLVM_BUILD_DIR_$(1)) \
+		--config $$(LLVM_BUILD_CONFIG_MODE) \
+		--target clean
 else
 clean-llvm$(1):
 	@$$(call E, clean: llvm)

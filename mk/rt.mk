@@ -350,10 +350,17 @@ $$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD
 		$$(COMPRT_DEFINES_$(1)) \
 		$$(COMPRT_BUILD_CC_$(1)) \
 		-G"$$(CFG_CMAKE_GENERATOR)"
+ifneq ($$(CFG_NINJA),)
+	$$(CFG_CMAKE) --build "$$(COMPRT_BUILD_DIR_$(1))" \
+		--target $$(COMPRT_BUILD_TARGET_$(1)) \
+		--config $$(LLVM_BUILD_CONFIG_MODE) \
+		-- $$(COMPRT_BUILD_ARGS_$(1))
+else
 	$$(Q)$$(CFG_CMAKE) --build "$$(COMPRT_BUILD_DIR_$(1))" \
 		--target $$(COMPRT_BUILD_TARGET_$(1)) \
 		--config $$(LLVM_BUILD_CONFIG_MODE) \
 		-- $$(COMPRT_BUILD_ARGS_$(1)) $$(MFLAGS)
+endif
 	$$(Q)cp "$$(COMPRT_OUTPUT_$(1))" $$@
 
 endif
