@@ -73,7 +73,7 @@ declare_lint! {
 /// |`is_`  |`&self` or none     |
 /// |`to_`  |`&self`             |
 ///
-/// **Why is this bad?** Consistency breeds readability. If you follow the conventions, your users won't be surprised that they e.g. need to supply a mutable reference to a `as_..` function.
+/// **Why is this bad?** Consistency breeds readability. If you follow the conventions, your users won't be surprised that they, e.g., need to supply a mutable reference to a `as_..` function.
 ///
 /// **Known problems:** None
 ///
