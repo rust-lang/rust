@@ -134,6 +134,11 @@ impl<'a> Sugg<'a> {
         make_unop("&mut ", self)
     }
 
+    /// Convenience method to create the `*<expr>` suggestion.
+    pub fn deref(self) -> Sugg<'static> {
+        make_unop("*", self)
+    }
+
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>` suggestion.
     pub fn range(self, end: Self, limit: ast::RangeLimits) -> Sugg<'static> {
         match limit {

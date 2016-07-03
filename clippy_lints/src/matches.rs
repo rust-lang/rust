@@ -235,57 +235,54 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
 fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     // type of expression == bool
     if cx.tcx.expr_ty(ex).sty == ty::TyBool {
-        let sugg = if arms.len() == 2 && arms[0].pats.len() == 1 {
-            // no guards
-            let exprs = if let PatKind::Lit(ref arm_bool) = arms[0].pats[0].node {
-                if let ExprLit(ref lit) = arm_bool.node {
-                    match lit.node {
-                        LitKind::Bool(true) => Some((&*arms[0].body, &*arms[1].body)),
-                        LitKind::Bool(false) => Some((&*arms[1].body, &*arms[0].body)),
-                        _ => None,
-                    }
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
-            if let Some((ref true_expr, ref false_expr)) = exprs {
-                match (is_unit_expr(true_expr), is_unit_expr(false_expr)) {
-                    (false, false) => {
-                        Some(format!("if {} {} else {}",
-                                     snippet(cx, ex.span, "b"),
-                                     expr_block(cx, true_expr, None, ".."),
-                                     expr_block(cx, false_expr, None, "..")))
-                    }
-                    (false, true) => {
-                        Some(format!("if {} {}", snippet(cx, ex.span, "b"), expr_block(cx, true_expr, None, "..")))
-                    }
-                    (true, false) => {
-                        let test = Sugg::hir(cx, ex, "..");
-                        Some(format!("if {} {}",
-                                     !test,
-                                     expr_block(cx, false_expr, None, "..")))
-                    }
-                    (true, true) => None,
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
         span_lint_and_then(cx,
                            MATCH_BOOL,
                            expr.span,
-                           "you seem to be trying to match on a boolean expression. Consider using an if..else block:",
+                           "you seem to be trying to match on a boolean expression",
                            move |db| {
-                               if let Some(sugg) = sugg {
-                                   db.span_suggestion(expr.span, "try this", sugg);
-                               }
-                           });
+            if arms.len() == 2 && arms[0].pats.len() == 1 {
+                // no guards
+                let exprs = if let PatKind::Lit(ref arm_bool) = arms[0].pats[0].node {
+                    if let ExprLit(ref lit) = arm_bool.node {
+                        match lit.node {
+                            LitKind::Bool(true) => Some((&*arms[0].body, &*arms[1].body)),
+                            LitKind::Bool(false) => Some((&*arms[1].body, &*arms[0].body)),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                if let Some((ref true_expr, ref false_expr)) = exprs {
+                    let sugg = match (is_unit_expr(true_expr), is_unit_expr(false_expr)) {
+                        (false, false) => {
+                            Some(format!("if {} {} else {}",
+                                         snippet(cx, ex.span, "b"),
+                                         expr_block(cx, true_expr, None, ".."),
+                                         expr_block(cx, false_expr, None, "..")))
+                        }
+                        (false, true) => {
+                            Some(format!("if {} {}", snippet(cx, ex.span, "b"), expr_block(cx, true_expr, None, "..")))
+                        }
+                        (true, false) => {
+                            let test = Sugg::hir(cx, ex, "..");
+                            Some(format!("if {} {}",
+                                         !test,
+                                         expr_block(cx, false_expr, None, "..")))
+                        }
+                        (true, true) => None,
+                    };
+
+                    if let Some(sugg) = sugg {
+                        db.span_suggestion(expr.span, "consider using an if/else expression", sugg);
+                    }
+                }
+            }
+
+       });
     }
 }
 
@@ -309,26 +306,28 @@ fn check_overlapping_arms(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
 fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: MatchSource, expr: &Expr) {
     if has_only_ref_pats(arms) {
         if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
-            let template = match_template(cx, expr.span, source, "", inner);
             span_lint_and_then(cx,
                                MATCH_REF_PATS,
                                expr.span,
                                "you don't need to add `&` to both the expression and the patterns",
                                |db| {
-                                   db.span_suggestion(expr.span, "try", template);
-                               });
+                let inner = Sugg::hir(cx, inner, "..");
+                let template = match_template(expr.span, source, inner);
+                db.span_suggestion(expr.span, "try", template);
+            });
         } else {
-            let template = match_template(cx, expr.span, source, "*", ex);
             span_lint_and_then(cx,
                                MATCH_REF_PATS,
                                expr.span,
                                "you don't need to add `&` to all patterns",
                                |db| {
-                                   db.span_suggestion(expr.span,
-                                                      "instead of prefixing all patterns with `&`, you can \
-                                                       dereference the expression",
-                                                      template);
-                               });
+                let ex = Sugg::hir(cx, ex, "..");
+                let template = match_template(expr.span, source, ex.deref());
+                db.span_suggestion(expr.span,
+                                   "instead of prefixing all patterns with `&`, you can \
+                                   dereference the expression",
+                                   template);
+            });
         }
     }
 }
@@ -411,12 +410,11 @@ fn has_only_ref_pats(arms: &[Arm]) -> bool {
     mapped.map_or(false, |v| v.iter().any(|el| *el))
 }
 
-fn match_template(cx: &LateContext, span: Span, source: MatchSource, op: &str, expr: &Expr) -> String {
-    let expr_snippet = snippet(cx, expr.span, "..");
+fn match_template(span: Span, source: MatchSource, expr: Sugg) -> String {
     match source {
-        MatchSource::Normal => format!("match {}{} {{ .. }}", op, expr_snippet),
-        MatchSource::IfLetDesugar { .. } => format!("if let .. = {}{} {{ .. }}", op, expr_snippet),
-        MatchSource::WhileLetDesugar => format!("while let .. = {}{} {{ .. }}", op, expr_snippet),
+        MatchSource::Normal => format!("match {} {{ .. }}", expr),
+        MatchSource::IfLetDesugar { .. } => format!("if let .. = {} {{ .. }}", expr),
+        MatchSource::WhileLetDesugar => format!("while let .. = {} {{ .. }}", expr),
         MatchSource::ForLoopDesugar => span_bug!(span, "for loop desugared to match with &-patterns!"),
         MatchSource::TryDesugar => span_bug!(span, "`?` operator desugared to match with &-patterns!"),
     }

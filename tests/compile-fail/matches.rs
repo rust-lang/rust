@@ -112,7 +112,7 @@ fn match_bool() {
 
     match test {
     //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP try
+    //~| HELP consider
     //~| SUGGESTION if test { 0 } else { 42 };
         true => 0,
         false => 42,
@@ -121,7 +121,7 @@ fn match_bool() {
     let option = 1;
     match option == 1 {
     //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP try
+    //~| HELP consider
     //~| SUGGESTION if option == 1 { 1 } else { 0 };
         true => 1,
         false => 0,
@@ -129,7 +129,7 @@ fn match_bool() {
 
     match test {
     //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP try
+    //~| HELP consider
     //~| SUGGESTION if !test { println!("Noooo!"); };
         true => (),
         false => { println!("Noooo!"); }
@@ -137,7 +137,7 @@ fn match_bool() {
 
     match test {
     //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP try
+    //~| HELP consider
     //~| SUGGESTION if !test { println!("Noooo!"); };
         false => { println!("Noooo!"); }
         _ => (),
@@ -145,7 +145,7 @@ fn match_bool() {
 
     match test && test {
     //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP try
+    //~| HELP consider
     //~| SUGGESTION if !(test && test) { println!("Noooo!"); };
     //~| ERROR equal expressions as operands
         false => { println!("Noooo!"); }
@@ -154,7 +154,7 @@ fn match_bool() {
 
     match test {
     //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP try
+    //~| HELP consider
     //~| SUGGESTION if test { println!("Yes!"); } else { println!("Noooo!"); };
         false => { println!("Noooo!"); }
         true => { println!("Yes!"); }
