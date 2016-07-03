@@ -1,6 +1,8 @@
 use rustc::lint::*;
 use rustc::ty::TypeVariants;
 use rustc::hir::*;
+use rustc_const_eval::EvalHint::ExprTypeChecked;
+use rustc_const_eval::eval_const_expr_partial;
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use utils::{is_expn_of, match_path, paths, recover_for_loop, snippet, span_lint_and_then};
@@ -52,9 +54,15 @@ impl LateLintPass for Pass {
 
 fn check_vec_macro(cx: &LateContext, vec: &Expr, span: Span) {
     if let Some(vec_args) = unexpand(cx, vec) {
+
         let snippet = match vec_args {
             Args::Repeat(elem, len) => {
-                format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len")).into()
+                // Check that the length is a constant expression
+                if eval_const_expr_partial(cx.tcx, len, ExprTypeChecked, None).is_ok() {
+                    format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len")).into()
+                } else {
+                    return;
+                }
             }
             Args::Vec(args) => {
                 if let Some(last) = args.iter().last() {
