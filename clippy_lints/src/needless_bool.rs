@@ -6,7 +6,8 @@ use rustc::lint::*;
 use rustc::hir::*;
 use syntax::ast::LitKind;
 use syntax::codemap::Spanned;
-use utils::{span_lint, span_lint_and_then, snippet, snippet_opt};
+use utils::{span_lint, span_lint_and_then, snippet};
+use utils::sugg::Sugg;
 
 /// **What it does:** This lint checks for expressions of the form `if c { true } else { false }` (or vice versa) and suggest using the condition directly.
 ///
@@ -49,11 +50,20 @@ impl LateLintPass for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         use self::Expression::*;
         if let ExprIf(ref pred, ref then_block, Some(ref else_expr)) = e.node {
-            let reduce = |hint: &str, not| {
-                let hint = match snippet_opt(cx, pred.span) {
-                    Some(pred_snip) => format!("`{}{}`", not, pred_snip),
-                    None => hint.into(),
+            let reduce = |ret, not| {
+                let snip = Sugg::hir(cx, pred, "<predicate>");
+                let snip = if not {
+                    !snip
+                } else {
+                    snip
                 };
+
+                let hint = if ret {
+                    format!("return {};", snip)
+                } else {
+                    snip.to_string()
+                };
+
                 span_lint_and_then(cx,
                                    NEEDLESS_BOOL,
                                    e.span,
@@ -77,10 +87,10 @@ impl LateLintPass for NeedlessBool {
                               e.span,
                               "this if-then-else expression will always return false");
                 }
-                (RetBool(true), RetBool(false)) => reduce("its predicate", "return "),
-                (Bool(true), Bool(false)) => reduce("its predicate", ""),
-                (RetBool(false), RetBool(true)) => reduce("`!` and its predicate", "return !"),
-                (Bool(false), Bool(true)) => reduce("`!` and its predicate", "!"),
+                (RetBool(true), RetBool(false)) => reduce(true, false),
+                (Bool(true), Bool(false)) => reduce(false, false),
+                (RetBool(false), RetBool(true)) => reduce(true, true),
+                (Bool(false), Bool(true)) => reduce(false, true),
                 _ => (),
             }
         }
@@ -122,23 +132,23 @@ impl LateLintPass for BoolComparison {
                                        });
                 }
                 (Bool(false), Other) => {
-                    let hint = format!("!{}", snippet(cx, right_side.span, ".."));
+                    let hint = Sugg::hir(cx, right_side, "..");
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
                                        e.span,
                                        "equality checks against false can be replaced by a negation",
                                        |db| {
-                                           db.span_suggestion(e.span, "try simplifying it as shown:", hint);
+                                           db.span_suggestion(e.span, "try simplifying it as shown:", (!hint).to_string());
                                        });
                 }
                 (Other, Bool(false)) => {
-                    let hint = format!("!{}", snippet(cx, left_side.span, ".."));
+                    let hint = Sugg::hir(cx, left_side, "..");
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
                                        e.span,
                                        "equality checks against false can be replaced by a negation",
                                        |db| {
-                                           db.span_suggestion(e.span, "try simplifying it as shown:", hint);
+                                           db.span_suggestion(e.span, "try simplifying it as shown:", (!hint).to_string());
                                        });
                 }
                 _ => (),
