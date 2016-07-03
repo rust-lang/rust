@@ -46,7 +46,8 @@ pub fn check(path: &Path, bad: &mut bool) {
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
                 &mut |file| {
         let filename = file.file_name().unwrap().to_string_lossy();
-        if !filename.ends_with(".rs") || filename == "features.rs" {
+        if !filename.ends_with(".rs") || filename == "features.rs" ||
+           filename == "diagnostic_list.rs" {
             return
         }
 
