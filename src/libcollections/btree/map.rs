@@ -559,7 +559,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(btree_append)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
@@ -583,8 +582,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
     /// ```
-    #[unstable(feature = "btree_append", reason = "recently added as part of collections reform 2",
-               issue = "34152")]
+    #[stable(feature = "btree_append", since = "1.11.0")]
     pub fn append(&mut self, other: &mut Self) {
         // Do we have to append anything at all?
         if other.len() == 0 {
@@ -914,7 +912,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(btree_split_off)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
@@ -936,9 +933,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(b[&17], "d");
     /// assert_eq!(b[&41], "e");
     /// ```
-    #[unstable(feature = "btree_split_off",
-               reason = "recently added as part of collections reform 2",
-               issue = "34152")]
+    #[stable(feature = "btree_split_off", since = "1.11.0")]
     pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
         where K: Borrow<Q>
     {

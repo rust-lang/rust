@@ -38,7 +38,6 @@
 #![feature(fmt_internals)]
 #![feature(heap_api)]
 #![feature(inclusive_range)]
-#![feature(iter_arith)]
 #![feature(lang_items)]
 #![feature(nonzero)]
 #![feature(pattern)]

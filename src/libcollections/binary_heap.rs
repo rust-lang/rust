@@ -825,8 +825,6 @@ impl<T: Ord> BinaryHeap<T> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(binary_heap_append)]
-    ///
     /// use std::collections::BinaryHeap;
     ///
     /// let v = vec![-10, 1, 2, 3, 3];
@@ -840,9 +838,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(a.into_sorted_vec(), [-20, -10, 1, 2, 3, 3, 5, 43]);
     /// assert!(b.is_empty());
     /// ```
-    #[unstable(feature = "binary_heap_append",
-           reason = "needs to be audited",
-           issue = "32526")]
+    #[stable(feature = "binary_heap_append", since = "1.11.0")]
     pub fn append(&mut self, other: &mut Self) {
         if self.len() < other.len() {
             swap(self, other);

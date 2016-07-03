@@ -17,6 +17,7 @@
 #![allow(missing_docs)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub use core::num::{Zero, One};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError};
@@ -46,7 +47,6 @@ pub fn test_num<T>(ten: T, two: T) where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use u8;
     use u16;
     use u32;
@@ -198,15 +198,14 @@ mod tests {
 
     #[test]
     fn test_pow() {
-        fn naive_pow<T: Mul<Output=T> + One + Copy>(base: T, exp: usize) -> T {
-            let one: T = T::one();
+        fn naive_pow<T: Mul<Output=T> + Copy>(one: T, base: T, exp: usize) -> T {
             (0..exp).fold(one, |acc, _| acc * base)
         }
         macro_rules! assert_pow {
             (($num:expr, $exp:expr) => $expected:expr) => {{
                 let result = $num.pow($exp);
                 assert_eq!(result, $expected);
-                assert_eq!(result, naive_pow($num, $exp));
+                assert_eq!(result, naive_pow(1, $num, $exp));
             }}
         }
         assert_pow!((3u32,     0 ) => 1);

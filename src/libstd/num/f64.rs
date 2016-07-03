@@ -209,7 +209,11 @@ impl f64 {
     /// [floating-point]: ../reference.html#machine-types
     #[unstable(feature = "float_extras", reason = "signature is undecided",
                issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
+    #[allow(deprecated)]
     pub fn integer_decode(self) -> (u64, i16, i8) { num::Float::integer_decode(self) }
 
     /// Returns the largest integer less than or equal to a number.
@@ -613,6 +617,9 @@ impl f64 {
     #[unstable(feature = "float_extras",
                reason = "pending integer conventions",
                issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn ldexp(x: f64, exp: isize) -> f64 {
         unsafe { cmath::ldexp(x, exp as c_int) }
@@ -640,6 +647,9 @@ impl f64 {
     #[unstable(feature = "float_extras",
                reason = "pending integer conventions",
                issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn frexp(self) -> (f64, isize) {
         unsafe {
@@ -664,6 +674,9 @@ impl f64 {
     #[unstable(feature = "float_extras",
                reason = "unsure about its place in the world",
                issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn next_after(self, other: f64) -> f64 {
         unsafe { cmath::nextafter(self, other) }
@@ -1277,6 +1290,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_integer_decode() {
         assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906, -51, 1));
         assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931, -39, -1));
@@ -1604,6 +1618,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_ldexp() {
         let f1 = 2.0f64.powi(-123);
         let f2 = 2.0f64.powi(-111);
@@ -1624,6 +1639,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_frexp() {
         let f1 = 2.0f64.powi(-123);
         let f2 = 2.0f64.powi(-111);
@@ -1643,6 +1659,7 @@ mod tests {
     }
 
     #[test] #[cfg_attr(windows, ignore)] // FIXME #8755
+    #[allow(deprecated)]
     fn test_frexp_nowin() {
         let inf: f64 = INFINITY;
         let neg_inf: f64 = NEG_INFINITY;
