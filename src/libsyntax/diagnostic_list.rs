@@ -38,10 +38,43 @@ fn main() {}
 ```
 "##,
 
+E0534: r##"
+The inline attribute was badly used.
+
+Erroneous code example:
+
+```compile_fail,E0534
+#[inline()] // error: expected one argument
+pub fn something() {}
+
+fn main() {}
+```
+
+The inline attribute can be used without arguments:
+
+```
+#[inline] // ok!
+pub fn something() {}
+
+fn main() {}
+```
+
+Or with arguments (and parens have to be used for this case!):
+
+```
+#[inline(always)] // ok!
+pub fn something() {}
+
+fn main() {}
+```
+
+For more information about the inline attribute, take a look here:
+https://doc.rust-lang.org/reference.html#inline-attributes)
+"##,
+
 }
 
 register_diagnostics! {
-    E0534, // expected one argument
     E0535, // invalid argument
     E0536, // expected 1 cfg-pattern
     E0537, // invalid predicate
