@@ -290,7 +290,7 @@ lifetime parameters using three easily memorizable and unambiguous rules. This m
 acts as a shorthand for writing an item signature, while not hiding
 away the actual types involved as full local inference would if applied to it.
 
-When talking about lifetime elision, we use the term *input lifetime* and
+When talking about lifetime elision, we use the terms *input lifetime* and
 *output lifetime*. An *input lifetime* is a lifetime associated with a parameter
 of a function, and an *output lifetime* is a lifetime associated with the return
 value of a function. For example, this function has an input lifetime:
@@ -335,11 +335,13 @@ fn print<'a>(s: &'a str); // expanded
 
 fn debug(lvl: u32, s: &str); // elided
 fn debug<'a>(lvl: u32, s: &'a str); // expanded
+```
 
-// In the preceding example, `lvl` doesn’t need a lifetime because it’s not a
-// reference (`&`). Only things relating to references (such as a `struct`
-// which contains a reference) need lifetimes.
+In the preceding example, `lvl` doesn’t need a lifetime because it’s not a
+reference (`&`). Only things relating to references (such as a `struct`
+which contains a reference) need lifetimes.
 
+```rust,ignore
 fn substr(s: &str, until: u32) -> &str; // elided
 fn substr<'a>(s: &'a str, until: u32) -> &'a str; // expanded
 
