@@ -682,15 +682,12 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
         };
 
         // Get the item.
-        match crate_data.get_item(child_def_id.index) {
-            None => {}
-            Some(child_item_doc) => {
-                // Hand off the item to the callback.
-                let child_name = item_name(&intr, child_item_doc);
-                let def_like = item_to_def_like(crate_data, child_item_doc, child_def_id);
-                let visibility = item_visibility(child_item_doc);
-                callback(def_like, child_name, visibility);
-            }
+        if let Some(child_item_doc) = crate_data.get_item(child_def_id.index) {
+            // Hand off the item to the callback.
+            let child_name = item_name(&intr, child_item_doc);
+            let def_like = item_to_def_like(crate_data, child_item_doc, child_def_id);
+            let visibility = item_visibility(child_item_doc);
+            callback(def_like, child_name, visibility);
         }
     }
 

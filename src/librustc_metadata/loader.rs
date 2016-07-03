@@ -503,19 +503,11 @@ impl<'a> Context<'a> {
                                                self.crate_name);
                 err.note("candidates:");
                 for (_, lib) in libraries {
-                    match lib.dylib {
-                        Some((ref p, _)) => {
-                            err.note(&format!("path: {}",
-                                              p.display()));
-                        }
-                        None => {}
+                    if let Some((ref p, _)) = lib.dylib {
+                        err.note(&format!("path: {}", p.display()));
                     }
-                    match lib.rlib {
-                        Some((ref p, _)) => {
-                            err.note(&format!("path: {}",
-                                              p.display()));
-                        }
-                        None => {}
+                    if let Some((ref p, _)) = lib.rlib {
+                        err.note(&format!("path: {}", p.display()));
                     }
                     let data = lib.metadata.as_slice();
                     let name = decoder::get_crate_name(data);

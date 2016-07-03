@@ -840,11 +840,8 @@ pub fn write(output: &mut Write, args: Arguments) -> Result {
     }
 
     // There can be only one trailing string piece left.
-    match pieces.next() {
-        Some(piece) => {
-            formatter.buf.write_str(*piece)?;
-        }
-        None => {}
+    if let Some(piece) = pieces.next() {
+        formatter.buf.write_str(*piece)?;
     }
 
     Ok(())

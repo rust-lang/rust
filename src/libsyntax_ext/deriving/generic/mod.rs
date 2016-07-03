@@ -360,13 +360,10 @@ fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name], span: Span, 
         fn visit_ty(&mut self, ty: &ast::Ty) {
             match ty.node {
                 ast::TyKind::Path(_, ref path) if !path.global => {
-                    match path.segments.first() {
-                        Some(segment) => {
-                            if self.ty_param_names.contains(&segment.identifier.name) {
-                                self.types.push(P(ty.clone()));
-                            }
+                    if let Some(segment) = path.segments.first() {
+                        if self.ty_param_names.contains(&segment.identifier.name) {
+                            self.types.push(P(ty.clone()));
                         }
-                        None => {}
                     }
                 }
                 _ => {}
