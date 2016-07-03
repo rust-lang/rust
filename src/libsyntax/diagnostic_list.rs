@@ -69,7 +69,7 @@ fn main() {}
 ```
 
 For more information about the inline attribute, take a look here:
-https://doc.rust-lang.org/reference.html#inline-attributes)
+https://doc.rust-lang.org/reference.html#inline-attributes
 "##,
 
 E0535: r##"
@@ -100,13 +100,37 @@ fn main() {}
 ```
 
 For more information about the inline attribute, take a look here:
-https://doc.rust-lang.org/reference.html#inline-attributes)
+https://doc.rust-lang.org/reference.html#inline-attributes
+"##,
+
+E0536: r##"
+No cfg-pattern was found for `not` statement.
+
+Erroneous code example:
+
+```compile_fail,E0536
+#[cfg(not())] // error: expected 1 cfg-pattern
+pub fn something() {}
+
+pub fn main() {}
+```
+
+The `not` statement expects at least one cfg-pattern. Example:
+
+```
+#[cfg(not(target_os = "linux"))] // ok!
+pub fn something() {}
+
+pub fn main() {}
+```
+
+For more information about the cfg attribute, take a look here:
+https://doc.rust-lang.org/reference.html#conditional-compilation
 "##,
 
 }
 
 register_diagnostics! {
-    E0536, // expected 1 cfg-pattern
     E0537, // invalid predicate
     E0538, // multiple [same] items
     E0539, // incorrect meta item
