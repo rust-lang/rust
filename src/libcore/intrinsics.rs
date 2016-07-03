@@ -293,6 +293,12 @@ extern "rust-intrinsic" {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn transmute<T, U>(e: T) -> U;
 
+    /// Gives the address for the return value of the enclosing function.
+    ///
+    /// Using this intrinsic in a function that does not use an out pointer
+    /// will trigger a compiler error.
+    pub fn return_address() -> *const u8;
+
     /// Returns `true` if the actual type given as `T` requires drop
     /// glue; returns `false` if the actual type provided for `T`
     /// implements `Copy`.
