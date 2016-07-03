@@ -265,7 +265,7 @@ class RustBuild:
         try:
             ostype = subprocess.check_output(['uname', '-s']).strip()
             cputype = subprocess.check_output(['uname', '-m']).strip()
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, WindowsError):
             if sys.platform == 'win32':
                 return 'x86_64-pc-windows-msvc'
             err = "uname not found"
