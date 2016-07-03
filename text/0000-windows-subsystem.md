@@ -57,7 +57,7 @@ whichever linker is actually being used.
 # Drawbacks
 [drawbacks]: #drawbacks
 
-- Additional platform-specific API surface.
+- Additional platform-specific code.
 - The difficulty of manually calling the rust initialization code is potentially
   a more general problem, and this only solves a specific (if common) case.
 
