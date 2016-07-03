@@ -136,11 +136,8 @@ pub struct _InsnCtxt {
 impl Drop for _InsnCtxt {
     fn drop(&mut self) {
         TASK_LOCAL_INSN_KEY.with(|slot| {
-            match slot.borrow_mut().as_mut() {
-                Some(ctx) => {
-                    ctx.pop();
-                }
-                None => {}
+            if let Some(ctx) = slot.borrow_mut().as_mut() {
+                ctx.pop();
             }
         })
     }

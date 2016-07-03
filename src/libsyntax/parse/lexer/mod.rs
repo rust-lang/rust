@@ -470,15 +470,12 @@ impl<'a> StringReader<'a> {
     /// PRECONDITION: self.curr is not whitespace
     /// Eats any kind of comment.
     fn scan_comment(&mut self) -> Option<TokenAndSpan> {
-        match self.curr {
-            Some(c) => {
-                if c.is_whitespace() {
-                    self.span_diagnostic.span_err(syntax_pos::mk_sp(self.last_pos, self.last_pos),
-                                                  "called consume_any_line_comment, but there \
-                                                   was whitespace");
-                }
+        if let Some(c) = self.curr {
+            if c.is_whitespace() {
+                self.span_diagnostic.span_err(syntax_pos::mk_sp(self.last_pos, self.last_pos),
+                                              "called consume_any_line_comment, but there \
+                                               was whitespace");
             }
-            None => {}
         }
 
         if self.curr_is('/') {

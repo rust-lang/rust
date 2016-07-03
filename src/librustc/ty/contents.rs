@@ -168,13 +168,12 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             // which is incorrect.  This value was computed based on the crutch
             // value for the type contents of list.  The correct value is
             // TC::OwnsOwned.  This manifested as issue #4821.
-            match cache.get(&ty) {
-                Some(tc) => { return *tc; }
-                None => {}
+            if let Some(tc) = cache.get(&ty) {
+                return *tc;
             }
-            match tcx.tc_cache.borrow().get(&ty) {    // Must check both caches!
-                Some(tc) => { return *tc; }
-                None => {}
+            // Must check both caches!
+            if let Some(tc) = tcx.tc_cache.borrow().get(&ty) {
+                return *tc;
             }
             cache.insert(ty, TC::None);
 

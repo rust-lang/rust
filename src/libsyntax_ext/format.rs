@@ -126,16 +126,13 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
 
             panictry!(p.expect(&token::Eq));
             let e = panictry!(p.parse_expr());
-            match names.get(name) {
-                None => {}
-                Some(prev) => {
-                    ecx.struct_span_err(e.span,
-                                        &format!("duplicate argument named `{}`",
-                                                 name))
-                       .span_note(prev.span, "previously here")
-                       .emit();
-                    continue
-                }
+            if let Some(prev) = names.get(name) {
+                ecx.struct_span_err(e.span,
+                                    &format!("duplicate argument named `{}`",
+                                             name))
+                    .span_note(prev.span, "previously here")
+                    .emit();
+                continue;
             }
             order.push(name.to_string());
             names.insert(name.to_string(), e);
@@ -665,13 +662,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
             Some(piece) => {
                 if !parser.errors.is_empty() { break }
                 cx.verify_piece(&piece);
-                match cx.trans_piece(&piece) {
-                    Some(piece) => {
-                        let s = cx.trans_literal_string();
-                        cx.str_pieces.push(s);
-                        cx.pieces.push(piece);
-                    }
-                    None => {}
+                if let Some(piece) = cx.trans_piece(&piece) {
+                    let s = cx.trans_literal_string();
+                    cx.str_pieces.push(s);
+                    cx.pieces.push(piece);
                 }
             }
             None => break

@@ -735,26 +735,23 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         for i in 0..autoderefs {
             let deref_id = ty::MethodCall::autoderef(expr.id, i as u32);
-            match self.mc.infcx.node_method_ty(deref_id) {
-                None => {}
-                Some(method_ty) => {
-                    let cmt = return_if_err!(self.mc.cat_expr_autoderefd(expr, i));
+            if let Some(method_ty) = self.mc.infcx.node_method_ty(deref_id) {
+                let cmt = return_if_err!(self.mc.cat_expr_autoderefd(expr, i));
 
-                    // the method call infrastructure should have
-                    // replaced all late-bound regions with variables:
-                    let self_ty = method_ty.fn_sig().input(0);
-                    let self_ty = self.tcx().no_late_bound_regions(&self_ty).unwrap();
+                // the method call infrastructure should have
+                // replaced all late-bound regions with variables:
+                let self_ty = method_ty.fn_sig().input(0);
+                let self_ty = self.tcx().no_late_bound_regions(&self_ty).unwrap();
 
-                    let (m, r) = match self_ty.sty {
-                        ty::TyRef(r, ref m) => (m.mutbl, r),
-                        _ => span_bug!(expr.span,
-                                "bad overloaded deref type {:?}",
-                                method_ty)
-                    };
-                    let bk = ty::BorrowKind::from_mutbl(m);
-                    self.delegate.borrow(expr.id, expr.span, cmt,
-                                         *r, bk, AutoRef);
-                }
+                let (m, r) = match self_ty.sty {
+                    ty::TyRef(r, ref m) => (m.mutbl, r),
+                    _ => span_bug!(expr.span,
+                                   "bad overloaded deref type {:?}",
+                                   method_ty)
+                };
+                let bk = ty::BorrowKind::from_mutbl(m);
+                self.delegate.borrow(expr.id, expr.span, cmt,
+                                     *r, bk, AutoRef);
             }
         }
     }

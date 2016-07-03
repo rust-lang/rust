@@ -123,9 +123,8 @@ impl<'a> Context<'a> {
 
 impl<'a, 'v> Visitor<'v> for Context<'a> {
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
-        match lang_items::extract(&i.attrs) {
-            None => {}
-            Some(lang_item) => self.register(&lang_item, i.span),
+        if let Some(lang_item) = lang_items::extract(&i.attrs) {
+            self.register(&lang_item, i.span);
         }
         intravisit::walk_foreign_item(self, i)
     }

@@ -88,12 +88,9 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::Token
         }
     };
 
-    match exprs.next() {
-        None => {}
-        Some(_) => {
-            cx.span_err(sp, "env! takes 1 or 2 arguments");
-            return DummyResult::expr(sp);
-        }
+    if let Some(_) = exprs.next() {
+        cx.span_err(sp, "env! takes 1 or 2 arguments");
+        return DummyResult::expr(sp);
     }
 
     let e = match env::var(&var[..]) {

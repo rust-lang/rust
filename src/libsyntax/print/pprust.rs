@@ -1264,13 +1264,10 @@ impl<'a> State<'a> {
                     _ => {}
                 }
 
-                match *opt_trait {
-                    Some(ref t) => {
-                        try!(self.print_trait_ref(t));
-                        try!(space(&mut self.s));
-                        try!(self.word_space("for"));
-                    }
-                    None => {}
+                if let Some(ref t) = *opt_trait {
+                    try!(self.print_trait_ref(t));
+                    try!(space(&mut self.s));
+                    try!(self.word_space("for"));
                 }
 
                 try!(self.print_type(&ty));
@@ -1470,11 +1467,8 @@ impl<'a> State<'a> {
                     try!(self.print_tt(tt_elt));
                 }
                 try!(word(&mut self.s, ")"));
-                match seq.separator {
-                    Some(ref tk) => {
-                        try!(word(&mut self.s, &token_to_string(tk)));
-                    }
-                    None => {},
+                if let Some(ref tk) = seq.separator {
+                    try!(word(&mut self.s, &token_to_string(tk)));
                 }
                 match seq.op {
                     tokenstream::KleeneOp::ZeroOrMore => word(&mut self.s, "*"),

@@ -396,16 +396,13 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
 
                 let pos = self.parse_vuint();
                 let key = ty::CReaderCacheKey { cnum: self.krate, pos: pos };
-                match tcx.rcache.borrow().get(&key).cloned() {
-                    Some(tt) => {
-                        // If there is a closure buried in the type some where, then we
-                        // need to re-convert any def ids (see case 'k', below). That means
-                        // we can't reuse the cached version.
-                        if !tt.has_closure_types() {
-                            return tt;
-                        }
+                if let Some(tt) = tcx.rcache.borrow().get(&key).cloned() {
+                    // If there is a closure buried in the type some where, then we
+                    // need to re-convert any def ids (see case 'k', below). That means
+                    // we can't reuse the cached version.
+                    if !tt.has_closure_types() {
+                        return tt;
                     }
-                    None => {}
                 }
 
                 let mut substate = TyDecoder::new(self.data,
