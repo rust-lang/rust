@@ -7,6 +7,16 @@ fn on_slice(_: &[u8]) {}
 #[allow(ptr_arg)]
 fn on_vec(_: &Vec<u8>) {}
 
+struct Line {
+    length: usize,
+}
+
+impl Line {
+    fn length(&self) -> usize {
+        self.length
+    }
+}
+
 fn main() {
     on_slice(&vec![]);
     //~^ ERROR useless use of `vec!`
@@ -41,6 +51,12 @@ fn main() {
     on_vec(&vec![]);
     on_vec(&vec![1, 2]);
     on_vec(&vec![1; 2]);
+
+    // Now with non-constant expressions
+    let line = Line { length: 2 };
+
+    on_slice(&vec![2; line.length]);
+    on_slice(&vec![2; line.length()]);
 
     for a in vec![1, 2, 3] {
         //~^ ERROR useless use of `vec!`
