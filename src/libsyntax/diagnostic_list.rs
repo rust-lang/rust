@@ -128,10 +128,40 @@ For more information about the cfg attribute, take a look here:
 https://doc.rust-lang.org/reference.html#conditional-compilation
 "##,
 
+E0537: r##"
+A unknown predicate was used inside the cfg attribute.
+
+Erroneous code example:
+
+```compile_fail,E0537
+#[cfg(unknown())] // error: invalid predicate `unknown`
+pub fn something() {}
+
+pub fn main() {}
+```
+
+There are only three predicates for the cfg attribute:
+
+ * any
+ * all
+ * not
+
+Example:
+
+```
+#[cfg(not(target_os = "linux"))] // ok!
+pub fn something() {}
+
+pub fn main() {}
+```
+
+For more information about the cfg attribute, take a look here:
+https://doc.rust-lang.org/reference.html#conditional-compilation
+"##,
+
 }
 
 register_diagnostics! {
-    E0537, // invalid predicate
     E0538, // multiple [same] items
     E0539, // incorrect meta item
     E0540, // multiple rustc_deprecated attributes
