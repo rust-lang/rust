@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -16,8 +16,22 @@
 register_long_diagnostics! {
 
 E0533: r##"
+The export_name attribute was badly formatted.
+
+Erroneous code example:
+
 ```compile_fail,E0533
-#[export_name]
+#[export_name] // error: export_name attribute has invalid format
+pub fn something() {}
+
+fn main() {}
+```
+
+The export_name attribute expects a string in order to determine the name of
+the exported symbol. Example:
+
+```
+#[export_name = "some function"] // ok!
 pub fn something() {}
 
 fn main() {}
