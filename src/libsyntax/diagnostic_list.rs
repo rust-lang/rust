@@ -72,10 +72,40 @@ For more information about the inline attribute, take a look here:
 https://doc.rust-lang.org/reference.html#inline-attributes)
 "##,
 
+E0535: r##"
+An unknown argument was given to inline attribute.
+
+Erroneous code example:
+
+```compile_fail,E0535
+#[inline(unknown)] // error: invalid argument
+pub fn something() {}
+
+fn main() {}
+```
+
+The inline attribute only knows two arguments:
+
+ * always
+ * never
+
+All other arguments given to the inline attribute will return this error.
+Example:
+
+```
+#[inline(never)] // ok!
+pub fn something() {}
+
+fn main() {}
+```
+
+For more information about the inline attribute, take a look here:
+https://doc.rust-lang.org/reference.html#inline-attributes)
+"##,
+
 }
 
 register_diagnostics! {
-    E0535, // invalid argument
     E0536, // expected 1 cfg-pattern
     E0537, // invalid predicate
     E0538, // multiple [same] items
