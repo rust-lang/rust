@@ -324,6 +324,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         format::USELESS_FORMAT,
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
+        functions::NOT_UNSAFE_PTR_ARG_DEREF,
         functions::TOO_MANY_ARGUMENTS,
         identity_op::IDENTITY_OP,
         len_zero::LEN_WITHOUT_IS_EMPTY,

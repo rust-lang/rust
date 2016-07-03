@@ -1,6 +1,8 @@
 use rustc::lint::*;
 use rustc::ty::TypeVariants;
 use rustc::hir::*;
+use rustc_const_eval::EvalHint::ExprTypeChecked;
+use rustc_const_eval::eval_const_expr_partial;
 use syntax::codemap::Span;
 use utils::{higher, snippet, span_lint_and_then};
 
@@ -51,26 +53,30 @@ impl LateLintPass for Pass {
 
 fn check_vec_macro(cx: &LateContext, vec: &Expr, span: Span) {
     if let Some(vec_args) = higher::vec_macro(cx, vec) {
-        span_lint_and_then(cx, USELESS_VEC, span, "useless use of `vec!`", |db| {
-            let snippet = match vec_args {
-                higher::VecArgs::Repeat(elem, len) => {
+        let snippet = match vec_args {
+            higher::VecArgs::Repeat(elem, len) => {
+                if eval_const_expr_partial(cx.tcx, len, ExprTypeChecked, None).is_ok() {
                     format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len")).into()
+                } else {
+                    return;
                 }
-                higher::VecArgs::Vec(args) => {
-                    if let Some(last) = args.iter().last() {
-                        let span = Span {
-                            lo: args[0].span.lo,
-                            hi: last.span.hi,
-                            expn_id: args[0].span.expn_id,
-                        };
+            }
+            higher::VecArgs::Vec(args) => {
+                if let Some(last) = args.iter().last() {
+                    let span = Span {
+                        lo: args[0].span.lo,
+                        hi: last.span.hi,
+                        expn_id: args[0].span.expn_id,
+                    };
 
-                        format!("&[{}]", snippet(cx, span, "..")).into()
-                    } else {
-                        "&[]".into()
-                    }
+                    format!("&[{}]", snippet(cx, span, "..")).into()
+                } else {
+                    "&[]".into()
                 }
-            };
+            }
+        };
 
+        span_lint_and_then(cx, USELESS_VEC, span, "useless use of `vec!`", |db| {
             db.span_suggestion(span, "you can use a slice directly", snippet);
         });
     }

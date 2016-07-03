@@ -714,3 +714,12 @@ pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty
         infcx.can_equate(&new_a, &new_b).is_ok()
     })
 }
+
+/// Return whether the given type is an `unsafe` function.
+pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
+    match ty.sty {
+        ty::TyFnDef(_, _, ref f) |
+        ty::TyFnPtr(ref f) => f.unsafety == Unsafety::Unsafe,
+        _ => false,
+    }
+}
