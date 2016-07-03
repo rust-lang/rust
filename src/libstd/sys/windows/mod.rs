@@ -14,7 +14,6 @@ use prelude::v1::*;
 
 use ffi::{OsStr, OsString};
 use io::{self, ErrorKind};
-use num::Zero;
 use os::windows::ffi::{OsStrExt, OsStringExt};
 use path::PathBuf;
 use time::Duration;
@@ -178,8 +177,22 @@ pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
     }
 }
 
-fn cvt<I: PartialEq + Zero>(i: I) -> io::Result<I> {
-    if i == I::zero() {
+trait IsZero {
+    fn is_zero(&self) -> bool;
+}
+
+macro_rules! impl_is_zero {
+    ($($t:ident)*) => ($(impl IsZero for $t {
+        fn is_zero(&self) -> bool {
+            *self == 0
+        }
+    })*)
+}
+
+impl_is_zero! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
+
+fn cvt<I: IsZero>(i: I) -> io::Result<I> {
+    if i.is_zero() {
         Err(io::Error::last_os_error())
     } else {
         Ok(i)

@@ -321,7 +321,7 @@ pub fn algorithm_m<T: RawFloat>(f: &Big, e: i16) -> T {
             return underflow(x, v, rem);
         }
         if k > T::max_exp_int() {
-            return T::infinity();
+            return T::infinity2();
         }
         if x < min_sig {
             u.mul_pow2(1);
