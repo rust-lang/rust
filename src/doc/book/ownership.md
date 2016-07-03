@@ -214,7 +214,7 @@ But, unlike a move, we can still use `v` afterward. This is because an `i32`
 has no pointers to data somewhere else, copying it is a full copy.
 
 All primitive types implement the `Copy` trait and their ownership is
-therefore not moved like one would assume, following the ´ownership rules´.
+therefore not moved like one would assume, following the ‘ownership rules’.
 To give an example, the two following snippets of code only compile because the
 `i32` and `bool` types implement the `Copy` trait.
 
@@ -290,6 +290,6 @@ let (v1, v2, answer) = foo(v1, v2);
 Ugh! The return type, return line, and calling the function gets way more
 complicated.
 
-Luckily, Rust offers a feature, borrowing, which helps us solve this problem.
-It’s the topic of the next section!
+Luckily, Rust offers a feature which helps us solve this problem.
+It’s called borrowing and is the topic of the next section!
 
