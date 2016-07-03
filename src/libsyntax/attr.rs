@@ -904,9 +904,8 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                         }
                     };
 
-                    match hint {
-                        Some(h) => acc.push(h),
-                        None => { }
+                    if let Some(h) = hint {
+                        acc.push(h);
                     }
                 } else {
                     span_err!(diagnostic, item.span, E0553,

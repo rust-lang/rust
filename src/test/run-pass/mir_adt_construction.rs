@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[repr(C, u32)]
+#[repr(C)]
 enum CEnum {
     Hello = 30,
     World = 60

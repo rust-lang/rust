@@ -52,6 +52,7 @@ impl<'a> CheckAttrVisitor<'a> {
             }
         };
 
+        let mut conflicting_reprs = 0;
         for word in words {
             let name = match word.name() {
                 Some(word) => word,
@@ -60,13 +61,24 @@ impl<'a> CheckAttrVisitor<'a> {
 
             let message = match &*name {
                 "C" => {
+                    conflicting_reprs += 1;
                     if target != Target::Struct && target != Target::Enum {
                         "attribute should be applied to struct or enum"
                     } else {
                         continue
                     }
                 }
-                "packed" | "simd" => {
+                "packed" => {
+                    // Do not increment conflicting_reprs here, because "packed"
+                    // can be used to modify another repr hint
+                    if target != Target::Struct {
+                        "attribute should be applied to struct"
+                    } else {
+                        continue
+                    }
+                }
+                "simd" => {
+                    conflicting_reprs += 1;
                     if target != Target::Struct {
                         "attribute should be applied to struct"
                     } else {
@@ -76,6 +88,7 @@ impl<'a> CheckAttrVisitor<'a> {
                 "i8" | "u8" | "i16" | "u16" |
                 "i32" | "u32" | "i64" | "u64" |
                 "isize" | "usize" => {
+                    conflicting_reprs += 1;
                     if target != Target::Enum {
                         "attribute should be applied to enum"
                     } else {
@@ -86,6 +99,10 @@ impl<'a> CheckAttrVisitor<'a> {
             };
 
             span_err!(self.sess, attr.span, E0517, "{}", message);
+        }
+        if conflicting_reprs > 1 {
+            span_warn!(self.sess, attr.span, E0566,
+                       "conflicting representation hints");
         }
     }
 
