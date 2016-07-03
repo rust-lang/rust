@@ -320,7 +320,7 @@ endif
 COMPRT_BUILD_CC_$(1) := -DCMAKE_C_COMPILER=$$(call FIND_COMPILER,$$(CC_$(1))) \
 			-DCMAKE_CXX_COMPILER=$$(call FIND_COMPILER,$$(CXX_$(1)))
 
-ifeq ($$(findstring ios,$(1)),)
+ifeq ($$(findstring ios,$(1)),ios)
 COMPRT_BUILD_CC_$(1) := $$(COMPRT_BUILD_CC_$(1)) \
 			-DCMAKE_C_FLAGS="$$(CFG_GCCISH_CFLAGS_$(1)) -Wno-error"
 endif
