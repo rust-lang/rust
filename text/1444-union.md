@@ -388,6 +388,17 @@ languages.  Union field accesses already require unsafe blocks, which calls
 attention to them.  Calls to unsafe functions use the same syntax as calls to
 safe functions.
 
+Much discussion in the [tracking issue for
+unions](https://github.com/rust-lang/rust/issues/32836) debated whether
+assigning to a union field that implements Drop should drop the previous value
+of the field.  This produces potentially surprising behavior if that field
+doesn't currently contain a valid value of that type.  However, that behavior
+maintains consistency with assignments to struct fields and mutable variables,
+which writers of unsafe code must already take into account; the alternative
+would add an additional special case for writers of unsafe code.  This does
+provide further motivation for the lint for union fields implementing Drop;
+code that explicitly overrides that lint will need to take this into account.
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
