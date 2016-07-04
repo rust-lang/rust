@@ -572,11 +572,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         // will only succeed if both operands are constant.
         // This is necessary to determine when an overflow Assert
         // will always panic at runtime, and produce a warning.
-        match const_scalar_checked_binop(bcx.tcx(), op, lhs, rhs, input_ty) {
-            Some((val, of)) => {
-                return OperandValue::Pair(val, C_bool(bcx.ccx(), of));
-            }
-            None => {}
+        if let Some((val, of)) = const_scalar_checked_binop(bcx.tcx(), op, lhs, rhs, input_ty) {
+            return OperandValue::Pair(val, C_bool(bcx.ccx(), of));
         }
 
         let (val, of) = match op {

@@ -2752,9 +2752,8 @@ impl<'a> Parser<'a> {
             }
         };
 
-        match parse_kleene_op(self)? {
-            Some(kleene_op) => return Ok((None, kleene_op)),
-            None => {}
+        if let Some(kleene_op) = parse_kleene_op(self)? {
+            return Ok((None, kleene_op));
         }
 
         let separator = self.bump_and_get();
@@ -5691,15 +5690,12 @@ impl<'a> Parser<'a> {
             }
             _ => None
         };
-        match nt_item {
-            Some(mut item) => {
-                self.bump();
-                let mut attrs = attrs;
-                mem::swap(&mut item.attrs, &mut attrs);
-                item.attrs.extend(attrs);
-                return Ok(Some(P(item)));
-            }
-            None => {}
+        if let Some(mut item) = nt_item {
+            self.bump();
+            let mut attrs = attrs;
+            mem::swap(&mut item.attrs, &mut attrs);
+            item.attrs.extend(attrs);
+            return Ok(Some(P(item)));
         }
 
         let lo = self.span.lo;

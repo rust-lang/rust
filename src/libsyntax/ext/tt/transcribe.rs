@@ -225,12 +225,9 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         } else { /* repeat */
             *r.repeat_idx.last_mut().unwrap() += 1;
             r.stack.last_mut().unwrap().idx = 0;
-            match r.stack.last().unwrap().sep.clone() {
-                Some(tk) => {
-                    r.cur_tok = tk; /* repeat same span, I guess */
-                    return ret_val;
-                }
-                None => {}
+            if let Some(tk) = r.stack.last().unwrap().sep.clone() {
+                r.cur_tok = tk; // repeat same span, I guess
+                return ret_val;
             }
         }
     }

@@ -864,9 +864,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     // THE ACTUAL SEARCH
 
     fn pick(mut self) -> PickResult<'tcx> {
-        match self.pick_core() {
-            Some(r) => return r,
-            None => {}
+        if let Some(r) = self.pick_core() {
+            return r;
         }
 
         let static_candidates = mem::replace(&mut self.static_candidates, vec![]);
@@ -929,9 +928,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        match self.pick_by_value_method(step) {
-            Some(result) => return Some(result),
-            None => {}
+        if let Some(result) = self.pick_by_value_method(step) {
+            return Some(result);
         }
 
         self.pick_autorefd_method(step)
@@ -1003,12 +1001,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         let mut possibly_unsatisfied_predicates = Vec::new();
 
         debug!("searching inherent candidates");
-        match self.consider_candidates(self_ty, &self.inherent_candidates,
-                                       &mut possibly_unsatisfied_predicates) {
-            None => {}
-            Some(pick) => {
-                return Some(pick);
-            }
+        if let Some(pick) = self.consider_candidates(self_ty,
+                                                     &self.inherent_candidates,
+                                                     &mut possibly_unsatisfied_predicates) {
+            return Some(pick);
         }
 
         debug!("searching extension candidates");

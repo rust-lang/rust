@@ -150,12 +150,9 @@ impl LateLintPass for UnusedResults {
                 if attr.check_name("must_use") {
                     let mut msg = "unused result which must be used".to_string();
                     // check for #[must_use="..."]
-                    match attr.value_str() {
-                        None => {}
-                        Some(s) => {
-                            msg.push_str(": ");
-                            msg.push_str(&s);
-                        }
+                    if let Some(s) = attr.value_str() {
+                        msg.push_str(": ");
+                        msg.push_str(&s);
                     }
                     cx.span_lint(UNUSED_MUST_USE, sp, &msg);
                     return true;

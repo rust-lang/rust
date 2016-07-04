@@ -842,11 +842,8 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         where F: FnMut(&RegionVarBindings<'a, 'gcx, 'tcx>, Region, Region)
     {
         let vars = TwoRegions { a: a, b: b };
-        match self.combine_map(t).borrow().get(&vars) {
-            Some(&c) => {
-                return ReVar(c);
-            }
-            None => {}
+        if let Some(&c) = self.combine_map(t).borrow().get(&vars) {
+            return ReVar(c);
         }
         let c = self.new_region_var(MiscVariable(origin.span()));
         self.combine_map(t).borrow_mut().insert(vars, c);

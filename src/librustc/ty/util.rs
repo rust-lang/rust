@@ -712,16 +712,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         // struct Foo;
                         // struct Bar<T> { x: Bar<Foo> }
 
-                        match iter.next() {
-                            Some(&seen_type) => {
-                                if same_struct_or_enum(seen_type, def) {
-                                    debug!("SelfRecursive: {:?} contains {:?}",
-                                           seen_type,
-                                           ty);
-                                    return Representability::SelfRecursive;
-                                }
+                        if let Some(&seen_type) = iter.next() {
+                            if same_struct_or_enum(seen_type, def) {
+                                debug!("SelfRecursive: {:?} contains {:?}",
+                                       seen_type,
+                                       ty);
+                                return Representability::SelfRecursive;
                             }
-                            None => {}
                         }
 
                         // We also need to know whether the first item contains other types

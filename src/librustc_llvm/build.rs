@@ -24,19 +24,17 @@ fn main() {
     let llvm_config = env::var_os("LLVM_CONFIG")
                           .map(PathBuf::from)
                           .unwrap_or_else(|| {
-                              match env::var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
-                                  Some(dir) => {
-                                      let to_test = dir.parent()
-                                                       .unwrap()
-                                                       .parent()
-                                                       .unwrap()
-                                                       .join(&target)
-                                                       .join("llvm/bin/llvm-config");
-                                      if Command::new(&to_test).output().is_ok() {
-                                          return to_test;
-                                      }
+                              if let Some(dir) = env::var_os("CARGO_TARGET_DIR")
+                                      .map(PathBuf::from) {
+                                  let to_test = dir.parent()
+                                                   .unwrap()
+                                                   .parent()
+                                                   .unwrap()
+                                                   .join(&target)
+                                                   .join("llvm/bin/llvm-config");
+                                  if Command::new(&to_test).output().is_ok() {
+                                      return to_test;
                                   }
-                                  None => {}
                               }
                               PathBuf::from("llvm-config")
                           });
