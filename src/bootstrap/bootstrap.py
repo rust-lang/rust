@@ -31,6 +31,14 @@ def get(url, path, verbose=False):
 
     try:
         download(sha_path, sha_url, verbose)
+        if os.path.exists(path):
+            try:
+                verify(path, sha_path, verbose)
+                print("using already-download file " + path)
+                return
+            except Exception as e:
+                print("failed verification for already-download file " + path)
+                os.unlink(path)
         download(temp_path, url, verbose)
         verify(temp_path, sha_path, verbose)
         print("moving {} to {}".format(temp_path, path))
