@@ -229,9 +229,9 @@ pub fn compile_input(sess: &Session,
 
     phase_6_link_output(sess, &trans, &outputs);
 
-    controller_entry_point!(after_compilation_done,
+    controller_entry_point!(compilation_done,
                             sess,
-                            CompileState::state_after_compilation_done(input, sess, outdir, output),
+                            CompileState::state_when_compilation_done(input, sess, outdir, output),
                             Ok(()));
 
     Ok(())
@@ -281,7 +281,7 @@ pub struct CompileController<'a> {
     pub after_hir_lowering: PhaseController<'a>,
     pub after_analysis: PhaseController<'a>,
     pub after_llvm: PhaseController<'a>,
-    pub after_compilation_done: PhaseController<'a>,
+    pub compilation_done: PhaseController<'a>,
 
     pub make_glob_map: MakeGlobMap,
 }
@@ -294,7 +294,7 @@ impl<'a> CompileController<'a> {
             after_hir_lowering: PhaseController::basic(),
             after_analysis: PhaseController::basic(),
             after_llvm: PhaseController::basic(),
-            after_compilation_done: PhaseController::basic(),
+            compilation_done: PhaseController::basic(),
             make_glob_map: MakeGlobMap::No,
         }
     }
@@ -463,7 +463,7 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
         }
     }
 
-    fn state_after_compilation_done(input: &'a Input,
+    fn state_when_compilation_done(input: &'a Input,
                                     session: &'ast Session,
                                     out_dir: &'a Option<PathBuf>,
                                     out_file: &'a Option<PathBuf>)
