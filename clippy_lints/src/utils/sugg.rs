@@ -30,6 +30,7 @@ impl<'a> std::fmt::Display for Sugg<'a> {
     }
 }
 
+#[allow(wrong_self_convention)] // ok, because of the function `as_ty` method
 impl<'a> Sugg<'a> {
     pub fn hir_opt(cx: &LateContext, expr: &hir::Expr) -> Option<Sugg<'a>> {
         snippet_opt(cx, expr.span).map(|snippet| {
@@ -122,6 +123,11 @@ impl<'a> Sugg<'a> {
     /// Convenience method to create the `<lhs> && <rhs>` suggestion.
     pub fn and(self, rhs: Self) -> Sugg<'static> {
         make_binop(ast::BinOpKind::And, &self, &rhs)
+    }
+
+    /// Convenience method to create the `<lhs> as <rhs>` suggestion.
+    pub fn as_ty(self, rhs: &str) -> Sugg<'static> {
+        make_assoc(AssocOp::As, &self, &Sugg::NonParen(rhs.into()))
     }
 
     /// Convenience method to create the `&<expr>` suggestion.

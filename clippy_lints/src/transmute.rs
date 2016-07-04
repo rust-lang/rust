@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::ty::TypeVariants::{TyRawPtr, TyRef};
 use rustc::ty;
 use rustc::hir::*;
-use utils::{match_def_path, paths, snippet_opt, span_lint, span_lint_and_then};
+use utils::{match_def_path, paths, span_lint, span_lint_and_then};
 use utils::sugg;
 
 /// **What it does:** This lint checks for transmutes that can't ever be correct on any architecture
@@ -93,14 +93,14 @@ impl LateLintPass for Transmute {
                             e.span,
                             "transmute from a reference to a pointer",
                             |db| {
-                                if let Some(arg) = snippet_opt(cx, args[0].span) {
+                                if let Some(arg) = sugg::Sugg::hir_opt(cx, &*args[0]) {
                                     let sugg = if ptr_ty == rty {
-                                        format!("{} as {}", arg, to_ty)
+                                        arg.as_ty(&to_ty.to_string())
                                     } else {
-                                        format!("{} as {} as {}", arg, cx.tcx.mk_ptr(rty), to_ty)
+                                        arg.as_ty(&format!("{} as {}", cx.tcx.mk_ptr(rty), to_ty))
                                     };
 
-                                    db.span_suggestion(e.span, "try", sugg);
+                                    db.span_suggestion(e.span, "try", sugg.to_string());
                                 }
                             },
                         ),
@@ -111,8 +111,8 @@ impl LateLintPass for Transmute {
                             e.span,
                             "transmute from an integer to a pointer",
                             |db| {
-                                if let Some(arg) = snippet_opt(cx, args[0].span) {
-                                    db.span_suggestion(e.span, "try", format!("{} as {}", arg, to_ty));
+                                if let Some(arg) = sugg::Sugg::hir_opt(cx, &*args[0]) {
+                                    db.span_suggestion(e.span, "try", arg.as_ty(&to_ty.to_string()).to_string());
                                 }
                             },
                         ),
@@ -157,13 +157,13 @@ impl LateLintPass for Transmute {
                                 };
 
 
-                                let sugg = if from_pty.ty == to_rty.ty {
-                                    sugg::make_unop(deref, arg).to_string()
+                                let arg = if from_pty.ty == to_rty.ty {
+                                    arg
                                 } else {
-                                    format!("{}({} as {} {})", deref, arg, cast, to_rty.ty)
+                                    arg.as_ty(&format!("{} {}", cast, to_rty.ty))
                                 };
 
-                                db.span_suggestion(e.span, "try", sugg);
+                                db.span_suggestion(e.span, "try", sugg::make_unop(deref, arg).to_string());
                             },
                         ),
                         _ => return,
