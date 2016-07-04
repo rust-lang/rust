@@ -105,9 +105,8 @@ fn calculate_type(sess: &session::Session,
         // If the global prefer_dynamic switch is turned off, first attempt
         // static linkage (this can fail).
         config::CrateTypeExecutable if !sess.opts.cg.prefer_dynamic => {
-            match attempt_static(sess) {
-                Some(v) => return v,
-                None => {}
+            if let Some(v) = attempt_static(sess) {
+                return v;
             }
         }
 
@@ -119,9 +118,8 @@ fn calculate_type(sess: &session::Session,
         // to be found, we generate some nice pretty errors.
         config::CrateTypeStaticlib |
         config::CrateTypeCdylib => {
-            match attempt_static(sess) {
-                Some(v) => return v,
-                None => {}
+            if let Some(v) = attempt_static(sess) {
+                return v;
             }
             for cnum in sess.cstore.crates() {
                 let src = sess.cstore.used_crate_source(cnum);
@@ -136,9 +134,8 @@ fn calculate_type(sess: &session::Session,
         // to try to eagerly statically link all dependencies. This is normally
         // done for end-product dylibs, not intermediate products.
         config::CrateTypeDylib if !sess.opts.cg.prefer_dynamic => {
-            match attempt_static(sess) {
-                Some(v) => return v,
-                None => {}
+            if let Some(v) = attempt_static(sess) {
+                return v;
             }
         }
 

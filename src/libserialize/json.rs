@@ -1764,9 +1764,8 @@ impl<T: Iterator<Item=char>> Parser<T> {
                     return self.parse_array(first);
                 }
                 ParseArrayComma => {
-                    match self.parse_array_comma_or_end() {
-                        Some(evt) => { return evt; }
-                        None => {}
+                    if let Some(evt) = self.parse_array_comma_or_end() {
+                        return evt;
                     }
                 }
                 ParseObject(first) => {
@@ -2583,9 +2582,8 @@ impl<'a, T: Encodable> fmt::Display for AsPrettyJson<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = PrettyEncoder::new(&mut shim);
-        match self.indent {
-            Some(n) => encoder.set_indent(n),
-            None => {}
+        if let Some(n) = self.indent {
+            encoder.set_indent(n);
         }
         match self.inner.encode(&mut encoder) {
             Ok(_) => Ok(()),

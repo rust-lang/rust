@@ -589,19 +589,16 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     // Attach all orphan methods to the type's definition if the type
     // has since been learned.
     for &(did, ref item) in orphan_methods {
-        match paths.get(&did) {
-            Some(&(ref fqp, _)) => {
-                search_index.push(IndexItem {
-                    ty: shortty(item),
-                    name: item.name.clone().unwrap(),
-                    path: fqp[..fqp.len() - 1].join("::"),
-                    desc: Escape(&shorter(item.doc_value())).to_string(),
-                    parent: Some(did),
-                    parent_idx: None,
-                    search_type: get_index_search_type(&item),
-                });
-            },
-            None => {}
+        if let Some(&(ref fqp, _)) = paths.get(&did) {
+            search_index.push(IndexItem {
+                ty: shortty(item),
+                name: item.name.clone().unwrap(),
+                path: fqp[..fqp.len() - 1].join("::"),
+                desc: Escape(&shorter(item.doc_value())).to_string(),
+                parent: Some(did),
+                parent_idx: None,
+                search_type: get_index_search_type(&item),
+            });
         }
     }
 
@@ -2093,15 +2090,12 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         <h2 id='implementors'>Implementors</h2>
         <ul class='item-list' id='implementors-list'>
     ")?;
-    match cache.implementors.get(&it.def_id) {
-        Some(implementors) => {
-            for i in implementors {
-                write!(w, "<li><code>")?;
-                fmt_impl_for_trait_page(&i.impl_, w)?;
-                writeln!(w, "</code></li>")?;
-            }
+    if let Some(implementors) = cache.implementors.get(&it.def_id) {
+        for i in implementors {
+            write!(w, "<li><code>")?;
+            fmt_impl_for_trait_page(&i.impl_, w)?;
+            writeln!(w, "</code></li>")?;
         }
-        None => {}
     }
     write!(w, "</ul>")?;
     write!(w, r#"<script type="text/javascript" async

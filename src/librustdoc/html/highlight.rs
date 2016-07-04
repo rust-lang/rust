@@ -352,9 +352,8 @@ fn write_header(class: Option<&str>,
                 out: &mut Write)
                 -> io::Result<()> {
     write!(out, "<pre ")?;
-    match id {
-        Some(id) => write!(out, "id='{}' ", id)?,
-        None => {}
+    if let Some(id) = id {
+        write!(out, "id='{}' ", id)?;
     }
     write!(out, "class='rust {}'>\n", class.unwrap_or(""))
 }

@@ -191,9 +191,8 @@ pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 t: Ty<'tcx>)
                                 -> Rc<Repr<'tcx>> {
     debug!("Representing: {}", t);
-    match cx.adt_reprs().borrow().get(&t) {
-        Some(repr) => return repr.clone(),
-        None => {}
+    if let Some(repr) = cx.adt_reprs().borrow().get(&t) {
+        return repr.clone();
     }
 
     let repr = Rc::new(represent_type_uncached(cx, t));

@@ -144,9 +144,8 @@ impl Rand for char {
             // Rejection sampling. About 0.2% of numbers with at most
             // 21-bits are invalid codepoints (surrogates), so this
             // will succeed first go almost every time.
-            match char::from_u32(rng.next_u32() & CHAR_MASK) {
-                Some(c) => return c,
-                None => {}
+            if let Some(c) = char::from_u32(rng.next_u32() & CHAR_MASK) {
+                return c;
             }
         }
     }
