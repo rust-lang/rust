@@ -116,9 +116,11 @@ fn test_env<F>(source_string: &str,
         input: source_string.to_string(),
     };
     let krate = driver::phase_1_parse_input(&sess, krate_config, &input).unwrap();
-    let driver::ExpansionResult { defs, resolutions, mut hir_forest, .. } =
-        driver::phase_2_configure_and_expand(&sess, &cstore, krate, "test", None, MakeGlobMap::No)
-            .expect("phase 2 aborted");
+    let driver::ExpansionResult { defs, resolutions, mut hir_forest, .. } = {
+        driver::phase_2_configure_and_expand(
+            &sess, &cstore, krate, "test", None, MakeGlobMap::No, |_| Ok(()),
+        ).expect("phase 2 aborted")
+    };
     let _ignore = dep_graph.in_ignore();
 
     let arenas = ty::CtxtArenas::new();
