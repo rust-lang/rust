@@ -79,11 +79,11 @@ pub fn new_tt_reader_with_doc_flag(sp_diag: &Handler,
     let mut r = TtReader {
         sp_diag: sp_diag,
         stack: vec!(TtFrame {
-            forest: TokenTree::Sequence(DUMMY_SP, tokenstream::SequenceRepetition {
+            forest: TokenTree::Sequence(DUMMY_SP, Rc::new(tokenstream::SequenceRepetition {
                 tts: src,
                 // doesn't matter. This merely holds the root unzipping.
                 separator: None, op: tokenstream::KleeneOp::ZeroOrMore, num_captures: 0
-            }),
+            })),
             idx: 0,
             dotdotdoted: false,
             sep: None,
