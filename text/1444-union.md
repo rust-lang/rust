@@ -257,11 +257,11 @@ struct.
 
 The compiler should provide a lint if a union field has a type that implements
 the `Drop` trait.  The explanation for that lint should include an explanation
-of the caveat documented in the section "Writing fields".  The compiler may
-optionally provide a pragma to disable that lint, for code that intentionally
-stores a type with Drop in a union.  The compiler must never implicitly
-generate a Drop implementation for the union itself, though Rust code may
-explicitly implement Drop for a union type.
+of the caveat documented in the section "Writing fields".  The compiler should
+allow disabling that lint with `#[allow(union_field_drop)]`, for code that
+intentionally stores a type with Drop in a union.  The compiler must never
+implicitly generate a Drop implementation for the union itself, though Rust
+code may explicitly implement Drop for a union type.
 
 ## Generic unions
 
