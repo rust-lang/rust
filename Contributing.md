@@ -59,7 +59,7 @@ file found at `./tests/config/small_tabs.toml`.
 
 ## Hack!
 
-Here are some [good starting issues](https://github.com/nrc/rustfmt/issues?q=is%3Aopen+is%3Aissue+label%3Aeasy).
+Here are some [good starting issues](https://github.com/rust-lang-nursery/rustfmt/issues?q=is%3Aopen+is%3Aissue+label%3Aeasy).
 
 If you've found areas which need polish and don't have issues, please submit a
 PR, don't feel there needs to be an issue.
