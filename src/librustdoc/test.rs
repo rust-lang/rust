@@ -95,9 +95,9 @@ pub fn run(input: &str,
     cfg.extend(config::parse_cfgspecs(cfgs.clone()));
     let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
     let driver::ExpansionResult { defs, mut hir_forest, .. } = {
-        let make_glob_map = MakeGlobMap::No;
-        phase_2_configure_and_expand(&sess, &cstore, krate, "rustdoc-test", None, make_glob_map)
-            .expect("phase_2_configure_and_expand aborted in rustdoc!")
+        phase_2_configure_and_expand(
+            &sess, &cstore, krate, "rustdoc-test", None, MakeGlobMap::No, |_| Ok(())
+        ).expect("phase_2_configure_and_expand aborted in rustdoc!")
     };
 
     let dep_graph = DepGraph::new(false);

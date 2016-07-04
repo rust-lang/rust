@@ -149,9 +149,9 @@ pub fn run_core(search_paths: SearchPaths,
     let name = link::find_crate_name(Some(&sess), &krate.attrs, &input);
 
     let driver::ExpansionResult { defs, analysis, resolutions, mut hir_forest, .. } = {
-        let make_glob_map = resolve::MakeGlobMap::No;
-        driver::phase_2_configure_and_expand(&sess, &cstore, krate, &name, None, make_glob_map)
-            .expect("phase_2_configure_and_expand aborted in rustdoc!")
+        driver::phase_2_configure_and_expand(
+            &sess, &cstore, krate, &name, None, resolve::MakeGlobMap::No, |_| Ok(()),
+        ).expect("phase_2_configure_and_expand aborted in rustdoc!")
     };
 
     let arenas = ty::CtxtArenas::new();

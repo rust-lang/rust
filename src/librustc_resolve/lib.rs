@@ -1167,18 +1167,6 @@ impl<'a> Resolver<'a> {
 
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
-        // Currently, we ignore the name resolution data structures for
-        // the purposes of dependency tracking. Instead we will run name
-        // resolution and include its output in the hash of each item,
-        // much like we do for macro expansion. In other words, the hash
-        // reflects not just its contents but the results of name
-        // resolution on those contents. Hopefully we'll push this back at
-        // some point.
-        let _ignore = self.session.dep_graph.in_ignore();
-
-        self.build_reduced_graph(krate);
-        resolve_imports::resolve_imports(self);
-
         self.current_module = self.graph_root;
         visit::walk_crate(self, krate);
 
