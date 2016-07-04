@@ -672,7 +672,11 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree],
                     };
                 }
 
-                return ret;
+                return match ret {
+                    Ok => Ok,
+                    Unsure => if need_disambiguation { Error } else { Unsure },
+                    Error => Error
+                };
             }
 
             (&TokenTree::Sequence(sp, ref seq), _) => {
@@ -695,7 +699,11 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree],
                     };
                 }
 
-                return ret;
+                return match ret {
+                    Ok => Ok,
+                    Unsure => if need_disambiguation { Error } else { Unsure },
+                    Error => Error
+                };
             }
 
             (_, &TokenTree::Sequence(sp, ref seq)) => {
@@ -719,7 +727,11 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree],
 
                 }
 
-                return ret;
+                return match ret {
+                    Ok => Ok,
+                    Unsure => if need_disambiguation { Error } else { Unsure },
+                    Error => Error
+                };
             }
 
             (&TokenTree::Token(_, MatchNt(_, nta)),
