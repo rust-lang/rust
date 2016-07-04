@@ -16,7 +16,7 @@
 register_long_diagnostics! {
 
 E0533: r##"
-The export_name attribute was badly formatted.
+The `export_name` attribute was malformed.
 
 Erroneous code example:
 
@@ -27,11 +27,11 @@ pub fn something() {}
 fn main() {}
 ```
 
-The export_name attribute expects a string in order to determine the name of
+The `export_name` attribute expects a string in order to determine the name of
 the exported symbol. Example:
 
 ```
-#[export_name = "some function"] // ok!
+#[export_name = "some_function"] // ok!
 pub fn something() {}
 
 fn main() {}
@@ -39,7 +39,7 @@ fn main() {}
 "##,
 
 E0534: r##"
-The inline attribute was badly used.
+The `inline` attribute was malformed.
 
 Erroneous code example:
 
@@ -50,30 +50,32 @@ pub fn something() {}
 fn main() {}
 ```
 
-The inline attribute can be used without arguments:
+The parenthesized `inline` attribute requires the parameter to be specified:
 
-```
-#[inline] // ok!
-pub fn something() {}
+```ignore
+#[inline(always)]
+fn something() {}
 
-fn main() {}
-```
+// or:
 
-Or with arguments (and parens have to be used for this case!):
-
-```
-#[inline(always)] // ok!
-pub fn something() {}
-
-fn main() {}
+#[inline(never)]
+fn something() {}
 ```
 
-For more information about the inline attribute, take a look here:
+Alternatively, a paren-less version of the attribute may be used to hint the
+compiler about inlining opportunity:
+
+```
+#[inline]
+fn something() {}
+```
+
+For more information about the inline attribute, read:
 https://doc.rust-lang.org/reference.html#inline-attributes
 "##,
 
 E0535: r##"
-An unknown argument was given to inline attribute.
+An unknown argument was given to the `inline` attribute.
 
 Erroneous code example:
 
@@ -84,12 +86,12 @@ pub fn something() {}
 fn main() {}
 ```
 
-The inline attribute only knows two arguments:
+The `inline` attribute only supports two arguments:
 
  * always
  * never
 
-All other arguments given to the inline attribute will return this error.
+All other arguments given to the `inline` attribute will return this error.
 Example:
 
 ```
@@ -99,12 +101,12 @@ pub fn something() {}
 fn main() {}
 ```
 
-For more information about the inline attribute, take a look here:
-https://doc.rust-lang.org/reference.html#inline-attributes
+For more information about the inline attribute, https:
+read://doc.rust-lang.org/reference.html#inline-attributes
 "##,
 
 E0536: r##"
-No cfg-pattern was found for `not` statement.
+The `not` cfg-predicate was malformed.
 
 Erroneous code example:
 
@@ -115,7 +117,7 @@ pub fn something() {}
 pub fn main() {}
 ```
 
-The `not` statement expects at least one cfg-pattern. Example:
+The `not` predicate expects one cfg-pattern. Example:
 
 ```
 #[cfg(not(target_os = "linux"))] // ok!
@@ -124,12 +126,12 @@ pub fn something() {}
 pub fn main() {}
 ```
 
-For more information about the cfg attribute, take a look here:
+For more information about the cfg attribute, read:
 https://doc.rust-lang.org/reference.html#conditional-compilation
 "##,
 
 E0537: r##"
-A unknown predicate was used inside the cfg attribute.
+An unknown predicate was used inside the `cfg` attribute.
 
 Erroneous code example:
 
@@ -140,7 +142,7 @@ pub fn something() {}
 pub fn main() {}
 ```
 
-There are only three predicates for the cfg attribute:
+The `cfg` attribute supports only three kinds of predicates:
 
  * any
  * all
@@ -155,7 +157,7 @@ pub fn something() {}
 pub fn main() {}
 ```
 
-For more information about the cfg attribute, take a look here:
+For more information about the cfg attribute, read:
 https://doc.rust-lang.org/reference.html#conditional-compilation
 "##,
 
