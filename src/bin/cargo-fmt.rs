@@ -203,6 +203,16 @@ fn format_files(files: &Vec<PathBuf>,
         .stdout(stdout)
         .args(files)
         .args(fmt_args)
-        .spawn());
+        .spawn()
+        .map_err(|e| {
+            match e.kind() {
+                std::io::ErrorKind::NotFound => {
+                    std::io::Error::new(std::io::ErrorKind::Other,
+                                        "Could not run rustfmt, please make sure it is in your \
+                                         PATH.")
+                }
+                _ => e,
+            }
+        }));
     command.wait()
 }
