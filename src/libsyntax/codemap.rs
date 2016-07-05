@@ -1235,7 +1235,7 @@ r"blork2.rs:2:1: 2:12
         let cm = Rc::new(CodeMap::new());
         let mut ew = EmitterWriter::new(Box::new(Sink(data.clone())),
                                         None,
-                                        cm.clone(),
+                                        Some(cm.clone()),
                                         FormatMode::NewErrorFormat);
         let content = "abcdefg
         koksi
@@ -1321,7 +1321,7 @@ r"blork2.rs:2:1: 2:12
         let cm = Rc::new(CodeMap::new());
         let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())),
                                           None,
-                                          cm.clone(),
+                                          Some(cm.clone()),
                                           FormatMode::NewErrorFormat);
 
         let inp =       "_____aaaaaa____bbbbbb__cccccdd_";
@@ -1377,7 +1377,7 @@ r"blork2.rs:2:1: 2:12
         let cm = Rc::new(CodeMap::new());
         let mut diag = EmitterWriter::new(Box::new(Sink(data.clone())),
                                           None,
-                                          cm.clone(),
+                                          Some(cm.clone()),
                                           FormatMode::NewErrorFormat);
 
         let inp = "aaaaa\n\

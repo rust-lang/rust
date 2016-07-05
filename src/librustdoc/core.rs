@@ -131,7 +131,7 @@ pub fn run_core(search_paths: SearchPaths,
                                                                None,
                                                                true,
                                                                false,
-                                                               codemap.clone());
+                                                               Some(codemap.clone()));
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();

@@ -100,6 +100,7 @@ use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::MultiSpan;
 use errors::emitter::Emitter;
+use errors::snippet::FormatMode;
 
 #[cfg(test)]
 pub mod test;
@@ -139,7 +140,10 @@ pub fn run(args: Vec<String>) -> isize {
                     Some(sess) => sess.fatal(&abort_msg(err_count)),
                     None => {
                         let mut emitter =
-                            errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
+                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
+                                                                   None,
+                                                                   None,
+                                                                   FormatMode::EnvironmentSelected);
                         emitter.emit(&MultiSpan::new(), &abort_msg(err_count), None,
                             errors::Level::Fatal);
                         exit_on_err();
@@ -375,7 +379,10 @@ fn check_cfg(sopts: &config::Options,
              output: ErrorOutputType) {
     let mut emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(errors::emitter::BasicEmitter::stderr(color_config))
+            Box::new(errors::emitter::EmitterWriter::stderr(color_config,
+                                                            None,
+                                                            None,
+                                                            FormatMode::EnvironmentSelected))
         }
         config::ErrorOutputType::Json => Box::new(json::JsonEmitter::basic()),
     };
@@ -1046,7 +1053,11 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
      if let Err(value) = thread.unwrap().join() {
         // Thread panicked without emitting a fatal diagnostic
         if !value.is::<errors::FatalError>() {
-            let mut emitter = errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
+            let mut emitter =
+                errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
+                                                       None,
+                                                       None,
+                                                       FormatMode::EnvironmentSelected);
 
             // a .span_bug or .bug call has already printed what
             // it wants to print.
