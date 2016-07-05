@@ -423,7 +423,7 @@ impl Handler {
                             registry: Option<registry::Registry>,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
-                            cm: Rc<CodeMapper>)
+                            cm: Option<Rc<CodeMapper>>)
                             -> Handler {
         let emitter = Box::new(EmitterWriter::stderr(color_config, registry, cm,
                                snippet::FormatMode::EnvironmentSelected));

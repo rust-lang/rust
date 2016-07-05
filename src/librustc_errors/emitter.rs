@@ -117,42 +117,10 @@ impl ColorConfig {
     }
 }
 
-/// A basic emitter for when we don't have access to a codemap or registry. Used
-/// for reporting very early errors, etc.
-pub struct BasicEmitter {
-    dst: Destination,
-}
-
-impl CoreEmitter for BasicEmitter {
-    fn emit_message(&mut self,
-                    _rsp: &RenderSpan,
-                    msg: &str,
-                    code: Option<&str>,
-                    lvl: Level,
-                    _is_header: bool,
-                    _show_snippet: bool) {
-        // we ignore the span as we have no access to a codemap at this point
-        if let Err(e) = print_diagnostic(&mut self.dst, "", lvl, msg, code) {
-            panic!("failed to print diagnostics: {:?}", e);
-        }
-    }
-}
-
-impl BasicEmitter {
-    pub fn stderr(color_config: ColorConfig) -> BasicEmitter {
-        if color_config.use_color() {
-            let dst = Destination::from_stderr();
-            BasicEmitter { dst: dst }
-        } else {
-            BasicEmitter { dst: Raw(Box::new(io::stderr())) }
-        }
-    }
-}
-
 pub struct EmitterWriter {
     dst: Destination,
     registry: Option<registry::Registry>,
-    cm: Rc<CodeMapper>,
+    cm: Option<Rc<CodeMapper>>,
 
     /// Is this the first error emitted thus far? If not, we emit a
     /// `\n` before the top-level errors.
@@ -194,7 +162,7 @@ macro_rules! println_maybe_styled {
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
                   registry: Option<registry::Registry>,
-                  code_map: Rc<CodeMapper>,
+                  code_map: Option<Rc<CodeMapper>>,
                   format_mode: FormatMode)
                   -> EmitterWriter {
         if color_config.use_color() {
@@ -215,7 +183,7 @@ impl EmitterWriter {
 
     pub fn new(dst: Box<Write + Send>,
                registry: Option<registry::Registry>,
-               code_map: Rc<CodeMapper>,
+               code_map: Option<Rc<CodeMapper>>,
                format_mode: FormatMode)
                -> EmitterWriter {
         EmitterWriter { dst: Raw(dst),
@@ -257,7 +225,11 @@ impl EmitterWriter {
                 if old_school {
                     let loc = match rsp.span().primary_span() {
                         Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => "".to_string(),
-                        Some(ps) => self.cm.span_to_string(ps),
+                        Some(ps) => if let Some(ref cm) = self.cm {
+                            cm.span_to_string(ps)
+                        } else {
+                            "".to_string()
+                        },
                         None => "".to_string()
                     };
                     print_diagnostic(&mut self.dst, &loc, lvl, msg, Some(code))?
@@ -270,7 +242,11 @@ impl EmitterWriter {
                 if old_school {
                     let loc = match rsp.span().primary_span() {
                         Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => "".to_string(),
-                        Some(ps) => self.cm.span_to_string(ps),
+                        Some(ps) => if let Some(ref cm) = self.cm {
+                            cm.span_to_string(ps)
+                        } else {
+                            "".to_string()
+                        },
                         None => "".to_string()
                     };
                     print_diagnostic(&mut self.dst, &loc, lvl, msg, code)?
@@ -316,7 +292,11 @@ impl EmitterWriter {
                                         .is_some() => {
                     let loc = match rsp.span().primary_span() {
                         Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => "".to_string(),
-                        Some(ps) => self.cm.span_to_string(ps),
+                        Some(ps) => if let Some(ref cm) = self.cm {
+                            cm.span_to_string(ps)
+                        } else {
+                            "".to_string()
+                        },
                         None => "".to_string()
                     };
                     let msg = "run `rustc --explain ".to_string() + &code.to_string() +
@@ -335,32 +315,34 @@ impl EmitterWriter {
         use std::borrow::Borrow;
 
         let primary_span = suggestion.msp.primary_span().unwrap();
-        let lines = self.cm.span_to_lines(primary_span).unwrap();
-        assert!(!lines.lines.is_empty());
+        if let Some(ref cm) = self.cm {
+            let lines = cm.span_to_lines(primary_span).unwrap();
 
-        let complete = suggestion.splice_lines(self.cm.borrow());
-        let line_count = cmp::min(lines.lines.len(), MAX_HIGHLIGHT_LINES);
-        let display_lines = &lines.lines[..line_count];
+            assert!(!lines.lines.is_empty());
 
-        let fm = &*lines.file;
-        // Calculate the widest number to format evenly
-        let max_digits = line_num_max_digits(display_lines.last().unwrap());
+            let complete = suggestion.splice_lines(cm.borrow());
+            let line_count = cmp::min(lines.lines.len(), MAX_HIGHLIGHT_LINES);
+            let display_lines = &lines.lines[..line_count];
 
-        // print the suggestion without any line numbers, but leave
-        // space for them. This helps with lining up with previous
-        // snippets from the actual error being reported.
-        let mut lines = complete.lines();
-        for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
-            write!(&mut self.dst, "{0}:{1:2$} {3}\n",
-                   fm.name, "", max_digits, line)?;
+            let fm = &*lines.file;
+            // Calculate the widest number to format evenly
+            let max_digits = line_num_max_digits(display_lines.last().unwrap());
+
+            // print the suggestion without any line numbers, but leave
+            // space for them. This helps with lining up with previous
+            // snippets from the actual error being reported.
+            let mut lines = complete.lines();
+            for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
+                write!(&mut self.dst, "{0}:{1:2$} {3}\n",
+                    fm.name, "", max_digits, line)?;
+            }
+
+            // if we elided some lines, add an ellipsis
+            if let Some(_) = lines.next() {
+                write!(&mut self.dst, "{0:1$} {0:2$} ...\n",
+                    "", fm.name.len(), max_digits)?;
+            }
         }
-
-        // if we elided some lines, add an ellipsis
-        if let Some(_) = lines.next() {
-            write!(&mut self.dst, "{0:1$} {0:2$} ...\n",
-                   "", fm.name.len(), max_digits)?;
-        }
-
         Ok(())
     }
 
@@ -369,20 +351,26 @@ impl EmitterWriter {
                        lvl: Level)
                        -> io::Result<()>
     {
+        // Check to see if we have any lines to highlight, exit early if not
+        match self.cm {
+            None => return Ok(()),
+            _ => ()
+        }
+
         let old_school = match self.format_mode {
             FormatMode::NewErrorFormat => false,
             FormatMode::OriginalErrorFormat => true,
             FormatMode::EnvironmentSelected => check_old_skool()
         };
 
-        let mut snippet_data = SnippetData::new(self.cm.clone(),
+        let mut snippet_data = SnippetData::new(self.cm.as_ref().unwrap().clone(),
                                                 msp.primary_span(),
                                                 self.format_mode.clone());
         if old_school {
             let mut output_vec = vec![];
 
             for span_label in msp.span_labels() {
-                let mut snippet_data = SnippetData::new(self.cm.clone(),
+                let mut snippet_data = SnippetData::new(self.cm.as_ref().unwrap().clone(),
                                                         Some(span_label.span),
                                                         self.format_mode.clone());
 
@@ -431,16 +419,18 @@ impl EmitterWriter {
     fn print_macro_backtrace(&mut self,
                              sp: Span)
                              -> io::Result<()> {
-        for trace in self.cm.macro_backtrace(sp) {
-            let mut diag_string =
-                format!("in this expansion of {}", trace.macro_decl_name);
-            if let Some(def_site_span) = trace.def_site_span {
-                diag_string.push_str(
-                    &format!(" (defined in {})",
-                        self.cm.span_to_filename(def_site_span)));
+        if let Some(ref cm) = self.cm {
+            for trace in cm.macro_backtrace(sp) {
+                let mut diag_string =
+                    format!("in this expansion of {}", trace.macro_decl_name);
+                if let Some(def_site_span) = trace.def_site_span {
+                    diag_string.push_str(
+                        &format!(" (defined in {})",
+                            cm.span_to_filename(def_site_span)));
+                }
+                let snippet = cm.span_to_string(trace.call_site);
+                print_diagnostic(&mut self.dst, &snippet, Note, &diag_string, None)?;
             }
-            let snippet = self.cm.span_to_string(trace.call_site);
-            print_diagnostic(&mut self.dst, &snippet, Note, &diag_string, None)?;
         }
         Ok(())
     }
