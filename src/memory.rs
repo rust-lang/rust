@@ -66,6 +66,10 @@ pub struct FunctionDefinition<'tcx> {
 pub struct Memory<'a, 'tcx> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations)
     alloc_map: HashMap<AllocId, Allocation>,
+    /// Number of virtual bytes allocated
+    memory_usage: u64,
+    /// Maximum number of virtual bytes that may be allocated
+    memory_size: u64,
     /// Function "allocations". They exist solely so pointers have something to point to, and
     /// we can figure out what they point to.
     functions: HashMap<AllocId, FunctionDefinition<'tcx>>,
@@ -78,13 +82,15 @@ pub struct Memory<'a, 'tcx> {
 const ZST_ALLOC_ID: AllocId = AllocId(0);
 
 impl<'a, 'tcx> Memory<'a, 'tcx> {
-    pub fn new(layout: &'a TargetDataLayout) -> Self {
+    pub fn new(layout: &'a TargetDataLayout, max_memory: u64) -> Self {
         let mut mem = Memory {
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
             function_alloc_cache: HashMap::new(),
             next_id: AllocId(1),
             layout: layout,
+            memory_size: max_memory,
+            memory_usage: 0,
         };
         // alloc id 0 is reserved for ZSTs, this is an optimization to prevent ZST
         // (e.g. function items, (), [], ...) from requiring memory
@@ -95,7 +101,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         };
         mem.alloc_map.insert(ZST_ALLOC_ID, alloc);
         // check that additional zst allocs work
-        debug_assert!(mem.allocate(0).points_to_zst());
+        debug_assert!(mem.allocate(0).unwrap().points_to_zst());
         debug_assert!(mem.get(ZST_ALLOC_ID).is_ok());
         mem
     }
@@ -127,10 +133,18 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn allocate(&mut self, size: usize) -> Pointer {
+    pub fn allocate(&mut self, size: usize) -> EvalResult<'tcx, Pointer> {
         if size == 0 {
-            return Pointer::zst_ptr();
+            return Ok(Pointer::zst_ptr());
         }
+        if self.memory_size - self.memory_usage < size as u64 {
+            return Err(EvalError::OutOfMemory {
+                allocation_size: size as u64,
+                memory_size: self.memory_size,
+                memory_usage: self.memory_usage,
+            });
+        }
+        self.memory_usage += size as u64;
         let alloc = Allocation {
             bytes: vec![0; size],
             relocations: BTreeMap::new(),
@@ -139,10 +153,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let id = self.next_id;
         self.next_id.0 += 1;
         self.alloc_map.insert(id, alloc);
-        Pointer {
+        Ok(Pointer {
             alloc_id: id,
             offset: 0,
-        }
+        })
     }
 
     // TODO(solson): Track which allocations were returned from __rust_allocate and report an error
@@ -153,17 +167,21 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
         if ptr.points_to_zst() {
-            return Ok(self.allocate(new_size));
+            return self.allocate(new_size);
         }
 
         let size = self.get_mut(ptr.alloc_id)?.bytes.len();
 
         if new_size > size {
             let amount = new_size - size;
+            self.memory_usage += amount as u64;
             let alloc = self.get_mut(ptr.alloc_id)?;
             alloc.bytes.extend(iter::repeat(0).take(amount));
             alloc.undef_mask.grow(amount, false);
         } else if size > new_size {
+            // it's possible to cause miri to use arbitrary amounts of memory that aren't detectable
+            // through the memory_usage value, by allocating a lot and reallocating to zero
+            self.memory_usage -= (size - new_size) as u64;
             self.clear_relocations(ptr.offset(new_size as isize), size - new_size)?;
             let alloc = self.get_mut(ptr.alloc_id)?;
             alloc.bytes.truncate(new_size);
@@ -183,7 +201,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
 
-        if self.alloc_map.remove(&ptr.alloc_id).is_none() {
+        if let Some(alloc) = self.alloc_map.remove(&ptr.alloc_id) {
+            self.memory_usage -= alloc.bytes.len() as u64;
+        } else {
             debug!("deallocated a pointer twice: {}", ptr.alloc_id);
             // TODO(solson): Report error about erroneous free. This is blocked on properly tracking
             // already-dropped state since this if-statement is entered even in safe code without

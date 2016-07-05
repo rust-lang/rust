@@ -29,15 +29,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let basic_block = &mir.basic_blocks()[block];
 
         if let Some(ref stmt) = basic_block.statements.get(stmt) {
-            let current_stack = self.stack.len();
+            let mut new = Ok(0);
             ConstantExtractor {
                 span: stmt.source_info.span,
                 substs: self.substs(),
                 def_id: self.frame().def_id,
                 ecx: self,
                 mir: &mir,
+                new_constants: &mut new,
             }.visit_statement(block, stmt);
-            if current_stack == self.stack.len() {
+            if new? == 0 {
                 self.statement(stmt)?;
             }
             // if ConstantExtractor added new frames, we don't execute anything here
@@ -46,15 +47,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
 
         let terminator = basic_block.terminator();
-        let current_stack = self.stack.len();
+        let mut new = Ok(0);
         ConstantExtractor {
             span: terminator.source_info.span,
             substs: self.substs(),
             def_id: self.frame().def_id,
             ecx: self,
             mir: &mir,
+            new_constants: &mut new,
         }.visit_terminator(block, terminator);
-        if current_stack == self.stack.len() {
+        if new? == 0 {
             self.terminator(terminator)?;
         }
         // if ConstantExtractor added new frames, we don't execute anything here
@@ -92,6 +94,7 @@ struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
     mir: &'a mir::Mir<'tcx>,
     def_id: DefId,
     substs: &'tcx subst::Substs<'tcx>,
+    new_constants: &'a mut EvalResult<'tcx, u64>,
 }
 
 impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
@@ -105,9 +108,22 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
             return;
         }
         let mir = self.ecx.load_mir(def_id);
-        let ptr = self.ecx.alloc_ret_ptr(mir.return_ty, substs).expect("there's no such thing as an unreachable static");
-        self.ecx.statics.insert(cid.clone(), ptr);
-        self.ecx.push_stack_frame(def_id, span, mir, substs, Some(ptr));
+        self.try(|this| {
+            let ptr = this.ecx.alloc_ret_ptr(mir.return_ty, substs)?;
+            let ptr = ptr.expect("there's no such thing as an unreachable static");
+            this.ecx.statics.insert(cid.clone(), ptr);
+            this.ecx.push_stack_frame(def_id, span, mir, substs, Some(ptr))
+        });
+    }
+    fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx, ()>>(&mut self, f: F) {
+        if let Ok(ref mut n) = *self.new_constants {
+            *n += 1;
+        } else {
+            return;
+        }
+        if let Err(e) = f(self) {
+            *self.new_constants = Err(e);
+        }
     }
 }
 
@@ -137,10 +153,13 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 }
                 let mir = self.mir.promoted[index].clone();
                 let return_ty = mir.return_ty;
-                let return_ptr = self.ecx.alloc_ret_ptr(return_ty, cid.substs).expect("there's no such thing as an unreachable static");
-                let mir = CachedMir::Owned(Rc::new(mir));
-                self.ecx.statics.insert(cid.clone(), return_ptr);
-                self.ecx.push_stack_frame(self.def_id, constant.span, mir, self.substs, Some(return_ptr));
+                self.try(|this| {
+                    let return_ptr = this.ecx.alloc_ret_ptr(return_ty, cid.substs)?;
+                    let return_ptr = return_ptr.expect("there's no such thing as an unreachable static");
+                    let mir = CachedMir::Owned(Rc::new(mir));
+                    this.ecx.statics.insert(cid.clone(), return_ptr);
+                    this.ecx.push_stack_frame(this.def_id, constant.span, mir, this.substs, Some(return_ptr))
+                });
             }
         }
     }
