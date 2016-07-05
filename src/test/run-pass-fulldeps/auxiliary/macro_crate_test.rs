@@ -72,6 +72,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                 ..(*quote_item!(cx, enum Foo2 { Bar2, Baz2 }).unwrap()).clone()
             })),
             Annotatable::Item(quote_item!(cx, enum Foo3 { Bar }).unwrap()),
+            Annotatable::Item(quote_item!(cx, #[cfg(any())] fn foo2() {}).unwrap()),
         ],
         Annotatable::ImplItem(it) => vec![
             quote_item!(cx, impl X { fn foo(&self) -> i32 { 42 } }).unwrap().and_then(|i| {
