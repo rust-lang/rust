@@ -4066,7 +4066,8 @@ impl<'a> Parser<'a> {
     /// (or the lack thereof) -- c.f. `parse_stmt`.
     pub fn finish_parsing_statement(&mut self, mut stmt: Stmt) -> PResult<'a, Stmt> {
         if let StmtKind::Mac(mac) = stmt.node {
-            if mac.1 != MacStmtStyle::NoBraces || self.token == token::Semi {
+            if mac.1 != MacStmtStyle::NoBraces ||
+               self.token == token::Semi || self.token == token::Eof {
                 stmt.node = StmtKind::Mac(mac);
             } else {
                 let (mac, _style, attrs) = mac.unwrap();

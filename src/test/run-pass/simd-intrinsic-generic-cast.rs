@@ -113,7 +113,7 @@ fn main() {
         // product macro
         ($from: ident $(, $from_: ident)*: $($to: ident),*) => {
             fn $from() { unsafe { $( test!($from, $to); )* } }
-            tests!($($from_),*: $($to),*);
+            tests!($($from_),*: $($to),*)
         };
         ($($types: ident),*) => {{
             tests!($($types),* : $($types),*);
