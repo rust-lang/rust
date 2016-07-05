@@ -27,5 +27,4 @@ fn main() {
     }
 
     expando!(true); //~ NOTE in this expansion
-                    //~^ NOTE in this expansion
 }
