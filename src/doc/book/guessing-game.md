@@ -370,7 +370,7 @@ We could also use a range of versions.
 [Cargo’s documentation][cargodoc] contains more details.
 
 [semver]: http://semver.org
-[cargodoc]: http://doc.crates.io/crates-io.html
+[cargodoc]: http://doc.crates.io/specifying-dependencies.html
 
 Now, without changing any of our code, let’s build our project:
 
