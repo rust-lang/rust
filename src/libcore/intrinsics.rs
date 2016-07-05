@@ -312,30 +312,34 @@ extern "rust-intrinsic" {
     /// are as follows:
     ///
     /// Turning a pointer into a `usize`:
+    ///
     /// ```
     /// let ptr = &0;
     /// let ptr_num_transmute = mem::transmute::<&i32, usize>(ptr);
-    /// // Use `as` casts instead
+    /// // Use an `as` cast instead
     /// let ptr_num_cast = ptr as *const i32 as usize;
     /// ```
     ///
     /// Turning a `*mut T` into an `&mut T`:
+    ///
     /// ```
     /// let ptr: *mut i32 = &mut 0;
     /// let ref_transmuted = mem::transmute::<*mut i32, &mut i32>(ptr);
-    /// // Use reborrows
+    /// // Use a reborrow instead
     /// let ref_casted = &mut *ptr;
     /// ```
     ///
     /// Turning an `&mut T` into an `&mut U`:
+    ///
     /// ```
     /// let ptr = &mut 0;
     /// let val_transmuted = mem::transmute::<&mut i32, &mut u32>(ptr);
-    /// // Now let's put together `as` and reborrowing
+    /// // Now, put together `as` and reborrowing
     /// let val_casts = &mut *(ptr as *mut i32 as *mut u32);
     /// ```
     ///
     /// Turning an `&str` into an `&[u8]`:
+    ///
     /// ```
     /// // this is not a good way to do this.
     /// let slice = unsafe { mem::transmute::<&str, &[u8]>("Rust") };
@@ -349,20 +353,21 @@ extern "rust-intrinsic" {
     /// ```
     ///
     /// Turning a `Vec<&T>` into a `Vec<Option<&T>>`:
+    ///
     /// ```
     /// let store = [0, 1, 2, 3];
     /// let v_orig = store.iter().collect::<Vec<&i32>>();
-    /// // Using transmute: this is Undefined Behavior, and a bad idea
-    /// // However, it is no-copy
+    /// // Using transmute: this is Undefined Behavior, and a bad idea.
+    /// // However, it is no-copy.
     /// let v_transmuted = mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(
     ///     v_orig.clone());
-    /// // This is the suggested, safe way
-    /// // It does copy the entire Vector, though, into a new array
+    /// // This is the suggested, safe way.
+    /// // It does copy the entire Vector, though, into a new array.
     /// let v_collected = v_orig.clone()
     ///                         .into_iter()
     ///                         .map(|r| Some(r))
     ///                         .collect::<Vec<Option<&i32>>>();
-    /// // The no-copy, unsafe way, still using transmute, but not UB
+    /// // The no-copy, unsafe way, still using transmute, but not UB.
     /// // This is equivalent to the original, but safer, and reuses the
     /// // same Vec internals. Therefore the new inner type must have the
     /// // exact same size, and the same or lesser alignment, as the old
@@ -375,11 +380,12 @@ extern "rust-intrinsic" {
     /// mem::forget(v_orig);
     /// ```
     ///
-    /// Implemententing `split_at_mut`:
+    /// Implementing `split_at_mut`:
+    ///
     /// ```
     /// use std::{slice, mem};
     /// // There are multiple ways to do this; and there are multiple problems
-    /// // with the following, transmute, way
+    /// // with the following, transmute, way.
     /// fn split_at_mut_transmute<T>(slice: &mut [T], index: usize)
     ///                              -> (&mut [T], &mut [T]) {
     ///     let len = slice.len();
@@ -388,12 +394,12 @@ extern "rust-intrinsic" {
     ///         let slice2 = mem::transmute::<&mut [T], &mut [T]>(slice);
     ///         // first: transmute is not typesafe; all it checks is that T and
     ///         // U are of the same size. Second, right here, you have two
-    ///         // mutable references pointing to the same memory
+    ///         // mutable references pointing to the same memory.
     ///         (&mut slice[0..index], &mut slice2[index..len])
     ///     }
     /// }
     /// // This gets rid of the typesafety problems; `&mut *` will *only* give
-    /// // you an &mut T from an &mut T or *mut T
+    /// // you an `&mut T` from an `&mut T` or `*mut T`.
     /// fn split_at_mut_casts<T>(slice: &mut [T], index: usize)
     ///                          -> (&mut [T], &mut [T]) {
     ///     let len = slice.len();
@@ -401,7 +407,7 @@ extern "rust-intrinsic" {
     ///     unsafe {
     ///         let slice2 = &mut *(slice as *mut [T]);
     ///         // however, you still have two mutable references pointing to
-    ///         // the same memory
+    ///         // the same memory.
     ///         (&mut slice[0..index], &mut slice2[index..len])
     ///     }
     /// }
@@ -415,9 +421,9 @@ extern "rust-intrinsic" {
     ///         assert!(mid <= len);
     ///         // This now has three mutable references pointing at the same
     ///         // memory. `slice`, the rvalue ret.0, and the rvalue ret.1.
-    ///         // However, `slice` is never used after `let ptr = ...`, and so
-    ///         // one can treat it as "dead", and therefore, you only have two
-    ///         // real mutable slices.
+    ///         // `slice` is never used after `let ptr = ...`, and so one can
+    ///         // treat it as "dead", and therefore, you only have two real
+    ///         // mutable slices.
     ///         (slice::from_raw_parts_mut(ptr, mid),
     ///          slice::from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
     ///     }
@@ -429,6 +435,7 @@ extern "rust-intrinsic" {
     /// There are valid uses of transmute, though they are few and far between.
     ///
     /// Getting the bitpattern of a floating point type:
+    ///
     /// ```
     /// let bitpattern = std::mem::transmute::<f32, u32>(1.0);
     /// assert_eq!(bitpattern, 0x3F800000);
@@ -436,6 +443,7 @@ extern "rust-intrinsic" {
     ///
     /// Turning a pointer into a function pointer (this isn't guaranteed to
     /// work in Rust, although, for example, Linux does make this guarantee):
+    ///
     /// ```
     /// fn foo() -> i32 {
     ///     0
@@ -447,6 +455,7 @@ extern "rust-intrinsic" {
     ///
     /// Extending a lifetime, or shortening an invariant an invariant lifetime;
     /// this is advanced, very unsafe rust:
+    ///
     /// ```
     /// use std::mem;
     ///
