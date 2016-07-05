@@ -39,6 +39,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
 
             let krate = state.hir_crate.as_ref().unwrap();
             let mut memory_size = 100*1024*1024; // 100MB
+            let mut step_limit = 1000_000;
             fn extract_str(lit: &syntax::ast::Lit) -> syntax::parse::token::InternedString {
                 match lit.node {
                     syntax::ast::LitKind::Str(ref s, _) => s.clone(),
@@ -53,6 +54,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
                             MetaItemKind::NameValue(ref name, ref value) => {
                                 match &**name {
                                     "memory_size" => memory_size = extract_str(value).parse::<u64>().expect("not a number"),
+                                    "step_limit" => step_limit = extract_str(value).parse::<u64>().expect("not a number"),
                                     _ => state.session.span_err(item.span, "unknown miri attribute"),
                                 }
                             }
@@ -65,7 +67,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
 
             let mut mir_map = MirMap { map: mir_map.map.clone() };
             run_mir_passes(tcx, &mut mir_map);
-            eval_main(tcx, &mir_map, node_id, memory_size);
+            eval_main(tcx, &mir_map, node_id, memory_size, step_limit);
 
             state.session.abort_if_errors();
         });

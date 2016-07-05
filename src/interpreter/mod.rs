@@ -929,6 +929,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     mir_map: &'a MirMap<'tcx>,
     node_id: ast::NodeId,
     memory_size: u64,
+    step_limit: u64,
 ) {
     let mir = mir_map.map.get(&node_id).expect("no mir for main function");
     let def_id = tcx.map.local_def_id(node_id);
@@ -952,17 +953,18 @@ pub fn eval_main<'a, 'tcx: 'a>(
         ecx.frame_mut().locals[1] = args;
     }
 
-    loop {
+    for _ in 0..step_limit {
         match ecx.step() {
             Ok(true) => {}
-            Ok(false) => break,
+            Ok(false) => return,
             // FIXME: diverging functions can end up here in some future miri
             Err(e) => {
                 report(tcx, &ecx, e);
-                break;
+                return;
             }
         }
     }
+    report(tcx, &ecx, EvalError::ExecutionTimeLimitReached);
 }
 
 fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {

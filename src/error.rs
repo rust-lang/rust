@@ -33,7 +33,8 @@ pub enum EvalError<'tcx> {
         allocation_size: u64,
         memory_size: u64,
         memory_usage: u64,
-    }
+    },
+    ExecutionTimeLimitReached,
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -75,7 +76,9 @@ impl<'tcx> Error for EvalError<'tcx> {
             EvalError::InvalidChar(..) =>
                 "tried to interpret an invalid 32-bit value as a char",
             EvalError::OutOfMemory{..} =>
-                "could not allocate more memory"
+                "could not allocate more memory",
+            EvalError::ExecutionTimeLimitReached =>
+                "reached the configured maximum execution time",
         }
     }
 
