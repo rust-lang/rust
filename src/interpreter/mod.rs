@@ -133,12 +133,12 @@ enum ConstantKind {
 }
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>, memory_size: u64) -> Self {
         EvalContext {
             tcx: tcx,
             mir_map: mir_map,
             mir_cache: RefCell::new(DefIdMap()),
-            memory: Memory::new(&tcx.data_layout, 100*1024*1024 /* 100MB */),
+            memory: Memory::new(&tcx.data_layout, memory_size),
             statics: HashMap::new(),
             stack: Vec::new(),
         }
@@ -928,10 +928,11 @@ pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir_map: &'a MirMap<'tcx>,
     node_id: ast::NodeId,
+    memory_size: u64,
 ) {
     let mir = mir_map.map.get(&node_id).expect("no mir for main function");
     let def_id = tcx.map.local_def_id(node_id);
-    let mut ecx = EvalContext::new(tcx, mir_map);
+    let mut ecx = EvalContext::new(tcx, mir_map, memory_size);
     let substs = tcx.mk_substs(subst::Substs::empty());
     let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs)
                         .expect("should at least be able to allocate space for the main function's return value")

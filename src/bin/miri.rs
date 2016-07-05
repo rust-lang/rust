@@ -4,6 +4,7 @@ extern crate getopts;
 extern crate miri;
 extern crate rustc;
 extern crate rustc_driver;
+extern crate rustc_plugin;
 extern crate env_logger;
 extern crate log_settings;
 extern crate syntax;
@@ -13,6 +14,7 @@ use miri::{eval_main, run_mir_passes};
 use rustc::session::Session;
 use rustc::mir::mir_map::MirMap;
 use rustc_driver::{driver, CompilerCalls, Compilation};
+use syntax::ast::MetaItemKind;
 
 struct MiriCompilerCalls;
 
@@ -23,7 +25,9 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         _: &getopts::Matches
     ) -> driver::CompileController<'a> {
         let mut control = driver::CompileController::basic();
-
+        control.after_hir_lowering.callback = Box::new(|state| {
+            state.session.plugin_attributes.borrow_mut().push(("miri".to_owned(), syntax::feature_gate::AttributeType::Whitelisted));
+        });
         control.after_analysis.stop = Compilation::Stop;
         control.after_analysis.callback = Box::new(|state| {
             state.session.abort_if_errors();
@@ -33,9 +37,35 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
             let (node_id, _) = state.session.entry_fn.borrow()
                 .expect("no main or start function found");
 
+            let krate = state.hir_crate.as_ref().unwrap();
+            let mut memory_size = 100*1024*1024; // 100MB
+            fn extract_str(lit: &syntax::ast::Lit) -> syntax::parse::token::InternedString {
+                match lit.node {
+                    syntax::ast::LitKind::Str(ref s, _) => s.clone(),
+                    _ => panic!("attribute values need to be strings"),
+                }
+            }
+            for attr in krate.attrs.iter() {
+                match attr.node.value.node {
+                    MetaItemKind::List(ref name, _) if name != "miri" => {}
+                    MetaItemKind::List(_, ref items) => for item in items {
+                        match item.node {
+                            MetaItemKind::NameValue(ref name, ref value) => {
+                                match &**name {
+                                    "memory_size" => memory_size = extract_str(value).parse::<u64>().expect("not a number"),
+                                    _ => state.session.span_err(item.span, "unknown miri attribute"),
+                                }
+                            }
+                            _ => state.session.span_err(item.span, "miri attributes need to be of key = value kind"),
+                        }
+                    },
+                    _ => {},
+                }
+            }
+
             let mut mir_map = MirMap { map: mir_map.map.clone() };
             run_mir_passes(tcx, &mut mir_map);
-            eval_main(tcx, &mir_map, node_id);
+            eval_main(tcx, &mir_map, node_id, memory_size);
 
             state.session.abort_if_errors();
         });
