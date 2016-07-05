@@ -29,6 +29,7 @@ pub struct Allocation {
     pub bytes: Vec<u8>,
     pub relocations: BTreeMap<usize, AllocId>,
     pub undef_mask: UndefMask,
+    pub align: usize,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -98,10 +99,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             bytes: Vec::new(),
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(0),
+            align: 0,
         };
         mem.alloc_map.insert(ZST_ALLOC_ID, alloc);
         // check that additional zst allocs work
-        debug_assert!(mem.allocate(0).unwrap().points_to_zst());
+        debug_assert!(mem.allocate(0, 0).unwrap().points_to_zst());
         debug_assert!(mem.get(ZST_ALLOC_ID).is_ok());
         mem
     }
@@ -133,62 +135,71 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn allocate(&mut self, size: usize) -> EvalResult<'tcx, Pointer> {
+    pub fn allocate(&mut self, size: usize, align: usize) -> EvalResult<'tcx, Pointer> {
         if size == 0 {
             return Ok(Pointer::zst_ptr());
         }
+        // make sure we can offset the result pointer by the worst possible alignment
+        // this allows cheaply checking for alignment directly in the pointer
+        let least_aligned_size = size + align;
         if self.memory_size - self.memory_usage < size as u64 {
             return Err(EvalError::OutOfMemory {
-                allocation_size: size as u64,
+                allocation_size: least_aligned_size as u64,
                 memory_size: self.memory_size,
                 memory_usage: self.memory_usage,
             });
         }
         self.memory_usage += size as u64;
         let alloc = Allocation {
-            bytes: vec![0; size],
+            bytes: vec![0; least_aligned_size],
             relocations: BTreeMap::new(),
-            undef_mask: UndefMask::new(size),
+            undef_mask: UndefMask::new(least_aligned_size),
+            align: align,
         };
         let id = self.next_id;
         self.next_id.0 += 1;
         self.alloc_map.insert(id, alloc);
         Ok(Pointer {
             alloc_id: id,
-            offset: 0,
+            // offset by the alignment, so larger accesses will fail
+            offset: align,
         })
     }
 
     // TODO(solson): Track which allocations were returned from __rust_allocate and report an error
     // when reallocating/deallocating any others.
-    pub fn reallocate(&mut self, ptr: Pointer, new_size: usize) -> EvalResult<'tcx, Pointer> {
-        if ptr.offset != 0 {
+    pub fn reallocate(&mut self, ptr: Pointer, new_size: usize, align: usize) -> EvalResult<'tcx, Pointer> {
+        if ptr.offset != self.get(ptr.alloc_id)?.align {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
         if ptr.points_to_zst() {
-            return self.allocate(new_size);
+            return self.allocate(new_size, align);
         }
 
-        let size = self.get_mut(ptr.alloc_id)?.bytes.len();
+        let size = self.get(ptr.alloc_id)?.bytes.len();
+        let least_aligned_size = new_size + align;
 
-        if new_size > size {
-            let amount = new_size - size;
+        if least_aligned_size > size {
+            let amount = least_aligned_size - size;
             self.memory_usage += amount as u64;
             let alloc = self.get_mut(ptr.alloc_id)?;
             alloc.bytes.extend(iter::repeat(0).take(amount));
             alloc.undef_mask.grow(amount, false);
-        } else if size > new_size {
+        } else if size > least_aligned_size {
             // it's possible to cause miri to use arbitrary amounts of memory that aren't detectable
             // through the memory_usage value, by allocating a lot and reallocating to zero
-            self.memory_usage -= (size - new_size) as u64;
-            self.clear_relocations(ptr.offset(new_size as isize), size - new_size)?;
+            self.memory_usage -= (size - least_aligned_size) as u64;
+            self.clear_relocations(ptr.offset(least_aligned_size as isize), size - least_aligned_size)?;
             let alloc = self.get_mut(ptr.alloc_id)?;
-            alloc.bytes.truncate(new_size);
-            alloc.undef_mask.truncate(new_size);
+            alloc.bytes.truncate(least_aligned_size);
+            alloc.undef_mask.truncate(least_aligned_size);
         }
 
-        Ok(ptr)
+        Ok(Pointer {
+            alloc_id: ptr.alloc_id,
+            offset: align,
+        })
     }
 
     // TODO(solson): See comment on `reallocate`.
@@ -196,7 +207,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if ptr.points_to_zst() {
             return Ok(());
         }
-        if ptr.offset != 0 {
+        if ptr.offset != self.get(ptr.alloc_id)?.align {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }

@@ -153,7 +153,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match output_ty {
             ty::FnConverging(ty) => {
                 let size = self.type_size_with_substs(ty, substs);
-                self.memory.allocate(size).map(Some)
+                let align = self.type_align_with_substs(ty, substs);
+                self.memory.allocate(size, align).map(Some)
             }
             ty::FnDiverging => Ok(None),
         }
@@ -177,7 +178,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
         macro_rules! i2p {
             ($i:ident, $n:expr) => {{
-                let ptr = self.memory.allocate($n)?;
+                let ptr = self.memory.allocate($n, $n)?;
                 self.memory.write_int(ptr, $i as i64, $n)?;
                 Ok(ptr)
             }}
@@ -202,8 +203,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Integral(ConstInt::Usize(ConstUsize::Us64(i))) => i2p!(i, 8),
             Str(ref s) => {
                 let psize = self.memory.pointer_size();
-                let static_ptr = self.memory.allocate(s.len())?;
-                let ptr = self.memory.allocate(psize * 2)?;
+                let static_ptr = self.memory.allocate(s.len(), 1)?;
+                let ptr = self.memory.allocate(psize * 2, psize)?;
                 self.memory.write_bytes(static_ptr, s.as_bytes())?;
                 self.memory.write_ptr(ptr, static_ptr)?;
                 self.memory.write_usize(ptr.offset(psize as isize), s.len() as u64)?;
@@ -211,19 +212,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
             ByteStr(ref bs) => {
                 let psize = self.memory.pointer_size();
-                let static_ptr = self.memory.allocate(bs.len())?;
-                let ptr = self.memory.allocate(psize)?;
+                let static_ptr = self.memory.allocate(bs.len(), 1)?;
+                let ptr = self.memory.allocate(psize, psize)?;
                 self.memory.write_bytes(static_ptr, bs)?;
                 self.memory.write_ptr(ptr, static_ptr)?;
                 Ok(ptr)
             }
             Bool(b) => {
-                let ptr = self.memory.allocate(1)?;
+                let ptr = self.memory.allocate(1, 1)?;
                 self.memory.write_bool(ptr, b)?;
                 Ok(ptr)
             }
             Char(c) => {
-                let ptr = self.memory.allocate(4)?;
+                let ptr = self.memory.allocate(4, 4)?;
                 self.memory.write_uint(ptr, c as u64, 4)?;
                 Ok(ptr)
             },
@@ -269,8 +270,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.type_size_with_substs(ty, self.substs())
     }
 
+    fn type_align(&self, ty: Ty<'tcx>) -> usize {
+        self.type_align_with_substs(ty, self.substs())
+    }
+
     fn type_size_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> usize {
         self.type_layout_with_substs(ty, substs).size(&self.tcx.data_layout).bytes() as usize
+    }
+
+    fn type_align_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> usize {
+        self.type_layout_with_substs(ty, substs).align(&self.tcx.data_layout).pref() as usize
     }
 
     fn type_layout(&self, ty: Ty<'tcx>) -> &'tcx Layout {
@@ -306,7 +315,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         let locals: EvalResult<'tcx, Vec<Pointer>> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
             let size = self.type_size_with_substs(ty, substs);
-            self.memory.allocate(size)
+            let align = self.type_align_with_substs(ty, substs);
+            self.memory.allocate(size, align)
         }).collect();
 
         self.stack.push(Frame {
@@ -553,7 +563,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Box(ty) => {
                 let size = self.type_size(ty);
-                let ptr = self.memory.allocate(size)?;
+                let align = self.type_align(ty);
+                let ptr = self.memory.allocate(size, align)?;
                 self.memory.write_ptr(dest, ptr)?;
             }
 
@@ -701,7 +712,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Item { def_id, substs } => {
                         if let ty::TyFnDef(..) = ty.sty {
                             // function items are zero sized
-                            Ok(self.memory.allocate(0)?)
+                            Ok(self.memory.allocate(0, 0)?)
                         } else {
                             let cid = ConstantId {
                                 def_id: def_id,
@@ -955,9 +966,9 @@ pub fn eval_main<'a, 'tcx: 'a>(
     if mir.arg_decls.len() == 2 {
         // start function
         let ptr_size = ecx.memory().pointer_size();
-        let nargs = ecx.memory_mut().allocate(ptr_size).expect("can't allocate memory for nargs");
+        let nargs = ecx.memory_mut().allocate(ptr_size, ptr_size).expect("can't allocate memory for nargs");
         ecx.memory_mut().write_usize(nargs, 0).unwrap();
-        let args = ecx.memory_mut().allocate(ptr_size).expect("can't allocate memory for arg pointer");
+        let args = ecx.memory_mut().allocate(ptr_size, ptr_size).expect("can't allocate memory for arg pointer");
         ecx.memory_mut().write_usize(args, 0).unwrap();
         ecx.frame_mut().locals[0] = nargs;
         ecx.frame_mut().locals[1] = args;

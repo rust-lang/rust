@@ -88,7 +88,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match func_ty.sty {
                     ty::TyFnPtr(bare_fn_ty) => {
                         let ptr = self.eval_operand(func)?;
-                        assert_eq!(ptr.offset, 0);
                         let fn_ptr = self.memory.read_ptr(ptr)?;
                         let FunctionDefinition { def_id, substs, fn_ty } = self.memory.get_fn(fn_ptr.alloc_id)?;
                         if fn_ty != bare_fn_ty {
@@ -416,14 +415,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match &link_name[..] {
             "__rust_allocate" => {
                 let size = self.memory.read_usize(args[0])?;
-                let ptr = self.memory.allocate(size as usize)?;
+                let align = self.memory.read_usize(args[1])?;
+                let ptr = self.memory.allocate(size as usize, align as usize)?;
                 self.memory.write_ptr(dest, ptr)?;
             }
 
             "__rust_reallocate" => {
                 let ptr = self.memory.read_ptr(args[0])?;
                 let size = self.memory.read_usize(args[2])?;
-                let new_ptr = self.memory.reallocate(ptr, size as usize)?;
+                let align = self.memory.read_usize(args[3])?;
+                let new_ptr = self.memory.reallocate(ptr, size as usize, align as usize)?;
                 self.memory.write_ptr(dest, new_ptr)?;
             }
 
