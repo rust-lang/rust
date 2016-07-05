@@ -1,0 +1,27 @@
+{
+    "intrinsic_prefix": "_bmi2",
+    "llvm_prefix": "llvm.x86.bmi.",
+    "intrinsics": [
+        {
+            "intrinsic": "_bzhi_{0.bitwidth}",
+            "width": ["0"],
+            "llvm": "bzhi.{0.bitwidth}",
+            "ret": "S(32-64)u",
+            "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "_pdep_{0.bitwidth}",
+            "width": ["0"],
+            "llvm": "pdep.{0.bitwidth}",
+            "ret": "S(32-64)u",
+            "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "_pext_{0.bitwidth}",
+            "width": ["0"],
+            "llvm": "pext.{0.bitwidth}",
+            "ret": "S(32-64)u",
+            "args": ["0", "0"]
+        }
+    ]
+}
