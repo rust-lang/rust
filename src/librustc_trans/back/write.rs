@@ -616,9 +616,17 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         }
     }
 
-    llvm::LLVMDisposeModule(llmod);
-    llvm::LLVMContextDispose(llcx);
     llvm::LLVMRustDisposeTargetMachine(tm);
+}
+
+
+pub fn cleanup_llvm(trans: &CrateTranslation) {
+    for module in trans.modules.iter() {
+        unsafe {
+            llvm::LLVMDisposeModule(module.llmod);
+            llvm::LLVMContextDispose(module.llcx);
+        }
+    }
 }
 
 pub fn run_passes(sess: &Session,
