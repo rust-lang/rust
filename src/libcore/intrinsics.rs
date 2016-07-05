@@ -283,7 +283,7 @@ extern "rust-intrinsic" {
     /// [invalid value]
     /// (https://doc.rust-lang.org/nomicon/meet-safe-and-unsafe.html).
     ///
-    /// `transmute::<T, U>(t)` is semantically equivalent to the following:
+    /// `transmute` is semantically equivalent to the following:
     ///
     /// ```
     /// use std::{mem, ptr};
@@ -303,7 +303,7 @@ extern "rust-intrinsic" {
     /// the absolute last resort.
     ///
     /// The [nomicon](https://doc.rust-lang.org/nomicon/transmutes.html) has
-    /// more complete documentation. Read it before using `transmute`.
+    /// additional documentation.
     ///
     /// # Alternatives
     ///
@@ -343,13 +343,13 @@ extern "rust-intrinsic" {
     /// ```
     /// // this is not a good way to do this.
     /// let slice = unsafe { mem::transmute::<&str, &[u8]>("Rust") };
-    /// assert_eq!(slice, [82, 117, 115, 116]);
+    /// assert_eq!(slice, &[82, 117, 115, 116]);
     /// // You could use `str::as_bytes`
     /// let slice = "Rust".as_bytes();
-    /// assert_eq!(slice, [82, 117, 115, 116]);
+    /// assert_eq!(slice, &[82, 117, 115, 116]);
     /// // Or, just use a byte string, if you have control over the string
     /// // literal
-    /// assert_eq!(b"Rust", [82, 117, 116, 116]);
+    /// assert_eq!(b"Rust", &[82, 117, 116, 116]);
     /// ```
     ///
     /// Turning a `Vec<&T>` into a `Vec<Option<&T>>`:
@@ -373,7 +373,7 @@ extern "rust-intrinsic" {
     /// // exact same size, and the same or lesser alignment, as the old
     /// // type. The same caveats exist for this method as transmute, for
     /// // the original inner type (`&i32`) to the converted inner type
-    /// // (`Option<&i32>`), so read the nomicon page linked above.
+    /// // (`Option<&i32>`), so read the nomicon pages linked above.
     /// let v_from_raw = Vec::from_raw_parts(v_orig.as_mut_ptr(),
     ///                                      v_orig.len(),
     ///                                      v_orig.capacity());
@@ -441,7 +441,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(bitpattern, 0x3F800000);
     /// ```
     ///
-    /// Turning a pointer into a function pointer (this isn't guaranteed to
+    /// Turning a pointer into a function pointer (this is not guaranteed to
     /// work in Rust, although, for example, Linux does make this guarantee):
     ///
     /// ```
@@ -453,8 +453,8 @@ extern "rust-intrinsic" {
     /// assert_eq!(function(), 0);
     /// ```
     ///
-    /// Extending a lifetime, or shortening an invariant an invariant lifetime;
-    /// this is advanced, very unsafe rust:
+    /// Extending a lifetime, or shortening an invariant lifetime; this is
+    /// advanced, very unsafe rust:
     ///
     /// ```
     /// use std::mem;
@@ -464,11 +464,10 @@ extern "rust-intrinsic" {
     ///     mem::transmute::<R<'b>, R<'static>>(ptr);
     /// }
     ///
-    /// unsafe fn shorten_invariant<'b, 'c>(r: &'b mut R<'static>)
-    ///                                     -> &'b R<'c> {
-    ///     let ref_to_original =
-    ///         mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(
-    ///             ref_to_extended);
+    /// unsafe fn shorten_invariant_lifetime<'b, 'c>(r: &'b mut R<'static>)
+    ///                                              -> &'b mut R<'c> {
+    ///     mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(
+    ///         ref_to_extended)
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
