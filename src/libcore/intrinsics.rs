@@ -278,32 +278,21 @@ extern "rust-intrinsic" {
     /// Moves a value out of scope without running drop glue.
     pub fn forget<T>(_: T) -> ();
 
-    /// Reinterprets the bits of a value of one type as another type. Both types
+    /// Reinterprets the bits of a value of one type as another type; both types
     /// must have the same size. Neither the original, nor the result, may be an
-    /// [invalid value]
-    /// (https://doc.rust-lang.org/nomicon/meet-safe-and-unsafe.html).
+    /// [invalid value] (../../nomicon/meet-safe-and-unsafe.html).
     ///
-    /// `transmute` is semantically equivalent to the following:
-    ///
-    /// ```
-    /// use std::{mem, ptr};
-    /// // assuming that T and U are the same size
-    /// unsafe fn transmute<T, U>(t: T) -> U {
-    ///     let mut u: U = mem::uninitialized();
-    ///     ptr::copy_nonoverlapping(&t as *const T as *const u8,
-    ///                              &mut u as *mut U as *mut u8,
-    ///                              mem::size_of::<T>());
-    ///     mem::forget(t);
-    ///     u
-    /// }
-    /// ```
+    /// `transmute` is semantically equivalent to a bitwise move of one type
+    /// into another. It copies the bits from the destination type into the
+    /// source type, then forgets the original. If you know C or C++, it's like
+    /// `memcpy` under the hood.
     ///
     /// `transmute` is incredibly unsafe. There are a vast number of ways to
     /// cause undefined behavior with this function. `transmute` should be
     /// the absolute last resort.
     ///
-    /// The [nomicon](https://doc.rust-lang.org/nomicon/transmutes.html) has
-    /// additional documentation.
+    /// The [nomicon](../../nomicon/transmutes.html) has additional
+    /// documentation.
     ///
     /// # Alternatives
     ///
