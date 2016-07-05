@@ -35,6 +35,7 @@ pub enum EvalError<'tcx> {
         memory_usage: u64,
     },
     ExecutionTimeLimitReached,
+    StackFrameLimitReached,
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -79,6 +80,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "could not allocate more memory",
             EvalError::ExecutionTimeLimitReached =>
                 "reached the configured maximum execution time",
+            EvalError::StackFrameLimitReached =>
+                "reached the configured maximum number of stack frames",
         }
     }
 

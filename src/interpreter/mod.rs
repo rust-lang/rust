@@ -42,6 +42,9 @@ pub struct EvalContext<'a, 'tcx: 'a> {
 
     /// The virtual call stack.
     stack: Vec<Frame<'a, 'tcx>>,
+
+    /// The maximum number of stack frames allowed
+    stack_limit: usize,
 }
 
 /// A stack frame.
@@ -133,7 +136,8 @@ enum ConstantKind {
 }
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>, memory_size: u64) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>, memory_size: u64, stack_limit: u64) -> Self {
+        assert_eq!(stack_limit as usize as u64, stack_limit);
         EvalContext {
             tcx: tcx,
             mir_map: mir_map,
@@ -141,6 +145,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             memory: Memory::new(&tcx.data_layout, memory_size),
             statics: HashMap::new(),
             stack: Vec::new(),
+            stack_limit: stack_limit as usize,
         }
     }
 
@@ -316,7 +321,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             substs: substs,
             stmt: 0,
         });
-        Ok(())
+        if self.stack.len() > self.stack_limit {
+            Err(EvalError::StackFrameLimitReached)
+        } else {
+            Ok(())
+        }
     }
 
     fn pop_stack_frame(&mut self) {
@@ -930,10 +939,11 @@ pub fn eval_main<'a, 'tcx: 'a>(
     node_id: ast::NodeId,
     memory_size: u64,
     step_limit: u64,
+    stack_limit: u64,
 ) {
     let mir = mir_map.map.get(&node_id).expect("no mir for main function");
     let def_id = tcx.map.local_def_id(node_id);
-    let mut ecx = EvalContext::new(tcx, mir_map, memory_size);
+    let mut ecx = EvalContext::new(tcx, mir_map, memory_size, stack_limit);
     let substs = tcx.mk_substs(subst::Substs::empty());
     let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs)
                         .expect("should at least be able to allocate space for the main function's return value")
