@@ -10,7 +10,11 @@
 
 import gdb
 import re
+import sys
 import debugger_pretty_printers_common as rustpp
+
+if sys.version_info.major >= 3:
+    xrange = range
 
 #===============================================================================
 # GDB Pretty Printing Module for Rust
@@ -215,7 +219,7 @@ class RustSlicePrinter:
         assert data_ptr.type.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_PTR
         raw_ptr = data_ptr.get_wrapped_value()
 
-        for index in range(0, length):
+        for index in xrange(0, length):
             yield (str(index), (raw_ptr + index).dereference())
 
 
@@ -244,7 +248,7 @@ class RustStdVecPrinter:
     def children(self):
         (length, data_ptr, cap) = rustpp.extract_length_ptr_and_cap_from_std_vec(self.__val)
         gdb_ptr = data_ptr.get_wrapped_value()
-        for index in range(0, length):
+        for index in xrange(0, length):
             yield (str(index), (gdb_ptr + index).dereference())
 
 
