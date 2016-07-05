@@ -107,7 +107,7 @@ pub enum Class {
 ///
 /// The classifier will call into the `Writer` implementation as it finds spans
 /// of text to highlight. Exactly how that text should be highlighted is up to
-/// the implemention.
+/// the implementation.
 pub trait Writer {
     /// Called when we start processing a span of text that should be highlighted.
     /// The `Class` argument specifies how it should be highlighted.
