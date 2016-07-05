@@ -2880,8 +2880,7 @@ impl<'a> Resolver<'a> {
                                 if !msg.is_empty() {
                                     msg = format!(". Did you mean {}?", msg);
                                 } else {
-                                    // we check if this a module and if so, we display a help
-                                    // message
+                                    // we display a help message if this is a module
                                     let name_path = path.segments.iter()
                                                         .map(|seg| seg.identifier.name)
                                                         .collect::<Vec<_>>();
