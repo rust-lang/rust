@@ -2688,6 +2688,7 @@ impl<'a> Resolver<'a> {
 
     // Calls `f` with a `Resolver` whose current lexical scope is `module`'s lexical scope,
     // i.e. the module's items and the prelude (unless the module is `#[no_implicit_prelude]`).
+    // FIXME #34673: This needs testing.
     pub fn with_module_lexical_scope<T, F>(&mut self, module: Module<'a>, f: F) -> T
         where F: FnOnce(&mut Resolver<'a>) -> T,
     {
