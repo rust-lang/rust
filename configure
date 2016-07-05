@@ -743,6 +743,9 @@ then
     probe CFG_GIT          git
     msg "git: no git directory. disabling submodules"
     CFG_DISABLE_MANAGE_SUBMODULES=1
+elif [ ! -z $CFG_DISABLE_MANAGE_SUBMODULES ]
+then
+    probe CFG_GIT          git
 else
     probe_need CFG_GIT     git
 fi
