@@ -1495,20 +1495,27 @@ impl<'tcx> euv::Delegate<'tcx> for ReassignmentChecker {
     fn decl_without_init(&mut self, _: ast::NodeId, _: Span) {}
 
     fn mutate(&mut self, _: ast::NodeId, _: Span, cmt: mc::cmt, _: euv::MutateMode) {
+        let cmt_id = |cmt: &mc::cmt| match cmt.cat {
+            Categorization::Upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, ..}, ..}) |
+            Categorization::Local(vid) => Some(vid),
+            Categorization::Interior(ref base_cmt, mc::InteriorField(_)) => Some(base_cmt.id),
+            _ => None
+        };
         match cmt.cat {
             Categorization::Upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
             Categorization::Local(vid) => self.reassigned |= self.node == vid,
-            Categorization::Interior(ref base_cmt, mc::InteriorField(field)) => {
-                match base_cmt.cat {
-                    Categorization::Upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
-                    Categorization::Local(vid) => {
-                        self.reassigned |= self.node == vid &&
-                            (self.field.is_none() || Some(field) == self.field)
-                    },
-                    _ => {}
+            ref cat => {
+                let mut cat = cat;
+                while let &Categorization::Interior(ref base_cmt, mc::InteriorField(field)) = cat {
+                    if let Some(vid) = cmt_id(base_cmt) {
+                        if self.node == vid && (self.field.is_none() || self.field == Some(field)) {
+                            self.reassigned = true;
+                            return;
+                        }
+                    }
+                    cat = &base_cmt.cat;
                 }
-            },
-            _ => {}
+            }
         }
     }
 }
