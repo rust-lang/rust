@@ -234,9 +234,12 @@ rather than positions.
 You can define a `struct` with no members at all:
 
 ```rust
-struct Electron {}
+struct Electron {} // use empty braces...
+struct Proton;     // ...or just a semicolon
 
+// whether you declared the struct with braces or not, do the same when creating one
 let x = Electron {};
+let y = Proton;
 ```
 
 Such a `struct` is called ‘unit-like’ because it resembles the empty
