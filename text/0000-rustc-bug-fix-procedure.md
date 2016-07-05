@@ -184,14 +184,29 @@ considerate to at least notify the authors of affected crates the
 breaking change.  If we can submit PRs to fix the problem, so much the
 better.
 
-#### What if issuing a warning is too hard?
+#### Is it ever acceptable to go directly to issuing errors?
 
-It does happen from time to time that it is nigh impossible to isolate
-the breaking change so that you can issue warnings. In such cases, the best
-strategy is to mitigate:
+Changes that are believed to have negligible impact can go directly to
+issuing an error. One rule of thumb would be to check against
+`crates.io`: if fewer than 10 **total** affected projects are found
+(**not** root errors), we can move straight to an error. In such
+cases, we should still make the "breaking change" page as before, and
+we should ensure that the error directs users to this page. In other
+words, everything should be the same except that users are getting an
+error, and not a warning. Moreover, we should submit PRs to the
+affected projects (ideally before the PR implementing the change lands
+in rustc).
 
-1. Issue warnings for subparts of the problem, and reserve the new errors for
-   the smallest set of cases you can.
+If the impact is not believed to be negligible (e.g., more than 10
+crates are affected), then warnings are required (unless the compiler
+team agrees to grant a special exemption in some particular case). If
+implementing warnings is not feasible, then we should make an
+aggressive strategy of migrating crates before we land the change so
+as to lower the number of affected crates. Here are some techniques
+for approaching this scenario:
+
+1. Issue warnings for subparts of the problem, and reserve the new
+   errors for the smallest set of cases you can.
 2. Try to give a very precise error message that suggests how to fix
    the problem and directs users to the tracking issue.
 3. It may also make sense to layer the fix:
@@ -201,13 +216,7 @@ strategy is to mitigate:
      versions are available *before* the fix lands, so that downstream
      users can use them.
      
-If you will be issuing a new hard warning, then it is mandatory to at
-least notify authors of affected crates which we know
-about. Submitting PRs to fix the problem is strongly recommended. If
-the impact is too large to make that practical, then we should try
-harder to issue warnings or find a way to avoid making the change at
-all.
-
+     
 ### Stabilization
 
 After a change is made, we will **stabilize** the change using the same
@@ -221,6 +230,9 @@ process that we use for unstable features:
   - Convert to error: the change should be made into a hard error.
   - Revert: we should remove the warning and continue to allow the older code to compile.
   - Defer: can't decide yet, wait longer, or try other strategies.
+  
+Ideally, breaking changes should have landed on the **stable branch**
+of the compiler before they are finalized.
 
 ### Batching breaking changes to libsyntax
 
