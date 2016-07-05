@@ -75,7 +75,6 @@ use debuginfo::{self, DebugLoc, ToDebugLoc};
 use declare;
 use expr;
 use glue;
-use inline;
 use machine;
 use machine::{llalign_of_min, llsize_of, llsize_of_real};
 use meth;
@@ -1407,19 +1406,17 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     pub fn new(ccx: &'blk CrateContext<'blk, 'tcx>,
                llfndecl: ValueRef,
                fn_ty: FnType,
-               definition: Option<(Instance<'tcx>, &ty::FnSig<'tcx>, Abi)>,
+               definition: Option<(Instance<'tcx>, &ty::FnSig<'tcx>, Abi, ast::NodeId)>,
                block_arena: &'blk TypedArena<common::BlockS<'blk, 'tcx>>)
                -> FunctionContext<'blk, 'tcx> {
-        let (param_substs, def_id) = match definition {
-            Some((instance, _, _)) => {
+        let (param_substs, def_id, inlined_id) = match definition {
+            Some((instance, _, _, inlined_id)) => {
                 common::validate_substs(instance.substs);
-                (instance.substs, Some(instance.def))
+                (instance.substs, Some(instance.def), Some(inlined_id))
             }
-            None => (ccx.tcx().mk_substs(Substs::empty()), None)
+            None => (ccx.tcx().mk_substs(Substs::empty()), None, None)
         };
 
-        let inlined_did = def_id.and_then(|def_id| inline::get_local_instance(ccx, def_id));
-        let inlined_id = inlined_did.and_then(|id| ccx.tcx().map.as_local_node_id(id));
         let local_id = def_id.and_then(|id| ccx.tcx().map.as_local_node_id(id));
 
         debug!("FunctionContext::new({})",
@@ -1454,7 +1451,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         };
 
         let debug_context = if let (false, Some(definition)) = (no_debug, definition) {
-            let (instance, sig, abi) = definition;
+            let (instance, sig, abi, _) = definition;
             debuginfo::create_function_debug_context(ccx, instance, sig, abi, llfndecl)
         } else {
             debuginfo::empty_function_debug_context(ccx)
@@ -1850,7 +1847,11 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfndecl, fn_ty, Some((instance, sig, abi)), &arena);
+    fcx = FunctionContext::new(ccx,
+                               llfndecl,
+                               fn_ty,
+                               Some((instance, sig, abi, inlined_id)),
+                               &arena);
 
     if fcx.mir.is_some() {
         return mir::trans_mir(&fcx);
