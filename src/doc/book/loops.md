@@ -105,7 +105,7 @@ When you need to keep track of how many times you already looped, you can use th
 #### On ranges:
 
 ```rust
-for (i,j) in (5..10).enumerate() {
+for (i, j) in (5..10).enumerate() {
     println!("i = {} and j = {}", i, j);
 }
 ```
