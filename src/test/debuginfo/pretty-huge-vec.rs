@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test: FIXME(#34639)
 // ignore-windows failing on win32 bot
 // ignore-freebsd: gdb package too new
 // ignore-android: FIXME(#10381)
