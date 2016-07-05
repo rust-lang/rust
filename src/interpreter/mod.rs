@@ -169,7 +169,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     // TODO(solson): Try making const_to_primval instead.
     fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<'tcx, Pointer> {
         use rustc::middle::const_val::ConstVal::*;
-        use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
+        use rustc_const_math::{ConstInt, ConstIsize, ConstUsize, ConstFloat};
+        use std::mem::transmute;
         macro_rules! i2p {
             ($i:ident, $n:expr) => {{
                 let ptr = self.memory.allocate($n);
@@ -178,7 +179,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }}
         }
         match *const_val {
-            Float(_f) => unimplemented!(),
+            Float(ConstFloat::F32(f)) => {
+                let i = unsafe { transmute::<_, u32>(f) };
+                i2p!(i, 4)
+            },
+            Float(ConstFloat::F64(f)) => {
+                let i = unsafe { transmute::<_, u64>(f) };
+                i2p!(i, 8)
+            },
+            Float(ConstFloat::FInfer{..}) => unreachable!(),
             Integral(ConstInt::Infer(_)) => unreachable!(),
             Integral(ConstInt::InferSigned(_)) => unreachable!(),
             Integral(ConstInt::I8(i)) => i2p!(i, 1),
@@ -824,7 +833,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
-        use syntax::ast::{IntTy, UintTy};
+        use syntax::ast::{IntTy, UintTy, FloatTy};
+        use std::mem::transmute;
         let val = match (self.memory.pointer_size(), &ty.sty) {
             (_, &ty::TyBool)              => PrimVal::Bool(self.memory.read_bool(ptr)?),
             (_, &ty::TyChar)              => {
@@ -848,6 +858,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             (_, &ty::TyUint(UintTy::U32)) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
             (8, &ty::TyUint(UintTy::Us)) |
             (_, &ty::TyUint(UintTy::U64)) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
+            (_, &ty::TyFloat(FloatTy::F32)) => {
+                let i = self.memory.read_uint(ptr, 4)? as u32;
+                PrimVal::F32(unsafe { transmute(i) })
+            },
+            (_, &ty::TyFloat(FloatTy::F64)) => {
+                let i = self.memory.read_uint(ptr, 8)?;
+                PrimVal::F64(unsafe { transmute(i) })
+            },
 
             (_, &ty::TyFnDef(def_id, substs, fn_ty)) => {
                 PrimVal::FnPtr(self.memory.create_fn_ptr(def_id, substs, fn_ty))

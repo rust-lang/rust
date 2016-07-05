@@ -13,6 +13,8 @@ pub enum PrimVal {
     FnPtr(Pointer),
     IntegerPtr(u64),
     Char(char),
+
+    F32(f32), F64(f64),
 }
 
 /// returns the result of the operation and whether the operation overflowed
@@ -47,6 +49,34 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 Shl => unreachable!(),
                 Shr => unreachable!(),
 
+                Eq => Bool($l == $r),
+                Ne => Bool($l != $r),
+                Lt => Bool($l < $r),
+                Le => Bool($l <= $r),
+                Gt => Bool($l > $r),
+                Ge => Bool($l >= $r),
+            }
+        })
+    }
+
+    macro_rules! float_binops {
+        ($v:ident, $l:ident, $r:ident) => ({
+            match bin_op {
+                Add    => $v($l + $r),
+                Sub    => $v($l - $r),
+                Mul    => $v($l * $r),
+                Div    => $v($l / $r),
+                Rem    => $v($l % $r),
+
+                // invalid float ops
+                BitXor => unreachable!(),
+                BitAnd => unreachable!(),
+                BitOr  => unreachable!(),
+                Shl => unreachable!(),
+                Shr => unreachable!(),
+
+                // directly comparing floats is questionable
+                // miri could forbid it, or at least miri as rust const eval should forbid it
                 Eq => Bool($l == $r),
                 Ne => Bool($l != $r),
                 Lt => Bool($l < $r),
@@ -128,6 +158,8 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
         (U16(l), U16(r)) => int_binops!(U16, l, r),
         (U32(l), U32(r)) => int_binops!(U32, l, r),
         (U64(l), U64(r)) => int_binops!(U64, l, r),
+        (F32(l), F32(r)) => float_binops!(F32, l, r),
+        (F64(l), F64(r)) => float_binops!(F64, l, r),
         (Char(l), Char(r)) => match bin_op {
             Eq => Bool(l == r),
             Ne => Bool(l != r),
@@ -211,6 +243,9 @@ pub fn unary_op<'tcx>(un_op: mir::UnOp, val: PrimVal) -> EvalResult<'tcx, PrimVa
         (Not, U16(n)) => Ok(U16(!n)),
         (Not, U32(n)) => Ok(U32(!n)),
         (Not, U64(n)) => Ok(U64(!n)),
+
+        (Neg, F64(n)) => Ok(F64(-n)),
+        (Neg, F32(n)) => Ok(F32(-n)),
         _ => Err(EvalError::Unimplemented(format!("unimplemented unary op: {:?}, {:?}", un_op, val))),
     }
 }

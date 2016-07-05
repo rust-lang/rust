@@ -394,6 +394,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn write_primval(&mut self, ptr: Pointer, val: PrimVal) -> EvalResult<'tcx, ()> {
+        use std::mem::transmute;
         let pointer_size = self.pointer_size();
         match val {
             PrimVal::Bool(b) => self.write_bool(ptr, b),
@@ -407,6 +408,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             PrimVal::U64(n)  => self.write_uint(ptr, n as u64, 8),
             PrimVal::Char(c) => self.write_uint(ptr, c as u64, 4),
             PrimVal::IntegerPtr(n) => self.write_uint(ptr, n as u64, pointer_size),
+            PrimVal::F32(f) => self.write_uint(ptr, unsafe { transmute::<_, u32>(f) } as u64, 4),
+            PrimVal::F64(f) => self.write_uint(ptr, unsafe { transmute::<_, u64>(f) }, 8),
             PrimVal::FnPtr(_p) |
             PrimVal::AbstractPtr(_p) => unimplemented!(),
         }
