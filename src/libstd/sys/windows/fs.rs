@@ -117,7 +117,7 @@ impl Drop for FindNextFileHandle {
 
 impl DirEntry {
     fn new(root: &Arc<PathBuf>, wfd: &c::WIN32_FIND_DATAW) -> Option<DirEntry> {
-        match ::slice_pat(&&wfd.cFileName[0..3]) {
+        match &wfd.cFileName[0..3] {
             // check for '.' and '..'
             &[46, 0, ..] |
             &[46, 46, 0, ..] => return None,

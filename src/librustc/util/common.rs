@@ -247,15 +247,3 @@ pub fn path2cstr(p: &Path) -> CString {
 pub fn path2cstr(p: &Path) -> CString {
     CString::new(p.to_str().unwrap()).unwrap()
 }
-
-// FIXME(stage0): remove this
-// HACK: this is needed because the interpretation of slice
-// patterns changed between stage0 and now.
-#[cfg(stage0)]
-pub fn slice_pat<'a, 'b, T>(t: &'a &'b [T]) -> &'a &'b [T] {
-    t
-}
-#[cfg(not(stage0))]
-pub fn slice_pat<'a, 'b, T>(t: &'a &'b [T]) -> &'b [T] {
-    *t
-}

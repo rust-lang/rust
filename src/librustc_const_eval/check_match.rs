@@ -43,7 +43,6 @@ use rustc::hir::fold::{Folder, noop_fold_pat};
 use rustc::hir::print::pat_to_string;
 use syntax::ptr::P;
 use rustc::util::nodemap::FnvHashMap;
-use rustc::util::common::slice_pat;
 
 pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
     id: DUMMY_NODE_ID,
@@ -400,7 +399,7 @@ fn check_exhaustive<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
                 hir::MatchSource::ForLoopDesugar => {
                     // `witnesses[0]` has the form `Some(<head>)`, peel off the `Some`
                     let witness = match witnesses[0].node {
-                        PatKind::TupleStruct(_, ref pats, _) => match slice_pat(&&pats[..]) {
+                        PatKind::TupleStruct(_, ref pats, _) => match &pats[..] {
                             &[ref pat] => &**pat,
                             _ => bug!(),
                         },

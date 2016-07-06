@@ -175,7 +175,6 @@ extern "rust-intrinsic" {
     /// that `rustc_peek(potentially_uninitialized)` would actually
     /// double-check that dataflow did indeed compute that it is
     /// uninitialized at that point in the control flow.
-    #[cfg(not(stage0))]
     pub fn rustc_peek<T>(_: T) -> T;
 
     /// Aborts the execution of the process.
