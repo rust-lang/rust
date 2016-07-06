@@ -12,11 +12,11 @@
 
 macro_rules! int_module { ($T:ident, $bits:expr) => (
 
+/// The smallest value that can be represented by this integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(missing_docs)]
 pub const MIN: $T = $T::min_value();
+/// The largest value that can be represented by this integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(missing_docs)]
 pub const MAX: $T = $T::max_value();
 
 ) }

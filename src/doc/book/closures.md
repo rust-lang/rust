@@ -339,7 +339,7 @@ fn call_with_ref<'a, F>(some_closure:F) -> i32
     where F: Fn(&'a 32) -> i32 {
 ```
 
-However this presents a problem with in our case. When you specify the explict
+However this presents a problem with in our case. When you specify the explicit
 lifetime on a function it binds that lifetime to the *entire* scope of the function
 instead of just the invocation scope of our closure. This means that the borrow checker
 will see a mutable reference in the same lifetime as our immutable reference and fail
@@ -354,7 +354,7 @@ fn call_with_ref<F>(some_closure:F) -> i32
 ```
 
 This lets the Rust compiler find the minimum lifetime to invoke our closure and
-satisfy the borrow checker's rules. Our function then compiles and excutes as we
+satisfy the borrow checker's rules. Our function then compiles and executes as we
 expect.
 
 ```rust
