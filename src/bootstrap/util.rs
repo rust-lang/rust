@@ -14,11 +14,11 @@
 //! not a lot of interesting happenings here unfortunately.
 
 use std::env;
-use std::path::{Path, PathBuf};
+use std::ffi::OsString;
 use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use bootstrap::{dylib_path, dylib_path_var};
 use filetime::FileTime;
 
 /// Returns the `name` as the filename of a static library for `target`.
@@ -120,4 +120,23 @@ fn dir_up_to_date(src: &Path, threshold: &FileTime) -> bool {
             FileTime::from_last_modification_time(&meta) < *threshold
         }
     })
+}
+
+/// Returns the environment variable which the dynamic library lookup path
+/// resides in for this platform.
+pub fn dylib_path_var() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "PATH"
+    } else if cfg!(target_os = "macos") {
+        "DYLD_LIBRARY_PATH"
+    } else {
+        "LD_LIBRARY_PATH"
+    }
+}
+
+/// Parses the `dylib_path_var()` environment variable, returning a list of
+/// paths that are members of this lookup path.
+pub fn dylib_path() -> Vec<PathBuf> {
+    env::split_paths(&env::var_os(dylib_path_var()).unwrap_or(OsString::new()))
+        .collect()
 }

@@ -36,8 +36,8 @@ use std::process::Command;
 use build_helper::{cc2ar, output};
 use gcc;
 
-use build::Build;
-use build::config::Target;
+use Build;
+use config::Target;
 
 pub fn find(build: &mut Build) {
     // For all targets we're going to need a C compiler for building some shims

@@ -20,10 +20,9 @@ use std::path::{PathBuf, Path};
 use std::process::Command;
 
 use build_helper::output;
-use bootstrap::{dylib_path, dylib_path_var};
 
-use build::{Build, Compiler, Mode};
-use build::util;
+use {Build, Compiler, Mode};
+use util::{self, dylib_path, dylib_path_var};
 
 const ADB_TEST_DIR: &'static str = "/data/tmp";
 

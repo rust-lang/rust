@@ -26,8 +26,8 @@ use build_helper::output;
 use cmake;
 use gcc;
 
-use build::Build;
-use build::util::{staticlib, up_to_date};
+use Build;
+use util::{staticlib, up_to_date};
 
 /// Compile LLVM for `target`.
 pub fn llvm(build: &Build, target: &str) {

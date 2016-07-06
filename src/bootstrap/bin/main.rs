@@ -18,22 +18,10 @@
 #![deny(warnings)]
 
 extern crate bootstrap;
-extern crate build_helper;
-extern crate cmake;
-extern crate filetime;
-extern crate gcc;
-extern crate getopts;
-extern crate libc;
-extern crate num_cpus;
-extern crate rustc_serialize;
-extern crate toml;
-extern crate md5;
 
 use std::env;
 
-use build::{Flags, Config, Build};
-
-mod build;
+use bootstrap::{Flags, Config, Build};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();

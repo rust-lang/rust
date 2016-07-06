@@ -53,13 +53,14 @@ fn main() {
 
     let rustc = env::var_os(rustc).unwrap();
     let libdir = env::var_os(libdir).unwrap();
-    let mut dylib_path = bootstrap::dylib_path();
+    let mut dylib_path = bootstrap::util::dylib_path();
     dylib_path.insert(0, PathBuf::from(libdir));
 
     let mut cmd = Command::new(rustc);
     cmd.args(&args)
        .arg("--cfg").arg(format!("stage{}", stage))
-       .env(bootstrap::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+       .env(bootstrap::util::dylib_path_var(),
+            env::join_paths(&dylib_path).unwrap());
 
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
