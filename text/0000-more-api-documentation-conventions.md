@@ -122,23 +122,6 @@ rather than `Cow<'a, B> where B: 'a + ToOwned + ?Sized`.
 Another possibility is to write in lower case using a more generic term. In other words,
 ‘string’ can refer to a `String` or an `&str`, and ‘an option’ can be ‘an `Option<T>`’.
 
-### Use parentheses for functions
-[use-parentheses-for-functions]: #use-parentheses-for-functions
-
-When referring to function names, include the `()`s after the name. For example, do this:
-
-```rust
-/// This behavior is similar to the way that `mem::replace()` works.
-```
-
-Not this:
-
-```rust
-/// This behavior is similar to the way that `mem::replace` works.
-```
-
-This helps visually differentiate it in the text.
-
 ### Link all the things
 [link-all-the-things]: #link-all-the-things
 
@@ -517,23 +500,6 @@ rather than `Cow<'a, B> where B: 'a + ToOwned + ?Sized`.
 
 Another possibility is to write in lower case using a more generic term. In other words,
 ‘string’ can refer to a `String` or an `&str`, and ‘an option’ can be ‘an `Option<T>`’.
-
-### Use parentheses for functions
-[use-parentheses-for-functions]: #use-parentheses-for-functions
-
-When referring to function names, include the `()`s after the name. For example, do this:
-
-```rust
-/// This behavior is similar to the way that `mem::replace()` works.
-```
-
-Not this:
-
-```rust
-/// This behavior is similar to the way that `mem::replace` works.
-```
-
-This helps visually differentiate it in the text.
 
 ### Link all the things
 [link-all-the-things]: #link-all-the-things
