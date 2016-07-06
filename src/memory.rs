@@ -51,6 +51,25 @@ impl Pointer {
             offset: 0,
         }
     }
+    pub fn is_aligned_to(&self, align: usize) -> bool {
+        self.offset % align == 0
+    }
+    pub fn check_align(&self, align: usize) -> EvalResult<'static, ()> {
+        if self.is_aligned_to(align) {
+            Ok(())
+        } else {
+            let mut best = self.offset;
+            let mut i = 1;
+            while best > 0 && (best & 1 == 0) {
+                best >>= 1;
+                i <<= 1;
+            }
+            Err(EvalError::AlignmentCheckFailed {
+                required: align,
+                has: i,
+            })
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
