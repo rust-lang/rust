@@ -359,7 +359,7 @@ def main():
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
 
-    args = [a for a in sys.argv if a != '-h']
+    args = [a for a in sys.argv if a != '-h' and a != '--help']
     args, _ = parser.parse_known_args(args)
 
     # Configure initial bootstrap
