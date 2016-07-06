@@ -572,14 +572,6 @@ a.test-arrow {
     right: 5px;
 }
 
-.methods .section-header {
-    /* Override parent class attributes. */
-    border-bottom: none !important;
-    font-size: 1.1em !important;
-    margin: 0 0 -5px;
-    padding: 0;
-}
-
 .section-header:hover a:after {
     content: '\2002\00a7\2002';
 }
