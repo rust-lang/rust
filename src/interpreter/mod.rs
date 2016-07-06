@@ -279,7 +279,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn type_align_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> usize {
-        self.type_layout_with_substs(ty, substs).align(&self.tcx.data_layout).pref() as usize
+        self.type_layout_with_substs(ty, substs).align(&self.tcx.data_layout).abi() as usize
     }
 
     fn type_layout(&self, ty: Ty<'tcx>) -> &'tcx Layout {
