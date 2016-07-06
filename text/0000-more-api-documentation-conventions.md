@@ -29,12 +29,6 @@ but it tries to motivate and clarify them.
 
 This section applies to `rustc` and the standard library.
 
-An additional suggestion over RFC 505: One specific rule that comes up often:
-when quoting something for emphasis, use a single quote, and put punctuation
-outside the quotes, ‘this’. When quoting something at length, “use double
-quotes and put the punctuation inside of the quote.” Most documentation will
-end up using single quotes, so if you’re not sure, just stick with them.
-
 ### Using Markdown
 [using-markdown]: #using-markdown
 
@@ -331,12 +325,6 @@ All documentation for the standard library is standardized on American English,
 with regards to spelling, grammar, and punctuation conventions. Language
 changes over time, so this doesn’t mean that there is always a correct answer
 to every grammar question, but there is often some kind of formal consensus.
-
-One specific rule that comes up often: when quoting something for emphasis,
-use a single quote, and put punctuation outside the quotes, ‘this’. When
-quoting something at length, “use double quotes and put the punctuation
-inside of the quote.” Most documentation will end up using single quotes,
-so if you’re not sure, just stick with them.
 
 ### Use line comments
 [use-line-comments]: #use-line-comments
