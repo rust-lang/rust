@@ -2716,7 +2716,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
 
         // the sidebar is designed to display sibling functions, modules and
-        // other miscellaneous informations. since there are lots of sibling
+        // other miscellaneous information. since there are lots of sibling
         // items (and that causes quadratic growth in large modules),
         // we refactor common parts into a shared JavaScript file per module.
         // still, we don't move everything into JS because we want to preserve
