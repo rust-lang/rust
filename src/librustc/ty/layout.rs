@@ -17,8 +17,6 @@ use session::Session;
 use traits;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 
-use util::common::slice_pat;
-
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
@@ -100,7 +98,7 @@ impl TargetDataLayout {
 
         let mut dl = TargetDataLayout::default();
         for spec in sess.target.target.data_layout.split("-") {
-            match slice_pat(&&spec.split(":").collect::<Vec<_>>()[..]) {
+            match &spec.split(":").collect::<Vec<_>>()[..] {
                 &["e"] => dl.endian = Endian::Little,
                 &["E"] => dl.endian = Endian::Big,
                 &["a", ref a..] => dl.aggregate_align = align(a, "a"),
