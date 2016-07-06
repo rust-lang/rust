@@ -126,8 +126,8 @@ impl<'a> Sugg<'a> {
     }
 
     /// Convenience method to create the `<lhs> as <rhs>` suggestion.
-    pub fn as_ty(self, rhs: &str) -> Sugg<'static> {
-        make_assoc(AssocOp::As, &self, &Sugg::NonParen(rhs.into()))
+    pub fn as_ty<R: std::fmt::Display>(self, rhs: R) -> Sugg<'static> {
+        make_assoc(AssocOp::As, &self, &Sugg::NonParen(rhs.to_string().into()))
     }
 
     /// Convenience method to create the `&<expr>` suggestion.

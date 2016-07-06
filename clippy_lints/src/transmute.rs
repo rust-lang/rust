@@ -95,9 +95,9 @@ impl LateLintPass for Transmute {
                             |db| {
                                 if let Some(arg) = sugg::Sugg::hir_opt(cx, &*args[0]) {
                                     let sugg = if ptr_ty == rty {
-                                        arg.as_ty(&to_ty.to_string())
+                                        arg.as_ty(to_ty)
                                     } else {
-                                        arg.as_ty(&format!("{} as {}", cx.tcx.mk_ptr(rty), to_ty))
+                                        arg.as_ty(cx.tcx.mk_ptr(rty)).as_ty(to_ty)
                                     };
 
                                     db.span_suggestion(e.span, "try", sugg.to_string());

@@ -59,7 +59,7 @@ impl LateLintPass for NeedlessBool {
                 };
 
                 let hint = if ret {
-                    format!("return {};", snip)
+                    format!("return {}", snip)
                 } else {
                     snip.to_string()
                 };
