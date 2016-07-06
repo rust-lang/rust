@@ -75,8 +75,6 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 Shl => unreachable!(),
                 Shr => unreachable!(),
 
-                // directly comparing floats is questionable
-                // miri could forbid it, or at least miri as rust const eval should forbid it
                 Eq => Bool($l == $r),
                 Ne => Bool($l != $r),
                 Lt => Bool($l < $r),
