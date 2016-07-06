@@ -5296,15 +5296,22 @@ impl<'a> Parser<'a> {
 
     /// Parse a `mod <foo> { ... }` or `mod <foo>;` item
     fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
+        let outer_attrs = ::config::StripUnconfigured {
+            config: &self.cfg,
+            sess: self.sess,
+            should_test: false, // irrelevant
+            features: None, // don't perform gated feature checking
+        }.process_cfg_attrs(outer_attrs.to_owned());
+
         let id_span = self.span;
         let id = self.parse_ident()?;
         if self.check(&token::Semi) {
             self.bump();
             // This mod is in an external file. Let's go get it!
-            let (m, attrs) = self.eval_src_mod(id, outer_attrs, id_span)?;
+            let (m, attrs) = self.eval_src_mod(id, &outer_attrs, id_span)?;
             Ok((id, m, Some(attrs)))
         } else {
-            self.push_mod_path(id, outer_attrs);
+            self.push_mod_path(id, &outer_attrs);
             self.expect(&token::OpenDelim(token::Brace))?;
             let mod_inner_lo = self.span.lo;
             let attrs = self.parse_inner_attributes()?;

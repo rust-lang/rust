@@ -33,7 +33,7 @@ impl<'a> StripUnconfigured<'a> {
         if self.in_cfg(node.attrs()) { Some(node) } else { None }
     }
 
-    fn process_cfg_attrs<T: HasAttrs>(&mut self, node: T) -> T {
+    pub fn process_cfg_attrs<T: HasAttrs>(&mut self, node: T) -> T {
         node.map_attrs(|attrs| {
             attrs.into_iter().filter_map(|attr| self.process_cfg_attr(attr)).collect()
         })
