@@ -1,7 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.78 - 2016-07-02
+## 0.0.79 — ?
+* Major suggestions refactoring
+
+## 0.0.78 — 2016-07-02
 * Rustup to *rustc 1.11.0-nightly (01411937f 2016-07-01)*
 * New lints: [`wrong_transmute`, `double_neg`]
 * For compatibility, `cargo clippy` does not defines the `clippy` feature
