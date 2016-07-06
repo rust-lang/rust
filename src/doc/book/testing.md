@@ -431,7 +431,7 @@ one.
 
 Cargo will ignore files in subdirectories of the `tests/` directory.
 Therefore shared modules in integrations tests are possible.
-For example `tests/common/mod.rs` is not seperatly compiled by cargo but can 
+For example `tests/common/mod.rs` is not separately compiled by cargo but can
 be imported in every test with `mod common;`
 
 That's all there is to the `tests` directory. The `tests` module isn't needed
