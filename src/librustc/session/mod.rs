@@ -576,7 +576,7 @@ unsafe fn configure_llvm(sess: &Session) {
 }
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
-    let mut emitter: Box<Emitter> = match output {
+    let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config,
                                            None,
@@ -585,12 +585,13 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };
-    emitter.emit(&MultiSpan::new(), msg, None, errors::Level::Fatal);
+    let handler = errors::Handler::with_emitter(true, false, emitter);
+    handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
     panic!(errors::FatalError);
 }
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
-    let mut emitter: Box<Emitter> = match output {
+    let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config,
                                            None,
@@ -599,7 +600,8 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };
-    emitter.emit(&MultiSpan::new(), msg, None, errors::Level::Warning);
+    let handler = errors::Handler::with_emitter(true, false, emitter);
+    handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);
 }
 
 // Err(0) means compilation was stopped, but no errors were found.
