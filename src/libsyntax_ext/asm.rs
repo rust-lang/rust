@@ -192,7 +192,10 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::Token
 
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.last_span, "expected a clobber, found an option");
+                    } else if s.starts_with("{") || s.ends_with("}") {
+                        cx.span_err(p.last_span, "clobber should not be surrounded by braces");
                     }
+
                     clobs.push(s);
                 }
             }
