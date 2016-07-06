@@ -42,7 +42,7 @@ they get set in the [`[features]` section][features] of your `Cargo.toml`:
 default = []
 
 # Add feature "foo" here, then you can use it. 
-# Our "foo" feature depends on nothings else.
+# Our "foo" feature depends on nothing else.
 foo = []
 
 # The “secure-password” feature depends on the bcrypt package.
