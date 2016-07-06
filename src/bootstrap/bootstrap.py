@@ -31,8 +31,16 @@ def get(url, path, verbose=False):
 
     try:
         download(sha_path, sha_url, verbose)
+        if os.path.exists(path):
+            if verify(path, sha_path, False):
+                print("using already-download file " + path)
+                return
+            else:
+                print("ignoring already-download file " + path + " due to failed verification")
+                os.unlink(path)
         download(temp_path, url, verbose)
-        verify(temp_path, sha_path, verbose)
+        if not verify(temp_path, sha_path, True):
+            raise RuntimeError("failed verification")
         print("moving {} to {}".format(temp_path, path))
         shutil.move(temp_path, path)
     finally:
@@ -64,13 +72,12 @@ def verify(path, sha_path, verbose):
         found = hashlib.sha256(f.read()).hexdigest()
     with open(sha_path, "r") as f:
         expected, _ = f.readline().split()
-    if found != expected:
-        err = ("invalid checksum:\n"
+    verified = found == expected
+    if not verified and verbose:
+        print("invalid checksum:\n"
                "    found:    {}\n"
                "    expected: {}".format(found, expected))
-        if verbose:
-            raise RuntimeError(err)
-        sys.exit(err)
+    return verified
 
 
 def unpack(tarball, dst, verbose=False, match=None):
