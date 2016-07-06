@@ -304,7 +304,9 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// let ptr = &0;
-    /// let ptr_num_transmute = mem::transmute::<&i32, usize>(ptr);
+    /// let ptr_num_transmute = unsafe {
+    ///     std::mem::transmute::<&i32, usize>(ptr)
+    /// };
     /// // Use an `as` cast instead
     /// let ptr_num_cast = ptr as *const i32 as usize;
     /// ```
@@ -313,43 +315,49 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// let ptr: *mut i32 = &mut 0;
-    /// let ref_transmuted = mem::transmute::<*mut i32, &mut i32>(ptr);
+    /// let ref_transmuted = unsafe {
+    ///     std::mem::transmute::<*mut i32, &mut i32>(ptr)
+    /// };
     /// // Use a reborrow instead
-    /// let ref_casted = &mut *ptr;
+    /// let ref_casted = unsafe { &mut *ptr };
     /// ```
     ///
     /// Turning an `&mut T` into an `&mut U`:
     ///
     /// ```
     /// let ptr = &mut 0;
-    /// let val_transmuted = mem::transmute::<&mut i32, &mut u32>(ptr);
+    /// let val_transmuted = unsafe {
+    ///     std::mem::transmute::<&mut i32, &mut u32>(ptr)
+    /// };
     /// // Now, put together `as` and reborrowing
-    /// let val_casts = &mut *(ptr as *mut i32 as *mut u32);
+    /// let val_casts = unsafe { &mut *(ptr as *mut i32 as *mut u32) };
     /// ```
     ///
     /// Turning an `&str` into an `&[u8]`:
     ///
     /// ```
     /// // this is not a good way to do this.
-    /// let slice = unsafe { mem::transmute::<&str, &[u8]>("Rust") };
+    /// let slice = unsafe { std::mem::transmute::<&str, &[u8]>("Rust") };
     /// assert_eq!(slice, &[82, 117, 115, 116]);
     /// // You could use `str::as_bytes`
     /// let slice = "Rust".as_bytes();
     /// assert_eq!(slice, &[82, 117, 115, 116]);
     /// // Or, just use a byte string, if you have control over the string
     /// // literal
-    /// assert_eq!(b"Rust", &[82, 117, 116, 116]);
+    /// assert_eq!(b"Rust", &[82, 117, 115, 116]);
     /// ```
     ///
     /// Turning a `Vec<&T>` into a `Vec<Option<&T>>`:
     ///
     /// ```
     /// let store = [0, 1, 2, 3];
-    /// let v_orig = store.iter().collect::<Vec<&i32>>();
+    /// let mut v_orig = store.iter().collect::<Vec<&i32>>();
     /// // Using transmute: this is Undefined Behavior, and a bad idea.
     /// // However, it is no-copy.
-    /// let v_transmuted = mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(
-    ///     v_orig.clone());
+    /// let v_transmuted = unsafe {
+    ///     std::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(
+    ///         v_orig.clone())
+    /// };
     /// // This is the suggested, safe way.
     /// // It does copy the entire Vector, though, into a new array.
     /// let v_collected = v_orig.clone()
@@ -363,10 +371,12 @@ extern "rust-intrinsic" {
     /// // type. The same caveats exist for this method as transmute, for
     /// // the original inner type (`&i32`) to the converted inner type
     /// // (`Option<&i32>`), so read the nomicon pages linked above.
-    /// let v_from_raw = Vec::from_raw_parts(v_orig.as_mut_ptr(),
-    ///                                      v_orig.len(),
-    ///                                      v_orig.capacity());
-    /// mem::forget(v_orig);
+    /// let v_from_raw = unsafe {
+    ///     Vec::from_raw_parts(v_orig.as_mut_ptr(),
+    ///                         v_orig.len(),
+    ///                         v_orig.capacity())
+    /// };
+    /// std::mem::forget(v_orig);
     /// ```
     ///
     /// Implementing `split_at_mut`:
@@ -375,39 +385,39 @@ extern "rust-intrinsic" {
     /// use std::{slice, mem};
     /// // There are multiple ways to do this; and there are multiple problems
     /// // with the following, transmute, way.
-    /// fn split_at_mut_transmute<T>(slice: &mut [T], index: usize)
+    /// fn split_at_mut_transmute<T>(slice: &mut [T], mid: usize)
     ///                              -> (&mut [T], &mut [T]) {
     ///     let len = slice.len();
-    ///     assert!(index < len);
+    ///     assert!(mid <= len);
     ///     unsafe {
     ///         let slice2 = mem::transmute::<&mut [T], &mut [T]>(slice);
     ///         // first: transmute is not typesafe; all it checks is that T and
     ///         // U are of the same size. Second, right here, you have two
     ///         // mutable references pointing to the same memory.
-    ///         (&mut slice[0..index], &mut slice2[index..len])
+    ///         (&mut slice[0..mid], &mut slice2[mid..len])
     ///     }
     /// }
     /// // This gets rid of the typesafety problems; `&mut *` will *only* give
     /// // you an `&mut T` from an `&mut T` or `*mut T`.
-    /// fn split_at_mut_casts<T>(slice: &mut [T], index: usize)
+    /// fn split_at_mut_casts<T>(slice: &mut [T], mid: usize)
     ///                          -> (&mut [T], &mut [T]) {
     ///     let len = slice.len();
-    ///     assert!(index < len);
+    ///     assert!(mid <= len);
     ///     unsafe {
     ///         let slice2 = &mut *(slice as *mut [T]);
     ///         // however, you still have two mutable references pointing to
     ///         // the same memory.
-    ///         (&mut slice[0..index], &mut slice2[index..len])
+    ///         (&mut slice[0..mid], &mut slice2[mid..len])
     ///     }
     /// }
     /// // This is how the standard library does it. This is the best method, if
     /// // you need to do something like this
-    /// fn split_at_stdlib<T>(slice: &mut [T], index: usize)
+    /// fn split_at_stdlib<T>(slice: &mut [T], mid: usize)
     ///                       -> (&mut [T], &mut [T]) {
-    ///     let len = self.len();
-    ///     let ptr = self.as_mut_ptr();
+    ///     let len = slice.len();
+    ///     assert!(mid <= len);
     ///     unsafe {
-    ///         assert!(mid <= len);
+    ///         let ptr = slice.as_mut_ptr();
     ///         // This now has three mutable references pointing at the same
     ///         // memory. `slice`, the rvalue ret.0, and the rvalue ret.1.
     ///         // `slice` is never used after `let ptr = ...`, and so one can
@@ -426,7 +436,9 @@ extern "rust-intrinsic" {
     /// Getting the bitpattern of a floating point type:
     ///
     /// ```
-    /// let bitpattern = std::mem::transmute::<f32, u32>(1.0);
+    /// let bitpattern = unsafe {
+    ///     std::mem::transmute::<f32, u32>(1.0)
+    /// };
     /// assert_eq!(bitpattern, 0x3F800000);
     /// ```
     ///
@@ -438,7 +450,9 @@ extern "rust-intrinsic" {
     ///     0
     /// }
     /// let pointer = foo as *const ();
-    /// let function = std::mem::transmute::<*const (), fn() -> i32>(pointer)
+    /// let function = unsafe {
+    ///     std::mem::transmute::<*const (), fn() -> i32>(pointer)
+    /// };
     /// assert_eq!(function(), 0);
     /// ```
     ///
@@ -446,17 +460,14 @@ extern "rust-intrinsic" {
     /// advanced, very unsafe rust:
     ///
     /// ```
-    /// use std::mem;
-    ///
     /// struct R<'a>(&'a i32);
     /// unsafe fn extend_lifetime<'b>(r: R<'b>) -> R<'static> {
-    ///     mem::transmute::<R<'b>, R<'static>>(ptr);
+    ///     std::mem::transmute::<R<'b>, R<'static>>(r)
     /// }
     ///
     /// unsafe fn shorten_invariant_lifetime<'b, 'c>(r: &'b mut R<'static>)
     ///                                              -> &'b mut R<'c> {
-    ///     mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(
-    ///         ref_to_extended)
+    ///     std::mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(r)
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
