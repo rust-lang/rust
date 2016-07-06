@@ -28,9 +28,6 @@ use term;
 /// Emitter trait for emitting errors. Do not implement this directly:
 /// implement `CoreEmitter` instead.
 pub trait Emitter {
-    /// Emit a standalone diagnostic message.
-    fn emit(&mut self, span: &MultiSpan, msg: &str, code: Option<&str>, lvl: Level);
-
     /// Emit a structured diagnostic.
     fn emit_struct(&mut self, db: &DiagnosticBuilder);
 }
@@ -46,19 +43,6 @@ pub trait CoreEmitter {
 }
 
 impl<T: CoreEmitter> Emitter for T {
-    fn emit(&mut self,
-            msp: &MultiSpan,
-            msg: &str,
-            code: Option<&str>,
-            lvl: Level) {
-        self.emit_message(&FullSpan(msp.clone()),
-                          msg,
-                          code,
-                          lvl,
-                          true,
-                          true);
-    }
-
     fn emit_struct(&mut self, db: &DiagnosticBuilder) {
         let old_school = check_old_skool();
         let db_span = FullSpan(db.span.clone());
