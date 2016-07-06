@@ -1304,7 +1304,12 @@ impl Context {
                 *slot.borrow_mut() = cx.current.clone();
             });
 
-            let mut title = cx.current.join("::");
+            let mut title = if it.is_primitive() {
+                // No need to include the namespace for primitive types
+                String::new()
+            } else {
+                cx.current.join("::")
+            };
             if pushname {
                 if !title.is_empty() {
                     title.push_str("::");
@@ -1555,11 +1560,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
             _ => {}
         }
-        let is_primitive = match self.item.inner {
-            clean::PrimitiveItem(..) => true,
-            _ => false,
-        };
-        if !is_primitive {
+        if !self.item.is_primitive() {
             let cur = &self.cx.current;
             let amt = if self.item.is_mod() { cur.len() - 1 } else { cur.len() };
             for (i, component) in cur.iter().enumerate().take(amt) {
@@ -1591,7 +1592,7 @@ impl<'a> fmt::Display for Item<'a> {
         // [src] link in the downstream documentation will actually come back to
         // this page, and this link will be auto-clicked. The `id` attribute is
         // used to find the link to auto-click.
-        if self.cx.shared.include_sources && !is_primitive {
+        if self.cx.shared.include_sources && !self.item.is_primitive() {
             if let Some(l) = self.href() {
                 write!(fmt, "<a id='src-{}' class='srclink' \
                               href='{}' title='{}'>[src]</a>",
