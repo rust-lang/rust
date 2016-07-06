@@ -275,8 +275,6 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" =>
                 (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
 
-            "return_address" => (0, vec![], tcx.mk_imm_ptr(tcx.types.u8)),
-
             "assume" => (0, vec![tcx.types.bool], tcx.mk_nil()),
 
             "discriminant_value" => (1, vec![

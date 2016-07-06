@@ -12,44 +12,6 @@
 
 register_long_diagnostics! {
 
-E0510: r##"
-`return_address` was used in an invalid context. Erroneous code example:
-
-```ignore
-#![feature(intrinsics)]
-
-extern "rust-intrinsic" {
-    fn return_address() -> *const u8;
-}
-
-unsafe fn by_value() -> i32 {
-    let _ = return_address();
-    // error: invalid use of `return_address` intrinsic: function does
-    //        not use out pointer
-    0
-}
-```
-
-Return values may be stored in a return register(s) or written into a so-called
-out pointer. In case the returned value is too big (this is
-target-ABI-dependent and generally not portable or future proof) to fit into
-the return register(s), the compiler will return the value by writing it into
-space allocated in the caller's stack frame. Example:
-
-```
-#![feature(intrinsics)]
-
-extern "rust-intrinsic" {
-    fn return_address() -> *const u8;
-}
-
-unsafe fn by_pointer() -> String {
-    let _ = return_address();
-    String::new() // ok!
-}
-```
-"##,
-
 E0511: r##"
 Invalid monomorphization of an intrinsic function was used. Erroneous code
 example:
