@@ -18,7 +18,7 @@
 use std::fs;
 use std::path::Path;
 
-use build::Build;
+use Build;
 
 pub fn clean(build: &Build) {
     rm_rf(build, "tmp".as_ref());

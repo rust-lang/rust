@@ -23,8 +23,8 @@ use std::process::Command;
 
 use build_helper::output;
 
-use build::util::{exe, staticlib, libdir, mtime, is_dylib, copy};
-use build::{Build, Compiler, Mode};
+use util::{exe, staticlib, libdir, mtime, is_dylib, copy};
+use {Build, Compiler, Mode};
 
 /// Build the standard library.
 ///

@@ -22,7 +22,7 @@ use std::process::Command;
 use build_helper::output;
 use md5;
 
-use build::Build;
+use Build;
 
 pub fn collect(build: &mut Build) {
     // Currently the canonical source for the release number (e.g. 1.10.0) and
