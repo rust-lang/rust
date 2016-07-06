@@ -284,9 +284,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
     fn visit_generics(&mut self, generics: &hir::Generics) {
         for ty_param in generics.ty_params.iter() {
             walk_list!(self, visit_ty_param_bound, &ty_param.bounds);
-            match ty_param.default {
-                Some(ref ty) => self.visit_ty(&ty),
-                None => {}
+            if let Some(ref ty) = ty_param.default {
+                self.visit_ty(&ty);
             }
         }
         for predicate in &generics.where_clause.predicates {

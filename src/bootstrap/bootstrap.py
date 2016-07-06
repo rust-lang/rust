@@ -10,6 +10,7 @@
 
 import argparse
 import contextlib
+import datetime
 import hashlib
 import os
 import shutil
@@ -17,6 +18,8 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+
+from time import time
 
 
 def get(url, path, verbose=False):
@@ -117,6 +120,9 @@ def stage0_data(rust_root):
             a, b = line.split(": ", 1)
             data[a] = b
     return data
+
+def format_build_time(duration):
+    return str(datetime.timedelta(seconds=int(duration)))
 
 class RustBuild:
     def download_stage0(self):
@@ -265,7 +271,7 @@ class RustBuild:
         try:
             ostype = subprocess.check_output(['uname', '-s']).strip()
             cputype = subprocess.check_output(['uname', '-m']).strip()
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, WindowsError):
             if sys.platform == 'win32':
                 return 'x86_64-pc-windows-msvc'
             err = "uname not found"
@@ -372,6 +378,8 @@ def main():
     rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
     rb._cargo_channel, rb._cargo_date = data['cargo'].split('-', 1)
 
+    start_time = time()
+
     # Fetch/build the bootstrap
     rb.build = rb.build_triple()
     rb.download_stage0()
@@ -389,6 +397,10 @@ def main():
     env = os.environ.copy()
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     rb.run(args, env)
+
+    end_time = time()
+
+    print("Build completed in %s" % format_build_time(end_time - start_time))
 
 if __name__ == '__main__':
     main()

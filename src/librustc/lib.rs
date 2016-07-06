@@ -30,7 +30,6 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(enumset)]
-#![feature(iter_arith)]
 #![feature(libc)]
 #![feature(nonzero)]
 #![feature(quote)]

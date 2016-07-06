@@ -116,33 +116,19 @@ pub fn compile_input(sess: &Session,
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
         let id = link::find_crate_name(Some(sess), &krate.attrs, input);
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
-            let make_glob_map = control.make_glob_map;
-            phase_2_configure_and_expand(sess, &cstore, krate, &id, addl_plugins, make_glob_map)?
+            phase_2_configure_and_expand(
+                sess, &cstore, krate, &id, addl_plugins, control.make_glob_map,
+                |expanded_crate| {
+                    let mut state = CompileState::state_after_expand(
+                        input, sess, outdir, output, &cstore, expanded_crate, &id,
+                    );
+                    controller_entry_point!(after_expand, sess, state, Ok(()));
+                    Ok(())
+                }
+            )?
         };
 
-        controller_entry_point!(after_expand,
-                                sess,
-                                CompileState::state_after_expand(input,
-                                                                 sess,
-                                                                 outdir,
-                                                                 output,
-                                                                 &cstore,
-                                                                 &expanded_crate,
-                                                                 &id),
-                                Ok(()));
-
         write_out_deps(sess, &outputs, &id);
-
-        controller_entry_point!(after_write_deps,
-                                sess,
-                                CompileState::state_after_write_deps(input,
-                                                                     sess,
-                                                                     outdir,
-                                                                     output,
-                                                                     &cstore,
-                                                                     &expanded_crate,
-                                                                     &id),
-                                Ok(()));
 
         let arenas = ty::CtxtArenas::new();
 
@@ -239,7 +225,14 @@ pub fn compile_input(sess: &Session,
                             phase5_result);
     phase5_result?;
 
+    write::cleanup_llvm(&trans);
+
     phase_6_link_output(sess, &trans, &outputs);
+
+    controller_entry_point!(compilation_done,
+                            sess,
+                            CompileState::state_when_compilation_done(input, sess, outdir, output),
+                            Ok(()));
 
     Ok(())
 }
@@ -285,10 +278,10 @@ pub fn source_name(input: &Input) -> String {
 pub struct CompileController<'a> {
     pub after_parse: PhaseController<'a>,
     pub after_expand: PhaseController<'a>,
-    pub after_write_deps: PhaseController<'a>,
     pub after_hir_lowering: PhaseController<'a>,
     pub after_analysis: PhaseController<'a>,
     pub after_llvm: PhaseController<'a>,
+    pub compilation_done: PhaseController<'a>,
 
     pub make_glob_map: MakeGlobMap,
 }
@@ -298,10 +291,10 @@ impl<'a> CompileController<'a> {
         CompileController {
             after_parse: PhaseController::basic(),
             after_expand: PhaseController::basic(),
-            after_write_deps: PhaseController::basic(),
             after_hir_lowering: PhaseController::basic(),
             after_analysis: PhaseController::basic(),
             after_llvm: PhaseController::basic(),
+            compilation_done: PhaseController::basic(),
             make_glob_map: MakeGlobMap::No,
         }
     }
@@ -406,23 +399,6 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
         }
     }
 
-    fn state_after_write_deps(input: &'a Input,
-                              session: &'ast Session,
-                              out_dir: &'a Option<PathBuf>,
-                              out_file: &'a Option<PathBuf>,
-                              cstore: &'a CStore,
-                              krate: &'a ast::Crate,
-                              crate_name: &'a str)
-                              -> CompileState<'a, 'b, 'ast, 'tcx> {
-        CompileState {
-            crate_name: Some(crate_name),
-            cstore: Some(cstore),
-            expanded_crate: Some(krate),
-            out_file: out_file.as_ref().map(|s| &**s),
-            ..CompileState::empty(input, session, out_dir)
-        }
-    }
-
     fn state_after_hir_lowering(input: &'a Input,
                                 session: &'ast Session,
                                 out_dir: &'a Option<PathBuf>,
@@ -482,6 +458,17 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
                         -> CompileState<'a, 'b, 'ast, 'tcx> {
         CompileState {
             trans: Some(trans),
+            out_file: out_file.as_ref().map(|s| &**s),
+            ..CompileState::empty(input, session, out_dir)
+        }
+    }
+
+    fn state_when_compilation_done(input: &'a Input,
+                                    session: &'ast Session,
+                                    out_dir: &'a Option<PathBuf>,
+                                    out_file: &'a Option<PathBuf>)
+                                    -> CompileState<'a, 'b, 'ast, 'tcx> {
+        CompileState {
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
         }
@@ -556,13 +543,16 @@ pub struct ExpansionResult<'a> {
 /// standard library and prelude, and name resolution.
 ///
 /// Returns `None` if we're aborting after handling -W help.
-pub fn phase_2_configure_and_expand<'a>(sess: &Session,
-                                        cstore: &CStore,
-                                        mut krate: ast::Crate,
-                                        crate_name: &'a str,
-                                        addl_plugins: Option<Vec<String>>,
-                                        make_glob_map: MakeGlobMap)
-                                        -> Result<ExpansionResult<'a>, usize> {
+pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
+                                           cstore: &CStore,
+                                           mut krate: ast::Crate,
+                                           crate_name: &'a str,
+                                           addl_plugins: Option<Vec<String>>,
+                                           make_glob_map: MakeGlobMap,
+                                           after_expand: F)
+                                           -> Result<ExpansionResult<'a>, usize>
+    where F: FnOnce(&ast::Crate) -> CompileResult,
+{
     let time_passes = sess.time_passes();
 
     // strip before anything else because crate metadata may use #[cfg_attr]
@@ -745,9 +735,23 @@ pub fn phase_2_configure_and_expand<'a>(sess: &Session,
          "AST validation",
          || ast_validation::check_crate(sess, &krate));
 
-    time(sess.time_passes(), "name resolution", || {
+    time(sess.time_passes(), "name resolution", || -> CompileResult {
+        // Currently, we ignore the name resolution data structures for the purposes of dependency
+        // tracking. Instead we will run name resolution and include its output in the hash of each
+        // item, much like we do for macro expansion. In other words, the hash reflects not just
+        // its contents but the results of name resolution on those contents. Hopefully we'll push
+        // this back at some point.
+        let _ignore = sess.dep_graph.in_ignore();
+        resolver.build_reduced_graph(&krate);
+        resolver.resolve_imports();
+
+        // Since import resolution will eventually happen in expansion,
+        // don't perform `after_expand` until after import resolution.
+        after_expand(&krate)?;
+
         resolver.resolve_crate(&krate);
-    });
+        Ok(())
+    })?;
 
     // Lower ast -> hir.
     let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {

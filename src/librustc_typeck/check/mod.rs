@@ -1157,6 +1157,7 @@ fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         let rty = ccx.tcx.node_id_to_type(id);
         let fcx = FnCtxt::new(&inh, ty::FnConverging(rty), e.id);
         let declty = fcx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(id)).ty;
+        fcx.require_type_is_sized(declty, e.span, traits::ConstSized);
         fcx.check_const_with_ty(sp, e, declty);
     });
 }

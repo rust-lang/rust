@@ -118,8 +118,6 @@ impl DepGraphThreadData {
     /// the buffer is full, this may swap.)
     #[inline]
     pub fn enqueue(&self, message: DepMessage) {
-        debug!("enqueue: {:?} tasks_pushed={}", message, self.tasks_pushed.get());
-
         // Regardless of whether dep graph construction is enabled, we
         // still want to check that we always have a valid task on the
         // stack when a read/write/etc event occurs.

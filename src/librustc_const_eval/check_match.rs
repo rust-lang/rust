@@ -176,9 +176,8 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
 
                 // Second, if there is a guard on each arm, make sure it isn't
                 // assigning or borrowing anything mutably.
-                match arm.guard {
-                    Some(ref guard) => check_for_mutation_in_guard(cx, &guard),
-                    None => {}
+                if let Some(ref guard) = arm.guard {
+                    check_for_mutation_in_guard(cx, &guard);
                 }
             }
 

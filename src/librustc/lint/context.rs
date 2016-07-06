@@ -1055,13 +1055,10 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
 // Output any lints that were previously added to the session.
 impl<'a, 'tcx> IdVisitingOperation for LateContext<'a, 'tcx> {
     fn visit_id(&mut self, id: ast::NodeId) {
-        match self.sess().lints.borrow_mut().remove(&id) {
-            None => {}
-            Some(lints) => {
-                debug!("LateContext::visit_id: id={:?} lints={:?}", id, lints);
-                for (lint_id, span, msg) in lints {
-                    self.span_lint(lint_id.lint, span, &msg[..])
-                }
+        if let Some(lints) = self.sess().lints.borrow_mut().remove(&id) {
+            debug!("LateContext::visit_id: id={:?} lints={:?}", id, lints);
+            for (lint_id, span, msg) in lints {
+                self.span_lint(lint_id.lint, span, &msg[..])
             }
         }
     }

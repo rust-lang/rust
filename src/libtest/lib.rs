@@ -747,12 +747,9 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             PadOnRight => t.desc.name.as_slice().len(),
         }
     }
-    match tests.iter().max_by_key(|t| len_if_padded(*t)) {
-        Some(t) => {
-            let n = t.desc.name.as_slice();
-            st.max_name_len = n.len();
-        }
-        None => {}
+    if let Some(t) = tests.iter().max_by_key(|t| len_if_padded(*t)) {
+        let n = t.desc.name.as_slice();
+        st.max_name_len = n.len();
     }
     run_tests(opts, tests, |x| callback(&x, &mut st))?;
     return st.write_run_finish();

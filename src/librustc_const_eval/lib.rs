@@ -27,7 +27,6 @@
 #![feature(staged_api)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
-#![feature(iter_arith)]
 #![feature(question_mark)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]

@@ -908,6 +908,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.note("only the last field of a struct or enum variant \
                           may have a dynamically sized type");
             }
+            ObligationCauseCode::ConstSized => {
+                err.note("constant expressions must have a statically known size");
+            }
             ObligationCauseCode::SharedStatic => {
                 err.note("shared static variables must have a type that implements `Sync`");
             }

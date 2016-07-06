@@ -89,6 +89,17 @@ macro_rules! try_fixed {
     })
 }
 
+fn ldexp_f32(a: f32, b: i32) -> f32 {
+    ldexp_f64(a as f64, b) as f32
+}
+
+fn ldexp_f64(a: f64, b: i32) -> f64 {
+    extern {
+        fn ldexp(x: f64, n: i32) -> f64;
+    }
+    unsafe { ldexp(a, b) }
+}
+
 fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16)
         where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
     // use a large enough buffer
@@ -237,7 +248,7 @@ pub fn f32_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     // 10^8 * 0.3355443
     // 10^8 * 0.33554432
     // 10^8 * 0.33554436
-    check_shortest!(f(f32::ldexp(1.0, 25)) => b"33554432", 8);
+    check_shortest!(f(ldexp_f32(1.0, 25)) => b"33554432", 8);
 
     // 10^39 * 0.340282326356119256160033759537265639424
     // 10^39 * 0.34028234663852885981170418348451692544
@@ -252,13 +263,13 @@ pub fn f32_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     // 10^-44 * 0
     // 10^-44 * 0.1401298464324817070923729583289916131280...
     // 10^-44 * 0.2802596928649634141847459166579832262560...
-    let minf32 = f32::ldexp(1.0, -149);
+    let minf32 = ldexp_f32(1.0, -149);
     check_shortest!(f(minf32) => b"1", -44);
 }
 
 pub fn f32_exact_sanity_test<F>(mut f: F)
         where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
-    let minf32 = f32::ldexp(1.0, -149);
+    let minf32 = ldexp_f32(1.0, -149);
 
     check_exact!(f(0.1f32)            => b"100000001490116119384765625             ", 0);
     check_exact!(f(0.5f32)            => b"5                                       ", 0);
@@ -336,7 +347,7 @@ pub fn f64_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     // 10^20 * 0.18446744073709549568
     // 10^20 * 0.18446744073709551616
     // 10^20 * 0.18446744073709555712
-    check_shortest!(f(f64::ldexp(1.0, 64)) => b"18446744073709552", 20);
+    check_shortest!(f(ldexp_f64(1.0, 64)) => b"18446744073709552", 20);
 
     // pathological case: high = 10^23 (exact). tie breaking should always prefer that.
     // 10^24 * 0.099999999999999974834176
@@ -357,13 +368,13 @@ pub fn f64_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     // 10^-323 * 0
     // 10^-323 * 0.4940656458412465441765687928682213723650...
     // 10^-323 * 0.9881312916824930883531375857364427447301...
-    let minf64 = f64::ldexp(1.0, -1074);
+    let minf64 = ldexp_f64(1.0, -1074);
     check_shortest!(f(minf64) => b"5", -323);
 }
 
 pub fn f64_exact_sanity_test<F>(mut f: F)
         where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
-    let minf64 = f64::ldexp(1.0, -1074);
+    let minf64 = ldexp_f64(1.0, -1074);
 
     check_exact!(f(0.1f64)            => b"1000000000000000055511151231257827021181", 0);
     check_exact!(f(0.45f64)           => b"4500000000000000111022302462515654042363", 0);
@@ -616,7 +627,7 @@ pub fn to_shortest_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f32::MAX, Minus, 1, false), format!("34028235{:0>31}.0", ""));
     assert_eq!(to_string(f, f32::MAX, Minus, 8, false), format!("34028235{:0>31}.00000000", ""));
 
-    let minf32 = f32::ldexp(1.0, -149);
+    let minf32 = ldexp_f32(1.0, -149);
     assert_eq!(to_string(f, minf32, Minus,  0, false), format!("0.{:0>44}1", ""));
     assert_eq!(to_string(f, minf32, Minus, 45, false), format!("0.{:0>44}1", ""));
     assert_eq!(to_string(f, minf32, Minus, 46, false), format!("0.{:0>44}10", ""));
@@ -628,7 +639,7 @@ pub fn to_shortest_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f64::MAX, Minus, 8, false),
                format!("17976931348623157{:0>292}.00000000", ""));
 
-    let minf64 = f64::ldexp(1.0, -1074);
+    let minf64 = ldexp_f64(1.0, -1074);
     assert_eq!(to_string(f, minf64, Minus,   0, false), format!("0.{:0>323}5", ""));
     assert_eq!(to_string(f, minf64, Minus, 324, false), format!("0.{:0>323}5", ""));
     assert_eq!(to_string(f, minf64, Minus, 325, false), format!("0.{:0>323}50", ""));
@@ -730,7 +741,7 @@ pub fn to_shortest_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f32::MAX, Minus, (-39, 38), false), "3.4028235e38");
     assert_eq!(to_string(f, f32::MAX, Minus, (-38, 39), false), format!("34028235{:0>31}", ""));
 
-    let minf32 = f32::ldexp(1.0, -149);
+    let minf32 = ldexp_f32(1.0, -149);
     assert_eq!(to_string(f, minf32, Minus, ( -4, 16), false), "1e-45");
     assert_eq!(to_string(f, minf32, Minus, (-44, 45), false), "1e-45");
     assert_eq!(to_string(f, minf32, Minus, (-45, 44), false), format!("0.{:0>44}1", ""));
@@ -742,7 +753,7 @@ pub fn to_shortest_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f64::MAX, Minus, (-309, 308), false),
                "1.7976931348623157e308");
 
-    let minf64 = f64::ldexp(1.0, -1074);
+    let minf64 = ldexp_f64(1.0, -1074);
     assert_eq!(to_string(f, minf64, Minus, (  -4,  16), false), "5e-324");
     assert_eq!(to_string(f, minf64, Minus, (-324, 323), false), format!("0.{:0>323}5", ""));
     assert_eq!(to_string(f, minf64, Minus, (-323, 324), false), "5e-324");
@@ -874,7 +885,7 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f32::MAX, Minus, 64, false),
                "3.402823466385288598117041834845169254400000000000000000000000000e38");
 
-    let minf32 = f32::ldexp(1.0, -149);
+    let minf32 = ldexp_f32(1.0, -149);
     assert_eq!(to_string(f, minf32, Minus,   1, false), "1e-45");
     assert_eq!(to_string(f, minf32, Minus,   2, false), "1.4e-45");
     assert_eq!(to_string(f, minf32, Minus,   4, false), "1.401e-45");
@@ -914,7 +925,7 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
                  0000000000000000000000000000000000000000000000000000000000000000e308");
 
     // okay, this is becoming tough. fortunately for us, this is almost the worst case.
-    let minf64 = f64::ldexp(1.0, -1074);
+    let minf64 = ldexp_f64(1.0, -1074);
     assert_eq!(to_string(f, minf64, Minus,    1, false), "5e-324");
     assert_eq!(to_string(f, minf64, Minus,    2, false), "4.9e-324");
     assert_eq!(to_string(f, minf64, Minus,    4, false), "4.941e-324");
@@ -1120,7 +1131,7 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f32::MAX, Minus, 2, false),
                "340282346638528859811704183484516925440.00");
 
-    let minf32 = f32::ldexp(1.0, -149);
+    let minf32 = ldexp_f32(1.0, -149);
     assert_eq!(to_string(f, minf32, Minus,   0, false), "0");
     assert_eq!(to_string(f, minf32, Minus,   1, false), "0.0");
     assert_eq!(to_string(f, minf32, Minus,   2, false), "0.00");
@@ -1152,7 +1163,7 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
                 9440758685084551339423045832369032229481658085593321233482747978\
                 26204144723168738177180919299881250404026184124858368.0000000000");
 
-    let minf64 = f64::ldexp(1.0, -1074);
+    let minf64 = ldexp_f64(1.0, -1074);
     assert_eq!(to_string(f, minf64, Minus, 0, false), "0");
     assert_eq!(to_string(f, minf64, Minus, 1, false), "0.0");
     assert_eq!(to_string(f, minf64, Minus, 10, false), "0.0000000000");

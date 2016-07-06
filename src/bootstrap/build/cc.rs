@@ -90,6 +90,7 @@ fn set_compiler(cfg: &mut gcc::Config,
         // compiler already takes into account the triple in question.
         t if t.contains("android") => {
             if let Some(ndk) = config.and_then(|c| c.ndk.as_ref()) {
+                let target = target.replace("armv7", "arm");
                 let compiler = format!("{}-{}", target, gnu_compiler);
                 cfg.compiler(ndk.join("bin").join(compiler));
             }

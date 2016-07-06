@@ -1697,13 +1697,10 @@ impl<'a> State<'a> {
                 self.commasep(Inconsistent, &data.inputs, |s, ty| s.print_type(&ty))?;
                 word(&mut self.s, ")")?;
 
-                match data.output {
-                    None => {}
-                    Some(ref ty) => {
-                        self.space_if_not_bol()?;
-                        self.word_space("->")?;
-                        self.print_type(&ty)?;
-                    }
+                if let Some(ref ty) = data.output {
+                    self.space_if_not_bol()?;
+                    self.word_space("->")?;
+                    self.print_type(&ty)?;
                 }
             }
         }

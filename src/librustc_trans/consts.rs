@@ -138,18 +138,15 @@ pub fn addr_of(ccx: &CrateContext,
                align: machine::llalign,
                kind: &str)
                -> ValueRef {
-    match ccx.const_globals().borrow().get(&cv) {
-        Some(&gv) => {
-            unsafe {
-                // Upgrade the alignment in cases where the same constant is used with different
-                // alignment requirements
-                if align > llvm::LLVMGetAlignment(gv) {
-                    llvm::LLVMSetAlignment(gv, align);
-                }
+    if let Some(&gv) = ccx.const_globals().borrow().get(&cv) {
+        unsafe {
+            // Upgrade the alignment in cases where the same constant is used with different
+            // alignment requirements
+            if align > llvm::LLVMGetAlignment(gv) {
+                llvm::LLVMSetAlignment(gv, align);
             }
-            return gv;
         }
-        None => {}
+        return gv;
     }
     let gv = addr_of_mut(ccx, cv, align, kind);
     unsafe {

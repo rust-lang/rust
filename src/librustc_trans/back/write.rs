@@ -616,9 +616,17 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         }
     }
 
-    llvm::LLVMDisposeModule(llmod);
-    llvm::LLVMContextDispose(llcx);
     llvm::LLVMRustDisposeTargetMachine(tm);
+}
+
+
+pub fn cleanup_llvm(trans: &CrateTranslation) {
+    for module in trans.modules.iter() {
+        unsafe {
+            llvm::LLVMDisposeModule(module.llmod);
+            llvm::LLVMContextDispose(module.llcx);
+        }
+    }
 }
 
 pub fn run_passes(sess: &Session,
@@ -970,7 +978,7 @@ fn run_work_multithreaded(sess: &Session,
 }
 
 pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
-    let (pname, mut cmd) = get_linker(sess);
+    let (pname, mut cmd, _) = get_linker(sess);
 
     cmd.arg("-c").arg("-o").arg(&outputs.path(OutputType::Object))
                            .arg(&outputs.temp_path(OutputType::Assembly));

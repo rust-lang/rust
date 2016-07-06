@@ -76,7 +76,6 @@ This API is completely unstable and subject to change.
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(iter_arith)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -313,14 +312,13 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
 fn check_for_entry_fn(ccx: &CrateCtxt) {
     let tcx = ccx.tcx;
     let _task = tcx.dep_graph.in_task(DepNode::CheckEntryFn);
-    match *tcx.sess.entry_fn.borrow() {
-        Some((id, sp)) => match tcx.sess.entry_type.get() {
+    if let Some((id, sp)) = *tcx.sess.entry_fn.borrow() {
+        match tcx.sess.entry_type.get() {
             Some(config::EntryMain) => check_main_fn_ty(ccx, id, sp),
             Some(config::EntryStart) => check_start_fn_ty(ccx, id, sp),
             Some(config::EntryNone) => {}
             None => bug!("entry function without a type")
-        },
-        None => {}
+        }
     }
 }
 

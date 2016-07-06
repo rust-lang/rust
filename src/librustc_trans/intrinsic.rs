@@ -617,6 +617,18 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
         },
 
+
+        (_, "return_address") => {
+            if !fcx.fn_ty.ret.is_indirect() {
+                span_err!(tcx.sess, span, E0510,
+                          "invalid use of `return_address` intrinsic: function \
+                           does not use out pointer");
+                C_null(Type::i8p(ccx))
+            } else {
+                PointerCast(bcx, llvm::get_param(fcx.llfn, 0), Type::i8p(ccx))
+            }
+        }
+
         (_, "discriminant_value") => {
             let val_ty = substs.types.get(FnSpace, 0);
             match val_ty.sty {
