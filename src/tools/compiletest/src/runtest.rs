@@ -1337,6 +1337,8 @@ actual:\n\
             }
             MirOpt => {
                 args.extend(["-Z",
+                             "mir-opt-level=3",
+                             "-Z",
                              "dump-mir=all",
                              "-Z",
                              "mir-opt-level=3",

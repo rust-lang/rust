@@ -34,6 +34,15 @@ pub struct Disambiguator<'a> {
     is_after: bool
 }
 
+impl<'a> Disambiguator<'a> {
+    pub fn new(pass: &'a Pass, is_after: bool) -> Self {
+        Disambiguator {
+            pass: pass,
+            is_after : is_after
+        }
+    }
+}
+
 impl<'a> fmt::Display for Disambiguator<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let title = if self.is_after { "after" } else { "before" };
