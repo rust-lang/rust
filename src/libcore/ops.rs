@@ -69,9 +69,7 @@
 
 use cmp::PartialOrd;
 use fmt;
-use convert::From;
 use marker::{Sized, Unsize};
-use num::One;
 
 /// The `Drop` trait is used to run some code when a value goes out of scope.
 /// This is sometimes called a 'destructor'.
@@ -1494,7 +1492,6 @@ impl fmt::Debug for RangeFull {
 /// # Examples
 ///
 /// ```
-/// #![feature(iter_arith)]
 /// fn main() {
 ///     assert_eq!((3..5), std::ops::Range{ start: 3, end: 5 });
 ///     assert_eq!(3+4+5, (3..6).sum());
@@ -1558,7 +1555,6 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// # Examples
 ///
 /// ```
-/// #![feature(iter_arith)]
 /// fn main() {
 ///     assert_eq!((2..), std::ops::RangeFrom{ start: 2 });
 ///     assert_eq!(2+3+4, (2..).take(3).sum());
@@ -1660,7 +1656,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// # Examples
 ///
 /// ```
-/// #![feature(inclusive_range,inclusive_range_syntax,iter_arith)]
+/// #![feature(inclusive_range,inclusive_range_syntax)]
 /// fn main() {
 ///     assert_eq!((3...5), std::ops::RangeInclusive::NonEmpty{ start: 3, end: 5 });
 ///     assert_eq!(3+4+5, (3...5).sum());
@@ -1710,24 +1706,6 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
         match *self {
             Empty { ref at } => write!(fmt, "[empty range @ {:?}]", at),
             NonEmpty { ref start, ref end } => write!(fmt, "{:?}...{:?}", start, end),
-        }
-    }
-}
-
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-impl<Idx: PartialOrd + One + Sub<Output=Idx>> From<Range<Idx>> for RangeInclusive<Idx> {
-    fn from(range: Range<Idx>) -> RangeInclusive<Idx> {
-        use self::RangeInclusive::*;
-
-        if range.start < range.end {
-            NonEmpty {
-                start: range.start,
-                end: range.end - Idx::one() // can't underflow because end > start >= MIN
-            }
-        } else {
-            Empty {
-                at: range.start
-            }
         }
     }
 }

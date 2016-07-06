@@ -160,12 +160,9 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        match nt_meta {
-            Some(meta) => {
-                self.bump();
-                return Ok(meta);
-            }
-            None => {}
+        if let Some(meta) = nt_meta {
+            self.bump();
+            return Ok(meta);
         }
 
         let lo = self.span.lo;

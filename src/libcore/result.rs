@@ -175,8 +175,11 @@
 //! }
 //!
 //! fn write_info(info: &Info) -> io::Result<()> {
-//!     let mut file = try!(File::create("my_best_friends.txt"));
 //!     // Early return on error
+//!     let mut file = match File::create("my_best_friends.txt") {
+//!            Err(e) => return Err(e),
+//!            Ok(f) => f,
+//!     };
 //!     if let Err(e) = file.write_all(format!("name: {}\n", info.name).as_bytes()) {
 //!         return Err(e)
 //!     }

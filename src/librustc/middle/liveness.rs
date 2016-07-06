@@ -598,11 +598,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn arm_pats_bindings<F>(&mut self, pat: Option<&hir::Pat>, f: F) where
         F: FnMut(&mut Liveness<'a, 'tcx>, LiveNode, Variable, Span, NodeId),
     {
-        match pat {
-            Some(pat) => {
-                self.pat_bindings(pat, f);
-            }
-            None => {}
+        if let Some(pat) = pat {
+            self.pat_bindings(pat, f);
         }
     }
 

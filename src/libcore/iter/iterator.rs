@@ -11,18 +11,16 @@
 use clone::Clone;
 use cmp::{Ord, PartialOrd, PartialEq, Ordering};
 use default::Default;
-use num::{Zero, One};
-use ops::{Add, FnMut, Mul};
+use ops::FnMut;
 use option::Option::{self, Some, None};
 use marker::Sized;
 
-use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse,
-            Inspect, Map, Peekable, Scan, Skip, SkipWhile, Take, TakeWhile, Rev,
-            Zip};
+use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse};
+use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, Take, TakeWhile, Rev};
+use super::{Zip, Sum, Product};
 use super::ChainState;
-use super::{DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator,
-            IntoIterator};
-use super::ZipImpl;
+use super::{DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator};
+use super::{IntoIterator, ZipImpl};
 
 fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
 
@@ -1820,36 +1818,41 @@ pub trait Iterator {
     ///
     /// An empty iterator returns the zero value of the type.
     ///
+    /// # Panics
+    ///
+    /// When calling `sum` and a primitive integer type is being returned, this
+    /// method will panic if the computation overflows.
+    ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iter_arith)]
-    ///
     /// let a = [1, 2, 3];
     /// let sum: i32 = a.iter().sum();
     ///
     /// assert_eq!(sum, 6);
     /// ```
-    #[unstable(feature = "iter_arith", reason = "bounds recently changed",
-               issue = "27739")]
-    fn sum<S>(self) -> S where
-        S: Add<Self::Item, Output=S> + Zero,
-        Self: Sized,
+    #[stable(feature = "iter_arith", since = "1.11.0")]
+    fn sum<S>(self) -> S
+        where Self: Sized,
+              S: Sum<Self::Item>,
     {
-        self.fold(Zero::zero(), |s, e| s + e)
+        Sum::sum(self)
     }
 
     /// Iterates over the entire iterator, multiplying all the elements
     ///
     /// An empty iterator returns the one value of the type.
     ///
+    /// # Panics
+    ///
+    /// When calling `product` and a primitive integer type is being returned,
+    /// this method will panic if the computation overflows.
+    ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(iter_arith)]
-    ///
     /// fn factorial(n: u32) -> u32 {
     ///     (1..).take_while(|&i| i <= n).product()
     /// }
@@ -1857,13 +1860,12 @@ pub trait Iterator {
     /// assert_eq!(factorial(1), 1);
     /// assert_eq!(factorial(5), 120);
     /// ```
-    #[unstable(feature="iter_arith", reason = "bounds recently changed",
-               issue = "27739")]
-    fn product<P>(self) -> P where
-        P: Mul<Self::Item, Output=P> + One,
-        Self: Sized,
+    #[stable(feature = "iter_arith", since = "1.11.0")]
+    fn product<P>(self) -> P
+        where Self: Sized,
+              P: Product<Self::Item>,
     {
-        self.fold(One::one(), |p, e| p * e)
+        Product::product(self)
     }
 
     /// Lexicographically compares the elements of this `Iterator` with those

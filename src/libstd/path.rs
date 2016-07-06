@@ -1057,7 +1057,6 @@ impl PathBuf {
         self._push(path.as_ref())
     }
 
-    #[allow(deprecated)]
     fn _push(&mut self, path: &Path) {
         // in general, a separator is needed if the rightmost byte is not a separator
         let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
@@ -1443,8 +1442,7 @@ impl Path {
     /// `is_absolute` and `has_root` are equivalent.
     ///
     /// * On Windows, a path is absolute if it has a prefix and starts with the
-    /// root: `c:\windows` is absolute, while `c:temp` and `\temp` are not. In
-    /// other words, `path.is_absolute() == path.prefix().is_some() && path.has_root()`.
+    /// root: `c:\windows` is absolute, while `c:temp` and `\temp` are not.
     ///
     /// # Examples
     ///

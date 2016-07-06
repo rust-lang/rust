@@ -15,6 +15,7 @@ use std::marker::PhantomData;
 use std::ops::{Index, IndexMut, Range};
 use std::fmt;
 use std::vec;
+use std::u32;
 
 use rustc_serialize as serialize;
 
@@ -29,6 +30,11 @@ pub trait Idx: Copy + 'static + Eq + Debug {
 impl Idx for usize {
     fn new(idx: usize) -> Self { idx }
     fn index(self) -> usize { self }
+}
+
+impl Idx for u32 {
+    fn new(idx: usize) -> Self { assert!(idx <= u32::MAX as usize); idx as u32 }
+    fn index(self) -> usize { self as usize }
 }
 
 #[derive(Clone)]

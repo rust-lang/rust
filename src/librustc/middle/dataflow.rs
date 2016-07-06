@@ -168,9 +168,8 @@ fn build_nodeid_to_index(decl: Option<&hir::FnDecl>,
     // into cfg itself?  i.e. introduce a fn-based flow-graph in
     // addition to the current block-based flow-graph, rather than
     // have to put traversals like this here?
-    match decl {
-        None => {}
-        Some(decl) => add_entries_from_fn_decl(&mut index, decl, cfg.entry)
+    if let Some(decl) = decl {
+        add_entries_from_fn_decl(&mut index, decl, cfg.entry);
     }
 
     cfg.graph.each_node(|node_idx, node| {

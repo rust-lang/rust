@@ -34,6 +34,27 @@ thread_local! {
     static USED_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new())
 }
 
+enum AttrError {
+    MultipleItem(InternedString),
+    UnknownMetaItem(InternedString),
+    MissingSince,
+    MissingFeature,
+    MultipleStabilityLevels,
+}
+
+fn handle_errors(diag: &Handler, span: Span, error: AttrError) {
+    match error {
+        AttrError::MultipleItem(item) => span_err!(diag, span, E0538,
+                                                   "multiple '{}' items", item),
+        AttrError::UnknownMetaItem(item) => span_err!(diag, span, E0541,
+                                                      "unknown meta item '{}'", item),
+        AttrError::MissingSince => span_err!(diag, span, E0542, "missing 'since'"),
+        AttrError::MissingFeature => span_err!(diag, span, E0546, "missing 'feature'"),
+        AttrError::MultipleStabilityLevels => span_err!(diag, span, E0544,
+                                                        "multiple stability levels"),
+    }
+}
+
 pub fn mark_used(attr: &Attribute) {
     let AttrId(id) = attr.node.id;
     USED_ATTRS.with(|slot| {
@@ -303,10 +324,10 @@ pub fn find_export_name_attr(diag: &Handler, attrs: &[Attribute]) -> Option<Inte
             if let s@Some(_) = attr.value_str() {
                 s
             } else {
-                diag.struct_span_err(attr.span,
-                                     "export_name attribute has invalid format")
-                    .help("use #[export_name=\"*\"]")
-                    .emit();
+                struct_span_err!(diag, attr.span, E0533,
+                                 "export_name attribute has invalid format")
+                                .help("use #[export_name=\"*\"]")
+                                .emit();
                 None
             }
         } else {
@@ -339,14 +360,16 @@ pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> In
             MetaItemKind::List(ref n, ref items) if n == "inline" => {
                 mark_used(attr);
                 if items.len() != 1 {
-                    diagnostic.map(|d|{ d.span_err(attr.span, "expected one argument"); });
+                    diagnostic.map(|d|{ span_err!(d, attr.span, E0534, "expected one argument"); });
                     InlineAttr::None
                 } else if contains_name(&items[..], "always") {
                     InlineAttr::Always
                 } else if contains_name(&items[..], "never") {
                     InlineAttr::Never
                 } else {
-                    diagnostic.map(|d|{ d.span_err((*items[0]).span, "invalid argument"); });
+                    diagnostic.map(|d| {
+                        span_err!(d, (*items[0]).span, E0535, "invalid argument");
+                    });
                     InlineAttr::None
                 }
             }
@@ -374,13 +397,13 @@ pub fn cfg_matches(cfgs: &[P<MetaItem>], cfg: &ast::MetaItem,
             mis.iter().all(|mi| cfg_matches(cfgs, &mi, sess, features)),
         ast::MetaItemKind::List(ref pred, ref mis) if &pred[..] == "not" => {
             if mis.len() != 1 {
-                sess.span_diagnostic.span_err(cfg.span, "expected 1 cfg-pattern");
+                span_err!(sess.span_diagnostic, cfg.span, E0536, "expected 1 cfg-pattern");
                 return false;
             }
             !cfg_matches(cfgs, &mis[0], sess, features)
         }
         ast::MetaItemKind::List(ref pred, _) => {
-            sess.span_diagnostic.span_err(cfg.span, &format!("invalid predicate `{}`", pred));
+            span_err!(sess.span_diagnostic, cfg.span, E0537, "invalid predicate `{}`", pred);
             false
         },
         ast::MetaItemKind::Word(_) | ast::MetaItemKind::NameValue(..) => {
@@ -446,15 +469,14 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
         if let Some(metas) = attr.meta_item_list() {
             let get = |meta: &MetaItem, item: &mut Option<InternedString>| {
                 if item.is_some() {
-                    diagnostic.span_err(meta.span, &format!("multiple '{}' items",
-                                                             meta.name()));
+                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()));
                     return false
                 }
                 if let Some(v) = meta.value_str() {
                     *item = Some(v);
                     true
                 } else {
-                    diagnostic.span_err(meta.span, "incorrect meta item");
+                    span_err!(diagnostic, meta.span, E0539, "incorrect meta item");
                     false
                 }
             };
@@ -462,7 +484,8 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
             match tag {
                 "rustc_deprecated" => {
                     if rustc_depr.is_some() {
-                        diagnostic.span_err(item_sp, "multiple rustc_deprecated attributes");
+                        span_err!(diagnostic, item_sp, E0540,
+                                  "multiple rustc_deprecated attributes");
                         break
                     }
 
@@ -473,8 +496,8 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             "since" => if !get(meta, &mut since) { continue 'outer },
                             "reason" => if !get(meta, &mut reason) { continue 'outer },
                             _ => {
-                                diagnostic.span_err(meta.span, &format!("unknown meta item '{}'",
-                                                                        meta.name()));
+                                handle_errors(diagnostic, meta.span,
+                                              AttrError::UnknownMetaItem(meta.name()));
                                 continue 'outer
                             }
                         }
@@ -488,18 +511,18 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             })
                         }
                         (None, _) => {
-                            diagnostic.span_err(attr.span(), "missing 'since'");
+                            handle_errors(diagnostic, attr.span(), AttrError::MissingSince);
                             continue
                         }
                         _ => {
-                            diagnostic.span_err(attr.span(), "missing 'reason'");
+                            span_err!(diagnostic, attr.span(), E0543, "missing 'reason'");
                             continue
                         }
                     }
                 }
                 "unstable" => {
                     if stab.is_some() {
-                        diagnostic.span_err(item_sp, "multiple stability levels");
+                        handle_errors(diagnostic, attr.span(), AttrError::MultipleStabilityLevels);
                         break
                     }
 
@@ -512,8 +535,8 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             "reason" => if !get(meta, &mut reason) { continue 'outer },
                             "issue" => if !get(meta, &mut issue) { continue 'outer },
                             _ => {
-                                diagnostic.span_err(meta.span, &format!("unknown meta item '{}'",
-                                                                        meta.name()));
+                                handle_errors(diagnostic, meta.span,
+                                              AttrError::UnknownMetaItem(meta.name()));
                                 continue 'outer
                             }
                         }
@@ -528,7 +551,8 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                         if let Ok(issue) = issue.parse() {
                                             issue
                                         } else {
-                                            diagnostic.span_err(attr.span(), "incorrect 'issue'");
+                                            span_err!(diagnostic, attr.span(), E0545,
+                                                      "incorrect 'issue'");
                                             continue
                                         }
                                     }
@@ -538,18 +562,18 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             })
                         }
                         (None, _, _) => {
-                            diagnostic.span_err(attr.span(), "missing 'feature'");
+                            handle_errors(diagnostic, attr.span(), AttrError::MissingFeature);
                             continue
                         }
                         _ => {
-                            diagnostic.span_err(attr.span(), "missing 'issue'");
+                            span_err!(diagnostic, attr.span(), E0547, "missing 'issue'");
                             continue
                         }
                     }
                 }
                 "stable" => {
                     if stab.is_some() {
-                        diagnostic.span_err(item_sp, "multiple stability levels");
+                        handle_errors(diagnostic, attr.span(), AttrError::MultipleStabilityLevels);
                         break
                     }
 
@@ -560,8 +584,8 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             "feature" => if !get(meta, &mut feature) { continue 'outer },
                             "since" => if !get(meta, &mut since) { continue 'outer },
                             _ => {
-                                diagnostic.span_err(meta.span, &format!("unknown meta item '{}'",
-                                                                        meta.name()));
+                                handle_errors(diagnostic, meta.span,
+                                              AttrError::UnknownMetaItem(meta.name()));
                                 continue 'outer
                             }
                         }
@@ -578,11 +602,11 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             })
                         }
                         (None, _) => {
-                            diagnostic.span_err(attr.span(), "missing 'feature'");
+                            handle_errors(diagnostic, attr.span(), AttrError::MissingFeature);
                             continue
                         }
                         _ => {
-                            diagnostic.span_err(attr.span(), "missing 'since'");
+                            handle_errors(diagnostic, attr.span(), AttrError::MissingSince);
                             continue
                         }
                     }
@@ -590,7 +614,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                 _ => unreachable!()
             }
         } else {
-            diagnostic.span_err(attr.span(), "incorrect stability attribute type");
+            span_err!(diagnostic, attr.span(), E0548, "incorrect stability attribute type");
             continue
         }
     }
@@ -603,8 +627,9 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
             }
             stab.rustc_depr = Some(rustc_depr);
         } else {
-            diagnostic.span_err(item_sp, "rustc_deprecated attribute must be paired with \
-                                          either stable or unstable attribute");
+            span_err!(diagnostic, item_sp, E0549,
+                      "rustc_deprecated attribute must be paired with \
+                       either stable or unstable attribute");
         }
     }
 
@@ -627,22 +652,21 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
         mark_used(attr);
 
         if depr.is_some() {
-            diagnostic.span_err(item_sp, "multiple deprecated attributes");
+            span_err!(diagnostic, item_sp, E0550, "multiple deprecated attributes");
             break
         }
 
         depr = if let Some(metas) = attr.meta_item_list() {
             let get = |meta: &MetaItem, item: &mut Option<InternedString>| {
                 if item.is_some() {
-                    diagnostic.span_err(meta.span, &format!("multiple '{}' items",
-                                                             meta.name()));
+                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()));
                     return false
                 }
                 if let Some(v) = meta.value_str() {
                     *item = Some(v);
                     true
                 } else {
-                    diagnostic.span_err(meta.span, "incorrect meta item");
+                    span_err!(diagnostic, meta.span, E0551, "incorrect meta item");
                     false
                 }
             };
@@ -654,8 +678,8 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
                     "since" => if !get(meta, &mut since) { continue 'outer },
                     "note" => if !get(meta, &mut note) { continue 'outer },
                     _ => {
-                        diagnostic.span_err(meta.span, &format!("unknown meta item '{}'",
-                                                                meta.name()));
+                        handle_errors(diagnostic, meta.span,
+                                      AttrError::UnknownMetaItem(meta.name()));
                         continue 'outer
                     }
                 }
@@ -689,7 +713,7 @@ pub fn require_unique_names(diagnostic: &Handler, metas: &[P<MetaItem>]) {
 
         if !set.insert(name.clone()) {
             panic!(diagnostic.span_fatal(meta.span,
-                                  &format!("duplicate meta item `{}`", name)));
+                                         &format!("duplicate meta item `{}`", name)));
         }
     }
 }
@@ -718,8 +742,8 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                                 Some(ity) => Some(ReprInt(item.span, ity)),
                                 None => {
                                     // Not a word we recognize
-                                    diagnostic.span_err(item.span,
-                                                        "unrecognized representation hint");
+                                    span_err!(diagnostic, item.span, E0552,
+                                              "unrecognized representation hint");
                                     None
                                 }
                             }
@@ -731,7 +755,8 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                         }
                     }
                     // Not a word:
-                    _ => diagnostic.span_err(item.span, "unrecognized enum representation hint")
+                    _ => span_err!(diagnostic, item.span, E0553,
+                                   "unrecognized enum representation hint"),
                 }
             }
         }

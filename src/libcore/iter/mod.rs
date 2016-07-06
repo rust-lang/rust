@@ -327,8 +327,9 @@ pub use self::sources::{Empty, empty};
 pub use self::sources::{Once, once};
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::traits::{FromIterator, IntoIterator, DoubleEndedIterator, Extend,
-                       ExactSizeIterator};
+pub use self::traits::{FromIterator, IntoIterator, DoubleEndedIterator, Extend};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::traits::{ExactSizeIterator, Sum, Product};
 
 mod iterator;
 mod range;

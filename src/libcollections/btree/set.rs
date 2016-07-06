@@ -551,7 +551,6 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(btree_append)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -575,8 +574,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert!(a.contains(&4));
     /// assert!(a.contains(&5));
     /// ```
-    #[unstable(feature = "btree_append", reason = "recently added as part of collections reform 2",
-               issue = "34152")]
+    #[stable(feature = "btree_append", since = "1.11.0")]
     pub fn append(&mut self, other: &mut Self) {
         self.map.append(&mut other.map);
     }
@@ -589,7 +587,6 @@ impl<T: Ord> BTreeSet<T> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(btree_split_off)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
@@ -611,9 +608,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(b[&17], "d");
     /// assert_eq!(b[&41], "e");
     /// ```
-    #[unstable(feature = "btree_split_off",
-               reason = "recently added as part of collections reform 2",
-               issue = "34152")]
+    #[stable(feature = "btree_split_off", since = "1.11.0")]
     pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self where T: Borrow<Q> {
         BTreeSet { map: self.map.split_off(key) }
     }

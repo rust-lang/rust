@@ -36,6 +36,7 @@ extern crate rustc_errors as errors;
 
 #[macro_use]
 extern crate rustc;
+extern crate rustc_data_structures;
 extern crate rustc_back;
 extern crate rustc_llvm;
 extern crate rustc_const_math;

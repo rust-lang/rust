@@ -30,12 +30,15 @@ const ARM_WHITELIST: &'static [&'static str] = &[
 const X86_WHITELIST: &'static [&'static str] = &[
     "avx\0",
     "avx2\0",
+    "bmi\0",
+    "bmi2\0",
     "sse\0",
     "sse2\0",
     "sse3\0",
     "sse4.1\0",
     "sse4.2\0",
     "ssse3\0",
+    "tbm\0",
 ];
 
 /// Add `target_feature = "..."` cfgs for a variety of platform

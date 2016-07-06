@@ -25,6 +25,11 @@ all:
 clean:
 	$(Q)$(BOOTSTRAP) --clean
 
+rustc-stage1:
+	$(Q)$(BOOTSTRAP) --step libtest --stage 1
+rustc-stage2:
+	$(Q)$(BOOTSTRAP) --step libtest --stage 2
+
 docs: doc
 doc:
 	$(Q)$(BOOTSTRAP) --step doc

@@ -49,6 +49,8 @@ pub fn llvm(build: &Build, target: &str) {
         return
     }
 
+    println!("Building LLVM for {}", target);
+
     let _ = fs::remove_dir_all(&dst.join("build"));
     t!(fs::create_dir_all(&dst.join("build")));
     let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
@@ -167,8 +169,10 @@ pub fn compiler_rt(build: &Build, target: &str) {
             "arm" if target.contains("eabihf") => "armhf",
             _ => arch,
         };
-        let target = format!("clang_rt.builtins-{}{}", builtins_arch, os_extra);
-        ("linux".to_string(), target.clone(), target)
+        let target = format!("clang_rt.builtins-{}", builtins_arch);
+        ("linux".to_string(),
+         target.clone(),
+         format!("{}{}", target, os_extra))
     } else if target.contains("apple-darwin") {
         let builtins_arch = match arch {
             "i686" => "i386",

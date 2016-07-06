@@ -521,14 +521,14 @@ against `libc` and `libm` by default.
 
 # The "nullable pointer optimization"
 
-Certain types are defined to not be `null`. This includes references (`&T`,
+Certain types are defined to not be NULL. This includes references (`&T`,
 `&mut T`), boxes (`Box<T>`), and function pointers (`extern "abi" fn()`).
-When interfacing with C, pointers that might be null are often used.
+When interfacing with C, pointers that might be NULL are often used.
 As a special case, a generic `enum` that contains exactly two variants, one of
 which contains no data and the other containing a single field, is eligible
 for the "nullable pointer optimization". When such an enum is instantiated
 with one of the non-nullable types, it is represented as a single pointer,
-and the non-data variant is represented as the null pointer. So
+and the non-data variant is represented as the NULL pointer. So
 `Option<extern "C" fn(c_int) -> c_int>` is how one represents a nullable
 function pointer using the C ABI.
 

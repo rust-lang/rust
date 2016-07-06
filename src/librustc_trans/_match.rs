@@ -1706,17 +1706,13 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             //
             // In such cases, the more general path is unsafe, because
             // it assumes it is matching against a valid value.
-            match simple_name(pat) {
-                Some(name) => {
-                    let var_scope = cleanup::var_scope(tcx, local.id);
-                    return mk_binding_alloca(
-                        bcx, pat.id, name, var_scope, (),
-                        "_match::store_local",
-                        |(), bcx, Datum { val: v, .. }| expr::trans_into(bcx, &init_expr,
-                                                                         expr::SaveIn(v)));
-                }
-
-                None => {}
+            if let Some(name) = simple_name(pat) {
+                let var_scope = cleanup::var_scope(tcx, local.id);
+                return mk_binding_alloca(
+                    bcx, pat.id, name, var_scope, (),
+                    "_match::store_local",
+                    |(), bcx, Datum { val: v, .. }| expr::trans_into(bcx, &init_expr,
+                                                                     expr::SaveIn(v)));
             }
 
             // General path.

@@ -1351,6 +1351,7 @@ fn my_visit_expr(expr: &hir::Expr,
 
             rbml_w.start_tag(tag_items_data_item);
             encode_def_id_and_key(ecx, rbml_w, def_id);
+            encode_name(rbml_w, syntax::parse::token::intern("<closure>"));
 
             rbml_w.start_tag(tag_items_closure_ty);
             write_closure_type(ecx, rbml_w, &ecx.tcx.tables.borrow().closure_tys[&def_id]);
@@ -1505,7 +1506,7 @@ fn encode_polarity(rbml_w: &mut Encoder, polarity: hir::ImplPolarity) {
 
 fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {
     fn get_ordered_deps(cstore: &cstore::CStore)
-                        -> Vec<(CrateNum, Rc<cstore::crate_metadata>)> {
+                        -> Vec<(CrateNum, Rc<cstore::CrateMetadata>)> {
         // Pull the cnums and name,vers,hash out of cstore
         let mut deps = Vec::new();
         cstore.iter_crate_data(|cnum, val| {
@@ -1736,7 +1737,7 @@ fn encode_reachable(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 }
 
 fn encode_crate_dep(rbml_w: &mut Encoder,
-                    dep: &cstore::crate_metadata) {
+                    dep: &cstore::CrateMetadata) {
     rbml_w.start_tag(tag_crate_dep);
     rbml_w.wr_tagged_str(tag_crate_dep_crate_name, &dep.name());
     let hash = decoder::get_crate_hash(dep.data());
@@ -1798,10 +1799,6 @@ fn encode_panic_strategy(rbml_w: &mut Encoder, ecx: &EncodeContext) {
     }
 }
 
-// NB: Increment this as you change the metadata encoding version.
-#[allow(non_upper_case_globals)]
-pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 2 ];
-
 pub fn encode_metadata(ecx: EncodeContext, krate: &hir::Crate) -> Vec<u8> {
     let mut wr = Cursor::new(Vec::new());
 
@@ -1835,12 +1832,25 @@ pub fn encode_metadata(ecx: EncodeContext, krate: &hir::Crate) -> Vec<u8> {
     // the length of the metadata to the start of the metadata. Later on this
     // will allow us to slice the metadata to the precise length that we just
     // generated regardless of trailing bytes that end up in it.
-    let len = v.len() as u32;
-    v.insert(0, (len >>  0) as u8);
-    v.insert(0, (len >>  8) as u8);
-    v.insert(0, (len >> 16) as u8);
-    v.insert(0, (len >> 24) as u8);
-    return v;
+    //
+    // We also need to store the metadata encoding version here, because
+    // rlibs don't have it. To get older versions of rustc to ignore
+    // this metadata, there are 4 zero bytes at the start, which are
+    // treated as a length of 0 by old compilers.
+
+    let len = v.len();
+    let mut result = vec![];
+    result.push(0);
+    result.push(0);
+    result.push(0);
+    result.push(0);
+    result.extend(metadata_encoding_version.iter().cloned());
+    result.push((len >> 24) as u8);
+    result.push((len >> 16) as u8);
+    result.push((len >>  8) as u8);
+    result.push((len >>  0) as u8);
+    result.extend(v);
+    result
 }
 
 fn encode_metadata_inner(rbml_w: &mut Encoder,

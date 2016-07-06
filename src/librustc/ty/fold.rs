@@ -521,9 +521,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.0 }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                match self.tcx().normalized_cache.borrow().get(&ty).cloned() {
-                    None => {}
-                    Some(u) => return u
+                if let Some(u) = self.tcx().normalized_cache.borrow().get(&ty).cloned() {
+                    return u;
                 }
 
                 // FIXME(eddyb) should local contexts have a cache too?
@@ -714,4 +713,3 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         false
     }
 }
-

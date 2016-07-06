@@ -131,9 +131,8 @@ impl fmt::Display for clean::Generics {
                     write!(f, ":&nbsp;{}", TyParamBounds(&tp.bounds))?;
                 }
 
-                match tp.default {
-                    Some(ref ty) => { write!(f, "&nbsp;=&nbsp;{}", ty)?; },
-                    None => {}
+                if let Some(ref ty) = tp.default {
+                    write!(f, "&nbsp;=&nbsp;{}", ty)?;
                 };
             }
         }
@@ -401,15 +400,12 @@ fn primitive_link(f: &mut fmt::Formatter,
                 }
                 (_, render::Unknown) => None,
             };
-            match loc {
-                Some(root) => {
-                    write!(f, "<a class='primitive' href='{}{}/primitive.{}.html'>",
-                           root,
-                           path.0.first().unwrap(),
-                           prim.to_url_str())?;
-                    needs_termination = true;
-                }
-                None => {}
+            if let Some(root) = loc {
+                write!(f, "<a class='primitive' href='{}{}/primitive.{}.html'>",
+                       root,
+                       path.0.first().unwrap(),
+                       prim.to_url_str())?;
+                needs_termination = true;
             }
         }
         None => {}

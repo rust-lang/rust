@@ -64,9 +64,9 @@ pub struct ty_abbrev {
 pub type abbrev_map<'tcx> = RefCell<FnvHashMap<Ty<'tcx>, ty_abbrev>>;
 
 pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
-    match cx.abbrevs.borrow_mut().get(&t) {
-        Some(a) => { w.write_all(&a.s); return; }
-        None => {}
+    if let Some(a) = cx.abbrevs.borrow_mut().get(&t) {
+        w.write_all(&a.s);
+        return;
     }
 
     let pos = w.position();

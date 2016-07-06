@@ -334,13 +334,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         };
 
         //NB(jroesch): We need to match twice to avoid a double borrow which would cause an ICE
-        match new_method {
-            Some(method) => {
-                self.tcx().tables.borrow_mut().method_map.insert(
-                    method_call,
-                    method);
-            }
-            None => {}
+        if let Some(method) = new_method {
+            self.tcx().tables.borrow_mut().method_map.insert(method_call, method);
         }
     }
 

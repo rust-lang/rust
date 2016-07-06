@@ -127,6 +127,9 @@ pub enum ObligationCauseCode<'tcx> {
     // Types of fields (other than the last) in a struct must be sized.
     FieldSized,
 
+    // Constant expressions must be sized.
+    ConstSized,
+
     // static items must have `Sync` type
     SharedStatic,
 

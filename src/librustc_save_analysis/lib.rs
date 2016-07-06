@@ -299,12 +299,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             let mut result = String::from("<");
                             result.push_str(&rustc::hir::print::ty_to_string(&ty));
 
-                            match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
-                                Some(def_id) => {
-                                    result.push_str(" as ");
-                                    result.push_str(&self.tcx.item_path_str(def_id));
-                                }
-                                None => {}
+                            if let Some(def_id) = self.tcx
+                                    .trait_of_item(self.tcx.map.local_def_id(id)) {
+                                result.push_str(" as ");
+                                result.push_str(&self.tcx.item_path_str(def_id));
                             }
                             result.push_str(">");
                             result
