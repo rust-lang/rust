@@ -769,7 +769,11 @@ fn expand_annotatable(mut item: Annotatable, fld: &mut MacroExpander) -> SmallVe
             };
 
             fld.cx.bt_pop();
-            modified.into_iter().flat_map(|it| expand_annotatable(it, fld)).collect()
+            let configured = modified.into_iter().flat_map(|it| {
+                it.fold_with(&mut fld.strip_unconfigured())
+            }).collect::<SmallVector<_>>();
+
+            configured.into_iter().flat_map(|it| expand_annotatable(it, fld)).collect()
         }
     }
 }
