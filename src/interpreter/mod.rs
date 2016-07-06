@@ -520,12 +520,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Repeat(ref operand, _) => {
-                let (elem_size, length) = match dest_ty.sty {
-                    ty::TyArray(elem_ty, n) => (self.type_size(elem_ty), n),
+                let (elem_size, elem_align, length) = match dest_ty.sty {
+                    ty::TyArray(elem_ty, n) => (self.type_size(elem_ty), self.type_align(elem_ty), n),
                     _ => panic!("tried to assign array-repeat to non-array type {:?}", dest_ty),
                 };
 
                 let src = self.eval_operand(operand)?;
+                src.check_align(elem_align)?;
+                dest.check_align(elem_align)?;
                 for i in 0..length {
                     let elem_dest = dest.offset((i * elem_size) as isize);
                     self.memory.copy(src, elem_dest, elem_size)?;
@@ -592,6 +594,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
                         // FIXME(solson): Wrong for almost everything.
+                        // FIXME: check alignment
                         warn!("misc cast from {:?} to {:?}", src_ty, dest_ty);
                         let dest_size = self.type_size(dest_ty);
                         let src_size = self.type_size(src_ty);
@@ -845,6 +848,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
         let size = self.type_size(ty);
+        let align = self.type_align(ty);
+        src.check_align(align)?;
+        dest.check_align(align)?;
         self.memory.copy(src, dest, size)?;
         Ok(())
     }

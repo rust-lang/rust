@@ -463,6 +463,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn read_bool(&self, ptr: Pointer) -> EvalResult<'tcx, bool> {
+        ptr.check_align(self.layout.i1_align.abi() as usize)?;
         let bytes = self.get_bytes(ptr, 1)?;
         match bytes[0] {
             0 => Ok(false),
@@ -472,14 +473,27 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn write_bool(&mut self, ptr: Pointer, b: bool) -> EvalResult<'tcx, ()> {
+        ptr.check_align(self.layout.i1_align.abi() as usize)?;
         self.get_bytes_mut(ptr, 1).map(|bytes| bytes[0] = b as u8)
     }
 
+    fn check_int_align(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, ()> {
+        match size {
+            1 => ptr.check_align(self.layout.i8_align.abi() as usize),
+            2 => ptr.check_align(self.layout.i16_align.abi() as usize),
+            4 => ptr.check_align(self.layout.i32_align.abi() as usize),
+            8 => ptr.check_align(self.layout.i64_align.abi() as usize),
+            _ => panic!("bad integer size"),
+        }
+    }
+
     pub fn read_int(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, i64> {
+        self.check_int_align(ptr, size)?;
         self.get_bytes(ptr, size).map(|b| read_target_int(self.endianess(), b).unwrap())
     }
 
     pub fn write_int(&mut self, ptr: Pointer, n: i64, size: usize) -> EvalResult<'tcx, ()> {
+        self.check_int_align(ptr, size)?;
         let endianess = self.endianess();
         let b = self.get_bytes_mut(ptr, size)?;
         write_target_int(endianess, b, n).unwrap();
@@ -487,10 +501,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn read_uint(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, u64> {
+        self.check_int_align(ptr, size)?;
         self.get_bytes(ptr, size).map(|b| read_target_uint(self.endianess(), b).unwrap())
     }
 
     pub fn write_uint(&mut self, ptr: Pointer, n: u64, size: usize) -> EvalResult<'tcx, ()> {
+        self.check_int_align(ptr, size)?;
         let endianess = self.endianess();
         let b = self.get_bytes_mut(ptr, size)?;
         write_target_uint(endianess, b, n).unwrap();

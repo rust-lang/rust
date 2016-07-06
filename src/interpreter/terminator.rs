@@ -289,8 +289,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "copy_nonoverlapping" => {
                 let elem_ty = *substs.types.get(subst::FnSpace, 0);
                 let elem_size = self.type_size(elem_ty);
+                let elem_align = self.type_align(elem_ty);
                 let src = self.memory.read_ptr(args_ptrs[0])?;
+                src.check_align(elem_align)?;
                 let dest = self.memory.read_ptr(args_ptrs[1])?;
+                dest.check_align(elem_align)?;
                 let count = self.memory.read_isize(args_ptrs[2])?;
                 self.memory.copy(src, dest, count as usize * elem_size)?;
             }
@@ -307,8 +310,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "init" => self.memory.write_repeat(dest, 0, dest_layout.size(&self.tcx.data_layout).bytes() as usize)?,
 
             "min_align_of" => {
-                // FIXME: use correct value
-                self.memory.write_int(dest, 1, pointer_size)?;
+                let elem_ty = *substs.types.get(subst::FnSpace, 0);
+                let elem_align = self.type_align(elem_ty);
+                self.memory.write_uint(dest, elem_align as u64, pointer_size)?;
             }
 
             "move_val_init" => {
