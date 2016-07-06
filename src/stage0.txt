@@ -14,4 +14,4 @@
 
 rustc: 1.10.0-2016-07-05
 rustc_key: e8edd0fd
-cargo: nightly-2016-07-05
+cargo: nightly-2016-05-22
