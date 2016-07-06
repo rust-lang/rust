@@ -95,8 +95,6 @@ Everything should have examples. Here is an example of how to do examples:
 ```
 /// # Examples
 ///
-/// Basic usage:
-///
 /// ```
 /// use op;
 ///
@@ -113,9 +111,6 @@ Everything should have examples. Here is an example of how to do examples:
 /// let answer = op::compare(s, |a| a.chars().is_whitespace().all());
 /// ```
 ```
-
-For particularly simple APIs, still say “Examples” and “Basic usage:” for
-consistency’s sake.
 
 ### Referring to types
 [referring-to-types]: #referring-to-types
@@ -209,8 +204,6 @@ pub mod option;
 ///
 /// # Examples
 ///
-/// Basic usage:
-///
 /// ```
 /// extern crate ref_slice;
 /// use ref_slice::ref_slice;
@@ -255,8 +248,6 @@ mod mut {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// extern crate ref_slice;
     /// use ref_slice::mut;
@@ -290,8 +281,6 @@ in `option.rs`:
 /// This will not copy the data, only create the new slice.
 ///
 /// # Examples
-///
-/// Basic usage:
 ///
 /// ```
 /// extern crate ref_slice;
@@ -502,8 +491,6 @@ Everything should have examples. Here is an example of how to do examples:
 ```
 /// # Examples
 ///
-/// Basic usage:
-///
 /// ```
 /// use op;
 ///
@@ -520,9 +507,6 @@ Everything should have examples. Here is an example of how to do examples:
 /// let answer = op::compare(s, |a| a.chars().is_whitespace().all());
 /// ```
 ```
-
-For particularly simple APIs, still say “Examples” and “Basic usage:” for
-consistency’s sake.
 
 ### Referring to types
 [referring-to-types]: #referring-to-types
@@ -616,8 +600,6 @@ pub mod option;
 ///
 /// # Examples
 ///
-/// Basic usage:
-///
 /// ```
 /// extern crate ref_slice;
 /// use ref_slice::ref_slice;
@@ -662,8 +644,6 @@ mod mut {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// extern crate ref_slice;
     /// use ref_slice::mut;
@@ -697,8 +677,6 @@ in `option.rs`:
 /// This will not copy the data, only create the new slice.
 ///
 /// # Examples
-///
-/// Basic usage:
 ///
 /// ```
 /// extern crate ref_slice;
