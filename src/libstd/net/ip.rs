@@ -61,7 +61,8 @@ pub enum Ipv6MulticastScope {
 
 impl IpAddr {
     /// Returns true for the special 'unspecified' address (0.0.0.0 in IPv4, :: in IPv6).
-    #[unstable(feature="ipaddr_common", reason="recently added and depends on unstable Ipv4Addr.is_unspecified()", issue="27709")]
+    #[unstable(feature="ip", issue="27709",
+               reason="recently added and depends on unstable Ipv4Addr.is_unspecified()")]
     pub fn is_unspecified(&self) -> bool {
         match *self {
             IpAddr::V4(ref a) => a.is_unspecified(),
@@ -70,7 +71,7 @@ impl IpAddr {
     }
 
     /// Returns true if this is a loopback address (127.0.0.0/8 in IPv4, ::1 in IPv6).
-    #[unstable(feature="ipaddr_common", reason="recently added", issue="27709")]
+    #[unstable(feature="ip", reason="recently added", issue="27709")]
     pub fn is_loopback(&self) -> bool {
         match *self {
             IpAddr::V4(ref a) => a.is_loopback(),
@@ -79,7 +80,8 @@ impl IpAddr {
     }
 
     /// Returns true if the address appears to be globally routable.
-    #[unstable(feature="ipaddr_common", reason="recently added and depends on unstable Ipv4Addr.is_global() and Ipv6Addr.is_global()", issue="27709")]
+    #[unstable(feature="ip", issue="27709",
+               reason="recently added and depends on unstable Ip{v4,v6}Addr.is_global()")]
     pub fn is_global(&self) -> bool {
         match *self {
             IpAddr::V4(ref a) => a.is_global(),
@@ -88,7 +90,7 @@ impl IpAddr {
     }
 
     /// Returns true if this is a multicast address (224.0.0.0/4 in IPv4, ff00::/8 in IPv6)
-    #[unstable(feature="ipaddr_common", reason="recently added", issue="27709")]
+    #[unstable(feature="ip", reason="recently added", issue="27709")]
     pub fn is_multicast(&self) -> bool {
         match *self {
             IpAddr::V4(ref a) => a.is_multicast(),
@@ -97,7 +99,8 @@ impl IpAddr {
     }
 
     /// Returns true if this address is in a range designated for documentation.
-    #[unstable(feature="ipaddr_common", reason="recently added and depends on unstable Ipv6Addr.is_documentation()", issue="27709")]
+    #[unstable(feature="ip", issue="27709",
+               reason="recently added and depends on unstable Ipv6Addr.is_documentation()")]
     pub fn is_documentation(&self) -> bool {
         match *self {
             IpAddr::V4(ref a) => a.is_documentation(),
