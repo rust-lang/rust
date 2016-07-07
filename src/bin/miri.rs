@@ -4,7 +4,6 @@ extern crate getopts;
 extern crate miri;
 extern crate rustc;
 extern crate rustc_driver;
-extern crate rustc_plugin;
 extern crate env_logger;
 extern crate log_settings;
 extern crate syntax;
