@@ -42,6 +42,9 @@ pub struct EvalContext<'a, 'tcx: 'a> {
 
     /// The virtual call stack.
     stack: Vec<Frame<'a, 'tcx>>,
+
+    /// The maximum number of stack frames allowed
+    stack_limit: usize,
 }
 
 /// A stack frame.
@@ -133,24 +136,25 @@ enum ConstantKind {
 }
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>, memory_size: usize, stack_limit: usize) -> Self {
         EvalContext {
             tcx: tcx,
             mir_map: mir_map,
             mir_cache: RefCell::new(DefIdMap()),
-            memory: Memory::new(&tcx.data_layout),
+            memory: Memory::new(&tcx.data_layout, memory_size),
             statics: HashMap::new(),
             stack: Vec::new(),
+            stack_limit: stack_limit,
         }
     }
 
-    pub fn alloc_ret_ptr(&mut self, output_ty: ty::FnOutput<'tcx>, substs: &'tcx Substs<'tcx>) -> Option<Pointer> {
+    pub fn alloc_ret_ptr(&mut self, output_ty: ty::FnOutput<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, Option<Pointer>> {
         match output_ty {
             ty::FnConverging(ty) => {
                 let size = self.type_size_with_substs(ty, substs);
-                Some(self.memory.allocate(size))
+                self.memory.allocate(size).map(Some)
             }
-            ty::FnDiverging => None,
+            ty::FnDiverging => Ok(None),
         }
     }
 
@@ -172,19 +176,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc_const_math::{ConstInt, ConstIsize, ConstUsize, ConstFloat};
         macro_rules! i2p {
             ($i:ident, $n:expr) => {{
-                let ptr = self.memory.allocate($n);
+                let ptr = self.memory.allocate($n)?;
                 self.memory.write_int(ptr, $i as i64, $n)?;
                 Ok(ptr)
             }}
         }
         match *const_val {
             Float(ConstFloat::F32(f)) => {
-                let ptr = self.memory.allocate(4);
+                let ptr = self.memory.allocate(4)?;
                 self.memory.write_f32(ptr, f)?;
                 Ok(ptr)
             },
             Float(ConstFloat::F64(f)) => {
-                let ptr = self.memory.allocate(8);
+                let ptr = self.memory.allocate(8)?;
                 self.memory.write_f64(ptr, f)?;
                 Ok(ptr)
             },
@@ -207,8 +211,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Integral(ConstInt::Usize(ConstUsize::Us64(i))) => i2p!(i, 8),
             Str(ref s) => {
                 let psize = self.memory.pointer_size();
-                let static_ptr = self.memory.allocate(s.len());
-                let ptr = self.memory.allocate(psize * 2);
+                let static_ptr = self.memory.allocate(s.len())?;
+                let ptr = self.memory.allocate(psize * 2)?;
                 self.memory.write_bytes(static_ptr, s.as_bytes())?;
                 self.memory.write_ptr(ptr, static_ptr)?;
                 self.memory.write_usize(ptr.offset(psize as isize), s.len() as u64)?;
@@ -216,19 +220,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
             ByteStr(ref bs) => {
                 let psize = self.memory.pointer_size();
-                let static_ptr = self.memory.allocate(bs.len());
-                let ptr = self.memory.allocate(psize);
+                let static_ptr = self.memory.allocate(bs.len())?;
+                let ptr = self.memory.allocate(psize)?;
                 self.memory.write_bytes(static_ptr, bs)?;
                 self.memory.write_ptr(ptr, static_ptr)?;
                 Ok(ptr)
             }
             Bool(b) => {
-                let ptr = self.memory.allocate(1);
+                let ptr = self.memory.allocate(1)?;
                 self.memory.write_bool(ptr, b)?;
                 Ok(ptr)
             }
             Char(c) => {
-                let ptr = self.memory.allocate(4);
+                let ptr = self.memory.allocate(4)?;
                 self.memory.write_uint(ptr, c as u64, 4)?;
                 Ok(ptr)
             },
@@ -292,9 +296,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         })
     }
 
-    pub fn push_stack_frame(&mut self, def_id: DefId, span: codemap::Span, mir: CachedMir<'a, 'tcx>, substs: &'tcx Substs<'tcx>,
-        return_ptr: Option<Pointer>)
-    {
+    pub fn push_stack_frame(
+        &mut self,
+        def_id: DefId,
+        span: codemap::Span,
+        mir: CachedMir<'a, 'tcx>,
+        substs: &'tcx Substs<'tcx>,
+        return_ptr: Option<Pointer>,
+    ) -> EvalResult<'tcx, ()> {
         let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
         let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
@@ -304,7 +313,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         ::log_settings::settings().indentation += 1;
 
-        let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
+        let locals: EvalResult<'tcx, Vec<Pointer>> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
             let size = self.type_size_with_substs(ty, substs);
             self.memory.allocate(size)
         }).collect();
@@ -313,7 +322,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             mir: mir.clone(),
             block: mir::START_BLOCK,
             return_ptr: return_ptr,
-            locals: locals,
+            locals: locals?,
             var_offset: num_args,
             temp_offset: num_args + num_vars,
             span: span,
@@ -321,6 +330,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             substs: substs,
             stmt: 0,
         });
+        if self.stack.len() > self.stack_limit {
+            Err(EvalError::StackFrameLimitReached)
+        } else {
+            Ok(())
+        }
     }
 
     fn pop_stack_frame(&mut self) {
@@ -548,7 +562,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Box(ty) => {
                 let size = self.type_size(ty);
-                let ptr = self.memory.allocate(size);
+                let ptr = self.memory.allocate(size)?;
                 self.memory.write_ptr(dest, ptr)?;
             }
 
@@ -696,7 +710,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Item { def_id, substs } => {
                         if let ty::TyFnDef(..) = ty.sty {
                             // function items are zero sized
-                            Ok(self.memory.allocate(0))
+                            Ok(self.memory.allocate(0)?)
                         } else {
                             let cid = ConstantId {
                                 def_id: def_id,
@@ -935,37 +949,44 @@ pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir_map: &'a MirMap<'tcx>,
     node_id: ast::NodeId,
+    memory_size: usize,
+    step_limit: u64,
+    stack_limit: usize,
 ) {
     let mir = mir_map.map.get(&node_id).expect("no mir for main function");
     let def_id = tcx.map.local_def_id(node_id);
-    let mut ecx = EvalContext::new(tcx, mir_map);
+    let mut ecx = EvalContext::new(tcx, mir_map, memory_size, stack_limit);
     let substs = tcx.mk_substs(subst::Substs::empty());
-    let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs).expect("main function should not be diverging");
+    let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs)
+                        .expect("should at least be able to allocate space for the main function's return value")
+                        .expect("main function should not be diverging");
 
-    ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, Some(return_ptr));
+    ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, Some(return_ptr))
+       .expect("could not allocate first stack frame");
 
     if mir.arg_decls.len() == 2 {
         // start function
         let ptr_size = ecx.memory().pointer_size();
-        let nargs = ecx.memory_mut().allocate(ptr_size);
+        let nargs = ecx.memory_mut().allocate(ptr_size).expect("can't allocate memory for nargs");
         ecx.memory_mut().write_usize(nargs, 0).unwrap();
-        let args = ecx.memory_mut().allocate(ptr_size);
+        let args = ecx.memory_mut().allocate(ptr_size).expect("can't allocate memory for arg pointer");
         ecx.memory_mut().write_usize(args, 0).unwrap();
         ecx.frame_mut().locals[0] = nargs;
         ecx.frame_mut().locals[1] = args;
     }
 
-    loop {
+    for _ in 0..step_limit {
         match ecx.step() {
             Ok(true) => {}
-            Ok(false) => break,
+            Ok(false) => return,
             // FIXME: diverging functions can end up here in some future miri
             Err(e) => {
                 report(tcx, &ecx, e);
-                break;
+                return;
             }
         }
     }
+    report(tcx, &ecx, EvalError::ExecutionTimeLimitReached);
 }
 
 fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {

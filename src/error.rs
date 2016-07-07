@@ -29,6 +29,13 @@ pub enum EvalError<'tcx> {
     ArrayIndexOutOfBounds(Span, u64, u64),
     Math(Span, ConstMathErr),
     InvalidChar(u32),
+    OutOfMemory {
+        allocation_size: usize,
+        memory_size: usize,
+        memory_usage: usize,
+    },
+    ExecutionTimeLimitReached,
+    StackFrameLimitReached,
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -69,6 +76,12 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "mathematical operation failed",
             EvalError::InvalidChar(..) =>
                 "tried to interpret an invalid 32-bit value as a char",
+            EvalError::OutOfMemory{..} =>
+                "could not allocate more memory",
+            EvalError::ExecutionTimeLimitReached =>
+                "reached the configured maximum execution time",
+            EvalError::StackFrameLimitReached =>
+                "reached the configured maximum number of stack frames",
         }
     }
 
@@ -90,6 +103,9 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "{:?} at {:?}", err, span),
             EvalError::InvalidChar(c) =>
                 write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
+            EvalError::OutOfMemory { allocation_size, memory_size, memory_usage } =>
+                write!(f, "tried to allocate {} more bytes, but only {} bytes are free of the {} byte memory",
+                       allocation_size, memory_size - memory_usage, memory_size),
             _ => write!(f, "{}", self.description()),
         }
     }

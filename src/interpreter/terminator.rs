@@ -212,7 +212,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
 
                 let mir = self.load_mir(resolved_def_id);
-                self.push_stack_frame(def_id, span, mir, resolved_substs, return_ptr);
+                self.push_stack_frame(def_id, span, mir, resolved_substs, return_ptr)?;
 
                 for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
                     let dest = self.frame().locals[i];
@@ -416,7 +416,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match &link_name[..] {
             "__rust_allocate" => {
                 let size = self.memory.read_usize(args[0])?;
-                let ptr = self.memory.allocate(size as usize);
+                let ptr = self.memory.allocate(size as usize)?;
                 self.memory.write_ptr(dest, ptr)?;
             }
 
