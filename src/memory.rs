@@ -426,6 +426,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             PrimVal::U64(n)  => self.write_uint(ptr, n as u64, 8),
             PrimVal::Char(c) => self.write_uint(ptr, c as u64, 4),
             PrimVal::IntegerPtr(n) => self.write_uint(ptr, n as u64, pointer_size),
+            PrimVal::F32(f) => self.write_f32(ptr, f),
+            PrimVal::F64(f) => self.write_f64(ptr, f),
             PrimVal::FnPtr(_p) |
             PrimVal::AbstractPtr(_p) => unimplemented!(),
         }
@@ -482,6 +484,28 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn write_usize(&mut self, ptr: Pointer, n: u64) -> EvalResult<'tcx, ()> {
         let size = self.pointer_size();
         self.write_uint(ptr, n, size)
+    }
+
+    pub fn write_f32(&mut self, ptr: Pointer, f: f32) -> EvalResult<'tcx, ()> {
+        let endianess = self.endianess();
+        let b = self.get_bytes_mut(ptr, 4)?;
+        write_target_f32(endianess, b, f).unwrap();
+        Ok(())
+    }
+
+    pub fn write_f64(&mut self, ptr: Pointer, f: f64) -> EvalResult<'tcx, ()> {
+        let endianess = self.endianess();
+        let b = self.get_bytes_mut(ptr, 8)?;
+        write_target_f64(endianess, b, f).unwrap();
+        Ok(())
+    }
+
+    pub fn read_f32(&self, ptr: Pointer) -> EvalResult<'tcx, f32> {
+        self.get_bytes(ptr, 4).map(|b| read_target_f32(self.endianess(), b).unwrap())
+    }
+
+    pub fn read_f64(&self, ptr: Pointer) -> EvalResult<'tcx, f64> {
+        self.get_bytes(ptr, 8).map(|b| read_target_f64(self.endianess(), b).unwrap())
     }
 }
 
@@ -602,6 +626,36 @@ fn read_target_int(endianess: layout::Endian, mut source: &[u8]) -> Result<i64, 
     match endianess {
         layout::Endian::Little => source.read_int::<LittleEndian>(source.len()),
         layout::Endian::Big => source.read_int::<BigEndian>(source.len()),
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Methods to access floats in the target endianess
+////////////////////////////////////////////////////////////////////////////////
+
+fn write_target_f32(endianess: layout::Endian, mut target: &mut [u8], data: f32) -> Result<(), byteorder::Error> {
+    match endianess {
+        layout::Endian::Little => target.write_f32::<LittleEndian>(data),
+        layout::Endian::Big => target.write_f32::<BigEndian>(data),
+    }
+}
+fn write_target_f64(endianess: layout::Endian, mut target: &mut [u8], data: f64) -> Result<(), byteorder::Error> {
+    match endianess {
+        layout::Endian::Little => target.write_f64::<LittleEndian>(data),
+        layout::Endian::Big => target.write_f64::<BigEndian>(data),
+    }
+}
+
+fn read_target_f32(endianess: layout::Endian, mut source: &[u8]) -> Result<f32, byteorder::Error> {
+    match endianess {
+        layout::Endian::Little => source.read_f32::<LittleEndian>(),
+        layout::Endian::Big => source.read_f32::<BigEndian>(),
+    }
+}
+fn read_target_f64(endianess: layout::Endian, mut source: &[u8]) -> Result<f64, byteorder::Error> {
+    match endianess {
+        layout::Endian::Little => source.read_f64::<LittleEndian>(),
+        layout::Endian::Big => source.read_f64::<BigEndian>(),
     }
 }
 
