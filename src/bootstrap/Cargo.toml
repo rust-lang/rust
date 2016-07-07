@@ -9,15 +9,15 @@ path = "lib.rs"
 
 [[bin]]
 name = "bootstrap"
-path = "main.rs"
+path = "bin/main.rs"
 
 [[bin]]
 name = "rustc"
-path = "rustc.rs"
+path = "bin/rustc.rs"
 
 [[bin]]
 name = "rustdoc"
-path = "rustdoc.rs"
+path = "bin/rustdoc.rs"
 
 [dependencies]
 build_helper = { path = "../build_helper" }
