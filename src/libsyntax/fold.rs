@@ -28,6 +28,8 @@ use tokenstream::*;
 use util::small_vector::SmallVector;
 use util::move_map::MoveMap;
 
+use std::rc::Rc;
+
 pub trait Folder : Sized {
     // Any additions to this trait should happen in form
     // of a call to a public `noop_*` function that only calls
@@ -222,11 +224,11 @@ pub trait Folder : Sized {
         noop_fold_ty_params(tps, self)
     }
 
-    fn fold_tt(&mut self, tt: TokenTree) -> TokenTree {
+    fn fold_tt(&mut self, tt: &TokenTree) -> TokenTree {
         noop_fold_tt(tt, self)
     }
 
-    fn fold_tts(&mut self, tts: Vec<TokenTree>) -> Vec<TokenTree> {
+    fn fold_tts(&mut self, tts: &[TokenTree]) -> Vec<TokenTree> {
         noop_fold_tts(tts, self)
     }
 
@@ -501,7 +503,7 @@ pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
     Spanned {
         node: Mac_ {
             path: fld.fold_path(node.path),
-            tts: fld.fold_tts(node.tts),
+            tts: fld.fold_tts(&node.tts),
         },
         span: fld.new_span(span)
     }
@@ -528,26 +530,32 @@ pub fn noop_fold_arg<T: Folder>(Arg {id, pat, ty}: Arg, fld: &mut T) -> Arg {
     }
 }
 
-pub fn noop_fold_tt<T: Folder>(tt: TokenTree, fld: &mut T) -> TokenTree {
-    match tt {
+pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
+    match *tt {
         TokenTree::Token(span, ref tok) =>
             TokenTree::Token(span, fld.fold_token(tok.clone())),
-        TokenTree::Delimited(span, delimed) => TokenTree::Delimited(span, Delimited {
-            delim: delimed.delim,
-            open_span: delimed.open_span,
-            tts: fld.fold_tts(delimed.tts),
-            close_span: delimed.close_span,
-        }),
-        TokenTree::Sequence(span, seq) => TokenTree::Sequence(span, SequenceRepetition {
-            tts: fld.fold_tts(seq.tts),
-            separator: seq.separator.clone().map(|tok| fld.fold_token(tok)),
-            ..seq
-        }),
+        TokenTree::Delimited(span, ref delimed) => {
+            TokenTree::Delimited(span, Rc::new(
+                            Delimited {
+                                delim: delimed.delim,
+                                open_span: delimed.open_span,
+                                tts: fld.fold_tts(&delimed.tts),
+                                close_span: delimed.close_span,
+                            }
+                        ))
+        },
+        TokenTree::Sequence(span, ref seq) =>
+            TokenTree::Sequence(span,
+                       Rc::new(SequenceRepetition {
+                           tts: fld.fold_tts(&seq.tts),
+                           separator: seq.separator.clone().map(|tok| fld.fold_token(tok)),
+                           ..**seq
+                       })),
     }
 }
 
-pub fn noop_fold_tts<T: Folder>(tts: Vec<TokenTree>, fld: &mut T) -> Vec<TokenTree> {
-    tts.move_map(|tt| fld.fold_tt(tt))
+pub fn noop_fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
+    tts.iter().map(|tt| fld.fold_tt(tt)).collect()
 }
 
 // apply ident folder if it's an ident, apply other folds to interpolated nodes
@@ -605,7 +613,7 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
             token::NtIdent(Box::new(Spanned::<Ident>{node: fld.fold_ident(id.node), ..*id})),
         token::NtMeta(meta_item) => token::NtMeta(fld.fold_meta_item(meta_item)),
         token::NtPath(path) => token::NtPath(Box::new(fld.fold_path(*path))),
-        token::NtTT(tt) => token::NtTT(tt.map(|tt| fld.fold_tt(tt))),
+        token::NtTT(tt) => token::NtTT(P(fld.fold_tt(&tt))),
         token::NtArm(arm) => token::NtArm(fld.fold_arm(arm)),
         token::NtImplItem(arm) =>
             token::NtImplItem(arm.map(|arm| fld.fold_impl_item(arm)

@@ -2688,12 +2688,13 @@ impl<'a> Parser<'a> {
                     )?;
                     let (sep, repeat) = self.parse_sep_and_kleene_op()?;
                     let name_num = macro_parser::count_names(&seq);
-                    return Ok(TokenTree::Sequence(mk_sp(sp.lo, seq_span.hi), SequenceRepetition {
-                        tts: seq,
-                        separator: sep,
-                        op: repeat,
-                        num_captures: name_num
-                    }));
+                    return Ok(TokenTree::Sequence(mk_sp(sp.lo, seq_span.hi),
+                                      Rc::new(SequenceRepetition {
+                                          tts: seq,
+                                          separator: sep,
+                                          op: repeat,
+                                          num_captures: name_num
+                                      })));
                 } else if self.token.is_keyword(keywords::Crate) {
                     self.bump();
                     return Ok(TokenTree::Token(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar)));
@@ -2848,12 +2849,12 @@ impl<'a> Parser<'a> {
                     _ => {}
                 }
 
-                Ok(TokenTree::Delimited(span, Delimited {
+                Ok(TokenTree::Delimited(span, Rc::new(Delimited {
                     delim: delim,
                     open_span: open_span,
                     tts: tts,
                     close_span: close_span,
-                }))
+                })))
             },
             _ => {
                 // invariants: the current token is not a left-delimiter,
