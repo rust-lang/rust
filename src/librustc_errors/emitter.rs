@@ -25,47 +25,29 @@ use std::io;
 use std::rc::Rc;
 use term;
 
-/// Emitter trait for emitting errors. Do not implement this directly:
-/// implement `CoreEmitter` instead.
+/// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
     fn emit(&mut self, db: &DiagnosticBuilder);
 }
 
-pub trait CoreEmitter {
-    fn emit_message(&mut self,
-                    rsp: &RenderSpan,
-                    msg: &str,
-                    code: Option<&str>,
-                    lvl: Level,
-                    is_header: bool,
-                    show_snippet: bool);
-}
-
-impl<T: CoreEmitter> Emitter for T {
+impl Emitter for EmitterWriter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
-        let old_school = check_old_skool();
-        let db_span = FullSpan(db.span.clone());
         self.emit_message(&FullSpan(db.span.clone()),
                           &db.message,
                           db.code.as_ref().map(|s| &**s),
                           db.level,
                           true,
                           true);
-        for child in &db.children {
-            let render_span = child.render_span
-                                   .clone()
-                                   .unwrap_or_else(
-                                       || FullSpan(child.span.clone()));
 
-            if !old_school {
-                self.emit_message(&render_span,
-                                    &child.message,
-                                    None,
-                                    child.level,
-                                    false,
-                                    true);
-            } else {
+        if check_old_skool() {
+            let db_span = FullSpan(db.span.clone());
+
+            for child in &db.children {
+                let render_span = child.render_span
+                                    .clone()
+                                    .unwrap_or_else(
+                                        || FullSpan(child.span.clone()));
                 let (render_span, show_snippet) = match render_span.span().primary_span() {
                     None => (db_span.clone(), false),
                     _ => (render_span, true)
@@ -76,6 +58,19 @@ impl<T: CoreEmitter> Emitter for T {
                                     child.level,
                                     false,
                                     show_snippet);
+            }
+        } else {
+            for child in &db.children {
+                let render_span = child.render_span
+                                    .clone()
+                                    .unwrap_or_else(
+                                        || FullSpan(child.span.clone()));
+                self.emit_message(&render_span,
+                                    &child.message,
+                                    None,
+                                    child.level,
+                                    false,
+                                    true);
             }
         }
     }
@@ -112,21 +107,6 @@ pub struct EmitterWriter {
 
     // For now, allow an old-school mode while we transition
     format_mode: FormatMode
-}
-
-impl CoreEmitter for EmitterWriter {
-    fn emit_message(&mut self,
-                    rsp: &RenderSpan,
-                    msg: &str,
-                    code: Option<&str>,
-                    lvl: Level,
-                    is_header: bool,
-                    show_snippet: bool) {
-        match self.emit_message_(rsp, msg, code, lvl, is_header, show_snippet) {
-            Ok(()) => { }
-            Err(e) => panic!("failed to emit error: {}", e)
-        }
-    }
 }
 
 /// Do not use this for messages that end in `\n` – use `println_maybe_styled` instead. See
@@ -175,6 +155,19 @@ impl EmitterWriter {
                         cm: code_map,
                         first: true,
                         format_mode: format_mode.clone() }
+    }
+
+    fn emit_message(&mut self,
+                    rsp: &RenderSpan,
+                    msg: &str,
+                    code: Option<&str>,
+                    lvl: Level,
+                    is_header: bool,
+                    show_snippet: bool) {
+        match self.emit_message_(rsp, msg, code, lvl, is_header, show_snippet) {
+            Ok(()) => { }
+            Err(e) => panic!("failed to emit error: {}", e)
+        }
     }
 
     fn emit_message_(&mut self,
