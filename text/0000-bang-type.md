@@ -121,7 +121,7 @@ fn main() {
 ```
 
 This RFC proposes that we allow `!` to be used directly, as a type, rather than
-using `Never` (or equivalent) in it's place. Under this RFC, the above code
+using `Never` (or equivalent) in its place. Under this RFC, the above code
 could more simply be written.
 
 ```rust
@@ -309,7 +309,7 @@ history: in C `void` is in essence a type like any other. However it can't be
 used in all the normal positions where a type can be used. This breaks generic
 code (eg. `T foo(); T val = foo()` where `T == void`) and forces one to use
 workarounds such as defining `struct Void {}` and wrapping `void`-returning
-functions:
+functions.
 
 In the early days of programming having a type that contained no data probably
 seemed pointless. After all, there's no point in having a `void` typed function
