@@ -29,7 +29,7 @@ use term;
 /// implement `CoreEmitter` instead.
 pub trait Emitter {
     /// Emit a structured diagnostic.
-    fn emit_struct(&mut self, db: &DiagnosticBuilder);
+    fn emit(&mut self, db: &DiagnosticBuilder);
 }
 
 pub trait CoreEmitter {
@@ -43,7 +43,7 @@ pub trait CoreEmitter {
 }
 
 impl<T: CoreEmitter> Emitter for T {
-    fn emit_struct(&mut self, db: &DiagnosticBuilder) {
+    fn emit(&mut self, db: &DiagnosticBuilder) {
         let old_school = check_old_skool();
         let db_span = FullSpan(db.span.clone());
         self.emit_message(&FullSpan(db.span.clone()),
