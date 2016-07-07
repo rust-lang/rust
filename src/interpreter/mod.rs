@@ -183,12 +183,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
         match *const_val {
             Float(ConstFloat::F32(f)) => {
-                let ptr = self.memory.allocate(4);
+                let ptr = self.memory.allocate(4)?;
                 self.memory.write_f32(ptr, f)?;
                 Ok(ptr)
             },
             Float(ConstFloat::F64(f)) => {
-                let ptr = self.memory.allocate(8);
+                let ptr = self.memory.allocate(8)?;
                 self.memory.write_f64(ptr, f)?;
                 Ok(ptr)
             },
