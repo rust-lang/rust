@@ -172,7 +172,7 @@ Libraries
   (https://github.com/rust-lang/rust/pull/33050).
 * [Implement `Display` and `Hash` for `std::num::Wrapping`]
   (https://github.com/rust-lang/rust/pull/33023).
-* [Add `Default` implementation for `&CStr`, `CString`, `Path`]
+* [Add `Default` implementation for `&CStr`, `CString`]
   (https://github.com/rust-lang/rust/pull/32990).
 * [Implement `From<Vec<T>>` and `Into<Vec<T>>` for `VecDeque<T>`]
   (https://github.com/rust-lang/rust/pull/32866).
