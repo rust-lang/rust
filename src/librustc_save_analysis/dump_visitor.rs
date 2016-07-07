@@ -29,6 +29,7 @@
 
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
+use rustc::hir::map::Node;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt, ImplOrTraitItem, ImplOrTraitItemContainer};
 
@@ -1299,7 +1300,14 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
             ast::ExprKind::TupField(ref sub_ex, idx) => {
                 self.visit_expr(&sub_ex);
 
-                let hir_node = self.save_ctxt.tcx.map.expect_expr(sub_ex.id);
+                let hir_node = match self.save_ctxt.tcx.map.find(sub_ex.id) {
+                    Some(Node::NodeExpr(expr)) => expr,
+                    _ => {
+                        debug!("Missing or weird node for sub-expression {} in {:?}",
+                               sub_ex.id, ex);
+                        return;
+                    }
+                };
                 let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {

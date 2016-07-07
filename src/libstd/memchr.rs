@@ -239,7 +239,7 @@ mod fallback {
         text[..offset].iter().rposition(|elt| *elt == x)
     }
 
-    // test fallback implementations on all plattforms
+    // test fallback implementations on all platforms
     #[test]
     fn matches_one() {
         assert_eq!(Some(0), memchr(b'a', b"a"));
