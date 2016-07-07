@@ -53,9 +53,9 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
                         match item.node {
                             MetaItemKind::NameValue(ref name, ref value) => {
                                 match &**name {
-                                    "memory_size" => memory_size = extract_str(value).parse::<u64>().expect("not a number"),
-                                    "step_limit" => step_limit = extract_str(value).parse::<u64>().expect("not a number"),
-                                    "stack_limit" => stack_limit = extract_str(value).parse::<u64>().expect("not a number"),
+                                    "memory_size" => memory_size = extract_str(value).parse().expect("not a number"),
+                                    "step_limit" => step_limit = extract_str(value).parse().expect("not a number"),
+                                    "stack_limit" => stack_limit = extract_str(value).parse().expect("not a number"),
                                     _ => state.session.span_err(item.span, "unknown miri attribute"),
                                 }
                             }
