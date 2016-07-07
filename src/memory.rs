@@ -87,9 +87,9 @@ pub struct Memory<'a, 'tcx> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations)
     alloc_map: HashMap<AllocId, Allocation>,
     /// Number of virtual bytes allocated
-    memory_usage: u64,
+    memory_usage: usize,
     /// Maximum number of virtual bytes that may be allocated
-    memory_size: u64,
+    memory_size: usize,
     /// Function "allocations". They exist solely so pointers have something to point to, and
     /// we can figure out what they point to.
     functions: HashMap<AllocId, FunctionDefinition<'tcx>>,
@@ -102,7 +102,7 @@ pub struct Memory<'a, 'tcx> {
 const ZST_ALLOC_ID: AllocId = AllocId(0);
 
 impl<'a, 'tcx> Memory<'a, 'tcx> {
-    pub fn new(layout: &'a TargetDataLayout, max_memory: u64) -> Self {
+    pub fn new(layout: &'a TargetDataLayout, max_memory: usize) -> Self {
         let mut mem = Memory {
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
@@ -161,14 +161,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         // make sure we can offset the result pointer by the worst possible alignment
         // this allows cheaply checking for alignment directly in the pointer
         let least_aligned_size = size + align;
-        if self.memory_size - self.memory_usage < size as u64 {
+        if self.memory_size - self.memory_usage < size {
             return Err(EvalError::OutOfMemory {
-                allocation_size: least_aligned_size as u64,
+                allocation_size: least_aligned_size,
                 memory_size: self.memory_size,
                 memory_usage: self.memory_usage,
             });
         }
-        self.memory_usage += size as u64;
+        self.memory_usage += size;
         let alloc = Allocation {
             bytes: vec![0; least_aligned_size],
             relocations: BTreeMap::new(),
@@ -201,14 +201,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
         if least_aligned_size > size {
             let amount = least_aligned_size - size;
-            self.memory_usage += amount as u64;
+            self.memory_usage += amount;
             let alloc = self.get_mut(ptr.alloc_id)?;
             alloc.bytes.extend(iter::repeat(0).take(amount));
             alloc.undef_mask.grow(amount, false);
         } else if size > least_aligned_size {
             // it's possible to cause miri to use arbitrary amounts of memory that aren't detectable
             // through the memory_usage value, by allocating a lot and reallocating to zero
-            self.memory_usage -= (size - least_aligned_size) as u64;
+            self.memory_usage -= size - least_aligned_size;
             self.clear_relocations(ptr.offset(least_aligned_size as isize), size - least_aligned_size)?;
             let alloc = self.get_mut(ptr.alloc_id)?;
             alloc.bytes.truncate(least_aligned_size);
@@ -232,7 +232,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
 
         if let Some(alloc) = self.alloc_map.remove(&ptr.alloc_id) {
-            self.memory_usage -= alloc.bytes.len() as u64;
+            self.memory_usage -= alloc.bytes.len();
         } else {
             debug!("deallocated a pointer twice: {}", ptr.alloc_id);
             // TODO(solson): Report error about erroneous free. This is blocked on properly tracking
@@ -457,6 +457,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             PrimVal::U64(n)  => self.write_uint(ptr, n as u64, 8),
             PrimVal::Char(c) => self.write_uint(ptr, c as u64, 4),
             PrimVal::IntegerPtr(n) => self.write_uint(ptr, n as u64, pointer_size),
+            PrimVal::F32(f) => self.write_f32(ptr, f),
+            PrimVal::F64(f) => self.write_f64(ptr, f),
             PrimVal::FnPtr(_p) |
             PrimVal::AbstractPtr(_p) => unimplemented!(),
         }
@@ -529,6 +531,32 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn write_usize(&mut self, ptr: Pointer, n: u64) -> EvalResult<'tcx, ()> {
         let size = self.pointer_size();
         self.write_uint(ptr, n, size)
+    }
+
+    pub fn write_f32(&mut self, ptr: Pointer, f: f32) -> EvalResult<'tcx, ()> {
+        ptr.check_align(self.layout.f32_align.abi() as usize)?;
+        let endianess = self.endianess();
+        let b = self.get_bytes_mut(ptr, 4)?;
+        write_target_f32(endianess, b, f).unwrap();
+        Ok(())
+    }
+
+    pub fn write_f64(&mut self, ptr: Pointer, f: f64) -> EvalResult<'tcx, ()> {
+        ptr.check_align(self.layout.f64_align.abi() as usize)?;
+        let endianess = self.endianess();
+        let b = self.get_bytes_mut(ptr, 8)?;
+        write_target_f64(endianess, b, f).unwrap();
+        Ok(())
+    }
+
+    pub fn read_f32(&self, ptr: Pointer) -> EvalResult<'tcx, f32> {
+        ptr.check_align(self.layout.f32_align.abi() as usize)?;
+        self.get_bytes(ptr, 4).map(|b| read_target_f32(self.endianess(), b).unwrap())
+    }
+
+    pub fn read_f64(&self, ptr: Pointer) -> EvalResult<'tcx, f64> {
+        ptr.check_align(self.layout.f64_align.abi() as usize)?;
+        self.get_bytes(ptr, 8).map(|b| read_target_f64(self.endianess(), b).unwrap())
     }
 }
 
@@ -653,6 +681,36 @@ fn read_target_int(endianess: layout::Endian, mut source: &[u8]) -> Result<i64, 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Methods to access floats in the target endianess
+////////////////////////////////////////////////////////////////////////////////
+
+fn write_target_f32(endianess: layout::Endian, mut target: &mut [u8], data: f32) -> Result<(), byteorder::Error> {
+    match endianess {
+        layout::Endian::Little => target.write_f32::<LittleEndian>(data),
+        layout::Endian::Big => target.write_f32::<BigEndian>(data),
+    }
+}
+fn write_target_f64(endianess: layout::Endian, mut target: &mut [u8], data: f64) -> Result<(), byteorder::Error> {
+    match endianess {
+        layout::Endian::Little => target.write_f64::<LittleEndian>(data),
+        layout::Endian::Big => target.write_f64::<BigEndian>(data),
+    }
+}
+
+fn read_target_f32(endianess: layout::Endian, mut source: &[u8]) -> Result<f32, byteorder::Error> {
+    match endianess {
+        layout::Endian::Little => source.read_f32::<LittleEndian>(),
+        layout::Endian::Big => source.read_f32::<BigEndian>(),
+    }
+}
+fn read_target_f64(endianess: layout::Endian, mut source: &[u8]) -> Result<f64, byteorder::Error> {
+    match endianess {
+        layout::Endian::Little => source.read_f64::<LittleEndian>(),
+        layout::Endian::Big => source.read_f64::<BigEndian>(),
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Undefined byte tracking
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -722,6 +780,7 @@ impl UndefMask {
     fn truncate(&mut self, length: usize) {
         self.len = length;
         self.blocks.truncate(self.len / BLOCK_SIZE + 1);
+        self.blocks.shrink_to_fit();
     }
 }
 
