@@ -87,7 +87,7 @@ const AbiDatas: &'static [AbiData] = &[
     AbiData {abi: Abi::Vectorcall, name: "vectorcall"},
     AbiData {abi: Abi::Aapcs, name: "aapcs" },
     AbiData {abi: Abi::Win64, name: "win64" },
-    AbiData {abi: Abi::SysV64, name: "sysV64" },
+    AbiData {abi: Abi::SysV64, name: "sysv64" },
 
     // Cross-platform ABIs
     //
