@@ -238,7 +238,7 @@ impl<'a> DiagnosticBuilder<'a> {
             return;
         }
 
-        self.handler.emit.borrow_mut().emit_struct(&self);
+        self.handler.emitter.borrow_mut().emit(&self);
         self.cancel();
         self.handler.panic_if_treat_err_as_bug();
 
@@ -420,7 +420,7 @@ impl<'a> Drop for DiagnosticBuilder<'a> {
 /// others log errors for later reporting.
 pub struct Handler {
     err_count: Cell<usize>,
-    emit: RefCell<Box<Emitter>>,
+    emitter: RefCell<Box<Emitter>>,
     pub can_emit_warnings: bool,
     treat_err_as_bug: bool,
     continue_after_error: Cell<bool>,
@@ -444,7 +444,7 @@ impl Handler {
                         e: Box<Emitter>) -> Handler {
         Handler {
             err_count: Cell::new(0),
-            emit: RefCell::new(e),
+            emitter: RefCell::new(e),
             can_emit_warnings: can_emit_warnings,
             treat_err_as_bug: treat_err_as_bug,
             continue_after_error: Cell::new(true),

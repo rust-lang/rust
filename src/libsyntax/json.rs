@@ -53,7 +53,7 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_struct(&mut self, db: &DiagnosticBuilder) {
+    fn emit(&mut self, db: &DiagnosticBuilder) {
         let data = Diagnostic::from_diagnostic_builder(db, self);
         if let Err(e) = writeln!(&mut self.dst, "{}", as_json(&data)) {
             panic!("failed to print diagnostics: {:?}", e);
