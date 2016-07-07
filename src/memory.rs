@@ -127,7 +127,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         mem
     }
 
-    pub fn allocations<'b>(&'b self) -> ::std::collections::hash_map::Iter<'b, AllocId, Allocation> {
+    pub fn allocations(&self) -> ::std::collections::hash_map::Iter<AllocId, Allocation> {
         self.alloc_map.iter()
     }
 
