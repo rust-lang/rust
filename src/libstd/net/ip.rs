@@ -60,7 +60,9 @@ pub enum Ipv6MulticastScope {
 }
 
 impl IpAddr {
-    /// Returns true for the special 'unspecified' address (0.0.0.0 in IPv4, :: in IPv6).
+    /// Returns true for the special 'unspecified' address ([IPv4], [IPv6]).
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_unspecified
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_unspecified
     #[unstable(feature="ip", issue="27709",
                reason="recently added and depends on unstable Ipv4Addr.is_unspecified()")]
     pub fn is_unspecified(&self) -> bool {
@@ -70,7 +72,9 @@ impl IpAddr {
         }
     }
 
-    /// Returns true if this is a loopback address (127.0.0.0/8 in IPv4, ::1 in IPv6).
+    /// Returns true if this is a loopback address ([IPv4], [IPv6]).
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_loopback
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_loopback
     #[unstable(feature="ip", reason="recently added", issue="27709")]
     pub fn is_loopback(&self) -> bool {
         match *self {
@@ -79,7 +83,9 @@ impl IpAddr {
         }
     }
 
-    /// Returns true if the address appears to be globally routable.
+    /// Returns true if the address appears to be globally routable ([IPv4], [IPv6]).
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_global
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_global
     #[unstable(feature="ip", issue="27709",
                reason="recently added and depends on unstable Ip{v4,v6}Addr.is_global()")]
     pub fn is_global(&self) -> bool {
@@ -89,7 +95,9 @@ impl IpAddr {
         }
     }
 
-    /// Returns true if this is a multicast address (224.0.0.0/4 in IPv4, ff00::/8 in IPv6)
+    /// Returns true if this is a multicast address ([IPv4], [IPv6]).
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_multicast
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_multicast
     #[unstable(feature="ip", reason="recently added", issue="27709")]
     pub fn is_multicast(&self) -> bool {
         match *self {
@@ -98,7 +106,9 @@ impl IpAddr {
         }
     }
 
-    /// Returns true if this address is in a range designated for documentation.
+    /// Returns true if this address is in a range designated for documentation ([IPv4], [IPv6]).
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_documentation
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_documentation
     #[unstable(feature="ip", issue="27709",
                reason="recently added and depends on unstable Ipv6Addr.is_documentation()")]
     pub fn is_documentation(&self) -> bool {
