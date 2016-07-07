@@ -62,8 +62,8 @@ Note that here, the `x` is mutable, but not the `y`.
 # Interior vs. Exterior Mutability
 
 However, when we say something is ‘immutable’ in Rust, that doesn’t mean that
-it’s not able to be changed: we mean something has ‘exterior mutability’. Consider,
-for example, [`Arc<T>`][arc]:
+it’s not able to be changed: we are referring to its ‘exterior mutability’ that
+in this case is immutable. Consider, for example, [`Arc<T>`][arc]:
 
 ```rust
 use std::sync::Arc;
