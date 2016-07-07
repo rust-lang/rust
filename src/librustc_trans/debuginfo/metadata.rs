@@ -68,7 +68,6 @@ pub const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
 // ptr::null() doesn't work :(
-pub const NO_FILE_METADATA: DIFile = (0 as DIFile);
 pub const NO_SCOPE_METADATA: DIScope = (0 as DIScope);
 
 const FLAGS_NONE: c_uint = 0;
@@ -616,7 +615,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         unsafe {
             llvm::LLVMDIBuilderCreateSubroutineType(
                 DIB(cx),
-                NO_FILE_METADATA,
+                unknown_file_metadata(cx),
                 create_DIArray(DIB(cx), &signature_metadata[..]))
         },
         false);
@@ -653,6 +652,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let (containing_scope, _) = get_namespace_and_span_for_item(cx, def_id);
 
     let trait_llvm_type = type_of::type_of(cx, trait_object_type);
+    let file_metadata = unknown_file_metadata(cx);
 
     composite_type_metadata(cx,
                             trait_llvm_type,
@@ -660,7 +660,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             unique_type_id,
                             &[],
                             containing_scope,
-                            NO_FILE_METADATA,
+                            file_metadata,
                             syntax_pos::DUMMY_SP)
 }
 
@@ -1628,7 +1628,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         DIB(cx),
                         containing_scope,
                         name.as_ptr(),
-                        NO_FILE_METADATA,
+                        file_metadata,
                         UNKNOWN_LINE_NUMBER,
                         bytes_to_bits(discriminant_size),
                         bytes_to_bits(discriminant_align),
@@ -1774,7 +1774,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
                     DIB(cx),
                     composite_type_metadata,
                     member_name.as_ptr(),
-                    NO_FILE_METADATA,
+                    unknown_file_metadata(cx),
                     UNKNOWN_LINE_NUMBER,
                     bytes_to_bits(member_size),
                     bytes_to_bits(member_align),
@@ -1817,7 +1817,7 @@ fn create_struct_stub(cx: &CrateContext,
             DIB(cx),
             containing_scope,
             name.as_ptr(),
-            NO_FILE_METADATA,
+            unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             bytes_to_bits(struct_size),
             bytes_to_bits(struct_align),
@@ -1857,7 +1857,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         let loc = span_start(cx, span);
         (file_metadata(cx, &loc.file.name, &loc.file.abs_path), loc.line as c_uint)
     } else {
-        (NO_FILE_METADATA, UNKNOWN_LINE_NUMBER)
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
