@@ -66,9 +66,9 @@ use sys_common::rwlock as sys;
 /// } // write lock is dropped here
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
 pub struct RwLock<T: ?Sized> {
-    inner: Box<StaticRwLock>,
+    inner: Box<sys::RWLock>,
+    poison: poison::Flag,
     data: UnsafeCell<T>,
 }
 
@@ -77,64 +77,12 @@ unsafe impl<T: ?Sized + Send + Sync> Send for RwLock<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 
-/// Structure representing a statically allocated RwLock.
-///
-/// This structure is intended to be used inside of a `static` and will provide
-/// automatic global access as well as lazy initialization. The internal
-/// resources of this RwLock, however, must be manually deallocated.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(static_rwlock)]
-///
-/// use std::sync::{StaticRwLock, RW_LOCK_INIT};
-///
-/// static LOCK: StaticRwLock = RW_LOCK_INIT;
-///
-/// {
-///     let _g = LOCK.read().unwrap();
-///     // ... shared read access
-/// }
-/// {
-///     let _g = LOCK.write().unwrap();
-///     // ... exclusive write access
-/// }
-/// unsafe { LOCK.destroy() } // free all resources
-/// ```
-#[unstable(feature = "static_rwlock",
-           reason = "may be merged with RwLock in the future",
-           issue = "27717")]
-#[rustc_deprecated(since = "1.10.0",
-                   reason = "the lazy-static crate suffices for static sync \
-                             primitives and eventually this type shouldn't \
-                             be necessary as `RwLock::new` in a static should \
-                             suffice")]
-pub struct StaticRwLock {
-    lock: sys::RWLock,
-    poison: poison::Flag,
-}
-
-/// Constant initialization for a statically-initialized rwlock.
-#[unstable(feature = "static_rwlock",
-           reason = "may be merged with RwLock in the future",
-           issue = "27717")]
-#[rustc_deprecated(since = "1.10.0",
-                   reason = "the lazy-static crate suffices for static sync \
-                             primitives and eventually this type shouldn't \
-                             be necessary as `RwLock::new` in a static should \
-                             suffice")]
-#[allow(deprecated)]
-pub const RW_LOCK_INIT: StaticRwLock = StaticRwLock::new();
-
 /// RAII structure used to release the shared read access of a lock when
 /// dropped.
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
-    __lock: &'a StaticRwLock,
-    __data: &'a T,
+    __lock: &'a RwLock<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -144,17 +92,14 @@ impl<'a, T: ?Sized> !marker::Send for RwLockReadGuard<'a, T> {}
 /// dropped.
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
-    __lock: &'a StaticRwLock,
-    __data: &'a mut T,
+    __lock: &'a RwLock<T>,
     __poison: poison::Guard,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> !marker::Send for RwLockWriteGuard<'a, T> {}
 
-#[allow(deprecated)]
 impl<T> RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
     ///
@@ -167,11 +112,14 @@ impl<T> RwLock<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> RwLock<T> {
-        RwLock { inner: box StaticRwLock::new(), data: UnsafeCell::new(t) }
+        RwLock {
+            inner: box sys::RWLock::new(),
+            poison: poison::Flag::new(),
+            data: UnsafeCell::new(t),
+        }
     }
 }
 
-#[allow(deprecated)]
 impl<T: ?Sized> RwLock<T> {
     /// Locks this rwlock with shared read access, blocking the current thread
     /// until it can be acquired.
@@ -194,8 +142,8 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read(&self) -> LockResult<RwLockReadGuard<T>> {
         unsafe {
-            self.inner.lock.read();
-            RwLockReadGuard::new(&*self.inner, &self.data)
+            self.inner.read();
+            RwLockReadGuard::new(self)
         }
     }
 
@@ -220,8 +168,8 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<T>> {
         unsafe {
-            if self.inner.lock.try_read() {
-                Ok(RwLockReadGuard::new(&*self.inner, &self.data)?)
+            if self.inner.try_read() {
+                Ok(RwLockReadGuard::new(self)?)
             } else {
                 Err(TryLockError::WouldBlock)
             }
@@ -246,8 +194,8 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write(&self) -> LockResult<RwLockWriteGuard<T>> {
         unsafe {
-            self.inner.lock.write();
-            RwLockWriteGuard::new(&*self.inner, &self.data)
+            self.inner.write();
+            RwLockWriteGuard::new(self)
         }
     }
 
@@ -272,8 +220,8 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
         unsafe {
-            if self.inner.lock.try_write() {
-                Ok(RwLockWriteGuard::new(&*self.inner, &self.data)?)
+            if self.inner.try_write() {
+                Ok(RwLockWriteGuard::new(self)?)
             } else {
                 Err(TryLockError::WouldBlock)
             }
@@ -288,7 +236,7 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn is_poisoned(&self) -> bool {
-        self.inner.poison.get()
+        self.poison.get()
     }
 
     /// Consumes this `RwLock`, returning the underlying data.
@@ -302,21 +250,22 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rwlock_into_inner", since = "1.6.0")]
     pub fn into_inner(self) -> LockResult<T> where T: Sized {
         // We know statically that there are no outstanding references to
-        // `self` so there's no need to lock the inner StaticRwLock.
+        // `self` so there's no need to lock the inner lock.
         //
         // To get the inner value, we'd like to call `data.into_inner()`,
         // but because `RwLock` impl-s `Drop`, we can't move out of it, so
         // we'll have to destructure it manually instead.
         unsafe {
-            // Like `let RwLock { inner, data } = self`.
-            let (inner, data) = {
-                let RwLock { ref inner, ref data } = self;
-                (ptr::read(inner), ptr::read(data))
+            // Like `let RwLock { inner, poison, data } = self`.
+            let (inner, poison, data) = {
+                let RwLock { ref inner, ref poison, ref data } = self;
+                (ptr::read(inner), ptr::read(poison), ptr::read(data))
             };
             mem::forget(self);
-            inner.lock.destroy();  // Keep in sync with the `Drop` impl.
+            inner.destroy();  // Keep in sync with the `Drop` impl.
+            drop(inner);
 
-            poison::map_result(inner.poison.borrow(), |_| data.into_inner())
+            poison::map_result(poison.borrow(), |_| data.into_inner())
         }
     }
 
@@ -334,19 +283,18 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rwlock_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         // We know statically that there are no other references to `self`, so
-        // there's no need to lock the inner StaticRwLock.
+        // there's no need to lock the inner lock.
         let data = unsafe { &mut *self.data.get() };
-        poison::map_result(self.inner.poison.borrow(), |_| data )
+        poison::map_result(self.poison.borrow(), |_| data)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
 impl<T: ?Sized> Drop for RwLock<T> {
     #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         // IMPORTANT: This code needs to be kept in sync with `RwLock::into_inner`.
-        unsafe { self.inner.lock.destroy() }
+        unsafe { self.inner.destroy() }
     }
 }
 
@@ -370,114 +318,23 @@ impl<T: Default> Default for RwLock<T> {
     }
 }
 
-struct Dummy(UnsafeCell<()>);
-unsafe impl Sync for Dummy {}
-static DUMMY: Dummy = Dummy(UnsafeCell::new(()));
-
-#[unstable(feature = "static_rwlock",
-           reason = "may be merged with RwLock in the future",
-           issue = "27717")]
-#[rustc_deprecated(since = "1.10.0",
-                   reason = "the lazy-static crate suffices for static sync \
-                             primitives and eventually this type shouldn't \
-                             be necessary as `RwLock::new` in a static should \
-                             suffice")]
-#[allow(deprecated)]
-impl StaticRwLock {
-    /// Creates a new rwlock.
-    pub const fn new() -> StaticRwLock {
-        StaticRwLock {
-            lock: sys::RWLock::new(),
-            poison: poison::Flag::new(),
-        }
-    }
-
-    /// Locks this rwlock with shared read access, blocking the current thread
-    /// until it can be acquired.
-    ///
-    /// See `RwLock::read`.
-    #[inline]
-    pub fn read(&'static self) -> LockResult<RwLockReadGuard<'static, ()>> {
-        unsafe {
-            self.lock.read();
-            RwLockReadGuard::new(self, &DUMMY.0)
-        }
-    }
-
-    /// Attempts to acquire this lock with shared read access.
-    ///
-    /// See `RwLock::try_read`.
-    #[inline]
-    pub fn try_read(&'static self)
-                    -> TryLockResult<RwLockReadGuard<'static, ()>> {
-        unsafe {
-            if self.lock.try_read(){
-                Ok(RwLockReadGuard::new(self, &DUMMY.0)?)
-            } else {
-                Err(TryLockError::WouldBlock)
-            }
-        }
-    }
-
-    /// Locks this rwlock with exclusive write access, blocking the current
-    /// thread until it can be acquired.
-    ///
-    /// See `RwLock::write`.
-    #[inline]
-    pub fn write(&'static self) -> LockResult<RwLockWriteGuard<'static, ()>> {
-        unsafe {
-            self.lock.write();
-            RwLockWriteGuard::new(self, &DUMMY.0)
-        }
-    }
-
-    /// Attempts to lock this rwlock with exclusive write access.
-    ///
-    /// See `RwLock::try_write`.
-    #[inline]
-    pub fn try_write(&'static self)
-                     -> TryLockResult<RwLockWriteGuard<'static, ()>> {
-        unsafe {
-            if self.lock.try_write() {
-                Ok(RwLockWriteGuard::new(self, &DUMMY.0)?)
-            } else {
-                Err(TryLockError::WouldBlock)
-            }
-        }
-    }
-
-    /// Deallocates all resources associated with this static lock.
-    ///
-    /// This method is unsafe to call as there is no guarantee that there are no
-    /// active users of the lock, and this also doesn't prevent any future users
-    /// of this lock. This method is required to be called to not leak memory on
-    /// all platforms.
-    pub unsafe fn destroy(&'static self) {
-        self.lock.destroy()
-    }
-}
-
-#[allow(deprecated)]
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
-    unsafe fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
-           -> LockResult<RwLockReadGuard<'rwlock, T>> {
+    unsafe fn new(lock: &'rwlock RwLock<T>)
+                  -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |_| {
             RwLockReadGuard {
                 __lock: lock,
-                __data: &*data.get(),
             }
         })
     }
 }
 
-#[allow(deprecated)]
 impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
-    unsafe fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
-           -> LockResult<RwLockWriteGuard<'rwlock, T>> {
+    unsafe fn new(lock: &'rwlock RwLock<T>)
+                  -> LockResult<RwLockWriteGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
             RwLockWriteGuard {
                 __lock: lock,
-                __data: &mut *data.get(),
                 __poison: guard,
             }
         })
@@ -488,42 +345,43 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
 impl<'rwlock, T: ?Sized> Deref for RwLockReadGuard<'rwlock, T> {
     type Target = T;
 
-    fn deref(&self) -> &T { self.__data }
+    fn deref(&self) -> &T {
+        unsafe { &*self.__lock.data.get() }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'rwlock, T: ?Sized> Deref for RwLockWriteGuard<'rwlock, T> {
     type Target = T;
 
-    fn deref(&self) -> &T { self.__data }
+    fn deref(&self) -> &T {
+        unsafe { &*self.__lock.data.get() }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'rwlock, T: ?Sized> DerefMut for RwLockWriteGuard<'rwlock, T> {
     fn deref_mut(&mut self) -> &mut T {
-        self.__data
+        unsafe { &mut *self.__lock.data.get() }
     }
 }
 
-#[allow(deprecated)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> Drop for RwLockReadGuard<'a, T> {
     fn drop(&mut self) {
-        unsafe { self.__lock.lock.read_unlock(); }
+        unsafe { self.__lock.inner.read_unlock(); }
     }
 }
 
-#[allow(deprecated)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> Drop for RwLockWriteGuard<'a, T> {
     fn drop(&mut self) {
         self.__lock.poison.done(&self.__poison);
-        unsafe { self.__lock.lock.write_unlock(); }
+        unsafe { self.__lock.inner.write_unlock(); }
     }
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     #![allow(deprecated)] // rand
 
@@ -532,7 +390,7 @@ mod tests {
     use rand::{self, Rng};
     use sync::mpsc::channel;
     use thread;
-    use sync::{Arc, RwLock, StaticRwLock, TryLockError};
+    use sync::{Arc, RwLock, TryLockError};
     use sync::atomic::{AtomicUsize, Ordering};
 
     #[derive(Eq, PartialEq, Debug)]
@@ -548,31 +406,23 @@ mod tests {
     }
 
     #[test]
-    fn static_smoke() {
-        static R: StaticRwLock = StaticRwLock::new();
-        drop(R.read().unwrap());
-        drop(R.write().unwrap());
-        drop((R.read().unwrap(), R.read().unwrap()));
-        drop(R.write().unwrap());
-        unsafe { R.destroy(); }
-    }
-
-    #[test]
     fn frob() {
-        static R: StaticRwLock = StaticRwLock::new();
         const N: usize = 10;
         const M: usize = 1000;
+
+        let r = Arc::new(RwLock::new(()));
 
         let (tx, rx) = channel::<()>();
         for _ in 0..N {
             let tx = tx.clone();
-            thread::spawn(move|| {
+            let r = r.clone();
+            thread::spawn(move || {
                 let mut rng = rand::thread_rng();
                 for _ in 0..M {
                     if rng.gen_weighted_bool(N) {
-                        drop(R.write().unwrap());
+                        drop(r.write().unwrap());
                     } else {
-                        drop(R.read().unwrap());
+                        drop(r.read().unwrap());
                     }
                 }
                 drop(tx);
@@ -580,7 +430,6 @@ mod tests {
         }
         drop(tx);
         let _ = rx.recv();
-        unsafe { R.destroy(); }
     }
 
     #[test]
