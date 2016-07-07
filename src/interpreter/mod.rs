@@ -136,8 +136,7 @@ enum ConstantKind {
 }
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>, memory_size: u64, stack_limit: u64) -> Self {
-        assert_eq!(stack_limit as usize as u64, stack_limit);
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &'a MirMap<'tcx>, memory_size: usize, stack_limit: usize) -> Self {
         EvalContext {
             tcx: tcx,
             mir_map: mir_map,
@@ -145,7 +144,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             memory: Memory::new(&tcx.data_layout, memory_size),
             statics: HashMap::new(),
             stack: Vec::new(),
-            stack_limit: stack_limit as usize,
+            stack_limit: stack_limit,
         }
     }
 
@@ -937,9 +936,9 @@ pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir_map: &'a MirMap<'tcx>,
     node_id: ast::NodeId,
-    memory_size: u64,
+    memory_size: usize,
     step_limit: u64,
-    stack_limit: u64,
+    stack_limit: usize,
 ) {
     let mir = mir_map.map.get(&node_id).expect("no mir for main function");
     let def_id = tcx.map.local_def_id(node_id);

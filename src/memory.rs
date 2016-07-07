@@ -67,9 +67,9 @@ pub struct Memory<'a, 'tcx> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations)
     alloc_map: HashMap<AllocId, Allocation>,
     /// Number of virtual bytes allocated
-    memory_usage: u64,
+    memory_usage: usize,
     /// Maximum number of virtual bytes that may be allocated
-    memory_size: u64,
+    memory_size: usize,
     /// Function "allocations". They exist solely so pointers have something to point to, and
     /// we can figure out what they point to.
     functions: HashMap<AllocId, FunctionDefinition<'tcx>>,
@@ -82,7 +82,7 @@ pub struct Memory<'a, 'tcx> {
 const ZST_ALLOC_ID: AllocId = AllocId(0);
 
 impl<'a, 'tcx> Memory<'a, 'tcx> {
-    pub fn new(layout: &'a TargetDataLayout, max_memory: u64) -> Self {
+    pub fn new(layout: &'a TargetDataLayout, max_memory: usize) -> Self {
         let mut mem = Memory {
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
@@ -137,14 +137,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(Pointer::zst_ptr());
         }
-        if self.memory_size - self.memory_usage < size as u64 {
+        if self.memory_size - self.memory_usage < size {
             return Err(EvalError::OutOfMemory {
-                allocation_size: size as u64,
+                allocation_size: size,
                 memory_size: self.memory_size,
                 memory_usage: self.memory_usage,
             });
         }
-        self.memory_usage += size as u64;
+        self.memory_usage += size;
         let alloc = Allocation {
             bytes: vec![0; size],
             relocations: BTreeMap::new(),
@@ -174,14 +174,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
         if new_size > size {
             let amount = new_size - size;
-            self.memory_usage += amount as u64;
+            self.memory_usage += amount;
             let alloc = self.get_mut(ptr.alloc_id)?;
             alloc.bytes.extend(iter::repeat(0).take(amount));
             alloc.undef_mask.grow(amount, false);
         } else if size > new_size {
             // it's possible to cause miri to use arbitrary amounts of memory that aren't detectable
             // through the memory_usage value, by allocating a lot and reallocating to zero
-            self.memory_usage -= (size - new_size) as u64;
+            self.memory_usage -= size - new_size;
             self.clear_relocations(ptr.offset(new_size as isize), size - new_size)?;
             let alloc = self.get_mut(ptr.alloc_id)?;
             alloc.bytes.truncate(new_size);
@@ -202,7 +202,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
 
         if let Some(alloc) = self.alloc_map.remove(&ptr.alloc_id) {
-            self.memory_usage -= alloc.bytes.len() as u64;
+            self.memory_usage -= alloc.bytes.len();
         } else {
             debug!("deallocated a pointer twice: {}", ptr.alloc_id);
             // TODO(solson): Report error about erroneous free. This is blocked on properly tracking

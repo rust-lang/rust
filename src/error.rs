@@ -30,9 +30,9 @@ pub enum EvalError<'tcx> {
     Math(Span, ConstMathErr),
     InvalidChar(u32),
     OutOfMemory {
-        allocation_size: u64,
-        memory_size: u64,
-        memory_usage: u64,
+        allocation_size: usize,
+        memory_size: usize,
+        memory_usage: usize,
     },
     ExecutionTimeLimitReached,
     StackFrameLimitReached,
