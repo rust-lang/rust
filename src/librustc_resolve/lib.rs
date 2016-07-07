@@ -980,7 +980,7 @@ pub struct Resolver<'a> {
     //
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
-    module_map: NodeMap<Module<'a>>,
+    pub module_map: NodeMap<Module<'a>>,
 
     // Whether or not to print error messages. Can be set to true
     // when getting additional info for error message suggestions,
@@ -2672,6 +2672,34 @@ impl<'a> Resolver<'a> {
         let rs = f(self);
         self.emit_errors = true;
         rs
+    }
+
+    // Calls `f` with a `Resolver` whose current lexical scope is `module`'s lexical scope,
+    // i.e. the module's items and the prelude (unless the module is `#[no_implicit_prelude]`).
+    // FIXME #34673: This needs testing.
+    pub fn with_module_lexical_scope<T, F>(&mut self, module: Module<'a>, f: F) -> T
+        where F: FnOnce(&mut Resolver<'a>) -> T,
+    {
+        self.with_empty_ribs(|this| {
+            this.value_ribs.push(Rib::new(ModuleRibKind(module)));
+            this.type_ribs.push(Rib::new(ModuleRibKind(module)));
+            f(this)
+        })
+    }
+
+    fn with_empty_ribs<T, F>(&mut self, f: F) -> T
+        where F: FnOnce(&mut Resolver<'a>) -> T,
+    {
+        use ::std::mem::replace;
+        let value_ribs = replace(&mut self.value_ribs, Vec::new());
+        let type_ribs = replace(&mut self.type_ribs, Vec::new());
+        let label_ribs = replace(&mut self.label_ribs, Vec::new());
+
+        let result = f(self);
+        self.value_ribs = value_ribs;
+        self.type_ribs = type_ribs;
+        self.label_ribs = label_ribs;
+        result
     }
 
     fn find_fallback_in_self_type(&mut self, name: Name) -> FallbackSuggestion {
