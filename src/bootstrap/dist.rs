@@ -23,8 +23,8 @@ use std::io::Write;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 
-use build::{Build, Compiler};
-use build::util::{cp_r, libdir, is_dylib};
+use {Build, Compiler};
+use util::{cp_r, libdir, is_dylib};
 
 fn package_vers(build: &Build) -> &str {
     match &build.config.channel[..] {

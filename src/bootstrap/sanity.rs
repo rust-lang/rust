@@ -26,7 +26,7 @@ use std::process::Command;
 
 use build_helper::output;
 
-use build::Build;
+use Build;
 
 pub fn check(build: &mut Build) {
     let mut checked = HashSet::new();

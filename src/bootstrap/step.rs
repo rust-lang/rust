@@ -22,7 +22,7 @@
 
 use std::collections::HashSet;
 
-use build::{Build, Compiler};
+use {Build, Compiler};
 
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
 pub struct Step<'a> {
