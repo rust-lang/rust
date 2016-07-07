@@ -187,6 +187,12 @@ macro_rules! int_impl {
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
         /// Returns the smallest value that can be represented by this integer type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// assert_eq!(i8::min_value(), -128);
+        /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub const fn min_value() -> Self {
@@ -194,6 +200,12 @@ macro_rules! int_impl {
         }
 
         /// Returns the largest value that can be represented by this integer type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// assert_eq!(i8::max_value(), 127);
+        /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub const fn max_value() -> Self {
@@ -287,6 +299,8 @@ macro_rules! int_impl {
         /// Shifts the bits to the left by a specified amount, `n`,
         /// wrapping the truncated bits to the end of the resulting integer.
         ///
+        /// Please note this isn't the same operation as `<<`!
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -306,6 +320,8 @@ macro_rules! int_impl {
         /// Shifts the bits to the right by a specified amount, `n`,
         /// wrapping the truncated bits to the beginning of the resulting
         /// integer.
+        ///
+        /// Please note this isn't the same operation as `>>`!
         ///
         /// # Examples
         ///
@@ -1249,11 +1265,23 @@ macro_rules! uint_impl {
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
         /// Returns the smallest value that can be represented by this integer type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// assert_eq!(u8::min_value(), 0);
+        /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub const fn min_value() -> Self { 0 }
 
         /// Returns the largest value that can be represented by this integer type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// assert_eq!(u8::max_value(), 255);
+        /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub const fn max_value() -> Self { !0 }
@@ -1360,6 +1388,8 @@ macro_rules! uint_impl {
         /// Shifts the bits to the left by a specified amount, `n`,
         /// wrapping the truncated bits to the end of the resulting integer.
         ///
+        /// Please note this isn't the same operation as `<<`!
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -1381,6 +1411,8 @@ macro_rules! uint_impl {
         /// Shifts the bits to the right by a specified amount, `n`,
         /// wrapping the truncated bits to the beginning of the resulting
         /// integer.
+        ///
+        /// Please note this isn't the same operation as `>>`!
         ///
         /// # Examples
         ///
