@@ -44,9 +44,6 @@ default = []
 # Add feature "foo" here, then you can use it. 
 # Our "foo" feature depends on nothing else.
 foo = []
-
-# The “secure-password” feature depends on the bcrypt package.
-# secure-password = ["bcrypt"]
 ```
 
 When you do this, Cargo passes along a flag to `rustc`:
