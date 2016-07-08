@@ -10,7 +10,8 @@
 
 #![allow(deprecated)]
 
-//! Thread-local reference-counted boxes (the `Rc<T>` type).
+//! Unsynchronized reference-counted boxes (the `Rc<T>` type) which are usable
+//! only within a single thread.
 //!
 //! The `Rc<T>` type provides shared ownership of an immutable value.
 //! Destruction is deterministic, and will occur as soon as the last owner is
