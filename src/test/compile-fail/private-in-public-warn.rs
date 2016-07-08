@@ -245,8 +245,6 @@ mod aliases_priv {
     use self::Priv1 as PrivUseAlias;
     use self::PrivTr1 as PrivUseAliasTr;
     type PrivAlias = Priv2;
-    //~^ WARN private type in public interface
-    //~| WARNING hard error
     trait PrivTr {
         type AssocAlias;
     }
