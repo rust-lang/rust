@@ -311,6 +311,16 @@ pub struct Iter<'a, T: 'a> {
     rx: &'a Receiver<T>
 }
 
+/// An iterator that attempts to yield all pending values for a receiver.
+/// `None` will be returned when there are no pending values remaining or
+/// if the corresponding channel has hung up.
+///
+/// This Iterator will never block the caller in order to wait for data to
+/// become available. Instead, it will return `None`.
+pub struct TryIter<'a, T: 'a> {
+    rx: &'a Receiver<T>
+}
+
 /// An owning iterator over messages on a receiver, this iterator will block
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
@@ -982,6 +992,15 @@ impl<T> Receiver<T> {
     pub fn iter(&self) -> Iter<T> {
         Iter { rx: self }
     }
+
+    /// Returns an iterator that will attempt to yield all pending values.
+    /// It will return `None` if there are no more pending values or if the
+    /// channel has hung up. The iterator will never `panic!` or block the
+    /// user by waiting for values.
+    pub fn try_iter(&self) -> TryIter<T> {
+        TryIter { rx: self }
+    }
+
 }
 
 impl<T> select::Packet for Receiver<T> {
@@ -1075,6 +1094,12 @@ impl<'a, T> Iterator for Iter<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> { self.rx.recv().ok() }
+}
+
+impl<'a, T> Iterator for TryIter<'a, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> { self.rx.try_recv().ok() }
 }
 
 #[stable(feature = "receiver_into_iter", since = "1.1.0")]
