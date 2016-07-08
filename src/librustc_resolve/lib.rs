@@ -2287,7 +2287,7 @@ impl<'a> Resolver<'a> {
                                          .and_then(|resolution| {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
                                              bmode != BindingMode::ByValue(Mutability::Immutable);
-                        match def {
+                        match resolution.base_def {
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
                                 // A constant, unit variant, etc pattern.
@@ -2296,12 +2296,11 @@ impl<'a> Resolver<'a> {
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) | Def::Static(..) => {
                                 // A fresh binding that shadows something unacceptable.
-                                let kind_name = PathResolution::new(def).kind_name();
                                 resolve_error(
                                     self,
                                     ident.span,
                                     ResolutionError::BindingShadowsSomethingUnacceptable(
-                                        pat_src.descr(), kind_name, ident.node.name)
+                                        pat_src.descr(), resolution.kind_name(), ident.node.name)
                                 );
                                 None
                             }
