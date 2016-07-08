@@ -286,6 +286,8 @@ And, in your `main.rs` or `lib.rs`:
 #![cfg_attr(feature="clippy", plugin(clippy))]
 ```
 
+Then build by enabling the feature: `cargo build --features "clippy"`
+
 Instead of adding the `cfg_attr` attributes you can also run clippy on demand:
 `cargo rustc --features clippy -- -Z no-trans -Z extra-plugins=clippy`
 (the `-Z no trans`, while not neccessary, will stop the compilation process after
