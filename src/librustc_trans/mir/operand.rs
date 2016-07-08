@@ -197,10 +197,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         (OperandValue::Pair(a, b),
                          &mir::ProjectionElem::Field(ref f, ty)) => {
                             let llval = [a, b][f.index()];
-                            return OperandRef {
+                            let op = OperandRef {
                                 val: OperandValue::Immediate(llval),
                                 ty: bcx.monomorphize(&ty)
                             };
+
+                            // Handle nested pairs.
+                            return op.unpack_if_pair(bcx);
                         }
                         _ => {}
                     }
