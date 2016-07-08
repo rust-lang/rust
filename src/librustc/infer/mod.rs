@@ -1468,75 +1468,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // error type, meaning that an error occurred when typechecking this expression),
     // this is a derived error. The error cascaded from another error (that was already
     // reported), so it's not useful to display it to the user.
-    // The following four methods -- type_error_message_str, type_error_message_str_with_expected,
-    // type_error_message, and report_mismatched_types -- implement this logic.
+    // The following methods implement this logic.
     // They check if either the actual or expected type is TyError, and don't print the error
     // in this case. The typechecker should only ever report type errors involving mismatched
-    // types using one of these four methods, and should not call span_err directly for such
+    // types using one of these methods, and should not call span_err directly for such
     // errors.
-    pub fn type_error_message_str<M>(&self,
-                                     sp: Span,
-                                     mk_msg: M,
-                                     actual_ty: String,
-                                     err: Option<&TypeError<'tcx>>)
-        where M: FnOnce(Option<String>, String) -> String,
-    {
-        self.type_error_message_str_with_expected(sp, mk_msg, None, actual_ty, err)
-    }
-
-    pub fn type_error_struct_str<M>(&self,
-                                    sp: Span,
-                                    mk_msg: M,
-                                    actual_ty: String,
-                                    err: Option<&TypeError<'tcx>>)
-                                    -> DiagnosticBuilder<'tcx>
-        where M: FnOnce(Option<String>, String) -> String,
-    {
-        self.type_error_struct_str_with_expected(sp, mk_msg, None, actual_ty, err)
-    }
-
-    pub fn type_error_message_str_with_expected<M>(&self,
-                                                   sp: Span,
-                                                   mk_msg: M,
-                                                   expected_ty: Option<Ty<'tcx>>,
-                                                   actual_ty: String,
-                                                   err: Option<&TypeError<'tcx>>)
-        where M: FnOnce(Option<String>, String) -> String,
-    {
-        self.type_error_struct_str_with_expected(sp, mk_msg, expected_ty, actual_ty, err)
-            .emit();
-    }
-
-    pub fn type_error_struct_str_with_expected<M>(&self,
-                                                  sp: Span,
-                                                  mk_msg: M,
-                                                  expected_ty: Option<Ty<'tcx>>,
-                                                  actual_ty: String,
-                                                  err: Option<&TypeError<'tcx>>)
-                                                  -> DiagnosticBuilder<'tcx>
-        where M: FnOnce(Option<String>, String) -> String,
-    {
-        debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
-
-        let resolved_expected = expected_ty.map(|e_ty| self.resolve_type_vars_if_possible(&e_ty));
-
-        if !resolved_expected.references_error() {
-            let error_str = err.map_or("".to_string(), |t_err| {
-                format!(" ({})", t_err)
-            });
-
-            let mut db = self.tcx.sess.struct_span_err(sp, &format!("{}{}",
-                mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
-                error_str));
-
-            if let Some(err) = err {
-                self.tcx.note_and_explain_type_err(&mut db, err, sp);
-            }
-            db
-        } else {
-            self.tcx.sess.diagnostic().struct_dummy()
-        }
-    }
 
     pub fn type_error_message<M>(&self,
                                  sp: Span,
@@ -1556,6 +1492,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 -> DiagnosticBuilder<'tcx>
         where M: FnOnce(String) -> String,
     {
+        debug!("type_error_struct({:?}, {:?}, {:?})", sp, actual_ty, err);
+
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
 
         // Don't report an error if actual type is TyError.
@@ -1563,9 +1501,21 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return self.tcx.sess.diagnostic().struct_dummy();
         }
 
-        self.type_error_struct_str(sp,
-            move |_e, a| { mk_msg(a) },
-            self.ty_to_string(actual_ty), err)
+        let error_str = err.map_or("".to_string(), |t_err| {
+            format!(" ({})", t_err)
+        });
+
+        let msg = mk_msg(self.ty_to_string(actual_ty));
+
+        // FIXME: use an error code.
+        let mut db = self.tcx.sess.struct_span_err(
+            sp, &format!("{} {}", msg, error_str));
+
+        if let Some(err) = err {
+            self.tcx.note_and_explain_type_err(&mut db, err, sp);
+        }
+
+        db
     }
 
     pub fn report_mismatched_types(&self,
