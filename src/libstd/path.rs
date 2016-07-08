@@ -1529,8 +1529,7 @@ impl Path {
 
     /// The final component of the path, if it is a normal file.
     ///
-    /// If the path terminates in `.`, `..`, or consists solely of a root of
-    /// prefix, `file_name` will return `None`.
+    /// If the path terminates in `..`, `file_name` will return `None`.
     ///
     /// # Examples
     ///
@@ -1542,6 +1541,17 @@ impl Path {
     /// let os_str = OsStr::new("foo.txt");
     ///
     /// assert_eq!(Some(os_str), path.file_name());
+    /// ```
+    ///
+    /// # Other examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    /// use std::ffi::OsStr;
+    ///
+    /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.").file_name());
+    /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.//").file_name());
+    /// assert_eq!(None, Path::new("foo.txt/..").file_name());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_name(&self) -> Option<&OsStr> {
