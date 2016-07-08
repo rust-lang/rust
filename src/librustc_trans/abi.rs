@@ -229,6 +229,7 @@ impl ArgType {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
+#[derive(Clone)]
 pub struct FnType {
     /// The LLVM types of each argument.
     pub args: Vec<ArgType>,

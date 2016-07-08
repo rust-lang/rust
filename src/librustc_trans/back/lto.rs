@@ -22,12 +22,12 @@ use libc;
 use flate;
 
 use std::ffi::CString;
+use std::path::Path;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[String],
            config: &ModuleConfig,
-           name_extra: &str,
-           output_names: &config::OutputFilenames) {
+           temp_no_opt_bc_filename: &Path) {
     if sess.opts.cg.prefer_dynamic {
         sess.struct_err("cannot prefer dynamic linking when performing LTO")
             .note("only 'staticlib', 'bin', and 'cdylib' outputs are \
@@ -132,8 +132,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     }
 
     if sess.opts.cg.save_temps {
-        let path = output_names.with_extension(&format!("{}.no-opt.lto.bc", name_extra));
-        let cstr = path2cstr(&path);
+        let cstr = path2cstr(temp_no_opt_bc_filename);
         unsafe {
             llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
         }
