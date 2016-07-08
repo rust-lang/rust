@@ -105,7 +105,7 @@ build.
 
 MSVC builds of Rust additionally require an installation of Visual Studio 2013
 (or later) so `rustc` can use its linker. Make sure to check the “C++ tools”
-option. In addition, `cmake` needs to be installed to build LLVM.
+option.
 
 With these dependencies installed, the build takes two steps:
 
@@ -116,13 +116,25 @@ $ make && make install
 
 #### MSVC with rustbuild
 
-For those who don't want the hassle of MSYS or MinGW, you can invoke rustbuild
-directly. All you need are Python 2, CMake, and Git in your PATH (make sure you
-do __not__ use the ones from MSYS!). You'll also need Visual Studio 2013 or
-newer with the C++ tools. Then all you need to do is invoke the appropriate
-vcvars bat file and kick off rustbuild.
+The old build system, based on makefiles, is currently being rewritten into a
+Rust-based build system called rustbuild. This can be used to bootstrap the
+compiler on MSVC without needing to install MSYS or MinGW. All you need are
+[Python 2](https://www.python.org/downloads/),
+[CMake](https://cmake.org/download/), and
+[Git](https://git-scm.com/downloads) in your PATH (make sure you do not use the
+ones from MSYS if you have it installed). You'll also need Visual Studio 2013 or
+newer with the C++ tools. Then all you need to do is to kick off rustbuild.
 
-```bat
+```
+python .\src\bootstrap\bootstrap.py
+```
+
+Currently rustbuild only works with some known versions of Visual Studio. If you
+have a more recent version installed that a part of rustbuild doesn't understand
+then you may need to force rustbuild to use an older version. This can be done
+by manually calling the appropriate vcvars file before running the bootstrap.
+
+```
 CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
 python .\src\bootstrap\bootstrap.py
 ```
