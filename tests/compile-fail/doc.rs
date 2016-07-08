@@ -14,6 +14,8 @@
 /// which should be reported only once despite being __doubly bad__.
 /// Here be ::is::a::global:path.
 //~^ ERROR: you should put `is::a::global:path` between ticks
+/// That's not code ~NotInCodeBlock~.
+//~^ ERROR: you should put `NotInCodeBlock` between ticks
 /// be_sure_we_got_to_the_end_of_it
 //~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
 fn foo_bar() {
@@ -24,9 +26,14 @@ fn foo_bar() {
 /// foo_bar FOO_BAR
 /// _foo bar_
 /// ```
+///
+/// ~~~rust
+/// foo_bar FOO_BAR
+/// _foo bar_
+/// ~~~
 /// be_sure_we_got_to_the_end_of_it
 //~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
-fn multiline_ticks() {
+fn multiline_codeblock() {
 }
 
 /// This _is a test for
@@ -106,7 +113,7 @@ fn test_unicode() {
 //~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
 fn main() {
     foo_bar();
-    multiline_ticks();
+    multiline_codeblock();
     test_emphasis();
     test_units();
 }
@@ -150,4 +157,43 @@ fn issue883() {
 /// [foo
 /// bar](https://doc.rust-lang.org/stable/std/iter/trait.IteratorFooBar.html)
 fn multiline() {
+}
+
+/** E.g. serialization of an empty list: FooBar
+```
+That's in a code block: `PackedNode`
+```
+
+And BarQuz too.
+be_sure_we_got_to_the_end_of_it
+*/
+//~^^^^^^^^ ERROR: you should put `FooBar` between ticks
+//~^^^^ ERROR: you should put `BarQuz` between ticks
+//~^^^^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn issue1073() {
+}
+
+/** E.g. serialization of an empty list: FooBar
+```
+That's in a code block: PackedNode
+```
+
+And BarQuz too.
+be_sure_we_got_to_the_end_of_it
+*/
+//~^^^^^^^^ ERROR: you should put `FooBar` between ticks
+//~^^^^ ERROR: you should put `BarQuz` between ticks
+//~^^^^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn issue1073_alt() {
+}
+
+/// Test more than three quotes:
+/// ````
+/// DoNotWarn
+/// ```
+/// StillDont
+/// ````
+/// be_sure_we_got_to_the_end_of_it
+//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn four_quotes() {
 }

@@ -50,25 +50,50 @@ impl EarlyLintPass for Doc {
     }
 }
 
+/// Cleanup documentation decoration (`///` and such).
+///
+/// We can't use `syntax::attr::AttributeMethods::with_desugared_doc` or
+/// `syntax::parse::lexer::comments::strip_doc_comment_decoration` because we need to keep track of
+/// the span but this function is inspired from the later.
+#[allow(cast_possible_truncation)]
+pub fn strip_doc_comment_decoration((comment, span): (&str, Span)) -> Vec<(&str, Span)> {
+    // one-line comments lose their prefix
+    const ONELINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
+    for prefix in ONELINERS {
+        if comment.starts_with(*prefix) {
+            return vec![(
+                &comment[prefix.len()..],
+                Span { lo: span.lo + BytePos(prefix.len() as u32), ..span }
+            )];
+        }
+    }
+
+    if comment.starts_with("/*") {
+        return comment[3..comment.len() - 2].lines().map(|line| {
+            let offset = line.as_ptr() as usize - comment.as_ptr() as usize;
+            debug_assert_eq!(offset as u32 as usize, offset);
+
+            (
+                line,
+                Span {
+                    lo: span.lo + BytePos(offset as u32),
+                    ..span
+                }
+            )
+        }).collect();
+    }
+
+    panic!("not a doc-comment: {}", comment);
+}
+
 pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [ast::Attribute]) {
     let mut docs = vec![];
 
-    let mut in_multiline = false;
     for attr in attrs {
         if attr.node.is_sugared_doc {
             if let ast::MetaItemKind::NameValue(_, ref doc) = attr.node.value.node {
                 if let ast::LitKind::Str(ref doc, _) = doc.node {
-                    // doc comments start with `///` or `//!`
-                    let real_doc = &doc[3..];
-                    let mut span = attr.span;
-                    span.lo = span.lo + BytePos(3);
-
-                    // check for multiline code blocks
-                    if real_doc.trim_left().starts_with("```") {
-                        in_multiline = !in_multiline;
-                    } else if !in_multiline {
-                        docs.push((real_doc, span));
-                    }
+                    docs.extend_from_slice(&strip_doc_comment_decoration((doc, attr.span)));
                 }
             }
         }
@@ -135,11 +160,11 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span)]) 
         }
 
         #[allow(while_let_on_iterator)] // borrowck complains about for
-        fn jump_to(&mut self, n: char) -> Result<(), ()> {
-            while let Some((_, c)) = self.next() {
+        fn jump_to(&mut self, n: char) -> Result<bool, ()> {
+            while let Some((new_line, c)) = self.next() {
                 if c == n {
                     self.advance_begin();
-                    return Ok(());
+                    return Ok(new_line);
                 }
             }
 
@@ -217,6 +242,54 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span)]) 
         pos: 0,
     };
 
+    /// Check for fanced code block.
+    macro_rules! check_block {
+        ($parser:expr, $c:tt, $new_line:expr) => {{
+            check_block!($parser, $c, $c, $new_line)
+        }};
+
+        ($parser:expr, $c:pat, $c_expr:expr, $new_line:expr) => {{
+            fn check_block(parser: &mut Parser, new_line: bool) -> Result<bool, ()> {
+                if new_line {
+                    let mut lookup_parser = parser.clone();
+                    if let (Some((false, $c)), Some((false, $c))) = (lookup_parser.next(), lookup_parser.next()) {
+                        *parser = lookup_parser;
+                        // 3 or more ` or ~ open a code block to be closed with the same number of ` or ~
+                        let mut open_count = 3;
+                        while let Some((false, $c)) = parser.next() {
+                            open_count += 1;
+                        }
+
+                        loop {
+                            loop {
+                                if try!(parser.jump_to($c_expr)) {
+                                    break;
+                                }
+                            }
+
+                            lookup_parser = parser.clone();
+                            if let (Some((false, $c)), Some((false, $c))) = (lookup_parser.next(), lookup_parser.next()) {
+                                let mut close_count = 3;
+                                while let Some((false, $c)) = lookup_parser.next() {
+                                    close_count += 1;
+                                }
+
+                                if close_count == open_count {
+                                    *parser = lookup_parser;
+                                    return Ok(true);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Ok(false)
+            }
+
+            check_block(&mut $parser, $new_line)
+        }};
+    }
+
     loop {
         match parser.next() {
             Some((new_line, c)) => {
@@ -225,7 +298,20 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span)]) 
                         parser.next_line();
                     }
                     '`' => {
-                        try!(parser.jump_to('`'));
+                        if try!(check_block!(parser, '`', new_line)) {
+                            continue;
+                        }
+
+                        try!(parser.jump_to('`')); // not a code block, just inline code
+                    }
+                    '~' => {
+                        if try!(check_block!(parser, '~', new_line)) {
+                            continue;
+                        }
+
+                        // ~ does not introduce inline code, but two of them introduce
+                        // strikethrough. Too bad for the consistency but we don't care about
+                        // strikethrough.
                     }
                     '[' => {
                         // Check for a reference definition `[foo]:` at the beginning of a line
@@ -249,8 +335,12 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(&str, Span)]) 
                         parser.link = false;
 
                         match parser.peek() {
-                            Some('(') => try!(parser.jump_to(')')),
-                            Some('[') => try!(parser.jump_to(']')),
+                            Some('(') => {
+                                try!(parser.jump_to(')'));
+                            }
+                            Some('[') => {
+                                try!(parser.jump_to(']'));
+                            }
                             Some(_) => continue,
                             None => return Err(()),
                         }
