@@ -18,7 +18,6 @@
 
 // revisions: ok oneuse transmute krisskross
 
-#![feature(fn_traits)]
 #![allow(dead_code, unused_variables)]
 
 use std::marker::PhantomData;

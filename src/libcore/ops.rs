@@ -1929,7 +1929,7 @@ pub trait FnMut<Args> : FnOnce<Args> {
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
-    #[unstable(feature = "fn_traits", issue = "29625")]
+    #[stable(feature = "fn_once_output", since = "1.12.0")]
     type Output;
 
     /// This is called when the call operator is used.

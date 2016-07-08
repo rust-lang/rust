@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(fn_traits)]
-
 struct A<F: FnOnce()->T,T>(F::Output);
 struct B<F: FnOnce()->T,T>(A<F,T>);
 

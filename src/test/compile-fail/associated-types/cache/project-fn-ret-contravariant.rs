@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(fn_traits)]
 #![feature(unboxed_closures)]
 #![feature(rustc_attrs)]
 
