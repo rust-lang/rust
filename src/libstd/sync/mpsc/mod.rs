@@ -1840,6 +1840,34 @@ mod tests {
     }
 
     #[test]
+    fn test_recv_try_iter() {
+        let (request_tx, request_rx) = channel();
+        let (response_tx, response_rx) = channel();
+
+        // Request `x`s until we have `6`.
+        let t = thread::spawn(move|| {
+            let mut count = 0;
+            loop {
+                for x in response_rx.try_iter() {
+                    count += x;
+                    if count == 6 {
+                        drop(response_rx);
+                        drop(request_tx);
+                        return count;
+                    }
+                }
+                request_tx.send(()).unwrap();
+            }
+        });
+
+        for _ in request_rx.iter() {
+            response_tx.send(2).unwrap();
+        }
+
+        assert_eq!(t.join().unwrap(), 6);
+    }
+
+    #[test]
     fn test_recv_into_iter_owned() {
         let mut iter = {
           let (tx, rx) = channel::<i32>();
