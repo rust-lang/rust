@@ -601,3 +601,22 @@ impl fmt::Debug for UdpSocket {
             .finish()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use prelude::v1::*;
+
+    use super::*;
+    use collections::HashMap;
+
+    #[test]
+    fn no_lookup_host_duplicates() {
+        let mut addrs = HashMap::new();
+        let lh = match lookup_host("localhost") {
+            Ok(lh) => lh,
+            Err(e) => panic!("couldn't resolve `localhost': {}", e)
+        };
+        let _na = lh.map(|sa| *addrs.entry(sa).or_insert(0) += 1).count();
+        assert!(addrs.values().filter(|&&v| v > 1).count() == 0);
+    }
+}
