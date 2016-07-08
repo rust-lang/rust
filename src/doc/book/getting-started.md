@@ -11,7 +11,7 @@ an Internet connection to run the commands in this section, as we’ll be
 downloading Rust from the Internet.
 
 We’ll be showing off a number of commands using a terminal, and those lines all
-start with `$`. We don't need to type in the `$`s, they are there to indicate
+start with `$`. You don't need to type in the `$`s, they are there to indicate
 the start of each command. We’ll see many tutorials and examples around the web
 that follow this convention: `$` for commands run as our regular user, and `#`
 for commands we should be running as an administrator.
@@ -159,9 +159,11 @@ You should see the version number, commit hash, and commit date.
 If you do, Rust has been installed successfully! Congrats!
 
 If you don't and you're on Windows, check that Rust is in your %PATH% system
-variable. If it isn't, run the installer again, select "Change" on the "Change,
-repair, or remove installation" page and ensure "Add to PATH" is installed on
-the local hard drive.
+variable: `$ echo %PATH%`. If it isn't, run the installer again, select "Change"
+on the "Change, repair, or remove installation" page and ensure "Add to PATH" is
+installed on the local hard drive.  If you need to configure your path manually,
+you can find the Rust executables in a directory like
+`"C:\Program Files\Rust stable GNU 1.x\bin"`.
 
 Rust does not do its own linking, and so you’ll need to have a linker
 installed. Doing so will depend on your specific system, consult its
@@ -339,7 +341,8 @@ On Windows, you'd enter:
 
 ```bash
 $ dir
-main.exe  main.rs
+main.exe
+main.rs
 ```
 
 This shows we have two files: the source code, with an `.rs` extension, and the
@@ -347,7 +350,7 @@ executable (`main.exe` on Windows, `main` everywhere else). All that's left to
 do from here is run the `main` or `main.exe` file, like this:
 
 ```bash
-$ ./main  # or main.exe on Windows
+$ ./main  # or .\main.exe on Windows
 ```
 
 If *main.rs* were your "Hello, world!" program, this would print `Hello,
