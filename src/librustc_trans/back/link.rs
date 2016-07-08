@@ -205,7 +205,7 @@ pub fn link_binary(sess: &Session,
 
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.cg.save_temps {
-        for obj in object_filenames(sess, outputs) {
+        for obj in object_filenames(trans, outputs) {
             remove(sess, &obj);
         }
         remove(sess, &outputs.with_extension("metadata.o"));
@@ -316,7 +316,7 @@ fn link_binary_output(sess: &Session,
                       crate_type: config::CrateType,
                       outputs: &OutputFilenames,
                       crate_name: &str) -> PathBuf {
-    let objects = object_filenames(sess, outputs);
+    let objects = object_filenames(trans, outputs);
     let default_filename = filename_for_input(sess, crate_type, crate_name,
                                               outputs);
     let out_filename = outputs.outputs.get(&OutputType::Exe)
@@ -356,10 +356,11 @@ fn link_binary_output(sess: &Session,
     out_filename
 }
 
-fn object_filenames(sess: &Session, outputs: &OutputFilenames) -> Vec<PathBuf> {
-    (0..sess.opts.cg.codegen_units).map(|i| {
-        let ext = format!("{}.o", i);
-        outputs.temp_path(OutputType::Object).with_extension(&ext)
+fn object_filenames(trans: &CrateTranslation,
+                    outputs: &OutputFilenames)
+                    -> Vec<PathBuf> {
+    trans.modules.iter().map(|module| {
+        outputs.temp_path(OutputType::Object, Some(&module.name[..]))
     }).collect()
 }
 
@@ -497,7 +498,7 @@ fn link_rlib<'a>(sess: &'a Session,
                 ab.add_file(&bc_deflated_filename);
 
                 // See the bottom of back::write::run_passes for an explanation
-                // of when we do and don't keep .0.bc files around.
+                // of when we do and don't keep .#module-name#.bc files around.
                 let user_wants_numbered_bitcode =
                         sess.opts.output_types.contains_key(&OutputType::Bitcode) &&
                         sess.opts.cg.codegen_units > 1;

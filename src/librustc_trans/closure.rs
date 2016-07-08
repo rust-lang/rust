@@ -10,7 +10,7 @@
 
 use arena::TypedArena;
 use back::symbol_names;
-use llvm::{ValueRef, get_param, get_params};
+use llvm::{self, ValueRef, get_param, get_params};
 use rustc::hir::def_id::DefId;
 use abi::{Abi, FnType};
 use adt;
@@ -167,7 +167,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             variadic: false
         })
     }));
-    let llfn = declare::define_internal_fn(ccx, &symbol, function_type);
+    let llfn = declare::declare_fn(ccx, &symbol, function_type);
 
     // set an inline hint for all closures
     attributes::inline(llfn, attributes::InlineAttr::Hint);
@@ -211,6 +211,8 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
            id, closure_def_id, closure_substs);
 
     let llfn = get_or_create_closure_declaration(ccx, closure_def_id, closure_substs);
+    llvm::SetLinkage(llfn, llvm::WeakODRLinkage);
+    llvm::SetUniqueComdat(ccx.llmod(), llfn);
 
     // Get the type of this closure. Use the current `param_substs` as
     // the closure substitutions. This makes sense because the closure
@@ -377,7 +379,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Create the by-value helper.
     let function_name =
         symbol_names::internal_name_from_type_and_suffix(ccx, llonce_fn_ty, "once_shim");
-    let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
+    let lloncefn = declare::declare_fn(ccx, &function_name, llonce_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);

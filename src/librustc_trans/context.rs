@@ -28,13 +28,13 @@ use mir::CachedMir;
 use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
-use collector::TransItemState;
 use trans_item::TransItem;
 use type_::{Type, TypeNames};
 use rustc::ty::subst::{Substs, VecPerParamSpace};
 use rustc::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
 use session::Session;
+use symbol_map::SymbolMap;
 use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
@@ -46,11 +46,13 @@ use std::rc::Rc;
 use std::str;
 use syntax::ast;
 use syntax::parse::token::InternedString;
+use abi::FnType;
 
 pub struct Stats {
     pub n_glues_created: Cell<usize>,
     pub n_null_glues: Cell<usize>,
     pub n_real_glues: Cell<usize>,
+    pub n_fallback_instantiations: Cell<usize>,
     pub n_fns: Cell<usize>,
     pub n_monos: Cell<usize>,
     pub n_inlines: Cell<usize>,
@@ -80,11 +82,9 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     mir_map: &'a MirMap<'tcx>,
     mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
 
-    available_monomorphizations: RefCell<FnvHashSet<String>>,
-    available_drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, String>>,
     use_dll_storage_attrs: bool,
 
-    translation_items: RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>>,
+    translation_items: RefCell<FnvHashSet<TransItem<'tcx>>>,
     trait_cache: RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>>,
 }
 
@@ -99,7 +99,7 @@ pub struct LocalCrateContext<'tcx> {
     codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
-    drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, ValueRef>>,
+    drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>>,
     /// Track mapping of external ids to local items imported for inlining
     external: RefCell<DefIdMap<Option<ast::NodeId>>>,
     /// Backwards version of the `external` map (inlined items to where they
@@ -172,6 +172,8 @@ pub struct LocalCrateContext<'tcx> {
 
     /// Depth of the current type-of computation - used to bail out
     type_of_depth: Cell<usize>,
+
+    symbol_map: Rc<SymbolMap<'tcx>>,
 }
 
 // Implement DepTrackingMapConfig for `trait_cache`
@@ -198,12 +200,13 @@ pub struct CrateContextList<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
 
     pub fn new(shared_ccx: &'a SharedCrateContext<'a, 'tcx>,
-               codegen_units: Vec<CodegenUnit<'tcx>>)
+               codegen_units: Vec<CodegenUnit<'tcx>>,
+               symbol_map: Rc<SymbolMap<'tcx>>)
                -> CrateContextList<'a, 'tcx> {
         CrateContextList {
             shared: shared_ccx,
             local_ccxs: codegen_units.into_iter().map(|codegen_unit| {
-                LocalCrateContext::new(shared_ccx, codegen_unit)
+                LocalCrateContext::new(shared_ccx, codegen_unit, symbol_map.clone())
             }).collect()
         }
     }
@@ -403,6 +406,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
                 n_glues_created: Cell::new(0),
                 n_null_glues: Cell::new(0),
                 n_real_glues: Cell::new(0),
+                n_fallback_instantiations: Cell::new(0),
                 n_fns: Cell::new(0),
                 n_monos: Cell::new(0),
                 n_inlines: Cell::new(0),
@@ -413,10 +417,8 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             },
             check_overflow: check_overflow,
             check_drop_flag_for_sanity: check_drop_flag_for_sanity,
-            available_monomorphizations: RefCell::new(FnvHashSet()),
-            available_drop_glues: RefCell::new(FnvHashMap()),
             use_dll_storage_attrs: use_dll_storage_attrs,
-            translation_items: RefCell::new(FnvHashMap()),
+            translation_items: RefCell::new(FnvHashSet()),
             trait_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
         }
     }
@@ -479,7 +481,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         }
     }
 
-    pub fn translation_items(&self) -> &RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>> {
+    pub fn translation_items(&self) -> &RefCell<FnvHashSet<TransItem<'tcx>>> {
         &self.translation_items
     }
 
@@ -515,7 +517,8 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
 impl<'tcx> LocalCrateContext<'tcx> {
     fn new<'a>(shared: &SharedCrateContext<'a, 'tcx>,
-               codegen_unit: CodegenUnit<'tcx>)
+               codegen_unit: CodegenUnit<'tcx>,
+               symbol_map: Rc<SymbolMap<'tcx>>)
            -> LocalCrateContext<'tcx> {
         unsafe {
             // Append ".rs" to LLVM module identifier.
@@ -574,6 +577,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 intrinsics: RefCell::new(FnvHashMap()),
                 n_llvm_insns: Cell::new(0),
                 type_of_depth: Cell::new(0),
+                symbol_map: symbol_map,
             };
 
             let (int_type, opaque_vec_type, str_slice_ty, mut local_ccx) = {
@@ -730,7 +734,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().fn_pointer_shims
     }
 
-    pub fn drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<DropGlueKind<'tcx>, ValueRef>> {
+    pub fn drop_glues<'a>(&'a self)
+                          -> &'a RefCell<FnvHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>> {
         &self.local().drop_glues
     }
 
@@ -816,14 +821,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.stats
     }
 
-    pub fn available_monomorphizations<'a>(&'a self) -> &'a RefCell<FnvHashSet<String>> {
-        &self.shared.available_monomorphizations
-    }
-
-    pub fn available_drop_glues(&self) -> &RefCell<FnvHashMap<DropGlueKind<'tcx>, String>> {
-        &self.shared.available_drop_glues
-    }
-
     pub fn int_type(&self) -> Type {
         self.local().int_type
     }
@@ -900,22 +897,12 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.shared.get_mir(def_id)
     }
 
-    pub fn translation_items(&self) -> &RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>> {
-        &self.shared.translation_items
+    pub fn symbol_map(&self) -> &SymbolMap<'tcx> {
+        &*self.local().symbol_map
     }
 
-    pub fn record_translation_item_as_generated(&self, cgi: TransItem<'tcx>) {
-        if self.sess().opts.debugging_opts.print_trans_items.is_none() {
-            return;
-        }
-
-        let mut codegen_items = self.translation_items().borrow_mut();
-
-        if codegen_items.contains_key(&cgi) {
-            codegen_items.insert(cgi, TransItemState::PredictedAndGenerated);
-        } else {
-            codegen_items.insert(cgi, TransItemState::NotPredictedButGenerated);
-        }
+    pub fn translation_items(&self) -> &RefCell<FnvHashSet<TransItem<'tcx>>> {
+        &self.shared.translation_items
     }
 
     /// Given the def-id of some item that has no type parameters, make

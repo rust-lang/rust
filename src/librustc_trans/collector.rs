@@ -205,6 +205,7 @@ use rustc::mir::visit::Visitor as MirVisitor;
 use syntax::abi::Abi;
 use errors;
 use syntax_pos::DUMMY_SP;
+use syntax::ast::NodeId;
 use base::custom_coerce_unsize_info;
 use context::SharedCrateContext;
 use common::{fulfill_obligation, normalize_and_test_predicates, type_is_sized};
@@ -349,17 +350,14 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
                 || format!("Could not find MIR for static: {:?}", def_id));
 
             let empty_substs = scx.empty_substs_for_def_id(def_id);
-            let mut visitor = MirNeighborCollector {
+            let visitor = MirNeighborCollector {
                 scx: scx,
                 mir: &mir,
                 output: &mut neighbors,
                 param_substs: empty_substs
             };
 
-            visitor.visit_mir(&mir);
-            for promoted in &mir.promoted {
-                visitor.visit_mir(promoted);
-            }
+            visit_mir_and_promoted(visitor, &mir);
         }
         TransItem::Fn(instance) => {
             // Keep track of the monomorphization recursion depth
@@ -372,17 +370,14 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
             let mir = errors::expect(scx.sess().diagnostic(), scx.get_mir(instance.def),
                 || format!("Could not find MIR for function: {}", instance));
 
-            let mut visitor = MirNeighborCollector {
+            let visitor = MirNeighborCollector {
                 scx: scx,
                 mir: &mir,
                 output: &mut neighbors,
                 param_substs: instance.substs
             };
 
-            visitor.visit_mir(&mir);
-            for promoted in &mir.promoted {
-                visitor.visit_mir(promoted);
-            }
+            visit_mir_and_promoted(visitor, &mir);
         }
     }
 
@@ -456,12 +451,25 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         match *rvalue {
             mir::Rvalue::Aggregate(mir::AggregateKind::Closure(def_id,
                                                                ref substs), _) => {
-                assert!(can_have_local_instance(self.scx.tcx(), def_id));
-                let trans_item = create_fn_trans_item(self.scx.tcx(),
-                                                      def_id,
-                                                      substs.func_substs,
-                                                      self.param_substs);
-                self.output.push(trans_item);
+                let mir = errors::expect(self.scx.sess().diagnostic(),
+                                         self.scx.get_mir(def_id),
+                                         || {
+                    format!("Could not find MIR for closure: {:?}", def_id)
+                });
+
+                let concrete_substs = monomorphize::apply_param_substs(self.scx.tcx(),
+                                                                       self.param_substs,
+                                                                       &substs.func_substs);
+                let concrete_substs = self.scx.tcx().erase_regions(&concrete_substs);
+
+                let visitor = MirNeighborCollector {
+                    scx: self.scx,
+                    mir: &mir,
+                    output: self.output,
+                    param_substs: concrete_substs
+                };
+
+                visit_mir_and_promoted(visitor, &mir);
             }
             // When doing an cast from a regular pointer to a fat pointer, we
             // have to instantiate all methods of the trait being cast to, so we
@@ -624,7 +632,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                             let operand_ty = monomorphize::apply_param_substs(tcx,
                                                                               self.param_substs,
                                                                               &mt.ty);
-                            self.output.push(TransItem::DropGlue(DropGlueKind::Ty(operand_ty)));
+                            let ty = glue::get_drop_glue_type(tcx, operand_ty);
+                            self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
                         } else {
                             bug!("Has the drop_in_place() intrinsic's signature changed?")
                         }
@@ -1070,7 +1079,6 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemTy(..)          |
             hir::ItemDefaultImpl(..) |
             hir::ItemTrait(..)       |
-            hir::ItemConst(..)       |
             hir::ItemMod(..)         => {
                 // Nothing to do, just keep recursing...
             }
@@ -1107,9 +1115,14 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                                         self.scx.tcx().map.local_def_id(item.id)));
                 self.output.push(TransItem::Static(item.id));
             }
-            hir::ItemFn(_, _, constness, _, ref generics, _) => {
-                if !generics.is_type_parameterized() &&
-                   constness == hir::Constness::NotConst {
+            hir::ItemConst(..) => {
+                debug!("RootCollector: ItemConst({})",
+                       def_id_to_string(self.scx.tcx(),
+                                        self.scx.tcx().map.local_def_id(item.id)));
+                add_roots_for_const_item(self.scx, item.id, self.output);
+            }
+            hir::ItemFn(_, _, _, _, ref generics, _) => {
+                if !generics.is_type_parameterized() {
                     let def_id = self.scx.tcx().map.local_def_id(item.id);
 
                     debug!("RootCollector: ItemFn({})",
@@ -1129,9 +1142,8 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
         match ii.node {
             hir::ImplItemKind::Method(hir::MethodSig {
                 ref generics,
-                constness,
                 ..
-            }, _) if constness == hir::Constness::NotConst => {
+            }, _) => {
                 let hir_map = &self.scx.tcx().map;
                 let parent_node_id = hir_map.get_parent_node(ii.id);
                 let is_impl_generic = match hir_map.expect_item(parent_node_id) {
@@ -1228,111 +1240,34 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TransItemState {
-    PredictedAndGenerated,
-    PredictedButNotGenerated,
-    NotPredictedButGenerated,
+// There are no translation items for constants themselves but their
+// initializers might still contain something that produces translation items,
+// such as cast that introduce a new vtable.
+fn add_roots_for_const_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+                                      const_item_node_id: NodeId,
+                                      output: &mut Vec<TransItem<'tcx>>)
+{
+    let def_id = scx.tcx().map.local_def_id(const_item_node_id);
+
+    // Scan the MIR in order to find function calls, closures, and
+    // drop-glue
+    let mir = errors::expect(scx.sess().diagnostic(), scx.get_mir(def_id),
+        || format!("Could not find MIR for const: {:?}", def_id));
+
+    let empty_substs = scx.empty_substs_for_def_id(def_id);
+    let visitor = MirNeighborCollector {
+        scx: scx,
+        mir: &mir,
+        output: output,
+        param_substs: empty_substs
+    };
+
+    visit_mir_and_promoted(visitor, &mir);
 }
 
-pub fn collecting_debug_information(scx: &SharedCrateContext) -> bool {
-    return cfg!(debug_assertions) &&
-           scx.sess().opts.debugging_opts.print_trans_items.is_some();
-}
-
-pub fn print_collection_results<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>) {
-    use std::hash::{Hash, SipHasher, Hasher};
-
-    if !collecting_debug_information(scx) {
-        return;
-    }
-
-    fn hash<T: Hash>(t: &T) -> u64 {
-        let mut s = SipHasher::new();
-        t.hash(&mut s);
-        s.finish()
-    }
-
-    let trans_items = scx.translation_items().borrow();
-
-    {
-        // Check for duplicate item keys
-        let mut item_keys = FnvHashMap();
-
-        for (item, item_state) in trans_items.iter() {
-            let k = item.to_string(scx.tcx());
-
-            if item_keys.contains_key(&k) {
-                let prev: (TransItem, TransItemState) = item_keys[&k];
-                debug!("DUPLICATE KEY: {}", k);
-                debug!(" (1) {:?}, {:?}, hash: {}, raw: {}",
-                       prev.0,
-                       prev.1,
-                       hash(&prev.0),
-                       prev.0.to_raw_string());
-
-                debug!(" (2) {:?}, {:?}, hash: {}, raw: {}",
-                       *item,
-                       *item_state,
-                       hash(item),
-                       item.to_raw_string());
-            } else {
-                item_keys.insert(k, (*item, *item_state));
-            }
-        }
-    }
-
-    let mut predicted_but_not_generated = FnvHashSet();
-    let mut not_predicted_but_generated = FnvHashSet();
-    let mut predicted = FnvHashSet();
-    let mut generated = FnvHashSet();
-
-    for (item, item_state) in trans_items.iter() {
-        let item_key = item.to_string(scx.tcx());
-
-        match *item_state {
-            TransItemState::PredictedAndGenerated => {
-                predicted.insert(item_key.clone());
-                generated.insert(item_key);
-            }
-            TransItemState::PredictedButNotGenerated => {
-                predicted_but_not_generated.insert(item_key.clone());
-                predicted.insert(item_key);
-            }
-            TransItemState::NotPredictedButGenerated => {
-                not_predicted_but_generated.insert(item_key.clone());
-                generated.insert(item_key);
-            }
-        }
-    }
-
-    debug!("Total number of translation items predicted: {}", predicted.len());
-    debug!("Total number of translation items generated: {}", generated.len());
-    debug!("Total number of translation items predicted but not generated: {}",
-           predicted_but_not_generated.len());
-    debug!("Total number of translation items not predicted but generated: {}",
-           not_predicted_but_generated.len());
-
-    if generated.len() > 0 {
-        debug!("Failed to predict {}% of translation items",
-               (100 * not_predicted_but_generated.len()) / generated.len());
-    }
-    if generated.len() > 0 {
-        debug!("Predict {}% too many translation items",
-               (100 * predicted_but_not_generated.len()) / generated.len());
-    }
-
-    debug!("");
-    debug!("Not predicted but generated:");
-    debug!("============================");
-    for item in not_predicted_but_generated {
-        debug!(" - {}", item);
-    }
-
-    debug!("");
-    debug!("Predicted but not generated:");
-    debug!("============================");
-    for item in predicted_but_not_generated {
-        debug!(" - {}", item);
+fn visit_mir_and_promoted<'tcx, V: MirVisitor<'tcx>>(mut visitor: V, mir: &mir::Mir<'tcx>) {
+    visitor.visit_mir(&mir);
+    for promoted in &mir.promoted {
+        visitor.visit_mir(promoted);
     }
 }
