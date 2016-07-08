@@ -877,9 +877,8 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
         // public, even if the type alias itself is private. So, something
         // like `type A = u8; pub fn f() -> A {...}` doesn't cause an error.
         if let hir::ItemTy(ref ty, ref generics) = item.node {
-            let mut check = SearchInterfaceForPrivateItemsVisitor {
-                min_visibility: ty::Visibility::Public, ..*self
-            };
+            let mut check = SearchInterfaceForPrivateItemsVisitor::new(self.tcx,
+                                                                       self.old_error_set);
             check.visit_ty(ty);
             // If a private type alias with default type parameters is used in public
             // interface we must ensure, that the defaults are public if they are actually used.
