@@ -471,28 +471,34 @@ pub fn get_adt_def<'a, 'tcx>(intr: &IdentInterner,
 
     let doc = cdata.lookup_item(item_id);
     let did = DefId { krate: cdata.cnum, index: item_id };
+    let mut ctor_did = None;
     let (kind, variants) = match item_family(doc) {
         Enum => {
             (ty::AdtKind::Enum,
              get_enum_variants(intr, cdata, doc))
         }
         Struct(..) => {
-            let ctor_did =
-                reader::maybe_get_doc(doc, tag_items_data_item_struct_ctor).
-                map_or(did, |ctor_doc| translated_def_id(cdata, ctor_doc));
+            // Use separate constructor id for unit/tuple structs and reuse did for braced structs.
+            ctor_did = reader::maybe_get_doc(doc, tag_items_data_item_struct_ctor).map(|ctor_doc| {
+                translated_def_id(cdata, ctor_doc)
+            });
             (ty::AdtKind::Struct,
-             vec![get_struct_variant(intr, cdata, doc, ctor_did)])
+             vec![get_struct_variant(intr, cdata, doc, ctor_did.unwrap_or(did))])
         }
         _ => bug!("get_adt_def called on a non-ADT {:?} - {:?}",
                   item_family(doc), did)
     };
 
     let adt = tcx.intern_adt_def(did, kind, variants);
+    if let Some(ctor_did) = ctor_did {
+        // Make adt definition available through constructor id as well.
+        tcx.insert_adt_def(ctor_did, adt);
+    }
 
     // this needs to be done *after* the variant is interned,
     // to support recursive structures
     for variant in &adt.variants {
-        if variant.kind() == ty::VariantKind::Tuple &&
+        if variant.kind == ty::VariantKind::Tuple &&
             adt.adt_kind() == ty::AdtKind::Enum {
             // tuple-like enum variant fields aren't real items - get the types
             // from the ctor.

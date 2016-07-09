@@ -13,7 +13,7 @@ use hair::cx::Cx;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_const_eval as const_eval;
 use rustc::hir::def::Def;
-use rustc::hir::pat_util::{EnumerateAndAdjustIterator, pat_is_resolved_const};
+use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
 use rustc::hir::{self, PatKind};
@@ -76,9 +76,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 PatternKind::Range { lo: lo, hi: hi }
             },
 
-            PatKind::Path(..) | PatKind::QPath(..)
-                if pat_is_resolved_const(&self.cx.tcx.def_map.borrow(), pat) =>
-            {
+            PatKind::Path(..) => {
                 match self.cx.tcx.expect_def(pat.id) {
                     Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                         let tcx = self.cx.tcx.global_tcx();
@@ -104,11 +102,9 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                             }
                         }
                     }
-                    def =>
-                        span_bug!(
-                            pat.span,
-                            "def not a constant: {:?}",
-                            def),
+                    _ => {
+                        self.variant_or_leaf(pat, vec![])
+                    }
                 }
             }
 
@@ -199,10 +195,6 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 }
             }
 
-            PatKind::Path(..) => {
-                self.variant_or_leaf(pat, vec![])
-            }
-
             PatKind::TupleStruct(_, ref subpatterns, ddpos) => {
                 let pat_ty = self.cx.tcx.node_id_to_type(pat.id);
                 let adt_def = match pat_ty.sty {
@@ -252,10 +244,6 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                           .collect();
 
                 self.variant_or_leaf(pat, subpatterns)
-            }
-
-            PatKind::QPath(..) => {
-                span_bug!(pat.span, "unexpanded macro or bad constant etc");
             }
         };
 
@@ -325,7 +313,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 }
             }
 
-            Def::Struct(..) | Def::TyAlias(..) => {
+            Def::Struct(..) | Def::TyAlias(..) | Def::AssociatedTy(..) => {
                 PatternKind::Leaf { subpatterns: subpatterns }
             }
 

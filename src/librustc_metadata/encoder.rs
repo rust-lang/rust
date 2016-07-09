@@ -217,7 +217,7 @@ fn encode_parent_item(rbml_w: &mut Encoder, id: DefId) {
 fn encode_struct_fields(rbml_w: &mut Encoder,
                         variant: ty::VariantDef) {
     for f in &variant.fields {
-        if variant.is_tuple_struct() {
+        if variant.kind == ty::VariantKind::Tuple {
             rbml_w.start_tag(tag_item_unnamed_field);
         } else {
             rbml_w.start_tag(tag_item_field);
@@ -250,7 +250,7 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         let _task = index.record(vid, rbml_w);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id_and_key(ecx, rbml_w, vid);
-        encode_family(rbml_w, match variant.kind() {
+        encode_family(rbml_w, match variant.kind {
             ty::VariantKind::Struct => 'V',
             ty::VariantKind::Tuple => 'v',
             ty::VariantKind::Unit => 'w',

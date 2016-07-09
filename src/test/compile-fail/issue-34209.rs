@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo { B(u32) }
+enum S {
+    A,
+}
 
-fn bar(foo: Foo) -> u32 {
-    match foo {
-        Foo::B { i } => i, //~ ERROR E0163
+fn bug(l: S) {
+    match l {
+        S::B{ } => { },
+        //~^ ERROR ambiguous associated type; specify the type using the syntax `<S as Trait>::B`
     }
 }
 
-fn main() {
-}
+fn main () {}

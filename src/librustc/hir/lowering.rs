@@ -862,7 +862,8 @@ impl<'a> LoweringContext<'a> {
                                                       respan(pth1.span, pth1.node.name),
                                                       sub.as_ref().map(|x| this.lower_pat(x)))
                             }
-                            _ => hir::PatKind::Path(hir::Path::from_name(pth1.span, pth1.node.name))
+                            _ => hir::PatKind::Path(None, hir::Path::from_name(pth1.span,
+                                                                               pth1.node.name))
                         }
                     })
                 }
@@ -872,15 +873,11 @@ impl<'a> LoweringContext<'a> {
                                               pats.iter().map(|x| self.lower_pat(x)).collect(),
                                               ddpos)
                 }
-                PatKind::Path(None, ref pth) => {
-                    hir::PatKind::Path(self.lower_path(pth))
-                }
-                PatKind::Path(Some(ref qself), ref pth) => {
-                    let qself = hir::QSelf {
-                        ty: self.lower_ty(&qself.ty),
-                        position: qself.position,
-                    };
-                    hir::PatKind::QPath(qself, self.lower_path(pth))
+                PatKind::Path(ref opt_qself, ref path) => {
+                    let opt_qself = opt_qself.as_ref().map(|qself| {
+                        hir::QSelf { ty: self.lower_ty(&qself.ty), position: qself.position }
+                    });
+                    hir::PatKind::Path(opt_qself, self.lower_path(path))
                 }
                 PatKind::Struct(ref pth, ref fields, etc) => {
                     let pth = self.lower_path(pth);
@@ -1831,7 +1828,7 @@ impl<'a> LoweringContext<'a> {
                 -> P<hir::Pat> {
         let def = self.resolver.resolve_generated_global_path(&path, true);
         let pt = if subpats.is_empty() {
-            hir::PatKind::Path(path)
+            hir::PatKind::Path(None, path)
         } else {
             hir::PatKind::TupleStruct(path, subpats, None)
         };

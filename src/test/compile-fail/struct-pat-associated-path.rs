@@ -8,16 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct T { i: i32 }
-fn f<T>() {
-    let t = T { i: 0 }; //~ ERROR `T` does not name a struct or a struct variant
+struct S;
+
+trait Tr {
+    type A;
 }
 
-mod Foo {
-    pub fn f() {}
-}
-fn g<Foo>() {
-    Foo::f(); //~ ERROR no associated item named `f`
+impl Tr for S {
+    type A = S;
 }
 
-fn main() {}
+fn f<T: Tr>() {
+    match S {
+        T::A {} => {} //~ ERROR `T::A` does not name a struct or a struct variant
+    }
+}
+
+fn g<T: Tr<A = S>>() {
+    match S {
+        T::A {} => {} //~ ERROR `T::A` does not name a struct or a struct variant
+    }
+}
+
+fn main() {
+    match S {
+        S::A {} => {} //~ ERROR ambiguous associated type
+    }
+}
