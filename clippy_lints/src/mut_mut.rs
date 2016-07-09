@@ -2,7 +2,7 @@ use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::lint::*;
 use rustc::ty::{TypeAndMut, TyRef};
-use utils::{in_external_macro, recover_for_loop, span_lint};
+use utils::{higher, in_external_macro, span_lint};
 
 /// **What it does:** This lint checks for instances of `mut mut` references.
 ///
@@ -49,7 +49,7 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for MutVisitor<'a, 'tcx> {
             return;
         }
 
-        if let Some((_, arg, body)) = recover_for_loop(expr) {
+        if let Some((_, arg, body)) = higher::for_loop(expr) {
             // A `for` loop lowers to:
             // ```rust
             // match ::std::iter::Iterator::next(&mut iter) {

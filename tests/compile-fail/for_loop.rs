@@ -2,6 +2,7 @@
 #![plugin(clippy)]
 
 use std::collections::*;
+use std::rc::Rc;
 
 static STATIC: [usize; 4] = [ 0,  1,  8, 16 ];
 const CONST: [usize; 4] = [ 0,  1,  8, 16 ];
@@ -96,23 +97,41 @@ fn main() {
     let mut vec = vec![1, 2, 3, 4];
     let vec2 = vec![1, 2, 3, 4];
     for i in 0..vec.len() {
-        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in &vec`
+        //~^ ERROR `i` is only used to index `vec`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for <item> in &vec {
         println!("{}", vec[i]);
     }
+
+    for i in 0..vec.len() { let _ = vec[i]; }
+    //~^ ERROR `i` is only used to index `vec`
+    //~| HELP consider
+    //~| HELP consider
+    //~| SUGGESTION for <item> in &vec { let _ = vec[i]; }
 
     // ICE #746
     for j in 0..4 {
         //~^ ERROR `j` is only used to index `STATIC`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for <item> in STATIC.iter().take(4) {
         println!("{:?}", STATIC[j]);
     }
 
     for j in 0..4 {
         //~^ ERROR `j` is only used to index `CONST`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for <item> in CONST.iter().take(4) {
         println!("{:?}", CONST[j]);
     }
 
     for i in 0..vec.len() {
-        //~^ ERROR `i` is used to index `vec`. Consider using `for (i, item) in vec.iter().enumerate()`
+        //~^ ERROR `i` is used to index `vec`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for (i, <item>) in vec.iter().enumerate() {
         println!("{} {}", vec[i], i);
     }
     for i in 0..vec.len() {      // not an error, indexing more than one variable
@@ -120,42 +139,66 @@ fn main() {
     }
 
     for i in 0..vec.len() {
-        //~^ ERROR `i` is only used to index `vec2`. Consider using `for item in vec2.iter().take(vec.len())`
+        //~^ ERROR `i` is only used to index `vec2`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for <item> in vec2.iter().take(vec.len()) {
         println!("{}", vec2[i]);
     }
 
     for i in 5..vec.len() {
-        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().skip(5)`
+        //~^ ERROR `i` is only used to index `vec`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for <item> in vec.iter().skip(5) {
         println!("{}", vec[i]);
     }
 
     for i in 0..MAX_LEN {
-        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().take(MAX_LEN)`
+        //~^ ERROR `i` is only used to index `vec`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for <item> in vec.iter().take(MAX_LEN) {
         println!("{}", vec[i]);
     }
 
     for i in 0...MAX_LEN {
-        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().take(MAX_LEN)`
+        //~^ ERROR `i` is only used to index `vec`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for <item> in vec.iter().take(MAX_LEN + 1) {
         println!("{}", vec[i]);
     }
 
     for i in 5..10 {
-        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().take(10).skip(5)`
+        //~^ ERROR `i` is only used to index `vec`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for <item> in vec.iter().take(10).skip(5) {
         println!("{}", vec[i]);
     }
 
     for i in 5...10 {
-        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().take(10).skip(5)`
+        //~^ ERROR `i` is only used to index `vec`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for <item> in vec.iter().take(10 + 1).skip(5) {
         println!("{}", vec[i]);
     }
 
     for i in 5..vec.len() {
-        //~^ ERROR `i` is used to index `vec`. Consider using `for (i, item) in vec.iter().enumerate().skip(5)`
+        //~^ ERROR `i` is used to index `vec`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for (i, <item>) in vec.iter().enumerate().skip(5) {
         println!("{} {}", vec[i], i);
     }
 
     for i in 5..10 {
-        //~^ ERROR `i` is used to index `vec`. Consider using `for (i, item) in vec.iter().enumerate().take(10).skip(5)`
+        //~^ ERROR `i` is used to index `vec`
+        //~| HELP consider
+        //~| HELP consider
+        //~| SUGGESTION for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
         println!("{} {}", vec[i], i);
     }
 
@@ -346,8 +389,20 @@ fn main() {
     for (_, v) in &m {
         //~^ you seem to want to iterate on a map's values
         //~| HELP use the corresponding method
-        //~| SUGGESTION for v in m.values()
+        //~| HELP use the corresponding method
+        //~| SUGGESTION for v in m.values() {
         let _v = v;
+    }
+
+    let m : Rc<HashMap<u64, u64>> = Rc::new(HashMap::new());
+    for (_, v) in &*m {
+        //~^ you seem to want to iterate on a map's values
+        //~| HELP use the corresponding method
+        //~| HELP use the corresponding method
+        //~| SUGGESTION for v in (*m).values() {
+        let _v = v;
+        // Here the `*` is not actually necesarry, but the test tests that we don't suggest
+        // `in *m.values()` as we used to
     }
 
     let mut m : HashMap<u64, u64> = HashMap::new();
@@ -361,7 +416,8 @@ fn main() {
     for (k, _value) in rm {
         //~^ you seem to want to iterate on a map's keys
         //~| HELP use the corresponding method
-        //~| SUGGESTION for k in rm.keys()
+        //~| HELP use the corresponding method
+        //~| SUGGESTION for k in rm.keys() {
         let _k = k;
     }
 

@@ -3,6 +3,7 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(custom_attribute)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(question_mark)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
@@ -36,6 +37,7 @@ extern crate quine_mc_cluskey;
 
 extern crate rustc_serialize;
 
+extern crate rustc_errors;
 extern crate rustc_plugin;
 extern crate rustc_const_eval;
 extern crate rustc_const_math;

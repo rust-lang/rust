@@ -13,11 +13,10 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use std::borrow::Cow;
-use syntax::codemap::Spanned;
 use syntax::ast;
 
-use utils::{in_macro, snippet, snippet_block, span_lint_and_then};
+use utils::{in_macro, snippet_block, span_lint_and_then};
+use utils::sugg::Sugg;
 
 /// **What it does:** This lint checks for nested `if`-statements which can be collapsed by
 /// `&&`-combining their conditions and for `else { if .. }` expressions that can be collapsed to
@@ -104,29 +103,15 @@ fn check_collapsible_no_if_let(
             return;
         }
         span_lint_and_then(cx, COLLAPSIBLE_IF, expr.span, "this if statement can be collapsed", |db| {
+            let lhs = Sugg::ast(cx, check, "..");
+            let rhs = Sugg::ast(cx, check_inner, "..");
             db.span_suggestion(expr.span,
                                "try",
-                               format!("if {} && {} {}",
-                                       check_to_string(cx, check),
-                                       check_to_string(cx, check_inner),
+                               format!("if {} {}",
+                                       lhs.and(rhs),
                                        snippet_block(cx, content.span, "..")));
         });
     }}
-}
-
-fn requires_brackets(e: &ast::Expr) -> bool {
-    match e.node {
-        ast::ExprKind::Binary(Spanned { node: n, .. }, _, _) if n == ast::BinOpKind::Eq => false,
-        _ => true,
-    }
-}
-
-fn check_to_string(cx: &EarlyContext, e: &ast::Expr) -> Cow<'static, str> {
-    if requires_brackets(e) {
-        format!("({})", snippet(cx, e.span, "..")).into()
-    } else {
-        snippet(cx, e.span, "..")
-    }
 }
 
 /// If the block contains only one expression, returns it.

@@ -13,6 +13,7 @@ use utils::{
     get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path,
     snippet, span_lint, span_lint_and_then, walk_ptrs_ty
 };
+use utils::sugg::Sugg;
 
 /// **What it does:** This lint checks for function arguments and let bindings denoted as `ref`.
 ///
@@ -69,14 +70,15 @@ impl LateLintPass for TopLevelRefPass {
             span_lint_and_then(cx,
                 TOPLEVEL_REF_ARG,
                 l.pat.span,
-                "`ref` on an entire `let` pattern is discouraged, take a reference with & instead",
+                "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
                 |db| {
+                    let init = Sugg::hir(cx, init, "..");
                     db.span_suggestion(s.span,
                                        "try",
-                                       format!("let {}{} = &{};",
+                                       format!("let {}{} = {};",
                                                snippet(cx, i.span, "_"),
                                                tyopt,
-                                               snippet(cx, init.span, "_")));
+                                               init.addr()));
                 }
             );
         }}
@@ -164,15 +166,19 @@ impl LateLintPass for FloatCmp {
                         return;
                     }
                 }
-                span_lint(cx,
-                          FLOAT_CMP,
-                          expr.span,
-                          &format!("{}-comparison of f32 or f64 detected. Consider changing this to `({} - {}).abs() < \
-                                    epsilon` for some suitable value of epsilon. \
-                                    std::f32::EPSILON and std::f64::EPSILON are available.",
-                                   op.as_str(),
-                                   snippet(cx, left.span, ".."),
-                                   snippet(cx, right.span, "..")));
+                span_lint_and_then(cx,
+                                   FLOAT_CMP,
+                                   expr.span,
+                                   "strict comparison of f32 or f64",
+                                   |db| {
+                    let lhs = Sugg::hir(cx, left, "..");
+                    let rhs = Sugg::hir(cx, right, "..");
+
+                    db.span_suggestion(expr.span,
+                                       "consider comparing them within some error",
+                                       format!("({}).abs() < error", lhs - rhs));
+                    db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
+                });
             }
         }
     }

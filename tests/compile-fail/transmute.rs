@@ -62,6 +62,7 @@ unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
     //~^ ERROR transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
     //~| HELP try
     //~| SUGGESTION = &mut *(p as *mut T);
+    let _ = &mut *(p as *mut T);
 
     let _: &T = std::mem::transmute(o);
     //~^ ERROR transmute from a pointer type (`*const U`) to a reference type (`&T`)
@@ -110,6 +111,13 @@ fn useless() {
         //~^ ERROR transmute from an integer to a pointer
         //~| HELP try
         //~| SUGGESTION 5_isize as *const usize
+        let _  = 5_isize as *const usize;
+
+        let _: *const usize = std::mem::transmute(1+1usize);
+        //~^ ERROR transmute from an integer to a pointer
+        //~| HELP try
+        //~| SUGGESTION (1+1usize) as *const usize
+        let _  = (1+1_usize) as *const usize;
     }
 }
 

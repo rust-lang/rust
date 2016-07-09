@@ -11,10 +11,11 @@ use std::fmt;
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path, match_trait_method,
-            match_type, method_chain_args, return_ty, same_tys, snippet, snippet_opt, span_lint,
+            match_type, method_chain_args, return_ty, same_tys, snippet, span_lint,
             span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 use utils::MethodArgs;
 use utils::paths;
+use utils::sugg;
 
 #[derive(Clone)]
 pub struct Pass;
@@ -628,8 +629,8 @@ fn lint_clone_double_ref(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, ty
                                expr.span,
                                "using `clone` on a double-reference; \
                                 this will copy the reference instead of cloning the inner type",
-                               |db| if let Some(snip) = snippet_opt(cx, arg.span) {
-                                   db.span_suggestion(expr.span, "try dereferencing it", format!("(*{}).clone()", snip));
+                               |db| if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
+                                   db.span_suggestion(expr.span, "try dereferencing it", format!("({}).clone()", snip.deref()));
                                });
         }
     }
@@ -641,14 +642,13 @@ fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &MethodArgs) {
         return;
     }
     let arg_ty = cx.tcx.expr_ty(&args[1]);
-    if let Some((span, r)) = derefs_to_slice(cx, &args[1], &arg_ty) {
+    if let Some(slice) = derefs_to_slice(cx, &args[1], &arg_ty) {
         span_lint_and_then(cx, EXTEND_FROM_SLICE, expr.span, "use of `extend` to extend a Vec by a slice", |db| {
             db.span_suggestion(expr.span,
                                "try this",
-                               format!("{}.extend_from_slice({}{})",
+                               format!("{}.extend_from_slice({})",
                                        snippet(cx, args[0].span, "_"),
-                                       r,
-                                       snippet(cx, span, "_")));
+                                       slice));
         });
     }
 }
@@ -672,20 +672,20 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
 #[allow(ptr_arg)]
 // Type of MethodArgs is potentially a Vec
 fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs, is_mut: bool){
-    let caller_type;
     let mut_str = if is_mut { "_mut" } else {""};
-    if let Some(_) = derefs_to_slice(cx, &iter_args[0], &cx.tcx.expr_ty(&iter_args[0])) {
-        caller_type = "slice";
+    let caller_type = if let Some(_) = derefs_to_slice(cx, &iter_args[0], &cx.tcx.expr_ty(&iter_args[0])) {
+        "slice"
     }
     else if match_type(cx, cx.tcx.expr_ty(&iter_args[0]), &paths::VEC) {
-        caller_type = "Vec";
+        "Vec"
     }
     else if match_type(cx, cx.tcx.expr_ty(&iter_args[0]), &paths::VEC_DEQUE) {
-        caller_type = "VecDeque";
+        "VecDeque"
     }
     else {
         return; // caller is not a type that we want to lint
-    }
+    };
+
     span_lint(
         cx,
         ITER_NTH,
@@ -695,7 +695,7 @@ fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &MethodArgs, is_
     );
 }
 
-fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: &ty::Ty) -> Option<(Span, &'static str)> {
+fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: &ty::Ty) -> Option<sugg::Sugg<'static>> {
     fn may_slice(cx: &LateContext, ty: &ty::Ty) -> bool {
         match ty.sty {
             ty::TySlice(_) => true,
@@ -706,19 +706,22 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: &ty::Ty) -> Option<(S
             _ => false,
         }
     }
+
     if let hir::ExprMethodCall(name, _, ref args) = expr.node {
         if &name.node.as_str() == &"iter" && may_slice(cx, &cx.tcx.expr_ty(&args[0])) {
-            Some((args[0].span, "&"))
+            sugg::Sugg::hir_opt(cx, &*args[0]).map(|sugg| {
+                sugg.addr()
+            })
         } else {
             None
         }
     } else {
         match ty.sty {
-            ty::TySlice(_) => Some((expr.span, "")),
+            ty::TySlice(_) => sugg::Sugg::hir_opt(cx, expr),
             ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) |
             ty::TyBox(ref inner) => {
                 if may_slice(cx, inner) {
-                    Some((expr.span, ""))
+                    sugg::Sugg::hir_opt(cx, expr)
                 } else {
                     None
                 }

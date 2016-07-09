@@ -9,15 +9,14 @@ use rustc::middle::region::CodeExtent;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
-use std::borrow::Cow;
 use std::collections::HashMap;
 use syntax::ast;
+use utils::sugg;
 
-use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro,
-            span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, unsugar_range,
-            walk_ptrs_ty, recover_for_loop};
+use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg, in_external_macro,
+            span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, higher,
+            walk_ptrs_ty};
 use utils::paths;
-use utils::UnsugaredRange;
 
 /// **What it does:** This lint checks for looping over the range of `0..len` of some collection just to get the values by index.
 ///
@@ -224,7 +223,7 @@ impl LintPass for Pass {
 
 impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let Some((pat, arg, body)) = recover_for_loop(expr) {
+        if let Some((pat, arg, body)) = higher::for_loop(expr) {
             check_for_loop(cx, pat, arg, body, expr);
         }
         // check for `loop { if let {} else break }` that could be `while let`
@@ -333,7 +332,7 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
 fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
-    if let Some(UnsugaredRange { start: Some(ref start), ref end, .. }) = unsugar_range(arg) {
+    if let Some(higher::Range { start: Some(ref start), ref end, limits }) = higher::range(arg) {
         // the var must be a single name
         if let PatKind::Binding(_, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
@@ -361,34 +360,41 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
 
                 let starts_at_zero = is_integer_literal(start, 0);
 
-                let skip: Cow<_> = if starts_at_zero {
-                    "".into()
+                let skip = if starts_at_zero {
+                    "".to_owned()
                 } else {
-                    format!(".skip({})", snippet(cx, start.span, "..")).into()
+                    format!(".skip({})", snippet(cx, start.span, ".."))
                 };
 
-                let take: Cow<_> = if let Some(ref end) = *end {
+                let take = if let Some(ref end) = *end {
                     if is_len_call(end, &indexed) {
-                        "".into()
+                        "".to_owned()
                     } else {
-                        format!(".take({})", snippet(cx, end.span, "..")).into()
+                        match limits {
+                            ast::RangeLimits::Closed => {
+                                let end = sugg::Sugg::hir(cx, end, "<count>");
+                                format!(".take({})", end + sugg::ONE)
+                            }
+                            ast::RangeLimits::HalfOpen => {
+                                format!(".take({})", snippet(cx, end.span, ".."))
+                            }
+                        }
                     }
                 } else {
-                    "".into()
+                    "".to_owned()
                 };
 
                 if visitor.nonindex {
-                    span_lint(cx,
-                              NEEDLESS_RANGE_LOOP,
-                              expr.span,
-                              &format!("the loop variable `{}` is used to index `{}`. Consider using `for ({}, \
-                                        item) in {}.iter().enumerate(){}{}` or similar iterators",
-                                       ident.node,
-                                       indexed,
-                                       ident.node,
-                                       indexed,
-                                       take,
-                                       skip));
+                    span_lint_and_then(cx,
+                                       NEEDLESS_RANGE_LOOP,
+                                       expr.span,
+                                       &format!("the loop variable `{}` is used to index `{}`", ident.node, indexed),
+                                       |db| {
+                        multispan_sugg(db, "consider using an iterator".to_string(), &[
+                            (pat.span, &format!("({}, <item>)", ident.node)),
+                            (arg.span, &format!("{}.iter().enumerate(){}{}", indexed, take, skip)),
+                        ]);
+                    });
                 } else {
                     let repl = if starts_at_zero && take.is_empty() {
                         format!("&{}", indexed)
@@ -396,14 +402,16 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                         format!("{}.iter(){}{}", indexed, take, skip)
                     };
 
-                    span_lint(cx,
-                              NEEDLESS_RANGE_LOOP,
-                              expr.span,
-                              &format!("the loop variable `{}` is only used to index `{}`. \
-                                        Consider using `for item in {}` or similar iterators",
-                                       ident.node,
-                                       indexed,
-                                       repl));
+                    span_lint_and_then(cx,
+                                       NEEDLESS_RANGE_LOOP,
+                                       expr.span,
+                                       &format!("the loop variable `{}` is only used to index `{}`.", ident.node, indexed),
+                                       |db| {
+                        multispan_sugg(db, "consider using an iterator".to_string(), &[
+                            (pat.span, "<item>"),
+                            (arg.span, &repl),
+                        ]);
+                    });
                 }
             }
         }
@@ -427,7 +435,7 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
 
 fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     // if this for loop is iterating over a two-sided range...
-    if let Some(UnsugaredRange { start: Some(ref start), end: Some(ref end), limits }) = unsugar_range(arg) {
+    if let Some(higher::Range { start: Some(ref start), end: Some(ref end), limits }) = higher::range(arg) {
         // ...and both sides are compile-time constant integers...
         if let Ok(start_idx) = eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None) {
             if let Ok(end_idx) = eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None) {
@@ -588,18 +596,20 @@ fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, ex
 
 /// Check for the `FOR_KV_MAP` lint.
 fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
+    let pat_span = pat.span;
+
     if let PatKind::Tuple(ref pat, _) = pat.node {
         if pat.len() == 2 {
-            let (pat_span, kind) = match (&pat[0].node, &pat[1].node) {
-                (key, _) if pat_is_wild(key, body) => (&pat[1].span, "values"),
-                (_, value) if pat_is_wild(value, body) => (&pat[0].span, "keys"),
+            let (new_pat_span, kind) = match (&pat[0].node, &pat[1].node) {
+                (key, _) if pat_is_wild(key, body) => (pat[1].span, "value"),
+                (_, value) if pat_is_wild(value, body) => (pat[0].span, "key"),
                 _ => return,
             };
 
-            let arg_span = match arg.node {
-                ExprAddrOf(MutImmutable, ref expr) => expr.span,
+            let (arg_span, arg) = match arg.node {
+                ExprAddrOf(MutImmutable, ref expr) => (arg.span, &**expr),
                 ExprAddrOf(MutMutable, _) => return, // for _ in &mut _, there is no {values,keys}_mut method
-                _ => arg.span,
+                _ => (arg.span, arg),
             };
 
             let ty = walk_ptrs_ty(cx.tcx.expr_ty(arg));
@@ -607,14 +617,13 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
                 span_lint_and_then(cx,
                                    FOR_KV_MAP,
                                    expr.span,
-                                   &format!("you seem to want to iterate on a map's {}", kind),
+                                   &format!("you seem to want to iterate on a map's {}s", kind),
                                    |db| {
-                    db.span_suggestion(expr.span,
-                                       "use the corresponding method",
-                                       format!("for {} in {}.{}() {{ .. }}",
-                                               snippet(cx, *pat_span, ".."),
-                                               snippet(cx, arg_span, ".."),
-                                               kind));
+                    let map = sugg::Sugg::hir(cx, arg, "map");
+                    multispan_sugg(db, "use the corresponding method".into(), &[
+                        (pat_span, &snippet(cx, new_pat_span, kind)),
+                        (arg_span, &format!("{}.{}s()", map.maybe_par(), kind)),
+                    ]);
                 });
             }
         }

@@ -6,7 +6,7 @@ use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_math::ConstInt;
 use rustc::hir::*;
 use syntax::ast::RangeLimits;
-use utils;
+use utils::{self, higher};
 
 /// **What it does:** Check for out of bounds array indexing with a constant index.
 ///
@@ -77,7 +77,7 @@ impl LateLintPass for ArrayIndexing {
                 }
 
                 // Index is a constant range
-                if let Some(range) = utils::unsugar_range(index) {
+                if let Some(range) = higher::range(index) {
                     let start = range.start
                         .map(|start| eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None))
                         .map(|v| v.ok());
@@ -94,7 +94,7 @@ impl LateLintPass for ArrayIndexing {
                 }
             }
 
-            if let Some(range) = utils::unsugar_range(index) {
+            if let Some(range) = higher::range(index) {
                 // Full ranges are always valid
                 if range.start.is_none() && range.end.is_none() {
                     return;

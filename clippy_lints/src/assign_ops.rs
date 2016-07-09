@@ -1,13 +1,14 @@
 use rustc::hir;
 use rustc::lint::*;
 use utils::{span_lint_and_then, span_lint, snippet_opt, SpanlessEq, get_trait_def_id, implements_trait};
+use utils::{higher, sugg};
 
-/// **What it does:** This lint checks for `+=` operations and similar
+/// **What it does:** This lint checks for `+=` operations and similar.
 ///
-/// **Why is this bad?** Projects with many developers from languages without those operations
-///                      may find them unreadable and not worth their weight
+/// **Why is this bad?** Projects with many developers from languages without those operations may
+/// find them unreadable and not worth their weight.
 ///
-/// **Known problems:** Types implementing `OpAssign` don't necessarily implement `Op`
+/// **Known problems:** Types implementing `OpAssign` don't necessarily implement `Op`.
 ///
 /// **Example:**
 /// ```
@@ -15,14 +16,14 @@ use utils::{span_lint_and_then, span_lint, snippet_opt, SpanlessEq, get_trait_de
 /// ```
 declare_restriction_lint! {
     pub ASSIGN_OPS,
-    "Any assignment operation"
+    "any assignment operation"
 }
 
-/// **What it does:** Check for `a = a op b` or `a = b commutative_op a` patterns
+/// **What it does:** Check for `a = a op b` or `a = b commutative_op a` patterns.
 ///
-/// **Why is this bad?** These can be written as the shorter `a op= b`
+/// **Why is this bad?** These can be written as the shorter `a op= b`.
 ///
-/// **Known problems:** While forbidden by the spec, `OpAssign` traits may have implementations that differ from the regular `Op` impl
+/// **Known problems:** While forbidden by the spec, `OpAssign` traits may have implementations that differ from the regular `Op` impl.
 ///
 /// **Example:**
 ///
@@ -50,24 +51,14 @@ impl LateLintPass for AssignOps {
     fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
         match expr.node {
             hir::ExprAssignOp(op, ref lhs, ref rhs) => {
-                if let (Some(l), Some(r)) = (snippet_opt(cx, lhs.span), snippet_opt(cx, rhs.span)) {
-                    span_lint_and_then(cx, ASSIGN_OPS, expr.span, "assign operation detected", |db| {
-                        match rhs.node {
-                            hir::ExprBinary(op2, _, _) if op2 != op => {
-                                db.span_suggestion(expr.span,
-                                                   "replace it with",
-                                                   format!("{} = {} {} ({})", l, l, op.node.as_str(), r));
-                            }
-                            _ => {
-                                db.span_suggestion(expr.span,
-                                                   "replace it with",
-                                                   format!("{} = {} {} {}", l, l, op.node.as_str(), r));
-                            }
-                        }
-                    });
-                } else {
-                    span_lint(cx, ASSIGN_OPS, expr.span, "assign operation detected");
-                }
+                span_lint_and_then(cx, ASSIGN_OPS, expr.span, "assign operation detected", |db| {
+                    let lhs = &sugg::Sugg::hir(cx, lhs, "..");
+                    let rhs = &sugg::Sugg::hir(cx, rhs, "..");
+
+                    db.span_suggestion(expr.span,
+                                       "replace it with",
+                                       format!("{} = {}", lhs, sugg::make_binop(higher::binop(op.node), lhs, rhs)));
+                });
             }
             hir::ExprAssign(ref assignee, ref e) => {
                 if let hir::ExprBinary(op, ref l, ref r) = e.node {

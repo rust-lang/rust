@@ -25,7 +25,7 @@ name                                                                            
 [almost_swapped](https://github.com/Manishearth/rust-clippy/wiki#almost_swapped)                                     | warn    | `foo = bar; bar = foo` sequence
 [approx_constant](https://github.com/Manishearth/rust-clippy/wiki#approx_constant)                                   | warn    | the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found; suggests to use the constant
 [assign_op_pattern](https://github.com/Manishearth/rust-clippy/wiki#assign_op_pattern)                               | warn    | assigning the result of an operation on a variable to that same variable
-[assign_ops](https://github.com/Manishearth/rust-clippy/wiki#assign_ops)                                             | allow   | Any assignment operation
+[assign_ops](https://github.com/Manishearth/rust-clippy/wiki#assign_ops)                                             | allow   | any assignment operation
 [bad_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask)                                         | warn    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
 [blacklisted_name](https://github.com/Manishearth/rust-clippy/wiki#blacklisted_name)                                 | warn    | usage of a blacklisted/placeholder name
 [block_in_if_condition_expr](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr)             | warn    | braces can be eliminated in conditions that are expressions, e.g `if { true } ...`

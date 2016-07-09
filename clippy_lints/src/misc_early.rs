@@ -149,7 +149,7 @@ impl EarlyLintPass for MiscEarly {
                                            "Try not to call a closure in the expression where it is declared.",
                                            |db| {
                                                if decl.inputs.is_empty() {
-                                                   let hint = format!("{}", snippet(cx, block.span, ".."));
+                                                   let hint = snippet(cx, block.span, "..").into_owned();
                                                    db.span_suggestion(expr.span, "Try doing something like: ", hint);
                                                }
                                            });

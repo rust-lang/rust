@@ -148,7 +148,7 @@ fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Exp
     }
 }
 
-/// Match `if` or `else if` expressions and return the `then` and `else` block.
+/// Match `if` or `if let` expressions and return the `then` and `else` block.
 fn unsugar_if(expr: &ast::Expr) -> Option<(&P<ast::Block>, &Option<P<ast::Expr>>)> {
     match expr.node {
         ast::ExprKind::If(_, ref then, ref else_) |

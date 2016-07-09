@@ -9,21 +9,23 @@ use rustc::traits::ProjectionMode;
 use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty;
+use rustc_errors;
 use std::borrow::Cow;
 use std::env;
 use std::mem;
 use std::str::FromStr;
-use syntax::ast::{self, LitKind, RangeLimits};
-use syntax::codemap::{ExpnInfo, Span, ExpnFormat};
+use syntax::ast::{self, LitKind};
+use syntax::codemap::{ExpnFormat, ExpnInfo, MultiSpan, Span};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 
+pub mod cargo;
 pub mod comparisons;
 pub mod conf;
 mod hir;
 pub mod paths;
+pub mod sugg;
 pub use self::hir::{SpanlessEq, SpanlessHash};
-pub mod cargo;
 
 pub type MethodArgs = HirVec<P<Expr>>;
 
@@ -79,6 +81,8 @@ macro_rules! if_let_chain {
         }
     };
 }
+
+pub mod higher;
 
 /// Returns true if the two spans come from differing expansions (i.e. one is from a macro and one
 /// isn't).
@@ -317,19 +321,6 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
     }
 }
 
-/// Checks if a `let` decl is from a `for` loop desugaring.
-pub fn is_from_for_desugar(decl: &Decl) -> bool {
-    if_let_chain! {[
-        let DeclLocal(ref loc) = decl.node,
-        let Some(ref expr) = loc.init,
-        let ExprMatch(_, _, MatchSource::ForLoopDesugar) = expr.node
-    ], {
-        return true;
-    }}
-    false
-}
-
-
 /// Convert a span to a code snippet if available, otherwise use default.
 ///
 /// # Example
@@ -498,6 +489,25 @@ pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint,
         f(&mut db.0);
         db.wiki_link(lint);
     }
+}
+
+/// Create a suggestion made from several `span → replacement`.
+///
+/// Note: in the JSON format (used by `compiletest_rs`), the help message will appear once per
+/// replacement. In human-readable format though, it only appears once before the whole suggestion.
+pub fn multispan_sugg(db: &mut DiagnosticBuilder, help_msg: String, sugg: &[(Span, &str)]) {
+    let sugg = rustc_errors::RenderSpan::Suggestion(rustc_errors::CodeSuggestion {
+        msp: MultiSpan::from_spans(sugg.iter().map(|&(span, _)| span).collect()),
+        substitutes: sugg.iter().map(|&(_, subs)| subs.to_owned()).collect(),
+    });
+
+    let sub = rustc_errors::SubDiagnostic {
+        level: rustc_errors::Level::Help,
+        message: help_msg,
+        span: MultiSpan::new(),
+        render_span: Some(sugg),
+    };
+    db.children.push(sub);
 }
 
 /// Return the base type for references and raw pointers.
@@ -681,93 +691,6 @@ pub fn camel_case_from(s: &str) -> usize {
     last_i
 }
 
-/// Represent a range akin to `ast::ExprKind::Range`.
-#[derive(Debug, Copy, Clone)]
-pub struct UnsugaredRange<'a> {
-    pub start: Option<&'a Expr>,
-    pub end: Option<&'a Expr>,
-    pub limits: RangeLimits,
-}
-
-/// Unsugar a `hir` range.
-pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
-    // To be removed when ranges get stable.
-    fn unwrap_unstable(expr: &Expr) -> &Expr {
-        if let ExprBlock(ref block) = expr.node {
-            if block.rules == BlockCheckMode::PushUnstableBlock || block.rules == BlockCheckMode::PopUnstableBlock {
-                if let Some(ref expr) = block.expr {
-                    return expr;
-                }
-            }
-        }
-
-        expr
-    }
-
-    fn get_field<'a>(name: &str, fields: &'a [Field]) -> Option<&'a Expr> {
-        let expr = &fields.iter()
-                          .find(|field| field.name.node.as_str() == name)
-                          .unwrap_or_else(|| panic!("missing {} field for range", name))
-                          .expr;
-
-        Some(unwrap_unstable(expr))
-    }
-
-    // The range syntax is expanded to literal paths starting with `core` or `std` depending on
-    // `#[no_std]`. Testing both instead of resolving the paths.
-
-    match unwrap_unstable(expr).node {
-        ExprPath(None, ref path) => {
-            if match_path(path, &paths::RANGE_FULL_STD) || match_path(path, &paths::RANGE_FULL) {
-                Some(UnsugaredRange {
-                    start: None,
-                    end: None,
-                    limits: RangeLimits::HalfOpen,
-                })
-            } else {
-                None
-            }
-        }
-        ExprStruct(ref path, ref fields, None) => {
-            if match_path(path, &paths::RANGE_FROM_STD) || match_path(path, &paths::RANGE_FROM) {
-                Some(UnsugaredRange {
-                    start: get_field("start", fields),
-                    end: None,
-                    limits: RangeLimits::HalfOpen,
-                })
-            } else if match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY_STD) ||
-               match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY) {
-                Some(UnsugaredRange {
-                    start: get_field("start", fields),
-                    end: get_field("end", fields),
-                    limits: RangeLimits::Closed,
-                })
-            } else if match_path(path, &paths::RANGE_STD) || match_path(path, &paths::RANGE) {
-                Some(UnsugaredRange {
-                    start: get_field("start", fields),
-                    end: get_field("end", fields),
-                    limits: RangeLimits::HalfOpen,
-                })
-            } else if match_path(path, &paths::RANGE_TO_INCLUSIVE_STD) || match_path(path, &paths::RANGE_TO_INCLUSIVE) {
-                Some(UnsugaredRange {
-                    start: None,
-                    end: get_field("end", fields),
-                    limits: RangeLimits::Closed,
-                })
-            } else if match_path(path, &paths::RANGE_TO_STD) || match_path(path, &paths::RANGE_TO) {
-                Some(UnsugaredRange {
-                    start: None,
-                    end: get_field("end", fields),
-                    limits: RangeLimits::HalfOpen,
-                })
-            } else {
-                None
-            }
-        }
-        _ => None,
-    }
-}
-
 /// Convenience function to get the return type of a function or `None` if the function diverges.
 pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Option<ty::Ty<'tcx>> {
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_item);
@@ -790,28 +713,6 @@ pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty
         let new_b = b.subst(infcx.tcx, infcx.parameter_environment.free_substs);
         infcx.can_equate(&new_a, &new_b).is_ok()
     })
-}
-
-/// Recover the essential nodes of a desugared for loop:
-/// `for pat in arg { body }` becomes `(pat, arg, body)`.
-pub fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
-    if_let_chain! {[
-        let ExprMatch(ref iterexpr, ref arms, _) = expr.node,
-        let ExprCall(_, ref iterargs) = iterexpr.node,
-        iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none(),
-        let ExprLoop(ref block, _) = arms[0].body.node,
-        block.stmts.is_empty(),
-        let Some(ref loopexpr) = block.expr,
-        let ExprMatch(_, ref innerarms, MatchSource::ForLoopDesugar) = loopexpr.node,
-        innerarms.len() == 2 && innerarms[0].pats.len() == 1,
-        let PatKind::TupleStruct(_, ref somepats, _) = innerarms[0].pats[0].node,
-        somepats.len() == 1
-    ], {
-        return Some((&somepats[0],
-                     &iterargs[0],
-                     &innerarms[0].body));
-    }}
-    None
 }
 
 /// Return whether the given type is an `unsafe` function.

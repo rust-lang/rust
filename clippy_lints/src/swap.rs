@@ -2,7 +2,8 @@ use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::codemap::mk_sp;
-use utils::{differing_macro_contexts, match_type, paths, snippet, snippet_opt, span_lint_and_then, walk_ptrs_ty, SpanlessEq};
+use utils::{differing_macro_contexts, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty, SpanlessEq};
+use utils::sugg::Sugg;
 
 /// **What it does:** This lints manual swapping.
 ///
@@ -100,17 +101,17 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             }
 
             let (replace, what, sugg) = if let Some((slice, idx1, idx2)) = check_for_slice(cx, lhs1, lhs2) {
-                if let Some(slice) = snippet_opt(cx, slice.span) {
+                if let Some(slice) = Sugg::hir_opt(cx, slice) {
                     (false,
                      format!(" elements of `{}`", slice),
-                     format!("{}.swap({}, {})",slice,  snippet(cx, idx1.span, ".."), snippet(cx, idx2.span, "..")))
+                     format!("{}.swap({}, {})", slice.maybe_par(), snippet(cx, idx1.span, ".."), snippet(cx, idx2.span, "..")))
                 } else {
                     (false, "".to_owned(), "".to_owned())
                 }
             } else {
-                 if let (Some(first), Some(second)) = (snippet_opt(cx, lhs1.span), snippet_opt(cx, rhs1.span)) {
+                 if let (Some(first), Some(second)) = (Sugg::hir_opt(cx, lhs1), Sugg::hir_opt(cx, rhs1)) {
                     (true, format!(" `{}` and `{}`", first, second),
-                     format!("std::mem::swap(&mut {}, &mut {})", first, second))
+                     format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()))
                 } else {
                     (true, "".to_owned(), "".to_owned())
                 }
@@ -147,8 +148,8 @@ fn check_suspicious_swap(cx: &LateContext, block: &Block) {
             SpanlessEq::new(cx).ignore_fn().eq_expr(lhs0, rhs1),
             SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, rhs0)
         ], {
-            let (what, lhs, rhs) = if let (Some(first), Some(second)) = (snippet_opt(cx, lhs0.span), snippet_opt(cx, rhs0.span)) {
-                (format!(" `{}` and `{}`", first, second), first, second)
+            let (what, lhs, rhs) = if let (Some(first), Some(second)) = (Sugg::hir_opt(cx, lhs0), Sugg::hir_opt(cx, rhs0)) {
+                (format!(" `{}` and `{}`", first, second), first.mut_addr().to_string(), second.mut_addr().to_string())
             } else {
                 ("".to_owned(), "".to_owned(), "".to_owned())
             };
@@ -162,7 +163,7 @@ fn check_suspicious_swap(cx: &LateContext, block: &Block) {
                                |db| {
                                    if !what.is_empty() {
                                        db.span_suggestion(span, "try",
-                                                          format!("std::mem::swap(&mut {}, &mut {})", lhs, rhs));
+                                                          format!("std::mem::swap({}, {})", lhs, rhs));
                                        db.note("or maybe you should use `std::mem::replace`?");
                                    }
                                });
