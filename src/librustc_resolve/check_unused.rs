@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-//
 // Unused import checking
 //
 // Although this is mostly a lint pass, it lives in here because it depends on
@@ -95,18 +94,14 @@ impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
             }
             ast::ItemKind::Use(ref p) => {
                 match p.node {
-                    ViewPathSimple(_, _) => {
-                        self.check_import(item.id, p.span)
-                    }
+                    ViewPathSimple(_, _) => self.check_import(item.id, p.span),
 
                     ViewPathList(_, ref list) => {
                         for i in list {
                             self.check_import(i.node.id(), i.span);
                         }
                     }
-                    ViewPathGlob(_) => {
-                        self.check_import(item.id, p.span)
-                    }
+                    ViewPathGlob(_) => self.check_import(item.id, p.span),
                 }
             }
             _ => {}
