@@ -309,7 +309,7 @@ impl<T> Packet<T> {
         let mut guard = self.lock.lock().unwrap();
 
         // Easy cases first
-        if guard.disconnected { return Err(Disconnected) }
+        if guard.disconnected && guard.buf.size() == 0 { return Err(Disconnected) }
         if guard.buf.size() == 0 { return Err(Empty) }
 
         // Be sure to wake up neighbors
