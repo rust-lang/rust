@@ -19,7 +19,7 @@ use std::fmt;
 use std::iter::repeat;
 
 use rustc::middle::cstore::LOCAL_CRATE;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::DefId;
 use syntax::abi::Abi;
 use rustc::hir;
 
@@ -301,18 +301,19 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     }
 
     let loc = CURRENT_LOCATION_KEY.with(|l| l.borrow().clone());
-    let &(ref fqp, shortty) = match cache.paths.get(&did) {
-        Some(p) => p,
-        None => return None,
-    };
-
-    let mut url = if did.is_local() || cache.inlined.contains(&did) {
-        repeat("../").take(loc.len()).collect::<String>()
-    } else {
-        match cache.extern_locations[&did.krate] {
-            (_, render::Remote(ref s)) => s.to_string(),
-            (_, render::Local) => repeat("../").take(loc.len()).collect(),
-            (_, render::Unknown) => return None,
+    let (fqp, shortty, mut url) = match cache.paths.get(&did) {
+        Some(&(ref fqp, shortty)) => {
+            (fqp, shortty, repeat("../").take(loc.len()).collect())
+        }
+        None => match cache.external_paths.get(&did) {
+            Some(&(ref fqp, shortty)) => {
+                (fqp, shortty, match cache.extern_locations[&did.krate] {
+                    (_, render::Remote(ref s)) => s.to_string(),
+                    (_, render::Local) => repeat("../").take(loc.len()).collect(),
+                    (_, render::Unknown) => return None,
+                })
+            }
+            None => return None,
         }
     };
     for component in &fqp[..fqp.len() - 1] {
@@ -387,22 +388,18 @@ fn primitive_link(f: &mut fmt::Formatter,
             needs_termination = true;
         }
         Some(&cnum) => {
-            let path = &m.paths[&DefId {
-                krate: cnum,
-                index: CRATE_DEF_INDEX,
-            }];
             let loc = match m.extern_locations[&cnum] {
-                (_, render::Remote(ref s)) => Some(s.to_string()),
-                (_, render::Local) => {
+                (ref cname, render::Remote(ref s)) => Some((cname, s.to_string())),
+                (ref cname, render::Local) => {
                     let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
-                    Some(repeat("../").take(len).collect::<String>())
+                    Some((cname, repeat("../").take(len).collect::<String>()))
                 }
                 (_, render::Unknown) => None,
             };
-            if let Some(root) = loc {
+            if let Some((cname, root)) = loc {
                 write!(f, "<a class='primitive' href='{}{}/primitive.{}.html'>",
                        root,
-                       path.0.first().unwrap(),
+                       cname,
                        prim.to_url_str())?;
                 needs_termination = true;
             }
