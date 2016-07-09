@@ -2181,6 +2181,15 @@ mod sync_tests {
     }
 
     #[test]
+    fn oneshot_single_thread_try_recv_closed_with_data() {
+        let (tx, rx) = sync_channel::<i32>(1);
+        tx.send(10).unwrap();
+        drop(tx);
+        assert_eq!(rx.try_recv(), Ok(10));
+        assert_eq!(rx.try_recv(), Err(TryRecvError::Disconnected));
+    }
+
+    #[test]
     fn oneshot_single_thread_peek_data() {
         let (tx, rx) = sync_channel::<i32>(1);
         assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
