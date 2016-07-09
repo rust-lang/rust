@@ -25,9 +25,10 @@ use cell::RefCell;
 use fmt;
 use intrinsics;
 use mem;
+use ptr;
 use raw;
-use sys_common::rwlock::RWLock;
 use sys::stdio::Stderr;
+use sys_common::rwlock::RWLock;
 use sys_common::thread_info;
 use sys_common::util;
 use thread;
@@ -255,45 +256,76 @@ pub use realstd::rt::update_panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
-    let mut slot = None;
-    let mut f = Some(f);
-    let ret;
+    struct Data<F, R> {
+        f: F,
+        r: R,
+    }
 
-    {
-        let mut to_run = || {
-            slot = Some(f.take().unwrap()());
-        };
-        let fnptr = get_call(&mut to_run);
-        let dataptr = &mut to_run as *mut _ as *mut u8;
-        let mut any_data = 0;
-        let mut any_vtable = 0;
-        let fnptr = mem::transmute::<fn(&mut _), fn(*mut u8)>(fnptr);
-        let r = __rust_maybe_catch_panic(fnptr,
-                                         dataptr,
-                                         &mut any_data,
-                                         &mut any_vtable);
-        if r == 0 {
-            ret = Ok(());
-        } else {
-            update_panic_count(-1);
-            ret = Err(mem::transmute(raw::TraitObject {
-                data: any_data as *mut _,
-                vtable: any_vtable as *mut _,
-            }));
+    // We do some sketchy operations with ownership here for the sake of
+    // performance. The `Data` structure is never actually fully valid, but
+    // instead it always contains at least one uninitialized field. We can only
+    // pass pointers down to `__rust_maybe_catch_panic` (can't pass objects by
+    // value), so we do all the ownership tracking here manully.
+    //
+    // Note that this is all invalid if any of these functions unwind, but the
+    // whole point of this function is to prevent that! As a result we go
+    // through a transition where:
+    //
+    // * First, only the closure we're going to call is initialized. The return
+    //   value is uninitialized.
+    // * When we make the function call, the `do_call` function below, we take
+    //   ownership of the function pointer, replacing it with uninitialized
+    //   data. At this point the `Data` structure is entirely uninitialized, but
+    //   it won't drop due to an unwind because it's owned on the other side of
+    //   the catch panic.
+    // * If the closure successfully returns, we write the return value into the
+    //   data's return slot. Note that `ptr::write` is used as it's overwriting
+    //   uninitialized data.
+    // * Finally, when we come back out of the `__rust_maybe_catch_panic` we're
+    //   in one of two states:
+    //
+    //      1. The closure didn't panic, in which case the return value was
+    //         filled in. We have to be careful to `forget` the closure,
+    //         however, as ownership was passed to the `do_call` function.
+    //      2. The closure panicked, in which case the return value wasn't
+    //         filled in. In this case the entire `data` structure is invalid,
+    //         so we forget the entire thing.
+    //
+    // Once we stack all that together we should have the "most efficient'
+    // method of calling a catch panic whilst juggling ownership.
+    let mut any_data = 0;
+    let mut any_vtable = 0;
+    let mut data = Data {
+        f: f,
+        r: mem::uninitialized(),
+    };
+
+    let r = __rust_maybe_catch_panic(do_call::<F, R>,
+                                     &mut data as *mut _ as *mut u8,
+                                     &mut any_data,
+                                     &mut any_vtable);
+
+    return if r == 0 {
+        let Data { f, r } = data;
+        mem::forget(f);
+        debug_assert!(update_panic_count(0) == 0);
+        Ok(r)
+    } else {
+        mem::forget(data);
+        update_panic_count(-1);
+        debug_assert!(update_panic_count(0) == 0);
+        Err(mem::transmute(raw::TraitObject {
+            data: any_data as *mut _,
+            vtable: any_vtable as *mut _,
+        }))
+    };
+
+    fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
+        unsafe {
+            let data = data as *mut Data<F, R>;
+            let f = ptr::read(&mut (*data).f);
+            ptr::write(&mut (*data).r, f());
         }
-    }
-
-    debug_assert!(update_panic_count(0) == 0);
-    return ret.map(|()| {
-        slot.take().unwrap()
-    });
-
-    fn get_call<F: FnMut()>(_: &mut F) -> fn(&mut F) {
-        call
-    }
-
-    fn call<F: FnMut()>(f: &mut F) {
-        f()
     }
 }
 
