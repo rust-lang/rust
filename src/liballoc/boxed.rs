@@ -249,6 +249,14 @@ impl<T: ?Sized> Box<T> {
     /// This function is unsafe because improper use may lead to
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Box::new(5);
+    /// let ptr = Box::into_raw(x);
+    /// let x = unsafe { Box::from_raw(ptr) };
+    /// ```
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
@@ -266,9 +274,8 @@ impl<T: ?Sized> Box<T> {
     /// # Examples
     ///
     /// ```
-    /// let seventeen = Box::new(17);
-    /// let raw = Box::into_raw(seventeen);
-    /// let boxed_again = unsafe { Box::from_raw(raw) };
+    /// let x = Box::new(5);
+    /// let ptr = Box::into_raw(x);
     /// ```
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
@@ -399,6 +406,24 @@ impl Box<Any> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Attempt to downcast the box to a concrete type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::any::Any;
+    ///
+    /// fn print_if_string(value: Box<Any>) {
+    ///     if let Ok(string) = value.downcast::<String>() {
+    ///         println!("String ({}): {}", string.len(), string);
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let my_string = "Hello World".to_string();
+    ///     print_if_string(Box::new(my_string));
+    ///     print_if_string(Box::new(0i8));
+    /// }
+    /// ```
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
@@ -419,6 +444,24 @@ impl Box<Any + Send> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Attempt to downcast the box to a concrete type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::any::Any;
+    ///
+    /// fn print_if_string(value: Box<Any + Send>) {
+    ///     if let Ok(string) = value.downcast::<String>() {
+    ///         println!("String ({}): {}", string.len(), string);
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let my_string = "Hello World".to_string();
+    ///     print_if_string(Box::new(my_string));
+    ///     print_if_string(Box::new(0i8));
+    /// }
+    /// ```
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any + Send>> {
         <Box<Any>>::downcast(self).map_err(|s| unsafe {
             // reapply the Send marker
