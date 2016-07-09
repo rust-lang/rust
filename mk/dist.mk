@@ -24,6 +24,7 @@ PKG_NAME := $(CFG_PACKAGE_NAME)
 STD_PKG_NAME := rust-std-$(CFG_PACKAGE_VERS)
 DOC_PKG_NAME := rust-docs-$(CFG_PACKAGE_VERS)
 MINGW_PKG_NAME := rust-mingw-$(CFG_PACKAGE_VERS)
+SRC_PKG_NAME := rust-src-$(CFG_PACKAGE_VERS)
 
 # License suitable for displaying in a popup
 LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
@@ -71,10 +72,10 @@ PKG_FILES := \
 
 UNROOTED_PKG_FILES := $(patsubst $(S)%,./%,$(PKG_FILES))
 
-$(PKG_TAR): $(PKG_FILES)
-	@$(call E, making dist dir)
-	$(Q)rm -Rf tmp/dist/$(PKG_NAME)
-	$(Q)mkdir -p tmp/dist/$(PKG_NAME)
+tmp/dist/$$(SRC_PKG_NAME)-image: $(PKG_FILES)
+	@$(call E, making src image)
+	$(Q)rm -Rf tmp/dist/$(SRC_PKG_NAME)-image
+	$(Q)mkdir -p tmp/dist/$(SRC_PKG_NAME)-image/lib/rustlib/src/rust
 	$(Q)tar \
          -C $(S) \
          -f - \
@@ -87,10 +88,11 @@ $(PKG_TAR): $(PKG_FILES)
          --exclude=*/llvm/test/*/*/*.ll \
          --exclude=*/llvm/test/*/*/*.td \
          --exclude=*/llvm/test/*/*/*.s \
-         -c $(UNROOTED_PKG_FILES) | tar -x -f - -C tmp/dist/$(PKG_NAME)
+         -c $(UNROOTED_PKG_FILES) | tar -x -f - -C tmp/dist/$(SRC_PKG_NAME)-image/lib/rustlib/src/rust
+
+$(PKG_TAR): tmp/dist/$$(SRC_PKG_NAME)-image
 	@$(call E, making $@)
-	$(Q)tar -czf $(PKG_TAR) -C tmp/dist $(PKG_NAME)
-	$(Q)rm -Rf tmp/dist/$(PKG_NAME)
+	$(Q)tar -czf $(PKG_TAR) -C tmp/dist/$(SRC_PKG_NAME)-image/lib/rustlib/src rust --transform 's,^rust,$(PKG_NAME),S'
 
 dist-tar-src: $(PKG_TAR)
 
@@ -259,6 +261,19 @@ endef
 $(foreach host,$(CFG_HOST),\
   $(eval $(call DEF_INSTALLER,$(host))))
 
+dist/$(SRC_PKG_NAME).tar.gz: tmp/dist/$(SRC_PKG_NAME)-image
+	@$(call E, build: $@)
+	$(Q)$(S)src/rust-installer/gen-installer.sh \
+		--product-name=Rust \
+		--rel-manifest-dir=rustlib \
+		--success-message=Awesome-Source. \
+		--image-dir=tmp/dist/$(SRC_PKG_NAME)-image \
+		--work-dir=tmp/dist \
+		--output-dir=dist \
+		--package-name=$(SRC_PKG_NAME) \
+		--component-name=rust-src \
+		--legacy-manifest-dirs=rustlib,cargo
+
 # When generating packages for the standard library, we've actually got a lot of
 # artifacts to choose from. Each of the CFG_HOST compilers will have a copy of
 # the standard library for each CFG_TARGET, but we only want to generate one
@@ -329,8 +344,8 @@ distcheck-docs: dist-docs
 # Primary targets (dist, distcheck)
 ######################################################################
 
-MAYBE_DIST_TAR_SRC=dist-tar-src
-MAYBE_DISTCHECK_TAR_SRC=distcheck-tar-src
+MAYBE_DIST_TAR_SRC=dist-tar-src dist/$(SRC_PKG_NAME).tar.gz
+MAYBE_DISTCHECK_TAR_SRC=distcheck-tar-src dist/$(SRC_PKG_NAME).tar.gz
 
 # FIXME #13224: On OS X don't produce tarballs simply because --exclude-vcs don't work.
 # This is a huge hack because I just don't have time to figure out another solution.

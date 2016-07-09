@@ -67,6 +67,35 @@ pub fn cp_r(src: &Path, dst: &Path) {
     }
 }
 
+/// Copies the `src` directory recursively to `dst`. Both are assumed to exist
+/// when this function is called. Unwanted files or directories can be skipped
+/// by returning `false` from the filter function.
+pub fn cp_filtered<F: Fn(&Path) -> bool>(src: &Path, dst: &Path, filter: &F) {
+    // Inner function does the actual work
+    fn recurse<F: Fn(&Path) -> bool>(src: &Path, dst: &Path, relative: &Path, filter: &F) {
+        for f in t!(fs::read_dir(src)) {
+            let f = t!(f);
+            let path = f.path();
+            let name = path.file_name().unwrap();
+            let dst = dst.join(name);
+            let relative = relative.join(name);
+            // Only copy file or directory if the filter function returns true
+            if filter(&relative) {
+                if t!(f.file_type()).is_dir() {
+                    let _ = fs::remove_dir_all(&dst);
+                    t!(fs::create_dir(&dst));
+                    recurse(&path, &dst, &relative, filter);
+                } else {
+                    let _ = fs::remove_file(&dst);
+                    copy(&path, &dst);
+                }
+            }
+        }
+    }
+    // Immediately recurse with an empty relative path
+    recurse(src, dst, Path::new(""), filter)
+}
+
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: &str) -> String {
