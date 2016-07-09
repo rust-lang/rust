@@ -32,7 +32,8 @@ declare_lint! {
     pub COLLAPSIBLE_IF,
     Warn,
     "two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` \
-     can be written as `if x && y { foo() }` and an `else { if .. } expression can be collapsed to \
+     can be written as `if x && y { foo() }` \
+     and an `else { if .. }` expression can be collapsed to \
      `else if`"
 }
 
