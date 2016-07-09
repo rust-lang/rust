@@ -43,6 +43,10 @@ fn chains() {
                 /* comment */ x })
 }
 
+fn issue_1086() {
+    /**/
+}
+
 /*
  * random comment */
 
