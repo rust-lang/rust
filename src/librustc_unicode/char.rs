@@ -232,8 +232,8 @@ impl char {
     /// Returns an iterator that yields the hexadecimal Unicode escape of a
     /// character, as `char`s.
     ///
-    /// All characters are escaped with Rust syntax of the form `\\u{NNNN}`
-    /// where `NNNN` is the shortest hexadecimal representation.
+    /// All characters are escaped with Rust syntax of the form `\u{NNNNNN}`
+    /// where `NNNNNN` is the shortest hexadecimal representation.
     ///
     /// # Examples
     ///
