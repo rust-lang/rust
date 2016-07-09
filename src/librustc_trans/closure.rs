@@ -169,14 +169,14 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }));
     let llfn = declare::declare_fn(ccx, &symbol, function_type);
 
-    // set an inline hint for all closures
-    attributes::inline(llfn, attributes::InlineAttr::Hint);
     attributes::set_frame_pointer_elimination(ccx, llfn);
 
     debug!("get_or_create_declaration_if_closure(): inserting new \
             closure {:?}: {:?}",
            instance, Value(llfn));
-    ccx.instances().borrow_mut().insert(instance, llfn);
+
+    // NOTE: We do *not* store llfn in the ccx.instances() map here,
+    //       that is only done, when the closures body is translated.
 
     llfn
 }
@@ -197,8 +197,8 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     // (*) Note that in the case of inlined functions, the `closure_def_id` will be the
     // defid of the closure in its original crate, whereas `id` will be the id of the local
     // inlined copy.
-
-    let param_substs = closure_substs.func_substs;
+    debug!("trans_closure_expr(id={:?}, closure_def_id={:?}, closure_substs={:?})",
+           id, closure_def_id, closure_substs);
 
     let ccx = match dest {
         Dest::SaveIn(bcx, _) => bcx.ccx(),
@@ -207,41 +207,49 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     let tcx = ccx.tcx();
     let _icx = push_ctxt("closure::trans_closure_expr");
 
-    debug!("trans_closure_expr(id={:?}, closure_def_id={:?}, closure_substs={:?})",
-           id, closure_def_id, closure_substs);
+    let param_substs = closure_substs.func_substs;
+    let instance = Instance::new(closure_def_id, param_substs);
 
-    let llfn = get_or_create_closure_declaration(ccx, closure_def_id, closure_substs);
-    llvm::SetLinkage(llfn, llvm::WeakODRLinkage);
-    llvm::SetUniqueComdat(ccx.llmod(), llfn);
+    // If we have not done so yet, translate this closure's body
+    if  !ccx.instances().borrow().contains_key(&instance) {
+        let llfn = get_or_create_closure_declaration(ccx, closure_def_id, closure_substs);
+        llvm::SetLinkage(llfn, llvm::WeakODRLinkage);
+        llvm::SetUniqueComdat(ccx.llmod(), llfn);
 
-    // Get the type of this closure. Use the current `param_substs` as
-    // the closure substitutions. This makes sense because the closure
-    // takes the same set of type arguments as the enclosing fn, and
-    // this function (`trans_closure`) is invoked at the point
-    // of the closure expression.
+        // set an inline hint for all closures
+        attributes::inline(llfn, attributes::InlineAttr::Hint);
 
-    let sig = &tcx.closure_type(closure_def_id, closure_substs).sig;
-    let sig = tcx.erase_late_bound_regions(sig);
-    let sig = tcx.normalize_associated_type(&sig);
+        // Get the type of this closure. Use the current `param_substs` as
+        // the closure substitutions. This makes sense because the closure
+        // takes the same set of type arguments as the enclosing fn, and
+        // this function (`trans_closure`) is invoked at the point
+        // of the closure expression.
 
-    let closure_type = tcx.mk_closure_from_closure_substs(closure_def_id,
-                                                          closure_substs);
-    let sig = ty::FnSig {
-        inputs: Some(get_self_type(tcx, closure_def_id, closure_type))
-                    .into_iter().chain(sig.inputs).collect(),
-        output: sig.output,
-        variadic: false
-    };
+        let sig = &tcx.closure_type(closure_def_id, closure_substs).sig;
+        let sig = tcx.erase_late_bound_regions(sig);
+        let sig = tcx.normalize_associated_type(&sig);
 
-    trans_closure(ccx,
-                  decl,
-                  body,
-                  llfn,
-                  Instance::new(closure_def_id, param_substs),
-                  id,
-                  &sig,
-                  Abi::RustCall,
-                  ClosureEnv::Closure(closure_def_id, id));
+        let closure_type = tcx.mk_closure_from_closure_substs(closure_def_id,
+                                                              closure_substs);
+        let sig = ty::FnSig {
+            inputs: Some(get_self_type(tcx, closure_def_id, closure_type))
+                        .into_iter().chain(sig.inputs).collect(),
+            output: sig.output,
+            variadic: false
+        };
+
+        trans_closure(ccx,
+                      decl,
+                      body,
+                      llfn,
+                      Instance::new(closure_def_id, param_substs),
+                      id,
+                      &sig,
+                      Abi::RustCall,
+                      ClosureEnv::Closure(closure_def_id, id));
+
+        ccx.instances().borrow_mut().insert(instance, llfn);
+    }
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size closure (in which case dest will be `Ignore`) and
