@@ -1063,7 +1063,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             Some(tcx.lookup_item_type(variant_def.did).generics)
                         })?;
 
-                        match variant_def.kind() {
+                        match variant_def.kind {
                             ty::VariantKind::Unit => Ok(()),
                             ty::VariantKind::Tuple => fmt_tuple(fmt, lvs),
                             ty::VariantKind::Struct => {

@@ -1904,7 +1904,7 @@ impl Clean<Item> for doctree::Variant {
 
 impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
-        let kind = match self.kind() {
+        let kind = match self.kind {
             ty::VariantKind::Unit => CLikeVariant,
             ty::VariantKind::Tuple => {
                 TupleVariant(
@@ -2578,9 +2578,9 @@ fn name_from_pat(p: &hir::Pat) -> String {
     match p.node {
         PatKind::Wild => "_".to_string(),
         PatKind::Binding(_, ref p, _) => p.node.to_string(),
-        PatKind::TupleStruct(ref p, _, _) | PatKind::Path(ref p) => path_to_string(p),
-        PatKind::QPath(..) => panic!("tried to get argument name from PatKind::QPath, \
-                                which is not allowed in function arguments"),
+        PatKind::TupleStruct(ref p, _, _) | PatKind::Path(None, ref p) => path_to_string(p),
+        PatKind::Path(..) => panic!("tried to get argument name from qualified PatKind::Path, \
+                                     which is not allowed in function arguments"),
         PatKind::Struct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", path_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
@@ -2653,7 +2653,7 @@ fn resolve_type(cx: &DocContext,
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfType.name().to_string());
         }
-        Def::SelfTy(..) | Def::TyParam(..) => true,
+        Def::SelfTy(..) | Def::TyParam(..) | Def::AssociatedTy(..) => true,
         _ => false,
     };
     let did = register_def(&*cx, def);

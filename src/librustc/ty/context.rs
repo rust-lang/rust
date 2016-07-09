@@ -591,6 +591,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_interners.arenas.trait_defs.alloc(def)
     }
 
+    pub fn insert_adt_def(self, did: DefId, adt_def: ty::AdtDefMaster<'gcx>) {
+        // this will need a transmute when reverse-variance is removed
+        if let Some(prev) = self.adt_defs.borrow_mut().insert(did, adt_def) {
+            bug!("Tried to overwrite interned AdtDef: {:?}", prev)
+        }
+    }
+
     pub fn intern_adt_def(self,
                           did: DefId,
                           kind: ty::AdtKind,
@@ -598,10 +605,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                           -> ty::AdtDefMaster<'gcx> {
         let def = ty::AdtDefData::new(self, did, kind, variants);
         let interned = self.global_interners.arenas.adt_defs.alloc(def);
-        // this will need a transmute when reverse-variance is removed
-        if let Some(prev) = self.adt_defs.borrow_mut().insert(did, interned) {
-            bug!("Tried to overwrite interned AdtDef: {:?}", prev)
-        }
+        self.insert_adt_def(did, interned);
         interned
     }
 

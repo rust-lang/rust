@@ -18,7 +18,7 @@ struct S;
 fn main() {
     match Foo::Baz {
         Foo::Bar => {}
-        //~^ ERROR `Foo::Bar` does not name a tuple variant or a tuple struct
+        //~^ ERROR `Foo::Bar` does not name a unit variant, unit struct or a constant
         _ => {}
     }
 

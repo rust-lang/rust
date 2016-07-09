@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct T { i: i32 }
-fn f<T>() {
-    let t = T { i: 0 }; //~ ERROR `T` does not name a struct or a struct variant
+enum Delicious {
+    Pie      = 0x1,
+    Apple    = 0x2,
+    ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
+    //~^ ERROR constant evaluation error: unresolved path in constant expression
 }
 
-mod Foo {
-    pub fn f() {}
-}
-fn g<Foo>() {
-    Foo::f(); //~ ERROR no associated item named `f`
-}
+const FOO: [u32; u8::MIN as usize] = [];
+//~^ ERROR array length constant evaluation error: unresolved path in constant expression
 
 fn main() {}

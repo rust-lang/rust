@@ -84,7 +84,7 @@ use astconv::{AstConv, ast_region_to_region, PathParamMode};
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use middle::cstore::LOCAL_CRATE;
-use hir::def::{self, Def};
+use hir::def::{Def, PathResolution};
 use hir::def_id::DefId;
 use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
@@ -1621,64 +1621,32 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     ///
     /// Note that this function is only intended to be used with type-paths,
     /// not with value-paths.
-    pub fn instantiate_type(&self,
-                            did: DefId,
-                            path: &hir::Path)
-                            -> Ty<'tcx>
-    {
-        debug!("instantiate_type(did={:?}, path={:?})", did, path);
-        let type_scheme =
-            self.tcx.lookup_item_type(did);
-        let type_predicates =
-            self.tcx.lookup_predicates(did);
+    pub fn instantiate_type_path(&self,
+                                 did: DefId,
+                                 path: &hir::Path,
+                                 node_id: ast::NodeId)
+                                 -> Ty<'tcx> {
+        debug!("instantiate_type_path(did={:?}, path={:?})", did, path);
+        let type_scheme = self.tcx.lookup_item_type(did);
+        let type_predicates = self.tcx.lookup_predicates(did);
         let substs = AstConv::ast_path_substs_for_ty(self, self,
                                                      path.span,
                                                      PathParamMode::Optional,
                                                      &type_scheme.generics,
                                                      path.segments.last().unwrap());
-        debug!("instantiate_type: ty={:?} substs={:?}", &type_scheme.ty, &substs);
-        let bounds =
-            self.instantiate_bounds(path.span, &substs, &type_predicates);
-        self.add_obligations_for_parameters(
-            traits::ObligationCause::new(
-                path.span,
-                self.body_id,
-                traits::ItemObligation(did)),
-            &bounds);
+        let substs = self.tcx.mk_substs(substs);
+        debug!("instantiate_type_path: ty={:?} substs={:?}", &type_scheme.ty, substs);
+        let bounds = self.instantiate_bounds(path.span, substs, &type_predicates);
+        let cause = traits::ObligationCause::new(path.span, self.body_id,
+                                                 traits::ItemObligation(did));
+        self.add_obligations_for_parameters(cause, &bounds);
 
-        self.instantiate_type_scheme(path.span, &substs, &type_scheme.ty)
-    }
-
-    /// Return the dict-like variant corresponding to a given `Def`.
-    pub fn def_struct_variant(&self,
-                              def: Def,
-                              _span: Span)
-                              -> Option<(ty::AdtDef<'tcx>, ty::VariantDef<'tcx>)>
-    {
-        let (adt, variant) = match def {
-            Def::Variant(enum_id, variant_id) => {
-                let adt = self.tcx.lookup_adt_def(enum_id);
-                (adt, adt.variant_with_id(variant_id))
-            }
-            Def::Struct(did) | Def::TyAlias(did) => {
-                let typ = self.tcx.lookup_item_type(did);
-                if let ty::TyStruct(adt, _) = typ.ty.sty {
-                    (adt, adt.struct_variant())
-                } else {
-                    return None;
-                }
-            }
-            _ => return None
-        };
-
-        let var_kind = variant.kind();
-        if var_kind == ty::VariantKind::Struct {
-            Some((adt, variant))
-        } else if var_kind == ty::VariantKind::Unit {
-             Some((adt, variant))
-         } else {
-             None
-         }
+        let ty_substituted = self.instantiate_type_scheme(path.span, substs, &type_scheme.ty);
+        self.write_ty(node_id, ty_substituted);
+        self.write_substs(node_id, ty::ItemSubsts {
+            substs: substs
+        });
+        ty_substituted
     }
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
@@ -2998,7 +2966,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         while let Some((base_t, autoderefs)) = autoderef.next() {
             let field = match base_t.sty {
                 ty::TyStruct(base_def, substs) => {
-                    tuple_like = base_def.struct_variant().is_tuple_struct();
+                    tuple_like = base_def.struct_variant().kind == ty::VariantKind::Tuple;
                     if !tuple_like { continue }
 
                     debug!("tuple struct named {:?}",  base_t);
@@ -3153,34 +3121,56 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn check_struct_path(&self,
+                         path: &hir::Path,
+                         node_id: ast::NodeId,
+                         span: Span)
+                         -> Option<(ty::VariantDef<'tcx>,  Ty<'tcx>)> {
+        let def = self.finish_resolving_struct_path(path, node_id, span);
+        let variant = match def {
+            Def::Err => {
+                self.set_tainted_by_errors();
+                return None;
+            }
+            Def::Variant(..) | Def::Struct(..) => {
+                Some(self.tcx.expect_variant_def(def))
+            }
+            Def::TyAlias(did) | Def::AssociatedTy(_, did) => {
+                if let Some(&ty::TyStruct(adt, _)) = self.tcx.opt_lookup_item_type(did)
+                                                             .map(|scheme| &scheme.ty.sty) {
+                    Some(adt.struct_variant())
+                } else {
+                    None
+                }
+            }
+            _ => None
+        };
+        if variant.is_none() || variant.unwrap().kind == ty::VariantKind::Tuple {
+            // Reject tuple structs for now, braced and unit structs are allowed.
+            span_err!(self.tcx.sess, span, E0071,
+                      "`{}` does not name a struct or a struct variant",
+                      pprust::path_to_string(path));
+            return None;
+        }
+
+        let ty = self.instantiate_type_path(def.def_id(), path, node_id);
+        Some((variant.unwrap(), ty))
+    }
+
     fn check_expr_struct(&self,
                          expr: &hir::Expr,
                          path: &hir::Path,
                          fields: &'gcx [hir::Field],
                          base_expr: &'gcx Option<P<hir::Expr>>)
     {
-        let tcx = self.tcx;
-
         // Find the relevant variant
-        let def = tcx.expect_def(expr.id);
-        if def == Def::Err {
-            self.set_tainted_by_errors();
+        let (variant, expr_ty) = if let Some(variant_ty) = self.check_struct_path(path, expr.id,
+                                                                                  expr.span) {
+            variant_ty
+        } else {
             self.check_struct_fields_on_error(expr.id, fields, base_expr);
             return;
-        }
-        let variant = match self.def_struct_variant(def, path.span) {
-            Some((_, variant)) => variant,
-            None => {
-                span_err!(self.tcx.sess, path.span, E0071,
-                          "`{}` does not name a structure",
-                          pprust::path_to_string(path));
-                self.check_struct_fields_on_error(expr.id, fields, base_expr);
-                return;
-            }
         };
-
-        let expr_ty = self.instantiate_type(def.def_id(), path);
-        self.write_ty(expr.id, expr_ty);
 
         self.check_expr_struct_fields(expr_ty, path.span, variant, fields,
                                       base_expr.is_none());
@@ -3192,13 +3182,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         expr.id,
                         adt.struct_variant().fields.iter().map(|f| {
                             self.normalize_associated_types_in(
-                                expr.span, &f.ty(tcx, substs)
+                                expr.span, &f.ty(self.tcx, substs)
                             )
                         }).collect()
                     );
                 }
                 _ => {
-                    span_err!(tcx.sess, base_expr.span, E0436,
+                    span_err!(self.tcx.sess, base_expr.span, E0436,
                               "functional record update syntax requires a struct");
                 }
             }
@@ -3349,24 +3339,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
             self.write_ty(id, oprnd_t);
           }
-          hir::ExprPath(ref maybe_qself, ref path) => {
-              let opt_self_ty = maybe_qself.as_ref().map(|qself| {
-                  self.to_ty(&qself.ty)
-              });
-
-              let path_res = tcx.expect_resolution(id);
-              if let Some((opt_ty, segments, def)) =
-                      self.resolve_ty_and_def_ufcs(path_res, opt_self_ty, path,
-                                                   expr.span, expr.id) {
-                  if def != Def::Err {
-                      let (scheme, predicates) = self.type_scheme_and_predicates_for_def(expr.span,
-                                                                                         def);
-                      self.instantiate_path(segments, scheme, &predicates,
-                                            opt_ty, def, expr.span, id);
-                  } else {
-                      self.set_tainted_by_errors();
-                      self.write_ty(id, self.tcx.types.err);
-                  }
+          hir::ExprPath(ref opt_qself, ref path) => {
+              let opt_self_ty = opt_qself.as_ref().map(|qself| self.to_ty(&qself.ty));
+              let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(opt_self_ty, path,
+                                                                         expr.id, expr.span);
+              if def != Def::Err {
+                  let (scheme, predicates) = self.type_scheme_and_predicates_for_def(expr.span,
+                                                                                     def);
+                  self.instantiate_value_path(segments, scheme, &predicates,
+                                              opt_ty, def, expr.span, id);
+              } else {
+                  self.set_tainted_by_errors();
+                  self.write_error(id);
               }
 
               // We always require that the type provided as the value for
@@ -3704,37 +3688,67 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                expected);
     }
 
+    // Finish resolving a path in a struct expression or pattern `S::A { .. }` if necessary.
+    // The newly resolved definition is written into `def_map`.
+    pub fn finish_resolving_struct_path(&self,
+                                        path: &hir::Path,
+                                        node_id: ast::NodeId,
+                                        span: Span)
+                                        -> Def
+    {
+        let path_res = self.tcx().expect_resolution(node_id);
+        if path_res.depth == 0 {
+            // If fully resolved already, we don't have to do anything.
+            path_res.base_def
+        } else {
+            let base_ty_end = path.segments.len() - path_res.depth;
+            let (_ty, def) = AstConv::finish_resolving_def_to_ty(self, self, span,
+                                                                 PathParamMode::Optional,
+                                                                 path_res.base_def,
+                                                                 None,
+                                                                 node_id,
+                                                                 &path.segments[..base_ty_end],
+                                                                 &path.segments[base_ty_end..]);
+            // Write back the new resolution.
+            self.tcx().def_map.borrow_mut().insert(node_id, PathResolution::new(def));
+            def
+        }
+    }
+
+    // Resolve associated value path into a base type and associated constant or method definition.
+    // The newly resolved definition is written into `def_map`.
     pub fn resolve_ty_and_def_ufcs<'b>(&self,
-                                       path_res: def::PathResolution,
                                        opt_self_ty: Option<Ty<'tcx>>,
                                        path: &'b hir::Path,
-                                       span: Span,
-                                       node_id: ast::NodeId)
-                                       -> Option<(Option<Ty<'tcx>>, &'b [hir::PathSegment], Def)>
+                                       node_id: ast::NodeId,
+                                       span: Span)
+                                       -> (Def, Option<Ty<'tcx>>, &'b [hir::PathSegment])
     {
-
-        // If fully resolved already, we don't have to do anything.
+        let path_res = self.tcx().expect_resolution(node_id);
         if path_res.depth == 0 {
-            Some((opt_self_ty, &path.segments, path_res.base_def))
+            // If fully resolved already, we don't have to do anything.
+            (path_res.base_def, opt_self_ty, &path.segments)
         } else {
-            let def = path_res.base_def;
+            // Try to resolve everything except for the last segment as a type.
             let ty_segments = path.segments.split_last().unwrap().1;
             let base_ty_end = path.segments.len() - path_res.depth;
             let (ty, _def) = AstConv::finish_resolving_def_to_ty(self, self, span,
                                                                  PathParamMode::Optional,
-                                                                 def,
+                                                                 path_res.base_def,
                                                                  opt_self_ty,
                                                                  node_id,
                                                                  &ty_segments[..base_ty_end],
                                                                  &ty_segments[base_ty_end..]);
+
+            // Resolve an associated constant or method on the previously resolved type.
             let item_segment = path.segments.last().unwrap();
             let item_name = item_segment.name;
             let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
-                Ok(def) => Some(def),
+                Ok(def) => def,
                 Err(error) => {
                     let def = match error {
-                        method::MethodError::PrivateMatch(def) => Some(def),
-                        _ => None,
+                        method::MethodError::PrivateMatch(def) => def,
+                        _ => Def::Err,
                     };
                     if item_name != keywords::Invalid.name() {
                         self.report_method_error(span, ty, item_name, None, error);
@@ -3743,14 +3757,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             };
 
-            if let Some(def) = def {
-                // Write back the new resolution.
-                self.tcx().def_map.borrow_mut().insert(node_id, def::PathResolution::new(def));
-                Some((Some(ty), slice::ref_slice(item_segment), def))
-            } else {
-                self.write_error(node_id);
-                None
-            }
+            // Write back the new resolution.
+            self.tcx().def_map.borrow_mut().insert(node_id, PathResolution::new(def));
+            (def, Some(ty), slice::ref_slice(item_segment))
         }
     }
 
@@ -3986,15 +3995,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
-    pub fn instantiate_path(&self,
-                            segments: &[hir::PathSegment],
-                            type_scheme: TypeScheme<'tcx>,
-                            type_predicates: &ty::GenericPredicates<'tcx>,
-                            opt_self_ty: Option<Ty<'tcx>>,
-                            def: Def,
-                            span: Span,
-                            node_id: ast::NodeId) {
-        debug!("instantiate_path(path={:?}, def={:?}, node_id={}, type_scheme={:?})",
+    pub fn instantiate_value_path(&self,
+                                  segments: &[hir::PathSegment],
+                                  type_scheme: TypeScheme<'tcx>,
+                                  type_predicates: &ty::GenericPredicates<'tcx>,
+                                  opt_self_ty: Option<Ty<'tcx>>,
+                                  def: Def,
+                                  span: Span,
+                                  node_id: ast::NodeId)
+                                  -> Ty<'tcx> {
+        debug!("instantiate_value_path(path={:?}, def={:?}, node_id={}, type_scheme={:?})",
                segments,
                def,
                node_id,
@@ -4023,7 +4033,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //    actually pass through this function, but rather the
         //    `ast_ty_to_ty` function in `astconv`. However, in the case
         //    of struct patterns (and maybe literals) we do invoke
-        //    `instantiate_path` to get the general type of an instance of
+        //    `instantiate_value_path` to get the general type of an instance of
         //    a struct. (In these cases, there are actually no type
         //    parameters permitted at present, but perhaps we will allow
         //    them in the future.)
@@ -4246,20 +4256,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 Err(_) => {
                     span_bug!(span,
-                        "instantiate_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
+                        "instantiate_value_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
                         self_ty,
                         impl_ty);
                 }
             }
         }
 
-        debug!("instantiate_path: type of {:?} is {:?}",
+        debug!("instantiate_value_path: type of {:?} is {:?}",
                node_id,
                ty_substituted);
         self.write_ty(node_id, ty_substituted);
         self.write_substs(node_id, ty::ItemSubsts {
             substs: substs
         });
+        ty_substituted
     }
 
     /// Finds the parameters that the user provided and adds them to `substs`. If too many

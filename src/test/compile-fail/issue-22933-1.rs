@@ -8,16 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct T { i: i32 }
-fn f<T>() {
-    let t = T { i: 0 }; //~ ERROR `T` does not name a struct or a struct variant
+#![feature(rustc_attrs)]
+#![allow(warnings)]
+
+struct CNFParser {
+    token: char,
 }
 
-mod Foo {
-    pub fn f() {}
-}
-fn g<Foo>() {
-    Foo::f(); //~ ERROR no associated item named `f`
+impl CNFParser {
+    fn is_whitespace(c: char) -> bool {
+        c == ' ' || c == '\n'
+    }
+
+    fn consume_whitespace(&mut self) {
+        self.consume_while(&(CNFParser::is_whitespace))
+    }
+
+    fn consume_while(&mut self, p: &Fn(char) -> bool) {
+        while p(self.token) {
+            return
+        }
+    }
 }
 
-fn main() {}
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful

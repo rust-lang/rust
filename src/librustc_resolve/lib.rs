@@ -2180,7 +2180,8 @@ impl<'a> Resolver<'a> {
         // because that breaks the assumptions later
         // passes make about or-patterns.)
         let renamed = mtwt::resolve(ident.node);
-        let def = match bindings.get(&renamed).cloned() {
+        let mut def = Def::Local(self.definitions.local_def_id(pat_id), pat_id);
+        match bindings.get(&renamed).cloned() {
             Some(id) if id == outer_pat_id => {
                 // `Variant(a, a)`, error
                 resolve_error(
@@ -2189,7 +2190,6 @@ impl<'a> Resolver<'a> {
                     ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(
                         &ident.node.name.as_str())
                 );
-                Def::Err
             }
             Some(..) if pat_src == PatternSource::FnParam => {
                 // `fn f(a: u8, a: u8)`, error
@@ -2199,29 +2199,24 @@ impl<'a> Resolver<'a> {
                     ResolutionError::IdentifierBoundMoreThanOnceInParameterList(
                         &ident.node.name.as_str())
                 );
-                Def::Err
             }
             Some(..) if pat_src == PatternSource::Match => {
                 // `Variant1(a) | Variant2(a)`, ok
                 // Reuse definition from the first `a`.
-                self.value_ribs.last_mut().unwrap().bindings[&renamed]
+                def = self.value_ribs.last_mut().unwrap().bindings[&renamed];
             }
             Some(..) => {
                 span_bug!(ident.span, "two bindings with the same name from \
                                        unexpected pattern source {:?}", pat_src);
             }
             None => {
-                // A completely fresh binding, add to the lists.
-                // FIXME: Later stages are not ready to deal with `Def::Err` here yet, so
-                // define `Invalid` bindings as `Def::Local`, just don't add them to the lists.
-                let def = Def::Local(self.definitions.local_def_id(pat_id), pat_id);
+                // A completely fresh binding, add to the lists if it's valid.
                 if ident.node.name != keywords::Invalid.name() {
                     bindings.insert(renamed, outer_pat_id);
                     self.value_ribs.last_mut().unwrap().bindings.insert(renamed, def);
                 }
-                def
             }
-        };
+        }
 
         PathResolution::new(def)
     }
@@ -2287,43 +2282,41 @@ impl<'a> Resolver<'a> {
                 PatKind::Ident(bmode, ref ident, ref opt_pat) => {
                     // First try to resolve the identifier as some existing
                     // entity, then fall back to a fresh binding.
-                    let local_def = self.resolve_identifier(ident.node, ValueNS, true);
-                    let resolution = if let Some(LocalDef { def, .. }) = local_def {
+                    let resolution = self.resolve_identifier(ident.node, ValueNS, true)
+                                         .map(|local_def| PathResolution::new(local_def.def))
+                                         .and_then(|resolution| {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
                                              bmode != BindingMode::ByValue(Mutability::Immutable);
-                        match def {
+                        match resolution.base_def {
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
                                 // A constant, unit variant, etc pattern.
-                                PathResolution::new(def)
+                                Some(resolution)
                             }
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) | Def::Static(..) => {
                                 // A fresh binding that shadows something unacceptable.
-                                let kind_name = PathResolution::new(def).kind_name();
                                 resolve_error(
                                     self,
                                     ident.span,
                                     ResolutionError::BindingShadowsSomethingUnacceptable(
-                                        pat_src.descr(), kind_name, ident.node.name)
+                                        pat_src.descr(), resolution.kind_name(), ident.node.name)
                                 );
-                                err_path_resolution()
+                                None
                             }
-                            Def::Local(..) | Def::Upvar(..) | Def::Fn(..) | Def::Err => {
+                            Def::Local(..) | Def::Upvar(..) | Def::Fn(..) => {
                                 // These entities are explicitly allowed
                                 // to be shadowed by fresh bindings.
-                                self.fresh_binding(ident, pat.id, outer_pat_id,
-                                                   pat_src, bindings)
+                                None
                             }
                             def => {
                                 span_bug!(ident.span, "unexpected definition for an \
                                                        identifier in pattern {:?}", def);
                             }
                         }
-                    } else {
-                        // Fall back to a fresh binding.
+                    }).unwrap_or_else(|| {
                         self.fresh_binding(ident, pat.id, outer_pat_id, pat_src, bindings)
-                    };
+                    });
 
                     self.record_def(pat.id, resolution);
                 }
@@ -2331,7 +2324,7 @@ impl<'a> Resolver<'a> {
                 PatKind::TupleStruct(ref path, _, _) => {
                     self.resolve_pattern_path(pat.id, None, path, ValueNS, |def| {
                         match def {
-                            Def::Struct(..) | Def::Variant(..) | Def::Err => true,
+                            Def::Struct(..) | Def::Variant(..) => true,
                             _ => false,
                         }
                     }, "variant or struct");
@@ -2341,7 +2334,7 @@ impl<'a> Resolver<'a> {
                     self.resolve_pattern_path(pat.id, qself.as_ref(), path, ValueNS, |def| {
                         match def {
                             Def::Struct(..) | Def::Variant(..) |
-                            Def::Const(..) | Def::AssociatedConst(..) | Def::Err => true,
+                            Def::Const(..) | Def::AssociatedConst(..) => true,
                             _ => false,
                         }
                     }, "variant, struct or constant");
@@ -2351,7 +2344,7 @@ impl<'a> Resolver<'a> {
                     self.resolve_pattern_path(pat.id, None, path, TypeNS, |def| {
                         match def {
                             Def::Struct(..) | Def::Variant(..) |
-                            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::Err => true,
+                            Def::TyAlias(..) | Def::AssociatedTy(..) => true,
                             _ => false,
                         }
                     }, "variant, struct or type alias");
@@ -2482,7 +2475,7 @@ impl<'a> Resolver<'a> {
                           record_used: bool)
                           -> Option<LocalDef> {
         if identifier.name == keywords::Invalid.name() {
-            return Some(LocalDef::from_def(Def::Err));
+            return None;
         }
 
         self.resolve_ident_in_lexical_scope(identifier, namespace, record_used)

@@ -945,52 +945,41 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     /// The core driver for walking a pattern; `match_mode` must be
     /// established up front, e.g. via `determine_pat_move_mode` (see
     /// also `walk_irrefutable_pat` for patterns that stand alone).
-    fn walk_pat(&mut self,
-                cmt_discr: mc::cmt<'tcx>,
-                pat: &hir::Pat,
-                match_mode: MatchMode) {
-        debug!("walk_pat cmt_discr={:?} pat={:?}", cmt_discr,
-               pat);
+    fn walk_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat, match_mode: MatchMode) {
+        debug!("walk_pat cmt_discr={:?} pat={:?}", cmt_discr, pat);
 
         let tcx = &self.tcx();
         let mc = &self.mc;
         let infcx = self.mc.infcx;
         let delegate = &mut self.delegate;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
-            match pat.node {
-                PatKind::Binding(bmode, _, _) => {
-                    debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}",
-                           cmt_pat,
-                           pat,
-                           match_mode);
+            if let PatKind::Binding(bmode, _, _) = pat.node {
+                debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}", cmt_pat, pat, match_mode);
 
-                    // pat_ty: the type of the binding being produced.
-                    let pat_ty = return_if_err!(infcx.node_ty(pat.id));
+                // pat_ty: the type of the binding being produced.
+                let pat_ty = return_if_err!(infcx.node_ty(pat.id));
 
-                    // Each match binding is effectively an assignment to the
-                    // binding being produced.
-                    if let Ok(binding_cmt) = mc.cat_def(pat.id, pat.span, pat_ty,
-                                                        tcx.expect_def(pat.id)) {
-                        delegate.mutate(pat.id, pat.span, binding_cmt, MutateMode::Init);
+                // Each match binding is effectively an assignment to the
+                // binding being produced.
+                if let Ok(binding_cmt) = mc.cat_def(pat.id, pat.span, pat_ty,
+                                                    tcx.expect_def(pat.id)) {
+                    delegate.mutate(pat.id, pat.span, binding_cmt, MutateMode::Init);
+                }
+
+                // It is also a borrow or copy/move of the value being matched.
+                match bmode {
+                    hir::BindByRef(m) => {
+                        if let ty::TyRef(&r, _) = pat_ty.sty {
+                            let bk = ty::BorrowKind::from_mutbl(m);
+                            delegate.borrow(pat.id, pat.span, cmt_pat, r, bk, RefBinding);
+                        }
                     }
-
-                    // It is also a borrow or copy/move of the value being matched.
-                    match bmode {
-                        hir::BindByRef(m) => {
-                            if let ty::TyRef(&r, _) = pat_ty.sty {
-                                let bk = ty::BorrowKind::from_mutbl(m);
-                                delegate.borrow(pat.id, pat.span, cmt_pat,
-                                                r, bk, RefBinding);
-                            }
-                        }
-                        hir::BindByValue(..) => {
-                            let mode = copy_or_move(infcx, &cmt_pat, PatBindingMove);
-                            debug!("walk_pat binding consuming pat");
-                            delegate.consume_pat(pat, cmt_pat, mode);
-                        }
+                    hir::BindByValue(..) => {
+                        let mode = copy_or_move(infcx, &cmt_pat, PatBindingMove);
+                        debug!("walk_pat binding consuming pat");
+                        delegate.consume_pat(pat, cmt_pat, mode);
                     }
                 }
-                _ => {}
             }
         }));
 
@@ -999,72 +988,23 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // to the above loop's visit of than the bindings that form
         // the leaves of the pattern tree structure.
         return_if_err!(mc.cat_pattern(cmt_discr, pat, |mc, cmt_pat, pat| {
-            match pat.node {
-                PatKind::Struct(..) | PatKind::TupleStruct(..) |
-                PatKind::Path(..) | PatKind::QPath(..) => {
-                    match tcx.expect_def(pat.id) {
-                        Def::Variant(enum_did, variant_did) => {
-                            let downcast_cmt =
-                                if tcx.lookup_adt_def(enum_did).is_univariant() {
-                                    cmt_pat
-                                } else {
-                                    let cmt_pat_ty = cmt_pat.ty;
-                                    mc.cat_downcast(pat, cmt_pat, cmt_pat_ty, variant_did)
-                                };
+            match tcx.expect_def_or_none(pat.id) {
+                Some(Def::Variant(enum_did, variant_did)) => {
+                    let downcast_cmt = if tcx.lookup_adt_def(enum_did).is_univariant() {
+                        cmt_pat
+                    } else {
+                        let cmt_pat_ty = cmt_pat.ty;
+                        mc.cat_downcast(pat, cmt_pat, cmt_pat_ty, variant_did)
+                    };
 
-                            debug!("variant downcast_cmt={:?} pat={:?}",
-                                   downcast_cmt,
-                                   pat);
-
-                            delegate.matched_pat(pat, downcast_cmt, match_mode);
-                        }
-
-                        Def::Struct(..) | Def::TyAlias(..) => {
-                            // A struct (in either the value or type
-                            // namespace; we encounter the former on
-                            // e.g. patterns for unit structs).
-
-                            debug!("struct cmt_pat={:?} pat={:?}",
-                                   cmt_pat,
-                                   pat);
-
-                            delegate.matched_pat(pat, cmt_pat, match_mode);
-                        }
-
-                        Def::Const(..) | Def::AssociatedConst(..) => {
-                            // This is a leaf (i.e. identifier binding
-                            // or constant value to match); thus no
-                            // `matched_pat` call.
-                        }
-
-                        def => {
-                            // An enum type should never be in a pattern.
-                            // Remaining cases are e.g. Def::Fn, to
-                            // which identifiers within patterns
-                            // should not resolve. However, we do
-                            // encouter this when using the
-                            // expr-use-visitor during typeck. So just
-                            // ignore it, an error should have been
-                            // reported.
-
-                            if !tcx.sess.has_errors() {
-                                span_bug!(pat.span,
-                                          "Pattern has unexpected def: {:?} and type {:?}",
-                                          def,
-                                          cmt_pat.ty);
-                            }
-                        }
-                    }
+                    debug!("variant downcast_cmt={:?} pat={:?}", downcast_cmt, pat);
+                    delegate.matched_pat(pat, downcast_cmt, match_mode);
                 }
-
-                PatKind::Wild | PatKind::Tuple(..) | PatKind::Box(..) |
-                PatKind::Ref(..) | PatKind::Lit(..) | PatKind::Range(..) |
-                PatKind::Vec(..) | PatKind::Binding(..) => {
-                    // Each of these cases does not
-                    // correspond to an enum variant or struct, so we
-                    // do not do any `matched_pat` calls for these
-                    // cases either.
+                Some(Def::Struct(..)) | Some(Def::TyAlias(..)) | Some(Def::AssociatedTy(..)) => {
+                    debug!("struct cmt_pat={:?} pat={:?}", cmt_pat, pat);
+                    delegate.matched_pat(pat, cmt_pat, match_mode);
                 }
+                _ => {}
             }
         }));
     }

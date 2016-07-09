@@ -1895,33 +1895,6 @@ fn my_start(argc: isize, argv: *const *const u8) -> isize {
 ```
 "##,
 
-E0163: r##"
-This error means that an attempt was made to match an enum variant as a
-struct type when the variant isn't a struct type:
-
-```compile_fail
-enum Foo { B(u32) }
-
-fn bar(foo: Foo) -> u32 {
-    match foo {
-        B{i} => i, // error E0163
-    }
-}
-```
-
-Try using `()` instead:
-
-```
-enum Foo { B(u32) }
-
-fn bar(foo: Foo) -> u32 {
-    match foo {
-        Foo::B(i) => i,
-    }
-}
-```
-"##,
-
 E0164: r##"
 This error means that an attempt was made to match a struct type enum
 variant as a non-struct type:
@@ -3225,42 +3198,6 @@ impl Foo for Bar {
 ```
 "##,
 
-E0327: r##"
-You cannot use associated items other than constant items as patterns. This
-includes method items. Example of erroneous code:
-
-```compile_fail
-enum B {}
-
-impl B {
-    fn bb() -> i32 { 0 }
-}
-
-fn main() {
-    match 0 {
-        B::bb => {} // error: associated items in match patterns must
-                    // be constants
-    }
-}
-```
-
-Please check that you're not using a method as a pattern. Example:
-
-```
-enum B {
-    ba,
-    bb
-}
-
-fn main() {
-    match B::ba {
-        B::bb => {} // ok!
-        _ => {}
-    }
-}
-```
-"##,
-
 E0329: r##"
 An attempt was made to access an associated constant through either a generic
 type parameter or `Self`. This is not supported yet. An example causing this
@@ -4106,6 +4043,7 @@ register_diagnostics! {
 //  E0129,
 //  E0141,
 //  E0159, // use of trait `{}` as struct constructor
+//  E0163, // merged into E0071
     E0167,
 //  E0168,
 //  E0173, // manual implementations of unboxed closure traits are experimental
@@ -4162,4 +4100,5 @@ register_diagnostics! {
     E0527, // expected {} elements, found {}
     E0528, // expected at least {} elements, found {}
     E0529, // slice pattern expects array or slice, not `{}`
+    E0533, // `{}` does not name a unit variant, unit struct or a constant
 }

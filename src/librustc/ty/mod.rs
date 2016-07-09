@@ -1715,7 +1715,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     pub fn variant_of_def(&self, def: Def) -> &VariantDefData<'gcx, 'container> {
         match def {
             Def::Variant(_, vid) => self.variant_with_id(vid),
-            Def::Struct(..) | Def::TyAlias(..) => self.struct_variant(),
+            Def::Struct(..) | Def::TyAlias(..) | Def::AssociatedTy(..) => self.struct_variant(),
             _ => bug!("unexpected def {:?} in variant_of_def", def)
         }
     }
@@ -1923,14 +1923,6 @@ impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
     #[inline]
     fn fields_iter(&self) -> slice::Iter<FieldDefData<'tcx, 'container>> {
         self.fields.iter()
-    }
-
-    pub fn kind(&self) -> VariantKind {
-        self.kind
-    }
-
-    pub fn is_tuple_struct(&self) -> bool {
-        self.kind() == VariantKind::Tuple
     }
 
     #[inline]
@@ -2452,6 +2444,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// definition exists, panics on partial resolutions to catch errors.
     pub fn expect_def_or_none(self, id: NodeId) -> Option<Def> {
         self.def_map.borrow().get(&id).map(|resolution| resolution.full_def())
+    }
+
+    // Returns `ty::VariantDef` if `def` refers to a struct,
+    // or variant or their constructors, panics otherwise.
+    pub fn expect_variant_def(self, def: Def) -> VariantDef<'tcx> {
+        match def {
+            Def::Variant(enum_did, did) => {
+                self.lookup_adt_def(enum_did).variant_with_id(did)
+            }
+            Def::Struct(did) => {
+                self.lookup_adt_def(did).struct_variant()
+            }
+            _ => bug!("expect_variant_def used with unexpected def {:?}", def)
+        }
     }
 
     pub fn def_key(self, id: DefId) -> ast_map::DefKey {

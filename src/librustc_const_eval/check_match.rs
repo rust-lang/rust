@@ -246,9 +246,9 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
             let pat_ty = cx.tcx.pat_ty(p);
             if let ty::TyEnum(edef, _) = pat_ty.sty {
                 if let Def::Local(..) = cx.tcx.expect_def(p.id) {
-                    if edef.variants.iter().any(|variant|
-                        variant.name == name.node && variant.kind() == VariantKind::Unit
-                    ) {
+                    if edef.variants.iter().any(|variant| {
+                        variant.name == name.node && variant.kind == VariantKind::Unit
+                    }) {
                         let ty_path = cx.tcx.item_path_str(edef.did);
                         let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
                             "pattern binding `{}` is named the same as one \
@@ -489,7 +489,7 @@ impl<'map> IdVisitingOperation for RenamingRecorder<'map> {
 impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
         return match pat.node {
-            PatKind::Path(..) | PatKind::QPath(..) => {
+            PatKind::Path(..) => {
                 match self.tcx.expect_def(pat.id) {
                     Def::AssociatedConst(did) | Def::Const(did) => {
                         let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
@@ -563,7 +563,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
 
         ty::TyEnum(adt, _) | ty::TyStruct(adt, _)  => {
             let v = ctor.variant_for_adt(adt);
-            match v.kind() {
+            match v.kind {
                 VariantKind::Struct => {
                     let field_pats: hir::HirVec<_> = v.fields.iter()
                         .zip(pats)
@@ -583,7 +583,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                     PatKind::TupleStruct(def_to_path(cx.tcx, v.did), pats.collect(), None)
                 }
                 VariantKind::Unit => {
-                    PatKind::Path(def_to_path(cx.tcx, v.did))
+                    PatKind::Path(None, def_to_path(cx.tcx, v.did))
                 }
             }
         }
@@ -786,16 +786,12 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
     match pat.node {
         PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) =>
             match cx.tcx.expect_def(pat.id) {
-                Def::Const(..) | Def::AssociatedConst(..) =>
-                    span_bug!(pat.span, "const pattern should've \
-                                         been rewritten"),
-                Def::Struct(..) | Def::TyAlias(..) => vec![Single],
                 Def::Variant(_, id) => vec![Variant(id)],
-                def => span_bug!(pat.span, "pat_constructors: unexpected \
-                                            definition {:?}", def),
+                Def::Struct(..) | Def::TyAlias(..) | Def::AssociatedTy(..) => vec![Single],
+                Def::Const(..) | Def::AssociatedConst(..) =>
+                    span_bug!(pat.span, "const pattern should've been rewritten"),
+                def => span_bug!(pat.span, "pat_constructors: unexpected definition {:?}", def),
             },
-        PatKind::QPath(..) =>
-            span_bug!(pat.span, "const pattern should've been rewritten"),
         PatKind::Lit(ref expr) =>
             vec![ConstantValue(eval_const_expr(cx.tcx, &expr))],
         PatKind::Range(ref lo, ref hi) =>
@@ -932,10 +928,6 @@ pub fn specialize<'a, 'b, 'tcx>(
                 }
                 _ => None
             }
-        }
-
-        PatKind::QPath(_, _) => {
-            span_bug!(pat_span, "const pattern should've been rewritten")
         }
 
         PatKind::Struct(_, ref pattern_fields, _) => {
