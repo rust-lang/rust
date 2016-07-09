@@ -83,6 +83,10 @@ impl Ipv4Addr {
     }
 
     /// Returns true for the special 'unspecified' address (0.0.0.0).
+    ///
+    /// This property is defined in _UNIX Network Programming, Second Edition_,
+    /// W. Richard Stevens, p. 891; see also [ip7]
+    /// [ip7][http://man7.org/linux/man-pages/man7/ip.7.html]
     pub fn is_unspecified(&self) -> bool {
         self.inner.s_addr == 0
     }
