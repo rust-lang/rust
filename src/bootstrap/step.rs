@@ -140,6 +140,7 @@ macro_rules! targets {
             (dist_mingw, DistMingw { _dummy: () }),
             (dist_rustc, DistRustc { stage: u32 }),
             (dist_std, DistStd { compiler: Compiler<'a> }),
+            (dist_src, DistSrc { _dummy: () }),
 
             // Misc targets
             (android_copy_libs, AndroidCopyLibs { compiler: Compiler<'a> }),
@@ -568,12 +569,14 @@ impl<'a> Step<'a> {
                     vec![self.libtest(compiler)]
                 }
             }
+            Source::DistSrc { _dummy: _ } => Vec::new(),
 
             Source::Dist { stage } => {
                 let mut base = Vec::new();
 
                 for host in build.config.host.iter() {
                     let host = self.target(host);
+                    base.push(host.dist_src(()));
                     base.push(host.dist_rustc(stage));
                     if host.target.contains("windows-gnu") {
                         base.push(host.dist_mingw(()));
