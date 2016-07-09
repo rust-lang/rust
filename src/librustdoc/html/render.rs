@@ -230,7 +230,7 @@ pub struct Cache {
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
-    pub external_paths: HashMap<DefId, Vec<String>>,
+    pub external_paths: HashMap<DefId, (Vec<String>, ItemType)>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -248,9 +248,6 @@ pub struct Cache {
 
     /// Cache of where documentation for primitives can be found.
     pub primitive_locations: HashMap<clean::PrimitiveType, ast::CrateNum>,
-
-    /// Set of definitions which have been inlined from external crates.
-    pub inlined: HashSet<DefId>,
 
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -505,20 +502,20 @@ pub fn run(mut krate: clean::Crate,
 
     // Crawl the crate to build various caches used for the output
     let RenderInfo {
-        inlined,
+        inlined: _,
         external_paths,
         external_typarams,
         deref_trait_did,
     } = renderinfo;
 
-    let paths = external_paths.into_iter()
-                              .map(|(k, (v, t))| (k, (v, ItemType::from_type_kind(t))))
-                              .collect::<HashMap<_, _>>();
+    let external_paths = external_paths.into_iter()
+        .map(|(k, (v, t))| (k, (v, ItemType::from_type_kind(t))))
+        .collect();
 
     let mut cache = Cache {
         impls: HashMap::new(),
-        external_paths: paths.iter().map(|(&k, v)| (k, v.0.clone())).collect(),
-        paths: paths,
+        external_paths: external_paths,
+        paths: HashMap::new(),
         implementors: HashMap::new(),
         stack: Vec::new(),
         parent_stack: Vec::new(),
@@ -534,7 +531,6 @@ pub fn run(mut krate: clean::Crate,
         traits: mem::replace(&mut krate.external_traits, HashMap::new()),
         deref_trait_did: deref_trait_did,
         typarams: external_typarams,
-        inlined: inlined,
     };
 
     // Cache where all our extern crates are located
@@ -542,7 +538,7 @@ pub fn run(mut krate: clean::Crate,
         cache.extern_locations.insert(n, (e.name.clone(),
                                           extern_location(e, &cx.dst)));
         let did = DefId { krate: n, index: CRATE_DEF_INDEX };
-        cache.paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
+        cache.external_paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
     }
 
     // Cache where all known primitives have their documentation located.
@@ -753,7 +749,10 @@ fn write_shared(cx: &Context,
         //        theory it should be...
         let &(ref remote_path, remote_item_type) = match cache.paths.get(&did) {
             Some(p) => p,
-            None => continue,
+            None => match cache.external_paths.get(&did) {
+                Some(p) => p,
+                None => continue,
+            }
         };
 
         let mut mydst = dst.clone();
@@ -1055,12 +1054,11 @@ impl DocFolder for Cache {
                         let last = self.parent_stack.last().unwrap();
                         let did = *last;
                         let path = match self.paths.get(&did) {
-                            Some(&(_, ItemType::Trait)) =>
-                                Some(&self.stack[..self.stack.len() - 1]),
                             // The current stack not necessarily has correlation
                             // for where the type was defined. On the other
                             // hand, `paths` always has the right
                             // information if present.
+                            Some(&(ref fqp, ItemType::Trait)) |
                             Some(&(ref fqp, ItemType::Struct)) |
                             Some(&(ref fqp, ItemType::Enum)) =>
                                 Some(&fqp[..fqp.len() - 1]),
@@ -1092,12 +1090,10 @@ impl DocFolder for Cache {
                         });
                     }
                 }
-                (Some(parent), None) if is_method || (!self.stripped_mod)=> {
-                    if parent.is_local() {
-                        // We have a parent, but we don't know where they're
-                        // defined yet. Wait for later to index this item.
-                        self.orphan_methods.push((parent, item.clone()))
-                    }
+                (Some(parent), None) if is_method => {
+                    // We have a parent, but we don't know where they're
+                    // defined yet. Wait for later to index this item.
+                    self.orphan_methods.push((parent, item.clone()));
                 }
                 _ => {}
             }
@@ -1127,7 +1123,6 @@ impl DocFolder for Cache {
                 // not a public item.
                 if
                     !self.paths.contains_key(&item.def_id) ||
-                    !item.def_id.is_local() ||
                     self.access_levels.is_public(item.def_id)
                 {
                     self.paths.insert(item.def_id,
@@ -1521,7 +1516,7 @@ impl<'a> Item<'a> {
         } else {
             let cache = cache();
             let external_path = match cache.external_paths.get(&self.item.def_id) {
-                Some(path) => path,
+                Some(&(ref path, _)) => path,
                 None => return None,
             };
             let mut path = match cache.extern_locations.get(&self.item.def_id.krate) {
@@ -2106,7 +2101,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            path = if it.def_id.is_local() {
                cx.current.join("/")
            } else {
-               let path = &cache.external_paths[&it.def_id];
+               let (ref path, _) = cache.external_paths[&it.def_id];
                path[..path.len() - 1].join("/")
            },
            ty = shortty(it).to_static_str(),
