@@ -35,7 +35,6 @@ use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
 use lint::builtin;
 use util::nodemap::FnvHashMap;
 
-use std::cell::RefCell;
 use std::cmp;
 use std::default::Default as StdDefault;
 use std::mem;
@@ -311,10 +310,6 @@ pub struct LateContext<'a, 'tcx: 'a> {
     /// levels, this stack keeps track of the previous lint levels of whatever
     /// was modified.
     level_stack: Vec<(LintId, LevelSource)>,
-
-    /// Level of lints for certain NodeIds, stored here because the body of
-    /// the lint needs to run in trans.
-    node_levels: RefCell<FnvHashMap<(ast::NodeId, LintId), LevelSource>>,
 }
 
 /// Context for lint checking of the AST, after expansion, before lowering to
@@ -664,7 +659,6 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
             access_levels: access_levels,
             lints: lint_store,
             level_stack: vec![],
-            node_levels: RefCell::new(FnvHashMap()),
         }
     }
 
@@ -1201,8 +1195,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       lint.as_str(), tcx.map.node_to_string(*id), *msg)
         }
     }
-
-    *tcx.node_lint_levels.borrow_mut() = cx.node_levels.into_inner();
 
     // Put the lint store back in the session.
     mem::replace(&mut *tcx.sess.lint_store.borrow_mut(), cx.lints);
