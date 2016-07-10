@@ -9,6 +9,7 @@
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(type_macros)]
+#![feature(iter_arith)]
 
 #![allow(indexing_slicing, shadow_reuse, unknown_lints)]
 
@@ -219,7 +220,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box temporary_assignment::Pass);
     reg.register_late_lint_pass(box transmute::Transmute);
     reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold));
-    reg.register_late_lint_pass(box escape::Pass);
+    reg.register_late_lint_pass(box escape::Pass{too_large_for_stack: conf.too_large_for_stack});
     reg.register_early_lint_pass(box misc_early::MiscEarly);
     reg.register_late_lint_pass(box misc::UsedUnderscoreBinding);
     reg.register_late_lint_pass(box array_indexing::ArrayIndexing);

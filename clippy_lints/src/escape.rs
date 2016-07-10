@@ -1,17 +1,21 @@
 use rustc::hir::*;
 use rustc::hir::intravisit as visit;
 use rustc::hir::map::Node::{NodeExpr, NodeStmt};
+use rustc::infer::InferCtxt;
 use rustc::lint::*;
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::{cmt, Categorization};
 use rustc::ty::adjustment::AutoAdjustment;
 use rustc::ty;
+use rustc::ty::layout::TargetDataLayout;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::span_lint;
 
-pub struct Pass;
+pub struct Pass {
+    pub too_large_for_stack: u64,
+}
 
 /// **What it does:** This lint checks for usage of `Box<T>` where an unboxed `T` would work fine.
 ///
@@ -39,9 +43,12 @@ fn is_non_trait_box(ty: ty::Ty) -> bool {
     }
 }
 
-struct EscapeDelegate<'a, 'tcx: 'a> {
+struct EscapeDelegate<'a, 'tcx: 'a+'gcx, 'gcx: 'a> {
     tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     set: NodeSet,
+    infcx: &'a InferCtxt<'a, 'gcx, 'gcx>,
+    target: TargetDataLayout,
+    too_large_for_stack: u64,
 }
 
 impl LintPass for Pass {
@@ -55,9 +62,15 @@ impl LateLintPass for Pass {
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
 
         let infcx = cx.tcx.borrowck_fake_infer_ctxt(param_env);
+
+        // we store the infcx because it is expensive to recreate
+        // the context each time.
         let mut v = EscapeDelegate {
             tcx: cx.tcx,
             set: NodeSet(),
+            infcx: &infcx,
+            target: TargetDataLayout::parse(cx.sess()),
+            too_large_for_stack: self.too_large_for_stack,
         };
 
         {
@@ -74,7 +87,7 @@ impl LateLintPass for Pass {
     }
 }
 
-impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
+impl<'a, 'tcx: 'a+'gcx, 'gcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx, 'gcx> {
     fn consume(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, mode: ConsumeMode) {
         if let Categorization::Local(lid) = cmt.cat {
             if self.set.contains(&lid) {
@@ -93,7 +106,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             if let Some(NodeExpr(..)) = map.find(map.get_parent_node(consume_pat.id)) {
                 return;
             }
-            if is_non_trait_box(cmt.ty) {
+            if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
                 self.set.insert(consume_pat.id);
             }
             return;
@@ -104,7 +117,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                     if let DeclLocal(ref loc) = decl.node {
                         if let Some(ref ex) = loc.init {
                             if let ExprBox(..) = ex.node {
-                                if is_non_trait_box(cmt.ty) {
+                                if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
                                     // let x = box (...)
                                     self.set.insert(consume_pat.id);
                                 }
@@ -169,4 +182,22 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     }
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}
     fn mutate(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: MutateMode) {}
+}
+
+impl<'a, 'tcx: 'a+'gcx, 'gcx: 'a> EscapeDelegate<'a, 'tcx, 'gcx> {
+    fn is_large_box(&self, ty: ty::Ty<'gcx>) -> bool {
+        // Large types need to be boxed to avoid stack
+        // overflows.
+        match ty.sty {
+            ty::TyBox(ref inner) => {
+                if let Ok(layout) = inner.layout(self.infcx) {
+                    let size = layout.size(&self.target);
+                    size.bytes() > self.too_large_for_stack
+                } else {
+                    false
+                }
+            },
+            _ => false,
+        }
+    }
 }

@@ -158,6 +158,8 @@ define_Conf! {
     ("type-complexity-threshold", type_complexity_threshold, 250 => u64),
     /// Lint: MANY_SINGLE_CHAR_NAMES. The maximum number of single char bindings a scope may have
     ("single-char-binding-names-threshold", max_single_char_names, 5 => u64),
+    /// Lint: BOXED_LOCAL. The maximum size of objects (in bytes) that will be linted. Larger objects are ok on the heap
+    ("too-large-for-stack", too_large_for_stack, 200 => u64),
 }
 
 /// Read the `toml` configuration file. The function will ignore “File not found” errors iif
