@@ -92,6 +92,23 @@ use marker::{Reflect, Sized};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Any: Reflect + 'static {
     /// Gets the `TypeId` of `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_type_id)]
+    ///
+    /// use std::any::{Any, TypeId};
+    ///
+    /// fn is_string(s: &Any) -> bool {
+    ///     TypeId::of::<String>() == s.get_type_id()
+    /// }
+    ///
+    /// fn main() {
+    ///     assert_eq!(is_string(&0), false);
+    ///     assert_eq!(is_string(&"cookie monster".to_owned()), true);
+    /// }
+    /// ```
     #[unstable(feature = "get_type_id",
                reason = "this method will likely be replaced by an associated static",
                issue = "27745")]
@@ -125,7 +142,26 @@ impl fmt::Debug for Any + Send {
 }
 
 impl Any {
-    /// Returns true if the boxed type is the same as `T`
+    /// Returns true if the boxed type is the same as `T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::any::Any;
+    ///
+    /// fn is_string(s: &Any) {
+    ///     if s.is::<String>() {
+    ///         println!("It's a string!");
+    ///     } else {
+    ///         println!("Not a string...");
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     is_string(&0);
+    ///     is_string(&"cookie monster".to_owned());
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
@@ -141,6 +177,25 @@ impl Any {
 
     /// Returns some reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::any::Any;
+    ///
+    /// fn print_if_string(s: &Any) {
+    ///     if let Some(string) = s.downcast_ref::<String>() {
+    ///         println!("It's a string({}): '{}'", string.len(), string);
+    ///     } else {
+    ///         println!("Not a string...");
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     print_if_string(&0);
+    ///     print_if_string(&"cookie monster".to_owned());
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
@@ -159,6 +214,29 @@ impl Any {
 
     /// Returns some mutable reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::any::Any;
+    ///
+    /// fn modify_if_u32(s: &mut Any) {
+    ///     if let Some(num) = s.downcast_mut::<u32>() {
+    ///         *num = 42;
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let mut x = 10u32;
+    ///     let mut s = "starlord".to_owned();
+    ///
+    ///     modify_if_u32(&mut x);
+    ///     modify_if_u32(&mut s);
+    ///
+    ///     assert_eq!(x, 42);
+    ///     assert_eq!(&s, "starlord");
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
@@ -178,6 +256,25 @@ impl Any {
 
 impl Any+Send {
     /// Forwards to the method defined on the type `Any`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::any::Any;
+    ///
+    /// fn is_string(s: &(Any + Send)) {
+    ///     if s.is::<String>() {
+    ///         println!("It's a string!");
+    ///     } else {
+    ///         println!("Not a string...");
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     is_string(&0);
+    ///     is_string(&"cookie monster".to_owned());
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
@@ -185,6 +282,25 @@ impl Any+Send {
     }
 
     /// Forwards to the method defined on the type `Any`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::any::Any;
+    ///
+    /// fn print_if_string(s: &(Any + Send)) {
+    ///     if let Some(string) = s.downcast_ref::<String>() {
+    ///         println!("It's a string({}): '{}'", string.len(), string);
+    ///     } else {
+    ///         println!("Not a string...");
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     print_if_string(&0);
+    ///     print_if_string(&"cookie monster".to_owned());
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
@@ -192,6 +308,29 @@ impl Any+Send {
     }
 
     /// Forwards to the method defined on the type `Any`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::any::Any;
+    ///
+    /// fn modify_if_u32(s: &mut (Any+ Send)) {
+    ///     if let Some(num) = s.downcast_mut::<u32>() {
+    ///         *num = 42;
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let mut x = 10u32;
+    ///     let mut s = "starlord".to_owned();
+    ///
+    ///     modify_if_u32(&mut x);
+    ///     modify_if_u32(&mut s);
+    ///
+    ///     assert_eq!(x, 42);
+    ///     assert_eq!(&s, "starlord");
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
@@ -220,7 +359,24 @@ pub struct TypeId {
 
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been
-    /// instantiated with
+    /// instantiated with.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_type_id)]
+    ///
+    /// use std::any::{Any, TypeId};
+    ///
+    /// fn is_string(s: &Any) -> bool {
+    ///     TypeId::of::<String>() == s.get_type_id()
+    /// }
+    ///
+    /// fn main() {
+    ///     assert_eq!(is_string(&0), false);
+    ///     assert_eq!(is_string(&"cookie monster".to_owned()), true);
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn of<T: ?Sized + Reflect + 'static>() -> TypeId {
         TypeId {
