@@ -253,7 +253,6 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                 }
             }
             PatKind::Lit(..) |
-            PatKind::QPath(..) |
             PatKind::Range(..) |
             PatKind::Wild |
             PatKind::Path(..) => (),

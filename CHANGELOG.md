@@ -1,7 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.79 — ?
+## 0.0.79 — 2016-07-10
+* Rustup to *rustc 1.12.0-nightly (f93aaf84c 2016-07-09)*
 * Major suggestions refactoring
 
 ## 0.0.78 — 2016-07-02
