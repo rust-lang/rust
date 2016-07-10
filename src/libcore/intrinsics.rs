@@ -294,11 +294,56 @@ extern "rust-intrinsic" {
     /// The [nomicon](../../nomicon/transmutes.html) has additional
     /// documentation.
     ///
+    /// # Examples
+    ///
+    /// There are a few things that `transmute` is really useful for.
+    ///
+    /// Getting the bitpattern of a floating point type (or, more generally,
+    /// type punning, when T and U aren't pointers):
+    ///
+    /// ```
+    /// let bitpattern = unsafe {
+    ///     std::mem::transmute::<f32, u32>(1.0)
+    /// };
+    /// assert_eq!(bitpattern, 0x3F800000);
+    /// ```
+    ///
+    /// Turning a pointer into a function pointer:
+    ///
+    /// ```
+    /// fn foo() -> i32 {
+    ///     0
+    /// }
+    /// let pointer = foo as *const ();
+    /// let function = unsafe {
+    ///     std::mem::transmute::<*const (), fn() -> i32>(pointer)
+    /// };
+    /// assert_eq!(function(), 0);
+    /// ```
+    ///
+    /// Extending a lifetime, or shortening an invariant lifetime; this is
+    /// advanced, very unsafe rust:
+    ///
+    /// ```
+    /// struct R<'a>(&'a i32);
+    /// unsafe fn extend_lifetime<'b>(r: R<'b>) -> R<'static> {
+    ///     std::mem::transmute::<R<'b>, R<'static>>(r)
+    /// }
+    ///
+    /// unsafe fn shorten_invariant_lifetime<'b, 'c>(r: &'b mut R<'static>)
+    ///                                              -> &'b mut R<'c> {
+    ///     std::mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(r)
+    /// }
+    /// ```
+    ///
     /// # Alternatives
     ///
-    /// There are very few good cases for `transmute`. Most can be achieved
-    /// through other means. Some more or less common uses, and a better way,
-    /// are as follows:
+    /// However, many uses of `transmute` can be achieved through other means.
+    /// This is unfortunate because either `transmute` isn't guaranteed to work
+    /// in that case, and only does because of rustc's current implemenation;
+    /// or, more commonly, `transmute` is just too powerful. It can transform
+    /// any type into any other, with just the caveat that they're the same
+    /// size. Some more or less common uses, and a better way, are as follows:
     ///
     /// Turning a pointer into a `usize`:
     ///
@@ -426,48 +471,6 @@ extern "rust-intrinsic" {
     ///         (slice::from_raw_parts_mut(ptr, mid),
     ///          slice::from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
     ///     }
-    /// }
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// There are valid uses of transmute, though they are few and far between.
-    ///
-    /// Getting the bitpattern of a floating point type:
-    ///
-    /// ```
-    /// let bitpattern = unsafe {
-    ///     std::mem::transmute::<f32, u32>(1.0)
-    /// };
-    /// assert_eq!(bitpattern, 0x3F800000);
-    /// ```
-    ///
-    /// Turning a pointer into a function pointer (this is not guaranteed to
-    /// work in Rust, although, for example, Linux does make this guarantee):
-    ///
-    /// ```
-    /// fn foo() -> i32 {
-    ///     0
-    /// }
-    /// let pointer = foo as *const ();
-    /// let function = unsafe {
-    ///     std::mem::transmute::<*const (), fn() -> i32>(pointer)
-    /// };
-    /// assert_eq!(function(), 0);
-    /// ```
-    ///
-    /// Extending a lifetime, or shortening an invariant lifetime; this is
-    /// advanced, very unsafe rust:
-    ///
-    /// ```
-    /// struct R<'a>(&'a i32);
-    /// unsafe fn extend_lifetime<'b>(r: R<'b>) -> R<'static> {
-    ///     std::mem::transmute::<R<'b>, R<'static>>(r)
-    /// }
-    ///
-    /// unsafe fn shorten_invariant_lifetime<'b, 'c>(r: &'b mut R<'static>)
-    ///                                              -> &'b mut R<'c> {
-    ///     std::mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(r)
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
