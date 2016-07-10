@@ -170,7 +170,9 @@ pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
                         "$u20$", => b" ",
                         "$u27$", => b"'",
                         "$u5b$", => b"[",
-                        "$u5d$", => b"]"
+                        "$u5d$", => b"]",
+                        "$u7b$", => b"{",
+                        "$u7d$", => b"}"
                     )
                 } else {
                     let idx = match rest.find('$') {
