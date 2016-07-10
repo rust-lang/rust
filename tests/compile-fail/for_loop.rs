@@ -104,6 +104,12 @@ fn main() {
         println!("{}", vec[i]);
     }
 
+    for i in 0..vec.len() {
+        //~^ WARNING unused variable
+        let i = 42; // make a different `i`
+        println!("{}", vec[i]); // ok, not the `i` of the for-loop
+    }
+
     for i in 0..vec.len() { let _ = vec[i]; }
     //~^ ERROR `i` is only used to index `vec`
     //~| HELP consider
