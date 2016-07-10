@@ -847,7 +847,7 @@ impl<T> [T] {
 
     /// Copies the elements from `src` into `self`.
     ///
-    /// The length of this slice must be the same as the slice passed in.
+    /// The length of `src` must be the same as `self`.
     ///
     /// # Panics
     ///
