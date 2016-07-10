@@ -33,7 +33,7 @@ pub fn rewrite_comment(orig: &str,
         if block_style {
             ("/* ", " */", " * ")
         } else if !config.normalize_comments {
-            if orig.starts_with("/**") {
+            if orig.starts_with("/**") && !orig.starts_with("/**/") {
                 ("/** ", " **/", " ** ")
             } else if orig.starts_with("/*!") {
                 ("/*! ", " */", " * ")
@@ -46,7 +46,8 @@ pub fn rewrite_comment(orig: &str,
             } else {
                 ("// ", "", "// ")
             }
-        } else if orig.starts_with("///") || orig.starts_with("/**") {
+        } else if orig.starts_with("///") ||
+                  (orig.starts_with("/**") && !orig.starts_with("/**/")) {
             ("/// ", "", "/// ")
         } else if orig.starts_with("//!") || orig.starts_with("/*!") {
             ("//! ", "", "//! ")
@@ -130,7 +131,7 @@ fn left_trim_comment_line(line: &str) -> &str {
     } else if line.starts_with("/* ") || line.starts_with("// ") || line.starts_with("//!") ||
               line.starts_with("///") ||
               line.starts_with("** ") || line.starts_with("/*!") ||
-              line.starts_with("/**") {
+              (line.starts_with("/**") && !line.starts_with("/**/")) {
         &line[3..]
     } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//") ||
               line.starts_with("**") {
@@ -606,7 +607,8 @@ fn remove_comment_header(comment: &str) -> &str {
         &comment[3..]
     } else if comment.starts_with("//") {
         &comment[2..]
-    } else if comment.starts_with("/**") || comment.starts_with("/*!") {
+    } else if (comment.starts_with("/**") && !comment.starts_with("/**/")) ||
+              comment.starts_with("/*!") {
         &comment[3..comment.len() - 2]
     } else {
         assert!(comment.starts_with("/*"),

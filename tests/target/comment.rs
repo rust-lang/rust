@@ -45,6 +45,10 @@ fn chains() {
     })
 }
 
+fn issue_1086() {
+    //
+}
+
 // random comment
 
 fn main() {
