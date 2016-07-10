@@ -6,7 +6,7 @@ use std::collections::hash_map::Entry;
 use syntax::parse::token::InternedString;
 use syntax::util::small_vector::SmallVector;
 use utils::{SpanlessEq, SpanlessHash};
-use utils::{get_parent_expr, in_macro, span_note_and_lint};
+use utils::{get_parent_expr, in_macro, span_lint_and_then, span_note_and_lint, snippet};
 
 /// **What it does:** This lint checks for consecutive `ifs` with the same condition. This lint is
 /// `Warn` by default.
@@ -50,6 +50,23 @@ declare_lint! {
 ///     Bar => bar(),
 ///     Quz => quz(),
 ///     Baz => bar(), // <= oops
+/// }
+/// ```
+///
+/// This should probably be
+/// ```rust,ignore
+/// match foo {
+///     Bar => bar(),
+///     Quz => quz(),
+///     Baz => baz(), // <= fixed
+/// }
+/// ```
+///
+/// or if the original code was not a typo:
+/// ```rust,ignore
+/// match foo {
+///     Bar | Baz => bar(), // <= shows the intent better
+///     Quz => quz(),
 /// }
 /// ```
 declare_lint! {
@@ -143,12 +160,25 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
 
     if let ExprMatch(_, ref arms, MatchSource::Normal) = expr.node {
         if let Some((i, j)) = search_same(arms, hash, eq) {
-            span_note_and_lint(cx,
+            span_lint_and_then(cx,
                                MATCH_SAME_ARMS,
                                j.body.span,
                                "this `match` has identical arm bodies",
-                               i.body.span,
-                               "same as this");
+                               |db| {
+                db.span_note(i.body.span, "same as this");
+
+                // Note: this does not use `span_suggestion` on purpose: there is no clean way to
+                // remove the other arm. Building a span and suggest to replace it to "" makes an
+                // even more confusing error message. Also in order not to make up a span for the
+                // whole pattern, the suggestion is only shown when there is only one pattern. The
+                // user should know about `|` if they are already using it…
+
+                if i.pats.len() == 1 && j.pats.len() == 1 {
+                    let lhs = snippet(cx, i.pats[0].span, "<pat1>");
+                    let rhs = snippet(cx, j.pats[0].span, "<pat2>");
+                    db.span_note(i.body.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
+                }
+            });
         }
     }
 }
