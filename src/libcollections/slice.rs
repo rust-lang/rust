@@ -151,7 +151,6 @@ mod hack {
     }
 }
 
-/// Allocating extension methods for slices.
 #[lang = "slice"]
 #[cfg(not(test))]
 impl<T> [T] {
