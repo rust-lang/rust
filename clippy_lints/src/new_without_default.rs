@@ -7,6 +7,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 use utils::paths;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, same_tys, span_lint_and_then};
+use utils::sugg::DiagnosticBuilderExt;
 
 /// **What it does:** This lints about type with a `fn new() -> Self` method
 /// and no implementation of
@@ -14,8 +15,7 @@ use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, sa
 ///
 /// **Why is this bad?** User might expect to be able to use
 /// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
-/// as the type can be
-/// constructed without arguments.
+/// as the type can be constructed without arguments.
 ///
 /// **Known problems:** Hopefully none.
 ///
@@ -118,8 +118,8 @@ impl LateLintPass for NewWithoutDefault {
                                                      `Default` implementation for `{}`",
                                                     self_ty),
                                            |db| {
-                                               db.span_suggestion(span, "try this", "#[derive(Default)]".into());
-                                           });
+                            db.suggest_item_with_attr(cx, span, "try this", "#[derive(Default)]");
+                        });
                     } else {
                         span_lint_and_then(cx,
                                            NEW_WITHOUT_DEFAULT, span,
@@ -127,11 +127,17 @@ impl LateLintPass for NewWithoutDefault {
                                                     `Default` implementation for `{}`",
                                                     self_ty),
                                            |db| {
-                                               db.span_suggestion(span,
-                                                                  "try this",
-                                                                  format!("impl Default for {} {{ fn default() -> \
-                                                                          Self {{ {}::new() }} }}", self_ty, self_ty));
-                                           });
+                        db.suggest_prepend_item(cx,
+                                                  span,
+                                                  "try this",
+                                                  &format!(
+"impl Default for {} {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}",
+                                                           self_ty));
+                        });
                     }
                 }}
             }

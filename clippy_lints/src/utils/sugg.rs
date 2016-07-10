@@ -1,11 +1,14 @@
 use rustc::hir;
-use rustc::lint::{EarlyContext, LateContext};
+use rustc::lint::{EarlyContext, LateContext, LintContext};
+use rustc_errors;
 use std::borrow::Cow;
+use std::fmt::Display;
 use std;
-use syntax::ast;
-use syntax::util::parser::AssocOp;
-use utils::{higher, snippet, snippet_opt};
+use syntax::codemap::{CharPos, Span};
 use syntax::print::pprust::binop_to_string;
+use syntax::util::parser::AssocOp;
+use syntax::ast;
+use utils::{higher, snippet, snippet_opt};
 
 /// A helper type to build suggestion correctly handling parenthesis.
 pub enum Sugg<'a> {
@@ -20,7 +23,7 @@ pub enum Sugg<'a> {
 /// Literal constant `1`, for convenience.
 pub const ONE: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("1"));
 
-impl<'a> std::fmt::Display for Sugg<'a> {
+impl<'a> Display for Sugg<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         match *self {
             Sugg::NonParen(ref s) | Sugg::MaybeParen(ref s) | Sugg::BinOp(_, ref s) => {
@@ -126,7 +129,7 @@ impl<'a> Sugg<'a> {
     }
 
     /// Convenience method to create the `<lhs> as <rhs>` suggestion.
-    pub fn as_ty<R: std::fmt::Display>(self, rhs: R) -> Sugg<'static> {
+    pub fn as_ty<R: Display>(self, rhs: R) -> Sugg<'static> {
         make_assoc(AssocOp::As, &self, &Sugg::NonParen(rhs.to_string().into()))
     }
 
@@ -198,7 +201,7 @@ impl<T> ParenHelper<T> {
     }
 }
 
-impl<T: std::fmt::Display> std::fmt::Display for ParenHelper<T> {
+impl<T: Display> Display for ParenHelper<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         if self.paren {
             write!(f, "({})", self.wrapped)
@@ -353,4 +356,84 @@ fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
         Sub => BinOpToken::Minus,
         And | Eq | Ge | Gt | Le | Lt | Ne | Or => panic!("This operator does not exist"),
     })
+}
+
+/// Return the indentation before `span` if there are nothing but `[ \t]` before it on its line.
+fn indentation<T: LintContext>(cx: &T, span: Span) -> Option<String> {
+    let lo = cx.sess().codemap().lookup_char_pos(span.lo);
+    if let Some(line) = lo.file.get_line(lo.line - 1 /* line numbers in `Loc` are 1-based */) {
+        if let Some((pos, _)) = line.char_indices().find(|&(_, c)| c != ' ' && c != '\t') {
+            // we can mix char and byte positions here because we only consider `[ \t]`
+            if lo.col == CharPos(pos) {
+                Some(line[..pos].into())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+pub trait DiagnosticBuilderExt<T: LintContext> {
+    /// Suggests to add an attribute to an item.
+    ///
+    /// Correctly handles indentation of the attribute and item.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// db.suggest_item_with_attr(cx, item, "#[derive(Default)]");
+    /// ```
+    fn suggest_item_with_attr<D: Display+?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D);
+
+    /// Suggest to add an item before another.
+    ///
+    /// The item should not be indented (expect for inner indentation).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// db.suggest_prepend_item(cx, item,
+    /// "fn foo() {
+    ///     bar();
+    /// }");
+    /// ```
+    fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str);
+}
+
+impl<'a, 'b, T: LintContext> DiagnosticBuilderExt<T> for rustc_errors::DiagnosticBuilder<'b> {
+    fn suggest_item_with_attr<D: Display+?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D) {
+        if let Some(indent) = indentation(cx, item) {
+            let span = Span {
+                hi: item.lo,
+                ..item
+            };
+
+            self.span_suggestion(span, msg, format!("{}\n{}", attr, indent));
+        }
+    }
+
+    fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str) {
+        if let Some(indent) = indentation(cx, item) {
+            let span = Span {
+                hi: item.lo,
+                ..item
+            };
+
+            let mut first = true;
+            let new_item = new_item.lines().map(|l| {
+                if first {
+                    first = false;
+                    format!("{}\n", l)
+                } else {
+                    format!("{}{}\n", indent, l)
+                }
+            }).collect::<String>();
+
+            self.span_suggestion(span, msg, format!("{}\n{}", new_item, indent));
+        }
+    }
 }

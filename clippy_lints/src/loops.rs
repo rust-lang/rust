@@ -1,6 +1,7 @@
 use reexport::*;
 use rustc::hir::*;
 use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
 use rustc::hir::map::Node::NodeBlock;
 use rustc::lint::*;
@@ -337,7 +338,7 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
         if let PatKind::Binding(_, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
                 cx: cx,
-                var: ident.node,
+                var: cx.tcx.expect_def(pat.id).def_id(),
                 indexed: HashMap::new(),
                 nonindex: false,
             };
@@ -667,7 +668,7 @@ impl<'a> Visitor<'a> for UsedVisitor {
 
 struct VarVisitor<'v, 't: 'v> {
     cx: &'v LateContext<'v, 't>, // context reference
-    var: Name, // var name to look for as index
+    var: DefId, // var name to look for as index
     indexed: HashMap<Name, Option<CodeExtent>>, // indexed variables, the extent is None for global
     nonindex: bool, // has the var been used otherwise?
 }
@@ -675,7 +676,7 @@ struct VarVisitor<'v, 't: 'v> {
 impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
     fn visit_expr(&mut self, expr: &'v Expr) {
         if let ExprPath(None, ref path) = expr.node {
-            if path.segments.len() == 1 && path.segments[0].name == self.var {
+            if path.segments.len() == 1 && self.cx.tcx.expect_def(expr.id).def_id() == self.var {
                 // we are referencing our variable! now check if it's as an index
                 if_let_chain! {[
                     let Some(parexpr) = get_parent_expr(self.cx, expr),

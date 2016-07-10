@@ -21,6 +21,7 @@ struct Foo {
 #[deny(match_same_arms)]
 fn if_same_then_else() -> Result<&'static str, ()> {
     if true {
+        //~^NOTE same as this
         Foo { bar: 42 };
         0..10;
         ..;
@@ -62,6 +63,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     let _ = if true {
+        //~^NOTE same as this
         foo();
         42
     }
@@ -75,6 +77,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     let _ = if true {
+        //~^NOTE same as this
         42
     }
     else { //~ERROR this `if` has identical blocks
@@ -82,6 +85,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     };
 
     if true {
+        //~^NOTE same as this
         let bar = if true {
             42
         }
@@ -105,6 +109,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
+        //~^NOTE same as this
         let _ = match 42 {
             42 => 1,
             a if a > 0 => 2,
@@ -125,6 +130,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
+        //~^NOTE same as this
         if let Some(a) = Some(42) {}
     }
     else { //~ERROR this `if` has identical blocks
@@ -132,6 +138,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
+        //~^NOTE same as this
         if let (1, .., 3) = (1, 2, 3) {}
     }
     else { //~ERROR this `if` has identical blocks
@@ -168,12 +175,16 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     let _ = match 42 {
         42 => foo(),
+        //~^NOTE same as this
+        //~|NOTE `42 | 51`
         51 => foo(), //~ERROR this `match` has identical arm bodies
         _ => true,
     };
 
     let _ = match Some(42) {
         Some(_) => 24,
+        //~^NOTE same as this
+        //~|NOTE `Some(_) | None`
         None => 24, //~ERROR this `match` has identical arm bodies
     };
 
@@ -196,18 +207,24 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     match (Some(42), Some(42)) {
         (Some(a), None) => bar(a),
+        //~^NOTE same as this
+        //~|NOTE `(Some(a), None) | (None, Some(a))`
         (None, Some(a)) => bar(a), //~ERROR this `match` has identical arm bodies
         _ => (),
     }
 
     match (Some(42), Some(42)) {
         (Some(a), ..) => bar(a),
+        //~^NOTE same as this
+        //~|NOTE `(Some(a), ..) | (.., Some(a))`
         (.., Some(a)) => bar(a), //~ERROR this `match` has identical arm bodies
         _ => (),
     }
 
     match (1, 2, 3) {
         (1, .., 3) => 42,
+        //~^NOTE same as this
+        //~|NOTE `(1, .., 3) | (.., 3)`
         (.., 3) => 42, //~ERROR this `match` has identical arm bodies
         _ => 0,
     };
@@ -219,6 +236,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
+        //~^NOTE same as this
         try!(Ok("foo"));
     }
     else { //~ERROR this `if` has identical blocks
@@ -226,6 +244,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
+        //~^NOTE same as this
         let foo = "";
         return Ok(&foo[0..]);
     }
@@ -246,16 +265,19 @@ fn ifs_same_cond() {
     let b = false;
 
     if b {
+        //~^NOTE same as this
     }
     else if b { //~ERROR this `if` has the same condition as a previous if
     }
 
     if a == 1 {
+        //~^NOTE same as this
     }
     else if a == 1 { //~ERROR this `if` has the same condition as a previous if
     }
 
     if 2*a == 1 {
+        //~^NOTE same as this
     }
     else if 2*a == 2 {
     }
