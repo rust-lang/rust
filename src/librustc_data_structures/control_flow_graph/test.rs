@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
-use std::cmp::max;
+use std::collections::{HashMap, HashSet};
 use std::slice;
 use std::iter;
 
 use super::{ControlFlowGraph, GraphPredecessors, GraphSuccessors};
+
 
 pub struct TestGraph {
     num_nodes: usize,
@@ -24,15 +24,16 @@ pub struct TestGraph {
 
 impl TestGraph {
     pub fn new(start_node: usize, edges: &[(usize, usize)]) -> Self {
+        let mut seen_nodes = HashSet::new();
         let mut graph = TestGraph {
-            num_nodes: start_node + 1,
+            num_nodes: 0,
             start_node: start_node,
             successors: HashMap::new(),
             predecessors: HashMap::new()
         };
         for &(source, target) in edges {
-            graph.num_nodes = max(graph.num_nodes, source + 1);
-            graph.num_nodes = max(graph.num_nodes, target + 1);
+            if seen_nodes.insert(target) { graph.num_nodes += 1 };
+            if seen_nodes.insert(source) { graph.num_nodes += 1 };
             graph.successors.entry(source).or_insert(vec![]).push(target);
             graph.predecessors.entry(target).or_insert(vec![]).push(source);
         }
