@@ -42,7 +42,8 @@ declare_lint! {
 /// purpose, you can factor them
 /// [using `|`](https://doc.rust-lang.org/book/patterns.html#multiple-patterns).
 ///
-/// **Known problems:** Hopefully none.
+/// **Known problems:** False positive possible with order dependent `match`
+/// (see issue [#860](https://github.com/Manishearth/rust-clippy/issues/860)).
 ///
 /// **Example:**
 /// ```rust,ignore
