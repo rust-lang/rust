@@ -2040,6 +2040,9 @@ extern {
     pub fn LLVMRustHasFeature(T: TargetMachineRef,
                               s: *const c_char) -> bool;
 
+    pub fn LLVMRustPrintTargetCPUs(T: TargetMachineRef);
+    pub fn LLVMRustPrintTargetFeatures(T: TargetMachineRef);
+
     pub fn LLVMRustCreateTargetMachine(Triple: *const c_char,
                                        CPU: *const c_char,
                                        Features: *const c_char,
