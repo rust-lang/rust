@@ -165,6 +165,10 @@ pub enum PrintRequest {
     CrateName,
     Cfg,
     TargetList,
+    TargetCPUs,
+    TargetFeatures,
+    RelocationModels,
+    CodeModels,
 }
 
 pub enum Input {
@@ -1197,6 +1201,24 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         early_error(error_format, "Value for codegen units must be a positive nonzero integer");
     }
 
+    let mut prints = Vec::<PrintRequest>::new();
+    if cg.target_cpu.as_ref().map_or(false, |s| s == "help") {
+        prints.push(PrintRequest::TargetCPUs);
+        cg.target_cpu = None;
+    };
+    if cg.target_feature == "help" {
+        prints.push(PrintRequest::TargetFeatures);
+        cg.target_feature = "".to_string();
+    }
+    if cg.relocation_model.as_ref().map_or(false, |s| s == "help") {
+        prints.push(PrintRequest::RelocationModels);
+        cg.relocation_model = None;
+    }
+    if cg.code_model.as_ref().map_or(false, |s| s == "help") {
+        prints.push(PrintRequest::CodeModels);
+        cg.code_model = None;
+    }
+
     let cg = cg;
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
@@ -1274,18 +1296,22 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
     let test = matches.opt_present("test");
 
-    let prints = matches.opt_strs("print").into_iter().map(|s| {
+    prints.extend(matches.opt_strs("print").into_iter().map(|s| {
         match &*s {
             "crate-name" => PrintRequest::CrateName,
             "file-names" => PrintRequest::FileNames,
             "sysroot" => PrintRequest::Sysroot,
             "cfg" => PrintRequest::Cfg,
             "target-list" => PrintRequest::TargetList,
+            "target-cpus" => PrintRequest::TargetCPUs,
+            "target-features" => PrintRequest::TargetFeatures,
+            "relocation-models" => PrintRequest::RelocationModels,
+            "code-models" => PrintRequest::CodeModels,
             req => {
                 early_error(error_format, &format!("unknown print request `{}`", req))
             }
         }
-    }).collect::<Vec<_>>();
+    }));
 
     if !cg.remark.is_empty() && debuginfo == NoDebugInfo {
         early_warn(error_format, "-C remark will not show source locations without \
