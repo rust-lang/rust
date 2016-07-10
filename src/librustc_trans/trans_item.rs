@@ -111,7 +111,12 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 tcx.map.local_def_id(node_id)
             }
             TransItem::Fn(instance) => {
-                instance.def
+                if instance.def.is_local() {
+                    instance.def
+                } else {
+                    // Translating an inlined item from another crate? Don't track anything.
+                    return;
+                }
             }
             TransItem::DropGlue(_) => {
                 // Nothing to track for drop glue
