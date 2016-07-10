@@ -339,11 +339,11 @@ extern "rust-intrinsic" {
     /// # Alternatives
     ///
     /// However, many uses of `transmute` can be achieved through other means.
-    /// This is unfortunate because either `transmute` isn't guaranteed to work
-    /// in that case, and only does because of rustc's current implemenation;
-    /// or, more commonly, `transmute` is just too powerful. It can transform
+    /// `transmute` can transform
     /// any type into any other, with just the caveat that they're the same
-    /// size. Some more or less common uses, and a better way, are as follows:
+    /// size, and it sometimes results in interesting results. Below are common
+    /// applications of `transmute` which can be replaced with safe applications
+    /// of `as`:
     ///
     /// Turning a pointer into a `usize`:
     ///
@@ -374,7 +374,8 @@ extern "rust-intrinsic" {
     /// let val_transmuted = unsafe {
     ///     std::mem::transmute::<&mut i32, &mut u32>(ptr)
     /// };
-    /// // Now, put together `as` and reborrowing
+    /// // Now, put together `as` and reborrowing - note the chaining of `as`
+    /// // `as` is not transitive
     /// let val_casts = unsafe { &mut *(ptr as *mut i32 as *mut u32) };
     /// ```
     ///
