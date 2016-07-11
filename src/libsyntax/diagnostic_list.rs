@@ -15,29 +15,6 @@
 // In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
 register_long_diagnostics! {
 
-E0533: r##"
-The `export_name` attribute was malformed.
-
-Erroneous code example:
-
-```compile_fail,E0533
-#[export_name] // error: export_name attribute has invalid format
-pub fn something() {}
-
-fn main() {}
-```
-
-The `export_name` attribute expects a string in order to determine the name of
-the exported symbol. Example:
-
-```
-#[export_name = "some_function"] // ok!
-pub fn something() {}
-
-fn main() {}
-```
-"##,
-
 E0534: r##"
 The `inline` attribute was malformed.
 
@@ -159,6 +136,29 @@ pub fn main() {}
 
 For more information about the cfg attribute, read:
 https://doc.rust-lang.org/reference.html#conditional-compilation
+"##,
+
+E0558: r##"
+The `export_name` attribute was malformed.
+
+Erroneous code example:
+
+```compile_fail,E0558
+#[export_name] // error: export_name attribute has invalid format
+pub fn something() {}
+
+fn main() {}
+```
+
+The `export_name` attribute expects a string in order to determine the name of
+the exported symbol. Example:
+
+```
+#[export_name = "some_function"] // ok!
+pub fn something() {}
+
+fn main() {}
+```
 "##,
 
 }
