@@ -259,7 +259,6 @@ pub struct Parser<'a> {
     pub restrictions: Restrictions,
     pub quote_depth: usize, // not (yet) related to the quasiquoter
     pub reader: Box<Reader+'a>,
-    pub interner: Rc<token::IdentInterner>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
     pub obsolete_set: HashSet<ObsoleteSyntax>,
@@ -356,7 +355,6 @@ impl<'a> Parser<'a> {
 
         Parser {
             reader: rdr,
-            interner: token::get_ident_interner(),
             sess: sess,
             cfg: cfg,
             token: tok0.tok,
