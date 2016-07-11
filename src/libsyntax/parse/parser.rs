@@ -1958,7 +1958,7 @@ impl<'a> Parser<'a> {
                         assert!(recv.is_empty());
                         *recv = attrs;
                     } else {
-                        let msg = "encountered trailing attributes after lifetime parameters";
+                        let msg = "trailing attribute after lifetime parameters";
                         return Err(self.fatal(msg));
                     }
                     debug!("parse_lifetime_defs ret {:?}", res);
@@ -4294,12 +4294,21 @@ impl<'a> Parser<'a> {
         let span_lo = self.span.lo;
 
         if self.eat(&token::Lt) {
+            // Upon encountering attribute in generics list, we do not
+            // know if it is attached to lifetime or to type param.
+            //
+            // Solution: 1. eagerly parse attributes in tandem with
+            // lifetime defs, 2. store last set of parsed (and unused)
+            // attributes in `attrs`, and 3. pass in those attributes
+            // when parsing formal type param after lifetime defs.
             let mut attrs = vec![];
             let lifetime_defs = self.parse_lifetime_defs(Some(&mut attrs))?;
             let mut seen_default = false;
             let mut post_lifetime_attrs = Some(attrs);
             let ty_params = self.parse_seq_to_gt(Some(token::Comma), |p| {
                 p.forbid_lifetime()?;
+                // Move out of `post_lifetime_attrs` if present. O/w
+                // not first type param: parse attributes anew.
                 let attrs = match post_lifetime_attrs.as_mut() {
                     None => p.parse_outer_attributes()?,
                     Some(attrs) => mem::replace(attrs, vec![]),
@@ -4315,6 +4324,12 @@ impl<'a> Parser<'a> {
                 }
                 Ok(ty_param)
             })?;
+            if let Some(attrs) = post_lifetime_attrs {
+                if !attrs.is_empty() {
+                    self.span_err(attrs[0].span,
+                                  "trailing attribute after lifetime parameters");
+                }
+            }
             Ok(ast::Generics {
                 lifetimes: lifetime_defs,
                 ty_params: ty_params,
