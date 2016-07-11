@@ -450,7 +450,7 @@ pub fn get_adt_def<'a, 'tcx>(intr: &IdentInterner,
                                   struct_field_family_to_visibility(ff))
         }).chain(reader::tagged_docs(doc, tag_item_unnamed_field).map(|f| {
             let ff = item_family(f);
-            let name = intr.intern(&index.to_string());
+            let name = intr.intern(index.to_string());
             index += 1;
             ty::FieldDefData::new(item_def_id(f, cdata), name,
                                   struct_field_family_to_visibility(ff))
@@ -1187,7 +1187,7 @@ pub fn get_struct_field_names(intr: &IdentInterner, cdata: Cmd, id: DefIndex)
     reader::tagged_docs(item, tag_item_field).map(|an_item| {
         item_name(intr, an_item)
     }).chain(reader::tagged_docs(item, tag_item_unnamed_field).map(|_| {
-        let name = intr.intern(&index.to_string());
+        let name = intr.intern(index.to_string());
         index += 1;
         name
     })).collect()

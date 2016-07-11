@@ -17,7 +17,7 @@ pub use self::Token::*;
 use ast::{self, BinOpKind};
 use ext::mtwt;
 use ptr::P;
-use util::interner::StrInterner;
+use util::interner::Interner;
 use tokenstream;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -396,7 +396,7 @@ macro_rules! declare_keywords {(
     }
 
     fn mk_fresh_ident_interner() -> IdentInterner {
-        StrInterner::prefill(&[$($string,)*])
+        Interner::prefill(&[$($string,)*])
     }
 }}
 
@@ -472,7 +472,7 @@ declare_keywords! {
 }
 
 // looks like we can get rid of this completely...
-pub type IdentInterner = StrInterner;
+pub type IdentInterner = Interner;
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
