@@ -21,6 +21,7 @@ use util::interner::Interner;
 use tokenstream;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
+use std::cell::RefCell;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -477,20 +478,20 @@ pub type IdentInterner = Interner;
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
 // FIXME(eddyb) #8726 This should probably use a thread-local reference.
-pub fn with_ident_interner<T, F: FnOnce(&IdentInterner) -> T>(f: F) -> T {
-    thread_local!(static KEY: IdentInterner = {
-        mk_fresh_ident_interner()
+pub fn with_ident_interner<T, F: FnOnce(&mut IdentInterner) -> T>(f: F) -> T {
+    thread_local!(static KEY: RefCell<IdentInterner> = {
+        RefCell::new(mk_fresh_ident_interner())
     });
-    KEY.with(f)
+    KEY.with(|interner| f(&mut *interner.borrow_mut()))
 }
 
 /// Reset the ident interner to its initial state.
 pub fn reset_ident_interner() {
-    with_ident_interner(|interner| interner.reset(mk_fresh_ident_interner()));
+    with_ident_interner(|interner| *interner = mk_fresh_ident_interner());
 }
 
 pub fn clear_ident_interner() {
-    with_ident_interner(|interner| interner.clear());
+    with_ident_interner(|interner| *interner = IdentInterner::new());
 }
 
 /// Represents a string stored in the thread-local interner. Because the

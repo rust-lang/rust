@@ -15,7 +15,6 @@
 use ast::Name;
 
 use std::borrow::Borrow;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -28,85 +27,60 @@ impl Borrow<str> for RcStr {
     }
 }
 
+#[derive(Default)]
 pub struct Interner {
-    map: RefCell<HashMap<RcStr, Name>>,
-    vect: RefCell<Vec<Rc<String>> >,
+    names: HashMap<RcStr, Name>,
+    strings: Vec<Rc<String>>,
 }
 
 /// When traits can extend traits, we should extend index<Name,T> to get []
 impl Interner {
     pub fn new() -> Self {
-        Interner {
-            map: RefCell::new(HashMap::new()),
-            vect: RefCell::new(Vec::new()),
-        }
+        Interner::default()
     }
 
     pub fn prefill(init: &[&str]) -> Self {
-        let rv = Interner::new();
-        for &v in init { rv.intern(v); }
-        rv
+        let mut this = Interner::new();
+        for &string in init {
+            this.intern(string);
+        }
+        this
     }
 
-    pub fn intern<T: Borrow<str> + Into<String>>(&self, val: T) -> Name {
-        let mut map = self.map.borrow_mut();
-        if let Some(&idx) = map.get(val.borrow()) {
-            return idx;
+    pub fn intern<T: Borrow<str> + Into<String>>(&mut self, string: T) -> Name {
+        if let Some(&name) = self.names.get(string.borrow()) {
+            return name;
         }
 
-        let new_idx = Name(self.len() as u32);
-        let val = Rc::new(val.into());
-        map.insert(RcStr(val.clone()), new_idx);
-        self.vect.borrow_mut().push(val);
-        new_idx
+        let name = Name(self.strings.len() as u32);
+        let string = Rc::new(string.into());
+        self.strings.push(string.clone());
+        self.names.insert(RcStr(string), name);
+        name
     }
 
-    pub fn gensym(&self, val: &str) -> Name {
-        let new_idx = Name(self.len() as u32);
-        // leave out of .map to avoid colliding
-        self.vect.borrow_mut().push(Rc::new(val.to_owned()));
-        new_idx
+    pub fn gensym(&mut self, string: &str) -> Name {
+        let gensym = Name(self.strings.len() as u32);
+        // leave out of `names` to avoid colliding
+        self.strings.push(Rc::new(string.to_owned()));
+        gensym
     }
 
-    // I want these gensyms to share name pointers
-    // with existing entries. This would be automatic,
-    // except that the existing gensym creates its
-    // own managed ptr using to_managed. I think that
-    // adding this utility function is the most
-    // lightweight way to get what I want, though not
-    // necessarily the cleanest.
-
-    /// Create a gensym with the same name as an existing
-    /// entry.
-    pub fn gensym_copy(&self, idx : Name) -> Name {
-        let new_idx = Name(self.len() as u32);
-        // leave out of map to avoid colliding
-        let mut vect = self.vect.borrow_mut();
-        let existing = (*vect)[idx.0 as usize].clone();
-        vect.push(existing);
-        new_idx
+    /// Create a gensym with the same name as an existing entry.
+    pub fn gensym_copy(&mut self, name: Name) -> Name {
+        let gensym = Name(self.strings.len() as u32);
+        // leave out of `names` to avoid colliding
+        let string = self.strings[name.0 as usize].clone();
+        self.strings.push(string);
+        gensym
     }
 
-    pub fn get(&self, idx: Name) -> Rc<String> {
-        (*self.vect.borrow())[idx.0 as usize].clone()
+    pub fn get(&self, name: Name) -> Rc<String> {
+        self.strings[name.0 as usize].clone()
     }
 
-    pub fn len(&self) -> usize {
-        self.vect.borrow().len()
-    }
-
-    pub fn find(&self, val: &str) -> Option<Name> {
-        self.map.borrow().get(val).cloned()
-    }
-
-    pub fn clear(&self) {
-        *self.map.borrow_mut() = HashMap::new();
-        *self.vect.borrow_mut() = Vec::new();
-    }
-
-    pub fn reset(&self, other: Interner) {
-        *self.map.borrow_mut() = other.map.into_inner();
-        *self.vect.borrow_mut() = other.vect.into_inner();
+    pub fn find(&self, string: &str) -> Option<Name> {
+        self.names.get(string).cloned()
     }
 }
 
@@ -117,7 +91,7 @@ mod tests {
 
     #[test]
     fn interner_tests() {
-        let i : Interner = Interner::new();
+        let mut i: Interner = Interner::new();
         // first one is zero:
         assert_eq!(i.intern("dog"), Name(0));
         // re-use gets the same entry:
