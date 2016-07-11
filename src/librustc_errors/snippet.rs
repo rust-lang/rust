@@ -13,9 +13,11 @@
 use syntax_pos::{Span, FileMap, CharPos, LineInfo};
 use check_old_skool;
 use CodeMapper;
+use styled_buffer::StyledBuffer;
 use std::cmp;
 use std::rc::Rc;
 use std::mem;
+use {Level};
 
 #[derive(Clone)]
 pub enum FormatMode {
@@ -49,38 +51,40 @@ pub struct FileInfo {
     format_mode: FormatMode,
 }
 
-#[derive(Clone, Debug)]
-struct Line {
-    line_index: usize,
-    annotations: Vec<Annotation>,
+#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub struct Line {
+    pub line_index: usize,
+    pub annotations: Vec<Annotation>,
 }
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-struct Annotation {
+pub struct Annotation {
     /// Start column, 0-based indexing -- counting *characters*, not
     /// utf-8 bytes. Note that it is important that this field goes
     /// first, so that when we sort, we sort orderings by start
     /// column.
-    start_col: usize,
+    pub start_col: usize,
 
     /// End column within the line (exclusive)
-    end_col: usize,
+    pub end_col: usize,
 
     /// Is this annotation derived from primary span
-    is_primary: bool,
+    pub is_primary: bool,
 
     /// Is this a large span minimized down to a smaller span
-    is_minimized: bool,
+    pub is_minimized: bool,
 
     /// Optional label to display adjacent to the annotation.
-    label: Option<String>,
+    pub label: Option<String>,
 }
 
+/*
 #[derive(Debug)]
 pub struct RenderedLine {
     pub text: Vec<StyledString>,
     pub kind: RenderedLineKind,
 }
+*/
 
 #[derive(Debug)]
 pub struct StyledString {
@@ -88,14 +92,9 @@ pub struct StyledString {
     pub style: Style,
 }
 
-#[derive(Debug)]
-pub struct StyledBuffer {
-    text: Vec<Vec<char>>,
-    styles: Vec<Vec<Style>>
-}
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Style {
+    HeaderMsg,
     FileNameStyle,
     LineAndColumn,
     LineNumber,
@@ -104,11 +103,14 @@ pub enum Style {
     UnderlineSecondary,
     LabelPrimary,
     LabelSecondary,
-    OldSkoolNoteText,
-    OldSkoolNote,
+    OldSchoolNoteText,
+    OldSchoolNote,
     NoStyle,
+    ErrorCode,
+    Level(Level),
 }
 
+/*
 #[derive(Debug, Clone)]
 pub enum RenderedLineKind {
     PrimaryFileName,
@@ -120,6 +122,7 @@ pub enum RenderedLineKind {
     Annotations,
     Elision,
 }
+*/
 
 impl SnippetData {
     pub fn new(codemap: Rc<CodeMapper>,
@@ -186,15 +189,15 @@ impl SnippetData {
         self.files.last_mut().unwrap()
     }
 
-    pub fn render_lines(&self) -> Vec<RenderedLine> {
+    pub fn render_lines(&self) -> Vec<Vec<StyledString>> {
         debug!("SnippetData::render_lines()");
 
         let mut rendered_lines: Vec<_> =
             self.files.iter()
                       .flat_map(|f| f.render_file_lines(&self.codemap))
                       .collect();
-        prepend_prefixes(&mut rendered_lines, &self.format_mode);
-        trim_lines(&mut rendered_lines);
+        //prepend_prefixes(&mut rendered_lines, &self.format_mode);
+        //trim_lines(&mut rendered_lines);
         rendered_lines
     }
 }
@@ -215,6 +218,7 @@ impl StringSource for Vec<char> {
     }
 }
 
+/*
 impl<S> From<(S, Style, RenderedLineKind)> for RenderedLine
     where S: StringSource
 {
@@ -282,96 +286,20 @@ impl RenderedLineKind {
         }
     }
 }
-
-impl StyledBuffer {
-    fn new() -> StyledBuffer {
-        StyledBuffer { text: vec![], styles: vec![] }
-    }
-
-    fn render(&self, source_kind: RenderedLineKind) -> Vec<RenderedLine> {
-        let mut output: Vec<RenderedLine> = vec![];
-        let mut styled_vec: Vec<StyledString> = vec![];
-
-        for (row, row_style) in self.text.iter().zip(&self.styles) {
-            let mut current_style = Style::NoStyle;
-            let mut current_text = String::new();
-
-            for (&c, &s) in row.iter().zip(row_style) {
-                if s != current_style {
-                    if !current_text.is_empty() {
-                        styled_vec.push(StyledString { text: current_text, style: current_style });
-                    }
-                    current_style = s;
-                    current_text = String::new();
-                }
-                current_text.push(c);
-            }
-            if !current_text.is_empty() {
-                styled_vec.push(StyledString { text: current_text, style: current_style });
-            }
-
-            if output.is_empty() {
-                //We know our first output line is source and the rest are highlights and labels
-                output.push(RenderedLine { text: styled_vec, kind: source_kind.clone() });
-            } else {
-                output.push(RenderedLine { text: styled_vec, kind: RenderedLineKind::Annotations });
-            }
-            styled_vec = vec![];
-        }
-
-        output
-    }
-
-    fn putc(&mut self, line: usize, col: usize, chr: char, style: Style) {
-        while line >= self.text.len() {
-            self.text.push(vec![]);
-            self.styles.push(vec![]);
-        }
-
-        if col < self.text[line].len() {
-            self.text[line][col] = chr;
-            self.styles[line][col] = style;
-        } else {
-            let mut i = self.text[line].len();
-            while i < col {
-                let s = match self.text[0].get(i) {
-                    Some(&'\t') => '\t',
-                    _ => ' '
-                };
-                self.text[line].push(s);
-                self.styles[line].push(Style::NoStyle);
-                i += 1;
-            }
-            self.text[line].push(chr);
-            self.styles[line].push(style);
-        }
-    }
-
-    fn puts(&mut self, line: usize, col: usize, string: &str, style: Style) {
-        let mut n = col;
-        for c in string.chars() {
-            self.putc(line, n, c, style);
-            n += 1;
-        }
-    }
-
-    fn set_style(&mut self, line: usize, col: usize, style: Style) {
-        if self.styles.len() > line && self.styles[line].len() > col {
-            self.styles[line][col] = style;
-        }
-    }
-
-    fn append(&mut self, line: usize, string: &str, style: Style) {
-        if line >= self.text.len() {
-            self.puts(line, 0, string, style);
-        } else {
-            let col = self.text[line].len();
-            self.puts(line, col, string, style);
-        }
-    }
-}
+*/
 
 impl FileInfo {
+    fn get_max_line_num(&self) -> usize {
+        let mut max = 0;
+
+        for line in &self.lines {
+            if line.line_index > max {
+                max = line.line_index;
+            }
+        }
+        max
+    }
+
     fn push_lines(&mut self,
                   lines: &[LineInfo],
                   is_primary: bool,
@@ -469,15 +397,12 @@ impl FileInfo {
         return line_index - first_line_index;
     }
 
-    fn render_file_lines(&self, codemap: &Rc<CodeMapper>) -> Vec<RenderedLine> {
+    fn render_file_lines(&self, codemap: &Rc<CodeMapper>) -> Vec<Vec<StyledString>> {
         let old_school = match self.format_mode {
             FormatMode::OriginalErrorFormat => true,
             FormatMode::NewErrorFormat => false,
             FormatMode::EnvironmentSelected => check_old_skool()
         };
-
-        // As a first step, we elide any instance of more than one
-        // continuous unannotated line.
 
         let mut lines_iter = self.lines.iter();
         let mut output = vec![];
@@ -487,39 +412,27 @@ impl FileInfo {
             match self.primary_span {
                 Some(span) => {
                     let lo = codemap.lookup_char_pos(span.lo);
-                    output.push(RenderedLine {
-                        text: vec![StyledString {
+                    output.push(vec![StyledString {
                             text: lo.file.name.clone(),
                             style: Style::FileNameStyle,
                         }, StyledString {
                             text: format!(":{}:{}", lo.line, lo.col.0 + 1),
                             style: Style::LineAndColumn,
-                        }],
-                        kind: RenderedLineKind::PrimaryFileName,
-                    });
-                    output.push(RenderedLine {
-                        text: vec![StyledString {
+                        }]);
+                    output.push(vec![StyledString {
                             text: "".to_string(),
                             style: Style::FileNameStyle,
-                        }],
-                        kind: RenderedLineKind::Annotations,
-                    });
+                        }]);
                 }
                 None => {
-                    output.push(RenderedLine {
-                        text: vec![StyledString {
+                    output.push(vec![StyledString {
                             text: self.file.name.clone(),
                             style: Style::FileNameStyle,
-                        }],
-                        kind: RenderedLineKind::OtherFileName,
-                    });
-                    output.push(RenderedLine {
-                        text: vec![StyledString {
+                        }]);
+                    output.push(vec![StyledString {
                             text: "".to_string(),
                             style: Style::FileNameStyle,
-                        }],
-                        kind: RenderedLineKind::Annotations,
-                    });
+                        }]);
                 }
             }
         }
@@ -541,8 +454,7 @@ impl FileInfo {
                             //as an old-style note
                             if !line.annotations[0].is_primary {
                                 if let Some(ann) = line.annotations[0].label.clone() {
-                                    output.push(RenderedLine {
-                                        text: vec![StyledString {
+                                    output.push(vec![StyledString {
                                             text: lo.file.name.clone(),
                                             style: Style::FileNameStyle,
                                         }, StyledString {
@@ -551,31 +463,29 @@ impl FileInfo {
                                             style: Style::LineAndColumn,
                                         }, StyledString {
                                             text: format!("note: "),
-                                            style: Style::OldSkoolNote,
+                                            style: Style::OldSchoolNote,
                                         }, StyledString {
                                             text: format!("{}", ann),
-                                            style: Style::OldSkoolNoteText,
-                                        }],
-                                        kind: RenderedLineKind::Annotations,
-                                    });
+                                            style: Style::OldSchoolNoteText,
+                                        }]);
                                 }
                             }
-                            rendered_lines[0].text.insert(0, StyledString {
+                            rendered_lines[0].insert(0, StyledString {
                                 text: format!(":{} ", lo.line),
                                 style: Style::LineAndColumn,
                             });
-                            rendered_lines[0].text.insert(0, StyledString {
+                            rendered_lines[0].insert(0, StyledString {
                                 text: lo.file.name.clone(),
                                 style: Style::FileNameStyle,
                             });
                             let gap_amount =
-                                rendered_lines[0].text[0].text.len() +
-                                rendered_lines[0].text[1].text.len();
+                                rendered_lines[0][0].text.len() +
+                                rendered_lines[0][1].text.len();
                             assert!(rendered_lines.len() >= 2,
                                     "no annotations resulted from: {:?}",
                                     line);
                             for i in 1..rendered_lines.len() {
-                                rendered_lines[i].text.insert(0, StyledString {
+                                rendered_lines[i].insert(0, StyledString {
                                     text: vec![" "; gap_amount].join(""),
                                     style: Style::NoStyle
                                 });
@@ -598,9 +508,7 @@ impl FileInfo {
                 next_line = lines_iter.next();
             }
             if unannotated_lines > 1 {
-                output.push(RenderedLine::from((String::new(),
-                                                Style::NoStyle,
-                                                RenderedLineKind::Elision)));
+                output.push(vec![StyledString{ text: String::new(), style: Style::NoStyle}]);
             } else if let Some(line) = unannotated_line {
                 output.append(&mut self.render_line(line));
             }
@@ -609,7 +517,7 @@ impl FileInfo {
         output
     }
 
-    fn render_line(&self, line: &Line) -> Vec<RenderedLine> {
+    fn render_line(&self, line: &Line) -> Vec<Vec<StyledString>> {
         let old_school = match self.format_mode {
             FormatMode::OriginalErrorFormat => true,
             FormatMode::NewErrorFormat => false,
@@ -618,10 +526,12 @@ impl FileInfo {
 
         let source_string = self.file.get_line(line.line_index)
                                      .unwrap_or("");
+        /*
         let source_kind = RenderedLineKind::SourceText {
             file: self.file.clone(),
             line_index: line.line_index,
         };
+        */
 
         let mut styled_buffer = StyledBuffer::new();
 
@@ -629,7 +539,7 @@ impl FileInfo {
         styled_buffer.append(0, &source_string, Style::Quotation);
 
         if line.annotations.is_empty() {
-            return styled_buffer.render(source_kind);
+            return styled_buffer.render();
         }
 
         // We want to display like this:
@@ -666,7 +576,7 @@ impl FileInfo {
                             if annotation.is_primary {
                                 Style::UnderlinePrimary
                             } else {
-                                Style::OldSkoolNote
+                                Style::OldSchoolNote
                             });
                     }
                     else {
@@ -674,7 +584,7 @@ impl FileInfo {
                             if annotation.is_primary {
                                 Style::UnderlinePrimary
                             } else {
-                                Style::OldSkoolNote
+                                Style::OldSchoolNote
                             });
                     }
                 }
@@ -704,10 +614,10 @@ impl FileInfo {
 
         // If there are no annotations that need text, we're done.
         if labeled_annotations.is_empty() {
-            return styled_buffer.render(source_kind);
+            return styled_buffer.render();
         }
         if old_school {
-            return styled_buffer.render(source_kind);
+            return styled_buffer.render();
         }
 
         // Now add the text labels. We try, when possible, to stick the rightmost
@@ -767,7 +677,7 @@ impl FileInfo {
 
         // If that's the last annotation, we're done
         if labeled_annotations.is_empty() {
-            return styled_buffer.render(source_kind);
+            return styled_buffer.render();
         }
 
         for (index, annotation) in labeled_annotations.iter().enumerate() {
@@ -796,10 +706,11 @@ impl FileInfo {
             }
         }
 
-        styled_buffer.render(source_kind)
+        styled_buffer.render()
     }
 }
 
+/*
 fn prepend_prefixes(rendered_lines: &mut [RenderedLine], format_mode: &FormatMode) {
     let old_school = match *format_mode {
         FormatMode::OriginalErrorFormat => true,
@@ -882,6 +793,7 @@ fn trim_lines(rendered_lines: &mut [RenderedLine]) {
         }
     }
 }
+*/
 
 impl Line {
     fn new(line_index: usize) -> Line {
