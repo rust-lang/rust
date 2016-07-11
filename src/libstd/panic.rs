@@ -227,10 +227,9 @@ impl<T: ?Sized> !RefUnwindSafe for UnsafeCell<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T> RefUnwindSafe for AssertUnwindSafe<T> {}
 
-// XXX: Obviously wrong, but what should it be?
-#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[stable(feature = "unwind_safe_lock_refs", since = "1.12.0")]
 impl<T: ?Sized> RefUnwindSafe for Mutex<T> {}
-#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[stable(feature = "unwind_safe_lock_refs", since = "1.12.0")]
 impl<T: ?Sized> RefUnwindSafe for RwLock<T> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
