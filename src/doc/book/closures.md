@@ -262,7 +262,7 @@ the result:
 
 ```rust
 fn call_with_one<F>(some_closure: F) -> i32
-    where F : Fn(i32) -> i32 {
+    where F: Fn(i32) -> i32 {
 
     some_closure(1)
 }
@@ -279,7 +279,7 @@ Let’s examine the signature of `call_with_one` in more depth:
 
 ```rust
 fn call_with_one<F>(some_closure: F) -> i32
-#    where F : Fn(i32) -> i32 {
+#    where F: Fn(i32) -> i32 {
 #    some_closure(1) }
 ```
 
@@ -288,7 +288,7 @@ isn’t interesting. The next part is:
 
 ```rust
 # fn call_with_one<F>(some_closure: F) -> i32
-    where F : Fn(i32) -> i32 {
+    where F: Fn(i32) -> i32 {
 #   some_closure(1) }
 ```
 
