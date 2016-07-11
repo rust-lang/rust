@@ -111,8 +111,14 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 tcx.map.local_def_id(node_id)
             }
             TransItem::Fn(instance) => {
-                if instance.def.is_local() {
-                    instance.def
+                if let Some(node) = tcx.map.as_local_node_id(instance.def) {
+                    if let hir_map::Node::NodeItem(_) = tcx.map.get(node) {
+                        // This already is a "real" item
+                        instance.def
+                    } else {
+                        // Get the enclosing item and register a read on it
+                        tcx.map.get_parent_did(node)
+                    }
                 } else {
                     // Translating an inlined item from another crate? Don't track anything.
                     return;
