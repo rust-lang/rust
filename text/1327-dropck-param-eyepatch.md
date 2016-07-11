@@ -22,6 +22,11 @@ holds data that must not be accessed during the dynamic extent of that
 As a side-effect, enable adding attributes to the formal declarations
 of generic type and lifetime parameters.
 
+The proposal in this RFC is intended as a *temporary* solution (along
+the lines of `#[fundamental]` and *will not* be stabilized
+as-is. Instead, we anticipate a more comprehensive approach to be
+proposed in a follow-up RFC.
+
 [RFC 1238]: https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
 [RFC 769]: https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md
 
@@ -139,6 +144,13 @@ storage for [cyclic graph structures][dropck_legal_cycles.rs]).
 
 # Detailed design
 [detailed design]: #detailed-design
+
+First off: The proposal in this RFC is intended as a *temporary*
+solution (along the lines of `#[fundamental]` and *will not* be
+stabilized as-is. Instead, we anticipate a more comprehensive approach
+to be proposed in a follow-up RFC.
+
+Having said that, here is the proposed short-term solution:
 
  1. Add the ability to attach attributes to syntax that binds formal
     lifetime or type parmeters. For the purposes of this RFC, the only
@@ -461,6 +473,10 @@ reflected in what he wrote in the [RFC 1238 alternatives][].)
 
 # Alternatives
 [alternatives]: #alternatives
+
+Note: The alternatives section for this RFC is particularly
+note-worthy because the ideas here may serve as the basis for a more
+comprehensive long-term approach.
 
 ## Make dropck "see again" via (focused) where-clauses
 
