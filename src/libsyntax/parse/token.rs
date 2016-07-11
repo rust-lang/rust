@@ -17,8 +17,7 @@ pub use self::Token::*;
 use ast::{self, BinOpKind};
 use ext::mtwt;
 use ptr::P;
-use util::interner::{RcStr, StrInterner};
-use util::interner;
+use util::interner::StrInterner;
 use tokenstream;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -397,7 +396,7 @@ macro_rules! declare_keywords {(
     }
 
     fn mk_fresh_ident_interner() -> IdentInterner {
-        interner::StrInterner::prefill(&[$($string,)*])
+        StrInterner::prefill(&[$($string,)*])
     }
 }}
 
@@ -502,19 +501,19 @@ pub fn reset_ident_interner() {
 /// somehow.
 #[derive(Clone, PartialEq, Hash, PartialOrd, Eq, Ord)]
 pub struct InternedString {
-    string: RcStr,
+    string: Rc<String>,
 }
 
 impl InternedString {
     #[inline]
     pub fn new(string: &'static str) -> InternedString {
         InternedString {
-            string: RcStr::new(string),
+            string: Rc::new(string.to_owned()),
         }
     }
 
     #[inline]
-    fn new_from_rc_str(string: RcStr) -> InternedString {
+    fn new_from_rc_str(string: Rc<String>) -> InternedString {
         InternedString {
             string: string,
         }

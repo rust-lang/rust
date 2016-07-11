@@ -16,11 +16,8 @@ use ast::Name;
 
 use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::fmt;
 use std::hash::Hash;
-use std::ops::Deref;
 use std::rc::Rc;
 
 pub struct Interner<T> {
@@ -91,56 +88,26 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
     }
 }
 
-#[derive(Clone, PartialEq, Hash, PartialOrd)]
-pub struct RcStr {
-    string: Rc<String>,
-}
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+struct RcStr(Rc<String>);
 
 impl RcStr {
-    pub fn new(string: &str) -> RcStr {
-        RcStr {
-            string: Rc::new(string.to_string()),
-        }
-    }
-}
-
-impl Eq for RcStr {}
-
-impl Ord for RcStr {
-    fn cmp(&self, other: &RcStr) -> Ordering {
-        self[..].cmp(&other[..])
-    }
-}
-
-impl fmt::Debug for RcStr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self[..].fmt(f)
-    }
-}
-
-impl fmt::Display for RcStr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self[..].fmt(f)
+    fn new(string: &str) -> Self {
+        RcStr(Rc::new(string.to_owned()))
     }
 }
 
 impl Borrow<str> for RcStr {
     fn borrow(&self) -> &str {
-        &self.string[..]
+        &self.0
     }
-}
-
-impl Deref for RcStr {
-    type Target = str;
-
-    fn deref(&self) -> &str { &self.string[..] }
 }
 
 /// A StrInterner differs from Interner<String> in that it accepts
 /// &str rather than RcStr, resulting in less allocation.
 pub struct StrInterner {
     map: RefCell<HashMap<RcStr, Name>>,
-    vect: RefCell<Vec<RcStr> >,
+    vect: RefCell<Vec<Rc<String>> >,
 }
 
 /// When traits can extend traits, we should extend index<Name,T> to get []
@@ -165,8 +132,8 @@ impl StrInterner {
         }
 
         let new_idx = Name(self.len() as u32);
-        let val = RcStr::new(val);
-        map.insert(val.clone(), new_idx);
+        let val = Rc::new(val.to_owned());
+        map.insert(RcStr(val.clone()), new_idx);
         self.vect.borrow_mut().push(val);
         new_idx
     }
@@ -174,7 +141,7 @@ impl StrInterner {
     pub fn gensym(&self, val: &str) -> Name {
         let new_idx = Name(self.len() as u32);
         // leave out of .map to avoid colliding
-        self.vect.borrow_mut().push(RcStr::new(val));
+        self.vect.borrow_mut().push(Rc::new(val.to_owned()));
         new_idx
     }
 
@@ -197,7 +164,7 @@ impl StrInterner {
         new_idx
     }
 
-    pub fn get(&self, idx: Name) -> RcStr {
+    pub fn get(&self, idx: Name) -> Rc<String> {
         (*self.vect.borrow())[idx.0 as usize].clone()
     }
 
@@ -205,12 +172,8 @@ impl StrInterner {
         self.vect.borrow().len()
     }
 
-    pub fn find<Q: ?Sized>(&self, val: &Q) -> Option<Name>
-    where RcStr: Borrow<Q>, Q: Eq + Hash {
-        match (*self.map.borrow()).get(val) {
-            Some(v) => Some(*v),
-            None => None,
-        }
+    pub fn find(&self, val: &str) -> Option<Name> {
+        self.map.borrow().get(val).cloned()
     }
 
     pub fn clear(&self) {
@@ -227,6 +190,7 @@ impl StrInterner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::RcStr;
     use ast::Name;
 
     #[test]
@@ -294,13 +258,13 @@ mod tests {
         assert_eq!(i.gensym("dog"), Name(4));
         // gensym tests again with gensym_copy:
         assert_eq!(i.gensym_copy(Name(2)), Name(5));
-        assert_eq!(i.get(Name(5)), RcStr::new("zebra"));
+        assert_eq!(*i.get(Name(5)), "zebra");
         assert_eq!(i.gensym_copy(Name(2)), Name(6));
-        assert_eq!(i.get(Name(6)), RcStr::new("zebra"));
-        assert_eq!(i.get(Name(0)), RcStr::new("dog"));
-        assert_eq!(i.get(Name(1)), RcStr::new("cat"));
-        assert_eq!(i.get(Name(2)), RcStr::new("zebra"));
-        assert_eq!(i.get(Name(3)), RcStr::new("zebra"));
-        assert_eq!(i.get(Name(4)), RcStr::new("dog"));
+        assert_eq!(*i.get(Name(6)), "zebra");
+        assert_eq!(*i.get(Name(0)), "dog");
+        assert_eq!(*i.get(Name(1)), "cat");
+        assert_eq!(*i.get(Name(2)), "zebra");
+        assert_eq!(*i.get(Name(3)), "zebra");
+        assert_eq!(*i.get(Name(4)), "dog");
     }
 }
