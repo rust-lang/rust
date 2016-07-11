@@ -97,7 +97,7 @@ use rustc::session::early_error;
 use syntax::{ast, json};
 use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
-use syntax::parse::{self, PResult, token};
+use syntax::parse::{self, PResult};
 use syntax_pos::MultiSpan;
 use errors::emitter::Emitter;
 
@@ -201,7 +201,7 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
     };
 
     let dep_graph = DepGraph::new(sopts.build_dep_graph());
-    let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+    let cstore = Rc::new(CStore::new(&dep_graph));
     let codemap = Rc::new(CodeMap::with_file_loader(loader));
     let sess = session::build_session_with_codemap(sopts,
                                                    &dep_graph,
@@ -432,7 +432,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     return None;
                 }
                 let dep_graph = DepGraph::new(sopts.build_dep_graph());
-                let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+                let cstore = Rc::new(CStore::new(&dep_graph));
                 let sess = build_session(sopts.clone(),
                     &dep_graph,
                     None,

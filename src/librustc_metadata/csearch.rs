@@ -127,7 +127,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
-        decoder::get_adt_def(&self.intr, &cdata, def.index, tcx)
+        decoder::get_adt_def(&cdata, def.index, tcx)
     }
 
     fn method_arg_names(&self, did: DefId) -> Vec<String>
@@ -140,13 +140,13 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn item_name(&self, def: DefId) -> ast::Name {
         self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
-        decoder::get_item_name(&self.intr, &cdata, def.index)
+        decoder::get_item_name(&cdata, def.index)
     }
 
     fn opt_item_name(&self, def: DefId) -> Option<ast::Name> {
         self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
-        decoder::maybe_get_item_name(&self.intr, &cdata, def.index)
+        decoder::maybe_get_item_name(&cdata, def.index)
     }
 
     fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>
@@ -176,7 +176,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
-        decoder::get_provided_trait_methods(self.intr.clone(), &cdata, def.index, tcx)
+        decoder::get_provided_trait_methods(&cdata, def.index, tcx)
     }
 
     fn trait_item_def_ids(&self, def: DefId)
@@ -222,7 +222,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                              -> Vec<Rc<ty::AssociatedConst<'tcx>>> {
         self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
-        decoder::get_associated_consts(self.intr.clone(), &cdata, def.index, tcx)
+        decoder::get_associated_consts(&cdata, def.index, tcx)
     }
 
     fn impl_parent(&self, impl_def: DefId) -> Option<DefId> {
@@ -243,11 +243,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
-        decoder::get_impl_or_trait_item(
-            self.intr.clone(),
-            &cdata,
-            def.index,
-            tcx)
+        decoder::get_impl_or_trait_item(&cdata, def.index, tcx)
     }
 
     fn is_const_fn(&self, did: DefId) -> bool
@@ -460,7 +456,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
-        decoder::get_struct_field_names(&self.intr, &cdata, def.index)
+        decoder::get_struct_field_names(&cdata, def.index)
     }
 
     fn item_children(&self, def_id: DefId) -> Vec<ChildItem>
@@ -469,14 +465,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         let mut result = vec![];
         let crate_data = self.get_crate_data(def_id.krate);
         let get_crate_data = |cnum| self.get_crate_data(cnum);
-        decoder::each_child_of_item(
-            self.intr.clone(), &crate_data,
-            def_id.index, get_crate_data,
-            |def, name, vis| result.push(ChildItem {
-                def: def,
-                name: name,
-                vis: vis
-            }));
+        decoder::each_child_of_item(&crate_data, def_id.index, get_crate_data, |def, name, vis| {
+            result.push(ChildItem { def: def, name: name, vis: vis });
+        });
         result
     }
 
@@ -485,13 +476,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         let mut result = vec![];
         let crate_data = self.get_crate_data(cnum);
         let get_crate_data = |cnum| self.get_crate_data(cnum);
-        decoder::each_top_level_item_of_crate(
-            self.intr.clone(), &crate_data, get_crate_data,
-            |def, name, vis| result.push(ChildItem {
-                def: def,
-                name: name,
-                vis: vis
-            }));
+        decoder::each_top_level_item_of_crate(&crate_data, get_crate_data, |def, name, vis| {
+            result.push(ChildItem { def: def, name: name, vis: vis });
+        });
         result
     }
 
