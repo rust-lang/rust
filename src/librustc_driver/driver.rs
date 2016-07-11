@@ -211,7 +211,7 @@ pub fn compile_input(sess: &Session,
             }
 
             // Discard interned strings as they are no longer required.
-            token::get_ident_interner().clear();
+            token::clear_ident_interner();
 
             Ok((outputs, trans))
         })??
@@ -480,7 +480,7 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session,
                                input: &Input)
                                -> PResult<'a, ast::Crate> {
     // These may be left in an incoherent state after a previous compile.
-    // `clear_tables` and `get_ident_interner().clear()` can be used to free
+    // `clear_tables` and `clear_ident_interner` can be used to free
     // memory, but they do not restore the initial state.
     syntax::ext::mtwt::reset_tables();
     token::reset_ident_interner();
