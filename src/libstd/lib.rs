@@ -468,15 +468,3 @@ pub mod __rand {
 // the rustdoc documentation for primitive types. Using `include!`
 // because rustdoc only looks for these modules at the crate level.
 include!("primitive_docs.rs");
-
-// FIXME(stage0): remove this after a snapshot
-// HACK: this is needed because the interpretation of slice
-// patterns changed between stage0 and now.
-#[cfg(stage0)]
-fn slice_pat<'a, 'b, T>(t: &'a &'b [T]) -> &'a &'b [T] {
-    t
-}
-#[cfg(not(stage0))]
-fn slice_pat<'a, 'b, T>(t: &'a &'b [T]) -> &'b [T] {
-    *t
-}

@@ -22,7 +22,6 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::print as pprust;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::subst;
-use rustc::util::common::slice_pat;
 
 use rustc_const_eval::lookup_const_by_id;
 
@@ -204,7 +203,7 @@ fn build_struct<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let variant = tcx.lookup_adt_def(did).struct_variant();
 
     clean::Struct {
-        struct_type: match slice_pat(&&*variant.fields) {
+        struct_type: match &variant.fields[..] {
             &[] => doctree::Unit,
             &[_] if variant.kind == ty::VariantKind::Tuple => doctree::Newtype,
             &[..] if variant.kind == ty::VariantKind::Tuple => doctree::Tuple,
