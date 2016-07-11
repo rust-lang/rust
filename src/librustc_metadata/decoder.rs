@@ -442,7 +442,7 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
                                   struct_field_family_to_visibility(ff))
         }).chain(reader::tagged_docs(doc, tag_item_unnamed_field).map(|f| {
             let ff = item_family(f);
-            let name = token::get_ident_interner().intern(index.to_string());
+            let name = token::with_ident_interner(|interner| interner.intern(index.to_string()));
             index += 1;
             ty::FieldDefData::new(item_def_id(f, cdata), name,
                                   struct_field_family_to_visibility(ff))
@@ -1147,7 +1147,7 @@ pub fn get_struct_field_names(cdata: Cmd, id: DefIndex) -> Vec<ast::Name> {
     reader::tagged_docs(item, tag_item_field).map(|an_item| {
         item_name(an_item)
     }).chain(reader::tagged_docs(item, tag_item_unnamed_field).map(|_| {
-        let name = token::get_ident_interner().intern(index.to_string());
+        let name = token::with_ident_interner(|interner| interner.intern(index.to_string()));
         index += 1;
         name
     })).collect()
