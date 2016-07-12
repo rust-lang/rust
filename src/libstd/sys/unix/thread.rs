@@ -12,7 +12,6 @@ use prelude::v1::*;
 
 use alloc::boxed::FnBox;
 use cmp;
-#[cfg(not(any(target_env = "newlib", target_os = "solaris")))]
 use ffi::CStr;
 use io;
 use libc;
