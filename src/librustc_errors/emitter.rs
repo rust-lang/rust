@@ -534,7 +534,7 @@ impl EmitterWriter {
 
             // Put in the spacer between the location and annotated source
             let buffer_msg_line_offset = buffer.num_lines();
-            draw_col_separator(&mut buffer, buffer_msg_line_offset, max_line_num_len + 1);
+            draw_col_separator_no_space(&mut buffer, buffer_msg_line_offset, max_line_num_len + 1);
 
             // Next, output the annotate source for this file
             for line_idx in 0..annotated_file.lines.len() {
@@ -636,7 +636,7 @@ impl EmitterWriter {
             Ok(()) => {
                 if !db.children.is_empty() {
                     let mut buffer = StyledBuffer::new();
-                    draw_col_separator(&mut buffer, 0, max_line_num_len + 1);
+                    draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
                     match emit_to_destination(&buffer.render(), &db.level, &mut self.dst) {
                         Ok(()) => (),
                         Err(e) => panic!("failed to emit error: {}", e)
@@ -946,6 +946,10 @@ impl EmitterWriter {
 
 fn draw_col_separator(buffer: &mut StyledBuffer, line: usize, col: usize) {
     buffer.puts(line, col, "| ", Style::LineNumber);
+}
+
+fn draw_col_separator_no_space(buffer: &mut StyledBuffer, line: usize, col: usize) {
+    buffer.puts(line, col, "|", Style::LineNumber);
 }
 
 fn draw_note_separator(buffer: &mut StyledBuffer, line: usize, col: usize) {
