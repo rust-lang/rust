@@ -187,23 +187,24 @@ impl EmitterWriter {
 
         if let Some(ref cm) = self.cm {
             for span_label in msp.span_labels() {
-                let lo = cm.lookup_char_pos(span_label.span.lo);
-                let hi = cm.lookup_char_pos(span_label.span.hi);
+                let mut lo = cm.lookup_char_pos(span_label.span.lo);
+                let mut hi = cm.lookup_char_pos(span_label.span.hi);
+                let mut is_minimized = false;
 
                 // If the span is multi-line, simplify down to the span of one character
-                let (start_col, mut end_col, is_minimized) = if lo.line != hi.line {
-                    (lo.col, CharPos(lo.col.0 + 1), true)
-                } else {
-                    (lo.col, hi.col, false)
-                };
+                if lo.line != hi.line {
+                    hi.line = lo.line;
+                    hi.col = CharPos(lo.col.0 + 1);
+                    is_minimized = true;
+                }
 
                 // Watch out for "empty spans". If we get a span like 6..6, we
                 // want to just display a `^` at 6, so convert that to
                 // 6..7. This is degenerate input, but it's best to degrade
                 // gracefully -- and the parser likes to supply a span like
                 // that for EOF, in particular.
-                if start_col == end_col {
-                    end_col.0 += 1;
+                if lo.col == hi.col {
+                    hi.col = CharPos(lo.col.0 + 1);
                 }
 
                 add_annotation_to_file(&mut output,
@@ -530,7 +531,7 @@ impl EmitterWriter {
                 buffer.prepend(buffer_msg_line_offset, "--> ", Style::LineNumber);
                 let loc = primary_lo.clone();
                 buffer.append(buffer_msg_line_offset,
-                                &format!("{}:{}:{}", loc.file.name, loc.line, loc.col.0),
+                                &format!("{}:{}:{}", loc.file.name, loc.line, loc.col.0 + 1),
                                 Style::LineAndColumn);
                 for i in 0..max_line_num_len {
                     buffer.prepend(buffer_msg_line_offset, " ", Style::NoStyle);
@@ -591,6 +592,10 @@ impl EmitterWriter {
                     }
                 }
             }
+        }
+
+        if let Some(ref primary_span) = msp.primary_span().as_ref() {
+            self.render_macro_backtrace_old_school(primary_span, &mut buffer)?;
         }
 
         // final step: take our styled buffer, render it, then output it
@@ -1180,7 +1185,7 @@ impl EmitterWriter {
                 }
                 let snippet = cm.span_to_string(trace.call_site);
                 buffer.append(line_offset, &format!("{} ", snippet), Style::NoStyle);
-                buffer.append(line_offset, "Note", Style::Level(Level::Note));
+                buffer.append(line_offset, "note", Style::Level(Level::Note));
                 buffer.append(line_offset, ": ", Style::NoStyle);
                 buffer.append(line_offset, &diag_string, Style::OldSchoolNoteText);
             }
