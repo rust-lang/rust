@@ -226,7 +226,7 @@ impl Attributes {
 
     pub fn apply_callsite(&self, idx: usize, callsite: ValueRef) {
         unsafe {
-            LLVMAddCallSiteAttribute(callsite, idx as c_uint, self.regular.bits());
+            LLVMRustAddCallSiteAttribute(callsite, idx as c_uint, self.regular.bits());
             if self.dereferenceable_bytes != 0 {
                 LLVMAddDereferenceableCallSiteAttr(callsite, idx as c_uint,
                                                    self.dereferenceable_bytes);
@@ -1056,7 +1056,7 @@ extern {
     pub fn LLVMSetInstrParamAlignment(Instr: ValueRef,
                                       index: c_uint,
                                       align: c_uint);
-    pub fn LLVMAddCallSiteAttribute(Instr: ValueRef,
+    pub fn LLVMRustAddCallSiteAttribute(Instr: ValueRef,
                                     index: c_uint,
                                     Val: uint64_t);
     pub fn LLVMAddDereferenceableCallSiteAttr(Instr: ValueRef,
@@ -1561,7 +1561,7 @@ extern {
                                 Alignment: c_uint)
                                 -> ValueRef;
 
-    pub fn LLVMBuildAtomicCmpXchg(B: BuilderRef,
+    pub fn LLVMRustBuildAtomicCmpXchg(B: BuilderRef,
                                   LHS: ValueRef,
                                   CMP: ValueRef,
                                   RHS: ValueRef,
