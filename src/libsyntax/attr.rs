@@ -324,7 +324,7 @@ pub fn find_export_name_attr(diag: &Handler, attrs: &[Attribute]) -> Option<Inte
             if let s@Some(_) = attr.value_str() {
                 s
             } else {
-                struct_span_err!(diag, attr.span, E0533,
+                struct_span_err!(diag, attr.span, E0558,
                                  "export_name attribute has invalid format")
                                 .help("use #[export_name=\"*\"]")
                                 .emit();
@@ -373,7 +373,7 @@ pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> In
                     InlineAttr::None
                 }
             }
-            _ => ia
+            _ => ia,
         }
     })
 }
