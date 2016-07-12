@@ -605,6 +605,23 @@ pub struct ExitStatus(imp::ExitStatus);
 impl ExitStatus {
     /// Was termination successful? Signal termination not considered a success,
     /// and success is defined as a zero exit status.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use std::process::Command;
+    ///
+    /// let status = Command::new("mkdir")
+    ///                      .arg("projects")
+    ///                      .status()
+    ///                      .expect("failed to execute mkdir");
+    ///
+    /// if status.success() {
+    ///     println!("'projects/' directory created");
+    /// } else {
+    ///     println!("failed to create 'projects/' directory");
+    /// }
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn success(&self) -> bool {
         self.0.success()
