@@ -34,6 +34,7 @@ lazy_static = "0.1.15"
 regex = "0.1.71"
 rustc-serialize = "0.3"
 clippy-mini-macro-test = { version = "0.1", path = "mini-macro" }
+serde = "0.7"
 
 
 [features]

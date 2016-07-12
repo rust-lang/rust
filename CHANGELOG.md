@@ -246,6 +246,7 @@ All notable changes to this project will be documented in this file.
 [`result_unwrap_used`]: https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used
 [`reverse_range_loop`]: https://github.com/Manishearth/rust-clippy/wiki#reverse_range_loop
 [`search_is_some`]: https://github.com/Manishearth/rust-clippy/wiki#search_is_some
+[`serde_api_misuse`]: https://github.com/Manishearth/rust-clippy/wiki#serde_api_misuse
 [`shadow_reuse`]: https://github.com/Manishearth/rust-clippy/wiki#shadow_reuse
 [`shadow_same`]: https://github.com/Manishearth/rust-clippy/wiki#shadow_same
 [`shadow_unrelated`]: https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated
