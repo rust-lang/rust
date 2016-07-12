@@ -27,8 +27,9 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// Representation of a running or exited child process.
 ///
 /// This structure is used to represent and manage child processes. A child
-/// process is created via the `Command` struct, which configures the spawning
-/// process and can itself be constructed using a builder-style interface.
+/// process is created via the [`Command`] struct, which configures the
+/// spawning process and can itself be constructed using a builder-style
+/// interface.
 ///
 /// # Examples
 ///
@@ -48,13 +49,18 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 ///
 /// # Note
 ///
-/// Take note that there is no implementation of
-/// [`Drop`](../../core/ops/trait.Drop.html) for child processes, so if you
-/// do not ensure the `Child` has exited then it will continue to run, even
-/// after the `Child` handle to the child process has gone out of scope.
+/// Take note that there is no implementation of [`Drop`] for child processes,
+/// so if you do not ensure the `Child` has exited then it will continue to
+/// run, even after the `Child` handle to the child process has gone out of
+/// scope.
 ///
-/// Calling `wait` (or other functions that wrap around it) will make the
-/// parent process wait until the child has actually exited before continuing.
+/// Calling [`wait`][`wait`] (or other functions that wrap around it) will make
+/// the parent process wait until the child has actually exited before
+/// continuing.
+///
+/// [`Command`]: struct.Command.html
+/// [`Drop`]: ../../core/ops/trait.Drop.html
+/// [`wait`]: #method.wait
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Child {
     handle: imp::Process,
@@ -91,7 +97,11 @@ impl IntoInner<imp::Process> for Child {
     fn into_inner(self) -> imp::Process { self.handle }
 }
 
-/// A handle to a child process's stdin
+/// A handle to a child process's stdin. This struct is used in the [`stdin`]
+/// field on [`Child`].
+///
+/// [`Child`]: struct.Child.html
+/// [`stdin`]: struct.Child.html#structfield.stdin
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
     inner: AnonPipe
@@ -122,7 +132,11 @@ impl FromInner<AnonPipe> for ChildStdin {
     }
 }
 
-/// A handle to a child process's stdout
+/// A handle to a child process's stdout. This struct is used in the [`stdout`]
+/// field on [`Child`].
+///
+/// [`Child`]: struct.Child.html
+/// [`stdout`]: struct.Child.html#structfield.stdout
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
     inner: AnonPipe
@@ -152,7 +166,11 @@ impl FromInner<AnonPipe> for ChildStdout {
     }
 }
 
-/// A handle to a child process's stderr
+/// A handle to a child process's stderr. This struct is used in the [`stderr`]
+/// field on [`Child`].
+///
+/// [`Child`]: struct.Child.html
+/// [`stderr`]: struct.Child.html#structfield.stderr
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
     inner: AnonPipe

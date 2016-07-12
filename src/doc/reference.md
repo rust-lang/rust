@@ -2633,7 +2633,7 @@ comma:
 
 There are several forms of struct expressions. A _struct expression_
 consists of the [path](#paths) of a [struct item](#structs), followed by
-a brace-enclosed list of one or more comma-separated name-value pairs,
+a brace-enclosed list of zero or more comma-separated name-value pairs,
 providing the field values of a new instance of the struct. A field name
 can be any identifier, and is separated from its value expression by a colon.
 The location denoted by a struct field is mutable if and only if the
@@ -2652,10 +2652,12 @@ The following are examples of struct expressions:
 
 ```
 # struct Point { x: f64, y: f64 }
+# struct NothingInMe { }
 # struct TuplePoint(f64, f64);
 # mod game { pub struct User<'a> { pub name: &'a str, pub age: u32, pub score: usize } }
 # struct Cookie; fn some_fn<T>(t: T) {}
 Point {x: 10.0, y: 20.0};
+NothingInMe {};
 TuplePoint(10.0, 20.0);
 let u = game::User {name: "Joe", age: 35, score: 100_000};
 some_fn::<Cookie>(Cookie);
