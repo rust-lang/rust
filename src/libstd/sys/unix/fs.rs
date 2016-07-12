@@ -205,9 +205,15 @@ impl Iterator for ReadDir {
                 // of the thread safety, on Illumos the readdir(3C) function is safe to use
                 // in threaded applications and it is generally preferred over the
                 // readdir_r(3C) function.
+                super::os::set_errno(0);
                 let entry_ptr = libc::readdir(self.dirp.0);
                 if entry_ptr.is_null() {
-                    return None
+                    // NULL can mean either the end is reached or an error occurred.
+                    // So we had to clear errno beforehand to check for an error now.
+                    return match super::os::errno() {
+                        0 => None,
+                        e => Some(Err(Error::from_raw_os_error(e))),
+                    }
                 }
 
                 let name = (*entry_ptr).d_name.as_ptr();
