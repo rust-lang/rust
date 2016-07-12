@@ -188,7 +188,10 @@ LLVMRustCreateTargetMachine(const char *triple,
     }
 
     TargetOptions Options;
+#if LLVM_VERSION_MINOR <= 8
     Options.PositionIndependentExecutable = PositionIndependentExecutable;
+#endif
+
     Options.FloatABIType = FloatABI::Default;
     if (UseSoftFloat) {
         Options.FloatABIType = FloatABI::Soft;
@@ -410,4 +413,11 @@ LLVMRustSetDataLayoutFromTargetMachine(LLVMModuleRef Module,
 extern "C" LLVMTargetDataRef
 LLVMRustGetModuleDataLayout(LLVMModuleRef M) {
     return wrap(&unwrap(M)->getDataLayout());
+}
+
+extern "C" void
+LLVMRustSetModulePIELevel(LLVMModuleRef M) {
+#if LLVM_VERSION_MINOR >= 9
+    unwrap(M)->setPIELevel(PIELevel::Level::Default);
+#endif
 }

@@ -2155,6 +2155,7 @@ extern {
 
     pub fn LLVMRustSetComdat(M: ModuleRef, V: ValueRef, Name: *const c_char);
     pub fn LLVMRustUnsetComdat(V: ValueRef);
+    pub fn LLVMRustSetModulePIELevel(M: ModuleRef);
 }
 
 // LLVM requires symbols from this library, but apparently they're not printed

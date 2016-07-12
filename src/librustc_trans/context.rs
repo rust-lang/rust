@@ -352,6 +352,7 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     let llvm_target = sess.target.target.llvm_target.as_bytes();
     let llvm_target = CString::new(llvm_target).unwrap();
     llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
+    llvm::LLVMRustSetModulePIELevel(llmod);
     (llcx, llmod)
 }
 
