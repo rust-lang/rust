@@ -386,13 +386,15 @@ fn match_same_input(ma: &TokenTree, mb: &TokenTree) -> bool {
             delima.tts.iter().zip(delimb.tts.iter())
                 .all(|(ref t1, ref t2)| match_same_input(t1, t2))
         }
-        (&TokenTree::Sequence(_, ref seqa),
-         &TokenTree::Sequence(_, ref seqb)) => {
-            seqa.separator == seqb.separator &&
-            seqa.op == seqb.op &&
-            seqa.tts.iter().zip(seqb.tts.iter())
-                .all(|(ref t1, ref t2)| match_same_input(t1, t2))
-        }
+        // we cannot consider that sequences match the same input
+        // they need to be checked specially.
+        // (&TokenTree::Sequence(_, ref seqa),
+        //  &TokenTree::Sequence(_, ref seqb)) => {
+        //     seqa.separator == seqb.separator &&
+        //     seqa.op == seqb.op &&
+        //     seqa.tts.iter().zip(seqb.tts.iter())
+        //         .all(|(ref t1, ref t2)| match_same_input(t1, t2))
+        // }
         _ => false
     }
 }
@@ -593,11 +595,50 @@ enum AnalysisResult {
     Error
 }
 
+impl AnalysisResult {
+    fn chain<F: FnMut() -> AnalysisResult>(self, mut next: F) -> AnalysisResult {
+        if let AnalysisResult::Error = self { return self };
+        match next() {
+            AnalysisResult::Ok => self,
+            ret => ret
+        }
+    }
+}
+
+fn unroll_sequence<'a>(sp: Span, seq: &tokenstream::SequenceRepetition,
+                       next: &[TokenTree]) -> Vec<TokenTree> {
+    let mut ret = seq.tts.to_vec();
+    seq.separator.clone().map(|sep| ret.push(TokenTree::Token(sp, sep)));
+    ret.push(TokenTree::Sequence(
+        // clone a sequence. change $(...)+ into $(...)*
+        sp, tokenstream::SequenceRepetition {
+            op: tokenstream::KleeneOp::ZeroOrMore,
+            .. seq.clone()
+        }
+    ));
+    ret.extend_from_slice(next);
+    ret
+}
+
+fn check_sequence<F>(sp: Span, seq: &tokenstream::SequenceRepetition,
+                     next: &[TokenTree], against: &[TokenTree], mut callback: F)
+                     -> AnalysisResult
+    where F: FnMut(&[TokenTree], &[TokenTree]) -> AnalysisResult {
+    let unrolled = unroll_sequence(sp, seq, next);
+    let ret = callback(&unrolled, against);
+
+    if seq.op == tokenstream::KleeneOp::ZeroOrMore {
+        ret.chain(|| callback(next, against))
+    } else { ret }
+}
+
 fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree],
                         visited_spans: &mut HashSet<(Span, Span)>)
                         -> AnalysisResult {
     use self::AnalysisResult::*;
     let mut need_disambiguation = false;
+
+    //println!("running on {:?} <-> {:?}", ma, mb);
 
     // first compute the FIRST sets. FIRST sets for tokens, delimited TTs and NT
     // matchers are fixed, this will compute the FIRST sets for all sequence TTs
@@ -612,12 +653,61 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree],
     //   matches A will never match B or vice-versa
     // * we find a case that is too complex to handle and reject it
     // * we reach the end of the macro
-    for ((idx_a, ta), (idx_b, tb)) in ma.iter().enumerate().zip(mb.iter().enumerate()) {
+    let iter_a = ma.iter().enumerate();
+    let iter_b = mb.iter().enumerate();
+    let mut iter = iter_a.clone().zip(iter_b.clone());
+    while let Some(((idx_a, ta), (idx_b, tb))) = iter.next() {
         if visited_spans.contains(&(ta.get_span(), tb.get_span())) {
-            break
+            return if need_disambiguation { Error } else { Unsure };
         }
 
         visited_spans.insert((ta.get_span(), tb.get_span()));
+
+        // sequence analysis
+
+        match (ta, tb) {
+            (&TokenTree::Sequence(sp_a, ref seq_a),
+             &TokenTree::Sequence(sp_b, ref seq_b)) => {
+                let mut ret = check_sequence(sp_a, seq_a, &ma[idx_a + 1 ..], &mb[idx_b ..], |u, a| {
+                    check_matcher_firsts(cx, u, a, visited_spans)
+                });
+
+                ret = ret.chain(|| {
+                    check_sequence(sp_b, seq_b, &mb[idx_b + 1 ..], &ma[idx_a ..], |u, a| {
+                        check_matcher_firsts(cx, a, u, visited_spans)
+                    })
+                });
+
+                return match ret {
+                    Unsure => if need_disambiguation { Error } else { Unsure },
+                    _ => ret
+                };
+            }
+
+            (&TokenTree::Sequence(sp, ref seq), _) => {
+                let ret = check_sequence(sp, seq, &ma[idx_a + 1 ..], &mb[idx_b ..], |u, a| {
+                    check_matcher_firsts(cx, u, a, visited_spans)
+                });
+
+                return match ret {
+                    Unsure => if need_disambiguation { Error } else { Unsure },
+                    _ => ret
+                };
+            }
+
+            (_, &TokenTree::Sequence(sp, ref seq)) => {
+                let ret = check_sequence(sp, seq, &mb[idx_b + 1 ..], &ma[idx_a ..], |u, a| {
+                    check_matcher_firsts(cx, a, u, visited_spans)
+                });
+
+                return match ret {
+                    Unsure => if need_disambiguation { Error } else { Unsure },
+                    _ => ret
+                };
+            }
+
+            _ => ()
+        }
 
         if match_same_input(ta, tb) {
             continue;
@@ -628,195 +718,77 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree],
             return Ok
         }
 
-        // i.e. A or B is either a repeated sequence or a NT matcher that is
-        // not tt, ident, or block (that is, either A or B could match several
-        // token trees), we cannot know where we should continue the analysis.
+        // now we cannot say anything in the general case but we can
+        // still look if we are in a particular case we know how to handle...
         match (ta, tb) {
-            (&TokenTree::Sequence(sp_a, ref seq_a), &TokenTree::Sequence(sp_b, ref seq_b)) => {
-                let new_tt_a = TokenTree::Sequence(sp_a, tokenstream::SequenceRepetition { op: tokenstream::KleeneOp::ZeroOrMore, .. seq_a.clone() });
-                let mut new_a = seq_a.tts.iter().map(|x| x.clone()).collect::<Vec<_>>();
-                if let Some(ref sep) = seq_a.separator { new_a.push(TokenTree::Token(sp_a, sep.clone())) };
-                new_a.push(new_tt_a);
-                new_a.extend(ma[idx_a + 1 ..].iter().map(|x| x.clone()));
-
-                let new_tt_b = TokenTree::Sequence(sp_b, tokenstream::SequenceRepetition { op: tokenstream::KleeneOp::ZeroOrMore, .. seq_b.clone() });
-                let mut new_b = seq_b.tts.iter().map(|x| x.clone()).collect::<Vec<_>>();
-                if let Some(ref sep) = seq_b.separator { new_b.push(TokenTree::Token(sp_b, sep.clone())) };
-                new_b.push(new_tt_b);
-                new_b.extend(mb[idx_b + 1 ..].iter().map(|x| x.clone()));
-
-                let mut ret = match check_matcher_firsts(cx, &new_a, &mb[idx_b ..], visited_spans) {
-                    Error => return Error,
-                    ret => ret
-                };
-
-                match check_matcher_firsts(cx, &ma[idx_a ..], &new_b, visited_spans) {
-                    Error => return Error,
-                    Unsure => ret = Unsure,
-                    Ok => ()
-                };
-
-                if seq_a.op == tokenstream::KleeneOp::ZeroOrMore {
-                    match check_matcher_firsts(cx, &ma[idx_a + 1 ..], &mb[idx_b ..], visited_spans) {
-                        Error => return Error,
-                        Unsure => ret = Unsure,
-                        Ok => ()
-                    };
-                }
-
-                if seq_b.op == tokenstream::KleeneOp::ZeroOrMore {
-                    match check_matcher_firsts(cx, &ma[idx_a ..], &mb[idx_b + 1 ..], visited_spans) {
-                        Error => return Error,
-                        Unsure => ret = Unsure,
-                        Ok => ()
-                    };
-                }
-
-                return match ret {
-                    Ok => Ok,
-                    Unsure => if need_disambiguation { Error } else { Unsure },
-                    Error => Error
-                };
-            }
-
-            (&TokenTree::Sequence(sp, ref seq), _) => {
-                // unroll 1 step.
-                let new_tt = TokenTree::Sequence(sp, tokenstream::SequenceRepetition { op: tokenstream::KleeneOp::ZeroOrMore, .. seq.clone() });
-                let mut new_a = seq.tts.iter().map(|x| x.clone()).collect::<Vec<_>>();
-                if let Some(ref sep) = seq.separator { new_a.push(TokenTree::Token(sp, sep.clone())) };
-                new_a.push(new_tt);
-                new_a.extend(ma[idx_a + 1 ..].iter().map(|x| x.clone()));
-                let mut ret = match check_matcher_firsts(cx, &new_a, &mb[idx_b ..], visited_spans) {
-                    Error => return Error,
-                    ret => ret
-                };
-
-                if seq.op == tokenstream::KleeneOp::ZeroOrMore {
-                    match check_matcher_firsts(cx, &ma[idx_a + 1 ..], &mb[idx_b ..], visited_spans) {
-                        Error => return Error,
-                        Unsure => ret = Unsure,
-                        Ok => ()
-                    };
-                }
-
-                return match ret {
-                    Ok => Ok,
-                    Unsure => if need_disambiguation { Error } else { Unsure },
-                    Error => Error
-                };
-            }
-
-            (_, &TokenTree::Sequence(sp, ref seq)) => {
-                // unroll 1 step.
-                let new_tt = TokenTree::Sequence(sp, tokenstream::SequenceRepetition { op: tokenstream::KleeneOp::ZeroOrMore, .. seq.clone() });
-                let mut new_b = seq.tts.iter().map(|x| x.clone()).collect::<Vec<_>>();
-                if let Some(ref sep) = seq.separator { new_b.push(TokenTree::Token(sp, sep.clone())) };
-                new_b.push(new_tt);
-                new_b.extend(mb[idx_b + 1 ..].iter().map(|x| x.clone()));
-                let mut ret = match check_matcher_firsts(cx, &ma[idx_a ..], &new_b, visited_spans) {
-                    Error => return Error,
-                    ret => ret
-                };
-
-                if seq.op == tokenstream::KleeneOp::ZeroOrMore {
-                    match check_matcher_firsts(cx, &ma[idx_a ..], &mb[idx_b + 1 ..], visited_spans) {
-                        Error => return Error,
-                        Unsure => ret = Unsure,
-                        Ok => ()
-                    };
-
-                }
-
-                return match ret {
-                    Ok => Ok,
-                    Unsure => if need_disambiguation { Error } else { Unsure },
-                    Error => Error
-                };
-            }
-
-            (&TokenTree::Token(_, MatchNt(_, nta)),
-             &TokenTree::Token(_, MatchNt(_, ntb))) =>
-                if !(nt_is_single_tt(nta) && nt_is_single_tt(ntb)) {
-                    return Error
-                },
-
-            (&TokenTree::Token(_, MatchNt(_, nt)), _) if !nt_is_single_tt(nt) =>
-                return Error,
-
-            // super specific corner case: if one arm is always one token,
-            // followed by the end of the macro invocation, then we can accept
-            // it.
+            (&TokenTree::Sequence(_, _), _) |
+            (_, &TokenTree::Sequence(_, _)) =>
+                // cannot happen since we treated sequences earlier
+                cx.bug("unexpeceted seq"),
 
             (_ ,&TokenTree::Token(_, MatchNt(_, nt))) if !nt_is_single_tt(nt) =>
                 return if only_simple_tokens(&ma[idx_a..]) && !need_disambiguation {
                     Unsure
                 } else { Error },
 
-            _ => ()
-        }
+            // first case: NT vs _.
+            // invariant: B is always a single-TT
 
-        // A and B always both match a single TT
-        match (ta, tb) {
-            (&TokenTree::Sequence(_, _), _) |
-            (_, &TokenTree::Sequence(_, _)) =>
-                // cannot happen since sequences are not always a single-TT
-                cx.bug("unexpeceted seq"),
+            (&TokenTree::Token(_, MatchNt(_, nt)), _)
+                // ident or tt will never start matching more input
+                if nt.name.as_str() == "ident" ||
+                   nt.name.as_str() == "tt" => continue,
 
-            (&TokenTree::Token(_, MatchNt(_, nt)), _) |
-            (_ ,&TokenTree::Token(_, MatchNt(_, nt)))
-                if nt.name.as_str() == "tt" =>
-                // this is okay for now, either A will always have priority,
-                // either B will always be unreachable. but search for errors
-                // further
-                continue,
+            (&TokenTree::Token(_, MatchNt(_, nt)), _)
+                if nt.name.as_str() == "block" => {
+                match tb {
+                    &TokenTree::Delimited(_, ref delim)
+                        if delim.delim == token::DelimToken::Brace => {
+                        // we cannot say much here. we cannot look inside. we
+                        // can just hope we will find an obvious disambiguation later
+                        need_disambiguation = true;
+                        continue;
+                    }
+                    &TokenTree::Token(_, MatchNt(_, nt))
+                        if nt.name.as_str() == "tt" => {
+                        // same
+                        need_disambiguation = true;
+                        continue;
+                    }
+                    // should be the only possibility.
+                    _ => cx.bug("unexpected matcher against block")
+                }
+            }
 
-            (&TokenTree::Token(_, MatchNt(_, _)),
-             &TokenTree::Token(_, MatchNt(_, _))) =>
-                // this case cannot happen. the only NTs that are a single-TT
-                // and that are not tt are ident and block, that do not share any
-                // FIRST token.
-                cx.bug("unexpected NT vs. NT"),
+            (&TokenTree::Token(_, MatchNt(_, _)), _) =>
+                // A is a NT matcher that is not tt, ident, or block (that is, A
+                // could match several token trees), we cannot know where we
+                // should continue the analysis.
+                return Error,
 
-            (&TokenTree::Token(_, MatchNt(_, nt)), &TokenTree::Token(_, Ident(_))) |
-            (&TokenTree::Token(_, Ident(_)), &TokenTree::Token(_, MatchNt(_, nt))) =>
-                if nt.name.as_str() == "ident" {
-                    // NT ident vs token ident. it's the same as with tt:
-                    // either A is included, either B is unreachable
-                    continue
-                } else {
-                    // the only possible NT here is ident because the only token in
-                    // the FIRST set of block is {, and { is not seen as a token but
-                    // as the beginning of a Delim
-                    // the only possible token is thus an hardcoded identifier or
-                    // keyword. so the only possible case of NT vs. Token is the
-                    // the case above.
-                    cx.bug("unexpeceted NT vs. Token")
-                },
+            // second case: T vs _.
+            // both A and B are always a single-TT
 
-            (&TokenTree::Token(_, MatchNt(_, nt)),
-             &TokenTree::Delimited(_, ref delim)) => {
-                // should be the only possibility.
-                assert!(nt.name.as_str() == "block" &&
-                        delim.delim == token::DelimToken::Brace);
-                // we cannot say much here. we cannot look inside. we
-                // can just hope we will find an obvious disambiguation later
-                need_disambiguation = true;
-                continue
+            (&TokenTree::Token(..), &TokenTree::Token(_, MatchNt(_, nt))) => {
+                assert!(nt.name.as_str() == "ident" || nt.name.as_str() == "tt");
+                // the token will never match new input
+                continue;
             }
 
             (&TokenTree::Delimited(_, ref delim),
-             &TokenTree::Token(_, MatchNt(_, nt))) => {
-                assert!(nt.name.as_str() == "block" &&
-                        delim.delim == token::DelimToken::Brace);
+             &TokenTree::Token(_, MatchNt(_, _))) => {
+                // either block vs { } or tt vs any delim.
                 // as with several-TTs NTs, if the above is only
                 // made of simple tokens this is ok...
                 need_disambiguation |= !only_simple_tokens(&delim.tts);
-                continue
+                continue;
             }
 
             (&TokenTree::Delimited(_, ref d1),
              &TokenTree::Delimited(_, ref d2)) => {
                 // they have the same delim. as above.
+                assert!(d1.delim == d2.delim);
+                // descend into delimiters.
                 match check_matcher_firsts(cx, &d1.tts, &d2.tts, visited_spans) {
                     Ok => return Ok,
                     Unsure => continue,
@@ -827,8 +799,8 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree],
                 }
             }
 
-            // cannot happen. either they're the same token or their FIRST sets
-            // are disjoint.
+            // cannot happen. either they're the same
+            // token or their FIRST sets are disjoint.
             (&TokenTree::Token(..), &TokenTree::Token(..)) |
             (&TokenTree::Token(..), &TokenTree::Delimited(..)) |
             (&TokenTree::Delimited(..), &TokenTree::Token(..)) =>
@@ -837,11 +809,25 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree],
     }
 
     // now we are at the end of one arm:
+    // we know that the last element on this arm was not a sequence (we would
+    // have returned earlier), so it cannot accept new input at this point.
+    // if the other arm always accept new input, that is, if it cannot accept
+    // the end of stream, then this is a disambiguation.
+    let (ma, mb): (Vec<_>, Vec<_>) = iter.unzip();
+    for &(_, tt) in if ma.len() == 0 { mb.iter() } else { ma.iter() } {
+        match tt {
+            &TokenTree::Sequence(_, ref seq)
+                if seq.op == tokenstream::KleeneOp::ZeroOrMore => continue,
+            _ =>
+                // this arm still expects input, while the other can't.
+                // use this as a disambiguation
+                return Ok
+        }
+    }
+
     if need_disambiguation {
         // we couldn't find any. we cannot say anything about those arms.
         // reject conservatively.
-        // FIXME: if we are not at the end of the other arm, and that the other
-        // arm cannot derive empty, I think we could accept...?
         Error
     } else {
         // either A is strictly included in B and the other inputs that match B
