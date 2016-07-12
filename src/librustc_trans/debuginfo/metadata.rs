@@ -18,7 +18,9 @@ use super::utils::{debug_context, DIB, span_start, bytes_to_bits, size_and_align
                    fn_should_be_ignored, is_node_local_to_unit};
 use super::namespace::mangled_name_of_item;
 use super::type_names::{compute_debuginfo_type_name, push_debuginfo_type_name};
-use super::{declare_local, VariableKind, VariableAccess};
+use super::{declare_local, VariableKind, VariableAccess, CrateDebugContext};
+use context::SharedCrateContext;
+use session::Session;
 
 use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
@@ -47,7 +49,6 @@ use syntax::util::interner::Interner;
 use syntax::ast;
 use syntax::parse::token;
 use syntax_pos::{self, Span};
-
 
 // From DWARF 5.
 // See http://www.dwarfstd.org/ShowIssue.php?issue=140129.1
@@ -981,14 +982,17 @@ fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     return ptr_metadata;
 }
 
-pub fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
-    let work_dir = &cx.sess().working_dir;
-    let compile_unit_name = match cx.sess().local_crate_source_file {
-        None => fallback_path(cx),
+pub fn compile_unit_metadata(scc: &SharedCrateContext,
+                             debug_context: &CrateDebugContext,
+                             sess: &Session)
+                             -> DIDescriptor {
+    let work_dir = &sess.working_dir;
+    let compile_unit_name = match sess.local_crate_source_file {
+        None => fallback_path(scc),
         Some(ref abs_path) => {
             if abs_path.is_relative() {
-                cx.sess().warn("debuginfo: Invalid path to crate's local root source file!");
-                fallback_path(cx)
+                sess.warn("debuginfo: Invalid path to crate's local root source file!");
+                fallback_path(scc)
             } else {
                 match abs_path.strip_prefix(work_dir) {
                     Ok(ref p) if p.is_relative() => {
@@ -998,7 +1002,7 @@ pub fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
                             path2cstr(&Path::new(".").join(p))
                         }
                     }
-                    _ => fallback_path(cx)
+                    _ => fallback_path(scc)
                 }
             }
         }
@@ -1015,19 +1019,19 @@ pub fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
     let split_name = "\0";
     return unsafe {
         llvm::LLVMDIBuilderCreateCompileUnit(
-            debug_context(cx).builder,
+            debug_context.builder,
             DW_LANG_RUST,
             compile_unit_name,
             work_dir.as_ptr(),
             producer.as_ptr(),
-            cx.sess().opts.optimize != config::OptLevel::No,
+            sess.opts.optimize != config::OptLevel::No,
             flags.as_ptr() as *const _,
             0,
             split_name.as_ptr() as *const _)
     };
 
-    fn fallback_path(cx: &CrateContext) -> CString {
-        CString::new(cx.link_meta().crate_name.clone()).unwrap()
+    fn fallback_path(scc: &::context::SharedCrateContext) -> CString {
+        CString::new(scc.link_meta().crate_name.clone()).unwrap()
     }
 }
 
