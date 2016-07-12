@@ -82,16 +82,6 @@ pub trait CodeMapper {
     fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace>;
 }
 
-impl RenderSpan {
-    fn span(&self) -> &MultiSpan {
-        match *self {
-            FullSpan(ref msp) |
-            Suggestion(CodeSuggestion { ref msp, .. }) =>
-                msp
-        }
-    }
-}
-
 impl CodeSuggestion {
     /// Returns the assembled code suggestion.
     pub fn splice_lines(&self, cm: &CodeMapper) -> String {

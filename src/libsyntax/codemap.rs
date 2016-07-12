@@ -1265,9 +1265,9 @@ r"blork2.rs:2:1: 2:12
         println!("r#\"\n{}\"#", str);
         assert_eq!(str, &r#"
   --> dummy.txt:11:1
-   |>
-11 |>         e-lä-vän
-   |> ^
+   | 
+11 |          e-lä-vän
+   |  ^
 "#[1..]);
     }
 
@@ -1333,9 +1333,9 @@ r"blork2.rs:2:1: 2:12
 
         let expect_start = &r#"
  --> dummy.txt:1:6
-  |>
-1 |> _____aaaaaa____bbbbbb__cccccdd_
-  |>      ^^^^^^    ^^^^^^  ^^^^^^^
+  | 
+1 |  _____aaaaaa____bbbbbb__cccccdd_
+  |       ^^^^^^    ^^^^^^  ^^^^^^^
 "#[1..];
 
         let span = |sp, expected| {
@@ -1409,28 +1409,28 @@ r"blork2.rs:2:1: 2:12
 
         let expect0 = &r#"
    --> dummy.txt:5:1
-    |>
-5   |> ccccc
-    |> ^
+    | 
+5   |  ccccc
+    |  ^
 ...
-9   |> ddd__eee_
-    |> ^^^  ^^^
-10  |> elided
-11  |> __f_gg
-    |>   ^ ^^
+9   |  ddd__eee_
+    |  ^^^  ^^^
+10  |  elided
+11  |  __f_gg
+    |    ^ ^^
 "#[1..];
 
         let expect = &r#"
    --> dummy.txt:1:1
-    |>
-1   |> aaaaa
-    |> ^
+    | 
+1   |  aaaaa
+    |  ^
 ...
-9   |> ddd__eee_
-    |> ^^^  ^^^
-10  |> elided
-11  |> __f_gg
-    |>   ^ ^^
+9   |  ddd__eee_
+    |  ^^^  ^^^
+10  |  elided
+11  |  __f_gg
+    |    ^ ^^
 "#[1..];
 
         macro_rules! test {
@@ -1477,9 +1477,9 @@ fn foo() {
         let text = make_string(&lines);
         assert_eq!(&text[..], &"
  --> foo.rs:3:2
-  |>
-3 |> \tbar;
-  |> \t^^^
+  | 
+3 |  \tbar;
+  |  \t^^^
 "[1..]);
     }
 
@@ -1510,12 +1510,12 @@ fn foo() {
         println!("text=\n{}", text);
         assert_eq!(&text[..], &r#"
  ::: foo.rs
-  |>
-3 |>     vec.push(vec.pop().unwrap());
-  |>     ---      ---                - previous borrow ends here
-  |>     |        |
-  |>     |        error occurs here
-  |>     previous borrow of `vec` occurs here
+  | 
+3 |      vec.push(vec.pop().unwrap());
+  |      ---      ---                - previous borrow ends here
+  |      |        |
+  |      |        error occurs here
+  |      previous borrow of `vec` occurs here
 "#[1..]);
     }
 
@@ -1577,24 +1577,24 @@ fn bar() {
 
         println!("text=\n{}", text);
 
-        // Note that the `|>` remain aligned across both files:
+        // Note that the `|` remain aligned across both files:
         assert_eq!(&text[..], &r#"
    --> foo.rs:3:14
-    |>
-3   |>     vec.push(vec.pop().unwrap());
-    |>     ---      ^^^                - c
-    |>     |        |
-    |>     |        b
-    |>     a
+    | 
+3   |      vec.push(vec.pop().unwrap());
+    |      ---      ^^^                - c
+    |      |        |
+    |      |        b
+    |      a
    ::: bar.rs
-    |>
-17  |>     vec.push();
-    |>     ---       - f
-    |>     |
-    |>     d
+    | 
+17  |      vec.push();
+    |      ---       - f
+    |      |
+    |      d
 ...
-21  |>     vec.pop().unwrap());
-    |>     --- e
+21  |      vec.pop().unwrap());
+    |      --- e
 "#[1..]);
     }
 
@@ -1632,15 +1632,15 @@ fn foo() {
         println!("text=\n{}", text);
         assert_eq!(&text[..], &r#"
    ::: foo.rs
-    |>
-3   |>     let name = find_id(&data, 22).unwrap();
-    |>                         ---- immutable borrow begins here
+    | 
+3   |      let name = find_id(&data, 22).unwrap();
+    |                          ---- immutable borrow begins here
 ...
-6   |>     data.push(Data { name: format!("Hera"), id: 66 });
-    |>     ---- mutable borrow occurs here
+6   |      data.push(Data { name: format!("Hera"), id: 66 });
+    |      ---- mutable borrow occurs here
 ...
-11  |> }
-    |> - immutable borrow ends here
+11  |  }
+    |  - immutable borrow ends here
 "#[1..]);
     }
 
@@ -1672,13 +1672,13 @@ fn foo() {
         println!("text=r#\"\n{}\".trim_left()", text);
         assert_eq!(&text[..], &r#"
  ::: foo.rs
-  |>
-3 |>     vec.push(vec.pop().unwrap());
-  |>     --------           ------ D
-  |>     ||
-  |>     |C
-  |>     A
-  |>     B
+  | 
+3 |      vec.push(vec.pop().unwrap());
+  |      --------           ------ D
+  |      ||
+  |      |C
+  |      A
+  |      B
 "#[1..]);
     }
 
@@ -1709,12 +1709,12 @@ fn foo() {
         println!("text=r#\"\n{}\".trim_left()", text);
         assert_eq!(&text[..], &r#"
  ::: foo.rs
-  |>
-3 |>     vec.push(vec.pop().unwrap());
-  |>     ---      ---                - previous borrow ends here
-  |>     |        |
-  |>     |        error occurs here
-  |>     previous borrow of `vec` occurs here
+  | 
+3 |      vec.push(vec.pop().unwrap());
+  |      ---      ---                - previous borrow ends here
+  |      |        |
+  |      |        error occurs here
+  |      previous borrow of `vec` occurs here
 "#[1..]);
     }
 
@@ -1748,12 +1748,12 @@ fn foo() {
         println!("text=r#\"\n{}\".trim_left()", text);
         assert_eq!(&text[..], &r#"
    ::: foo.rs
-    |>
-4   |>     let mut vec2 = vec;
-    |>                    --- `vec` moved here because it has type `collections::vec::Vec<i32>`
+    | 
+4   |      let mut vec2 = vec;
+    |                     --- `vec` moved here because it has type `collections::vec::Vec<i32>`
 ...
-9   |>     vec.push(7);
-    |>     --- use of moved value: `vec`
+9   |      vec.push(7);
+    |      --- use of moved value: `vec`
 "#[1..]);
     }
 
@@ -1785,11 +1785,11 @@ fn foo() {
         println!("text=&r#\"\n{}\n\"#[1..]", text);
         assert_eq!(text, &r#"
  ::: foo.rs
-  |>
-3 |>     let mut vec = vec![0, 1, 2];
-  |>             ---   ---
-4 |>     let mut vec2 = vec;
-  |>             ---    ---
+  | 
+3 |      let mut vec = vec![0, 1, 2];
+  |              ---   ---
+4 |      let mut vec2 = vec;
+  |              ---    ---
 "#[1..]);
     }
 
@@ -1817,9 +1817,9 @@ impl SomeTrait for () {
         println!("r#\"\n{}\"", text);
         assert_eq!(text, &r#"
  ::: foo.rs
-  |>
-3 |>     fn foo(x: u32) {
-  |>     -
+  | 
+3 |      fn foo(x: u32) {
+  |      -
 "#[1..]);
     }
 
@@ -1847,12 +1847,12 @@ impl SomeTrait for () {
         println!("r#\"\n{}\"", text);
         assert_eq!(text, &r#"
  ::: foo.rs
-  |>
-2 |>     fn foo(x: u32) {
-  |>     --------------
-  |>     |      |
-  |>     |      x_span
-  |>     fn_span
+  | 
+2 |      fn foo(x: u32) {
+  |      --------------
+  |      |      |
+  |      |      x_span
+  |      fn_span
 "#[1..]);
     }
 
@@ -1882,12 +1882,12 @@ impl SomeTrait for () {
         println!("r#\"\n{}\"", text);
         assert_eq!(text, &r#"
  ::: foo.rs
-  |>
-2 |>     fn foo(x: u32) {
-  |>     --------------
-  |>     |      |
-  |>     |      x_span
-  |>     fn_span
+  | 
+2 |      fn foo(x: u32) {
+  |      --------------
+  |      |      |
+  |      |      x_span
+  |      fn_span
 "#[1..]);
     }
 
@@ -1928,11 +1928,11 @@ impl SomeTrait for () {
         println!("r#\"\n{}\"", text);
         assert_eq!(text, &r#"
  ::: foo.rs
-  |>
-3 |>        let closure = || {
-  |>                      - foo
-4 |>            inner
-  |>            ----- bar
+  | 
+3 |         let closure = || {
+  |                       - foo
+4 |             inner
+  |             ----- bar
 "#[1..]);
     }
 
@@ -1971,9 +1971,9 @@ fn main() {
         println!("r#\"\n{}\"", text);
         assert_eq!(text, &r#"
   --> foo.rs:11:2
-   |>
-11 |> }
-   |>  -
+   | 
+11 |  }
+   |   -
 "#[1..]);
     }
 }
