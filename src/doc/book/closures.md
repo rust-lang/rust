@@ -336,7 +336,7 @@ could annotate it on the function declaration:
 
 ```rust,ignore
 fn call_with_ref<'a, F>(some_closure:F) -> i32
-    where F: Fn(&'a 32) -> i32 {
+    where F: Fn(&'a i32) -> i32 {
 ```
 
 However this presents a problem with in our case. When you specify the explicit
@@ -350,7 +350,7 @@ of the closure we can use Higher-Ranked Trait Bounds with the `for<...>` syntax:
 
 ```ignore
 fn call_with_ref<F>(some_closure:F) -> i32
-    where F: for<'a> Fn(&'a 32) -> i32 {
+    where F: for<'a> Fn(&'a i32) -> i32 {
 ```
 
 This lets the Rust compiler find the minimum lifetime to invoke our closure and
