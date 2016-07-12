@@ -38,7 +38,7 @@ pub struct FileAttr {
     reparse_tag: c::DWORD,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum FileType {
     Dir, File, SymlinkFile, SymlinkDir, ReparsePoint, MountPoint,
 }
