@@ -29,13 +29,12 @@ use dep_graph::DepNode;
 use middle::privacy::AccessLevels;
 use ty::TyCtxt;
 use session::{config, early_error, Session};
-use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass};
-use lint::{EarlyLintPassObject, LateLintPass, LateLintPassObject};
+use lint::{Level, LevelSource, Lint, LintId, LintPass};
+use lint::{EarlyLintPassObject, LateLintPassObject};
 use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
 use lint::builtin;
 use util::nodemap::FnvHashMap;
 
-use std::cell::RefCell;
 use std::cmp;
 use std::default::Default as StdDefault;
 use std::mem;
@@ -311,10 +310,6 @@ pub struct LateContext<'a, 'tcx: 'a> {
     /// levels, this stack keeps track of the previous lint levels of whatever
     /// was modified.
     level_stack: Vec<(LintId, LevelSource)>,
-
-    /// Level of lints for certain NodeIds, stored here because the body of
-    /// the lint needs to run in trans.
-    node_levels: RefCell<FnvHashMap<(ast::NodeId, LintId), LevelSource>>,
 }
 
 /// Context for lint checking of the AST, after expansion, before lowering to
@@ -664,7 +659,6 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
             access_levels: access_levels,
             lints: lint_store,
             level_stack: vec![],
-            node_levels: RefCell::new(FnvHashMap()),
         }
     }
 
@@ -1064,38 +1058,6 @@ impl<'a, 'tcx> IdVisitingOperation for LateContext<'a, 'tcx> {
     }
 }
 
-// This lint pass is defined here because it touches parts of the `LateContext`
-// that we don't want to expose. It records the lint level at certain AST
-// nodes, so that the variant size difference check in trans can call
-// `raw_emit_lint`.
-
-pub struct GatherNodeLevels;
-
-impl LintPass for GatherNodeLevels {
-    fn get_lints(&self) -> LintArray {
-        lint_array!()
-    }
-}
-
-impl LateLintPass for GatherNodeLevels {
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        match it.node {
-            hir::ItemEnum(..) => {
-                let lint_id = LintId::of(builtin::VARIANT_SIZE_DIFFERENCES);
-                let lvlsrc = cx.lints.get_level_source(lint_id);
-                match lvlsrc {
-                    (lvl, _) if lvl != Allow => {
-                        cx.node_levels.borrow_mut()
-                            .insert((it.id, lint_id), lvlsrc);
-                    },
-                    _ => { }
-                }
-            },
-            _ => { }
-        }
-    }
-}
-
 enum CheckLintNameResult {
     Ok,
     // Lint doesn't exist
@@ -1233,8 +1195,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       lint.as_str(), tcx.map.node_to_string(*id), *msg)
         }
     }
-
-    *tcx.node_lint_levels.borrow_mut() = cx.node_levels.into_inner();
 
     // Put the lint store back in the session.
     mem::replace(&mut *tcx.sess.lint_store.borrow_mut(), cx.lints);

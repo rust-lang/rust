@@ -30,7 +30,6 @@ use super::ModuleTranslation;
 
 use back::link;
 use back::linker::LinkerInfo;
-use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use rustc::cfg;
@@ -75,7 +74,7 @@ use expr;
 use glue;
 use inline;
 use machine;
-use machine::{llalign_of_min, llsize_of, llsize_of_real};
+use machine::{llalign_of_min, llsize_of};
 use meth;
 use mir;
 use monomorphize::{self, Instance};
@@ -86,7 +85,6 @@ use trans_item::TransItem;
 use tvec;
 use type_::Type;
 use type_of;
-use type_of::*;
 use value::Value;
 use Disr;
 use util::common::indenter;
@@ -2074,87 +2072,6 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     fcx.finish(bcx, DebugLoc::None);
 }
 
-fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &hir::EnumDef, sp: Span, id: ast::NodeId) {
-    let mut sizes = Vec::new(); // does no allocation if no pushes, thankfully
-
-    let print_info = ccx.sess().print_enum_sizes();
-
-    let levels = ccx.tcx().node_lint_levels.borrow();
-    let lint_id = lint::LintId::of(lint::builtin::VARIANT_SIZE_DIFFERENCES);
-    let lvlsrc = levels.get(&(id, lint_id));
-    let is_allow = lvlsrc.map_or(true, |&(lvl, _)| lvl == lint::Allow);
-
-    if is_allow && !print_info {
-        // we're not interested in anything here
-        return;
-    }
-
-    let ty = ccx.tcx().node_id_to_type(id);
-    let avar = adt::represent_type(ccx, ty);
-    match *avar {
-        adt::General(_, ref variants, _) => {
-            for var in variants {
-                let mut size = 0;
-                for field in var.fields.iter().skip(1) {
-                    // skip the discriminant
-                    size += llsize_of_real(ccx, sizing_type_of(ccx, *field));
-                }
-                sizes.push(size);
-            }
-        },
-        _ => { /* its size is either constant or unimportant */ }
-    }
-
-    let (largest, slargest, largest_index) = sizes.iter().enumerate().fold((0, 0, 0),
-        |(l, s, li), (idx, &size)|
-            if size > l {
-                (size, l, idx)
-            } else if size > s {
-                (l, size, li)
-            } else {
-                (l, s, li)
-            }
-    );
-
-    // FIXME(#30505) Should use logging for this.
-    if print_info {
-        let llty = type_of::sizing_type_of(ccx, ty);
-
-        let sess = &ccx.tcx().sess;
-        sess.span_note_without_error(sp,
-                                     &format!("total size: {} bytes", llsize_of_real(ccx, llty)));
-        match *avar {
-            adt::General(..) => {
-                for (i, var) in enum_def.variants.iter().enumerate() {
-                    ccx.tcx()
-                       .sess
-                       .span_note_without_error(var.span,
-                                                &format!("variant data: {} bytes", sizes[i]));
-                }
-            }
-            _ => {}
-        }
-    }
-
-    // we only warn if the largest variant is at least thrice as large as
-    // the second-largest.
-    if !is_allow && largest > slargest * 3 && slargest > 0 {
-        // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
-        // pass for the latter already ran.
-        lint::raw_struct_lint(&ccx.tcx().sess,
-                              &ccx.tcx().sess.lint_store.borrow(),
-                              lint::builtin::VARIANT_SIZE_DIFFERENCES,
-                              *lvlsrc.unwrap(),
-                              Some(sp),
-                              &format!("enum variant is more than three times larger ({} bytes) \
-                                        than the next largest (ignoring padding)",
-                                       largest))
-            .span_note(enum_def.variants[largest_index].span,
-                       "this variant is the largest")
-            .emit();
-    }
-}
-
 pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for
@@ -2191,26 +2108,6 @@ pub fn set_link_section(ccx: &CrateContext,
             let buf = CString::new(sect.as_bytes()).unwrap();
             llvm::LLVMSetSection(llval, buf.as_ptr());
         }
-    }
-}
-
-fn trans_item(ccx: &CrateContext, item: &hir::Item) {
-    let _icx = push_ctxt("trans_item");
-
-    match item.node {
-        hir::ItemEnum(ref enum_definition, ref gens) => {
-            if gens.ty_params.is_empty() {
-                // sizes only make sense for non-generic types
-                enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
-            }
-        }
-        hir::ItemFn(..) |
-        hir::ItemImpl(..) |
-        hir::ItemStatic(..) => {
-            // Don't do anything here. Translation has been moved to
-            // being "collector-driven".
-        }
-        _ => {}
     }
 }
 
@@ -2659,19 +2556,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     symbol_names_test::report_symbol_names(&shared_ccx);
 
-    {
-        let ccx = crate_context_list.get_ccx(0);
-
-        // FIXME: #34018
-        // At this point, we only walk the HIR for running
-        // enum_variant_size_lint(). This should arguably be moved somewhere
-        // else.
-        {
-            intravisit::walk_mod(&mut TransItemsWithinModVisitor { ccx: &ccx }, &krate.module);
-            krate.visit_all_items(&mut TransModVisitor { ccx: &ccx });
-        }
-    }
-
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();
         println!("--- trans stats ---");
@@ -2755,72 +2639,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         reachable: reachable_symbols,
         no_builtins: no_builtins,
         linker_info: linker_info
-    }
-}
-
-/// We visit all the items in the krate and translate them.  We do
-/// this in two walks. The first walk just finds module items. It then
-/// walks the full contents of those module items and translates all
-/// the items within. Note that this entire process is O(n). The
-/// reason for this two phased walk is that each module is
-/// (potentially) placed into a distinct codegen-unit. This walk also
-/// ensures that the immediate contents of each module is processed
-/// entirely before we proceed to find more modules, helping to ensure
-/// an equitable distribution amongst codegen-units.
-pub struct TransModVisitor<'a, 'tcx: 'a> {
-    pub ccx: &'a CrateContext<'a, 'tcx>,
-}
-
-impl<'a, 'tcx, 'v> Visitor<'v> for TransModVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &hir::Item) {
-        match i.node {
-            hir::ItemMod(_) => {
-                let item_ccx = self.ccx.rotate();
-                intravisit::walk_item(&mut TransItemsWithinModVisitor { ccx: &item_ccx }, i);
-            }
-            _ => { }
-        }
-    }
-}
-
-/// Translates all the items within a given module. Expects owner to
-/// invoke `walk_item` on a module item. Ignores nested modules.
-pub struct TransItemsWithinModVisitor<'a, 'tcx: 'a> {
-    pub ccx: &'a CrateContext<'a, 'tcx>,
-}
-
-impl<'a, 'tcx, 'v> Visitor<'v> for TransItemsWithinModVisitor<'a, 'tcx> {
-    fn visit_nested_item(&mut self, item_id: hir::ItemId) {
-        self.visit_item(self.ccx.tcx().map.expect_item(item_id.id));
-    }
-
-    fn visit_item(&mut self, i: &hir::Item) {
-        match i.node {
-            hir::ItemMod(..) => {
-                // skip modules, they will be uncovered by the TransModVisitor
-            }
-            _ => {
-                let def_id = self.ccx.tcx().map.local_def_id(i.id);
-                let tcx = self.ccx.tcx();
-
-                // Create a subtask for trans'ing a particular item. We are
-                // giving `trans_item` access to this item, so also record a read.
-                tcx.dep_graph.with_task(DepNode::TransCrateItem(def_id), || {
-                    tcx.dep_graph.read(DepNode::Hir(def_id));
-
-                    // We are going to be accessing various tables
-                    // generated by TypeckItemBody; we also assume
-                    // that the body passes type check. These tables
-                    // are not individually tracked, so just register
-                    // a read here.
-                    tcx.dep_graph.read(DepNode::TypeckItemBody(def_id));
-
-                    trans_item(self.ccx, i);
-                });
-
-                intravisit::walk_item(self, i);
-            }
-        }
     }
 }
 

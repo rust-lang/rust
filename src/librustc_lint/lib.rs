@@ -108,6 +108,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  HardwiredLints,
                  WhileTrue,
                  ImproperCTypes,
+                 VariantSizeDifferences,
                  BoxPointers,
                  UnusedAttributes,
                  PathStatements,
@@ -208,9 +209,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "RFC 1177 <https://github.com/rust-lang/rfcs/pull/1177>",
         },
         ]);
-
-    // We have one lint pass defined specially
-    store.register_late_pass(sess, false, box lint::GatherNodeLevels);
 
     // Register renamed and removed lints
     store.register_renamed("unknown_features", "unused_features");
