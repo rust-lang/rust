@@ -103,3 +103,12 @@ fn warn_match() {
         ref y => ()
     }
 }
+
+fn nowarn_large_array() {
+    // should not warn, is large array
+    // and should not be on stack
+    let x = box [1; 10000];
+    match &x { // not moved
+        ref y => ()
+    }
+}
