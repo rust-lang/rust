@@ -219,14 +219,6 @@ impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
         }
     }
 
-    pub fn get_ccx<'b>(&'b self, index: usize) -> CrateContext<'b, 'tcx> {
-        CrateContext {
-            shared: self.shared,
-            index: index,
-            local_ccxs: &self.local_ccxs[..],
-        }
-    }
-
     pub fn shared(&self) -> &'a SharedCrateContext<'a, 'tcx> {
         self.shared
     }

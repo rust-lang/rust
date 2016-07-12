@@ -12,7 +12,6 @@
 
 use dep_graph::{DepGraph, DepTrackingMap};
 use session::Session;
-use lint;
 use middle;
 use middle::cstore::LOCAL_CRATE;
 use hir::def::DefMap;
@@ -415,9 +414,6 @@ pub struct GlobalCtxt<'tcx> {
     /// Cache used by const_eval when decoding extern const fns
     pub extern_const_fns: RefCell<DefIdMap<NodeId>>,
 
-    pub node_lint_levels: RefCell<FnvHashMap<(NodeId, lint::LintId),
-                                              lint::LevelSource>>,
-
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index<'tcx>>,
 
@@ -726,7 +722,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             populated_external_primitive_impls: RefCell::new(DefIdSet()),
             extern_const_statics: RefCell::new(DefIdMap()),
             extern_const_fns: RefCell::new(DefIdMap()),
-            node_lint_levels: RefCell::new(FnvHashMap()),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
