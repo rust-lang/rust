@@ -11,8 +11,6 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-#![feature(unboxed_closures)]
-
 fn call_it<F>(f: F)
     where F : FnOnce(String) -> String
 {

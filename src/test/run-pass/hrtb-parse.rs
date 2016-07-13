@@ -13,7 +13,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
 

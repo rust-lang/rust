@@ -11,7 +11,6 @@
 // ignore-pretty
 
 #![allow(unknown_features)]
-#![feature(unboxed_closures)]
 
 struct Parser<'a, I, O> {
     parse: Box<FnMut(I) -> Result<O, String> + 'a>

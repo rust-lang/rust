@@ -11,7 +11,6 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
-#![feature(unboxed_closures)]
 
 pub fn main() {
     let bar: Box<_> = box 3;

@@ -10,8 +10,6 @@
 
 // Test HRTB used with the `Fn` trait.
 
-#![feature(unboxed_closures)]
-
 fn foo<F:Fn(&isize)>(f: F) {
     let x = 22;
     f(&x);

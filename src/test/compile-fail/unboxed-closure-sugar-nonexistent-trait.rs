@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
-
 fn f<F:Nonexist(isize) -> isize>(x: F) {} //~ ERROR trait `Nonexist` is not in scope
 
 type Typedef = isize;

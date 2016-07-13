@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
 #![allow(dead_code)]
 
 type foo = fn(&u8, &u8) -> &u8; //~ ERROR missing lifetime specifier

@@ -10,8 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures)]
-
 // Test that `F : Fn(isize) -> isize + Send` is interpreted as two
 // distinct bounds on `F`.
 
