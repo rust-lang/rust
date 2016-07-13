@@ -13,7 +13,7 @@ use self::Destination::*;
 use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, FileMap, Span, MultiSpan, LineInfo, CharPos};
 use registry;
 
-use check_old_skool;
+use check_old_school;
 use {Level, CodeSuggestion, DiagnosticBuilder, CodeMapper};
 use RenderSpan::*;
 use snippet::{StyledString, Style, FormatMode, Annotation, Line};
@@ -36,7 +36,7 @@ impl Emitter for EmitterWriter {
         let old_school = match self.format_mode {
             FormatMode::NewErrorFormat => false,
             FormatMode::OriginalErrorFormat => true,
-            FormatMode::EnvironmentSelected => check_old_skool()
+            FormatMode::EnvironmentSelected => check_old_school()
         };
 
         if old_school {
@@ -243,59 +243,32 @@ impl EmitterWriter {
         // For this reason, we group the lines into "highlight lines"
         // and "annotations lines", where the highlight lines have the `~`.
 
-        // let mut highlight_line = Self::whitespace(&source_string);
-        let old_school = check_old_skool();
-
         // Sort the annotations by (start, end col)
         let mut annotations = line.annotations.clone();
         annotations.sort();
 
         // Next, create the highlight line.
         for annotation in &annotations {
-            if old_school {
-                for p in annotation.start_col..annotation.end_col {
-                    if p == annotation.start_col {
-                        buffer.putc(line_offset + 1,
-                                    width_offset + p,
-                                    '^',
-                                    if annotation.is_primary {
-                                        Style::UnderlinePrimary
-                                    } else {
-                                        Style::OldSchoolNote
-                                    });
-                    } else {
-                        buffer.putc(line_offset + 1,
-                                    width_offset + p,
-                                    '~',
-                                    if annotation.is_primary {
-                                        Style::UnderlinePrimary
-                                    } else {
-                                        Style::OldSchoolNote
-                                    });
+            for p in annotation.start_col..annotation.end_col {
+                if annotation.is_primary {
+                    buffer.putc(line_offset + 1,
+                                width_offset + p,
+                                '^',
+                                Style::UnderlinePrimary);
+                    if !annotation.is_minimized {
+                        buffer.set_style(line_offset,
+                                            width_offset + p,
+                                            Style::UnderlinePrimary);
                     }
-                }
-            } else {
-                for p in annotation.start_col..annotation.end_col {
-                    if annotation.is_primary {
-                        buffer.putc(line_offset + 1,
-                                    width_offset + p,
-                                    '^',
-                                    Style::UnderlinePrimary);
-                        if !annotation.is_minimized {
-                            buffer.set_style(line_offset,
-                                                width_offset + p,
-                                                Style::UnderlinePrimary);
-                        }
-                    } else {
-                        buffer.putc(line_offset + 1,
-                                    width_offset + p,
-                                    '-',
-                                    Style::UnderlineSecondary);
-                        if !annotation.is_minimized {
-                            buffer.set_style(line_offset,
-                                                width_offset + p,
-                                                Style::UnderlineSecondary);
-                        }
+                } else {
+                    buffer.putc(line_offset + 1,
+                                width_offset + p,
+                                '-',
+                                Style::UnderlineSecondary);
+                    if !annotation.is_minimized {
+                        buffer.set_style(line_offset,
+                                            width_offset + p,
+                                            Style::UnderlineSecondary);
                     }
                 }
             }
@@ -311,10 +284,6 @@ impl EmitterWriter {
         if labeled_annotations.is_empty() {
             return;
         }
-        if old_school {
-            return;
-        }
-
         // Now add the text labels. We try, when possible, to stick the rightmost
         // annotation at the end of the highlight line:
         //
