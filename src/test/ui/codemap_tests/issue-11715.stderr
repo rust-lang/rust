@@ -1,0 +1,12 @@
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+   --> $DIR/issue-11715.rs:100:18
+    |
+99  |     let y = &mut x;
+    |                  - first mutable borrow occurs here
+100 |     let z = &mut x;
+    |                  ^ second mutable borrow occurs here
+101 | }
+    | - first borrow ends here
+
+error: aborting due to previous error
+
