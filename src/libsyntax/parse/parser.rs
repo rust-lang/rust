@@ -3789,7 +3789,13 @@ impl<'a> Parser<'a> {
         self.span_err(self.last_span, message);
     }
 
-    /// Parse a statement. may include decl.
+    /// Parse a statement. This stops just before trailing semicolons on everything but items.
+    /// e.g. a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
+    ///
+    /// Also, if a macro begins an expression statement, this only parses the macro. For example,
+    /// ```rust
+    /// vec![1].into_iter(); //< `parse_stmt` only parses the "vec![1]"
+    /// ```
     pub fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
         Ok(self.parse_stmt_())
     }
@@ -4038,36 +4044,14 @@ impl<'a> Parser<'a> {
         let mut stmts = vec![];
 
         while !self.eat(&token::CloseDelim(token::Brace)) {
-            let Stmt {node, span, ..} = if let Some(s) = self.parse_stmt_() {
-                s
+            if let Some(stmt) = self.parse_full_stmt(false)? {
+                stmts.push(stmt);
             } else if self.token == token::Eof {
                 break;
             } else {
                 // Found only `;` or `}`.
                 continue;
             };
-
-            match node {
-                StmtKind::Expr(e) => {
-                    self.handle_expression_like_statement(e, span, &mut stmts)?;
-                }
-                StmtKind::Mac(mac) => {
-                    self.handle_macro_in_block(mac.unwrap(), span, &mut stmts)?;
-                }
-                _ => { // all other kinds of statements:
-                    let mut hi = span.hi;
-                    if classify::stmt_ends_with_semi(&node) {
-                        self.expect(&token::Semi)?;
-                        hi = self.last_span.hi;
-                    }
-
-                    stmts.push(Stmt {
-                        id: ast::DUMMY_NODE_ID,
-                        node: node,
-                        span: mk_sp(span.lo, hi)
-                    });
-                }
-            }
         }
 
         Ok(P(ast::Block {
@@ -4078,93 +4062,88 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn handle_macro_in_block(&mut self,
-                             (mac, style, attrs): (ast::Mac, MacStmtStyle, ThinVec<Attribute>),
-                             span: Span,
-                             stmts: &mut Vec<Stmt>)
-                             -> PResult<'a, ()> {
-        if style == MacStmtStyle::NoBraces {
-            // statement macro without braces; might be an
-            // expr depending on whether a semicolon follows
-            match self.token {
-                token::Semi => {
-                    stmts.push(Stmt {
-                        id: ast::DUMMY_NODE_ID,
-                        node: StmtKind::Mac(P((mac, MacStmtStyle::Semicolon, attrs))),
-                        span: mk_sp(span.lo, self.span.hi),
-                    });
-                    self.bump();
+    /// Parse a statement, including the trailing semicolon.
+    /// This parses expression statements that begin with macros correctly (c.f. `parse_stmt`).
+    pub fn parse_full_stmt(&mut self, macro_expanded: bool) -> PResult<'a, Option<Stmt>> {
+        let mut stmt = match self.parse_stmt_() {
+            Some(stmt) => stmt,
+            None => return Ok(None),
+        };
+
+        if let StmtKind::Mac(mac) = stmt.node {
+            if mac.1 != MacStmtStyle::NoBraces ||
+               self.token == token::Semi || self.token == token::Eof {
+                stmt.node = StmtKind::Mac(mac);
+            } else {
+                // We used to incorrectly stop parsing macro-expanded statements here.
+                // If the next token will be an error anyway but could have parsed with the
+                // earlier behavior, stop parsing here and emit a warning to avoid breakage.
+                if macro_expanded && self.token.can_begin_expr() && match self.token {
+                    // These tokens can continue an expression, so we can't stop parsing and warn.
+                    token::OpenDelim(token::Paren) | token::OpenDelim(token::Bracket) |
+                    token::BinOp(token::Minus) | token::BinOp(token::Star) |
+                    token::BinOp(token::And) | token::BinOp(token::Or) |
+                    token::AndAnd | token::OrOr |
+                    token::DotDot | token::DotDotDot => false,
+                    _ => true,
+                } {
+                    self.warn_missing_semicolon();
+                    stmt.node = StmtKind::Mac(mac);
+                    return Ok(Some(stmt));
                 }
-                _ => {
-                    let e = self.mk_mac_expr(span.lo, span.hi, mac.node, ThinVec::new());
-                    let lo = e.span.lo;
-                    let e = self.parse_dot_or_call_expr_with(e, lo, attrs)?;
-                    let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
-                    self.handle_expression_like_statement(e, span, stmts)?;
-                }
-            }
-        } else {
-            // statement macro; might be an expr
-            match self.token {
-                token::Semi => {
-                    stmts.push(Stmt {
-                        id: ast::DUMMY_NODE_ID,
-                        node: StmtKind::Mac(P((mac, MacStmtStyle::Semicolon, attrs))),
-                        span: mk_sp(span.lo, self.span.hi),
-                    });
-                    self.bump();
-                }
-                _ => {
-                    stmts.push(Stmt {
-                        id: ast::DUMMY_NODE_ID,
-                        node: StmtKind::Mac(P((mac, style, attrs))),
-                        span: span
-                    });
-                }
+
+                let (mac, _style, attrs) = mac.unwrap();
+                let e = self.mk_mac_expr(stmt.span.lo, stmt.span.hi, mac.node, ThinVec::new());
+                let e = self.parse_dot_or_call_expr_with(e, stmt.span.lo, attrs)?;
+                let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
+                stmt.node = StmtKind::Expr(e);
             }
         }
-        Ok(())
+
+        stmt = self.handle_trailing_semicolon(stmt, macro_expanded)?;
+        Ok(Some(stmt))
     }
 
-    fn handle_expression_like_statement(&mut self,
-                                        e: P<Expr>,
-                                        span: Span,
-                                        stmts: &mut Vec<Stmt>)
-                                        -> PResult<'a, ()> {
-        // expression without semicolon
-        if classify::expr_requires_semi_to_be_stmt(&e) {
-            // Just check for errors and recover; do not eat semicolon yet.
-            if let Err(mut e) =
-                self.expect_one_of(&[], &[token::Semi, token::CloseDelim(token::Brace)])
-            {
-                e.emit();
-                self.recover_stmt();
+    fn handle_trailing_semicolon(&mut self, mut stmt: Stmt, macro_expanded: bool)
+                                 -> PResult<'a, Stmt> {
+        match stmt.node {
+            StmtKind::Expr(ref expr) if self.token != token::Eof => {
+                // expression without semicolon
+                if classify::expr_requires_semi_to_be_stmt(expr) {
+                    // Just check for errors and recover; do not eat semicolon yet.
+                    if let Err(mut e) =
+                        self.expect_one_of(&[], &[token::Semi, token::CloseDelim(token::Brace)])
+                    {
+                        e.emit();
+                        self.recover_stmt();
+                    }
+                }
             }
+            StmtKind::Local(..) => {
+                // We used to incorrectly allow a macro-expanded let statement to lack a semicolon.
+                if macro_expanded && self.token != token::Semi {
+                    self.warn_missing_semicolon();
+                } else {
+                    self.expect_one_of(&[token::Semi], &[])?;
+                }
+            }
+            _ => {}
         }
 
-        match self.token {
-            token::Semi => {
-                self.bump();
-                let span_with_semi = Span {
-                    lo: span.lo,
-                    hi: self.last_span.hi,
-                    expn_id: span.expn_id,
-                };
-                stmts.push(Stmt {
-                    id: ast::DUMMY_NODE_ID,
-                    node: StmtKind::Semi(e),
-                    span: span_with_semi,
-                });
-            }
-            _ => {
-                stmts.push(Stmt {
-                    id: ast::DUMMY_NODE_ID,
-                    node: StmtKind::Expr(e),
-                    span: span
-                });
-            }
+        if self.eat(&token::Semi) {
+            stmt = stmt.add_trailing_semicolon();
         }
-        Ok(())
+
+        stmt.span.hi = self.last_span.hi;
+        Ok(stmt)
+    }
+
+    fn warn_missing_semicolon(&self) {
+        self.diagnostic().struct_span_warn(self.span, {
+            &format!("expected `;`, found `{}`", self.this_token_to_string())
+        }).note({
+            "This was erroneously allowed and will become a hard error in a future release"
+        }).emit();
     }
 
     // Parses a sequence of bounds if a `:` is found,

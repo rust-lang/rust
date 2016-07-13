@@ -1638,9 +1638,8 @@ impl<'a> State<'a> {
                     _ => token::Paren
                 };
                 try!(self.print_mac(&mac, delim));
-                match style {
-                    ast::MacStmtStyle::Braces => {}
-                    _ => try!(word(&mut self.s, ";")),
+                if style == ast::MacStmtStyle::Semicolon {
+                    try!(word(&mut self.s, ";"));
                 }
             }
         }
