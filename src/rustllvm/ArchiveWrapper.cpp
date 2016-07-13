@@ -43,11 +43,19 @@ LLVMRustOpenArchive(char *path) {
         return nullptr;
     }
 
+#if LLVM_VERSION_MINOR <= 8
     ErrorOr<std::unique_ptr<Archive>> archive_or =
+#else
+    Expected<std::unique_ptr<Archive>> archive_or =
+#endif
         Archive::create(buf_or.get()->getMemBufferRef());
 
     if (!archive_or) {
+#if LLVM_VERSION_MINOR <= 8
         LLVMRustSetLastError(archive_or.getError().message().c_str());
+#else
+        LLVMRustSetLastError(toString(archive_or.takeError()).c_str());
+#endif
         return nullptr;
     }
 
