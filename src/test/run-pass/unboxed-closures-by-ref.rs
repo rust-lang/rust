@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(unboxed_closures)]
-
 // Test by-ref capture of environment in unboxed closure types
 
 fn call_fn<F: Fn()>(f: F) {

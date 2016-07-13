@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
-
 fn id<T>(t: T) -> T { t }
 
 fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {

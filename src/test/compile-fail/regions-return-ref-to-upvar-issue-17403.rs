@@ -10,8 +10,6 @@
 
 // Test that closures cannot subvert aliasing restrictions
 
-#![feature(overloaded_calls, unboxed_closures)]
-
 fn main() {
     // Unboxed closure case
     {

@@ -13,8 +13,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures)]
-
 // aux-build:issue-18711.rs
 extern crate issue_18711 as issue;
 

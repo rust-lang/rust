@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(unboxed_closures)]
-
 // A basic test of using a higher-ranked trait bound.
 
 trait FnLike<A,R> {

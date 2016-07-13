@@ -10,8 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures)]
-
 fn foo<T, F: FnOnce(T) -> T>(f: F) {}
 fn id<'a>(input: &'a u8) -> &'a u8 { input }
 
