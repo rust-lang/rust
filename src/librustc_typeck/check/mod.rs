@@ -881,7 +881,7 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             }
                         },
                         // `{:1}` and `{}` are not to be used
-                        Position::ArgumentIs(_) | Position::ArgumentNext => {
+                        Position::ArgumentIs(_) => {
                             span_err!(ccx.tcx.sess, attr.span, E0231,
                                                   "only named substitution \
                                                    parameters are allowed");
