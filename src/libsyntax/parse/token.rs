@@ -17,11 +17,11 @@ pub use self::Token::*;
 use ast::{self, BinOpKind};
 use ext::mtwt;
 use ptr::P;
-use util::interner::{RcStr, StrInterner};
-use util::interner;
+use util::interner::Interner;
 use tokenstream;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
+use std::cell::RefCell;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -397,7 +397,7 @@ macro_rules! declare_keywords {(
     }
 
     fn mk_fresh_ident_interner() -> IdentInterner {
-        interner::StrInterner::prefill(&[$($string,)*])
+        Interner::prefill(&[$($string,)*])
     }
 }}
 
@@ -473,22 +473,25 @@ declare_keywords! {
 }
 
 // looks like we can get rid of this completely...
-pub type IdentInterner = StrInterner;
+pub type IdentInterner = Interner;
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
 // FIXME(eddyb) #8726 This should probably use a thread-local reference.
-pub fn get_ident_interner() -> Rc<IdentInterner> {
-    thread_local!(static KEY: Rc<::parse::token::IdentInterner> = {
-        Rc::new(mk_fresh_ident_interner())
+pub fn with_ident_interner<T, F: FnOnce(&mut IdentInterner) -> T>(f: F) -> T {
+    thread_local!(static KEY: RefCell<IdentInterner> = {
+        RefCell::new(mk_fresh_ident_interner())
     });
-    KEY.with(|k| k.clone())
+    KEY.with(|interner| f(&mut *interner.borrow_mut()))
 }
 
 /// Reset the ident interner to its initial state.
 pub fn reset_ident_interner() {
-    let interner = get_ident_interner();
-    interner.reset(mk_fresh_ident_interner());
+    with_ident_interner(|interner| *interner = mk_fresh_ident_interner());
+}
+
+pub fn clear_ident_interner() {
+    with_ident_interner(|interner| *interner = IdentInterner::new());
 }
 
 /// Represents a string stored in the thread-local interner. Because the
@@ -502,19 +505,19 @@ pub fn reset_ident_interner() {
 /// somehow.
 #[derive(Clone, PartialEq, Hash, PartialOrd, Eq, Ord)]
 pub struct InternedString {
-    string: RcStr,
+    string: Rc<String>,
 }
 
 impl InternedString {
     #[inline]
     pub fn new(string: &'static str) -> InternedString {
         InternedString {
-            string: RcStr::new(string),
+            string: Rc::new(string.to_owned()),
         }
     }
 
     #[inline]
-    fn new_from_rc_str(string: RcStr) -> InternedString {
+    fn new_from_rc_str(string: Rc<String>) -> InternedString {
         InternedString {
             string: string,
         }
@@ -522,8 +525,7 @@ impl InternedString {
 
     #[inline]
     pub fn new_from_name(name: ast::Name) -> InternedString {
-        let interner = get_ident_interner();
-        InternedString::new_from_rc_str(interner.get(name))
+        with_ident_interner(|interner| InternedString::new_from_rc_str(interner.get(name)))
     }
 }
 
@@ -611,13 +613,13 @@ pub fn intern_and_get_ident(s: &str) -> InternedString {
 /// Maps a string to its interned representation.
 #[inline]
 pub fn intern(s: &str) -> ast::Name {
-    get_ident_interner().intern(s)
+    with_ident_interner(|interner| interner.intern(s))
 }
 
 /// gensym's a new usize, using the current interner.
 #[inline]
 pub fn gensym(s: &str) -> ast::Name {
-    get_ident_interner().gensym(s)
+    with_ident_interner(|interner| interner.gensym(s))
 }
 
 /// Maps a string to an identifier with an empty syntax context.
@@ -636,8 +638,7 @@ pub fn gensym_ident(s: &str) -> ast::Ident {
 // note that this guarantees that str_ptr_eq(ident_to_string(src),interner_get(fresh_name(src)));
 // that is, that the new name and the old one are connected to ptr_eq strings.
 pub fn fresh_name(src: ast::Ident) -> ast::Name {
-    let interner = get_ident_interner();
-    interner.gensym_copy(src.name)
+    with_ident_interner(|interner| interner.gensym_copy(src.name))
     // following: debug version. Could work in final except that it's incompatible with
     // good error messages and uses of struct names in ambiguous could-be-binding
     // locations. Also definitely destroys the guarantee given above about ptr_eq.

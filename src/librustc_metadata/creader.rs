@@ -557,7 +557,6 @@ impl<'a> CrateReader<'a> {
         let source_name = format!("<{} macros>", item.ident);
         let mut macros = vec![];
         decoder::each_exported_macro(ekrate.metadata.as_slice(),
-                                     &self.cstore.intr,
             |name, attrs, span, body| {
                 // NB: Don't use parse::parse_tts_from_source_str because it parses with
                 // quote_depth > 0.
