@@ -249,6 +249,21 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         -0.0
     };
 
+    // Different NaNs
+    let _ = if true {
+        1.0 / 0.0
+    } else {
+        (-5f32).sqrt()
+    };
+
+    // Same NaNs
+    let _ = if true {
+        //~^NOTE same as this
+        std::f32::NAN
+    } else { //~ERROR this `if` has identical blocks
+        std::f32::NAN
+    };
+
     let _ = match Some(()) {
         Some(()) => 0.0,
         None => -0.0
