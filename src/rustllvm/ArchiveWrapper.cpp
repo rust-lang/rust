@@ -150,19 +150,33 @@ LLVMRustWriteArchive(char *Dst,
                      const LLVMRustArchiveMember **NewMembers,
                      bool WriteSymbtab,
                      Archive::Kind Kind) {
-  std::vector<NewArchiveIterator> Members;
+  std::vector<NewArchiveMember> Members;
 
   for (size_t i = 0; i < NumMembers; i++) {
     auto Member = NewMembers[i];
     assert(Member->name);
     if (Member->filename) {
-#if LLVM_VERSION_MINOR >= 8
-      Members.push_back(NewArchiveIterator(Member->filename));
+#if LLVM_VERSION_MINOR >= 9
+      Expected<NewArchiveMember> MOrErr = NewArchiveMember::getFile(Member->filename, true);
+      if (!MOrErr) {
+        LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
+        return -1;
+      }
+      Members.push_back(std::move(*MOrErr));
 #else
       Members.push_back(NewArchiveIterator(Member->filename, Member->name));
 #endif
     } else {
+#if LLVM_VERSION_MINOR >= 9
+      Expected<NewArchiveMember> MOrErr = NewArchiveMember::getOldMember(Member->child, true);
+      if (!MOrErr) {
+        LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
+        return -1;
+      }
+      Members.push_back(std::move(*MOrErr));
+#else
       Members.push_back(NewArchiveIterator(Member->child, Member->name));
+#endif
     }
   }
 #if LLVM_VERSION_MINOR >= 8
