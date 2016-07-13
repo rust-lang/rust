@@ -155,6 +155,7 @@ pub fn std(build: &Build, stage: u32, target: &str, out: &Path) {
 /// is largely just a wrapper around `cargo doc`.
 pub fn test(build: &Build, stage: u32, target: &str, out: &Path) {
     println!("Documenting stage{} test ({})", stage, target);
+    t!(fs::create_dir_all(out));
     let compiler = Compiler::new(stage, &build.config.build);
     let out_dir = build.stage_out(&compiler, Mode::Libtest)
                        .join(target).join("doc");
@@ -175,6 +176,7 @@ pub fn test(build: &Build, stage: u32, target: &str, out: &Path) {
 /// dependencies. This is largely just a wrapper around `cargo doc`.
 pub fn rustc(build: &Build, stage: u32, target: &str, out: &Path) {
     println!("Documenting stage{} compiler ({})", stage, target);
+    t!(fs::create_dir_all(out));
     let compiler = Compiler::new(stage, &build.config.build);
     let out_dir = build.stage_out(&compiler, Mode::Librustc)
                        .join(target).join("doc");
