@@ -229,6 +229,31 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         _ => 0,
     };
 
+    let _ = if true {
+        //~^NOTE same as this
+        0.0
+    } else { //~ERROR this `if` has identical blocks
+        0.0
+    };
+
+    let _ = if true {
+        //~^NOTE same as this
+        -0.0
+    } else { //~ERROR this `if` has identical blocks
+        -0.0
+    };
+
+    let _ = if true {
+        0.0
+    } else {
+        -0.0
+    };
+
+    let _ = match Some(()) {
+        Some(()) => 0.0,
+        None => -0.0
+    };
+
     match (Some(42), Some("")) {
         (Some(a), None) => bar(a),
         (None, Some(a)) => bar(a), // bindings have different types

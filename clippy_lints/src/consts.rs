@@ -92,7 +92,8 @@ impl PartialEq for Constant {
                 // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
                 // `Fw32 == Fw64` so don’t compare them
                 match (ls.parse::<f64>(), rs.parse::<f64>()) {
-                    (Ok(l), Ok(r)) => l.eq(&r),
+                    (Ok(l), Ok(r)) => l.eq(&r) &&
+                        (l.is_sign_positive() == r.is_sign_positive()), // needed for 0.0 != -0.0
                     _ => false,
                 }
             }
