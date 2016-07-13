@@ -9,6 +9,7 @@
 #![allow(cyclomatic_complexity)]
 #![allow(blacklisted_name)]
 #![allow(collapsible_if)]
+#![allow(zero_divided_by_zero, eq_op)]
 
 fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }
@@ -251,9 +252,9 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     // Different NaNs
     let _ = if true {
-        1.0 / 0.0
+        0.0 / 0.0
     } else {
-        (-5f32).sqrt()
+        std::f32::NAN
     };
 
     // Same NaNs
