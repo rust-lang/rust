@@ -181,7 +181,7 @@ pub fn rustc(build: &Build, stage: u32, target: &str, out: &Path) {
     let out_dir = build.stage_out(&compiler, Mode::Librustc)
                        .join(target).join("doc");
     let rustdoc = build.rustdoc(&compiler);
-    if !up_to_date(&rustdoc, &out_dir.join("rustc/index.html")) {
+    if !up_to_date(&rustdoc, &out_dir.join("rustc/index.html")) && out_dir.exists() {
         t!(fs::remove_dir_all(&out_dir));
     }
     let mut cargo = build.cargo(&compiler, Mode::Librustc, target, "doc");
