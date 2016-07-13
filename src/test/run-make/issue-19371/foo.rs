@@ -23,7 +23,6 @@ use rustc::session::config::{basic_options, build_configuration, Input, OutputTy
 use rustc_driver::driver::{compile_input, CompileController, anon_src};
 use rustc_metadata::cstore::CStore;
 use rustc_errors::registry::Registry;
-use syntax::parse::token;
 
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -57,7 +56,7 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
 
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);
     let dep_graph = DepGraph::new(opts.build_dep_graph());
-    let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+    let cstore = Rc::new(CStore::new(&dep_graph));
     let sess = build_session(opts, &dep_graph, None, descriptions, cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     (sess, cstore)

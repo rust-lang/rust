@@ -32,7 +32,6 @@ use rustc::dep_graph::DepNode;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{self, NodeId};
 use syntax::{attr,errors};
-use syntax::parse::token;
 use type_of;
 use glue;
 use abi::{Abi, FnType};
@@ -605,8 +604,8 @@ fn push_type_params<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     for projection in projections {
         let projection = projection.skip_binder();
-        let name = token::get_ident_interner().get(projection.projection_ty.item_name);
-        output.push_str(&name[..]);
+        let name = &projection.projection_ty.item_name.as_str();
+        output.push_str(name);
         output.push_str("=");
         push_unique_type_name(tcx, projection.ty, output);
         output.push_str(", ");

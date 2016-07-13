@@ -37,7 +37,6 @@ use flate::Bytes;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap;
-use syntax::parse::token::IdentInterner;
 use syntax_pos;
 
 pub use middle::cstore::{NativeLibraryKind, LinkagePreference};
@@ -106,13 +105,11 @@ pub struct CStore {
     used_libraries: RefCell<Vec<(String, NativeLibraryKind)>>,
     used_link_args: RefCell<Vec<String>>,
     statically_included_foreign_items: RefCell<NodeSet>,
-    pub intr: Rc<IdentInterner>,
     pub visible_parent_map: RefCell<DefIdMap<DefId>>,
 }
 
 impl CStore {
-    pub fn new(dep_graph: &DepGraph,
-               intr: Rc<IdentInterner>) -> CStore {
+    pub fn new(dep_graph: &DepGraph) -> CStore {
         CStore {
             dep_graph: dep_graph.clone(),
             metas: RefCell::new(FnvHashMap()),
@@ -120,7 +117,6 @@ impl CStore {
             used_crate_sources: RefCell::new(Vec::new()),
             used_libraries: RefCell::new(Vec::new()),
             used_link_args: RefCell::new(Vec::new()),
-            intr: intr,
             statically_included_foreign_items: RefCell::new(NodeSet()),
             visible_parent_map: RefCell::new(FnvHashMap()),
         }

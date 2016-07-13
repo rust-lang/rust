@@ -106,7 +106,7 @@ fn test_env<F>(source_string: &str,
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+    let cstore = Rc::new(CStore::new(&dep_graph));
     let sess = session::build_session_(options, &dep_graph, None, diagnostic_handler,
                                        Rc::new(CodeMap::new()), cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
