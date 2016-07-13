@@ -195,7 +195,7 @@ fn write_basic_block(tcx: TyCtxt,
              ALIGN,
              comment(tcx, data.terminator().source_info))?;
 
-    writeln!(w, "{}}}\n", INDENT)
+    writeln!(w, "{}}}", INDENT)
 }
 
 fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {
