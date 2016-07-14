@@ -39,7 +39,7 @@ impl ReturnPass {
         if let Some(stmt) = block.stmts.last() {
             match stmt.node {
                 StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
-                    self.check_final_expr(cx, expr);
+                    self.check_final_expr(cx, expr, Some(stmt.span));
                 }
                 _ => (),
             }
@@ -47,11 +47,11 @@ impl ReturnPass {
     }
 
     // Check a the final expression in a block if it's a return.
-    fn check_final_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
+    fn check_final_expr(&mut self, cx: &EarlyContext, expr: &Expr, span: Option<Span>) {
         match expr.node {
             // simple return is always "bad"
             ExprKind::Ret(Some(ref inner)) => {
-                self.emit_return_lint(cx, (expr.span, inner.span));
+                self.emit_return_lint(cx, span.expect("`else return` is not possible"), inner.span);
             }
             // a whole block? check it!
             ExprKind::Block(ref block) => {
@@ -62,25 +62,25 @@ impl ReturnPass {
             // (except for unit type functions) so we don't match it
             ExprKind::If(_, ref ifblock, Some(ref elsexpr)) => {
                 self.check_block_return(cx, ifblock);
-                self.check_final_expr(cx, elsexpr);
+                self.check_final_expr(cx, elsexpr, None);
             }
             // a match expr, check all arms
             ExprKind::Match(_, ref arms) => {
                 for arm in arms {
-                    self.check_final_expr(cx, &arm.body);
+                    self.check_final_expr(cx, &arm.body, Some(arm.body.span));
                 }
             }
             _ => (),
         }
     }
 
-    fn emit_return_lint(&mut self, cx: &EarlyContext, spans: (Span, Span)) {
-        if in_external_macro(cx, spans.1) {
+    fn emit_return_lint(&mut self, cx: &EarlyContext, ret_span: Span, inner_span: Span) {
+        if in_external_macro(cx, inner_span) {
             return;
         }
-        span_lint_and_then(cx, NEEDLESS_RETURN, spans.0, "unneeded return statement", |db| {
-            if let Some(snippet) = snippet_opt(cx, spans.1) {
-                db.span_suggestion(spans.0, "remove `return` as shown:", snippet);
+        span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
+            if let Some(snippet) = snippet_opt(cx, inner_span) {
+                db.span_suggestion(ret_span, "remove `return` as shown:", snippet);
             }
         });
     }
