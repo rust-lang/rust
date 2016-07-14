@@ -18,6 +18,7 @@
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
 #![feature(dec2flt)]
+#![feature(decode_utf8)]
 #![feature(fixed_size_array)]
 #![feature(flt2dec)]
 #![feature(libc)]
