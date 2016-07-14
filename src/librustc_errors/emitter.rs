@@ -166,6 +166,9 @@ impl EmitterWriter {
 
         if let Some(ref cm) = self.cm {
             for span_label in msp.span_labels() {
+                if span_label.span == DUMMY_SP || span_label.span == COMMAND_LINE_SP {
+                    continue;
+                }
                 let lo = cm.lookup_char_pos(span_label.span.lo);
                 let mut hi = cm.lookup_char_pos(span_label.span.hi);
                 let mut is_minimized = false;
@@ -386,15 +389,19 @@ impl EmitterWriter {
         let mut max = 0;
         if let Some(ref cm) = self.cm {
             for primary_span in msp.primary_spans() {
-                let hi = cm.lookup_char_pos(primary_span.hi);
-                if hi.line > max {
-                    max = hi.line;
+                if primary_span != &DUMMY_SP && primary_span != &COMMAND_LINE_SP {
+                    let hi = cm.lookup_char_pos(primary_span.hi);
+                    if hi.line > max {
+                        max = hi.line;
+                    }
                 }
             }
             for span_label in msp.span_labels() {
-                let hi = cm.lookup_char_pos(span_label.span.hi);
-                if hi.line > max {
-                    max = hi.line;
+                if span_label.span != DUMMY_SP && span_label.span != COMMAND_LINE_SP {
+                    let hi = cm.lookup_char_pos(span_label.span.hi);
+                    if hi.line > max {
+                        max = hi.line;
+                    }
                 }
             }
         }
@@ -456,7 +463,13 @@ impl EmitterWriter {
         let primary_lo =
             if let (Some(ref cm), Some(ref primary_span)) = (self.cm.as_ref(),
                                                              msp.primary_span().as_ref()) {
-                cm.lookup_char_pos(primary_span.lo)
+                if primary_span != &&DUMMY_SP && primary_span != &&COMMAND_LINE_SP {
+                    cm.lookup_char_pos(primary_span.lo)
+                }
+                else {
+                    emit_to_destination(&buffer.render(), level, &mut self.dst)?;
+                    return Ok(());
+                }
             } else {
                 // If we don't have span information, emit and exit
                 emit_to_destination(&buffer.render(), level, &mut self.dst)?;
