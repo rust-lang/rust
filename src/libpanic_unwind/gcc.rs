@@ -124,97 +124,91 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 //
 // See also: rustc_trans::trans::intrinsic::trans_gnu_try
 
-#[cfg(all(not(target_arch = "arm"),
+// All, except 64-bit Windows and ARM (however, iOS goes here as it uses SjLj unwinding).
+#[cfg(all(any(target_os = "ios", not(target_arch = "arm")),
           not(all(windows, target_arch = "x86_64"))))]
 pub mod eabi {
     use unwind as uw;
-    use libc::c_int;
+    use libc::{c_int, uintptr_t};
+    use dwarf::eh::{EHContext, EHAction, find_eh_action};
 
-    extern "C" {
-        fn __gcc_personality_v0(version: c_int,
-                                actions: uw::_Unwind_Action,
-                                exception_class: uw::_Unwind_Exception_Class,
-                                ue_header: *mut uw::_Unwind_Exception,
-                                context: *mut uw::_Unwind_Context)
-                                -> uw::_Unwind_Reason_Code;
-    }
+    // Register ids were lifted from LLVM's TargetLowering::getExceptionPointerRegister()
+    // and TargetLowering::getExceptionSelectorRegister() for each architecture,
+    // then mapped to DWARF register numbers via register definition tables
+    // (typically <arch>RegisterInfo.td, search for "DwarfRegNum").
+    // See also http://llvm.org/docs/WritingAnLLVMBackend.html#defining-a-register.
+
+    #[cfg(target_arch = "x86")]
+    const UNWIND_DATA_REG: (i32, i32) = (0, 2); // EAX, EDX
+
+    #[cfg(target_arch = "x86_64")]
+    const UNWIND_DATA_REG: (i32, i32) = (0, 1); // RAX, RDX
+
+    #[cfg(target_arch = "arm")]
+    const UNWIND_DATA_REG: (i32, i32) = (0, 1); // R0, R1
+
+    #[cfg(target_arch = "aarch64")]
+    const UNWIND_DATA_REG: (i32, i32) = (0, 1); // X0, X1
+
+    // OSX actually has the symbols, but they assert when called.
+    const HAS_GET_XXX_RELBASE: bool = cfg!(not(any(target_os = "ios", target_os = "macos")));
 
     #[lang = "eh_personality"]
     #[no_mangle]
-    extern "C" fn rust_eh_personality(version: c_int,
-                                      actions: uw::_Unwind_Action,
-                                      exception_class: uw::_Unwind_Exception_Class,
-                                      ue_header: *mut uw::_Unwind_Exception,
-                                      context: *mut uw::_Unwind_Context)
-                                      -> uw::_Unwind_Reason_Code {
-        unsafe { __gcc_personality_v0(version, actions, exception_class, ue_header, context) }
+    #[allow(unused)]
+    unsafe extern "C" fn rust_eh_personality(version: c_int,
+                                             actions: uw::_Unwind_Action,
+                                             exception_class: uw::_Unwind_Exception_Class,
+                                             exception_object: *mut uw::_Unwind_Exception,
+                                             context: *mut uw::_Unwind_Context)
+                                             -> uw::_Unwind_Reason_Code {
+        if version != 1 {
+            return uw::_URC_FATAL_PHASE1_ERROR;
+        }
+        let lsda = uw::_Unwind_GetLanguageSpecificData(context) as *const u8;
+        let mut ip_before_instr: c_int = 0;
+        let ip = uw::_Unwind_GetIPInfo(context, &mut ip_before_instr);
+        let eh_context = EHContext {
+            // The return address points 1 byte past the call instruction,
+            // which could be in the next IP range in LSDA range table.
+            ip: if ip_before_instr != 0 { ip } else { ip - 1 },
+            func_start: uw::_Unwind_GetRegionStart(context),
+            text_start: if HAS_GET_XXX_RELBASE { uw::_Unwind_GetTextRelBase(context) } else { 0 },
+            data_start: if HAS_GET_XXX_RELBASE { uw::_Unwind_GetDataRelBase(context) } else { 0 },
+        };
+        let eh_action = find_eh_action(lsda, &eh_context);
+
+        if actions as i32 & uw::_UA_SEARCH_PHASE as i32 != 0 {
+            match eh_action {
+                EHAction::None | EHAction::Cleanup(_) => return uw::_URC_CONTINUE_UNWIND,
+                EHAction::Catch(_) => return uw::_URC_HANDLER_FOUND,
+                EHAction::Terminate => return uw::_URC_FATAL_PHASE1_ERROR,
+            }
+        } else {
+            match eh_action {
+                EHAction::None => return uw::_URC_CONTINUE_UNWIND,
+                EHAction::Cleanup(lpad) | EHAction::Catch(lpad) => {
+                    uw::_Unwind_SetGR(context, UNWIND_DATA_REG.0, exception_object as uintptr_t);
+                    uw::_Unwind_SetGR(context, UNWIND_DATA_REG.1, 0);
+                    uw::_Unwind_SetIP(context, lpad);
+                    return uw::_URC_INSTALL_CONTEXT;
+                }
+                EHAction::Terminate => return uw::_URC_FATAL_PHASE2_ERROR,
+            }
+        }
     }
 
     #[lang = "eh_personality_catch"]
     #[no_mangle]
-    pub extern "C" fn rust_eh_personality_catch(version: c_int,
-                                                actions: uw::_Unwind_Action,
-                                                exception_class: uw::_Unwind_Exception_Class,
-                                                ue_header: *mut uw::_Unwind_Exception,
-                                                context: *mut uw::_Unwind_Context)
-                                                -> uw::_Unwind_Reason_Code {
-
-        if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 {
-            // search phase
-            uw::_URC_HANDLER_FOUND // catch!
-        } else {
-            // cleanup phase
-            unsafe { __gcc_personality_v0(version, actions, exception_class, ue_header, context) }
-        }
+    pub unsafe extern "C" fn rust_eh_personality_catch(version: c_int,
+                                                       actions: uw::_Unwind_Action,
+                                                       exception_class: uw::_Unwind_Exception_Class,
+                                                       ue_header: *mut uw::_Unwind_Exception,
+                                                       context: *mut uw::_Unwind_Context)
+                                                       -> uw::_Unwind_Reason_Code {
+        rust_eh_personality(version, actions, exception_class, ue_header, context)
     }
 }
-
-// iOS on armv7 is using SjLj exceptions and therefore requires to use
-// a specialized personality routine: __gcc_personality_sj0
-
-#[cfg(all(target_os = "ios", target_arch = "arm"))]
-pub mod eabi {
-    use unwind as uw;
-    use libc::c_int;
-
-    extern "C" {
-        fn __gcc_personality_sj0(version: c_int,
-                                 actions: uw::_Unwind_Action,
-                                 exception_class: uw::_Unwind_Exception_Class,
-                                 ue_header: *mut uw::_Unwind_Exception,
-                                 context: *mut uw::_Unwind_Context)
-                                 -> uw::_Unwind_Reason_Code;
-    }
-
-    #[lang = "eh_personality"]
-    #[no_mangle]
-    pub extern "C" fn rust_eh_personality(version: c_int,
-                                          actions: uw::_Unwind_Action,
-                                          exception_class: uw::_Unwind_Exception_Class,
-                                          ue_header: *mut uw::_Unwind_Exception,
-                                          context: *mut uw::_Unwind_Context)
-                                          -> uw::_Unwind_Reason_Code {
-        unsafe { __gcc_personality_sj0(version, actions, exception_class, ue_header, context) }
-    }
-
-    #[lang = "eh_personality_catch"]
-    #[no_mangle]
-    pub extern "C" fn rust_eh_personality_catch(version: c_int,
-                                                actions: uw::_Unwind_Action,
-                                                exception_class: uw::_Unwind_Exception_Class,
-                                                ue_header: *mut uw::_Unwind_Exception,
-                                                context: *mut uw::_Unwind_Context)
-                                                -> uw::_Unwind_Reason_Code {
-        if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 {
-            // search phase
-            uw::_URC_HANDLER_FOUND // catch!
-        } else {
-            // cleanup phase
-            unsafe { __gcc_personality_sj0(version, actions, exception_class, ue_header, context) }
-        }
-    }
-}
-
 
 // ARM EHABI uses a slightly different personality routine signature,
 // but otherwise works the same.
