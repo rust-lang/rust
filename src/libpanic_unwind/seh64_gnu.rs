@@ -132,7 +132,7 @@ unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: c::LPVOID) -> ! {
 
 unsafe fn find_landing_pad(dc: &c::DISPATCHER_CONTEXT) -> Option<usize> {
     let eh_ctx = EHContext {
-        ip: (dc.ControlPc - 1) as usize,
+        ip: dc.ControlPc as usize - 1,
         func_start: dc.ImageBase as usize + (*dc.FunctionEntry).BeginAddress as usize,
         text_start: dc.ImageBase as usize,
         data_start: 0,
