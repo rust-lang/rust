@@ -78,7 +78,7 @@ fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
 
 impl Emitter for ExpectErrorEmitter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
-        remove_message(self, db.message, lvl);
+        remove_message(self, &db.message, db.level);
         for child in &db.children {
             remove_message(self, &child.message, child.level);
         }
