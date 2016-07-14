@@ -2,7 +2,7 @@ use rustc::hir;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::const_qualif::ConstQualif;
-use rustc::ty::subst::{Subst, TypeSpace};
+use rustc::ty::subst::TypeSpace;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
@@ -10,9 +10,9 @@ use std::borrow::Cow;
 use std::fmt;
 use syntax::codemap::Span;
 use syntax::ptr::P;
-use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path, match_trait_method,
-            match_type, method_chain_args, return_ty, same_tys, snippet, span_lint,
-            span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
+use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_path,
+            match_trait_method, match_type, method_chain_args, return_ty, same_tys, snippet,
+            span_lint, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 use utils::MethodArgs;
 use utils::paths;
 use utils::sugg;
@@ -471,7 +471,7 @@ impl LateLintPass for Pass {
 
                     // check conventions w.r.t. conversion method names and predicates
                     let ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(item.id)).ty;
-                    let is_copy = is_copy(cx, ty, item);
+                    let is_copy = is_copy(cx, ty, item.id);
                     for &(ref conv, self_kinds) in &CONVENTIONS {
                         if_let_chain! {[
                             conv.check(&name.as_str()),
@@ -1162,9 +1162,4 @@ fn is_bool(ty: &hir::Ty) -> bool {
     } else {
         false
     }
-}
-
-fn is_copy<'a, 'ctx>(cx: &LateContext<'a, 'ctx>, ty: ty::Ty<'ctx>, item: &hir::Item) -> bool {
-    let env = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
-    !ty.subst(cx.tcx, env.free_substs).moves_by_default(cx.tcx.global_tcx(), &env, item.span)
 }
