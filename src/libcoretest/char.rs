@@ -302,3 +302,32 @@ fn eu_iterator_specializations() {
     check('\u{12340}');
     check('\u{10FFFF}');
 }
+
+#[test]
+fn test_decode_utf8() {
+    use core::char::*;
+    use core::iter::FromIterator;
+
+    for &(str, bs) in [("", &[] as &[u8]),
+                       ("A", &[0x41u8] as &[u8]),
+                       ("�", &[0xC1u8, 0x81u8] as &[u8]),
+                       ("♥", &[0xE2u8, 0x99u8, 0xA5u8]),
+                       ("♥A", &[0xE2u8, 0x99u8, 0xA5u8, 0x41u8] as &[u8]),
+                       ("�", &[0xE2u8, 0x99u8] as &[u8]),
+                       ("�A", &[0xE2u8, 0x99u8, 0x41u8] as &[u8]),
+                       ("�", &[0xC0u8] as &[u8]),
+                       ("�A", &[0xC0u8, 0x41u8] as &[u8]),
+                       ("�", &[0x80u8] as &[u8]),
+                       ("�A", &[0x80u8, 0x41u8] as &[u8]),
+                       ("�", &[0xFEu8] as &[u8]),
+                       ("�A", &[0xFEu8, 0x41u8] as &[u8]),
+                       ("�", &[0xFFu8] as &[u8]),
+                       ("�A", &[0xFFu8, 0x41u8] as &[u8])].into_iter() {
+        assert!(Iterator::eq(str.chars(),
+                             decode_utf8(bs.into_iter().map(|&b|b))
+                                 .map(|r_b| r_b.unwrap_or('\u{FFFD}'))),
+                "chars = {}, bytes = {:?}, decoded = {:?}", str, bs,
+                Vec::from_iter(decode_utf8(bs.into_iter().map(|&b|b))
+                                   .map(|r_b| r_b.unwrap_or('\u{FFFD}'))));
+    }
+}
