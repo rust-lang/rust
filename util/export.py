@@ -52,14 +52,17 @@ def parseLintDef(level, comment, name):
         match = re.match(lint_subheadline, line)
         if match:
             last_section = match.groups()[0]
-        text = match and match.groups()[1] or line
-        
+        if match:
+            text = match.groups()[1]
+        else:
+            text = line
+
         if not last_section:
             warn("Skipping comment line as it was not preceded by a heading")
             debug("in lint `%s`, line `%s`" % name, line)
 
-        lint['docs'][last_section] = (lint['docs'].get(last_section, "") + "\n" + text).strip() 
-    
+        lint['docs'][last_section] = (lint['docs'].get(last_section, "") + "\n" + text).strip()
+
     return lint
 
 def parse_file(d, f):

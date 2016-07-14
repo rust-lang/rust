@@ -1,11 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
     <title>Clippy</title>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/css/bootstrap.min.css"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/styles/github.min.css"/>
+    <style>
+        blockquote { font-size: 1em; }
+        [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak { display: none !important; }
+        .panel .anchor { display: none; }
+        .panel:hover .anchor { display: inline; color: #fff; }
+    </style>
 </head>
 <body>
     <div class="container" ng-app="clippy" ng-controller="lintList">
@@ -13,87 +21,121 @@
             <h1>ALL the Clippy Lints</h1>
         </div>
 
-        <div class="alert alert-info" role="alert" ng-if="loading">
-            Loading&#x2026;
-        </div>
-        <div class="alert alert-danger" role="alert" ng-if="error">
-            Error loading commits!
-        </div>
+        <noscript>
+            <div class="alert alert-danger" role="alert">
+                Sorry, this site only works with JavaScript!
+            </div>
+        </noscript>
 
-        <div class="panel panel-default" ng-show="data">
-            <div class="panel-body row">
-                <div class="col-md-6 form-inline">
-                    <div class="form-group">
-                        <label for="filter-level">Level</label>
-                        <select class="form-control" id="filter-level" ng-model="level.level">
-                            <option value="">All</option>
-                            <option value="Allow">Allow</option>
-                            <option value="Warn">Warn</option>
-                            <option value="Deny">Deny</option>
-                        </select>
+        <div ng-cloak>
+
+            <div class="alert alert-info" role="alert" ng-if="loading">
+                Loading&#x2026;
+            </div>
+            <div class="alert alert-danger" role="alert" ng-if="error">
+                Error loading lints!
+            </div>
+
+            <div class="panel panel-default" ng-show="data">
+                <div class="panel-body row">
+                    <div class="col-md-6 form-inline">
+                        <div class="form-group form-group-lg">
+                            <div class="checkbox" ng-repeat="(level, enabled) in levels" style="margin-right: 0.6em">
+                                <label>
+                                    <input type="checkbox" ng-model="levels[level]" />
+                                    {{level}}
+                                </label>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="input-group">
-                        <span class="input-group-addon" id="filter-label">Filter:</span>
-                        <input type="text" class="form-control" placeholder="Keywords or search string" aria-describedby="filter-label" ng-model="search" />
-                        <span class="input-group-btn">
-                            <button class="btn btn-default" type="button" ng-click="search = ''">
-                                Clear
-                            </button>
-                        </span>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-addon" id="filter-label">Filter:</span>
+                            <input type="text" class="form-control" placeholder="Keywords or search string" aria-describedby="filter-label" ng-model="search" />
+                            <span class="input-group-btn">
+                                <button class="btn btn-default" type="button" ng-click="search = ''">
+                                    Clear
+                                </button>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <article class="panel panel-default" id="{{lint.id}}" ng-repeat="lint in data | filter:byLevels | filter:search | orderBy:'id' track by lint.id">
+                <header class="panel-heading" ng-click="open[lint.id] = !open[lint.id]">
+                    <button class="btn btn-default btn-sm pull-right" style="margin-top: -6px;">
+                        <span ng-show="open[lint.id]">&minus;</span>
+                        <span ng-hide="open[lint.id]">&plus;</span>
+                    </button>
+
+                    <h2 class="panel-title">
+                        {{lint.id}}
+
+                        <span ng-if="lint.level == 'Allow'" class="label label-info">Allow</span>
+                        <span ng-if="lint.level == 'Warn'" class="label label-warning">Warn</span>
+                        <span ng-if="lint.level == 'Deny'" class="label label-danger">Deny</span>
+
+                        <a href="#{{lint.id}}" class="anchor label label-default">&para;</a>
+                    </h2>
+                </header>
+
+                <ul class="list-group" ng-if="lint.docs" ng-class="{collapse: true, in: open[lint.id]}">
+                    <li class="list-group-item" ng-repeat="(title, text) in lint.docs">
+                        <h4 class="list-group-item-heading">
+                            {{title}}
+                        </h4>
+                        <div class="list-group-item-text" ng-bind-html="text | markdown"></div>
+                    </li>
+                </ul>
+            </article>
         </div>
-
-        <article class="panel panel-default" ng-repeat="lint in data | filter:level | filter:search | orderBy:'id' track by lint.id">
-            <header class="panel-heading" ng-click="open[lint.id] = !open[lint.id]">
-                <button class="btn btn-default btn-sm pull-right" style="margin-top: -6px;">
-                    <span ng-show="open[lint.id]">&minus;</span>
-                    <span ng-hide="open[lint.id]">&plus;</span>
-                </button>
-
-                <h2 class="panel-title">
-                    {{lint.id}}
-                    <span ng-if="lint.level == 'Allow'" class="label label-info">Allow</span>
-                    <span ng-if="lint.level == 'Warn'" class="label label-warning">Warn</span>
-                    <span ng-if="lint.level == 'Deny'" class="label label-danger">Deny</span>
-                </h2>
-            </header>
-
-            <ul class="list-group" ng-if="lint.docs" ng-class="{collapse: true, in: open[lint.id]}">
-                <li class="list-group-item" ng-repeat="(title, text) in lint.docs">
-                    <h4 class="list-group-item-heading">
-                        {{title}}
-                    </h4>
-                    <div class="list-group-item-text" ng-bind-html="text | markdown"></div>
-                </li>
-            </ul>
-        </article>
     </div>
 
     <a href="https://github.com/Manishearth/rust-clippy">
         <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png"/>
     </a>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/0.3.2/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/7.0.0/markdown-it.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/languages/rust.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.12/angular.min.js"></script>
     <script>
     (function () {
+        var md = window.markdownit({
+            html: true,
+            linkify: true,
+            typographer: true,
+            highlight: function (str, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    try {
+                        return '<pre class="hljs"><code>' +
+                            hljs.highlight(lang, str, true).value +
+                            '</code></pre>';
+                    } catch (__) {}
+                }
+
+                return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
+            }
+        });
+
         angular.module("clippy", [])
         .filter('markdown', function ($sce) {
             return function (text) {
-                if (typeof text !== 'string') {
-                    text = ''
-                };
-
                 return $sce.trustAsHtml(
-                    marked(text)
+                    md.render(text || '')
+                    // Oh deer, what a hack :O
+                    .replace('<table', '<table class="table"')
                 );
             };
         })
         .controller("lintList", function ($scope, $http) {
+            // Level filter
+            $scope.levels = {Allow: true, Warn: true, Deny: true};
+            $scope.byLevels = function (lint) {
+                return $scope.levels[lint.level];
+            };
+
             // Get data
             $scope.open = {};
             $scope.loading = true;
