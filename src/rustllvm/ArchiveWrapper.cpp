@@ -158,7 +158,12 @@ LLVMRustWriteArchive(char *Dst,
                      const LLVMRustArchiveMember **NewMembers,
                      bool WriteSymbtab,
                      Archive::Kind Kind) {
+
+#if LLVM_VERSION_MINOR >= 9
   std::vector<NewArchiveMember> Members;
+#else
+  std::vector<NewArchiveIterator> Members;
+#endif
 
   for (size_t i = 0; i < NumMembers; i++) {
     auto Member = NewMembers[i];
@@ -171,6 +176,8 @@ LLVMRustWriteArchive(char *Dst,
         return -1;
       }
       Members.push_back(std::move(*MOrErr));
+#elif LLVM_VERSION_MINOR == 8
+      Members.push_back(NewArchiveIterator(Member->filename));
 #else
       Members.push_back(NewArchiveIterator(Member->filename, Member->name));
 #endif
