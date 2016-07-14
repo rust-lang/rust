@@ -418,6 +418,6 @@ LLVMRustGetModuleDataLayout(LLVMModuleRef M) {
 extern "C" void
 LLVMRustSetModulePIELevel(LLVMModuleRef M) {
 #if LLVM_VERSION_MINOR >= 9
-    unwrap(M)->setPIELevel(PIELevel::Level::Default);
+    unwrap(M)->setPIELevel(PIELevel::Level::Large);
 #endif
 }
