@@ -26,7 +26,10 @@ pub struct Pass;
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `x.unwrap()`
+/// **Example:**
+/// ```rust
+/// x.unwrap()
+/// ```
 declare_lint! {
     pub OPTION_UNWRAP_USED, Allow,
     "using `Option.unwrap()`, which should at least get a better message using `expect()`"
@@ -40,7 +43,10 @@ declare_lint! {
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `x.unwrap()`
+/// **Example:**
+/// ```rust
+/// x.unwrap()
+/// ```
 declare_lint! {
     pub RESULT_UNWRAP_USED, Allow,
     "using `Result.unwrap()`, which might be better handled"
@@ -66,13 +72,13 @@ declare_lint! {
 
 /// **What it does:** This lint checks for methods with certain name prefixes and which doesn't match how self is taken. The actual rules are:
 ///
-/// |Prefix |`self` taken        |
-/// |-------|--------------------|
-/// |`as_`  |`&self` or &mut self|
-/// |`from_`| none               |
-/// |`into_`|`self`              |
-/// |`is_`  |`&self` or none     |
-/// |`to_`  |`&self`             |
+/// |Prefix |`self` taken          |
+/// |-------|----------------------|
+/// |`as_`  |`&self` or `&mut self`|
+/// |`from_`| none                 |
+/// |`into_`|`self`                |
+/// |`is_`  |`&self` or none       |
+/// |`to_`  |`&self`               |
 ///
 /// **Why is this bad?** Consistency breeds readability. If you follow the conventions, your users won't be surprised that they, e.g., need to supply a mutable reference to a `as_..` function.
 ///
@@ -80,7 +86,7 @@ declare_lint! {
 ///
 /// **Example**
 ///
-/// ```
+/// ```rust
 /// impl X {
 ///     fn as_str(self) -> &str { .. }
 /// }
@@ -98,7 +104,7 @@ declare_lint! {
 /// **Known problems:** Actually *renaming* the function may break clients if the function is part of the public interface. In that case, be mindful of the stability guarantees you've given your users.
 ///
 /// **Example:**
-/// ```
+/// ```rust
 /// impl X {
 ///     pub fn as_str(self) -> &str { .. }
 /// }
@@ -115,7 +121,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `x.ok().expect("why did I do this again?")`
+/// **Example:**
+/// ```rust
+/// x.ok().expect("why did I do this again?")
+/// ```
 declare_lint! {
     pub OK_EXPECT, Warn,
     "using `ok().expect()`, which gives worse error messages than \
@@ -128,7 +137,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `x.map(|a| a + 1).unwrap_or(0)`
+/// **Example:**
+/// ```rust
+/// x.map(|a| a + 1).unwrap_or(0)
+/// ```
 declare_lint! {
     pub OPTION_MAP_UNWRAP_OR, Warn,
     "using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as \
@@ -141,7 +153,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `x.map(|a| a + 1).unwrap_or_else(some_function)`
+/// **Example:**
+/// ```rust
+/// x.map(|a| a + 1).unwrap_or_else(some_function)
+/// ```
 declare_lint! {
     pub OPTION_MAP_UNWRAP_OR_ELSE, Warn,
     "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
@@ -154,7 +169,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `iter.filter(|x| x == 0).next()`
+/// **Example:**
+/// ```rust
+/// iter.filter(|x| x == 0).next()
+/// ```
 declare_lint! {
     pub FILTER_NEXT, Warn,
     "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
@@ -166,7 +184,10 @@ declare_lint! {
 ///
 /// **Known problems:** Often requires a condition + Option/Iterator creation inside the closure
 ///
-/// **Example:** `iter.filter(|x| x == 0).map(|x| x * 2)`
+/// **Example:**
+/// ```rust
+/// iter.filter(|x| x == 0).map(|x| x * 2)
+/// ```
 declare_lint! {
     pub FILTER_MAP, Allow,
     "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call"
@@ -179,7 +200,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `iter.find(|x| x == 0).is_some()`
+/// **Example:**
+/// ```rust
+/// iter.find(|x| x == 0).is_some()
+/// ```
 declare_lint! {
     pub SEARCH_IS_SOME, Warn,
     "using an iterator search followed by `is_some()`, which is more succinctly \
@@ -193,7 +217,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `name.chars().next() == Some('_')`
+/// **Example:**
+/// ```rust
+/// name.chars().next() == Some('_')
+/// ```
 declare_lint! {
     pub CHARS_NEXT_CMP, Warn,
     "using `.chars().next()` to check if a string starts with a char"
@@ -229,7 +256,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `my_vec.extend(&xs)`
+/// **Example:**
+/// ```rust
+/// my_vec.extend(&xs)
+/// ```
 declare_lint! {
     pub EXTEND_FROM_SLICE, Warn,
     "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice"
@@ -242,7 +272,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `42u64.clone()`
+/// **Example:**
+/// ```rust
+/// 42u64.clone()
+/// ```
 declare_lint! {
     pub CLONE_ON_COPY, Warn, "using `clone` on a `Copy` type"
 }
@@ -290,7 +323,10 @@ declare_lint! {
 ///
 /// **Known problems:** Does not catch multi-byte unicode characters.
 ///
-/// **Example:** `_.split("x")` could be `_.split('x')`
+/// **Example:**
+/// ```rust
+/// _.split("x")` could be `_.split('x')
+/// ```
 declare_lint! {
     pub SINGLE_CHAR_PATTERN,
     Warn,
