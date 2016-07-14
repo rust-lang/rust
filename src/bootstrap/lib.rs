@@ -118,6 +118,7 @@ pub struct Build {
     ver_date: Option<String>,
     version: String,
     package_vers: String,
+    local_rebuild: bool,
     bootstrap_key: String,
     bootstrap_key_stage0: String,
 
@@ -174,6 +175,7 @@ impl Build {
             Some(ref s) => PathBuf::from(s),
             None => stage0_root.join(exe("cargo", &config.build)),
         };
+        let local_rebuild = config.local_rebuild;
 
         Build {
             flags: flags,
@@ -189,6 +191,7 @@ impl Build {
             short_ver_hash: None,
             ver_date: None,
             version: String::new(),
+            local_rebuild: local_rebuild,
             bootstrap_key: String::new(),
             bootstrap_key_stage0: String::new(),
             package_vers: String::new(),
@@ -219,6 +222,16 @@ impl Build {
         sanity::check(self);
         self.verbose("collecting channel variables");
         channel::collect(self);
+        // If local-rust is the same as the current version, then force a local-rebuild
+        let local_version_verbose = output(
+            Command::new(&self.rustc).arg("--version").arg("--verbose"));
+        let local_release = local_version_verbose
+            .lines().filter(|x| x.starts_with("release:"))
+            .next().unwrap().trim_left_matches("release:").trim();
+        if local_release == self.release {
+            self.verbose(&format!("auto-detected local-rebuild {}", self.release));
+            self.local_rebuild = true;
+        }
         self.verbose("updating submodules");
         self.update_submodules();
 
@@ -525,7 +538,7 @@ impl Build {
              .arg("--target").arg(target);
 
         let stage;
-        if compiler.stage == 0 && self.config.local_rebuild {
+        if compiler.stage == 0 && self.local_rebuild {
             // Assume the local-rebuild rustc already has stage1 features.
             stage = 1;
         } else {
@@ -766,7 +779,7 @@ impl Build {
         // In stage0 we're using a previously released stable compiler, so we
         // use the stage0 bootstrap key. Otherwise we use our own build's
         // bootstrap key.
-        let bootstrap_key = if compiler.is_snapshot(self) && !self.config.local_rebuild {
+        let bootstrap_key = if compiler.is_snapshot(self) && !self.local_rebuild {
             &self.bootstrap_key_stage0
         } else {
             &self.bootstrap_key
