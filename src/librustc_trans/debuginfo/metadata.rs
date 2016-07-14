@@ -1030,7 +1030,7 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
             split_name.as_ptr() as *const _)
     };
 
-    fn fallback_path(scc: &::context::SharedCrateContext) -> CString {
+    fn fallback_path(scc: &SharedCrateContext) -> CString {
         CString::new(scc.link_meta().crate_name.clone()).unwrap()
     }
 }
