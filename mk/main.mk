@@ -64,12 +64,21 @@ CFG_FILENAME_EXTRA=$(shell printf '%s' $(CFG_RELEASE)$(CFG_EXTRA_FILENAME) | $(C
 # from users enabling unstable features on the stable compiler.
 CFG_BOOTSTRAP_KEY=$(CFG_FILENAME_EXTRA)
 
+# If local-rust is the same as the current version, then force a local-rebuild
+ifdef CFG_ENABLE_LOCAL_RUST
+ifeq ($(CFG_RELEASE),\
+      $(shell $(S)src/etc/local_stage0.sh --print-rustc-release $(CFG_LOCAL_RUST_ROOT)))
+    CFG_INFO := $(info cfg: auto-detected local-rebuild $(CFG_RELEASE))
+    CFG_ENABLE_LOCAL_REBUILD = 1
+endif
+endif
+
 # The stage0 compiler needs to use the previous key recorded in src/stage0.txt,
 # except for local-rebuild when it just uses the same current key.
 ifdef CFG_ENABLE_LOCAL_REBUILD
 CFG_BOOTSTRAP_KEY_STAGE0=$(CFG_BOOTSTRAP_KEY)
 else
-CFG_BOOTSTRAP_KEY_STAGE0=$(shell grep 'rustc_key' $(S)src/stage0.txt | sed 's/rustc_key: '//)
+CFG_BOOTSTRAP_KEY_STAGE0=$(shell sed -ne 's/^rustc_key: //p' $(S)src/stage0.txt)
 endif
 
 # The name of the package to use for creating tarballs, installers etc.
