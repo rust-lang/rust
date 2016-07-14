@@ -25,7 +25,11 @@ declare_lint! {
 ///
 /// **Known problems:** None?
 ///
-/// **Example:** let (a, b, c, d, e, f, g) = (...);
+/// **Example:**
+///
+/// ```rust
+/// let (a, b, c, d, e, f, g) = (...);
+/// ```
 declare_lint! {
     pub MANY_SINGLE_CHAR_NAMES,
     Warn,
