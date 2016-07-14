@@ -15,7 +15,7 @@ use std::env;
 use std::mem;
 use std::str::FromStr;
 use syntax::ast::{self, LitKind};
-use syntax::codemap::{ExpnFormat, ExpnInfo, MultiSpan, Span};
+use syntax::codemap::{ExpnFormat, ExpnInfo, MultiSpan, Span, DUMMY_SP};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 
@@ -722,4 +722,9 @@ pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
         ty::TyFnPtr(ref f) => f.unsafety == Unsafety::Unsafe,
         _ => false,
     }
+}
+
+pub fn is_copy<'a, 'ctx>(cx: &LateContext<'a, 'ctx>, ty: ty::Ty<'ctx>, env: NodeId) -> bool {
+    let env = ty::ParameterEnvironment::for_item(cx.tcx, env);
+    !ty.subst(cx.tcx, env.free_substs).moves_by_default(cx.tcx.global_tcx(), &env, DUMMY_SP)
 }

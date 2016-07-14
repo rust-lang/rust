@@ -3,6 +3,9 @@
 
 #![deny(useless_vec)]
 
+#[derive(Debug)]
+struct NonCopy;
+
 fn on_slice(_: &[u8]) {}
 #[allow(ptr_arg)]
 fn on_vec(_: &Vec<u8>) {}
@@ -62,6 +65,10 @@ fn main() {
         //~^ ERROR useless use of `vec!`
         //~| HELP you can use
         //~| SUGGESTION for a in &[1, 2, 3] {
-        println!("{}", a);
+        println!("{:?}", a);
+    }
+
+    for a in vec![NonCopy, NonCopy] {
+        println!("{:?}", a);
     }
 }
