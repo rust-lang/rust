@@ -827,7 +827,6 @@ impl CodeMapper for CodeMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{self, Write};
     use errors::snippet::StyledString;
     use std::rc::Rc;
 
@@ -1116,24 +1115,6 @@ mod tests {
                 i += 1;
             }
         }
-    }
-
-    fn splice(start: Span, end: Span) -> Span {
-        Span {
-            lo: start.lo,
-            hi: end.hi,
-            expn_id: NO_EXPANSION,
-        }
-    }
-
-    fn make_string(lines: Vec<Vec<StyledString>>) -> String {
-        lines.iter()
-            .flat_map(|rl| {
-                rl.iter()
-                    .map(|s| &s.text[..])
-                    .chain(Some("\n"))
-            })
-            .collect()
     }
 
     fn init_expansion_chain(cm: &CodeMap) -> Span {
