@@ -1,7 +1,8 @@
-- Feature Name: default_and_expanded_errors_for_rustc
+- Feature Name: `default_and_expanded_errors_for_rustc`
 - Start Date: 2016-06-07
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1644](https://github.com/rust-lang/rfcs/pull/1644)
+- Rust Issue: [rust-lang/rust#34826](https://github.com/rust-lang/rust/issues/34826)
+              [rust-lang/rust#34827](https://github.com/rust-lang/rust/issues/34827)
 
 # Summary
 This RFC proposes an update to error reporting in rustc. Its focus is to change the format of Rust
