@@ -82,6 +82,12 @@ fn test_ops() {
     let half_any = Constant::Float("0.5".into(), FloatWidth::Any);
     let half32 = Constant::Float("0.5".into(), FloatWidth::F32);
     let half64 = Constant::Float("0.5".into(), FloatWidth::F64);
+    let pos_zero = Constant::Float("0.0".into(), FloatWidth::F64);
+    let neg_zero = Constant::Float("-0.0".into(), FloatWidth::F64);
+
+    assert_eq!(pos_zero, pos_zero);
+    assert_eq!(neg_zero, neg_zero);
+    assert_eq!(None, pos_zero.partial_cmp(&neg_zero));
 
     assert_eq!(half_any, half32);
     assert_eq!(half_any, half64);

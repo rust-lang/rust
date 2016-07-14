@@ -92,7 +92,10 @@ impl PartialEq for Constant {
                 // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
                 // `Fw32 == Fw64` so don’t compare them
                 match (ls.parse::<f64>(), rs.parse::<f64>()) {
-                    (Ok(l), Ok(r)) => l.eq(&r),
+                    // mem::transmute is required to catch non-matching 0.0, -0.0, and NaNs
+                    (Ok(l), Ok(r)) => unsafe {
+                        mem::transmute::<f64, u64>(l) == mem::transmute::<f64, u64>(r)
+                    },
                     _ => false,
                 }
             }
@@ -159,7 +162,11 @@ impl PartialOrd for Constant {
             (&Constant::Int(l), &Constant::Int(r)) => Some(l.cmp(&r)),
             (&Constant::Float(ref ls, _), &Constant::Float(ref rs, _)) => {
                 match (ls.parse::<f64>(), rs.parse::<f64>()) {
-                    (Ok(ref l), Ok(ref r)) => l.partial_cmp(r),
+                    (Ok(ref l), Ok(ref r)) => match (l.partial_cmp(r), l.is_sign_positive() == r.is_sign_positive()) {
+                        // Check for comparison of -0.0 and 0.0
+                        (Some(Ordering::Equal), false) => None,
+                        (x, _) => x
+                    },
                     _ => None,
                 }
             }

@@ -9,6 +9,7 @@
 #![allow(cyclomatic_complexity)]
 #![allow(blacklisted_name)]
 #![allow(collapsible_if)]
+#![allow(zero_divided_by_zero, eq_op)]
 
 fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }
@@ -227,6 +228,46 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         //~|NOTE `(1, .., 3) | (.., 3)`
         (.., 3) => 42, //~ERROR this `match` has identical arm bodies
         _ => 0,
+    };
+
+    let _ = if true {
+        //~^NOTE same as this
+        0.0
+    } else { //~ERROR this `if` has identical blocks
+        0.0
+    };
+
+    let _ = if true {
+        //~^NOTE same as this
+        -0.0
+    } else { //~ERROR this `if` has identical blocks
+        -0.0
+    };
+
+    let _ = if true {
+        0.0
+    } else {
+        -0.0
+    };
+
+    // Different NaNs
+    let _ = if true {
+        0.0 / 0.0
+    } else {
+        std::f32::NAN
+    };
+
+    // Same NaNs
+    let _ = if true {
+        //~^NOTE same as this
+        std::f32::NAN
+    } else { //~ERROR this `if` has identical blocks
+        std::f32::NAN
+    };
+
+    let _ = match Some(()) {
+        Some(()) => 0.0,
+        None => -0.0
     };
 
     match (Some(42), Some("")) {
