@@ -828,6 +828,7 @@ impl CodeMapper for CodeMap {
 mod tests {
     use super::*;
     use std::io::{self, Write};
+    use errors::snippet::StyledString;
     use std::rc::Rc;
 
     #[test]
