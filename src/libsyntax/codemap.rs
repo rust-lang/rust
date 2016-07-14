@@ -827,7 +827,6 @@ impl CodeMapper for CodeMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use errors::snippet::StyledString;
     use std::rc::Rc;
 
     #[test]
