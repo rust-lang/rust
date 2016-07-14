@@ -34,6 +34,7 @@ use rustc::ty::subst::{Substs, VecPerParamSpace};
 use rustc::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
 use session::Session;
+use session::config;
 use symbol_map::SymbolMap;
 use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
@@ -322,6 +323,38 @@ impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
     }
 }
 
+pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
+    let reloc_model_arg = match sess.opts.cg.relocation_model {
+        Some(ref s) => &s[..],
+        None => &sess.target.target.options.relocation_model[..],
+    };
+
+    match reloc_model_arg {
+        "pic" => llvm::RelocPIC,
+        "static" => llvm::RelocStatic,
+        "default" => llvm::RelocDefault,
+        "dynamic-no-pic" => llvm::RelocDynamicNoPic,
+        _ => {
+            sess.err(&format!("{:?} is not a valid relocation mode",
+                             sess.opts
+                                 .cg
+                                 .relocation_model));
+            sess.abort_if_errors();
+            bug!();
+        }
+    }
+}
+
+fn is_any_library(sess: &Session) -> bool {
+    sess.crate_types.borrow().iter().any(|ty| {
+        *ty != config::CrateTypeExecutable
+    })
+}
+
+pub fn is_pie_binary(sess: &Session) -> bool {
+    !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocPIC
+}
+
 unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
     let mod_name = CString::new(mod_name).unwrap();
@@ -352,7 +385,11 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     let llvm_target = sess.target.target.llvm_target.as_bytes();
     let llvm_target = CString::new(llvm_target).unwrap();
     llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
-    llvm::LLVMRustSetModulePIELevel(llmod);
+
+    if is_pie_binary(sess) {
+        llvm::LLVMRustSetModulePIELevel(llmod);
+    }
+
     (llcx, llmod)
 }
 

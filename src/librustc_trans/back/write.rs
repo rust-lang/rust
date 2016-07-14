@@ -24,6 +24,7 @@ use util::fs::link_or_copy;
 use errors::{self, Handler, Level, DiagnosticBuilder};
 use errors::emitter::Emitter;
 use syntax_pos::MultiSpan;
+use context::{is_pie_binary, get_reloc_model};
 
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
@@ -154,31 +155,10 @@ fn get_llvm_opt_size(optimize: config::OptLevel) -> llvm::CodeGenOptSize {
 }
 
 pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
-    let reloc_model_arg = match sess.opts.cg.relocation_model {
-        Some(ref s) => &s[..],
-        None => &sess.target.target.options.relocation_model[..],
-    };
-    let reloc_model = match reloc_model_arg {
-        "pic" => llvm::RelocPIC,
-        "static" => llvm::RelocStatic,
-        "default" => llvm::RelocDefault,
-        "dynamic-no-pic" => llvm::RelocDynamicNoPic,
-        _ => {
-            sess.err(&format!("{:?} is not a valid relocation mode",
-                             sess.opts
-                                 .cg
-                                 .relocation_model));
-            sess.abort_if_errors();
-            bug!();
-        }
-    };
+    let reloc_model = get_reloc_model(sess);
 
     let opt_level = get_llvm_opt_level(sess.opts.optimize);
     let use_softfp = sess.opts.cg.soft_float;
-
-    let any_library = sess.crate_types.borrow().iter().any(|ty| {
-        *ty != config::CrateTypeExecutable
-    });
 
     let ffunction_sections = sess.target.target.options.function_sections;
     let fdata_sections = ffunction_sections;
@@ -220,7 +200,7 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
             reloc_model,
             opt_level,
             use_softfp,
-            !any_library && reloc_model == llvm::RelocPIC,
+            is_pie_binary(sess),
             ffunction_sections,
             fdata_sections,
         )
