@@ -238,6 +238,8 @@ macro_rules! write {
 }
 
 /// Use the `format!` syntax to write data into a buffer, appending a newline.
+/// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`)
+/// alone (no additional CARRIAGE RETURN (`\r`/`U+000D`).
 ///
 /// This macro is typically used with a buffer of `&mut `[`Write`][write].
 ///
