@@ -10,7 +10,10 @@ use utils::{span_lint, span_help_and_lint, snippet, span_lint_and_then};
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `let { a: _, b: ref b, c: _ } = ..`
+/// **Example:**
+/// ```rust
+/// let { a: _, b: ref b, c: _ } = ..
+/// ```
 declare_lint! {
     pub UNNEEDED_FIELD_PATTERN, Warn,
     "Struct fields are bound to a wildcard instead of using `..`"
@@ -22,7 +25,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `fn foo(a: i32, _a: i32) {}`
+/// **Example:**
+/// ```rust
+/// fn foo(a: i32, _a: i32) {}
+/// ```
 declare_lint! {
     pub DUPLICATE_UNDERSCORE_ARGUMENT, Warn,
     "Function arguments having names which only differ by an underscore"
@@ -34,7 +40,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `(|| 42)()`
+/// **Example:**
+/// ```rust
+/// (|| 42)()
+/// ```
 declare_lint! {
     pub REDUNDANT_CLOSURE_CALL, Warn,
     "Closures should not be called in the expression they are defined"
@@ -46,7 +55,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `--x;`
+/// **Example:**
+/// ```rust
+/// --x;
+/// ```
 declare_lint! {
     pub DOUBLE_NEG, Warn,
     "`--x` is a double negation of `x` and not a pre-decrement as in C or C++"

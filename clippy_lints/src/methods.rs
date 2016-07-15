@@ -22,7 +22,9 @@ pub struct Pass;
 
 /// **What it does:** This lint checks for `.unwrap()` calls on `Option`s.
 ///
-/// **Why is this bad?** Usually it is better to handle the `None` case, or to at least call `.expect(_)` with a more helpful message. Still, for a lot of quick-and-dirty code, `unwrap` is a good choice, which is why this lint is `Allow` by default.
+/// **Why is this bad?** Usually it is better to handle the `None` case, or to at least call
+/// `.expect(_)` with a more helpful message. Still, for a lot of quick-and-dirty code, `unwrap` is
+/// a good choice, which is why this lint is `Allow` by default.
 ///
 /// **Known problems:** None
 ///
@@ -37,9 +39,12 @@ declare_lint! {
 
 /// **What it does:** This lint checks for `.unwrap()` calls on `Result`s.
 ///
-/// **Why is this bad?** `result.unwrap()` will let the thread panic on `Err` values. Normally, you want to implement more sophisticated error handling, and propagate errors upwards with `try!`.
+/// **Why is this bad?** `result.unwrap()` will let the thread panic on `Err` values. Normally, you
+/// want to implement more sophisticated error handling, and propagate errors upwards with `try!`.
 ///
-/// Even if you want to panic on errors, not all `Error`s implement good messages on display. Therefore it may be beneficial to look at the places where they may get displayed. Activate this lint to do just that.
+/// Even if you want to panic on errors, not all `Error`s implement good messages on display.
+/// Therefore it may be beneficial to look at the places where they may get displayed. Activate
+/// this lint to do just that.
 ///
 /// **Known problems:** None
 ///
@@ -52,14 +57,18 @@ declare_lint! {
     "using `Result.unwrap()`, which might be better handled"
 }
 
-/// **What it does:** This lint checks for methods that should live in a trait implementation of a `std` trait (see [llogiq's blog post](http://llogiq.github.io/2015/07/30/traits.html) for further information) instead of an inherent implementation.
+/// **What it does:** This lint checks for methods that should live in a trait implementation of a
+/// `std` trait (see [llogiq's blog post](http://llogiq.github.io/2015/07/30/traits.html) for
+/// further information) instead of an inherent implementation.
 ///
-/// **Why is this bad?** Implementing the traits improve ergonomics for users of the code, often with very little cost. Also people seeing a `mul(..)` method may expect `*` to work equally, so you should have good reason to disappoint them.
+/// **Why is this bad?** Implementing the traits improve ergonomics for users of the code, often
+/// with very little cost. Also people seeing a `mul(..)` method may expect `*` to work equally, so
+/// you should have good reason to disappoint them.
 ///
 /// **Known problems:** None
 ///
 /// **Example:**
-/// ```
+/// ```rust
 /// struct X;
 /// impl X {
 ///    fn add(&self, other: &X) -> X { .. }
@@ -70,7 +79,8 @@ declare_lint! {
     "defining a method that should be implementing a std trait"
 }
 
-/// **What it does:** This lint checks for methods with certain name prefixes and which doesn't match how self is taken. The actual rules are:
+/// **What it does:** This lint checks for methods with certain name prefixes and which doesn't
+/// match how self is taken. The actual rules are:
 ///
 /// |Prefix |`self` taken          |
 /// |-------|----------------------|
@@ -80,7 +90,8 @@ declare_lint! {
 /// |`is_`  |`&self` or none       |
 /// |`to_`  |`&self`               |
 ///
-/// **Why is this bad?** Consistency breeds readability. If you follow the conventions, your users won't be surprised that they, e.g., need to supply a mutable reference to a `as_..` function.
+/// **Why is this bad?** Consistency breeds readability. If you follow the conventions, your users
+/// won't be surprised that they, e.g., need to supply a mutable reference to a `as_..` function.
 ///
 /// **Known problems:** None
 ///
@@ -97,11 +108,14 @@ declare_lint! {
      `self` with the wrong convention"
 }
 
-/// **What it does:** This is the same as [`wrong_self_convention`](#wrong_self_convention), but for public items.
+/// **What it does:** This is the same as [`wrong_self_convention`](#wrong_self_convention), but
+/// for public items.
 ///
 /// **Why is this bad?** See [`wrong_self_convention`](#wrong_self_convention).
 ///
-/// **Known problems:** Actually *renaming* the function may break clients if the function is part of the public interface. In that case, be mindful of the stability guarantees you've given your users.
+/// **Known problems:** Actually *renaming* the function may break clients if the function is part
+/// of the public interface. In that case, be mindful of the stability guarantees you've given your
+/// users.
 ///
 /// **Example:**
 /// ```rust
@@ -117,7 +131,8 @@ declare_lint! {
 
 /// **What it does:** This lint checks for usage of `ok().expect(..)`.
 ///
-/// **Why is this bad?** Because you usually call `expect()` on the `Result` directly to get a good error message.
+/// **Why is this bad?** Because you usually call `expect()` on the `Result` directly to get a good
+/// error message.
 ///
 /// **Known problems:** None.
 ///
@@ -178,7 +193,8 @@ declare_lint! {
     "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
 }
 
-/// **What it does:** This lint `Warn`s on `_.filter(_).map(_)`, `_.filter(_).flat_map(_)`, `_.filter_map(_).flat_map(_)` and similar.
+/// **What it does:** This lint `Warn`s on `_.filter(_).map(_)`, `_.filter(_).flat_map(_)`,
+/// `_.filter_map(_).flat_map(_)` and similar.
 ///
 /// **Why is this bad?** Readability, this can be written more concisely as a single method call
 ///
@@ -352,7 +368,7 @@ declare_lint! {
 /// ```rust,ignore
 /// let c_str = CString::new("foo").unwrap();
 /// unsafe {
-/// call_some_ffi_func(c_str.as_ptr());
+///     call_some_ffi_func(c_str.as_ptr());
 /// }
 /// ```
 declare_lint! {

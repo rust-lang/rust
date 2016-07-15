@@ -18,7 +18,7 @@ use utils::paths;
 /// **Known problems:** False positives, big time. This lint is meant to be deactivated by everyone doing serious performance work. This means having done the measurement.
 ///
 /// **Example:**
-/// ```
+/// ```rust
 /// #[inline(always)]
 /// fn not_quite_hot_code(..) { ... }
 /// ```
@@ -34,7 +34,7 @@ declare_lint! {
 /// **Known problems:** None
 ///
 /// **Example:**
-/// ```
+/// ```rust
 /// #[deprecated(since = "forever")]
 /// fn something_else(..) { ... }
 /// ```

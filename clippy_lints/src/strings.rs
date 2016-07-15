@@ -1,8 +1,3 @@
-//! This lint catches both string addition and string addition + assignment
-//!
-//! Note that since we have two lints where one subsumes the other, we try to
-//! disable the subsumed lint unless it has a higher level
-
 use rustc::hir::*;
 use rustc::lint::*;
 use syntax::codemap::Spanned;
@@ -11,13 +6,14 @@ use utils::{match_type, paths, span_lint, span_lint_and_then, walk_ptrs_ty, get_
 
 /// **What it does:** This lint matches code of the form `x = x + y` (without `let`!).
 ///
-/// **Why is this bad?** It's not really bad, but some people think that the `.push_str(_)` method is more readable.
+/// **Why is this bad?** It's not really bad, but some people think that the `.push_str(_)` method
+/// is more readable.
 ///
 /// **Known problems:** None.
 ///
 /// **Example:**
 ///
-/// ```
+/// ```rust
 /// let mut x = "Hello".to_owned();
 /// x = x + ", World";
 /// ```
@@ -27,17 +23,22 @@ declare_lint! {
     "using `x = x + ..` where x is a `String`; suggests using `push_str()` instead"
 }
 
-/// **What it does:** The `string_add` lint matches all instances of `x + _` where `x` is of type `String`, but only if [`string_add_assign`](#string_add_assign) does *not* match.
+/// **What it does:** The `string_add` lint matches all instances of `x + _` where `x` is of type
+/// `String`, but only if [`string_add_assign`](#string_add_assign) does *not* match.
 ///
-/// **Why is this bad?** It's not bad in and of itself. However, this particular `Add` implementation is asymmetric (the other operand need not be `String`, but `x` does), while addition as mathematically defined is symmetric, also the `String::push_str(_)` function is a perfectly good replacement. Therefore some dislike it and wish not to have it in their code.
+/// **Why is this bad?** It's not bad in and of itself. However, this particular `Add`
+/// implementation is asymmetric (the other operand need not be `String`, but `x` does), while
+/// addition as mathematically defined is symmetric, also the `String::push_str(_)` function is a
+/// perfectly good replacement. Therefore some dislike it and wish not to have it in their code.
 ///
-/// That said, other people think that String addition, having a long tradition in other languages is actually fine, which is why we decided to make this particular lint `allow` by default.
+/// That said, other people think that string addition, having a long tradition in other languages
+/// is actually fine, which is why we decided to make this particular lint `allow` by default.
 ///
 /// **Known problems:** None
 ///
 /// **Example:**
 ///
-/// ```
+/// ```rust
 /// let x = "Hello".to_owned();
 /// x + ", World"
 /// ```
@@ -48,13 +49,14 @@ declare_lint! {
 }
 
 /// **What it does:** This lint matches the `as_bytes` method called on string
-/// literals that contain only ascii characters.
+/// literals that contain only ASCII characters.
 ///
-/// **Why is this bad?** Byte string literals (e.g. `b"foo"`) can be used instead. They are shorter but less discoverable than `as_bytes()`.
+/// **Why is this bad?** Byte string literals (e.g. `b"foo"`) can be used instead. They are shorter
+/// but less discoverable than `as_bytes()`.
 ///
 /// **Example:**
 ///
-/// ```
+/// ```rust
 /// let bs = "a byte string".as_bytes();
 /// ```
 declare_lint! {

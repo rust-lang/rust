@@ -10,7 +10,10 @@ use utils::{is_adjusted, match_path, match_trait_method, match_type, paths, snip
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `x.map(|e| e.clone());`
+/// **Example:**
+/// ```rust
+/// x.map(|e| e.clone());
+/// ```
 declare_lint! {
     pub MAP_CLONE, Warn,
     "using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends \

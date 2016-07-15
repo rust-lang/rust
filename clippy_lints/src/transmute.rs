@@ -9,22 +9,31 @@ use utils::sugg;
 ///
 /// **Why is this bad?** It's basically guaranteed to be undefined behaviour
 ///
-/// **Known problems:** When accessing C, users might want to store pointer sized objects in `extradata` arguments to save an allocation.
+/// **Known problems:** When accessing C, users might want to store pointer sized objects in
+/// `extradata` arguments to save an allocation.
 ///
-/// **Example:** `let ptr: *const T = core::intrinsics::transmute('x')`.
+/// **Example:**
+/// ```rust
+/// let ptr: *const T = core::intrinsics::transmute('x')`
+/// ```
 declare_lint! {
     pub WRONG_TRANSMUTE,
     Warn,
     "transmutes that are confusing at best, undefined behaviour at worst and always useless"
 }
 
-/// **What it does:** This lint checks for transmutes to the original type of the object and transmutes that could be a cast.
+/// **What it does:** This lint checks for transmutes to the original type of the object and
+/// transmutes that could be a cast.
 ///
-/// **Why is this bad?** Readability. The code tricks people into thinking that something complex is going on
+/// **Why is this bad?** Readability. The code tricks people into thinking that something complex
+/// is going on
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `core::intrinsics::transmute(t)` where the result type is the same as `t`'s.
+/// **Example:**
+/// ```rust
+/// core::intrinsics::transmute(t) // where the result type is the same as `t`'s
+/// ```
 declare_lint! {
     pub USELESS_TRANSMUTE,
     Warn,
@@ -37,7 +46,10 @@ declare_lint! {
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `core::intrinsics::transmute(t)` where the result type is the same as `*t` or `&t`'s.
+/// **Example:**
+/// ```rust
+/// core::intrinsics::transmute(t)` // where the result type is the same as `*t` or `&t`'s
+/// ```
 declare_lint! {
     pub CROSSPOINTER_TRANSMUTE,
     Warn,

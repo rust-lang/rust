@@ -11,7 +11,7 @@ use utils::{higher, sugg};
 /// **Known problems:** Types implementing `OpAssign` don't necessarily implement `Op`.
 ///
 /// **Example:**
-/// ```
+/// ```rust
 /// a += 1;
 /// ```
 declare_restriction_lint! {
@@ -27,7 +27,7 @@ declare_restriction_lint! {
 ///
 /// **Example:**
 ///
-/// ```
+/// ```rust
 /// let mut a = 5;
 /// ...
 /// a = a + b;

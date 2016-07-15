@@ -17,6 +17,7 @@ use utils::{in_macro, span_lint};
 /// fn foo() {
 ///     println!("cake");
 /// }
+///
 /// fn main() {
 ///     foo(); // prints "foo"
 ///     fn foo() {

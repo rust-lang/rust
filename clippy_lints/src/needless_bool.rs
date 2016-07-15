@@ -9,13 +9,19 @@ use syntax::codemap::Spanned;
 use utils::{span_lint, span_lint_and_then, snippet};
 use utils::sugg::Sugg;
 
-/// **What it does:** This lint checks for expressions of the form `if c { true } else { false }` (or vice versa) and suggest using the condition directly.
+/// **What it does:** This lint checks for expressions of the form `if c { true } else { false }`
+/// (or vice versa) and suggest using the condition directly.
 ///
 /// **Why is this bad?** Redundant code.
 ///
-/// **Known problems:** Maybe false positives: Sometimes, the two branches are painstakingly documented (which we of course do not detect), so they *may* have some value. Even then, the documentation can be rewritten to match the shorter code.
+/// **Known problems:** Maybe false positives: Sometimes, the two branches are painstakingly
+/// documented (which we of course do not detect), so they *may* have some value. Even then, the
+/// documentation can be rewritten to match the shorter code.
 ///
-/// **Example:** `if x { false } else { true }`
+/// **Example:**
+/// ```rust
+/// if x { false } else { true }
+/// ```
 declare_lint! {
     pub NEEDLESS_BOOL,
     Warn,
@@ -23,7 +29,8 @@ declare_lint! {
      `if p { true } else { false }`"
 }
 
-/// **What it does:** This lint checks for expressions of the form `x == true` (or vice versa) and suggest using the variable directly.
+/// **What it does:** This lint checks for expressions of the form `x == true` (or vice versa) and
+/// suggest using the variable directly.
 ///
 /// **Why is this bad?** Unnecessary code.
 ///

@@ -4,26 +4,34 @@ use rustc::lint::*;
 use utils::paths;
 use utils::{is_expn_of, match_path, span_lint};
 
-/// **What it does:** This lint warns whenever you print on *stdout*. The purpose of this lint is to catch debugging remnants.
+/// **What it does:** This lint warns whenever you print on *stdout*. The purpose of this lint is
+/// to catch debugging remnants.
 ///
 /// **Why is this bad?** People often print on *stdout* while debugging an application and might
 /// forget to remove those prints afterward.
 ///
 /// **Known problems:** Only catches `print!` and `println!` calls.
 ///
-/// **Example:** `println!("Hello world!");`
+/// **Example:**
+/// ```rust
+/// println!("Hello world!");
+/// ```
 declare_lint! {
     pub PRINT_STDOUT,
     Allow,
     "printing on stdout"
 }
 
-/// **What it does:** This lint warns whenever you use `Debug` formatting. The purpose of this lint is to catch debugging remnants.
+/// **What it does:** This lint warns whenever you use `Debug` formatting. The purpose of this lint
+/// is to catch debugging remnants.
 ///
 /// **Why is this bad?** The purpose of the `Debug` trait is to facilitate debugging Rust code. It
 /// should not be used in in user-facing output.
 ///
-/// **Example:** `println!("{:?}", foo);`
+/// **Example:**
+/// ```rust
+/// println!("{:?}", foo);
+/// ```
 declare_lint! {
     pub USE_DEBUG,
     Allow,

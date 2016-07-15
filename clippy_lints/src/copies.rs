@@ -8,14 +8,30 @@ use syntax::util::small_vector::SmallVector;
 use utils::{SpanlessEq, SpanlessHash};
 use utils::{get_parent_expr, in_macro, span_lint_and_then, span_note_and_lint, snippet};
 
-/// **What it does:** This lint checks for consecutive `ifs` with the same condition. This lint is
-/// `Warn` by default.
+/// **What it does:** This lint checks for consecutive `ifs` with the same condition.
 ///
 /// **Why is this bad?** This is probably a copy & paste error.
 ///
 /// **Known problems:** Hopefully none.
 ///
-/// **Example:** `if a == b { .. } else if a == b { .. }`
+/// **Example:**
+/// ```rust
+/// if a == b {
+///     …
+/// } else if a == b {
+///     …
+/// }
+/// ```
+///
+/// Note that this lint ignores all conditions with a function call as it could have side effects:
+///
+/// ```rust
+/// if foo() {
+///     …
+/// } else if foo() { // not linted
+///     …
+/// }
+/// ```
 declare_lint! {
     pub IFS_SAME_COND,
     Warn,
@@ -23,13 +39,20 @@ declare_lint! {
 }
 
 /// **What it does:** This lint checks for `if/else` with the same body as the *then* part and the
-/// *else* part. This lint is `Warn` by default.
+/// *else* part.
 ///
 /// **Why is this bad?** This is probably a copy & paste error.
 ///
 /// **Known problems:** Hopefully none.
 ///
-/// **Example:** `if .. { 42 } else { 42 }`
+/// **Example:**
+/// ```rust
+/// let foo = if … {
+///     42
+/// } else {
+///     42
+/// };
+/// ```
 declare_lint! {
     pub IF_SAME_THEN_ELSE,
     Warn,

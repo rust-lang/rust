@@ -9,13 +9,16 @@ use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::span_lint;
 
-/// **What it does:** Warns when `use`ing all variants of an enum
+/// **What it does:** Warns when `use`ing all variants of an enumeration.
 ///
-/// **Why is this bad?** It is usually better style to use the prefixed name of an enum variant, rather than importing variants
+/// **Why is this bad?** It is usually better style to use the prefixed name of an enumeration variant, rather than importing variants
 ///
-/// **Known problems:** Old-style enums that prefix the variants are still around
+/// **Known problems:** Old-style enumerations that prefix the variants are still around
 ///
-/// **Example:** `use std::cmp::Ordering::*;`
+/// **Example:**
+/// ```rust
+/// use std::cmp::Ordering::*;
+/// ```
 declare_lint! { pub ENUM_GLOB_USE, Allow,
     "finds use items that import all variants of an enum" }
 

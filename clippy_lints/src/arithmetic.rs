@@ -12,7 +12,7 @@ use utils::span_lint;
 /// **Known problems:** None
 ///
 /// **Example:**
-/// ```
+/// ```rust
 /// a + 1
 /// ```
 declare_restriction_lint! {
@@ -28,7 +28,7 @@ declare_restriction_lint! {
 /// **Known problems:** None
 ///
 /// **Example:**
-/// ```
+/// ```rust
 /// a + 1.0
 /// ```
 declare_restriction_lint! {

@@ -6,16 +6,19 @@ use utils::{higher, in_external_macro, span_lint};
 
 /// **What it does:** This lint checks for instances of `mut mut` references.
 ///
-/// **Why is this bad?** Multiple `mut`s don't add anything meaningful to the source.
+/// **Why is this bad?** Multiple `mut`s don't add anything meaningful to the source. This is
+/// either a copy'n'paste error, or it shows a fundamental misunderstanding of references)
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `let x = &mut &mut y;`
+/// **Example:**
+/// ```rust
+/// let x = &mut &mut y;
+/// ```
 declare_lint! {
     pub MUT_MUT,
     Allow,
-    "usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, \
-     or shows a fundamental misunderstanding of references)"
+    "usage of double-mut refs, e.g. `&mut &mut ...`"
 }
 
 #[derive(Copy,Clone)]

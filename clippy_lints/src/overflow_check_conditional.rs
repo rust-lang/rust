@@ -4,11 +4,15 @@ use utils::span_lint;
 
 /// **What it does:** This lint finds classic underflow / overflow checks.
 ///
-/// **Why is this bad?** Most classic C underflow / overflow checks will fail in Rust. Users can use functions like `overflowing_*` and `wrapping_*` instead.
+/// **Why is this bad?** Most classic C underflow / overflow checks will fail in Rust. Users can
+/// use functions like `overflowing_*` and `wrapping_*` instead.
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `a + b < a`
+/// **Example:**
+/// ```rust
+/// a + b < a
+/// ```
 
 declare_lint!(pub OVERFLOW_CHECK_CONDITIONAL, Warn,
               "Using overflow checks which are likely to panic");

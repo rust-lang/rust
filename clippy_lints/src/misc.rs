@@ -17,13 +17,22 @@ use utils::sugg::Sugg;
 
 /// **What it does:** This lint checks for function arguments and let bindings denoted as `ref`.
 ///
-/// **Why is this bad?** The `ref` declaration makes the function take an owned value, but turns the argument into a reference (which means that the value is destroyed when exiting the function). This adds not much value: either take a reference type, or take an owned value and create references in the body.
+/// **Why is this bad?** The `ref` declaration makes the function take an owned value, but turns
+/// the argument into a reference (which means that the value is destroyed when exiting the
+/// function). This adds not much value: either take a reference type, or take an owned value and
+/// create references in the body.
 ///
-/// For let bindings, `let x = &foo;` is preferred over `let ref x = foo`. The type of `x` is more obvious with the former.
+/// For let bindings, `let x = &foo;` is preferred over `let ref x = foo`. The type of `x` is more
+/// obvious with the former.
 ///
-/// **Known problems:** If the argument is dereferenced within the function, removing the `ref` will lead to errors. This can be fixed by removing the dereferences, e.g. changing `*x` to `x` within the function.
+/// **Known problems:** If the argument is dereferenced within the function, removing the `ref`
+/// will lead to errors. This can be fixed by removing the dereferences, e.g. changing `*x` to `x`
+/// within the function.
 ///
-/// **Example:** `fn foo(ref x: u8) -> bool { .. }`
+/// **Example:**
+/// ```rust
+/// fn foo(ref x: u8) -> bool { .. }
+/// ```
 declare_lint! {
     pub TOPLEVEL_REF_ARG, Warn,
     "An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), \

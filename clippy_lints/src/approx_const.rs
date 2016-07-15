@@ -10,7 +10,10 @@ use utils::span_lint;
 ///
 /// **Known problems:** If you happen to have a value that is within 1/8192 of a known constant, but is not *and should not* be the same, this lint will report your value anyway. We have not yet noticed any false positives in code we tested clippy with (this includes servo), but YMMV.
 ///
-/// **Example:** `let x = 3.14;`
+/// **Example:**
+/// ```rust
+/// let x = 3.14;
+/// ```
 declare_lint! {
     pub APPROX_CONSTANT,
     Warn,

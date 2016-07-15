@@ -4,11 +4,15 @@ use utils::{match_def_path, paths, span_lint};
 
 /// **What it does:** This lint checks for usage of `std::mem::forget(t)` where `t` is `Drop`.
 ///
-/// **Why is this bad?** `std::mem::forget(t)` prevents `t` from running its destructor, possibly causing leaks
+/// **Why is this bad?** `std::mem::forget(t)` prevents `t` from running its destructor, possibly
+/// causing leaks
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `mem::forget(Rc::new(55)))`
+/// **Example:**
+/// ```rust
+/// mem::forget(Rc::new(55)))
+/// ```
 declare_lint! {
     pub MEM_FORGET,
     Allow,

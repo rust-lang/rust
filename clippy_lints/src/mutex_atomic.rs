@@ -1,4 +1,4 @@
-//! Checks for uses of Mutex where an atomic value could be used
+//! Checks for uses of mutex where an atomic value could be used
 //!
 //! This lint is **warn** by default
 
@@ -11,28 +11,37 @@ use utils::{match_type, paths, span_lint};
 
 /// **What it does:** This lint checks for usages of `Mutex<X>` where an atomic will do.
 ///
-/// **Why is this bad?** Using a Mutex just to make access to a plain bool or reference sequential is shooting flies with cannons. `std::atomic::AtomicBool` and `std::atomic::AtomicPtr` are leaner and faster.
+/// **Why is this bad?** Using a mutex just to make access to a plain bool or reference sequential
+/// is shooting flies with cannons. `std::atomic::AtomicBool` and `std::atomic::AtomicPtr` are
+/// leaner and faster.
 ///
-/// **Known problems:** This lint cannot detect if the Mutex is actually used for waiting before a critical section.
+/// **Known problems:** This lint cannot detect if the mutex is actually used for waiting before a critical section.
 ///
-/// **Example:** `let x = Mutex::new(&y);`
+/// **Example:**
+/// ```rust
+/// let x = Mutex::new(&y);
+/// ```
 declare_lint! {
     pub MUTEX_ATOMIC,
     Warn,
-    "using a Mutex where an atomic value could be used instead"
+    "using a mutex where an atomic value could be used instead"
 }
 
 /// **What it does:** This lint checks for usages of `Mutex<X>` where `X` is an integral type.
 ///
-/// **Why is this bad?** Using a Mutex just to make access to a plain integer sequential is shooting flies with cannons. `std::atomic::usize` is leaner and faster.
+/// **Why is this bad?** Using a mutex just to make access to a plain integer sequential is
+/// shooting flies with cannons. `std::atomic::usize` is leaner and faster.
 ///
-/// **Known problems:** This lint cannot detect if the Mutex is actually used for waiting before a critical section.
+/// **Known problems:** This lint cannot detect if the mutex is actually used for waiting before a critical section.
 ///
-/// **Example:** `let x = Mutex::new(0usize);`
+/// **Example:**
+/// ```rust
+/// let x = Mutex::new(0usize);
+/// ```
 declare_lint! {
     pub MUTEX_INTEGER,
     Allow,
-    "using a Mutex for an integer type"
+    "using a mutex for an integer type"
 }
 
 impl LintPass for MutexAtomic {

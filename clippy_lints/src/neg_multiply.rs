@@ -11,7 +11,10 @@ use utils::span_lint;
 ///
 /// **Known problems:** This only catches integers (for now)
 ///
-/// **Example:** `x * -1`
+/// **Example:**
+/// ```rust
+/// x * -1
+/// ```
 declare_lint! {
     pub NEG_MULTIPLY,
     Warn,

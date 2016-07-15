@@ -9,7 +9,10 @@ use utils::*;
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `if { true } ..`
+/// **Example:**
+/// ```rust
+/// if { true } ..
+/// ```
 declare_lint! {
     pub BLOCK_IN_IF_CONDITION_EXPR, Warn,
     "braces can be eliminated in conditions that are expressions, e.g `if { true } ...`"
@@ -21,7 +24,12 @@ declare_lint! {
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `if { let x = somefunc(); x } ..` or `if somefunc(|x| { x == 47 }) ..`
+/// **Example:**
+/// ```rust
+/// if { let x = somefunc(); x } ..
+/// // or
+/// if somefunc(|x| { x == 47 }) ..
+/// ```
 declare_lint! {
     pub BLOCK_IN_IF_CONDITION_STMT, Warn,
     "avoid complex blocks in conditions, instead move the block higher and bind it \

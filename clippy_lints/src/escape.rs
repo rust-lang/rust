@@ -19,7 +19,8 @@ pub struct Pass {
 
 /// **What it does:** This lint checks for usage of `Box<T>` where an unboxed `T` would work fine.
 ///
-/// **Why is this bad?** This is an unnecessary allocation, and bad for performance. It is only necessary to allocate if you wish to move the box into something.
+/// **Why is this bad?** This is an unnecessary allocation, and bad for performance. It is only
+/// necessary to allocate if you wish to move the box into something.
 ///
 /// **Known problems:** None
 ///

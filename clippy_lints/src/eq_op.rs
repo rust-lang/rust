@@ -8,9 +8,15 @@ use utils::{SpanlessEq, span_lint};
 ///
 /// **Why is this bad?** This is usually just a typo or a copy and paste error.
 ///
-/// **Known problems:** False negatives: We had some false positives regarding calls (notably [racer](https://github.com/phildawes/racer) had one instance of `x.pop() && x.pop()`), so we removed matching any function or method calls. We may introduce a whitelist of known pure functions in the future.
+/// **Known problems:** False negatives: We had some false positives regarding calls (notably
+/// [racer](https://github.com/phildawes/racer) had one instance of `x.pop() && x.pop()`), so we
+/// removed matching any function or method calls. We may introduce a whitelist of known pure
+/// functions in the future.
 ///
-/// **Example:** `x + 1 == x + 1`
+/// **Example:**
+/// ```rust
+/// x + 1 == x + 1
+/// ```
 declare_lint! {
     pub EQ_OP,
     Warn,

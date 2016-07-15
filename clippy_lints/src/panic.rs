@@ -9,7 +9,7 @@ use utils::{is_direct_expn_of, match_path, paths, span_lint};
 /// this lint will warn.
 ///
 /// **Example:**
-/// ```
+/// ```rust
 /// panic!("This `panic!` is probably missing a parameter there: {}");
 /// ```
 declare_lint! {

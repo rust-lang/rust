@@ -26,7 +26,10 @@ use utils::span_lint;
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `x & 1 == 2` (also see table above)
+/// **Example:**
+/// ```rust
+/// if (x & 1 == 2) { … }
+/// ```
 declare_lint! {
     pub BAD_BIT_MASK,
     Warn,
@@ -45,7 +48,10 @@ declare_lint! {
 ///
 /// **Known problems:** False negatives: This lint will only match instances where we have figured out the math (which is for a power-of-two compared value). This means things like `x | 1 >= 7` (which would be better written as `x >= 6`) will not be reported (but bit masks like this are fairly uncommon).
 ///
-/// **Example:** `x | 1 > 3` (also see table above)
+/// **Example:**
+/// ```rust
+/// if (x | 1 > 3) { … }
+/// ```
 declare_lint! {
     pub INEFFECTIVE_BIT_MASK,
     Warn,

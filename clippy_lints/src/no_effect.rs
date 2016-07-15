@@ -6,11 +6,15 @@ use std::ops::Deref;
 
 /// **What it does:** This lint checks for statements which have no effect.
 ///
-/// **Why is this bad?** Similar to dead code, these statements are actually executed. However, as they have no effect, all they do is make the code less readable.
+/// **Why is this bad?** Similar to dead code, these statements are actually executed. However, as
+/// they have no effect, all they do is make the code less readable.
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `0;`
+/// **Example:**
+/// ```rust
+/// 0;
+/// ```
 declare_lint! {
     pub NO_EFFECT,
     Warn,
@@ -19,11 +23,15 @@ declare_lint! {
 
 /// **What it does:** This lint checks for expression statements that can be reduced to a sub-expression
 ///
-/// **Why is this bad?** Expressions by themselves often have no side-effects. Having such expressions reduces redability.
+/// **Why is this bad?** Expressions by themselves often have no side-effects. Having such
+/// expressions reduces readability.
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `compute_array()[0];`
+/// **Example:**
+/// ```rust
+/// compute_array()[0];
+/// ```
 declare_lint! {
     pub UNNECESSARY_OPERATION,
     Warn,

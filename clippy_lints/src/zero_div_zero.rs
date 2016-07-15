@@ -14,7 +14,10 @@ pub struct Pass;
 ///
 /// **Known problems:** None
 ///
-/// **Example** `0.0f32 / 0.0`
+/// **Example**
+/// ```rust
+/// 0.0f32 / 0.0
+/// ```
 declare_lint! {
     pub ZERO_DIVIDED_BY_ZERO,
     Warn,

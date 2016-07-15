@@ -8,7 +8,10 @@ use utils::span_lint;
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `let foo = 3.14;`
+/// **Example:**
+/// ```rust
+/// let foo = 3.14;
+/// ```
 declare_lint! {
     pub BLACKLISTED_NAME,
     Warn,

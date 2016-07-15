@@ -6,13 +6,22 @@ use rustc_const_math::*;
 use rustc::hir::*;
 use utils::span_lint;
 
-/// **What it does:** Lints on C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`.
+/// **What it does:** Lints on C-like enumerations that are `repr(isize/usize)` and have values
+/// that don't fit into an `i32`.
 ///
-/// **Why is this bad?** This will truncate the variant value on 32bit architectures, but works fine on 64 bit.
+/// **Why is this bad?** This will truncate the variant value on 32 bit architectures, but works
+/// fine on 64 bit.
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `#[repr(usize)] enum NonPortable { X = 0x1_0000_0000, Y = 0 }`
+/// **Example:**
+/// ```rust
+/// #[repr(usize)]
+/// enum NonPortable {
+///     X = 0x1_0000_0000,
+///     Y = 0
+/// }
+/// ```
 declare_lint! {
     pub ENUM_CLIKE_UNPORTABLE_VARIANT, Warn,
     "finds C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`"

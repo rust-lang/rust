@@ -6,11 +6,11 @@ use syntax::codemap::{DUMMY_SP, dummy_spanned};
 use syntax::util::ThinVec;
 use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
 
-/// **What it does:** This lint checks for boolean expressions that can be written more concisely
+/// **What it does:** This lint checks for boolean expressions that can be written more concisely.
 ///
-/// **Why is this bad?** Readability of boolean expressions suffers from unnecesessary duplication
+/// **Why is this bad?** Readability of boolean expressions suffers from unnecessary duplication.
 ///
-/// **Known problems:** Ignores short circuting behavior of `||` and `&&`. Ignores `|`, `&` and `^`.
+/// **Known problems:** Ignores short circuiting behavior of `||` and `&&`. Ignores `|`, `&` and `^`.
 ///
 /// **Example:** `if a && true` should be `if a` and `!(a == b)` should be `a != b`
 declare_lint! {
@@ -18,11 +18,11 @@ declare_lint! {
     "checks for boolean expressions that can be written more concisely"
 }
 
-/// **What it does:** This lint checks for boolean expressions that contain terminals that can be eliminated
+/// **What it does:** This lint checks for boolean expressions that contain terminals that can be eliminated.
 ///
-/// **Why is this bad?** This is most likely a logic bug
+/// **Why is this bad?** This is most likely a logic bug.
 ///
-/// **Known problems:** Ignores short circuiting behavior
+/// **Known problems:** Ignores short circuiting behavior.
 ///
 /// **Example:** The `b` in `if a && b || a` is unnecessary because the expression is equivalent to `if a`
 declare_lint! {

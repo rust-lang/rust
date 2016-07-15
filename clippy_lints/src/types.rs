@@ -16,27 +16,44 @@ pub struct TypePass;
 
 /// **What it does:** This lint checks for use of `Box<Vec<_>>` anywhere in the code.
 ///
-/// **Why is this bad?** `Vec` already keeps its contents in a separate area on the heap. So if you `Box` it, you just add another level of indirection without any benefit whatsoever.
+/// **Why is this bad?** `Vec` already keeps its contents in a separate area on the heap. So if you
+/// `Box` it, you just add another level of indirection without any benefit whatsoever.
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `struct X { values: Box<Vec<Foo>> }`
+/// **Example:**
+/// ```rust
+/// struct X {
+///     values: Box<Vec<Foo>>,
+/// }
+/// ```
 declare_lint! {
     pub BOX_VEC, Warn,
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
 }
 
-/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or a `VecDeque` (formerly called `RingBuf`).
+/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or
+/// a `VecDeque` (formerly called `RingBuf`).
 ///
 /// **Why is this bad?** Gankro says:
 ///
-/// >The TL;DR of `LinkedList` is that it's built on a massive amount of pointers and indirection. It wastes memory, it has terrible cache locality, and is all-around slow. `RingBuf`, while "only" amortized for push/pop, should be faster in the general case for almost every possible workload, and isn't even amortized at all if you can predict the capacity you need.
+/// > The TL;DR of `LinkedList` is that it's built on a massive amount of pointers and indirection.
+/// > It wastes memory, it has terrible cache locality, and is all-around slow. `RingBuf`, while
+/// > "only" amortized for push/pop, should be faster in the general case for almost every possible
+/// > workload, and isn't even amortized at all if you can predict the capacity you need.
 /// >
-/// > `LinkedList`s are only really good if you're doing a lot of merging or splitting of lists. This is because they can just mangle some pointers instead of actually copying the data. Even if you're doing a lot of insertion in the middle of the list, `RingBuf` can still be better because of how expensive it is to seek to the middle of a `LinkedList`.
+/// > `LinkedList`s are only really good if you're doing a lot of merging or splitting of lists.
+/// > This is because they can just mangle some pointers instead of actually copying the data. Even
+/// > if you're doing a lot of insertion in the middle of the list, `RingBuf` can still be better
+/// > because of how expensive it is to seek to the middle of a `LinkedList`.
 ///
-/// **Known problems:** False positives – the instances where using a `LinkedList` makes sense are few and far between, but they can still happen.
+/// **Known problems:** False positives – the instances where using a `LinkedList` makes sense are
+/// few and far between, but they can still happen.
 ///
-/// **Example:** `let x = LinkedList::new();`
+/// **Example:**
+/// ```rust
+/// let x = LinkedList::new();
+/// ```
 declare_lint! {
     pub LINKEDLIST, Warn,
     "usage of LinkedList, usually a vector is faster, or a more specialized data \

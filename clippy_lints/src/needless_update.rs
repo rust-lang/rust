@@ -9,11 +9,14 @@ use utils::span_lint;
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `Point { x: 1, y: 0, ..zero_point }`
+/// **Example:**
+/// ```rust
+/// Point { x: 1, y: 0, ..zero_point }
+/// ```
 declare_lint! {
     pub NEEDLESS_UPDATE,
     Warn,
-    "using `{ ..base }` when there are no missing fields"
+    "using `Foo { ..base }` when there are no missing fields"
 }
 
 #[derive(Copy, Clone)]

@@ -7,13 +7,21 @@ use syntax::parse::token::InternedString;
 use utils::{span_help_and_lint, span_lint};
 use utils::{camel_case_from, camel_case_until, in_macro};
 
-/// **What it does:** Warns on enum variants that are prefixed or suffixed by the same characters
+/// **What it does:** Warns on enumeration variants that are prefixed or suffixed by the same
+/// characters.
 ///
-/// **Why is this bad?** Enum variant names should specify their variant, not the enum, too.
+/// **Why is this bad?** Enumeration variant names should specify their variant, not repeat the
+/// enumeration name.
 ///
 /// **Known problems:** None
 ///
-/// **Example:** enum Cake { BlackForestCake, HummingbirdCake }
+/// **Example:**
+/// ```rust
+/// enum Cake {
+///     BlackForestCake,
+///     HummingbirdCake,
+/// }
+/// ```
 declare_lint! {
     pub ENUM_VARIANT_NAMES, Warn,
     "finds enums where all variants share a prefix/postfix"
@@ -25,7 +33,12 @@ declare_lint! {
 ///
 /// **Known problems:** None
 ///
-/// **Example:** mod cake { struct BlackForestCake; }
+/// **Example:**
+/// ```rust
+/// mod cake {
+///     struct BlackForestCake;
+/// }
+/// ```
 declare_lint! {
     pub STUTTER, Allow,
     "finds type names prefixed/postfixed with their containing module's name"

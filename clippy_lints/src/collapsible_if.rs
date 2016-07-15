@@ -26,14 +26,44 @@ use utils::sugg::Sugg;
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `if x { if y { .. } }`
+/// **Example:**
+/// ```rust
+/// if x {
+///     if y {
+///         …
+///     }
+/// }
+///
+/// // or
+///
+/// if x {
+///     …
+/// } else {
+///     if y {
+///         …
+///     }
+/// }
+/// ```
+///
+/// Should be written:
+///
+/// ```rust
+/// if x && y {
+///     …
+/// }
+///
+/// // or
+///
+/// if x {
+///     …
+/// } else if y {
+///     …
+/// }
+/// ```
 declare_lint! {
     pub COLLAPSIBLE_IF,
     Warn,
-    "two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` \
-     can be written as `if x && y { foo() }` \
-     and an `else { if .. }` expression can be collapsed to \
-     `else if`"
+    "`if`s that can be collapsed (e.g. `if x { if y { … } }` and `else { if x { … } }`)"
 }
 
 #[derive(Copy,Clone)]

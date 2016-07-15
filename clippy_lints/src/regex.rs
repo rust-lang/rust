@@ -14,11 +14,16 @@ use utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_help_
 /// **What it does:** This lint checks [regex] creation (with `Regex::new`, `RegexBuilder::new` or
 /// `RegexSet::new`) for correct regex syntax.
 ///
+/// [regex]: https://crates.io/crates/regex
+///
 /// **Why is this bad?** This will lead to a runtime panic.
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `Regex::new("|")`
+/// **Example:**
+/// ```rust
+/// Regex::new("|")
+/// ```
 declare_lint! {
     pub INVALID_REGEX,
     Deny,
@@ -28,27 +33,35 @@ declare_lint! {
 /// **What it does:** This lint checks for trivial [regex] creation (with `Regex::new`,
 /// `RegexBuilder::new` or `RegexSet::new`).
 ///
+/// [regex]: https://crates.io/crates/regex
+///
 /// **Why is this bad?** This can likely be replaced by `==` or `str::starts_with`,
 /// `str::ends_with` or `std::contains` or other `str` methods.
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `Regex::new("^foobar")`
-///
-/// [regex]: https://crates.io/crates/regex
+/// **Example:**
+/// ```rust
+/// Regex::new("^foobar")
+/// ```
 declare_lint! {
     pub TRIVIAL_REGEX,
     Warn,
     "finds trivial regular expressions"
 }
 
-/// **What it does:** This lint checks for usage of `regex!(_)` which as of now is usually slower than `Regex::new(_)` unless called in a loop (which is a bad idea anyway).
+/// **What it does:** This lint checks for usage of `regex!(_)` which as of now is usually slower
+/// than `Regex::new(_)` unless called in a loop (which is a bad idea anyway).
 ///
-/// **Why is this bad?** Performance, at least for now. The macro version is likely to catch up long-term, but for now the dynamic version is faster.
+/// **Why is this bad?** Performance, at least for now. The macro version is likely to catch up
+/// long-term, but for now the dynamic version is faster.
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `regex!("foo|bar")`
+/// **Example:**
+/// ```rust
+/// regex!("foo|bar")
+/// ```
 declare_lint! {
     pub REGEX_MACRO,
     Warn,

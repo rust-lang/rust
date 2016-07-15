@@ -11,7 +11,24 @@ use utils::span_help_and_lint;
 ///
 /// **Known problems:** None
 ///
-/// **Example:** if !v.is_empty() { a() } else { b() }
+/// **Example:**
+/// ```rust
+/// if !v.is_empty() {
+///     a()
+/// } else {
+///     b()
+/// }
+/// ```
+///
+/// Could be written:
+///
+/// ```rust
+/// if v.is_empty() {
+///     b()
+/// } else {
+///     a()
+/// }
+/// ```
 declare_lint! {
     pub IF_NOT_ELSE, Allow,
     "finds if branches that could be swapped so no negation operation is necessary on the condition"
