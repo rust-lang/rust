@@ -98,6 +98,10 @@ impl<T, I> IndexMut<I> for [T]
 - Stay as is.
 - A previous version of this RFC introduced new `get_slice` etc methods rather than overloading
   `get` etc. This avoids the utility trait but is somewhat less ergonomic.
+- Instead of one trait amalgamating all of the required methods, we could have one trait per
+  method. This would open a more reasonable door to stabilizing those traits, but adds quite a lot
+  more surface area. Replacing an unstable `SliceIndex` trait with a collection would be
+  backwards compatible.
 
 # Unresolved questions
 
