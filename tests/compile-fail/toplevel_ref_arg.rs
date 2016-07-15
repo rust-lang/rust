@@ -33,7 +33,7 @@ fn main() {
   let ref mut z = 1 + 2;
   //~^ ERROR `ref` on an entire `let` pattern is discouraged
   //~| HELP try
-  //~| SUGGESTION let mut z = &(1 + 2);
+  //~| SUGGESTION let z = &mut (1 + 2);
 
   let (ref x, _) = (1,2); // okay, not top level
   println!("The answer is {}.", x);
