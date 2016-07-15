@@ -59,13 +59,18 @@ impl LateLintPass for TopLevelRefPass {
         if_let_chain! {[
             let StmtDecl(ref d, _) = s.node,
             let DeclLocal(ref l) = d.node,
-            let PatKind::Binding(BindByRef(_), i, None) = l.pat.node,
+            let PatKind::Binding(BindByRef(mt), i, None) = l.pat.node,
             let Some(ref init) = l.init
         ], {
             let tyopt = if let Some(ref ty) = l.ty {
-                format!(": {}", snippet(cx, ty.span, "_"))
+                format!(": &{}", snippet(cx, ty.span, "_"))
             } else {
                 "".to_owned()
+            };
+            let mutopt = if mt == Mutability::MutMutable {
+                "mut "
+            } else {
+                ""
             };
             span_lint_and_then(cx,
                 TOPLEVEL_REF_ARG,
@@ -75,7 +80,8 @@ impl LateLintPass for TopLevelRefPass {
                     let init = Sugg::hir(cx, init, "..");
                     db.span_suggestion(s.span,
                                        "try",
-                                       format!("let {}{} = {};",
+                                       format!("let {}{}{} = {};",
+                                               mutopt,
                                                snippet(cx, i.span, "_"),
                                                tyopt,
                                                init.addr()));
