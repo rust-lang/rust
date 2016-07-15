@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 ## 0.0.78 — 2016-07-02
 * Rustup to *rustc 1.11.0-nightly (01411937f 2016-07-01)*
-* New lints: [`wrong_transmute`, `double_neg`]
+* New lints: [`wrong_transmute`], [`double_neg`]
 * For compatibility, `cargo clippy` does not defines the `clippy` feature
   introduced in 0.0.76 anymore
 * [`collapsible_if`] now considers `if let`
