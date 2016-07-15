@@ -5,12 +5,12 @@
 
 # Summary
 
-Add "panic-safe" or "total" alternatives to the existing panicking slicing syntax.
+Add "panic-safe" or "total" alternatives to the existing panicking indexing syntax.
 
 # Motivation
 
 `SliceExt::get` and `SliceExt::get_mut` can be thought as non-panicking versions of the simple
-slicing syntax, `a[idx]`. However, there is no such equivalent for `a[start..end]`, `a[start..]`,
+indexing syntax, `a[idx]`. However, there is no such equivalent for `a[start..end]`, `a[start..]`,
 or `a[..end]`. This RFC proposes such methods to fill the gap.
 
 # Detailed design
