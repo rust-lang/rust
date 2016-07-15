@@ -14,6 +14,7 @@ use cmp;
 use io;
 use libc::{self, c_int};
 use mem;
+use ptr;
 use sys::cvt_r;
 use sys::fd::FileDesc;
 
@@ -92,8 +93,8 @@ pub fn read2(p1: AnonPipe,
             let mut read: libc::fd_set = mem::zeroed();
             libc::FD_SET(p1.raw(), &mut read);
             libc::FD_SET(p2.raw(), &mut read);
-            libc::select(max + 1, &mut read, 0 as *mut _, 0 as *mut _,
-                         0 as *mut _)
+            libc::select(max + 1, &mut read, ptr::null_mut(), ptr::null_mut(),
+                         ptr::null_mut())
         })?;
 
         // Read as much as we can from each pipe, ignoring EWOULDBLOCK or

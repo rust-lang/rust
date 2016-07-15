@@ -183,8 +183,62 @@ pub fn uncompress(src: &[u8]) -> Option<Vec<u8>> {
 }
 ```
 
-For reference, the examples used here are also available as a [library on
-GitHub](https://github.com/thestinger/rust-snappy).
+Then, we can add some tests to show how to use them.
+
+```rust
+# #![feature(libc)]
+# extern crate libc;
+# use libc::{c_int, size_t};
+# unsafe fn snappy_compress(input: *const u8,
+#                           input_length: size_t,
+#                           compressed: *mut u8,
+#                           compressed_length: *mut size_t)
+#                           -> c_int { 0 }
+# unsafe fn snappy_uncompress(compressed: *const u8,
+#                             compressed_length: size_t,
+#                             uncompressed: *mut u8,
+#                             uncompressed_length: *mut size_t)
+#                             -> c_int { 0 }
+# unsafe fn snappy_max_compressed_length(source_length: size_t) -> size_t { 0 }
+# unsafe fn snappy_uncompressed_length(compressed: *const u8,
+#                                      compressed_length: size_t,
+#                                      result: *mut size_t)
+#                                      -> c_int { 0 }
+# unsafe fn snappy_validate_compressed_buffer(compressed: *const u8,
+#                                             compressed_length: size_t)
+#                                             -> c_int { 0 }
+# fn main() { }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn valid() {
+        let d = vec![0xde, 0xad, 0xd0, 0x0d];
+        let c: &[u8] = &compress(&d);
+        assert!(validate_compressed_buffer(c));
+        assert!(uncompress(c) == Some(d));
+    }
+
+    #[test]
+    fn invalid() {
+        let d = vec![0, 0, 0, 0];
+        assert!(!validate_compressed_buffer(&d));
+        assert!(uncompress(&d).is_none());
+    }
+
+    #[test]
+    fn empty() {
+        let d = vec![];
+        assert!(!validate_compressed_buffer(&d));
+        assert!(uncompress(&d).is_none());
+        let c = compress(&d);
+        assert!(validate_compressed_buffer(&c));
+        assert!(uncompress(&c) == Some(d));
+    }
+}
+```
 
 # Destructors
 
