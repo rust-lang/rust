@@ -185,6 +185,8 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
         mod_folded
     }
+
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
 }
 
 struct EntryPointCleaner {
@@ -234,6 +236,8 @@ impl fold::Folder for EntryPointCleaner {
 
         SmallVector::one(folded)
     }
+
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
 }
 
 fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
