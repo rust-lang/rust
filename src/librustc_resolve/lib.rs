@@ -1576,11 +1576,20 @@ impl<'a> Resolver<'a> {
 
     /// Searches the current set of local scopes for labels.
     /// Stops after meeting a closure.
-    fn search_label(&self, ident: ast::Ident) -> Option<Def> {
+    fn search_label(&self, mut ident: ast::Ident) -> Option<Def> {
         for rib in self.label_ribs.iter().rev() {
             match rib.kind {
                 NormalRibKind => {
                     // Continue
+                }
+                MacroDefinition(mac) => {
+                    // If an invocation of this macro created `ident`, give up on `ident`
+                    // and switch to `ident`'s source from the macro definition.
+                    if let Some((source_ident, source_macro)) = mtwt::source(ident) {
+                        if mac == source_macro {
+                            ident = source_ident;
+                        }
+                    }
                 }
                 _ => {
                     // Do not resolve labels across function boundary
@@ -2088,7 +2097,7 @@ impl<'a> Resolver<'a> {
         let orig_module = self.current_module;
         let anonymous_module = self.module_map.get(&block.id).cloned(); // clones a reference
 
-        let mut num_value_ribs = 1;
+        let mut num_macro_definition_ribs = 0;
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
             self.value_ribs.push(Rib::new(ModuleRibKind(anonymous_module)));
@@ -2101,9 +2110,10 @@ impl<'a> Resolver<'a> {
         // Descend into the block.
         for stmt in &block.stmts {
             if let Some(marks) = self.macros_at_scope.remove(&stmt.id) {
-                num_value_ribs += marks.len() as u32;
+                num_macro_definition_ribs += marks.len() as u32;
                 for mark in marks {
                     self.value_ribs.push(Rib::new(MacroDefinition(mark)));
+                    self.label_ribs.push(Rib::new(MacroDefinition(mark)));
                 }
             }
 
@@ -2112,9 +2122,11 @@ impl<'a> Resolver<'a> {
 
         // Move back up.
         self.current_module = orig_module;
-        for _ in 0 .. num_value_ribs {
+        for _ in 0 .. num_macro_definition_ribs {
             self.value_ribs.pop();
+            self.label_ribs.pop();
         }
+        self.value_ribs.pop();
         if let Some(_) = anonymous_module {
             self.type_ribs.pop();
         }
