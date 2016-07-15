@@ -15,75 +15,90 @@ or `a[..end]`. This RFC proposes such methods to fill the gap.
 
 # Detailed design
 
-Add `get_range`, `get_range_mut`, `get_range_unchecked`, `get_range_unchecked_mut` to `SliceExt`.
-
-`get_range` and `get_range_mut` may be implemented roughly as follows:
-
+Introduce a `SliceIndex` trait which is implemented by types which can index into a slice:
 ```rust
-use std::ops::{RangeFrom, RangeTo, Range};
-use std::slice::from_raw_parts;
-use core::slice::SliceExt;
+pub trait SliceIndex<T> {
+    type Output: ?Sized;
 
-trait Rangeable<T: ?Sized> {
-    fn start(&self, slice: &T) -> usize;
-    fn end(&self, slice: &T) -> usize;
+    fn get(self, slice: &[T]) -> Option<&Self::Output>;
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut Self::Output>;
+    unsafe fn get_unchecked(self, slice: &[T]) -> &Self::Output;
+    unsafe fn get_mut_unchecked(self, slice: &[T]) -> &mut Self::Output;
 }
 
-impl<T: SliceExt + ?Sized> Rangeable<T> for RangeFrom<usize> {
-    fn start(&self, _: &T) -> usize { self.start }
-    fn end(&self, slice: &T) -> usize { slice.len() }
+impl<T> SliceIndex<T> for usize {
+    type Output = T;
+    // ...
 }
 
-impl<T: SliceExt + ?Sized> Rangeable<T> for RangeTo<usize> {
-    fn start(&self, _: &T) -> usize { 0 }
-    fn end(&self, _: &T) -> usize { self.end }
-}
-
-impl<T: SliceExt + ?Sized> Rangeable<T> for Range<usize> {
-    fn start(&self, _: &T) -> usize { self.start }
-    fn end(&self, _: &T) -> usize { self.end }
-}
-
-trait GetRangeExt: SliceExt {
-    fn get_range<R: Rangeable<Self>>(&self, range: R) -> Option<&[Self::Item]>;
-}
-
-impl<T> GetRangeExt for [T] {
-    fn get_range<R: Rangeable<Self>>(&self, range: R) -> Option<&[T]> {
-        let start = range.start(self);
-        let end = range.end(self);
-
-        if start > end { return None; }
-        if end > self.len() { return None; }
-
-        unsafe { Some(from_raw_parts(self.as_ptr().offset(start as isize), end - start)) }
-    }
-}
-
-fn main() {
-    let a = [1, 2, 3, 4, 5];
-
-    assert_eq!(a.get_range(1..), Some(&a[1..]));
-    assert_eq!(a.get_range(..3), Some(&a[..3]));
-    assert_eq!(a.get_range(2..5), Some(&a[2..5]));
-    assert_eq!(a.get_range(..6), None);
-    assert_eq!(a.get_range(4..2), None);
+impl<T, R> SliceIndex<T> for R
+    where R: RangeArgument<usize>
+{
+    type Output = [T];
+    // ...
 }
 ```
 
-`get_range_unchecked` and `get_range_unchecked_mut` should be the unchecked versions of the methods
-above.
+Alter the `Index`, `IndexMut`, `get`, `get_mut`, `get_unchecked`, and `get_mut_unchecked`
+implementations to be generic over `SliceIndex`:
+```rust
+impl<T> [T] {
+    pub fn get<I>(&self, idx: I) -> Option<I::Output>
+        where I: SliceIndex<T>
+    {
+        idx.get(self)
+    }
+
+    pub fn get_mut<I>(&mut self, idx: I) -> Option<I::Output>
+        where I: SliceIndex<T>
+    {
+        idx.get_mut(self)
+    }
+
+    pub unsafe fn get_unchecked<I>(&self, idx: I) -> I::Output
+        where I: SliceIndex<T>
+    {
+        idx.get_unchecked(self)
+    }
+
+    pub unsafe fn get_mut_unchecked<I>(&mut self, idx: I) -> I::Output
+        where I: SliceIndex<T>
+    {
+        idx.get_mut_unchecked(self)
+    }
+}
+
+impl<T, I> Index<I> for [T]
+    where I: SliceIndex<T>
+{
+    type Output = I::Output;
+
+    fn index(&self, idx: I) -> &I::Output {
+        self.get(idx).expect("out of bounds slice access")
+    }
+}
+
+impl<T, I> IndexMut<I> for [T]
+    where I: SliceIndex<T>
+{
+    fn index_mut(&self, idx: I) -> &mut I::Output {
+        self.get_mut(idx).expect("out of bounds slice access")
+    }
+}
+```
 
 # Drawbacks
 
-- Are these methods worth adding to `std`? Are such use cases common to justify such extention?
+- The `SliceIndex` trait is unfortunate - it's tuned for exactly the set of methods it's used by.
+  It only exists because inherent methods cannot be overloaded the same way that trait
+  implementations can be. It would most likely remain unstable indefinitely.
 
 # Alternatives
 
 - Stay as is.
-- Could there be any other (and better!) total functions that serve the similar purpose?
+- A previous version of this RFC introduced new `get_slice` etc methods rather than overloading
+  `get` etc. This avoids the utility trait but is somewhat less ergonomic.
 
 # Unresolved questions
 
-- Naming, naming, naming: Is `get_range` the most suitable name? How about `get_slice`, or just
-  `slice`? Or any others?
+None
