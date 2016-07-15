@@ -7,7 +7,13 @@ import json
 level_re = re.compile(r'''(Forbid|Deny|Warn|Allow)''')
 conf_re = re.compile(r'''define_Conf! {\n([^}]*)\n}''', re.MULTILINE)
 confvar_re = re.compile(r'''/// Lint: (\w+). (.*).*\n *\("([^"]*)", (?:[^,]*), (.*) => (.*)\),''')
-lint_subheadline = re.compile(r'''^\*\*([\w\s]+)[:?.!]\*\*(.*)''')
+lint_subheadline = re.compile(r'''^\*\*([\w\s]+?)[:?.!]?\*\*(.*)''')
+
+conf_template = """
+This lint has the following configuration variables:
+
+* `%s: %s`: %s (defaults to `%s`).
+"""
 
 # TODO: actual logging
 def warn(*args): print(args)
@@ -15,11 +21,20 @@ def debug(*args): print(args)
 def info(*args): print(args)
 
 def parse_path(p="clippy_lints/src"):
-    d = []
+    lints = []
     for f in os.listdir(p):
         if f.endswith(".rs"):
-            parse_file(d, os.path.join(p, f))
-    return (d, parse_conf(p))
+            parse_file(lints, os.path.join(p, f))
+
+    conf = parse_conf(p)
+    info(conf)
+
+    for lint_id in conf:
+        lint = next(l for l in lints if l['id'] == lint_id)
+        if lint:
+            lint['docs']['Configuration'] = (conf_template % conf[lint_id]).strip()
+
+    return lints
 
 
 def parse_conf(p):
@@ -120,7 +135,7 @@ def parse_file(d, f):
                     comment = True
 
 def main():
-    (lints, config) = parse_path()
+    lints = parse_path()
     info("got %s lints" % len(lints))
     with open("util/gh-pages/lints.json", "w") as file:
         json.dump(lints, file, indent=2)
