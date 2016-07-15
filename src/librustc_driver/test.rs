@@ -34,7 +34,7 @@ use syntax::abi::Abi;
 use syntax::codemap::CodeMap;
 use errors;
 use errors::emitter::Emitter;
-use errors::{Level, RenderSpan, DiagnosticBuilder};
+use errors::{Level, DiagnosticBuilder};
 use syntax::parse::token;
 use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::DUMMY_SP;
