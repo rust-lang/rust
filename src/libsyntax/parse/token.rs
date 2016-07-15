@@ -15,7 +15,6 @@ pub use self::Lit::*;
 pub use self::Token::*;
 
 use ast::{self, BinOpKind};
-use ext::mtwt;
 use ptr::P;
 use util::interner::Interner;
 use tokenstream;
@@ -311,17 +310,6 @@ impl Token {
             Ident(id) => id.name >= keywords::Abstract.name() &&
                          id.name <= keywords::Yield.name(),
             _ => false,
-        }
-    }
-
-    /// Hygienic identifier equality comparison.
-    ///
-    /// See `styntax::ext::mtwt`.
-    pub fn mtwt_eq(&self, other : &Token) -> bool {
-        match (self, other) {
-            (&Ident(id1), &Ident(id2)) | (&Lifetime(id1), &Lifetime(id2)) =>
-                mtwt::resolve(id1) == mtwt::resolve(id2),
-            _ => *self == *other
         }
     }
 }
@@ -649,22 +637,4 @@ pub fn fresh_name(src: ast::Ident) -> ast::Name {
 // create a fresh mark.
 pub fn fresh_mark() -> ast::Mrk {
     gensym("mark").0
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ast;
-    use ext::mtwt;
-
-    fn mark_ident(id : ast::Ident, m : ast::Mrk) -> ast::Ident {
-        ast::Ident::new(id.name, mtwt::apply_mark(m, id.ctxt))
-    }
-
-    #[test] fn mtwt_token_eq_test() {
-        assert!(Gt.mtwt_eq(&Gt));
-        let a = str_to_ident("bac");
-        let a1 = mark_ident(a,92);
-        assert!(Ident(a).mtwt_eq(&Ident(a1)));
-    }
 }

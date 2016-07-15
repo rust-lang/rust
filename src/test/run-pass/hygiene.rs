@@ -106,6 +106,13 @@ fn match_hygiene() {
     m!(Ok(x), x);
 }
 
+fn label_hygiene() {
+    'a: loop {
+        macro_rules! m { () => { break 'a; } }
+        m!();
+    }
+}
+
 fn main() {
     f();
     g();
