@@ -75,6 +75,7 @@
                         <span ng-if="lint.level == 'Allow'" class="label label-info">Allow</span>
                         <span ng-if="lint.level == 'Warn'" class="label label-warning">Warn</span>
                         <span ng-if="lint.level == 'Deny'" class="label label-danger">Deny</span>
+                        <span ng-if="lint.level == 'Deprecated'" class="label label-default">Deprecated</span>
 
                         <a href="#{{lint.id}}" class="anchor label label-default">&para;</a>
                     </h2>
@@ -131,7 +132,7 @@
         })
         .controller("lintList", function ($scope, $http) {
             // Level filter
-            $scope.levels = {Allow: true, Warn: true, Deny: true};
+            $scope.levels = {Allow: true, Warn: true, Deny: true, Deprecated: true};
             $scope.byLevels = function (lint) {
                 return $scope.levels[lint.level];
             };
