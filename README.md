@@ -43,7 +43,7 @@ name                                                                            
 [clone_on_copy](https://github.com/Manishearth/rust-clippy/wiki#clone_on_copy)                                       | warn    | using `clone` on a `Copy` type
 [cmp_nan](https://github.com/Manishearth/rust-clippy/wiki#cmp_nan)                                                   | deny    | comparisons to NAN (which will always return false, which is probably not intended)
 [cmp_owned](https://github.com/Manishearth/rust-clippy/wiki#cmp_owned)                                               | warn    | creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
-[collapsible_if](https://github.com/Manishearth/rust-clippy/wiki#collapsible_if)                                     | warn    | two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` can be written as `if x && y { foo() }` and an `else { if .. }` expression can be collapsed to `else if`
+[collapsible_if](https://github.com/Manishearth/rust-clippy/wiki#collapsible_if)                                     | warn    | `if`s that can be collapsed (e.g. `if x { if y { … } }` and `else { if x { … } }`)
 [crosspointer_transmute](https://github.com/Manishearth/rust-clippy/wiki#crosspointer_transmute)                     | warn    | transmutes that have to or from types that are a pointer to the other
 [cyclomatic_complexity](https://github.com/Manishearth/rust-clippy/wiki#cyclomatic_complexity)                       | warn    | finds functions that should be split up into multiple functions
 [deprecated_semver](https://github.com/Manishearth/rust-clippy/wiki#deprecated_semver)                               | warn    | `Warn` on `#[deprecated(since = "x")]` where x is not semver
@@ -98,21 +98,21 @@ name                                                                            
 [mem_forget](https://github.com/Manishearth/rust-clippy/wiki#mem_forget)                                             | allow   | `mem::forget` usage on `Drop` types is likely to cause memory leaks
 [min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                                   | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                                             | warn    | taking a number modulo 1, which always returns 0
-[mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                                   | allow   | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)
-[mutex_atomic](https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic)                                         | warn    | using a Mutex where an atomic value could be used instead
-[mutex_integer](https://github.com/Manishearth/rust-clippy/wiki#mutex_integer)                                       | allow   | using a Mutex for an integer type
+[mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                                   | allow   | usage of double-mut refs, e.g. `&mut &mut ...`
+[mutex_atomic](https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic)                                         | warn    | using a mutex where an atomic value could be used instead
+[mutex_integer](https://github.com/Manishearth/rust-clippy/wiki#mutex_integer)                                       | allow   | using a mutex for an integer type
 [needless_bool](https://github.com/Manishearth/rust-clippy/wiki#needless_bool)                                       | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
 [needless_borrow](https://github.com/Manishearth/rust-clippy/wiki#needless_borrow)                                   | warn    | taking a reference that is going to be automatically dereferenced
 [needless_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#needless_lifetimes)                             | warn    | using explicit lifetimes for references in function arguments when elision rules would allow omitting them
 [needless_range_loop](https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop)                           | warn    | for-looping over a range of indices where an iterator over items would do
 [needless_return](https://github.com/Manishearth/rust-clippy/wiki#needless_return)                                   | warn    | using a return statement like `return expr;` where an expression would suffice
-[needless_update](https://github.com/Manishearth/rust-clippy/wiki#needless_update)                                   | warn    | using `{ ..base }` when there are no missing fields
+[needless_update](https://github.com/Manishearth/rust-clippy/wiki#needless_update)                                   | warn    | using `Foo { ..base }` when there are no missing fields
 [neg_multiply](https://github.com/Manishearth/rust-clippy/wiki#neg_multiply)                                         | warn    | Warns on multiplying integers with -1
 [new_ret_no_self](https://github.com/Manishearth/rust-clippy/wiki#new_ret_no_self)                                   | warn    | not returning `Self` in a `new` method
 [new_without_default](https://github.com/Manishearth/rust-clippy/wiki#new_without_default)                           | warn    | `fn new() -> Self` method without `Default` implementation
 [new_without_default_derive](https://github.com/Manishearth/rust-clippy/wiki#new_without_default_derive)             | warn    | `fn new() -> Self` without `#[derive]`able `Default` implementation
 [no_effect](https://github.com/Manishearth/rust-clippy/wiki#no_effect)                                               | warn    | statements with no effect
-[non_ascii_literal](https://github.com/Manishearth/rust-clippy/wiki#non_ascii_literal)                               | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
+[non_ascii_literal](https://github.com/Manishearth/rust-clippy/wiki#non_ascii_literal)                               | allow   | using any literal non-ASCII chars in a string literal; suggests using the `\\u` escape instead
 [nonminimal_bool](https://github.com/Manishearth/rust-clippy/wiki#nonminimal_bool)                                   | allow   | checks for boolean expressions that can be written more concisely
 [nonsensical_open_options](https://github.com/Manishearth/rust-clippy/wiki#nonsensical_open_options)                 | warn    | nonsensical combination of options for opening a file
 [not_unsafe_ptr_arg_deref](https://github.com/Manishearth/rust-clippy/wiki#not_unsafe_ptr_arg_deref)                 | warn    | public functions dereferencing raw pointer arguments but not marked `unsafe`
@@ -124,7 +124,7 @@ name                                                                            
 [out_of_bounds_indexing](https://github.com/Manishearth/rust-clippy/wiki#out_of_bounds_indexing)                     | deny    | out of bound constant indexing
 [overflow_check_conditional](https://github.com/Manishearth/rust-clippy/wiki#overflow_check_conditional)             | warn    | Using overflow checks which are likely to panic
 [panic_params](https://github.com/Manishearth/rust-clippy/wiki#panic_params)                                         | warn    | missing parameters in `panic!`
-[precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                                             | warn    | catches operations where precedence may be unclear. See the wiki for a list of cases caught
+[precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                                             | warn    | catches operations where precedence may be unclear
 [print_stdout](https://github.com/Manishearth/rust-clippy/wiki#print_stdout)                                         | allow   | printing on stdout
 [ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                                   | warn    | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
 [range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)                             | warn    | using Range::step_by(0), which produces an infinite iterator
