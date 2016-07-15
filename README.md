@@ -1,4 +1,4 @@
-# rustfmt [![Build Status](https://travis-ci.org/rust-lang-nursery/rustfmt.svg)](https://travis-ci.org/rust-lang-nursery/rustfmt)
+# rustfmt [![Build Status](https://travis-ci.org/rust-lang-nursery/rustfmt.svg)](https://travis-ci.org/rust-lang-nursery/rustfmt) [![Build Status](https://ci.appveyor.com/api/projects/status/github/rust-lang-nursery/rustfmt?svg=true)](https://ci.appveyor.com/api/projects/status/github/rust-lang-nursery/rustfmt)
 
 A tool for formatting Rust code according to style guidelines.
 
