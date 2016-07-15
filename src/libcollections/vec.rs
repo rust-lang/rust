@@ -1603,6 +1603,12 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// An iterator that moves out of a vector.
+///
+/// This `struct` is created by the `into_iter` method on [`Vec`][`Vec`] (provided
+/// by the [`IntoIterator`] trait).
+///
+/// [`Vec`]: struct.Vec.html
+/// [`IntoIterator`]: ../../std/iter/trait.IntoIterator.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     _buf: RawVec<T>,
@@ -1710,6 +1716,11 @@ impl<T> Drop for IntoIter<T> {
 }
 
 /// A draining iterator for `Vec<T>`.
+///
+/// This `struct` is created by the [`drain`] method on [`Vec`].
+///
+/// [`drain`]: struct.Vec.html#method.drain
+/// [`Vec`]: struct.Vec.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     /// Index of tail to preserve
