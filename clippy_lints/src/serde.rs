@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{span_lint, get_trait_def_id};
+use utils::{span_lint, get_trait_def_id, paths};
 
 /// **What it does:** This lint checks for mis-uses of the serde API
 ///
@@ -28,7 +28,7 @@ impl LateLintPass for Serde {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemImpl(_, _, _, Some(ref trait_ref), _, ref items) = item.node {
             let did = cx.tcx.expect_def(trait_ref.ref_id).def_id();
-            if let Some(visit_did) = get_trait_def_id(cx, &["serde", "de", "Visitor"]) {
+            if let Some(visit_did) = get_trait_def_id(cx, &paths::SERDE_DE_VISITOR) {
                 if did == visit_did {
                     let mut seen_str = None;
                     let mut seen_string = None;

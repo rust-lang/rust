@@ -55,6 +55,7 @@ pub const REGEX_NEW: [&'static str; 4] = ["regex", "re_unicode", "Regex", "new"]
 pub const REGEX_SET_NEW: [&'static str; 5] = ["regex", "re_set", "unicode", "RegexSet", "new"];
 pub const RESULT: [&'static str; 3] = ["core", "result", "Result"];
 pub const STRING: [&'static str; 3] = ["collections", "string", "String"];
+pub const SERDE_DE_VISITOR: [&'static str; 3] = ["serde", "de", "Visitor"];
 pub const TRANSMUTE: [&'static str; 4] = ["core", "intrinsics", "", "transmute"];
 pub const VEC: [&'static str; 3] = ["collections", "vec", "Vec"];
 pub const VEC_DEQUE: [&'static str; 3] = ["collections", "vec_deque", "VecDeque"];
