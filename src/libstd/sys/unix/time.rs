@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use cmp::Ordering;
-use time::Duration;
 use libc;
+use time::Duration;
 
 pub use self::inner::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -164,12 +164,14 @@ mod inner {
 
     impl SystemTime {
         pub fn now() -> SystemTime {
+            use ptr;
+
             let mut s = libc::timeval {
                 tv_sec: 0,
                 tv_usec: 0,
             };
             cvt(unsafe {
-                libc::gettimeofday(&mut s, 0 as *mut _)
+                libc::gettimeofday(&mut s, ptr::null_mut())
             }).unwrap();
             return SystemTime::from(s)
         }

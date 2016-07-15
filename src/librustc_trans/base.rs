@@ -96,6 +96,7 @@ use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
+use std::ptr;
 use std::rc::Rc;
 use std::str;
 use std::{i8, i16, i32, i64};
@@ -2201,7 +2202,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
                                                  start_fn,
                                                  args.as_ptr(),
                                                  args.len() as c_uint,
-                                                 0 as *mut _,
+                                                 ptr::null_mut(),
                                                  noname());
 
             llvm::LLVMBuildRet(bld, result);

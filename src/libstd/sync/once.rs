@@ -65,6 +65,7 @@
 // it!
 
 use marker;
+use ptr;
 use sync::atomic::{AtomicUsize, AtomicBool, Ordering};
 use thread::{self, Thread};
 
@@ -297,7 +298,7 @@ impl Once {
                     let mut node = Waiter {
                         thread: Some(thread::current()),
                         signaled: AtomicBool::new(false),
-                        next: 0 as *mut Waiter,
+                        next: ptr::null_mut(),
                     };
                     let me = &mut node as *mut Waiter as usize;
                     assert!(me & STATE_MASK == 0);
