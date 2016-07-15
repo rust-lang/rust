@@ -33,6 +33,7 @@ pub trait Emitter {
 
 impl Emitter for EmitterWriter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
+        // Pick old school mode either from env or let the test dictate the format
         let old_school = match self.format_mode {
             FormatMode::NewErrorFormat => false,
             FormatMode::OriginalErrorFormat => true,
