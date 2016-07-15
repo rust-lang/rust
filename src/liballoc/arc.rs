@@ -12,23 +12,11 @@
 
 //! Threadsafe reference-counted boxes (the `Arc<T>` type).
 //!
-//! The `Arc<T>` type provides shared ownership of an immutable value.
-//! Destruction is deterministic, and will occur as soon as the last owner is
-//! gone. It is marked as `Send` because it uses atomic reference counting.
+//! The `Arc<T>` type provides shared ownership of an immutable value through
+//! atomic reference counting.
 //!
-//! If you do not need thread-safety, and just need shared ownership, consider
-//! the [`Rc<T>` type](../rc/struct.Rc.html). It is the same as `Arc<T>`, but
-//! does not use atomics, making it both thread-unsafe as well as significantly
-//! faster when updating the reference count.
-//!
-//! The `downgrade` method can be used to create a non-owning `Weak<T>` pointer
-//! to the box. A `Weak<T>` pointer can be upgraded to an `Arc<T>` pointer, but
-//! will return `None` if the value has already been dropped.
-//!
-//! For example, a tree with parent pointers can be represented by putting the
-//! nodes behind strong `Arc<T>` pointers, and then storing the parent pointers
-//! as `Weak<T>` pointers.
-//!
+//! `Weak<T>` is a weak reference to the `Arc<T>` box, and it is created by
+//! the `downgrade` method.
 //! # Examples
 //!
 //! Sharing some immutable data between threads:
@@ -44,27 +32,6 @@
 //!
 //!     thread::spawn(move || {
 //!         println!("{:?}", five);
-//!     });
-//! }
-//! ```
-//!
-//! Sharing mutable data safely between threads with a `Mutex`:
-//!
-//! ```no_run
-//! use std::sync::{Arc, Mutex};
-//! use std::thread;
-//!
-//! let five = Arc::new(Mutex::new(5));
-//!
-//! for _ in 0..10 {
-//!     let five = five.clone();
-//!
-//!     thread::spawn(move || {
-//!         let mut number = five.lock().unwrap();
-//!
-//!         *number += 1;
-//!
-//!         println!("{}", *number); // prints 6
 //!     });
 //! }
 //! ```
@@ -92,15 +59,19 @@ use heap::deallocate;
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
 /// An atomically reference counted wrapper for shared state.
+/// Destruction is deterministic, and will occur as soon as the last owner is
+/// gone. It is marked as `Send` because it uses atomic reference counting.
+///
+/// If you do not need thread-safety, and just need shared ownership, consider
+/// the [`Rc<T>` type](../rc/struct.Rc.html). It is the same as `Arc<T>`, but
+/// does not use atomics, making it both thread-unsafe as well as significantly
+/// faster when updating the reference count.
 ///
 /// # Examples
 ///
-/// In this example, a large vector is shared between several threads.
-/// With simple pipes, without `Arc`, a copy would have to be made for each
-/// thread.
-///
-/// When you clone an `Arc<T>`, it will create another pointer to the data and
-/// increase the reference counter.
+/// In this example, a large vector of data will be shared by several threads. First we
+/// wrap it with a `Arc::new` and then clone the `Arc<T>` reference for every thread (which will
+/// increase the reference count atomically).
 ///
 /// ```
 /// use std::sync::Arc;
@@ -111,6 +82,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///     let shared_numbers = Arc::new(numbers);
 ///
 ///     for _ in 0..10 {
+///         // prepare a copy of reference here and it will be moved to the thread
 ///         let child_numbers = shared_numbers.clone();
 ///
 ///         thread::spawn(move || {
@@ -121,6 +93,29 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///     }
 /// }
 /// ```
+/// You can also share mutable data between threads safely
+/// by putting it inside `Mutex` and then share `Mutex` immutably
+/// with `Arc<T>` as shown below.
+///
+/// ```
+/// use std::sync::{Arc, Mutex};
+/// use std::thread;
+///
+/// let five = Arc::new(Mutex::new(5));
+///
+/// for _ in 0..10 {
+///     let five = five.clone();
+///
+///     thread::spawn(move || {
+///         let mut number = five.lock().unwrap();
+///
+///         *number += 1;
+///
+///         println!("{}", *number); // prints 6
+///     });
+/// }
+/// ```
+
 #[unsafe_no_drop_flag]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
@@ -139,6 +134,14 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 ///
 /// Weak pointers will not keep the data inside of the `Arc` alive, and can be
 /// used to break cycles between `Arc` pointers.
+///
+/// A `Weak<T>` pointer can be upgraded to an `Arc<T>` pointer, but
+/// will return `None` if the value has already been dropped.
+///
+/// For example, a tree with parent pointers can be represented by putting the
+/// nodes behind strong `Arc<T>` pointers, and then storing the parent pointers
+/// as `Weak<T>` pointers.
+
 #[unsafe_no_drop_flag]
 #[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
