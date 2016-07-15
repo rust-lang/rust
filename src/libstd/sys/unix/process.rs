@@ -96,7 +96,7 @@ impl Command {
         let mut saw_nul = false;
         let program = os2c(program, &mut saw_nul);
         Command {
-            argv: vec![program.as_ptr(), 0 as *const _],
+            argv: vec![program.as_ptr(), ptr::null()],
             program: program,
             args: Vec::new(),
             env: None,
@@ -117,7 +117,7 @@ impl Command {
         // pointer.
         let arg = os2c(arg, &mut self.saw_nul);
         self.argv[self.args.len() + 1] = arg.as_ptr();
-        self.argv.push(0 as *const _);
+        self.argv.push(ptr::null());
 
         // Also make sure we keep track of the owned value to schedule a
         // destructor for this memory.
@@ -134,7 +134,7 @@ impl Command {
                 envp.push(s.as_ptr());
                 map.insert(k, (envp.len() - 1, s));
             }
-            envp.push(0 as *const _);
+            envp.push(ptr::null());
             self.env = Some(map);
             self.envp = Some(envp);
         }
@@ -158,7 +158,7 @@ impl Command {
             Entry::Vacant(e) => {
                 let len = envp.len();
                 envp[len - 1] = new_key.as_ptr();
-                envp.push(0 as *const _);
+                envp.push(ptr::null());
                 e.insert((len - 1, new_key));
             }
         }
@@ -183,7 +183,7 @@ impl Command {
 
     pub fn env_clear(&mut self) {
         self.env = Some(HashMap::new());
-        self.envp = Some(vec![0 as *const _]);
+        self.envp = Some(vec![ptr::null()]);
     }
 
     pub fn cwd(&mut self, dir: &OsStr) {
