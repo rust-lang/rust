@@ -380,10 +380,18 @@ impl<'a> Step<'a> {
                 vec![self.doc_test(stage)]
             }
             Source::Doc { stage } => {
-                vec![self.doc_book(stage), self.doc_nomicon(stage),
-                     self.doc_style(stage), self.doc_standalone(stage),
-                     self.doc_std(stage),
-                     self.doc_error_index(stage)]
+                let mut deps = vec![
+                    self.doc_book(stage), self.doc_nomicon(stage),
+                    self.doc_style(stage), self.doc_standalone(stage),
+                    self.doc_std(stage),
+                    self.doc_error_index(stage),
+                ];
+
+                if build.config.compiler_docs {
+                    deps.push(self.doc_rustc(stage));
+                }
+
+                deps
             }
             Source::Check { stage, compiler } => {
                 // Check is just a pseudo step which means check all targets,
