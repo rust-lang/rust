@@ -44,7 +44,7 @@ use lint::{LintPass, LateLintPass};
 use std::collections::HashSet;
 
 use syntax::{ast};
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr::{self, AttrMetaMethods, AttributeMethods};
 use syntax_pos::{self, Span};
 
 use rustc::hir::{self, PatKind};
@@ -299,9 +299,10 @@ impl MissingDoc {
         }
 
         let has_doc = attrs.iter().any(|a| {
-            match a.node.value.node {
-                ast::MetaItemKind::NameValue(ref name, _) if *name == "doc" => true,
-                _ => false
+            if a.is_value_str() && a.name() == "doc" {
+                true
+            } else {
+                false
             }
         });
         if !has_doc {
@@ -1094,10 +1095,10 @@ impl LintPass for UnstableFeatures {
 
 impl LateLintPass for UnstableFeatures {
     fn check_attribute(&mut self, ctx: &LateContext, attr: &ast::Attribute) {
-        if attr::contains_name(&[attr.node.value.clone()], "feature") {
-            if let Some(items) = attr.node.value.meta_item_list() {
+        if attr::contains_name(&[attr.meta().clone()], "feature") {
+            if let Some(items) = attr.meta().meta_item_list() {
                 for item in items {
-                    ctx.span_lint(UNSTABLE_FEATURES, item.span, "unstable feature");
+                    ctx.span_lint(UNSTABLE_FEATURES, item.span(), "unstable feature");
                 }
             }
         }

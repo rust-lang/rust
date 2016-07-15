@@ -44,7 +44,7 @@ use std::rc::Rc;
 use std::u32;
 use syntax::abi::Abi;
 use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID, CrateNum};
-use syntax::attr;
+use syntax::attr::{self,AttrMetaMethods,AttributeMethods};
 use errors::Handler;
 use syntax;
 use syntax_pos::BytePos;
@@ -1431,31 +1431,28 @@ fn encode_item_index(rbml_w: &mut Encoder, index: IndexData) {
 }
 
 fn encode_meta_item(rbml_w: &mut Encoder, mi: &ast::MetaItem) {
-    match mi.node {
-      ast::MetaItemKind::Word(ref name) => {
+    if mi.is_word() {
+        let name = mi.name();
         rbml_w.start_tag(tag_meta_item_word);
-        rbml_w.wr_tagged_str(tag_meta_item_name, name);
+        rbml_w.wr_tagged_str(tag_meta_item_name, &name);
         rbml_w.end_tag();
-      }
-      ast::MetaItemKind::NameValue(ref name, ref value) => {
-        match value.node {
-          ast::LitKind::Str(ref value, _) => {
-            rbml_w.start_tag(tag_meta_item_name_value);
-            rbml_w.wr_tagged_str(tag_meta_item_name, name);
-            rbml_w.wr_tagged_str(tag_meta_item_value, value);
-            rbml_w.end_tag();
-          }
-          _ => {/* FIXME (#623): encode other variants */ }
-        }
-      }
-      ast::MetaItemKind::List(ref name, ref items) => {
+    } else if mi.is_value_str() {
+        let name = mi.name();
+        /* FIXME (#623): support other literal kinds */
+        let value = mi.value_str().unwrap();
+        rbml_w.start_tag(tag_meta_item_name_value);
+        rbml_w.wr_tagged_str(tag_meta_item_name, &name);
+        rbml_w.wr_tagged_str(tag_meta_item_value, &value);
+        rbml_w.end_tag();
+    } else { // it must be a list
+        let name = mi.name();
+        let items = mi.meta_item_list().unwrap();
         rbml_w.start_tag(tag_meta_item_list);
-        rbml_w.wr_tagged_str(tag_meta_item_name, name);
+        rbml_w.wr_tagged_str(tag_meta_item_name, &name);
         for inner_item in items {
             encode_meta_item(rbml_w, &inner_item);
         }
         rbml_w.end_tag();
-      }
     }
 }
 
@@ -1464,7 +1461,7 @@ fn encode_attributes(rbml_w: &mut Encoder, attrs: &[ast::Attribute]) {
     for attr in attrs {
         rbml_w.start_tag(tag_attribute);
         rbml_w.wr_tagged_u8(tag_attribute_is_sugared_doc, attr.node.is_sugared_doc as u8);
-        encode_meta_item(rbml_w, &attr.node.value);
+        encode_meta_item(rbml_w, attr.meta());
         rbml_w.end_tag();
     }
     rbml_w.end_tag();

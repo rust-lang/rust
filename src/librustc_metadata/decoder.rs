@@ -1160,15 +1160,7 @@ fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
                 // an attribute
                 assert_eq!(meta_items.len(), 1);
                 let meta_item = meta_items.into_iter().nth(0).unwrap();
-                codemap::Spanned {
-                    node: ast::Attribute_ {
-                        id: attr::mk_attr_id(),
-                        style: ast::AttrStyle::Outer,
-                        value: meta_item,
-                        is_sugared_doc: is_sugared_doc,
-                    },
-                    span: syntax_pos::DUMMY_SP
-                }
+                attr::mk_doc_attr_outer(attr::mk_attr_id(), meta_item, is_sugared_doc)
             }).collect()
         },
         None => vec![],

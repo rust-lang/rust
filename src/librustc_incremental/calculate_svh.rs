@@ -11,6 +11,7 @@
 //! Calculation of a Strict Version Hash for crates.  For a length
 //! comment explaining the general idea, see `librustc/middle/svh.rs`.
 
+use syntax::attr::AttributeMethods;
 use std::hash::{Hash, SipHasher, Hasher};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::svh::Svh;
@@ -69,7 +70,7 @@ impl<'a, 'tcx> SvhCalculate for TyCtxt<'a, 'tcx, 'tcx> {
         // to avoid hashing the AttrId
         for attr in &krate.attrs {
             debug!("krate attr {:?}", attr);
-            attr.node.value.hash(&mut state);
+            attr.meta().hash(&mut state);
         }
 
         Svh::new(state.finish())
