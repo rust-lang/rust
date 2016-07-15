@@ -2318,7 +2318,7 @@ impl usize {
 /// let num = 12.4_f32;
 /// let inf = f32::INFINITY;
 /// let zero = 0f32;
-/// let sub: f32 = 0.000000000000000000000000000000000000011754942;
+/// let sub: f32 = 1.1754942e-38;
 /// let nan = f32::NAN;
 ///
 /// assert_eq!(num.classify(), FpCategory::Normal);
