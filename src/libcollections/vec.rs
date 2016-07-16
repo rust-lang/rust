@@ -479,18 +479,45 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Shorten a vector to be `len` elements long, dropping excess elements.
+    /// Shortens the vector, keeping the first `len` elements and dropping
+    /// the rest.
     ///
     /// If `len` is greater than the vector's current length, this has no
     /// effect.
     ///
+    /// The [`drain`] method can emulate `truncate`, but causes the excess
+    /// elements to be returned instead of dropped.
+    ///
     /// # Examples
+    ///
+    /// Truncating a five element vector to two elements:
     ///
     /// ```
     /// let mut vec = vec![1, 2, 3, 4, 5];
     /// vec.truncate(2);
     /// assert_eq!(vec, [1, 2]);
     /// ```
+    ///
+    /// No truncation occurs when `len` is greater than the vector's current
+    /// length:
+    ///
+    /// ```
+    /// let mut vec = vec![1, 2, 3];
+    /// vec.truncate(8);
+    /// assert_eq!(vec, [1, 2, 3]);
+    /// ```
+    ///
+    /// Truncating when `len == 0` is equivalent to calling the [`clear`]
+    /// method.
+    ///
+    /// ```
+    /// let mut vec = vec![1, 2, 3];
+    /// vec.truncate(0);
+    /// assert_eq!(vec, []);
+    /// ```
+    ///
+    /// [`clear`]: #method.clear
+    /// [`drain`]: #method.drain
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: usize) {
         unsafe {
