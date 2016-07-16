@@ -81,7 +81,7 @@ Raw pointers that own an allocation is such a pervasive pattern that the
 standard library made a utility for itself called `Unique<T>` which:
 
 * wraps a `*const T` for variance
-* includes a `PhantomData<T>`,
+* includes a `PhantomData<T>`
 * auto-derives Send/Sync as if T was contained
 * marks the pointer as NonZero for the null-pointer optimization
 
