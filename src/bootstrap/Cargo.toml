@@ -29,6 +29,6 @@ getopts = "0.2"
 rustc-serialize = "0.3"
 winapi = "0.2"
 kernel32-sys = "0.2"
-gcc = "0.3.17"
+gcc = { git = "https://github.com/alexcrichton/gcc-rs" }
 libc = "0.2"
 md5 = "0.1"

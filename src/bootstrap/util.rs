@@ -103,7 +103,10 @@ pub fn add_lib_path(path: Vec<PathBuf>, cmd: &mut Command) {
 /// Uses last-modified time checks to verify this.
 pub fn up_to_date(src: &Path, dst: &Path) -> bool {
     let threshold = mtime(dst);
-    let meta = t!(fs::metadata(src));
+    let meta = match fs::metadata(src) {
+        Ok(meta) => meta,
+        Err(e) => panic!("source {:?} failed to get metadata: {}", src, e),
+    };
     if meta.is_dir() {
         dir_up_to_date(src, &threshold)
     } else {
