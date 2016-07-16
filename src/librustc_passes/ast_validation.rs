@@ -135,6 +135,23 @@ impl<'a> Visitor for AstValidator<'a> {
         visit::walk_item(self, item)
     }
 
+    fn visit_foreign_item(&mut self, fi: &ForeignItem) {
+        match fi.node {
+            ForeignItemKind::Fn(ref decl, _) => {
+                for arg in &decl.inputs {
+                    match arg.pat.node {
+                        PatKind::Ident(..) | PatKind::Wild => {}
+                        _ => span_err!(self.session, arg.pat.span, E0130,
+                                       "patterns aren't allowed in foreign function declarations")
+                    }
+                }
+            }
+            ForeignItemKind::Static(..) => {}
+        }
+
+        visit::walk_foreign_item(self, fi)
+    }
+
     fn visit_variant_data(&mut self, vdata: &VariantData, _: Ident,
                           _: &Generics, _: NodeId, span: Span) {
         if vdata.fields().is_empty() {
