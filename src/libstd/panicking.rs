@@ -232,9 +232,10 @@ fn default_hook(info: &PanicInfo) {
 pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
     let mut slot = None;
     let mut f = Some(f);
-    let ret;
+    let ret = PANIC_COUNT.with(|s| {
+        let prev = s.get();
+        s.set(0);
 
-    {
         let mut to_run = || {
             slot = Some(f.take().unwrap()());
         };
@@ -247,21 +248,18 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
                                          dataptr,
                                          &mut any_data,
                                          &mut any_vtable);
+        s.set(prev);
+
         if r == 0 {
-            ret = Ok(());
+            Ok(())
         } else {
-            PANIC_COUNT.with(|s| {
-                let prev = s.get();
-                s.set(prev - 1);
-            });
-            ret = Err(mem::transmute(raw::TraitObject {
+            Err(mem::transmute(raw::TraitObject {
                 data: any_data as *mut _,
                 vtable: any_vtable as *mut _,
-            }));
+            }))
         }
-    }
+    });
 
-    debug_assert!(PANIC_COUNT.with(|c| c.get() == 0));
     return ret.map(|()| {
         slot.take().unwrap()
     });
