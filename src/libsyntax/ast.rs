@@ -1886,7 +1886,7 @@ pub enum ItemKind {
     /// A union definition (`union` or `pub union`).
     ///
     /// E.g. `union Foo<A, B> { x: A, y: B }`
-    Union(VariantData, Generics), // FIXME: not yet implemented
+    Union(VariantData, Generics),
     /// A Trait declaration (`trait` or `pub trait`).
     ///
     /// E.g. `trait Foo { .. }` or `trait Foo<T> { .. }`
