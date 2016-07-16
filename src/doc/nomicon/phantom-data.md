@@ -51,7 +51,7 @@ struct Vec<T> {
 ```
 
 Unlike the previous example it *appears* that everything is exactly as we
-want. Every generic argument to Vec shows up in the at least one field.
+want. Every generic argument to Vec shows up in at least one field.
 Good to go!
 
 Nope.
