@@ -559,7 +559,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             etc: bool, expected: Ty<'tcx>) {
         let tcx = self.tcx;
 
-        let def = tcx.expect_def(pat.id);
+        let def = self.finish_resolving_struct_path(path, pat.id, path.span);
         let variant = match self.def_struct_variant(def, path.span) {
             Some((_, variant)) => variant,
             None => {
