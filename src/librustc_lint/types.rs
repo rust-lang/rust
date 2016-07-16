@@ -698,7 +698,8 @@ impl LateLintPass for VariantSizeDifferences {
             if gens.ty_params.is_empty() {  // sizes only make sense for non-generic types
                 let t = cx.tcx.node_id_to_type(it.id);
                 let layout = cx.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
-                    t.layout(&infcx).unwrap_or_else(|e| {
+                    let ty = cx.tcx.erase_regions(&t);
+                    ty.layout(&infcx).unwrap_or_else(|e| {
                         bug!("failed to get layout for `{}`: {}", t, e)
                     })
                 });
