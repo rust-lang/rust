@@ -700,19 +700,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ref sty => bug!("unexpected sty: {:?}", sty)
         },
         Def::Const(def_id) |
-        Def::AssociatedConst(def_id) => {
-            let substs = Some(cx.tcx.node_id_item_substs(expr.id).substs);
-            let tcx = cx.tcx.global_tcx();
-            if let Some((e, _)) = const_eval::lookup_const_by_id(tcx, def_id, substs) {
-                // FIXME ConstVal can't be yet used with adjustments, as they would be lost.
-                if !cx.tcx.tables.borrow().adjustments.contains_key(&e.id) {
-                    if let Some(v) = cx.try_const_eval_literal(e) {
-                        return ExprKind::Literal { literal: v };
-                    }
-                }
-            }
-            def_id
-        }
+        Def::AssociatedConst(def_id) => def_id,
 
         Def::Static(node_id, _) => return ExprKind::StaticRef {
             id: node_id,

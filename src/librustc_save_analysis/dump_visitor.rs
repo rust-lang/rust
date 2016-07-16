@@ -57,7 +57,7 @@ macro_rules! down_cast_data {
             data
         } else {
             span_bug!($sp, "unexpected data kind: {:?}", $id);
-        }
+        };
     };
 }
 

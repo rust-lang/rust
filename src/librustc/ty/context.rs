@@ -12,7 +12,6 @@
 
 use dep_graph::{DepGraph, DepTrackingMap};
 use session::Session;
-use lint;
 use middle;
 use middle::cstore::LOCAL_CRATE;
 use hir::def::DefMap;
@@ -415,9 +414,6 @@ pub struct GlobalCtxt<'tcx> {
     /// Cache used by const_eval when decoding extern const fns
     pub extern_const_fns: RefCell<DefIdMap<NodeId>>,
 
-    pub node_lint_levels: RefCell<FnvHashMap<(NodeId, lint::LintId),
-                                              lint::LevelSource>>,
-
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index<'tcx>>,
 
@@ -591,6 +587,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_interners.arenas.trait_defs.alloc(def)
     }
 
+    pub fn insert_adt_def(self, did: DefId, adt_def: ty::AdtDefMaster<'gcx>) {
+        // this will need a transmute when reverse-variance is removed
+        if let Some(prev) = self.adt_defs.borrow_mut().insert(did, adt_def) {
+            bug!("Tried to overwrite interned AdtDef: {:?}", prev)
+        }
+    }
+
     pub fn intern_adt_def(self,
                           did: DefId,
                           kind: ty::AdtKind,
@@ -598,10 +601,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                           -> ty::AdtDefMaster<'gcx> {
         let def = ty::AdtDefData::new(self, did, kind, variants);
         let interned = self.global_interners.arenas.adt_defs.alloc(def);
-        // this will need a transmute when reverse-variance is removed
-        if let Some(prev) = self.adt_defs.borrow_mut().insert(did, interned) {
-            bug!("Tried to overwrite interned AdtDef: {:?}", prev)
-        }
+        self.insert_adt_def(did, interned);
         interned
     }
 
@@ -722,7 +722,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             populated_external_primitive_impls: RefCell::new(DefIdSet()),
             extern_const_statics: RefCell::new(DefIdMap()),
             extern_const_fns: RefCell::new(DefIdMap()),
-            node_lint_levels: RefCell::new(FnvHashMap()),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),

@@ -36,6 +36,8 @@ fn main() {
     assert::<Box<i32>>();
     assert::<Mutex<i32>>();
     assert::<RwLock<i32>>();
+    assert::<&Mutex<i32>>();
+    assert::<&RwLock<i32>>();
     assert::<Rc<i32>>();
     assert::<Arc<i32>>();
 

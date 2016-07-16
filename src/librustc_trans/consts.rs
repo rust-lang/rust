@@ -900,7 +900,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
                 Def::Variant(enum_did, variant_did) => {
                     let vinfo = cx.tcx().lookup_adt_def(enum_did).variant_with_id(variant_did);
-                    match vinfo.kind() {
+                    match vinfo.kind {
                         ty::VariantKind::Unit => {
                             let repr = adt::represent_type(cx, ety);
                             adt::trans_const(cx, &repr, Disr::from(vinfo.disr_val), &[])

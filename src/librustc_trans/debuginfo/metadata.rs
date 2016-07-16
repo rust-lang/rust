@@ -81,7 +81,7 @@ pub struct UniqueTypeId(ast::Name);
 // UniqueTypeIds.
 pub struct TypeMap<'tcx> {
     // The UniqueTypeIds created so far
-    unique_id_interner: Interner<Rc<String>>,
+    unique_id_interner: Interner,
     // A map from UniqueTypeId to debuginfo metadata for that type. This is a 1:1 mapping.
     unique_id_to_metadata: FnvHashMap<UniqueTypeId, DIType>,
     // A map from types to debuginfo metadata. This is a N:1 mapping.
@@ -313,7 +313,7 @@ impl<'tcx> TypeMap<'tcx> {
         // Trim to size before storing permanently
         unique_type_id.shrink_to_fit();
 
-        let key = self.unique_id_interner.intern(Rc::new(unique_type_id));
+        let key = self.unique_id_interner.intern(unique_type_id);
         self.type_to_unique_id.insert(type_, UniqueTypeId(key));
 
         return UniqueTypeId(key);
@@ -383,7 +383,7 @@ impl<'tcx> TypeMap<'tcx> {
         let enum_variant_type_id = format!("{}::{}",
                                            &self.get_unique_type_id_as_string(enum_type_id),
                                            variant_name);
-        let interner_key = self.unique_id_interner.intern(Rc::new(enum_variant_type_id));
+        let interner_key = self.unique_id_interner.intern(enum_variant_type_id);
         UniqueTypeId(interner_key)
     }
 }
@@ -1109,7 +1109,7 @@ struct StructMemberDescriptionFactory<'tcx> {
 impl<'tcx> StructMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
-        if let ty::VariantKind::Unit = self.variant.kind() {
+        if self.variant.kind == ty::VariantKind::Unit {
             return Vec::new();
         }
 
@@ -1126,7 +1126,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
         };
 
         self.variant.fields.iter().enumerate().map(|(i, f)| {
-            let name = if let ty::VariantKind::Tuple = self.variant.kind() {
+            let name = if self.variant.kind == ty::VariantKind::Tuple {
                 format!("__{}", i)
             } else {
                 f.name.to_string()
@@ -1356,7 +1356,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // For the metadata of the wrapper struct, we need to create a
                 // MemberDescription of the struct's single field.
                 let sole_struct_member_description = MemberDescription {
-                    name: match non_null_variant.kind() {
+                    name: match non_null_variant.kind {
                         ty::VariantKind::Tuple => "__0".to_string(),
                         ty::VariantKind::Struct => {
                             non_null_variant.fields[0].name.to_string()
@@ -1524,7 +1524,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                            containing_scope);
 
     // Get the argument names from the enum variant info
-    let mut arg_names: Vec<_> = match variant.kind() {
+    let mut arg_names: Vec<_> = match variant.kind {
         ty::VariantKind::Unit => vec![],
         ty::VariantKind::Tuple => {
             variant.fields

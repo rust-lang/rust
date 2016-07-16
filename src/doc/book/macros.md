@@ -328,7 +328,7 @@ invocation site. Code such as the following will not work:
 
 ```rust,ignore
 macro_rules! foo {
-    () => (let x = 3);
+    () => (let x = 3;);
 }
 
 fn main() {
@@ -342,7 +342,7 @@ tagged with the right syntax context.
 
 ```rust
 macro_rules! foo {
-    ($v:ident) => (let $v = 3);
+    ($v:ident) => (let $v = 3;);
 }
 
 fn main() {

@@ -53,7 +53,7 @@ use rustc_const_eval::{eval_const_expr_partial, ConstEvalErr};
 use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::ErrKind::ErroneousReferencedConstant;
 use hir::{self, SelfKind};
-use hir::def::{self, Def};
+use hir::def::{Def, PathResolution};
 use hir::def_id::DefId;
 use hir::print as pprust;
 use middle::resolve_lifetime as rl;
@@ -1327,7 +1327,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 };
 
                 if self.ensure_super_predicates(span, trait_did).is_err() {
-                    return (tcx.types.err, ty_path_def);
+                    return (tcx.types.err, Def::Err);
                 }
 
                 let candidates: Vec<ty::PolyTraitRef> =
@@ -1341,7 +1341,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                     &assoc_name.as_str(),
                                                     span) {
                     Ok(bound) => bound,
-                    Err(ErrorReported) => return (tcx.types.err, ty_path_def),
+                    Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
             }
             (&ty::TyParam(_), Def::SelfTy(Some(trait_did), None)) => {
@@ -1351,7 +1351,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                      assoc_name,
                                                      span) {
                     Ok(bound) => bound,
-                    Err(ErrorReported) => return (tcx.types.err, ty_path_def),
+                    Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
             }
             (&ty::TyParam(_), Def::TyParam(_, _, param_did, param_name)) => {
@@ -1361,7 +1361,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                      assoc_name,
                                                      span) {
                     Ok(bound) => bound,
-                    Err(ErrorReported) => return (tcx.types.err, ty_path_def),
+                    Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
             }
             _ => {
@@ -1369,7 +1369,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                       &ty.to_string(),
                                                       "Trait",
                                                       &assoc_name.as_str());
-                return (tcx.types.err, ty_path_def);
+                return (tcx.types.err, Def::Err);
             }
         };
 
@@ -1574,45 +1574,46 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    // Note that both base_segments and assoc_segments may be empty, although not at
-    // the same time.
+    // Resolve possibly associated type path into a type and final definition.
+    // Note that both base_segments and assoc_segments may be empty, although not at same time.
     pub fn finish_resolving_def_to_ty(&self,
                                       rscope: &RegionScope,
                                       span: Span,
                                       param_mode: PathParamMode,
-                                      mut def: Def,
+                                      base_def: Def,
                                       opt_self_ty: Option<Ty<'tcx>>,
                                       base_path_ref_id: ast::NodeId,
                                       base_segments: &[hir::PathSegment],
                                       assoc_segments: &[hir::PathSegment])
                                       -> (Ty<'tcx>, Def) {
-        debug!("finish_resolving_def_to_ty(def={:?}, \
+        // Convert the base type.
+        debug!("finish_resolving_def_to_ty(base_def={:?}, \
                 base_segments={:?}, \
                 assoc_segments={:?})",
-               def,
+               base_def,
                base_segments,
                assoc_segments);
-        let mut ty = self.base_def_to_ty(rscope,
-                                         span,
-                                         param_mode,
-                                         def,
-                                         opt_self_ty,
-                                         base_path_ref_id,
-                                         base_segments);
-        debug!("finish_resolving_def_to_ty: base_def_to_ty returned {:?}", ty);
+        let base_ty = self.base_def_to_ty(rscope,
+                                          span,
+                                          param_mode,
+                                          base_def,
+                                          opt_self_ty,
+                                          base_path_ref_id,
+                                          base_segments);
+        debug!("finish_resolving_def_to_ty: base_def_to_ty returned {:?}", base_ty);
+
         // If any associated type segments remain, attempt to resolve them.
+        let (mut ty, mut def) = (base_ty, base_def);
         for segment in assoc_segments {
             debug!("finish_resolving_def_to_ty: segment={:?}", segment);
-            if ty.sty == ty::TyError {
+            // This is pretty bad (it will fail except for T::A and Self::A).
+            let (new_ty, new_def) = self.associated_path_def_to_ty(span, ty, def, segment);
+            ty = new_ty;
+            def = new_def;
+
+            if def == Def::Err {
                 break;
             }
-            // This is pretty bad (it will fail except for T::A and Self::A).
-            let (a_ty, a_def) = self.associated_path_def_to_ty(span,
-                                                               ty,
-                                                               def,
-                                                               segment);
-            ty = a_ty;
-            def = a_def;
         }
         (ty, def)
     }
@@ -1719,23 +1720,22 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TyPath(ref maybe_qself, ref path) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
                 let path_res = tcx.expect_resolution(ast_ty.id);
-                let def = path_res.base_def;
                 let base_ty_end = path.segments.len() - path_res.depth;
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| {
                     self.ast_ty_to_ty(rscope, &qself.ty)
                 });
-                let (ty, _def) = self.finish_resolving_def_to_ty(rscope,
-                                                                 ast_ty.span,
-                                                                 PathParamMode::Explicit,
-                                                                 def,
-                                                                 opt_self_ty,
-                                                                 ast_ty.id,
-                                                                 &path.segments[..base_ty_end],
-                                                                 &path.segments[base_ty_end..]);
+                let (ty, def) = self.finish_resolving_def_to_ty(rscope,
+                                                                ast_ty.span,
+                                                                PathParamMode::Explicit,
+                                                                path_res.base_def,
+                                                                opt_self_ty,
+                                                                ast_ty.id,
+                                                                &path.segments[..base_ty_end],
+                                                                &path.segments[base_ty_end..]);
 
-                if path_res.depth != 0 && ty.sty != ty::TyError {
-                    // Write back the new resolution.
-                    tcx.def_map.borrow_mut().insert(ast_ty.id, def::PathResolution::new(def));
+                // Write back the new resolution.
+                if path_res.depth != 0 {
+                    tcx.def_map.borrow_mut().insert(ast_ty.id, PathResolution::new(def));
                 }
 
                 ty

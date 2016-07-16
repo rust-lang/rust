@@ -1624,8 +1624,25 @@ impl Clean<Type> for hir::Ty {
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)},
             TyVec(ref ty) => Vector(box ty.clean(cx)),
-            TyFixedLengthVec(ref ty, ref e) =>
-                FixedVector(box ty.clean(cx), pprust::expr_to_string(e)),
+            TyFixedLengthVec(ref ty, ref e) => {
+                let n = if let Some(tcx) = cx.tcx_opt() {
+                    use rustc_const_math::{ConstInt, ConstUsize};
+                    use rustc_const_eval::eval_const_expr;
+                    use rustc::middle::const_val::ConstVal;
+                    match eval_const_expr(tcx, e) {
+                        ConstVal::Integral(ConstInt::Usize(u)) => match u {
+                            ConstUsize::Us16(u) => u.to_string(),
+                            ConstUsize::Us32(u) => u.to_string(),
+                            ConstUsize::Us64(u) => u.to_string(),
+                        },
+                        // after type checking this can't fail
+                        _ => unreachable!(),
+                    }
+                } else {
+                    pprust::expr_to_string(e)
+                };
+                FixedVector(box ty.clean(cx), n)
+            },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(None, ref p) => {
                 resolve_type(cx, p.clean(cx), self.id)
@@ -1904,7 +1921,7 @@ impl Clean<Item> for doctree::Variant {
 
 impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
-        let kind = match self.kind() {
+        let kind = match self.kind {
             ty::VariantKind::Unit => CLikeVariant,
             ty::VariantKind::Tuple => {
                 TupleVariant(
@@ -2578,9 +2595,9 @@ fn name_from_pat(p: &hir::Pat) -> String {
     match p.node {
         PatKind::Wild => "_".to_string(),
         PatKind::Binding(_, ref p, _) => p.node.to_string(),
-        PatKind::TupleStruct(ref p, _, _) | PatKind::Path(ref p) => path_to_string(p),
-        PatKind::QPath(..) => panic!("tried to get argument name from PatKind::QPath, \
-                                which is not allowed in function arguments"),
+        PatKind::TupleStruct(ref p, _, _) | PatKind::Path(None, ref p) => path_to_string(p),
+        PatKind::Path(..) => panic!("tried to get argument name from qualified PatKind::Path, \
+                                     which is not allowed in function arguments"),
         PatKind::Struct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", path_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
@@ -2653,7 +2670,7 @@ fn resolve_type(cx: &DocContext,
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfType.name().to_string());
         }
-        Def::SelfTy(..) | Def::TyParam(..) => true,
+        Def::SelfTy(..) | Def::TyParam(..) | Def::AssociatedTy(..) => true,
         _ => false,
     };
     let did = register_def(&*cx, def);

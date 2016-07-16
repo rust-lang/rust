@@ -949,7 +949,7 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   scheme: ty::TypeScheme<'tcx>,
                                   predicates: ty::GenericPredicates<'tcx>) {
     let tcx = ccx.tcx;
-    let ctor_ty = match variant.kind() {
+    let ctor_ty = match variant.kind {
         VariantKind::Unit | VariantKind::Struct => scheme.ty,
         VariantKind::Tuple => {
             let inputs: Vec<_> =
@@ -1040,15 +1040,17 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 def: &hir::VariantData)
                                 -> ty::AdtDefMaster<'tcx>
 {
-
     let did = ccx.tcx.map.local_def_id(it.id);
-    let ctor_id = if !def.is_struct() {
-        ccx.tcx.map.local_def_id(def.id())
-    } else {
-        did
-    };
-    ccx.tcx.intern_adt_def(did, ty::AdtKind::Struct,
-        vec![convert_struct_variant(ccx, ctor_id, it.name, ConstInt::Infer(0), def)])
+    // Use separate constructor id for unit/tuple structs and reuse did for braced structs.
+    let ctor_id = if !def.is_struct() { Some(ccx.tcx.map.local_def_id(def.id())) } else { None };
+    let variants = vec![convert_struct_variant(ccx, ctor_id.unwrap_or(did), it.name,
+                                               ConstInt::Infer(0), def)];
+    let adt = ccx.tcx.intern_adt_def(did, ty::AdtKind::Struct, variants);
+    if let Some(ctor_id) = ctor_id {
+        // Make adt definition available through constructor id as well.
+        ccx.tcx.insert_adt_def(ctor_id, adt);
+    }
+    adt
 }
 
     fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, e: &hir::Expr)

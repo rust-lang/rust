@@ -35,28 +35,37 @@ use vec;
 const TMPBUF_SZ: usize = 128;
 static ENV_LOCK: Mutex = Mutex::new();
 
+
+extern {
+    #[cfg_attr(any(target_os = "linux", target_os = "emscripten"),
+               link_name = "__errno_location")]
+    #[cfg_attr(any(target_os = "bitrig",
+                   target_os = "netbsd",
+                   target_os = "openbsd",
+                   target_os = "android",
+                   target_env = "newlib"),
+               link_name = "__errno")]
+    #[cfg_attr(target_os = "solaris", link_name = "___errno")]
+    #[cfg_attr(any(target_os = "macos",
+                   target_os = "ios",
+                   target_os = "freebsd"),
+               link_name = "__error")]
+    fn errno_location() -> *mut c_int;
+}
+
 /// Returns the platform-specific value of errno
 #[cfg(not(target_os = "dragonfly"))]
 pub fn errno() -> i32 {
-    extern {
-        #[cfg_attr(any(target_os = "linux", target_os = "emscripten"),
-                   link_name = "__errno_location")]
-        #[cfg_attr(any(target_os = "bitrig",
-                       target_os = "netbsd",
-                       target_os = "openbsd",
-                       target_os = "android",
-                       target_env = "newlib"),
-                   link_name = "__errno")]
-        #[cfg_attr(target_os = "solaris", link_name = "___errno")]
-        #[cfg_attr(any(target_os = "macos",
-                       target_os = "ios",
-                       target_os = "freebsd"),
-                   link_name = "__error")]
-        fn errno_location() -> *const c_int;
-    }
-
     unsafe {
         (*errno_location()) as i32
+    }
+}
+
+/// Sets the platform-specific value of errno
+#[cfg(target_os = "solaris")] // only needed for readdir so far
+pub fn set_errno(e: i32) {
+    unsafe {
+        *errno_location() = e as c_int
     }
 }
 
@@ -227,11 +236,11 @@ pub fn current_exe() -> io::Result<PathBuf> {
                        libc::KERN_PROC_ARGV];
         let mib = mib.as_mut_ptr();
         let mut argv_len = 0;
-        cvt(libc::sysctl(mib, 4, 0 as *mut _, &mut argv_len,
-                         0 as *mut _, 0))?;
+        cvt(libc::sysctl(mib, 4, ptr::null_mut(), &mut argv_len,
+                         ptr::null_mut(), 0))?;
         let mut argv = Vec::<*const libc::c_char>::with_capacity(argv_len as usize);
         cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _,
-                         &mut argv_len, 0 as *mut _, 0))?;
+                         &mut argv_len, ptr::null_mut(), 0))?;
         argv.set_len(argv_len as usize);
         if argv[0].is_null() {
             return Err(io::Error::new(io::ErrorKind::Other,

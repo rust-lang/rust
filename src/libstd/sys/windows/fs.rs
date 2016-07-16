@@ -38,7 +38,7 @@ pub struct FileAttr {
     reparse_tag: c::DWORD,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum FileType {
     Dir, File, SymlinkFile, SymlinkDir, ReparsePoint, MountPoint,
 }
@@ -117,7 +117,7 @@ impl Drop for FindNextFileHandle {
 
 impl DirEntry {
     fn new(root: &Arc<PathBuf>, wfd: &c::WIN32_FIND_DATAW) -> Option<DirEntry> {
-        match ::slice_pat(&&wfd.cFileName[0..3]) {
+        match &wfd.cFileName[0..3] {
             // check for '.' and '..'
             &[46, 0, ..] |
             &[46, 46, 0, ..] => return None,
