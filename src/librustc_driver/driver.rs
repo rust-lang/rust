@@ -478,10 +478,6 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session,
                                cfg: ast::CrateConfig,
                                input: &Input)
                                -> PResult<'a, ast::Crate> {
-    // These may be left in an incoherent state after a previous compile.
-    syntax::ext::hygiene::reset_hygiene_data();
-    // `clear_ident_interner` can be used to free memory, but it does not restore the initial state.
-    token::reset_ident_interner();
     let continue_after_error = sess.opts.continue_parse_after_error;
     sess.diagnostic().set_continue_after_error(continue_after_error);
 
@@ -1297,4 +1293,12 @@ pub fn build_output_filenames(input: &Input,
             }
         }
     }
+}
+
+// For use by the `rusti` project (https://github.com/murarth/rusti).
+pub fn reset_thread_local_state() {
+    // These may be left in an incoherent state after a previous compile.
+    syntax::ext::hygiene::reset_hygiene_data();
+    // `clear_ident_interner` can be used to free memory, but it does not restore the initial state.
+    token::reset_ident_interner();
 }
