@@ -79,7 +79,12 @@ extern "C" RustArchiveIterator*
 LLVMRustArchiveIteratorNew(RustArchive *ra) {
     Archive *ar = ra->getBinary();
     RustArchiveIterator *rai = new RustArchiveIterator();
+#if LLVM_VERSION_MINOR >= 9
+    Error err;
+    rai->cur = ar->child_begin(err);
+#else
     rai->cur = ar->child_begin();
+#endif
     rai->end = ar->child_end();
     return rai;
 }
@@ -88,8 +93,8 @@ extern "C" const Archive::Child*
 LLVMRustArchiveIteratorNext(RustArchiveIterator *rai) {
     if (rai->cur == rai->end)
         return NULL;
-#if LLVM_VERSION_MINOR >= 8
-    const ErrorOr<Archive::Child>* cur = rai->cur.operator->();
+#if LLVM_VERSION_MINOR == 8
+    Archive::Child* cur = rai->cur.operator->();
     if (!*cur) {
         LLVMRustSetLastError(cur->getError().message().c_str());
         return NULL;
