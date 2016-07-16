@@ -32,7 +32,7 @@ use ty::adjustment;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
-use ty::fold::TypeFoldable;
+use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::relate::{Relate, RelateResult, TypeRelation};
 use traits::{self, PredicateObligations, ProjectionMode};
 use rustc_data_structures::unify::{self, UnificationTable};
@@ -219,6 +219,15 @@ pub enum TypeOrigin {
 
     // `where a == b`
     EquatePredicate(Span),
+
+    // `main` has wrong type
+    MainFunctionType(Span),
+
+    // `start` has wrong type
+    StartFunctionType(Span),
+
+    // intrinsic has wrong type
+    IntrinsicType(Span),
 }
 
 impl TypeOrigin {
@@ -238,6 +247,9 @@ impl TypeOrigin {
             &TypeOrigin::IfExpressionWithNoElse(_) => "if may be missing an else clause",
             &TypeOrigin::RangeExpression(_) => "start and end of range have incompatible types",
             &TypeOrigin::EquatePredicate(_) => "equality predicate not satisfied",
+            &TypeOrigin::MainFunctionType(_) => "main function has wrong type",
+            &TypeOrigin::StartFunctionType(_) => "start function has wrong type",
+            &TypeOrigin::IntrinsicType(_) => "intrinsic has wrong type",
         }
     }
 }
@@ -1791,6 +1803,9 @@ impl TypeOrigin {
             TypeOrigin::IfExpressionWithNoElse(span) => span,
             TypeOrigin::RangeExpression(span) => span,
             TypeOrigin::EquatePredicate(span) => span,
+            TypeOrigin::MainFunctionType(span) => span,
+            TypeOrigin::StartFunctionType(span) => span,
+            TypeOrigin::IntrinsicType(span) => span,
         }
     }
 }
@@ -1839,5 +1854,52 @@ impl RegionVariableOrigin {
             BoundRegionInCoherence(_) => syntax_pos::DUMMY_SP,
             UpvarRegion(_, a) => a
         }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for TypeOrigin {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
+        self.clone()
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
+        false
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ValuePairs<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        match *self {
+            ValuePairs::Types(ref ef) => {
+                ValuePairs::Types(ef.fold_with(folder))
+            }
+            ValuePairs::TraitRefs(ref ef) => {
+                ValuePairs::TraitRefs(ef.fold_with(folder))
+            }
+            ValuePairs::PolyTraitRefs(ref ef) => {
+                ValuePairs::PolyTraitRefs(ef.fold_with(folder))
+            }
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match *self {
+            ValuePairs::Types(ref ef) => ef.visit_with(visitor),
+            ValuePairs::TraitRefs(ref ef) => ef.visit_with(visitor),
+            ValuePairs::PolyTraitRefs(ref ef) => ef.visit_with(visitor),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for TypeTrace<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        TypeTrace {
+            origin: self.origin.fold_with(folder),
+            values: self.values.fold_with(folder)
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.origin.visit_with(visitor) || self.values.visit_with(visitor)
     }
 }

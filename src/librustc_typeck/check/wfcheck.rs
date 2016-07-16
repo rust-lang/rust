@@ -437,8 +437,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
         debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
 
-        fcx.require_same_types(span, sig.inputs[0], rcvr_ty,
-                               "mismatched method receiver");
+        fcx.demand_eqtype(span, rcvr_ty, sig.inputs[0]);
     }
 
     fn check_variances_for_type_defn(&self,

@@ -15,7 +15,7 @@ struct Foo {
 }
 
 impl Foo {
-    fn foo(self: isize, x: isize) -> isize {  //~ ERROR mismatched method receiver
+    fn foo(self: isize, x: isize) -> isize {  //~ ERROR mismatched types
         self.f + x
     }
 }
@@ -25,10 +25,10 @@ struct Bar<T> {
 }
 
 impl<T> Bar<T> {
-    fn foo(self: Bar<isize>, x: isize) -> isize { //~ ERROR mismatched method receiver
+    fn foo(self: Bar<isize>, x: isize) -> isize { //~ ERROR mismatched types
         x
     }
-    fn bar(self: &Bar<usize>, x: isize) -> isize {   //~ ERROR mismatched method receiver
+    fn bar(self: &Bar<usize>, x: isize) -> isize {   //~ ERROR mismatched types
         x
     }
 }

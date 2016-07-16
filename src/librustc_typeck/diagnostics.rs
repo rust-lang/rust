@@ -2660,6 +2660,7 @@ For information on the design of the orphan rules, see [RFC 1023].
 [RFC 1023]: https://github.com/rust-lang/rfcs/pull/1023
 "##,
 
+/*
 E0211: r##"
 You used a function or type which doesn't fit the requirements for where it was
 used. Erroneous code examples:
@@ -2739,6 +2740,7 @@ impl Foo {
 }
 ```
 "##,
+     */
 
 E0214: r##"
 A generic type was described using parentheses rather than angle brackets. For
