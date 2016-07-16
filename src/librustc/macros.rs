@@ -59,3 +59,15 @@ macro_rules! span_bug {
         $crate::session::span_bug_fmt(file!(), line!(), $span, format_args!($($message)*))
     })
 }
+
+#[macro_export]
+macro_rules! type_err {
+    ($infcx:expr, $trace: expr, $terr: expr, $code:ident, $($message:tt)*) => ({
+        __diagnostic_used!($code);
+        $infcx.report_and_explain_type_error_with_code(
+            $trace,
+            $terr,
+            &format!($($message)*),
+            stringify!($code))
+    })
+}
