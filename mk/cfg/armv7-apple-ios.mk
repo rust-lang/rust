@@ -15,7 +15,7 @@ CFG_INSTALL_ONLY_RLIB_armv7-apple-ios = 1
 CFG_STATIC_LIB_NAME_armv7-apple-ios=lib$(1).a
 CFG_LIB_DSYM_GLOB_armv7-apple-ios = lib$(1)-*.a.dSYM
 CFG_JEMALLOC_CFLAGS_armv7-apple-ios := -arch armv7 -mfpu=vfp3 $(CFG_IOS_SDK_FLAGS_armv7-apple-ios)
-CFG_GCCISH_CFLAGS_armv7-apple-ios := -Wall -Werror -g -fPIC $(CFG_IOS_SDK_FLAGS_armv7-apple-ios) -mfpu=vfp3 -arch armv7
+CFG_GCCISH_CFLAGS_armv7-apple-ios :=  -g -fPIC $(CFG_IOS_SDK_FLAGS_armv7-apple-ios) -mfpu=vfp3 -arch armv7
 CFG_GCCISH_CXXFLAGS_armv7-apple-ios := -fno-rtti $(CFG_IOS_SDK_FLAGS_armv7-apple-ios) -I$(CFG_IOS_SDK_armv7-apple-ios)/usr/include/c++/4.2.1
 CFG_GCCISH_LINK_FLAGS_armv7-apple-ios := -lpthread -syslibroot $(CFG_IOS_SDK_armv7-apple-ios) -Wl,-no_compact_unwind
 CFG_GCCISH_DEF_FLAG_armv7-apple-ios := -Wl,-exported_symbols_list,

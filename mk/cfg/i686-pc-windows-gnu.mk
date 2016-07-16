@@ -9,7 +9,7 @@ CFG_STATIC_LIB_NAME_i686-pc-windows-gnu=$(1).lib
 CFG_LIB_GLOB_i686-pc-windows-gnu=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_i686-pc-windows-gnu=$(1)-*.dylib.dSYM
 CFG_JEMALLOC_CFLAGS_i686-pc-windows-gnu := -march=i686 -m32 -D_WIN32_WINNT=0x0600 -D__USE_MINGW_ANSI_STDIO=1 $(CFLAGS)
-CFG_GCCISH_CFLAGS_i686-pc-windows-gnu := -Wall -Werror -g -m32 -D_WIN32_WINNT=0x0600 -D__USE_MINGW_ANSI_STDIO=1 $(CFLAGS)
+CFG_GCCISH_CFLAGS_i686-pc-windows-gnu :=  -g -m32 -D_WIN32_WINNT=0x0600 -D__USE_MINGW_ANSI_STDIO=1 $(CFLAGS)
 CFG_GCCISH_CXXFLAGS_i686-pc-windows-gnu := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_i686-pc-windows-gnu := -shared -g -m32
 CFG_GCCISH_DEF_FLAG_i686-pc-windows-gnu :=
