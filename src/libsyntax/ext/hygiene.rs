@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Machinery for hygienic macros, as described in the MTWT[1] paper.
+//! Machinery for hygienic macros, inspired by the MTWT[1] paper.
 //!
 //! [1] Matthew Flatt, Ryan Culpepper, David Darais, and Robert Bruce Findler.
 //! 2012. *Macros that work together: Compile-time bindings, partial expansion,

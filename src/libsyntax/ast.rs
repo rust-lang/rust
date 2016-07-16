@@ -19,7 +19,7 @@ pub use util::ThinVec;
 use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
-use ext::mtwt::SyntaxContext;
+use ext::hygiene::SyntaxContext;
 use parse::token::{self, keywords, InternedString};
 use print::pprust;
 use ptr::P;
