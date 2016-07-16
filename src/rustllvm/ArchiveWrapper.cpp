@@ -79,11 +79,11 @@ extern "C" RustArchiveIterator*
 LLVMRustArchiveIteratorNew(RustArchive *ra) {
     Archive *ar = ra->getBinary();
     RustArchiveIterator *rai = new RustArchiveIterator();
-#if LLVM_VERSION_MINOR >= 9
+#if LLVM_VERSION_MINOR <= 8
+    rai->cur = ar->child_begin();
+#else
     Error err;
     rai->cur = ar->child_begin(err);
-#else
-    rai->cur = ar->child_begin();
 #endif
     rai->end = ar->child_end();
     return rai;
@@ -164,10 +164,10 @@ LLVMRustWriteArchive(char *Dst,
                      bool WriteSymbtab,
                      Archive::Kind Kind) {
 
-#if LLVM_VERSION_MINOR >= 9
-  std::vector<NewArchiveMember> Members;
-#else
+#if LLVM_VERSION_MINOR <= 8
   std::vector<NewArchiveIterator> Members;
+#else
+  std::vector<NewArchiveMember> Members;
 #endif
 
   for (size_t i = 0; i < NumMembers; i++) {
@@ -187,15 +187,15 @@ LLVMRustWriteArchive(char *Dst,
       Members.push_back(NewArchiveIterator(Member->filename, Member->name));
 #endif
     } else {
-#if LLVM_VERSION_MINOR >= 9
+#if LLVM_VERSION_MINOR <= 8
+      Members.push_back(NewArchiveIterator(Member->child, Member->name));
+#else
       Expected<NewArchiveMember> MOrErr = NewArchiveMember::getOldMember(Member->child, true);
       if (!MOrErr) {
         LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
         return -1;
       }
       Members.push_back(std::move(*MOrErr));
-#else
-      Members.push_back(NewArchiveIterator(Member->child, Member->name));
 #endif
     }
   }
