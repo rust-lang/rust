@@ -11,6 +11,7 @@ endif
 
 $(SNAPSHOT_RUSTC_POST_CLEANUP): \
 		$(S)src/stage0.txt \
+		$(S)src/etc/local_stage0.sh \
 		$(S)src/etc/get-stage0.py $(MKFILE_DEPS) \
 		| $(HBIN0_H_$(CFG_BUILD))/
 	@$(call E, fetch: $@)
