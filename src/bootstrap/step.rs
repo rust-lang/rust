@@ -347,9 +347,7 @@ impl<'a> Step<'a> {
                 vec![self.libstd(compiler),
                      self.target(host).rustc(compiler.stage)]
             }
-            Source::CompilerRt { _dummy } => {
-                vec![self.llvm(()).target(&build.config.build)]
-            }
+            Source::CompilerRt { _dummy } => Vec::new(),
             Source::Llvm { _dummy } => Vec::new(),
             Source::TestHelpers { _dummy } => Vec::new(),
             Source::DebuggerScripts { stage: _ } => Vec::new(),
