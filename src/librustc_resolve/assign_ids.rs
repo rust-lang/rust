@@ -11,7 +11,7 @@
 use Resolver;
 use rustc::session::Session;
 use syntax::ast;
-use syntax::ext::mtwt::Mark;
+use syntax::ext::hygiene::Mark;
 use syntax::fold::{self, Folder};
 use syntax::ptr::P;
 use syntax::util::move_map::MoveMap;

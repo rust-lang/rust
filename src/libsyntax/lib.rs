@@ -127,7 +127,7 @@ pub mod ext {
     pub mod base;
     pub mod build;
     pub mod expand;
-    pub mod mtwt;
+    pub mod hygiene;
     pub mod quote;
     pub mod source_util;
 

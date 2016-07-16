@@ -11,7 +11,7 @@
 use ast::{Block, Crate, Ident, Mac_, Name, PatKind};
 use ast::{MacStmtStyle, Stmt, StmtKind, ItemKind};
 use ast;
-use ext::mtwt::Mark;
+use ext::hygiene::Mark;
 use attr::{self, HasAttrs};
 use attr::AttrMetaMethods;
 use codemap::{dummy_spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
