@@ -19,7 +19,7 @@ macro_rules! ignored_item {
 }
 
 macro_rules! ignored_expr {
-    () => ( 1,  //~ ERROR expected expression, found `,`
+    () => ( 1,  //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
             2 )
 }
 

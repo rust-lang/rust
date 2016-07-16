@@ -237,6 +237,17 @@ impl<T:Copy> Cell<T> {
     ///
     /// This call borrows `Cell` mutably (at compile-time) which guarantees
     /// that we possess the only reference.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let mut c = Cell::new(5);
+    /// *c.get_mut() += 1;
+    ///
+    /// assert_eq!(c.get(), 6);
+    /// ```
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
@@ -388,6 +399,22 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// The returned value can be dispatched on to determine if a call to
     /// `borrow` or `borrow_mut` would succeed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(borrow_state)]
+    ///
+    /// use std::cell::{BorrowState, RefCell};
+    ///
+    /// let c = RefCell::new(5);
+    ///
+    /// match c.borrow_state() {
+    ///     BorrowState::Writing => println!("Cannot be borrowed"),
+    ///     BorrowState::Reading => println!("Cannot be borrowed mutably"),
+    ///     BorrowState::Unused => println!("Can be borrowed (mutably as well)"),
+    /// }
+    /// ```
     #[unstable(feature = "borrow_state", issue = "27733")]
     #[inline]
     pub fn borrow_state(&self) -> BorrowState {
@@ -498,6 +525,17 @@ impl<T: ?Sized> RefCell<T> {
     /// This can be used to circumvent `RefCell`'s safety checks.
     ///
     /// This function is `unsafe` because `UnsafeCell`'s field is public.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(as_unsafe_cell)]
+    ///
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    /// let c = unsafe { c.as_unsafe_cell() };
+    /// ```
     #[inline]
     #[unstable(feature = "as_unsafe_cell", issue = "27708")]
     pub unsafe fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
@@ -508,6 +546,17 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// This call borrows `RefCell` mutably (at compile-time) so there is no
     /// need for dynamic checks.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::RefCell;
+    ///
+    /// let mut c = RefCell::new(5);
+    /// *c.get_mut() += 1;
+    ///
+    /// assert_eq!(c, RefCell::new(6));
+    /// ```
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {

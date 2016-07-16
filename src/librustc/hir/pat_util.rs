@@ -12,14 +12,11 @@ use hir::def::*;
 use hir::def_id::DefId;
 use hir::{self, PatKind};
 use ty::TyCtxt;
-use util::nodemap::FnvHashMap;
 use syntax::ast;
 use syntax::codemap::Spanned;
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::iter::{Enumerate, ExactSizeIterator};
-
-pub type PatIdMap = FnvHashMap<ast::Name, ast::NodeId>;
 
 pub struct EnumerateAndAdjust<I> {
     enumerate: Enumerate<I>,
@@ -56,7 +53,7 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
 
 pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        PatKind::Lit(_) | PatKind::Range(_, _) | PatKind::QPath(..) => true,
+        PatKind::Lit(_) | PatKind::Range(_, _) | PatKind::Path(Some(..), _) => true,
         PatKind::TupleStruct(..) |
         PatKind::Path(..) |
         PatKind::Struct(..) => {
@@ -70,40 +67,10 @@ pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
     }
 }
 
-pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &hir::Pat) -> bool {
-    match pat.node {
-        PatKind::TupleStruct(..) |
-        PatKind::Path(..) |
-        PatKind::Struct(..) => {
-            match dm.get(&pat.id).map(|d| d.full_def()) {
-                Some(Def::Variant(..)) | Some(Def::Struct(..)) | Some(Def::TyAlias(..)) => true,
-                _ => false
-            }
-        }
-        _ => false
-    }
-}
-
 pub fn pat_is_const(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        PatKind::Path(..) | PatKind::QPath(..) => {
+        PatKind::Path(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
-                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => true,
-                _ => false
-            }
-        }
-        _ => false
-    }
-}
-
-// Same as above, except that partially-resolved defs cause `false` to be
-// returned instead of a panic.
-pub fn pat_is_resolved_const(dm: &DefMap, pat: &hir::Pat) -> bool {
-    match pat.node {
-        PatKind::Path(..) | PatKind::QPath(..) => {
-            match dm.get(&pat.id)
-                    .and_then(|d| if d.depth == 0 { Some(d.base_def) }
-                                  else { None } ) {
                 Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => true,
                 _ => false
             }

@@ -1244,39 +1244,6 @@ impl<I: Iterator> Peekable<I> {
             None => None,
         }
     }
-
-    /// Checks if the iterator has finished iterating.
-    ///
-    /// Returns `true` if there are no more elements in the iterator, and
-    /// `false` if there are.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(peekable_is_empty)]
-    ///
-    /// let xs = [1, 2, 3];
-    ///
-    /// let mut iter = xs.iter().peekable();
-    ///
-    /// // There are still elements to iterate over
-    /// assert_eq!(iter.is_empty(), false);
-    ///
-    /// // Let's consume the iterator
-    /// iter.next();
-    /// iter.next();
-    /// iter.next();
-    ///
-    /// assert_eq!(iter.is_empty(), true);
-    /// ```
-    #[unstable(feature = "peekable_is_empty", issue = "32111")]
-    #[inline]
-    #[rustc_deprecated(since = "1.10.0", reason = "replaced by .peek().is_none()")]
-    pub fn is_empty(&mut self) -> bool {
-        self.peek().is_none()
-    }
 }
 
 /// An iterator that rejects elements while `predicate` is true.

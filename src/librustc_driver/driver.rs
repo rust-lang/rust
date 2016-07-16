@@ -50,7 +50,6 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use syntax::{ast, diagnostics, visit};
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::fold::Folder;
 use syntax::parse::{self, PResult, token};
 use syntax::util::node_count::NodeCounter;
 use syntax;
@@ -211,7 +210,7 @@ pub fn compile_input(sess: &Session,
             }
 
             // Discard interned strings as they are no longer required.
-            token::get_ident_interner().clear();
+            token::clear_ident_interner();
 
             Ok((outputs, trans))
         })??
@@ -480,7 +479,7 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session,
                                input: &Input)
                                -> PResult<'a, ast::Crate> {
     // These may be left in an incoherent state after a previous compile.
-    // `clear_tables` and `get_ident_interner().clear()` can be used to free
+    // `clear_tables` and `clear_ident_interner` can be used to free
     // memory, but they do not restore the initial state.
     syntax::ext::mtwt::reset_tables();
     token::reset_ident_interner();
@@ -695,6 +694,19 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                          sess.diagnostic())
     });
 
+    let resolver_arenas = Resolver::arenas();
+    let mut resolver = Resolver::new(sess, make_glob_map, &resolver_arenas);
+
+    let krate = time(sess.time_passes(), "assigning node ids", || resolver.assign_node_ids(krate));
+
+    if sess.opts.debugging_opts.input_stats {
+        println!("Post-expansion node count: {}", count_nodes(&krate));
+    }
+
+    if sess.opts.debugging_opts.ast_json {
+        println!("{}", json::as_json(&krate));
+    }
+
     time(time_passes,
          "checking for inline asm in case the target doesn't support it",
          || no_asm::check_crate(sess, &krate));
@@ -709,15 +721,6 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                               sess.opts.unstable_features);
         })
     })?;
-
-    if sess.opts.debugging_opts.input_stats {
-        println!("Post-expansion node count: {}", count_nodes(&krate));
-    }
-
-    krate = assign_node_ids(sess, krate);
-
-    let resolver_arenas = Resolver::arenas();
-    let mut resolver = Resolver::new(sess, make_glob_map, &resolver_arenas);
 
     // Collect defintions for def ids.
     time(sess.time_passes(), "collecting defs", || resolver.definitions.collect(&krate));
@@ -781,53 +784,6 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         },
         hir_forest: hir_forest
     })
-}
-
-pub fn assign_node_ids(sess: &Session, krate: ast::Crate) -> ast::Crate {
-    use syntax::ptr::P;
-    use syntax::util::move_map::MoveMap;
-
-    struct NodeIdAssigner<'a> {
-        sess: &'a Session,
-    }
-
-    impl<'a> Folder for NodeIdAssigner<'a> {
-        fn new_id(&mut self, old_id: ast::NodeId) -> ast::NodeId {
-            assert_eq!(old_id, ast::DUMMY_NODE_ID);
-            self.sess.next_node_id()
-        }
-
-        fn fold_block(&mut self, block: P<ast::Block>) -> P<ast::Block> {
-            block.map(|mut block| {
-                block.id = self.new_id(block.id);
-
-                let stmt = block.stmts.pop();
-                block.stmts = block.stmts.move_flat_map(|s| self.fold_stmt(s).into_iter());
-                if let Some(ast::Stmt { node: ast::StmtKind::Expr(expr), span, .. }) = stmt {
-                    let expr = self.fold_expr(expr);
-                    block.stmts.push(ast::Stmt {
-                        id: expr.id,
-                        node: ast::StmtKind::Expr(expr),
-                        span: span,
-                    });
-                } else if let Some(stmt) = stmt {
-                    block.stmts.extend(self.fold_stmt(stmt));
-                }
-
-                block
-            })
-        }
-    }
-
-    let krate = time(sess.time_passes(),
-                     "assigning node ids",
-                     || NodeIdAssigner { sess: sess }.fold_crate(krate));
-
-    if sess.opts.debugging_opts.ast_json {
-        println!("{}", json::as_json(&krate));
-    }
-
-    krate
 }
 
 /// Run the resolution, typechecking, region checking and other

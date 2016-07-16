@@ -152,8 +152,8 @@ pub struct Sink { _priv: () }
 /// ```rust
 /// use std::io::{self, Write};
 ///
-/// let mut buffer = vec![1, 2, 3, 5, 8];
-/// let num_bytes = io::sink().write(&mut buffer).unwrap();
+/// let buffer = vec![1, 2, 3, 5, 8];
+/// let num_bytes = io::sink().write(&buffer).unwrap();
 /// assert_eq!(num_bytes, 5);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]

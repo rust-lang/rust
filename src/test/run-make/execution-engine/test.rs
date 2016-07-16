@@ -30,18 +30,16 @@ use std::thread::Builder;
 
 use rustc::dep_graph::DepGraph;
 use rustc::hir::map as ast_map;
-use rustc::middle::cstore::{CrateStore, LinkagePreference};
+use rustc::middle::cstore::LinkagePreference;
 use rustc::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Input, Options};
 use rustc::session::build_session;
 use rustc_driver::{driver, abort_on_err};
 use rustc_resolve::MakeGlobMap;
-use rustc_metadata::creader::read_local_crates;
 use rustc_metadata::cstore::CStore;
 use libc::c_void;
 
 use rustc_errors::registry::Registry;
-use syntax::parse::token;
 
 fn main() {
     // Currently trips an assertion on i686-msvc, presumably because the support
@@ -226,7 +224,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
     let handle = thread.spawn(move || {
         let opts = build_exec_options(sysroot);
         let dep_graph = DepGraph::new(opts.build_dep_graph());
-        let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+        let cstore = Rc::new(CStore::new(&dep_graph));
         let sess = build_session(opts,
                                  &dep_graph,
                                  None,

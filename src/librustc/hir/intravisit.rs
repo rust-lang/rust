@@ -460,11 +460,10 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
             visitor.visit_path(path, pattern.id);
             walk_list!(visitor, visit_pat, children);
         }
-        PatKind::Path(ref path) => {
-            visitor.visit_path(path, pattern.id);
-        }
-        PatKind::QPath(ref qself, ref path) => {
-            visitor.visit_ty(&qself.ty);
+        PatKind::Path(ref opt_qself, ref path) => {
+            if let Some(ref qself) = *opt_qself {
+                visitor.visit_ty(&qself.ty);
+            }
             visitor.visit_path(path, pattern.id)
         }
         PatKind::Struct(ref path, ref fields, _) => {

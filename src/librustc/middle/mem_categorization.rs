@@ -1050,9 +1050,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     // FIXME(#19596) This is a workaround, but there should be a better way to do this
-    fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, op: &mut F)
-                       -> McResult<()>
-        where F : FnMut(&MemCategorizationContext<'a, 'gcx, 'tcx>, cmt<'tcx>, &hir::Pat),
+    fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, op: &mut F) -> McResult<()>
+        where F : FnMut(&MemCategorizationContext<'a, 'gcx, 'tcx>, cmt<'tcx>, &hir::Pat)
     {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
@@ -1099,21 +1098,14 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // step out of sync again. So you'll see below that we always
         // get the type of the *subpattern* and use that.
 
-        debug!("cat_pattern: {:?} cmt={:?}",
-               pat,
-               cmt);
+        debug!("cat_pattern: {:?} cmt={:?}", pat, cmt);
 
-        (*op)(self, cmt.clone(), pat);
-
-        let opt_def = self.tcx().expect_def_or_none(pat.id);
-        if opt_def == Some(Def::Err) {
-            return Err(());
-        }
+        op(self, cmt.clone(), pat);
 
         // Note: This goes up here (rather than within the PatKind::TupleStruct arm
-        // alone) because struct patterns can refer to struct types or
-        // to struct variants within enums.
-        let cmt = match opt_def {
+        // alone) because PatKind::Struct can also refer to variants.
+        let cmt = match self.tcx().expect_def_or_none(pat.id) {
+            Some(Def::Err) => return Err(()),
             Some(Def::Variant(enum_did, variant_did))
                 // univariant enums do not need downcasts
                 if !self.tcx().lookup_adt_def(enum_did).is_univariant() => {
@@ -1123,66 +1115,33 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         };
 
         match pat.node {
-          PatKind::Wild => {
-            // _
-          }
-
           PatKind::TupleStruct(_, ref subpats, ddpos) => {
-            match opt_def {
-                Some(Def::Variant(enum_def, def_id)) => {
-                    // variant(x, y, z)
-                    let expected_len = self.tcx().lookup_adt_def(enum_def)
-                                                 .variant_with_id(def_id).fields.len();
-                    for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
-                        let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
-
-                        let subcmt =
-                            self.cat_imm_interior(
-                                pat, cmt.clone(), subpat_ty,
-                                InteriorField(PositionalField(i)));
-
-                        self.cat_pattern_(subcmt, &subpat, op)?;
-                    }
+            let expected_len = match self.tcx().expect_def(pat.id) {
+                Def::Variant(enum_def, def_id) => {
+                    self.tcx().lookup_adt_def(enum_def).variant_with_id(def_id).fields.len()
                 }
-                Some(Def::Struct(..)) => {
-                    let expected_len = match self.pat_ty(&pat)?.sty {
+                Def::Struct(..) => {
+                    match self.pat_ty(&pat)?.sty {
                         ty::TyStruct(adt_def, _) => {
                             adt_def.struct_variant().fields.len()
                         }
                         ref ty => {
                             span_bug!(pat.span, "tuple struct pattern unexpected type {:?}", ty);
                         }
-                    };
+                    }
+                }
+                def => {
+                    span_bug!(pat.span, "tuple struct pattern didn't resolve \
+                                         to variant or struct {:?}", def);
+                }
+            };
 
-                    for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
-                        let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
-                        let cmt_field =
-                            self.cat_imm_interior(
-                                pat, cmt.clone(), subpat_ty,
-                                InteriorField(PositionalField(i)));
-                        self.cat_pattern_(cmt_field, &subpat, op)?;
-                    }
-                }
-                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {
-                    for subpat in subpats {
-                        self.cat_pattern_(cmt.clone(), &subpat, op)?;
-                    }
-                }
-                _ => {
-                    span_bug!(
-                        pat.span,
-                        "enum pattern didn't resolve to enum or struct {:?}",
-                        opt_def);
-                }
+            for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
+                let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
+                let subcmt = self.cat_imm_interior(pat, cmt.clone(), subpat_ty,
+                                                   InteriorField(PositionalField(i)));
+                self.cat_pattern_(subcmt, &subpat, op)?;
             }
-          }
-
-          PatKind::Path(..) | PatKind::QPath(..) | PatKind::Binding(_, _, None) => {
-              // Lone constant, or unit variant or identifier: ignore
-          }
-
-          PatKind::Binding(_, _, Some(ref subpat)) => {
-              self.cat_pattern_(cmt, &subpat, op)?;
           }
 
           PatKind::Struct(_, ref field_pats, _) => {
@@ -1194,6 +1153,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
           }
 
+          PatKind::Binding(_, _, Some(ref subpat)) => {
+              self.cat_pattern_(cmt, &subpat, op)?;
+          }
+
           PatKind::Tuple(ref subpats, ddpos) => {
             // (p1, ..., pN)
             let expected_len = match self.pat_ty(&pat)?.sty {
@@ -1202,10 +1165,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
                 let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
-                let subcmt =
-                    self.cat_imm_interior(
-                        pat, cmt.clone(), subpat_ty,
-                        InteriorField(PositionalField(i)));
+                let subcmt = self.cat_imm_interior(pat, cmt.clone(), subpat_ty,
+                                                   InteriorField(PositionalField(i)));
                 self.cat_pattern_(subcmt, &subpat, op)?;
             }
           }
@@ -1215,25 +1176,26 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // PatKind::Ref since that information is already contained
             // in the type.
             let subcmt = self.cat_deref(pat, cmt, 0, None)?;
-              self.cat_pattern_(subcmt, &subpat, op)?;
+            self.cat_pattern_(subcmt, &subpat, op)?;
           }
 
           PatKind::Vec(ref before, ref slice, ref after) => {
-              let context = InteriorOffsetKind::Pattern;
-              let elt_cmt = self.cat_index(pat, cmt, context)?;
-              for before_pat in before {
-                  self.cat_pattern_(elt_cmt.clone(), &before_pat, op)?;
-              }
-              if let Some(ref slice_pat) = *slice {
-                  self.cat_pattern_(elt_cmt.clone(), &slice_pat, op)?;
-              }
-              for after_pat in after {
-                  self.cat_pattern_(elt_cmt.clone(), &after_pat, op)?;
-              }
+            let context = InteriorOffsetKind::Pattern;
+            let elt_cmt = self.cat_index(pat, cmt, context)?;
+            for before_pat in before {
+                self.cat_pattern_(elt_cmt.clone(), &before_pat, op)?;
+            }
+            if let Some(ref slice_pat) = *slice {
+                self.cat_pattern_(elt_cmt.clone(), &slice_pat, op)?;
+            }
+            for after_pat in after {
+                self.cat_pattern_(elt_cmt.clone(), &after_pat, op)?;
+            }
           }
 
-          PatKind::Lit(_) | PatKind::Range(_, _) => {
-              /*always ok*/
+          PatKind::Path(..) | PatKind::Binding(_, _, None) |
+          PatKind::Lit(..) | PatKind::Range(..) | PatKind::Wild => {
+            // always ok
           }
         }
 

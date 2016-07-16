@@ -400,26 +400,30 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
     }
 
-    /// Resolves an `ImportResolvingError` into the correct enum discriminant
-    /// and passes that on to `resolve_error`.
-    fn import_resolving_error(&self, e: ImportResolvingError<'b>) {
-        // If it's a single failed import then create a "fake" import
-        // resolution for it so that later resolve stages won't complain.
-        if let SingleImport { target, .. } = e.import_directive.subclass {
+    // Define a "dummy" resolution containing a Def::Err as a placeholder for a
+    // failed resolution
+    fn import_dummy_binding(&self, source_module: Module<'b>, directive: &'b ImportDirective<'b>) {
+        if let SingleImport { target, .. } = directive.subclass {
             let dummy_binding = self.resolver.arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Def(Def::Err),
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             });
-            let dummy_binding = e.import_directive.import(dummy_binding, None);
+            let dummy_binding = directive.import(dummy_binding, None);
 
-            let _ = e.source_module.try_define_child(target, ValueNS, dummy_binding.clone());
-            let _ = e.source_module.try_define_child(target, TypeNS, dummy_binding);
+            let _ = source_module.try_define_child(target, ValueNS, dummy_binding.clone());
+            let _ = source_module.try_define_child(target, TypeNS, dummy_binding);
         }
+    }
 
+    /// Resolves an `ImportResolvingError` into the correct enum discriminant
+    /// and passes that on to `resolve_error`.
+    fn import_resolving_error(&self, e: ImportResolvingError<'b>) {
+        // If the error is a single failed import then create a "fake" import
+        // resolution for it so that later resolve stages won't complain.
+        self.import_dummy_binding(e.source_module, e.import_directive);
         let path = import_path_to_string(&e.import_directive.module_path,
                                          &e.import_directive.subclass);
-
         resolve_error(self.resolver,
                       e.span,
                       ResolutionError::UnresolvedImport(Some((&path, &e.help))));
@@ -500,6 +504,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 if !binding.is_importable() {
                     let msg = format!("`{}` is not directly importable", target);
                     span_err!(self.resolver.session, directive.span, E0253, "{}", &msg);
+                    // Do not import this illegal binding. Import a dummy binding and pretend
+                    // everything is fine
+                    self.import_dummy_binding(module_, directive);
+                    return Success(());
                 }
 
                 let privacy_error = if !self.resolver.is_accessible(binding.vis) {

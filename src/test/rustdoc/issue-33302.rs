@@ -34,8 +34,8 @@ macro_rules! make {
         }
 
         // @has issue_33302/struct.S.html \
-        //        '//h3[@class="impl"]' 'impl T<[i32; 4 * 4]> for S'
-        // @has - '//*[@id="associatedconstant.C"]' 'const C: [i32; 4 * 4] = [0; 4 * 4]'
+        //        '//h3[@class="impl"]' 'impl T<[i32; 16]> for S'
+        // @has - '//*[@id="associatedconstant.C"]' 'const C: [i32; 16] = [0; 4 * 4]'
         // @has - '//*[@id="associatedconstant.D"]' 'const D: i32 = 4 * 4'
         impl T<[i32; ($n * $n)]> for S {
             const C: [i32; ($n * $n)] = [0; ($n * $n)];

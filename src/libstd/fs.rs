@@ -141,7 +141,7 @@ pub struct Permissions(fs_imp::FilePermissions);
 
 /// An structure representing a type of file with accessors for each file type.
 #[stable(feature = "file_type", since = "1.1.0")]
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType(fs_imp::FileType);
 
 /// A builder used to create directories in various manners.

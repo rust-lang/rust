@@ -37,7 +37,6 @@ use rustc_resolve::MakeGlobMap;
 use syntax::codemap::CodeMap;
 use errors;
 use errors::emitter::ColorConfig;
-use syntax::parse::token;
 
 use core;
 use clean;
@@ -82,7 +81,7 @@ pub fn run(input: &str,
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+    let cstore = Rc::new(CStore::new(&dep_graph));
     let sess = session::build_session_(sessopts,
                                        &dep_graph,
                                        Some(input_path.clone()),
@@ -239,7 +238,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
     let dep_graph = DepGraph::new(false);
-    let cstore = Rc::new(CStore::new(&dep_graph, token::get_ident_interner()));
+    let cstore = Rc::new(CStore::new(&dep_graph));
     let sess = session::build_session_(sessopts,
                                        &dep_graph,
                                        None,

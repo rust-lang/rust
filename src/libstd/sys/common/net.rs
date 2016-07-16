@@ -25,19 +25,23 @@ use time::Duration;
 
 #[cfg(any(target_os = "dragonfly", target_os = "freebsd",
           target_os = "ios", target_os = "macos",
-          target_os = "openbsd", target_os = "netbsd"))]
+          target_os = "openbsd", target_os = "netbsd",
+          target_os = "solaris"))]
 use sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
 #[cfg(not(any(target_os = "dragonfly", target_os = "freebsd",
               target_os = "ios", target_os = "macos",
-          target_os = "openbsd", target_os = "netbsd")))]
+              target_os = "openbsd", target_os = "netbsd",
+              target_os = "solaris")))]
 use sys::net::netc::IPV6_ADD_MEMBERSHIP;
 #[cfg(any(target_os = "dragonfly", target_os = "freebsd",
           target_os = "ios", target_os = "macos",
-          target_os = "openbsd", target_os = "netbsd"))]
+          target_os = "openbsd", target_os = "netbsd",
+          target_os = "solaris"))]
 use sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
 #[cfg(not(any(target_os = "dragonfly", target_os = "freebsd",
               target_os = "ios", target_os = "macos",
-          target_os = "openbsd", target_os = "netbsd")))]
+              target_os = "openbsd", target_os = "netbsd",
+              target_os = "solaris")))]
 use sys::net::netc::IPV6_DROP_MEMBERSHIP;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -599,5 +603,24 @@ impl fmt::Debug for UdpSocket {
         let name = if cfg!(windows) {"socket"} else {"fd"};
         res.field(name, &self.inner.as_inner())
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use prelude::v1::*;
+
+    use super::*;
+    use collections::HashMap;
+
+    #[test]
+    fn no_lookup_host_duplicates() {
+        let mut addrs = HashMap::new();
+        let lh = match lookup_host("localhost") {
+            Ok(lh) => lh,
+            Err(e) => panic!("couldn't resolve `localhost': {}", e)
+        };
+        let _na = lh.map(|sa| *addrs.entry(sa).or_insert(0) += 1).count();
+        assert!(addrs.values().filter(|&&v| v > 1).count() == 0);
     }
 }

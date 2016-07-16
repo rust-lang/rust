@@ -137,15 +137,6 @@ impl Def {
         }
     }
 
-    pub fn variant_def_ids(&self) -> Option<(DefId, DefId)> {
-        match *self {
-            Def::Variant(enum_id, var_id) => {
-                Some((enum_id, var_id))
-            }
-            _ => None
-        }
-    }
-
     pub fn kind_name(&self) -> &'static str {
         match *self {
             Def::Fn(..) => "function",
