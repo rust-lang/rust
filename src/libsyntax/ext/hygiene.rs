@@ -114,38 +114,3 @@ impl fmt::Debug for SyntaxContext {
         write!(f, "#{}", self.0)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use ast::{EMPTY_CTXT, Mrk, SyntaxContext};
-    use super::{apply_mark_internal, new_sctable_internal, Mark, SCTable};
-
-    // extend a syntax context with a sequence of marks given
-    // in a vector. v[0] will be the outermost mark.
-    fn unfold_marks(mrks: Vec<Mrk> , tail: SyntaxContext, table: &SCTable)
-                    -> SyntaxContext {
-        mrks.iter().rev().fold(tail, |tail:SyntaxContext, mrk:&Mrk|
-                   {apply_mark_internal(*mrk,tail,table)})
-    }
-
-    #[test] fn unfold_marks_test() {
-        let mut t = new_sctable_internal();
-
-        assert_eq!(unfold_marks(vec!(3,7),EMPTY_CTXT,&mut t),SyntaxContext(2));
-        {
-            let table = t.table.borrow();
-            assert!((*table)[1] == Mark(7,EMPTY_CTXT));
-            assert!((*table)[2] == Mark(3,SyntaxContext(1)));
-        }
-    }
-
-    #[test]
-    fn hashing_tests () {
-        let mut t = new_sctable_internal();
-        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),SyntaxContext(1));
-        assert_eq!(apply_mark_internal(13,EMPTY_CTXT,&mut t),SyntaxContext(2));
-        // using the same one again should result in the same index:
-        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),SyntaxContext(1));
-        // I'm assuming that the rename table will behave the same....
-    }
-}
