@@ -11,8 +11,8 @@ pub struct EtaPass;
 /// function can be called directly. `unsafe` functions or calls where types get adjusted are
 /// ignored.
 ///
-/// **Why is this bad?** Needlessly creating a closure just costs heap space and adds code for no
-/// benefit.
+/// **Why is this bad?** Needlessly creating a closure adds code for no
+/// benefit and gives the optimizer more work.
 ///
 /// **Known problems:** None
 ///
