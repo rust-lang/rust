@@ -2274,7 +2274,7 @@ impl<'a> Resolver<'a> {
         let resolution = if let Some(resolution) = self.resolve_possibly_assoc_item(pat_id,
                                                                         qself, path, namespace) {
             if resolution.depth == 0 {
-                if expected_fn(resolution.base_def) {
+                if expected_fn(resolution.base_def) || resolution.base_def == Def::Err {
                     resolution
                 } else {
                     resolve_error(
@@ -2345,7 +2345,7 @@ impl<'a> Resolver<'a> {
                                 );
                                 None
                             }
-                            Def::Local(..) | Def::Upvar(..) | Def::Fn(..) => {
+                            Def::Local(..) | Def::Upvar(..) | Def::Fn(..) | Def::Err => {
                                 // These entities are explicitly allowed
                                 // to be shadowed by fresh bindings.
                                 None
