@@ -231,7 +231,7 @@ pub enum TypeOrigin {
 }
 
 impl TypeOrigin {
-    fn as_str(&self) -> &'static str {
+    fn as_failure_str(&self) -> &'static str {
         match self {
             &TypeOrigin::Misc(_) |
             &TypeOrigin::RelateSelfType(_) |
@@ -252,11 +252,26 @@ impl TypeOrigin {
             &TypeOrigin::IntrinsicType(_) => "intrinsic has wrong type",
         }
     }
-}
 
-impl fmt::Display for TypeOrigin {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(),fmt::Error> {
-        fmt::Display::fmt(self.as_str(), f)
+    fn as_requirement_str(&self) -> &'static str {
+        match self {
+            &TypeOrigin::Misc(_) => "types are compatible",
+            &TypeOrigin::MethodCompatCheck(_) => "method type is compatible with trait",
+            &TypeOrigin::ExprAssignable(_) => "expression is assignable",
+            &TypeOrigin::RelateTraitRefs(_) => "traits are compatible",
+            &TypeOrigin::RelateSelfType(_) => "self type matches impl self type",
+            &TypeOrigin::RelateOutputImplTypes(_) => {
+                "trait type parameters matches those specified on the impl"
+            }
+            &TypeOrigin::MatchExpressionArm(_, _, _) => "match arms have compatible types",
+            &TypeOrigin::IfExpression(_) => "if and else have compatible types",
+            &TypeOrigin::IfExpressionWithNoElse(_) => "if missing an else returns ()",
+            &TypeOrigin::RangeExpression(_) => "start and end of range have compatible types",
+            &TypeOrigin::EquatePredicate(_) => "equality where clause is satisfied",
+            &TypeOrigin::MainFunctionType(_) => "`main` function has the correct type",
+            &TypeOrigin::StartFunctionType(_) => "`start` function has the correct type",
+            &TypeOrigin::IntrinsicType(_) => "intrinsic has the correct type",
+        }
     }
 }
 
@@ -1489,22 +1504,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn type_error_message<M>(&self,
                                  sp: Span,
                                  mk_msg: M,
-                                 actual_ty: Ty<'tcx>,
-                                 err: Option<&TypeError<'tcx>>)
+                                 actual_ty: Ty<'tcx>)
         where M: FnOnce(String) -> String,
     {
-        self.type_error_struct(sp, mk_msg, actual_ty, err).emit();
+        self.type_error_struct(sp, mk_msg, actual_ty).emit();
     }
 
     pub fn type_error_struct<M>(&self,
                                 sp: Span,
                                 mk_msg: M,
-                                actual_ty: Ty<'tcx>,
-                                err: Option<&TypeError<'tcx>>)
+                                actual_ty: Ty<'tcx>)
                                 -> DiagnosticBuilder<'tcx>
         where M: FnOnce(String) -> String,
     {
-        debug!("type_error_struct({:?}, {:?}, {:?})", sp, actual_ty, err);
+        debug!("type_error_struct({:?}, {:?})", sp, actual_ty);
 
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
 
@@ -1513,21 +1526,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return self.tcx.sess.diagnostic().struct_dummy();
         }
 
-        let error_str = err.map_or("".to_string(), |t_err| {
-            format!(" ({})", t_err)
-        });
-
         let msg = mk_msg(self.ty_to_string(actual_ty));
 
         // FIXME: use an error code.
-        let mut db = self.tcx.sess.struct_span_err(
-            sp, &format!("{} {}", msg, error_str));
-
-        if let Some(err) = err {
-            self.tcx.note_and_explain_type_err(&mut db, err, sp);
-        }
-
-        db
+        self.tcx.sess.struct_span_err(sp, &msg)
     }
 
     pub fn report_mismatched_types(&self,
