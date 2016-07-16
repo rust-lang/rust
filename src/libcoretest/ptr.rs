@@ -171,3 +171,17 @@ fn test_unsized_unique() {
     let zs: &mut [i32] = &mut [1, 2, 3];
     assert!(ys == zs);
 }
+
+#[test]
+fn test_variadic_fnptr() {
+    use core::hash::{Hash, SipHasher};
+    extern "C" {
+        fn printf(_: *const u8, ...);
+    }
+    let p: unsafe extern "C" fn(*const u8, ...) = printf;
+    let q = p.clone();
+    assert_eq!(p, q);
+    assert!(!(p < q));
+    let mut s = SipHasher::new();
+    assert_eq!(p.hash(&mut s), q.hash(&mut s));
+}
