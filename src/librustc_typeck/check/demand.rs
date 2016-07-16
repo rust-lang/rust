@@ -54,16 +54,4 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.report_mismatched_types(origin, expected, expr_ty, e);
         }
     }
-
-    pub fn require_same_types(&self, span: Span, t1: Ty<'tcx>, t2: Ty<'tcx>, msg: &str)
-                              -> bool {
-        if let Err(err) = self.eq_types(false, TypeOrigin::Misc(span), t1, t2) {
-            let found_ty = self.resolve_type_vars_if_possible(&t1);
-            let expected_ty = self.resolve_type_vars_if_possible(&t2);
-            ::emit_type_err(self.tcx, span, found_ty, expected_ty, &err, msg);
-            false
-        } else {
-            true
-        }
-    }
 }

@@ -554,6 +554,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                          trace: TypeTrace<'tcx>,
                                          terr: &TypeError<'tcx>)
                                          -> DiagnosticBuilder<'tcx> {
+        let trace = self.resolve_type_vars_if_possible(&trace);
         let span = trace.origin.span();
         let mut err = self.report_type_error(trace, terr);
         self.tcx.note_and_explain_type_err(&mut err, terr, span);
@@ -1642,6 +1643,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
                     TypeOrigin::EquatePredicate(_) => {
                         "equality where clause is satisfied"
+                    }
+                    TypeOrigin::MainFunctionType(_) => {
+                        "the `main` function has the correct type"
+                    }
+                    TypeOrigin::StartFunctionType(_) => {
+                        "the `start` function has the correct type"
+                    }
+                    TypeOrigin::IntrinsicType(_) => {
+                        "the intrinsic has the correct type"
                     }
                 };
 
