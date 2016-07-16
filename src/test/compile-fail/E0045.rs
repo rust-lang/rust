@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern "rust-call" { fn foo(x: u8, ...); } //~ ERROR E0045
+extern "Rust" { fn foo(x: u8, ...); } //~ ERROR E0045
 
 fn main() {
 }
