@@ -233,6 +233,34 @@ extern "rust-intrinsic" {
     ///
     /// This has all the same safety problems as `ptr::read` with respect to
     /// invalid pointers, types, and double drops.
+    ///
+    /// # Examples
+    ///
+    /// Minimal example demonstrating when destructors are called when using
+    /// `drop_in_place`:
+    ///
+    /// ```
+    /// use std::ptr::drop_in_place;
+    ///
+    /// struct SomeStruct;
+    ///
+    /// impl Drop for SomeStruct {
+    ///     fn drop(&mut self) {
+    ///         println!("SomeStruct destructor called");
+    ///     }
+    /// }
+    ///
+    /// {
+    ///     let mut some_struct = SomeStruct;
+    ///     println!("before drop_in_place");
+    ///     unsafe {
+    ///         drop_in_place(&mut some_struct);
+    ///     }
+    ///     println!("after drop_in_place");
+    /// }
+    ///
+    /// println!("after block");
+    /// ```
     #[stable(feature = "drop_in_place", since = "1.8.0")]
     pub fn drop_in_place<T: ?Sized>(to_drop: *mut T);
 
