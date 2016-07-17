@@ -59,7 +59,7 @@ use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{self, Add, Index, IndexMut};
+use core::ops::{self, Add, AddAssign, Index, IndexMut};
 use core::ptr;
 use core::str::pattern::Pattern;
 use rustc_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
@@ -1556,6 +1556,14 @@ impl<'a> Add<&'a str> for String {
     fn add(mut self, other: &str) -> String {
         self.push_str(other);
         self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.11.0")]
+impl<'a> AddAssign<&'a str> for String {
+    #[inline]
+    fn add_assign(&mut self, other: &str) {
+        self.push_str(other);
     }
 }
 
