@@ -31,6 +31,6 @@ use use_from_trait_xc::Bar::new as bnew;
 //~^ ERROR unresolved import `use_from_trait_xc::Bar::new`
 
 use use_from_trait_xc::Baz::new as baznew;
-//~^ ERROR `baznew` is not directly importable
+//~^ ERROR unresolved import `use_from_trait_xc::Baz::new`
 
 fn main() {}
