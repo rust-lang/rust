@@ -1,0 +1,58 @@
+# This is based on https://github.com/japaric/rust-everywhere/blob/master/appveyor.yml
+# and modified (mainly removal of deployment) to suit rustfmt.
+
+environment:
+  global:
+    PROJECT_NAME: rustfmt
+  matrix:
+    # Stable channel
+    - TARGET: i686-pc-windows-gnu
+      CHANNEL: stable
+    - TARGET: i686-pc-windows-msvc
+      CHANNEL: stable
+    - TARGET: x86_64-pc-windows-gnu
+      CHANNEL: stable
+    - TARGET: x86_64-pc-windows-msvc
+      CHANNEL: stable
+    # Beta channel
+    - TARGET: i686-pc-windows-gnu
+      CHANNEL: beta
+    - TARGET: i686-pc-windows-msvc
+      CHANNEL: beta
+    - TARGET: x86_64-pc-windows-gnu
+      CHANNEL: beta
+    - TARGET: x86_64-pc-windows-msvc
+      CHANNEL: beta
+    # Nightly channel
+    - TARGET: i686-pc-windows-gnu
+      CHANNEL: nightly
+    - TARGET: i686-pc-windows-msvc
+      CHANNEL: nightly
+    - TARGET: x86_64-pc-windows-gnu
+      CHANNEL: nightly
+    - TARGET: x86_64-pc-windows-msvc
+      CHANNEL: nightly
+
+# Install Rust and Cargo
+# (Based on from https://github.com/rust-lang/libc/blob/master/appveyor.yml)
+install:
+  - ps: Start-FileDownload "https://static.rust-lang.org/dist/channel-rust-stable"
+  - ps: $env:RUST_VERSION = Get-Content channel-rust-stable | select -first 1 | %{$_.split('-')[1]}
+  - if NOT "%CHANNEL%" == "stable" set RUST_VERSION=%CHANNEL%
+  - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-${env:RUST_VERSION}-${env:TARGET}.exe"
+  - rust-%RUST_VERSION%-%TARGET%.exe /VERYSILENT /NORESTART /DIR="C:\Program Files (x86)\Rust"
+  - SET PATH=%PATH%;C:\Program Files (x86)\Rust\bin
+  - if "%TARGET%" == "i686-pc-windows-gnu" set PATH=%PATH%;C:\msys64\mingw32\bin
+  - if "%TARGET%" == "x86_64-pc-windows-gnu" set PATH=%PATH%;C:\msys64\mingw64\bin
+  - rustc -V
+  - cargo -V
+
+# ???
+build: false
+
+# Build rustfmt, run the executables as
+test_script:
+  - cargo build --verbose
+  - cargo run --bin rustfmt -- --help
+  - cargo run --bin cargo-fmt -- --help
+  - cargo test
