@@ -9,7 +9,8 @@
 Rust programs compiled for windows will always flash up a console window on
 startup. This behavior is controlled via the `SUBSYSTEM` parameter passed to the
 linker, and so *can* be overridden with specific compiler flags. However, doing
-so will bypass the rust-specific initialization code in `libstd`.
+so will bypass the rust-specific initialization code in `libstd`, as the entry
+point must be named `WinMain`.
 
 This RFC proposes supporting this case explicitly, allowing `libstd` to
 continue to be initialized correctly.
@@ -33,7 +34,7 @@ This is unsafe, and will skip the initialization code in `libstd`.
 [design]: #detailed-design
 
 When an executable is linked while compiling for a windows target, it will be
-linked for a specific *Subsystem*. The subsystem determines how the operating
+linked for a specific *subsystem*. The subsystem determines how the operating
 system will run the executable, and will affect the execution environment of
 the program.
 
@@ -91,36 +92,46 @@ whichever linker is actually being used.
 # Alternatives
 [alternatives]: #alternatives
 
-- Emit either `WinMain` or `main` from `libstd` based on `cfg` options.
+- Only emit one of either `WinMain` or `main` from `rustc` based on a new
+  command line option.
 
-  This has the advantage of not requiring changes to `rustc`, but is something
-  of a non-starter since it requires a version of `libstd` for each subsystem.
+  This command line option would only be applicable when compiling an
+  executable, and only for windows platforms. No other supported platforms
+  require a different entry point or additional linker arguments for programs
+  designed to run with a graphical user interface.
 
-- Emit either `WinMain` or `main` from `rustc` based on `cfg` options.
+  `rustc` will react to this command line option by changing the exported
+  name of the entry point to `WinMain`, and passing additional arguments to
+  the linker to configure the correct subsystem. A mismatch here would result
+  in linker errors.
 
-  This would not require different versions of `libstd`, but it would require
-  recompiling all other crates depending on the value of the `cfg` option.
+  A similar option would need to be added to `Cargo.toml` to make usage as
+  simple as possible.
 
-- Emit either `WinMain` or `main` from `rustc` based on a new command line
-  option.
+  There's some bike-shedding which can be done one the exact command line
+  interface, but one possible option is shown below.
 
-  Assuming the command line option need only be specified when compiling the
-  executable itself, the dependencies would not need to be recompiled were the
-  subsystem to change.
+  Rustc usage:
+  `rustc foo.rs --crate-subsystem windows`
 
-  Choosing to emit one or the other means that the compiler and linker must
-  agree on the subsystem, or else you'll get linker errors. If `rustc` only
-  specified a `subsystem` to the linker if the option is passed, this would be
-  a fully backwards compatible change.
+  Cargo.toml
+  ```toml
+  [package]
+  # ...
 
-  A compiler option is probably desirable in addition to this RFC, but it will
-  require bike-shedding on the new command line interface, and changes to rustc
-  to be able to pass on the correct linker flags.
+  [[bin]]
+  name = "foo"
+  path = "src/foo.rs"
+  subsystem = "windows"
+  ```
 
-  A similar option would need to be added to `Cargo.toml` to make usage as simple
-  as possible.
+  The `crate-subsystem` command line option would exist on all platforms,
+  but would be ignored when compiling for a non-windows target, so as to
+  support cross-compiling. If not compiling a binary crate, specifying the
+  option is an error regardless of the target.
 
-- Add a `subsystem` function to determine which subsystem was used at runtime.
+- Export both entry points as described in this RFC, but also add a `subsystem`
+  function to `libstd` determine which subsystem was used at runtime.
 
   The `WinMain` function would first set an internal flag, and only then
   delegate to the `main` function.
@@ -137,8 +148,8 @@ whichever linker is actually being used.
   an incorrect value if the initialization was skipped, such as if used as a
   library from an executable written in another language.
 
-- Use the undocumented MSVC equivalent to weak symbols to avoid breaking
-  existing code.
+- Export both entry points as described in this RFC, but use the undocumented
+  MSVC equivalent to weak symbols to avoid breaking existing code.
 
   The parameter `/alternatename:_WinMain@16=_RustWinMain@16` can be used to
   export `WinMain` only if it is not also exported elsewhere. This is completely
