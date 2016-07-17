@@ -520,7 +520,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        &mut self[..]
+        self
     }
 
     /// Sets the length of a vector.
