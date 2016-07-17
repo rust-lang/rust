@@ -43,7 +43,7 @@ name                                                                            
 [clone_on_copy](https://github.com/Manishearth/rust-clippy/wiki#clone_on_copy)                                       | warn    | using `clone` on a `Copy` type
 [cmp_nan](https://github.com/Manishearth/rust-clippy/wiki#cmp_nan)                                                   | deny    | comparisons to NAN (which will always return false, which is probably not intended)
 [cmp_owned](https://github.com/Manishearth/rust-clippy/wiki#cmp_owned)                                               | warn    | creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
-[collapsible_if](https://github.com/Manishearth/rust-clippy/wiki#collapsible_if)                                     | warn    | `if`s that can be collapsed (e.g. `if x { if y { … } }` and `else { if x { … } }`)
+[collapsible_if](https://github.com/Manishearth/rust-clippy/wiki#collapsible_if)                                     | warn    | `if`s that can be collapsed (e.g. `if x { if y { ... } }` and `else { if x { ... } }`)
 [crosspointer_transmute](https://github.com/Manishearth/rust-clippy/wiki#crosspointer_transmute)                     | warn    | transmutes that have to or from types that are a pointer to the other
 [cyclomatic_complexity](https://github.com/Manishearth/rust-clippy/wiki#cyclomatic_complexity)                       | warn    | finds functions that should be split up into multiple functions
 [deprecated_semver](https://github.com/Manishearth/rust-clippy/wiki#deprecated_semver)                               | warn    | `Warn` on `#[deprecated(since = "x")]` where x is not semver
