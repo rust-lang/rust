@@ -6,9 +6,9 @@
 # Summary
 [summary]: #summary
 
-Add a conservative form of abstract return types, aka `impl Trait`,
-that will be compatible with most possible future extensions by
-initially being restricted to:
+Add a conservative form of abstract return types, also known as `impl
+Trait`, that will be compatible with most possible future extensions
+by initially being restricted to:
 
 - Only free-standing or inherent functions.
 - Only return type position of a function.
@@ -175,7 +175,7 @@ and the *initial limitations* (which are likely to be lifted later).
 - As far as the typesystem and the compiler is concerned, the return type
   outside of the function would not be a entirely "new" type, nor would it be a
   simple type alias. Rather, its semantics would be very similar to that of
-  _generic type paramters_ inside a function, with small differences caused by
+  _generic type parameters_ inside a function, with small differences caused by
   being an _output_ rather than an _input_ of the function.
 
   - The type would be known to implement the specified traits.
@@ -189,7 +189,7 @@ and the *initial limitations* (which are likely to be lifted later).
   non-local type checking becoming necessary.
 
 - The return type has an identity based on all generic parameters the
-  function body is parametrized by, and by the location of the function
+  function body is parameterized by, and by the location of the function
   in the module system. This means type equality behaves like this:
 
   ```rust
@@ -211,7 +211,7 @@ and the *initial limitations* (which are likely to be lifted later).
 
 - The code generation passes of the compiler would not draw a distinction
   between the abstract return type and the underlying type, just like they don't
-  for generic paramters. This means:
+  for generic parameters. This means:
   - The same trait code would be instantiated, for example, `-> impl Any`
     would return the type id of the underlying type.
     - Specialization would specialize based on the underlying type.
@@ -221,7 +221,7 @@ and the *initial limitations* (which are likely to be lifted later).
 - `impl Trait` may only be written within the return type of a freestanding or
   inherent-impl function, not in trait definitions or any non-return type position. They may also not appear
   in the return type of closure traits or function pointers,
-  unless these are themself part of a legal return type.
+  unless these are themselves part of a legal return type.
 
   - Eventually, we will want to allow the feature to be used within traits, and
     like in argument position as well (as an ergonomic improvement over today's generics).
@@ -262,7 +262,7 @@ was in fact the main focus of the
 [blog post](http://aturon.github.io/blog/2015/09/28/impl-trait/) on `impl
 Trait`.)
 
-The design as choosen in this RFC lies somewhat in between those two, since it
+The design as chosen in this RFC lies somewhat in between those two, since it
 allows OIBITs to leak through, and allows specialization to "see" the full type
 being returned. That is, `impl Trait` does not attempt to be a "tightly sealed"
 abstraction boundary. The rationale for this design is a mixture of pragmatics
@@ -308,15 +308,15 @@ item-level API, but has been deemed worth it for the following reasons:
 
 - Ergonomics: Trait objects already have the issue of explicitly needing to
   declare `Send`/`Sync`-ability, and not extending this problem to abstract
-  return types is desireable. In practice, most uses of this feature would have
+  return types is desirable. In practice, most uses of this feature would have
   to add explicit bounds for OIBITS if they wanted to be maximally usable.
 
 - Low real change, since the situation already somewhat exists on structs with private fields:
   - In both cases, a change to the private implementation might change whether a OIBIT is
     implemented or not.
-  - In both cases, the existence of OIBIT impls is not visible without doc tools
+  - In both cases, the existence of OIBIT impls is not visible without documentation tools
   - In both cases, you can only assert the existence of OIBIT impls
-  by adding explicit trait bounds either to the API or to the crate's testsuite.
+  by adding explicit trait bounds either to the API or to the crate's test suite.
 
 In fact, a large part of the point of OIBITs in the first place was to cut
 across abstraction barriers and provide information about a type without the
@@ -327,7 +327,7 @@ change a function with a abstract return type in a way that removes OIBIT impls,
 which might be a problem. (As noted above, this is already the case for `struct`
 definitions.)
 
-But since the number of used OIBITs is relatvly small, deducing the return type
+But since the number of used OIBITs is relatively small, deducing the return type
 in a function body and reasoning about whether such a breakage will occur has
 been deemed as a manageable amount of work.
 
@@ -409,7 +409,7 @@ Because `impl Trait` defines a type tied to the concrete function body,
 it does not make much sense to talk about it separately in a function signature,
 so the syntax is forbidden there.
 
-### Compability with conditional trait bounds
+### Compatibility with conditional trait bounds
 
 On valid critique for the existing `impl Trait` proposal is that it does not
 cover more complex scenarios, where the return type would implement
@@ -437,7 +437,7 @@ One important usecase of abstract return types is to use them in trait methods.
 However, there is an issue with this, namely that in combinations with generic
 trait methods, they are effectively equivalent to higher kinded types.
 Which is an issue because Rust HKT story is not yet figured out, so
-any "accidential implementation" might cause unintended fallout.
+any "accidental implementation" might cause unintended fallout.
 
 HKT allows you to be generic over a type constructor, aka a
 "thing with type parameters", and then instantiate them at some later point to
@@ -531,13 +531,13 @@ See the links in the motivation section for detailed analysis that we won't
 repeat here.
 
 But basically, without this feature certain things remain hard or impossible to do
-in Rust, like returning a efficiently usable type parametricised by
+in Rust, like returning a efficiently usable type parameterized by
 types private to a function body, for example an iterator adapter containing a closure.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-> What parts of the design are still TBD?
+> What parts of the design are still to be determined?
 
 The precise implementation details for OIBIT transparency are a bit unclear: in
 general, it means that type checking may need to proceed in a particular order,
