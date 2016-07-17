@@ -135,6 +135,7 @@ impl TokenTree {
             }
             TokenTree::Token(_, token::SpecialVarNt(..)) => 2,
             TokenTree::Token(_, token::MatchNt(..)) => 3,
+            TokenTree::Token(_, token::Interpolated(Nonterminal::NtTT(..))) => 1,
             TokenTree::Delimited(_, ref delimed) => delimed.tts.len() + 2,
             TokenTree::Sequence(_, ref seq) => seq.tts.len(),
             TokenTree::Token(..) => 0,
@@ -196,6 +197,9 @@ impl TokenTree {
                          TokenTree::Token(sp, token::Colon),
                          TokenTree::Token(sp, token::Ident(kind))];
                 v[index].clone()
+            }
+            (&TokenTree::Token(_, token::Interpolated(Nonterminal::NtTT(ref tt))), _) => {
+                tt.clone().unwrap()
             }
             (&TokenTree::Sequence(_, ref seq), _) => seq.tts[index].clone(),
             _ => panic!("Cannot expand a token tree"),
