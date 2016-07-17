@@ -56,6 +56,10 @@ Error explanations are long form descriptions of error messages provided with
 the compiler. They are accessible via the `--explain` flag. Each explanation
 comes with an example of how to trigger it and advice on how to fix it.
 
+Long error codes explanations are a very important part of Rust. Having an
+explanation of what failed helps to understand the error and is appreciated by
+Rust developers of all skill levels.
+
 * All of them are accessible [online](http://doc.rust-lang.org/error-index.html),
   which are auto-generated from rustc source code in different places:
   [librustc](https://github.com/rust-lang/rust/blob/master/src/librustc/diagnostics.rs),
@@ -73,6 +77,124 @@ comes with an example of how to trigger it and advice on how to fix it.
 code with backticks.
 * When talking about the compiler, call it `the compiler`, not `Rust` or
 `rustc`.
+
+Note: The following sections are mostly a repaste of [RFC 1567](https://github.com/rust-lang/rfcs/blob/master/text/1567-long-error-codes-explanation-normalization.md).
+
+### Template
+
+Long error descriptions should match the following template. The next few
+sections of this document describe what each section is about.
+
+```rust
+E000: r##"
+[Error description]
+
+Example of erroneous code:
+
+\```compile_fail
+[Minimal example]
+\```
+
+[Error explanation]
+
+\```
+[How to fix the problem]
+\```
+
+[Optional Additional information]
+```
+
+### Error description
+
+Provide a more detailed error message. For example:
+
+```rust
+extern crate a;
+extern crate b as a;
+```
+
+We get the `E0259` error code which says "an extern crate named `a` has already been imported in this module" and the error explanation says: "The name chosen for an external crate conflicts with another external crate that has been imported into the current module.".
+
+### Minimal example
+
+Provide an erroneous code example which directly follows `Error description`. The erroneous example will be helpful for the `How to fix the problem`. Making it as simple as possible is really important in order to help readers to understand what the error is about. A comment should be added with the error on the same line where the errors occur. Example:
+
+```rust
+type X = u32<i32>; // error: type parameters are not allowed on this type
+```
+
+If the error comments is too long to fit 80 columns, split it up like this, so the next line start at the same column of the previous line:
+
+```rust
+type X = u32<'static>; // error: lifetime parameters are not allowed on
+                       //        this type
+```
+
+And if the sample code is too long to write an effective comment, place your comment on the line before the sample code:
+
+```rust
+// error: lifetime parameters are not allowed on this type
+fn super_long_function_name_and_thats_problematic() {}
+```
+
+Of course, it the comment is too long, the split rules still applies.
+
+### Error explanation
+
+Provide a full explanation about "__why__ you get the error" and some leads on __how__ to fix it. If needed, use additional code snippets to improve your explanations.
+
+### How to fix the problem
+
+This part will show how to fix the error that we saw previously in the `Minimal example`, with comments explaining how it was fixed.
+
+### Additional information
+
+Some details which might be useful for the users, let's take back `E0109` example. At the end, the supplementary explanation is the following: "Note that type parameters for enum-variant constructors go after the variant, not after the enum (`Option::None::<u32>`, not `Option::<u32>::None`).". It provides more information, not directly linked to the error, but it might help user to avoid doing another error.
+
+### Full Example
+
+Now let's take a full example:
+
+> E0409: r##"
+> An "or" pattern was used where the variable bindings are not consistently bound
+> across patterns.
+>
+> Example of erroneous code:
+>
+> ```compile_fail
+> let x = (0, 2);
+> match x {
+>     (0, ref y) | (y, 0) => { /* use y */} // error: variable `y` is bound with
+>                                           //        different mode in pattern #2
+>                                           //        than in pattern #1
+>     _ => ()
+> }
+> ```
+>
+> Here, `y` is bound by-value in one case and by-reference in the other.
+>
+> To fix this error, just use the same mode in both cases.
+> Generally using `ref` or `ref mut` where not already used will fix this:
+>
+> ```ignore
+> let x = (0, 2);
+> match x {
+>     (0, ref y) | (ref y, 0) => { /* use y */}
+>     _ => ()
+> }
+> ```
+>
+> Alternatively, split the pattern:
+>
+> ```
+> let x = (0, 2);
+> match x {
+>     (y, 0) => { /* use y */ }
+>     (0, ref y) => { /* use y */}
+>     _ => ()
+> }
+> ```
+> "##,
 
 ## Compiler Flags
 
