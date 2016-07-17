@@ -612,6 +612,7 @@ opt rustbuild 0 "use the rust and cargo based build system"
 opt orbit 0 "get MIR where it belongs - everywhere; most importantly, in orbit"
 opt codegen-tests 1 "run the src/test/codegen tests"
 opt option-checking 1 "complain about unrecognized options in this configure script"
+opt ninja 0 "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)"
 
 # Optimization and debugging options. These may be overridden by the release channel, etc.
 opt_nosave optimize 1 "build optimized rust code"
@@ -784,6 +785,17 @@ probe CFG_FLEX             flex
 probe CFG_BISON            bison
 probe CFG_GDB              gdb
 probe CFG_LLDB             lldb
+
+if [ -n "$CFG_ENABLE_NINJA" ]
+then
+  probe CFG_NINJA            ninja
+  if [ -z "$CFG_NINJA" ]
+  then
+    # On Debian and Fedora, the `ninja` binary is an IRC bot, so the build tool was
+    # renamed. Handle this case.
+    probe CFG_NINJA            ninja-build
+  fi
+fi
 
 # For building LLVM
 probe_need CFG_CMAKE cmake
@@ -1534,7 +1546,10 @@ do
     fi
 
     # We need the generator later on for compiler-rt even if LLVM's not built
-    if [ ${is_msvc} -ne 0 ]
+    if [ -n "$CFG_NINJA" ]
+    then
+        generator="Ninja"
+    elif [ ${is_msvc} -ne 0 ]
     then
         case "$CFG_MSVC_ROOT" in
             *14.0*)
