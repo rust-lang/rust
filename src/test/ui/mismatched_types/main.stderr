@@ -1,9 +1,11 @@
-error: mismatched types [--explain E0308]
+error[E0308]: mismatched types
   --> $DIR/main.rs:14:18
-   |>
-14 |>     let x: u32 = (
-   |>                  ^ expected u32, found ()
-note: expected type `u32`
-note:    found type `()`
+   |
+14 |     let x: u32 = (
+   |                  ^ expected u32, found ()
+   |
+   = note: expected type `u32`
+   = note:    found type `()`
 
 error: aborting due to previous error
+

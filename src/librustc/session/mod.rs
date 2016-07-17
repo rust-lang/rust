@@ -22,7 +22,8 @@ use mir::transform as mir_pass;
 
 use syntax::ast::{NodeId, Name};
 use errors::{self, DiagnosticBuilder};
-use errors::emitter::{Emitter, BasicEmitter, EmitterWriter};
+use errors::emitter::{Emitter, EmitterWriter};
+use errors::snippet::FormatMode;
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::parse;
@@ -439,7 +440,7 @@ pub fn build_session_with_codemap(sopts: config::Options,
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config,
                                            Some(registry),
-                                           codemap.clone(),
+                                           Some(codemap.clone()),
                                            errors::snippet::FormatMode::EnvironmentSelected))
         }
         config::ErrorOutputType::Json => {
@@ -575,24 +576,32 @@ unsafe fn configure_llvm(sess: &Session) {
 }
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
-    let mut emitter: Box<Emitter> = match output {
+    let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(BasicEmitter::stderr(color_config))
+            Box::new(EmitterWriter::stderr(color_config,
+                                           None,
+                                           None,
+                                           FormatMode::EnvironmentSelected))
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };
-    emitter.emit(&MultiSpan::new(), msg, None, errors::Level::Fatal);
+    let handler = errors::Handler::with_emitter(true, false, emitter);
+    handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
     panic!(errors::FatalError);
 }
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
-    let mut emitter: Box<Emitter> = match output {
+    let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(BasicEmitter::stderr(color_config))
+            Box::new(EmitterWriter::stderr(color_config,
+                                           None,
+                                           None,
+                                           FormatMode::EnvironmentSelected))
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };
-    emitter.emit(&MultiSpan::new(), msg, None, errors::Level::Warning);
+    let handler = errors::Handler::with_emitter(true, false, emitter);
+    handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);
 }
 
 // Err(0) means compilation was stopped, but no errors were found.

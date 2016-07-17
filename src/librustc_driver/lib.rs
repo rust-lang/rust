@@ -100,6 +100,7 @@ use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::MultiSpan;
 use errors::emitter::Emitter;
+use errors::snippet::FormatMode;
 
 #[cfg(test)]
 pub mod test;
@@ -138,10 +139,15 @@ pub fn run(args: Vec<String>) -> isize {
                 match session {
                     Some(sess) => sess.fatal(&abort_msg(err_count)),
                     None => {
-                        let mut emitter =
-                            errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
-                        emitter.emit(&MultiSpan::new(), &abort_msg(err_count), None,
-                            errors::Level::Fatal);
+                        let emitter =
+                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
+                                                                   None,
+                                                                   None,
+                                                                   FormatMode::EnvironmentSelected);
+                        let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
+                        handler.emit(&MultiSpan::new(),
+                                     &abort_msg(err_count),
+                                     errors::Level::Fatal);
                         exit_on_err();
                     }
                 }
@@ -373,23 +379,26 @@ fn handle_explain(code: &str,
 
 fn check_cfg(sopts: &config::Options,
              output: ErrorOutputType) {
-    let mut emitter: Box<Emitter> = match output {
+    let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(errors::emitter::BasicEmitter::stderr(color_config))
+            Box::new(errors::emitter::EmitterWriter::stderr(color_config,
+                                                            None,
+                                                            None,
+                                                            FormatMode::EnvironmentSelected))
         }
         config::ErrorOutputType::Json => Box::new(json::JsonEmitter::basic()),
     };
+    let handler = errors::Handler::with_emitter(true, false, emitter);
 
     let mut saw_invalid_predicate = false;
     for item in sopts.cfg.iter() {
         match item.node {
             ast::MetaItemKind::List(ref pred, _) => {
                 saw_invalid_predicate = true;
-                emitter.emit(&MultiSpan::new(),
+                handler.emit(&MultiSpan::new(),
                              &format!("invalid predicate in --cfg command line argument: `{}`",
                                       pred),
-                             None,
-                             errors::Level::Fatal);
+                                errors::Level::Fatal);
             }
             _ => {},
         }
@@ -1046,26 +1055,34 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
      if let Err(value) = thread.unwrap().join() {
         // Thread panicked without emitting a fatal diagnostic
         if !value.is::<errors::FatalError>() {
-            let mut emitter = errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
+            let emitter =
+                Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
+                                                       None,
+                                                       None,
+                                                       FormatMode::EnvironmentSelected));
+            let handler = errors::Handler::with_emitter(true, false, emitter);
 
             // a .span_bug or .bug call has already printed what
             // it wants to print.
             if !value.is::<errors::ExplicitBug>() {
-                emitter.emit(&MultiSpan::new(), "unexpected panic", None, errors::Level::Bug);
+                handler.emit(&MultiSpan::new(),
+                             "unexpected panic",
+                             errors::Level::Bug);
             }
 
             let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
                       format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
             for note in &xs {
-                emitter.emit(&MultiSpan::new(), &note[..], None, errors::Level::Note)
+                handler.emit(&MultiSpan::new(),
+                             &note[..],
+                             errors::Level::Note);
             }
             if match env::var_os("RUST_BACKTRACE") {
                 Some(val) => &val != "0",
                 None => false,
             } {
-                emitter.emit(&MultiSpan::new(),
+                handler.emit(&MultiSpan::new(),
                              "run with `RUST_BACKTRACE=1` for a backtrace",
-                             None,
                              errors::Level::Note);
             }
 
