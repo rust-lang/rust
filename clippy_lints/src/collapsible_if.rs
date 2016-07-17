@@ -63,7 +63,7 @@ use utils::sugg::Sugg;
 declare_lint! {
     pub COLLAPSIBLE_IF,
     Warn,
-    "`if`s that can be collapsed (e.g. `if x { if y { … } }` and `else { if x { … } }`)"
+    "`if`s that can be collapsed (e.g. `if x { if y { ... } }` and `else { if x { ... } }`)"
 }
 
 #[derive(Copy,Clone)]
