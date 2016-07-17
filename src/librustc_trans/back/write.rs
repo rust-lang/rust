@@ -19,8 +19,8 @@ use llvm::SMDiagnosticRef;
 use {CrateTranslation, ModuleTranslation};
 use util::common::time;
 use util::common::path2cstr;
-use errors::{self, Handler, Level, RenderSpan};
-use errors::emitter::CoreEmitter;
+use errors::{self, Handler, Level, DiagnosticBuilder};
+use errors::emitter::Emitter;
 use syntax_pos::MultiSpan;
 
 use std::collections::HashMap;
@@ -100,22 +100,22 @@ impl SharedEmitter {
     }
 }
 
-impl CoreEmitter for SharedEmitter {
-    fn emit_message(&mut self,
-                    _rsp: &RenderSpan,
-                    msg: &str,
-                    code: Option<&str>,
-                    lvl: Level,
-                    _is_header: bool,
-                    _show_snippet: bool) {
+impl Emitter for SharedEmitter {
+    fn emit(&mut self, db: &DiagnosticBuilder) {
         self.buffer.lock().unwrap().push(Diagnostic {
-            msg: msg.to_string(),
-            code: code.map(|s| s.to_string()),
-            lvl: lvl,
+            msg: db.message.to_string(),
+            code: db.code.clone(),
+            lvl: db.level,
         });
+        for child in &db.children {
+            self.buffer.lock().unwrap().push(Diagnostic {
+                msg: child.message.to_string(),
+                code: None,
+                lvl: child.level,
+            });
+        }
     }
 }
-
 
 // On android, we by default compile for armv7 processors. This enables
 // things like double word CAS instructions (rather than emulating them)

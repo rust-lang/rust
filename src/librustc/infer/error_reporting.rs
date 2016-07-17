@@ -94,7 +94,7 @@ use syntax::ast;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax_pos::{self, Pos, Span};
-use errors::{DiagnosticBuilder, check_old_skool};
+use errors::{DiagnosticBuilder, check_old_school};
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
@@ -485,7 +485,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                        "{}",
                                        trace.origin);
 
-        if !is_simple_error || check_old_skool() {
+        if !is_simple_error || check_old_school() {
             err.note_expected_found(&"type", &expected, &found);
         }
 

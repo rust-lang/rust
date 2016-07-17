@@ -22,7 +22,7 @@
 use codemap::CodeMap;
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
-use errors::{Level, DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion, CodeMapper};
+use errors::{DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion, CodeMapper};
 use errors::emitter::Emitter;
 
 use std::rc::Rc;
@@ -53,14 +53,7 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit(&mut self, span: &MultiSpan, msg: &str, code: Option<&str>, level: Level) {
-        let data = Diagnostic::new(span, msg, code, level, self);
-        if let Err(e) = writeln!(&mut self.dst, "{}", as_json(&data)) {
-            panic!("failed to print diagnostics: {:?}", e);
-        }
-    }
-
-    fn emit_struct(&mut self, db: &DiagnosticBuilder) {
+    fn emit(&mut self, db: &DiagnosticBuilder) {
         let data = Diagnostic::from_diagnostic_builder(db, self);
         if let Err(e) = writeln!(&mut self.dst, "{}", as_json(&data)) {
             panic!("failed to print diagnostics: {:?}", e);
@@ -146,22 +139,6 @@ struct DiagnosticCode {
 }
 
 impl<'a> Diagnostic<'a> {
-    fn new(msp: &MultiSpan,
-           msg: &'a str,
-           code: Option<&str>,
-           level: Level,
-           je: &JsonEmitter)
-           -> Diagnostic<'a> {
-        Diagnostic {
-            message: msg,
-            code: DiagnosticCode::map_opt_string(code.map(|c| c.to_owned()), je),
-            level: level.to_str(),
-            spans: DiagnosticSpan::from_multispan(msp, je),
-            children: vec![],
-            rendered: None,
-        }
-    }
-
     fn from_diagnostic_builder<'c>(db: &'c DiagnosticBuilder,
                                    je: &JsonEmitter)
                                    -> Diagnostic<'c> {
