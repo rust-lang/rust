@@ -701,6 +701,12 @@ impl String {
     /// Violating these may cause problems like corrupting the allocator's
     /// internal datastructures.
     ///
+    /// The ownership of `ptr` is effectively transferred to the
+    /// `String` which may then deallocate, reallocate or change the
+    /// contents of memory pointed to by the pointer at will. Ensure
+    /// that nothing else uses the pointer after calling this
+    /// function.
+    ///
     /// # Examples
     ///
     /// Basic usage:
