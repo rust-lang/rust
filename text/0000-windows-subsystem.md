@@ -9,8 +9,8 @@
 Rust programs compiled for windows will always flash up a console window on
 startup. This behavior is controlled via the `SUBSYSTEM` parameter passed to the
 linker, and so *can* be overridden with specific compiler flags. However, doing
-so will bypass the rust-specific initialization code in `libstd`, as the entry
-point must be named `WinMain`.
+so will bypass the rust-specific initialization code in `libstd`, as when using
+the MSVC toolchain, the entry point must be named `WinMain`.
 
 This RFC proposes supporting this case explicitly, allowing `libstd` to
 continue to be initialized correctly.
@@ -22,13 +22,15 @@ The `WINDOWS` subsystem is commonly used on windows: desktop applications
 typically do not want to flash up a console window on startup.
 
 Currently, using the `WINDOWS` subsystem from rust is undocumented, and the
-process is non-trivial:
+process is non-trivial when targeting the MSVC toolchain:
 
 A new symbol `pub extern "system" WinMain(...)` with specific argument
 and return types must be declared, which will become the new entry point for
 the program.
 
 This is unsafe, and will skip the initialization code in `libstd`.
+
+The GNU toolchain will accept either entry point.
 
 # Detailed design
 [design]: #detailed-design
@@ -129,6 +131,17 @@ whichever linker is actually being used.
   but would be ignored when compiling for a non-windows target, so as to
   support cross-compiling. If not compiling a binary crate, specifying the
   option is an error regardless of the target.
+
+- Have `rustc` override the entry point when calling `link.exe`, and tell it to
+  use `mainCRTStartup` instead of `winMainCRTStartup`. These are the "true"
+  entry points of windows programs, which first initialize the C runtime
+  library, and then call `main` or `WinMain` respectively.
+
+  This is the simplest solution, and it will not have any serious backwards
+  compatibility problems, since rust programs are already required to have a
+  `main` function, even if `WinMain` has been separately defined. However, it
+  relies on the two CRT functions to be interchangeable, although this does
+  *appear* to be the case currently.
 
 - Export both entry points as described in this RFC, but also add a `subsystem`
   function to `libstd` determine which subsystem was used at runtime.
