@@ -92,6 +92,11 @@ impl<T, I> IndexMut<I> for [T]
 - The `SliceIndex` trait is unfortunate - it's tuned for exactly the set of methods it's used by.
   It only exists because inherent methods cannot be overloaded the same way that trait
   implementations can be. It would most likely remain unstable indefinitely.
+- Documentation may suffer. Rustdoc output currently explicitly shows each of the ways you can
+  index a slice, while there will simply be a single generic implementation with this change. This
+  may not be that bad, though. The doc block currently seems to provided the most valuable
+  information to newcomers rather than the trait bound, and that will still be present with this
+  change.
 
 # Alternatives
 
