@@ -491,8 +491,6 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExactSizeIterator: Iterator {
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
     /// Returns the exact number of times the iterator will iterate.
     ///
     /// This method has a default implementation, so you usually should not
@@ -516,6 +514,8 @@ pub trait ExactSizeIterator: Iterator {
     ///
     /// assert_eq!(5, five.len());
     /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len(&self) -> usize {
         let (lower, upper) = self.size_hint();
         // Note: This assertion is overly defensive, but it checks the invariant
@@ -524,6 +524,32 @@ pub trait ExactSizeIterator: Iterator {
         // implementations too.
         assert_eq!(upper, Some(lower));
         lower
+    }
+
+    /// Returns whether the iterator is empty.
+    ///
+    /// This method has a default implementation using `self.len()`, so you
+    /// don't need to implement it yourself.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(exact_size_is_empty)]
+    ///
+    /// let mut one_element = 0..1;
+    /// assert!(!one_element.is_empty());
+    ///
+    /// assert_eq!(one_element.next(), Some(0));
+    /// assert!(one_element.is_empty());
+    ///
+    /// assert_eq!(one_element.next(), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "exact_size_is_empty", issue = "0")]
+    fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
