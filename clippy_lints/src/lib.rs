@@ -169,6 +169,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde::Serde);
+    reg.register_early_lint_pass(box utils::internal_lints::Clippy);
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box booleans::NonminimalBool);
     reg.register_late_lint_pass(box misc::TopLevelRefPass);

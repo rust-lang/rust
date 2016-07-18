@@ -17,7 +17,7 @@ fn dogfood() {
     let mut s = String::new();
     s.push_str(" -L target/debug/");
     s.push_str(" -L target/debug/deps");
-    s.push_str(" -Zextra-plugins=clippy -Ltarget_recur/debug -Dclippy_pedantic -Dclippy");
+    s.push_str(" -Zextra-plugins=clippy -Ltarget_recur/debug -Dclippy_pedantic -Dclippy -Dclippy_lints_internal");
     config.target_rustcflags = Some(s);
     if let Ok(name) = var("TESTNAME") {
         config.filter = Some(name.to_owned())
@@ -29,6 +29,7 @@ fn dogfood() {
     }
 
     config.mode = cfg_mode;
+    config.verbose = true;
 
     let files = ["src/main.rs", "src/lib.rs", "clippy_lints/src/lib.rs"];
 
