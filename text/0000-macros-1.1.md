@@ -161,17 +161,16 @@ pub struct LexError {
     // ...
 }
 
-pub struct Context {
-    // ...
-}
+impl FromStr for TokenStream {
+    type Err = LexError;
 
-impl TokenStream {
-    pub fn from_source(cx: &mut Context,
-                       source: &str) -> Result<TokenStream, LexError> {
+    fn from_str(s: &str) -> Result<TokenStream, LexError> {
         // ...
     }
+}
 
-    pub fn to_source(&self, cx: &mut Context) -> String {
+impl fmt::Display for TokenStream {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // ...
     }
 }
@@ -183,12 +182,7 @@ more closely resemble token streams [in the compiler
 itself][compiler-tokenstream], and more fine-grained manipulations will be
 available as well.
 
-Additionally, the `Context` structure will initially be completely devoid
-of functionality, but in the future it will be the entry point for [many other
-features][macro20] one would expect in macros 2.0
-
 [compiler-tokenstream]: https://github.com/rust-lang/rust/blob/master/src/libsyntax/tokenstream.rs#L323-L338
-[macro20]: http://ncameron.org/blog/libmacro/
 
 ### Defining a macro
 
@@ -206,10 +200,10 @@ A macro crate might look like:
 
 extern crate rustc_macro;
 
-use rustc_macro::{Context, TokenStream};
+use rustc_macro::TokenStream;
 
 #[rustc_macro_derive(Double)]
-pub fn double(cx: &mut Context, input: TokenStream) -> TokenStream {
+pub fn double(input: TokenStream) -> TokenStream {
     let source = input.to_source(cx);
 
     // Parse `source` for struct/enum declaration, and then build up some new
@@ -244,11 +238,11 @@ The `rustc_macro_derive` attribute requires the signature (similar to [macros
 [mac20sig]: http://ncameron.org/blog/libmacro/#tokenisingandquasiquoting
 
 ```rust
-fn(&mut Context, TokenStream) -> TokenStream
+fn(TokenStream) -> TokenStream
 ```
 
 If a macro cannot process the input token stream, it is expected to panic for
-now, although eventually it will call methods on `Context` to provide more
+now, although eventually it will call methods in `rustc_macro` to provide more
 structured errors. The compiler will wrap up the panic message and display it
 to the user appropriately. Eventually, however, `librustc_macro` will provide
 more interesting methods of signaling errors to users.
@@ -408,12 +402,11 @@ The contents will look similar to
 extern crate rustc_macro;
 extern crate syntex_syntax;
 
-use rustc_macro::{Context, TokenStream};
+use rustc_macro::TokenStream;
 
 #[rustc_macro_derive(Serialize)]
-pub fn derive_serialize(_cx: &mut Context,
-                        input: TokenStream) -> TokenStream {
-    let input = input.to_source();
+pub fn derive_serialize(input: TokenStream) -> TokenStream {
+    let input = input.to_string();
 
     // use syntex_syntax from crates.io to parse `input` into an AST
 
@@ -423,7 +416,7 @@ pub fn derive_serialize(_cx: &mut Context,
     // convert that impl to a string
 
     // parse back into a token stream
-    return TokenStream::from_source(&impl_source).unwrap()
+    return impl_source.parse().unwrap()
 }
 ```
 
@@ -525,9 +518,13 @@ pub struct Foo {
   this syntax as well, but it's unclear whether we have a concrete enough idea
   in mind to implement today.
 
-* Instead of passing around `&mut Context` we could allow for storage of
-  compiler data structures in thread-local-storage. This would avoid threading
-  around an extra parameter and perhaps wouldn't lose too much flexibility.
+* The `TokenStream` state likely has some sort of backing store behind it like a
+  string interner, and in the APIs above it's likely that this state is passed
+  around in thread-local-storage to avoid threading through a parameter like
+  `&mut Context` everywhere. An alternative would be to explicitly pass this
+  parameter, but it might hinder trait implementations like `fmt::Display` and
+  `FromStr`. Additionally, threading an extra parameter could perhaps become
+  unwieldy over time.
 
 * In addition to allowing definition of custom-derive forms, definition of
   custom procedural macros could also be allowed. They are similarly
