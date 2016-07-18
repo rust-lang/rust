@@ -60,6 +60,8 @@ asm!("xor %eax, %eax"
     : "eax"
    );
 # } }
+# #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+# fn main() {}
 ```
 
 Whitespace also doesn't matter:
@@ -70,6 +72,8 @@ Whitespace also doesn't matter:
 # fn main() { unsafe {
 asm!("xor %eax, %eax" ::: "eax");
 # } }
+# #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+# fn main() {}
 ```
 
 ## Operands
@@ -129,6 +133,8 @@ stay valid.
 // Put the value 0x200 in eax
 asm!("mov $$0x200, %eax" : /* no outputs */ : /* no inputs */ : "eax");
 # } }
+# #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+# fn main() {}
 ```
 
 Input and output registers need not be listed since that information
@@ -164,6 +170,8 @@ unsafe {
 }
 println!("eax is currently {}", result);
 # }
+# #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+# fn main() {}
 ```
 
 ## More Information
