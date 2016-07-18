@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 158 lints included in this crate:
+There are 159 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -136,6 +136,7 @@ name                                                                            
 [result_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used)                             | allow   | using `Result.unwrap()`, which might be better handled
 [reverse_range_loop](https://github.com/Manishearth/rust-clippy/wiki#reverse_range_loop)                             | warn    | Iterating over an empty range, such as `10..0` or `5..5`
 [search_is_some](https://github.com/Manishearth/rust-clippy/wiki#search_is_some)                                     | warn    | using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`
+[serde_api_misuse](https://github.com/Manishearth/rust-clippy/wiki#serde_api_misuse)                                 | warn    | Various things that will negatively affect your serde experience
 [shadow_reuse](https://github.com/Manishearth/rust-clippy/wiki#shadow_reuse)                                         | allow   | rebinding a name to an expression that re-uses the original value, e.g. `let x = x + 1`
 [shadow_same](https://github.com/Manishearth/rust-clippy/wiki#shadow_same)                                           | allow   | rebinding a name to itself, e.g. `let mut x = &mut x`
 [shadow_unrelated](https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated)                                 | allow   | The name is re-bound without even using the original value

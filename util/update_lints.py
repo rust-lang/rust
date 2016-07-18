@@ -150,11 +150,10 @@ def main(print_only=False, check=False):
         return
 
     # collect all lints from source files
-    for root, _, files in os.walk('clippy_lints/src'):
-        for fn in files:
-            if fn.endswith('.rs'):
-                collect(lints, deprecated_lints, restriction_lints,
-                        os.path.join(root, fn))
+    for fn in os.listdir('clippy_lints/src'):
+        if fn.endswith('.rs'):
+            collect(lints, deprecated_lints, restriction_lints,
+                    os.path.join('clippy_lints', 'src', fn))
 
     # determine version
     with open('Cargo.toml') as fp:

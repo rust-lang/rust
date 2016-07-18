@@ -114,6 +114,7 @@ pub mod ptr_arg;
 pub mod ranges;
 pub mod regex;
 pub mod returns;
+pub mod serde;
 pub mod shadow;
 pub mod strings;
 pub mod swap;
@@ -167,6 +168,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     store.register_removed("string_to_string", "using `string::to_string` is common even today and specialization will likely happen soon");
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
+    reg.register_late_lint_pass(box serde::Serde);
+    reg.register_early_lint_pass(box utils::internal_lints::Clippy);
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box booleans::NonminimalBool);
     reg.register_late_lint_pass(box misc::TopLevelRefPass);
@@ -399,6 +402,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         regex::TRIVIAL_REGEX,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
+        serde::SERDE_API_MISUSE,
         strings::STRING_LIT_AS_BYTES,
         swap::ALMOST_SWAPPED,
         swap::MANUAL_SWAP,
