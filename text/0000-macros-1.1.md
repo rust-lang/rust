@@ -495,7 +495,17 @@ pub struct Foo {
   ```
 
   Plugin authors would have to ensure that this is not naively interpreted as
-  `Baz = 1 + 1 * 2` as this will cause incorrect results.
+  `Baz = 1 + 1 * 2` as this will cause incorrect results. The compiler will also
+  need to be careful to parenthesize token streams like this when it generates
+  a stringified source.
+
+* By having separte library and macro crate support today (e.g. `serde` and
+  `serde_macros`) it's possible for there to be version skew between the two,
+  making it tough to ensure that the two versions you're using are compatible
+  with one another. This would be solved if `serde` itself could define or
+  reexport the macros, but unfortunately that would require a likely much larger
+  step towards "macros 2.0" to solve and would greatly increase the size of this
+  RFC.
 
 # Alternatives
 [alternatives]: #alternatives
