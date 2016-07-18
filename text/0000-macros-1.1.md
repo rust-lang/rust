@@ -260,10 +260,10 @@ compiler. The compiler will still gate unknown attributes by default.
 
 ### `rustc-macro` crates
 
-Like the executable, staticlib, and cdylib crate types, the `rustc-macro` crate
-type is intended to be a final product.  What it *actually* produces is not
-specified, but if a `-L` path is provided to it then the compiler will recognize
-the output artifacts as a macro and it can be loaded for a program.
+Like the rlib and dylib crate types, the `rustc-macro` crate
+type is intended to be an intermediate product.  What it *actually* produces is
+not specified, but if a `-L` path is provided to it then the compiler will
+recognize the output artifacts as a macro and it can be loaded for a program.
 
 Initially if a crate is compiled with the `rustc-macro` crate type (and possibly
 others) it will forbid exporting any items in the crate other than those
