@@ -19,6 +19,7 @@ pub use util::ThinVec;
 use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
+use ext::hygiene::SyntaxContext;
 use parse::token::{self, keywords, InternedString};
 use print::pprust;
 use ptr::P;
@@ -32,15 +33,6 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 /// the result of interning.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Name(pub u32);
-
-/// A SyntaxContext represents a chain of macro-expandings
-/// and renamings. Each macro expansion corresponds to
-/// a fresh u32. This u32 is a reference to a table stored
-/// in thread-local storage.
-/// The special value EMPTY_CTXT is used to indicate an empty
-/// syntax context.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct SyntaxContext(pub u32);
 
 /// An identifier contains a Name (index into the interner
 /// table) and a SyntaxContext to track renaming and
@@ -81,20 +73,15 @@ impl Decodable for Name {
     }
 }
 
-pub const EMPTY_CTXT : SyntaxContext = SyntaxContext(0);
-
 impl Ident {
-    pub fn new(name: Name, ctxt: SyntaxContext) -> Ident {
-        Ident {name: name, ctxt: ctxt}
-    }
     pub const fn with_empty_ctxt(name: Name) -> Ident {
-        Ident {name: name, ctxt: EMPTY_CTXT}
+        Ident { name: name, ctxt: SyntaxContext::empty() }
     }
 }
 
 impl fmt::Debug for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}#{}", self.name, self.ctxt.0)
+        write!(f, "{}{:?}", self.name, self.ctxt)
     }
 }
 
@@ -115,9 +102,6 @@ impl Decodable for Ident {
         Ok(Ident::with_empty_ctxt(Name::decode(d)?))
     }
 }
-
-/// A mark represents a unique id associated with a macro expansion
-pub type Mrk = u32;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
