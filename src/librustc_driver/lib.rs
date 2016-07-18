@@ -395,10 +395,9 @@ fn check_cfg(sopts: &config::Options,
     for item in sopts.cfg.iter() {
         if item.is_meta_item_list() {
             saw_invalid_predicate = true;
-            saw_invalid_predicate = true;
             handler.emit(&MultiSpan::new(),
                          &format!("invalid predicate in --cfg command line argument: `{}`",
-                                  pred),
+                                  item.name()),
                             errors::Level::Fatal);
         }
     }
@@ -651,10 +650,8 @@ impl RustcDefaultCalls {
                         if cfg.is_word() {
                             println!("{}", cfg.name());
                         } else if cfg.is_value_str() {
-                            let rhs = cfg.value_str();
-                            match rhs {
-                                Some(s) => println!("{}=\"{}\"", cfg.name(), s),
-                                None => continue,
+                            if let Some(s) = cfg.value_str() {
+                                println!("{}=\"{}\"", cfg.name(), s);
                             }
                         } else if cfg.is_meta_item_list() {
                             // Right now there are not and should not be any

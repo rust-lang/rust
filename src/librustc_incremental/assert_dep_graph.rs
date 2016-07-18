@@ -114,9 +114,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                         id = Some(meta_item.name().clone());
                     } else {
                         // FIXME better-encapsulate meta_item (don't directly access `node`)
-                        self.tcx.sess.span_err(
-                            meta_item.span(),
-                            &format!("unexpected meta-item {:?}", meta_item.node));
+                        span_bug!(meta_item.span(), "unexpected meta-item {:?}", meta_item.node)
                     }
                 }
                 let id = id.unwrap_or(InternedString::new(ID));
@@ -133,9 +131,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                         id = Some(meta_item.name().clone());
                     } else {
                         // FIXME better-encapsulate meta_item (don't directly access `node`)
-                        self.tcx.sess.span_err(
-                            meta_item.span(),
-                            &format!("unexpected meta-item {:?}", meta_item.node));
+                        span_bug!(meta_item.span(), "unexpected meta-item {:?}", meta_item.node)
                     }
                 }
                 let dep_node = match dep_node_interned {

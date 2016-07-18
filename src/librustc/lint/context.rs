@@ -367,18 +367,18 @@ pub fn gather_attr(attr: &ast::Attribute)
 
     let meta = &attr.node.value;
     let metas = if let Some(metas) = meta.meta_item_list() {
-                    metas
-                } else {
-                    out.push(Err(meta.span));
-                    return out;
-                };
+        metas
+    } else {
+        out.push(Err(meta.span));
+        return out;
+    };
 
     for meta in metas {
         out.push(if meta.is_word() {
-                     Ok((meta.name().clone(), level, meta.span))
-                 } else {
-                     Err(meta.span)
-                 });
+            Ok((meta.name().clone(), level, meta.span))
+        } else {
+            Err(meta.span)
+        });
     }
 
     out

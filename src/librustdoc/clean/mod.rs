@@ -504,7 +504,7 @@ impl Clean<Attribute> for ast::MetaItem {
             NameValue(self.name().to_string(), v.to_string())
         } else { // must be a list
             let l = self.meta_item_list().unwrap();
-              List(self.name().to_string(), l.clean(cx))
+            List(self.name().to_string(), l.clean(cx))
        }
     }
 }
@@ -2588,26 +2588,6 @@ impl ToSource for syntax_pos::Span {
         sn
     }
 }
-
-// fn lit_to_string(lit: &ast::Lit) -> String {
-//     match lit.node {
-//         ast::LitKind::Str(ref st, _) => st.to_string(),
-//         ast::LitKind::ByteStr(ref data) => format!("{:?}", data),
-//         ast::LitKind::Byte(b) => {
-//             let mut res = String::from("b'");
-//             for c in (b as char).escape_default() {
-//                 res.push(c);
-//             }
-//             res.push('\'');
-//             res
-//         },
-//         ast::LitKind::Char(c) => format!("'{}'", c),
-//         ast::LitKind::Int(i, _t) => i.to_string(),
-//         ast::LitKind::Float(ref f, _t) => f.to_string(),
-//         ast::LitKind::FloatUnsuffixed(ref f) => f.to_string(),
-//         ast::LitKind::Bool(b) => b.to_string(),
-//     }
-// }
 
 fn name_from_pat(p: &hir::Pat) -> String {
     use rustc::hir::*;
