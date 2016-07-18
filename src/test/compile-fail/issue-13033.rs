@@ -16,7 +16,9 @@ struct Baz;
 
 impl Foo for Baz {
     fn bar(&mut self, other: &Foo) {}
-    //~^ ERROR method `bar` has an incompatible type for trait: values differ in mutability [E0053]
+    //~^ ERROR method `bar` has an incompatible type for trait
+    //~| expected type `fn(&mut Baz, &mut Foo)`
+    //~| found type `fn(&mut Baz, &Foo)`
 }
 
 fn main() {}

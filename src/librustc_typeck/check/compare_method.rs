@@ -324,10 +324,10 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             debug!("sub_types failed: impl ty {:?}, trait ty {:?}",
                    impl_fty,
                    trait_fty);
-            span_err!(tcx.sess, impl_m_span, E0053,
-                      "method `{}` has an incompatible type for trait: {}",
-                      trait_m.name,
-                      terr);
+            let trace = infer::TypeTrace::types(origin, false, impl_fty, trait_fty);
+            type_err!(infcx, trace, &terr, E0053,
+                      "method `{}` has an incompatible type for trait",
+                      trait_m.name).emit();
             return
         }
 
@@ -437,10 +437,9 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // Compute skolemized form of impl and trait const tys.
         let impl_ty = impl_c.ty.subst(tcx, impl_to_skol_substs);
         let trait_ty = trait_c.ty.subst(tcx, &trait_to_skol_substs);
+        let origin = TypeOrigin::Misc(impl_c_span);
 
         let err = infcx.commit_if_ok(|_| {
-            let origin = TypeOrigin::Misc(impl_c_span);
-
             // There is no "body" here, so just pass dummy id.
             let impl_ty =
                 assoc::normalize_associated_types_in(&infcx,
@@ -473,11 +472,13 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
                    impl_ty,
                    trait_ty);
-            span_err!(tcx.sess, impl_c_span, E0326,
+            let values = Some(infer::ValuePairs::Types(ExpectedFound {
+                expected: trait_ty,
+                found: impl_ty
+            }));
+            type_err!(infcx, origin, values, terr, E0326,
                       "implemented const `{}` has an incompatible type for \
-                      trait: {}",
-                      trait_c.name,
-                      terr);
+                      trait", trait_c.name).emit();
         }
     });
 }
