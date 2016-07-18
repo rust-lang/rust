@@ -113,8 +113,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                adjusted_ty,
                autoderefs);
 
+        let ty = self.resolve_type_vars_with_obligations(adjusted_ty);
+        if ty.is_ty_var() {
+            if !self.is_tainted_by_errors() {
+                self.tcx.sess.span_err(callee_expr.span,
+                                       "cannot determine the type of this callee");
+            }
+            return None;
+        }
+
         // If the callee is a bare function or a closure, then we're all set.
-        match self.structurally_resolved_type(callee_expr.span, adjusted_ty).sty {
+        match ty.sty {
             ty::TyFnDef(..) | ty::TyFnPtr(_) => {
                 self.write_autoderef_adjustment(callee_expr.id, autoderefs);
                 return Some(CallStep::Builtin);
