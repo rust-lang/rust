@@ -342,11 +342,17 @@ impl<T> Vec<T> {
     ///
     /// * `ptr` needs to have been previously allocated via `String`/`Vec<T>`
     ///   (at least, it's highly likely to be incorrect if it wasn't).
-    /// * `length` needs to be the length that less than or equal to `capacity`.
+    /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
     ///
     /// Violating these may cause problems like corrupting the allocator's
     /// internal datastructures.
+    ///
+    /// The ownership of `ptr` is effectively transferred to the
+    /// `Vec<T>` which may then deallocate, reallocate or change the
+    /// contents of memory pointed to by the pointer at will. Ensure
+    /// that nothing else uses the pointer after calling this
+    /// function.
     ///
     /// # Examples
     ///
