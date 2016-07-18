@@ -26,7 +26,7 @@ use super::{
 
 use fmt_macros::{Parser, Piece, Position};
 use hir::def_id::DefId;
-use infer::{InferCtxt};
+use infer::{InferCtxt, TypeOrigin};
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::fast_reject;
 use ty::fold::TypeFolder;
@@ -117,10 +117,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             predicate,
                             error.err));
             } else {
-                let mut err = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271,
-                                               "type mismatch resolving `{}`: {}",
-                                               predicate,
-                                               error.err);
+                let mut err = type_err!(
+                    self,
+                    TypeOrigin::Misc(obligation.cause.span),
+                    None, // FIXME: be smarter
+                    error.err,
+                    E0271,
+                    "type mismatch resolving `{}`",
+                    predicate);
                 self.note_obligation_cause(&mut err, obligation);
                 err.emit();
             }

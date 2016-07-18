@@ -522,37 +522,46 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn report_and_explain_type_error_with_code(&self,
-                                                   trace: TypeTrace<'tcx>,
+                                                   origin: TypeOrigin,
+                                                   values: Option<ValuePairs<'tcx>>,
                                                    terr: &TypeError<'tcx>,
                                                    message: &str,
                                                    code: &str)
                                                    -> DiagnosticBuilder<'tcx>
     {
-        let (expected, found) = match self.values_str(&trace.values) {
-            Some((expected, found)) => (expected, found),
-            None => return self.tcx.sess.diagnostic().struct_dummy() /* derived error */
+        let expected_found = match values {
+            None => None,
+            Some(values) => match self.values_str(&values) {
+                Some((expected, found)) => Some((expected, found)),
+                None => return self.tcx.sess.diagnostic().struct_dummy() /* derived error */
+            }
         };
 
-        let span = trace.origin.span();
-
-        let is_simple_error = if let &TypeError::Sorts(ref values) = terr {
-            values.expected.is_primitive() && values.found.is_primitive()
-        } else {
-            false
-        };
-
+        let span = origin.span();
         let mut err = self.tcx.sess.struct_span_err_with_code(
-            trace.origin.span(),
-            message,
-            code);
+            span, message, code);
 
-        if !is_simple_error || check_old_school() {
-            err.note_expected_found(&"type", &expected, &found);
+        let mut is_simple_error = false;
+
+        if let Some((expected, found)) = expected_found {
+            is_simple_error = if let &TypeError::Sorts(ref values) = terr {
+                values.expected.is_primitive() && values.found.is_primitive()
+            } else {
+                false
+            };
+
+            if !is_simple_error || check_old_school() {
+                err.note_expected_found(&"type", &expected, &found);
+            }
         }
 
-        err.span_label(span, &terr);
+        if !is_simple_error && check_old_school() {
+            err.span_note(span, &format!("{}", terr));
+        } else {
+            err.span_label(span, &terr);
+        }
 
-        self.note_error_origin(&mut err, &trace.origin);
+        self.note_error_origin(&mut err, &origin);
         self.check_and_note_conflicting_crates(&mut err, terr, span);
         self.tcx.note_and_explain_type_err(&mut err, terr, span);
 
@@ -566,7 +575,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         // FIXME: do we want to use a different error code for each origin?
         let failure_str = trace.origin.as_failure_str();
-        type_err!(self, trace, terr, E0308, "{}", failure_str)
+        type_err!(self, trace.origin, Some(trace.values), terr, E0308, "{}", failure_str)
     }
 
     /// Returns a string of the form "expected `{}`, found `{}`".

@@ -12,6 +12,7 @@ use middle::free_region::FreeRegionMap;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::ty;
 use rustc::traits::{self, ProjectionMode};
+use rustc::ty::error::ExpectedFound;
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace};
 
 use syntax::ast;
@@ -324,8 +325,11 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             debug!("sub_types failed: impl ty {:?}, trait ty {:?}",
                    impl_fty,
                    trait_fty);
-            let trace = infer::TypeTrace::types(origin, false, impl_fty, trait_fty);
-            type_err!(infcx, trace, &terr, E0053,
+            let values = Some(infer::ValuePairs::Types(ExpectedFound {
+                expected: trait_fty,
+                found: impl_fty
+            }));
+            type_err!(infcx, origin, values, terr, E0053,
                       "method `{}` has an incompatible type for trait",
                       trait_m.name).emit();
             return
