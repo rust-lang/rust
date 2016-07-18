@@ -530,7 +530,9 @@ pub trait ExactSizeIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// let mut one_element = [0].iter();
+    /// #![feature(exact_size_is_empty)]
+    ///
+    /// let mut one_element = 0..1;
     /// assert!(!one_element.is_empty());
     ///
     /// assert_eq!(one_element.next(), Some(0));
