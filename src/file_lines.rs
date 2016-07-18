@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! This module contains types and functions to support formatting specific line ranges.
-use std::{cmp, iter, str};
+use std::{cmp, iter, path, str};
 
 use itertools::Itertools;
 use multimap::MultiMap;
@@ -119,9 +119,10 @@ impl FileLines {
             Some(ref map) => map,
         };
 
-        match map.get_vec(range.file_name()) {
-            None => false,
-            Some(ranges) => ranges.iter().any(|r| r.contains(Range::from(range))),
+        match canonicalize_path_string(range.file_name())
+            .and_then(|canonical| map.get_vec(&canonical).ok_or(())) {
+            Ok(ranges) => ranges.iter().any(|r| r.contains(Range::from(range))),
+            Err(_) => false,
         }
     }
 
@@ -151,13 +152,20 @@ impl<'a> iter::Iterator for Files<'a> {
     }
 }
 
+fn canonicalize_path_string(s: &str) -> Result<String, ()> {
+    match path::PathBuf::from(s).canonicalize() {
+        Ok(canonicalized) => canonicalized.to_str().map(|s| s.to_string()).ok_or(()),
+        _ => Err(()),
+    }
+}
+
 // This impl is needed for `Config::override_value` to work for use in tests.
 impl str::FromStr for FileLines {
     type Err = String;
 
     fn from_str(s: &str) -> Result<FileLines, String> {
         let v: Vec<JsonSpan> = try!(json::decode(s).map_err(|e| e.to_string()));
-        let m = v.into_iter().map(JsonSpan::into_tuple).collect();
+        let m = try!(v.into_iter().map(JsonSpan::into_tuple).collect());
         Ok(FileLines::from_multimap(m))
     }
 }
@@ -171,9 +179,11 @@ struct JsonSpan {
 
 impl JsonSpan {
     // To allow `collect()`ing into a `MultiMap`.
-    fn into_tuple(self) -> (String, Range) {
+    fn into_tuple(self) -> Result<(String, Range), String> {
         let (lo, hi) = self.range;
-        (self.file, Range::new(lo, hi))
+        let canonical = try!(canonicalize_path_string(&self.file)
+            .map_err(|_| format!("Can't canonicalize {}", &self.file)));
+        Ok((canonical, Range::new(lo, hi)))
     }
 }
 
