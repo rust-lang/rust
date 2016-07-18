@@ -3789,13 +3789,8 @@ impl<'a> Parser<'a> {
 
     /// Parse a statement. This stops just before trailing semicolons on everything but items.
     /// e.g. a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
-    ///
-    /// Also, if a macro begins an expression statement, this only parses the macro. For example,
-    /// ```rust
-    /// vec![1].into_iter(); //< `parse_stmt` only parses the "vec![1]"
-    /// ```
     pub fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_())
+        Ok(self.parse_stmt_(true))
     }
 
     // Eat tokens until we can be relatively sure we reached the end of the
@@ -3859,15 +3854,15 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_stmt_(&mut self) -> Option<Stmt> {
-        self.parse_stmt_without_recovery().unwrap_or_else(|mut e| {
+    fn parse_stmt_(&mut self, macro_expanded: bool) -> Option<Stmt> {
+        self.parse_stmt_without_recovery(macro_expanded).unwrap_or_else(|mut e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break);
             None
         })
     }
 
-    fn parse_stmt_without_recovery(&mut self) -> PResult<'a, Option<Stmt>> {
+    fn parse_stmt_without_recovery(&mut self, macro_expanded: bool) -> PResult<'a, Option<Stmt>> {
         maybe_whole!(Some deref self, NtStmt);
 
         let attrs = self.parse_outer_attributes()?;
@@ -3930,10 +3925,34 @@ impl<'a> Parser<'a> {
 
             if id.name == keywords::Invalid.name() {
                 let mac = spanned(lo, hi, Mac_ { path: pth, tts: tts });
+                let node = if delim == token::Brace ||
+                              self.token == token::Semi || self.token == token::Eof {
+                    StmtKind::Mac(P((mac, style, attrs.into())))
+                }
+                // We used to incorrectly stop parsing macro-expanded statements here.
+                // If the next token will be an error anyway but could have parsed with the
+                // earlier behavior, stop parsing here and emit a warning to avoid breakage.
+                else if macro_expanded && self.token.can_begin_expr() && match self.token {
+                    // These can continue an expression, so we can't stop parsing and warn.
+                    token::OpenDelim(token::Paren) | token::OpenDelim(token::Bracket) |
+                    token::BinOp(token::Minus) | token::BinOp(token::Star) |
+                    token::BinOp(token::And) | token::BinOp(token::Or) |
+                    token::AndAnd | token::OrOr |
+                    token::DotDot | token::DotDotDot => false,
+                    _ => true,
+                } {
+                    self.warn_missing_semicolon();
+                    StmtKind::Mac(P((mac, style, attrs.into())))
+                } else {
+                    let e = self.mk_mac_expr(lo, hi, mac.node, ThinVec::new());
+                    let e = self.parse_dot_or_call_expr_with(e, lo, attrs.into())?;
+                    let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
+                    StmtKind::Expr(e)
+                };
                 Stmt {
                     id: ast::DUMMY_NODE_ID,
-                    node: StmtKind::Mac(P((mac, style, attrs.into()))),
                     span: mk_sp(lo, hi),
+                    node: node,
                 }
             } else {
                 // if it has a special ident, it's definitely an item
@@ -4061,49 +4080,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a statement, including the trailing semicolon.
-    /// This parses expression statements that begin with macros correctly (c.f. `parse_stmt`).
     pub fn parse_full_stmt(&mut self, macro_expanded: bool) -> PResult<'a, Option<Stmt>> {
-        let mut stmt = match self.parse_stmt_() {
+        let mut stmt = match self.parse_stmt_(macro_expanded) {
             Some(stmt) => stmt,
             None => return Ok(None),
         };
 
-        if let StmtKind::Mac(mac) = stmt.node {
-            if mac.1 != MacStmtStyle::NoBraces ||
-               self.token == token::Semi || self.token == token::Eof {
-                stmt.node = StmtKind::Mac(mac);
-            } else {
-                // We used to incorrectly stop parsing macro-expanded statements here.
-                // If the next token will be an error anyway but could have parsed with the
-                // earlier behavior, stop parsing here and emit a warning to avoid breakage.
-                if macro_expanded && self.token.can_begin_expr() && match self.token {
-                    // These tokens can continue an expression, so we can't stop parsing and warn.
-                    token::OpenDelim(token::Paren) | token::OpenDelim(token::Bracket) |
-                    token::BinOp(token::Minus) | token::BinOp(token::Star) |
-                    token::BinOp(token::And) | token::BinOp(token::Or) |
-                    token::AndAnd | token::OrOr |
-                    token::DotDot | token::DotDotDot => false,
-                    _ => true,
-                } {
-                    self.warn_missing_semicolon();
-                    stmt.node = StmtKind::Mac(mac);
-                    return Ok(Some(stmt));
-                }
-
-                let (mac, _style, attrs) = mac.unwrap();
-                let e = self.mk_mac_expr(stmt.span.lo, stmt.span.hi, mac.node, ThinVec::new());
-                let e = self.parse_dot_or_call_expr_with(e, stmt.span.lo, attrs)?;
-                let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
-                stmt.node = StmtKind::Expr(e);
-            }
-        }
-
-        stmt = self.handle_trailing_semicolon(stmt, macro_expanded)?;
-        Ok(Some(stmt))
-    }
-
-    fn handle_trailing_semicolon(&mut self, mut stmt: Stmt, macro_expanded: bool)
-                                 -> PResult<'a, Stmt> {
         match stmt.node {
             StmtKind::Expr(ref expr) if self.token != token::Eof => {
                 // expression without semicolon
@@ -4133,7 +4115,7 @@ impl<'a> Parser<'a> {
         }
 
         stmt.span.hi = self.last_span.hi;
-        Ok(stmt)
+        Ok(Some(stmt))
     }
 
     fn warn_missing_semicolon(&self) {
