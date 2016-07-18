@@ -2270,12 +2270,9 @@ fn internalize_symbols(cx: &CrateContextList, reachable: &HashSet<&str>) {
                 let is_decl = llvm::LLVMIsDeclaration(val) != 0;
 
                 if is_decl || is_available_externally {
-                    let name = CStr::from_ptr(llvm::LLVMGetValueName(val))
-                        .to_bytes()
-                        .to_vec();
+                    let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
                     declared.insert(name);
                 }
-
             }
         }
 
@@ -2286,21 +2283,21 @@ fn internalize_symbols(cx: &CrateContextList, reachable: &HashSet<&str>) {
             for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
                 let linkage = llvm::LLVMGetLinkage(val);
 
-                let is_external = linkage == llvm::ExternalLinkage as c_uint;
-                let is_weak_odr = linkage == llvm::WeakODRLinkage as c_uint;
-                let is_decl = llvm::LLVMIsDeclaration(val) != 0;
+                let is_externally_visible = (linkage == llvm::ExternalLinkage as c_uint) ||
+                                            (linkage == llvm::LinkOnceODRLinkage as c_uint) ||
+                                            (linkage == llvm::WeakODRLinkage as c_uint);
+                let is_definition = llvm::LLVMIsDeclaration(val) != 0;
 
-                // We only care about external definitions.
-                if (is_external || is_weak_odr) && !is_decl {
+                // If this is a definition (as opposed to just a declaration)
+                // and externally visible, check if we can internalize it
+                if is_definition && is_externally_visible {
+                    let name_cstr = CStr::from_ptr(llvm::LLVMGetValueName(val));
+                    let name_str = name_cstr.to_str().unwrap();
 
-                    let name = CStr::from_ptr(llvm::LLVMGetValueName(val))
-                                .to_bytes()
-                                .to_vec();
+                    let is_referenced_somewhere = declared.contains(&name_cstr);
+                    let is_reachable = reachable.contains(name_str);
 
-                    let is_declared = declared.contains(&name);
-                    let reachable = reachable.contains(str::from_utf8(&name).unwrap());
-
-                    if !is_declared && !reachable {
+                    if !is_referenced_somewhere && !is_reachable {
                         llvm::SetLinkage(val, llvm::InternalLinkage);
                         llvm::SetDLLStorageClass(val, llvm::DefaultStorageClass);
                         llvm::UnsetComdat(val);
@@ -2488,7 +2485,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Run the translation item collector and partition the collected items into
     // codegen units.
     let (codegen_units, symbol_map) = collect_and_partition_translation_items(&shared_ccx);
-    let codegen_unit_count = codegen_units.len();
 
     let symbol_map = Rc::new(symbol_map);
 
@@ -2620,10 +2616,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }));
     }
 
-    if codegen_unit_count > 1 {
-        internalize_symbols(&crate_context_list,
-                            &reachable_symbols.iter().map(|x| &x[..]).collect());
-    }
+    internalize_symbols(&crate_context_list,
+                        &reachable_symbols.iter().map(|x| &x[..]).collect());
 
     if sess.target.target.options.is_like_msvc &&
        sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
