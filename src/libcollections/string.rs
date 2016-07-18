@@ -1559,7 +1559,7 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
-#[stable(feature = "rust1", since = "1.12.0")]
+#[stable(feature = "stringaddassign", since = "1.12.0")]
 impl<'a> AddAssign<&'a str> for String {
     #[inline]
     fn add_assign(&mut self, other: &str) {
