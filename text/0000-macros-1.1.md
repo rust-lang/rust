@@ -290,6 +290,7 @@ Using a procedural macro will be very similar to today's `extern crate` system,
 such as:
 
 ```rust
+#[macro_use]
 extern crate double;
 
 #[derive(Double)]
@@ -438,6 +439,7 @@ And finally use it as such:
 
 ```rust
 extern crate serde;
+#[macro_use]
 extern crate serde_macros;
 
 #[derive(Serialize)]
