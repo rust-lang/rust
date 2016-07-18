@@ -791,8 +791,8 @@ impl Iterator for ReadDir {
 impl DirEntry {
     /// Returns the full path to the file that this entry represents.
     ///
-    /// The full path is created by joining the original path to `read_dir` or
-    /// `walk_dir` with the filename of this entry.
+    /// The full path is created by joining the original path to `read_dir`
+    /// with the filename of this entry.
     ///
     /// # Examples
     ///
