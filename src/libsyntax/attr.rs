@@ -94,10 +94,16 @@ pub trait AttrMetaMethods {
 
     /// Indicates if the attribute is a Word.
     fn is_word(&self) -> bool;
+
     /// Indicates if the attribute is a Value String.
-    fn is_value_str(&self) -> bool;
+    fn is_value_str(&self) -> bool {
+        self.value_str().is_some()
+    }
+
     /// Indicates if the attribute is a Meta-Item List.
-    fn is_meta_item_list(&self) -> bool;
+    fn is_meta_item_list(&self) -> bool {
+        self.meta_item_list().is_some()
+    }
 
     fn span(&self) -> Span;
 }
@@ -119,9 +125,6 @@ impl AttrMetaMethods for Attribute {
     }
 
     fn is_word(&self) -> bool { self.meta().is_word() }
-    fn is_value_str(&self) -> bool { self.meta().is_value_str() }
-
-    fn is_meta_item_list(&self) -> bool { self.meta().is_meta_item_list() }
 
     fn span(&self) -> Span { self.meta().span }
 }
@@ -160,10 +163,6 @@ impl AttrMetaMethods for MetaItem {
             _ => false,
         }
     }
-
-    fn is_value_str(&self) -> bool { self.value_str().is_some() }
-
-    fn is_meta_item_list(&self) -> bool { self.meta_item_list().is_some() }
 
     fn span(&self) -> Span { self.span }
 }
@@ -240,7 +239,7 @@ pub fn mk_word_item(name: InternedString) -> P<MetaItem> {
 
 pub fn mk_spanned_name_value_item(sp: Span, name: InternedString, value: ast::Lit)
                           -> P<MetaItem> {
-    P(respan(sp,MetaItemKind::NameValue(name, value)))
+    P(respan(sp, MetaItemKind::NameValue(name, value)))
 }
 
 pub fn mk_spanned_list_item(sp: Span, name: InternedString, items: Vec<P<MetaItem>>)
@@ -249,7 +248,7 @@ pub fn mk_spanned_list_item(sp: Span, name: InternedString, items: Vec<P<MetaIte
 }
 
 pub fn mk_spanned_word_item(sp: Span, name: InternedString) -> P<MetaItem> {
-    P(respan(sp,MetaItemKind::Word(name)))
+    P(respan(sp, MetaItemKind::Word(name)))
 }
 
 

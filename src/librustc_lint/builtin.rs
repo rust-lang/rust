@@ -298,13 +298,7 @@ impl MissingDoc {
             }
         }
 
-        let has_doc = attrs.iter().any(|a| {
-            if a.is_value_str() && a.name() == "doc" {
-                true
-            } else {
-                false
-            }
-        });
+        let has_doc = attrs.iter().any(|a| a.is_value_str() && a.name() == "doc");
         if !has_doc {
             cx.span_lint(MISSING_DOCS, sp,
                          &format!("missing documentation for {}", desc));
