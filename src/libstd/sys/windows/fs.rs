@@ -324,6 +324,8 @@ impl File {
 
     pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
         let (whence, pos) = match pos {
+            // Casting to `i64` is fine, `SetFilePointerEx` reinterprets this
+            // integer as `u64`.
             SeekFrom::Start(n) => (c::FILE_BEGIN, n as i64),
             SeekFrom::End(n) => (c::FILE_END, n),
             SeekFrom::Current(n) => (c::FILE_CURRENT, n),
