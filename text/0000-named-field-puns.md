@@ -43,7 +43,7 @@ Rust already allows
 [similar syntax for destructuring in pattern matches](https://doc.rust-lang.org/book/patterns.html#destructuring):
 a pattern match can use `SomeStruct { field1, field2 } => ...` to match
 `field1` and `field2` into values with the same names. This RFC introduces
-symmetric syntax for initializers.
+symmetrical syntax for initializers.
 
 A family of related structures will often use the same field name for a
 semantically-shared value. Combining this new syntax with the existing
