@@ -327,11 +327,11 @@ compiler that can be dynamically loaded. The compiler will `dlopen` a macro
 crate in the same way it does today, find this symbol in `librustc_macro`, and
 call it.
 
-The `rustc_macro_define` and `rustc_macro_derive` attributes will be encoded
-into the crate's metadata, and the compiler will discover all these functions,
-load their function pointers, and pass them to the `librustc_macro` entry point
-as well. This provides the opportunity to register all the various expansion
-mechanisms with the compiler.
+The `rustc_macro_derive` attribute will be encoded into the crate's metadata,
+and the compiler will discover all these functions, load their function
+pointers, and pass them to the `librustc_macro` entry point as well. This
+provides the opportunity to register all the various expansion mechanisms with
+the compiler.
 
 The actual underlying representation of `TokenStream` will be basically the same
 as it is in the compiler today. (the details on this are a little light
@@ -367,7 +367,6 @@ would become stable are:
 * The `rustc-macro` crate type, in addition to its current limitations
 * The `#[rustc_macro_derive]` attribute
 * The signature of the `#![rustc_macro_derive]` functions
-* The `#![rustc_macro_crate]` attribute
 * Semantically being able to load macro crates compiled as `rustc-macro` into
   the compiler, requiring that the crate was compiled by the exact compiler.
 * The semantic behavior of loading custom derive annotations, in that they're
