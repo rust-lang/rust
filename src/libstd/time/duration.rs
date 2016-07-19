@@ -42,7 +42,8 @@ const MILLIS_PER_SEC: u64 = 1_000;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Duration {
     secs: u64,
-    nanos: u32, // Always 0 <= nanos < NANOS_PER_SEC
+    /// Always 0 <= nanos < NANOS_PER_SEC
+    nanos: u32,
 }
 
 impl Duration {
@@ -52,24 +53,26 @@ impl Duration {
     /// If the nanoseconds is greater than 1 billion (the number of nanoseconds
     /// in a second), then it will carry over into the seconds provided.
     #[stable(feature = "duration", since = "1.3.0")]
-    pub fn new(secs: u64, nanos: u32) -> Duration {
-        let secs = secs + (nanos / NANOS_PER_SEC) as u64;
-        let nanos = nanos % NANOS_PER_SEC;
-        Duration { secs: secs, nanos: nanos }
+    pub const fn new(secs: u64, nanos: u32) -> Duration {
+        Duration {
+            secs: secs + (nanos / NANOS_PER_SEC) as u64,
+            nanos: nanos % NANOS_PER_SEC
+        }
     }
 
     /// Creates a new `Duration` from the specified number of seconds.
     #[stable(feature = "duration", since = "1.3.0")]
-    pub fn from_secs(secs: u64) -> Duration {
+    pub const fn from_secs(secs: u64) -> Duration {
         Duration { secs: secs, nanos: 0 }
     }
 
     /// Creates a new `Duration` from the specified number of milliseconds.
     #[stable(feature = "duration", since = "1.3.0")]
-    pub fn from_millis(millis: u64) -> Duration {
-        let secs = millis / MILLIS_PER_SEC;
-        let nanos = ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI;
-        Duration { secs: secs, nanos: nanos }
+    pub const fn from_millis(millis: u64) -> Duration {
+        Duration {
+            secs: millis / MILLIS_PER_SEC
+            nanos: ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI
+        }
     }
 
     /// Returns the number of whole seconds represented by this duration.
