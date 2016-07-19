@@ -180,3 +180,47 @@ fn test_windows_last() {
     let c2 = v2.windows(2);
     assert_eq!(c2.last().unwrap()[0], 3);
 }
+
+#[test]
+fn get_range() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    assert_eq!(v.get(..), Some(&[0, 1, 2, 3, 4, 5][..]));
+    assert_eq!(v.get(..2), Some(&[0, 1][..]));
+    assert_eq!(v.get(2..), Some(&[2, 3, 4, 5][..]));
+    assert_eq!(v.get(1..4), Some(&[1, 2, 3][..]));
+    assert_eq!(v.get(7..), None);
+    assert_eq!(v.get(7..10), None);
+}
+
+#[test]
+fn get_mut_range() {
+    let mut v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    assert_eq!(v.get_mut(..), Some(&mut [0, 1, 2, 3, 4, 5][..]));
+    assert_eq!(v.get_mut(..2), Some(&mut [0, 1][..]));
+    assert_eq!(v.get_mut(2..), Some(&mut [2, 3, 4, 5][..]));
+    assert_eq!(v.get_mut(1..4), Some(&mut [1, 2, 3][..]));
+    assert_eq!(v.get_mut(7..), None);
+    assert_eq!(v.get_mut(7..10), None);
+}
+
+#[test]
+fn get_unchecked_range() {
+    unsafe {
+        let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+        assert_eq!(v.get_unchecked(..), &[0, 1, 2, 3, 4, 5][..]);
+        assert_eq!(v.get_unchecked(..2), &[0, 1][..]);
+        assert_eq!(v.get_unchecked(2..), &[2, 3, 4, 5][..]);
+        assert_eq!(v.get_unchecked(1..4), &[1, 2, 3][..]);
+    }
+}
+
+#[test]
+fn get_unchecked_mut_range() {
+    unsafe {
+        let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+        assert_eq!(v.get_unchecked_mut(..), &mut [0, 1, 2, 3, 4, 5][..]);
+        assert_eq!(v.get_unchecked_mut(..2), &mut [0, 1][..]);
+        assert_eq!(v.get_unchecked_mut(2..), &mut[2, 3, 4, 5][..]);
+        assert_eq!(v.get_unchecked_mut(1..4), &mut [1, 2, 3][..]);
+    }
+}
