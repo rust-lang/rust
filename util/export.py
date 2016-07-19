@@ -21,15 +21,15 @@ This lint has the following configuration variables:
 
 # TODO: actual logging
 def warn(*args):
-    print(*args)
+    print(args)
 
 
 def debug(*args):
-    print(*args)
+    print(args)
 
 
 def info(*args):
-    print(*args)
+    print(args)
 
 
 def parse_path(p="clippy_lints/src"):
