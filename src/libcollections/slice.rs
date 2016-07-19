@@ -118,6 +118,8 @@ pub use core::slice::{SplitMut, ChunksMut, Split};
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
+#[unstable(feature = "slice_get_slice", issue = "35729")]
+pub use core::slice::SliceIndex;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods
@@ -353,7 +355,9 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn get(&self, index: usize) -> Option<&T> {
+    pub fn get<I>(&self, index: I) -> Option<&I::Output>
+        where I: SliceIndex<T>
+    {
         core_slice::SliceExt::get(self, index)
     }
 
@@ -372,7 +376,9 @@ impl<T> [T] {
     /// or `None` if the index is out of bounds
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+    pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
+        where I: SliceIndex<T>
+    {
         core_slice::SliceExt::get_mut(self, index)
     }
 
@@ -390,7 +396,9 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub unsafe fn get_unchecked(&self, index: usize) -> &T {
+    pub unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
+        where I: SliceIndex<T>
+    {
         core_slice::SliceExt::get_unchecked(self, index)
     }
 
@@ -410,7 +418,9 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
+    pub unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
+        where I: SliceIndex<T>
+    {
         core_slice::SliceExt::get_unchecked_mut(self, index)
     }
 

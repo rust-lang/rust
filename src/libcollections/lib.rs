@@ -54,6 +54,7 @@
 #![feature(trusted_len)]
 #![feature(unicode)]
 #![feature(unique)]
+#![feature(slice_get_slice)]
 #![cfg_attr(test, feature(rand, test))]
 
 #![no_std]

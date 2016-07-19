@@ -38,10 +38,14 @@ use cmp;
 use fmt;
 use intrinsics::assume;
 use iter::*;
-use ops::{self, RangeFull};
+use ops::{FnMut, self};
+use option::Option;
+use option::Option::{None, Some};
+use result::Result;
+use result::Result::{Ok, Err};
 use ptr;
 use mem;
-use marker;
+use marker::{Copy, Send, Sync, Sized, self};
 use iter_private::TrustedRandomAccess;
 
 #[repr(C)]
@@ -80,7 +84,8 @@ pub trait SliceExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn chunks(&self, size: usize) -> Chunks<Self::Item>;
     #[stable(feature = "core", since = "1.6.0")]
-    fn get(&self, index: usize) -> Option<&Self::Item>;
+    fn get<I>(&self, index: I) -> Option<&I::Output>
+        where I: SliceIndex<Self::Item>;
     #[stable(feature = "core", since = "1.6.0")]
     fn first(&self) -> Option<&Self::Item>;
     #[stable(feature = "core", since = "1.6.0")]
@@ -90,7 +95,8 @@ pub trait SliceExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn last(&self) -> Option<&Self::Item>;
     #[stable(feature = "core", since = "1.6.0")]
-    unsafe fn get_unchecked(&self, index: usize) -> &Self::Item;
+    unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
+        where I: SliceIndex<Self::Item>;
     #[stable(feature = "core", since = "1.6.0")]
     fn as_ptr(&self) -> *const Self::Item;
     #[stable(feature = "core", since = "1.6.0")]
@@ -108,7 +114,8 @@ pub trait SliceExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn is_empty(&self) -> bool { self.len() == 0 }
     #[stable(feature = "core", since = "1.6.0")]
-    fn get_mut(&mut self, index: usize) -> Option<&mut Self::Item>;
+    fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
+        where I: SliceIndex<Self::Item>;
     #[stable(feature = "core", since = "1.6.0")]
     fn iter_mut(&mut self) -> IterMut<Self::Item>;
     #[stable(feature = "core", since = "1.6.0")]
@@ -137,7 +144,8 @@ pub trait SliceExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn reverse(&mut self);
     #[stable(feature = "core", since = "1.6.0")]
-    unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut Self::Item;
+    unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
+        where I: SliceIndex<Self::Item>;
     #[stable(feature = "core", since = "1.6.0")]
     fn as_mut_ptr(&mut self) -> *mut Self::Item;
 
@@ -258,8 +266,10 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn get(&self, index: usize) -> Option<&T> {
-        if index < self.len() { Some(&self[index]) } else { None }
+    fn get<I>(&self, index: I) -> Option<&I::Output>
+        where I: SliceIndex<T>
+    {
+        index.get(self)
     }
 
     #[inline]
@@ -284,8 +294,10 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    unsafe fn get_unchecked(&self, index: usize) -> &T {
-        &*(self.as_ptr().offset(index as isize))
+    unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
+        where I: SliceIndex<T>
+    {
+        index.get_unchecked(self)
     }
 
     #[inline]
@@ -323,8 +335,10 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        if index < self.len() { Some(&mut self[index]) } else { None }
+    fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
+        where I: SliceIndex<T>
+    {
+        index.get_mut(self)
     }
 
     #[inline]
@@ -451,8 +465,10 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
-        &mut *self.as_mut_ptr().offset(index as isize)
+    unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
+        where I: SliceIndex<T>
+    {
+        index.get_unchecked_mut(self)
     }
 
     #[inline]
@@ -515,23 +531,26 @@ impl<T> SliceExt for [T] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::Index<usize> for [T] {
-    type Output = T;
+#[rustc_on_unimplemented = "slice indices are of type `usize` or ranges of `usize`"]
+impl<T, I> ops::Index<I> for [T]
+    where I: SliceIndex<T>
+{
+    type Output = I::Output;
 
-    fn index(&self, index: usize) -> &T {
-        // NB built-in indexing
-        &(*self)[index]
+    #[inline]
+    fn index(&self, index: I) -> &I::Output {
+        index.index(self)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::IndexMut<usize> for [T] {
+#[rustc_on_unimplemented = "slice indices are of type `usize` or ranges of `usize`"]
+impl<T, I> ops::IndexMut<I> for [T]
+    where I: SliceIndex<T>
+{
     #[inline]
-    fn index_mut(&mut self, index: usize) -> &mut T {
-        // NB built-in indexing
-        &mut (*self)[index]
+    fn index_mut(&mut self, index: I) -> &mut I::Output {
+        index.index_mut(self)
     }
 }
 
@@ -547,205 +566,349 @@ fn slice_index_order_fail(index: usize, end: usize) -> ! {
     panic!("slice index starts at {} but ends at {}", index, end);
 }
 
+/// A helper trait used for indexing operations.
+#[unstable(feature = "slice_get_slice", issue = "35729")]
+#[rustc_on_unimplemented = "slice indices are of type `usize` or ranges of `usize`"]
+pub trait SliceIndex<T> {
+    /// The output type returned by methods.
+    type Output: ?Sized;
 
-/// Implements slicing with syntax `&self[begin .. end]`.
-///
-/// Returns a slice of self for the index range [`begin`..`end`).
-///
-/// This operation is `O(1)`.
-///
-/// # Panics
-///
-/// Requires that `begin <= end` and `end <= self.len()`,
-/// otherwise slicing will panic.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::Index<ops::Range<usize>> for [T] {
+    /// Returns a shared reference to the output at this location, if in
+    /// bounds.
+    fn get(self, slice: &[T]) -> Option<&Self::Output>;
+
+    /// Returns a mutable reference to the output at this location, if in
+    /// bounds.
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut Self::Output>;
+
+    /// Returns a shared reference to the output at this location, without
+    /// performing any bounds checking.
+    unsafe fn get_unchecked(self, slice: &[T]) -> &Self::Output;
+
+    /// Returns a mutable reference to the output at this location, without
+    /// performing any bounds checking.
+    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut Self::Output;
+
+    /// Returns a shared reference to the output at this location, panicking
+    /// if out of bounds.
+    fn index(self, slice: &[T]) -> &Self::Output;
+
+    /// Returns a mutable reference to the output at this location, panicking
+    /// if out of bounds.
+    fn index_mut(self, slice: &mut [T]) -> &mut Self::Output;
+}
+
+#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+impl<T> SliceIndex<T> for usize {
+    type Output = T;
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&T> {
+        if self < slice.len() {
+            unsafe {
+                Some(self.get_unchecked(slice))
+            }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut T> {
+        if self < slice.len() {
+            unsafe {
+                Some(self.get_unchecked_mut(slice))
+            }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: &[T]) -> &T {
+        &*slice.as_ptr().offset(self as isize)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut T {
+        &mut *slice.as_mut_ptr().offset(self as isize)
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &T {
+        // NB: use intrinsic indexing
+        &(*slice)[self]
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut T {
+        // NB: use intrinsic indexing
+        &mut (*slice)[self]
+    }
+}
+
+#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+impl<T> SliceIndex<T> for  ops::Range<usize> {
     type Output = [T];
 
     #[inline]
-    fn index(&self, index: ops::Range<usize>) -> &[T] {
-        if index.start > index.end {
-            slice_index_order_fail(index.start, index.end);
-        } else if index.end > self.len() {
-            slice_index_len_fail(index.end, self.len());
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        if self.start > self.end || self.end > slice.len() {
+            None
+        } else {
+            unsafe {
+                Some(self.get_unchecked(slice))
+            }
+        }
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        if self.start > self.end || self.end > slice.len() {
+            None
+        } else {
+            unsafe {
+                Some(self.get_unchecked_mut(slice))
+            }
+        }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+        from_raw_parts(slice.as_ptr().offset(self.start as isize), self.end - self.start)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+        from_raw_parts_mut(slice.as_mut_ptr().offset(self.start as isize), self.end - self.start)
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        if self.start > self.end {
+            slice_index_order_fail(self.start, self.end);
+        } else if self.end > slice.len() {
+            slice_index_len_fail(self.end, slice.len());
         }
         unsafe {
-            from_raw_parts (
-                self.as_ptr().offset(index.start as isize),
-                index.end - index.start
-            )
+            self.get_unchecked(slice)
+        }
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        if self.start > self.end {
+            slice_index_order_fail(self.start, self.end);
+        } else if self.end > slice.len() {
+            slice_index_len_fail(self.end, slice.len());
+        }
+        unsafe {
+            self.get_unchecked_mut(slice)
         }
     }
 }
 
-/// Implements slicing with syntax `&self[.. end]`.
-///
-/// Returns a slice of self from the beginning until but not including
-/// the index `end`.
-///
-/// Equivalent to `&self[0 .. end]`
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::Index<ops::RangeTo<usize>> for [T] {
+#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+impl<T> SliceIndex<T> for ops::RangeTo<usize> {
     type Output = [T];
 
     #[inline]
-    fn index(&self, index: ops::RangeTo<usize>) -> &[T] {
-        self.index(0 .. index.end)
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        (0..self.end).get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        (0..self.end).get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+        (0..self.end).get_unchecked(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+        (0..self.end).get_unchecked_mut(slice)
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        (0..self.end).index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        (0..self.end).index_mut(slice)
     }
 }
 
-/// Implements slicing with syntax `&self[begin ..]`.
-///
-/// Returns a slice of self from and including the index `begin` until the end.
-///
-/// Equivalent to `&self[begin .. self.len()]`
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::Index<ops::RangeFrom<usize>> for [T] {
+#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+impl<T> SliceIndex<T> for ops::RangeFrom<usize> {
     type Output = [T];
 
     #[inline]
-    fn index(&self, index: ops::RangeFrom<usize>) -> &[T] {
-        self.index(index.start .. self.len())
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        (self.start..slice.len()).get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        (self.start..slice.len()).get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+        (self.start..slice.len()).get_unchecked(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+        (self.start..slice.len()).get_unchecked_mut(slice)
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        (self.start..slice.len()).index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        (self.start..slice.len()).index_mut(slice)
     }
 }
 
-/// Implements slicing with syntax `&self[..]`.
-///
-/// Returns a slice of the whole slice. This operation cannot panic.
-///
-/// Equivalent to `&self[0 .. self.len()]`
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::Index<RangeFull> for [T] {
+#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+impl<T> SliceIndex<T> for ops::RangeFull {
     type Output = [T];
 
     #[inline]
-    fn index(&self, _index: RangeFull) -> &[T] {
-        self
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        Some(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        Some(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+        slice
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+        slice
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        slice
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        slice
     }
 }
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::Index<ops::RangeInclusive<usize>> for [T] {
+
+#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+impl<T> SliceIndex<T> for ops::RangeInclusive<usize> {
     type Output = [T];
 
     #[inline]
-    fn index(&self, index: ops::RangeInclusive<usize>) -> &[T] {
-        match index {
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        match self {
+            ops::RangeInclusive::Empty { .. } => Some(&[]),
+            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() => None,
+            ops::RangeInclusive::NonEmpty { start, end } => (start..end + 1).get(slice),
+        }
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        match self {
+            ops::RangeInclusive::Empty { .. } => Some(&mut []),
+            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() => None,
+            ops::RangeInclusive::NonEmpty { start, end } => (start..end + 1).get_mut(slice),
+        }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+        match self {
             ops::RangeInclusive::Empty { .. } => &[],
-            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() =>
-                panic!("attempted to index slice up to maximum usize"),
-            ops::RangeInclusive::NonEmpty { start, end } =>
-                self.index(start .. end+1)
+            ops::RangeInclusive::NonEmpty { start, end } => (start..end + 1).get_unchecked(slice),
+        }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+        match self {
+            ops::RangeInclusive::Empty { .. } => &mut [],
+            ops::RangeInclusive::NonEmpty { start, end } => {
+                (start..end + 1).get_unchecked_mut(slice)
+            }
+        }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        match self {
+            ops::RangeInclusive::Empty { .. } => &[],
+            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() => {
+                panic!("attempted to index slice up to maximum usize");
+            },
+            ops::RangeInclusive::NonEmpty { start, end } => (start..end + 1).index(slice),
+        }
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        match self {
+            ops::RangeInclusive::Empty { .. } => &mut [],
+            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() => {
+                panic!("attempted to index slice up to maximum usize");
+            },
+            ops::RangeInclusive::NonEmpty { start, end } => (start..end + 1).index_mut(slice),
         }
     }
 }
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::Index<ops::RangeToInclusive<usize>> for [T] {
+
+#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+impl<T> SliceIndex<T> for ops::RangeToInclusive<usize> {
     type Output = [T];
 
     #[inline]
-    fn index(&self, index: ops::RangeToInclusive<usize>) -> &[T] {
-        self.index(0...index.end)
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        (0...self.end).get(slice)
     }
-}
 
-/// Implements mutable slicing with syntax `&mut self[begin .. end]`.
-///
-/// Returns a slice of self for the index range [`begin`..`end`).
-///
-/// This operation is `O(1)`.
-///
-/// # Panics
-///
-/// Requires that `begin <= end` and `end <= self.len()`,
-/// otherwise slicing will panic.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::IndexMut<ops::Range<usize>> for [T] {
     #[inline]
-    fn index_mut(&mut self, index: ops::Range<usize>) -> &mut [T] {
-        if index.start > index.end {
-            slice_index_order_fail(index.start, index.end);
-        } else if index.end > self.len() {
-            slice_index_len_fail(index.end, self.len());
-        }
-        unsafe {
-            from_raw_parts_mut(
-                self.as_mut_ptr().offset(index.start as isize),
-                index.end - index.start
-            )
-        }
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        (0...self.end).get_mut(slice)
     }
-}
 
-/// Implements mutable slicing with syntax `&mut self[.. end]`.
-///
-/// Returns a slice of self from the beginning until but not including
-/// the index `end`.
-///
-/// Equivalent to `&mut self[0 .. end]`
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::IndexMut<ops::RangeTo<usize>> for [T] {
     #[inline]
-    fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut [T] {
-        self.index_mut(0 .. index.end)
+    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+        (0...self.end).get_unchecked(slice)
     }
-}
 
-/// Implements mutable slicing with syntax `&mut self[begin ..]`.
-///
-/// Returns a slice of self from and including the index `begin` until the end.
-///
-/// Equivalent to `&mut self[begin .. self.len()]`
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::IndexMut<ops::RangeFrom<usize>> for [T] {
     #[inline]
-    fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut [T] {
-        let len = self.len();
-        self.index_mut(index.start .. len)
+    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+        (0...self.end).get_unchecked_mut(slice)
     }
-}
 
-/// Implements mutable slicing with syntax `&mut self[..]`.
-///
-/// Returns a slice of the whole slice. This operation can not panic.
-///
-/// Equivalent to `&mut self[0 .. self.len()]`
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::IndexMut<RangeFull> for [T] {
     #[inline]
-    fn index_mut(&mut self, _index: RangeFull) -> &mut [T] {
-        self
+    fn index(self, slice: &[T]) -> &[T] {
+        (0...self.end).index(slice)
     }
-}
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::IndexMut<ops::RangeInclusive<usize>> for [T] {
     #[inline]
-    fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut [T] {
-        match index {
-            ops::RangeInclusive::Empty { .. } => &mut [],
-            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() =>
-                panic!("attempted to index slice up to maximum usize"),
-            ops::RangeInclusive::NonEmpty { start, end } =>
-                self.index_mut(start .. end+1)
-        }
-    }
-}
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-#[rustc_on_unimplemented = "slice indices are of type `usize`"]
-impl<T> ops::IndexMut<ops::RangeToInclusive<usize>> for [T] {
-    #[inline]
-    fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut [T] {
-        self.index_mut(0...index.end)
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        (0...self.end).index_mut(slice)
     }
 }
 
