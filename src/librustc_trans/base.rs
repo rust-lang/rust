@@ -2286,7 +2286,7 @@ fn internalize_symbols(cx: &CrateContextList, reachable: &HashSet<&str>) {
                 let is_externally_visible = (linkage == llvm::ExternalLinkage as c_uint) ||
                                             (linkage == llvm::LinkOnceODRLinkage as c_uint) ||
                                             (linkage == llvm::WeakODRLinkage as c_uint);
-                let is_definition = llvm::LLVMIsDeclaration(val) != 0;
+                let is_definition = llvm::LLVMIsDeclaration(val) == 0;
 
                 // If this is a definition (as opposed to just a declaration)
                 // and externally visible, check if we can internalize it
