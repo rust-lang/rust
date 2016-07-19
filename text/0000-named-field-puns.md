@@ -8,7 +8,9 @@
 
 When initializing a data structure (struct, enum, union) with named fields,
 allow writing `fieldname` as a shorthand for `fieldname: fieldname`. This
-allows a compact syntax for initialization, with less duplication:
+allows a compact syntax for initialization, with less duplication.
+
+Example usage:
 
     struct SomeStruct { field1: ComplexType, field2: AnotherType }
 
