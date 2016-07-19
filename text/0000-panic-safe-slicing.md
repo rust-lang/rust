@@ -10,12 +10,19 @@ Add "panic-safe" or "total" alternatives to the existing panicking indexing synt
 # Motivation
 
 `SliceExt::get` and `SliceExt::get_mut` can be thought as non-panicking versions of the simple
-indexing syntax, `a[idx]`. However, there is no such equivalent for `a[start..end]`, `a[start..]`,
-or `a[..end]`. This RFC proposes such methods to fill the gap.
+indexing syntax, `a[idx]`, and `SliceExt::get_unchecked` and `SliceExt::get_unchecked_mut` can
+be thought of as unsafe versions with bounds checks elided. However, there is no such equivalent for
+`a[start..end]`, `a[start..]`, or `a[..end]`. This RFC proposes such methods to fill the gap.
 
 # Detailed design
 
-Introduce a `SliceIndex` trait which is implemented by types which can index into a slice:
+The `get`, `get_mut`, `get_unchecked`, and `get_unchecked_mut` will be made generic over `usize`
+as well as ranges of `usize` like slice's `Index` implementation currently is. This will allow e.g.
+`a.get(start..end)` which will behave analagously to `a[start..end]`.
+
+Because methods cannot be overloaded in an ad-hoc manner in the same way that traits may be
+implemented, we introduce a `SliceIndex` trait which is implemented by types which can index into a
+slice:
 ```rust
 pub trait SliceIndex<T> {
     type Output: ?Sized;
@@ -24,6 +31,8 @@ pub trait SliceIndex<T> {
     fn get_mut(self, slice: &mut [T]) -> Option<&mut Self::Output>;
     unsafe fn get_unchecked(self, slice: &[T]) -> &Self::Output;
     unsafe fn get_mut_unchecked(self, slice: &[T]) -> &mut Self::Output;
+    fn index(self, slice: &[T]) -> &Self::Output;
+    fn index_mut(self, slice: &mut [T]) -> &mut Self::Output;
 }
 
 impl<T> SliceIndex<T> for usize {
@@ -39,7 +48,7 @@ impl<T, R> SliceIndex<T> for R
 }
 ```
 
-Alter the `Index`, `IndexMut`, `get`, `get_mut`, `get_unchecked`, and `get_mut_unchecked`
+And then alter the `Index`, `IndexMut`, `get`, `get_mut`, `get_unchecked`, and `get_mut_unchecked`
 implementations to be generic over `SliceIndex`:
 ```rust
 impl<T> [T] {
@@ -74,7 +83,7 @@ impl<T, I> Index<I> for [T]
     type Output = I::Output;
 
     fn index(&self, idx: I) -> &I::Output {
-        self.get(idx).expect("out of bounds slice access")
+        idx.index(self)
     }
 }
 
@@ -82,7 +91,7 @@ impl<T, I> IndexMut<I> for [T]
     where I: SliceIndex<T>
 {
     fn index_mut(&self, idx: I) -> &mut I::Output {
-        self.get_mut(idx).expect("out of bounds slice access")
+        idx.index_mut(self)
     }
 }
 ```
