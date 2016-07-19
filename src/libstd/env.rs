@@ -495,18 +495,41 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// # Security
 ///
-/// This function should be used with care, as its incorrect usage can cause
-/// security problems. Specifically, as with many operations invovling files and
-/// paths, you can introduce a race condition. It goes like this:
+/// The output of this function should not be used in anything that might have
+/// security implications. For example:
 ///
-/// 1. You get the path to the current executable using `current_exe()`, and
-///    store it in a variable binding.
-/// 2. Time passes. A malicious actor removes the current executable, and
-///    replaces it with a malicious one.
-/// 3. You then use the binding to try to open that file.
+/// ```
+/// fn main() {
+///     println!("{:?}", std::env::current_exe());
+/// }
+/// ```
 ///
-/// You expected to be opening the current executable, but you're now opening
-/// something completely different.
+/// On Linux systems, if this is compiled as `foo`:
+///
+/// ```bash
+/// $ rustc foo.rs
+/// $ ./foo
+/// Ok("/home/alex/foo")
+/// ```
+///
+/// And you make a symbolic link of the program:
+///
+/// ```bash
+/// $ ln foo bar
+/// ```
+///
+/// When you run it, you won't get the original executable, you'll get the
+/// symlink:
+///
+/// ```bash
+/// $ ./bar
+/// Ok("/home/alex/bar")
+/// ```
+///
+/// This sort of behavior has been known to [lead to privledge escalation] when
+/// used incorrectly, for example.
+///
+/// [lead to privledge escalation]: http://securityvulns.com/Wdocument183.html
 ///
 /// # Examples
 ///
