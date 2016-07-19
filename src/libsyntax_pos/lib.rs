@@ -568,7 +568,7 @@ impl Sub for CharPos {
 //
 
 /// A source code location used for error reporting
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Loc {
     /// Information about the original source
     pub file: Rc<FileMap>,

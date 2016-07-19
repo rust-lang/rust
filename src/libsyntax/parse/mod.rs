@@ -50,7 +50,11 @@ pub struct ParseSess {
 impl ParseSess {
     pub fn new() -> ParseSess {
         let cm = Rc::new(CodeMap::new());
-        let handler = Handler::with_tty_emitter(ColorConfig::Auto, None, true, false, cm.clone());
+        let handler = Handler::with_tty_emitter(ColorConfig::Auto,
+                                                None,
+                                                true,
+                                                false,
+                                                Some(cm.clone()));
         ParseSess::with_span_handler(handler, cm)
     }
 
@@ -224,8 +228,16 @@ pub fn filemap_to_parser<'a>(sess: &'a ParseSess,
 // compiler expands into it
 pub fn new_parser_from_tts<'a>(sess: &'a ParseSess,
                                cfg: ast::CrateConfig,
-                               tts: Vec<tokenstream::TokenTree>) -> Parser<'a> {
+                               tts: Vec<tokenstream::TokenTree>)
+                               -> Parser<'a> {
     tts_to_parser(sess, tts, cfg)
+}
+
+pub fn new_parser_from_ts<'a>(sess: &'a ParseSess,
+                              cfg: ast::CrateConfig,
+                              ts: tokenstream::TokenStream)
+                              -> Parser<'a> {
+    tts_to_parser(sess, ts.tts, cfg)
 }
 
 

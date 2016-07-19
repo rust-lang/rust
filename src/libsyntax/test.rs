@@ -26,7 +26,7 @@ use std::rc::Rc;
 
 use codemap::{self, CodeMap, ExpnInfo, NameAndSpan, MacroAttribute};
 use errors;
-use errors::snippet::{RenderedLine, SnippetData};
+use errors::snippet::{SnippetData};
 use config;
 use entry::{self, EntryPointType};
 use ext::base::{ExtCtxt, DummyMacroLoader};

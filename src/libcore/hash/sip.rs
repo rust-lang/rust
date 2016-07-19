@@ -18,7 +18,7 @@ use ptr;
 /// An implementation of SipHash 1-3.
 ///
 /// See: https://131002.net/siphash/
-#[unstable(feature = "sip_hash_13", issue = "29754")]
+#[unstable(feature = "sip_hash_13", issue = "34767")]
 #[derive(Debug, Clone, Default)]
 pub struct SipHasher13 {
     hasher: Hasher<Sip13Rounds>,
@@ -27,7 +27,7 @@ pub struct SipHasher13 {
 /// An implementation of SipHash 2-4.
 ///
 /// See: https://131002.net/siphash/
-#[unstable(feature = "sip_hash_13", issue = "29754")]
+#[unstable(feature = "sip_hash_13", issue = "34767")]
 #[derive(Debug, Clone, Default)]
 pub struct SipHasher24 {
     hasher: Hasher<Sip24Rounds>,
@@ -154,14 +154,14 @@ impl SipHasher {
 impl SipHasher13 {
     /// Creates a new `SipHasher13` with the two initial keys set to 0.
     #[inline]
-    #[unstable(feature = "sip_hash_13", issue = "29754")]
+    #[unstable(feature = "sip_hash_13", issue = "34767")]
     pub fn new() -> SipHasher13 {
         SipHasher13::new_with_keys(0, 0)
     }
 
     /// Creates a `SipHasher13` that is keyed off the provided keys.
     #[inline]
-    #[unstable(feature = "sip_hash_13", issue = "29754")]
+    #[unstable(feature = "sip_hash_13", issue = "34767")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
         SipHasher13 {
             hasher: Hasher::new_with_keys(key0, key1)
@@ -172,14 +172,14 @@ impl SipHasher13 {
 impl SipHasher24 {
     /// Creates a new `SipHasher24` with the two initial keys set to 0.
     #[inline]
-    #[unstable(feature = "sip_hash_13", issue = "29754")]
+    #[unstable(feature = "sip_hash_13", issue = "34767")]
     pub fn new() -> SipHasher24 {
         SipHasher24::new_with_keys(0, 0)
     }
 
     /// Creates a `SipHasher24` that is keyed off the provided keys.
     #[inline]
-    #[unstable(feature = "sip_hash_13", issue = "29754")]
+    #[unstable(feature = "sip_hash_13", issue = "34767")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher24 {
         SipHasher24 {
             hasher: Hasher::new_with_keys(key0, key1)
@@ -232,7 +232,7 @@ impl super::Hasher for SipHasher {
     }
 }
 
-#[unstable(feature = "sip_hash_13", issue = "29754")]
+#[unstable(feature = "sip_hash_13", issue = "34767")]
 impl super::Hasher for SipHasher13 {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
@@ -245,7 +245,7 @@ impl super::Hasher for SipHasher13 {
     }
 }
 
-#[unstable(feature = "sip_hash_13", issue = "29754")]
+#[unstable(feature = "sip_hash_13", issue = "34767")]
 impl super::Hasher for SipHasher24 {
     #[inline]
     fn write(&mut self, msg: &[u8]) {

@@ -853,6 +853,20 @@ extern crate std; // equivalent to: extern crate std as std;
 extern crate std as ruststd; // linking to 'std' under another name
 ```
 
+When naming Rust crates, hyphens are disallowed. However, Cargo packages may
+make use of them. In such case, when `Cargo.toml` doesn't specify a crate name,
+Cargo will transparently replace `-` with `_` (Refer to [RFC 940] for more
+details).
+
+Here is an example:
+
+```{.ignore}
+// Importing the Cargo package hello-world
+extern crate hello_world; // hyphen replaced with an underscore
+```
+
+[RFC 940]: https://github.com/rust-lang/rfcs/blob/master/text/0940-hyphens-considered-harmful.md
+
 #### Use declarations
 
 A _use declaration_ creates one or more local name bindings synonymous with
@@ -3744,9 +3758,9 @@ Since `'static` "lives longer" than `'a`, `&'static str` is a subtype of
 
 ## Type coercions
 
-Coercions are defined in [RFC401]. A coercion is implicit and has no syntax.
+Coercions are defined in [RFC 401]. A coercion is implicit and has no syntax.
 
-[RFC401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+[RFC 401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
 
 ### Coercion sites
 
@@ -3886,7 +3900,7 @@ Coercion is allowed between the following types:
 
     In the future, coerce_inner will be recursively extended to tuples and
     structs. In addition, coercions from sub-traits to super-traits will be
-    added. See [RFC401] for more details.
+    added. See [RFC 401] for more details.
 
 # Special traits
 

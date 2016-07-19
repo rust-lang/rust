@@ -687,32 +687,6 @@ fn each_child_of_item_or_crate<F, G>(cdata: Cmd,
         }
     }
 
-    // As a special case, iterate over all static methods of
-    // associated implementations too. This is a bit of a botch.
-    // --pcwalton
-    for inherent_impl_def_id_doc in reader::tagged_docs(item_doc,
-                                                             tag_items_data_item_inherent_impl) {
-        let inherent_impl_def_id = item_def_id(inherent_impl_def_id_doc, cdata);
-        if let Some(inherent_impl_doc) = cdata.get_item(inherent_impl_def_id.index) {
-            for impl_item_def_id_doc in reader::tagged_docs(inherent_impl_doc,
-                                                                 tag_item_impl_item) {
-                let impl_item_def_id = item_def_id(impl_item_def_id_doc,
-                                                   cdata);
-                if let Some(impl_method_doc) = cdata.get_item(impl_item_def_id.index) {
-                    if let StaticMethod = item_family(impl_method_doc) {
-                        // Hand off the static method to the callback.
-                        let static_method_name = item_name(impl_method_doc);
-                        let static_method_def_like = item_to_def_like(cdata, impl_method_doc,
-                                                                      impl_item_def_id);
-                        callback(static_method_def_like,
-                                 static_method_name,
-                                 item_visibility(impl_method_doc));
-                    }
-                }
-            }
-        }
-    }
-
     for reexport_doc in reexports(item_doc) {
         let def_id_doc = reader::get_doc(reexport_doc,
                                          tag_items_data_item_reexport_def_id);

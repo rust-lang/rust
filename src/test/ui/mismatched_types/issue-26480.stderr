@@ -1,15 +1,16 @@
-error: mismatched types [--explain E0308]
+error[E0308]: mismatched types
   --> $DIR/issue-26480.rs:27:19
-   |>
-27 |>                   $arr.len() * size_of($arr[0]));
-   |>                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected u64, found usize
-$DIR/issue-26480.rs:38:5: 38:19: note: in this expansion of write! (defined in $DIR/issue-26480.rs)
+   |
+27 |                   $arr.len() * size_of($arr[0]));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected u64, found usize
+$DIR/issue-26480.rs:38:5: 38:19 note: in this expansion of write! (defined in $DIR/issue-26480.rs)
 
 error: non-scalar cast: `_` as `()`
   --> $DIR/issue-26480.rs:33:19
-   |>
-33 |>     ($x:expr) => ($x as ())
-   |>                   ^^^^^^^^
-$DIR/issue-26480.rs:39:5: 39:14: note: in this expansion of cast! (defined in $DIR/issue-26480.rs)
+   |
+33 |     ($x:expr) => ($x as ())
+   |                   ^^^^^^^^
+$DIR/issue-26480.rs:39:5: 39:14 note: in this expansion of cast! (defined in $DIR/issue-26480.rs)
 
 error: aborting due to 2 previous errors
+

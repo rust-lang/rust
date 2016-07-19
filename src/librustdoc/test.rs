@@ -77,7 +77,7 @@ pub fn run(input: &str,
                                                                None,
                                                                true,
                                                                false,
-                                                               codemap.clone());
+                                                               Some(codemap.clone()));
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
@@ -229,7 +229,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let codemap = Rc::new(CodeMap::new());
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
                                                 None,
-                                                codemap.clone(),
+                                                Some(codemap.clone()),
                                                 errors::snippet::FormatMode::EnvironmentSelected);
     let old = io::set_panic(box Sink(data.clone()));
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
