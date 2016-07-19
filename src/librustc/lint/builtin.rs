@@ -157,7 +157,7 @@ declare_lint! {
 
 declare_lint! {
     pub TRANSMUTE_FROM_FN_ITEM_TYPES,
-    Warn,
+    Deny,
     "transmute from function item type to pointer-sized type erroneously allowed"
 }
 
