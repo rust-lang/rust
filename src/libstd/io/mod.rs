@@ -1522,6 +1522,18 @@ impl<T: BufRead> BufRead for Take<T> {
     }
 }
 
+fn read_one_byte(reader: &mut Read) -> Option<Result<u8>> {
+    let mut buf = [0];
+    loop {
+        return match reader.read(&mut buf) {
+            Ok(0) => None,
+            Ok(..) => Some(Ok(buf[0])),
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+            Err(e) => Some(Err(e)),
+        };
+    }
+}
+
 /// An iterator over `u8` values of a reader.
 ///
 /// This struct is generally created by calling [`bytes()`][bytes] on a reader.
@@ -1538,12 +1550,7 @@ impl<R: Read> Iterator for Bytes<R> {
     type Item = Result<u8>;
 
     fn next(&mut self) -> Option<Result<u8>> {
-        let mut buf = [0];
-        match self.inner.read(&mut buf) {
-            Ok(0) => None,
-            Ok(..) => Some(Ok(buf[0])),
-            Err(e) => Some(Err(e)),
-        }
+        read_one_byte(&mut self.inner)
     }
 }
 
@@ -1579,11 +1586,10 @@ impl<R: Read> Iterator for Chars<R> {
     type Item = result::Result<char, CharsError>;
 
     fn next(&mut self) -> Option<result::Result<char, CharsError>> {
-        let mut buf = [0];
-        let first_byte = match self.inner.read(&mut buf) {
-            Ok(0) => return None,
-            Ok(..) => buf[0],
-            Err(e) => return Some(Err(CharsError::Other(e))),
+        let first_byte = match read_one_byte(&mut self.inner) {
+            None => return None,
+            Some(Ok(b)) => b,
+            Some(Err(e)) => return Some(Err(CharsError::Other(e))),
         };
         let width = core_str::utf8_char_width(first_byte);
         if width == 1 { return Some(Ok(first_byte as char)) }
@@ -1595,6 +1601,7 @@ impl<R: Read> Iterator for Chars<R> {
                 match self.inner.read(&mut buf[start..width]) {
                     Ok(0) => return Some(Err(CharsError::NotUtf8)),
                     Ok(n) => start += n,
+                    Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
                     Err(e) => return Some(Err(CharsError::Other(e))),
                 }
             }
