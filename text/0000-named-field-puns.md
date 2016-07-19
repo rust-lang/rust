@@ -149,6 +149,7 @@ could expand to `SomeStruct { field1: field1, field2: field2 }`. However, this
 change exists to make structure construction shorter and more expressive;
 having to use a macro would negate some of the benefit of doing so,
 particularly in places where brevity improves readability, such as in a closure
-in the middle of a larger expression. Pattern matching already allows using
-field names as the destination for the field values; this change adds a
-symmetrical mechanism for structure construction.
+in the middle of a larger expression. There is also precedent for
+language-level support. Pattern matching already allows using field names as
+the _destination_ for the field values via destructuring. This change adds a
+symmetrical mechanism for construction which uses existing names as _sources_.
