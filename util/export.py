@@ -1,8 +1,11 @@
 #!/usr/bin/env python
+# Build the gh-pages
 
+import json
 import os
 import re
-import json
+import sys
+
 
 level_re = re.compile(r'''(Forbid|Deny|Warn|Allow)''')
 conf_re = re.compile(r'''define_Conf! {\n([^}]*)\n}''', re.MULTILINE)
@@ -15,10 +18,19 @@ This lint has the following configuration variables:
 * `%s: %s`: %s (defaults to `%s`).
 """
 
+
 # TODO: actual logging
-def warn(*args): print(args)
-def debug(*args): print(args)
-def info(*args): print(args)
+def warn(*args):
+    print(*args)
+
+
+def debug(*args):
+    print(*args)
+
+
+def info(*args):
+    print(*args)
+
 
 def parse_path(p="clippy_lints/src"):
     lints = []
@@ -52,6 +64,7 @@ def parse_conf(p):
 
     return c
 
+
 def parseLintDef(level, comment, name):
     lint = {}
     lint['id'] = name
@@ -79,6 +92,7 @@ def parseLintDef(level, comment, name):
         lint['docs'][last_section] = (lint['docs'].get(last_section, "") + "\n" + text).strip()
 
     return lint
+
 
 def parse_file(d, f):
     last_comment = []
@@ -134,10 +148,13 @@ def parse_file(d, f):
                     warn("Warning: Missing Lint-Name in", f)
                     comment = True
 
+
 def main():
     lints = parse_path()
     info("got %s lints" % len(lints))
-    with open("util/gh-pages/lints.json", "w") as file:
+
+    outdir = sys.argv[1] if len(sys.argv) > 1 else "util/gh-pages/lints.json"
+    with open(outdir, "w") as file:
         json.dump(lints, file, indent=2)
         info("wrote JSON for great justice")
 

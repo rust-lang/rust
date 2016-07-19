@@ -1,3 +1,7 @@
+# Used by Travis to be able to push:
+/.github/deploy_key
+out
+
 # Compiled files
 *.o
 *.so
