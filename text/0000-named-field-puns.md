@@ -46,7 +46,7 @@ a pattern match can use `SomeStruct { field1, field2 } => ...` to match
 symmetrical syntax for initializers.
 
 A family of related structures will often use the same field name for a
-semantically-shared value. Combining this new syntax with the existing
+semantically-similar value. Combining this new syntax with the existing
 pattern-matching syntax allows simple movement of data between fields with a
 pattern match: `Struct1 { field1, .. } => Struct2 { field1 }`.
 
