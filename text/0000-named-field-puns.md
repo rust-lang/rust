@@ -22,7 +22,7 @@ Example usage:
             let field2 = {
                 // More initialization code
             };
-            SomeStruct { complexField, anotherField }
+            SomeStruct { field1, field2 }
         }
     }
 
