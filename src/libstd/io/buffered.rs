@@ -1076,14 +1076,14 @@ mod tests {
     fn read_char_buffered() {
         let buf = [195, 159];
         let reader = BufReader::with_capacity(1, &buf[..]);
-        assert_eq!(reader.chars().next().unwrap().unwrap(), 'ß');
+        assert_eq!(reader.utf8_chars().next().unwrap().unwrap(), 'ß');
     }
 
     #[test]
     fn test_chars() {
         let buf = [195, 159, b'a'];
         let reader = BufReader::with_capacity(1, &buf[..]);
-        let mut it = reader.chars();
+        let mut it = reader.utf8_chars();
         assert_eq!(it.next().unwrap().unwrap(), 'ß');
         assert_eq!(it.next().unwrap().unwrap(), 'a');
         assert!(it.next().is_none());

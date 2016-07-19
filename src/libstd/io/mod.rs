@@ -249,6 +249,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use char;
 use cmp;
 use rustc_unicode::str as core_str;
 use error as std_error;
@@ -702,44 +703,11 @@ pub trait Read {
         Bytes { inner: self }
     }
 
-    /// Transforms this `Read` instance to an `Iterator` over `char`s.
-    ///
-    /// This adaptor will attempt to interpret this reader as a UTF-8 encoded
-    /// sequence of characters. The returned iterator will return `None` once
-    /// EOF is reached for this reader. Otherwise each element yielded will be a
-    /// `Result<char, E>` where `E` may contain information about what I/O error
-    /// occurred or where decoding failed.
-    ///
-    /// Currently this adaptor will discard intermediate data read, and should
-    /// be avoided if this is not desired.
-    ///
-    /// # Examples
-    ///
-    /// [`File`][file]s implement `Read`:
-    ///
-    /// [file]: ../fs/struct.File.html
-    ///
-    /// ```
-    /// #![feature(io)]
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// # fn foo() -> io::Result<()> {
-    /// let mut f = try!(File::open("foo.txt"));
-    ///
-    /// for c in f.chars() {
-    ///     println!("{}", c.unwrap());
-    /// }
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[unstable(feature = "io", reason = "the semantics of a partial read/write \
-                                         of where errors happen is currently \
-                                         unclear and may change",
-               issue = "27802")]
-    fn chars(self) -> Chars<Self> where Self: Sized {
-        Chars { inner: self }
+    /// Replaced with `BufRead::utf8_chars` and `BufRead::utf8_chars_lossy`.
+    #[rustc_deprecated(since = "1.10.0", reason = "renamed to `utf8_chars`")]
+    #[unstable(feature = "io", reason = "renamed while unstable", issue = "27802")]
+    fn chars(self) -> Utf8Chars<BufReader<Self>> where Self: Sized {
+        BufReader::with_capacity(1, self).utf8_chars()
     }
 
     /// Creates an adaptor which will chain this stream with another.
@@ -1308,6 +1276,83 @@ pub trait BufRead: Read {
         read_until(self, byte, buf)
     }
 
+
+    /// Transforms this `BufRead` instance to an `Iterator` over `char`s.
+    ///
+    /// This adaptor will attempt to interpret this reader as a UTF-8 encoded
+    /// sequence of characters. The returned iterator will return `None` once
+    /// EOF is reached for this reader. Otherwise each element yielded will be a
+    /// `Result<char, E>` where `E` may contain information about what I/O error
+    /// occurred or where decoding failed.
+    ///
+    /// # Examples
+    ///
+    /// [`File`][file]s implement `Read`:
+    ///
+    /// [file]: ../fs/struct.File.html
+    ///
+    /// ```
+    /// #![feature(io)]
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut f = io::BufReader::new(try!(File::open("foo.txt")));
+    ///
+    /// for c in f.utf8_chars() {
+    ///     println!("{}", c.unwrap());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "io", reason = "the semantics of a partial read/write \
+                                         of where errors happen is currently \
+                                         unclear and may change",
+               issue = "27802")]
+    fn utf8_chars(self) -> Utf8Chars<Self> where Self: Sized {
+        Utf8Chars { inner: self }
+    }
+
+    /// Transforms this `BufRead` instance to an `Iterator` over `char`s.
+    ///
+    /// This adaptor will attempt to interpret this reader as a UTF-8 encoded
+    /// sequence of characters. The returned iterator will return `None` once
+    /// EOF is reached for this reader. Otherwise each element yielded will be a
+    /// `Result<char, E>` where `E` may contain information about what I/O error
+    /// occurred.
+    ///
+    /// Compared to `utf8_chars`, byte sequences invalid in UTF-8 are replaced
+    /// with U+FFFD replacement characters instead of being a variant of error.
+    ///
+    /// # Examples
+    ///
+    /// [`File`][file]s implement `Read`:
+    ///
+    /// [file]: ../fs/struct.File.html
+    ///
+    /// ```
+    /// #![feature(io)]
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut f = io::BufReader::new(try!(File::open("foo.txt")));
+    ///
+    /// for c in f.utf8_chars_lossy() {
+    ///     println!("{}", c.unwrap());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "io", reason = "the semantics of a partial read/write \
+                                         of where errors happen is currently \
+                                         unclear and may change",
+               issue = "27802")]
+    fn utf8_chars_lossy(self) -> Utf8CharsLossy<Self> where Self: Sized {
+        Utf8CharsLossy { inner: self.utf8_chars() }
+    }
     /// Read all bytes until a newline (the 0xA byte) is reached, and append
     /// them to the provided buffer.
     ///
@@ -1549,90 +1594,179 @@ impl<R: Read> Iterator for Bytes<R> {
 
 /// An iterator over the `char`s of a reader.
 ///
-/// This struct is generally created by calling [`chars()`][chars] on a reader.
-/// Please see the documentation of `chars()` for more details.
+/// This struct is generally created by calling [`utf8_chars()`][utf8_chars] on a reader.
+/// Please see the documentation of `utf8_chars()` for more details.
 ///
-/// [chars]: trait.Read.html#method.chars
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+/// [utf8_chars]: trait.BufRead.html#method.utf8_chars
+#[unstable(feature = "io", reason = "awaiting stability of BufRead::utf8_chars",
            issue = "27802")]
-pub struct Chars<R> {
+pub struct Utf8Chars<R> {
     inner: R,
 }
 
-/// An enumeration of possible errors that can be generated from the `Chars`
+/// An enumeration of possible errors that can be generated from the `Utf8Chars`
 /// adapter.
 #[derive(Debug)]
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of BufRead::utf8_chars",
            issue = "27802")]
-pub enum CharsError {
+pub enum Utf8CharsError {
     /// Variant representing that the underlying stream was read successfully
-    /// but it did not contain valid utf8 data.
-    NotUtf8,
+    /// but contains a byte sequence ill-formed in UTF-8.
+    InvalidUtf8,
+
+    /// Variant representing that the underlying stream contains the start
+    /// of a byte sequence well-formed in UTF-8, but ends prematurely.
+    IncompleteUtf8,
 
     /// Variant representing that an I/O error occurred.
-    Other(Error),
+    Io(Error),
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of BufRead::utf8_chars",
            issue = "27802")]
-impl<R: Read> Iterator for Chars<R> {
-    type Item = result::Result<char, CharsError>;
+impl<R: BufRead> Iterator for Utf8Chars<R> {
+    type Item = result::Result<char, Utf8CharsError>;
 
-    fn next(&mut self) -> Option<result::Result<char, CharsError>> {
-        let mut buf = [0];
-        let first_byte = match self.inner.read(&mut buf) {
-            Ok(0) => return None,
-            Ok(..) => buf[0],
-            Err(e) => return Some(Err(CharsError::Other(e))),
-        };
-        let width = core_str::utf8_char_width(first_byte);
-        if width == 1 { return Some(Ok(first_byte as char)) }
-        if width == 0 { return Some(Err(CharsError::NotUtf8)) }
-        let mut buf = [first_byte, 0, 0, 0];
-        {
-            let mut start = 1;
-            while start < width {
-                match self.inner.read(&mut buf[start..width]) {
-                    Ok(0) => return Some(Err(CharsError::NotUtf8)),
-                    Ok(n) => start += n,
-                    Err(e) => return Some(Err(CharsError::Other(e))),
+    fn next(&mut self) -> Option<result::Result<char, Utf8CharsError>> {
+        macro_rules! read_byte {
+            (EOF => $on_eof: expr) => {
+                {
+                    let byte;
+                    loop {
+                        match self.inner.fill_buf() {
+                            Ok(buffer) => {
+                                if let Some(&b) = buffer.first() {
+                                    byte = b;
+                                    break
+                                } else {
+                                    $on_eof
+                                }
+                            }
+                            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                            Err(e) => return Some(Err(Utf8CharsError::Io(e))),
+                        }
+                    }
+                    byte
                 }
             }
         }
-        Some(match str::from_utf8(&buf[..width]).ok() {
-            Some(s) => Ok(s.chars().next().unwrap()),
-            None => Err(CharsError::NotUtf8),
-        })
+
+        let first = read_byte!(EOF => return None);
+        self.inner.consume(1);
+
+        macro_rules! continuation_byte {
+            ($range: pat) => {
+                {
+                    match read_byte!(EOF => return Some(Err(Utf8CharsError::IncompleteUtf8))) {
+                        byte @ $range => {
+                            self.inner.consume(1);
+                            (byte & 0b0011_1111) as u32
+                        }
+                        _ => return Some(Err(Utf8CharsError::InvalidUtf8))
+                    }
+                }
+            }
+        }
+
+        // Ranges can be checked against https://tools.ietf.org/html/rfc3629#section-4
+        let code_point = match core_str::utf8_char_width(first) {
+            1 => return Some(Ok(first as char)),
+            2 => {
+                let second = continuation_byte!(0x80...0xBF);
+                ((first & 0b0001_1111) as u32) << 6 | second
+            }
+            3 => {
+                let second = match first {
+                    0xE0        => continuation_byte!(0xA0...0xBF),
+                    0xE1...0xEC => continuation_byte!(0x80...0xBF),
+                    0xED        => continuation_byte!(0x80...0x9F),
+                    0xEE...0xEF => continuation_byte!(0x80...0xBF),
+                    _ => unreachable!(),
+                };
+                let third = continuation_byte!(0x80...0xBF);
+                ((first & 0b0000_1111) as u32) << 12 | second << 6 | third
+            }
+            4 => {
+                let second = match first {
+                    0xF0        => continuation_byte!(0x90...0xBF),
+                    0xF0...0xF3 => continuation_byte!(0x80...0xBF),
+                    0xF4        => continuation_byte!(0x80...0x8F),
+                    _ => unreachable!(),
+                };
+                let third = continuation_byte!(0x80...0xBF);
+                let fourth = continuation_byte!(0x80...0xBF);
+                ((first & 0b0000_0111) as u32) << 18 | second << 12 | third << 6 | fourth
+            }
+            _ => return Some(Err(Utf8CharsError::InvalidUtf8))
+        };
+        unsafe {
+            Some(Ok(char::from_u32_unchecked(code_point)))
+        }
     }
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of BufRead::utf8_chars",
            issue = "27802")]
-impl std_error::Error for CharsError {
+impl std_error::Error for Utf8CharsError {
     fn description(&self) -> &str {
         match *self {
-            CharsError::NotUtf8 => "invalid utf8 encoding",
-            CharsError::Other(ref e) => std_error::Error::description(e),
+            Utf8CharsError::InvalidUtf8 => "invalid UTF-8 byte sequence",
+            Utf8CharsError::IncompleteUtf8 => {
+                "stream ended in the middle of an UTF-8 byte sequence"
+            }
+            Utf8CharsError::Io(ref e) => std_error::Error::description(e),
         }
     }
     fn cause(&self) -> Option<&std_error::Error> {
         match *self {
-            CharsError::NotUtf8 => None,
-            CharsError::Other(ref e) => e.cause(),
+            Utf8CharsError::InvalidUtf8 | Utf8CharsError::IncompleteUtf8 => None,
+            Utf8CharsError::Io(ref e) => e.cause(),
         }
     }
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+#[unstable(feature = "io", reason = "awaiting stability of BufRead::utf8_chars",
            issue = "27802")]
-impl fmt::Display for CharsError {
+impl fmt::Display for Utf8CharsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            CharsError::NotUtf8 => {
-                "byte stream did not contain valid utf8".fmt(f)
+            Utf8CharsError::InvalidUtf8 => {
+                "invalid UTF-8 byte sequence".fmt(f)
             }
-            CharsError::Other(ref e) => e.fmt(f),
+            Utf8CharsError::IncompleteUtf8 => {
+                "stream ended in the middle of an UTF-8 byte sequence".fmt(f)
+            }
+            Utf8CharsError::Io(ref e) => e.fmt(f),
         }
+    }
+}
+
+/// An iterator over the `char`s of a reader.
+///
+/// This struct is generally created by calling [`utf8_chars()`][utf8_chars] on a reader.
+/// Please see the documentation of `utf8_chars()` for more details.
+///
+/// [utf8_chars]: trait.Read.html#method.utf8_chars
+#[unstable(feature = "io", reason = "awaiting stability of BufRead::utf8_chars_lossy",
+           issue = "27802")]
+pub struct Utf8CharsLossy<R> {
+    inner: Utf8Chars<R>,
+}
+
+#[unstable(feature = "io", reason = "awaiting stability of BufRead::utf8_chars",
+           issue = "27802")]
+impl<R: BufRead> Iterator for Utf8CharsLossy<R> {
+    type Item = result::Result<char, Error>;
+
+    fn next(&mut self) -> Option<result::Result<char, Error>> {
+        // Follow Unicode Standard §5.22 "Best Practice for U+FFFD Substitution"
+        // http://www.unicode.org/versions/Unicode8.0.0/ch05.pdf#G40630
+        self.inner.next().map(|result| match result {
+            Ok(c) => Ok(c),
+            Err(Utf8CharsError::InvalidUtf8) |
+            Err(Utf8CharsError::IncompleteUtf8) => Ok('\u{FFFD}'),
+            Err(Utf8CharsError::Io(e)) => Err(e),
+        })
     }
 }
 
@@ -1709,6 +1843,19 @@ mod tests {
     use super::Cursor;
     use test;
     use super::repeat;
+
+    fn chars_lossy(bytes: &[u8]) -> String {
+        Cursor::new(bytes).utf8_chars_lossy().collect::<Result<_, _>>().unwrap()
+    }
+
+    #[test]
+    fn utf8_chars_lossy() {
+        assert_eq!(chars_lossy(b"\xf0\x9fabc"), "�abc");
+        assert_eq!(chars_lossy(b"\xed\xa0\x80a"), "���a");
+        assert_eq!(chars_lossy(b"\xed\xa0a"), "��a");
+        assert_eq!(chars_lossy(b"\xeda"), "�a");
+        assert_eq!(chars_lossy("ศไทย中华Việt Nam 🌠©".as_bytes()), "ศไทย中华Việt Nam 🌠©");
+    }
 
     #[test]
     fn read_until() {
