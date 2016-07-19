@@ -16,27 +16,27 @@
 //! or a SequenceRepetition specifier (for the purpose of sequence generation during macro
 //! expansion).
 //!
-//! A TokenStream also has a slice view, `TokenSlice`, that is analogous to `str` for
-//! `String`: it allows the programmer to divvy up, explore, and otherwise partition a
-//! TokenStream as borrowed subsequences.
+//! ## Ownership
+//! TokenStreams are persistant data structures construced as ropes with reference
+//! counted-children. In general, this means that calling an operation on a TokenStream
+//! (such as `slice`) produces an entirely new TokenStream from the borrowed reference to
+//! the original. This essentially coerces TokenStreams into 'views' of their subparts,
+//! and a borrowed TokenStream is sufficient to build an owned TokenStream without taking
+//! ownership of the original.
 
 use ast::{self, AttrStyle, LitKind};
 use syntax_pos::{Span, DUMMY_SP, NO_EXPANSION};
-use codemap::Spanned;
+use codemap::{Spanned, combine_spans};
 use ext::base;
 use ext::tt::macro_parser;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::lexer;
 use parse;
-use parse::token::{self, Token, Lit, InternedString, Nonterminal};
-use parse::token::Lit as TokLit;
+use parse::token::{self, Token, Lit, Nonterminal};
 
 use std::fmt;
-use std::mem;
-use std::ops::Index;
-use std::ops;
 use std::iter::*;
-
+use std::ops::{self, Index};
 use std::rc::Rc;
 
 /// A delimited sequence of token trees
@@ -335,27 +335,51 @@ impl TokenTree {
 /// struct itself shouldn't be directly manipulated; the internal structure is not stable,
 /// and may be changed at any time in the future. The operators will not, however (except
 /// for signatures, later on).
-#[derive(Eq,Clone,Hash,RustcEncodable,RustcDecodable)]
+#[derive(Clone, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct TokenStream {
-    pub span: Span,
-    pub tts: Vec<TokenTree>,
+    ts: InternalTS,
+}
+
+// NB If Leaf access proves to be slow, inroducing a secondary Leaf without the bounds
+// for unsliced Leafs may lead to some performance improvemenet.
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub enum InternalTS {
+    Empty(Span),
+    Leaf {
+        tts: Rc<Vec<TokenTree>>,
+        offset: usize,
+        len: usize,
+        sp: Span,
+    },
+    Node {
+        left: Rc<InternalTS>,
+        right: Rc<InternalTS>,
+        len: usize,
+        sp: Span,
+    },
 }
 
 impl fmt::Debug for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.tts.len() == 0 {
-            write!(f, "([empty")?;
-        } else {
-            write!(f, "([")?;
-            write!(f, "{:?}", self.tts[0])?;
+        self.ts.fmt(f)
+    }
+}
 
-            for tt in self.tts.iter().skip(1) {
-                write!(f, ",{:?}", tt)?;
+impl fmt::Debug for InternalTS {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            InternalTS::Empty(..) => Ok(()),
+            InternalTS::Leaf { ref tts, offset, len, .. } => {
+                for t in tts.iter().skip(offset).take(len) {
+                    try!(write!(f, "{:?}", t));
+                }
+                Ok(())
+            }
+            InternalTS::Node { ref left, ref right, .. } => {
+                try!(left.fmt(f));
+                right.fmt(f)
             }
         }
-        write!(f, "|")?;
-        self.span.fmt(f)?;
-        write!(f, "])")
     }
 }
 
@@ -363,7 +387,7 @@ impl fmt::Debug for TokenStream {
 /// equality, see `eq_unspanned`.
 impl PartialEq<TokenStream> for TokenStream {
     fn eq(&self, other: &TokenStream) -> bool {
-        self.tts == other.tts
+        self.iter().eq(other.iter())
     }
 }
 
@@ -408,6 +432,59 @@ fn covering_span(trees: &[TokenTree]) -> Span {
     }
 }
 
+impl InternalTS {
+    fn len(&self) -> usize {
+        match *self {
+            InternalTS::Empty(..) => 0,
+            InternalTS::Leaf { len, .. } => len,
+            InternalTS::Node { len, .. } => len,
+        }
+    }
+
+    fn span(&self) -> Span {
+        match *self {
+            InternalTS::Empty(sp) |
+            InternalTS::Leaf { sp, .. } |
+            InternalTS::Node { sp, .. } => sp,
+        }
+    }
+
+    fn slice(&self, range: ops::Range<usize>) -> TokenStream {
+        let from = range.start;
+        let to = range.end;
+        if from == to {
+            return TokenStream::mk_empty();
+        }
+        if from > to {
+            panic!("Invalid range: {} to {}", from, to);
+        }
+        if from == 0 && to == self.len() {
+            return TokenStream { ts: self.clone() }; /* should be cheap */
+        }
+        match *self {
+            InternalTS::Empty(..) => panic!("Invalid index"),
+            InternalTS::Leaf { ref tts, offset, .. } => {
+                let offset = offset + from;
+                let len = to - from;
+                TokenStream::mk_sub_leaf(tts.clone(),
+                                         offset,
+                                         len,
+                                         covering_span(&tts[offset..offset + len]))
+            }
+            InternalTS::Node { ref left, ref right, .. } => {
+                let left_len = left.len();
+                if to <= left_len {
+                    left.slice(range)
+                } else if from >= left_len {
+                    right.slice(from - left_len..to - left_len)
+                } else {
+                    TokenStream::concat(left.slice(from..left_len), right.slice(0..to - left_len))
+                }
+            }
+        }
+    }
+}
+
 /// TokenStream operators include basic destructuring, boolean operations, `maybe_...`
 /// operations, and `maybe_..._prefix` operations. Boolean operations are straightforward,
 /// indicating information about the structure of the stream. The `maybe_...` operations
@@ -419,129 +496,149 @@ fn covering_span(trees: &[TokenTree]) -> Span {
 ///
 ///    `maybe_path_prefix("a::b::c(a,b,c).foo()") -> (a::b::c, "(a,b,c).foo()")`
 impl TokenStream {
-    /// Convert a vector of `TokenTree`s into a `TokenStream`.
-    pub fn from_tts(trees: Vec<TokenTree>) -> TokenStream {
-        let span = covering_span(&trees);
+    pub fn mk_empty() -> TokenStream {
+        TokenStream { ts: InternalTS::Empty(DUMMY_SP) }
+    }
+
+    fn mk_spanned_empty(sp: Span) -> TokenStream {
+        TokenStream { ts: InternalTS::Empty(sp) }
+    }
+
+    fn mk_leaf(tts: Rc<Vec<TokenTree>>, sp: Span) -> TokenStream {
+        let len = tts.len();
         TokenStream {
-            tts: trees,
-            span: span,
+            ts: InternalTS::Leaf {
+                tts: tts,
+                offset: 0,
+                len: len,
+                sp: sp,
+            },
         }
     }
 
-    /// Copies all of the TokenTrees from the TokenSlice, appending them to the stream.
-    pub fn append_stream(mut self, ts2: &TokenSlice) {
-        for tt in ts2.iter() {
-            self.tts.push(tt.clone());
+    fn mk_sub_leaf(tts: Rc<Vec<TokenTree>>, offset: usize, len: usize, sp: Span) -> TokenStream {
+        TokenStream {
+            ts: InternalTS::Leaf {
+                tts: tts,
+                offset: offset,
+                len: len,
+                sp: sp,
+            },
         }
-        self.span = covering_span(&self.tts[..]);
+    }
+
+    fn mk_int_node(left: Rc<InternalTS>,
+                   right: Rc<InternalTS>,
+                   len: usize,
+                   sp: Span)
+                   -> TokenStream {
+        TokenStream {
+            ts: InternalTS::Node {
+                left: left,
+                right: right,
+                len: len,
+                sp: sp,
+            },
+        }
+    }
+
+    /// Convert a vector of `TokenTree`s into a `TokenStream`.
+    pub fn from_tts(trees: Vec<TokenTree>) -> TokenStream {
+        let span = covering_span(&trees[..]);
+        TokenStream::mk_leaf(Rc::new(trees), span)
     }
 
     /// Manually change a TokenStream's span.
     pub fn respan(self, span: Span) -> TokenStream {
-        TokenStream {
-            tts: self.tts,
-            span: span,
-        }
-    }
-
-    /// Construct a TokenStream from an ast literal.
-    pub fn from_ast_lit_str(lit: ast::Lit) -> Option<TokenStream> {
-        match lit.node {
-            LitKind::Str(val, _) => {
-                let val = TokLit::Str_(token::intern(&val));
-                Some(TokenStream::from_tts(vec![TokenTree::Token(lit.span,
-                                                                 Token::Literal(val, None))]))
+        match self.ts {
+            InternalTS::Empty(..) => TokenStream::mk_spanned_empty(span),
+            InternalTS::Leaf { tts, offset, len, .. } => {
+                TokenStream::mk_sub_leaf(tts, offset, len, span)
             }
-            _ => None,
+            InternalTS::Node { left, right, len, .. } => {
+                TokenStream::mk_int_node(left, right, len, span)
+            }
         }
-
     }
 
-    /// Convert a vector of TokenTrees into a parentheses-delimited TokenStream.
-    pub fn as_paren_delimited_stream(tts: Vec<TokenTree>) -> TokenStream {
-        let new_sp = covering_span(&tts);
-
-        let new_delim = Rc::new(Delimited {
-            delim: token::DelimToken::Paren,
-            open_span: DUMMY_SP,
-            tts: tts,
-            close_span: DUMMY_SP,
-        });
-
-        TokenStream::from_tts(vec![TokenTree::Delimited(new_sp, new_delim)])
+    /// Concatenates two TokenStreams into a new TokenStream
+    pub fn concat(left: TokenStream, right: TokenStream) -> TokenStream {
+        let new_len = left.len() + right.len();
+        let new_span = combine_spans(left.span(), right.span());
+        TokenStream::mk_int_node(Rc::new(left.ts), Rc::new(right.ts), new_len, new_span)
     }
 
-    /// Convert an interned string into a one-element TokenStream.
-    pub fn from_interned_string_as_ident(s: InternedString) -> TokenStream {
-        TokenStream::from_tts(vec![TokenTree::Token(DUMMY_SP,
-                                                    Token::Ident(token::str_to_ident(&s[..])))])
-    }
-}
-
-/// TokenSlices are 'views' of `TokenStream's; they fit the same role as `str`s do for
-/// `String`s. In general, most TokenStream manipulations will be refocusing their internal
-/// contents by taking a TokenSlice and then using indexing and the provided operators.
-#[derive(PartialEq, Eq, Debug)]
-pub struct TokenSlice([TokenTree]);
-
-impl ops::Deref for TokenStream {
-    type Target = TokenSlice;
-
-    fn deref(&self) -> &TokenSlice {
-        let tts: &[TokenTree] = &*self.tts;
-        unsafe { mem::transmute(tts) }
-    }
-}
-
-impl TokenSlice {
-    /// Convert a borrowed TokenTree slice into a borrowed TokenSlice.
-    fn from_tts(tts: &[TokenTree]) -> &TokenSlice {
-        unsafe { mem::transmute(tts) }
-    }
-
-    /// Indicates whether the `TokenStream` is empty.
+    /// Indicate if the TokenStream is empty.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    /// Return the `TokenSlice`'s length.
+    /// Return a TokenStream's length.
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.ts.len()
     }
 
-    /// Check equality versus another TokenStream, ignoring span information.
-    pub fn eq_unspanned(&self, other: &TokenSlice) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        for (tt1, tt2) in self.iter().zip(other.iter()) {
-            if !tt1.eq_unspanned(tt2) {
-                return false;
+    /// Convert a TokenStream into a vector of borrowed TokenTrees.
+    pub fn to_vec(&self) -> Vec<&TokenTree> {
+        fn internal_to_vec(ts: &InternalTS) -> Vec<&TokenTree> {
+            match *ts {
+                InternalTS::Empty(..) => Vec::new(),
+                InternalTS::Leaf { ref tts, offset, len, .. } => {
+                    tts[offset..offset + len].iter().collect()
+                }
+                InternalTS::Node { ref left, ref right, .. } => {
+                    let mut v1 = internal_to_vec(left);
+                    let mut v2 = internal_to_vec(right);
+                    v1.append(&mut v2);
+                    v1
+                }
             }
         }
-        true
+        internal_to_vec(&self.ts)
     }
 
-    /// Compute a span that covers the entire TokenSlice (eg, one wide enough to include
-    /// the entire slice). If the inputs share expansion identification, it is preserved.
-    /// If they do not, it is discarded.
-    pub fn covering_span(&self) -> Span {
-        covering_span(&self.0)
+    /// Convert a TokenStream into a vector of TokenTrees (by cloning the TokenTrees).
+    /// (This operation is an O(n) deep copy of the underlying structure.)
+    pub fn to_tts(&self) -> Vec<TokenTree> {
+        self.to_vec().into_iter().cloned().collect::<Vec<TokenTree>>()
     }
 
-    /// Indicates where the stream is of the form `= <ts>`, where `<ts>` is a continued
-    /// `TokenStream`.
-    pub fn is_assignment(&self) -> bool {
-        self.maybe_assignment().is_some()
+    /// Return the TokenStream's span.
+    pub fn span(&self) -> Span {
+        self.ts.span()
     }
 
-    /// Returns the RHS of an assigment.
-    pub fn maybe_assignment(&self) -> Option<&TokenSlice> {
-        if !(self.len() > 1) {
-            return None;
+    /// Returns an iterator over a TokenStream (as a sequence of TokenTrees).
+    pub fn iter<'a>(&self) -> Iter {
+        Iter { vs: self, idx: 0 }
+    }
+
+    /// Splits a TokenStream based on the provided `&TokenTree -> bool` predicate.
+    pub fn split<P>(&self, pred: P) -> Split<P>
+        where P: FnMut(&TokenTree) -> bool
+    {
+        Split {
+            vs: self,
+            pred: pred,
+            finished: false,
+            idx: 0,
         }
+    }
 
-        Some(&self[1..])
+    /// Produce a slice of the input TokenStream from the `from` index, inclusive, to the
+    /// `to` index, non-inclusive.
+    pub fn slice(&self, range: ops::Range<usize>) -> TokenStream {
+        self.ts.slice(range)
+    }
+
+    /// Slice starting at the provided index, inclusive.
+    pub fn slice_from(&self, from: ops::RangeFrom<usize>) -> TokenStream {
+        self.slice(from.start..self.len())
+    }
+
+    /// Slice up to the provided index, non-inclusive.
+    pub fn slice_to(&self, to: ops::RangeTo<usize>) -> TokenStream {
+        self.slice(0..to.end)
     }
 
     /// Indicates where the stream is a single, delimited expression (e.g., `(a,b,c)` or
@@ -551,50 +648,15 @@ impl TokenSlice {
     }
 
     /// Returns the inside of the delimited term as a new TokenStream.
-    pub fn maybe_delimited(&self) -> Option<&TokenSlice> {
+    pub fn maybe_delimited(&self) -> Option<TokenStream> {
         if !(self.len() == 1) {
             return None;
         }
 
+        // FIXME It would be nice to change Delimited to move the Rc around the TokenTree
+        // vector directly in order to avoid the clone here.
         match self[0] {
-            TokenTree::Delimited(_, ref rc) => Some(TokenSlice::from_tts(&*rc.tts)),
-            _ => None,
-        }
-    }
-
-    /// Returns a list of `TokenSlice`s if the stream is a delimited list, breaking the
-    /// stream on commas.
-    pub fn maybe_comma_list(&self) -> Option<Vec<&TokenSlice>> {
-        let maybe_tts = self.maybe_delimited();
-
-        let ts: &TokenSlice;
-        match maybe_tts {
-            Some(t) => {
-                ts = t;
-            }
-            None => {
-                return None;
-            }
-        }
-
-        let splits: Vec<&TokenSlice> = ts.split(|x| match *x {
-                TokenTree::Token(_, Token::Comma) => true,
-                _ => false,
-            })
-            .filter(|x| x.len() > 0)
-            .collect();
-
-        Some(splits)
-    }
-
-    /// Returns a Nonterminal if it is Interpolated.
-    pub fn maybe_interpolated_nonterminal(&self) -> Option<Nonterminal> {
-        if !(self.len() == 1) {
-            return None;
-        }
-
-        match self[0] {
-            TokenTree::Token(_, Token::Interpolated(ref nt)) => Some(nt.clone()),
+            TokenTree::Delimited(_, ref rc) => Some(TokenStream::from_tts(rc.tts.clone())),
             _ => None,
         }
     }
@@ -610,180 +672,54 @@ impl TokenSlice {
             return None;
         }
 
-        let tok = if let Some(tts) = self.maybe_delimited() {
-            if tts.len() != 1 {
-                return None;
-            }
-            &tts[0]
-        } else {
-            &self[0]
-        };
-
-        match *tok {
+        match self[0] {
             TokenTree::Token(_, Token::Ident(t)) => Some(t),
             _ => None,
         }
     }
 
-    /// Indicates if the stream is exactly one literal
-    pub fn is_lit(&self) -> bool {
-        self.maybe_lit().is_some()
-    }
-
-    /// Returns a literal
-    pub fn maybe_lit(&self) -> Option<token::Lit> {
-        if !(self.len() == 1) {
-            return None;
-        }
-
-        let tok = if let Some(tts) = self.maybe_delimited() {
-            if tts.len() != 1 {
-                return None;
-            }
-            &tts[0]
-        } else {
-            &self[0]
-        };
-
-        match *tok {
-            TokenTree::Token(_, Token::Literal(l, _)) => Some(l),
-            _ => None,
-        }
-    }
-
-    /// Returns an AST string literal if the TokenStream is either a normal ('cooked') or
-    /// raw string literal.
-    pub fn maybe_str(&self) -> Option<ast::Lit> {
-        if !(self.len() == 1) {
-            return None;
-        }
-
-        match self[0] {
-            TokenTree::Token(sp, Token::Literal(Lit::Str_(s), _)) => {
-                let l = LitKind::Str(token::intern_and_get_ident(&parse::str_lit(&s.as_str())),
-                                     ast::StrStyle::Cooked);
-                Some(Spanned {
-                    node: l,
-                    span: sp,
-                })
-            }
-            TokenTree::Token(sp, Token::Literal(Lit::StrRaw(s, n), _)) => {
-                let l = LitKind::Str(token::intern_and_get_ident(&parse::raw_str_lit(&s.as_str())),
-                                     ast::StrStyle::Raw(n));
-                Some(Spanned {
-                    node: l,
-                    span: sp,
-                })
-            }
-            _ => None,
-        }
-    }
-
-    /// This operation extracts the path prefix , returning an AST path struct and the remainder
-    /// of the stream (if it finds one). To be more specific, a tokenstream that has a valid,
-    /// non-global path as a prefix (eg `foo(bar, baz)`, `foo::bar(bar)`, but *not*
-    /// `::foo::bar(baz)`) will yield the path and the remaining tokens (as a slice). The previous
-    /// examples will yield
-    /// `Some((Path { segments = vec![foo], ... }, [(bar, baz)]))`,
-    /// `Some((Path { segments = vec![foo, bar] }, [(baz)]))`,
-    /// and `None`, respectively.
-    pub fn maybe_path_prefix(&self) -> Option<(ast::Path, &TokenSlice)> {
-        let mut segments: Vec<ast::PathSegment> = Vec::new();
-
-        let path: Vec<&TokenTree> = self.iter()
-            .take_while(|x| x.is_ident() || x.eq_token(Token::ModSep))
-            .collect::<Vec<&TokenTree>>();
-
-        let path_size = path.len();
-        if path_size == 0 {
-            return None;
-        }
-
-        let cov_span = self[..path_size].covering_span();
-        let rst = &self[path_size..];
-
-        let fst_id = path[0];
-
-        if let Some(id) = fst_id.maybe_ident() {
-            segments.push(ast::PathSegment {
-                identifier: id,
-                parameters: ast::PathParameters::none(),
-            });
-        } else {
-            return None;
-        }
-
-        // Let's use a state machine to parse out the rest.
-        enum State {
-            Mod, // Expect a `::`, or return None otherwise.
-            Ident, // Expect an ident, or return None otherwise.
-        }
-        let mut state = State::Mod;
-
-        for p in &path[1..] {
-            match state {
-                State::Mod => {
-                    // State 0: ['::' -> state 1, else return None]
-                    if p.eq_token(Token::ModSep) {
-                        state = State::Ident;
-                    } else {
-                        return None;
-                    }
-                }
-                State::Ident => {
-                    // State 1: [ident -> state 0, else return None]
-                    if let Some(id) = p.maybe_ident() {
-                        segments.push(ast::PathSegment {
-                            identifier: id,
-                            parameters: ast::PathParameters::none(),
-                        });
-                        state = State::Mod;
-                    } else {
-                        return None;
-                    }
-                }
+    /// Compares two TokenStreams, checking equality without regarding span information.
+    pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
+        for (t1, t2) in self.iter().zip(other.iter()) {
+            if !t1.eq_unspanned(t2) {
+                return false;
             }
         }
-
-        let path = ast::Path {
-            span: cov_span,
-            global: false,
-            segments: segments,
-        };
-        Some((path, rst))
+        true
     }
 
-    /// Returns an iterator over a TokenSlice (as a sequence of TokenStreams).
-    fn iter(&self) -> Iter {
-        Iter { vs: self }
-    }
+    /// Convert a vector of TokenTrees into a parentheses-delimited TokenStream.
+    pub fn as_delimited_stream(tts: Vec<TokenTree>, delim: token::DelimToken) -> TokenStream {
+        let new_sp = covering_span(&tts);
 
-    /// Splits a TokenSlice based on the provided `&TokenTree -> bool` predicate.
-    fn split<P>(&self, pred: P) -> Split<P>
-        where P: FnMut(&TokenTree) -> bool
-    {
-        Split {
-            vs: self,
-            pred: pred,
-            finished: false,
-        }
+        let new_delim = Rc::new(Delimited {
+            delim: delim,
+            open_span: DUMMY_SP,
+            tts: tts,
+            close_span: DUMMY_SP,
+        });
+
+        TokenStream::from_tts(vec![TokenTree::Delimited(new_sp, new_delim)])
     }
 }
 
+// FIXME Reimplement this iterator to hold onto a slice iterator for a leaf, getting the
+// next leaf's iterator when the current one is exhausted.
 pub struct Iter<'a> {
-    vs: &'a TokenSlice,
+    vs: &'a TokenStream,
+    idx: usize,
 }
 
 impl<'a> Iterator for Iter<'a> {
     type Item = &'a TokenTree;
 
     fn next(&mut self) -> Option<&'a TokenTree> {
-        if self.vs.is_empty() {
+        if self.vs.is_empty() || self.idx >= self.vs.len() {
             return None;
         }
 
-        let ret = Some(&self.vs[0]);
-        self.vs = &self.vs[1..];
+        let ret = Some(&self.vs[self.idx]);
+        self.idx = self.idx + 1;
         ret
     }
 }
@@ -791,29 +727,35 @@ impl<'a> Iterator for Iter<'a> {
 pub struct Split<'a, P>
     where P: FnMut(&TokenTree) -> bool
 {
-    vs: &'a TokenSlice,
+    vs: &'a TokenStream,
     pred: P,
     finished: bool,
+    idx: usize,
 }
 
 impl<'a, P> Iterator for Split<'a, P>
     where P: FnMut(&TokenTree) -> bool
 {
-    type Item = &'a TokenSlice;
+    type Item = TokenStream;
 
-    fn next(&mut self) -> Option<&'a TokenSlice> {
+    fn next(&mut self) -> Option<TokenStream> {
         if self.finished {
             return None;
         }
+        if self.idx >= self.vs.len() {
+            self.finished = true;
+            return None;
+        }
 
-        match self.vs.iter().position(|x| (self.pred)(x)) {
+        let mut lookup = self.vs.iter().skip(self.idx);
+        match lookup.position(|x| (self.pred)(&x)) {
             None => {
                 self.finished = true;
-                Some(&self.vs[..])
+                Some(self.vs.slice_from(self.idx..))
             }
-            Some(idx) => {
-                let ret = Some(&self.vs[..idx]);
-                self.vs = &self.vs[idx + 1..];
+            Some(edx) => {
+                let ret = Some(self.vs.slice(self.idx..self.idx + edx));
+                self.idx += edx + 1;
                 ret
             }
         }
@@ -824,79 +766,29 @@ impl Index<usize> for TokenStream {
     type Output = TokenTree;
 
     fn index(&self, index: usize) -> &TokenTree {
-        Index::index(&**self, index)
+        &self.ts[index]
     }
 }
 
-impl ops::Index<ops::Range<usize>> for TokenStream {
-    type Output = TokenSlice;
-
-    fn index(&self, index: ops::Range<usize>) -> &TokenSlice {
-        Index::index(&**self, index)
-    }
-}
-
-impl ops::Index<ops::RangeTo<usize>> for TokenStream {
-    type Output = TokenSlice;
-
-    fn index(&self, index: ops::RangeTo<usize>) -> &TokenSlice {
-        Index::index(&**self, index)
-    }
-}
-
-impl ops::Index<ops::RangeFrom<usize>> for TokenStream {
-    type Output = TokenSlice;
-
-    fn index(&self, index: ops::RangeFrom<usize>) -> &TokenSlice {
-        Index::index(&**self, index)
-    }
-}
-
-impl ops::Index<ops::RangeFull> for TokenStream {
-    type Output = TokenSlice;
-
-    fn index(&self, _index: ops::RangeFull) -> &TokenSlice {
-        Index::index(&**self, _index)
-    }
-}
-
-impl Index<usize> for TokenSlice {
+impl Index<usize> for InternalTS {
     type Output = TokenTree;
 
     fn index(&self, index: usize) -> &TokenTree {
-        &self.0[index]
-    }
-}
-
-impl ops::Index<ops::Range<usize>> for TokenSlice {
-    type Output = TokenSlice;
-
-    fn index(&self, index: ops::Range<usize>) -> &TokenSlice {
-        TokenSlice::from_tts(&self.0[index])
-    }
-}
-
-impl ops::Index<ops::RangeTo<usize>> for TokenSlice {
-    type Output = TokenSlice;
-
-    fn index(&self, index: ops::RangeTo<usize>) -> &TokenSlice {
-        TokenSlice::from_tts(&self.0[index])
-    }
-}
-
-impl ops::Index<ops::RangeFrom<usize>> for TokenSlice {
-    type Output = TokenSlice;
-
-    fn index(&self, index: ops::RangeFrom<usize>) -> &TokenSlice {
-        TokenSlice::from_tts(&self.0[index])
-    }
-}
-
-impl ops::Index<ops::RangeFull> for TokenSlice {
-    type Output = TokenSlice;
-
-    fn index(&self, _index: ops::RangeFull) -> &TokenSlice {
-        TokenSlice::from_tts(&self.0[_index])
+        if self.len() <= index {
+            panic!("Index {} too large for {:?}", index, self);
+        }
+        match *self {
+            InternalTS::Empty(..) => panic!("Invalid index"),
+            InternalTS::Leaf { ref tts, offset, .. } => tts.get(index + offset).unwrap(),
+            InternalTS::Node { ref left, ref right, .. } => {
+                let left_len = left.len();
+                if index < left_len {
+                    Index::index(&**left, index)
+                } else {
+                    Index::index(&**right, index - left_len)
+                }
+            }
+        }
     }
 }
 
@@ -904,9 +796,8 @@ impl ops::Index<ops::RangeFull> for TokenSlice {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ast;
     use syntax_pos::{Span, BytePos, NO_EXPANSION, DUMMY_SP};
-    use parse::token::{self, str_to_ident, Token, Lit};
+    use parse::token::{self, str_to_ident, Token};
     use util::parser_testing::string_to_tts;
     use std::rc::Rc;
 
@@ -916,6 +807,93 @@ mod tests {
             hi: BytePos(b),
             expn_id: NO_EXPANSION,
         }
+    }
+
+    fn as_paren_delimited_stream(tts: Vec<TokenTree>) -> TokenStream {
+        TokenStream::as_delimited_stream(tts, token::DelimToken::Paren)
+    }
+
+    #[test]
+    fn test_concat() {
+        let test_res = TokenStream::from_tts(string_to_tts("foo::bar::baz".to_string()));
+        let test_fst = TokenStream::from_tts(string_to_tts("foo::bar".to_string()));
+        let test_snd = TokenStream::from_tts(string_to_tts("::baz".to_string()));
+        let eq_res = TokenStream::concat(test_fst, test_snd);
+        assert_eq!(test_res.len(), 5);
+        assert_eq!(eq_res.len(), 5);
+        assert_eq!(test_res.eq_unspanned(&eq_res), true);
+    }
+
+    #[test]
+    fn test_from_to_bijection() {
+        let test_start = string_to_tts("foo::bar(baz)".to_string());
+        let test_end = TokenStream::from_tts(string_to_tts("foo::bar(baz)".to_string())).to_tts();
+        assert_eq!(test_start, test_end)
+    }
+
+    #[test]
+    fn test_to_from_bijection() {
+        let test_start = TokenStream::from_tts(string_to_tts("foo::bar(baz)".to_string()));
+        let test_end = TokenStream::from_tts(test_start.clone().to_tts());
+        assert_eq!(test_start, test_end)
+    }
+
+    #[test]
+    fn test_eq_0() {
+        let test_res = TokenStream::from_tts(string_to_tts("foo".to_string()));
+        let test_eqs = TokenStream::from_tts(string_to_tts("foo".to_string()));
+        assert_eq!(test_res, test_eqs)
+    }
+
+    #[test]
+    fn test_eq_1() {
+        let test_res = TokenStream::from_tts(string_to_tts("::bar::baz".to_string()));
+        let test_eqs = TokenStream::from_tts(string_to_tts("::bar::baz".to_string()));
+        assert_eq!(test_res, test_eqs)
+    }
+
+    #[test]
+    fn test_eq_2() {
+        let test_res = TokenStream::from_tts(string_to_tts("foo::bar".to_string()));
+        let test_eqs = TokenStream::from_tts(string_to_tts("foo::bar::baz".to_string()));
+        assert_eq!(test_res, test_eqs.slice(0..3))
+    }
+
+    #[test]
+    fn test_eq_3() {
+        let test_res = TokenStream::from_tts(string_to_tts("".to_string()));
+        let test_eqs = TokenStream::from_tts(string_to_tts("".to_string()));
+        assert_eq!(test_res, test_eqs)
+    }
+
+    #[test]
+    fn test_diseq_0() {
+        let test_res = TokenStream::from_tts(string_to_tts("::bar::baz".to_string()));
+        let test_eqs = TokenStream::from_tts(string_to_tts("bar::baz".to_string()));
+        assert_eq!(test_res == test_eqs, false)
+    }
+
+    #[test]
+    fn test_diseq_1() {
+        let test_res = TokenStream::from_tts(string_to_tts("(bar,baz)".to_string()));
+        let test_eqs = TokenStream::from_tts(string_to_tts("bar,baz".to_string()));
+        assert_eq!(test_res == test_eqs, false)
+    }
+
+    #[test]
+    fn test_slice_0() {
+        let test_res = TokenStream::from_tts(string_to_tts("foo::bar".to_string()));
+        let test_eqs = TokenStream::from_tts(string_to_tts("foo::bar::baz".to_string()));
+        assert_eq!(test_res, test_eqs.slice(0..3))
+    }
+
+    #[test]
+    fn test_slice_1() {
+        let test_res = TokenStream::from_tts(string_to_tts("foo::bar::baz".to_string()))
+            .slice(2..3);
+        let test_eqs = TokenStream::from_tts(vec![TokenTree::Token(sp(5,8),
+                                                    token::Ident(str_to_ident("bar")))]);
+        assert_eq!(test_res, test_eqs)
     }
 
     #[test]
@@ -948,38 +926,6 @@ mod tests {
     }
 
     #[test]
-    fn test_is_assign() {
-        let test0 = TokenStream::from_tts(string_to_tts("= bar::baz".to_string()));
-        let test1 = TokenStream::from_tts(string_to_tts("= \"5\"".to_string()));
-        let test2 = TokenStream::from_tts(string_to_tts("= 5".to_string()));
-        let test3 = TokenStream::from_tts(string_to_tts("(foo = 10)".to_string()));
-        let test4 = TokenStream::from_tts(string_to_tts("= (foo,bar,baz)".to_string()));
-        let test5 = TokenStream::from_tts(string_to_tts("".to_string()));
-
-        assert_eq!(test0.is_assignment(), true);
-        assert_eq!(test1.is_assignment(), true);
-        assert_eq!(test2.is_assignment(), true);
-        assert_eq!(test3.is_assignment(), false);
-        assert_eq!(test4.is_assignment(), true);
-        assert_eq!(test5.is_assignment(), false);
-    }
-
-    #[test]
-    fn test_is_lit() {
-        let test0 = TokenStream::from_tts(string_to_tts("\"foo\"".to_string()));
-        let test1 = TokenStream::from_tts(string_to_tts("5".to_string()));
-        let test2 = TokenStream::from_tts(string_to_tts("foo".to_string()));
-        let test3 = TokenStream::from_tts(string_to_tts("foo::bar".to_string()));
-        let test4 = TokenStream::from_tts(string_to_tts("foo(bar)".to_string()));
-
-        assert_eq!(test0.is_lit(), true);
-        assert_eq!(test1.is_lit(), true);
-        assert_eq!(test2.is_lit(), false);
-        assert_eq!(test3.is_lit(), false);
-        assert_eq!(test4.is_lit(), false);
-    }
-
-    #[test]
     fn test_is_ident() {
         let test0 = TokenStream::from_tts(string_to_tts("\"foo\"".to_string()));
         let test1 = TokenStream::from_tts(string_to_tts("5".to_string()));
@@ -992,62 +938,6 @@ mod tests {
         assert_eq!(test2.is_ident(), true);
         assert_eq!(test3.is_ident(), false);
         assert_eq!(test4.is_ident(), false);
-    }
-
-    #[test]
-    fn test_maybe_assignment() {
-        let test0_input = TokenStream::from_tts(string_to_tts("= bar::baz".to_string()));
-        let test1_input = TokenStream::from_tts(string_to_tts("= \"5\"".to_string()));
-        let test2_input = TokenStream::from_tts(string_to_tts("= 5".to_string()));
-        let test3_input = TokenStream::from_tts(string_to_tts("(foo = 10)".to_string()));
-        let test4_input = TokenStream::from_tts(string_to_tts("= (foo,bar,baz)".to_string()));
-        let test5_input = TokenStream::from_tts(string_to_tts("".to_string()));
-
-        let test0 = test0_input.maybe_assignment();
-        let test1 = test1_input.maybe_assignment();
-        let test2 = test2_input.maybe_assignment();
-        let test3 = test3_input.maybe_assignment();
-        let test4 = test4_input.maybe_assignment();
-        let test5 = test5_input.maybe_assignment();
-
-        let test0_expected = TokenStream::from_tts(vec![TokenTree::Token(sp(2, 5),
-                                                        token::Ident(str_to_ident("bar"))),
-                                       TokenTree::Token(sp(5, 7), token::ModSep),
-                                       TokenTree::Token(sp(7, 10),
-                                                        token::Ident(str_to_ident("baz")))]);
-        assert_eq!(test0, Some(&test0_expected[..]));
-
-        let test1_expected = TokenStream::from_tts(vec![TokenTree::Token(sp(2, 5),
-                                            token::Literal(Lit::Str_(token::intern("5")), None))]);
-        assert_eq!(test1, Some(&test1_expected[..]));
-
-        let test2_expected = TokenStream::from_tts(vec![TokenTree::Token( sp(2,3)
-                                       , token::Literal(
-                                           Lit::Integer(
-                                             token::intern(&(5.to_string()))),
-                                             None))]);
-        assert_eq!(test2, Some(&test2_expected[..]));
-
-        assert_eq!(test3, None);
-
-
-        let test4_tts = vec![TokenTree::Token(sp(3, 6), token::Ident(str_to_ident("foo"))),
-                             TokenTree::Token(sp(6, 7), token::Comma),
-                             TokenTree::Token(sp(7, 10), token::Ident(str_to_ident("bar"))),
-                             TokenTree::Token(sp(10, 11), token::Comma),
-                             TokenTree::Token(sp(11, 14), token::Ident(str_to_ident("baz")))];
-
-        let test4_expected = TokenStream::from_tts(vec![TokenTree::Delimited(sp(2, 15),
-                                                Rc::new(Delimited {
-                                                    delim: token::DelimToken::Paren,
-                                                    open_span: sp(2, 3),
-                                                    tts: test4_tts,
-                                                    close_span: sp(14, 15),
-                                                }))]);
-        assert_eq!(test4, Some(&test4_expected[..]));
-
-        assert_eq!(test5, None);
-
     }
 
     #[test]
@@ -1074,7 +964,7 @@ mod tests {
                                        TokenTree::Token(sp(4, 6), token::ModSep),
                                        TokenTree::Token(sp(6, 9),
                                                         token::Ident(str_to_ident("baz")))]);
-        assert_eq!(test1, Some(&test1_expected[..]));
+        assert_eq!(test1, Some(test1_expected));
 
         let test2_expected = TokenStream::from_tts(vec![TokenTree::Token(sp(1, 4),
                                                         token::Ident(str_to_ident("foo"))),
@@ -1084,79 +974,13 @@ mod tests {
                                        TokenTree::Token(sp(8, 9), token::Comma),
                                        TokenTree::Token(sp(9, 12),
                                                         token::Ident(str_to_ident("baz")))]);
-        assert_eq!(test2, Some(&test2_expected[..]));
+        assert_eq!(test2, Some(test2_expected));
 
         assert_eq!(test3, None);
 
         assert_eq!(test4, None);
 
         assert_eq!(test5, None);
-    }
-
-    #[test]
-    fn test_maybe_comma_list() {
-        let test0_input = TokenStream::from_tts(string_to_tts("foo(bar::baz)".to_string()));
-        let test1_input = TokenStream::from_tts(string_to_tts("(bar::baz)".to_string()));
-        let test2_input = TokenStream::from_tts(string_to_tts("(foo,bar,baz)".to_string()));
-        let test3_input = TokenStream::from_tts(string_to_tts("(foo::bar,bar,baz)".to_string()));
-        let test4_input = TokenStream::from_tts(string_to_tts("(foo,bar,baz)(zab,rab)"
-            .to_string()));
-        let test5_input = TokenStream::from_tts(string_to_tts("(foo,bar,baz)foo".to_string()));
-        let test6_input = TokenStream::from_tts(string_to_tts("".to_string()));
-        // The following is supported behavior!
-        let test7_input = TokenStream::from_tts(string_to_tts("(foo,bar,)".to_string()));
-
-        let test0 = test0_input.maybe_comma_list();
-        let test1 = test1_input.maybe_comma_list();
-        let test2 = test2_input.maybe_comma_list();
-        let test3 = test3_input.maybe_comma_list();
-        let test4 = test4_input.maybe_comma_list();
-        let test5 = test5_input.maybe_comma_list();
-        let test6 = test6_input.maybe_comma_list();
-        let test7 = test7_input.maybe_comma_list();
-
-        assert_eq!(test0, None);
-
-        let test1_stream = TokenStream::from_tts(vec![TokenTree::Token(sp(1, 4),
-                                                        token::Ident(str_to_ident("bar"))),
-                                       TokenTree::Token(sp(4, 6), token::ModSep),
-                                       TokenTree::Token(sp(6, 9),
-                                                        token::Ident(str_to_ident("baz")))]);
-
-        let test1_expected: Vec<&TokenSlice> = vec![&test1_stream[..]];
-        assert_eq!(test1, Some(test1_expected));
-
-        let test2_foo = TokenStream::from_tts(vec![TokenTree::Token(sp(1, 4),
-                                                        token::Ident(str_to_ident("foo")))]);
-        let test2_bar = TokenStream::from_tts(vec![TokenTree::Token(sp(5, 8),
-                                                        token::Ident(str_to_ident("bar")))]);
-        let test2_baz = TokenStream::from_tts(vec![TokenTree::Token(sp(9, 12),
-                                                        token::Ident(str_to_ident("baz")))]);
-        let test2_expected: Vec<&TokenSlice> = vec![&test2_foo[..], &test2_bar[..], &test2_baz[..]];
-        assert_eq!(test2, Some(test2_expected));
-
-        let test3_path = TokenStream::from_tts(vec![TokenTree::Token(sp(1, 4),
-                                                        token::Ident(str_to_ident("foo"))),
-                                       TokenTree::Token(sp(4, 6), token::ModSep),
-                                       TokenTree::Token(sp(6, 9),
-                                                        token::Ident(str_to_ident("bar")))]);
-        let test3_bar = TokenStream::from_tts(vec![TokenTree::Token(sp(10, 13),
-                                                        token::Ident(str_to_ident("bar")))]);
-        let test3_baz = TokenStream::from_tts(vec![TokenTree::Token(sp(14, 17),
-                                                        token::Ident(str_to_ident("baz")))]);
-        let test3_expected: Vec<&TokenSlice> =
-            vec![&test3_path[..], &test3_bar[..], &test3_baz[..]];
-        assert_eq!(test3, Some(test3_expected));
-
-        assert_eq!(test4, None);
-
-        assert_eq!(test5, None);
-
-        assert_eq!(test6, None);
-
-
-        let test7_expected: Vec<&TokenSlice> = vec![&test2_foo[..], &test2_bar[..]];
-        assert_eq!(test7, Some(test7_expected));
     }
 
     // pub fn maybe_ident(&self) -> Option<ast::Ident>
@@ -1175,86 +999,10 @@ mod tests {
         assert_eq!(test4, None);
     }
 
-    // pub fn maybe_lit(&self) -> Option<token::Lit>
     #[test]
-    fn test_maybe_lit() {
-        let test0 = TokenStream::from_tts(string_to_tts("\"foo\"".to_string())).maybe_lit();
-        let test1 = TokenStream::from_tts(string_to_tts("5".to_string())).maybe_lit();
-        let test2 = TokenStream::from_tts(string_to_tts("foo".to_string())).maybe_lit();
-        let test3 = TokenStream::from_tts(string_to_tts("foo::bar".to_string())).maybe_lit();
-        let test4 = TokenStream::from_tts(string_to_tts("foo(bar)".to_string())).maybe_lit();
-
-        assert_eq!(test0, Some(Lit::Str_(token::intern("foo"))));
-        assert_eq!(test1, Some(Lit::Integer(token::intern(&(5.to_string())))));
-        assert_eq!(test2, None);
-        assert_eq!(test3, None);
-        assert_eq!(test4, None);
-    }
-
-    #[test]
-    fn test_maybe_path_prefix() {
-        let test0_input = TokenStream::from_tts(string_to_tts("foo(bar::baz)".to_string()));
-        let test1_input = TokenStream::from_tts(string_to_tts("(bar::baz)".to_string()));
-        let test2_input = TokenStream::from_tts(string_to_tts("(foo,bar,baz)".to_string()));
-        let test3_input = TokenStream::from_tts(string_to_tts("foo::bar(bar,baz)".to_string()));
-
-        let test0 = test0_input.maybe_path_prefix();
-        let test1 = test1_input.maybe_path_prefix();
-        let test2 = test2_input.maybe_path_prefix();
-        let test3 = test3_input.maybe_path_prefix();
-
-        let test0_tts = vec![TokenTree::Token(sp(4, 7), token::Ident(str_to_ident("bar"))),
-                             TokenTree::Token(sp(7, 9), token::ModSep),
-                             TokenTree::Token(sp(9, 12), token::Ident(str_to_ident("baz")))];
-
-        let test0_stream = TokenStream::from_tts(vec![TokenTree::Delimited(sp(3, 13),
-                                                               Rc::new(Delimited {
-                                                                   delim: token::DelimToken::Paren,
-                                                                   open_span: sp(3, 4),
-                                                                   tts: test0_tts,
-                                                                   close_span: sp(12, 13),
-                                                               }))]);
-
-        let test0_expected = Some((ast::Path::from_ident(sp(0, 3), str_to_ident("foo")),
-                                   &test0_stream[..]));
-        assert_eq!(test0, test0_expected);
-
-        assert_eq!(test1, None);
-        assert_eq!(test2, None);
-
-        let test3_path = ast::Path {
-            span: sp(0, 8),
-            global: false,
-            segments: vec![ast::PathSegment {
-                               identifier: str_to_ident("foo"),
-                               parameters: ast::PathParameters::none(),
-                           },
-                           ast::PathSegment {
-                               identifier: str_to_ident("bar"),
-                               parameters: ast::PathParameters::none(),
-                           }],
-        };
-
-        let test3_tts = vec![TokenTree::Token(sp(9, 12), token::Ident(str_to_ident("bar"))),
-                             TokenTree::Token(sp(12, 13), token::Comma),
-                             TokenTree::Token(sp(13, 16), token::Ident(str_to_ident("baz")))];
-
-        let test3_stream = TokenStream::from_tts(vec![TokenTree::Delimited(sp(8, 17),
-                                                               Rc::new(Delimited {
-                                                                   delim: token::DelimToken::Paren,
-                                                                   open_span: sp(8, 9),
-                                                                   tts: test3_tts,
-                                                                   close_span: sp(16, 17),
-                                                               }))]);
-        let test3_expected = Some((test3_path, &test3_stream[..]));
-        assert_eq!(test3, test3_expected);
-    }
-
-    #[test]
-    fn test_as_paren_delimited_stream() {
-        let test0 = TokenStream::as_paren_delimited_stream(string_to_tts("foo,bar,".to_string()));
-        let test1 = TokenStream::as_paren_delimited_stream(string_to_tts("baz(foo,bar)"
-            .to_string()));
+    fn test_as_delimited_stream() {
+        let test0 = as_paren_delimited_stream(string_to_tts("foo,bar,".to_string()));
+        let test1 = as_paren_delimited_stream(string_to_tts("baz(foo,bar)".to_string()));
 
         let test0_tts = vec![TokenTree::Token(sp(0, 3), token::Ident(str_to_ident("foo"))),
                              TokenTree::Token(sp(3, 4), token::Comma),
@@ -1294,5 +1042,4 @@ mod tests {
 
         assert_eq!(test1, test1_stream);
     }
-
 }
