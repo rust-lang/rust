@@ -43,7 +43,9 @@ $$(LLVM_CONFIG_$(1)): $$(LLVM_DONE_$(1))
 
 $$(LLVM_DONE_$(1)): $$(LLVM_DEPS_TARGET_$(1)) $$(LLVM_STAMP_$(1))
 	@$$(call E, cmake: llvm)
-ifeq ($$(findstring msvc,$(1)),msvc)
+ifneq ($$(CFG_NINJA),)
+	$$(Q)$$(CFG_NINJA) -C $$(CFG_LLVM_BUILD_DIR_$(1))
+else ifeq ($$(findstring msvc,$(1)),msvc)
 	$$(Q)$$(CFG_CMAKE) --build $$(CFG_LLVM_BUILD_DIR_$(1)) \
 		--config $$(LLVM_BUILD_CONFIG_MODE)
 else
@@ -51,8 +53,16 @@ else
 endif
 	$$(Q)touch $$@
 
-ifeq ($$(findstring msvc,$(1)),msvc)
+ifneq ($$(CFG_NINJA),)
 clean-llvm$(1):
+	@$$(call E, clean: llvm)
+	$$(Q)$$(CFG_NINJA) -C $$(CFG_LLVM_BUILD_DIR_$(1)) -t clean
+else ifeq ($$(findstring msvc,$(1)),msvc)
+clean-llvm$(1):
+	@$$(call E, clean: llvm)
+	$$(Q)$$(CFG_CMAKE) --build $$(CFG_LLVM_BUILD_DIR_$(1)) \
+		--config $$(LLVM_BUILD_CONFIG_MODE) \
+		--target clean
 else
 clean-llvm$(1):
 	@$$(call E, clean: llvm)

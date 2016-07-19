@@ -49,6 +49,7 @@ use std::thread::panicking;
 pub mod emitter;
 pub mod snippet;
 pub mod registry;
+pub mod styled_buffer;
 
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileName, MultiSpan, Span, NO_EXPANSION };
 use syntax_pos::{MacroBacktrace};
@@ -79,16 +80,6 @@ pub trait CodeMapper {
     fn span_to_string(&self, sp: Span) -> String;
     fn span_to_filename(&self, sp: Span) -> FileName;
     fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace>;
-}
-
-impl RenderSpan {
-    fn span(&self) -> &MultiSpan {
-        match *self {
-            FullSpan(ref msp) |
-            Suggestion(CodeSuggestion { ref msp, .. }) =>
-                msp
-        }
-    }
 }
 
 impl CodeSuggestion {
@@ -238,7 +229,7 @@ impl<'a> DiagnosticBuilder<'a> {
             return;
         }
 
-        self.handler.emit.borrow_mut().emit_struct(&self);
+        self.handler.emitter.borrow_mut().emit(&self);
         self.cancel();
         self.handler.panic_if_treat_err_as_bug();
 
@@ -359,11 +350,20 @@ impl<'a> DiagnosticBuilder<'a> {
     fn new(handler: &'a Handler,
            level: Level,
            message: &str) -> DiagnosticBuilder<'a> {
+        DiagnosticBuilder::new_with_code(handler, level, None, message)
+    }
+
+    /// Convenience function for internal use, clients should use one of the
+    /// struct_* methods on Handler.
+    fn new_with_code(handler: &'a Handler,
+           level: Level,
+           code: Option<String>,
+           message: &str) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder {
             handler: handler,
             level: level,
             message: message.to_owned(),
-            code: None,
+            code: code,
             span: MultiSpan::new(),
             children: vec![],
         }
@@ -397,10 +397,10 @@ impl<'a> fmt::Debug for DiagnosticBuilder<'a> {
 impl<'a> Drop for DiagnosticBuilder<'a> {
     fn drop(&mut self) {
         if !panicking() && !self.cancelled() {
-            self.handler.emit.borrow_mut().emit(&MultiSpan::new(),
-                                                "Error constructed but not emitted",
-                                                None,
-                                                Bug);
+            let mut db = DiagnosticBuilder::new(self.handler,
+                                                Bug,
+                                                "Error constructed but not emitted");
+            db.emit();
             panic!();
         }
     }
@@ -411,7 +411,7 @@ impl<'a> Drop for DiagnosticBuilder<'a> {
 /// others log errors for later reporting.
 pub struct Handler {
     err_count: Cell<usize>,
-    emit: RefCell<Box<Emitter>>,
+    emitter: RefCell<Box<Emitter>>,
     pub can_emit_warnings: bool,
     treat_err_as_bug: bool,
     continue_after_error: Cell<bool>,
@@ -423,7 +423,7 @@ impl Handler {
                             registry: Option<registry::Registry>,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
-                            cm: Rc<CodeMapper>)
+                            cm: Option<Rc<CodeMapper>>)
                             -> Handler {
         let emitter = Box::new(EmitterWriter::stderr(color_config, registry, cm,
                                snippet::FormatMode::EnvironmentSelected));
@@ -435,7 +435,7 @@ impl Handler {
                         e: Box<Emitter>) -> Handler {
         Handler {
             err_count: Cell::new(0),
-            emit: RefCell::new(e),
+            emitter: RefCell::new(e),
             can_emit_warnings: can_emit_warnings,
             treat_err_as_bug: treat_err_as_bug,
             continue_after_error: Cell::new(true),
@@ -588,7 +588,7 @@ impl Handler {
         self.bump_err_count();
     }
     pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
-        self.emit.borrow_mut().emit(&sp.into(), msg, None, Note);
+        self.emit(&sp.into(), msg, Note);
     }
     pub fn span_unimpl<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         self.span_bug(sp, &format!("unimplemented {}", msg));
@@ -597,7 +597,10 @@ impl Handler {
         if self.treat_err_as_bug {
             self.bug(msg);
         }
-        self.emit.borrow_mut().emit(&MultiSpan::new(), msg, None, Fatal);
+        let mut db = DiagnosticBuilder::new(self,
+                                            Fatal,
+                                            msg);
+        db.emit();
         self.bump_err_count();
         FatalError
     }
@@ -605,17 +608,29 @@ impl Handler {
         if self.treat_err_as_bug {
             self.bug(msg);
         }
-        self.emit.borrow_mut().emit(&MultiSpan::new(), msg, None, Error);
+        let mut db = DiagnosticBuilder::new(self,
+                                            Error,
+                                            msg);
+        db.emit();
         self.bump_err_count();
     }
     pub fn warn(&self, msg: &str) {
-        self.emit.borrow_mut().emit(&MultiSpan::new(), msg, None, Warning);
+        let mut db = DiagnosticBuilder::new(self,
+                                            Warning,
+                                            msg);
+        db.emit();
     }
     pub fn note_without_error(&self, msg: &str) {
-        self.emit.borrow_mut().emit(&MultiSpan::new(), msg, None, Note);
+        let mut db = DiagnosticBuilder::new(self,
+                                            Note,
+                                            msg);
+        db.emit();
     }
     pub fn bug(&self, msg: &str) -> ! {
-        self.emit.borrow_mut().emit(&MultiSpan::new(), msg, None, Bug);
+        let mut db = DiagnosticBuilder::new(self,
+                                            Bug,
+                                            msg);
+        db.emit();
         panic!(ExplicitBug);
     }
     pub fn unimpl(&self, msg: &str) -> ! {
@@ -661,7 +676,9 @@ impl Handler {
                 msg: &str,
                 lvl: Level) {
         if lvl == Warning && !self.can_emit_warnings { return }
-        self.emit.borrow_mut().emit(&msp, msg, None, lvl);
+        let mut db = DiagnosticBuilder::new(self, lvl, msg);
+        db.set_span(msp.clone());
+        db.emit();
         if !self.continue_after_error.get() { self.abort_if_errors(); }
     }
     pub fn emit_with_code(&self,
@@ -670,7 +687,12 @@ impl Handler {
                           code: &str,
                           lvl: Level) {
         if lvl == Warning && !self.can_emit_warnings { return }
-        self.emit.borrow_mut().emit(&msp, msg, Some(code), lvl);
+        let mut db = DiagnosticBuilder::new_with_code(self,
+                                                      lvl,
+                                                      Some(code.to_owned()),
+                                                      msg);
+        db.set_span(msp.clone());
+        db.emit();
         if !self.continue_after_error.get() { self.abort_if_errors(); }
     }
 }
@@ -734,13 +756,13 @@ pub fn expect<T, M>(diag: &Handler, opt: Option<T>, msg: M) -> T where
 ///
 /// FIXME(#33240)
 #[cfg(not(test))]
-pub fn check_old_skool() -> bool {
+pub fn check_old_school() -> bool {
     use std::env;
     env::var("RUST_NEW_ERROR_FORMAT").is_err()
 }
 
 /// For unit tests, use the new format.
 #[cfg(test)]
-pub fn check_old_skool() -> bool {
+pub fn check_old_school() -> bool {
     false
 }

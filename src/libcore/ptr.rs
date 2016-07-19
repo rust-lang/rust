@@ -571,12 +571,21 @@ macro_rules! fnptr_impls_safety_abi {
 }
 
 macro_rules! fnptr_impls_args {
-    ($($Arg: ident),*) => {
+    ($($Arg: ident),+) => {
         fnptr_impls_safety_abi! { extern "Rust" fn($($Arg),*) -> Ret, $($Arg),* }
         fnptr_impls_safety_abi! { extern "C" fn($($Arg),*) -> Ret, $($Arg),* }
+        fnptr_impls_safety_abi! { extern "C" fn($($Arg),* , ...) -> Ret, $($Arg),* }
         fnptr_impls_safety_abi! { unsafe extern "Rust" fn($($Arg),*) -> Ret, $($Arg),* }
         fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),*) -> Ret, $($Arg),* }
-    }
+        fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),* , ...) -> Ret, $($Arg),* }
+    };
+    () => {
+        // No variadic functions with 0 parameters
+        fnptr_impls_safety_abi! { extern "Rust" fn() -> Ret, }
+        fnptr_impls_safety_abi! { extern "C" fn() -> Ret, }
+        fnptr_impls_safety_abi! { unsafe extern "Rust" fn() -> Ret, }
+        fnptr_impls_safety_abi! { unsafe extern "C" fn() -> Ret, }
+    };
 }
 
 fnptr_impls_args! { }

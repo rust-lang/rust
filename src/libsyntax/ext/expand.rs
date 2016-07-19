@@ -9,20 +9,19 @@
 // except according to those terms.
 
 use ast::{Block, Crate, Ident, Mac_, Name, PatKind};
-use ast::{MacStmtStyle, Mrk, Stmt, StmtKind, ItemKind};
+use ast::{MacStmtStyle, Stmt, StmtKind, ItemKind};
 use ast;
-use attr::HasAttrs;
-use ext::mtwt;
-use attr;
+use ext::hygiene::Mark;
+use attr::{self, HasAttrs};
 use attr::AttrMetaMethods;
-use codemap::{dummy_spanned, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
+use codemap::{dummy_spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use syntax_pos::{self, Span, ExpnId};
 use config::StripUnconfigured;
 use ext::base::*;
 use feature_gate::{self, Features};
 use fold;
 use fold::*;
-use parse::token::{fresh_mark, intern, keywords};
+use parse::token::{intern, keywords};
 use ptr::P;
 use tokenstream::TokenTree;
 use util::small_vector::SmallVector;
@@ -130,9 +129,9 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
     // It would almost certainly be cleaner to pass the whole macro invocation in,
     // rather than pulling it apart and marking the tts and the ctxt separately.
     let Mac_ { path, tts, .. } = mac.node;
-    let mark = fresh_mark();
+    let mark = Mark::fresh();
 
-    fn mac_result<'a>(path: &ast::Path, ident: Option<Ident>, tts: Vec<TokenTree>, mark: Mrk,
+    fn mac_result<'a>(path: &ast::Path, ident: Option<Ident>, tts: Vec<TokenTree>, mark: Mark,
                       attrs: Vec<ast::Attribute>, call_site: Span, fld: &'a mut MacroExpander)
                       -> Option<Box<MacResult + 'a>> {
         // Detect use of feature-gated or invalid attributes on macro invoations
@@ -708,30 +707,17 @@ pub fn expand_crate(mut cx: ExtCtxt,
     return (ret, cx.syntax_env.names);
 }
 
-// HYGIENIC CONTEXT EXTENSION:
-// all of these functions are for walking over
-// ASTs and making some change to the context of every
-// element that has one. a CtxtFn is a trait-ified
-// version of a closure in (SyntaxContext -> SyntaxContext).
-// the ones defined here include:
-// Marker - add a mark to a context
-
 // A Marker adds the given mark to the syntax context and
 // sets spans' `expn_id` to the given expn_id (unless it is `None`).
-struct Marker { mark: Mrk, expn_id: Option<ExpnId> }
+struct Marker { mark: Mark, expn_id: Option<ExpnId> }
 
 impl Folder for Marker {
-    fn fold_ident(&mut self, id: Ident) -> Ident {
-        ast::Ident::new(id.name, mtwt::apply_mark(self.mark, id.ctxt))
+    fn fold_ident(&mut self, mut ident: Ident) -> Ident {
+        ident.ctxt = ident.ctxt.apply_mark(self.mark);
+        ident
     }
-    fn fold_mac(&mut self, Spanned {node, span}: ast::Mac) -> ast::Mac {
-        Spanned {
-            node: Mac_ {
-                path: self.fold_path(node.path),
-                tts: self.fold_tts(&node.tts),
-            },
-            span: self.new_span(span),
-        }
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+        noop_fold_mac(mac, self)
     }
 
     fn new_span(&mut self, mut span: Span) -> Span {
@@ -743,7 +729,7 @@ impl Folder for Marker {
 }
 
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
-fn mark_tts(tts: &[TokenTree], m: Mrk) -> Vec<TokenTree> {
+fn mark_tts(tts: &[TokenTree], m: Mark) -> Vec<TokenTree> {
     noop_fold_tts(tts, &mut Marker{mark:m, expn_id: None})
 }
 

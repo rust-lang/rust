@@ -11,7 +11,7 @@
 use Resolver;
 use rustc::session::Session;
 use syntax::ast;
-use syntax::ext::mtwt;
+use syntax::ext::hygiene::Mark;
 use syntax::fold::{self, Folder};
 use syntax::ptr::P;
 use syntax::util::move_map::MoveMap;
@@ -31,7 +31,7 @@ impl<'a> Resolver<'a> {
 
 struct NodeIdAssigner<'a> {
     sess: &'a Session,
-    macros_at_scope: &'a mut HashMap<ast::NodeId, Vec<ast::Mrk>>,
+    macros_at_scope: &'a mut HashMap<ast::NodeId, Vec<Mark>>,
 }
 
 impl<'a> Folder for NodeIdAssigner<'a> {
@@ -49,7 +49,7 @@ impl<'a> Folder for NodeIdAssigner<'a> {
             block.stmts = block.stmts.move_flat_map(|stmt| {
                 if let ast::StmtKind::Item(ref item) = stmt.node {
                     if let ast::ItemKind::Mac(..) = item.node {
-                        macros.push(mtwt::outer_mark(item.ident.ctxt));
+                        macros.push(item.ident.ctxt.data().outer_mark);
                         return None;
                     }
                 }

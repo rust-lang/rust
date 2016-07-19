@@ -53,7 +53,7 @@ use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
-use syntax::ext::mtwt;
+use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
 use syntax::parse::token::{self, keywords};
@@ -654,7 +654,7 @@ enum RibKind<'a> {
     ModuleRibKind(Module<'a>),
 
     // We passed through a `macro_rules!` statement with the given expansion
-    MacroDefinition(ast::Mrk),
+    MacroDefinition(Mark),
 }
 
 #[derive(Copy, Clone)]
@@ -933,7 +933,7 @@ pub struct Resolver<'a> {
 
     // Maps the node id of a statement to the expansions of the `macro_rules!`s
     // immediately above the statement (if appropriate).
-    macros_at_scope: HashMap<NodeId, Vec<ast::Mrk>>,
+    macros_at_scope: HashMap<NodeId, Vec<Mark>>,
 
     graph_root: Module<'a>,
 
@@ -1434,10 +1434,9 @@ impl<'a> Resolver<'a> {
             if let MacroDefinition(mac) = self.get_ribs(ns)[i].kind {
                 // If an invocation of this macro created `ident`, give up on `ident`
                 // and switch to `ident`'s source from the macro definition.
-                if let Some((source_ident, source_macro)) = mtwt::source(ident) {
-                    if mac == source_macro {
-                        ident = source_ident;
-                    }
+                let (source_ctxt, source_macro) = ident.ctxt.source();
+                if source_macro == mac {
+                    ident.ctxt = source_ctxt;
                 }
             }
         }
@@ -1585,10 +1584,9 @@ impl<'a> Resolver<'a> {
                 MacroDefinition(mac) => {
                     // If an invocation of this macro created `ident`, give up on `ident`
                     // and switch to `ident`'s source from the macro definition.
-                    if let Some((source_ident, source_macro)) = mtwt::source(ident) {
-                        if mac == source_macro {
-                            ident = source_ident;
-                        }
+                    let (source_ctxt, source_macro) = ident.ctxt.source();
+                    if source_macro == mac {
+                        ident.ctxt = source_ctxt;
                     }
                 }
                 _ => {

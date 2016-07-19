@@ -51,12 +51,12 @@ struct Vec<T> {
 ```
 
 Unlike the previous example it *appears* that everything is exactly as we
-want. Every generic argument to Vec shows up in the at least one field.
+want. Every generic argument to Vec shows up in at least one field.
 Good to go!
 
 Nope.
 
-The drop checker will generously determine that Vec<T> does not own any values
+The drop checker will generously determine that `Vec<T>` does not own any values
 of type T. This will in turn make it conclude that it doesn't need to worry
 about Vec dropping any T's in its destructor for determining drop check
 soundness. This will in turn allow people to create unsoundness using
@@ -81,7 +81,7 @@ Raw pointers that own an allocation is such a pervasive pattern that the
 standard library made a utility for itself called `Unique<T>` which:
 
 * wraps a `*const T` for variance
-* includes a `PhantomData<T>`,
+* includes a `PhantomData<T>`
 * auto-derives Send/Sync as if T was contained
 * marks the pointer as NonZero for the null-pointer optimization
 
