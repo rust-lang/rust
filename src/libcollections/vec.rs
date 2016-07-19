@@ -342,11 +342,17 @@ impl<T> Vec<T> {
     ///
     /// * `ptr` needs to have been previously allocated via `String`/`Vec<T>`
     ///   (at least, it's highly likely to be incorrect if it wasn't).
-    /// * `length` needs to be the length that less than or equal to `capacity`.
+    /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
     ///
     /// Violating these may cause problems like corrupting the allocator's
     /// internal datastructures.
+    ///
+    /// The ownership of `ptr` is effectively transferred to the
+    /// `Vec<T>` which may then deallocate, reallocate or change the
+    /// contents of memory pointed to by the pointer at will. Ensure
+    /// that nothing else uses the pointer after calling this
+    /// function.
     ///
     /// # Examples
     ///
@@ -479,18 +485,45 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Shorten a vector to be `len` elements long, dropping excess elements.
+    /// Shortens the vector, keeping the first `len` elements and dropping
+    /// the rest.
     ///
     /// If `len` is greater than the vector's current length, this has no
     /// effect.
     ///
+    /// The [`drain`] method can emulate `truncate`, but causes the excess
+    /// elements to be returned instead of dropped.
+    ///
     /// # Examples
+    ///
+    /// Truncating a five element vector to two elements:
     ///
     /// ```
     /// let mut vec = vec![1, 2, 3, 4, 5];
     /// vec.truncate(2);
     /// assert_eq!(vec, [1, 2]);
     /// ```
+    ///
+    /// No truncation occurs when `len` is greater than the vector's current
+    /// length:
+    ///
+    /// ```
+    /// let mut vec = vec![1, 2, 3];
+    /// vec.truncate(8);
+    /// assert_eq!(vec, [1, 2, 3]);
+    /// ```
+    ///
+    /// Truncating when `len == 0` is equivalent to calling the [`clear`]
+    /// method.
+    ///
+    /// ```
+    /// let mut vec = vec![1, 2, 3];
+    /// vec.truncate(0);
+    /// assert_eq!(vec, []);
+    /// ```
+    ///
+    /// [`clear`]: #method.clear
+    /// [`drain`]: #method.drain
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: usize) {
         unsafe {
