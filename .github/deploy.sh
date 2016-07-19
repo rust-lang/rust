@@ -24,7 +24,7 @@ rm -rf out/master/ || exit 0
 # Make the doc for master
 mkdir out/master/
 cp util/gh-pages/index.html out/master
-./util/export.py out/master/lints.json
+python ./util/export.py out/master/lints.json
 
 # Save the doc for the current tag and point current/ to it
 if [ -n "$TRAVIS_TAG" ]; then
