@@ -55,8 +55,7 @@ cd out
 git config user.name "Travis CI"
 git config user.email "travis@ci.invalid"
 
-git diff --exit-code
-if [ $? != 1 ]; then
+if [ -z "$(git diff --exit-code)" ]; then
     echo "No changes to the output on this push; exiting."
     exit 0
 fi
