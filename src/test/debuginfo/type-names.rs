@@ -11,6 +11,8 @@
 // ignore-tidy-linelength
 // ignore-lldb
 // ignore-android: FIXME(#24958)
+// ignore-arm: FIXME(#24958)
+// ignore-aarch64: FIXME(#24958)
 
 // compile-flags:-g
 
