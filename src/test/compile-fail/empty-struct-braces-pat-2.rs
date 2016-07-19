@@ -29,9 +29,9 @@ fn main() {
     //     XEmpty1() => () // ERROR unresolved enum variant, struct or const `XEmpty1`
     // }
     match e1 {
-        Empty1(..) => () //~ ERROR unresolved enum variant, struct or const `Empty1`
+        Empty1(..) => () //~ ERROR unresolved variant or struct `Empty1`
     }
     match xe1 {
-        XEmpty1(..) => () //~ ERROR unresolved enum variant, struct or const `XEmpty1`
+        XEmpty1(..) => () //~ ERROR unresolved variant or struct `XEmpty1`
     }
 }

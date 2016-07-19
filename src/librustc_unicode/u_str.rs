@@ -144,7 +144,9 @@ impl<I> Utf16Encoder<I> {
     }
 }
 
-impl<I> Iterator for Utf16Encoder<I> where I: Iterator<Item=char> {
+impl<I> Iterator for Utf16Encoder<I>
+    where I: Iterator<Item = char>
+{
     type Item = u16;
 
     #[inline]
@@ -155,13 +157,13 @@ impl<I> Iterator for Utf16Encoder<I> where I: Iterator<Item=char> {
             return Some(tmp);
         }
 
-        let mut buf = [0; 2];
         self.chars.next().map(|ch| {
-            let n = CharExt::encode_utf16(ch, &mut buf).unwrap_or(0);
-            if n == 2 {
-                self.extra = buf[1];
+            let n = CharExt::encode_utf16(ch);
+            let n = n.as_slice();
+            if n.len() == 2 {
+                self.extra = n[1];
             }
-            buf[0]
+            n[0]
         })
     }
 

@@ -9,9 +9,9 @@
 // except according to those terms.
 
 macro_rules! my_precioooous {
-    $($t:tt)* => (1);
+    $($t:tt)* => (1); //~ ERROR invalid macro matcher
 }
 
 fn main() {
-    my_precioooous!(); //~ ERROR malformed macro lhs
+    my_precioooous!();
 }

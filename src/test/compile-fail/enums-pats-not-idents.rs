@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//error-pattern:unresolved enum variant
-
 fn main() {
-    // a bug in the parser is allowing this:
-    let a(1) = 13;
+    let a(1) = 13; //~ ERROR unresolved variant or struct `a`
 }

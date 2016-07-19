@@ -15,12 +15,8 @@
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
-#if LLVM_VERSION_MINOR >= 7
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
-#else
-#include "llvm/Target/TargetLibraryInfo.h"
-#endif
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
@@ -49,7 +45,7 @@ LLVMInitializePasses() {
   initializeVectorization(Registry);
   initializeIPO(Registry);
   initializeAnalysis(Registry);
-#if LLVM_VERSION_MINOR <= 7
+#if LLVM_VERSION_MINOR == 7
   initializeIPA(Registry);
 #endif
   initializeTransformUtils(Registry);
@@ -95,6 +91,75 @@ LLVMRustAddPass(LLVMPassManagerRef PM, Pass *pass) {
     assert(pass);
     PassManagerBase *pm = unwrap(PM);
     pm->add(pass);
+}
+
+#ifdef LLVM_COMPONENT_X86
+#define SUBTARGET_X86 SUBTARGET(X86)
+#else
+#define SUBTARGET_X86
+#endif
+
+#ifdef LLVM_COMPONENT_ARM
+#define SUBTARGET_ARM SUBTARGET(ARM)
+#else
+#define SUBTARGET_ARM
+#endif
+
+#ifdef LLVM_COMPONENT_AARCH64
+#define SUBTARGET_AARCH64 SUBTARGET(AArch64)
+#else
+#define SUBTARGET_AARCH64
+#endif
+
+#ifdef LLVM_COMPONENT_MIPS
+#define SUBTARGET_MIPS SUBTARGET(Mips)
+#else
+#define SUBTARGET_MIPS
+#endif
+
+#ifdef LLVM_COMPONENT_POWERPC
+#define SUBTARGET_PPC SUBTARGET(PPC)
+#else
+#define SUBTARGET_PPC
+#endif
+
+#define GEN_SUBTARGETS    \
+        SUBTARGET_X86     \
+        SUBTARGET_ARM     \
+        SUBTARGET_AARCH64 \
+        SUBTARGET_MIPS    \
+        SUBTARGET_PPC
+
+#define SUBTARGET(x) namespace llvm {                \
+    extern const SubtargetFeatureKV x##FeatureKV[];  \
+    extern const SubtargetFeatureKV x##SubTypeKV[];  \
+  }
+
+GEN_SUBTARGETS
+#undef SUBTARGET
+
+extern "C" bool
+LLVMRustHasFeature(LLVMTargetMachineRef TM,
+		   const char *feature) {
+    TargetMachine *Target = unwrap(TM);
+    const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
+    const FeatureBitset &Bits = MCInfo->getFeatureBits();
+    const llvm::SubtargetFeatureKV *FeatureEntry;
+
+#define SUBTARGET(x)                                        \
+    if (MCInfo->isCPUStringValid(x##SubTypeKV[0].Key)) {    \
+        FeatureEntry = x##FeatureKV;                       \
+    } else
+
+    GEN_SUBTARGETS {
+        return false;
+    }
+#undef SUBTARGET
+
+    while (strcmp(feature, FeatureEntry->Key) != 0)
+        FeatureEntry++;
+
+    return (Bits & FeatureEntry->Value) == FeatureEntry->Value;
 }
 
 extern "C" LLVMTargetMachineRef
@@ -154,17 +219,8 @@ LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
                           LLVMPassManagerRef PMR,
                           LLVMModuleRef M) {
     PassManagerBase *PM = unwrap(PMR);
-#if LLVM_VERSION_MINOR >= 7
     PM->add(createTargetTransformInfoWrapperPass(
           unwrap(TM)->getTargetIRAnalysis()));
-#else
-#if LLVM_VERSION_MINOR == 6
-    PM->add(new DataLayoutPass());
-#else
-    PM->add(new DataLayoutPass(unwrap(M)));
-#endif
-    unwrap(TM)->addAnalysisPasses(*PM);
-#endif
 }
 
 extern "C" void
@@ -173,10 +229,8 @@ LLVMRustConfigurePassManagerBuilder(LLVMPassManagerBuilderRef PMB,
                                     bool MergeFunctions,
                                     bool SLPVectorize,
                                     bool LoopVectorize) {
-#if LLVM_VERSION_MINOR >= 6
     // Ignore mergefunc for now as enabling it causes crashes.
     //unwrap(PMB)->MergeFunctions = MergeFunctions;
-#endif
     unwrap(PMB)->SLPVectorize = SLPVectorize;
     unwrap(PMB)->OptLevel = OptLevel;
     unwrap(PMB)->LoopVectorize = LoopVectorize;
@@ -189,11 +243,7 @@ LLVMRustAddBuilderLibraryInfo(LLVMPassManagerBuilderRef PMB,
                               LLVMModuleRef M,
                               bool DisableSimplifyLibCalls) {
     Triple TargetTriple(unwrap(M)->getTargetTriple());
-#if LLVM_VERSION_MINOR >= 7
     TargetLibraryInfoImpl *TLI = new TargetLibraryInfoImpl(TargetTriple);
-#else
-    TargetLibraryInfo *TLI = new TargetLibraryInfo(TargetTriple);
-#endif
     if (DisableSimplifyLibCalls)
       TLI->disableAllFunctions();
     unwrap(PMB)->LibraryInfo = TLI;
@@ -206,17 +256,10 @@ LLVMRustAddLibraryInfo(LLVMPassManagerRef PMB,
                        LLVMModuleRef M,
                        bool DisableSimplifyLibCalls) {
     Triple TargetTriple(unwrap(M)->getTargetTriple());
-#if LLVM_VERSION_MINOR >= 7
     TargetLibraryInfoImpl TLII(TargetTriple);
     if (DisableSimplifyLibCalls)
       TLII.disableAllFunctions();
     unwrap(PMB)->add(new TargetLibraryInfoWrapperPass(TLII));
-#else
-    TargetLibraryInfo *TLI = new TargetLibraryInfo(TargetTriple);
-    if (DisableSimplifyLibCalls)
-      TLI->disableAllFunctions();
-    unwrap(PMB)->add(TLI);
-#endif
 }
 
 // Unfortunately, the LLVM C API doesn't provide an easy way of iterating over
@@ -254,25 +297,16 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target,
   PassManager *PM = unwrap<PassManager>(PMR);
 
   std::string ErrorInfo;
-#if LLVM_VERSION_MINOR >= 6
   std::error_code EC;
   raw_fd_ostream OS(path, EC, sys::fs::F_None);
   if (EC)
     ErrorInfo = EC.message();
-#else
-  raw_fd_ostream OS(path, ErrorInfo, sys::fs::F_None);
-#endif
   if (ErrorInfo != "") {
     LLVMRustSetLastError(ErrorInfo.c_str());
     return false;
   }
 
-#if LLVM_VERSION_MINOR >= 7
   unwrap(Target)->addPassesToEmitFile(*PM, OS, FileType, false);
-#else
-  formatted_raw_ostream FOS(OS);
-  unwrap(Target)->addPassesToEmitFile(*PM, FOS, FileType, false);
-#endif
   PM->run(*unwrap(M));
 
   // Apparently `addPassesToEmitFile` adds a pointer to our on-the-stack output
@@ -289,14 +323,10 @@ LLVMRustPrintModule(LLVMPassManagerRef PMR,
   PassManager *PM = unwrap<PassManager>(PMR);
   std::string ErrorInfo;
 
-#if LLVM_VERSION_MINOR >= 6
   std::error_code EC;
   raw_fd_ostream OS(path, EC, sys::fs::F_None);
   if (EC)
     ErrorInfo = EC.message();
-#else
-  raw_fd_ostream OS(path, ErrorInfo, sys::fs::F_None);
-#endif
 
   formatted_raw_ostream FOS(OS);
 
@@ -359,22 +389,10 @@ extern "C" void
 LLVMRustSetDataLayoutFromTargetMachine(LLVMModuleRef Module,
                                        LLVMTargetMachineRef TMR) {
     TargetMachine *Target = unwrap(TMR);
-#if LLVM_VERSION_MINOR >= 7
     unwrap(Module)->setDataLayout(Target->createDataLayout());
-#elif LLVM_VERSION_MINOR >= 6
-    if (const DataLayout *DL = Target->getSubtargetImpl()->getDataLayout())
-        unwrap(Module)->setDataLayout(DL);
-#else
-    if (const DataLayout *DL = Target->getDataLayout())
-        unwrap(Module)->setDataLayout(DL);
-#endif
 }
 
 extern "C" LLVMTargetDataRef
 LLVMRustGetModuleDataLayout(LLVMModuleRef M) {
-#if LLVM_VERSION_MINOR >= 7
     return wrap(&unwrap(M)->getDataLayout());
-#else
-    return wrap(unwrap(M)->getDataLayout());
-#endif
 }

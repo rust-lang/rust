@@ -34,10 +34,10 @@ code that manipulates syntax trees at
 compile time.
 
 Let's write a plugin
-[`roman_numerals.rs`](https://github.com/rust-lang/rust/tree/master/src/test/auxiliary/roman_numerals.rs)
+[`roman_numerals.rs`](https://github.com/rust-lang/rust/blob/master/src/test/run-pass-fulldeps/auxiliary/roman_numerals.rs)
 that implements Roman numeral integer literals.
 
-```ignore
+```rust,ignore
 #![crate_type="dylib"]
 #![feature(plugin_registrar, rustc_private)]
 
@@ -45,11 +45,11 @@ extern crate syntax;
 extern crate rustc;
 extern crate rustc_plugin;
 
-use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ast::TokenTree;
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax::ext::build::AstBuilder;  // trait for expr_usize
+use syntax_pos::Span;
 use rustc_plugin::Registry;
 
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
@@ -102,7 +102,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
 Then we can use `rn!()` like any other macro:
 
-```ignore
+```rust,ignore
 #![feature(plugin)]
 #![plugin(roman_numerals)]
 
@@ -132,7 +132,7 @@ Some of the [macro debugging tips](macros.html#debugging-macro-code) are applica
 You can use `syntax::parse` to turn token trees into
 higher-level syntax elements like expressions:
 
-```ignore
+```rust,ignore
 fn expand_foo(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         -> Box<MacResult+'static> {
 
@@ -166,10 +166,11 @@ quasiquote as an ordinary plugin library.
 
 Plugins can extend [Rust's lint
 infrastructure](../reference.html#lint-check-attributes) with additional checks for
-code style, safety, etc. Now let's write a plugin [`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/auxiliary/lint_plugin_test.rs)
+code style, safety, etc. Now let's write a plugin
+[`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/run-pass-fulldeps/auxiliary/lint_plugin_test.rs)
 that warns about any item named `lintme`.
 
-```ignore
+```rust,ignore
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
 
@@ -211,7 +212,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
 Then code like
 
-```ignore
+```rust,ignore
 #![plugin(lint_plugin_test)]
 
 fn lintme() { }

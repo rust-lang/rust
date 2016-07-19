@@ -12,11 +12,11 @@ use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast::{MetaItem, Expr, BinOpKind};
-use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                                   span: Span,
@@ -73,6 +73,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                 ret_ty: Literal(path_local!(bool)),
                 attributes: attrs,
                 is_unsafe: false,
+                unify_fieldless_variants: true,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     $f(a, b, c)
                 }))

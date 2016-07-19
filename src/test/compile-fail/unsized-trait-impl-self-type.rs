@@ -17,7 +17,7 @@ trait T3<Z: ?Sized> {
 
 struct S5<Y>(Y);
 
-impl<X: ?Sized> T3<X> for S5<X> { //~ ERROR not implemented
+impl<X: ?Sized> T3<X> for S5<X> { //~ ERROR E0277
 }
 
 fn main() { }

@@ -26,5 +26,5 @@ impl<T> Foo<T> {
 fn main() {
     let x = Foo { value: Bar };
     x.equals(&x);
-    //~^ ERROR the trait `core::cmp::Eq` is not implemented for the type `Bar`
+    //~^ ERROR `Bar: std::cmp::Eq` is not satisfied
 }

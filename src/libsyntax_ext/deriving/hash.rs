@@ -13,10 +13,10 @@ use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast::{MetaItem, Expr, Mutability};
-use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             span: Span,
@@ -51,6 +51,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                 ret_ty: nil_ty(),
                 attributes: vec![],
                 is_unsafe: false,
+                unify_fieldless_variants: true,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     hash_substructure(a, b, c)
                 }))
@@ -81,15 +82,13 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
 
     let fields = match *substr.fields {
         Struct(_, ref fs) => fs,
-        EnumMatching(index, variant, ref fs) => {
-            // Determine the discriminant. We will feed this value to the byte
-            // iteration function.
-            let discriminant = match variant.node.disr_expr {
-                Some(ref d) => d.clone(),
-                None => cx.expr_usize(trait_span, index)
-            };
+        EnumMatching(_, _, ref fs) => {
+            let variant_value = deriving::call_intrinsic(cx,
+                                                         trait_span,
+                                                         "discriminant_value",
+                                                         vec![cx.expr_self(trait_span)]);
 
-            stmts.push(call_hash(trait_span, discriminant));
+            stmts.push(call_hash(trait_span, variant_value));
 
             fs
         }
@@ -100,5 +99,5 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         stmts.push(call_hash(span, self_.clone()));
     }
 
-    cx.expr_block(cx.block(trait_span, stmts, None))
+    cx.expr_block(cx.block(trait_span, stmts))
 }

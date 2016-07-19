@@ -13,7 +13,7 @@ appropriate. This name is chosen rather than names like `find` or
 
 For a container with keys/indexes of type `K` and elements of type `V`:
 
-```rust
+```rust,ignore
 // Look up element without failing
 fn get(&self, key: K) -> Option<&V>
 fn get_mut(&mut self, key: K) -> Option<&mut V>
@@ -31,7 +31,7 @@ impl IndexMut<K, V> for Container { ... }
 Prefer specific conversion functions like `as_bytes` or `into_vec` whenever
 possible. Otherwise, use:
 
-```rust
+```rust,ignore
 // Extract contents without failing
 fn get(&self) -> &V
 fn get_mut(&mut self) -> &mut V
@@ -40,7 +40,7 @@ fn unwrap(self) -> V
 
 #### Wrappers/Cells around `Copy` data
 
-```rust
+```rust,ignore
 // Extract contents without failing
 fn get(&self) -> V
 ```
@@ -52,7 +52,7 @@ play a special role for failure.
 
 For `Option<V>`:
 
-```rust
+```rust,ignore
 // Extract contents or fail if not available
 fn assert(self) -> V
 fn expect(self, &str) -> V
@@ -60,7 +60,7 @@ fn expect(self, &str) -> V
 
 For `Result<V, E>`:
 
-```rust
+```rust,ignore
 // Extract the contents of Ok variant; fail if Err
 fn assert(self) -> V
 

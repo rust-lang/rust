@@ -22,18 +22,16 @@ pub fn main() {
 fn test1() {
     let x: Foo<_> = Bar::<usize>(PhantomData);
     //~^ ERROR mismatched types
-    //~| expected `Foo<_>`
-    //~| found `Bar<usize>`
-    //~| expected struct `Foo`
-    //~| found struct `Bar`
+    //~| expected type `Foo<_>`
+    //~| found type `Bar<usize>`
+    //~| expected struct `Foo`, found struct `Bar`
     let y: Foo<usize> = x;
 }
 
 fn test2() {
     let x: Foo<_> = Bar::<usize>(PhantomData);
     //~^ ERROR mismatched types
-    //~| expected `Foo<_>`
-    //~| found `Bar<usize>`
-    //~| expected struct `Foo`
-    //~| found struct `Bar`
+    //~| expected type `Foo<_>`
+    //~| found type `Bar<usize>`
+    //~| expected struct `Foo`, found struct `Bar`
 }

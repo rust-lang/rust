@@ -33,7 +33,7 @@ fn may_panic<'a>() -> Droppable<'a> {
 }
 
 #[rustc_mir]
-fn mir<'a>(d: Droppable<'a>){
+fn mir<'a>(d: Droppable<'a>) {
     let (mut a, mut b) = (false, false);
     let y = Droppable(&mut a, 2);
     let x = [Droppable(&mut b, 1), y, d, may_panic()];

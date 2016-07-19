@@ -19,6 +19,13 @@ fn size_of_basic() {
 }
 
 #[test]
+#[cfg(target_pointer_width = "16")]
+fn size_of_16() {
+    assert_eq!(size_of::<usize>(), 2);
+    assert_eq!(size_of::<*const usize>(), 2);
+}
+
+#[test]
 #[cfg(target_pointer_width = "32")]
 fn size_of_32() {
     assert_eq!(size_of::<usize>(), 4);
@@ -45,6 +52,13 @@ fn align_of_basic() {
     assert_eq!(align_of::<u8>(), 1);
     assert_eq!(align_of::<u16>(), 2);
     assert_eq!(align_of::<u32>(), 4);
+}
+
+#[test]
+#[cfg(target_pointer_width = "16")]
+fn align_of_16() {
+    assert_eq!(align_of::<usize>(), 2);
+    assert_eq!(align_of::<*const usize>(), 2);
 }
 
 #[test]

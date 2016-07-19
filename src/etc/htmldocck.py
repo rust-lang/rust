@@ -117,6 +117,7 @@ from xml.etree import cElementTree as ET
 from htmlentitydefs import entitydefs
 entitydefs['larrb'] = u'\u21e4'
 entitydefs['rarrb'] = u'\u21e5'
+entitydefs['nbsp'] = ' '
 
 # "void elements" (no closing tag) from the HTML Standard section 12.1.2
 VOID_ELEMENTS = set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen',
@@ -342,9 +343,9 @@ def check_tree_text(tree, path, pat, regexp):
     return ret
 
 
-def check_tree_count(tree, path, count):
+def get_tree_count(tree, path):
     path = normalize_xpath(path)
-    return len(tree.findall(path)) == count
+    return len(tree.findall(path))
 
 def stderr(*args):
     print(*args, file=sys.stderr)
@@ -393,7 +394,10 @@ def check_command(c, cache):
 
         elif c.cmd == 'count': # count test
             if len(c.args) == 3: # @count <path> <pat> <count> = count test
-                ret = check_tree_count(cache.get_tree(c.args[0]), c.args[1], int(c.args[2]))
+                expected = int(c.args[2])
+                found = get_tree_count(cache.get_tree(c.args[0]), c.args[1])
+                cerr = "Expected {} occurrences but found {}".format(expected, found)
+                ret = expected == found
             else:
                 raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
         elif c.cmd == 'valid-html':

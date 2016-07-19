@@ -17,4 +17,11 @@ use array::ARRAY;
 static X: &'static u8 = &ARRAY[0];
 //~^ ERROR: cannot refer to the interior of another static, use a constant
 
+static Y: &'static u8 = &(&ARRAY)[0];
+//~^ ERROR: cannot refer to the interior of another static, use a constant
+
+static Z: u8 = (&ARRAY)[0];
+//~^ ERROR: cannot refer to the interior of another static, use a constant
+//~^^ ERROR: cannot refer to other statics by value
+
 pub fn main() {}

@@ -23,7 +23,8 @@ DEPS_collectionstest :=
 $(eval $(call RUST_CRATE,collectionstest))
 
 TEST_TARGET_CRATES = $(filter-out core rustc_unicode alloc_system libc \
-		     		  alloc_jemalloc,$(TARGET_CRATES)) \
+		     		  alloc_jemalloc panic_unwind \
+				  panic_abort,$(TARGET_CRATES)) \
 			collectionstest coretest
 TEST_DOC_CRATES = $(DOC_CRATES) arena flate fmt_macros getopts graphviz \
                 log rand rbml serialize syntax term test
@@ -240,52 +241,19 @@ cleantestlibs:
 # Tidy
 ######################################################################
 
-ifdef CFG_NOTIDY
 .PHONY: tidy
-tidy:
-else
+tidy: $(HBIN0_H_$(CFG_BUILD))/tidy$(X_$(CFG_BUILD)) \
+		$(SNAPSHOT_RUSTC_POST_CLEANUP)
+	$(TARGET_RPATH_VAR0_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $< $(S)src
 
-# Run the tidy script in multiple parts to avoid huge 'echo' commands
-.PHONY: tidy
-tidy: tidy-basic tidy-binaries tidy-errors tidy-features
-
-endif
-
-.PHONY: tidy-basic
-tidy-basic:
-		@$(call E, check: formatting)
-		$(Q) $(CFG_PYTHON) $(S)src/etc/tidy.py $(S)src/
-
-.PHONY: tidy-binaries
-tidy-binaries:
-		@$(call E, check: binaries)
-		$(Q)find $(S)src -type f \
-		    \( -perm -u+x -or -perm -g+x -or -perm -o+x \) \
-		    -not -name '*.rs' -and -not -name '*.py' \
-		    -and -not -name '*.sh' -and -not -name '*.pp' \
-		| grep '^$(S)src/jemalloc' -v \
-		| grep '^$(S)src/libuv' -v \
-		| grep '^$(S)src/llvm' -v \
-		| grep '^$(S)src/rt/hoedown' -v \
-		| grep '^$(S)src/gyp' -v \
-		| grep '^$(S)src/etc' -v \
-		| grep '^$(S)src/doc' -v \
-		| grep '^$(S)src/compiler-rt' -v \
-		| grep '^$(S)src/libbacktrace' -v \
-		| grep '^$(S)src/rust-installer' -v \
-		| grep '^$(S)src/liblibc' -v \
-		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
-
-.PHONY: tidy-errors
-tidy-errors:
-		@$(call E, check: extended errors)
-		$(Q) $(CFG_PYTHON) $(S)src/etc/errorck.py $(S)src/
-
-.PHONY: tidy-features
-tidy-features:
-		@$(call E, check: feature sanity)
-		$(Q) $(CFG_PYTHON) $(S)src/etc/featureck.py $(S)src/
-
+$(HBIN0_H_$(CFG_BUILD))/tidy$(X_$(CFG_BUILD)): \
+		$(TSREQ0_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
+		$(TLIB0_T_$(CFG_BUILD)_H_$(CFG_BUILD))/stamp.std \
+		$(call rwildcard,$(S)src/tools/tidy/src,*.rs) \
+		$(SNAPSHOT_RUSTC_POST_CLEANUP) | \
+		$(TLIB0_T_$(CFG_BUILD)_H_$(CFG_BUILD))
+	$(STAGE0_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(S)src/tools/tidy/src/main.rs \
+		--out-dir $(@D) --crate-name tidy
 
 ######################################################################
 # Sets of tests
@@ -305,10 +273,17 @@ check-stage$(1)-T-$(2)-H-$(3)-exec: \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-gdb-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-lldb-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-codegen-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-codegen-units-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-incremental-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-ui-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-doc-error-index-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-exec
+
+ifndef CFG_DISABLE_CODEGEN_TESTS
+check-stage$(1)-T-$(2)-H-$(3)-exec: \
+	check-stage$(1)-T-$(2)-H-$(3)-codegen-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-codegen-units-exec
+endif
 
 # Only test the compiler-dependent crates when the target is
 # able to build a compiler (when the target triple is in the set of host triples)
@@ -383,7 +358,7 @@ $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)): \
 	@$$(call E, rustc: $$@)
 	$(Q)CFG_LLVM_LINKAGE_FILE=$$(LLVM_LINKAGE_PATH_$(2)) \
 	    $$(subst @,,$$(STAGE$(1)_T_$(2)_H_$(3))) -o $$@ $$< --test \
-		-L "$$(RT_OUTPUT_DIR_$(2))" \
+		-Cmetadata="test-crate" -L "$$(RT_OUTPUT_DIR_$(2))" \
 		$$(LLVM_LIBDIR_RUSTFLAGS_$(2)) \
 		$$(RUSTFLAGS_$(4))
 
@@ -477,6 +452,11 @@ DEBUGINFO_LLDB_RS := $(call rwildcard,$(S)src/test/debuginfo/,*.rs)
 CODEGEN_RS := $(call rwildcard,$(S)src/test/codegen/,*.rs)
 CODEGEN_CC := $(call rwildcard,$(S)src/test/codegen/,*.cc)
 CODEGEN_UNITS_RS := $(call rwildcard,$(S)src/test/codegen-units/,*.rs)
+INCREMENTAL_RS := $(call rwildcard,$(S)src/test/incremental/,*.rs)
+RMAKE_RS := $(wildcard $(S)src/test/run-make/*/Makefile)
+UI_RS := $(call rwildcard,$(S)src/test/ui/,*.rs) \
+         $(call rwildcard,$(S)src/test/ui/,*.stdout) \
+         $(call rwildcard,$(S)src/test/ui/,*.stderr)
 RUSTDOCCK_RS := $(call rwildcard,$(S)src/test/rustdoc/,*.rs)
 
 RPASS_TESTS := $(RPASS_RS)
@@ -492,6 +472,9 @@ DEBUGINFO_GDB_TESTS := $(DEBUGINFO_GDB_RS)
 DEBUGINFO_LLDB_TESTS := $(DEBUGINFO_LLDB_RS)
 CODEGEN_TESTS := $(CODEGEN_RS) $(CODEGEN_CC)
 CODEGEN_UNITS_TESTS := $(CODEGEN_UNITS_RS)
+INCREMENTAL_TESTS := $(INCREMENTAL_RS)
+RMAKE_TESTS := $(RMAKE_RS)
+UI_TESTS := $(UI_RS)
 RUSTDOCCK_TESTS := $(RUSTDOCCK_RS)
 
 CTEST_SRC_BASE_rpass = run-pass
@@ -553,6 +536,21 @@ CTEST_SRC_BASE_codegen-units = codegen-units
 CTEST_BUILD_BASE_codegen-units = codegen-units
 CTEST_MODE_codegen-units = codegen-units
 CTEST_RUNTOOL_codegen-units = $(CTEST_RUNTOOL)
+
+CTEST_SRC_BASE_incremental = incremental
+CTEST_BUILD_BASE_incremental = incremental
+CTEST_MODE_incremental = incremental
+CTEST_RUNTOOL_incremental = $(CTEST_RUNTOOL)
+
+CTEST_SRC_BASE_rmake = run-make
+CTEST_BUILD_BASE_rmake = run-make
+CTEST_MODE_rmake = run-make
+CTEST_RUNTOOL_rmake = $(CTEST_RUNTOOL)
+
+CTEST_SRC_BASE_ui = ui
+CTEST_BUILD_BASE_ui = ui
+CTEST_MODE_ui = ui
+CTEST_RUNTOOL_ui = $(CTEST_RUNTOOL)
 
 CTEST_SRC_BASE_rustdocck = rustdoc
 CTEST_BUILD_BASE_rustdocck = rustdoc
@@ -630,25 +628,30 @@ ifdef CFG_ENABLE_DEBUGINFO_TESTS
 CTEST_RUSTC_FLAGS += -g
 endif
 
-CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
+CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) = \
 		--compile-lib-path $$(HLIB$(1)_H_$(3)) \
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3)) \
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
         --rustdoc-path $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
-        --llvm-bin-path $(CFG_LLVM_INST_DIR_$(CFG_BUILD))/bin \
-        --aux-base $$(S)src/test/auxiliary/ \
+        --llvm-filecheck $(CFG_LLVM_INST_DIR_$(CFG_BUILD))/bin/FileCheck \
         --stage-id stage$(1)-$(2) \
         --target $(2) \
         --host $(3) \
-	--python $$(CFG_PYTHON) \
+	--docck-python $$(CFG_PYTHON) \
+	--lldb-python $$(CFG_LLDB_PYTHON) \
         --gdb-version="$(CFG_GDB_VERSION)" \
         --lldb-version="$(CFG_LLDB_VERSION)" \
-        --android-cross-path=$(CFG_ANDROID_CROSS_PATH) \
+        --android-cross-path=$(CFG_ARM_LINUX_ANDROIDEABI_NDK) \
         --adb-path=$(CFG_ADB) \
         --adb-test-dir=$(CFG_ADB_TEST_DIR) \
         --host-rustcflags "$(RUSTC_FLAGS_$(3)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(3))" \
         --lldb-python-dir=$(CFG_LLDB_PYTHON_DIR) \
         --target-rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
+	--cc '$$(call FIND_COMPILER,$$(CC_$(2)))' \
+	--cxx '$$(call FIND_COMPILER,$$(CXX_$(2)))' \
+	--cflags "$$(CFG_GCCISH_CFLAGS_$(2))" \
+	--llvm-components "$$(LLVM_ALL_COMPONENTS_$(2))" \
+	--llvm-cxxflags "$$(LLVM_CXXFLAGS_$(2))" \
         $$(CTEST_TESTARGS)
 
 ifdef CFG_VALGRIND_RPASS
@@ -677,6 +680,10 @@ CTEST_DEPS_debuginfo-lldb_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_LLDB_TESTS) \
                                                $(S)src/etc/lldb_rust_formatters.py
 CTEST_DEPS_codegen_$(1)-T-$(2)-H-$(3) = $$(CODEGEN_TESTS)
 CTEST_DEPS_codegen-units_$(1)-T-$(2)-H-$(3) = $$(CODEGEN_UNITS_TESTS)
+CTEST_DEPS_incremental_$(1)-T-$(2)-H-$(3) = $$(INCREMENTAL_TESTS)
+CTEST_DEPS_rmake_$(1)-T-$(2)-H-$(3) = $$(RMAKE_TESTS) \
+	$$(CSREQ$(1)_T_$(3)_H_$(3)) $$(SREQ$(1)_T_$(2)_H_$(3))
+CTEST_DEPS_ui_$(1)-T-$(2)-H-$(3) = $$(UI_TESTS)
 CTEST_DEPS_rustdocck_$(1)-T-$(2)-H-$(3) = $$(RUSTDOCCK_TESTS) \
 		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
 		$(S)src/etc/htmldocck.py
@@ -690,7 +697,7 @@ $(foreach host,$(CFG_HOST), \
 
 define DEF_RUN_COMPILETEST
 
-CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
+CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) = \
         $$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3)) \
         --src-base $$(S)src/test/$$(CTEST_SRC_BASE_$(4))/ \
         --build-base $(3)/test/$$(CTEST_BUILD_BASE_$(4))/ \
@@ -722,6 +729,10 @@ endif
 
 ifeq ($$(CTEST_DONT_RUN_$(1)-T-$(2)-H-$(3)-$(4)),)
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
+	export INCLUDE := $$(CFG_MSVC_INCLUDE_PATH_$$(HOST_$(3)))
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
+	export LIB := $$(CFG_MSVC_LIB_PATH_$$(HOST_$(3)))
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
                 $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
 	@$$(call E, run $(4) [$(2)]: $$<)
@@ -743,7 +754,8 @@ endif
 endef
 
 CTEST_NAMES = rpass rpass-valgrind rpass-full rfail-full cfail-full rfail cfail pfail \
-	debuginfo-gdb debuginfo-lldb codegen codegen-units rustdocck
+	debuginfo-gdb debuginfo-lldb codegen codegen-units rustdocck incremental \
+	rmake ui
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
@@ -778,7 +790,7 @@ $(foreach host,$(CFG_HOST), \
 
 define DEF_RUN_PRETTY_TEST
 
-PRETTY_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
+PRETTY_ARGS$(1)-T-$(2)-H-$(3)-$(4) = \
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3)) \
         --src-base $$(S)src/test/$$(PRETTY_DIRNAME_$(4))/ \
         --build-base $(3)/test/$$(PRETTY_DIRNAME_$(4))/ \
@@ -941,6 +953,8 @@ TEST_GROUPS = \
 	debuginfo-lldb \
 	codegen \
 	codegen-units \
+	incremental \
+	ui \
 	doc \
 	$(foreach docname,$(DOC_NAMES),doc-$(docname)) \
 	pretty \
@@ -1027,70 +1041,3 @@ endef
 
 $(foreach crate,$(TEST_CRATES), \
  $(eval $(call DEF_CHECK_CRATE,$(crate))))
-
-######################################################################
-# RMAKE rules
-######################################################################
-
-RMAKE_TESTS := $(shell ls -d $(S)src/test/run-make/*/)
-RMAKE_TESTS := $(RMAKE_TESTS:$(S)src/test/run-make/%/=%)
-
-define DEF_RMAKE_FOR_T_H
-# $(1) the stage
-# $(2) target triple
-# $(3) host triple
-
-
-ifeq ($(2)$(3),$$(CFG_BUILD)$$(CFG_BUILD))
-check-stage$(1)-T-$(2)-H-$(3)-rmake-exec: \
-		$$(call TEST_OK_FILE,$(1),$(2),$(3),rmake)
-
-$$(call TEST_OK_FILE,$(1),$(2),$(3),rmake): \
-		$$(RMAKE_TESTS:%=$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok)
-	@touch $$@
-
-$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
-	export INCLUDE := $$(CFG_MSVC_INCLUDE_PATH_$$(HOST_$(3)))
-$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
-	export LIB := $$(CFG_MSVC_LIB_PATH_$$(HOST_$(3)))
-$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
-	export MSVC_LIB := "$$(CFG_MSVC_LIB_$$(HOST_$(3)))"
-$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
-		$(S)src/test/run-make/%/Makefile \
-		$$(CSREQ$(1)_T_$(2)_H_$(3))
-	@rm -rf $(3)/test/run-make/$$*
-	@mkdir -p $(3)/test/run-make/$$*
-	$$(Q)touch $$@.start_time
-	$$(Q)$$(CFG_PYTHON) $(S)src/etc/maketest.py $$(dir $$<) \
-        $$(MAKE) \
-	    $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
-	    $(3)/test/run-make/$$* \
-	    '$$(CC_$(3))' \
-	    "$$(CFG_GCCISH_CFLAGS_$(3))" \
-	    $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
-	    "$$(TESTNAME)" \
-	    $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3)) \
-	    "$$(LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3))" \
-	    "$$(LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3))" \
-	    $(1) \
-	    $$(S) \
-	    $(3) \
-	    "$$(LLVM_LIBDIR_RUSTFLAGS_$(3))" \
-	    "$$(LLVM_ALL_COMPONENTS_$(3))" \
-	    "$$(LLVM_CXXFLAGS_$(3))" \
-	    '$$(CXX_$(3))'
-	@touch -r $$@.start_time $$@ && rm $$@.start_time
-else
-# FIXME #11094 - The above rule doesn't work right for multiple targets
-check-stage$(1)-T-$(2)-H-$(3)-rmake-exec:
-	@true
-
-endif
-
-
-endef
-
-$(foreach stage,$(STAGES), \
- $(foreach target,$(CFG_TARGET), \
-  $(foreach host,$(CFG_HOST), \
-   $(eval $(call DEF_RMAKE_FOR_T_H,$(stage),$(target),$(host))))))

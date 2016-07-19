@@ -11,9 +11,5 @@
 fn main() {
     loop {
         true //~  ERROR mismatched types
-             //~| expected ()
-             //~| found bool
-             //~| expected ()
-             //~| found bool
     }
 }

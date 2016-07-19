@@ -21,5 +21,5 @@ fn take_param<T:Foo>(foo: &T) { }
 fn main() {
     let x: Box<_> = box 3;
     take_param(&x);
-    //~^ ERROR the trait `core::marker::Copy` is not implemented
+    //~^ ERROR `Box<_>: std::marker::Copy` is not satisfied
 }

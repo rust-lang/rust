@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,5 +13,5 @@
 // This file was auto-generated using 'src/etc/generate-keyword-tests.py match'
 
 fn main() {
-    let match = "foo"; //~ error: ident
+    let match = "foo"; //~ error: expected pattern, found keyword `match`
 }

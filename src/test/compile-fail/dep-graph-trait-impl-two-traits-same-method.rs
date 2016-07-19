@@ -11,10 +11,11 @@
 // Test that adding an impl to a trait `Foo` DOES affect functions
 // that only use `Bar` if they have methods in common.
 
-// compile-flags: -Z incr-comp
+// compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
+#![allow(unused_imports)]
 
 fn main() { }
 

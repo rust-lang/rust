@@ -4,7 +4,7 @@
 
 Prefer
 
-```rust
+```rust,ignore
 impl Foo {
     pub fn frob(&self, w: widget) { ... }
 }
@@ -12,7 +12,7 @@ impl Foo {
 
 over
 
-```rust
+```rust,ignore
 pub fn frob(foo: &Foo, w: widget) { ... }
 ```
 

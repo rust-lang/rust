@@ -12,6 +12,7 @@
 #![feature(hash_default)]
 
 use std::hash::{Hash, SipHasher, Hasher};
+use std::mem::size_of;
 
 #[derive(Hash)]
 struct Person {
@@ -24,10 +25,28 @@ struct Person {
 #[derive(Hash)] struct __H__H;
 #[derive(Hash)] enum Collision<__H> { __H { __H__H: __H } }
 
+#[derive(Hash)]
+enum E { A=1, B }
+
 fn hash<T: Hash>(t: &T) -> u64 {
     let mut s = SipHasher::new_with_keys(0, 0);
     t.hash(&mut s);
     s.finish()
+}
+
+struct FakeHasher<'a>(&'a mut Vec<u8>);
+impl<'a> Hasher for FakeHasher<'a> {
+    fn finish(&self) -> u64 {
+        unimplemented!()
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        self.0.extend(bytes);
+    }
+}
+
+fn fake_hash(v: &mut Vec<u8>, e: E) {
+    e.hash(&mut FakeHasher(v));
 }
 
 fn main() {
@@ -43,4 +62,11 @@ fn main() {
     };
     assert_eq!(hash(&person1), hash(&person1));
     assert!(hash(&person1) != hash(&person2));
+
+    // test #21714
+    let mut va = vec![];
+    let mut vb = vec![];
+    fake_hash(&mut va, E::A);
+    fake_hash(&mut vb, E::B);
+    assert!(va != vb);
 }

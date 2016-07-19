@@ -11,7 +11,8 @@
 pub use self::CommentStyle::*;
 
 use ast;
-use codemap::{BytePos, CharPos, CodeMap, Pos};
+use codemap::CodeMap;
+use syntax_pos::{BytePos, CharPos, Pos};
 use errors;
 use parse::lexer::is_block_doc_comment;
 use parse::lexer::{StringReader, TokenAndSpan};
@@ -346,7 +347,7 @@ pub fn gather_comments_and_literals(span_diagnostic: &errors::Handler,
     srdr.read_to_end(&mut src).unwrap();
     let src = String::from_utf8(src).unwrap();
     let cm = CodeMap::new();
-    let filemap = cm.new_filemap(path, src);
+    let filemap = cm.new_filemap(path, None, src);
     let mut rdr = lexer::StringReader::new_raw(span_diagnostic, filemap);
 
     let mut comments: Vec<Comment> = Vec::new();

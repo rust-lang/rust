@@ -1,15 +1,33 @@
+2016-05-18  Uros Bizjak  <ubizjak@gmail.com>
+
+	PR target/71161
+	* elf.c (phdr_callback) [__i386__]: Add
+	__attribute__((__force_align_arg_pointer__)).
+
+2016-03-02  Maxim Ostapenko  <m.ostapenko@partner.samsung.com>
+
+	* elf.c (backtrace_initialize): Properly initialize elf_fileline_fn to
+	avoid possible crash.
+	(elf_add): Don't set *fileline_fn to elf_nodebug value in case of
+	missing debug info anymore.
+
+2016-02-06  John David Anglin  <danglin@gcc.gnu.org>
+
+	* mmap.c (MAP_FAILED): Define if not defined.
+
 2016-01-04  Jakub Jelinek  <jakub@redhat.com>
 
 	Update copyright years.
 
 2015-12-18  Andris Pavenis  <andris.pavenis@iki.fi>
 
-	* configure.ac: Specify that DJGPP do not have mmap even when sys/mman.h exists
+	* configure.ac: Specify that DJGPP do not have mmap
+	even when sys/mman.h exists.
 	* configure: Regenerate
 
 2015-12-09  John David Anglin  <danglin@gcc.gnu.org>
 
-	PR 68115/libfortran
+	PR libgfortran/68115
 	* configure.ac: Set libbacktrace_cv_sys_sync to no on hppa*-*-hpux*.
 	* configure: Regenerate.
 	* elf.c (backtrace_initialize): Cast __sync_bool_compare_and_swap call

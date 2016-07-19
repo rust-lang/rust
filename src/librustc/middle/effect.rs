@@ -13,15 +13,15 @@
 use self::RootUnsafeContext::*;
 
 use dep_graph::DepNode;
-use middle::def::Def;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::MethodCall;
+use hir::def::Def;
+use ty::{self, Ty, TyCtxt};
+use ty::MethodCall;
 
 use syntax::ast;
-use syntax::codemap::Span;
-use rustc_front::hir;
-use rustc_front::intravisit;
-use rustc_front::intravisit::{FnKind, Visitor};
+use syntax_pos::Span;
+use hir;
+use hir::intravisit;
+use hir::intravisit::{FnKind, Visitor};
 
 #[derive(Copy, Clone)]
 struct UnsafeContext {
@@ -51,7 +51,7 @@ fn type_is_unsafe_function(ty: Ty) -> bool {
 }
 
 struct EffectCheckVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     /// Whether we're in an unsafe context.
     unsafe_context: UnsafeContext,
@@ -82,9 +82,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 block: &'v hir::Block, span: Span, _: ast::NodeId) {
 
         let (is_item_fn, is_unsafe_fn) = match fn_kind {
-            FnKind::ItemFn(_, _, unsafety, _, _, _) =>
+            FnKind::ItemFn(_, _, unsafety, _, _, _, _) =>
                 (true, unsafety == hir::Unsafety::Unsafe),
-            FnKind::Method(_, sig, _) =>
+            FnKind::Method(_, sig, _, _) =>
                 (true, sig.unsafety == hir::Unsafety::Unsafe),
             _ => (false, false),
         };
@@ -172,7 +172,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 self.require_unsafe(expr.span, "use of inline assembly");
             }
             hir::ExprPath(..) => {
-                if let Def::Static(_, true) = self.tcx.resolve_expr(expr) {
+                if let Def::Static(_, true) = self.tcx.expect_def(expr.id) {
                     self.require_unsafe(expr.span, "use of mutable static");
                 }
             }
@@ -183,7 +183,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::EffectCheck);
 
     let mut visitor = EffectCheckVisitor {

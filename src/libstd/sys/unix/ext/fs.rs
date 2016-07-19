@@ -88,9 +88,7 @@ pub trait OpenOptionsExt {
     /// }
     /// let file = options.open("foo.txt");
     /// ```
-    #[unstable(feature = "expand_open_options",
-               reason = "recently added",
-               issue = "30014")]
+    #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn custom_flags(&mut self, flags: i32) -> &mut Self;
 }
 

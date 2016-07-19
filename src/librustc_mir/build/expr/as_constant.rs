@@ -14,7 +14,7 @@ use build::Builder;
 use hair::*;
 use rustc::mir::repr::*;
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
     /// `expr` is a valid compile-time constant!
     pub fn as_constant<M>(&mut self, expr: M) -> Constant<'tcx>
@@ -33,9 +33,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             ExprKind::Literal { literal } =>
                 Constant { span: span, ty: ty, literal: literal },
             _ =>
-                this.hir.span_bug(
+                span_bug!(
                     span,
-                    &format!("expression is not a valid constant {:?}", kind)),
+                    "expression is not a valid constant {:?}",
+                    kind),
         }
     }
 }

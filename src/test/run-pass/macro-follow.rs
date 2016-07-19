@@ -26,7 +26,7 @@ macro_rules! follow_expr {
     ($e:expr ;) => {};
 }
 // FOLLOW(ty) = {OpenDelim(Brace), Comma, FatArrow, Colon, Eq, Gt, Semi, Or,
-//               Ident(as), Ident(where), OpenDelim(Bracket)}
+//               Ident(as), Ident(where), OpenDelim(Bracket), Nonterminal(Block)}
 macro_rules! follow_ty {
     ($t:ty {}) => {};
     ($t:ty ,) => {};
@@ -39,6 +39,7 @@ macro_rules! follow_ty {
     ($t:ty as) => {};
     ($t:ty where) => {};
     ($t:ty []) => {};
+    ($t:ty $b:block) => {};
 }
 // FOLLOW(stmt) = FOLLOW(expr)
 macro_rules! follow_stmt {
@@ -59,6 +60,7 @@ macro_rules! follow_path {
     ($p:path as) => {};
     ($p:path where) => {};
     ($p:path []) => {};
+    ($p:path $b:block) => {};
 }
 // FOLLOW(block) = any token
 macro_rules! follow_block {

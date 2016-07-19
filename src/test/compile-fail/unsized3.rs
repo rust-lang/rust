@@ -15,7 +15,7 @@ use std::marker;
 // Unbounded.
 fn f1<X: ?Sized>(x: &X) {
     f2::<X>(x);
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
+    //~^ ERROR `X: std::marker::Sized` is not satisfied
 }
 fn f2<X>(x: &X) {
 }
@@ -26,7 +26,7 @@ trait T {
 }
 fn f3<X: ?Sized + T>(x: &X) {
     f4::<X>(x);
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
+    //~^ ERROR `X: std::marker::Sized` is not satisfied
 }
 fn f4<X: T>(x: &X) {
 }
@@ -40,7 +40,7 @@ fn f5<Y>(x: &Y) {}
 fn f6<X: ?Sized>(x: &X) {}
 fn f7<X: ?Sized>(x1: &E<X>, x2: &E<X>) {
     f5(x1);
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
+    //~^ ERROR `X: std::marker::Sized` is not satisfied
     f6(x2); // ok
 }
 
@@ -52,19 +52,19 @@ struct S<X: ?Sized> {
 
 fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
     f5(x1);
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
+    //~^ ERROR `X: std::marker::Sized` is not satisfied
     f6(x2); // ok
 }
 
 // Test some tuples.
 fn f9<X: ?Sized>(x1: Box<S<X>>, x2: Box<E<X>>) {
     f5(&(*x1, 34));
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
+    //~^ ERROR `X: std::marker::Sized` is not satisfied
 }
 
 fn f10<X: ?Sized>(x1: Box<S<X>>, x2: Box<E<X>>) {
     f5(&(32, *x2));
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
+    //~^ ERROR `X: std::marker::Sized` is not satisfied
 }
 
 pub fn main() {

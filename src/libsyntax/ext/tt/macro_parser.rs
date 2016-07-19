@@ -79,18 +79,19 @@ pub use self::ParseResult::*;
 use self::TokenTreeOrTokenTreeVec::*;
 
 use ast;
-use ast::{TokenTree, Name, Ident};
-use codemap::{BytePos, mk_sp, Span, Spanned};
-use codemap;
+use ast::{Name, Ident};
+use syntax_pos::{self, BytePos, mk_sp, Span};
+use codemap::Spanned;
 use errors::FatalError;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
-use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
+use parse::parser::{PathStyle, Parser};
 use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, Nonterminal};
 use parse::token;
 use print::pprust;
 use ptr::P;
+use tokenstream::{self, TokenTree};
 
 use std::mem;
 use std::rc::Rc;
@@ -102,8 +103,8 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 #[derive(Clone)]
 enum TokenTreeOrTokenTreeVec {
-    Tt(ast::TokenTree),
-    TtSeq(Rc<Vec<ast::TokenTree>>),
+    Tt(tokenstream::TokenTree),
+    TtSeq(Rc<Vec<tokenstream::TokenTree>>),
 }
 
 impl TokenTreeOrTokenTreeVec {
@@ -196,7 +197,7 @@ pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: ByteP
 /// token tree it was derived from.
 
 pub enum NamedMatch {
-    MatchedSeq(Vec<Rc<NamedMatch>>, codemap::Span),
+    MatchedSeq(Vec<Rc<NamedMatch>>, syntax_pos::Span),
     MatchedNonterminal(Nonterminal)
 }
 
@@ -204,19 +205,19 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
             -> ParseResult<HashMap<Name, Rc<NamedMatch>>> {
     fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
              ret_val: &mut HashMap<Name, Rc<NamedMatch>>, idx: &mut usize)
-             -> Result<(), (codemap::Span, String)> {
+             -> Result<(), (syntax_pos::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {
-                    try!(n_rec(p_s, next_m, res, ret_val, idx))
+                    n_rec(p_s, next_m, res, ret_val, idx)?
                 }
             }
             TokenTree::Delimited(_, ref delim) => {
                 for next_m in &delim.tts {
-                    try!(n_rec(p_s, next_m, res, ret_val, idx));
+                    n_rec(p_s, next_m, res, ret_val, idx)?;
                 }
             }
-            TokenTree::Token(sp, MatchNt(bind_name, _, _, _)) => {
+            TokenTree::Token(sp, MatchNt(bind_name, _)) => {
                 match ret_val.entry(bind_name.name) {
                     Vacant(spot) => {
                         spot.insert(res[*idx].clone());
@@ -251,9 +252,9 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
 pub enum ParseResult<T> {
     Success(T),
     /// Arm failed to match
-    Failure(codemap::Span, String),
+    Failure(syntax_pos::Span, String),
     /// Fatal error (malformed macro?). Abort compilation.
-    Error(codemap::Span, String)
+    Error(syntax_pos::Span, String)
 }
 
 pub type NamedParseResult = ParseResult<HashMap<Name, Rc<NamedMatch>>>;
@@ -263,7 +264,7 @@ pub type PositionalParseResult = ParseResult<Vec<Rc<NamedMatch>>>;
 /// unhygienic comparison)
 pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     match (t1,t2) {
-        (&token::Ident(id1,_),&token::Ident(id2,_))
+        (&token::Ident(id1),&token::Ident(id2))
         | (&token::Lifetime(id1),&token::Lifetime(id2)) =>
             id1.name == id2.name,
         _ => *t1 == *t2
@@ -374,7 +375,7 @@ pub fn parse(sess: &ParseSess,
                 match ei.top_elts.get_tt(idx) {
                     /* need to descend into sequence */
                     TokenTree::Sequence(sp, seq) => {
-                        if seq.op == ast::KleeneOp::ZeroOrMore {
+                        if seq.op == tokenstream::KleeneOp::ZeroOrMore {
                             let mut new_ei = ei.clone();
                             new_ei.match_cur += seq.num_captures;
                             new_ei.idx += 1;
@@ -451,7 +452,7 @@ pub fn parse(sess: &ParseSess,
             if (!bb_eis.is_empty() && !next_eis.is_empty())
                 || bb_eis.len() > 1 {
                 let nts = bb_eis.iter().map(|ei| match ei.top_elts.get_tt(ei.idx) {
-                    TokenTree::Token(_, MatchNt(bind, name, _, _)) => {
+                    TokenTree::Token(_, MatchNt(bind, name)) => {
                         format!("{} ('{}')", name, bind)
                     }
                     _ => panic!()
@@ -479,7 +480,7 @@ pub fn parse(sess: &ParseSess,
 
                 let mut ei = bb_eis.pop().unwrap();
                 match ei.top_elts.get_tt(ei.idx) {
-                    TokenTree::Token(span, MatchNt(_, ident, _, _)) => {
+                    TokenTree::Token(span, MatchNt(_, ident)) => {
                         let match_cur = ei.match_cur;
                         (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
                             parse_nt(&mut rust_parser, span, &ident.name.as_str()))));
@@ -534,9 +535,9 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
         "ident" => match p.token {
-            token::Ident(sn,b) => {
+            token::Ident(sn) => {
                 p.bump();
-                token::NtIdent(Box::new(Spanned::<Ident>{node: sn, span: p.span}),b)
+                token::NtIdent(Box::new(Spanned::<Ident>{node: sn, span: p.span}))
             }
             _ => {
                 let token_str = pprust::token_to_string(&p.token);
@@ -546,16 +547,11 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
             }
         },
         "path" => {
-            token::NtPath(Box::new(panictry!(p.parse_path(LifetimeAndTypesWithoutColons))))
+            token::NtPath(Box::new(panictry!(p.parse_path(PathStyle::Type))))
         },
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
-        _ => {
-            p.span_fatal_help(sp,
-                              &format!("invalid fragment specifier `{}`", name),
-                              "valid fragment specifiers are `ident`, `block`, \
-                               `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt` \
-                               and `item`").emit();
-            panic!(FatalError);
-        }
+        // this is not supposed to happen, since it has been checked
+        // when compiling the macro.
+        _ => p.span_bug(sp, "invalid fragment specifier")
     }
 }

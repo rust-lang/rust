@@ -55,6 +55,13 @@ fn coerce_fat_ptr_wrapper(p: PtrWrapper<Fn(u32) -> u32+Send>)
     p
 }
 
+#[rustc_mir]
+fn coerce_ptr_wrapper_poly<'a, T, Trait: ?Sized>(p: PtrWrapper<'a, T>)
+                                                 -> PtrWrapper<'a, Trait>
+    where PtrWrapper<'a, T>: CoerceUnsized<PtrWrapper<'a, Trait>>
+{
+    p
+}
 
 fn main() {
     let a = [0,1,2];
@@ -72,5 +79,9 @@ fn main() {
     assert_eq!(&w.0, &a);
 
     let z = coerce_fat_ptr_wrapper(PtrWrapper(2,3,(),&square_local));
+    assert_eq!((z.3)(6), 36);
+
+    let z: PtrWrapper<Fn(u32) -> u32> =
+        coerce_ptr_wrapper_poly(PtrWrapper(2,3,(),&square_local));
     assert_eq!((z.3)(6), 36);
 }

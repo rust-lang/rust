@@ -17,5 +17,5 @@ fn foo<T: Send>() {}
 
 fn main() {
     foo::<HashMap<Rc<()>, Rc<()>>>();
-    //~^ ERROR: the trait `core::marker::Send` is not implemented for the type `alloc::rc::Rc<()>`
+    //~^ ERROR: `std::rc::Rc<()>: std::marker::Send` is not satisfied
 }

@@ -63,7 +63,7 @@ In addition, the following are all undefined behaviors in Rust, and must be
 avoided, even when writing `unsafe` code:
 
 * Data races
-* Dereferencing a null/dangling raw pointer
+* Dereferencing a NULL/dangling raw pointer
 * Reads of [undef][undef] (uninitialized) memory
 * Breaking the [pointer aliasing rules][aliasing] with raw pointers.
 * `&mut T` and `&T` follow LLVM’s scoped [noalias][noalias] model, except if
@@ -77,7 +77,7 @@ avoided, even when writing `unsafe` code:
   * Using `std::ptr::copy_nonoverlapping_memory` (`memcpy32`/`memcpy64`
     intrinsics) on overlapping buffers
 * Invalid values in primitive types, even in private fields/locals:
-  * Null/dangling references or boxes
+  * NULL/dangling references or boxes
   * A value other than `false` (0) or `true` (1) in a `bool`
   * A discriminant in an `enum` not included in its type definition
   * A value in a `char` which is a surrogate or above `char::MAX`

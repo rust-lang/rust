@@ -128,6 +128,11 @@ mod cross_crate {
         <Foo>::trait_stable_text(&foo);
         <Foo as Trait>::trait_stable_text(&foo);
 
+        struct S1<T: TraitWithAssociatedTypes>(T::TypeUnstable);
+        //~^ ERROR use of unstable library feature
+        struct S2<T: TraitWithAssociatedTypes>(T::TypeDeprecated);
+        //~^ ERROR use of deprecated item
+
         let _ = DeprecatedStruct { //~ ERROR use of deprecated item
             i: 0 //~ ERROR use of deprecated item
         };

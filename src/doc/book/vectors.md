@@ -40,7 +40,7 @@ The indices count from `0`, so the third element is `v[2]`.
 
 It’s also important to note that you must index with the `usize` type:
 
-```ignore
+```rust,ignore
 let v = vec![1, 2, 3, 4, 5];
 
 let i: usize = 0;
@@ -56,8 +56,8 @@ v[j];
 Indexing with a non-`usize` type gives an error that looks like this:
 
 ```text
-error: the trait `core::ops::Index<i32>` is not implemented for the type
-`collections::vec::Vec<_>` [E0277]
+error: the trait bound `collections::vec::Vec<_> : core::ops::Index<i32>`
+is not satisfied [E0277]
 v[j];
 ^~~~
 note: the type `collections::vec::Vec<_>` cannot be indexed by `i32`
@@ -71,7 +71,7 @@ you cannot index with an `i32`.
 
 If you try to access an index that doesn’t exist:
 
-```ignore
+```rust,ignore
 let v = vec![1, 2, 3];
 println!("Item 7 is {}", v[7]);
 ```
@@ -79,7 +79,7 @@ println!("Item 7 is {}", v[7]);
 then the current thread will [panic] with a message like this:
 
 ```text
-thread '<main>' panicked at 'index out of bounds: the len is 3 but the index is 7'
+thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 7'
 ```
 
 If you want to handle out-of-bounds errors without panicking, you can use
@@ -116,11 +116,11 @@ for i in v {
 ```
 
 Note: You cannot use the vector again once you have iterated by taking ownership of the vector.
-You can iterate the vector multiple times by taking a reference to the vector whilst iterating. 
+You can iterate the vector multiple times by taking a reference to the vector whilst iterating.
 For example, the following code does not compile.
 
 ```rust,ignore
-let mut v = vec![1, 2, 3, 4, 5];
+let v = vec![1, 2, 3, 4, 5];
 
 for i in v {
     println!("Take ownership of the vector and its element {}", i);
@@ -134,7 +134,7 @@ for i in v {
 Whereas the following works perfectly,
 
 ```rust
-let mut v = vec![1, 2, 3, 4, 5];
+let v = vec![1, 2, 3, 4, 5];
 
 for i in &v {
     println!("This is a reference to {}", i);
@@ -152,5 +152,5 @@ API documentation][vec].
 [box]: ../std/boxed/index.html
 [generic]: generics.html
 [panic]: concurrency.html#panics
-[get]: http://doc.rust-lang.org/std/vec/struct.Vec.html#method.get
-[get_mut]: http://doc.rust-lang.org/std/vec/struct.Vec.html#method.get_mut
+[get]: ../std/vec/struct.Vec.html#method.get
+[get_mut]: ../std/vec/struct.Vec.html#method.get_mut

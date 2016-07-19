@@ -11,10 +11,7 @@
 #include "rustllvm.h"
 
 #include "llvm/Object/Archive.h"
-
-#if LLVM_VERSION_MINOR >= 7
 #include "llvm/Object/ArchiveWriter.h"
-#endif
 
 using namespace llvm;
 using namespace llvm::object;
@@ -34,13 +31,7 @@ struct LLVMRustArchiveMember {
   ~LLVMRustArchiveMember() {}
 };
 
-#if LLVM_VERSION_MINOR >= 6
 typedef OwningBinary<Archive> RustArchive;
-#define GET_ARCHIVE(a) ((a)->getBinary())
-#else
-typedef Archive RustArchive;
-#define GET_ARCHIVE(a) (a)
-#endif
 
 extern "C" void*
 LLVMRustOpenArchive(char *path) {
@@ -52,7 +43,6 @@ LLVMRustOpenArchive(char *path) {
         return nullptr;
     }
 
-#if LLVM_VERSION_MINOR >= 6
     ErrorOr<std::unique_ptr<Archive>> archive_or =
         Archive::create(buf_or.get()->getMemBufferRef());
 
@@ -63,14 +53,6 @@ LLVMRustOpenArchive(char *path) {
 
     OwningBinary<Archive> *ret = new OwningBinary<Archive>(
             std::move(archive_or.get()), std::move(buf_or.get()));
-#else
-    std::error_code err;
-    Archive *ret = new Archive(std::move(buf_or.get()), err);
-    if (err) {
-        LLVMRustSetLastError(err.message().c_str());
-        return nullptr;
-    }
-#endif
 
     return ret;
 }
@@ -87,7 +69,7 @@ struct RustArchiveIterator {
 
 extern "C" RustArchiveIterator*
 LLVMRustArchiveIteratorNew(RustArchive *ra) {
-    Archive *ar = GET_ARCHIVE(ra);
+    Archive *ar = ra->getBinary();
     RustArchiveIterator *rai = new RustArchiveIterator();
     rai->cur = ar->child_begin();
     rai->end = ar->child_end();
@@ -137,16 +119,12 @@ LLVMRustArchiveChildName(const Archive::Child *child, size_t *size) {
 extern "C" const char*
 LLVMRustArchiveChildData(Archive::Child *child, size_t *size) {
     StringRef buf;
-#if LLVM_VERSION_MINOR >= 7
     ErrorOr<StringRef> buf_or_err = child->getBuffer();
     if (buf_or_err.getError()) {
       LLVMRustSetLastError(buf_or_err.getError().message().c_str());
       return NULL;
     }
     buf = buf_or_err.get();
-#else
-    buf = child->getBuffer();
-#endif
     *size = buf.size();
     return buf.data();
 }
@@ -172,7 +150,6 @@ LLVMRustWriteArchive(char *Dst,
                      const LLVMRustArchiveMember **NewMembers,
                      bool WriteSymbtab,
                      Archive::Kind Kind) {
-#if LLVM_VERSION_MINOR >= 7
   std::vector<NewArchiveIterator> Members;
 
   for (size_t i = 0; i < NumMembers; i++) {
@@ -196,8 +173,5 @@ LLVMRustWriteArchive(char *Dst,
   if (!pair.second)
     return 0;
   LLVMRustSetLastError(pair.second.message().c_str());
-#else
-  LLVMRustSetLastError("writing archives not supported with this LLVM version");
-#endif
   return -1;
 }

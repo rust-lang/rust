@@ -24,13 +24,13 @@ fn test_ret() { let _x: Box<isize> = return; }
 
 fn test_panic() {
     fn f() { let _x: Box<isize> = panic!(); }
-    thread::spawn(move|| f() ).join().err().unwrap();
+    thread::spawn(move|| f() ).join().unwrap_err();
 }
 
 fn test_panic_indirect() {
     fn f() -> ! { panic!(); }
     fn g() { let _x: Box<isize> = f(); }
-    thread::spawn(move|| g() ).join().err().unwrap();
+    thread::spawn(move|| g() ).join().unwrap_err();
 }
 
 pub fn main() {

@@ -31,5 +31,5 @@ trait Add<RHS=Self> {
 fn ice<A>(a: A) {
     let r = loop {};
     r = r + a;
-    //~^ ERROR not implemented
+    //~^ ERROR E0277
 }

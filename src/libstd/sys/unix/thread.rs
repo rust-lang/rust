@@ -12,8 +12,7 @@ use prelude::v1::*;
 
 use alloc::boxed::FnBox;
 use cmp;
-#[cfg(not(any(target_env = "newlib", target_os = "solaris")))]
-use ffi::CString;
+use ffi::CStr;
 use io;
 use libc;
 use mem;
@@ -84,15 +83,12 @@ impl Thread {
     #[cfg(any(target_os = "linux",
               target_os = "android",
               target_os = "emscripten"))]
-    pub fn set_name(name: &str) {
+    pub fn set_name(name: &CStr) {
         const PR_SET_NAME: libc::c_int = 15;
-        let cname = CString::new(name).unwrap_or_else(|_| {
-            panic!("thread name may not contain interior null bytes")
-        });
         // pthread wrapper only appeared in glibc 2.12, so we use syscall
         // directly.
         unsafe {
-            libc::prctl(PR_SET_NAME, cname.as_ptr() as libc::c_ulong, 0, 0, 0);
+            libc::prctl(PR_SET_NAME, name.as_ptr() as libc::c_ulong, 0, 0, 0);
         }
     }
 
@@ -100,46 +96,53 @@ impl Thread {
               target_os = "dragonfly",
               target_os = "bitrig",
               target_os = "openbsd"))]
-    pub fn set_name(name: &str) {
-        let cname = CString::new(name).unwrap();
+    pub fn set_name(name: &CStr) {
         unsafe {
-            libc::pthread_set_name_np(libc::pthread_self(), cname.as_ptr());
+            libc::pthread_set_name_np(libc::pthread_self(), name.as_ptr());
         }
     }
 
     #[cfg(any(target_os = "macos", target_os = "ios"))]
-    pub fn set_name(name: &str) {
-        let cname = CString::new(name).unwrap();
+    pub fn set_name(name: &CStr) {
         unsafe {
-            libc::pthread_setname_np(cname.as_ptr());
+            libc::pthread_setname_np(name.as_ptr());
         }
     }
 
     #[cfg(target_os = "netbsd")]
-    pub fn set_name(name: &str) {
+    pub fn set_name(name: &CStr) {
+        use ffi::CString;
         let cname = CString::new(&b"%s"[..]).unwrap();
-        let carg = CString::new(name).unwrap();
         unsafe {
             libc::pthread_setname_np(libc::pthread_self(), cname.as_ptr(),
-                                     carg.as_ptr() as *mut libc::c_void);
+                                     name.as_ptr() as *mut libc::c_void);
         }
     }
     #[cfg(any(target_env = "newlib", target_os = "solaris"))]
-    pub fn set_name(_name: &str) {
+    pub fn set_name(_name: &CStr) {
         // Newlib and Illumos has no way to set a thread name.
     }
 
     pub fn sleep(dur: Duration) {
-        let mut ts = libc::timespec {
-            tv_sec: dur.as_secs() as libc::time_t,
-            tv_nsec: dur.subsec_nanos() as libc::c_long,
-        };
+        let mut secs = dur.as_secs();
+        let mut nsecs = dur.subsec_nanos() as libc::c_long;
 
         // If we're awoken with a signal then the return value will be -1 and
         // nanosleep will fill in `ts` with the remaining time.
         unsafe {
-            while libc::nanosleep(&ts, &mut ts) == -1 {
-                assert_eq!(os::errno(), libc::EINTR);
+            while secs > 0 || nsecs > 0 {
+                let mut ts = libc::timespec {
+                    tv_sec: cmp::min(libc::time_t::max_value() as u64, secs) as libc::time_t,
+                    tv_nsec: nsecs,
+                };
+                secs -= ts.tv_sec as u64;
+                if libc::nanosleep(&ts, &mut ts) == -1 {
+                    assert_eq!(os::errno(), libc::EINTR);
+                    secs += ts.tv_sec as u64;
+                    nsecs = ts.tv_nsec;
+                } else {
+                    nsecs = 0;
+                }
             }
         }
     }
@@ -169,6 +172,7 @@ impl Drop for Thread {
 }
 
 #[cfg(all(not(all(target_os = "linux", not(target_env = "musl"))),
+          not(target_os = "freebsd"),
           not(target_os = "macos"),
           not(target_os = "bitrig"),
           not(all(target_os = "netbsd", not(target_vendor = "rumprun"))),
@@ -182,6 +186,7 @@ pub mod guard {
 
 
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")),
+          target_os = "freebsd",
           target_os = "macos",
           target_os = "bitrig",
           all(target_os = "netbsd", not(target_vendor = "rumprun")),
@@ -204,12 +209,17 @@ pub mod guard {
         current().map(|s| s as *mut libc::c_void)
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
+    #[cfg(any(target_os = "android", target_os = "freebsd",
+              target_os = "linux", target_os = "netbsd"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = ::mem::zeroed();
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
-        if libc::pthread_getattr_np(libc::pthread_self(), &mut attr) == 0 {
+        #[cfg(target_os = "freebsd")]
+            let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
+        #[cfg(not(target_os = "freebsd"))]
+            let e = libc::pthread_getattr_np(libc::pthread_self(), &mut attr);
+        if e == 0 {
             let mut stackaddr = ::ptr::null_mut();
             let mut stacksize = 0;
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr,
@@ -253,7 +263,11 @@ pub mod guard {
             panic!("failed to allocate a guard page");
         }
 
-        let offset = if cfg!(target_os = "linux") {2} else {1};
+        let offset = if cfg!(any(target_os = "linux", target_os = "freebsd")) {
+            2
+        } else {
+            1
+        };
 
         Some(stackaddr as usize + offset * psize)
     }
@@ -287,12 +301,17 @@ pub mod guard {
         })
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
+    #[cfg(any(target_os = "android", target_os = "freebsd",
+              target_os = "linux", target_os = "netbsd"))]
     pub unsafe fn current() -> Option<usize> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = ::mem::zeroed();
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
-        if libc::pthread_getattr_np(libc::pthread_self(), &mut attr) == 0 {
+        #[cfg(target_os = "freebsd")]
+            let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
+        #[cfg(not(target_os = "freebsd"))]
+            let e = libc::pthread_getattr_np(libc::pthread_self(), &mut attr);
+        if e == 0 {
             let mut guardsize = 0;
             assert_eq!(libc::pthread_attr_getguardsize(&attr, &mut guardsize), 0);
             if guardsize == 0 {
@@ -303,7 +322,9 @@ pub mod guard {
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr,
                                                    &mut size), 0);
 
-            ret = if cfg!(target_os = "netbsd") {
+            ret = if cfg!(target_os = "freebsd") {
+                Some(stackaddr as usize - guardsize as usize)
+            } else if cfg!(target_os = "netbsd") {
                 Some(stackaddr as usize)
             } else {
                 Some(stackaddr as usize + guardsize as usize)

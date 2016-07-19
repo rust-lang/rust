@@ -75,6 +75,7 @@ use core::ops;
 use core::ptr;
 use core::slice;
 
+use super::SpecExtend;
 use super::range::RangeArgument;
 
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector.'
@@ -519,7 +520,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        &mut self[..]
+        self
     }
 
     /// Sets the length of a vector.
@@ -965,7 +966,7 @@ impl<T: Clone> Vec<T> {
         }
     }
 
-    /// Appends all elements in a slice to the `Vec`.
+    /// Clones and appends all elements in a slice to the `Vec`.
     ///
     /// Iterates over the slice `other`, clones each element, and then appends
     /// it to this `Vec`. The `other` vector is traversed in-order.
@@ -1302,13 +1303,13 @@ impl<T> ops::DerefMut for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
-    fn from_iter<I: IntoIterator<Item = T>>(iterable: I) -> Vec<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
         // Unroll the first iteration, as the vector is going to be
         // expanded on this iteration in every case when the iterable is not
         // empty, but the loop in extend_desugared() is not going to see the
         // vector being full in the few subsequent loop iterations.
         // So we get better branch prediction.
-        let mut iterator = iterable.into_iter();
+        let mut iterator = iter.into_iter();
         let mut vector = match iterator.next() {
             None => return Vec::new(),
             Some(element) => {
@@ -1389,8 +1390,20 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iterable: I) {
-        self.extend_desugared(iterable.into_iter())
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        <Self as SpecExtend<I>>::spec_extend(self, iter);
+    }
+}
+
+impl<I: IntoIterator> SpecExtend<I> for Vec<I::Item> {
+    default fn spec_extend(&mut self, iter: I) {
+        self.extend_desugared(iter.into_iter())
+    }
+}
+
+impl<T> SpecExtend<Vec<T>> for Vec<T> {
+    fn spec_extend(&mut self, ref mut other: Vec<T>) {
+        self.append(other);
     }
 }
 
@@ -1590,6 +1603,12 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// An iterator that moves out of a vector.
+///
+/// This `struct` is created by the `into_iter` method on [`Vec`][`Vec`] (provided
+/// by the [`IntoIterator`] trait).
+///
+/// [`Vec`]: struct.Vec.html
+/// [`IntoIterator`]: ../../std/iter/trait.IntoIterator.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     _buf: RawVec<T>,
@@ -1645,7 +1664,7 @@ impl<T> Iterator for IntoIter<T> {
 
     #[inline]
     fn count(self) -> usize {
-        self.size_hint().0
+        self.len()
     }
 }
 
@@ -1697,6 +1716,11 @@ impl<T> Drop for IntoIter<T> {
 }
 
 /// A draining iterator for `Vec<T>`.
+///
+/// This `struct` is created by the [`drain`] method on [`Vec`].
+///
+/// [`drain`]: struct.Vec.html#method.drain
+/// [`Vec`]: struct.Vec.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     /// Index of tail to preserve

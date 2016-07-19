@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::fmt;
-use std::io::prelude::*;
 use std::io;
 
 use externalfiles::ExternalHtml;
@@ -28,11 +27,12 @@ pub struct Page<'a> {
     pub ty: &'a str,
     pub root_path: &'a str,
     pub description: &'a str,
-    pub keywords: &'a str
+    pub keywords: &'a str,
 }
 
 pub fn render<T: fmt::Display, S: fmt::Display>(
-    dst: &mut io::Write, layout: &Layout, page: &Page, sidebar: &S, t: &T)
+    dst: &mut io::Write, layout: &Layout, page: &Page, sidebar: &S, t: &T,
+    css_file_extension: bool)
     -> io::Result<()>
 {
     write!(dst,
@@ -49,6 +49,7 @@ r##"<!DOCTYPE html>
 
     <link rel="stylesheet" type="text/css" href="{root_path}rustdoc.css">
     <link rel="stylesheet" type="text/css" href="{root_path}main.css">
+    {css_extension}
 
     {favicon}
     {in_header}
@@ -102,6 +103,8 @@ r##"<!DOCTYPE html>
                     <dd>Move down in search results</dd>
                     <dt>&#9166;</dt>
                     <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
                 </dl>
             </div>
 
@@ -141,6 +144,12 @@ r##"<!DOCTYPE html>
     <script defer src="{root_path}search-index.js"></script>
 </body>
 </html>"##,
+    css_extension = if css_file_extension {
+        format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}theme.css\">",
+                root_path = page.root_path)
+    } else {
+        "".to_owned()
+    },
     content   = *t,
     root_path = page.root_path,
     ty        = page.ty,

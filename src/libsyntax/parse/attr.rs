@@ -10,35 +10,60 @@
 
 use attr;
 use ast;
-use codemap::{spanned, Spanned, mk_sp, Span};
+use syntax_pos::{mk_sp, Span};
+use codemap::{spanned, Spanned};
 use parse::common::SeqSep;
 use parse::PResult;
 use parse::token;
 use parse::parser::{Parser, TokenType};
 use ptr::P;
 
+#[derive(PartialEq, Eq, Debug)]
+enum InnerAttributeParsePolicy<'a> {
+    Permitted,
+    NotPermitted { reason: &'a str },
+}
+
+const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &'static str = "an inner attribute is not \
+                                                             permitted in this context";
+
 impl<'a> Parser<'a> {
     /// Parse attributes that appear before an item
     pub fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
+        let mut just_parsed_doc_comment = false;
         loop {
             debug!("parse_outer_attributes: self.token={:?}", self.token);
             match self.token {
                 token::Pound => {
-                    attrs.push(try!(self.parse_attribute(false)));
+                    let inner_error_reason = if just_parsed_doc_comment {
+                        "an inner attribute is not permitted following an outer doc comment"
+                    } else if !attrs.is_empty() {
+                        "an inner attribute is not permitted following an outer attribute"
+                    } else {
+                        DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG
+                    };
+                    let inner_parse_policy =
+                        InnerAttributeParsePolicy::NotPermitted { reason: inner_error_reason };
+                    attrs.push(self.parse_attribute_with_inner_parse_policy(inner_parse_policy)?);
+                    just_parsed_doc_comment = false;
                 }
                 token::DocComment(s) => {
                     let attr = ::attr::mk_sugared_doc_attr(
-                    attr::mk_attr_id(),
-                    self.id_to_interned_str(ast::Ident::with_empty_ctxt(s)),
-                    self.span.lo,
-                    self.span.hi
-                );
+                        attr::mk_attr_id(),
+                        self.id_to_interned_str(ast::Ident::with_empty_ctxt(s)),
+                        self.span.lo,
+                        self.span.hi
+                    );
                     if attr.node.style != ast::AttrStyle::Outer {
-                        return Err(self.fatal("expected outer comment"));
+                        let mut err = self.fatal("expected outer doc comment");
+                        err.note("inner doc comments like this (starting with \
+                                  `//!` or `/*!`) can only appear before items");
+                        return Err(err);
                     }
                     attrs.push(attr);
                     self.bump();
+                    just_parsed_doc_comment = true;
                 }
                 _ => break,
             }
@@ -51,27 +76,46 @@ impl<'a> Parser<'a> {
     /// If permit_inner is true, then a leading `!` indicates an inner
     /// attribute
     pub fn parse_attribute(&mut self, permit_inner: bool) -> PResult<'a, ast::Attribute> {
-        debug!("parse_attributes: permit_inner={:?} self.token={:?}",
+        debug!("parse_attribute: permit_inner={:?} self.token={:?}",
                permit_inner,
+               self.token);
+        let inner_parse_policy = if permit_inner {
+            InnerAttributeParsePolicy::Permitted
+        } else {
+            InnerAttributeParsePolicy::NotPermitted
+                { reason: DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG }
+        };
+        self.parse_attribute_with_inner_parse_policy(inner_parse_policy)
+    }
+
+    /// The same as `parse_attribute`, except it takes in an `InnerAttributeParsePolicy`
+    /// that prescribes how to handle inner attributes.
+    fn parse_attribute_with_inner_parse_policy(&mut self,
+                                               inner_parse_policy: InnerAttributeParsePolicy)
+                                               -> PResult<'a, ast::Attribute> {
+        debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
+               inner_parse_policy,
                self.token);
         let (span, value, mut style) = match self.token {
             token::Pound => {
                 let lo = self.span.lo;
                 self.bump();
 
-                if permit_inner {
+                if inner_parse_policy == InnerAttributeParsePolicy::Permitted {
                     self.expected_tokens.push(TokenType::Token(token::Not));
                 }
                 let style = if self.token == token::Not {
                     self.bump();
-                    if !permit_inner {
+                    if let InnerAttributeParsePolicy::NotPermitted { reason } = inner_parse_policy
+                    {
                         let span = self.span;
                         self.diagnostic()
-                            .struct_span_err(span,
-                                             "an inner attribute is not permitted in this context")
-                            .fileline_help(span,
-                                           "place inner attribute at the top of the module or \
-                                            block")
+                            .struct_span_err(span, reason)
+                            .note("inner attributes and doc comments, like `#![no_std]` or \
+                                   `//! My crate`, annotate the item enclosing them, and are \
+                                   usually found at the beginning of source files. Outer \
+                                   attributes and doc comments, like `#[test]` and
+                                   `/// My function`, annotate the item following them.")
                             .emit()
                     }
                     ast::AttrStyle::Inner
@@ -79,10 +123,10 @@ impl<'a> Parser<'a> {
                     ast::AttrStyle::Outer
                 };
 
-                try!(self.expect(&token::OpenDelim(token::Bracket)));
-                let meta_item = try!(self.parse_meta_item());
+                self.expect(&token::OpenDelim(token::Bracket))?;
+                let meta_item = self.parse_meta_item()?;
                 let hi = self.span.hi;
-                try!(self.expect(&token::CloseDelim(token::Bracket)));
+                self.expect(&token::CloseDelim(token::Bracket))?;
 
                 (mk_sp(lo, hi), meta_item, style)
             }
@@ -92,7 +136,8 @@ impl<'a> Parser<'a> {
             }
         };
 
-        if permit_inner && self.token == token::Semi {
+        if inner_parse_policy == InnerAttributeParsePolicy::Permitted &&
+           self.token == token::Semi {
             self.bump();
             self.span_warn(span,
                            "this inner attribute syntax is deprecated. The new syntax is \
@@ -126,7 +171,7 @@ impl<'a> Parser<'a> {
                         break;
                     }
 
-                    let attr = try!(self.parse_attribute(true));
+                    let attr = self.parse_attribute(true)?;
                     assert!(attr.node.style == ast::AttrStyle::Inner);
                     attrs.push(attr);
                 }
@@ -157,21 +202,18 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        match nt_meta {
-            Some(meta) => {
-                self.bump();
-                return Ok(meta);
-            }
-            None => {}
+        if let Some(meta) = nt_meta {
+            self.bump();
+            return Ok(meta);
         }
 
         let lo = self.span.lo;
-        let ident = try!(self.parse_ident());
+        let ident = self.parse_ident()?;
         let name = self.id_to_interned_str(ident);
         match self.token {
             token::Eq => {
                 self.bump();
-                let lit = try!(self.parse_lit());
+                let lit = self.parse_lit()?;
                 // FIXME #623 Non-string meta items are not serialized correctly;
                 // just forbid them for now
                 match lit.node {
@@ -185,7 +227,7 @@ impl<'a> Parser<'a> {
                 Ok(P(spanned(lo, hi, ast::MetaItemKind::NameValue(name, lit))))
             }
             token::OpenDelim(token::Paren) => {
-                let inner_items = try!(self.parse_meta_seq());
+                let inner_items = self.parse_meta_seq()?;
                 let hi = self.span.hi;
                 Ok(P(spanned(lo, hi, ast::MetaItemKind::List(name, inner_items))))
             }

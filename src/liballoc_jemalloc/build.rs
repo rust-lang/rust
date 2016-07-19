@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(warnings)]
+
 extern crate build_helper;
 extern crate gcc;
 
@@ -18,6 +20,7 @@ use build_helper::run;
 
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
+    println!("cargo:rerun-if-changed=build.rs");
 
     let target = env::var("TARGET").unwrap();
     let host = env::var("HOST").unwrap();
@@ -30,18 +33,42 @@ fn main() {
                  jemalloc.parent().unwrap().display());
         let stem = jemalloc.file_stem().unwrap().to_str().unwrap();
         let name = jemalloc.file_name().unwrap().to_str().unwrap();
-        let kind = if name.ends_with(".a") {"static"} else {"dylib"};
+        let kind = if name.ends_with(".a") {
+            "static"
+        } else {
+            "dylib"
+        };
         println!("cargo:rustc-link-lib={}={}", kind, &stem[3..]);
-        return
+        return;
     }
 
     let compiler = gcc::Config::new().get_compiler();
-    let ar = build_helper::cc2ar(compiler.path(), &target);
-    let cflags = compiler.args().iter().map(|s| s.to_str().unwrap())
-                         .collect::<Vec<_>>().join(" ");
+    // only msvc returns None for ar so unwrap is okay
+    let ar = build_helper::cc2ar(compiler.path(), &target).unwrap();
+    let cflags = compiler.args()
+                         .iter()
+                         .map(|s| s.to_str().unwrap())
+                         .collect::<Vec<_>>()
+                         .join(" ");
+
+    let mut stack = src_dir.join("../jemalloc")
+                           .read_dir()
+                           .unwrap()
+                           .map(|e| e.unwrap())
+                           .collect::<Vec<_>>();
+    while let Some(entry) = stack.pop() {
+        let path = entry.path();
+        if entry.file_type().unwrap().is_dir() {
+            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
+        } else {
+            println!("cargo:rerun-if-changed={}", path.display());
+        }
+    }
 
     let mut cmd = Command::new("sh");
-    cmd.arg(src_dir.join("../jemalloc/configure").to_str().unwrap()
+    cmd.arg(src_dir.join("../jemalloc/configure")
+                   .to_str()
+                   .unwrap()
                    .replace("C:\\", "/c/")
                    .replace("\\", "/"))
        .current_dir(&build_dir)
@@ -86,6 +113,8 @@ fn main() {
         // should be good to go!
         cmd.arg("--with-jemalloc-prefix=je_");
         cmd.arg("--disable-tls");
+    } else if target.contains("dragonfly") {
+        cmd.arg("--with-jemalloc-prefix=je_");
     }
 
     if cfg!(feature = "debug-jemalloc") {
@@ -99,9 +128,10 @@ fn main() {
 
     run(&mut cmd);
     run(Command::new("make")
-                .current_dir(&build_dir)
-                .arg("build_lib_static")
-                .arg("-j").arg(env::var("NUM_JOBS").unwrap()));
+            .current_dir(&build_dir)
+            .arg("build_lib_static")
+            .arg("-j")
+            .arg(env::var("NUM_JOBS").unwrap()));
 
     if target.contains("windows") {
         println!("cargo:rustc-link-lib=static=jemalloc");

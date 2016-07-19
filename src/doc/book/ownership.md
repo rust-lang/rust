@@ -1,7 +1,7 @@
 % Ownership
 
-This guide is one of three presenting Rust’s ownership system. This is one of
-Rust’s most unique and compelling features, with which Rust developers should
+This is the first of three sections presenting Rust’s ownership system. This is one of
+Rust’s most distinct and compelling features, with which Rust developers should
 become quite acquainted. Ownership is how Rust achieves its largest goal,
 memory safety. There are a few distinct concepts, each with its own
 chapter:
@@ -67,7 +67,7 @@ Vectors have a [generic type][generics] `Vec<T>`, so in this example `v` will ha
 
 [arrays]: primitive-types.html#arrays
 [vectors]: vectors.html
-[heap]: the-stack-and-the-heap.html
+[heap]: the-stack-and-the-heap.html#the-heap
 [stack]: the-stack-and-the-heap.html#the-stack
 [bindings]: variable-bindings.html
 [generics]: generics.html
@@ -124,7 +124,7 @@ special annotation here, it’s the default thing that Rust does.
 ## The details
 
 The reason that we cannot use a binding after we’ve moved it is subtle, but
-important. 
+important.
 
 When we write code like this:
 
@@ -135,6 +135,8 @@ let x = 10;
 Rust allocates memory for an integer [i32] on the [stack][sh], copies the bit
 pattern representing the value of 10 to the allocated memory and binds the
 variable name x to this memory region for future reference.
+
+[i32]: primitive-types.html#numeric-types
 
 Now consider the following code fragment:
 
@@ -148,14 +150,14 @@ The first line allocates memory for the vector object `v` on the stack like
 it does for `x` above. But in addition to that it also allocates some memory
 on the [heap][sh] for the actual data (`[1, 2, 3]`). Rust copies the address
 of this heap allocation to an internal pointer, which is part of the vector
-object placed on the stack (let's call it the data pointer). 
+object placed on the stack (let's call it the data pointer).
 
 It is worth pointing out (even at the risk of stating the obvious) that the
 vector object and its data live in separate memory regions instead of being a
 single contiguous memory allocation (due to reasons we will not go into at
 this point of time). These two parts of the vector (the one on the stack and
 one on the heap) must agree with each other at all times with regards to
-things like the length, capacity etc.
+things like the length, capacity, etc.
 
 When we move `v` to `v2`, Rust actually does a bitwise copy of the vector
 object `v` into the stack allocation represented by `v2`. This shallow copy
@@ -163,7 +165,7 @@ does not create a copy of the heap allocation containing the actual data.
 Which means that there would be two pointers to the contents of the vector
 both pointing to the same memory allocation on the heap. It would violate
 Rust’s safety guarantees by introducing a data race if one could access both
-`v` and `v2` at the same time. 
+`v` and `v2` at the same time.
 
 For example if we truncated the vector to just two elements through `v2`:
 
@@ -173,11 +175,11 @@ For example if we truncated the vector to just two elements through `v2`:
 v2.truncate(2);
 ```
 
-and `v1` were still accessible we'd end up with an invalid vector since `v1`
+and `v` were still accessible we'd end up with an invalid vector since `v`
 would not know that the heap data has been truncated. Now, the part of the
-vector `v1` on the stack does not agree with the corresponding part on the
-heap. `v1` still thinks there are three elements in the vector and will
-happily let us access the non existent element `v1[2]` but as you might
+vector `v` on the stack does not agree with the corresponding part on the
+heap. `v` still thinks there are three elements in the vector and will
+happily let us access the non existent element `v[2]` but as you might
 already know this is a recipe for disaster. Especially because it might lead
 to a segmentation fault or worse allow an unauthorized user to read from
 memory to which they don't have access.
@@ -212,7 +214,7 @@ But, unlike a move, we can still use `v` afterward. This is because an `i32`
 has no pointers to data somewhere else, copying it is a full copy.
 
 All primitive types implement the `Copy` trait and their ownership is
-therefore not moved like one would assume, following the ´ownership rules´.
+therefore not moved like one would assume, following the ‘ownership rules’.
 To give an example, the two following snippets of code only compile because the
 `i32` and `bool` types implement the `Copy` trait.
 
@@ -288,6 +290,6 @@ let (v1, v2, answer) = foo(v1, v2);
 Ugh! The return type, return line, and calling the function gets way more
 complicated.
 
-Luckily, Rust offers a feature, borrowing, which helps us solve this problem.
-It’s the topic of the next section!
+Luckily, Rust offers a feature which helps us solve this problem.
+It’s called borrowing and is the topic of the next section!
 

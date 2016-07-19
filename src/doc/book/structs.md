@@ -163,11 +163,51 @@ struct Point(i32, i32, i32);
 let black = Color(0, 0, 0);
 let origin = Point(0, 0, 0);
 ```
-Here, `black` and `origin` are not equal, even though they contain the same
-values.
 
-It is almost always better to use a `struct` than a tuple struct. We
-would write `Color` and `Point` like this instead:
+Here, `black` and `origin` are not the same type, even though they contain the
+same values.
+
+The members of a tuple struct may be accessed by dot notation or destructuring
+`let`, just like regular tuples:
+
+```rust
+# struct Color(i32, i32, i32);
+# struct Point(i32, i32, i32);
+# let black = Color(0, 0, 0);
+# let origin = Point(0, 0, 0);
+let black_r = black.0;
+let Point(_, origin_y, origin_z) = origin;
+```
+
+Patterns like `Point(_, origin_y, origin_z)` are also used in
+[match expressions][match].
+
+One case when a tuple struct is very useful is when it has only one element.
+We call this the ‘newtype’ pattern, because it allows you to create a new type
+that is distinct from its contained value and also expresses its own semantic
+meaning:
+
+```rust
+struct Inches(i32);
+
+let length = Inches(10);
+
+let Inches(integer_length) = length;
+println!("length is {} inches", integer_length);
+```
+
+As above, you can extract the inner integer type through a destructuring `let`.
+In this case, the `let Inches(integer_length)` assigns `10` to `integer_length`.
+We could have used dot notation to do the same thing:
+
+```rust
+# struct Inches(i32);
+# let length = Inches(10);
+let integer_length = length.0;
+```
+
+It's always possible to use a `struct` instead of a tuple struct, and can be
+clearer. We could write `Color` and `Point` like this instead:
 
 ```rust
 struct Color {
@@ -187,32 +227,19 @@ Good names are important, and while values in a tuple struct can be
 referenced with dot notation as well, a `struct` gives us actual names,
 rather than positions.
 
-There _is_ one case when a tuple struct is very useful, though, and that is when
-it has only one element. We call this the ‘newtype’ pattern, because
-it allows you to create a new type that is distinct from its contained value
-and also expresses its own semantic meaning:
-
-```rust
-struct Inches(i32);
-
-let length = Inches(10);
-
-let Inches(integer_length) = length;
-println!("length is {} inches", integer_length);
-```
-
-As you can see here, you can extract the inner integer type through a
-destructuring `let`, as with regular tuples. In this case, the
-`let Inches(integer_length)` assigns `10` to `integer_length`.
+[match]: match.html
 
 # Unit-like structs
 
 You can define a `struct` with no members at all:
 
 ```rust
-struct Electron;
+struct Electron {} // use empty braces...
+struct Proton;     // ...or just a semicolon
 
-let x = Electron;
+// whether you declared the struct with braces or not, do the same when creating one
+let x = Electron {};
+let y = Proton;
 ```
 
 Such a `struct` is called ‘unit-like’ because it resembles the empty

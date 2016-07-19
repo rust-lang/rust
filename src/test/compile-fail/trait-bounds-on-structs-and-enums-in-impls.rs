@@ -28,7 +28,7 @@ trait PolyTrait<T>
 struct Struct;
 
 impl PolyTrait<Foo<u16>> for Struct {
-//~^ ERROR not implemented
+//~^ ERROR E0277
 }
 
 fn main() {

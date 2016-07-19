@@ -12,7 +12,7 @@ pub trait AbstractRenderer {}
 
 fn _create_render(_: &()) ->
     AbstractRenderer
-//~^ ERROR: the trait `core::marker::Sized` is not implemented
+//~^ ERROR: `AbstractRenderer + 'static: std::marker::Sized` is not satisfied
 {
     match 0 {
         _ => unimplemented!()

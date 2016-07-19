@@ -35,7 +35,7 @@ module hierarchy match, instead.
 For all except very short modules (<100 lines) and [tests](../testing/README.md),
 place the module `foo` in a separate file, as in:
 
-```rust
+```rust,ignore
 pub mod foo;
 
 // in foo.rs or foo/mod.rs
@@ -45,7 +45,7 @@ pub fn bar() { println!("..."); }
 
 rather than declaring it inline:
 
-```rust
+```rust,ignore
 pub mod foo {
     pub fn bar() { println!("..."); }
     /* ... */
@@ -67,7 +67,7 @@ On the other hand,
 [`io::net`](https://doc.rust-lang.org/std/io/net/)
 contains submodules, so it lives in a separate directory:
 
-```
+```text
 io/mod.rs
    io/extensions.rs
    io/fs.rs
@@ -120,7 +120,7 @@ and
 [`BufWriter`](https://doc.rust-lang.org/std/io/struct.BufWriter.html),
 but these are re-exported in `io/mod.rs` at the top level of the module:
 
-```rust
+```rust,ignore
 // libstd/io/mod.rs
 
 pub use self::mem::{MemReader, BufReader, MemWriter, BufWriter};

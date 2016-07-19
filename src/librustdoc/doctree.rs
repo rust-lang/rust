@@ -13,14 +13,14 @@
 pub use self::StructType::*;
 pub use self::TypeBound::*;
 
-use syntax;
-use syntax::codemap::Span;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast::{Name, NodeId};
 use syntax::attr;
 use syntax::ptr::P;
-use rustc_front::hir;
+use syntax_pos::{self, Span};
+
+use rustc::hir;
 
 pub struct Module {
     pub name: Option<Name>,
@@ -56,8 +56,8 @@ impl Module {
             vis: hir::Inherited,
             stab: None,
             depr: None,
-            where_outer: syntax::codemap::DUMMY_SP,
-            where_inner: syntax::codemap::DUMMY_SP,
+            where_outer: syntax_pos::DUMMY_SP,
+            where_inner: syntax_pos::DUMMY_SP,
             attrs      : hir::HirVec::new(),
             extern_crates: Vec::new(),
             imports    : Vec::new(),
@@ -232,6 +232,7 @@ pub struct Macro {
 
 pub struct ExternCrate {
     pub name: Name,
+    pub cnum: ast::CrateNum,
     pub path: Option<String>,
     pub vis: hir::Visibility,
     pub attrs: hir::HirVec<ast::Attribute>,

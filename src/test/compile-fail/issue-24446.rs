@@ -10,11 +10,9 @@
 
 fn main() {
     static foo: Fn() -> u32 = || -> u32 {
-        //~^ ERROR: mismatched types:
-        //~| expected `core::ops::Fn() -> u32 + 'static`,
-        //~| found closure
-        //~| (expected trait core::ops::Fn,
-        //~| found closure)
+        //~^ ERROR: mismatched types
+        //~| ERROR: `std::ops::Fn() -> u32 + 'static: std::marker::Sized` is not satisfied
+
         0
     };
 }

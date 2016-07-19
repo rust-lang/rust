@@ -10,18 +10,20 @@
 
 //! Extensions to `std::thread` for Windows.
 
-#![unstable(feature = "thread_extensions", issue = "29791")]
+#![stable(feature = "thread_extensions", since = "1.9.0")]
 
 use os::windows::io::{RawHandle, AsRawHandle, IntoRawHandle};
 use thread;
 use sys_common::{AsInner, IntoInner};
 
+#[stable(feature = "thread_extensions", since = "1.9.0")]
 impl<T> AsRawHandle for thread::JoinHandle<T> {
     fn as_raw_handle(&self) -> RawHandle {
         self.as_inner().handle().raw() as *mut _
     }
 }
 
+#[stable(feature = "thread_extensions", since = "1.9.0")]
 impl<T> IntoRawHandle for thread::JoinHandle<T>  {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw() as *mut _

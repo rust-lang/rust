@@ -26,13 +26,15 @@ impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
 fn f<T>(val: T) {
     let t: S<T> = S(marker::PhantomData);
     let a = &t as &Gettable<T>;
-    //~^ ERROR the trait `core::marker::Send` is not implemented
+    //~^ ERROR : std::marker::Send` is not satisfied
+    //~^^ ERROR : std::marker::Copy` is not satisfied
 }
 
 fn g<T>(val: T) {
     let t: S<T> = S(marker::PhantomData);
     let a: &Gettable<T> = &t;
-    //~^ ERROR the trait `core::marker::Send` is not implemented
+    //~^ ERROR : std::marker::Send` is not satisfied
+    //~^^ ERROR : std::marker::Copy` is not satisfied
 }
 
 fn foo<'a>() {
@@ -44,7 +46,7 @@ fn foo<'a>() {
 fn foo2<'a>() {
     let t: Box<S<String>> = box S(marker::PhantomData);
     let a = t as Box<Gettable<String>>;
-    //~^ ERROR the trait `core::marker::Copy` is not implemented
+    //~^ ERROR : std::marker::Copy` is not satisfied
 }
 
 fn foo3<'a>() {
@@ -52,7 +54,7 @@ fn foo3<'a>() {
 
     let t: Box<S<Foo>> = box S(marker::PhantomData);
     let a: Box<Gettable<Foo>> = t;
-    //~^ ERROR the trait `core::marker::Copy` is not implemented
+    //~^ ERROR : std::marker::Copy` is not satisfied
 }
 
 fn main() { }

@@ -196,7 +196,7 @@ impl<'a> Write for &'a mut [u8] {
 
     #[inline]
     fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
-        if try!(self.write(data)) == data.len() {
+        if self.write(data)? == data.len() {
             Ok(())
         } else {
             Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"))

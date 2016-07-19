@@ -379,7 +379,7 @@ impl<T: Ord> BTreeSet<T> {
     /// The value may be any borrowed form of the set's value type,
     /// but the ordering on the borrowed form *must* match the
     /// ordering on the value type.
-    #[unstable(feature = "set_recovery", issue = "28050")]
+    #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
         where T: Borrow<Q>,
               Q: Ord
@@ -477,9 +477,9 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Adds a value to the set.
     ///
-    /// If the set did not have a value present, `true` is returned.
+    /// If the set did not have this value present, `true` is returned.
     ///
-    /// If the set did have this key present, `false` is returned, and the
+    /// If the set did have this value present, `false` is returned, and the
     /// entry is not updated. See the [module-level documentation] for more.
     ///
     /// [module-level documentation]: index.html#insert-and-complex-keys
@@ -502,7 +502,7 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
     /// one. Returns the replaced value.
-    #[unstable(feature = "set_recovery", issue = "28050")]
+    #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {
         Recover::replace(&mut self.map, value)
     }
@@ -538,12 +538,79 @@ impl<T: Ord> BTreeSet<T> {
     /// The value may be any borrowed form of the set's value type,
     /// but the ordering on the borrowed form *must* match the
     /// ordering on the value type.
-    #[unstable(feature = "set_recovery", issue = "28050")]
+    #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
         where T: Borrow<Q>,
               Q: Ord
     {
         Recover::take(&mut self.map, value)
+    }
+
+    /// Moves all elements from `other` into `Self`, leaving `other` empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut a = BTreeSet::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    ///
+    /// let mut b = BTreeSet::new();
+    /// b.insert(3);
+    /// b.insert(4);
+    /// b.insert(5);
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.len(), 5);
+    /// assert_eq!(b.len(), 0);
+    ///
+    /// assert!(a.contains(&1));
+    /// assert!(a.contains(&2));
+    /// assert!(a.contains(&3));
+    /// assert!(a.contains(&4));
+    /// assert!(a.contains(&5));
+    /// ```
+    #[stable(feature = "btree_append", since = "1.11.0")]
+    pub fn append(&mut self, other: &mut Self) {
+        self.map.append(&mut other.map);
+    }
+
+    /// Splits the collection into two at the given key. Returns everything after the given key,
+    /// including the key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(17, "d");
+    /// a.insert(41, "e");
+    ///
+    /// let b = a.split_off(&3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 3);
+    ///
+    /// assert_eq!(a[&1], "a");
+    /// assert_eq!(a[&2], "b");
+    ///
+    /// assert_eq!(b[&3], "c");
+    /// assert_eq!(b[&17], "d");
+    /// assert_eq!(b[&41], "e");
+    /// ```
+    #[stable(feature = "btree_split_off", since = "1.11.0")]
+    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self where T: Borrow<Q> {
+        BTreeSet { map: self.map.split_off(key) }
     }
 }
 

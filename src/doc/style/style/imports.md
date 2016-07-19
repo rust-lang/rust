@@ -10,7 +10,7 @@ sections, in order, with a blank space between each:
 
 For example:
 
-```rust
+```rust,ignore
 // Crates.
 extern crate getopts;
 extern crate mylib;
@@ -40,7 +40,7 @@ as a convenience.
 
 For example:
 
-```rust
+```rust,ignore
 use option::Option;
 use mem;
 

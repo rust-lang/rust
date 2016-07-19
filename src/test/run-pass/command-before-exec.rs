@@ -9,8 +9,6 @@
 // except according to those terms.
 
 // ignore-windows - this is a unix-specific test
-// no-prefer-dynamic - this test breaks with dynamic linking as
-// some LD_LIBRARY_PATH entries are relative and it cd's to /.
 
 #![feature(process_exec, libc)]
 
@@ -64,7 +62,7 @@ fn main() {
 
     let output = Command::new(&me).arg("bad").before_exec(|| {
         Err(Error::from_raw_os_error(102))
-    }).output().err().unwrap();
+    }).output().unwrap_err();
     assert_eq!(output.raw_os_error(), Some(102));
 
     let pid = unsafe { libc::getpid() };

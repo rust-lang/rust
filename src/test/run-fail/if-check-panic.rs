@@ -12,7 +12,11 @@
 fn even(x: usize) -> bool {
     if x < 2 {
         return false;
-    } else if x == 2 { return true; } else { return even(x - 2); }
+    } else if x == 2 {
+        return true;
+    } else {
+        return even(x - 2);
+    }
 }
 
 fn foo(x: usize) {
@@ -23,4 +27,6 @@ fn foo(x: usize) {
     }
 }
 
-fn main() { foo(3); }
+fn main() {
+    foo(3);
+}

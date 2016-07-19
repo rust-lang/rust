@@ -8,86 +8,63 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
 use std::cmp;
+use std::mem;
 use std::string::String;
 use std::usize;
-use rustc_front::hir;
 
-use clean::{self, Attributes};
+use clean::{self, Attributes, GetDefId};
 use clean::Item;
 use plugins;
 use fold;
 use fold::DocFolder;
+use fold::FoldItem::Strip;
 
 /// Strip items marked `#[doc(hidden)]`
 pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
-    let mut stripped = DefIdSet();
+    let mut retained = DefIdSet();
 
     // strip all #[doc(hidden)] items
     let krate = {
         struct Stripper<'a> {
-            stripped: &'a mut DefIdSet
+            retained: &'a mut DefIdSet,
+            update_retained: bool,
         }
         impl<'a> fold::DocFolder for Stripper<'a> {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
-                if i.attrs.list_def("doc").has_word("hidden") {
+                if i.attrs.list("doc").has_word("hidden") {
                     debug!("found one in strip_hidden; removing");
-                    self.stripped.insert(i.def_id);
-
                     // use a dedicated hidden item for given item type if any
                     match i.inner {
-                        clean::StructFieldItem(..) => {
-                            return Some(clean::Item {
-                                inner: clean::StructFieldItem(clean::HiddenStructField),
-                                ..i
-                            });
+                        clean::StructFieldItem(..) | clean::ModuleItem(..) => {
+                            // We need to recurse into stripped modules to
+                            // strip things like impl methods but when doing so
+                            // we must not add any items to the `retained` set.
+                            let old = mem::replace(&mut self.update_retained, false);
+                            let ret = Strip(self.fold_item_recur(i).unwrap()).fold();
+                            self.update_retained = old;
+                            return ret;
                         }
-                        _ => {
-                            return None;
-                        }
+                        _ => return None,
                     }
-                }
-
-                self.fold_item_recur(i)
-            }
-        }
-        let mut stripper = Stripper{ stripped: &mut stripped };
-        stripper.fold_crate(krate)
-    };
-
-    // strip any traits implemented on stripped items
-    let krate = {
-        struct ImplStripper<'a> {
-            stripped: &'a mut DefIdSet
-        }
-        impl<'a> fold::DocFolder for ImplStripper<'a> {
-            fn fold_item(&mut self, i: Item) -> Option<Item> {
-                if let clean::ImplItem(clean::Impl{
-                           for_: clean::ResolvedPath{ did, .. },
-                           ref trait_, ..
-                }) = i.inner {
-                    // Impls for stripped types don't need to exist
-                    if self.stripped.contains(&did) {
-                        return None;
-                    }
-                    // Impls of stripped traits also don't need to exist
-                    if let Some(clean::ResolvedPath { did, .. }) = *trait_ {
-                        if self.stripped.contains(&did) {
-                            return None;
-                        }
+                } else {
+                    if self.update_retained {
+                        self.retained.insert(i.def_id);
                     }
                 }
                 self.fold_item_recur(i)
             }
         }
-        let mut stripper = ImplStripper{ stripped: &mut stripped };
+        let mut stripper = Stripper{ retained: &mut retained, update_retained: true };
         stripper.fold_crate(krate)
     };
 
-    (krate, None)
+    // strip all impls referencing stripped items
+    let mut stripper = ImplStripper { retained: &retained };
+    stripper.fold_crate(krate)
 }
 
 /// Strip private items from the point of view of a crate or externally from a
@@ -95,42 +72,48 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
 pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
     // This stripper collects all *retained* nodes.
     let mut retained = DefIdSet();
-    let analysis = super::ANALYSISKEY.with(|a| a.clone());
-    let analysis = analysis.borrow();
-    let analysis = analysis.as_ref().unwrap();
-    let access_levels = analysis.access_levels.clone();
+    let access_levels = krate.access_levels.clone();
 
     // strip all private items
     {
         let mut stripper = Stripper {
             retained: &mut retained,
             access_levels: &access_levels,
+            update_retained: true,
         };
         krate = ImportStripper.fold_crate(stripper.fold_crate(krate));
     }
 
-    // strip all private implementations of traits
-    {
-        let mut stripper = ImplStripper(&retained);
-        krate = stripper.fold_crate(krate);
-    }
-    (krate, None)
+    // strip all impls referencing private items
+    let mut stripper = ImplStripper { retained: &retained };
+    stripper.fold_crate(krate)
 }
 
 struct Stripper<'a> {
     retained: &'a mut DefIdSet,
     access_levels: &'a AccessLevels<DefId>,
+    update_retained: bool,
 }
 
 impl<'a> fold::DocFolder for Stripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
+            clean::StrippedItem(..) => {
+                // We need to recurse into stripped modules to strip things
+                // like impl methods but when doing so we must not add any
+                // items to the `retained` set.
+                let old = mem::replace(&mut self.update_retained, false);
+                let ret = self.fold_item_recur(i);
+                self.update_retained = old;
+                return ret;
+            }
             // These items can all get re-exported
             clean::TypedefItem(..) | clean::StaticItem(..) |
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TraitItem(..) | clean::FunctionItem(..) |
             clean::VariantItem(..) | clean::MethodItem(..) |
-            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) => {
+            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
+            clean::ConstantItem(..) => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
                         return None;
@@ -138,34 +121,23 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 }
             }
 
-            clean::ConstantItem(..) => {
-                if i.def_id.is_local() && !self.access_levels.is_exported(i.def_id) {
-                    return None;
-                }
-            }
-
             clean::StructFieldItem(..) => {
-                if i.visibility != Some(hir::Public) {
-                    return Some(clean::Item {
-                        inner: clean::StructFieldItem(clean::HiddenStructField),
-                        ..i
-                    })
+                if i.visibility != Some(clean::Public) {
+                    return Strip(i).fold();
                 }
             }
 
-            // handled below
-            clean::ModuleItem(..) => {}
-
-            // trait impls for private items should be stripped
-            clean::ImplItem(clean::Impl{
-                for_: clean::ResolvedPath{ did, .. }, ..
-            }) => {
-                if did.is_local() && !self.access_levels.is_exported(did) {
-                    return None;
+            clean::ModuleItem(..) => {
+                if i.def_id.is_local() && i.visibility != Some(clean::Public) {
+                    let old = mem::replace(&mut self.update_retained, false);
+                    let ret = Strip(self.fold_item_recur(i).unwrap()).fold();
+                    self.update_retained = old;
+                    return ret;
                 }
             }
+
             // handled in the `strip-priv-imports` pass
-            clean::ExternCrateItem(..) | clean::ImportItem(_) => {}
+            clean::ExternCrateItem(..) | clean::ImportItem(..) => {}
 
             clean::DefaultImplItem(..) | clean::ImplItem(..) => {}
 
@@ -187,7 +159,6 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             // implementations of traits are always public.
             clean::ImplItem(ref imp) if imp.trait_.is_some() => true,
-
             // Struct variant fields have inherited visibility
             clean::VariantItem(clean::Variant {
                 kind: clean::StructVariant(..)
@@ -196,7 +167,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
         };
 
         let i = if fastreturn {
-            self.retained.insert(i.def_id);
+            if self.update_retained {
+                self.retained.insert(i.def_id);
+            }
             return Some(i);
         } else {
             self.fold_item_recur(i)
@@ -204,13 +177,14 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
         i.and_then(|i| {
             match i.inner {
-                // emptied modules/impls have no need to exist
+                // emptied modules have no need to exist
                 clean::ModuleItem(ref m)
                     if m.items.is_empty() &&
                        i.doc_value().is_none() => None,
-                clean::ImplItem(ref i) if i.items.is_empty() => None,
                 _ => {
-                    self.retained.insert(i.def_id);
+                    if self.update_retained {
+                        self.retained.insert(i.def_id);
+                    }
                     Some(i)
                 }
             }
@@ -218,18 +192,29 @@ impl<'a> fold::DocFolder for Stripper<'a> {
     }
 }
 
-// This stripper discards all private impls of traits
-struct ImplStripper<'a>(&'a DefIdSet);
+// This stripper discards all impls which reference stripped items
+struct ImplStripper<'a> {
+    retained: &'a DefIdSet
+}
+
 impl<'a> fold::DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = i.inner {
-            match imp.trait_ {
-                Some(clean::ResolvedPath{ did, .. }) => {
-                    if did.is_local() && !self.0.contains(&did) {
-                        return None;
-                    }
+            // emptied none trait impls can be stripped
+            if imp.trait_.is_none() && imp.items.is_empty() {
+                return None;
+            }
+            if let Some(did) = imp.for_.def_id() {
+                if did.is_local() && !imp.for_.is_generic() &&
+                    !self.retained.contains(&did)
+                {
+                    return None;
                 }
-                Some(..) | None => {}
+            }
+            if let Some(did) = imp.trait_.def_id() {
+                if did.is_local() && !self.retained.contains(&did) {
+                    return None;
+                }
             }
         }
         self.fold_item_recur(i)
@@ -242,14 +227,14 @@ impl fold::DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
             clean::ExternCrateItem(..) |
-            clean::ImportItem(..) if i.visibility != Some(hir::Public) => None,
+            clean::ImportItem(..) if i.visibility != Some(clean::Public) => None,
             _ => self.fold_item_recur(i)
         }
     }
 }
 
 pub fn strip_priv_imports(krate: clean::Crate)  -> plugins::PluginResult {
-    (ImportStripper.fold_crate(krate), None)
+    ImportStripper.fold_crate(krate)
 }
 
 pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
@@ -273,7 +258,7 @@ pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
     }
     let mut cleaner = CommentCleaner;
     let krate = cleaner.fold_crate(krate);
-    (krate, None)
+    krate
 }
 
 pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
@@ -302,7 +287,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
     }
     let mut collapser = Collapser;
     let krate = collapser.fold_crate(krate);
-    (krate, None)
+    krate
 }
 
 pub fn unindent(s: &str) -> String {

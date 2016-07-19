@@ -97,6 +97,7 @@ h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):no
 h1.fqn {
     border-bottom: 1px dashed;
     margin-top: 0;
+    position: relative;
 }
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
     border-bottom: 1px solid;
@@ -105,6 +106,7 @@ h3.impl, h3.method, h4.method, h3.type, h4.type {
     font-weight: 600;
     margin-top: 10px;
     margin-bottom: 10px;
+    position: relative;
 }
 h3.impl, h3.method, h3.type {
     margin-top: 15px;
@@ -263,20 +265,43 @@ nav.sub {
 .docblock h2 { font-size: 1.15em; }
 .docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
 
+.docblock {
+    margin-left: 24px;
+}
+
 .content .out-of-band {
     font-size: 23px;
-    width: 40%;
     margin: 0px;
     padding: 0px;
     text-align: right;
     display: inline-block;
+    font-weight: normal;
+    position: absolute;
+    right: 0;
+}
+
+h3.impl > .out-of-band {
+    font-size: 21px;
+}
+
+h4 > code, h3 > code {
+    position: inherit;
+}
+
+.in-band, code {
+    z-index: 5;
 }
 
 .content .in-band {
-    width: 60%;
     margin: 0px;
     padding: 0px;
     display: inline-block;
+}
+
+#main { position: relative; }
+#main > .since {
+    top: inherit;
+    font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 .content table {
@@ -384,8 +409,8 @@ a {
 
 .content span.enum, .content a.enum, .block a.current.enum { color: #5e9766; }
 .content span.struct, .content a.struct, .block a.current.struct { color: #df3600; }
-.content a.type { color: #e57300; }
-.content a.macro { color: #068000; }
+.content span.type, .content a.type, .block a.current.type { color: #e57300; }
+.content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
 .block a.current.crate { font-weight: 500; }
 
 .search-input {
@@ -428,7 +453,7 @@ a {
 .content .search-results td:first-child { padding-right: 0; }
 .content .search-results td:first-child a { padding-right: 10px; }
 
-tr.result span.primitive::after { content: ' (primitive type)'; font-style: italic; }
+tr.result span.primitive::after { content: ' (primitive type)'; font-style: italic; color: black}
 
 body.blur > :not(#help) {
     filter: blur(8px);
@@ -451,7 +476,7 @@ body.blur > :not(#help) {
     background: #e9e9e9;
     box-shadow: 0 0 6px rgba(0,0,0,.2);
     width: 550px;
-    height: 300px;
+    height: 330px;
     border: 1px solid #bfbfbf;
 }
 #help dt {
@@ -498,11 +523,13 @@ em.stab p {
     opacity: 0.65;
 }
 
-span.since {
-    float: right;
+.since {
     font-weight: normal;
     font-size: initial;
     color: grey;
+    position: absolute;
+    right: 0;
+    top: 0;
 }
 
 .variants_table {
@@ -527,7 +554,7 @@ td.summary-column {
 pre.rust .kw { color: #8959A8; }
 pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
 pre.rust .number, pre.rust .string { color: #718C00; }
-pre.rust .self, pre.rust .boolval, pre.rust .prelude-val,
+pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
 pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }
@@ -543,14 +570,6 @@ a.test-arrow {
     font-size: 130%;
     top: 5px;
     right: 5px;
-}
-
-.methods .section-header {
-    /* Override parent class attributes. */
-    border-bottom: none !important;
-    font-size: 1.1em !important;
-    margin: 0 0 -5px;
-    padding: 0;
 }
 
 .section-header:hover a:after {
@@ -597,7 +616,48 @@ a.test-arrow {
     color: #999;
 }
 
+.ghost {
+    display: none;
+}
 
+.ghost + .since {
+    position: initial;
+    display: table-cell;
+}
+
+.since + .srclink {
+    display: table-cell;
+    padding-left: 10px;
+}
+
+span.since {
+    position: initial;
+    font-size: 20px;
+    margin-right: 5px;
+}
+
+.enum > .toggle-wrapper > .collapse-toggle, .struct > .toggle-wrapper > .collapse-toggle {
+    left: 0;
+    margin-top: 5px;
+}
+
+.enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock {
+    margin-left: 30px;
+    margin-bottom: 20px;
+    margin-top: 5px;
+}
+
+.enum > .collapsed, .struct > .collapsed {
+    margin-bottom: 25px;
+}
+
+.enum .variant, .struct .structfield {
+    display: block;
+}
+
+:target > code {
+   background: #FDFFD3;
+}
 
 /* Media Queries */
 

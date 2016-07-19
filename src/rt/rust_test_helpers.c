@@ -243,3 +243,7 @@ double rust_interesting_average(uint64_t n, ...) {
     va_end(pairs);
     return sum / n;
 }
+
+int32_t rust_int8_to_int32(int8_t x) {
+    return (int32_t)x;
+}

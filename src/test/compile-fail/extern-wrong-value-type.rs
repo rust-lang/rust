@@ -17,6 +17,6 @@ fn main() {
     // extern functions are extern "C" fn
     let _x: extern "C" fn() = f; // OK
     is_fn(f);
-    //~^ ERROR the trait `core::ops::Fn<()>` is not implemented for the type `extern "C" fn()
-    //~| ERROR the trait `core::ops::FnOnce<()>` is not implemented for the type `extern "C" fn()
+    //~^ ERROR `extern "C" fn() {f}: std::ops::Fn<()>` is not satisfied
+    //~| ERROR `extern "C" fn() {f}: std::ops::FnOnce<()>` is not satisfied
 }

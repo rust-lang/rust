@@ -15,7 +15,6 @@ use self::State::*;
 
 use syntax::ast;
 use syntax::codemap;
-use syntax::codemap::Span;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
@@ -23,6 +22,8 @@ use syntax::parse::token::intern;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
 use syntax::ast::AsmDialect;
+use syntax_pos::Span;
+use syntax::tokenstream;
 
 enum State {
     Asm,
@@ -48,7 +49,7 @@ impl State {
 
 const OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
-pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
                        -> Box<base::MacResult+'cx> {
     if !cx.ecfg.enable_asm() {
         feature_gate::emit_feature_err(
@@ -62,8 +63,8 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     // parsed as `asm!(z)` with `z = "x": y` which is type ascription.
     let first_colon = tts.iter().position(|tt| {
         match *tt {
-            ast::TokenTree::Token(_, token::Colon) |
-            ast::TokenTree::Token(_, token::ModSep) => true,
+            tokenstream::TokenTree::Token(_, token::Colon) |
+            tokenstream::TokenTree::Token(_, token::ModSep) => true,
             _ => false
         }
     }).unwrap_or(tts.len());
@@ -131,11 +132,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     // It's the opposite of '=&' which means that the memory
                     // cannot be shared with any other operand (usually when
                     // a register is clobbered early.)
-                    let output = match constraint.slice_shift_char() {
-                        Some(('=', _)) => None,
-                        Some(('+', operand)) => {
+                    let mut ch = constraint.chars();
+                    let output = match ch.next() {
+                        Some('=') => None,
+                        Some('+') => {
                             Some(token::intern_and_get_ident(&format!(
-                                        "={}", operand)))
+                                        "={}", ch.as_str())))
                         }
                         _ => {
                             cx.span_err(span, "output operand constraint lacks '=' or '+'");
@@ -146,7 +148,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     let is_rw = output.is_some();
                     let is_indirect = constraint.contains("*");
                     outputs.push(ast::InlineAsmOutput {
-                        constraint: output.unwrap_or(constraint),
+                        constraint: output.unwrap_or(constraint.clone()),
                         expr: out,
                         is_rw: is_rw,
                         is_indirect: is_indirect,
@@ -190,7 +192,10 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.last_span, "expected a clobber, found an option");
+                    } else if s.starts_with("{") || s.ends_with("}") {
+                        cx.span_err(p.last_span, "clobber should not be surrounded by braces");
                     }
+
                     clobs.push(s);
                 }
             }
@@ -259,6 +264,6 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             expn_id: expn_id,
         }),
         span: sp,
-        attrs: None,
+        attrs: ast::ThinVec::new(),
     }))
 }

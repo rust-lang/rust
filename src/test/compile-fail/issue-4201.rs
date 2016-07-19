@@ -13,10 +13,9 @@ fn main() {
         0
     } else if false {
 //~^ ERROR if may be missing an else clause
-//~| expected `()`
-//~| found `_`
-//~| expected ()
-//~| found integral variable
+//~| expected type `()`
+//~| found type `_`
+//~| expected (), found integral variable
         1
     };
 }

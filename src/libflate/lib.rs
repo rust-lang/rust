@@ -27,15 +27,11 @@
 #![feature(libc)]
 #![feature(staged_api)]
 #![feature(unique)]
-#![cfg_attr(test, feature(rustc_private, rand))]
-
-#[cfg(test)]
-#[macro_use]
-extern crate log;
+#![cfg_attr(test, feature(rand))]
 
 extern crate libc;
 
-use libc::{c_void, size_t, c_int};
+use libc::{c_int, c_void, size_t};
 use std::fmt;
 use std::ops::Deref;
 use std::ptr::Unique;
@@ -80,9 +76,9 @@ impl Drop for Bytes {
 
 #[link(name = "miniz", kind = "static")]
 #[cfg(not(cargobuild))]
-extern {}
+extern "C" {}
 
-extern {
+extern "C" {
     /// Raw miniz compression function.
     fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
                                   src_buf_len: size_t,
@@ -158,8 +154,8 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> Result<Bytes, Error> {
 #[cfg(test)]
 mod tests {
     #![allow(deprecated)]
-    use super::{inflate_bytes, deflate_bytes};
-    use std::__rand::{thread_rng, Rng};
+    use super::{deflate_bytes, inflate_bytes};
+    use std::__rand::{Rng, thread_rng};
 
     #[test]
     fn test_flate_round_trip() {
@@ -175,14 +171,8 @@ mod tests {
             for _ in 0..2000 {
                 input.extend_from_slice(r.choose(&words).unwrap());
             }
-            debug!("de/inflate of {} bytes of random word-sequences",
-                   input.len());
             let cmp = deflate_bytes(&input);
             let out = inflate_bytes(&cmp).unwrap();
-            debug!("{} bytes deflated to {} ({:.1}% size)",
-                   input.len(),
-                   cmp.len(),
-                   100.0 * ((cmp.len() as f64) / (input.len() as f64)));
             assert_eq!(&*input, &*out);
         }
     }

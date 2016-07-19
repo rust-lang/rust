@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Rusty Mathematics
+//! constant evaluation on the HIR and code to validate patterns/matches
 //!
 //! # Note
 //!
@@ -25,18 +25,29 @@
 
 #![feature(rustc_private)]
 #![feature(staged_api)]
+#![feature(rustc_diagnostic_macros)]
+#![feature(slice_patterns)]
+#![feature(question_mark)]
+#![feature(box_patterns)]
+#![feature(box_syntax)]
 
-#[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
-
+#[macro_use] extern crate log;
+#[macro_use] extern crate rustc;
+extern crate rustc_back;
+extern crate rustc_const_math;
+extern crate graphviz;
+extern crate syntax_pos;
 extern crate serialize as rustc_serialize; // used by deriving
 
-mod int;
-mod us;
-mod is;
-mod err;
+// NB: This module needs to be declared first so diagnostics are
+// registered before they are used.
+pub mod diagnostics;
 
-pub use int::*;
-pub use us::*;
-pub use is::*;
-pub use err::ConstMathErr;
+mod eval;
+pub mod check_match;
+
+pub use eval::*;
+
+// Build the diagnostics array at the end so that the metadata includes error use sites.
+__build_diagnostic_array! { librustc_const_eval, DIAGNOSTICS }

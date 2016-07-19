@@ -11,27 +11,27 @@
 // Test `?Sized` types not allowed in fields (except the last one).
 
 struct S1<X: ?Sized> {
-    f1: X, //~ ERROR `core::marker::Sized` is not implemented
+    f1: X, //~ ERROR `X: std::marker::Sized` is not satisfied
     f2: isize,
 }
 struct S2<X: ?Sized> {
     f: isize,
-    g: X, //~ ERROR `core::marker::Sized` is not implemented
+    g: X, //~ ERROR `X: std::marker::Sized` is not satisfied
     h: isize,
 }
 struct S3 {
-    f: str, //~ ERROR `core::marker::Sized` is not implemented
+    f: str, //~ ERROR `str: std::marker::Sized` is not satisfied
     g: [usize]
 }
 struct S4 {
-    f: [u8], //~ ERROR `core::marker::Sized` is not implemented
+    f: [u8], //~ ERROR `[u8]: std::marker::Sized` is not satisfied
     g: usize
 }
 enum E<X: ?Sized> {
-    V1(X, isize), //~ERROR `core::marker::Sized` is not implemented
+    V1(X, isize), //~ERROR `X: std::marker::Sized` is not satisfied
 }
 enum F<X: ?Sized> {
-    V2{f1: X, f: isize}, //~ERROR `core::marker::Sized` is not implemented
+    V2{f1: X, f: isize}, //~ERROR `X: std::marker::Sized` is not satisfied
 }
 
 pub fn main() {

@@ -48,32 +48,36 @@ mod imp {
     use mem;
     use ffi::CStr;
 
-    use sync::StaticMutex;
+    use sys_common::mutex::Mutex;
 
     static mut GLOBAL_ARGS_PTR: usize = 0;
-    static LOCK: StaticMutex = StaticMutex::new();
+    static LOCK: Mutex = Mutex::new();
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
         let args = (0..argc).map(|i| {
             CStr::from_ptr(*argv.offset(i) as *const c_char).to_bytes().to_vec()
         }).collect();
 
-        let _guard = LOCK.lock();
+        LOCK.lock();
         let ptr = get_global_ptr();
         assert!((*ptr).is_none());
         (*ptr) = Some(box args);
+        LOCK.unlock();
     }
 
     pub unsafe fn cleanup() {
-        let _guard = LOCK.lock();
+        LOCK.lock();
         *get_global_ptr() = None;
+        LOCK.unlock();
     }
 
     pub fn clone() -> Option<Vec<Vec<u8>>> {
-        let _guard = LOCK.lock();
         unsafe {
+            LOCK.lock();
             let ptr = get_global_ptr();
-            (*ptr).as_ref().map(|s| (**s).clone())
+            let ret = (*ptr).as_ref().map(|s| (**s).clone());
+            LOCK.unlock();
+            return ret
         }
     }
 

@@ -154,7 +154,7 @@ print_area(5);
 We get a compile-time error:
 
 ```text
-error: the trait `HasArea` is not implemented for the type `_` [E0277]
+error: the trait bound `_ : HasArea` is not satisfied [E0277]
 ```
 
 ## Trait bounds on generic structs
@@ -195,7 +195,7 @@ fn main() {
 `is_square()` needs to check that the sides are equal, so the sides must be of
 a type that implements the [`core::cmp::PartialEq`][PartialEq] trait:
 
-```ignore
+```rust,ignore
 impl<T: PartialEq> Rectangle<T> { ... }
 ```
 
@@ -397,10 +397,10 @@ fn normal<T: ConvertTo<i64>>(x: &T) -> i64 {
 }
 
 // can be called with T == i64
-fn inverse<T>() -> T
+fn inverse<T>(x: i32) -> T
         // this is using ConvertTo as if it were "ConvertTo<i64>"
         where i32: ConvertTo<T> {
-    42.convert()
+    x.convert()
 }
 ```
 
@@ -496,7 +496,7 @@ impl FooBar for Baz {
 If we forget to implement `Foo`, Rust will tell us:
 
 ```text
-error: the trait `main::Foo` is not implemented for the type `main::Baz` [E0277]
+error: the trait bound `main::Baz : main::Foo` is not satisfied [E0277]
 ```
 
 # Deriving

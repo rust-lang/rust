@@ -15,7 +15,7 @@ trait Trait<'a> {
 
 fn foo<'a, T: Trait<'a>>(value: T::A) {
     let new: T::B = unsafe { std::mem::transmute(value) };
-//~^ ERROR: cannot transmute to or from a type that contains unsubstituted type parameters [E0139]
+//~^ ERROR: transmute called with differently sized types
 }
 
 fn main() { }

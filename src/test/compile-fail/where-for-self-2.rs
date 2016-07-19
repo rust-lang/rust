@@ -29,5 +29,5 @@ fn foo<T>(x: &T)
 
 fn main() {
     foo(&X);
-    //~^ error: `for<'a> Bar` is not implemented
+    //~^ error: `for<'a> &'a _: Bar` is not satisfied
 }

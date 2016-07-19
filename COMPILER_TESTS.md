@@ -77,7 +77,7 @@ fn test_foo() {
 }
 ```
 
-Note that not all headers have meaning when customized too a revision.
+Note that not all headers have meaning when customized to a revision.
 For example, the `ignore-test` header (and all "ignore" headers)
 currently only apply to the test as a whole, not to particular
 revisions. The only headers that are intended to really work when

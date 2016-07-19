@@ -11,5 +11,5 @@
 // compile-flags: -Z parse-only
 
 fn main() {
-    let abstract = (); //~ ERROR `abstract` is a reserved keyword
+    let abstract = (); //~ ERROR expected pattern, found reserved keyword `abstract`
 }

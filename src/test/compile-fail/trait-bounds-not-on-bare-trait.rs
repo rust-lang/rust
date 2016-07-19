@@ -15,7 +15,7 @@ trait Foo {
 // This should emit the less confusing error, not the more confusing one.
 
 fn foo(_x: Foo + Send) {
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
+    //~^ ERROR `Foo + Send + 'static: std::marker::Sized` is not satisfied
 }
 
 fn main() { }

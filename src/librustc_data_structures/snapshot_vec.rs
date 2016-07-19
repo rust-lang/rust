@@ -213,3 +213,11 @@ impl<D: SnapshotVecDelegate> ops::IndexMut<usize> for SnapshotVec<D> {
         self.get_mut(index)
     }
 }
+
+impl<D: SnapshotVecDelegate> Extend<D::Value> for SnapshotVec<D> {
+    fn extend<T>(&mut self, iterable: T) where T: IntoIterator<Item=D::Value> {
+        for item in iterable {
+            self.push(item);
+        }
+    }
+}

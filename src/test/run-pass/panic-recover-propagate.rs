@@ -10,28 +10,28 @@
 
 // ignore-emscripten no threads support
 
-#![feature(std_panic, recover, panic_propagate, panic_handler, const_fn)]
+#![feature(panic_handler)]
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::panic;
 use std::thread;
 
-static A: AtomicUsize = AtomicUsize::new(0);
+static A: AtomicUsize = ATOMIC_USIZE_INIT;
 
 fn main() {
-    panic::set_handler(|_| {
+    panic::set_hook(Box::new(|_| {
         A.fetch_add(1, Ordering::SeqCst);
-    });
+    }));
 
     let result = thread::spawn(|| {
-        let result = panic::recover(|| {
+        let result = panic::catch_unwind(|| {
             panic!("hi there");
         });
 
-        panic::propagate(result.err().unwrap());
+        panic::resume_unwind(result.unwrap_err());
     }).join();
 
-    let msg = *result.err().unwrap().downcast::<&'static str>().unwrap();
+    let msg = *result.unwrap_err().downcast::<&'static str>().unwrap();
     assert_eq!("hi there", msg);
     assert_eq!(1, A.load(Ordering::SeqCst));
 }

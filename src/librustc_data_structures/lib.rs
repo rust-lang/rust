@@ -28,6 +28,8 @@
 #![feature(nonzero)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
+#![feature(unboxed_closures)]
+#![feature(fn_traits)]
 
 #![cfg_attr(test, feature(test))]
 
@@ -39,13 +41,16 @@ extern crate serialize as rustc_serialize; // used by deriving
 pub mod bitvec;
 pub mod graph;
 pub mod ivar;
+pub mod indexed_vec;
 pub mod obligation_forest;
+pub mod snapshot_map;
 pub mod snapshot_vec;
 pub mod transitive_relation;
 pub mod unify;
 pub mod fnv;
 pub mod tuple_slice;
 pub mod veccell;
+pub mod control_flow_graph;
 
 // See comments in src/librustc/lib.rs
 #[doc(hidden)]

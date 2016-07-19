@@ -28,7 +28,7 @@ impl<'a> Test<'a> for Foo<'a> {
 
 impl<'a> NoLifetime for Foo<'a> {
     fn get<'p, T : Test<'a>>(&self) -> T {
-//~^ ERROR lifetime parameters or bounds on method `get` do not match the trait declaration
+//~^ ERROR E0195
         return *self as T;
     }
 }

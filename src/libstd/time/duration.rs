@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ops::{Add, Sub, Mul, Div};
+use ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
@@ -52,22 +52,30 @@ impl Duration {
     ///
     /// If the nanoseconds is greater than 1 billion (the number of nanoseconds
     /// in a second), then it will carry over into the seconds provided.
+    ///
+    /// # Panics
+    ///
+    /// This constructor will panic if the carry from the nanoseconds overflows
+    /// the seconds counter.
     #[stable(feature = "duration", since = "1.3.0")]
-    pub const fn new(secs: u64, nanos: u32) -> Duration {
-        Duration {
-            secs: secs + (nanos / NANOS_PER_SEC) as u64,
-            nanos: nanos % NANOS_PER_SEC
-        }
+    #[inline]
+    pub fn new(secs: u64, nanos: u32) -> Duration {
+        let secs = secs.checked_add((nanos / NANOS_PER_SEC) as u64)
+            .expect("overflow in Duration::new");
+        let nanos = nanos % NANOS_PER_SEC;
+        Duration { secs: secs, nanos: nanos }
     }
 
     /// Creates a new `Duration` from the specified number of seconds.
     #[stable(feature = "duration", since = "1.3.0")]
+    #[inline]
     pub const fn from_secs(secs: u64) -> Duration {
         Duration { secs: secs, nanos: 0 }
     }
 
     /// Creates a new `Duration` from the specified number of milliseconds.
     #[stable(feature = "duration", since = "1.3.0")]
+    #[inline]
     pub const fn from_millis(millis: u64) -> Duration {
         Duration {
             secs: millis / MILLIS_PER_SEC
@@ -80,6 +88,7 @@ impl Duration {
     /// The extra precision represented by this duration is ignored (e.g. extra
     /// nanoseconds are not represented in the returned value).
     #[stable(feature = "duration", since = "1.3.0")]
+    #[inline]
     pub fn as_secs(&self) -> u64 { self.secs }
 
     /// Returns the nanosecond precision represented by this duration.
@@ -88,6 +97,7 @@ impl Duration {
     /// represented by nanoseconds. The returned number always represents a
     /// fractional portion of a second (e.g. it is less than one billion).
     #[stable(feature = "duration", since = "1.3.0")]
+    #[inline]
     pub fn subsec_nanos(&self) -> u32 { self.nanos }
 }
 
@@ -105,6 +115,13 @@ impl Add for Duration {
         }
         debug_assert!(nanos < NANOS_PER_SEC);
         Duration { secs: secs, nanos: nanos }
+    }
+}
+
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl AddAssign for Duration {
+    fn add_assign(&mut self, rhs: Duration) {
+        *self = *self + rhs;
     }
 }
 
@@ -127,6 +144,13 @@ impl Sub for Duration {
     }
 }
 
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl SubAssign for Duration {
+    fn sub_assign(&mut self, rhs: Duration) {
+        *self = *self - rhs;
+    }
+}
+
 #[stable(feature = "duration", since = "1.3.0")]
 impl Mul<u32> for Duration {
     type Output = Duration;
@@ -144,6 +168,13 @@ impl Mul<u32> for Duration {
     }
 }
 
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl MulAssign<u32> for Duration {
+    fn mul_assign(&mut self, rhs: u32) {
+        *self = *self * rhs;
+    }
+}
+
 #[stable(feature = "duration", since = "1.3.0")]
 impl Div<u32> for Duration {
     type Output = Duration;
@@ -155,6 +186,13 @@ impl Div<u32> for Duration {
         let nanos = self.nanos / rhs + (extra_nanos as u32);
         debug_assert!(nanos < NANOS_PER_SEC);
         Duration { secs: secs, nanos: nanos }
+    }
+}
+
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl DivAssign<u32> for Duration {
+    fn div_assign(&mut self, rhs: u32) {
+        *self = *self / rhs;
     }
 }
 

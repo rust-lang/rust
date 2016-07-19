@@ -16,10 +16,9 @@ fn main() {
     match (S { a: 1 }) {
         E::C(_) => (),
         //~^ ERROR mismatched types
-        //~| expected `S`
-        //~| found `E`
-        //~| expected struct `S`
-        //~| found enum `E`
+        //~| expected type `S`
+        //~| found type `E`
+        //~| expected struct `S`, found enum `E`
         _ => ()
     }
 }

@@ -52,7 +52,7 @@ fn test<'a,'b>() {
     // Errors expected:
     eq::< Foo<(),Output=()>,
           Foo(char)                                               >();
-    //~^^ ERROR not implemented
+    //~^^ ERROR E0277
 }
 
 fn main() { }

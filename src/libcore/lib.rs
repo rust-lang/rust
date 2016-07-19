@@ -25,6 +25,8 @@
 //!
 //! # How to use the core library
 //!
+//! Please note that all of these details are currently not considered stable.
+//!
 // FIXME: Fill me in with more detail when the interface settles
 //! This library is built on the assumption of a few existing symbols:
 //!
@@ -34,11 +36,12 @@
 //!   These functions are often provided by the system libc, but can also be
 //!   provided by the [rlibc crate](https://crates.io/crates/rlibc).
 //!
-//! * `rust_begin_unwind` - This function takes three arguments, a
-//!   `fmt::Arguments`, a `&str`, and a `u32`. These three arguments dictate
-//!   the panic message, the file at which panic was invoked, and the line.
-//!   It is up to consumers of this core library to define this panic
-//!   function; it is only required to never return.
+//! * `rust_begin_panic` - This function takes three arguments, a
+//!   `fmt::Arguments`, a `&'static str`, and a `u32`. These three arguments
+//!   dictate the panic message, the file at which panic was invoked, and the
+//!   line. It is up to consumers of this core library to define this panic
+//!   function; it is only required to never return. This requires a `lang`
+//!   attribute named `panic_fmt`.
 
 // Since libcore defines many fundamental lang items, all tests live in a
 // separate crate, libcoretest, to avoid bizarre issues.
@@ -59,10 +62,15 @@
 #![deny(missing_debug_implementations)]
 #![cfg_attr(not(stage0), deny(warnings))]
 
+#![cfg_attr(stage0, allow(unused_attributes))]
+
 #![feature(allow_internal_unstable)]
+#![feature(asm)]
 #![feature(associated_type_defaults)]
+#![feature(cfg_target_feature)]
 #![feature(concat_idents)]
 #![feature(const_fn)]
+#![feature(cfg_target_has_atomic)]
 #![feature(custom_attribute)]
 #![feature(fundamental)]
 #![feature(inclusive_range_syntax)]
@@ -75,8 +83,10 @@
 #![feature(unwind_attributes)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
+#![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
+#![feature(question_mark)]
 
 #[macro_use]
 mod macros;
@@ -151,4 +161,5 @@ pub mod hash;
 pub mod fmt;
 
 // note: does not need to be public
+mod iter_private;
 mod tuple;

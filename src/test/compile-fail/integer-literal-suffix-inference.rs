@@ -41,168 +41,132 @@ fn main() {
     id_i8(a8); // ok
     id_i8(a16);
     //~^ ERROR mismatched types
-    //~| expected `i8`
-    //~| found `i16`
+    //~| expected i8, found i16
     id_i8(a32);
     //~^ ERROR mismatched types
-    //~| expected `i8`
-    //~| found `i32`
+    //~| expected i8, found i32
     id_i8(a64);
     //~^ ERROR mismatched types
-    //~| expected `i8`
-    //~| found `i64`
+    //~| expected i8, found i64
 
     id_i16(a8);
     //~^ ERROR mismatched types
-    //~| expected `i16`
-    //~| found `i8`
+    //~| expected i16, found i8
     id_i16(a16); // ok
     id_i16(a32);
     //~^ ERROR mismatched types
-    //~| expected `i16`
-    //~| found `i32`
+    //~| expected i16, found i32
     id_i16(a64);
     //~^ ERROR mismatched types
-    //~| expected `i16`
-    //~| found `i64`
+    //~| expected i16, found i64
 
     id_i32(a8);
     //~^ ERROR mismatched types
-    //~| expected `i32`
-    //~| found `i8`
+    //~| expected i32, found i8
     id_i32(a16);
     //~^ ERROR mismatched types
-    //~| expected `i32`
-    //~| found `i16`
+    //~| expected i32, found i16
     id_i32(a32); // ok
     id_i32(a64);
     //~^ ERROR mismatched types
-    //~| expected `i32`
-    //~| found `i64`
+    //~| expected i32, found i64
 
     id_i64(a8);
     //~^ ERROR mismatched types
-    //~| expected `i64`
-    //~| found `i8`
+    //~| expected i64, found i8
     id_i64(a16);
     //~^ ERROR mismatched types
-    //~| expected `i64`
-    //~| found `i16`
+    //~| expected i64, found i16
     id_i64(a32);
     //~^ ERROR mismatched types
-    //~| expected `i64`
-    //~| found `i32`
+    //~| expected i64, found i32
     id_i64(a64); // ok
 
     id_i8(c8); // ok
     id_i8(c16);
     //~^ ERROR mismatched types
-    //~| expected `i8`
-    //~| found `i16`
+    //~| expected i8, found i16
     id_i8(c32);
     //~^ ERROR mismatched types
-    //~| expected `i8`
-    //~| found `i32`
+    //~| expected i8, found i32
     id_i8(c64);
     //~^ ERROR mismatched types
-    //~| expected `i8`
-    //~| found `i64`
+    //~| expected i8, found i64
 
     id_i16(c8);
     //~^ ERROR mismatched types
-    //~| expected `i16`
-    //~| found `i8`
+    //~| expected i16, found i8
     id_i16(c16); // ok
     id_i16(c32);
     //~^ ERROR mismatched types
-    //~| expected `i16`
-    //~| found `i32`
+    //~| expected i16, found i32
     id_i16(c64);
     //~^ ERROR mismatched types
-    //~| expected `i16`
-    //~| found `i64`
+    //~| expected i16, found i64
 
     id_i32(c8);
     //~^ ERROR mismatched types
-    //~| expected `i32`
-    //~| found `i8`
+    //~| expected i32, found i8
     id_i32(c16);
     //~^ ERROR mismatched types
-    //~| expected `i32`
-    //~| found `i16`
+    //~| expected i32, found i16
     id_i32(c32); // ok
     id_i32(c64);
     //~^ ERROR mismatched types
-    //~| expected `i32`
-    //~| found `i64`
+    //~| expected i32, found i64
 
     id_i64(a8);
     //~^ ERROR mismatched types
-    //~| expected `i64`
-    //~| found `i8`
+    //~| expected i64, found i8
     id_i64(a16);
     //~^ ERROR mismatched types
-    //~| expected `i64`
-    //~| found i16
+    //~| expected i64, found i16
     id_i64(a32);
     //~^ ERROR mismatched types
-    //~| expected `i64`
-    //~| found `i32`
+    //~| expected i64, found i32
     id_i64(a64); // ok
 
     id_u8(b8); // ok
     id_u8(b16);
     //~^ ERROR mismatched types
-    //~| expected `u8`
-    //~| found `u16`
+    //~| expected u8, found u16
     id_u8(b32);
     //~^ ERROR mismatched types
-    //~| expected `u8`
-    //~| found `u32`
+    //~| expected u8, found u32
     id_u8(b64);
     //~^ ERROR mismatched types
-    //~| expected `u8`
-    //~| found `u64`
+    //~| expected u8, found u64
 
     id_u16(b8);
     //~^ ERROR mismatched types
-    //~| expected `u16`
-    //~| found `u8`
+    //~| expected u16, found u8
     id_u16(b16); // ok
     id_u16(b32);
     //~^ ERROR mismatched types
-    //~| expected `u16`
-    //~| found `u32`
+    //~| expected u16, found u32
     id_u16(b64);
     //~^ ERROR mismatched types
-    //~| expected `u16`
-    //~| found `u64`
+    //~| expected u16, found u64
 
     id_u32(b8);
     //~^ ERROR mismatched types
-    //~| expected `u32`
-    //~| found `u8`
+    //~| expected u32, found u8
     id_u32(b16);
     //~^ ERROR mismatched types
-    //~| expected `u32`
-    //~| found `u16`
+    //~| expected u32, found u16
     id_u32(b32); // ok
     id_u32(b64);
     //~^ ERROR mismatched types
-    //~| expected `u32`
-    //~| found `u64`
+    //~| expected u32, found u64
 
     id_u64(b8);
     //~^ ERROR mismatched types
-    //~| expected `u64`
-    //~| found `u8`
+    //~| expected u64, found u8
     id_u64(b16);
     //~^ ERROR mismatched types
-    //~| expected `u64`
-    //~| found `u16`
+    //~| expected u64, found u16
     id_u64(b32);
     //~^ ERROR mismatched types
-    //~| expected `u64`
-    //~| found `u32`
+    //~| expected u64, found u32
     id_u64(b64); // ok
 }

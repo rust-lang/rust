@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast;
-use syntax::codemap;
 use syntax::ext::base;
 use syntax::feature_gate;
 use syntax::print;
+use syntax::tokenstream;
+use syntax_pos;
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
-                              sp: codemap::Span,
-                              tts: &[ast::TokenTree])
+                              sp: syntax_pos::Span,
+                              tts: &[tokenstream::TokenTree])
                               -> Box<base::MacResult+'cx> {
     if !cx.ecfg.enable_log_syntax() {
         feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,

@@ -14,6 +14,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(target_pointer_width = "16")]
+int_module! { isize, 16 }
 #[cfg(target_pointer_width = "32")]
 int_module! { isize, 32 }
 #[cfg(target_pointer_width = "64")]

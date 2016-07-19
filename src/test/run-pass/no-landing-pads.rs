@@ -27,6 +27,6 @@ fn main() {
     thread::spawn(move|| -> () {
         let _a = A;
         panic!();
-    }).join().err().unwrap();
+    }).join().unwrap_err();
     assert!(unsafe { !HIT });
 }

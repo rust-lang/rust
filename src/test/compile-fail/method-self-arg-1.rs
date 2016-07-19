@@ -19,13 +19,11 @@ impl Foo {
 fn main() {
     let x = Foo;
     Foo::bar(x); //~  ERROR mismatched types
-                 //~| expected `&Foo`
-                 //~| found `Foo`
-                 //~| expected &-ptr
-                 //~| found struct `Foo`
+                 //~| expected type `&Foo`
+                 //~| found type `Foo`
+                 //~| expected &-ptr, found struct `Foo`
     Foo::bar(&42); //~  ERROR mismatched types
-                      //~| expected `&Foo`
-                      //~| found `&_`
-                      //~| expected struct `Foo`
-                      //~| found integral variable
+                      //~| expected type `&Foo`
+                      //~| found type `&_`
+                      //~| expected struct `Foo`, found integral variable
 }

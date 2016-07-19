@@ -10,7 +10,7 @@
 
 // Test that two unrelated functions have no trans dependency.
 
-// compile-flags: -Z incr-comp
+// compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]

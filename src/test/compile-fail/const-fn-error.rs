@@ -8,19 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// test that const fn signature and body errors are checked
-// even in array lengths, which are evaluated before check_const
-
 #![feature(const_fn)]
 
 const X : usize = 2;
 
 const fn f(x: usize) -> usize {
-    let mut sum = 0; //~ ERROR: E0016
-    for i in 0..x { //~ ERROR: E0016
+    let mut sum = 0;
+    for i in 0..x {
         sum += i;
     }
-    sum
+    sum //~ ERROR: E0250
 }
 
 #[allow(unused_variables)]

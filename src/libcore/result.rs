@@ -19,7 +19,7 @@
 //! # #[allow(dead_code)]
 //! enum Result<T, E> {
 //!    Ok(T),
-//!    Err(E)
+//!    Err(E),
 //! }
 //! ```
 //!
@@ -39,7 +39,7 @@
 //!         None => Err("invalid header length"),
 //!         Some(&1) => Ok(Version::Version1),
 //!         Some(&2) => Ok(Version::Version2),
-//!         Some(_) => Err("invalid version")
+//!         Some(_) => Err("invalid version"),
 //!     }
 //! }
 //!
@@ -175,8 +175,11 @@
 //! }
 //!
 //! fn write_info(info: &Info) -> io::Result<()> {
-//!     let mut file = try!(File::create("my_best_friends.txt"));
 //!     // Early return on error
+//!     let mut file = match File::create("my_best_friends.txt") {
+//!            Err(e) => return Err(e),
+//!            Ok(f) => f,
+//!     };
 //!     if let Err(e) = file.write_all(format!("name: {}\n", info.name).as_bytes()) {
 //!         return Err(e)
 //!     }
@@ -254,7 +257,7 @@ pub enum Result<T, E> {
 
     /// Contains the error value
     #[stable(feature = "rust1", since = "1.0.0")]
-    Err(#[stable(feature = "rust1", since = "1.0.0")] E)
+    Err(#[stable(feature = "rust1", since = "1.0.0")] E),
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -269,6 +272,8 @@ impl<T, E> Result<T, E> {
     /// Returns true if the result is `Ok`
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// let x: Result<i32, &str> = Ok(-3);
@@ -289,6 +294,8 @@ impl<T, E> Result<T, E> {
     /// Returns true if the result is `Err`
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// let x: Result<i32, &str> = Ok(-3);
@@ -314,6 +321,8 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
     /// assert_eq!(x.ok(), Some(2));
@@ -336,6 +345,8 @@ impl<T, E> Result<T, E> {
     /// and discarding the success value, if any.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
@@ -362,6 +373,10 @@ impl<T, E> Result<T, E> {
     /// Produces a new `Result`, containing a reference
     /// into the original, leaving the original in place.
     ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
     /// assert_eq!(x.as_ref(), Ok(&2));
@@ -379,6 +394,10 @@ impl<T, E> Result<T, E> {
     }
 
     /// Converts from `Result<T, E>` to `Result<&mut T, &mut E>`
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// fn mutate(r: &mut Result<i32, i32>) {
@@ -445,6 +464,8 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// fn stringify(x: u32) -> String { format!("error code: {}", x) }
     ///
@@ -471,6 +492,8 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// let x: Result<u32, &str> = Ok(7);
     /// assert_eq!(x.iter().next(), Some(&7));
@@ -487,6 +510,8 @@ impl<T, E> Result<T, E> {
     /// Returns a mutable iterator over the possibly contained value.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// let mut x: Result<u32, &str> = Ok(7);
@@ -512,6 +537,8 @@ impl<T, E> Result<T, E> {
     /// Returns `res` if the result is `Ok`, otherwise returns the `Err` value of `self`.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
@@ -545,6 +572,8 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// fn sq(x: u32) -> Result<u32, u32> { Ok(x * x) }
     /// fn err(x: u32) -> Result<u32, u32> { Err(x) }
@@ -566,6 +595,8 @@ impl<T, E> Result<T, E> {
     /// Returns `res` if the result is `Err`, otherwise returns the `Ok` value of `self`.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
@@ -599,6 +630,8 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// fn sq(x: u32) -> Result<u32, u32> { Ok(x * x) }
     /// fn err(x: u32) -> Result<u32, u32> { Err(x) }
@@ -622,6 +655,8 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// let optb = 2;
     /// let x: Result<u32, &str> = Ok(9);
@@ -643,6 +678,8 @@ impl<T, E> Result<T, E> {
     /// If the value is an `Err` then it calls `op` with its value.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// fn count(x: &str) -> usize { x.len() }
@@ -670,6 +707,8 @@ impl<T, E: fmt::Debug> Result<T, E> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
     /// assert_eq!(x.unwrap(), 2);
@@ -696,6 +735,9 @@ impl<T, E: fmt::Debug> Result<T, E> {
     /// passed message, and the content of the `Err`.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
+    ///
     /// ```{.should_panic}
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
@@ -758,6 +800,8 @@ impl<T, E> IntoIterator for Result<T, E> {
     /// Returns a consuming iterator over the possibly contained value.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(5);

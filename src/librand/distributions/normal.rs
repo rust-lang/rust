@@ -10,10 +10,11 @@
 
 //! The normal and derived distributions.
 
+#[cfg(not(test))] // only necessary for no_std
 use FloatMath;
 
-use {Rng, Rand, Open01};
-use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
+use {Open01, Rand, Rng};
+use distributions::{IndependentSample, Sample, ziggurat, ziggurat_tables};
 
 /// A wrapper around an `f64` to generate N(0, 1) random numbers
 /// (a.k.a.  a standard normal, or Gaussian).
@@ -144,8 +145,8 @@ impl IndependentSample<f64> for LogNormal {
 
 #[cfg(test)]
 mod tests {
-    use distributions::{Sample, IndependentSample};
-    use super::{Normal, LogNormal};
+    use distributions::{IndependentSample, Sample};
+    use super::{LogNormal, Normal};
 
     #[test]
     fn test_normal() {

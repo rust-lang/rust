@@ -11,5 +11,5 @@
 mod foo {}
 
 fn main() {
-    let p = foo { x: () }; //~ ERROR `foo` does not name a structure
+    let p = foo { x: () }; //~ ERROR `foo` does not name a struct or a struct variant
 }

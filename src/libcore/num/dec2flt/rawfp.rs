@@ -61,6 +61,27 @@ impl Unpacked {
 pub trait RawFloat : Float + Copy + Debug + LowerExp
                     + Mul<Output=Self> + Div<Output=Self> + Neg<Output=Self>
 {
+    // suffix of "2" because Float::infinity is deprecated
+    #[allow(deprecated)]
+    fn infinity2() -> Self {
+        Float::infinity()
+    }
+
+    // suffix of "2" because Float::nan is deprecated
+    #[allow(deprecated)]
+    fn nan2() -> Self {
+        Float::nan()
+    }
+
+    // suffix of "2" because Float::zero is deprecated
+    fn zero2() -> Self;
+
+    // suffix of "2" because Float::integer_decode is deprecated
+    #[allow(deprecated)]
+    fn integer_decode2(self) -> (u64, i16, i8) {
+        Float::integer_decode(self)
+    }
+
     /// Get the raw binary representation of the float.
     fn transmute(self) -> u64;
 
@@ -146,6 +167,10 @@ pub trait RawFloat : Float + Copy + Debug + LowerExp
 }
 
 impl RawFloat for f32 {
+    fn zero2() -> Self {
+        0.0
+    }
+
     fn sig_bits() -> u8 {
         24
     }
@@ -169,7 +194,7 @@ impl RawFloat for f32 {
     }
 
     fn unpack(self) -> Unpacked {
-        let (sig, exp, _sig) = self.integer_decode();
+        let (sig, exp, _sig) = self.integer_decode2();
         Unpacked::new(sig, exp)
     }
 
@@ -198,6 +223,10 @@ impl RawFloat for f32 {
 
 
 impl RawFloat for f64 {
+    fn zero2() -> Self {
+        0.0
+    }
+
     fn sig_bits() -> u8 {
         53
     }
@@ -220,7 +249,7 @@ impl RawFloat for f64 {
     }
 
     fn unpack(self) -> Unpacked {
-        let (sig, exp, _sig) = self.integer_decode();
+        let (sig, exp, _sig) = self.integer_decode2();
         Unpacked::new(sig, exp)
     }
 
@@ -351,7 +380,7 @@ pub fn prev_float<T: RawFloat>(x: T) -> T {
 pub fn next_float<T: RawFloat>(x: T) -> T {
     match x.classify() {
         Nan => panic!("next_float: argument is NaN"),
-        Infinite => T::infinity(),
+        Infinite => T::infinity2(),
         // This seems too good to be true, but it works.
         // 0.0 is encoded as the all-zero word. Subnormals are 0x000m...m where m is the mantissa.
         // In particular, the smallest subnormal is 0x0...01 and the largest is 0x000F...F.

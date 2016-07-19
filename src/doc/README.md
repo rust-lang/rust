@@ -9,7 +9,7 @@ libraries.
 
 To generate HTML documentation from one source file/crate, do something like:
 
-~~~~
+~~~~text
 rustdoc --output html-doc/ --output-format html ../src/libstd/path.rs
 ~~~~
 
@@ -20,7 +20,7 @@ rustdoc --output html-doc/ --output-format html ../src/libstd/path.rs
 To generate an HTML version of a doc from Markdown manually, you can do
 something like:
 
-~~~~
+~~~~text
 rustdoc reference.md
 ~~~~
 

@@ -17,14 +17,9 @@
 // 2. it should elaborate the steps that led to the cycle.
 
 struct Baz { q: Option<Foo> }
-
+//~^ ERROR recursive type `Baz` has infinite size
 struct Foo { q: Option<Baz> }
 //~^ ERROR recursive type `Foo` has infinite size
-//~| type `Foo` is embedded within `core::option::Option<Foo>`...
-//~| ...which in turn is embedded within `core::option::Option<Foo>`...
-//~| ...which in turn is embedded within `Baz`...
-//~| ...which in turn is embedded within `core::option::Option<Baz>`...
-//~| ...which in turn is embedded within `Foo`, completing the cycle.
 
 impl Foo { fn bar(&self) {} }
 

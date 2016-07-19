@@ -13,6 +13,7 @@
 #![feature(inclusive_range_syntax, inclusive_range)]
 
 pub fn main() {
-    for _ in 1... {}
-} //~ ERROR expected one of
+    for _ in 1... {} //~ERROR inclusive range with no end
+                     //~^HELP bounded at the end
+}
 

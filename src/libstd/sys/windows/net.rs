@@ -17,8 +17,6 @@ use io::{self, Read};
 use libc::{c_int, c_void, c_ulong};
 use mem;
 use net::{SocketAddr, Shutdown};
-use num::One;
-use ops::Neg;
 use ptr;
 use sync::Once;
 use sys::c;
@@ -60,28 +58,45 @@ fn last_error() -> io::Error {
     io::Error::from_raw_os_error(unsafe { c::WSAGetLastError() })
 }
 
+#[doc(hidden)]
+pub trait IsMinusOne {
+    fn is_minus_one(&self) -> bool;
+}
+
+macro_rules! impl_is_minus_one {
+    ($($t:ident)*) => ($(impl IsMinusOne for $t {
+        fn is_minus_one(&self) -> bool {
+            *self == -1
+        }
+    })*)
+}
+
+impl_is_minus_one! { i8 i16 i32 i64 isize }
+
 /// Checks if the signed integer is the Windows constant `SOCKET_ERROR` (-1)
-/// and if so, returns the last error from the Windows socket interface. . This
+/// and if so, returns the last error from the Windows socket interface. This
 /// function must be called before another call to the socket API is made.
-pub fn cvt<T: One + Neg<Output=T> + PartialEq>(t: T) -> io::Result<T> {
-    let one: T = T::one();
-    if t == -one {
+pub fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
+    if t.is_minus_one() {
         Err(last_error())
     } else {
         Ok(t)
     }
 }
 
-/// Provides the functionality of `cvt` for the return values of `getaddrinfo`
-/// and similar, meaning that they return an error if the return value is 0.
+/// A variant of `cvt` for `getaddrinfo` which return 0 for a success.
 pub fn cvt_gai(err: c_int) -> io::Result<()> {
-    if err == 0 { return Ok(()) }
-    cvt(err).map(|_| ())
+    if err == 0 {
+        Ok(())
+    } else {
+        Err(last_error())
+    }
 }
 
-/// Provides the functionality of `cvt` for a closure.
+/// Just to provide the same interface as sys/unix/net.rs
 pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
-    where F: FnMut() -> T, T: One + Neg<Output=T> + PartialEq
+    where T: IsMinusOne,
+          F: FnMut() -> T
 {
     cvt(f())
 }
@@ -92,35 +107,35 @@ impl Socket {
             SocketAddr::V4(..) => c::AF_INET,
             SocketAddr::V6(..) => c::AF_INET6,
         };
-        let socket = try!(unsafe {
+        let socket = unsafe {
             match c::WSASocketW(fam, ty, 0, ptr::null_mut(), 0,
                                 c::WSA_FLAG_OVERLAPPED) {
                 c::INVALID_SOCKET => Err(last_error()),
                 n => Ok(Socket(n)),
             }
-        });
-        try!(socket.set_no_inherit());
+        }?;
+        socket.set_no_inherit()?;
         Ok(socket)
     }
 
     pub fn accept(&self, storage: *mut c::SOCKADDR,
                   len: *mut c_int) -> io::Result<Socket> {
-        let socket = try!(unsafe {
+        let socket = unsafe {
             match c::accept(self.0, storage, len) {
                 c::INVALID_SOCKET => Err(last_error()),
                 n => Ok(Socket(n)),
             }
-        });
-        try!(socket.set_no_inherit());
+        }?;
+        socket.set_no_inherit()?;
         Ok(socket)
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
-        let socket = try!(unsafe {
+        let socket = unsafe {
             let mut info: c::WSAPROTOCOL_INFO = mem::zeroed();
-            try!(cvt(c::WSADuplicateSocketW(self.0,
+            cvt(c::WSADuplicateSocketW(self.0,
                                             c::GetCurrentProcessId(),
-                                            &mut info)));
+                                            &mut info))?;
             match c::WSASocketW(info.iAddressFamily,
                                 info.iSocketType,
                                 info.iProtocol,
@@ -129,8 +144,8 @@ impl Socket {
                 c::INVALID_SOCKET => Err(last_error()),
                 n => Ok(Socket(n)),
             }
-        });
-        try!(socket.set_no_inherit());
+        }?;
+        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -169,7 +184,7 @@ impl Socket {
     }
 
     pub fn timeout(&self, kind: c_int) -> io::Result<Option<Duration>> {
-        let raw: c::DWORD = try!(net::getsockopt(self, c::SOL_SOCKET, kind));
+        let raw: c::DWORD = net::getsockopt(self, c::SOL_SOCKET, kind)?;
         if raw == 0 {
             Ok(None)
         } else {
@@ -192,7 +207,7 @@ impl Socket {
             Shutdown::Read => c::SD_RECEIVE,
             Shutdown::Both => c::SD_BOTH,
         };
-        try!(cvt(unsafe { c::shutdown(self.0, how) }));
+        cvt(unsafe { c::shutdown(self.0, how) })?;
         Ok(())
     }
 
@@ -211,12 +226,12 @@ impl Socket {
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        let raw: c::BYTE = try!(net::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY));
+        let raw: c::BYTE = net::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY)?;
         Ok(raw != 0)
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        let raw: c_int = try!(net::getsockopt(self, c::SOL_SOCKET, c::SO_ERROR));
+        let raw: c_int = net::getsockopt(self, c::SOL_SOCKET, c::SO_ERROR)?;
         if raw == 0 {
             Ok(None)
         } else {

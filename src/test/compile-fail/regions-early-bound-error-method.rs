@@ -28,11 +28,7 @@ impl<'a> GetRef<'a> for Box<'a> {
 impl<'a> Box<'a> {
     fn or<'b,G:GetRef<'b>>(&self, g2: G) -> &'a isize {
         g2.get()
-        //~^ ERROR mismatched types
-        //~| expected `&'a isize`
-        //~| found `&'b isize`
-        //~| lifetime mismatch
-
+        //~^ ERROR E0312
     }
 }
 

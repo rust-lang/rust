@@ -76,7 +76,7 @@ pub fn main() {
 
     // functions
     fn baz(_x: i32) {}
-    let _ = &baz as &Fn(i32); //~ERROR trivial cast: `&fn(i32) {main::baz}` as `&core::ops::Fn(i32)`
+    let _ = &baz as &Fn(i32); //~ERROR trivial cast: `&fn(i32) {main::baz}` as `&std::ops::Fn(i32)`
     let _: &Fn(i32) = &baz;
     let x = |_x: i32| {};
     let _ = &x as &Fn(i32); //~ERROR trivial cast

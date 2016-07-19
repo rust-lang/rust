@@ -292,11 +292,15 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         }
     }
 
-    pub fn depth_traverse<'a>(&'a self, start: NodeIndex) -> DepthFirstTraversal<'a, N, E> {
+    pub fn depth_traverse<'a>(&'a self,
+                              start: NodeIndex,
+                              direction: Direction)
+                              -> DepthFirstTraversal<'a, N, E> {
         DepthFirstTraversal {
             graph: self,
             stack: vec![start],
             visited: BitVector::new(self.nodes.len()),
+            direction: direction,
         }
     }
 }
@@ -371,6 +375,7 @@ pub struct DepthFirstTraversal<'g, N: 'g, E: 'g> {
     graph: &'g Graph<N, E>,
     stack: Vec<NodeIndex>,
     visited: BitVector,
+    direction: Direction,
 }
 
 impl<'g, N: Debug, E: Debug> Iterator for DepthFirstTraversal<'g, N, E> {
@@ -382,9 +387,10 @@ impl<'g, N: Debug, E: Debug> Iterator for DepthFirstTraversal<'g, N, E> {
                 continue;
             }
 
-            for (_, edge) in self.graph.outgoing_edges(idx) {
-                if !self.visited.contains(edge.target().node_id()) {
-                    self.stack.push(edge.target());
+            for (_, edge) in self.graph.adjacent_edges(idx, self.direction) {
+                let target = edge.source_or_target(self.direction);
+                if !self.visited.contains(target.node_id()) {
+                    self.stack.push(target);
                 }
             }
 

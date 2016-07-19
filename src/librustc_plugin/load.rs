@@ -20,9 +20,9 @@ use std::env;
 use std::mem;
 use std::path::PathBuf;
 use syntax::ast;
-use syntax::codemap::{Span, COMMAND_LINE_SP};
 use syntax::ptr::P;
 use syntax::attr::AttrMetaMethods;
+use syntax_pos::{Span, COMMAND_LINE_SP};
 
 /// Pointer to a registrar function.
 pub type PluginRegistrarFun =
@@ -44,31 +44,39 @@ fn call_malformed_plugin_attribute(a: &Session, b: Span) {
 }
 
 /// Read plugin metadata and dynamically load registrar functions.
-pub fn load_plugins(sess: &Session, cstore: &CStore, krate: &ast::Crate,
+pub fn load_plugins(sess: &Session,
+                    cstore: &CStore,
+                    krate: &ast::Crate,
+                    crate_name: &str,
                     addl_plugins: Option<Vec<String>>) -> Vec<PluginRegistrar> {
-    let mut loader = PluginLoader::new(sess, cstore);
+    let mut loader = PluginLoader::new(sess, cstore, crate_name);
 
-    for attr in &krate.attrs {
-        if !attr.check_name("plugin") {
-            continue;
-        }
-
-        let plugins = match attr.meta_item_list() {
-            Some(xs) => xs,
-            None => {
-                call_malformed_plugin_attribute(sess, attr.span);
-                continue;
-            }
-        };
-
-        for plugin in plugins {
-            if plugin.value_str().is_some() {
-                call_malformed_plugin_attribute(sess, attr.span);
+    // do not report any error now. since crate attributes are
+    // not touched by expansion, every use of plugin without
+    // the feature enabled will result in an error later...
+    if sess.features.borrow().plugin {
+        for attr in &krate.attrs {
+            if !attr.check_name("plugin") {
                 continue;
             }
 
-            let args = plugin.meta_item_list().map(ToOwned::to_owned).unwrap_or_default();
-            loader.load_plugin(plugin.span, &plugin.name(), args);
+            let plugins = match attr.meta_item_list() {
+                Some(xs) => xs,
+                None => {
+                    call_malformed_plugin_attribute(sess, attr.span);
+                    continue;
+                }
+            };
+
+            for plugin in plugins {
+                if plugin.value_str().is_some() {
+                    call_malformed_plugin_attribute(sess, attr.span);
+                    continue;
+                }
+
+                let args = plugin.meta_item_list().map(ToOwned::to_owned).unwrap_or_default();
+                loader.load_plugin(plugin.span, &plugin.name(), args);
+            }
         }
     }
 
@@ -82,10 +90,10 @@ pub fn load_plugins(sess: &Session, cstore: &CStore, krate: &ast::Crate,
 }
 
 impl<'a> PluginLoader<'a> {
-    fn new(sess: &'a Session, cstore: &'a CStore) -> PluginLoader<'a> {
+    fn new(sess: &'a Session, cstore: &'a CStore, crate_name: &str) -> PluginLoader<'a> {
         PluginLoader {
             sess: sess,
-            reader: CrateReader::new(sess, cstore),
+            reader: CrateReader::new(sess, cstore, crate_name),
             plugins: vec![],
         }
     }
@@ -93,7 +101,8 @@ impl<'a> PluginLoader<'a> {
     fn load_plugin(&mut self, span: Span, name: &str, args: Vec<P<ast::MetaItem>>) {
         let registrar = self.reader.find_plugin_registrar(span, name);
 
-        if let Some((lib, symbol)) = registrar {
+        if let Some((lib, svh, index)) = registrar {
+            let symbol = self.sess.generate_plugin_registrar_symbol(&svh, index);
             let fun = self.dylink_registrar(span, lib, symbol);
             self.plugins.push(PluginRegistrar {
                 fun: fun,

@@ -13,4 +13,4 @@
 
 
 fn foo_method(&self) -> &'static str { return "i am very similar to foo."; }
-/* nest::S::foo_method */
+/* nest::{{impl}}::foo_method */

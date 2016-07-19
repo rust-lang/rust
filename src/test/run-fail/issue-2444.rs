@@ -12,10 +12,14 @@
 
 use std::sync::Arc;
 
-enum e<T> { ee(Arc<T>) }
+enum e<T> {
+    ee(Arc<T>),
+}
 
-fn foo() -> e<isize> {panic!();}
+fn foo() -> e<isize> {
+    panic!();
+}
 
 fn main() {
-   let _f = foo();
+    let _f = foo();
 }

@@ -86,6 +86,8 @@ impl TcpStream {
     /// `addr` is an address of the remote host. Anything which implements
     /// `ToSocketAddrs` trait can be supplied for the address; see this trait
     /// documentation for concrete examples.
+    /// In case `ToSocketAddrs::to_socket_addrs()` returns more than one entry,
+    /// then the first valid and reachable address is used.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
         super::each_addr(addr, net_imp::TcpStream::connect).map(TcpStream)
@@ -196,7 +198,7 @@ impl TcpStream {
     ///
     /// For more information about this option, see [`set_nodelay`][link].
     ///
-    /// [link]: #tymethod.set_nodelay
+    /// [link]: #method.set_nodelay
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn nodelay(&self) -> io::Result<bool> {
         self.0.nodelay()
@@ -215,33 +217,10 @@ impl TcpStream {
     ///
     /// For more information about this option, see [`set_ttl`][link].
     ///
-    /// [link]: #tymethod.set_ttl
+    /// [link]: #method.set_ttl
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn ttl(&self) -> io::Result<u32> {
         self.0.ttl()
-    }
-
-    /// Sets the value for the `IPV6_V6ONLY` option on this socket.
-    ///
-    /// If this is set to `true` then the socket is restricted to sending and
-    /// receiving IPv6 packets only. If this is the case, an IPv4 and an IPv6
-    /// application can each bind the same port at the same time.
-    ///
-    /// If this is set to `false` then the socket can be used to send and
-    /// receive packets from an IPv4-mapped IPv6 address.
-    #[stable(feature = "net2_mutators", since = "1.9.0")]
-    pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        self.0.set_only_v6(only_v6)
-    }
-
-    /// Gets the value of the `IPV6_V6ONLY` option for this socket.
-    ///
-    /// For more information about this option, see [`set_only_v6`][link].
-    ///
-    /// [link]: #tymethod.set_only_v6
-    #[stable(feature = "net2_mutators", since = "1.9.0")]
-    pub fn only_v6(&self) -> io::Result<bool> {
-        self.0.only_v6()
     }
 
     /// Get the value of the `SO_ERROR` option on this socket.
@@ -374,7 +353,7 @@ impl TcpListener {
     ///
     /// For more information about this option, see [`set_ttl`][link].
     ///
-    /// [link]: #tymethod.set_ttl
+    /// [link]: #method.set_ttl
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn ttl(&self) -> io::Result<u32> {
         self.0.ttl()
@@ -397,7 +376,7 @@ impl TcpListener {
     ///
     /// For more information about this option, see [`set_only_v6`][link].
     ///
-    /// [link]: #tymethod.set_only_v6
+    /// [link]: #method.set_only_v6
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn only_v6(&self) -> io::Result<bool> {
         self.0.only_v6()

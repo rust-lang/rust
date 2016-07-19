@@ -44,5 +44,5 @@ pub fn main() {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let z: Box<ToBar> = Box::new(Bar1 {f: 36});
     f5.ptr = *z;
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
+    //~^ ERROR `ToBar: std::marker::Sized` is not satisfied
 }

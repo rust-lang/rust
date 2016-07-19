@@ -28,9 +28,8 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(const_fn)]
-#![feature(copy_from_slice)]
+#![feature(core_intrinsics)]
 #![feature(enumset)]
-#![feature(iter_arith)]
 #![feature(libc)]
 #![feature(nonzero)]
 #![feature(quote)]
@@ -38,7 +37,7 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
-#![feature(str_char)]
+#![feature(question_mark)]
 #![cfg_attr(test, feature(test))]
 
 extern crate arena;
@@ -49,15 +48,16 @@ extern crate getopts;
 extern crate graphviz;
 extern crate libc;
 extern crate rbml;
-pub extern crate rustc_llvm as llvm;
+extern crate rustc_llvm as llvm;
 extern crate rustc_back;
-extern crate rustc_front;
 extern crate rustc_data_structures;
 extern crate serialize;
 extern crate collections;
-extern crate rustc_const_eval;
+extern crate rustc_const_math;
+extern crate rustc_errors as errors;
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
+#[macro_use] extern crate syntax_pos;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
 extern crate serialize as rustc_serialize; // used by deriving
@@ -72,63 +72,50 @@ mod macros;
 // registered before they are used.
 pub mod diagnostics;
 
-pub mod back {
-    pub use rustc_back::rpath;
-    pub use rustc_back::svh;
-}
-
+pub mod cfg;
 pub mod dep_graph;
-
-pub mod front {
-    pub mod check_attr;
-    pub mod map;
-}
+pub mod hir;
+pub mod infer;
+pub mod lint;
 
 pub mod middle {
     pub mod astconv_util;
     pub mod expr_use_visitor; // STAGE0: increase glitch immunity
-    pub mod cfg;
-    pub mod check_match;
-    pub mod const_eval;
+    pub mod const_val;
     pub mod const_qualif;
     pub mod cstore;
     pub mod dataflow;
     pub mod dead;
-    pub mod def;
-    pub mod def_id;
     pub mod dependency_format;
     pub mod effect;
     pub mod entry;
     pub mod free_region;
     pub mod intrinsicck;
-    pub mod infer;
     pub mod lang_items;
     pub mod liveness;
     pub mod mem_categorization;
-    pub mod pat_util;
     pub mod privacy;
     pub mod reachable;
     pub mod region;
     pub mod recursion_limit;
     pub mod resolve_lifetime;
     pub mod stability;
-    pub mod subst;
-    pub mod traits;
-    pub mod ty;
     pub mod weak_lang_items;
 }
 
 pub mod mir {
+    mod cache;
     pub mod repr;
     pub mod tcx;
     pub mod visit;
     pub mod transform;
+    pub mod traversal;
     pub mod mir_map;
 }
 
 pub mod session;
-
-pub mod lint;
+pub mod traits;
+pub mod ty;
 
 pub mod util {
     pub use rustc_back::sha2;
@@ -138,10 +125,6 @@ pub mod util {
     pub mod nodemap;
     pub mod num;
     pub mod fs;
-}
-
-pub mod lib {
-    pub use llvm;
 }
 
 // A private module so that macro-expanded idents like

@@ -82,14 +82,19 @@ impl Ipv4Addr {
         [(bits >> 24) as u8, (bits >> 16) as u8, (bits >> 8) as u8, bits as u8]
     }
 
-    /// Returns true for the special 'unspecified' address 0.0.0.0.
+    /// Returns true for the special 'unspecified' address (0.0.0.0).
+    ///
+    /// This property is defined in _UNIX Network Programming, Second Edition_,
+    /// W. Richard Stevens, p. 891; see also [ip7]
+    /// [ip7][http://man7.org/linux/man-pages/man7/ip.7.html]
     pub fn is_unspecified(&self) -> bool {
         self.inner.s_addr == 0
     }
 
     /// Returns true if this is a loopback address (127.0.0.0/8).
     ///
-    /// This property is defined by RFC 6890
+    /// This property is defined by [RFC 1122].
+    /// [RFC 1122]: https://tools.ietf.org/html/rfc1122
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_loopback(&self) -> bool {
         self.octets()[0] == 127
@@ -97,7 +102,8 @@ impl Ipv4Addr {
 
     /// Returns true if this is a private address.
     ///
-    /// The private address ranges are defined in RFC1918 and include:
+    /// The private address ranges are defined in [RFC 1918] and include:
+    /// [RFC 1918]: https://tools.ietf.org/html/rfc1918
     ///
     ///  - 10.0.0.0/8
     ///  - 172.16.0.0/12
@@ -114,7 +120,8 @@ impl Ipv4Addr {
 
     /// Returns true if the address is link-local (169.254.0.0/16).
     ///
-    /// This property is defined by RFC 6890
+    /// This property is defined by [RFC 3927].
+    /// [RFC 3927]: https://tools.ietf.org/html/rfc3927
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_link_local(&self) -> bool {
         self.octets()[0] == 169 && self.octets()[1] == 254
@@ -137,18 +144,20 @@ impl Ipv4Addr {
         !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
     }
 
-    /// Returns true if this is a multicast address.
+    /// Returns true if this is a multicast address (224.0.0.0/4).
     ///
     /// Multicast addresses have a most significant octet between 224 and 239,
-    /// and is defined by RFC 5771
+    /// and is defined by [RFC 5771].
+    /// [RFC 5771]: https://tools.ietf.org/html/rfc5771
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_multicast(&self) -> bool {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
     }
 
-    /// Returns true if this is a broadcast address.
+    /// Returns true if this is a broadcast address (255.255.255.255).
     ///
-    /// A broadcast address has all octets set to 255 as defined in RFC 919.
+    /// A broadcast address has all octets set to 255 as defined in [RFC 919].
+    /// [RFC 919]: https://tools.ietf.org/html/rfc919
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_broadcast(&self) -> bool {
         self.octets()[0] == 255 && self.octets()[1] == 255 &&
@@ -157,7 +166,8 @@ impl Ipv4Addr {
 
     /// Returns true if this address is in a range designated for documentation.
     ///
-    /// This is defined in RFC 5737:
+    /// This is defined in [RFC 5737]:
+    /// [RFC 5737]: https://tools.ietf.org/html/rfc5737
     ///
     /// - 192.0.2.0/24 (TEST-NET-1)
     /// - 198.51.100.0/24 (TEST-NET-2)
@@ -251,7 +261,7 @@ impl PartialOrd for Ipv4Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv4Addr {
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
-        self.octets().cmp(&other.octets())
+        ntoh(self.inner.s_addr).cmp(&ntoh(other.inner.s_addr))
     }
 }
 
@@ -321,9 +331,10 @@ impl Ipv6Addr {
         ]
     }
 
-    /// Returns true for the special 'unspecified' address ::.
+    /// Returns true for the special 'unspecified' address (::).
     ///
-    /// This property is defined in RFC 6890.
+    /// This property is defined in [RFC 4291].
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_unspecified(&self) -> bool {
         self.segments() == [0, 0, 0, 0, 0, 0, 0, 0]
@@ -331,7 +342,8 @@ impl Ipv6Addr {
 
     /// Returns true if this is a loopback address (::1).
     ///
-    /// This property is defined in RFC 6890.
+    /// This property is defined in [RFC 4291].
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_loopback(&self) -> bool {
         self.segments() == [0, 0, 0, 0, 0, 0, 0, 1]
@@ -352,26 +364,33 @@ impl Ipv6Addr {
         }
     }
 
-    /// Returns true if this is a unique local address (IPv6).
+    /// Returns true if this is a unique local address (fc00::/7).
     ///
-    /// Unique local addresses are defined in RFC4193 and have the form fc00::/7.
+    /// This property is defined in [RFC 4193].
+    /// [RFC 4193]: https://tools.ietf.org/html/rfc4193
     pub fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
     /// Returns true if the address is unicast and link-local (fe80::/10).
+    ///
+    /// This property is defined in [RFC 4291].
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     pub fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
 
-    /// Returns true if this is a deprecated unicast site-local address (IPv6
-    /// fec0::/10).
+    /// Returns true if this is a deprecated unicast site-local address
+    /// (fec0::/10).
     pub fn is_unicast_site_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfec0
     }
 
     /// Returns true if this is an address reserved for documentation
-    /// This is defined to be 2001:db8::/32 in RFC RFC 3849
+    /// (2001:db8::/32).
+    ///
+    /// This property is defined in [RFC 3849].
+    /// [RFC 3849]: https://tools.ietf.org/html/rfc3849
     pub fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
     }
@@ -411,10 +430,10 @@ impl Ipv6Addr {
         }
     }
 
-    /// Returns true if this is a multicast address.
+    /// Returns true if this is a multicast address (ff00::/8).
     ///
-    /// Multicast addresses have the form ff00::/8, and this property is defined
-    /// by RFC 3956.
+    /// This property is defined by [RFC 4291].
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_multicast(&self) -> bool {
         (self.segments()[0] & 0xff00) == 0xff00
@@ -433,6 +452,13 @@ impl Ipv6Addr {
             },
             _ => None
         }
+    }
+
+    /// Returns the sixteen eight-bit integers the IPv6 address consists of.
+    #[unstable(feature = "ipv6_to_octets", reason = "needs some testing",
+               issue = "32313")]
+    pub fn octets(&self) -> [u8; 16] {
+        self.inner.s6_addr
     }
 }
 
@@ -487,16 +513,16 @@ impl fmt::Display for Ipv6Addr {
                 if zeros_len > 1 {
                     fn fmt_subslice(segments: &[u16], fmt: &mut fmt::Formatter) -> fmt::Result {
                         if !segments.is_empty() {
-                            try!(write!(fmt, "{:x}", segments[0]));
+                            write!(fmt, "{:x}", segments[0])?;
                             for &seg in &segments[1..] {
-                                try!(write!(fmt, ":{:x}", seg));
+                                write!(fmt, ":{:x}", seg)?;
                             }
                         }
                         Ok(())
                     }
 
-                    try!(fmt_subslice(&self.segments()[..zeros_at], fmt));
-                    try!(fmt.write_str("::"));
+                    fmt_subslice(&self.segments()[..zeros_at], fmt)?;
+                    fmt.write_str("::")?;
                     fmt_subslice(&self.segments()[zeros_at + zeros_len..], fmt)
                 } else {
                     let &[a, b, c, d, e, f, g, h] = &self.segments();
@@ -557,6 +583,15 @@ impl AsInner<c::in6_addr> for Ipv6Addr {
 impl FromInner<c::in6_addr> for Ipv6Addr {
     fn from_inner(addr: c::in6_addr) -> Ipv6Addr {
         Ipv6Addr { inner: addr }
+    }
+}
+
+#[stable(feature = "ipv6_from_octets", since = "1.9.0")]
+impl From<[u8; 16]> for Ipv6Addr {
+    fn from(octets: [u8; 16]) -> Ipv6Addr {
+        let mut inner: c::in6_addr = unsafe { mem::zeroed() };
+        inner.s6_addr = octets;
+        Ipv6Addr::from_inner(inner)
     }
 }
 
@@ -746,7 +781,7 @@ mod tests {
         //    address                unspec loopbk privt  linloc global multicast brdcast doc
         check(&[0, 0, 0, 0],         true,  false, false, false, false,  false,    false,  false);
         check(&[0, 0, 0, 1],         false, false, false, false, true,   false,    false,  false);
-        check(&[1, 0, 0, 0],         false, false, false, false, true,   false,    false,  false);
+        check(&[0, 1, 0, 0],         false, false, false, false, true,   false,    false,  false);
         check(&[10, 9, 8, 7],        false, false, true,  false, false,  false,    false,  false);
         check(&[127, 1, 2, 3],       false, true,  false, false, false,  false,    false,  false);
         check(&[172, 31, 254, 253],  false, false, true,  false, false,  false,    false,  false);
@@ -764,12 +799,14 @@ mod tests {
 
     #[test]
     fn ipv6_properties() {
-        fn check(str_addr: &str, unspec: bool, loopback: bool,
+        fn check(str_addr: &str, octets: &[u8; 16], unspec: bool, loopback: bool,
                  unique_local: bool, global: bool,
                  u_link_local: bool, u_site_local: bool, u_global: bool, u_doc: bool,
                  m_scope: Option<Ipv6MulticastScope>) {
             let ip: Ipv6Addr = str_addr.parse().unwrap();
             assert_eq!(str_addr, ip.to_string());
+            assert_eq!(&ip.octets(), octets);
+            assert_eq!(Ipv6Addr::from(*octets), ip);
 
             assert_eq!(ip.is_unspecified(), unspec);
             assert_eq!(ip.is_loopback(), loopback);
@@ -783,41 +820,45 @@ mod tests {
             assert_eq!(ip.is_multicast(), m_scope.is_some());
         }
 
-        //    unspec loopbk uniqlo global unill  unisl  uniglo  doc    mscope
-        check("::",
-              true,  false, false, false,  false, false, false, false, None);
-        check("::1",
-              false, true,  false, false, false, false,  false, false, None);
-        check("::0.0.0.2",
+        //    unspec loopbk uniqlo global unill  unisl  uniglo doc    mscope
+        check("::", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+              true,  false, false, false, false, false, false, false, None);
+        check("::1", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+              false, true,  false, false, false, false, false, false, None);
+        check("::0.0.0.2", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
               false, false, false, true,  false, false, true,  false, None);
-        check("1::",
+        check("1::", &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, false, true,  false, false, true,  false, None);
-        check("fc00::",
+        check("fc00::", &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, true,  false, false, false, false, false, None);
-        check("fdff:ffff::",
+        check("fdff:ffff::", &[0xfd, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, true,  false, false, false, false, false, None);
-        check("fe80:ffff::",
+        check("fe80:ffff::", &[0xfe, 0x80, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, false, false, true,  false, false, false, None);
-        check("febf:ffff::",
+        check("febf:ffff::", &[0xfe, 0xbf, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, false, false, true,  false, false, false, None);
-        check("fec0::",
+        check("fec0::", &[0xfe, 0xc0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, false, false, false, true,  false, false, None);
-        check("ff01::",
+        check("ff01::", &[0xff, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, false, false, false, false, false, false, Some(InterfaceLocal));
-        check("ff02::",
+        check("ff02::", &[0xff, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, false, false, false, false, false, false, Some(LinkLocal));
-        check("ff03::",
+        check("ff03::", &[0xff, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, false, false, false, false, false, false, Some(RealmLocal));
-        check("ff04::",
+        check("ff04::", &[0xff, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, false, false, false, false, false, false, Some(AdminLocal));
-        check("ff05::",
+        check("ff05::", &[0xff, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, false, false, false, false, false, false, Some(SiteLocal));
-        check("ff08::",
+        check("ff08::", &[0xff, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, false, false, false, false, false, false, Some(OrganizationLocal));
-        check("ff0e::",
+        check("ff0e::", &[0xff, 0xe, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               false, false, false, true,  false, false, false, false, Some(Global));
         check("2001:db8:85a3::8a2e:370:7334",
+              &[0x20, 1, 0xd, 0xb8, 0x85, 0xa3, 0, 0, 0, 0, 0x8a, 0x2e, 3, 0x70, 0x73, 0x34],
               false, false, false, false, false, false, false, true, None);
+        check("102:304:506:708:90a:b0c:d0e:f10",
+              &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+              false, false, false, true,  false, false, true,  false, None);
     }
 
     #[test]

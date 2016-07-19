@@ -15,7 +15,7 @@ extern {
 fn main() {
     let boolValue = match 42 {
         externalValue => true,
-        //~^ ERROR static variables cannot be referenced in a pattern
+        //~^ ERROR match bindings cannot shadow statics
         _ => false
     };
 }

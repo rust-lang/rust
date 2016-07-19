@@ -12,12 +12,13 @@
 // FIXME: remove this after snapshot, and Results are handled
 #![allow(unused_must_use)]
 
-use rustc::front::map as ast_map;
+use rustc::hir::map as ast_map;
 use rustc::session::Session;
 
-use rustc_front::hir;
-use rustc_front::fold;
-use rustc_front::fold::Folder;
+use rustc::hir;
+use rustc::hir::fold;
+use rustc::hir::fold::Folder;
+use rustc::hir::intravisit::{IdRange, IdRangeComputingVisitor, IdVisitingOperation};
 
 use common as c;
 use cstore;
@@ -27,18 +28,18 @@ use tydecode;
 use tyencode;
 
 use middle::cstore::{InlinedItem, InlinedItemRef};
-use middle::ty::adjustment;
-use middle::ty::cast;
+use rustc::ty::adjustment;
+use rustc::ty::cast;
 use middle::const_qualif::ConstQualif;
-use middle::def::{self, Def};
-use middle::def_id::DefId;
+use rustc::hir::def::{self, Def};
+use rustc::hir::def_id::DefId;
 use middle::region;
-use middle::subst;
-use middle::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst;
+use rustc::ty::{self, Ty, TyCtxt};
 
-use syntax::{ast, ast_util, codemap};
-use syntax::ast::NodeIdAssigner;
+use syntax::ast;
 use syntax::ptr::P;
+use syntax_pos;
 
 use std::cell::Cell;
 use std::io::SeekFrom;
@@ -48,21 +49,20 @@ use std::fmt::Debug;
 use rbml::reader;
 use rbml::writer::Encoder;
 use rbml;
-use serialize;
-use serialize::{Decodable, Decoder, DecoderHelpers, Encodable};
-use serialize::EncoderHelpers;
+use rustc_serialize as serialize;
+use rustc_serialize::{Decodable, Decoder, DecoderHelpers};
+use rustc_serialize::{Encodable, EncoderHelpers};
 
 #[cfg(test)] use std::io::Cursor;
 #[cfg(test)] use syntax::parse;
-#[cfg(test)] use syntax::ast::NodeId;
-#[cfg(test)] use rustc_front::print::pprust;
-#[cfg(test)] use rustc_front::lowering::{lower_item, LoweringContext};
+#[cfg(test)] use rustc::hir::print as pprust;
+#[cfg(test)] use rustc::hir::lowering::{LoweringContext, DummyResolver};
 
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
-    cdata: &'b cstore::crate_metadata,
-    from_id_range: ast_util::IdRange,
-    to_id_range: ast_util::IdRange,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    cdata: &'b cstore::CrateMetadata,
+    from_id_range: IdRange,
+    to_id_range: IdRange,
     // Cache the last used filemap for translating spans as an optimization.
     last_filemap_index: Cell<usize>,
 }
@@ -84,7 +84,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
         InlinedItemRef::ImplItem(_, ii) => ii.id,
     };
     debug!("> Encoding inlined item: {} ({:?})",
-           ecx.tcx.map.path_to_string(id),
+           ecx.tcx.node_path_str(id),
            rbml_w.writer.seek(SeekFrom::Current(0)));
 
     // Folding could be avoided with a smarter encoder.
@@ -98,7 +98,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
     rbml_w.end_tag();
 
     debug!("< Encoded inlined fn: {} ({:?})",
-           ecx.tcx.map.path_to_string(id),
+           ecx.tcx.node_path_str(id),
            rbml_w.writer.seek(SeekFrom::Current(0)));
 }
 
@@ -114,28 +114,21 @@ impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
     fn new_def_id(&self, def_id: DefId) -> DefId {
         self.tr_def_id(def_id)
     }
-    fn new_span(&self, span: codemap::Span) -> codemap::Span {
+    fn new_span(&self, span: syntax_pos::Span) -> syntax_pos::Span {
         self.tr_span(span)
     }
 }
 
 /// Decodes an item from its AST in the cdata's metadata and adds it to the
 /// ast-map.
-pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
-                                 tcx: &TyCtxt<'tcx>,
-                                 parent_path: Vec<ast_map::PathElem>,
-                                 parent_def_path: ast_map::DefPath,
-                                 ast_doc: rbml::Doc,
-                                 orig_did: DefId)
-                                 -> &'tcx InlinedItem {
-    let mut path_as_str = None;
-    debug!("> Decoding inlined fn: {:?}::?",
-    {
-        // Do an Option dance to use the path after it is moved below.
-        let s = ast_map::path_to_string(parent_path.iter().cloned());
-        path_as_str = Some(s);
-        path_as_str.as_ref().map(|x| &x[..])
-    });
+pub fn decode_inlined_item<'a, 'tcx>(cdata: &cstore::CrateMetadata,
+                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     parent_def_path: ast_map::DefPath,
+                                     parent_did: DefId,
+                                     ast_doc: rbml::Doc,
+                                     orig_did: DefId)
+                                     -> &'tcx InlinedItem {
+    debug!("> Decoding inlined fn: {:?}", tcx.item_path_str(orig_did));
     let mut ast_dsr = reader::Decoder::new(ast_doc);
     let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
     let to_id_range = reserve_id_range(&tcx.sess, from_id_range);
@@ -147,8 +140,8 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
         last_filemap_index: Cell::new(0)
     };
     let ii = ast_map::map_decoded_item(&dcx.tcx.map,
-                                       parent_path,
                                        parent_def_path,
+                                       parent_did,
                                        decode_ast(ast_doc),
                                        dcx);
     let name = match *ii {
@@ -159,14 +152,14 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
     };
     debug!("Fn named: {}", name);
     debug!("< Decoded inlined fn: {}::{}",
-            path_as_str.unwrap(),
+            tcx.item_path_str(parent_did),
             name);
     region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
     decode_side_tables(dcx, ast_doc);
     copy_item_types(dcx, ii, orig_did);
     if let InlinedItem::Item(ref i) = *ii {
         debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
-               ::rustc_front::print::pprust::item_to_string(&i));
+               ::rustc::hir::print::item_to_string(&i));
     }
 
     ii
@@ -176,13 +169,13 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
 // Enumerating the IDs which appear in an AST
 
 fn reserve_id_range(sess: &Session,
-                    from_id_range: ast_util::IdRange) -> ast_util::IdRange {
+                    from_id_range: IdRange) -> IdRange {
     // Handle the case of an empty range:
     if from_id_range.empty() { return from_id_range; }
     let cnt = from_id_range.max - from_id_range.min;
     let to_id_min = sess.reserve_node_ids(cnt);
     let to_id_max = to_id_min + cnt;
-    ast_util::IdRange { min: to_id_min, max: to_id_max }
+    IdRange { min: to_id_min, max: to_id_max }
 }
 
 impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
@@ -212,7 +205,7 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
 
     /// Translates a `Span` from an extern crate to the corresponding `Span`
     /// within the local crate's codemap.
-    pub fn tr_span(&self, span: codemap::Span) -> codemap::Span {
+    pub fn tr_span(&self, span: syntax_pos::Span) -> syntax_pos::Span {
         decoder::translate_span(self.cdata,
                                 self.tcx.sess.codemap(),
                                 &self.last_filemap_index,
@@ -232,8 +225,8 @@ impl tr for Option<DefId> {
     }
 }
 
-impl tr for codemap::Span {
-    fn tr(&self, dcx: &DecodeContext) -> codemap::Span {
+impl tr for syntax_pos::Span {
+    fn tr(&self, dcx: &DecodeContext) -> syntax_pos::Span {
         dcx.tr_span(*self)
     }
 }
@@ -253,7 +246,7 @@ impl<S:serialize::Encoder> def_id_encoder_helpers for S
 trait def_id_decoder_helpers {
     fn read_def_id(&mut self, dcx: &DecodeContext) -> DefId;
     fn read_def_id_nodcx(&mut self,
-                         cdata: &cstore::crate_metadata) -> DefId;
+                         cdata: &cstore::CrateMetadata) -> DefId;
 }
 
 impl<D:serialize::Decoder> def_id_decoder_helpers for D
@@ -265,7 +258,7 @@ impl<D:serialize::Decoder> def_id_decoder_helpers for D
     }
 
     fn read_def_id_nodcx(&mut self,
-                         cdata: &cstore::crate_metadata)
+                         cdata: &cstore::CrateMetadata)
                          -> DefId {
         let did: DefId = Decodable::decode(self).unwrap();
         decoder::translate_def_id(cdata, did)
@@ -349,8 +342,8 @@ fn simplify_ast(ii: InlinedItemRef) -> InlinedItem {
     }
 }
 
-fn decode_ast(par_doc: rbml::Doc) -> InlinedItem {
-    let chi_doc = par_doc.get(c::tag_tree as usize);
+fn decode_ast(item_doc: rbml::Doc) -> InlinedItem {
+    let chi_doc = item_doc.get(c::tag_tree as usize);
     let mut rbml_r = reader::Decoder::new(chi_doc);
     rbml_r.read_opaque(|decoder, _| Decodable::decode(decoder)).unwrap()
 }
@@ -368,11 +361,8 @@ impl tr for Def {
         match *self {
           Def::Fn(did) => Def::Fn(did.tr(dcx)),
           Def::Method(did) => Def::Method(did.tr(dcx)),
-          Def::SelfTy(opt_did, impl_ids) => { Def::SelfTy(opt_did.map(|did| did.tr(dcx)),
-                                                                impl_ids.map(|(nid1, nid2)| {
-                                                                    (dcx.tr_id(nid1),
-                                                                     dcx.tr_id(nid2))
-                                                                })) }
+          Def::SelfTy(opt_did, impl_id) => { Def::SelfTy(opt_did.map(|did| did.tr(dcx)),
+                                                         impl_id.map(|id| dcx.tr_id(id))) }
           Def::Mod(did) => { Def::Mod(did.tr(dcx)) }
           Def::ForeignMod(did) => { Def::ForeignMod(did.tr(dcx)) }
           Def::Static(did, m) => { Def::Static(did.tr(dcx), m) }
@@ -407,20 +397,20 @@ impl tr for Def {
 // ______________________________________________________________________
 // Encoding and decoding of freevar information
 
-fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &ty::Freevar) {
+fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &hir::Freevar) {
     (*fv).encode(rbml_w).unwrap();
 }
 
 trait rbml_decoder_helper {
     fn read_freevar_entry(&mut self, dcx: &DecodeContext)
-                          -> ty::Freevar;
+                          -> hir::Freevar;
     fn read_capture_mode(&mut self) -> hir::CaptureClause;
 }
 
 impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
     fn read_freevar_entry(&mut self, dcx: &DecodeContext)
-                          -> ty::Freevar {
-        let fv: ty::Freevar = Decodable::decode(self).unwrap();
+                          -> hir::Freevar {
+        let fv: hir::Freevar = Decodable::decode(self).unwrap();
         fv.tr(dcx)
     }
 
@@ -430,9 +420,9 @@ impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
     }
 }
 
-impl tr for ty::Freevar {
-    fn tr(&self, dcx: &DecodeContext) -> ty::Freevar {
-        ty::Freevar {
+impl tr for hir::Freevar {
+    fn tr(&self, dcx: &DecodeContext) -> hir::Freevar {
+        hir::Freevar {
             def: self.def.tr(dcx),
             span: self.span.tr(dcx),
         }
@@ -451,7 +441,7 @@ fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
                                   rbml_w: &mut Encoder,
                                   autoderef: u32,
                                   method: &ty::MethodCallee<'tcx>) {
-    use serialize::Encoder;
+    use rustc_serialize::Encoder;
 
     rbml_w.emit_struct("MethodCallee", 4, |rbml_w| {
         rbml_w.emit_struct_field("autoderef", 0, |rbml_w| {
@@ -567,7 +557,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     }
 
     fn emit_upvar_capture(&mut self, ecx: &e::EncodeContext, capture: &ty::UpvarCapture) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_enum("UpvarCapture", |this| {
             match *capture {
@@ -595,7 +585,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_auto_adjustment<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                                 adj: &adjustment::AutoAdjustment<'tcx>) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
@@ -627,7 +617,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_autoref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                         autoref: &adjustment::AutoRef<'tcx>) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_enum("AutoRef", |this| {
             match autoref {
@@ -649,7 +639,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_auto_deref_ref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                                auto_deref_ref: &adjustment::AutoDerefRef<'tcx>) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_struct("AutoDerefRef", 2, |this| {
             this.emit_struct_field("autoderefs", 0, |this| auto_deref_ref.autoderefs.encode(this));
@@ -703,7 +693,7 @@ struct SideTableEncodingIdVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
     rbml_w: &'a mut Encoder<'b>,
 }
 
-impl<'a, 'b, 'c, 'tcx> ast_util::IdVisitingOperation for
+impl<'a, 'b, 'c, 'tcx> IdVisitingOperation for
         SideTableEncodingIdVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_id(&mut self, id: ast::NodeId) {
         encode_side_tables_for_id(self.ecx, self.rbml_w, id)
@@ -728,7 +718,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     debug!("Encoding side tables for id {}", id);
 
-    if let Some(def) = tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
+    if let Some(def) = tcx.expect_def_or_none(id) {
         rbml_w.tag(c::tag_table_def, |rbml_w| {
             rbml_w.id(id);
             def.encode(rbml_w).unwrap();
@@ -867,21 +857,19 @@ trait rbml_decoder_decoder_helpers<'tcx> {
 
     // Versions of the type reading functions that don't need the full
     // DecodeContext.
-    fn read_ty_nodcx(&mut self,
-                     tcx: &TyCtxt<'tcx>, cdata: &cstore::crate_metadata) -> Ty<'tcx>;
-    fn read_tys_nodcx(&mut self,
-                      tcx: &TyCtxt<'tcx>,
-                      cdata: &cstore::crate_metadata) -> Vec<Ty<'tcx>>;
-    fn read_substs_nodcx(&mut self, tcx: &TyCtxt<'tcx>,
-                         cdata: &cstore::crate_metadata)
-                         -> subst::Substs<'tcx>;
+    fn read_ty_nodcx<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         cdata: &cstore::CrateMetadata) -> Ty<'tcx>;
+    fn read_tys_nodcx<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          cdata: &cstore::CrateMetadata) -> Vec<Ty<'tcx>>;
+    fn read_substs_nodcx<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             cdata: &cstore::CrateMetadata)
+                             -> subst::Substs<'tcx>;
 }
 
 impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
-    fn read_ty_nodcx(&mut self,
-                     tcx: &TyCtxt<'tcx>,
-                     cdata: &cstore::crate_metadata)
-                     -> Ty<'tcx> {
+    fn read_ty_nodcx<'b>(&mut self, tcx: TyCtxt<'b, 'tcx, 'tcx>,
+                         cdata: &cstore::CrateMetadata)
+                         -> Ty<'tcx> {
         self.read_opaque(|_, doc| {
             Ok(
                 tydecode::TyDecoder::with_doc(tcx, cdata.cnum, doc,
@@ -890,19 +878,17 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_tys_nodcx(&mut self,
-                      tcx: &TyCtxt<'tcx>,
-                      cdata: &cstore::crate_metadata) -> Vec<Ty<'tcx>> {
+    fn read_tys_nodcx<'b>(&mut self, tcx: TyCtxt<'b, 'tcx, 'tcx>,
+                          cdata: &cstore::CrateMetadata) -> Vec<Ty<'tcx>> {
         self.read_to_vec(|this| Ok(this.read_ty_nodcx(tcx, cdata)) )
             .unwrap()
             .into_iter()
             .collect()
     }
 
-    fn read_substs_nodcx(&mut self,
-                         tcx: &TyCtxt<'tcx>,
-                         cdata: &cstore::crate_metadata)
-                         -> subst::Substs<'tcx>
+    fn read_substs_nodcx<'b>(&mut self, tcx: TyCtxt<'b, 'tcx, 'tcx>,
+                             cdata: &cstore::CrateMetadata)
+                             -> subst::Substs<'tcx>
     {
         self.read_opaque(|_, doc| {
             Ok(
@@ -989,7 +975,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                         region: this.read_enum_variant_arg(1,
                                     |this| Ok(this.read_region(dcx))).unwrap()
                     }),
-                    _ => panic!("bad enum variant for ty::UpvarCapture")
+                    _ => bug!("bad enum variant for ty::UpvarCapture")
                 })
             })
         }).unwrap()
@@ -1011,7 +997,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
                         adjustment::AdjustDerefRef(auto_deref_ref)
                     }
-                    _ => panic!("bad enum variant for adjustment::AutoAdjustment")
+                    _ => bug!("bad enum variant for adjustment::AutoAdjustment")
                 })
             })
         }).unwrap()
@@ -1070,7 +1056,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
                         adjustment::AutoUnsafe(m)
                     }
-                    _ => panic!("bad enum variant for adjustment::AutoRef")
+                    _ => bug!("bad enum variant for adjustment::AutoRef")
                 })
             })
         }).unwrap()
@@ -1138,9 +1124,7 @@ fn decode_side_tables(dcx: &DecodeContext,
         let decoded_tag: Option<c::astencode_tag> = c::astencode_tag::from_u32(tag);
         match decoded_tag {
             None => {
-                dcx.tcx.sess.bug(
-                    &format!("unknown tag found in side tables: {:x}",
-                            tag));
+                bug!("unknown tag found in side tables: {:x}", tag);
             }
             Some(value) => {
                 let val_dsr = &mut entry_dsr;
@@ -1148,10 +1132,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                 match value {
                     c::tag_table_def => {
                         let def = decode_def(dcx, val_dsr);
-                        dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution {
-                            base_def: def,
-                            depth: 0
-                        });
+                        dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution::new(def));
                     }
                     c::tag_table_node_type => {
                         let ty = val_dsr.read_ty(dcx);
@@ -1161,7 +1142,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     }
                     c::tag_table_item_subst => {
                         let item_substs = ty::ItemSubsts {
-                            substs: val_dsr.read_substs(dcx)
+                            substs: dcx.tcx.mk_substs(val_dsr.read_substs(dcx))
                         };
                         dcx.tcx.tables.borrow_mut().item_substs.insert(
                             id, item_substs);
@@ -1204,9 +1185,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                         dcx.tcx.const_qualif_map.borrow_mut().insert(id, qualif);
                     }
                     _ => {
-                        dcx.tcx.sess.bug(
-                            &format!("unknown tag found in side tables: {:x}",
-                                    tag));
+                        bug!("unknown tag found in side tables: {:x}", tag);
                     }
                 }
             }
@@ -1263,8 +1242,8 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
     }
 }
 
-fn inlined_item_id_range(v: &InlinedItem) -> ast_util::IdRange {
-    let mut visitor = ast_util::IdRangeComputingVisitor::new();
+fn inlined_item_id_range(v: &InlinedItem) -> IdRange {
+    let mut visitor = IdRangeComputingVisitor::new();
     v.visit_ids(&mut visitor);
     visitor.result()
 }
@@ -1280,15 +1259,15 @@ fn encode_item_ast(rbml_w: &mut Encoder, item: &hir::Item) {
 }
 
 #[cfg(test)]
-fn decode_item_ast(par_doc: rbml::Doc) -> hir::Item {
-    let chi_doc = par_doc.get(c::tag_tree as usize);
+fn decode_item_ast(item_doc: rbml::Doc) -> hir::Item {
+    let chi_doc = item_doc.get(c::tag_tree as usize);
     let mut d = reader::Decoder::new(chi_doc);
     Decodable::decode(&mut d).unwrap()
 }
 
 #[cfg(test)]
 trait FakeExtCtxt {
-    fn call_site(&self) -> codemap::Span;
+    fn call_site(&self) -> syntax_pos::Span;
     fn cfg(&self) -> ast::CrateConfig;
     fn ident_of(&self, st: &str) -> ast::Ident;
     fn name_of(&self, st: &str) -> ast::Name;
@@ -1297,11 +1276,11 @@ trait FakeExtCtxt {
 
 #[cfg(test)]
 impl FakeExtCtxt for parse::ParseSess {
-    fn call_site(&self) -> codemap::Span {
-        codemap::Span {
-            lo: codemap::BytePos(0),
-            hi: codemap::BytePos(0),
-            expn_id: codemap::NO_EXPANSION,
+    fn call_site(&self) -> syntax_pos::Span {
+        syntax_pos::Span {
+            lo: syntax_pos::BytePos(0),
+            hi: syntax_pos::BytePos(0),
+            expn_id: syntax_pos::NO_EXPANSION,
         }
     }
     fn cfg(&self) -> ast::CrateConfig { Vec::new() }
@@ -1315,24 +1294,15 @@ impl FakeExtCtxt for parse::ParseSess {
 }
 
 #[cfg(test)]
-struct FakeNodeIdAssigner;
-
-#[cfg(test)]
-// It should go without saying that this may give unexpected results. Avoid
-// lowering anything which needs new nodes.
-impl NodeIdAssigner for FakeNodeIdAssigner {
-    fn next_node_id(&self) -> NodeId {
-        0
-    }
-
-    fn peek_node_id(&self) -> NodeId {
-        0
-    }
+fn mk_ctxt() -> parse::ParseSess {
+    parse::ParseSess::new()
 }
 
 #[cfg(test)]
-fn mk_ctxt() -> parse::ParseSess {
-    parse::ParseSess::new()
+fn with_testing_context<T, F: FnOnce(&mut LoweringContext) -> T>(f: F) -> T {
+    let mut resolver = DummyResolver;
+    let mut lcx = LoweringContext::testing_context(&mut resolver);
+    f(&mut lcx)
 }
 
 #[cfg(test)]
@@ -1348,34 +1318,34 @@ fn roundtrip(in_item: hir::Item) {
 #[test]
 fn test_basic() {
     let cx = mk_ctxt();
-    let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::new(&fnia, None);
-    roundtrip(lower_item(&lcx, &quote_item!(&cx,
-        fn foo() {}
-    ).unwrap()));
+    with_testing_context(|lcx| {
+        roundtrip(lcx.lower_item(&quote_item!(&cx,
+            fn foo() {}
+        ).unwrap()));
+    });
 }
 
 #[test]
 fn test_smalltalk() {
     let cx = mk_ctxt();
-    let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::new(&fnia, None);
-    roundtrip(lower_item(&lcx, &quote_item!(&cx,
-        fn foo() -> isize { 3 + 4 } // first smalltalk program ever executed.
-    ).unwrap()));
+    with_testing_context(|lcx| {
+        roundtrip(lcx.lower_item(&quote_item!(&cx,
+            fn foo() -> isize { 3 + 4 } // first smalltalk program ever executed.
+        ).unwrap()));
+    });
 }
 
 #[test]
 fn test_more() {
     let cx = mk_ctxt();
-    let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::new(&fnia, None);
-    roundtrip(lower_item(&lcx, &quote_item!(&cx,
-        fn foo(x: usize, y: usize) -> usize {
-            let z = x + y;
-            return z;
-        }
-    ).unwrap()));
+    with_testing_context(|lcx| {
+        roundtrip(lcx.lower_item(&quote_item!(&cx,
+            fn foo(x: usize, y: usize) -> usize {
+                let z = x + y;
+                return z;
+            }
+        ).unwrap()));
+    });
 }
 
 #[test]
@@ -1387,21 +1357,22 @@ fn test_simplification() {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
     ).unwrap();
-    let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::new(&fnia, None);
-    let hir_item = lower_item(&lcx, &item);
-    let item_in = InlinedItemRef::Item(&hir_item);
-    let item_out = simplify_ast(item_in);
-    let item_exp = InlinedItem::Item(P(lower_item(&lcx, &quote_item!(&cx,
-        fn new_int_alist<B>() -> alist<isize, B> {
-            return alist {eq_fn: eq_int, data: Vec::new()};
+    let cx = mk_ctxt();
+    with_testing_context(|lcx| {
+        let hir_item = lcx.lower_item(&item);
+        let item_in = InlinedItemRef::Item(&hir_item);
+        let item_out = simplify_ast(item_in);
+        let item_exp = InlinedItem::Item(P(lcx.lower_item(&quote_item!(&cx,
+            fn new_int_alist<B>() -> alist<isize, B> {
+                return alist {eq_fn: eq_int, data: Vec::new()};
+            }
+        ).unwrap())));
+        match (item_out, item_exp) {
+            (InlinedItem::Item(item_out), InlinedItem::Item(item_exp)) => {
+                 assert!(pprust::item_to_string(&item_out) ==
+                         pprust::item_to_string(&item_exp));
+            }
+            _ => bug!()
         }
-    ).unwrap())));
-    match (item_out, item_exp) {
-      (InlinedItem::Item(item_out), InlinedItem::Item(item_exp)) => {
-        assert!(pprust::item_to_string(&item_out) ==
-                pprust::item_to_string(&item_exp));
-      }
-      _ => panic!()
-    }
+    });
 }

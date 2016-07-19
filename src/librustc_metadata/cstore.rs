@@ -15,14 +15,20 @@
 
 pub use self::MetadataBlob::*;
 
+use common;
 use creader;
 use decoder;
 use index;
 use loader;
 
-use rustc::back::svh::Svh;
-use rustc::front::map as ast_map;
-use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+use rustc::dep_graph::DepGraph;
+use rustc::hir::def_id::{DefIndex, DefId};
+use rustc::hir::map::DefKey;
+use rustc::hir::svh::Svh;
+use rustc::middle::cstore::{ExternCrate};
+use rustc::session::config::PanicStrategy;
+use rustc_data_structures::indexed_vec::IndexVec;
+use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
 
 use std::cell::{RefCell, Ref, Cell};
 use std::rc::Rc;
@@ -31,9 +37,7 @@ use flate::Bytes;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap;
-use syntax::parse::token;
-use syntax::parse::token::IdentInterner;
-use syntax::util::small_vector::SmallVector;
+use syntax_pos;
 
 pub use middle::cstore::{NativeLibraryKind, LinkagePreference};
 pub use middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
@@ -43,37 +47,47 @@ pub use middle::cstore::{CrateSource, LinkMeta};
 // local crate numbers (as generated during this session). Each external
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
-pub type cnum_map = FnvHashMap<ast::CrateNum, ast::CrateNum>;
+pub type CrateNumMap = IndexVec<ast::CrateNum, ast::CrateNum>;
 
 pub enum MetadataBlob {
     MetadataVec(Bytes),
     MetadataArchive(loader::ArchiveMetadata),
 }
 
-/// Holds information about a codemap::FileMap imported from another crate.
+/// Holds information about a syntax_pos::FileMap imported from another crate.
 /// See creader::import_codemap() for more information.
 pub struct ImportedFileMap {
     /// This FileMap's byte-offset within the codemap of its original crate
-    pub original_start_pos: codemap::BytePos,
+    pub original_start_pos: syntax_pos::BytePos,
     /// The end of this FileMap within the codemap of its original crate
-    pub original_end_pos: codemap::BytePos,
+    pub original_end_pos: syntax_pos::BytePos,
     /// The imported FileMap's representation within the local codemap
-    pub translated_filemap: Rc<codemap::FileMap>
+    pub translated_filemap: Rc<syntax_pos::FileMap>
 }
 
-pub struct crate_metadata {
+pub struct CrateMetadata {
     pub name: String,
-    pub local_path: RefCell<SmallVector<ast_map::PathElem>>,
-    pub local_def_path: RefCell<ast_map::DefPath>,
+
+    /// Information about the extern crate that caused this crate to
+    /// be loaded. If this is `None`, then the crate was injected
+    /// (e.g., by the allocator)
+    pub extern_crate: Cell<Option<ExternCrate>>,
+
     pub data: MetadataBlob,
-    pub cnum_map: RefCell<cnum_map>,
+    pub cnum_map: RefCell<CrateNumMap>,
     pub cnum: ast::CrateNum,
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
-    pub span: codemap::Span,
     pub staged_api: bool,
 
     pub index: index::Index,
     pub xref_index: index::DenseIndex,
+
+    /// For each public item in this crate, we encode a key.  When the
+    /// crate is loaded, we read all the keys and put them in this
+    /// hashmap, which gives the reverse mapping.  This allows us to
+    /// quickly retrace a `DefPath`, which is needed for incremental
+    /// compilation support.
+    pub key_map: FnvHashMap<DefKey, DefIndex>,
 
     /// Flag if this crate is required by an rlib version of this crate, or in
     /// other words whether it was explicitly linked to. An example of a crate
@@ -83,26 +97,28 @@ pub struct crate_metadata {
 }
 
 pub struct CStore {
-    metas: RefCell<FnvHashMap<ast::CrateNum, Rc<crate_metadata>>>,
+    pub dep_graph: DepGraph,
+    metas: RefCell<FnvHashMap<ast::CrateNum, Rc<CrateMetadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<ast::CrateNum>>,
     used_crate_sources: RefCell<Vec<CrateSource>>,
     used_libraries: RefCell<Vec<(String, NativeLibraryKind)>>,
     used_link_args: RefCell<Vec<String>>,
     statically_included_foreign_items: RefCell<NodeSet>,
-    pub intr: Rc<IdentInterner>,
+    pub visible_parent_map: RefCell<DefIdMap<DefId>>,
 }
 
 impl CStore {
-    pub fn new(intr: Rc<IdentInterner>) -> CStore {
+    pub fn new(dep_graph: &DepGraph) -> CStore {
         CStore {
+            dep_graph: dep_graph.clone(),
             metas: RefCell::new(FnvHashMap()),
             extern_mod_crate_map: RefCell::new(FnvHashMap()),
             used_crate_sources: RefCell::new(Vec::new()),
             used_libraries: RefCell::new(Vec::new()),
             used_link_args: RefCell::new(Vec::new()),
-            intr: intr,
             statically_included_foreign_items: RefCell::new(NodeSet()),
+            visible_parent_map: RefCell::new(FnvHashMap()),
         }
     }
 
@@ -110,7 +126,7 @@ impl CStore {
         self.metas.borrow().len() as ast::CrateNum + 1
     }
 
-    pub fn get_crate_data(&self, cnum: ast::CrateNum) -> Rc<crate_metadata> {
+    pub fn get_crate_data(&self, cnum: ast::CrateNum) -> Rc<CrateMetadata> {
         self.metas.borrow().get(&cnum).unwrap().clone()
     }
 
@@ -119,12 +135,12 @@ impl CStore {
         decoder::get_crate_hash(cdata.data())
     }
 
-    pub fn set_crate_data(&self, cnum: ast::CrateNum, data: Rc<crate_metadata>) {
+    pub fn set_crate_data(&self, cnum: ast::CrateNum, data: Rc<CrateMetadata>) {
         self.metas.borrow_mut().insert(cnum, data);
     }
 
     pub fn iter_crate_data<I>(&self, mut i: I) where
-        I: FnMut(ast::CrateNum, &Rc<crate_metadata>),
+        I: FnMut(ast::CrateNum, &Rc<CrateMetadata>),
     {
         for (&k, v) in self.metas.borrow().iter() {
             i(k, v);
@@ -133,7 +149,7 @@ impl CStore {
 
     /// Like `iter_crate_data`, but passes source paths (if available) as well.
     pub fn iter_crate_data_origins<I>(&self, mut i: I) where
-        I: FnMut(ast::CrateNum, &crate_metadata, Option<CrateSource>),
+        I: FnMut(ast::CrateNum, &CrateMetadata, Option<CrateSource>),
     {
         for (&k, v) in self.metas.borrow().iter() {
             let origin = self.opt_used_crate_source(k);
@@ -164,6 +180,30 @@ impl CStore {
         self.statically_included_foreign_items.borrow_mut().clear();
     }
 
+    pub fn crate_dependencies_in_rpo(&self, krate: ast::CrateNum) -> Vec<ast::CrateNum>
+    {
+        let mut ordering = Vec::new();
+        self.push_dependencies_in_postorder(&mut ordering, krate);
+        ordering.reverse();
+        ordering
+    }
+
+    pub fn push_dependencies_in_postorder(&self,
+                                          ordering: &mut Vec<ast::CrateNum>,
+                                          krate: ast::CrateNum)
+    {
+        if ordering.contains(&krate) { return }
+
+        let data = self.get_crate_data(krate);
+        for &dep in data.cnum_map.borrow().iter() {
+            if dep != krate {
+                self.push_dependencies_in_postorder(ordering, dep);
+            }
+        }
+
+        ordering.push(krate);
+    }
+
     // This method is used when generating the command line to pass through to
     // system linker. The linker expects undefined symbols on the left of the
     // command line to be defined in libraries on the right, not the other way
@@ -176,17 +216,8 @@ impl CStore {
     pub fn do_get_used_crates(&self, prefer: LinkagePreference)
                               -> Vec<(ast::CrateNum, Option<PathBuf>)> {
         let mut ordering = Vec::new();
-        fn visit(cstore: &CStore, cnum: ast::CrateNum,
-                 ordering: &mut Vec<ast::CrateNum>) {
-            if ordering.contains(&cnum) { return }
-            let meta = cstore.get_crate_data(cnum);
-            for (_, &dep) in meta.cnum_map.borrow().iter() {
-                visit(cstore, dep, ordering);
-            }
-            ordering.push(cnum);
-        }
         for (&num, _) in self.metas.borrow().iter() {
-            visit(self, num, &mut ordering);
+            self.push_dependencies_in_postorder(&mut ordering, num);
         }
         info!("topological ordering: {:?}", ordering);
         ordering.reverse();
@@ -246,10 +277,13 @@ impl CStore {
     }
 }
 
-impl crate_metadata {
+impl CrateMetadata {
     pub fn data<'a>(&'a self) -> &'a [u8] { self.data.as_slice() }
-    pub fn name(&self) -> String { decoder::get_crate_name(self.data()) }
+    pub fn name(&self) -> &str { decoder::get_crate_name(self.data()) }
     pub fn hash(&self) -> Svh { decoder::get_crate_hash(self.data()) }
+    pub fn disambiguator(&self) -> &str {
+        decoder::get_crate_disambiguator(self.data())
+    }
     pub fn imported_filemaps<'a>(&'a self, codemap: &codemap::CodeMap)
                                  -> Ref<'a, Vec<ImportedFileMap>> {
         let filemaps = self.codemap_import_info.borrow();
@@ -265,50 +299,6 @@ impl crate_metadata {
         }
     }
 
-    pub fn with_local_path<T, F>(&self, f: F) -> T
-        where F: Fn(&[ast_map::PathElem]) -> T
-    {
-        let cpath = self.local_path.borrow();
-        if cpath.is_empty() {
-            let name = ast_map::PathMod(token::intern(&self.name));
-            f(&[name])
-        } else {
-            f(cpath.as_slice())
-        }
-    }
-
-    pub fn update_local_path<'a, 'b>(&self, candidate: ast_map::PathElems<'a, 'b>) {
-        let mut cpath = self.local_path.borrow_mut();
-        let cap = cpath.len();
-        match cap {
-            0 => *cpath = candidate.collect(),
-            1 => (),
-            _ => {
-                let candidate: SmallVector<_> = candidate.collect();
-                if candidate.len() < cap {
-                    *cpath = candidate;
-                }
-            },
-        }
-    }
-
-    pub fn local_def_path(&self) -> ast_map::DefPath {
-        let local_def_path = self.local_def_path.borrow();
-        if local_def_path.is_empty() {
-            let name = ast_map::DefPathData::DetachedCrate(token::intern(&self.name));
-            vec![ast_map::DisambiguatedDefPathData { data: name, disambiguator: 0 }]
-        } else {
-            local_def_path.clone()
-        }
-    }
-
-    pub fn update_local_def_path(&self, candidate: ast_map::DefPath) {
-        let mut local_def_path = self.local_def_path.borrow_mut();
-        if local_def_path.is_empty() || candidate.len() < local_def_path.len() {
-            *local_def_path = candidate;
-        }
-    }
-
     pub fn is_allocator(&self) -> bool {
         let attrs = decoder::get_crate_attributes(self.data());
         attr::contains_name(&attrs, "allocator")
@@ -318,23 +308,42 @@ impl crate_metadata {
         let attrs = decoder::get_crate_attributes(self.data());
         attr::contains_name(&attrs, "needs_allocator")
     }
+
+    pub fn is_panic_runtime(&self) -> bool {
+        let attrs = decoder::get_crate_attributes(self.data());
+        attr::contains_name(&attrs, "panic_runtime")
+    }
+
+    pub fn needs_panic_runtime(&self) -> bool {
+        let attrs = decoder::get_crate_attributes(self.data());
+        attr::contains_name(&attrs, "needs_panic_runtime")
+    }
+
+    pub fn panic_strategy(&self) -> PanicStrategy {
+        decoder::get_panic_strategy(self.data())
+    }
 }
 
 impl MetadataBlob {
-    pub fn as_slice<'a>(&'a self) -> &'a [u8] {
-        let slice = match *self {
+    pub fn as_slice_raw<'a>(&'a self) -> &'a [u8] {
+        match *self {
             MetadataVec(ref vec) => &vec[..],
             MetadataArchive(ref ar) => ar.as_slice(),
-        };
-        if slice.len() < 4 {
+        }
+    }
+
+    pub fn as_slice<'a>(&'a self) -> &'a [u8] {
+        let slice = self.as_slice_raw();
+        let len_offset = 4 + common::metadata_encoding_version.len();
+        if slice.len() < len_offset+4 {
             &[] // corrupt metadata
         } else {
-            let len = (((slice[0] as u32) << 24) |
-                       ((slice[1] as u32) << 16) |
-                       ((slice[2] as u32) << 8) |
-                       ((slice[3] as u32) << 0)) as usize;
-            if len + 4 <= slice.len() {
-                &slice[4.. len + 4]
+            let len = (((slice[len_offset+0] as u32) << 24) |
+                       ((slice[len_offset+1] as u32) << 16) |
+                       ((slice[len_offset+2] as u32) << 8) |
+                       ((slice[len_offset+3] as u32) << 0)) as usize;
+            if len <= slice.len() - 4 - len_offset {
+                &slice[len_offset + 4..len_offset + len + 4]
             } else {
                 &[] // corrupt or old metadata
             }

@@ -15,6 +15,7 @@
 use core::clone::Clone;
 use core::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 use core::convert::AsRef;
+use core::default::Default;
 use core::hash::{Hash, Hasher};
 use core::marker::Sized;
 use core::ops::Deref;
@@ -49,6 +50,18 @@ pub trait ToOwned {
     type Owned: Borrow<Self>;
 
     /// Creates owned data from borrowed data, usually by cloning.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s = "a"; // &str
+    /// let ss = s.to_owned(); // String
+    ///
+    /// let v = &[1, 2]; // slice
+    /// let vv = v.to_owned(); // Vec
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_owned(&self) -> Self::Owned;
 }
@@ -233,6 +246,16 @@ impl<'a, B: ?Sized> fmt::Display for Cow<'a, B>
             Borrowed(ref b) => fmt::Display::fmt(b, f),
             Owned(ref o) => fmt::Display::fmt(o, f),
         }
+    }
+}
+
+#[stable(feature = "default", since = "1.11.0")]
+impl<'a, B: ?Sized> Default for Cow<'a, B>
+    where B: ToOwned,
+          <B as ToOwned>::Owned: Default
+{
+    fn default() -> Cow<'a, B> {
+        Owned(<B as ToOwned>::Owned::default())
     }
 }
 

@@ -10,7 +10,7 @@
 
 //! The ChaCha random number generator.
 
-use {Rng, SeedableRng, Rand};
+use {Rand, Rng, SeedableRng};
 
 const KEY_WORDS: usize = 8; // 8 words for the 256-bit key
 const STATE_WORDS: usize = 16;
@@ -216,7 +216,8 @@ mod tests {
         let s = ::test::rng().gen_iter::<u32>().take(8).collect::<Vec<u32>>();
         let mut ra: ChaChaRng = SeedableRng::from_seed(&*s);
         let mut rb: ChaChaRng = SeedableRng::from_seed(&*s);
-        assert!(ra.gen_ascii_chars().take(100)
+        assert!(ra.gen_ascii_chars()
+                  .take(100)
                   .eq(rb.gen_ascii_chars().take(100)));
     }
 
@@ -225,7 +226,8 @@ mod tests {
         let seed: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         let mut ra: ChaChaRng = SeedableRng::from_seed(seed);
         let mut rb: ChaChaRng = SeedableRng::from_seed(seed);
-        assert!(ra.gen_ascii_chars().take(100)
+        assert!(ra.gen_ascii_chars()
+                  .take(100)
                   .eq(rb.gen_ascii_chars().take(100)));
     }
 

@@ -319,6 +319,53 @@ assert_eq!(3, answer);
 Now we take a trait object, a `&Fn`. And we have to make a reference
 to our closure when we pass it to `call_with_one`, so we use `&||`.
 
+A quick note about closures that use explicit lifetimes. Sometimes you might have a closure
+that takes a reference like so:
+
+```rust
+fn call_with_ref<F>(some_closure:F) -> i32
+    where F: Fn(&i32) -> i32 {
+
+    let mut value = 0;
+    some_closure(&value)
+}
+```
+
+Normally you can specify the lifetime of the parameter to our closure. We
+could annotate it on the function declaration:
+
+```rust,ignore
+fn call_with_ref<'a, F>(some_closure:F) -> i32
+    where F: Fn(&'a i32) -> i32 {
+```
+
+However this presents a problem with in our case. When you specify the explicit
+lifetime on a function it binds that lifetime to the *entire* scope of the function
+instead of just the invocation scope of our closure. This means that the borrow checker
+will see a mutable reference in the same lifetime as our immutable reference and fail
+to compile.
+
+In order to say that we only need the lifetime to be valid for the invocation scope
+of the closure we can use Higher-Ranked Trait Bounds with the `for<...>` syntax:
+
+```ignore
+fn call_with_ref<F>(some_closure:F) -> i32
+    where F: for<'a> Fn(&'a i32) -> i32 {
+```
+
+This lets the Rust compiler find the minimum lifetime to invoke our closure and
+satisfy the borrow checker's rules. Our function then compiles and executes as we
+expect.
+
+```rust
+fn call_with_ref<F>(some_closure:F) -> i32
+    where F: for<'a> Fn(&'a i32) -> i32 {
+
+    let mut value = 0;
+    some_closure(&value)
+}
+```
+
 # Function pointers and closures
 
 A function pointer is kind of like a closure that has no environment. As such,
@@ -344,7 +391,7 @@ assert_eq!(2, answer);
 In this example, we don’t strictly need the intermediate variable `f`,
 the name of the function works just fine too:
 
-```ignore
+```rust,ignore
 let answer = call_with_one(&add_one);
 ```
 
@@ -371,14 +418,13 @@ assert_eq!(6, answer);
 This gives us these long, related errors:
 
 ```text
-error: the trait `core::marker::Sized` is not implemented for the type
-`core::ops::Fn(i32) -> i32` [E0277]
+error: the trait bound `core::ops::Fn(i32) -> i32 : core::marker::Sized` is not satisfied [E0277]
 fn factory() -> (Fn(i32) -> i32) {
                 ^~~~~~~~~~~~~~~~
 note: `core::ops::Fn(i32) -> i32` does not have a constant size known at compile-time
 fn factory() -> (Fn(i32) -> i32) {
                 ^~~~~~~~~~~~~~~~
-error: the trait `core::marker::Sized` is not implemented for the type `core::ops::Fn(i32) -> i32` [E0277]
+error: the trait bound `core::ops::Fn(i32) -> i32 : core::marker::Sized` is not satisfied [E0277]
 let f = factory();
     ^
 note: `core::ops::Fn(i32) -> i32` does not have a constant size known at compile-time
@@ -493,14 +539,14 @@ fn factory() -> Box<Fn(i32) -> i32> {
 
     Box::new(move |x| x + num)
 }
-# fn main() {
+fn main() {
 let f = factory();
 
 let answer = f(1);
 assert_eq!(6, answer);
-# }
+}
 ```
 
 By making the inner closure a `move Fn`, we create a new stack frame for our
-closure. By `Box`ing it up, we’ve given it a known size, and allowing it to
+closure. By `Box`ing it up, we’ve given it a known size, allowing it to
 escape our stack frame.

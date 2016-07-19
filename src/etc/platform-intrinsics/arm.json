@@ -1,6 +1,6 @@
 {
-    "platform": "arm",
-    "intrinsic_prefix": "arm_v",
+    "platform": "arm_v",
+    "intrinsic_prefix": "",
     "llvm_prefix": "llvm.neon.v",
     "number_info": {
         "signed": {

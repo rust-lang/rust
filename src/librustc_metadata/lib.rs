@@ -23,20 +23,23 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
+#![feature(question_mark)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
-
+extern crate syntax_pos;
 extern crate flate;
 extern crate rbml;
-extern crate serialize;
+extern crate serialize as rustc_serialize; // used by deriving
+extern crate rustc_errors as errors;
 
+#[macro_use]
 extern crate rustc;
+extern crate rustc_data_structures;
 extern crate rustc_back;
-extern crate rustc_front;
 extern crate rustc_llvm;
-extern crate rustc_const_eval;
+extern crate rustc_const_math;
 
 pub use rustc::middle;
 
@@ -47,6 +50,7 @@ pub mod diagnostics;
 
 pub mod astencode;
 pub mod common;
+pub mod def_key;
 pub mod tyencode;
 pub mod tydecode;
 pub mod encoder;

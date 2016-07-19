@@ -14,7 +14,9 @@ fn closure_to_loc() {
     //~^ ERROR mismatched types
     //~| NOTE no two closures, even if identical, have the same type
     //~| HELP consider boxing your closure and/or using it as a trait object
-    //~| HELP run `rustc --explain E0308` to see a detailed explanation
+    //~| expected closure, found a different closure
+    //~| expected type `[closure
+    //~| found type `[closure
 }
 
 fn closure_from_match() {
@@ -27,7 +29,9 @@ fn closure_from_match() {
     //~^^^^^^ ERROR match arms have incompatible types
     //~| NOTE no two closures, even if identical, have the same type
     //~| HELP consider boxing your closure and/or using it as a trait object
-    //~| HELP run `rustc --explain E0308` to see a detailed explanation
+    //~| expected closure, found a different closure
+    //~| expected type `[closure
+    //~| found type `[closure
 }
 
 fn main() { }

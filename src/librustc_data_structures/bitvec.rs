@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::iter::FromIterator;
+
 /// A very simple BitVector type.
+#[derive(Clone, Debug, PartialEq)]
 pub struct BitVector {
     data: Vec<u64>,
 }
@@ -49,8 +52,9 @@ impl BitVector {
 
     pub fn grow(&mut self, num_bits: usize) {
         let num_words = u64s(num_bits);
-        let extra_words = self.data.len() - num_words;
-        self.data.extend((0..extra_words).map(|_| 0));
+        if self.data.len() < num_words {
+            self.data.resize(num_words, 0)
+        }
     }
 
     /// Iterates over indexes of set bits in a sorted order
@@ -90,6 +94,27 @@ impl<'a> Iterator for BitVectorIter<'a> {
         self.current >>= 1; // shift otherwise overflows for 0b1000_0000_…_0000
         self.idx += offset + 1;
         return Some(self.idx - 1);
+    }
+}
+
+impl FromIterator<bool> for BitVector {
+    fn from_iter<I>(iter: I) -> BitVector where I: IntoIterator<Item=bool> {
+        let iter = iter.into_iter();
+        let (len, _) = iter.size_hint();
+        // Make the minimum length for the bitvector 64 bits since that's
+        // the smallest non-zero size anyway.
+        let len = if len < 64 { 64 } else { len };
+        let mut bv = BitVector::new(len);
+        for (idx, val) in iter.enumerate() {
+            if idx > len {
+                bv.grow(idx);
+            }
+            if val {
+                bv.insert(idx);
+            }
+        }
+
+        bv
     }
 }
 
@@ -212,23 +237,9 @@ fn bitvec_iter_works() {
                [1, 10, 19, 62, 63, 64, 65, 66, 99]);
 }
 
+
 #[test]
 fn bitvec_iter_works_2() {
-    let mut bitvec = BitVector::new(300);
-    bitvec.insert(1);
-    bitvec.insert(10);
-    bitvec.insert(19);
-    bitvec.insert(62);
-    bitvec.insert(66);
-    bitvec.insert(99);
-    bitvec.insert(299);
-    assert_eq!(bitvec.iter().collect::<Vec<_>>(),
-               [1, 10, 19, 62, 66, 99, 299]);
-
-}
-
-#[test]
-fn bitvec_iter_works_3() {
     let mut bitvec = BitVector::new(319);
     bitvec.insert(0);
     bitvec.insert(127);
@@ -258,15 +269,27 @@ fn union_two_vecs() {
 #[test]
 fn grow() {
     let mut vec1 = BitVector::new(65);
-    assert!(vec1.insert(3));
-    assert!(!vec1.insert(3));
-    assert!(vec1.insert(5));
-    assert!(vec1.insert(64));
+    for index in 0 .. 65 {
+        assert!(vec1.insert(index));
+        assert!(!vec1.insert(index));
+    }
     vec1.grow(128);
-    assert!(vec1.contains(3));
-    assert!(vec1.contains(5));
-    assert!(vec1.contains(64));
-    assert!(!vec1.contains(126));
+
+    // Check if the bits set before growing are still set
+    for index in 0 .. 65 {
+        assert!(vec1.contains(index));
+    }
+
+    // Check if the new bits are all un-set
+    for index in 65 .. 128 {
+        assert!(!vec1.contains(index));
+    }
+
+    // Check that we can set all new bits without running out of bounds
+    for index in 65 .. 128 {
+        assert!(vec1.insert(index));
+        assert!(!vec1.insert(index));
+    }
 }
 
 #[test]

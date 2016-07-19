@@ -19,7 +19,8 @@ enum Foo {
 fn blah() {
     let f = &Foo::Foo1(box 1, box 2);
     match *f {             //~ ERROR cannot move out of
-        Foo::Foo1(num1,         //~ NOTE attempting to move value to here
+                           //~| cannot move out
+        Foo::Foo1(num1,         //~ NOTE to prevent move
                   num2) => (),  //~ NOTE and here
         Foo::Foo2(num) => (),   //~ NOTE and here
         Foo::Foo3 => ()
@@ -36,8 +37,9 @@ impl Drop for S {
 
 fn move_in_match() {
     match (S {f: "foo".to_string(), g: "bar".to_string()}) {
-        S {         //~ ERROR cannot move out of type `S`, which defines the `Drop` trait
-            f: _s,  //~ NOTE attempting to move value to here
+        S {         //~ ERROR cannot move out of type `S`, which implements the `Drop` trait
+        //~| cannot move out of here
+            f: _s,  //~ NOTE to prevent move
             g: _t   //~ NOTE and here
         } => {}
     }
@@ -53,7 +55,8 @@ fn free<T>(_: T) {}
 fn blah2() {
     let a = &A { a: box 1 };
     match a.a {           //~ ERROR cannot move out of
-        n => {            //~ NOTE attempting to move value to here
+                          //~| cannot move out
+        n => {            //~ NOTE to prevent move
             free(n)
         }
     }

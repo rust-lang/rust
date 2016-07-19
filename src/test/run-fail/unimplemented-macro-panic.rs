@@ -9,4 +9,6 @@
 // except according to those terms.
 
 // error-pattern:not yet implemented
-fn main() { unimplemented!() }
+fn main() {
+    unimplemented!()
+}

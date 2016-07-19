@@ -23,7 +23,7 @@ trait Bar<X> { }
 
 // We don't always check where clauses for sanity, but in this case
 // wfcheck does report an error here:
-fn vacuous<A>() //~ ERROR the trait `Bar<u32>` is not implemented for the type `i32`
+fn vacuous<A>() //~ ERROR the trait bound `i32: Bar<u32>` is not satisfied
     where i32: Foo<u32, A>
 {
     // ... the original intention was to check that we don't use that

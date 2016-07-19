@@ -10,17 +10,16 @@
 
 //! Validity checking for weak lang items
 
-use session::config;
+use session::config::{self, PanicStrategy};
 use session::Session;
-use middle::cstore::CrateStore;
 use middle::lang_items;
 
 use syntax::ast;
-use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
-use rustc_front::intravisit::Visitor;
-use rustc_front::intravisit;
-use rustc_front::hir;
+use syntax_pos::Span;
+use hir::intravisit::Visitor;
+use hir::intravisit;
+use hir;
 
 use std::collections::HashSet;
 
@@ -71,12 +70,15 @@ fn verify(sess: &Session, items: &lang_items::LanguageItems) {
     let needs_check = sess.crate_types.borrow().iter().any(|kind| {
         match *kind {
             config::CrateTypeDylib |
+            config::CrateTypeCdylib |
             config::CrateTypeExecutable |
             config::CrateTypeStaticlib => true,
             config::CrateTypeRlib => false,
         }
     });
-    if !needs_check { return }
+    if !needs_check {
+        return
+    }
 
     let mut missing = HashSet::new();
     for cnum in sess.cstore.crates() {
@@ -85,8 +87,19 @@ fn verify(sess: &Session, items: &lang_items::LanguageItems) {
         }
     }
 
+    // If we're not compiling with unwinding, we won't actually need these
+    // symbols. Other panic runtimes ensure that the relevant symbols are
+    // available to link things together, but they're never exercised.
+    let mut whitelisted = HashSet::new();
+    if sess.opts.cg.panic != PanicStrategy::Unwind {
+        whitelisted.insert(lang_items::EhPersonalityLangItem);
+        whitelisted.insert(lang_items::EhUnwindResumeLangItem);
+    }
+
     $(
-        if missing.contains(&lang_items::$item) && items.$name().is_none() {
+        if missing.contains(&lang_items::$item) &&
+           !whitelisted.contains(&lang_items::$item) &&
+           items.$name().is_none() {
             sess.err(&format!("language item required, but not found: `{}`",
                               stringify!($name)));
 
@@ -110,9 +123,8 @@ impl<'a> Context<'a> {
 
 impl<'a, 'v> Visitor<'v> for Context<'a> {
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
-        match lang_items::extract(&i.attrs) {
-            None => {}
-            Some(lang_item) => self.register(&lang_item, i.span),
+        if let Some(lang_item) = lang_items::extract(&i.attrs) {
+            self.register(&lang_item, i.span);
         }
         intravisit::walk_foreign_item(self, i)
     }

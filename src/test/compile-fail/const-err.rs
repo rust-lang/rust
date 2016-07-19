@@ -8,31 +8,39 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-flags: -Zforce-overflow-checks=on
+
+// these errors are not actually "const_err", they occur in trans/consts
+// and are unconditional warnings that can't be denied or allowed
+
 #![allow(exceeding_bitshifts)]
-#![deny(const_err)]
+#![allow(const_err)]
 
 fn black_box<T>(_: T) {
     unimplemented!()
 }
 
-const BLA: u8 = 200u8 + 200u8;
-//~^ ERROR attempted to add with overflow
+// Make sure that the two uses get two errors.
+const FOO: u8 = [5u8][1];
+//~^ ERROR index out of bounds: the len is 1 but the index is 1
+//~^^ ERROR index out of bounds: the len is 1 but the index is 1
 
-#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     let a = -std::i8::MIN;
     //~^ WARN attempted to negate with overflow
     let b = 200u8 + 200u8 + 200u8;
     //~^ WARN attempted to add with overflow
-    //~^^ WARN attempted to add with overflow
+    //~| WARN attempted to add with overflow
     let c = 200u8 * 4;
     //~^ WARN attempted to multiply with overflow
     let d = 42u8 - (42u8 + 1);
     //~^ WARN attempted to subtract with overflow
-    let _e = BLA;
+    let _e = [5u8][1];
+    //~^ WARN index out of bounds: the len is 1 but the index is 1
     black_box(a);
     black_box(b);
     black_box(c);
     black_box(d);
+
+    black_box((FOO, FOO));
 }

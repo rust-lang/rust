@@ -190,7 +190,7 @@
 //! [`thread`]: thread/index.html
 //! [`use std::env`]: env/index.html
 //! [`use`]: ../book/crates-and-modules.html#importing-modules-with-use
-//! [crate root]: ../book/crates-and-modules.html#basic-terminology:-crates-and-modules
+//! [crate root]: ../book/crates-and-modules.html#basic-terminology-crates-and-modules
 //! [crates.io]: https://crates.io
 //! [deref coercions]: ../book/deref-coercions.html
 //! [files]: fs/struct.File.html
@@ -210,6 +210,8 @@
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
+#![needs_panic_runtime]
+
 #![feature(alloc)]
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
@@ -222,10 +224,8 @@
 #![feature(collections)]
 #![feature(collections_bound)]
 #![feature(const_fn)]
-#![feature(copy_from_slice)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
-#![feature(decode_utf16)]
 #![feature(dropck_parametricity)]
 #![feature(float_extras)]
 #![feature(float_from_str_radix)]
@@ -241,11 +241,13 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(macro_reexport)]
+#![cfg_attr(test, feature(map_values_mut))]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
 #![feature(on_unimplemented)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
+#![feature(panic_unwind)]
 #![feature(placement_in_syntax)]
 #![feature(rand)]
 #![feature(raw)]
@@ -253,6 +255,7 @@
 #![feature(reflect_marker)]
 #![feature(rustc_attrs)]
 #![feature(shared)]
+#![feature(sip_hash_13)]
 #![feature(slice_bytes)]
 #![feature(slice_concat_ext)]
 #![feature(slice_patterns)]
@@ -270,6 +273,9 @@
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(zero_one)]
+#![feature(question_mark)]
+#![feature(try_from)]
+#![feature(needs_panic_runtime)]
 
 // Issue# 30592: Systematically use alloc_system during stage0 since jemalloc
 // might be unavailable or disabled
@@ -299,6 +305,9 @@ extern crate collections as core_collections;
 extern crate alloc;
 extern crate rustc_unicode;
 extern crate libc;
+
+// We always need an unwinder currently for backtraces
+extern crate unwind;
 
 #[cfg(stage0)]
 extern crate alloc_system;

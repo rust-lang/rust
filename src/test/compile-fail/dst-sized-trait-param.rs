@@ -15,9 +15,9 @@
 trait Foo<T> : Sized { fn take(self, x: &T) { } } // Note: T is sized
 
 impl Foo<[isize]> for usize { }
-//~^ ERROR the trait `core::marker::Sized` is not implemented for the type `[isize]`
+//~^ ERROR `[isize]: std::marker::Sized` is not satisfied
 
 impl Foo<isize> for [usize] { }
-//~^ ERROR the trait `core::marker::Sized` is not implemented for the type `[usize]`
+//~^ ERROR `[usize]: std::marker::Sized` is not satisfied
 
 pub fn main() { }

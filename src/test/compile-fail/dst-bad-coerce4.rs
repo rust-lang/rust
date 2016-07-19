@@ -19,8 +19,7 @@ pub fn main() {
     let f1: &Fat<[isize]> = &Fat { ptr: [1, 2, 3] };
     let f2: &Fat<[isize; 3]> = f1;
     //~^ ERROR mismatched types
-    //~| expected `&Fat<[isize; 3]>`
-    //~| found `&Fat<[isize]>`
-    //~| expected array of 3 elements
-    //~| found slice
+    //~| expected type `&Fat<[isize; 3]>`
+    //~| found type `&Fat<[isize]>`
+    //~| expected array of 3 elements, found slice
 }

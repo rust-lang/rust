@@ -7,20 +7,22 @@ version = "0.0.0"
 name = "rustc_trans"
 path = "lib.rs"
 crate-type = ["dylib"]
+test = false
 
 [dependencies]
 arena = { path = "../libarena" }
 flate = { path = "../libflate" }
-getopts = { path = "../libgetopts" }
 graphviz = { path = "../libgraphviz" }
 log = { path = "../liblog" }
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
 rustc_const_eval = { path = "../librustc_const_eval" }
+rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-rustc_front = { path = "../librustc_front" }
+rustc_errors = { path = "../librustc_errors" }
+rustc_incremental = { path = "../librustc_incremental" }
 rustc_llvm = { path = "../librustc_llvm" }
-rustc_mir = { path = "../librustc_mir" }
 rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
+syntax_pos = { path = "../libsyntax_pos" }

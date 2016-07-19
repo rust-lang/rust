@@ -14,10 +14,10 @@
  */
 
 use mir::repr::*;
-use middle::subst::{Subst, Substs};
-use middle::ty::{self, AdtDef, Ty, TyCtxt};
-use middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use rustc_front::hir;
+use ty::subst::{Subst, Substs};
+use ty::{self, AdtDef, Ty, TyCtxt};
+use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use hir;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LvalueTy<'tcx> {
@@ -30,12 +30,12 @@ pub enum LvalueTy<'tcx> {
                variant_index: usize },
 }
 
-impl<'tcx> LvalueTy<'tcx> {
+impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> LvalueTy<'tcx> {
         LvalueTy::Ty { ty: ty }
     }
 
-    pub fn to_ty(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             LvalueTy::Ty { ty } =>
                 ty,
@@ -44,8 +44,7 @@ impl<'tcx> LvalueTy<'tcx> {
         }
     }
 
-    pub fn projection_ty(self,
-                         tcx: &TyCtxt<'tcx>,
+    pub fn projection_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                          elem: &LvalueElem<'tcx>)
                          -> LvalueTy<'tcx>
     {
@@ -60,6 +59,20 @@ impl<'tcx> LvalueTy<'tcx> {
                 LvalueTy::Ty {
                     ty: self.to_ty(tcx).builtin_index().unwrap()
                 },
+            ProjectionElem::Subslice { from, to } => {
+                let ty = self.to_ty(tcx);
+                LvalueTy::Ty {
+                    ty: match ty.sty {
+                        ty::TyArray(inner, size) => {
+                            tcx.mk_array(inner, size-(from as usize)-(to as usize))
+                        }
+                        ty::TySlice(..) => ty,
+                        _ => {
+                            bug!("cannot subslice non-array type: `{:?}`", self)
+                        }
+                    }
+                }
+            }
             ProjectionElem::Downcast(adt_def1, index) =>
                 match self.to_ty(tcx).sty {
                     ty::TyEnum(adt_def, substs) => {
@@ -70,7 +83,7 @@ impl<'tcx> LvalueTy<'tcx> {
                                              variant_index: index }
                     }
                     _ => {
-                        tcx.sess.bug(&format!("cannot downcast non-enum type: `{:?}`", self))
+                        bug!("cannot downcast non-enum type: `{:?}`", self)
                     }
                 },
             ProjectionElem::Field(_, fty) => LvalueTy::Ty { ty: fty }
@@ -79,14 +92,13 @@ impl<'tcx> LvalueTy<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.fold_with(folder) },
             LvalueTy::Downcast { adt_def, substs, variant_index } => {
-                let substs = substs.fold_with(folder);
                 LvalueTy::Downcast {
                     adt_def: adt_def,
-                    substs: folder.tcx().mk_substs(substs),
+                    substs: substs.fold_with(folder),
                     variant_index: variant_index
                 }
             }
@@ -101,9 +113,8 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
     }
 }
 
-impl<'tcx> Mir<'tcx> {
-    pub fn operand_ty(&self,
-                      tcx: &TyCtxt<'tcx>,
+impl<'a, 'gcx, 'tcx> Mir<'tcx> {
+    pub fn operand_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                       operand: &Operand<'tcx>)
                       -> Ty<'tcx>
     {
@@ -113,8 +124,7 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
-    pub fn binop_ty(&self,
-                    tcx: &TyCtxt<'tcx>,
+    pub fn binop_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     op: BinOp,
                     lhs_ty: Ty<'tcx>,
                     rhs_ty: Ty<'tcx>)
@@ -138,18 +148,17 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
-    pub fn lvalue_ty(&self,
-                     tcx: &TyCtxt<'tcx>,
+    pub fn lvalue_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      lvalue: &Lvalue<'tcx>)
                      -> LvalueTy<'tcx>
     {
         match *lvalue {
             Lvalue::Var(index) =>
-                LvalueTy::Ty { ty: self.var_decls[index as usize].ty },
+                LvalueTy::Ty { ty: self.var_decls[index].ty },
             Lvalue::Temp(index) =>
-                LvalueTy::Ty { ty: self.temp_decls[index as usize].ty },
+                LvalueTy::Ty { ty: self.temp_decls[index].ty },
             Lvalue::Arg(index) =>
-                LvalueTy::Ty { ty: self.arg_decls[index as usize].ty },
+                LvalueTy::Ty { ty: self.arg_decls[index].ty },
             Lvalue::Static(def_id) =>
                 LvalueTy::Ty { ty: tcx.lookup_item_type(def_id).ty },
             Lvalue::ReturnPointer =>
@@ -159,8 +168,7 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
-    pub fn rvalue_ty(&self,
-                     tcx: &TyCtxt<'tcx>,
+    pub fn rvalue_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      rvalue: &Rvalue<'tcx>)
                      -> Option<Ty<'tcx>>
     {
@@ -189,6 +197,13 @@ impl<'tcx> Mir<'tcx> {
                 let rhs_ty = self.operand_ty(tcx, rhs);
                 Some(self.binop_ty(tcx, op, lhs_ty, rhs_ty))
             }
+            Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+                let lhs_ty = self.operand_ty(tcx, lhs);
+                let rhs_ty = self.operand_ty(tcx, rhs);
+                let ty = self.binop_ty(tcx, op, lhs_ty, rhs_ty);
+                let ty = tcx.mk_tup(vec![ty, tcx.types.bool]);
+                Some(ty)
+            }
             Rvalue::UnaryOp(_, ref operand) => {
                 Some(self.operand_ty(tcx, operand))
             }
@@ -211,15 +226,13 @@ impl<'tcx> Mir<'tcx> {
                         ))
                     }
                     AggregateKind::Adt(def, _, substs) => {
-                        Some(def.type_scheme(tcx).ty.subst(tcx, substs))
+                        Some(tcx.lookup_item_type(def.did).ty.subst(tcx, substs))
                     }
                     AggregateKind::Closure(did, substs) => {
-                        Some(tcx.mk_closure_from_closure_substs(
-                            did, Box::new(substs.clone())))
+                        Some(tcx.mk_closure_from_closure_substs(did, substs))
                     }
                 }
             }
-            Rvalue::Slice { .. } => None,
             Rvalue::InlineAsm { .. } => None
         }
     }

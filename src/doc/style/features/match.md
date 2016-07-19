@@ -4,7 +4,7 @@
 
 Prefer
 
-~~~~
+~~~~ignore
 match *foo {
     X(...) => ...
     Y(...) => ...
@@ -13,7 +13,7 @@ match *foo {
 
 over
 
-~~~~
+~~~~ignore
 match foo {
     box X(...) => ...
     box Y(...) => ...

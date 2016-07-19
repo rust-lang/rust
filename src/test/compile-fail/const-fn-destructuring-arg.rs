@@ -13,6 +13,11 @@
 #![feature(const_fn)]
 
 // no destructuring
-const fn i((a, b): (u32, u32)) -> u32 { a + b } //~ ERROR: E0022
+const fn i((
+            a, //~ ERROR: E0022
+            b  //~ ERROR: E0022
+           ): (u32, u32)) -> u32 {
+    a + b
+}
 
 fn main() {}

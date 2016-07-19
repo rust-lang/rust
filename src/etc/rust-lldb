@@ -12,6 +12,17 @@
 # Exit if anything fails
 set -e
 
+LLDB_VERSION=`lldb --version 2>/dev/null | head -1 | cut -d. -f1`
+
+if [ "$LLDB_VERSION" = "lldb-350" ]
+then
+    echo "***"
+	echo \
+"WARNING: This version of LLDB has known issues with Rust and cannot \
+display the contents of local variables!"
+    echo "***"
+fi
+
 # Create a tempfile containing the LLDB script we want to execute on startup
 TMPFILE=`mktemp /tmp/rust-lldb-commands.XXXXXX`
 

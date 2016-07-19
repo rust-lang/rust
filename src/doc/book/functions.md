@@ -134,7 +134,7 @@ x = y = 5
 In Rust, however, using `let` to introduce a binding is _not_ an expression. The
 following will produce a compile-time error:
 
-```ignore
+```rust,ignore
 let x = (let y = 5); // expected identifier, found keyword `let`
 ```
 
@@ -221,7 +221,7 @@ If you add a main function that calls `diverges()` and run it, you’ll get
 some output that looks like this:
 
 ```text
-thread ‘<main>’ panicked at ‘This function never returns!’, hello.rs:2
+thread ‘main’ panicked at ‘This function never returns!’, hello.rs:2
 ```
 
 If you want more information, you can get a backtrace by setting the
@@ -229,7 +229,7 @@ If you want more information, you can get a backtrace by setting the
 
 ```text
 $ RUST_BACKTRACE=1 ./diverges
-thread '<main>' panicked at 'This function never returns!', hello.rs:2
+thread 'main' panicked at 'This function never returns!', hello.rs:2
 stack backtrace:
    1:     0x7f402773a829 - sys::backtrace::write::h0942de78b6c02817K8r
    2:     0x7f402773d7fc - panicking::on_panic::h3f23f9d0b5f4c91bu9w
@@ -246,12 +246,25 @@ stack backtrace:
   13:                0x0 - <unknown>
 ```
 
+If you need to override an already set `RUST_BACKTRACE`, 
+in cases when you cannot just unset the variable, 
+then set it to `0` to avoid getting a backtrace. 
+Any other value (even no value at all) turns on backtrace.
+
+```text
+$ export RUST_BACKTRACE=1
+...
+$ RUST_BACKTRACE=0 ./diverges 
+thread 'main' panicked at 'This function never returns!', hello.rs:2
+note: Run with `RUST_BACKTRACE=1` for a backtrace.
+```
+
 `RUST_BACKTRACE` also works with Cargo’s `run` command:
 
 ```text
 $ RUST_BACKTRACE=1 cargo run
      Running `target/debug/diverges`
-thread '<main>' panicked at 'This function never returns!', hello.rs:2
+thread 'main' panicked at 'This function never returns!', hello.rs:2
 stack backtrace:
    1:     0x7f402773a829 - sys::backtrace::write::h0942de78b6c02817K8r
    2:     0x7f402773d7fc - panicking::on_panic::h3f23f9d0b5f4c91bu9w
@@ -270,7 +283,7 @@ stack backtrace:
 
 A diverging function can be used as any type:
 
-```should_panic
+```rust,should_panic
 # fn diverges() -> ! {
 #    panic!("This function never returns!");
 # }

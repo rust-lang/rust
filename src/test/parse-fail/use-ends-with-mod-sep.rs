@@ -10,4 +10,4 @@
 
 // compile-flags: -Z parse-only
 
-use std::any::; //~ ERROR expected identifier or `{` or `*`, found `;`
+use std::any::; //~ ERROR expected identifier, found `;`

@@ -93,16 +93,12 @@
 //! let msg = Some("howdy");
 //!
 //! // Take a reference to the contained string
-//! match msg {
-//!     Some(ref m) => println!("{}", *m),
-//!     None => (),
+//! if let Some(ref m) = msg {
+//!     println!("{}", *m);
 //! }
 //!
 //! // Remove the contained string, destroying the Option
-//! let unwrapped_msg = match msg {
-//!     Some(m) => m,
-//!     None => "default message",
-//! };
+//! let unwrapped_msg = msg.unwrap_or("default message");
 //! ```
 //!
 //! Initialize a result to `None` before a loop:
@@ -146,7 +142,6 @@
 use self::Option::*;
 
 use clone::Clone;
-use cmp::{Eq, Ord};
 use default::Default;
 use iter::ExactSizeIterator;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, IntoIterator};

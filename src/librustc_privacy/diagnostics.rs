@@ -16,7 +16,9 @@ E0445: r##"
 A private trait was used on a public type parameter bound. Erroneous code
 examples:
 
-```compile_fail
+```compile_fail,E0445
+#![deny(private_in_public)]
+
 trait Foo {
     fn dummy(&self) { }
 }
@@ -44,7 +46,9 @@ pub fn foo<T: Foo> (t: T) {} // ok!
 E0446: r##"
 A private type was used in a public type signature. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0446
+#![deny(private_in_public)]
+
 mod Foo {
     struct Bar(u32);
 
@@ -73,7 +77,7 @@ mod Foo {
 E0447: r##"
 The `pub` keyword was used inside a function. Erroneous code example:
 
-```compile_fail
+```ignore
 fn foo() {
     pub struct Bar; // error: visibility has no effect inside functions
 }
@@ -96,7 +100,7 @@ pub enum Foo {
 Since the enum is already public, adding `pub` on one its elements is
 unnecessary. Example:
 
-```compile_fail
+```compile_fail,
 enum Foo {
     pub Bar, // not ok!
 }
@@ -111,51 +115,11 @@ pub enum Foo {
 ```
 "##,
 
-E0449: r##"
-A visibility qualifier was used when it was unnecessary. Erroneous code
-examples:
-
-```compile_fail
-struct Bar;
-
-trait Foo {
-    fn foo();
-}
-
-pub impl Bar {} // error: unnecessary visibility qualifier
-
-pub impl Foo for Bar { // error: unnecessary visibility qualifier
-    pub fn foo() {} // error: unnecessary visibility qualifier
-}
-```
-
-To fix this error, please remove the visibility qualifier when it is not
-required. Example:
-
-```ignore
-struct Bar;
-
-trait Foo {
-    fn foo();
-}
-
-// Directly implemented methods share the visibility of the type itself,
-// so `pub` is unnecessary here
-impl Bar {}
-
-// Trait methods share the visibility of the trait, so `pub` is
-// unnecessary in either case
-pub impl Foo for Bar {
-    pub fn foo() {}
-}
-```
-"##,
-
 E0450: r##"
 A tuple constructor was invoked while some of its fields are private. Erroneous
 code example:
 
-```compile_fail
+```compile_fail,E0450
 mod Bar {
     pub struct Foo(isize);
 }
@@ -193,7 +157,7 @@ let f = bar::Foo::new(1);
 E0451: r##"
 A struct constructor with private fields was invoked. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0451
 mod Bar {
     pub struct Foo {
         pub a: isize,

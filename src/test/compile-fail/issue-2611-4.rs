@@ -21,7 +21,7 @@ struct E {
 
 impl A for E {
     fn b<F: Sync, G>(&self, _x: F) -> F { panic!() }
-    //~^ ERROR `F : core::marker::Sync` appears on the impl method
+    //~^ ERROR `F: std::marker::Sync` appears on the impl method
 }
 
 fn main() {}

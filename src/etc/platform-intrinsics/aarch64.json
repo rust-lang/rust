@@ -1,6 +1,6 @@
 {
-    "platform": "aarch64",
-    "intrinsic_prefix": "aarch64_v",
+    "platform": "aarch64_v",
+    "intrinsic_prefix": "",
     "llvm_prefix": "llvm.aarch64.neon.",
     "number_info": {
         "signed": {

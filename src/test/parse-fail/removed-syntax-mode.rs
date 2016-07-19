@@ -10,4 +10,4 @@
 
 // compile-flags: -Z parse-only
 
-fn f(+x: isize) {} //~ ERROR unexpected token: `+`
+fn f(+x: isize) {} //~ ERROR expected pattern, found `+`

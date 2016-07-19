@@ -78,7 +78,7 @@ macro_rules! vec {
 
 Whoa, that’s a lot of new syntax! Let’s break it down.
 
-```ignore
+```rust,ignore
 macro_rules! vec { ... }
 ```
 
@@ -92,7 +92,7 @@ syntax and serves to distinguish a macro from an ordinary function.
 The macro is defined through a series of rules, which are pattern-matching
 cases. Above, we had
 
-```ignore
+```rust,ignore
 ( $( $x:expr ),* ) => { ... };
 ```
 
@@ -112,7 +112,7 @@ separated by commas.
 Aside from the special matcher syntax, any Rust tokens that appear in a matcher
 must match exactly. For example,
 
-```rust
+```rust,ignore
 macro_rules! foo {
     (x => $e:expr) => (println!("mode X: {}", $e));
     (y => $e:expr) => (println!("mode Y: {}", $e));
@@ -147,7 +147,7 @@ The right-hand side of a macro rule is ordinary Rust syntax, for the most part.
 But we can splice in bits of syntax captured by the matcher. From the original
 example:
 
-```ignore
+```rust,ignore
 $(
     temp_vec.push($x);
 )*
@@ -165,7 +165,7 @@ within the repeated block.
 Another detail: the `vec!` macro has *two* pairs of braces on the right-hand
 side. They are often combined like so:
 
-```ignore
+```rust,ignore
 macro_rules! foo {
     () => {{
         ...
@@ -328,7 +328,7 @@ invocation site. Code such as the following will not work:
 
 ```rust,ignore
 macro_rules! foo {
-    () => (let x = 3);
+    () => (let x = 3;);
 }
 
 fn main() {
@@ -337,12 +337,12 @@ fn main() {
 }
 ```
 
-Instead you need to pass the variable name into the invocation, so it’s tagged
-with the right syntax context.
+Instead you need to pass the variable name into the invocation, so that it’s
+tagged with the right syntax context.
 
 ```rust
 macro_rules! foo {
-    ($v:ident) => (let $v = 3);
+    ($v:ident) => (let $v = 3;);
 }
 
 fn main() {
@@ -470,7 +470,7 @@ which syntactic form it matches.
 * `ty`: a type. Examples: `i32`; `Vec<(char, String)>`; `&T`.
 * `pat`: a pattern. Examples: `Some(t)`; `(17, 'a')`; `_`.
 * `stmt`: a single statement. Example: `let x = 3`.
-* `block`: a brace-delimited sequence of statements. Example:
+* `block`: a brace-delimited sequence of statements and optionally an expression. Example:
   `{ log(error, "hi"); return 12; }`.
 * `item`: an [item][item]. Examples: `fn foo() { }`; `struct Bar;`.
 * `meta`: a "meta item", as found in attributes. Example: `cfg(target_os = "windows")`.

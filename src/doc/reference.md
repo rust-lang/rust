@@ -114,12 +114,20 @@ Non-doc comments are interpreted as a form of whitespace.
 
 ## Whitespace
 
-Whitespace is any non-empty string containing only the following characters:
+Whitespace is any non-empty string containing only characters that have the
+`Pattern_White_Space` Unicode property, namely:
 
+- `U+0009` (horizontal tab, `'\t'`)
+- `U+000A` (line feed, `'\n'`)
+- `U+000B` (vertical tab)
+- `U+000C` (form feed)
+- `U+000D` (carriage return, `'\r'`)
 - `U+0020` (space, `' '`)
-- `U+0009` (tab, `'\t'`)
-- `U+000A` (LF, `'\n'`)
-- `U+000D` (CR, `'\r'`)
+- `U+0085` (next line)
+- `U+200E` (left-to-right mark)
+- `U+200F` (right-to-left mark)
+- `U+2028` (line separator)
+- `U+2029` (paragraph separator)
 
 Rust is a "free-form" language, meaning that all forms of whitespace serve only
 to separate _tokens_ in the grammar, and have no semantic significance.
@@ -844,6 +852,20 @@ extern crate std; // equivalent to: extern crate std as std;
 
 extern crate std as ruststd; // linking to 'std' under another name
 ```
+
+When naming Rust crates, hyphens are disallowed. However, Cargo packages may
+make use of them. In such case, when `Cargo.toml` doesn't specify a crate name,
+Cargo will transparently replace `-` with `_` (Refer to [RFC 940] for more
+details).
+
+Here is an example:
+
+```{.ignore}
+// Importing the Cargo package hello-world
+extern crate hello_world; // hyphen replaced with an underscore
+```
+
+[RFC 940]: https://github.com/rust-lang/rfcs/blob/master/text/0940-hyphens-considered-harmful.md
 
 #### Use declarations
 
@@ -1628,7 +1650,7 @@ Functions within external blocks may be called by Rust code, just like
 functions defined in Rust. The Rust compiler automatically translates between
 the Rust ABI and the foreign ABI.
 
-A number of [attributes](#attributes) control the behavior of external blocks.
+A number of [attributes](#ffi-attributes) control the behavior of external blocks.
 
 By default external blocks assume that the library they are calling uses the
 standard C "cdecl" ABI. Other ABIs may be specified using an `abi` string, as
@@ -1905,6 +1927,8 @@ type int8_t = i8;
 - `should_panic` - indicates that this test function should panic, inverting the success condition.
 - `cold` - The function is unlikely to be executed, so optimize it (and calls
   to it) differently.
+- `naked` - The function utilizes a custom ABI or custom inline ASM that requires
+  epilogue and prologue to be skipped.
 
 ### Static-only attributes
 
@@ -1981,6 +2005,7 @@ macro scope.
 
 ### Miscellaneous attributes
 
+- `deprecated` - mark the item as deprecated; the full attribute is `#[deprecated(since = "crate version", note = "...")`, where both arguments are optional.
 - `export_name` - on statics and functions, this determines the name of the
   exported symbol.
 - `link_section` - on statics and functions, this specifies the section of the
@@ -2061,33 +2086,43 @@ arbitrarily complex configurations through nesting.
 
 The following configurations must be defined by the implementation:
 
+* `target_arch = "..."` - Target CPU architecture, such as `"x86"`,
+  `"x86_64"` `"mips"`, `"powerpc"`, `"powerpc64"`, `"arm"`, or
+  `"aarch64"`. This value is closely related to the first element of
+  the platform target triple, though it is not identical.
+* `target_os = "..."` - Operating system of the target, examples
+  include `"windows"`, `"macos"`, `"ios"`, `"linux"`, `"android"`,
+  `"freebsd"`, `"dragonfly"`, `"bitrig"` , `"openbsd"` or
+  `"netbsd"`. This value is closely related to the second and third
+  element of the platform target triple, though it is not identical.
+* `target_family = "..."` - Operating system family of the target, e. g.
+  `"unix"` or `"windows"`. The value of this configuration option is defined
+  as a configuration itself, like `unix` or `windows`.
+* `unix` - See `target_family`.
+* `windows` - See `target_family`.
+* `target_env = ".."` - Further disambiguates the target platform with
+  information about the ABI/libc. Presently this value is either
+  `"gnu"`, `"msvc"`, `"musl"`, or the empty string. For historical
+  reasons this value has only been defined as non-empty when needed
+  for disambiguation. Thus on many GNU platforms this value will be
+  empty. This value is closely related to the fourth element of the
+  platform target triple, though it is not identical. For example,
+  embedded ABIs such as `gnueabihf` will simply define `target_env` as
+  `"gnu"`.
+* `target_endian = "..."` - Endianness of the target CPU, either `"little"` or
+  `"big"`.
+* `target_pointer_width = "..."` - Target pointer width in bits. This is set
+  to `"32"` for targets with 32-bit pointers, and likewise set to `"64"` for
+  64-bit pointers.
+* `target_has_atomic = "..."` - Set of integer sizes on which the target can perform
+  atomic operations. Values are `"8"`, `"16"`, `"32"`, `"64"` and `"ptr"`.
+* `target_vendor = "..."` - Vendor of the target, for example `apple`, `pc`, or
+  simply `"unknown"`.
+* `test` - Enabled when compiling the test harness (using the `--test` flag).
 * `debug_assertions` - Enabled by default when compiling without optimizations.
   This can be used to enable extra debugging code in development but not in
   production.  For example, it controls the behavior of the standard library's
   `debug_assert!` macro.
-* `target_arch = "..."` - Target CPU architecture, such as `"x86"`, `"x86_64"`
-  `"mips"`, `"powerpc"`, `"powerpc64"`, `"arm"`, or `"aarch64"`.
-* `target_endian = "..."` - Endianness of the target CPU, either `"little"` or
-  `"big"`.
-* `target_env = ".."` - An option provided by the compiler by default
-  describing the runtime environment of the target platform. Some examples of
-  this are `musl` for builds targeting the MUSL libc implementation, `msvc` for
-  Windows builds targeting MSVC, and `gnu` frequently the rest of the time. This
-  option may also be blank on some platforms.
-* `target_family = "..."` - Operating system family of the target, e. g.
-  `"unix"` or `"windows"`. The value of this configuration option is defined
-  as a configuration itself, like `unix` or `windows`.
-* `target_os = "..."` - Operating system of the target, examples include
-  `"windows"`, `"macos"`, `"ios"`, `"linux"`, `"android"`, `"freebsd"`, `"dragonfly"`,
-  `"bitrig"` , `"openbsd"` or `"netbsd"`.
-* `target_pointer_width = "..."` - Target pointer width in bits. This is set
-  to `"32"` for targets with 32-bit pointers, and likewise set to `"64"` for
-  64-bit pointers.
-* `target_vendor = "..."` - Vendor of the target, for example `apple`, `pc`, or
-  simply `"unknown"`.
-* `test` - Enabled when compiling the test harness (using the `--test` flag).
-* `unix` - See `target_family`.
-* `windows` - See `target_family`.
 
 You can also set another attribute based on a `cfg` variable with `cfg_attr`:
 
@@ -2285,6 +2320,9 @@ The currently implemented features of the reference compiler are:
 * `cfg_target_vendor` - Allows conditional compilation using the `target_vendor`
                         matcher which is subject to change.
 
+* `cfg_target_has_atomic` - Allows conditional compilation using the `target_has_atomic`
+                            matcher which is subject to change.
+
 * `concat_idents` - Allows use of the `concat_idents` macro, which is in many
                     ways insufficient for concatenating identifiers, and may be
                     removed entirely for something more wholesome.
@@ -2411,12 +2449,12 @@ The currently implemented features of the reference compiler are:
 * - `stmt_expr_attributes` - Allows attributes on expressions and
                              non-item statements.
 
-* - `deprecated` - Allows using the `#[deprecated]` attribute.
-
 * - `type_ascription` - Allows type ascription expressions `expr: Type`.
 
 * - `abi_vectorcall` - Allows the usage of the vectorcall calling convention
                              (e.g. `extern "vectorcall" func fn_();`)
+
+* - `dotdot_in_tuple_patterns` - Allows `..` in tuple (struct) patterns.
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about `#![feature]` directives which enabled
@@ -2609,7 +2647,7 @@ comma:
 
 There are several forms of struct expressions. A _struct expression_
 consists of the [path](#paths) of a [struct item](#structs), followed by
-a brace-enclosed list of one or more comma-separated name-value pairs,
+a brace-enclosed list of zero or more comma-separated name-value pairs,
 providing the field values of a new instance of the struct. A field name
 can be any identifier, and is separated from its value expression by a colon.
 The location denoted by a struct field is mutable if and only if the
@@ -2628,10 +2666,12 @@ The following are examples of struct expressions:
 
 ```
 # struct Point { x: f64, y: f64 }
+# struct NothingInMe { }
 # struct TuplePoint(f64, f64);
 # mod game { pub struct User<'a> { pub name: &'a str, pub age: u32, pub score: usize } }
 # struct Cookie; fn some_fn<T>(t: T) {}
 Point {x: 10.0, y: 20.0};
+NothingInMe {};
 TuplePoint(10.0, 20.0);
 let u = game::User {name: "Joe", age: 35, score: 100_000};
 some_fn::<Cookie>(Cookie);
@@ -3718,9 +3758,9 @@ Since `'static` "lives longer" than `'a`, `&'static str` is a subtype of
 
 ## Type coercions
 
-Coercions are defined in [RFC401]. A coercion is implicit and has no syntax.
+Coercions are defined in [RFC 401]. A coercion is implicit and has no syntax.
 
-[RFC401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+[RFC 401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
 
 ### Coercion sites
 
@@ -3860,7 +3900,7 @@ Coercion is allowed between the following types:
 
     In the future, coerce_inner will be recursively extended to tuples and
     structs. In addition, coercions from sub-traits to super-traits will be
-    added. See [RFC401] for more details.
+    added. See [RFC 401] for more details.
 
 # Special traits
 
@@ -3909,6 +3949,9 @@ The _heap_ is a general term that describes boxes.  The lifetime of an
 allocation in the heap depends on the lifetime of the box values pointing to
 it. Since box values may themselves be passed in and out of frames, or stored
 in the heap, heap allocations may outlive the frame they are allocated within.
+An allocation in the heap is guaranteed to reside at a single location in the
+heap for the whole lifetime of the allocation - it will never be relocated as
+a result of moving a box value.
 
 ### Memory ownership
 

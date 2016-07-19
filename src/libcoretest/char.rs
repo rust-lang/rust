@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::char;
+
 #[test]
 fn test_is_lowercase() {
     assert!('a'.is_lowercase());
@@ -175,9 +177,10 @@ fn test_escape_unicode() {
 #[test]
 fn test_encode_utf8() {
     fn check(input: char, expect: &[u8]) {
-        let mut buf = [0; 4];
-        let n = input.encode_utf8(&mut buf).unwrap_or(0);
-        assert_eq!(&buf[..n], expect);
+        assert_eq!(input.encode_utf8().as_slice(), expect);
+        for (a, b) in input.encode_utf8().zip(expect) {
+            assert_eq!(a, *b);
+        }
     }
 
     check('x', &[0x78]);
@@ -189,9 +192,10 @@ fn test_encode_utf8() {
 #[test]
 fn test_encode_utf16() {
     fn check(input: char, expect: &[u16]) {
-        let mut buf = [0; 2];
-        let n = input.encode_utf16(&mut buf).unwrap_or(0);
-        assert_eq!(&buf[..n], expect);
+        assert_eq!(input.encode_utf16().as_slice(), expect);
+        for (a, b) in input.encode_utf16().zip(expect) {
+            assert_eq!(a, *b);
+        }
     }
 
     check('x', &[0x0078]);
@@ -211,7 +215,10 @@ fn test_len_utf16() {
 #[test]
 fn test_decode_utf16() {
     fn check(s: &[u16], expected: &[Result<char, u16>]) {
-        assert_eq!(::std::char::decode_utf16(s.iter().cloned()).collect::<Vec<_>>(), expected);
+        let v = char::decode_utf16(s.iter().cloned())
+                     .map(|r| r.map_err(|e| e.unpaired_surrogate()))
+                     .collect::<Vec<_>>();
+        assert_eq!(v, expected);
     }
     check(&[0xD800, 0x41, 0x42], &[Err(0xD800), Ok('A'), Ok('B')]);
     check(&[0xD800, 0], &[Err(0xD800), Ok('\0')]);
@@ -255,4 +262,72 @@ fn ed_iterator_specializations() {
     assert_eq!('\''.escape_default().last(), Some('\''));
 }
 
+#[test]
+fn eu_iterator_specializations() {
+    fn check(c: char) {
+        let len = c.escape_unicode().count();
 
+        // Check OoB
+        assert_eq!(c.escape_unicode().nth(len), None);
+
+        // For all possible in-bound offsets
+        let mut iter = c.escape_unicode();
+        for offset in 0..len {
+            // Check last
+            assert_eq!(iter.clone().last(), Some('}'));
+
+            // Check len
+            assert_eq!(iter.len(), len - offset);
+
+            // Check size_hint (= len in ExactSizeIterator)
+            assert_eq!(iter.size_hint(), (iter.len(), Some(iter.len())));
+
+            // Check counting
+            assert_eq!(iter.clone().count(), len - offset);
+
+            // Check nth
+            assert_eq!(c.escape_unicode().nth(offset), iter.next());
+        }
+
+        // Check post-last
+        assert_eq!(iter.clone().last(), None);
+        assert_eq!(iter.clone().count(), 0);
+    }
+
+    check('\u{0}');
+    check('\u{1}');
+    check('\u{12}');
+    check('\u{123}');
+    check('\u{1234}');
+    check('\u{12340}');
+    check('\u{10FFFF}');
+}
+
+#[test]
+fn test_decode_utf8() {
+    use core::char::*;
+    use core::iter::FromIterator;
+
+    for &(str, bs) in [("", &[] as &[u8]),
+                       ("A", &[0x41u8] as &[u8]),
+                       ("�", &[0xC1u8, 0x81u8] as &[u8]),
+                       ("♥", &[0xE2u8, 0x99u8, 0xA5u8]),
+                       ("♥A", &[0xE2u8, 0x99u8, 0xA5u8, 0x41u8] as &[u8]),
+                       ("�", &[0xE2u8, 0x99u8] as &[u8]),
+                       ("�A", &[0xE2u8, 0x99u8, 0x41u8] as &[u8]),
+                       ("�", &[0xC0u8] as &[u8]),
+                       ("�A", &[0xC0u8, 0x41u8] as &[u8]),
+                       ("�", &[0x80u8] as &[u8]),
+                       ("�A", &[0x80u8, 0x41u8] as &[u8]),
+                       ("�", &[0xFEu8] as &[u8]),
+                       ("�A", &[0xFEu8, 0x41u8] as &[u8]),
+                       ("�", &[0xFFu8] as &[u8]),
+                       ("�A", &[0xFFu8, 0x41u8] as &[u8])].into_iter() {
+        assert!(Iterator::eq(str.chars(),
+                             decode_utf8(bs.into_iter().map(|&b|b))
+                                 .map(|r_b| r_b.unwrap_or('\u{FFFD}'))),
+                "chars = {}, bytes = {:?}, decoded = {:?}", str, bs,
+                Vec::from_iter(decode_utf8(bs.into_iter().map(|&b|b))
+                                   .map(|r_b| r_b.unwrap_or('\u{FFFD}'))));
+    }
+}

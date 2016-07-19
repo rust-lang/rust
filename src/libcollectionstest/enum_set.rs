@@ -17,7 +17,9 @@ use self::Foo::*;
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(usize)]
 enum Foo {
-    A, B, C
+    A,
+    B,
+    C,
 }
 
 impl CLike for Foo {
@@ -157,15 +159,15 @@ fn test_iterator() {
 
     e1.insert(C);
     let elems: Vec<_> = e1.iter().collect();
-    assert_eq!(elems, [A,C]);
+    assert_eq!(elems, [A, C]);
 
     e1.insert(C);
     let elems: Vec<_> = e1.iter().collect();
-    assert_eq!(elems, [A,C]);
+    assert_eq!(elems, [A, C]);
 
     e1.insert(B);
     let elems: Vec<_> = e1.iter().collect();
-    assert_eq!(elems, [A,B,C]);
+    assert_eq!(elems, [A, B, C]);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -183,7 +185,7 @@ fn test_operators() {
 
     let e_union = e1 | e2;
     let elems: Vec<_> = e_union.iter().collect();
-    assert_eq!(elems, [A,B,C]);
+    assert_eq!(elems, [A, B, C]);
 
     let e_intersection = e1 & e2;
     let elems: Vec<_> = e_intersection.iter().collect();
@@ -201,17 +203,17 @@ fn test_operators() {
     // Bitwise XOR of two sets, aka symmetric difference
     let e_symmetric_diff = e1 ^ e2;
     let elems: Vec<_> = e_symmetric_diff.iter().collect();
-    assert_eq!(elems, [A,B]);
+    assert_eq!(elems, [A, B]);
 
     // Another way to express symmetric difference
     let e_symmetric_diff = (e1 - e2) | (e2 - e1);
     let elems: Vec<_> = e_symmetric_diff.iter().collect();
-    assert_eq!(elems, [A,B]);
+    assert_eq!(elems, [A, B]);
 
     // Yet another way to express symmetric difference
     let e_symmetric_diff = (e1 | e2) - (e1 & e2);
     let elems: Vec<_> = e_symmetric_diff.iter().collect();
-    assert_eq!(elems, [A,B]);
+    assert_eq!(elems, [A, B]);
 }
 
 #[test]

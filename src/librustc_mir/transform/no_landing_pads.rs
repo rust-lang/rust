@@ -11,30 +11,30 @@
 //! This pass removes the unwind branch of all the terminators when the no-landing-pads option is
 //! specified.
 
-use rustc::middle::ty::TyCtxt;
+use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
-use rustc::mir::transform::{Pass, MirPass};
-use syntax::ast::NodeId;
+use rustc::mir::transform::{Pass, MirPass, MirSource};
 
 pub struct NoLandingPads;
 
 impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
     fn visit_terminator(&mut self, bb: BasicBlock, terminator: &mut Terminator<'tcx>) {
-        match *terminator {
-            Terminator::Goto { .. } |
-            Terminator::Resume |
-            Terminator::Return |
-            Terminator::If { .. } |
-            Terminator::Switch { .. } |
-            Terminator::SwitchInt { .. } => {
+        match terminator.kind {
+            TerminatorKind::Goto { .. } |
+            TerminatorKind::Resume |
+            TerminatorKind::Return |
+            TerminatorKind::Unreachable |
+            TerminatorKind::If { .. } |
+            TerminatorKind::Switch { .. } |
+            TerminatorKind::SwitchInt { .. } => {
                 /* nothing to do */
             },
-            Terminator::Drop { ref mut unwind, .. } => {
+            TerminatorKind::Call { cleanup: ref mut unwind, .. } |
+            TerminatorKind::Assert { cleanup: ref mut unwind, .. } |
+            TerminatorKind::DropAndReplace { ref mut unwind, .. } |
+            TerminatorKind::Drop { ref mut unwind, .. } => {
                 unwind.take();
-            },
-            Terminator::Call { ref mut cleanup, .. } => {
-                cleanup.take();
             },
         }
         self.super_terminator(bb, terminator);
@@ -42,7 +42,8 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
 }
 
 impl<'tcx> MirPass<'tcx> for NoLandingPads {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    _: MirSource, mir: &mut Mir<'tcx>) {
         if tcx.sess.no_landing_pads() {
             self.visit_mir(mir);
         }

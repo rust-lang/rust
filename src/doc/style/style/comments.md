@@ -1,10 +1,10 @@
-% Comments [FIXME: needs RFC]
+% Comments [RFC #505]
 
 ### Avoid block comments.
 
 Use line comments:
 
-``` rust
+```rust
 // Wait for the main thread to return, and set the process error code
 // appropriately.
 ```
@@ -51,7 +51,7 @@ Basically, this means write "Returns" instead of "Return".
 
 For example:
 
-``` rust
+```rust,ignore
 /// Sets up a default runtime configuration, given compiler-supplied arguments.
 ///
 /// This function will block until the entire pool of M:N schedulers has
@@ -74,13 +74,31 @@ For example:
 
 ### Code snippets
 
-> **[FIXME]**
+Only use inner doc comments `//!` to write crate and module-level documentation,
+nothing else. When using `mod` blocks, prefer `///` outside of the block:
+
+```rust
+/// This module contains tests
+mod test {
+    // ...
+}
+```
+
+over
+
+```rust
+mod test {
+    //! This module contains tests
+
+    // ...
+}
+```
 
 ### Avoid inner doc comments.
 
 Use inner doc comments _only_ to document crates and file-level modules:
 
-``` rust
+```rust,ignore
 //! The core library.
 //!
 //! The core library is a something something...
@@ -92,7 +110,7 @@ Rust doesn't have special constructors, only functions that return new
 instances.  These aren't visible in the automatically generated documentation
 for a type, so you should specifically link to them:
 
-``` rust
+```rust,ignore
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
 ///

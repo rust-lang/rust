@@ -15,7 +15,15 @@
 //[foo] error-pattern:foo
 //[bar] error-pattern:bar
 
-#[cfg(foo)] fn die() {panic!("foo");}
-#[cfg(bar)] fn die() {panic!("bar");}
+#[cfg(foo)]
+fn die() {
+    panic!("foo");
+}
+#[cfg(bar)]
+fn die() {
+    panic!("bar");
+}
 
-fn main() { die(); }
+fn main() {
+    die();
+}

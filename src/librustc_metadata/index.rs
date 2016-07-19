@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def_id::{DefId, DefIndex};
+use rustc::hir::def_id::{DefId, DefIndex};
 use rbml;
 use std::io::{Cursor, Write};
 use std::slice;
@@ -75,7 +75,7 @@ impl IndexData {
 
     pub fn record(&mut self, def_id: DefId, position: u64) {
         assert!(def_id.is_local());
-        self.record_index(def_id.index, position)
+        self.record_index(def_id.index, position);
     }
 
     pub fn record_index(&mut self, item: DefIndex, position: u64) {

@@ -17,15 +17,15 @@ struct a_class<'a> { x:&'a isize }
 
 fn a_fn1<'a,'b>(e: an_enum<'a>) -> an_enum<'b> {
     return e; //~  ERROR mismatched types
-              //~| expected `an_enum<'b>`
-              //~| found `an_enum<'a>`
+              //~| expected type `an_enum<'b>`
+              //~| found type `an_enum<'a>`
               //~| lifetime mismatch
 }
 
 fn a_fn3<'a,'b>(e: a_class<'a>) -> a_class<'b> {
     return e; //~  ERROR mismatched types
-              //~| expected `a_class<'b>`
-              //~| found `a_class<'a>`
+              //~| expected type `a_class<'b>`
+              //~| found type `a_class<'a>`
               //~| lifetime mismatch
 }
 

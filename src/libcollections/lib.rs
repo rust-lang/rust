@@ -27,7 +27,6 @@
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 
 #![cfg_attr(test, allow(deprecated))] // rand
-#![cfg_attr(not(test), feature(copy_from_slice))] // impl [T]
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(alloc)]
@@ -35,12 +34,10 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
-#![feature(decode_utf16)]
 #![feature(dropck_parametricity)]
 #![feature(fmt_internals)]
 #![feature(heap_api)]
 #![feature(inclusive_range)]
-#![feature(iter_arith)]
 #![feature(lang_items)]
 #![feature(nonzero)]
 #![feature(pattern)]
@@ -48,9 +45,9 @@
 #![feature(placement_new_protocol)]
 #![feature(shared)]
 #![feature(slice_patterns)]
+#![feature(specialization)]
 #![feature(staged_api)]
 #![feature(step_by)]
-#![feature(str_char)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
@@ -106,12 +103,14 @@ pub mod vec_deque;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_map {
+    //! A map based on a B-Tree.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use btree::map::*;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_set {
+    //! A set based on a B-Tree.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use btree::set::*;
 }
@@ -131,4 +130,11 @@ pub enum Bound<T> {
     Excluded(T),
     /// An infinite endpoint. Indicates that there is no bound in this direction.
     Unbounded,
+}
+
+/// An intermediate trait for specialization of `Extend`.
+#[doc(hidden)]
+trait SpecExtend<I: IntoIterator> {
+    /// Extends `self` with the contents of the given iterator.
+    fn spec_extend(&mut self, iter: I);
 }

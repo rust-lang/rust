@@ -22,15 +22,16 @@ use libc;
 use flate;
 
 use std::ffi::CString;
+use std::path::Path;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[String],
            config: &ModuleConfig,
-           name_extra: &str,
-           output_names: &config::OutputFilenames) {
+           temp_no_opt_bc_filename: &Path) {
     if sess.opts.cg.prefer_dynamic {
         sess.struct_err("cannot prefer dynamic linking when performing LTO")
-            .note("only 'staticlib' and 'bin' outputs are supported with LTO")
+            .note("only 'staticlib', 'bin', and 'cdylib' outputs are \
+                   supported with LTO")
             .emit();
         sess.abort_if_errors();
     }
@@ -38,7 +39,9 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     // Make sure we actually can run LTO
     for crate_type in sess.crate_types.borrow().iter() {
         match *crate_type {
-            config::CrateTypeExecutable | config::CrateTypeStaticlib => {}
+            config::CrateTypeExecutable |
+            config::CrateTypeCdylib |
+            config::CrateTypeStaticlib => {}
             _ => {
                 sess.fatal("lto can only be run for executables and \
                             static library outputs");
@@ -129,8 +132,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     }
 
     if sess.opts.cg.save_temps {
-        let path = output_names.with_extension(&format!("{}.no-opt.lto.bc", name_extra));
-        let cstr = path2cstr(&path);
+        let cstr = path2cstr(temp_no_opt_bc_filename);
         unsafe {
             llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
         }

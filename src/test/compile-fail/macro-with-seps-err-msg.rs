@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:expected macro name without module separators
-
 fn main() {
-    globnar::brotz!();
+    globnar::brotz!(); //~ ERROR expected macro name without module separators
+    ::foo!(); //~ ERROR expected macro name without module separators
+    foo::<T>!(); //~ ERROR expected macro name without module separators
 }

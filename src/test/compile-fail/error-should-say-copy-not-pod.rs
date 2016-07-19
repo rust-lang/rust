@@ -13,5 +13,5 @@
 fn check_bound<T:Copy>(_: T) {}
 
 fn main() {
-    check_bound("nocopy".to_string()); //~ ERROR the trait `core::marker::Copy` is not implemented
+    check_bound("nocopy".to_string()); //~ ERROR : std::marker::Copy` is not satisfied
 }

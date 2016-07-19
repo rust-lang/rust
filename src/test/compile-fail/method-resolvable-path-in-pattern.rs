@@ -19,6 +19,6 @@ impl MyTrait for Foo {}
 fn main() {
     match 0u32 {
         <Foo as MyTrait>::trait_bar => {}
-        //~^ ERROR `trait_bar` is not an associated const
+        //~^ ERROR expected variant, struct or constant, found method `trait_bar`
     }
 }

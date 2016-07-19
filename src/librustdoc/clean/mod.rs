@@ -14,7 +14,6 @@
 pub use self::Type::*;
 pub use self::PrimitiveType::*;
 pub use self::TypeKind::*;
-pub use self::StructField::*;
 pub use self::VariantKind::*;
 pub use self::Mutability::*;
 pub use self::Import::*;
@@ -23,51 +22,52 @@ pub use self::Attribute::*;
 pub use self::TyParamBound::*;
 pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
+pub use self::Visibility::*;
 
-use syntax;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
-use syntax::codemap;
-use syntax::codemap::{DUMMY_SP, Pos, Spanned};
-use syntax::parse::token::{self, InternedString, special_idents};
+use syntax::codemap::Spanned;
+use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
+use syntax_pos::{self, DUMMY_SP, Pos};
 
 use rustc_trans::back::link;
-use rustc::middle::cstore::{self, CrateStore};
-use rustc::middle::def::Def;
-use rustc::middle::def_id::{DefId, DefIndex};
-use rustc::middle::subst::{self, ParamSpace, VecPerParamSpace};
-use rustc::middle::ty;
+use rustc::middle::cstore;
+use rustc::middle::privacy::AccessLevels;
+use rustc::hir::def::Def;
+use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::print as pprust;
+use rustc::ty::subst::{self, ParamSpace, VecPerParamSpace};
+use rustc::ty;
 use rustc::middle::stability;
 
-use rustc_front::hir;
+use rustc::hir;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::u32;
 use std::env::current_dir;
+use std::mem;
 
 use core::DocContext;
 use doctree;
 use visit_ast;
+use html::item_type::ItemType;
 
-/// A stable identifier to the particular version of JSON output.
-/// Increment this when the `Crate` and related structures change.
-pub const SCHEMA_VERSION: &'static str = "0.8.3";
-
-mod inline;
+pub mod inline;
 mod simplify;
 
 // extract the stability index for a node from tcx, if possible
 fn get_stability(cx: &DocContext, def_id: DefId) -> Option<Stability> {
-    cx.tcx_opt().and_then(|tcx| stability::lookup_stability(tcx, def_id)).clean(cx)
+    cx.tcx_opt().and_then(|tcx| tcx.lookup_stability(def_id)).clean(cx)
 }
 
 fn get_deprecation(cx: &DocContext, def_id: DefId) -> Option<Deprecation> {
-    cx.tcx_opt().and_then(|tcx| stability::lookup_deprecation(tcx, def_id)).clean(cx)
+    cx.tcx_opt().and_then(|tcx| tcx.lookup_deprecation(def_id)).clean(cx)
 }
 
 pub trait Clean<T> {
@@ -116,13 +116,16 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for P<[T]> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Crate {
     pub name: String,
     pub src: PathBuf,
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
     pub primitives: Vec<PrimitiveType>,
+    pub access_levels: Arc<AccessLevels<DefId>>,
+    // These are later on moved into `CACHEKEY`, leaving the map empty.
+    // Only here so that they can be filtered through the rustdoc passes.
     pub external_traits: HashMap<DefId, Trait>,
 }
 
@@ -131,14 +134,20 @@ struct CrateNum(ast::CrateNum);
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
         use rustc::session::config::Input;
+        use ::visit_lib::LibEmbargoVisitor;
 
         if let Some(t) = cx.tcx_opt() {
             cx.deref_trait_did.set(t.lang_items.deref_trait());
+            cx.renderinfo.borrow_mut().deref_trait_did = cx.deref_trait_did.get();
         }
 
         let mut externs = Vec::new();
         for cnum in cx.sess().cstore.crates() {
             externs.push((cnum, CrateNum(cnum).clean(cx)));
+            if cx.tcx_opt().is_some() {
+                // Analyze doc-reachability for extern items
+                LibEmbargoVisitor::new(cx).visit_lib(cnum);
+            }
         }
         externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
@@ -187,7 +196,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     source: Span::empty(),
                     name: Some(prim.to_url_str().to_string()),
                     attrs: child.attrs.clone(),
-                    visibility: Some(hir::Public),
+                    visibility: Some(Public),
                     stability: None,
                     deprecation: None,
                     def_id: DefId::local(prim.to_def_index()),
@@ -208,14 +217,17 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             Input::Str { ref name, .. } => PathBuf::from(name.clone()),
         };
 
+        let mut access_levels = cx.access_levels.borrow_mut();
+        let mut external_traits = cx.external_traits.borrow_mut();
+
         Crate {
             name: name.to_string(),
             src: src,
             module: Some(module),
             externs: externs,
             primitives: primitives,
-            external_traits: cx.external_traits.borrow_mut().take()
-                               .unwrap_or(HashMap::new()),
+            access_levels: Arc::new(mem::replace(&mut access_levels, Default::default())),
+            external_traits: mem::replace(&mut external_traits, Default::default()),
         }
     }
 }
@@ -241,7 +253,7 @@ impl Clean<ExternalCrate> for CrateNum {
             }
         });
         ExternalCrate {
-            name: cx.sess().cstore.crate_name(self.0),
+            name: (&cx.sess().cstore.crate_name(self.0)[..]).to_owned(),
             attrs: cx.sess().cstore.crate_attrs(self.0).clean(cx),
             primitives: primitives,
         }
@@ -273,36 +285,52 @@ impl Item {
     }
     pub fn is_crate(&self) -> bool {
         match self.inner {
-            ModuleItem(Module { items: _, is_crate: true }) => true,
-            _ => false
+            StrippedItem(box ModuleItem(Module { is_crate: true, ..})) |
+            ModuleItem(Module { is_crate: true, ..}) => true,
+            _ => false,
         }
     }
     pub fn is_mod(&self) -> bool {
-        match self.inner { ModuleItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Module
     }
     pub fn is_trait(&self) -> bool {
-        match self.inner { TraitItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Trait
     }
     pub fn is_struct(&self) -> bool {
-        match self.inner { StructItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Struct
     }
     pub fn is_enum(&self) -> bool {
-        match self.inner { EnumItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Module
     }
     pub fn is_fn(&self) -> bool {
-        match self.inner { FunctionItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Function
     }
     pub fn is_associated_type(&self) -> bool {
-        match self.inner { AssociatedTypeItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::AssociatedType
     }
     pub fn is_associated_const(&self) -> bool {
-        match self.inner { AssociatedConstItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::AssociatedConst
     }
     pub fn is_method(&self) -> bool {
-        match self.inner { MethodItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Method
     }
     pub fn is_ty_method(&self) -> bool {
-        match self.inner { TyMethodItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::TyMethod
+    }
+    pub fn is_primitive(&self) -> bool {
+        ItemType::from_item(self) == ItemType::Primitive
+    }
+    pub fn is_stripped(&self) -> bool {
+        match self.inner { StrippedItem(..) => true, _ => false }
+    }
+    pub fn has_stripped_fields(&self) -> Option<bool> {
+        match self.inner {
+            StructItem(ref _struct) => Some(_struct.fields_stripped),
+            VariantItem(Variant { kind: StructVariant(ref vstruct)} ) => {
+                Some(vstruct.fields_stripped)
+            },
+            _ => None,
+        }
     }
 
     pub fn stability_class(&self) -> String {
@@ -341,7 +369,7 @@ pub enum ItemEnum {
     TyMethodItem(TyMethod),
     /// A method with a body.
     MethodItem(Method),
-    StructFieldItem(StructField),
+    StructFieldItem(Type),
     VariantItem(Variant),
     /// `fn`s from an extern block
     ForeignFunctionItem(Function),
@@ -352,6 +380,8 @@ pub enum ItemEnum {
     AssociatedConstItem(Type, Option<String>),
     AssociatedTypeItem(Vec<TyParamBound>, Option<Type>),
     DefaultImplItem(DefaultImpl),
+    /// An item that has been stripped by a rustdoc pass
+    StrippedItem(Box<ItemEnum>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -418,7 +448,7 @@ impl Clean<Item> for doctree::Module {
 pub trait Attributes {
     fn has_word(&self, &str) -> bool;
     fn value<'a>(&'a self, &str) -> Option<&'a str>;
-    fn list_def<'a>(&'a self, &str) -> &'a [Attribute];
+    fn list<'a>(&'a self, &str) -> &'a [Attribute];
 }
 
 impl Attributes for [Attribute] {
@@ -447,7 +477,7 @@ impl Attributes for [Attribute] {
     }
 
     /// Finds an attribute as List and returns the list of attributes nested inside.
-    fn list_def<'a>(&'a self, name: &str) -> &'a [Attribute] {
+    fn list<'a>(&'a self, name: &str) -> &'a [Attribute] {
         for attr in self {
             if let List(ref x, ref list) = *attr {
                 if name == *x {
@@ -505,7 +535,7 @@ impl attr::AttrMetaMethods for Attribute {
         }
     }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
-    fn span(&self) -> codemap::Span { unimplemented!() }
+    fn span(&self) -> syntax_pos::Span { unimplemented!() }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
@@ -529,8 +559,7 @@ impl Clean<TyParam> for hir::TyParam {
 
 impl<'tcx> Clean<TyParam> for ty::TypeParameterDef<'tcx> {
     fn clean(&self, cx: &DocContext) -> TyParam {
-        cx.external_typarams.borrow_mut().as_mut().unwrap()
-          .insert(self.def_id, self.name.clean(cx));
+        cx.renderinfo.borrow_mut().external_typarams.insert(self.def_id, self.name.clean(cx));
         TyParam {
             name: self.name.clean(cx),
             did: self.def_id,
@@ -548,7 +577,7 @@ pub enum TyParamBound {
 
 impl TyParamBound {
     fn maybe_sized(cx: &DocContext) -> TyParamBound {
-        use rustc_front::hir::TraitBoundModifier as TBM;
+        use rustc::hir::TraitBoundModifier as TBM;
         let mut sized_bound = ty::BoundSized.clean(cx);
         if let TyParamBound::TraitBound(_, ref mut tbm) = sized_bound {
             *tbm = TBM::Maybe
@@ -557,17 +586,11 @@ impl TyParamBound {
     }
 
     fn is_sized_bound(&self, cx: &DocContext) -> bool {
-        use rustc_front::hir::TraitBoundModifier as TBM;
+        use rustc::hir::TraitBoundModifier as TBM;
         if let Some(tcx) = cx.tcx_opt() {
-            let sized_did = match tcx.lang_items.sized_trait() {
-                Some(did) => did,
-                None => return false
-            };
-            if let TyParamBound::TraitBound(PolyTrait {
-                trait_: Type::ResolvedPath { did, .. }, ..
-            }, TBM::None) = *self {
-                if did == sized_did {
-                    return true
+            if let TyParamBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
+                if trait_.def_id() == tcx.lang_items.sized_trait() {
+                    return true;
                 }
             }
         }
@@ -606,7 +629,7 @@ impl<'tcx> Clean<(Vec<TyParamBound>, Vec<TypeBinding>)> for ty::ExistentialBound
 
 fn external_path_params(cx: &DocContext, trait_did: Option<DefId>,
                         bindings: Vec<TypeBinding>, substs: &subst::Substs) -> PathParameters {
-    let lifetimes = substs.regions().get_slice(subst::TypeSpace)
+    let lifetimes = substs.regions.get_slice(subst::TypeSpace)
                     .iter()
                     .filter_map(|v| v.clean(cx))
                     .collect();
@@ -710,7 +733,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         // collect any late bound regions
         let mut late_bounds = vec![];
         for &ty_s in self.substs.types.get_slice(ParamSpace::TypeSpace) {
-            if let ty::TyTuple(ref ts) = ty_s.sty {
+            if let ty::TyTuple(ts) = ty_s.sty {
                 for &ty_s in ts {
                     if let ty::TyRef(ref reg, _) = ty_s.sty {
                         if let &ty::Region::ReLateBound(_, _) = *reg {
@@ -724,22 +747,25 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
             }
         }
 
-        TraitBound(PolyTrait {
-            trait_: ResolvedPath {
-                path: path,
-                typarams: None,
-                did: self.def_id,
-                is_generic: false,
+        TraitBound(
+            PolyTrait {
+                trait_: ResolvedPath {
+                    path: path,
+                    typarams: None,
+                    did: self.def_id,
+                    is_generic: false,
+                },
+                lifetimes: late_bounds,
             },
-            lifetimes: late_bounds
-        }, hir::TraitBoundModifier::None)
+            hir::TraitBoundModifier::None
+        )
     }
 }
 
 impl<'tcx> Clean<Option<Vec<TyParamBound>>> for subst::Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();
-        v.extend(self.regions().iter().filter_map(|r| r.clean(cx)).map(RegionBound));
+        v.extend(self.regions.iter().filter_map(|r| r.clean(cx)).map(RegionBound));
         v.extend(self.types.iter().map(|t| TraitBound(PolyTrait {
             trait_: t.clean(cx),
             lifetimes: vec![]
@@ -771,7 +797,17 @@ impl Clean<Lifetime> for hir::Lifetime {
 
 impl Clean<Lifetime> for hir::LifetimeDef {
     fn clean(&self, _: &DocContext) -> Lifetime {
-        Lifetime(self.lifetime.name.to_string())
+        if self.bounds.len() > 0 {
+            let mut s = format!("{}: {}",
+                                self.lifetime.name.to_string(),
+                                self.bounds[0].name.to_string());
+            for bound in self.bounds.iter().skip(1) {
+                s.push_str(&format!(" + {}", bound.name.to_string()));
+            }
+            Lifetime(s)
+        } else {
+            Lifetime(self.lifetime.name.to_string())
+        }
     }
 }
 
@@ -785,7 +821,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
     fn clean(&self, cx: &DocContext) -> Option<Lifetime> {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
-            ty::ReLateBound(_, ty::BrNamed(_, name)) => Some(Lifetime(name.to_string())),
+            ty::ReLateBound(_, ty::BrNamed(_, name, _)) => Some(Lifetime(name.to_string())),
             ty::ReEarlyBound(ref data) => Some(Lifetime(data.name.clean(cx))),
 
             ty::ReLateBound(..) |
@@ -793,7 +829,8 @@ impl Clean<Option<Lifetime>> for ty::Region {
             ty::ReScope(..) |
             ty::ReVar(..) |
             ty::ReSkolemized(..) |
-            ty::ReEmpty => None
+            ty::ReEmpty |
+            ty::ReErased => None
         }
     }
 }
@@ -831,7 +868,7 @@ impl Clean<WherePredicate> for hir::WherePredicate {
 
 impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
     fn clean(&self, cx: &DocContext) -> WherePredicate {
-        use rustc::middle::ty::Predicate;
+        use rustc::ty::Predicate;
 
         match *self {
             Predicate::Trait(ref pred) => pred.clean(cx),
@@ -841,6 +878,8 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
             Predicate::Projection(ref pred) => pred.clean(cx),
             Predicate::WellFormed(_) => panic!("not user writable"),
             Predicate::ObjectSafe(_) => panic!("not user writable"),
+            Predicate::ClosureKind(..) => panic!("not user writable"),
+            Predicate::Rfc1592(..) => panic!("not user writable"),
         }
     }
 }
@@ -932,7 +971,6 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
                                     &'a ty::GenericPredicates<'tcx>,
                                     subst::ParamSpace) {
     fn clean(&self, cx: &DocContext) -> Generics {
-        use std::collections::HashSet;
         use self::WherePredicate as WP;
 
         let (gens, preds, space) = *self;
@@ -1000,7 +1038,6 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Method {
     pub generics: Generics,
-    pub self_: SelfTy,
     pub unsafety: hir::Unsafety,
     pub constness: hir::Constness,
     pub decl: FnDecl,
@@ -1009,14 +1046,9 @@ pub struct Method {
 
 impl Clean<Method> for hir::MethodSig {
     fn clean(&self, cx: &DocContext) -> Method {
-        let all_inputs = &self.decl.inputs;
-        let inputs = match self.explicit_self.node {
-            hir::SelfStatic => &**all_inputs,
-            _ => &all_inputs[1..]
-        };
         let decl = FnDecl {
             inputs: Arguments {
-                values: inputs.clean(cx),
+                values: self.decl.inputs.clean(cx),
             },
             output: self.decl.output.clean(cx),
             variadic: false,
@@ -1024,7 +1056,6 @@ impl Clean<Method> for hir::MethodSig {
         };
         Method {
             generics: self.generics.clean(cx),
-            self_: self.explicit_self.node.clean(cx),
             unsafety: self.unsafety,
             constness: self.constness,
             decl: decl,
@@ -1038,19 +1069,14 @@ pub struct TyMethod {
     pub unsafety: hir::Unsafety,
     pub decl: FnDecl,
     pub generics: Generics,
-    pub self_: SelfTy,
     pub abi: Abi,
 }
 
 impl Clean<TyMethod> for hir::MethodSig {
     fn clean(&self, cx: &DocContext) -> TyMethod {
-        let inputs = match self.explicit_self.node {
-            hir::SelfStatic => &*self.decl.inputs,
-            _ => &self.decl.inputs[1..]
-        };
         let decl = FnDecl {
             inputs: Arguments {
-                values: inputs.clean(cx),
+                values: self.decl.inputs.clean(cx),
             },
             output: self.decl.output.clean(cx),
             variadic: false,
@@ -1059,30 +1085,8 @@ impl Clean<TyMethod> for hir::MethodSig {
         TyMethod {
             unsafety: self.unsafety.clone(),
             decl: decl,
-            self_: self.explicit_self.node.clean(cx),
             generics: self.generics.clean(cx),
             abi: self.abi
-        }
-    }
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
-pub enum SelfTy {
-    SelfStatic,
-    SelfValue,
-    SelfBorrowed(Option<Lifetime>, Mutability),
-    SelfExplicit(Type),
-}
-
-impl Clean<SelfTy> for hir::ExplicitSelf_ {
-    fn clean(&self, cx: &DocContext) -> SelfTy {
-        match *self {
-            hir::SelfStatic => SelfStatic,
-            hir::SelfValue(_) => SelfValue,
-            hir::SelfRegion(ref lt, ref mt, _) => {
-                SelfBorrowed(lt.clean(cx), mt.clean(cx))
-            }
-            hir::SelfExplicit(ref typ, _) => SelfExplicit(typ.clean(cx)),
         }
     }
 }
@@ -1125,6 +1129,12 @@ pub struct FnDecl {
     pub attrs: Vec<Attribute>,
 }
 
+impl FnDecl {
+    pub fn has_self(&self) -> bool {
+        return self.inputs.values.len() > 0 && self.inputs.values[0].name == "self";
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub struct Arguments {
     pub values: Vec<Argument>,
@@ -1160,9 +1170,6 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
         } else {
             cx.tcx().sess.cstore.method_arg_names(did).into_iter()
         }.peekable();
-        if let Some("self") = names.peek().map(|s| &s[..]) {
-            let _ = names.next();
-        }
         FnDecl {
             output: Return(sig.0.output.clean(cx)),
             attrs: Vec::new(),
@@ -1185,6 +1192,29 @@ pub struct Argument {
     pub type_: Type,
     pub name: String,
     pub id: ast::NodeId,
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+pub enum SelfTy {
+    SelfValue,
+    SelfBorrowed(Option<Lifetime>, Mutability),
+    SelfExplicit(Type),
+}
+
+impl Argument {
+    pub fn to_self(&self) -> Option<SelfTy> {
+        if self.name == "self" {
+            match self.type_ {
+                Infer => Some(SelfValue),
+                BorrowedRef{ref lifetime, mutability, ref type_} if **type_ == Infer => {
+                    Some(SelfBorrowed(lifetime.clone(), mutability))
+                }
+                _ => Some(SelfExplicit(self.type_.clone()))
+            }
+        } else {
+            None
+        }
+    }
 }
 
 impl Clean<Argument> for hir::Arg {
@@ -1262,8 +1292,7 @@ impl Clean<Item> for hir::TraitItem {
         let inner = match self.node {
             hir::ConstTraitItem(ref ty, ref default) => {
                 AssociatedConstItem(ty.clean(cx),
-                                    default.as_ref().map(|expr|
-                                                         expr.span.to_src(cx)))
+                                    default.as_ref().map(|e| pprust::expr_to_string(&e)))
             }
             hir::MethodTraitItem(ref sig, Some(_)) => {
                 MethodItem(sig.clean(cx))
@@ -1293,7 +1322,7 @@ impl Clean<Item> for hir::ImplItem {
         let inner = match self.node {
             hir::ImplItemKind::Const(ref ty, ref expr) => {
                 AssociatedConstItem(ty.clean(cx),
-                                    Some(expr.span.to_src(cx)))
+                                    Some(pprust::expr_to_string(expr)))
             }
             hir::ImplItemKind::Method(ref sig, _) => {
                 MethodItem(sig.clean(cx))
@@ -1322,36 +1351,21 @@ impl Clean<Item> for hir::ImplItem {
 
 impl<'tcx> Clean<Item> for ty::Method<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
-        let (self_, sig) = match self.explicit_self {
-            ty::ExplicitSelfCategory::Static => (hir::SelfStatic.clean(cx),
-                                                 self.fty.sig.clone()),
-            s => {
-                let sig = ty::Binder(ty::FnSig {
-                    inputs: self.fty.sig.0.inputs[1..].to_vec(),
-                    ..self.fty.sig.0.clone()
-                });
-                let s = match s {
-                    ty::ExplicitSelfCategory::ByValue => SelfValue,
-                    ty::ExplicitSelfCategory::ByReference(..) => {
-                        match self.fty.sig.0.inputs[0].sty {
-                            ty::TyRef(r, mt) => {
-                                SelfBorrowed(r.clean(cx), mt.mutbl.clean(cx))
-                            }
-                            _ => unreachable!(),
-                        }
-                    }
-                    ty::ExplicitSelfCategory::ByBox => {
-                        SelfExplicit(self.fty.sig.0.inputs[0].clean(cx))
-                    }
-                    ty::ExplicitSelfCategory::Static => unreachable!(),
-                };
-                (s, sig)
-            }
-        };
-
         let generics = (&self.generics, &self.predicates,
                         subst::FnSpace).clean(cx);
-        let decl = (self.def_id, &sig).clean(cx);
+        let mut decl = (self.def_id, &self.fty.sig).clean(cx);
+        match self.explicit_self {
+            ty::ExplicitSelfCategory::ByValue => {
+                decl.inputs.values[0].type_ = Infer;
+            }
+            ty::ExplicitSelfCategory::ByReference(..) => {
+                match decl.inputs.values[0].type_ {
+                    BorrowedRef{ref mut type_, ..} => **type_ = Infer,
+                    _ => unreachable!(),
+                }
+            }
+            _ => {}
+        }
         let provided = match self.container {
             ty::ImplContainer(..) => false,
             ty::TraitContainer(did) => {
@@ -1364,7 +1378,6 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             MethodItem(Method {
                 unsafety: self.fty.unsafety,
                 generics: generics,
-                self_: self_,
                 decl: decl,
                 abi: self.fty.abi,
 
@@ -1375,7 +1388,6 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             TyMethodItem(TyMethod {
                 unsafety: self.fty.unsafety,
                 generics: generics,
-                self_: self_,
                 decl: decl,
                 abi: self.fty.abi,
             })
@@ -1383,7 +1395,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
 
         Item {
             name: Some(self.name.clean(cx)),
-            visibility: Some(hir::Inherited),
+            visibility: Some(Inherited),
             stability: get_stability(cx, self.def_id),
             deprecation: get_deprecation(cx, self.def_id),
             def_id: self.def_id,
@@ -1486,6 +1498,16 @@ pub enum TypeKind {
     TypeTypedef,
 }
 
+pub trait GetDefId {
+    fn def_id(&self) -> Option<DefId>;
+}
+
+impl<T: GetDefId> GetDefId for Option<T> {
+    fn def_id(&self) -> Option<DefId> {
+        self.as_ref().and_then(|d| d.def_id())
+    }
+}
+
 impl Type {
     pub fn primitive_type(&self) -> Option<PrimitiveType> {
         match *self {
@@ -1500,6 +1522,15 @@ impl Type {
         }
     }
 
+    pub fn is_generic(&self) -> bool {
+        match *self {
+            ResolvedPath { is_generic, .. } => is_generic,
+            _ => false,
+        }
+    }
+}
+
+impl GetDefId for Type {
     fn def_id(&self) -> Option<DefId> {
         match *self {
             ResolvedPath { did, .. } => Some(did),
@@ -1535,7 +1566,7 @@ impl PrimitiveType {
     }
 
     fn find(attrs: &[Attribute]) -> Option<PrimitiveType> {
-        for attr in attrs.list_def("doc") {
+        for attr in attrs.list("doc") {
             if let NameValue(ref k, ref v) = *attr {
                 if "primitive" == *k {
                     if let ret@Some(..) = PrimitiveType::from_str(v) {
@@ -1586,15 +1617,32 @@ impl PrimitiveType {
 
 impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext) -> Type {
-        use rustc_front::hir::*;
+        use rustc::hir::*;
         match self.node {
             TyPtr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
             TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)},
             TyVec(ref ty) => Vector(box ty.clean(cx)),
-            TyFixedLengthVec(ref ty, ref e) => FixedVector(box ty.clean(cx),
-                                                           e.span.to_src(cx)),
+            TyFixedLengthVec(ref ty, ref e) => {
+                let n = if let Some(tcx) = cx.tcx_opt() {
+                    use rustc_const_math::{ConstInt, ConstUsize};
+                    use rustc_const_eval::eval_const_expr;
+                    use rustc::middle::const_val::ConstVal;
+                    match eval_const_expr(tcx, e) {
+                        ConstVal::Integral(ConstInt::Usize(u)) => match u {
+                            ConstUsize::Us16(u) => u.to_string(),
+                            ConstUsize::Us32(u) => u.to_string(),
+                            ConstUsize::Us64(u) => u.to_string(),
+                        },
+                        // after type checking this can't fail
+                        _ => unreachable!(),
+                    }
+                } else {
+                    pprust::expr_to_string(e)
+                };
+                FixedVector(box ty.clean(cx), n)
+            },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(None, ref p) => {
                 resolve_type(cx, p.clean(cx), self.id)
@@ -1608,7 +1656,7 @@ impl Clean<Type> for hir::Ty {
                     segments: segments.into(),
                 };
                 Type::QPath {
-                    name: p.segments.last().unwrap().identifier.name.clean(cx),
+                    name: p.segments.last().unwrap().name.clean(cx),
                     self_type: box qself.ty.clean(cx),
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
@@ -1679,7 +1727,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     where_predicates: Vec::new()
                 },
                 decl: (cx.map.local_def_id(0), &fty.sig).clean(cx),
-                abi: fty.abi.to_string(),
+                abi: fty.abi,
             }),
             ty::TyStruct(def, substs) |
             ty::TyEnum(def, substs) => {
@@ -1725,23 +1773,17 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum StructField {
-    HiddenStructField, // inserted later by strip passes
-    TypedStructField(Type),
-}
-
 impl Clean<Item> for hir::StructField {
     fn clean(&self, cx: &DocContext) -> Item {
         Item {
             name: Some(self.name).clean(cx),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
-            visibility: Some(self.vis),
+            visibility: self.vis.clean(cx),
             stability: get_stability(cx, cx.map.local_def_id(self.id)),
             deprecation: get_deprecation(cx, cx.map.local_def_id(self.id)),
             def_id: cx.map.local_def_id(self.id),
-            inner: StructFieldItem(TypedStructField(self.ty.clean(cx))),
+            inner: StructFieldItem(self.ty.clean(cx)),
         }
     }
 }
@@ -1754,20 +1796,30 @@ impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
             name: Some(self.name).clean(cx),
             attrs: attr_map.get(&self.did).unwrap_or(&Vec::new()).clean(cx),
             source: Span::empty(),
-            visibility: Some(self.vis),
+            visibility: self.vis.clean(cx),
             stability: get_stability(cx, self.did),
             deprecation: get_deprecation(cx, self.did),
             def_id: self.did,
-            inner: StructFieldItem(TypedStructField(self.unsubst_ty().clean(cx))),
+            inner: StructFieldItem(self.unsubst_ty().clean(cx)),
         }
     }
 }
 
-pub type Visibility = hir::Visibility;
+#[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug)]
+pub enum Visibility {
+    Public,
+    Inherited,
+}
 
 impl Clean<Option<Visibility>> for hir::Visibility {
     fn clean(&self, _: &DocContext) -> Option<Visibility> {
-        Some(*self)
+        Some(if *self == hir::Visibility::Public { Public } else { Inherited })
+    }
+}
+
+impl Clean<Option<Visibility>> for ty::Visibility {
+    fn clean(&self, _: &DocContext) -> Option<Visibility> {
+        Some(if *self == ty::Visibility::Public { Public } else { Inherited })
     }
 }
 
@@ -1809,7 +1861,7 @@ pub struct VariantStruct {
     pub fields_stripped: bool,
 }
 
-impl Clean<VariantStruct> for ::rustc_front::hir::VariantData {
+impl Clean<VariantStruct> for ::rustc::hir::VariantData {
     fn clean(&self, cx: &DocContext) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
@@ -1869,7 +1921,7 @@ impl Clean<Item> for doctree::Variant {
 
 impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
-        let kind = match self.kind() {
+        let kind = match self.kind {
             ty::VariantKind::Unit => CLikeVariant,
             ty::VariantKind::Tuple => {
                 TupleVariant(
@@ -1884,21 +1936,12 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
                         Item {
                             source: Span::empty(),
                             name: Some(field.name.clean(cx)),
-                            attrs: Vec::new(),
-                            visibility: Some(hir::Public),
-                            // FIXME: this is not accurate, we need an id for
-                            //        the specific field but we're using the id
-                            //        for the whole variant. Thus we read the
-                            //        stability from the whole variant as well.
-                            //        Struct variants are experimental and need
-                            //        more infrastructure work before we can get
-                            //        at the needed information here.
-                            def_id: self.did,
-                            stability: get_stability(cx, self.did),
-                            deprecation: get_deprecation(cx, self.did),
-                            inner: StructFieldItem(
-                                TypedStructField(field.unsubst_ty().clean(cx))
-                            )
+                            attrs: cx.tcx().get_attrs(field.did).clean(cx),
+                            visibility: field.vis.clean(cx),
+                            def_id: field.did,
+                            stability: get_stability(cx, field.did),
+                            deprecation: get_deprecation(cx, field.did),
+                            inner: StructFieldItem(field.unsubst_ty().clean(cx))
                         }
                     }).collect()
                 })
@@ -1908,7 +1951,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
             name: Some(self.name.clean(cx)),
             attrs: inline::load_attrs(cx, cx.tcx(), self.did),
             source: Span::empty(),
-            visibility: Some(hir::Public),
+            visibility: Some(Inherited),
             def_id: self.did,
             inner: VariantItem(Variant { kind: kind }),
             stability: get_stability(cx, self.did),
@@ -1953,7 +1996,7 @@ impl Span {
     }
 }
 
-impl Clean<Span> for syntax::codemap::Span {
+impl Clean<Span> for syntax_pos::Span {
     fn clean(&self, cx: &DocContext) -> Span {
         if *self == DUMMY_SP {
             return Span::empty();
@@ -1992,6 +2035,10 @@ impl Path {
                 }
             }]
         }
+    }
+
+    pub fn last_name(&self) -> String {
+        self.segments.last().unwrap().name.clone()
     }
 }
 
@@ -2047,7 +2094,7 @@ pub struct PathSegment {
 impl Clean<PathSegment> for hir::PathSegment {
     fn clean(&self, cx: &DocContext) -> PathSegment {
         PathSegment {
-            name: self.identifier.name.clean(cx),
+            name: self.name.clean(cx),
             params: self.parameters.clean(cx)
         }
     }
@@ -2056,7 +2103,7 @@ impl Clean<PathSegment> for hir::PathSegment {
 fn path_to_string(p: &hir::Path) -> String {
     let mut s = String::new();
     let mut first = true;
-    for i in p.segments.iter().map(|x| x.identifier.name.as_str()) {
+    for i in p.segments.iter().map(|x| x.name.as_str()) {
         if !first || p.global {
             s.push_str("::");
         } else {
@@ -2102,7 +2149,7 @@ pub struct BareFunctionDecl {
     pub unsafety: hir::Unsafety,
     pub generics: Generics,
     pub decl: FnDecl,
-    pub abi: String,
+    pub abi: Abi,
 }
 
 impl Clean<BareFunctionDecl> for hir::BareFnTy {
@@ -2115,7 +2162,7 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy {
                 where_predicates: Vec::new()
             },
             decl: self.decl.clean(cx),
-            abi: self.abi.to_string(),
+            abi: self.abi,
         }
     }
 }
@@ -2144,7 +2191,7 @@ impl Clean<Item> for doctree::Static {
             inner: StaticItem(Static {
                 type_: self.type_.clean(cx),
                 mutability: self.mutability.clean(cx),
-                expr: self.expr.span.to_src(cx),
+                expr: pprust::expr_to_string(&self.expr),
             }),
         }
     }
@@ -2168,7 +2215,7 @@ impl Clean<Item> for doctree::Constant {
             deprecation: self.depr.clean(cx),
             inner: ConstantItem(Constant {
                 type_: self.type_.clean(cx),
-                expr: self.expr.span.to_src(cx),
+                expr: pprust::expr_to_string(&self.expr),
             }),
         }
     }
@@ -2208,15 +2255,11 @@ impl Clean<ImplPolarity> for hir::ImplPolarity {
 pub struct Impl {
     pub unsafety: hir::Unsafety,
     pub generics: Generics,
+    pub provided_trait_methods: HashSet<String>,
     pub trait_: Option<Type>,
     pub for_: Type,
     pub items: Vec<Item>,
-    pub derived: bool,
     pub polarity: Option<ImplPolarity>,
-}
-
-fn detect_derived<M: AttrMetaMethods>(attrs: &[M]) -> bool {
-    attr::contains_name(attrs, "automatically_derived")
 }
 
 impl Clean<Vec<Item>> for doctree::Impl {
@@ -2227,11 +2270,18 @@ impl Clean<Vec<Item>> for doctree::Impl {
 
         // If this impl block is an implementation of the Deref trait, then we
         // need to try inlining the target's inherent impl blocks as well.
-        if let Some(ResolvedPath { did, .. }) = trait_ {
-            if Some(did) == cx.deref_trait_did.get() {
-                build_deref_target_impls(cx, &items, &mut ret);
-            }
+        if trait_.def_id() == cx.deref_trait_did.get() {
+            build_deref_target_impls(cx, &items, &mut ret);
         }
+
+        let provided = trait_.def_id().and_then(|did| {
+            cx.tcx_opt().map(|tcx| {
+                tcx.provided_trait_methods(did)
+                   .into_iter()
+                   .map(|meth| meth.name.to_string())
+                   .collect()
+            })
+        }).unwrap_or(HashSet::new());
 
         ret.push(Item {
             name: None,
@@ -2244,10 +2294,10 @@ impl Clean<Vec<Item>> for doctree::Impl {
             inner: ImplItem(Impl {
                 unsafety: self.unsafety,
                 generics: self.generics.clean(cx),
+                provided_trait_methods: provided,
                 trait_: trait_,
                 for_: self.for_.clean(cx),
                 items: items,
-                derived: detect_derived(&self.attrs),
                 polarity: Some(self.polarity.clean(cx)),
             }),
         });
@@ -2321,7 +2371,7 @@ impl Clean<Item> for doctree::DefaultImpl {
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
             def_id: cx.map.local_def_id(self.id),
-            visibility: Some(hir::Public),
+            visibility: Some(Public),
             stability: None,
             deprecation: None,
             inner: DefaultImplItem(DefaultImpl {
@@ -2338,7 +2388,7 @@ impl Clean<Item> for doctree::ExternCrate {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.map.local_def_id(0),
+            def_id: DefId { krate: self.cnum, index: CRATE_DEF_INDEX },
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,
@@ -2352,9 +2402,11 @@ impl Clean<Vec<Item>> for doctree::Import {
         // We consider inlining the documentation of `pub use` statements, but we
         // forcefully don't inline if this is not public or if the
         // #[doc(no_inline)] attribute is present.
+        // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let denied = self.vis != hir::Public || self.attrs.iter().any(|a| {
             &a.name()[..] == "doc" && match a.meta_item_list() {
-                Some(l) => attr::contains_name(l, "no_inline"),
+                Some(l) => attr::contains_name(l, "no_inline") ||
+                           attr::contains_name(l, "hidden"),
                 None => false,
             }
         });
@@ -2504,7 +2556,7 @@ trait ToSource {
     fn to_src(&self, cx: &DocContext) -> String;
 }
 
-impl ToSource for syntax::codemap::Span {
+impl ToSource for syntax_pos::Span {
     fn to_src(&self, cx: &DocContext) -> String {
         debug!("converting span {:?} to snippet", self.clean(cx));
         let sn = match cx.sess().codemap().span_to_snippet(*self) {
@@ -2537,15 +2589,15 @@ fn lit_to_string(lit: &ast::Lit) -> String {
 }
 
 fn name_from_pat(p: &hir::Pat) -> String {
-    use rustc_front::hir::*;
+    use rustc::hir::*;
     debug!("Trying to get a name from pattern: {:?}", p);
 
     match p.node {
         PatKind::Wild => "_".to_string(),
-        PatKind::Ident(_, ref p, _) => p.node.to_string(),
-        PatKind::TupleStruct(ref p, _) | PatKind::Path(ref p) => path_to_string(p),
-        PatKind::QPath(..) => panic!("tried to get argument name from PatKind::QPath, \
-                                which is not allowed in function arguments"),
+        PatKind::Binding(_, ref p, _) => p.node.to_string(),
+        PatKind::TupleStruct(ref p, _, _) | PatKind::Path(None, ref p) => path_to_string(p),
+        PatKind::Path(..) => panic!("tried to get argument name from qualified PatKind::Path, \
+                                     which is not allowed in function arguments"),
         PatKind::Struct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", path_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
@@ -2554,7 +2606,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
                 if etc { ", ..." } else { "" }
             )
         },
-        PatKind::Tup(ref elts) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
+        PatKind::Tuple(ref elts, _) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
                                             .collect::<Vec<String>>().join(", ")),
         PatKind::Box(ref p) => name_from_pat(&**p),
         PatKind::Ref(ref p, _) => name_from_pat(&**p),
@@ -2594,7 +2646,7 @@ fn resolve_type(cx: &DocContext,
             };
         }
     };
-    let def = tcx.def_map.borrow().get(&id).expect("unresolved id not in defmap").full_def();
+    let def = tcx.expect_def(id);
     debug!("resolve_type: def={:?}", def);
 
     let is_generic = match def {
@@ -2616,9 +2668,9 @@ fn resolve_type(cx: &DocContext,
             hir::TyFloat(ast::FloatTy::F64) => return Primitive(F64),
         },
         Def::SelfTy(..) if path.segments.len() == 1 => {
-            return Generic(special_idents::type_self.name.to_string());
+            return Generic(keywords::SelfType.name().to_string());
         }
-        Def::SelfTy(..) | Def::TyParam(..) => true,
+        Def::SelfTy(..) | Def::TyParam(..) | Def::AssociatedTy(..) => true,
         _ => false,
     };
     let did = register_def(&*cx, def);
@@ -2638,7 +2690,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::Static(i, _) => (i, TypeStatic),
         Def::Variant(i, _) => (i, TypeEnum),
         Def::SelfTy(Some(def_id), _) => (def_id, TypeTrait),
-        Def::SelfTy(_, Some((impl_id, _))) => return cx.map.local_def_id(impl_id),
+        Def::SelfTy(_, Some(impl_id)) => return cx.map.local_def_id(impl_id),
         _ => return def.def_id()
     };
     if did.is_local() { return did }
@@ -2649,7 +2701,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
     inline::record_extern_fqn(cx, did, kind);
     if let TypeTrait = kind {
         let t = inline::build_external_trait(cx, tcx, did);
-        cx.external_traits.borrow_mut().as_mut().unwrap().insert(did, t);
+        cx.external_traits.borrow_mut().insert(did, t);
     }
     did
 }
@@ -2663,7 +2715,7 @@ fn resolve_use_source(cx: &DocContext, path: Path, id: ast::NodeId) -> ImportSou
 
 fn resolve_def(cx: &DocContext, id: ast::NodeId) -> Option<DefId> {
     cx.tcx_opt().and_then(|tcx| {
-        tcx.def_map.borrow().get(&id).map(|d| register_def(cx, d.full_def()))
+        tcx.expect_def_or_none(id).map(|def| register_def(cx, def))
     })
 }
 
@@ -2680,7 +2732,7 @@ impl Clean<Item> for doctree::Macro {
             name: Some(name.clone()),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            visibility: hir::Public.clean(cx),
+            visibility: Some(Public),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
             def_id: cx.map.local_def_id(self.id),
@@ -2820,8 +2872,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedType<'tcx> {
             inner: AssociatedTypeItem(bounds, self.ty.clean(cx)),
             visibility: self.vis.clean(cx),
             def_id: self.def_id,
-            stability: stability::lookup_stability(cx.tcx(), self.def_id).clean(cx),
-            deprecation: stability::lookup_deprecation(cx.tcx(), self.def_id).clean(cx),
+            stability: cx.tcx().lookup_stability(self.def_id).clean(cx),
+            deprecation: cx.tcx().lookup_deprecation(self.def_id).clean(cx),
         }
     }
 }

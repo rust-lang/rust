@@ -36,5 +36,5 @@ fn call_it<F:Fn(isize)->isize>(f: &F, x: isize) -> isize {
 
 fn main() {
     let x = call_it(&S, 22);
-    //~^ ERROR not implemented
+    //~^ ERROR E0277
 }

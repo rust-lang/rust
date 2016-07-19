@@ -13,5 +13,5 @@ struct X { x: i32 }
 fn main() {
     let mut b: Vec<X> = vec![];
     b.sort();
-    //~^ ERROR the trait `core::cmp::Ord` is not implemented for the type `X`
+    //~^ ERROR `X: std::cmp::Ord` is not satisfied
 }

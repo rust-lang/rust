@@ -12,11 +12,11 @@ use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast::{MetaItem, Expr};
-use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 pub fn expand_deriving_default(cx: &mut ExtCtxt,
                                span: Span,
@@ -42,6 +42,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
                 ret_ty: Self_,
                 attributes: attrs,
                 is_unsafe: false,
+                unify_fieldless_variants: false,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     default_substructure(a, b, c)
                 }))

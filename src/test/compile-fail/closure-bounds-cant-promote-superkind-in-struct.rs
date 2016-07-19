@@ -13,7 +13,7 @@ struct X<F> where F: FnOnce() + 'static + Send {
 }
 
 fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
-    //~^ ERROR the trait `core::marker::Send` is not implemented for the type
+    //~^ ERROR `F: std::marker::Send` is not satisfied
     return X { field: blk };
 }
 

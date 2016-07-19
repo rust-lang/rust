@@ -27,8 +27,7 @@
 //! rustc will search each directory in the environment variable
 //! `RUST_TARGET_PATH` for a file named `TRIPLE.json`. The first one found will
 //! be loaded. If no file is found in any of those directories, a fatal error
-//! will be given.  `RUST_TARGET_PATH` includes `/etc/rustc` as its last entry,
-//! to be searched by default.
+//! will be given.
 //!
 //! Projects defining their own targets should use
 //! `--target=path/to/my-awesome-platform.json` instead of adding to
@@ -40,10 +39,10 @@
 //! this module defines the format the JSON file should take, though each
 //! underscore in the field names should be replaced with a hyphen (`-`) in the
 //! JSON file. Some fields are required in every target specification, such as
-//! `llvm-target`, `target-endian`, `target-pointer-width`, `arch`, and
-//! `os`. In general, options passed to rustc with `-C` override the target's
-//! settings, though `target-feature` and `link-args` will *add* to the list
-//! specified by the target, rather than replace.
+//! `llvm-target`, `target-endian`, `target-pointer-width`, `data-layout`,
+//! `arch`, and `os`. In general, options passed to rustc with `-C` override
+//! the target's settings, though `target-feature` and `link-args` will *add*
+//! to the list specified by the target, rather than replace.
 
 use serialize::json::Json;
 use std::default::Default;
@@ -57,6 +56,7 @@ mod bitrig_base;
 mod dragonfly_base;
 mod freebsd_base;
 mod linux_base;
+mod linux_musl_base;
 mod openbsd_base;
 mod netbsd_base;
 mod solaris_base;
@@ -76,7 +76,8 @@ macro_rules! supported_targets {
             if false { }
             $(
                 else if target == stringify!($module) {
-                    let t = $module::target();
+                    let mut t = $module::target();
+                    t.options.is_builtin = true;
                     debug!("Got builtin target: {:?}", t);
                     return Some(t);
                 }
@@ -107,6 +108,7 @@ supported_targets! {
 
     ("i686-linux-android", i686_linux_android),
     ("arm-linux-androideabi", arm_linux_androideabi),
+    ("armv7-linux-androideabi", armv7_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
 
     ("i686-unknown-freebsd", i686_unknown_freebsd),
@@ -162,6 +164,8 @@ pub struct Target {
     /// Architecture to use for ABI considerations. Valid options: "x86",
     /// "x86_64", "arm", "aarch64", "mips", "powerpc", and "powerpc64".
     pub arch: String,
+    /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
+    pub data_layout: String,
     /// Optional settings with defaults.
     pub options: TargetOptions,
 }
@@ -172,8 +176,9 @@ pub struct Target {
 /// these try to take "minimal defaults" that don't assume anything about the runtime they run in.
 #[derive(Clone, Debug)]
 pub struct TargetOptions {
-    /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
-    pub data_layout: Option<String>,
+    /// Whether the target is built-in or loaded from a custom target specification.
+    pub is_builtin: bool,
+
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
     /// Archive utility to use when managing archives. Defaults to "ar".
@@ -198,7 +203,7 @@ pub struct TargetOptions {
     pub post_link_args: Vec<String>,
 
     /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
-    /// to "default".
+    /// to "generic".
     pub cpu: String,
     /// Default target features to pass to LLVM. These features will *always* be
     /// passed, and cannot be disabled even via `-C`. Corresponds to `llc
@@ -287,6 +292,10 @@ pub struct TargetOptions {
     // If we give emcc .o files that are actually .bc files it
     // will 'just work'.
     pub obj_is_bitcode: bool,
+
+    /// Maximum integer size in bits that this target can perform atomic
+    /// operations on.
+    pub max_atomic_width: u64,
 }
 
 impl Default for TargetOptions {
@@ -294,7 +303,7 @@ impl Default for TargetOptions {
     /// incomplete, and if used for compilation, will certainly not work.
     fn default() -> TargetOptions {
         TargetOptions {
-            data_layout: None,
+            is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").unwrap_or("cc").to_string(),
             ar: option_env!("CFG_DEFAULT_AR").unwrap_or("ar").to_string(),
             pre_link_args: Vec::new(),
@@ -335,6 +344,7 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
+            max_atomic_width: 0,
         }
     }
 }
@@ -379,12 +389,16 @@ impl Target {
             llvm_target: get_req_field("llvm-target"),
             target_endian: get_req_field("target-endian"),
             target_pointer_width: get_req_field("target-pointer-width"),
+            data_layout: get_req_field("data-layout"),
             arch: get_req_field("arch"),
             target_os: get_req_field("os"),
             target_env: get_opt_field("env", ""),
             target_vendor: get_opt_field("vendor", "unknown"),
             options: Default::default(),
         };
+
+        // Default max-atomic-width to target-pointer-width
+        base.options.max_atomic_width = base.target_pointer_width.parse().unwrap();
 
         macro_rules! key {
             ($key_name:ident) => ( {
@@ -396,6 +410,12 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..])
                     .map(|o| o.as_boolean()
+                         .map(|s| base.options.$key_name = s));
+            } );
+            ($key_name:ident, u64) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..])
+                    .map(|o| o.as_u64()
                          .map(|s| base.options.$key_name = s));
             } );
             ($key_name:ident, list) => ( {
@@ -427,7 +447,6 @@ impl Target {
         key!(staticlib_prefix);
         key!(staticlib_suffix);
         key!(features);
-        key!(data_layout, optional);
         key!(dynamic_linking, bool);
         key!(executables, bool);
         key!(disable_redzone, bool);
@@ -436,6 +455,7 @@ impl Target {
         key!(target_family, optional);
         key!(is_like_osx, bool);
         key!(is_like_windows, bool);
+        key!(is_like_msvc, bool);
         key!(linker_is_gnu, bool);
         key!(has_rpath, bool);
         key!(no_compiler_rt, bool);
@@ -445,6 +465,7 @@ impl Target {
         key!(archive_format);
         key!(allow_asm, bool);
         key!(custom_unwind_resume, bool);
+        key!(max_atomic_width, u64);
 
         base
     }
@@ -464,11 +485,11 @@ impl Target {
         use serialize::json;
 
         fn load_file(path: &Path) -> Result<Target, String> {
-            let mut f = try!(File::open(path).map_err(|e| e.to_string()));
+            let mut f = File::open(path).map_err(|e| e.to_string())?;
             let mut contents = Vec::new();
-            try!(f.read_to_end(&mut contents).map_err(|e| e.to_string()));
-            let obj = try!(json::from_reader(&mut &contents[..])
-                                .map_err(|e| e.to_string()));
+            f.read_to_end(&mut contents).map_err(|e| e.to_string())?;
+            let obj = json::from_reader(&mut &contents[..])
+                           .map_err(|e| e.to_string())?;
             Ok(Target::from_json(obj))
         }
 

@@ -43,11 +43,11 @@ fn is_sync<T: Sync>() {}
 fn main() {
     is_sync::<MySync>();
     is_sync::<MyNotSync>();
-    //~^ ERROR the trait `core::marker::Sync` is not implemented for the type `MyNotSync`
+    //~^ ERROR `MyNotSync: std::marker::Sync` is not satisfied
 
     is_sync::<MyTypeWUnsafe>();
-    //~^ ERROR the trait `core::marker::Sync` is not implemented for the type `core::cell::UnsafeCell<u8>`
+    //~^ ERROR `std::cell::UnsafeCell<u8>: std::marker::Sync` is not satisfied
 
     is_sync::<MyTypeManaged>();
-    //~^ ERROR the trait `core::marker::Sync` is not implemented for the type `Managed`
+    //~^ ERROR `Managed: std::marker::Sync` is not satisfied
 }

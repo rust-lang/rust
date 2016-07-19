@@ -18,14 +18,70 @@
 //! them cheap and safe to copy. For other types copies must be made
 //! explicitly, by convention implementing the `Clone` trait and calling
 //! the `clone` method.
+//!
+//! Basic usage example:
+//!
+//! ```
+//! let s = String::new(); // String type implements Clone
+//! let copy = s.clone(); // so we can clone it
+//! ```
+//!
+//! To easily implement the Clone trait, you can also use
+//! `#[derive(Clone)]`. Example:
+//!
+//! ```
+//! #[derive(Clone)] // we add the Clone trait to Morpheus struct
+//! struct Morpheus {
+//!    blue_pill: f32,
+//!    red_pill: i64,
+//! }
+//!
+//! fn main() {
+//!    let f = Morpheus { blue_pill: 0.0, red_pill: 0 };
+//!    let copy = f.clone(); // and now we can clone it!
+//! }
+//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use marker::Sized;
 
-/// A common trait for cloning an object.
+/// A common trait for the ability to explicitly duplicate an object.
 ///
-/// This trait can be used with `#[derive]`.
+/// Differs from `Copy` in that `Copy` is implicit and extremely inexpensive, while
+/// `Clone` is always explicit and may or may not be expensive. In order to enforce
+/// these characteristics, Rust does not allow you to reimplement `Copy`, but you
+/// may reimplement `Clone` and run arbitrary code.
+///
+/// Since `Clone` is more general than `Copy`, you can automatically make anything
+/// `Copy` be `Clone` as well.
+///
+/// ## Derivable
+///
+/// This trait can be used with `#[derive]` if all fields are `Clone`. The `derive`d
+/// implementation of `clone()` calls `clone()` on each field.
+///
+/// ## How can I implement `Clone`?
+///
+/// Types that are `Copy` should have a trivial implementation of `Clone`. More formally:
+/// if `T: Copy`, `x: T`, and `y: &T`, then `let x = y.clone();` is equivalent to `let x = *y;`.
+/// Manual implementations should be careful to uphold this invariant; however, unsafe code
+/// must not rely on it to ensure memory safety.
+///
+/// An example is an array holding more than 32 elements of a type that is `Clone`; the standard
+/// library only implements `Clone` up until arrays of size 32. In this case, the implementation of
+/// `Clone` cannot be `derive`d, but can be implemented as:
+///
+/// ```
+/// #[derive(Copy)]
+/// struct Stats {
+///    frequencies: [i32; 100],
+/// }
+///
+/// impl Clone for Stats {
+///     fn clone(&self) -> Stats { *self }
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Clone : Sized {
     /// Returns a copy of the value.
@@ -51,6 +107,17 @@ pub trait Clone : Sized {
         *self = source.clone()
     }
 }
+
+// FIXME(aburka): this method is used solely by #[derive] to
+// assert that every component of a type implements Clone.
+//
+// This should never be called by user code.
+#[doc(hidden)]
+#[inline(always)]
+#[unstable(feature = "derive_clone_copy",
+           reason = "deriving hack, should not be public",
+           issue = "0")]
+pub fn assert_receiver_is_clone<T: Clone + ?Sized>(_: &T) {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> Clone for &'a T {

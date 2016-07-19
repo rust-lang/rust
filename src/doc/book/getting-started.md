@@ -8,10 +8,10 @@ we’ll talk about Cargo, Rust’s build system and package manager.
 
 The first step to using Rust is to install it. Generally speaking, you’ll need
 an Internet connection to run the commands in this section, as we’ll be
-downloading Rust from the internet.
+downloading Rust from the Internet.
 
 We’ll be showing off a number of commands using a terminal, and those lines all
-start with `$`. We don't need to type in the `$`s, they are there to indicate
+start with `$`. You don't need to type in the `$`s, they are there to indicate
 the start of each command. We’ll see many tutorials and examples around the web
 that follow this convention: `$` for commands run as our regular user, and `#`
 for commands we should be running as an administrator.
@@ -39,13 +39,13 @@ Specifically they will each satisfy the following requirements:
 
 |  Target                       | std |rustc|cargo| notes                      |
 |-------------------------------|-----|-----|-----|----------------------------|
-| `i686-pc-windows-msvc`        |  ✓  |  ✓  |  ✓  | 32-bit MSVC (Windows 7+)   |
-| `x86_64-pc-windows-msvc`      |  ✓  |  ✓  |  ✓  | 64-bit MSVC (Windows 7+)   |
-| `i686-pc-windows-gnu`         |  ✓  |  ✓  |  ✓  | 32-bit MinGW (Windows 7+)  |
-| `x86_64-pc-windows-gnu`       |  ✓  |  ✓  |  ✓  | 64-bit MinGW (Windows 7+)  |
 | `i686-apple-darwin`           |  ✓  |  ✓  |  ✓  | 32-bit OSX (10.7+, Lion+)  |
-| `x86_64-apple-darwin`         |  ✓  |  ✓  |  ✓  | 64-bit OSX (10.7+, Lion+)  |
+| `i686-pc-windows-gnu`         |  ✓  |  ✓  |  ✓  | 32-bit MinGW (Windows 7+)  |
+| `i686-pc-windows-msvc`        |  ✓  |  ✓  |  ✓  | 32-bit MSVC (Windows 7+)   |
 | `i686-unknown-linux-gnu`      |  ✓  |  ✓  |  ✓  | 32-bit Linux (2.6.18+)     |
+| `x86_64-apple-darwin`         |  ✓  |  ✓  |  ✓  | 64-bit OSX (10.7+, Lion+)  |
+| `x86_64-pc-windows-gnu`       |  ✓  |  ✓  |  ✓  | 64-bit MinGW (Windows 7+)  |
+| `x86_64-pc-windows-msvc`      |  ✓  |  ✓  |  ✓  | 64-bit MSVC (Windows 7+)   |
 | `x86_64-unknown-linux-gnu`    |  ✓  |  ✓  |  ✓  | 64-bit Linux (2.6.18+)     |
 
 ### Tier 2
@@ -63,13 +63,28 @@ these platforms are required to have each of the following:
 
 |  Target                       | std |rustc|cargo| notes                      |
 |-------------------------------|-----|-----|-----|----------------------------|
-| `x86_64-unknown-linux-musl`   |  ✓  |     |     | 64-bit Linux with MUSL     |
+| `aarch64-apple-ios`           |  ✓  |     |     | ARM64 iOS                  |
+| `aarch64-unknown-linux-gnu`   |  ✓  |  ✓  |  ✓  | ARM64 Linux (2.6.18+)      |
 | `arm-linux-androideabi`       |  ✓  |     |     | ARM Android                |
-| `arm-unknown-linux-gnueabi`   |  ✓  |  ✓  |     | ARM Linux (2.6.18+)        |
-| `arm-unknown-linux-gnueabihf` |  ✓  |  ✓  |     | ARM Linux (2.6.18+)        |
-| `aarch64-unknown-linux-gnu`   |  ✓  |     |     | ARM64 Linux (2.6.18+)      |
+| `arm-unknown-linux-gnueabi`   |  ✓  |  ✓  |  ✓  | ARM Linux (2.6.18+)        |
+| `arm-unknown-linux-gnueabihf` |  ✓  |  ✓  |  ✓  | ARM Linux (2.6.18+)        |
+| `armv7-apple-ios`             |  ✓  |     |     | ARM iOS                    |
+|`armv7-unknown-linux-gnueabihf`|  ✓  |  ✓  |  ✓  | ARMv7 Linux (2.6.18+)      |
+| `armv7s-apple-ios`            |  ✓  |     |     | ARM iOS                    |
+| `i386-apple-ios`              |  ✓  |     |     | 32-bit x86 iOS             |
+| `i586-pc-windows-msvc`        |  ✓  |     |     | 32-bit Windows w/o SSE     |
 | `mips-unknown-linux-gnu`      |  ✓  |     |     | MIPS Linux (2.6.18+)       |
+| `mips-unknown-linux-musl`     |  ✓  |     |     | MIPS Linux with MUSL       |
 | `mipsel-unknown-linux-gnu`    |  ✓  |     |     | MIPS (LE) Linux (2.6.18+)  |
+| `mipsel-unknown-linux-musl`   |  ✓  |     |     | MIPS (LE) Linux with MUSL  |
+| `powerpc-unknown-linux-gnu`   |  ✓  |     |     | PowerPC Linux (2.6.18+)    |
+| `powerpc64-unknown-linux-gnu` |  ✓  |     |     | PPC64 Linux (2.6.18+)      |
+|`powerpc64le-unknown-linux-gnu`|  ✓  |     |     | PPC64LE Linux (2.6.18+)    |
+| `x86_64-apple-ios`            |  ✓  |     |     | 64-bit x86 iOS             |
+| `x86_64-rumprun-netbsd`       |  ✓  |     |     | 64-bit NetBSD Rump Kernel  |
+| `x86_64-unknown-freebsd`      |  ✓  |  ✓  |  ✓  | 64-bit FreeBSD             |
+| `x86_64-unknown-linux-musl`   |  ✓  |     |     | 64-bit Linux with MUSL     |
+| `x86_64-unknown-netbsd`       |  ✓  |  ✓  |  ✓  | 64-bit NetBSD              |
 
 ### Tier 3
 
@@ -82,27 +97,16 @@ unofficial locations.
 
 |  Target                       | std |rustc|cargo| notes                      |
 |-------------------------------|-----|-----|-----|----------------------------|
-| `i686-linux-android`          |  ✓  |     |     | 32-bit x86 Android         |
 | `aarch64-linux-android`       |  ✓  |     |     | ARM64 Android              |
-| `powerpc-unknown-linux-gnu`   |  ✓  |     |     | PowerPC Linux (2.6.18+)    |
-| `powerpc64-unknown-linux-gnu` |  ✓  |     |     | PPC64 Linux (2.6.18+)      |
-|`powerpc64le-unknown-linux-gnu`|  ✓  |     |     | PPC64LE Linux (2.6.18+)    |
-|`armv7-unknown-linux-gnueabihf`|  ✓  |     |     | ARMv7 Linux (2.6.18+)      |
-| `i386-apple-ios`              |  ✓  |     |     | 32-bit x86 iOS             |
-| `x86_64-apple-ios`            |  ✓  |     |     | 64-bit x86 iOS             |
-| `armv7-apple-ios`             |  ✓  |     |     | ARM iOS                    |
-| `armv7s-apple-ios`            |  ✓  |     |     | ARM iOS                    |
-| `aarch64-apple-ios`           |  ✓  |     |     | ARM64 iOS                  |
+| `armv7-linux-androideabi`     |  ✓  |     |     | ARM-v7a Android            |
+| `i686-linux-android`          |  ✓  |     |     | 32-bit x86 Android         |
+| `i686-pc-windows-msvc` (XP)   |  ✓  |     |     | Windows XP support         |
 | `i686-unknown-freebsd`        |  ✓  |  ✓  |  ✓  | 32-bit FreeBSD             |
-| `x86_64-unknown-freebsd`      |  ✓  |  ✓  |  ✓  | 64-bit FreeBSD             |
-| `x86_64-unknown-openbsd`      |  ✓  |  ✓  |     | 64-bit OpenBSD             |
-| `x86_64-unknown-netbsd`       |  ✓  |  ✓  |     | 64-bit NetBSD              |
+| `x86_64-pc-windows-msvc` (XP) |  ✓  |     |     | Windows XP support         |
+| `x86_64-sun-solaris`          |  ✓  |  ✓  |     | 64-bit Solaris/SunOS       |
 | `x86_64-unknown-bitrig`       |  ✓  |  ✓  |     | 64-bit Bitrig              |
 | `x86_64-unknown-dragonfly`    |  ✓  |  ✓  |     | 64-bit DragonFlyBSD        |
-| `x86_64-rumprun-netbsd`       |  ✓  |     |     | 64-bit NetBSD Rump Kernel  |
-| `x86_64-sun-solaris`          |  ✓  |  ✓  |     | 64-bit Solaris/SunOS       |
-| `i686-pc-windows-msvc` (XP)   |  ✓  |     |     | Windows XP support         |
-| `x86_64-pc-windows-msvc` (XP) |  ✓  |     |     | Windows XP support         |
+| `x86_64-unknown-openbsd`      |  ✓  |  ✓  |     | 64-bit OpenBSD             |
 
 Note that this table can be expanded over time, this isn't the exhaustive set of
 tier 3 platforms that will ever be!
@@ -155,22 +159,26 @@ You should see the version number, commit hash, and commit date.
 If you do, Rust has been installed successfully! Congrats!
 
 If you don't and you're on Windows, check that Rust is in your %PATH% system
-variable. If it isn't, run the installer again, select "Change" on the "Change,
-repair, or remove installation" page and ensure "Add to PATH" is installed on
-the local hard drive.
+variable: `$ echo %PATH%`. If it isn't, run the installer again, select "Change"
+on the "Change, repair, or remove installation" page and ensure "Add to PATH" is
+installed on the local hard drive.  If you need to configure your path manually,
+you can find the Rust executables in a directory like
+`"C:\Program Files\Rust stable GNU 1.x\bin"`.
 
 Rust does not do its own linking, and so you’ll need to have a linker
 installed. Doing so will depend on your specific system, consult its
 documentation for more details.
 
 If not, there are a number of places where we can get help. The easiest is
-[the #rust IRC channel on irc.mozilla.org][irc], which we can access through
-[Mibbit][mibbit]. Click that link, and we'll be chatting with other Rustaceans
-(a silly nickname we call ourselves) who can help us out. Other great resources
-include [the user’s forum][users], and [Stack Overflow][stackoverflow].
+[the #rust-beginners IRC channel on irc.mozilla.org][irc-beginners] and for
+general discussion [the #rust IRC channel on irc.mozilla.org][irc], which we
+can access through [Mibbit][mibbit]. Then we'll be chatting with other
+Rustaceans (a silly nickname we call ourselves) who can help us out. Other great
+resources include [the user’s forum][users] and [Stack Overflow][stackoverflow].
 
+[irc-beginners]: irc://irc.mozilla.org/#rust-beginners
 [irc]: irc://irc.mozilla.org/#rust
-[mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
+[mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-beginners,%23rust
 [users]: https://users.rust-lang.org/
 [stackoverflow]: http://stackoverflow.com/questions/tagged/rust
 
@@ -333,7 +341,8 @@ On Windows, you'd enter:
 
 ```bash
 $ dir
-main.exe  main.rs
+main.exe
+main.rs
 ```
 
 This shows we have two files: the source code, with an `.rs` extension, and the
@@ -341,7 +350,7 @@ executable (`main.exe` on Windows, `main` everywhere else). All that's left to
 do from here is run the `main` or `main.exe` file, like this:
 
 ```bash
-$ ./main  # or main.exe on Windows
+$ ./main  # or .\main.exe on Windows
 ```
 
 If *main.rs* were your "Hello, world!" program, this would print `Hello,
@@ -394,20 +403,20 @@ Let’s convert the Hello World program to Cargo. To Cargo-fy a project, you nee
 to do three things:
 
 1. Put your source file in the right directory.
-2. Get rid of the old executable (`main.exe` on Windows, `main` everywhere else)
-   and make a new one.
+2. Get rid of the old executable (`main.exe` on Windows, `main` everywhere
+   else).
 3. Make a Cargo configuration file.
 
 Let's get started!
 
-### Creating a new Executable and Source Directory
+### Creating a Source Directory and Removing the Old Executable
 
 First, go back to your terminal, move to your *hello_world* directory, and
 enter the following commands:
 
 ```bash
 $ mkdir src
-$ mv main.rs src/main.rs
+$ mv main.rs src/main.rs # or 'move main.rs src/main.rs' on Windows
 $ rm main  # or 'del main.exe' on Windows
 ```
 
@@ -417,7 +426,7 @@ first. This leaves the top-level project directory (in this case,
 to your code. In this way, using Cargo helps you keep your projects nice and
 tidy. There's a place for everything, and everything is in its place.
 
-Now, copy *main.rs* to the *src* directory, and delete the compiled file you
+Now, move *main.rs* into the *src* directory, and delete the compiled file you
 created with `rustc`. As usual, replace `main` with `main.exe` if you're on
 Windows.
 
@@ -573,7 +582,11 @@ look something like this:
 name = "hello_world"
 version = "0.1.0"
 authors = ["Your Name <you@example.com>"]
+
+[dependencies]
 ```
+
+Do not worry about the `[dependencies]` line, we will come back to it later.
 
 Cargo has populated *Cargo.toml* with reasonable defaults based on the arguments
 you gave it and your `git` global configuration. You may notice that Cargo has

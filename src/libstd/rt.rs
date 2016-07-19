@@ -25,12 +25,7 @@
 
 
 // Reexport some of our utilities which are expected by other crates.
-pub use sys_common::unwind::{begin_unwind, begin_unwind_fmt};
-
-// Rust runtime's startup objects depend on these symbols, so they must be public.
-// Since sys_common isn't public, we have to re-export them here.
-#[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
-pub use sys_common::unwind::imp::eh_frame_registry::*;
+pub use panicking::{begin_panic, begin_panic_fmt};
 
 #[cfg(not(test))]
 #[lang = "start"]
@@ -53,14 +48,14 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         // created. Note that this isn't necessary in general for new threads,
         // but we just do this to name the main thread and to give it correct
         // info about the stack bounds.
-        let thread: Thread = NewThread::new(Some("<main>".to_owned()));
+        let thread: Thread = NewThread::new(Some("main".to_owned()));
         thread_info::set(main_guard, thread);
 
         // Store our args if necessary in a squirreled away location
         sys_common::args::init(argc, argv);
 
         // Let's run some code!
-        let res = panic::recover(mem::transmute::<_, fn()>(main));
+        let res = panic::catch_unwind(mem::transmute::<_, fn()>(main));
         sys_common::cleanup();
         res.is_err()
     };

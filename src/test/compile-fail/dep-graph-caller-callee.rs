@@ -11,7 +11,7 @@
 // Test that immediate callers have to change when callee changes, but
 // not callers' callers.
 
-// compile-flags: -Z incr-comp
+// compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]

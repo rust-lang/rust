@@ -16,24 +16,16 @@ use std::intrinsics;
 #[derive(Copy, Clone)]
 struct Wrap(i64);
 
-// These volatile and atomic intrinsics used to cause an ICE
+// These volatile intrinsics used to cause an ICE
 
 unsafe fn test_bool(p: &mut bool, v: bool) {
     intrinsics::volatile_load(p);
     intrinsics::volatile_store(p, v);
-    intrinsics::atomic_load(p);
-    intrinsics::atomic_cxchg(p, v, v);
-    intrinsics::atomic_store(p, v);
-    intrinsics::atomic_xchg(p, v);
 }
 
 unsafe fn test_immediate_fca(p: &mut Wrap, v: Wrap) {
     intrinsics::volatile_load(p);
     intrinsics::volatile_store(p, v);
-    intrinsics::atomic_load(p);
-    intrinsics::atomic_cxchg(p, v, v);
-    intrinsics::atomic_store(p, v);
-    intrinsics::atomic_xchg(p, v);
 }
 
 fn main() {}

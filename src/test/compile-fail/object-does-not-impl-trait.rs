@@ -14,5 +14,5 @@
 trait Foo {}
 fn take_foo<F:Foo>(f: F) {}
 fn take_object(f: Box<Foo>) { take_foo(f); }
-//~^ ERROR the trait `Foo` is not implemented
+//~^ ERROR `Box<Foo>: Foo` is not satisfied
 fn main() {}

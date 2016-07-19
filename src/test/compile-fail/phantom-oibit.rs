@@ -31,11 +31,11 @@ struct Nested<T>(T);
 fn is_zen<T: Zen>(_: T) {}
 
 fn not_sync<T>(x: Guard<T>) {
-    is_zen(x)  //~ error: the trait `core::marker::Sync` is not implemented for the type `T`
+    is_zen(x)  //~ error: `T: std::marker::Sync` is not satisfied
 }
 
 fn nested_not_sync<T>(x: Nested<Guard<T>>) {
-    is_zen(x)  //~ error: the trait `core::marker::Sync` is not implemented for the type `T`
+    is_zen(x)  //~ error: `T: std::marker::Sync` is not satisfied
 }
 
 fn main() {}

@@ -38,6 +38,6 @@ else
 SREL_ROOT := $(SREL)
 endif
 
-config.stamp: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
+config.stamp: $(S)configure $(S)Makefile.in $(S)src/stage0.txt
 	@$(call E, cfg: reconfiguring)
 	$(SREL_ROOT)configure $(CFG_CONFIGURE_ARGS)

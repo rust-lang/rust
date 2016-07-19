@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,8 +10,6 @@
 
 // compile-flags: -Z parse-only
 
-// This file was auto-generated using 'src/etc/generate-keyword-tests.py ref'
-
 fn main() {
-    let ref = "foo"; //~ error: ident
+    let ref = "foo"; //~ error: expected identifier, found `=`
 }

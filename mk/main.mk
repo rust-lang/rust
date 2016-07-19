@@ -13,16 +13,12 @@
 ######################################################################
 
 # The version number
-CFG_RELEASE_NUM=1.9.0
+CFG_RELEASE_NUM=1.12.0
 
 # An optional number to put after the label, e.g. '.2' -> '-beta.2'
 # NB Make sure it starts with a dot to conform to semver pre-release
 # versions (section 9)
 CFG_PRERELEASE_VERSION=.1
-
-# Append a version-dependent hash to each library, so we can install different
-# versions in the same place
-CFG_FILENAME_EXTRA=$(shell printf '%s' $(CFG_RELEASE)$(CFG_EXTRA_FILENAME) | $(CFG_HASH_COMMAND))
 
 ifeq ($(CFG_RELEASE_CHANNEL),stable)
 # This is the normal semver version string, e.g. "0.12.0", "0.12.0-nightly"
@@ -51,6 +47,38 @@ endif
 ifeq ($(CFG_RELEASE_CHANNEL),dev)
 CFG_RELEASE=$(CFG_RELEASE_NUM)-dev
 CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)-dev
+endif
+
+# Append a version-dependent hash to each library, so we can install different
+# versions in the same place
+CFG_FILENAME_EXTRA=$(shell printf '%s' $(CFG_RELEASE)$(CFG_EXTRA_FILENAME) | $(CFG_HASH_COMMAND))
+
+# A magic value that allows the compiler to use unstable features during the
+# bootstrap even when doing so would normally be an error because of feature
+# staging or because the build turns on warnings-as-errors and unstable features
+# default to warnings. The build has to match this key in an env var.
+#
+# This value is keyed off the release to ensure that all compilers for one
+# particular release have the same bootstrap key. Note that this is
+# intentionally not "secure" by any definition, this is largely just a deterrent
+# from users enabling unstable features on the stable compiler.
+CFG_BOOTSTRAP_KEY=$(CFG_FILENAME_EXTRA)
+
+# If local-rust is the same as the current version, then force a local-rebuild
+ifdef CFG_ENABLE_LOCAL_RUST
+ifeq ($(CFG_RELEASE),\
+      $(shell $(S)src/etc/local_stage0.sh --print-rustc-release $(CFG_LOCAL_RUST_ROOT)))
+    CFG_INFO := $(info cfg: auto-detected local-rebuild $(CFG_RELEASE))
+    CFG_ENABLE_LOCAL_REBUILD = 1
+endif
+endif
+
+# The stage0 compiler needs to use the previous key recorded in src/stage0.txt,
+# except for local-rebuild when it just uses the same current key.
+ifdef CFG_ENABLE_LOCAL_REBUILD
+CFG_BOOTSTRAP_KEY_STAGE0=$(CFG_BOOTSTRAP_KEY)
+else
+CFG_BOOTSTRAP_KEY_STAGE0=$(shell sed -ne 's/^rustc_key: //p' $(S)src/stage0.txt)
 endif
 
 # The name of the package to use for creating tarballs, installers etc.
@@ -140,7 +168,7 @@ ifdef CFG_ENABLE_ORBIT
 endif
 
 ifdef SAVE_TEMPS
-  CFG_RUSTC_FLAGS += --save-temps
+  CFG_RUSTC_FLAGS += -C save-temps
 endif
 ifdef ASM_COMMENTS
   CFG_RUSTC_FLAGS += -Z asm-comments
@@ -378,7 +406,7 @@ endif
 # This 'function' will determine which debugger scripts to copy based on a
 # target triple. See debuggers.mk for more information.
 TRIPLE_TO_DEBUGGER_SCRIPT_SETTING=\
- $(if $(findstring windows,$(1)),none,$(if $(findstring darwin,$(1)),lldb,gdb))
+ $(if $(findstring windows-msvc,$(1)),none,all)
 
 STAGES = 0 1 2 3
 
@@ -493,7 +521,7 @@ endif
 LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3) := \
     $$(CURDIR)/$$(HLIB$(1)_H_$(3)):$$(CFG_LLVM_INST_DIR_$(3))/lib
 LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3) := \
-    $$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))
+    $$(CURDIR)/$$(TLIB$(1)_T_$(2)_H_$(3))
 
 HOST_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
   $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))=$$(LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3)):$$$$$$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))
@@ -506,18 +534,19 @@ RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(HOST_RPATH_VAR$(1)_T_$(2)_H_$(3))
 # if you're building a cross config, the host->* parts are
 # effectively stage1, since it uses the just-built stage0.
 #
-# This logic is similar to how the LD_LIBRARY_PATH variable must
-# change be slightly different when doing cross compilations.
-# The build doesn't copy over all target libraries into
-# a new directory, so we need to point the library path at
-# the build directory where all the target libraries came
-# from (the stage0 build host). Otherwise the relative rpaths
-# inside of the rustc binary won't get resolved correctly.
+# Also be sure to use the right rpath because we're loading libraries from the
+# CFG_BUILD's stage1 directory for our target, so switch this one instance of
+# `RPATH_VAR` to get the bootstrap working.
 ifeq ($(1),0)
 ifneq ($(strip $(CFG_BUILD)),$(strip $(3)))
 CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
 
-RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(TARGET_RPATH_VAR$(1)_T_$(2)_H_$(3))
+RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(TARGET_RPATH_VAR1_T_$(2)_H_$$(CFG_BUILD))
+else
+ifdef CFG_ENABLE_LOCAL_REBUILD
+# Assume the local-rebuild rustc already has stage1 features too.
+CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
+endif
 endif
 endif
 

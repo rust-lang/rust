@@ -46,6 +46,12 @@ must abide by that constraint.
 
 [traits]: traits.html
 
+### Combinators
+
+Combinators are higher-order functions that apply only functions and
+earlier defined combinators to provide a result from its arguments. 
+They can be used to manage control flow in a modular fashion.
+
 ### DST (Dynamically Sized Type)
 
 A type without a statically known size or alignment. ([more info][link])

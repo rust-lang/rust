@@ -17,11 +17,11 @@ pub fn main() {
 
     // Bool => does not implement iterator.
     for i in false..true {}
-    //~^ ERROR E0277
+    //~^ ERROR `bool: std::iter::Step` is not satisfied
+    //~^^ ERROR `for<'a> &'a bool: std::ops::Add` is not satisfied
 
     // Unsized type.
     let arr: &[_] = &[1, 2, 3];
     let range = *arr..;
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
-    //~| ERROR the trait `core::marker::Sized` is not implemented
+    //~^ ERROR `[_]: std::marker::Sized` is not satisfied
 }

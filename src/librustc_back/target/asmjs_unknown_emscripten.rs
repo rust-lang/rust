@@ -22,6 +22,7 @@ pub fn target() -> Target {
         linker_is_gnu: true,
         allow_asm: false,
         obj_is_bitcode: true,
+        max_atomic_width: 32,
         .. Default::default()
     };
     Target {
@@ -31,6 +32,7 @@ pub fn target() -> Target {
         target_os: "emscripten".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
+        data_layout: "e-p:32:32-i64:64-v128:32:128-n32-S128".to_string(),
         arch: "asmjs".to_string(),
         options: opts,
     }

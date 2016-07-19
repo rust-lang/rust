@@ -12,6 +12,6 @@
 
 #[start]
 fn start(argc: isize, argv: *const *const u8, crate_map: *const u8) -> isize {
-    //~^ ERROR incorrect number of function parameters
+    //~^ start function has wrong type
    0
 }

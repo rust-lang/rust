@@ -13,6 +13,7 @@ use core::{i8, i16, isize};
 use core::usize;
 
 use test::Bencher;
+use test::black_box;
 
 #[test]
 fn test_lt() {
@@ -131,6 +132,19 @@ fn test_iterator_chain_count() {
     let zs = [];
     assert_eq!(xs.iter().chain(&ys).count(), 10);
     assert_eq!(zs.iter().chain(&ys).count(), 4);
+}
+
+#[test]
+fn test_iterator_chain_find() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [30, 40, 50, 60];
+    let mut iter = xs.iter().chain(&ys);
+    assert_eq!(iter.find(|&&i| i == 4), Some(&4));
+    assert_eq!(iter.next(), Some(&5));
+    assert_eq!(iter.find(|&&i| i == 40), Some(&40));
+    assert_eq!(iter.next(), Some(&50));
+    assert_eq!(iter.find(|&&i| i == 100), None);
+    assert_eq!(iter.next(), None);
 }
 
 #[test]
@@ -890,15 +904,6 @@ fn test_range_step() {
 }
 
 #[test]
-fn test_peekable_is_empty() {
-    let a = [1];
-    let mut it = a.iter().peekable();
-    assert!( !it.is_empty() );
-    it.next();
-    assert!( it.is_empty() );
-}
-
-#[test]
 fn test_repeat() {
     let mut it = repeat(42);
     assert_eq!(it.next(), Some(42));
@@ -1025,4 +1030,34 @@ fn bench_max(b: &mut Bencher) {
         let it = 0..100;
         it.map(scatter).max()
     })
+}
+
+pub fn copy_zip(xs: &[u8], ys: &mut [u8]) {
+    for (a, b) in ys.iter_mut().zip(xs) {
+        *a = *b;
+    }
+}
+
+pub fn add_zip(xs: &[f32], ys: &mut [f32]) {
+    for (a, b) in ys.iter_mut().zip(xs) {
+        *a += *b;
+    }
+}
+
+#[bench]
+fn bench_zip_copy(b: &mut Bencher) {
+    let source = vec![0u8; 16 * 1024];
+    let mut dst = black_box(vec![0u8; 16 * 1024]);
+    b.iter(|| {
+        copy_zip(&source, &mut dst)
+    })
+}
+
+#[bench]
+fn bench_zip_add(b: &mut Bencher) {
+    let source = vec![1.; 16 * 1024];
+    let mut dst = vec![0.; 16 * 1024];
+    b.iter(|| {
+        add_zip(&source, &mut dst)
+    });
 }

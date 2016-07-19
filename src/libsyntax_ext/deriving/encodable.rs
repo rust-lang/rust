@@ -93,11 +93,11 @@ use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast::{MetaItem, Expr, ExprKind, Mutability};
-use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt,Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
                                        span: Span,
@@ -150,7 +150,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                 },
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(Ptr(Box::new(Literal(Path::new_local(typaram))),
-                            Borrowed(None, Mutability::Mutable))),
+                           Borrowed(None, Mutability::Mutable))),
                 ret_ty: Literal(Path::new_(
                     pathvec_std!(cx, core::result::Result),
                     None,
@@ -161,8 +161,9 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                 )),
                 attributes: Vec::new(),
                 is_unsafe: false,
+                unify_fieldless_variants: false,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                    encodable_substructure(a, b, c)
+                    encodable_substructure(a, b, c, krate)
                 })),
             }
         ),
@@ -173,12 +174,14 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
 }
 
 fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
-                          substr: &Substructure) -> P<Expr> {
+                          substr: &Substructure, krate: &'static str) -> P<Expr> {
     let encoder = substr.nonself_args[0].clone();
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = cx.ident_of("_e");
     let blkencoder = cx.expr_ident(trait_span, blkarg);
-    let encode = cx.ident_of("encode");
+    let fn_path = cx.expr_path(cx.path_global(trait_span, vec![cx.ident_of(krate),
+                                                               cx.ident_of("Encodable"),
+                                                               cx.ident_of("encode")]));
 
     return match *substr.fields {
         Struct(_, ref fields) => {
@@ -196,8 +199,8 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                         token::intern_and_get_ident(&format!("_field{}", i))
                     }
                 };
-                let enc = cx.expr_method_call(span, self_.clone(),
-                                              encode, vec!(blkencoder.clone()));
+                let self_ref = cx.expr_addr_of(span, self_.clone());
+                let enc = cx.expr_call(span, fn_path.clone(), vec![self_ref, blkencoder.clone()]);
                 let lambda = cx.lambda_expr_1(span, enc, blkarg);
                 let call = cx.expr_method_call(span, blkencoder.clone(),
                                                emit_struct_field,
@@ -245,8 +248,9 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             if !fields.is_empty() {
                 let last = fields.len() - 1;
                 for (i, &FieldInfo { ref self_, span, .. }) in fields.iter().enumerate() {
-                    let enc = cx.expr_method_call(span, self_.clone(),
-                                                  encode, vec!(blkencoder.clone()));
+                let self_ref = cx.expr_addr_of(span, self_.clone());
+                    let enc = cx.expr_call(span, fn_path.clone(), vec![self_ref,
+                                                                       blkencoder.clone()]);
                     let lambda = cx.lambda_expr_1(span, enc, blkarg);
                     let call = cx.expr_method_call(span, blkencoder.clone(),
                                                    emit_variant_arg,
@@ -281,7 +285,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                 cx.expr_str(trait_span, substr.type_ident.name.as_str()),
                 blk
             ));
-            cx.expr_block(cx.block(trait_span, vec!(me), Some(ret)))
+            cx.expr_block(cx.block(trait_span, vec![me, cx.stmt_expr(ret)]))
         }
 
         _ => cx.bug("expected Struct or EnumMatching in derive(Encodable)")

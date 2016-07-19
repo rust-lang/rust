@@ -22,8 +22,8 @@
 extern crate syntax;
 
 use syntax::ast;
-use syntax::codemap::Span;
 use syntax::parse;
+use syntax_pos::Span;
 
 struct ParseSess;
 

@@ -13,6 +13,6 @@ struct Foo;
 fn main() {
     let a: Result<(), Foo> = Ok(());
     a.unwrap();
-    //~^ ERROR no method named `unwrap` found for type `core::result::Result<(), Foo>`
-    //~| NOTE the following trait bounds were not satisfied: `Foo : core::fmt::Debug`
+    //~^ ERROR no method named `unwrap` found for type `std::result::Result<(), Foo>`
+    //~| NOTE the following trait bounds were not satisfied: `Foo : std::fmt::Debug`
 }

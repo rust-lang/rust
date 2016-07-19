@@ -9,6 +9,10 @@
 // except according to those terms.
 
 // error-pattern:woe
-fn f(a: isize) { println!("{}", a); }
+fn f(a: isize) {
+    println!("{}", a);
+}
 
-fn main() { f(panic!("woe")); }
+fn main() {
+    f(panic!("woe"));
+}

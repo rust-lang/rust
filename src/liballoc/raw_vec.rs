@@ -147,6 +147,7 @@ impl<T> RawVec<T> {
     /// Gets the capacity of the allocation.
     ///
     /// This will always be `usize::MAX` if `T` is zero-sized.
+    #[inline(always)]
     pub fn cap(&self) -> usize {
         if mem::size_of::<T>() == 0 {
             !0
@@ -577,9 +578,9 @@ impl<T> Drop for RawVec<T> {
 // * We don't overflow `usize::MAX` and actually allocate too little
 //
 // On 64-bit we just need to check for overflow since trying to allocate
-// `> isize::MAX` bytes will surely fail. On 32-bit we need to add an extra
-// guard for this in case we're running on a platform which can use all 4GB in
-// user-space. e.g. PAE or x32
+// `> isize::MAX` bytes will surely fail. On 32-bit and 16-bit we need to add
+// an extra guard for this in case we're running on a platform which can use
+// all 4GB in user-space. e.g. PAE or x32
 
 #[inline]
 fn alloc_guard(alloc_size: usize) {

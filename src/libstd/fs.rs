@@ -32,6 +32,8 @@ use time::SystemTime;
 /// it was opened with. Files also implement `Seek` to alter the logical cursor
 /// that the file contains internally.
 ///
+/// Files are automatically closed when they go out of scope.
+///
 /// # Examples
 ///
 /// ```no_run
@@ -139,7 +141,7 @@ pub struct Permissions(fs_imp::FilePermissions);
 
 /// An structure representing a type of file with accessors for each file type.
 #[stable(feature = "file_type", since = "1.1.0")]
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType(fs_imp::FileType);
 
 /// A builder used to create directories in various manners.
@@ -302,10 +304,10 @@ impl File {
     /// The returned `File` is a reference to the same state that this object
     /// references. Both handles will read and write with the same cursor
     /// position.
-    #[unstable(feature = "file_try_clone", reason = "newly added", issue = "31405")]
+    #[stable(feature = "file_try_clone", since = "1.9.0")]
     pub fn try_clone(&self) -> io::Result<File> {
         Ok(File {
-            inner: try!(self.inner.duplicate())
+            inner: self.inner.duplicate()?
         })
     }
 }
@@ -510,7 +512,7 @@ impl OpenOptions {
     /// No file is allowed to exist at the target location, also no (dangling)
     /// symlink.
     ///
-    /// This option is useful because it as atomic. Otherwise between checking
+    /// This option is useful because it is atomic. Otherwise between checking
     /// whether a file exists and creating a new one, the file may have been
     /// created by another process (a TOCTOU race condition / attack).
     ///
@@ -523,16 +525,13 @@ impl OpenOptions {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(expand_open_options)]
     /// use std::fs::OpenOptions;
     ///
     /// let file = OpenOptions::new().write(true)
     ///                              .create_new(true)
     ///                              .open("foo.txt");
     /// ```
-    #[unstable(feature = "expand_open_options",
-               reason = "recently added",
-               issue = "30014")]
+    #[stable(feature = "expand_open_options2", since = "1.9.0")]
     pub fn create_new(&mut self, create_new: bool) -> &mut OpenOptions {
         self.0.create_new(create_new); self
     }
@@ -565,7 +564,7 @@ impl OpenOptions {
     }
 
     fn _open(&self, path: &Path) -> io::Result<File> {
-        let inner = try!(fs_imp::File::open(path, &self.0));
+        let inner = fs_imp::File::open(path, &self.0)?;
         Ok(File { inner: inner })
     }
 }
@@ -660,7 +659,7 @@ impl Metadata {
     ///
     /// This field may not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
-    #[unstable(feature = "fs_time", issue = "31399")]
+    #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn modified(&self) -> io::Result<SystemTime> {
         self.0.modified().map(FromInner::from_inner)
     }
@@ -678,7 +677,7 @@ impl Metadata {
     ///
     /// This field may not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
-    #[unstable(feature = "fs_time", issue = "31399")]
+    #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         self.0.accessed().map(FromInner::from_inner)
     }
@@ -692,7 +691,7 @@ impl Metadata {
     ///
     /// This field may not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
-    #[unstable(feature = "fs_time", issue = "31399")]
+    #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn created(&self) -> io::Result<SystemTime> {
         self.0.created().map(FromInner::from_inner)
     }
@@ -968,7 +967,8 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::lstat(path.as_ref()).map(Metadata)
 }
 
-/// Rename a file or directory to a new name.
+/// Rename a file or directory to a new name, replacing the original file if
+/// `to` already exists.
 ///
 /// This will not work if the new name is on a different mount point.
 ///
@@ -976,6 +976,12 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// This function currently corresponds to the `rename` function on Unix
 /// and the `MoveFileEx` function with the `MOVEFILE_REPLACE_EXISTING` flag on Windows.
+///
+/// Because of this, the behavior when both `from` and `to` exist differs. On
+/// Unix, if `from` is a directory, `to` must also be an (empty) directory. If
+/// `from` is not a directory, `to` must also be not a directory. In contrast,
+/// on Windows, `from` can be anything, but `to` must *not* be a directory.
+///
 /// Note that, this [may change in the future][changes].
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
@@ -1334,11 +1340,12 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// // one possible implementation of walking a directory only visiting files
 /// fn visit_dirs(dir: &Path, cb: &Fn(&DirEntry)) -> io::Result<()> {
-///     if try!(fs::metadata(dir)).is_dir() {
+///     if dir.is_dir() {
 ///         for entry in try!(fs::read_dir(dir)) {
 ///             let entry = try!(entry);
-///             if try!(fs::metadata(entry.path())).is_dir() {
-///                 try!(visit_dirs(&entry.path(), cb));
+///             let path = entry.path();
+///             if path.is_dir() {
+///                 try!(visit_dirs(&path, cb));
 ///             } else {
 ///                 cb(&entry);
 ///             }
@@ -1440,7 +1447,7 @@ impl DirBuilder {
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
         if path == Path::new("") || path.is_dir() { return Ok(()) }
         if let Some(p) = path.parent() {
-            try!(self.create_dir_all(p))
+            self.create_dir_all(p)?
         }
         self.inner.mkdir(path)
     }
@@ -1539,7 +1546,7 @@ mod tests {
         let result = File::open(filename);
 
         if cfg!(unix) {
-            error!(result, "o such file or directory");
+            error!(result, "No such file or directory");
         }
         if cfg!(windows) {
             error!(result, "The system cannot find the file specified");
@@ -1554,7 +1561,7 @@ mod tests {
         let result = fs::remove_file(filename);
 
         if cfg!(unix) {
-            error!(result, "o such file or directory");
+            error!(result, "No such file or directory");
         }
         if cfg!(windows) {
             error!(result, "The system cannot find the file specified");
@@ -1708,7 +1715,7 @@ mod tests {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("fileinfo_false_on_dir");
         check!(fs::create_dir(dir));
-        assert!(dir.is_file() == false);
+        assert!(!dir.is_file());
         check!(fs::remove_dir(dir));
     }
 
@@ -1764,11 +1771,20 @@ mod tests {
     }
 
     #[test]
+    fn file_create_new_already_exists_error() {
+        let tmpdir = tmpdir();
+        let file = &tmpdir.join("file_create_new_error_exists");
+        check!(fs::File::create(file));
+        let e = fs::OpenOptions::new().write(true).create_new(true).open(file).unwrap_err();
+        assert_eq!(e.kind(), ErrorKind::AlreadyExists);
+    }
+
+    #[test]
     fn mkdir_path_already_exists_error() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("mkdir_error_twice");
         check!(fs::create_dir(dir));
-        let e = fs::create_dir(dir).err().unwrap();
+        let e = fs::create_dir(dir).unwrap_err();
         assert_eq!(e.kind(), ErrorKind::AlreadyExists);
     }
 

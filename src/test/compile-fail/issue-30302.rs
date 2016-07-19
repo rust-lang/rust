@@ -18,10 +18,8 @@ fn is_empty<T>(s: Stack<T>) -> bool {
         Nil => true,
 //~^ WARN pattern binding `Nil` is named the same as one of the variants of the type `Stack`
 //~| HELP consider making the path in the pattern qualified: `Stack::Nil`
-//~| HELP run `rustc --explain E0170` to see a detailed explanation
         _ => false
 //~^ ERROR unreachable pattern
-//~| HELP run `rustc --explain E0001` to see a detailed explanation
     }
 }
 

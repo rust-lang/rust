@@ -9,7 +9,7 @@ strings also work differently than in some other systems languages, such as C.
 Let’s dig into the details. A ‘string’ is a sequence of Unicode scalar values
 encoded as a stream of UTF-8 bytes. All strings are guaranteed to be a valid
 encoding of UTF-8 sequences. Additionally, unlike some systems languages,
-strings are not null-terminated and can contain null bytes.
+strings are not NUL-terminated and can contain NUL bytes.
 
 Rust has two main types of strings: `&str` and `String`. Let’s talk about
 `&str` first. These are called ‘string slices’. A string slice has a fixed
@@ -32,7 +32,7 @@ include the newline and the leading spaces:
 let s = "foo
     bar";
 
-assert_eq!("foo\n        bar", s);
+assert_eq!("foo\n    bar", s);
 ```
 
 The second, with a `\`, trims the spaces and the newline:
@@ -43,6 +43,11 @@ let s = "foo\
 
 assert_eq!("foobar", s);
 ```
+
+Note that you normally cannot access a `str` directly, but only through a `&str`
+reference. This is because `str` is an unsized type which requires additional
+runtime information to be usable. For more information see the chapter on
+[unsized types][ut].
 
 Rust has more than only `&str`s though. A `String` is a heap-allocated string.
 This string is growable, and is also guaranteed to be UTF-8. `String`s are
@@ -158,7 +163,7 @@ let hachi = &dog[0..2];
 with this error:
 
 ```text
-thread '<main>' panicked at 'index 0 and/or 2 in `忠犬ハチ公` do not lie on
+thread 'main' panicked at 'index 0 and/or 2 in `忠犬ハチ公` do not lie on
 character boundary'
 ```
 
@@ -185,5 +190,6 @@ let hello_world = hello + &world;
 This is because `&String` can automatically coerce to a `&str`. This is a
 feature called ‘[`Deref` coercions][dc]’.
 
+[ut]: unsized-types.html
 [dc]: deref-coercions.html
 [connect]: ../std/net/struct.TcpStream.html#method.connect

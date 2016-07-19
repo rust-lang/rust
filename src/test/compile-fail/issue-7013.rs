@@ -34,5 +34,5 @@ struct A {
 
 fn main() {
     let a = A {v: box B{v: None} as Box<Foo+Send>};
-    //~^ ERROR the trait `core::marker::Send` is not implemented
+    //~^ ERROR `std::rc::Rc<std::cell::RefCell<A>>: std::marker::Send` is not satisfied
 }

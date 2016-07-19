@@ -12,11 +12,10 @@ trait Trait { }
 
 fn function(t: &mut Trait) {
     t as *mut Trait
- //~^ ERROR: mismatched types:
- //~| expected `()`,
- //~|    found `*mut Trait`
- //~| (expected (),
- //~|    found *-ptr) [E0308]
+ //~^ ERROR: mismatched types
+ //~| NOTE: expected type `()`
+ //~| NOTE:    found type `*mut Trait`
+ //~| NOTE: expected (), found *-ptr
 }
 
 fn main() { }

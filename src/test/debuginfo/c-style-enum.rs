@@ -157,7 +157,8 @@ fn main() {
 
     zzz(); // #break
 
-    let a = SINGLE_VARIANT;
+    // Borrow to avoid an eager load of the constant value in the static.
+    let a = &SINGLE_VARIANT;
     let a = unsafe { AUTO_ONE };
     let a = unsafe { MANUAL_ONE };
 }

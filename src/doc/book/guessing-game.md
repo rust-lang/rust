@@ -370,7 +370,7 @@ We could also use a range of versions.
 [Cargo’s documentation][cargodoc] contains more details.
 
 [semver]: http://semver.org
-[cargodoc]: http://doc.crates.io/crates-io.html
+[cargodoc]: http://doc.crates.io/specifying-dependencies.html
 
 Now, without changing any of our code, let’s build our project:
 
@@ -806,7 +806,7 @@ You guessed: 59
 You win!
 Please input your guess.
 quit
-thread '<main>' panicked at 'Please type a number!'
+thread 'main' panicked at 'Please type a number!'
 ```
 
 Ha! `quit` actually quits. As does any other non-number input. Well, this is
@@ -988,8 +988,7 @@ fn main() {
 
 # Complete!
 
-At this point, you have successfully built the Guessing Game! Congratulations!
+This project showed you a lot: `let`, `match`, methods, associated
+functions, using external crates, and more.
 
-This first project showed you a lot: `let`, `match`, methods, associated
-functions, using external crates, and more. Our next project will show off
-even more.
+At this point, you have successfully built the Guessing Game! Congratulations!

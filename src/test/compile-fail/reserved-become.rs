@@ -10,5 +10,5 @@
 
 fn main() {
     let become = 0;
-    //~^ ERROR `become` is a reserved keyword
+    //~^ ERROR expected pattern, found reserved keyword `become`
 }

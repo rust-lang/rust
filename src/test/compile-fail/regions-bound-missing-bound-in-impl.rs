@@ -34,7 +34,8 @@ impl<'a, 't> Foo<'a, 't> for &'a isize {
     }
 
     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
-        //~^ ERROR method `wrong_bound1` has an incompatible type for trait
+        //~^ ERROR method not compatible with trait
+        //~^^ ERROR method not compatible with trait
         //
         // Note: This is a terrible error message. It is caused
         // because, in the trait, 'b is early bound, and in the impl,

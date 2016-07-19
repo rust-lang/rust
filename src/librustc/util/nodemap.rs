@@ -12,7 +12,7 @@
 
 #![allow(non_snake_case)]
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use syntax::ast;
 
 pub use rustc_data_structures::fnv::FnvHashMap;

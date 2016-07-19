@@ -181,7 +181,7 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 }
 
 /// Fetches the environment variable `key` from the current process, returning
-/// None if the variable isn't set.
+/// `None` if the variable isn't set.
 ///
 /// # Examples
 ///
@@ -416,7 +416,7 @@ impl Error for JoinPathsError {
     fn description(&self) -> &str { self.inner.description() }
 }
 
-/// Returns the path to the current user's home directory if known.
+/// Returns the path of the current user's home directory if known.
 ///
 /// # Unix
 ///
@@ -450,18 +450,18 @@ pub fn home_dir() -> Option<PathBuf> {
     os_imp::home_dir()
 }
 
-/// Returns the path to a temporary directory.
+/// Returns the path of a temporary directory.
 ///
-/// On Unix, returns the value of the 'TMPDIR' environment variable if it is
-/// set, otherwise for non-Android it returns '/tmp'. If Android, since there
-/// is no global temporary folder (it is usually allocated per-app), we return
-/// '/data/local/tmp'.
+/// On Unix, returns the value of the `TMPDIR` environment variable if it is
+/// set, otherwise for non-Android it returns `/tmp`. If Android, since there
+/// is no global temporary folder (it is usually allocated per-app), it returns
+/// `/data/local/tmp`.
 ///
-/// On Windows, returns the value of, in order, the 'TMP', 'TEMP',
-/// 'USERPROFILE' environment variable  if any are set and not the empty
-/// string. Otherwise, tmpdir returns the path to the Windows directory. This
-/// behavior is identical to that of [GetTempPath][msdn], which this function
-/// uses internally.
+/// On Windows, returns the value of, in order, the `TMP`, `TEMP`,
+/// `USERPROFILE` environment variable if any are set and not the empty
+/// string. Otherwise, `temp_dir` returns the path of the Windows directory.
+/// This behavior is identical to that of [`GetTempPath`][msdn], which this
+/// function uses internally.
 ///
 /// [msdn]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992(v=vs.85).aspx
 ///
@@ -482,14 +482,14 @@ pub fn temp_dir() -> PathBuf {
     os_imp::temp_dir()
 }
 
-/// Returns the full filesystem path to the current running executable.
+/// Returns the full filesystem path of the current running executable.
 ///
-/// The path returned is not necessarily a "real path" to the executable as
+/// The path returned is not necessarily a "real path" of the executable as
 /// there may be intermediate symlinks.
 ///
 /// # Errors
 ///
-/// Acquiring the path to the current executable is a platform-specific operation
+/// Acquiring the path of the current executable is a platform-specific operation
 /// that can fail for a good number of reasons. Some errors can include, but not
 /// be limited to, filesystem operations failing or general syscall failures.
 ///
@@ -526,7 +526,7 @@ pub struct ArgsOs { inner: os_imp::Args }
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
 ///
-/// The first element is traditionally the path to the executable, but it can be
+/// The first element is traditionally the path of the executable, but it can be
 /// set to arbitrary text, and may not even exist. This means this property should
 /// not be relied upon for security purposes.
 ///
@@ -554,7 +554,7 @@ pub fn args() -> Args {
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
 ///
-/// The first element is traditionally the path to the executable, but it can be
+/// The first element is traditionally the path of the executable, but it can be
 /// set to arbitrary text, and it may not even exist, so this property should
 /// not be relied upon for security purposes.
 ///
@@ -617,7 +617,7 @@ pub mod consts {
     #[stable(feature = "env", since = "1.0.0")]
     pub const ARCH: &'static str = super::arch::ARCH;
 
-    /// The family of the operating system. In this case, `unix`.
+    /// The family of the operating system. Example value is `unix`.
     ///
     /// Some possible values:
     ///
@@ -626,8 +626,8 @@ pub mod consts {
     #[stable(feature = "env", since = "1.0.0")]
     pub const FAMILY: &'static str = super::os::FAMILY;
 
-    /// A string describing the specific operating system in use: in this
-    /// case, `linux`.
+    /// A string describing the specific operating system in use.
+    /// Example value is `linux`.
     ///
     /// Some possible values:
     ///
@@ -646,7 +646,7 @@ pub mod consts {
     pub const OS: &'static str = super::os::OS;
 
     /// Specifies the filename prefix used for shared libraries on this
-    /// platform: in this case, `lib`.
+    /// platform. Example value is `lib`.
     ///
     /// Some possible values:
     ///
@@ -656,7 +656,7 @@ pub mod consts {
     pub const DLL_PREFIX: &'static str = super::os::DLL_PREFIX;
 
     /// Specifies the filename suffix used for shared libraries on this
-    /// platform: in this case, `.so`.
+    /// platform. Example value is `.so`.
     ///
     /// Some possible values:
     ///
@@ -667,7 +667,7 @@ pub mod consts {
     pub const DLL_SUFFIX: &'static str = super::os::DLL_SUFFIX;
 
     /// Specifies the file extension used for shared libraries on this
-    /// platform that goes after the dot: in this case, `so`.
+    /// platform that goes after the dot. Example value is `so`.
     ///
     /// Some possible values:
     ///
@@ -678,7 +678,7 @@ pub mod consts {
     pub const DLL_EXTENSION: &'static str = super::os::DLL_EXTENSION;
 
     /// Specifies the filename suffix used for executable binaries on this
-    /// platform: in this case, the empty string.
+    /// platform. Example value is `.exe`.
     ///
     /// Some possible values:
     ///
@@ -690,7 +690,7 @@ pub mod consts {
     pub const EXE_SUFFIX: &'static str = super::os::EXE_SUFFIX;
 
     /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform: in this case, the empty string.
+    /// on this platform. Example value is `exe`.
     ///
     /// Some possible values:
     ///

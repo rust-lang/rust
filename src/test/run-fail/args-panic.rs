@@ -14,6 +14,10 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-fn f(_a: isize, _b: isize, _c: Box<isize>) { panic!("moop"); }
+fn f(_a: isize, _b: isize, _c: Box<isize>) {
+    panic!("moop");
+}
 
-fn main() { f(1, panic!("meep"), box 42); }
+fn main() {
+    f(1, panic!("meep"), box 42);
+}

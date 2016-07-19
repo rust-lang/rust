@@ -12,7 +12,7 @@
 //
 // match expr {
 //     Ok(val) => val,
-//     Err(err) => return From::from(err),
+//     Err(err) => return Err(From::from(err)),
 // }
 //
 // This test verifies that the expansion is hygienic, i.e. it's not affected by other `val` and

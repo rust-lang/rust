@@ -30,6 +30,8 @@
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
+#![feature(question_mark)]
+#![feature(unboxed_closures)]
 
 extern crate arena;
 extern crate flate;
@@ -39,14 +41,17 @@ extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_borrowck;
+extern crate rustc_const_eval;
+extern crate rustc_errors as errors;
 extern crate rustc_passes;
-extern crate rustc_front;
 extern crate rustc_lint;
 extern crate rustc_plugin;
 extern crate rustc_privacy;
+extern crate rustc_incremental;
 extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;
+extern crate rustc_save_analysis;
 extern crate rustc_trans;
 extern crate rustc_typeck;
 extern crate serialize;
@@ -56,17 +61,18 @@ extern crate log;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_ext;
+extern crate syntax_pos;
 
 use driver::CompileController;
 use pretty::{PpMode, UserIdentifiedItem};
 
 use rustc_resolve as resolve;
+use rustc_save_analysis as save;
 use rustc_trans::back::link;
-use rustc_trans::save;
-use rustc::session::{config, Session, build_session, CompileResult};
+use rustc::dep_graph::DepGraph;
+use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
-use rustc::session::config::{get_unstable_features_setting, OptionStability};
-use rustc::middle::cstore::CrateStore;
+use rustc::session::config::{get_unstable_features_setting, nightly_options};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc_metadata::loader;
@@ -86,15 +92,15 @@ use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use rustc::session::{early_error, early_warn};
+use rustc::session::early_error;
 
-use syntax::ast;
-use syntax::parse::{self, PResult};
-use syntax::errors;
-use syntax::errors::emitter::Emitter;
-use syntax::diagnostics;
-use syntax::parse::token;
+use syntax::{ast, json};
+use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
+use syntax::parse::{self, PResult};
+use syntax_pos::MultiSpan;
+use errors::emitter::Emitter;
+use errors::snippet::FormatMode;
 
 #[cfg(test)]
 pub mod test;
@@ -133,9 +139,15 @@ pub fn run(args: Vec<String>) -> isize {
                 match session {
                     Some(sess) => sess.fatal(&abort_msg(err_count)),
                     None => {
-                        let mut emitter =
-                            errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
-                        emitter.emit(None, &abort_msg(err_count), None, errors::Level::Fatal);
+                        let emitter =
+                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
+                                                                   None,
+                                                                   None,
+                                                                   FormatMode::EnvironmentSelected);
+                        let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
+                        handler.emit(&MultiSpan::new(),
+                                     &abort_msg(err_count),
+                                     errors::Level::Fatal);
                         exit_on_err();
                     }
                 }
@@ -145,11 +157,20 @@ pub fn run(args: Vec<String>) -> isize {
     0
 }
 
-// Parse args and run the compiler. This is the primary entry point for rustc.
-// See comments on CompilerCalls below for details about the callbacks argument.
 pub fn run_compiler<'a>(args: &[String],
                         callbacks: &mut CompilerCalls<'a>)
                         -> (CompileResult, Option<Session>) {
+    run_compiler_with_file_loader(args, callbacks, box RealFileLoader)
+}
+
+// Parse args and run the compiler. This is the primary entry point for rustc.
+// See comments on CompilerCalls below for details about the callbacks argument.
+// The FileLoader provides a way to load files from sources other than the file system.
+pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
+                                            callbacks: &mut CompilerCalls<'a>,
+                                            loader: Box<L>)
+                                            -> (CompileResult, Option<Session>)
+    where L: FileLoader + 'static {
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
             Compilation::Stop => return (Ok(()), $sess),
@@ -163,6 +184,10 @@ pub fn run_compiler<'a>(args: &[String],
     };
 
     let sopts = config::build_session_options(&matches);
+
+    if sopts.debugging_opts.debug_llvm {
+        unsafe { llvm::LLVMSetDebug(1); }
+    }
 
     let descriptions = diagnostics_registry();
 
@@ -181,29 +206,23 @@ pub fn run_compiler<'a>(args: &[String],
         },
     };
 
-    let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-    let sess = build_session(sopts, input_file_path, descriptions, cstore.clone());
+    let dep_graph = DepGraph::new(sopts.build_dep_graph());
+    let cstore = Rc::new(CStore::new(&dep_graph));
+    let codemap = Rc::new(CodeMap::with_file_loader(loader));
+    let sess = session::build_session_with_codemap(sopts,
+                                                   &dep_graph,
+                                                   input_file_path,
+                                                   descriptions,
+                                                   cstore.clone(),
+                                                   codemap);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let mut cfg = config::build_configuration(&sess);
     target_features::add_configuration(&mut cfg, &sess);
 
     do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile), Some(sess));
 
-    // It is somewhat unfortunate that this is hardwired in - this is forced by
-    // the fact that pretty_print_input requires the session by value.
-    let pretty = callbacks.parse_pretty(&sess, &matches);
-    match pretty {
-        Some((ppm, opt_uii)) => {
-            pretty::pretty_print_input(sess, &cstore, cfg, &input, ppm, opt_uii, ofile);
-            return (Ok(()), None);
-        }
-        None => {
-            // continue
-        }
-    }
-
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
-    let control = callbacks.build_controller(&sess);
+    let control = callbacks.build_controller(&sess, &matches);
     (driver::compile_input(&sess, &cstore, cfg, &input, &odir, &ofile,
                            Some(plugins), &control),
      Some(sess))
@@ -234,6 +253,27 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>)> {
     }
 }
 
+fn parse_pretty(sess: &Session,
+                matches: &getopts::Matches)
+                -> Option<(PpMode, Option<UserIdentifiedItem>)> {
+    let pretty = if sess.opts.debugging_opts.unstable_options {
+        matches.opt_default("pretty", "normal").map(|a| {
+            // stable pretty-print variants only
+            pretty::parse_pretty(sess, &a, false)
+        })
+    } else {
+        None
+    };
+    if pretty.is_none() && sess.unstable_options() {
+        matches.opt_str("unpretty").map(|a| {
+            // extended with unstable pretty-print variants
+            pretty::parse_pretty(sess, &a, true)
+        })
+    } else {
+        pretty
+    }
+}
+
 // Whether to stop or continue compilation.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Compilation {
@@ -259,7 +299,7 @@ pub trait CompilerCalls<'a> {
     fn early_callback(&mut self,
                       _: &getopts::Matches,
                       _: &config::Options,
-                      _: &diagnostics::registry::Registry,
+                      _: &errors::registry::Registry,
                       _: ErrorOutputType)
                       -> Compilation {
         Compilation::Continue
@@ -298,34 +338,14 @@ pub trait CompilerCalls<'a> {
                 _: &config::Options,
                 _: &Option<PathBuf>,
                 _: &Option<PathBuf>,
-                _: &diagnostics::registry::Registry)
+                _: &errors::registry::Registry)
                 -> Option<(Input, Option<PathBuf>)> {
-        None
-    }
-
-    // Parse pretty printing information from the arguments. The implementer can
-    // choose to ignore this (the default will return None) which will skip pretty
-    // printing. If you do want to pretty print, it is recommended to use the
-    // implementation of this method from RustcDefaultCalls.
-    // FIXME, this is a terrible bit of API. Parsing of pretty printing stuff
-    // should be done as part of the framework and the implementor should customise
-    // handling of it. However, that is not possible atm because pretty printing
-    // essentially goes off and takes another path through the compiler which
-    // means the session is either moved or not depending on what parse_pretty
-    // returns (we could fix this by cloning, but it's another hack). The proper
-    // solution is to handle pretty printing as if it were a compiler extension,
-    // extending CompileController to make this work (see for example the treatment
-    // of save-analysis in RustcDefaultCalls::build_controller).
-    fn parse_pretty(&mut self,
-                    _sess: &Session,
-                    _matches: &getopts::Matches)
-                    -> Option<(PpMode, Option<UserIdentifiedItem>)> {
         None
     }
 
     // Create a CompilController struct for controlling the behaviour of
     // compilation.
-    fn build_controller(&mut self, &Session) -> CompileController<'a>;
+    fn build_controller(&mut self, &Session, &getopts::Matches) -> CompileController<'a>;
 }
 
 // CompilerCalls instance for a regular rustc build.
@@ -333,7 +353,7 @@ pub trait CompilerCalls<'a> {
 pub struct RustcDefaultCalls;
 
 fn handle_explain(code: &str,
-                  descriptions: &diagnostics::registry::Registry,
+                  descriptions: &errors::registry::Registry,
                   output: ErrorOutputType) {
     let normalised = if code.starts_with("E") {
         code.to_string()
@@ -343,7 +363,13 @@ fn handle_explain(code: &str,
     match descriptions.find_description(&normalised) {
         Some(ref description) => {
             // Slice off the leading newline and print.
-            print!("{}", &description[1..]);
+            print!("{}", &(&description[1..]).split("\n").map(|x| {
+                format!("{}\n", if x.starts_with("```") {
+                    "```"
+                } else {
+                    x
+                })
+            }).collect::<String>());
         }
         None => {
             early_error(output, &format!("no extended information for {}", code));
@@ -353,23 +379,26 @@ fn handle_explain(code: &str,
 
 fn check_cfg(sopts: &config::Options,
              output: ErrorOutputType) {
-    let mut emitter: Box<Emitter> = match output {
+    let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(errors::emitter::BasicEmitter::stderr(color_config))
+            Box::new(errors::emitter::EmitterWriter::stderr(color_config,
+                                                            None,
+                                                            None,
+                                                            FormatMode::EnvironmentSelected))
         }
-        config::ErrorOutputType::Json => Box::new(errors::json::JsonEmitter::basic()),
+        config::ErrorOutputType::Json => Box::new(json::JsonEmitter::basic()),
     };
+    let handler = errors::Handler::with_emitter(true, false, emitter);
 
     let mut saw_invalid_predicate = false;
     for item in sopts.cfg.iter() {
         match item.node {
             ast::MetaItemKind::List(ref pred, _) => {
                 saw_invalid_predicate = true;
-                emitter.emit(None,
+                handler.emit(&MultiSpan::new(),
                              &format!("invalid predicate in --cfg command line argument: `{}`",
                                       pred),
-                             None,
-                             errors::Level::Fatal);
+                                errors::Level::Fatal);
             }
             _ => {},
         }
@@ -384,7 +413,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
                       sopts: &config::Options,
-                      descriptions: &diagnostics::registry::Registry,
+                      descriptions: &errors::registry::Registry,
                       output: ErrorOutputType)
                       -> Compilation {
         if let Some(ref code) = matches.opt_str("explain") {
@@ -401,7 +430,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 sopts: &config::Options,
                 odir: &Option<PathBuf>,
                 ofile: &Option<PathBuf>,
-                descriptions: &diagnostics::registry::Registry)
+                descriptions: &errors::registry::Registry)
                 -> Option<(Input, Option<PathBuf>)> {
         match matches.free.len() {
             0 => {
@@ -411,9 +440,13 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     describe_lints(&ls, false);
                     return None;
                 }
-                let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-                let sess = build_session(sopts.clone(), None, descriptions.clone(),
-                                         cstore.clone());
+                let dep_graph = DepGraph::new(sopts.build_dep_graph());
+                let cstore = Rc::new(CStore::new(&dep_graph));
+                let sess = build_session(sopts.clone(),
+                    &dep_graph,
+                    None,
+                    descriptions.clone(),
+                    cstore.clone());
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let should_stop = RustcDefaultCalls::print_crate_info(&sess, None, odir, ofile);
                 if should_stop == Compilation::Stop {
@@ -428,28 +461,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         None
     }
 
-    fn parse_pretty(&mut self,
-                    sess: &Session,
-                    matches: &getopts::Matches)
-                    -> Option<(PpMode, Option<UserIdentifiedItem>)> {
-        let pretty = if sess.opts.debugging_opts.unstable_options {
-            matches.opt_default("pretty", "normal").map(|a| {
-                // stable pretty-print variants only
-                pretty::parse_pretty(sess, &a, false)
-            })
-        } else {
-            None
-        };
-        if pretty.is_none() && sess.unstable_options() {
-            matches.opt_str("unpretty").map(|a| {
-                // extended with unstable pretty-print variants
-                pretty::parse_pretty(sess, &a, true)
-            })
-        } else {
-            pretty
-        }
-    }
-
     fn late_callback(&mut self,
                      matches: &getopts::Matches,
                      sess: &Session,
@@ -461,8 +472,47 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             .and_then(|| RustcDefaultCalls::list_metadata(sess, matches, input))
     }
 
-    fn build_controller(&mut self, sess: &Session) -> CompileController<'a> {
+    fn build_controller(&mut self,
+                        sess: &Session,
+                        matches: &getopts::Matches)
+                        -> CompileController<'a> {
         let mut control = CompileController::basic();
+
+        if let Some((ppm, opt_uii)) = parse_pretty(sess, matches) {
+            if ppm.needs_ast_map(&opt_uii) {
+                control.after_hir_lowering.stop = Compilation::Stop;
+
+                control.after_parse.callback = box move |state| {
+                    state.krate = Some(pretty::fold_crate(state.krate.take().unwrap(), ppm));
+                };
+                control.after_hir_lowering.callback = box move |state| {
+                    pretty::print_after_hir_lowering(state.session,
+                                                     state.ast_map.unwrap(),
+                                                     state.analysis.unwrap(),
+                                                     state.resolutions.unwrap(),
+                                                     state.input,
+                                                     &state.expanded_crate.take().unwrap(),
+                                                     state.crate_name.unwrap(),
+                                                     ppm,
+                                                     state.arenas.unwrap(),
+                                                     opt_uii.clone(),
+                                                     state.out_file);
+                };
+            } else {
+                control.after_parse.stop = Compilation::Stop;
+
+                control.after_parse.callback = box move |state| {
+                    let krate = pretty::fold_crate(state.krate.take().unwrap(), ppm);
+                    pretty::print_after_parsing(state.session,
+                                                state.input,
+                                                &krate,
+                                                ppm,
+                                                state.out_file);
+                };
+            }
+
+            return control;
+        }
 
         if sess.opts.parse_only || sess.opts.debugging_opts.show_span.is_some() ||
            sess.opts.debugging_opts.ast_json_noexpand {
@@ -470,26 +520,22 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         }
 
         if sess.opts.no_analysis || sess.opts.debugging_opts.ast_json {
-            control.after_write_deps.stop = Compilation::Stop;
-        }
-
-        if sess.opts.no_trans {
-            control.after_analysis.stop = Compilation::Stop;
+            control.after_hir_lowering.stop = Compilation::Stop;
         }
 
         if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe) {
             control.after_llvm.stop = Compilation::Stop;
         }
 
-        if sess.opts.debugging_opts.save_analysis {
+        if save_analysis(sess) {
             control.after_analysis.callback = box |state| {
                 time(state.session.time_passes(), "save analysis", || {
                     save::process_crate(state.tcx.unwrap(),
-                                        state.lcx.unwrap(),
-                                        state.krate.unwrap(),
+                                        state.expanded_crate.unwrap(),
                                         state.analysis.unwrap(),
                                         state.crate_name.unwrap(),
-                                        state.out_dir)
+                                        state.out_dir,
+                                        save_analysis_format(state.session))
                 });
             };
             control.after_analysis.run_callback_on_error = true;
@@ -497,6 +543,21 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         }
 
         control
+    }
+}
+
+fn save_analysis(sess: &Session) -> bool {
+    sess.opts.debugging_opts.save_analysis ||
+    sess.opts.debugging_opts.save_analysis_csv
+}
+
+fn save_analysis_format(sess: &Session) -> save::Format {
+    if sess.opts.debugging_opts.save_analysis {
+        save::Format::Json
+    } else if sess.opts.debugging_opts.save_analysis_csv {
+        save::Format::Csv
+    } else {
+        unreachable!();
     }
 }
 
@@ -567,8 +628,6 @@ impl RustcDefaultCalls {
                         continue;
                     }
                     let crate_types = driver::collect_crate_types(sess, attrs);
-                    let metadata = driver::collect_crate_metadata(sess, attrs);
-                    *sess.crate_metadata.borrow_mut() = metadata;
                     for &style in &crate_types {
                         let fname = link::filename_for_input(sess, style, &id, &t_outputs);
                         println!("{}",
@@ -905,51 +964,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   (unstable option being used on stable)
     // * If we're a historically stable-but-should-be-unstable option then we
     //   emit a warning that we're going to turn this into an error soon.
-    let has_z_unstable_options = matches.opt_strs("Z")
-                                        .iter()
-                                        .any(|x| *x == "unstable-options");
-    let really_allows_unstable_options = match get_unstable_features_setting() {
-        UnstableFeatures::Disallow => false,
-        _ => true,
-    };
-    for opt in config::rustc_optgroups() {
-        if opt.stability == OptionStability::Stable {
-            continue
-        }
-        let opt_name = if opt.opt_group.long_name.is_empty() {
-            &opt.opt_group.short_name
-        } else {
-            &opt.opt_group.long_name
-        };
-        if !matches.opt_present(opt_name) {
-            continue
-        }
-        if opt_name != "Z" && !has_z_unstable_options {
-            let msg = format!("the `-Z unstable-options` flag must also be \
-                               passed to enable the flag `{}`", opt_name);
-            early_error(ErrorOutputType::default(), &msg);
-        }
-        if really_allows_unstable_options {
-            continue
-        }
-        match opt.stability {
-            OptionStability::Unstable => {
-                let msg = format!("the option `{}` is only accepted on the \
-                                   nightly compiler", opt_name);
-                early_error(ErrorOutputType::default(), &msg);
-            }
-            OptionStability::UnstableButNotReally => {
-                let msg = format!("the option `{}` is is unstable and should \
-                                   only be used on the nightly compiler, but \
-                                   it is currently accepted for backwards \
-                                   compatibility; this will soon change, \
-                                   see issue #31847 for more details",
-                                  opt_name);
-                early_warn(ErrorOutputType::default(), &msg);
-            }
-            OptionStability::Stable => {}
-        }
-    }
+    nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
 
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we *really* accept unstable
@@ -957,12 +972,11 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
         // the stable channel of Rust which was accidentally allowed
         // historically.
         usage(matches.opt_present("verbose"),
-              has_z_unstable_options && really_allows_unstable_options);
+              nightly_options::is_unstable_enabled(&matches));
         return None;
     }
 
     // Don't handle -W help here, because we might first load plugins.
-
     let r = matches.opt_strs("Z");
     if r.iter().any(|x| *x == "help") {
         describe_debug_flags();
@@ -1041,23 +1055,34 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
      if let Err(value) = thread.unwrap().join() {
         // Thread panicked without emitting a fatal diagnostic
         if !value.is::<errors::FatalError>() {
-            let mut emitter = errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
+            let emitter =
+                Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
+                                                       None,
+                                                       None,
+                                                       FormatMode::EnvironmentSelected));
+            let handler = errors::Handler::with_emitter(true, false, emitter);
 
             // a .span_bug or .bug call has already printed what
             // it wants to print.
             if !value.is::<errors::ExplicitBug>() {
-                emitter.emit(None, "unexpected panic", None, errors::Level::Bug);
+                handler.emit(&MultiSpan::new(),
+                             "unexpected panic",
+                             errors::Level::Bug);
             }
 
             let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
                       format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
             for note in &xs {
-                emitter.emit(None, &note[..], None, errors::Level::Note)
+                handler.emit(&MultiSpan::new(),
+                             &note[..],
+                             errors::Level::Note);
             }
-            if let None = env::var_os("RUST_BACKTRACE") {
-                emitter.emit(None,
+            if match env::var_os("RUST_BACKTRACE") {
+                Some(val) => &val != "0",
+                None => false,
+            } {
+                handler.emit(&MultiSpan::new(),
                              "run with `RUST_BACKTRACE=1` for a backtrace",
-                             None,
                              errors::Level::Note);
             }
 
@@ -1076,8 +1101,8 @@ fn exit_on_err() -> ! {
     panic!();
 }
 
-pub fn diagnostics_registry() -> diagnostics::registry::Registry {
-    use syntax::diagnostics::registry::Registry;
+pub fn diagnostics_registry() -> errors::registry::Registry {
+    use errors::registry::Registry;
 
     let mut all_errors = Vec::new();
     all_errors.extend_from_slice(&rustc::DIAGNOSTICS);
@@ -1086,6 +1111,7 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
     all_errors.extend_from_slice(&rustc_resolve::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
 
     Registry::new(&all_errors)
 }

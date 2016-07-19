@@ -24,18 +24,16 @@ changed from one `i32` to another.
 
 [vb]: variable-bindings.html
 
-If you want to change what the binding points to, you’ll need a [mutable reference][mr]:
+You can also create a [reference][ref] to it, using `&x`, but if you want to use the reference to change it, you will need a mutable reference:
 
 ```rust
 let mut x = 5;
 let y = &mut x;
 ```
 
-[mr]: references-and-borrowing.html
+[ref]: references-and-borrowing.html
 
-`y` is an immutable binding to a mutable reference, which means that you can’t
-bind `y` to something else (`y = &mut z`), but you can mutate the thing that’s
-bound to `y` (`*y = 5`). A subtle distinction.
+`y` is an immutable binding to a mutable reference, which means that you can’t bind 'y' to something else (`y = &mut z`), but `y` can be used to bind `x` to something else (`*y = 5`). A subtle distinction.
 
 Of course, if you need both:
 
@@ -57,13 +55,15 @@ fn foo(mut x: i32) {
 # }
 ```
 
+Note that here, the `x` is mutable, but not the `y`.
+
 [pattern]: patterns.html
 
 # Interior vs. Exterior Mutability
 
 However, when we say something is ‘immutable’ in Rust, that doesn’t mean that
-it’s not able to be changed: we mean something has ‘exterior mutability’. Consider,
-for example, [`Arc<T>`][arc]:
+it’s not able to be changed: we are referring to its ‘exterior mutability’ that
+in this case is immutable. Consider, for example, [`Arc<T>`][arc]:
 
 ```rust
 use std::sync::Arc;

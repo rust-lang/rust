@@ -12,9 +12,10 @@ use prelude::v1::*;
 use os::windows::prelude::*;
 
 use ffi::OsStr;
-use path::Path;
 use io;
 use mem;
+use path::Path;
+use ptr;
 use rand::{self, Rng};
 use slice;
 use sys::c;
@@ -66,7 +67,7 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
                                              4096,
                                              4096,
                                              0,
-                                             0 as *mut _);
+                                             ptr::null_mut());
 
             // We pass the FILE_FLAG_FIRST_PIPE_INSTANCE flag above, and we're
             // also just doing a best effort at selecting a unique name. If
@@ -95,7 +96,7 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
         opts.read(false);
         opts.share_mode(0);
         opts.attributes(c::FILE_FLAG_OVERLAPPED);
-        let writer = try!(File::open(Path::new(&name), &opts));
+        let writer = File::open(Path::new(&name), &opts)?;
         let writer = AnonPipe { inner: writer.into_handle() };
 
         Ok((AnonPipe { inner: reader }, AnonPipe { inner: writer.into_handle() }))
@@ -126,8 +127,8 @@ pub fn read2(p1: AnonPipe,
     let p1 = p1.into_handle();
     let p2 = p2.into_handle();
 
-    let mut p1 = try!(AsyncPipe::new(p1, v1));
-    let mut p2 = try!(AsyncPipe::new(p2, v2));
+    let mut p1 = AsyncPipe::new(p1, v1)?;
+    let mut p2 = AsyncPipe::new(p2, v2)?;
     let objs = [p1.event.raw(), p2.event.raw()];
 
     // In a loop we wait for either pipe's scheduled read operation to complete.
@@ -143,11 +144,11 @@ pub fn read2(p1: AnonPipe,
             c::WaitForMultipleObjects(2, objs.as_ptr(), c::FALSE, c::INFINITE)
         };
         if res == c::WAIT_OBJECT_0 {
-            if !try!(p1.result()) || !try!(p1.schedule_read()) {
+            if !p1.result()? || !p1.schedule_read()? {
                 return p2.finish()
             }
         } else if res == c::WAIT_OBJECT_0 + 1 {
-            if !try!(p2.result()) || !try!(p2.schedule_read()) {
+            if !p2.result()? || !p2.schedule_read()? {
                 return p1.finish()
             }
         } else {
@@ -183,7 +184,7 @@ impl<'a> AsyncPipe<'a> {
         // WaitForMultipleObjects call above for pipes created initially,
         // and the only time an even will go back to "unset" will be once an
         // I/O operation is successfully scheduled (what we want).
-        let event = try!(Handle::new_event(true, true));
+        let event = Handle::new_event(true, true)?;
         let mut overlapped: Box<c::OVERLAPPED> = unsafe {
             Box::new(mem::zeroed())
         };
@@ -207,7 +208,7 @@ impl<'a> AsyncPipe<'a> {
         assert_eq!(self.state, State::NotReading);
         let amt = unsafe {
             let slice = slice_to_end(self.dst);
-            try!(self.pipe.read_overlapped(slice, &mut *self.overlapped))
+            self.pipe.read_overlapped(slice, &mut *self.overlapped)?
         };
 
         // If this read finished immediately then our overlapped event will
@@ -240,7 +241,7 @@ impl<'a> AsyncPipe<'a> {
         let amt = match self.state {
             State::NotReading => return Ok(true),
             State::Reading => {
-                try!(self.pipe.overlapped_result(&mut *self.overlapped, true))
+                self.pipe.overlapped_result(&mut *self.overlapped, true)?
             }
             State::Read(amt) => amt,
         };
@@ -257,7 +258,7 @@ impl<'a> AsyncPipe<'a> {
     /// Waits for any pending and schedule read, and then calls `read_to_end`
     /// if necessary to read all the remaining information.
     fn finish(&mut self) -> io::Result<()> {
-        while try!(self.result()) && try!(self.schedule_read()) {
+        while self.result()? && self.schedule_read()? {
             // ...
         }
         Ok(())

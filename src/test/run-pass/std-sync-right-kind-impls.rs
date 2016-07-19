@@ -18,9 +18,6 @@ use std::sync;
 fn assert_both<T: Sync + Send>() {}
 
 fn main() {
-    assert_both::<sync::StaticMutex>();
-    assert_both::<sync::StaticCondvar>();
-    assert_both::<sync::StaticRwLock>();
     assert_both::<sync::Mutex<()>>();
     assert_both::<sync::Condvar>();
     assert_both::<sync::RwLock<()>>();

@@ -53,6 +53,11 @@
 // gdb-command:print *((int64_t[2]*)('vec_slices::MUT_VECT_SLICE'.data_ptr))
 // gdb-check:$15 = {64, 65}
 
+//gdb-command:print mut_slice.length
+//gdb-check:$16 = 5
+//gdb-command:print *((int64_t[5]*)(mut_slice.data_ptr))
+//gdb-check:$17 = {1, 2, 3, 4, 5}
+
 
 // === LLDB TESTS ==================================================================================
 
@@ -105,6 +110,8 @@ fn main() {
     unsafe {
         MUT_VECT_SLICE = VECT_SLICE;
     }
+
+    let mut_slice: &mut [i64] = &mut [1, 2, 3, 4, 5];
 
     zzz(); // #break
 }

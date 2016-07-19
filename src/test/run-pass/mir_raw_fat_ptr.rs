@@ -121,7 +121,6 @@ impl<T> Foo for T {
 
 struct S<T:?Sized>(u32, T);
 
-#[rustc_no_mir] // FIXME #27840 MIR can't do rvalue promotion yet.
 fn main() {
     let array = [0,1,2,3,4];
     let array2 = [5,6,7,8,9];

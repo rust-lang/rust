@@ -14,10 +14,12 @@
 extern crate libc;
 extern crate rustc;
 extern crate rustc_driver;
-extern crate rustc_front;
 extern crate rustc_lint;
+extern crate rustc_llvm as llvm;
 extern crate rustc_metadata;
 extern crate rustc_resolve;
+extern crate rustc_errors;
+extern crate rustc_errors as errors;
 #[macro_use] extern crate syntax;
 
 use std::ffi::{CStr, CString};
@@ -27,20 +29,17 @@ use std::rc::Rc;
 use std::thread::Builder;
 
 use rustc::dep_graph::DepGraph;
-use rustc::front::map as ast_map;
-use rustc::llvm;
-use rustc::middle::cstore::{CrateStore, LinkagePreference};
-use rustc::middle::ty;
+use rustc::hir::map as ast_map;
+use rustc::middle::cstore::LinkagePreference;
+use rustc::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Input, Options};
 use rustc::session::build_session;
 use rustc_driver::{driver, abort_on_err};
-use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_resolve::MakeGlobMap;
 use rustc_metadata::cstore::CStore;
 use libc::c_void;
 
-use syntax::diagnostics::registry::Registry;
-use syntax::parse::token;
+use rustc_errors::registry::Registry;
 
 fn main() {
     // Currently trips an assertion on i686-msvc, presumably because the support
@@ -224,8 +223,12 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
     let handle = thread.spawn(move || {
         let opts = build_exec_options(sysroot);
-        let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-        let sess = build_session(opts, None, Registry::new(&rustc::DIAGNOSTICS),
+        let dep_graph = DepGraph::new(opts.build_dep_graph());
+        let cstore = Rc::new(CStore::new(&dep_graph));
+        let sess = build_session(opts,
+                                 &dep_graph,
+                                 None,
+                                 Registry::new(&rustc::DIAGNOSTICS),
                                  cstore.clone());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
@@ -235,19 +238,18 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
         let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
 
-        let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None)
-            .expect("phase_2 returned `None`");
+        let driver::ExpansionResult { defs, analysis, resolutions, mut hir_forest, .. } = {
+            driver::phase_2_configure_and_expand(
+                &sess, &cstore, krate, &id, None, MakeGlobMap::No, |_| Ok(()),
+            ).expect("phase_2 returned `None`")
+        };
 
-        let krate = driver::assign_node_ids(&sess, krate);
-        let lcx = LoweringContext::new(&sess, Some(&krate));
-        let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
-        let mut hir_forest = ast_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
         let arenas = ty::CtxtArenas::new();
-        let ast_map = driver::make_map(&sess, &mut hir_forest);
+        let ast_map = ast_map::map_crate(&mut hir_forest, defs);
 
         abort_on_err(driver::phase_3_run_analysis_passes(
-            &sess, &cstore, ast_map, &arenas, &id,
-            MakeGlobMap::No, |tcx, mir_map, analysis, _| {
+            &sess, ast_map, analysis, resolutions, &arenas, &id,
+            |tcx, mir_map, analysis, _| {
 
             let trans = driver::phase_4_translate_to_llvm(tcx, mir_map.unwrap(), analysis);
 

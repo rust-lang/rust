@@ -6,7 +6,7 @@
 
 Prefer
 
-```rust
+```rust,ignore
 fn foo(b: Bar) {
    // use b as owned, directly
 }
@@ -14,7 +14,7 @@ fn foo(b: Bar) {
 
 over
 
-```rust
+```rust,ignore
 fn foo(b: &Bar) {
     let b = b.clone();
     // use b as owned after cloning
@@ -33,13 +33,13 @@ needed, not as a way of signaling that copies should be cheap to make.
 
 Prefer
 
-```rust
+```rust,ignore
 fn foo(b: Bar) -> Bar { ... }
 ```
 
 over
 
-```rust
+```rust,ignore
 fn foo(b: Box<Bar>) -> Box<Bar> { ... }
 ```
 
@@ -56,13 +56,13 @@ it becomes.
 
 Prefer
 
-```rust
+```rust,ignore
 fn foo<T: Iterator<i32>>(c: T) { ... }
 ```
 
 over any of
 
-```rust
+```rust,ignore
 fn foo(c: &[i32]) { ... }
 fn foo(c: &Vec<i32>) { ... }
 fn foo(c: &SomeOtherCollection<i32>) { ... }
@@ -83,14 +83,14 @@ concrete nor overly abstract. See the discussion on
 
 Prefer either of
 
-```rust
+```rust,ignore
 fn foo(b: &Bar) { ... }
 fn foo(b: &mut Bar) { ... }
 ```
 
 over
 
-```rust
+```rust,ignore
 fn foo(b: Bar) { ... }
 ```
 
@@ -101,13 +101,13 @@ ownership is actually needed.
 
 Prefer
 
-```rust
+```rust,ignore
 fn foo() -> (Bar, Bar)
 ```
 
 over
 
-```rust
+```rust,ignore
 fn foo(output: &mut Bar) -> Bar
 ```
 
@@ -120,7 +120,7 @@ multiple values, it should do so via one of these types.
 The primary exception: sometimes a function is meant to modify data
 that the caller already owns, for example to re-use a buffer:
 
-```rust
+```rust,ignore
 fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize>
 ```
 
@@ -146,7 +146,7 @@ Choose an argument type that rules out bad inputs.
 
 For example, prefer
 
-```rust
+```rust,ignore
 enum FooMode {
     Mode1,
     Mode2,
@@ -157,7 +157,7 @@ fn foo(mode: FooMode) { ... }
 
 over
 
-```rust
+```rust,ignore
 fn foo(mode2: bool, mode3: bool) {
     assert!(!mode2 || !mode3);
     ...

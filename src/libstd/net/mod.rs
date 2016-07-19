@@ -74,7 +74,7 @@ fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
     where F: FnMut(&SocketAddr) -> io::Result<T>
 {
     let mut last_err = None;
-    for addr in try!(addr.to_socket_addrs()) {
+    for addr in addr.to_socket_addrs()? {
         match f(&addr) {
             Ok(l) => return Ok(l),
             Err(e) => last_err = Some(e),
@@ -98,14 +98,17 @@ pub struct LookupHost(net_imp::LookupHost);
                                               addresses",
            issue = "27705")]
 impl Iterator for LookupHost {
-    type Item = io::Result<SocketAddr>;
-    fn next(&mut self) -> Option<io::Result<SocketAddr>> { self.0.next() }
+    type Item = SocketAddr;
+    fn next(&mut self) -> Option<SocketAddr> { self.0.next() }
 }
 
 /// Resolve the host specified by `host` as a number of `SocketAddr` instances.
 ///
 /// This method may perform a DNS query to resolve `host` and may also inspect
 /// system configuration to resolve the specified hostname.
+///
+/// The returned iterator will skip over any unknown addresses returned by the
+/// operating system.
 ///
 /// # Examples
 ///
@@ -116,7 +119,7 @@ impl Iterator for LookupHost {
 ///
 /// # fn foo() -> std::io::Result<()> {
 /// for host in try!(net::lookup_host("rust-lang.org")) {
-///     println!("found address: {}", try!(host));
+///     println!("found address: {}", host);
 /// }
 /// # Ok(())
 /// # }

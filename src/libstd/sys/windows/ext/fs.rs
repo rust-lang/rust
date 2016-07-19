@@ -19,9 +19,7 @@ use sys;
 use sys_common::{AsInnerMut, AsInner};
 
 /// Windows-specific extensions to `OpenOptions`
-#[unstable(feature = "open_options_ext",
-           reason = "may require more thought/methods",
-           issue = "27720")]
+#[stable(feature = "open_options_ext", since = "1.10.0")]
 pub trait OpenOptionsExt {
     /// Overrides the `dwDesiredAccess` argument to the call to `CreateFile`
     /// with the specified value.
@@ -34,7 +32,6 @@ pub trait OpenOptionsExt {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(open_options_ext)]
     /// use std::fs::OpenOptions;
     /// use std::os::windows::fs::OpenOptionsExt;
     ///
@@ -42,6 +39,7 @@ pub trait OpenOptionsExt {
     /// // to call `stat()` on the file
     /// let file = OpenOptions::new().access_mode(0).open("foo.txt");
     /// ```
+    #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn access_mode(&mut self, access: u32) -> &mut Self;
 
     /// Overrides the `dwShareMode` argument to the call to `CreateFile` with
@@ -55,7 +53,6 @@ pub trait OpenOptionsExt {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(open_options_ext)]
     /// use std::fs::OpenOptions;
     /// use std::os::windows::fs::OpenOptionsExt;
     ///
@@ -65,6 +62,7 @@ pub trait OpenOptionsExt {
     ///                              .share_mode(0)
     ///                              .open("foo.txt");
     /// ```
+    #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn share_mode(&mut self, val: u32) -> &mut Self;
 
     /// Sets extra flags for the `dwFileFlags` argument to the call to
@@ -88,9 +86,7 @@ pub trait OpenOptionsExt {
     /// }
     /// let file = options.open("foo.txt");
     /// ```
-    #[unstable(feature = "expand_open_options",
-               reason = "recently added",
-               issue = "30014")]
+    #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn custom_flags(&mut self, flags: u32) -> &mut Self;
 
     /// Sets the `dwFileAttributes` argument to the call to `CreateFile2` to
@@ -111,7 +107,6 @@ pub trait OpenOptionsExt {
     /// # Examples
     ///
     /// ```rust,ignore
-    /// #![feature(open_options_ext)]
     /// extern crate winapi;
     /// use std::fs::OpenOptions;
     /// use std::os::windows::fs::OpenOptionsExt;
@@ -120,17 +115,17 @@ pub trait OpenOptionsExt {
     ///                              .attributes(winapi::FILE_ATTRIBUTE_HIDDEN)
     ///                              .open("foo.txt");
     /// ```
+    #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn attributes(&mut self, val: u32) -> &mut Self;
 
     /// Sets the `dwSecurityQosFlags` argument to the call to `CreateFile2` to
     /// the specified value (or combines it with `custom_flags` and `attributes`
     /// to set the `dwFlagsAndAttributes` for `CreateFile`).
+    #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn security_qos_flags(&mut self, flags: u32) -> &mut OpenOptions;
 }
 
-#[unstable(feature = "open_options_ext",
-           reason = "may require more thought/methods",
-           issue = "27720")]
+#[stable(feature = "open_options_ext", since = "1.10.0")]
 impl OpenOptionsExt for OpenOptions {
     fn access_mode(&mut self, access: u32) -> &mut OpenOptions {
         self.as_inner_mut().access_mode(access); self

@@ -182,11 +182,10 @@
 //!
 //! # fn foo() -> io::Result<()> {
 //! let f = try!(File::open("foo.txt"));
-//! let mut reader = BufReader::new(f);
+//! let reader = BufReader::new(f);
 //!
 //! for line in reader.lines() {
-//!     let line = try!(line);
-//!     println!("{}", line);
+//!     println!("{}", try!(line));
 //! }
 //!
 //! # Ok(())
@@ -195,7 +194,7 @@
 //!
 //! ## Functions
 //!
-//! There are a number of [functions][functions] that offer access to various
+//! There are a number of [functions][functions-list] that offer access to various
 //! features. For example, we can use three of these functions to copy everything
 //! from standard input to standard output:
 //!
@@ -208,7 +207,7 @@
 //! # }
 //! ```
 //!
-//! [functions]: #functions
+//! [functions-list]: #functions-1
 //!
 //! ## io::Result
 //!
@@ -292,7 +291,7 @@ mod lazy;
 mod util;
 mod stdio;
 
-const DEFAULT_BUF_SIZE: usize = 64 * 1024;
+const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
 // A few methods below (read_to_string, read_line) will append data into a
 // `String` buffer, but we need to be pretty careful when doing this. The
@@ -1254,7 +1253,7 @@ pub trait BufRead: Read {
     /// longer be returned. As such, this function may do odd things if
     /// `fill_buf` isn't called before calling it.
     ///
-    /// [fillbuf]: #tymethod.fill_buff
+    /// [fillbuf]: #tymethod.fill_buf
     ///
     /// The `amt` must be `<=` the number of bytes in the buffer returned by
     /// `fill_buf`.
@@ -1433,12 +1432,33 @@ pub struct Chain<T, U> {
 impl<T: Read, U: Read> Read for Chain<T, U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         if !self.done_first {
-            match try!(self.first.read(buf)) {
+            match self.first.read(buf)? {
                 0 => { self.done_first = true; }
                 n => return Ok(n),
             }
         }
         self.second.read(buf)
+    }
+}
+
+#[stable(feature = "chain_bufread", since = "1.9.0")]
+impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
+    fn fill_buf(&mut self) -> Result<&[u8]> {
+        if !self.done_first {
+            match self.first.fill_buf()? {
+                buf if buf.len() == 0 => { self.done_first = true; }
+                buf => return Ok(buf),
+            }
+        }
+        self.second.fill_buf()
+    }
+
+    fn consume(&mut self, amt: usize) {
+        if !self.done_first {
+            self.first.consume(amt)
+        } else {
+            self.second.consume(amt)
+        }
     }
 }
 
@@ -1475,7 +1495,7 @@ impl<T: Read> Read for Take<T> {
         }
 
         let max = cmp::min(buf.len() as u64, self.limit) as usize;
-        let n = try!(self.inner.read(&mut buf[..max]));
+        let n = self.inner.read(&mut buf[..max])?;
         self.limit -= n as u64;
         Ok(n)
     }
@@ -1484,7 +1504,12 @@ impl<T: Read> Read for Take<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: BufRead> BufRead for Take<T> {
     fn fill_buf(&mut self) -> Result<&[u8]> {
-        let buf = try!(self.inner.fill_buf());
+        // Don't call into inner reader at all at EOF because it may still block
+        if self.limit == 0 {
+            return Ok(&[]);
+        }
+
+        let buf = self.inner.fill_buf()?;
         let cap = cmp::min(buf.len() as u64, self.limit) as usize;
         Ok(&buf[..cap])
     }
@@ -1575,7 +1600,7 @@ impl<R: Read> Iterator for Chars<R> {
             }
         }
         Some(match str::from_utf8(&buf[..width]).ok() {
-            Some(s) => Ok(s.char_at(0)),
+            Some(s) => Ok(s.chars().next().unwrap()),
             None => Err(CharsError::NotUtf8),
         })
     }
@@ -1839,9 +1864,49 @@ mod tests {
                 Err(io::Error::new(io::ErrorKind::Other, ""))
             }
         }
+        impl BufRead for R {
+            fn fill_buf(&mut self) -> io::Result<&[u8]> {
+                Err(io::Error::new(io::ErrorKind::Other, ""))
+            }
+            fn consume(&mut self, _amt: usize) { }
+        }
 
         let mut buf = [0; 1];
         assert_eq!(0, R.take(0).read(&mut buf).unwrap());
+        assert_eq!(b"", R.take(0).fill_buf().unwrap());
+    }
+
+    fn cmp_bufread<Br1: BufRead, Br2: BufRead>(mut br1: Br1, mut br2: Br2, exp: &[u8]) {
+        let mut cat = Vec::new();
+        loop {
+            let consume = {
+                let buf1 = br1.fill_buf().unwrap();
+                let buf2 = br2.fill_buf().unwrap();
+                let minlen = if buf1.len() < buf2.len() { buf1.len() } else { buf2.len() };
+                assert_eq!(buf1[..minlen], buf2[..minlen]);
+                cat.extend_from_slice(&buf1[..minlen]);
+                minlen
+            };
+            if consume == 0 {
+                break;
+            }
+            br1.consume(consume);
+            br2.consume(consume);
+        }
+        assert_eq!(br1.fill_buf().unwrap().len(), 0);
+        assert_eq!(br2.fill_buf().unwrap().len(), 0);
+        assert_eq!(&cat[..], &exp[..])
+    }
+
+    #[test]
+    fn chain_bufread() {
+        let testdata = b"ABCDEFGHIJKL";
+        let chain1 = (&testdata[..3]).chain(&testdata[3..6])
+                                     .chain(&testdata[6..9])
+                                     .chain(&testdata[9..]);
+        let chain2 = (&testdata[..4]).chain(&testdata[4..8])
+                                     .chain(&testdata[8..]);
+        cmp_bufread(chain1, chain2, &testdata[..]);
     }
 
     #[bench]

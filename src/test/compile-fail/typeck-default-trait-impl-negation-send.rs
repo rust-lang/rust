@@ -27,5 +27,5 @@ fn is_send<T: Send>() {}
 fn main() {
     is_send::<MySendable>();
     is_send::<MyNotSendable>();
-    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `MyNotSendable`
+    //~^ ERROR `MyNotSendable: std::marker::Send` is not satisfied
 }

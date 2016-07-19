@@ -17,16 +17,21 @@ use sync::{Mutex, Condvar};
 /// use std::sync::{Arc, Barrier};
 /// use std::thread;
 ///
+/// let mut handles = Vec::with_capacity(10);
 /// let barrier = Arc::new(Barrier::new(10));
 /// for _ in 0..10 {
 ///     let c = barrier.clone();
 ///     // The same messages will be printed together.
 ///     // You will NOT see any interleaving.
-///     thread::spawn(move|| {
+///     handles.push(thread::spawn(move|| {
 ///         println!("before wait");
 ///         c.wait();
 ///         println!("after wait");
-///     });
+///     }));
+/// }
+/// // Wait for other threads to finish.
+/// for handle in handles {
+///     handle.join().unwrap();
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -66,7 +71,7 @@ impl Barrier {
         }
     }
 
-    /// Blocks the current thread until all threads has rendezvoused here.
+    /// Blocks the current thread until all threads have rendezvoused here.
     ///
     /// Barriers are re-usable after all threads have rendezvoused once, and can
     /// be used continuously.

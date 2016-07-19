@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 // ignore-pretty : (#23623) problems when  ending with // comments
 
 // This test is ensuring that parameters are indeed dropped after
@@ -42,11 +40,11 @@ pub fn main() {
                    //    | | |     |                     eval tail of foo
                    //    | | | +-- Make D(de_5, 6)
                    //    | | | | +-- Make D(de_6, 7)
-                   6, // | | | +-- Drop D(de_5, 6)
-                   //    | | |   | |
-                   5, // | | |   | +-- Drop D(de_4, 5)
-                   //    | | |   |
+                   5, // | | | | | +-- Drop D(de_4, 5)
+                   //    | | | | |
                    2, // | | +-- Drop D(de_2, 2)
+                   //    | |   | |
+                   6, // | |   +-- Drop D(de_5, 6)
                    //    | |     |
                    1, // | +-- Drop D(de_1, 1)
                    //    |       |
@@ -66,8 +64,8 @@ fn test<'a>(log: d::Log<'a>) {
     d::println(&format!("result {}", result));
 }
 
-#[rustc_no_mir] // FIXME #29855 MIR doesn't handle all drops correctly.
-fn foo<'a>(da0: D<'a>, de1: D<'a>) -> D<'a> {
+// FIXME(#33490) Remove the double braces when old trans is gone.
+fn foo<'a>(da0: D<'a>, de1: D<'a>) -> D<'a> {{
     d::println("entered foo");
     let de2 = de1.incr();      // creates D(de_2, 2)
     let de4 = {
@@ -76,7 +74,7 @@ fn foo<'a>(da0: D<'a>, de1: D<'a>) -> D<'a> {
     };
     d::println("eval tail of foo");
     de4.incr().incr()          // creates D(de_5, 6) and D(de_6, 7)
-}
+}}
 
 // This module provides simultaneous printouts of the dynamic extents
 // of all of the D values, in addition to logging the order that each

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z continue-parse-after-error
+
 // For style and consistency reasons, non-parametrized enum variants must
 // be used simply as `ident` instead of `ident ()`.
 // This test-case covers enum matching.

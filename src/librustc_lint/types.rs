@@ -10,12 +10,14 @@
 
 #![allow(non_snake_case)]
 
-use middle::{infer};
-use middle::def_id::DefId;
-use middle::subst::Substs;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::const_eval::{eval_const_expr_partial, ConstVal};
-use middle::const_eval::EvalHint::ExprTypeChecked;
+use rustc::hir::def_id::DefId;
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::layout::{Layout, Primitive};
+use rustc::traits::ProjectionMode;
+use middle::const_val::ConstVal;
+use rustc_const_eval::eval_const_expr_partial;
+use rustc_const_eval::EvalHint::ExprTypeChecked;
 use util::nodemap::{FnvHashSet};
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -25,12 +27,11 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::{self, Span};
+use syntax::attr;
+use syntax_pos::Span;
+use syntax::codemap;
 
-use rustc_front::hir;
-use rustc_front::intravisit::{self, Visitor};
-use rustc_front::util::is_shift_binop;
+use rustc::hir;
 
 register_long_diagnostics! {
 E0519: r##"
@@ -75,6 +76,12 @@ declare_lint! {
     EXCEEDING_BITSHIFTS,
     Deny,
     "shift exceeds the type's number of bits"
+}
+
+declare_lint! {
+    VARIANT_SIZE_DIFFERENCES,
+    Allow,
+    "detects enums with widely varying variant sizes"
 }
 
 #[derive(Copy, Clone)]
@@ -130,7 +137,7 @@ impl LateLintPass for TypeLimits {
                                  "comparison is useless due to type limits");
                 }
 
-                if is_shift_binop(binop.node) {
+                if binop.node.is_shift() {
                     let opt_ty_bits = match cx.tcx.node_id_to_type(l.id).sty {
                         ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
@@ -181,7 +188,7 @@ impl LateLintPass for TypeLimits {
                                     return;
                                 }
                             }
-                            _ => panic!()
+                            _ => bug!()
                         };
                     },
                     ty::TyUint(t) => {
@@ -195,7 +202,7 @@ impl LateLintPass for TypeLimits {
                             // _v is u8, within range by definition
                             ast::LitKind::Byte(_v) => return,
                             ast::LitKind::Int(v, _) => v,
-                            _ => panic!()
+                            _ => bug!()
                         };
                         if lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
@@ -212,7 +219,7 @@ impl LateLintPass for TypeLimits {
                                     Err(_) => return
                                 }
                             }
-                            _ => panic!()
+                            _ => bug!()
                         };
                         if lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
@@ -233,7 +240,7 @@ impl LateLintPass for TypeLimits {
                 hir::BiGt => v >= min && v <  max,
                 hir::BiGe => v >  min && v <= max,
                 hir::BiEq | hir::BiNe => v >= min && v <= max,
-                _ => panic!()
+                _ => bug!()
             }
         }
 
@@ -296,8 +303,10 @@ impl LateLintPass for TypeLimits {
             }
         }
 
-        fn check_limits(tcx: &TyCtxt, binop: hir::BinOp,
-                        l: &hir::Expr, r: &hir::Expr) -> bool {
+        fn check_limits<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  binop: hir::BinOp,
+                                  l: &hir::Expr,
+                                  r: &hir::Expr) -> bool {
             let (lit, expr, swap) = match (&l.node, &r.node) {
                 (&hir::ExprLit(_), _) => (l, r, true),
                 (_, &hir::ExprLit(_)) => (r, l, false),
@@ -319,7 +328,7 @@ impl LateLintPass for TypeLimits {
                             ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i64,
                             _ => return true
                         },
-                        _ => panic!()
+                        _ => bug!()
                     };
                     is_valid(norm_binop, lit_val, min, max)
                 }
@@ -330,7 +339,7 @@ impl LateLintPass for TypeLimits {
                             ast::LitKind::Int(v, _) => v,
                             _ => return true
                         },
-                        _ => panic!()
+                        _ => bug!()
                     };
                     is_valid(norm_binop, lit_val, min, max)
                 }
@@ -377,10 +386,10 @@ enum FfiResult {
 /// to function pointers and references, but could be
 /// expanded to cover NonZero raw pointers and newtypes.
 /// FIXME: This duplicates code in trans.
-fn is_repr_nullable_ptr<'tcx>(tcx: &TyCtxt<'tcx>,
-                              def: ty::AdtDef<'tcx>,
-                              substs: &Substs<'tcx>)
-                              -> bool {
+fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  def: ty::AdtDef<'tcx>,
+                                  substs: &Substs<'tcx>)
+                                  -> bool {
     if def.variants.len() == 2 {
         let data_idx;
 
@@ -403,16 +412,6 @@ fn is_repr_nullable_ptr<'tcx>(tcx: &TyCtxt<'tcx>,
     false
 }
 
-fn ast_ty_to_normalized<'tcx>(tcx: &TyCtxt<'tcx>,
-                              id: ast::NodeId)
-                              -> Ty<'tcx> {
-    let tty = match tcx.ast_ty_to_ty_cache.borrow().get(&id) {
-        Some(&t) => t,
-        None => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
-    };
-    infer::normalize_associated_type(tcx, &tty)
-}
-
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
@@ -421,7 +420,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                           ty: Ty<'tcx>)
                           -> FfiResult {
         use self::FfiResult::*;
-        let cx = &self.cx.tcx;
+        let cx = self.cx.tcx;
 
         // Protect against infinite recursion, for example
         // `struct S(*mut S);`.
@@ -450,7 +449,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
 
                 for field in &def.struct_variant().fields {
-                    let field_ty = infer::normalize_associated_type(cx, &field.ty(cx, substs));
+                    let field_ty = cx.normalize_associated_type(&field.ty(cx, substs));
                     let r = self.check_type_for_ffi(cache, field_ty);
                     match r {
                         FfiSafe => {}
@@ -469,8 +468,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 // Check for a repr() attribute to specify the size of the
                 // discriminant.
                 let repr_hints = cx.lookup_repr_hints(def.did);
-                match &**repr_hints {
-                    [] => {
+                match &repr_hints[..] {
+                    &[] => {
                         // Special-case types like `Option<extern fn()>`.
                         if !is_repr_nullable_ptr(cx, def, substs) {
                             return FfiUnsafe(
@@ -480,7 +479,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                  the type")
                         }
                     }
-                    [ref hint] => {
+                    &[ref hint] => {
                         if !hint.is_ffi_safe() {
                             // FIXME: This shouldn't be reachable: we should check
                             // this earlier.
@@ -505,7 +504,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 // Check the contained variants.
                 for variant in &def.variants {
                     for field in &variant.fields {
-                        let arg = infer::normalize_associated_type(cx, &field.ty(cx, substs));
+                        let arg = cx.normalize_associated_type(&field.ty(cx, substs));
                         let r = self.check_type_for_ffi(cache, arg);
                         match r {
                             FfiSafe => {}
@@ -599,15 +598,17 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::TyParam(..) | ty::TyInfer(..) | ty::TyError |
             ty::TyClosure(..) | ty::TyProjection(..) |
             ty::TyFnDef(..) => {
-                panic!("Unexpected type in foreign function")
+                bug!("Unexpected type in foreign function")
             }
         }
     }
 
-    fn check_def(&mut self, sp: Span, id: ast::NodeId) {
-        let tty = ast_ty_to_normalized(self.cx.tcx, id);
+    fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>) {
+        // it is only OK to use this function because extern fns cannot have
+        // any generic types right now:
+        let ty = self.cx.tcx.normalize_associated_type(&ty);
 
-        match ImproperCTypesVisitor::check_type_for_ffi(self, &mut FnvHashSet(), tty) {
+        match self.check_type_for_ffi(&mut FnvHashSet(), ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiUnsafe(s) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp, s);
@@ -628,26 +629,29 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
     }
-}
 
-impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, ty: &hir::Ty) {
-        match ty.node {
-            hir::TyPath(..) |
-            hir::TyBareFn(..) => self.check_def(ty.span, ty.id),
-            hir::TyVec(..) => {
-                self.cx.span_lint(IMPROPER_CTYPES, ty.span,
-                    "found Rust slice type in foreign module, consider \
-                     using a raw pointer instead");
-            }
-            hir::TyFixedLengthVec(ref ty, _) => self.visit_ty(ty),
-            hir::TyTup(..) => {
-                self.cx.span_lint(IMPROPER_CTYPES, ty.span,
-                    "found Rust tuple type in foreign module; \
-                     consider using a struct instead`")
-            }
-            _ => intravisit::walk_ty(self, ty)
+    fn check_foreign_fn(&mut self, id: ast::NodeId, decl: &hir::FnDecl) {
+        let def_id = self.cx.tcx.map.local_def_id(id);
+        let scheme = self.cx.tcx.lookup_item_type(def_id);
+        let sig = scheme.ty.fn_sig();
+        let sig = self.cx.tcx.erase_late_bound_regions(&sig);
+
+        for (&input_ty, input_hir) in sig.inputs.iter().zip(&decl.inputs) {
+            self.check_type_for_ffi_and_report_errors(input_hir.ty.span, &input_ty);
         }
+
+        if let hir::Return(ref ret_hir) = decl.output {
+            let ret_ty = sig.output.unwrap();
+            if !ret_ty.is_nil() {
+                self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty);
+            }
+        }
+    }
+
+    fn check_foreign_static(&mut self, id: ast::NodeId, span: Span) {
+        let def_id = self.cx.tcx.map.local_def_id(id);
+        let scheme = self.cx.tcx.lookup_item_type(def_id);
+        self.check_type_for_ffi_and_report_errors(span, scheme.ty);
     }
 }
 
@@ -662,29 +666,79 @@ impl LintPass for ImproperCTypes {
 
 impl LateLintPass for ImproperCTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        fn check_ty(cx: &LateContext, ty: &hir::Ty) {
-            let mut vis = ImproperCTypesVisitor { cx: cx };
-            vis.visit_ty(ty);
-        }
-
-        fn check_foreign_fn(cx: &LateContext, decl: &hir::FnDecl) {
-            for input in &decl.inputs {
-                check_ty(cx, &input.ty);
-            }
-            if let hir::Return(ref ret_ty) = decl.output {
-                let tty = ast_ty_to_normalized(cx.tcx, ret_ty.id);
-                if !tty.is_nil() {
-                    check_ty(cx, &ret_ty);
-                }
-            }
-        }
-
+        let mut vis = ImproperCTypesVisitor { cx: cx };
         if let hir::ItemForeignMod(ref nmod) = it.node {
             if nmod.abi != Abi::RustIntrinsic && nmod.abi != Abi::PlatformIntrinsic {
                 for ni in &nmod.items {
                     match ni.node {
-                        hir::ForeignItemFn(ref decl, _) => check_foreign_fn(cx, &decl),
-                        hir::ForeignItemStatic(ref t, _) => check_ty(cx, &t)
+                        hir::ForeignItemFn(ref decl, _) => {
+                            vis.check_foreign_fn(ni.id, decl);
+                        }
+                        hir::ForeignItemStatic(ref ty, _) => {
+                            vis.check_foreign_static(ni.id, ty.span);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub struct VariantSizeDifferences;
+
+impl LintPass for VariantSizeDifferences {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(VARIANT_SIZE_DIFFERENCES)
+    }
+}
+
+impl LateLintPass for VariantSizeDifferences {
+    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+        if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
+            if gens.ty_params.is_empty() {  // sizes only make sense for non-generic types
+                let t = cx.tcx.node_id_to_type(it.id);
+                let layout = cx.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+                    let ty = cx.tcx.erase_regions(&t);
+                    ty.layout(&infcx).unwrap_or_else(|e| {
+                        bug!("failed to get layout for `{}`: {}", t, e)
+                    })
+                });
+
+                if let Layout::General { ref variants, ref size, discr, .. } = *layout {
+                    let discr_size = Primitive::Int(discr).size(&cx.tcx.data_layout).bytes();
+
+                    debug!("enum `{}` is {} bytes large", t, size.bytes());
+
+                    let (largest, slargest, largest_index) = enum_definition.variants
+                        .iter()
+                        .zip(variants)
+                        .map(|(variant, variant_layout)| {
+                            // Subtract the size of the enum discriminant
+                            let bytes = variant_layout.min_size().bytes()
+                                                                 .saturating_sub(discr_size);
+
+                            debug!("- variant `{}` is {} bytes large", variant.node.name, bytes);
+                            bytes
+                        })
+                        .enumerate()
+                        .fold((0, 0, 0),
+                            |(l, s, li), (idx, size)|
+                                if size > l {
+                                    (size, l, idx)
+                                } else if size > s {
+                                    (l, size, li)
+                                } else {
+                                    (l, s, li)
+                                }
+                        );
+
+                    // we only warn if the largest variant is at least thrice as large as
+                    // the second-largest.
+                    if largest > slargest * 3 && slargest > 0 {
+                        cx.span_lint(VARIANT_SIZE_DIFFERENCES,
+                                     enum_definition.variants[largest_index].span,
+                                     &format!("enum variant is more than three times larger \
+                                               ({} bytes) than the next largest", largest));
                     }
                 }
             }

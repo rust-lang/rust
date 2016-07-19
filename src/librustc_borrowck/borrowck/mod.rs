@@ -18,42 +18,48 @@ pub use self::bckerr_code::*;
 pub use self::AliasableViolationKind::*;
 pub use self::MovedValueUseKind::*;
 
+pub use self::mir::elaborate_drops::ElaborateDrops;
+
 use self::InteriorKind::*;
 
 use rustc::dep_graph::DepNode;
-use rustc::front::map as hir_map;
-use rustc::front::map::blocks::FnParts;
-use rustc::middle::cfg;
+use rustc::hir::map as hir_map;
+use rustc::hir::map::blocks::FnParts;
+use rustc::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
-use rustc::middle::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, TyCtxt};
 
 use std::fmt;
 use std::mem;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::codemap::Span;
-use syntax::errors::DiagnosticBuilder;
+use syntax::attr::AttrMetaMethods;
+use syntax_pos::{MultiSpan, Span};
+use errors::DiagnosticBuilder;
 
-use rustc_front::hir;
-use rustc_front::hir::{FnDecl, Block};
-use rustc_front::intravisit;
-use rustc_front::intravisit::{Visitor, FnKind};
-use rustc_front::util as hir_util;
+use rustc::hir;
+use rustc::hir::{FnDecl, Block};
+use rustc::hir::intravisit;
+use rustc::hir::intravisit::{Visitor, FnKind};
+
+use rustc::mir::mir_map::MirMap;
 
 pub mod check_loans;
 
 pub mod gather_loans;
 
 pub mod move_data;
+
+mod mir;
 
 #[derive(Clone, Copy)]
 pub struct LoanDataFlowOperator;
@@ -66,15 +72,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
         match fk {
             FnKind::ItemFn(..) |
             FnKind::Method(..) => {
-                let new_free_region_map = self.tcx.free_region_map(id);
-                let old_free_region_map =
-                    mem::replace(&mut self.free_region_map, new_free_region_map);
-                borrowck_fn(self, fk, fd, b, s, id);
-                self.free_region_map = old_free_region_map;
+                self.with_temp_region_map(id, |this| {
+                    borrowck_fn(this, fk, fd, b, s, id, fk.attrs())
+                });
             }
 
-            FnKind::Closure => {
-                borrowck_fn(self, fk, fd, b, s, id);
+            FnKind::Closure(..) => {
+                borrowck_fn(self, fk, fd, b, s, id, fk.attrs());
             }
         }
     }
@@ -85,22 +89,23 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
         if let hir::ConstTraitItem(_, Some(ref expr)) = ti.node {
-            gather_loans::gather_loans_in_static_initializer(self, &expr);
+            gather_loans::gather_loans_in_static_initializer(self, ti.id, &expr);
         }
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
         if let hir::ImplItemKind::Const(_, ref expr) = ii.node {
-            gather_loans::gather_loans_in_static_initializer(self, &expr);
+            gather_loans::gather_loans_in_static_initializer(self, ii.id, &expr);
         }
         intravisit::walk_impl_item(self, ii);
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir_map: &MirMap<'tcx>) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
+        mir_map: Some(mir_map),
         free_region_map: FreeRegionMap::new(),
         stats: BorrowStats {
             loaned_paths_same: 0,
@@ -139,7 +144,7 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &hir::Item) {
     match item.node {
         hir::ItemStatic(_, _, ref ex) |
         hir::ItemConst(_, ref ex) => {
-            gather_loans::gather_loans_in_static_initializer(this, &ex);
+            gather_loans::gather_loans_in_static_initializer(this, item.id, &ex);
         }
         _ => { }
     }
@@ -159,8 +164,17 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                decl: &hir::FnDecl,
                body: &hir::Block,
                sp: Span,
-               id: ast::NodeId) {
+               id: ast::NodeId,
+               attributes: &[ast::Attribute]) {
     debug!("borrowck_fn(id={})", id);
+
+    if attributes.iter().any(|item| item.check_name("rustc_mir_borrowck")) {
+        let mir = this.mir_map.unwrap().map.get(&id).unwrap();
+        this.with_temp_region_map(id, |this| {
+            mir::borrowck_mir(this, fk, decl, mir, body, sp, id, attributes)
+        });
+    }
+
     let cfg = cfg::CFG::new(this.tcx, body);
     let AnalysisData { all_loans,
                        loans: loan_dfcx,
@@ -197,7 +211,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 {
     // Check the body of fn items.
     let tcx = this.tcx;
-    let id_range = hir_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
+    let id_range = intravisit::compute_id_range_for_fn_body(fk, decl, body, sp, id);
     let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, id, decl, body);
 
@@ -232,7 +246,8 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 /// Accessor for introspective clients inspecting `AnalysisData` and
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir_map: Option<&'a MirMap<'tcx>>,
     fn_parts: FnParts<'a>,
     cfg: &cfg::CFG)
     -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
@@ -240,6 +255,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
+        mir_map: mir_map,
         free_region_map: FreeRegionMap::new(),
         stats: BorrowStats {
             loaned_paths_same: 0,
@@ -264,7 +280,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 // Type definitions
 
 pub struct BorrowckCtxt<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Hacky. As we visit various fns, we have to load up the
     // free-region map for each one. This map is computed by during
@@ -279,9 +295,13 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     free_region_map: FreeRegionMap,
 
     // Statistics:
-    stats: BorrowStats
+    stats: BorrowStats,
+
+    // NodeId to MIR mapping (for methods that carry the #[rustc_mir] attribute).
+    mir_map: Option<&'a MirMap<'tcx>>,
 }
 
+#[derive(Clone)]
 struct BorrowStats {
     loaned_paths_same: usize,
     loaned_paths_imm: usize,
@@ -394,22 +414,22 @@ pub enum LoanPathElem {
 }
 
 pub fn closure_to_block(closure_id: ast::NodeId,
-                        tcx: &TyCtxt) -> ast::NodeId {
+                        tcx: TyCtxt) -> ast::NodeId {
     match tcx.map.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
-            hir::ExprClosure(_, _, ref block) => {
+            hir::ExprClosure(_, _, ref block, _) => {
                 block.id
             }
             _ => {
-                panic!("encountered non-closure id: {}", closure_id)
+                bug!("encountered non-closure id: {}", closure_id)
             }
         },
-        _ => panic!("encountered non-expr id: {}", closure_id)
+        _ => bug!("encountered non-expr id: {}", closure_id)
     }
 }
 
-impl<'tcx> LoanPath<'tcx> {
-    pub fn kill_scope(&self, tcx: &TyCtxt<'tcx>) -> region::CodeExtent {
+impl<'a, 'tcx> LoanPath<'tcx> {
+    pub fn kill_scope(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> region::CodeExtent {
         match self.kind {
             LpVar(local_id) => tcx.region_maps.var_scope(local_id),
             LpUpvar(upvar_id) => {
@@ -574,6 +594,15 @@ pub enum MovedValueUseKind {
 // Misc
 
 impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
+    fn with_temp_region_map<F>(&mut self, id: ast::NodeId, f: F)
+        where F: for <'b> FnOnce(&'b mut BorrowckCtxt<'a, 'tcx>)
+    {
+        let new_free_region_map = self.tcx.free_region_map(id);
+        let old_free_region_map = mem::replace(&mut self.free_region_map, new_free_region_map);
+        f(self);
+        self.free_region_map = old_free_region_map;
+    }
+
     pub fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region)
                            -> bool
     {
@@ -593,36 +622,39 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
 
         // General fallback.
+        let span = err.span.clone();
         let mut db = self.struct_span_err(
             err.span,
             &self.bckerr_to_string(&err));
-        self.note_and_explain_bckerr(&mut db, err);
+        self.note_and_explain_bckerr(&mut db, err, span);
         db.emit();
     }
 
-    pub fn report_use_of_moved_value<'b>(&self,
-                                         use_span: Span,
-                                         use_kind: MovedValueUseKind,
-                                         lp: &LoanPath<'tcx>,
-                                         the_move: &move_data::Move,
-                                         moved_lp: &LoanPath<'tcx>,
-                                         param_env: &ty::ParameterEnvironment<'b,'tcx>) {
-        let verb = match use_kind {
-            MovedInUse => "use",
-            MovedInCapture => "capture",
+    pub fn report_use_of_moved_value(&self,
+                                     use_span: Span,
+                                     use_kind: MovedValueUseKind,
+                                     lp: &LoanPath<'tcx>,
+                                     the_move: &move_data::Move,
+                                     moved_lp: &LoanPath<'tcx>,
+                                     _param_env: &ty::ParameterEnvironment<'tcx>) {
+        let (verb, verb_participle) = match use_kind {
+            MovedInUse => ("use", "used"),
+            MovedInCapture => ("capture", "captured"),
         };
 
-        let (ol, moved_lp_msg, mut err) = match the_move.kind {
+        let (_ol, _moved_lp_msg, mut err) = match the_move.kind {
             move_data::Declared => {
-                let err = struct_span_err!(
+                // If this is an uninitialized variable, just emit a simple warning
+                // and return.
+                struct_span_err!(
                     self.tcx.sess, use_span, E0381,
                     "{} of possibly uninitialized variable: `{}`",
                     verb,
-                    self.loan_path_to_string(lp));
-
-                (self.loan_path_to_string(moved_lp),
-                 String::new(),
-                 err)
+                    self.loan_path_to_string(lp))
+                .span_label(use_span, &format!("use of possibly uninitialized `{}`",
+                    self.loan_path_to_string(lp)))
+                .emit();
+                return;
             }
             _ => {
                 // If moved_lp is something like `x.a`, and lp is something like `x.b`, we would
@@ -661,124 +693,54 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     self.tcx.sess, use_span, E0382,
                     "{} of {}moved value: `{}`",
                     verb, msg, nl);
-                (ol, moved_lp_msg, err)
-            }
+                (ol, moved_lp_msg, err)}
         };
 
-        match the_move.kind {
-            move_data::Declared => {}
-
-            move_data::MoveExpr => {
-                let (expr_ty, expr_span) = match self.tcx
-                                                     .map
-                                                     .find(the_move.id) {
-                    Some(hir_map::NodeExpr(expr)) => {
-                        (self.tcx.expr_ty_adjusted(&expr), expr.span)
-                    }
-                    r => {
-                        self.tcx.sess.bug(&format!("MoveExpr({}) maps to \
-                                                   {:?}, not Expr",
-                                                  the_move.id,
-                                                  r))
-                    }
-                };
-                let (suggestion, _) =
-                    move_suggestion(param_env, expr_span, expr_ty, ("moved by default", ""));
-                // If the two spans are the same, it's because the expression will be evaluated
-                // multiple times. Avoid printing the same span and adjust the wording so it makes
-                // more sense that it's from multiple evalutations.
-                if expr_span == use_span {
-                    err.note(
-                        &format!("`{}` was previously moved here{} because it has type `{}`, \
-                                  which is {}",
-                                 ol,
-                                 moved_lp_msg,
-                                 expr_ty,
-                                 suggestion));
-                } else {
-                    err.span_note(
-                        expr_span,
-                        &format!("`{}` moved here{} because it has type `{}`, which is {}",
-                                 ol,
-                                 moved_lp_msg,
-                                 expr_ty,
-                                 suggestion));
-                }
+        // Get type of value and span where it was previously
+        // moved.
+        let (move_span, move_note) = match the_move.kind {
+            move_data::Declared => {
+                unreachable!();
             }
 
-            move_data::MovePat => {
-                let pat_ty = self.tcx.node_id_to_type(the_move.id);
-                let span = self.tcx.map.span(the_move.id);
-                err.span_note(span,
-                    &format!("`{}` moved here{} because it has type `{}`, \
-                             which is moved by default",
-                            ol,
-                            moved_lp_msg,
-                            pat_ty));
-                match self.tcx.sess.codemap().span_to_snippet(span) {
-                    Ok(string) => {
-                        err.span_suggestion(
-                            span,
-                            &format!("if you would like to borrow the value instead, \
-                                      use a `ref` binding as shown:"),
-                            format!("ref {}", string));
-                    },
-                    Err(_) => {
-                        err.fileline_help(span,
-                            "use `ref` to override");
-                    },
-                }
-            }
+            move_data::MoveExpr |
+            move_data::MovePat =>
+                (self.tcx.map.span(the_move.id), ""),
 
-            move_data::Captured => {
-                let (expr_ty, expr_span) = match self.tcx
-                                                     .map
-                                                     .find(the_move.id) {
-                    Some(hir_map::NodeExpr(expr)) => {
-                        (self.tcx.expr_ty_adjusted(&expr), expr.span)
-                    }
-                    r => {
-                        self.tcx.sess.bug(&format!("Captured({}) maps to \
-                                                   {:?}, not Expr",
-                                                  the_move.id,
-                                                  r))
-                    }
-                };
-                let (suggestion, help) =
-                    move_suggestion(param_env,
-                                    expr_span,
-                                    expr_ty,
-                                    ("moved by default",
-                                     "make a copy and capture that instead to override"));
-                err.span_note(
-                    expr_span,
-                    &format!("`{}` moved into closure environment here{} because it \
-                            has type `{}`, which is {}",
-                            ol,
-                            moved_lp_msg,
-                            moved_lp.ty,
-                            suggestion));
-                err.fileline_help(expr_span, help);
-            }
-        }
+            move_data::Captured =>
+                (match self.tcx.map.expect_expr(the_move.id).node {
+                    hir::ExprClosure(_, _, _, fn_decl_span) => fn_decl_span,
+                    ref r => bug!("Captured({}) maps to non-closure: {:?}",
+                                  the_move.id, r),
+                }, " (into closure)"),
+        };
+
+        // Annotate the use and the move in the span. Watch out for
+        // the case where the use and the move are the same. This
+        // means the use is in a loop.
+        err = if use_span == move_span {
+            err.span_label(
+                use_span,
+                &format!("value moved{} here in previous iteration of loop",
+                         move_note));
+            err
+        } else {
+            err.span_label(use_span, &format!("value {} here after move", verb_participle))
+               .span_label(move_span, &format!("value moved{} here", move_note));
+            err
+        };
+
+        err.note(&format!("move occurs because `{}` has type `{}`, \
+                           which does not implement the `Copy` trait",
+                          self.loan_path_to_string(moved_lp),
+                          moved_lp.ty));
+
+        // Note: we used to suggest adding a `ref binding` or calling
+        // `clone` but those suggestions have been removed because
+        // they are often not what you actually want to do, and were
+        // not considered particularly helpful.
+
         err.emit();
-
-        fn move_suggestion<'a,'tcx>(param_env: &ty::ParameterEnvironment<'a,'tcx>,
-                                    span: Span,
-                                    ty: Ty<'tcx>,
-                                    default_msgs: (&'static str, &'static str))
-                                    -> (&'static str, &'static str) {
-            match ty.sty {
-                _ => {
-                    if ty.moves_by_default(param_env, span) {
-                        ("non-copyable",
-                         "perhaps you meant to use `clone()`?")
-                    } else {
-                        default_msgs
-                    }
-                }
-            }
-        }
     }
 
     pub fn report_partial_reinitialization_of_uninitialized_structure(
@@ -808,24 +770,21 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.sess.span_err(s, m);
     }
 
-    pub fn struct_span_err(&self, s: Span, m: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_span_err<S: Into<MultiSpan>>(&self, s: S, m: &str)
+                                              -> DiagnosticBuilder<'a> {
         self.tcx.sess.struct_span_err(s, m)
     }
 
-    pub fn struct_span_err_with_code(&self,
-                                     s: Span,
-                                     msg: &str,
-                                     code: &str)
-                                     -> DiagnosticBuilder<'a> {
+    pub fn struct_span_err_with_code<S: Into<MultiSpan>>(&self,
+                                                         s: S,
+                                                         msg: &str,
+                                                         code: &str)
+                                                         -> DiagnosticBuilder<'a> {
         self.tcx.sess.struct_span_err_with_code(s, msg, code)
     }
 
-    pub fn span_err_with_code(&self, s: Span, msg: &str, code: &str) {
+    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, s: S, msg: &str, code: &str) {
         self.tcx.sess.span_err_with_code(s, msg, code);
-    }
-
-    pub fn span_bug(&self, s: Span, m: &str) {
-        self.tcx.sess.span_bug(s, m);
     }
 
     pub fn bckerr_to_string(&self, err: &BckError<'tcx>) -> String {
@@ -867,7 +826,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         format!("cannot borrow {} as mutable", descr)
                     }
                     BorrowViolation(euv::ClosureInvocation) => {
-                        self.tcx.sess.span_bug(err.span,
+                        span_bug!(err.span,
                             "err_mutbl with a closure invocation");
                     }
                 }
@@ -961,8 +920,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         };
 
         if is_closure {
-            err.fileline_help(span,
-                              "closures behind references must be called via `&mut`");
+            err.help("closures behind references must be called via `&mut`");
         }
         err.emit();
     }
@@ -996,7 +954,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             .emit();
     }
 
-    pub fn note_and_explain_bckerr(&self, db: &mut DiagnosticBuilder, err: BckError<'tcx>) {
+    pub fn note_and_explain_bckerr(&self, db: &mut DiagnosticBuilder, err: BckError<'tcx>,
+        error_span: Span) {
         let code = err.code;
         match code {
             err_mutbl => {
@@ -1007,7 +966,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         // We need to determine which is the case here.
                         let kind = match err.cmt.upvar().unwrap().cat {
                             Categorization::Upvar(mc::Upvar { kind, .. }) => kind,
-                            _ => unreachable!()
+                            _ => bug!()
                         };
                         if kind == ty::ClosureKind::Fn {
                             db.span_help(
@@ -1020,12 +979,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         if let Categorization::Local(local_id) = err.cmt.cat {
                             let span = self.tcx.map.span(local_id);
                             if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
-                                db.span_suggestion(
-                                    span,
-                                    &format!("to make the {} mutable, use `mut` as shown:",
-                                             self.cmt_to_string(&err.cmt)),
-                                    format!("mut {}", snippet));
+                                if snippet.starts_with("ref ") {
+                                    db.span_label(span,
+                                        &format!("use `{}` here to make mutable",
+                                            snippet.replace("ref ", "ref mut ")));
+                                } else if snippet != "self" {
+                                    db.span_label(span,
+                                        &format!("use `mut {}` here to make mutable", snippet));
+                                }
                             }
+                            db.span_label(error_span, &format!("cannot borrow mutably"));
                         }
                     }
                 }
@@ -1043,6 +1006,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     super_scope,
                     "");
                 if let Some(span) = statement_scope_span(self.tcx, super_scope) {
+                    db.span_label(error_span, &format!("does not live long enough"));
                     db.span_help(span,
                                  "consider using a `let` binding to increase its lifetime");
                 }
@@ -1157,7 +1121,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 }
 
-fn statement_scope_span(tcx: &TyCtxt, region: ty::Region) -> Option<Span> {
+fn statement_scope_span(tcx: TyCtxt, region: ty::Region) -> Option<Span> {
     match region {
         ty::ReScope(scope) => {
             match tcx.map.find(scope.node_id(&tcx.region_maps)) {

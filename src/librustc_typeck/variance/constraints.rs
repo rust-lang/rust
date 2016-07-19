@@ -14,16 +14,16 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use dep_graph::DepTrackingMapConfig;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
-use middle::subst;
-use middle::subst::ParamSpace;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::maps::ItemVariances;
-use rustc::front::map as hir_map;
+use rustc::ty::subst;
+use rustc::ty::subst::ParamSpace;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::maps::ItemVariances;
+use rustc::hir::map as hir_map;
 use syntax::ast;
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
+use rustc::hir;
+use rustc::hir::intravisit::Visitor;
 
 use super::terms::*;
 use super::terms::VarianceTerm::*;
@@ -127,7 +127,7 @@ fn is_lifetime(map: &hir_map::Map, param_id: ast::NodeId) -> bool {
 }
 
 impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
-    fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.terms_cx.tcx
     }
 
@@ -135,9 +135,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         match self.terms_cx.inferred_map.get(&param_id) {
             Some(&index) => index,
             None => {
-                self.tcx().sess.bug(&format!(
-                        "no inferred index entry for {}",
-                        self.tcx().map.node_to_string(param_id)));
+                bug!("no inferred index entry for {}",
+                     self.tcx().map.node_to_string(param_id));
             }
         }
     }
@@ -145,10 +144,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn find_binding_for_lifetime(&self, param_id: ast::NodeId) -> ast::NodeId {
         let tcx = self.terms_cx.tcx;
         assert!(is_lifetime(&tcx.map, param_id));
-        match tcx.named_region_map.get(&param_id) {
+        match tcx.named_region_map.defs.get(&param_id) {
             Some(&rl::DefEarlyBoundRegion(_, _, lifetime_decl_id))
                 => lifetime_decl_id,
-            Some(_) => panic!("should not encounter non early-bound cases"),
+            Some(_) => bug!("should not encounter non early-bound cases"),
 
             // The lookup should only fail when `param_id` is
             // itself a lifetime binding: use it as the decl_id.
@@ -173,13 +172,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             assert!(is_lifetime(&tcx.map, param_id));
             let parent_id = tcx.map.get_parent(decl_id);
             let parent = tcx.map.find(parent_id).unwrap_or_else(
-                || panic!("tcx.map missing entry for id: {}", parent_id));
+                || bug!("tcx.map missing entry for id: {}", parent_id));
 
             let is_inferred;
             macro_rules! cannot_happen { () => { {
-                panic!("invalid parent: {} for {}",
-                      tcx.map.node_to_string(parent_id),
-                      tcx.map.node_to_string(param_id));
+                bug!("invalid parent: {} for {}",
+                     tcx.map.node_to_string(parent_id),
+                     tcx.map.node_to_string(param_id));
             } } }
 
             match parent {
@@ -328,7 +327,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyClosure(..) => {
-                self.tcx().sess.bug("Unexpected closure type in variance computation");
+                bug!("Unexpected closure type in variance computation");
             }
 
             ty::TyRef(region, ref mt) => {
@@ -346,7 +345,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_mt(generics, mt, variance);
             }
 
-            ty::TyTuple(ref subtys) => {
+            ty::TyTuple(subtys) => {
                 for &subty in subtys {
                     self.add_constraints_from_ty(generics, subty, variance);
                 }
@@ -440,9 +439,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyInfer(..) => {
-                self.tcx().sess.bug(
-                    &format!("unexpected type encountered in \
-                              variance inference: {}", ty));
+                bug!("unexpected type encountered in \
+                      variance inference: {}", ty);
             }
         }
     }
@@ -477,7 +475,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.declared_variance(p.def_id, def_id,
                                        RegionParam, p.space, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_r = *substs.regions().get(p.space, p.index as usize);
+            let substs_r = *substs.regions.get(p.space, p.index as usize);
             self.add_constraints_from_region(generics, substs_r, variance_i);
         }
     }
@@ -522,14 +520,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::ReFree(..) | ty::ReScope(..) | ty::ReVar(..) |
-            ty::ReSkolemized(..) | ty::ReEmpty => {
+            ty::ReSkolemized(..) | ty::ReEmpty | ty::ReErased => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
-                self.tcx()
-                    .sess
-                    .bug(&format!("unexpected region encountered in variance \
-                                  inference: {:?}",
-                                 region));
+                bug!("unexpected region encountered in variance \
+                      inference: {:?}",
+                     region);
             }
         }
     }

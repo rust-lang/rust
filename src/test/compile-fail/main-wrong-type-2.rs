@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() -> char {
-//~^ ERROR: main function expects type
+//~^ ERROR: main function has wrong type
 }

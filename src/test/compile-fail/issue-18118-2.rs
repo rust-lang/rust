@@ -12,6 +12,6 @@ pub fn main() {
     const z: &'static isize = {
         static p: isize = 3;
         &p
-        //~^ ERROR constants cannot refer to other statics, insert an intermediate constant instead
+        //~^ ERROR constants cannot refer to statics, use a constant instead
     };
 }

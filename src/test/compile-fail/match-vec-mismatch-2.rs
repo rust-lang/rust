@@ -13,10 +13,6 @@
 fn main() {
     match () {
         [()] => { }
-        //~^ ERROR mismatched types
-        //~| expected `()`
-        //~| found `&[_]`
-        //~| expected ()
-        //~| found &-ptr
+        //~^ ERROR expected an array or slice, found `()`
     }
 }

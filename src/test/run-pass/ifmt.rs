@@ -12,8 +12,9 @@
 
 #![deny(warnings)]
 #![allow(unused_must_use)]
-#![allow(unknown_features)]
+#![allow(unused_features)]
 #![feature(box_syntax)]
+#![feature(question_mark)]
 
 use std::fmt::{self, Write};
 use std::usize;
@@ -40,8 +41,8 @@ impl fmt::Display for C {
 }
 impl fmt::Binary for D {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(f.write_str("aa"));
-        try!(f.write_char('☃'));
+        f.write_str("aa")?;
+        f.write_char('☃')?;
         f.write_str("bb")
     }
 }
@@ -162,6 +163,24 @@ pub fn main() {
     t!(format!("{:?}", 0.0), "0");
 
 
+    // Ergonomic format_args!
+    t!(format!("{0:x} {0:X}", 15), "f F");
+    t!(format!("{0:x} {0:X} {}", 15), "f F 15");
+    // NOTE: For now the longer test cases must not be followed immediately by
+    // >1 empty lines, or the pretty printer will break. Since no one wants to
+    // touch the current pretty printer (#751), we have no choice but to work
+    // around it. Some of the following test cases are also affected.
+    t!(format!("{:x}{0:X}{a:x}{:X}{1:x}{a:X}", 13, 14, a=15), "dDfEeF");
+    t!(format!("{a:x} {a:X}", a=15), "f F");
+
+    // And its edge cases
+    t!(format!("{a:.0$} {b:.0$} {0:.0$}\n{a:.c$} {b:.c$} {c:.c$}",
+               4, a="abcdefg", b="hijklmn", c=3),
+               "abcd hijk 4\nabc hij 3");
+    t!(format!("{a:.*} {0} {:.*}", 4, 3, "efgh", a="abcdef"), "abcd 4 efg");
+    t!(format!("{:.a$} {a} {a:#x}", "aaaaaa", a=2), "aa 2 0x2");
+
+
     // Test that pointers don't get truncated.
     {
         let val = usize::MAX;
@@ -176,6 +195,7 @@ pub fn main() {
     test_write();
     test_print();
     test_order();
+    test_once();
 
     // make sure that format! doesn't move out of local variables
     let a: Box<_> = box 3;
@@ -258,4 +278,18 @@ fn test_order() {
     assert_eq!(format!("{} {} {a} {b} {} {c}",
                        foo(), foo(), foo(), a=foo(), b=foo(), c=foo()),
                "1 2 4 5 3 6".to_string());
+}
+
+fn test_once() {
+    // Make sure each argument are evaluted only once even though it may be
+    // formatted multiple times
+    fn foo() -> isize {
+        static mut FOO: isize = 0;
+        unsafe {
+            FOO += 1;
+            FOO
+        }
+    }
+    assert_eq!(format!("{0} {0} {0} {a} {a} {a}", foo(), a=foo()),
+               "1 1 1 2 2 2".to_string());
 }

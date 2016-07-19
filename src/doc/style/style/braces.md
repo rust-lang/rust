@@ -2,7 +2,7 @@
 
 ### Opening braces always go on the same line.
 
-``` rust
+```rust,ignore
 fn foo() {
     ...
 }
@@ -30,7 +30,7 @@ frob(|x| {
 
 ### `match` arms get braces, except for single-line expressions.
 
-``` rust
+```rust,ignore
 match foo {
     bar => baz,
     quux => {
@@ -42,7 +42,7 @@ match foo {
 
 ### `return` statements get semicolons.
 
-``` rust
+```rust,ignore
 fn foo() {
     do_something();
 
@@ -62,7 +62,7 @@ fn foo() {
 > One possible rule: a trailing comma should be included whenever the
 > closing delimiter appears on a separate line:
 
-```rust
+```rust,ignore
 Foo { bar: 0, baz: 1 }
 
 Foo {

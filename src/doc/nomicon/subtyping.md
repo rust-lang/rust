@@ -53,7 +53,7 @@ inferred variance, so `Fn(T)` is invariant in `T`).
 Some important variances:
 
 * `&'a T` is variant over `'a` and `T` (as is `*const T` by metaphor)
-* `&'a mut T` is variant with over `'a` but invariant over `T`
+* `&'a mut T` is variant over `'a` but invariant over `T`
 * `Fn(T) -> U` is invariant over `T`, but variant over `U`
 * `Box`, `Vec`, and all other collections are variant over the types of
   their contents

@@ -16,12 +16,12 @@ use deriving::generic::ty::*;
 
 use syntax::ast;
 use syntax::ast::{MetaItem, Expr, Mutability};
-use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
                                        span: Span,
@@ -74,7 +74,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                 },
                 explicit_self: None,
                 args: vec!(Ptr(Box::new(Literal(Path::new_local(typaram))),
-                            Borrowed(None, Mutability::Mutable))),
+                           Borrowed(None, Mutability::Mutable))),
                 ret_ty: Literal(Path::new_(
                     pathvec_std!(cx, core::result::Result),
                     None,
@@ -85,6 +85,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                 )),
                 attributes: Vec::new(),
                 is_unsafe: false,
+                unify_fieldless_variants: false,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     decodable_substructure(a, b, c, krate)
                 })),

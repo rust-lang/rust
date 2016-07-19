@@ -11,7 +11,7 @@
 use borrow::Borrow;
 use fmt;
 use hash::{Hash, BuildHasher};
-use iter::{Map, Chain, FromIterator};
+use iter::{Chain, FromIterator};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 
 use super::Recover;
@@ -194,8 +194,7 @@ impl<T, S> HashSet<T, S>
     }
 
     /// Returns a reference to the set's hasher.
-    #[unstable(feature = "hashmap_public_hasher", reason = "don't want to make insta-stable",
-               issue = "31262")]
+    #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
         self.map.hasher()
     }
@@ -414,10 +413,7 @@ impl<T, S> HashSet<T, S>
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<T> {
-        fn first<A, B>((a, _): (A, B)) -> A { a }
-        let first: fn((T, ())) -> T = first; // coerce to fn pointer
-
-        Drain { iter: self.map.drain().map(first) }
+        Drain { iter: self.map.drain() }
     }
 
     /// Clears the set, removing all values.
@@ -462,7 +458,7 @@ impl<T, S> HashSet<T, S>
     /// The value may be any borrowed form of the set's value type, but
     /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the value type.
-    #[unstable(feature = "set_recovery", issue = "28050")]
+    #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
         where T: Borrow<Q>, Q: Hash + Eq
     {
@@ -539,9 +535,9 @@ impl<T, S> HashSet<T, S>
 
     /// Adds a value to the set.
     ///
-    /// If the set did not have a value present, `true` is returned.
+    /// If the set did not have this value present, `true` is returned.
     ///
-    /// If the set did have this key present, `false` is returned.
+    /// If the set did have this value present, `false` is returned.
     ///
     /// # Examples
     ///
@@ -559,7 +555,7 @@ impl<T, S> HashSet<T, S>
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
     /// one. Returns the replaced value.
-    #[unstable(feature = "set_recovery", issue = "28050")]
+    #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {
         Recover::replace(&mut self.map, value)
     }
@@ -594,7 +590,7 @@ impl<T, S> HashSet<T, S>
     /// The value may be any borrowed form of the set's value type, but
     /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the value type.
-    #[unstable(feature = "set_recovery", issue = "28050")]
+    #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
         where T: Borrow<Q>, Q: Hash + Eq
     {
@@ -633,11 +629,11 @@ impl<T, S> FromIterator<T> for HashSet<T, S>
     where T: Eq + Hash,
           S: BuildHasher + Default,
 {
-    fn from_iter<I: IntoIterator<Item=T>>(iterable: I) -> HashSet<T, S> {
-        let iter = iterable.into_iter();
-        let lower = iter.size_hint().0;
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> HashSet<T, S> {
+        let iterator = iter.into_iter();
+        let lower = iterator.size_hint().0;
         let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
-        set.extend(iter);
+        set.extend(iterator);
         set
     }
 }
@@ -811,13 +807,13 @@ pub struct Iter<'a, K: 'a> {
 /// HashSet move iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K> {
-    iter: Map<map::IntoIter<K, ()>, fn((K, ())) -> K>
+    iter: map::IntoIter<K, ()>
 }
 
 /// HashSet drain iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Drain<'a, K: 'a> {
-    iter: Map<map::Drain<'a, K, ()>, fn((K, ())) -> K>,
+    iter: map::Drain<'a, K, ()>,
 }
 
 /// Intersection iterator
@@ -891,10 +887,7 @@ impl<T, S> IntoIterator for HashSet<T, S>
     /// }
     /// ```
     fn into_iter(self) -> IntoIter<T> {
-        fn first<A, B>((a, _): (A, B)) -> A { a }
-        let first: fn((T, ())) -> T = first;
-
-        IntoIter { iter: self.map.into_iter().map(first) }
+        IntoIter { iter: self.map.into_iter() }
     }
 }
 
@@ -918,7 +911,7 @@ impl<'a, K> ExactSizeIterator for Iter<'a, K> {
 impl<K> Iterator for IntoIter<K> {
     type Item = K;
 
-    fn next(&mut self) -> Option<K> { self.iter.next() }
+    fn next(&mut self) -> Option<K> { self.iter.next().map(|(k, _)| k) }
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -930,7 +923,7 @@ impl<K> ExactSizeIterator for IntoIter<K> {
 impl<'a, K> Iterator for Drain<'a, K> {
     type Item = K;
 
-    fn next(&mut self) -> Option<K> { self.iter.next() }
+    fn next(&mut self) -> Option<K> { self.iter.next().map(|(k, _)| k) }
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1028,6 +1021,21 @@ impl<'a, T, S> Iterator for Union<'a, T, S>
 
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+}
+
+#[allow(dead_code)]
+fn assert_covariance() {
+    fn set<'new>(v: HashSet<&'static str>) -> HashSet<&'new str> { v }
+    fn iter<'a, 'new>(v: Iter<'a, &'static str>) -> Iter<'a, &'new str> { v }
+    fn into_iter<'new>(v: IntoIter<&'static str>) -> IntoIter<&'new str> { v }
+    fn difference<'a, 'new>(v: Difference<'a, &'static str, RandomState>)
+        -> Difference<'a, &'new str, RandomState> { v }
+    fn symmetric_difference<'a, 'new>(v: SymmetricDifference<'a, &'static str, RandomState>)
+        -> SymmetricDifference<'a, &'new str, RandomState> { v }
+    fn intersection<'a, 'new>(v: Intersection<'a, &'static str, RandomState>)
+        -> Intersection<'a, &'new str, RandomState> { v }
+    fn union<'a, 'new>(v: Union<'a, &'static str, RandomState>)
+        -> Union<'a, &'new str, RandomState> { v }
 }
 
 #[cfg(test)]

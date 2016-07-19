@@ -38,7 +38,7 @@ impl Subcommand for Test {
         let cwd = env::current_dir().unwrap();
         let src = cwd.clone();
 
-        let mut summary = try!(File::open(&src.join("SUMMARY.md")));
+        let mut summary = File::open(&src.join("SUMMARY.md"))?;
         match book::parse_summary(&mut summary, &src) {
             Ok(book) => {
                 for (_, item) in book.iter() {

@@ -28,6 +28,5 @@ fn main() {
         _ => { }
     };
     //~^^^ ERROR mismatched types in range
-    //~| expected char
-    //~| found integral variable
+    //~| expected char, found integral variable
 }

@@ -14,6 +14,7 @@ fn f<T: Array>(x: &T) {
     let _ = x
     //~^ ERROR `Array` cannot be made into an object
     //~| NOTE the trait cannot require that `Self : Sized`
+    //~| NOTE requirements on the impl of `std::ops::CoerceUnsized<&Array>`
     as
     &Array;
     //~^ ERROR `Array` cannot be made into an object

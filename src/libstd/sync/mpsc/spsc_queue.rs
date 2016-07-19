@@ -265,15 +265,18 @@ mod tests {
 
             // Ensure the borrowchecker works
             match queue.peek() {
-                Some(vec) => match &**vec {
-                    // Note that `pop` is not allowed here due to borrow
-                    [1] => {}
-                    _ => return
+                Some(vec) => {
+                    assert_eq!(&*vec, &[1]);
                 },
                 None => unreachable!()
             }
 
-            queue.pop();
+            match queue.pop() {
+                Some(vec) => {
+                    assert_eq!(&*vec, &[1]);
+                },
+                None => unreachable!()
+            }
         }
     }
 

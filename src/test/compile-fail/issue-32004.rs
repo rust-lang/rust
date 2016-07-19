@@ -18,12 +18,12 @@ struct S;
 fn main() {
     match Foo::Baz {
         Foo::Bar => {}
-        //~^ ERROR this pattern has 0 fields, but the corresponding variant
+        //~^ ERROR `Foo::Bar` does not name a unit variant, unit struct or a constant
         _ => {}
     }
 
     match S {
         S(()) => {}
-        //~^ ERROR this pattern has 1 field, but the corresponding struct
+        //~^ ERROR `S` does not name a tuple variant or a tuple struct
     }
 }

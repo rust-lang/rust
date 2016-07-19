@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::raw::Slice;
+struct Slice<T> {
+    data: *const T,
+    len: usize,
+}
 
 fn main() {
     match () {
         Slice { data: data, len: len } => (),
         //~^ ERROR mismatched types
-        //~| expected `()`
-        //~| found `core::raw::Slice<_>`
-        //~| expected ()
-        //~| found struct `core::raw::Slice`
+        //~| expected type `()`
+        //~| found type `Slice<_>`
+        //~| expected (), found struct `Slice`
         _ => unreachable!()
     }
 }

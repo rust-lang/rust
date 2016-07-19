@@ -18,10 +18,8 @@
                       form or name",
             issue = "27783")]
 #![feature(allocator)]
-#![feature(libc)]
 #![feature(staged_api)]
-
-extern crate libc;
+#![cfg_attr(unix, feature(libc))]
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values. In practice, the alignment is a
@@ -72,22 +70,50 @@ pub extern "C" fn __rust_usable_size(size: usize, align: usize) -> usize {
 
 #[cfg(unix)]
 mod imp {
+    extern crate libc;
+
     use core::cmp;
     use core::ptr;
-    use libc;
     use MIN_ALIGN;
 
     pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
         if align <= MIN_ALIGN {
             libc::malloc(size as libc::size_t) as *mut u8
         } else {
-            let mut out = ptr::null_mut();
-            let ret = libc::posix_memalign(&mut out, align as libc::size_t, size as libc::size_t);
-            if ret != 0 {
-                ptr::null_mut()
-            } else {
-                out as *mut u8
-            }
+            aligned_malloc(size, align)
+        }
+    }
+
+    #[cfg(target_os = "android")]
+    unsafe fn aligned_malloc(size: usize, align: usize) -> *mut u8 {
+        // On android we currently target API level 9 which unfortunately
+        // doesn't have the `posix_memalign` API used below. Instead we use
+        // `memalign`, but this unfortunately has the property on some systems
+        // where the memory returned cannot be deallocated by `free`!
+        //
+        // Upon closer inspection, however, this appears to work just fine with
+        // Android, so for this platform we should be fine to call `memalign`
+        // (which is present in API level 9). Some helpful references could
+        // possibly be chromium using memalign [1], attempts at documenting that
+        // memalign + free is ok [2] [3], or the current source of chromium
+        // which still uses memalign on android [4].
+        //
+        // [1]: https://codereview.chromium.org/10796020/
+        // [2]: https://code.google.com/p/android/issues/detail?id=35391
+        // [3]: https://bugs.chromium.org/p/chromium/issues/detail?id=138579
+        // [4]: https://chromium.googlesource.com/chromium/src/base/+/master/
+        //                                       /memory/aligned_memory.cc
+        libc::memalign(align as libc::size_t, size as libc::size_t) as *mut u8
+    }
+
+    #[cfg(not(target_os = "android"))]
+    unsafe fn aligned_malloc(size: usize, align: usize) -> *mut u8 {
+        let mut out = ptr::null_mut();
+        let ret = libc::posix_memalign(&mut out, align as libc::size_t, size as libc::size_t);
+        if ret != 0 {
+            ptr::null_mut()
+        } else {
+            out as *mut u8
         }
     }
 
@@ -96,8 +122,10 @@ mod imp {
             libc::realloc(ptr as *mut libc::c_void, size as libc::size_t) as *mut u8
         } else {
             let new_ptr = allocate(size, align);
-            ptr::copy(ptr, new_ptr, cmp::min(size, old_size));
-            deallocate(ptr, old_size, align);
+            if !new_ptr.is_null() {
+                ptr::copy(ptr, new_ptr, cmp::min(size, old_size));
+                deallocate(ptr, old_size, align);
+            }
             new_ptr
         }
     }

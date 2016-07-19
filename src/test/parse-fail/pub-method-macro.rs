@@ -29,6 +29,4 @@ mod bleh {
     }
 }
 
-fn main() {
-    bleh::S.f();
-}
+fn main() {}

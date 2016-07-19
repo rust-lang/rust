@@ -10,6 +10,5 @@
 
 fn foo<T>() {
     fn bar(b: T) { } //~ ERROR can't use type parameters from outer
-    //~^ ERROR type name `T` is undefined or not in scope
 }
 fn main() { }

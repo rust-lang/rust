@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:thread '<main>' panicked at
+// error-pattern:thread 'main' panicked at
 
 fn main() {
     panic!()

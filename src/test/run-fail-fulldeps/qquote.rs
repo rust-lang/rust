@@ -15,19 +15,21 @@
 #![feature(quote, rustc_private)]
 
 extern crate syntax;
+extern crate syntax_pos;
 
 use syntax::ast;
-use syntax::codemap::{self, DUMMY_SP};
+use syntax::codemap;
 use syntax::parse;
 use syntax::print::pprust;
+use syntax_pos::DUMMY_SP;
 
 fn main() {
     let ps = syntax::parse::ParseSess::new();
-    let mut feature_gated_cfgs = vec![];
+    let mut loader = syntax::ext::base::DummyMacroLoader;
     let mut cx = syntax::ext::base::ExtCtxt::new(
         &ps, vec![],
         syntax::ext::expand::ExpansionConfig::default("qquote".to_string()),
-        &mut feature_gated_cfgs);
+        &mut loader);
     cx.bt_push(syntax::codemap::ExpnInfo {
         call_site: DUMMY_SP,
         callee: syntax::codemap::NameAndSpan {

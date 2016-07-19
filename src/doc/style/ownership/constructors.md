@@ -4,7 +4,7 @@
 
 In Rust, "constructors" are just a convention:
 
-```rust
+```rust,ignore
 impl<T> Vec<T> {
     pub fn new() -> Vec<T> { ... }
 }
@@ -15,7 +15,7 @@ construct. Combined with the practice of
 [fully importing type names](../style/imports.md), this convention leads to
 informative but concise construction:
 
-```rust
+```rust,ignore
 use vec::Vec;
 
 // construct a new vector
@@ -29,7 +29,7 @@ than `new`).
 
 Given the `struct`
 
-```rust
+```rust,ignore
 pub struct Config {
     pub color: Color,
     pub size:  Size,
@@ -39,7 +39,7 @@ pub struct Config {
 
 provide a constructor if there are sensible defaults:
 
-```rust
+```rust,ignore
 impl Config {
     pub fn new() -> Config {
         Config {
@@ -53,7 +53,7 @@ impl Config {
 
 which then allows clients to concisely override using `struct` update syntax:
 
-```rust
+```rust,ignore
 Config { color: Red, .. Config::new() };
 ```
 

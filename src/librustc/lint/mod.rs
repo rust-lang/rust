@@ -33,15 +33,15 @@ pub use self::LintSource::*;
 
 use std::hash;
 use std::ascii::AsciiExt;
-use syntax::codemap::Span;
-use rustc_front::intravisit::FnKind;
+use syntax_pos::Span;
+use hir::intravisit::FnKind;
 use syntax::visit as ast_visit;
 use syntax::ast;
-use rustc_front::hir;
+use hir;
 
 pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         raw_emit_lint, check_crate, check_ast_crate, gather_attrs,
-                        raw_struct_lint, GatherNodeLevels, FutureIncompatibleInfo};
+                        raw_struct_lint, FutureIncompatibleInfo};
 
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]
@@ -167,7 +167,6 @@ pub trait LateLintPass: LintPass {
     fn check_variant_post(&mut self, _: &LateContext, _: &hir::Variant, _: &hir::Generics) { }
     fn check_lifetime(&mut self, _: &LateContext, _: &hir::Lifetime) { }
     fn check_lifetime_def(&mut self, _: &LateContext, _: &hir::LifetimeDef) { }
-    fn check_explicit_self(&mut self, _: &LateContext, _: &hir::ExplicitSelf) { }
     fn check_path(&mut self, _: &LateContext, _: &hir::Path, _: ast::NodeId) { }
     fn check_path_list_item(&mut self, _: &LateContext, _: &hir::PathListItem) { }
     fn check_attribute(&mut self, _: &LateContext, _: &ast::Attribute) { }
@@ -196,7 +195,6 @@ pub trait EarlyLintPass: LintPass {
     fn check_stmt(&mut self, _: &EarlyContext, _: &ast::Stmt) { }
     fn check_arm(&mut self, _: &EarlyContext, _: &ast::Arm) { }
     fn check_pat(&mut self, _: &EarlyContext, _: &ast::Pat) { }
-    fn check_decl(&mut self, _: &EarlyContext, _: &ast::Decl) { }
     fn check_expr(&mut self, _: &EarlyContext, _: &ast::Expr) { }
     fn check_expr_post(&mut self, _: &EarlyContext, _: &ast::Expr) { }
     fn check_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }
@@ -218,7 +216,6 @@ pub trait EarlyLintPass: LintPass {
     fn check_variant_post(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
     fn check_lifetime(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
     fn check_lifetime_def(&mut self, _: &EarlyContext, _: &ast::LifetimeDef) { }
-    fn check_explicit_self(&mut self, _: &EarlyContext, _: &ast::ExplicitSelf) { }
     fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
     fn check_path_list_item(&mut self, _: &EarlyContext, _: &ast::PathListItem) { }
     fn check_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }

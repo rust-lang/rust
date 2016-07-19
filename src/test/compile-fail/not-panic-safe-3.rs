@@ -9,14 +9,15 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![feature(recover)]
 
-use std::panic::RecoverSafe;
+use std::panic::UnwindSafe;
 use std::sync::Arc;
 use std::cell::RefCell;
 
-fn assert<T: RecoverSafe + ?Sized>() {}
+fn assert<T: UnwindSafe + ?Sized>() {}
 
 fn main() {
-    assert::<Arc<RefCell<i32>>>(); //~ ERROR: is not implemented
+    assert::<Arc<RefCell<i32>>>();
+    //~^ ERROR `std::cell::UnsafeCell<i32>: std::panic::RefUnwindSafe` is not satisfied
+    //~^^ ERROR `std::cell::UnsafeCell<usize>: std::panic::RefUnwindSafe` is not satisfied
 }

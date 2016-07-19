@@ -21,7 +21,7 @@ fn give_any<F>(f: F) where F: FnOnce() {
 
 fn give_owned<F>(f: F) where F: FnOnce() + Send {
     take_any(f);
-    take_const_owned(f); //~ ERROR the trait `core::marker::Sync` is not implemented for the type
+    take_const_owned(f); //~ ERROR `F: std::marker::Sync` is not satisfied
 }
 
 fn main() {}

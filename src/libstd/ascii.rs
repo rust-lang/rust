@@ -128,8 +128,6 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii)]
-    ///
     /// use std::ascii::AsciiExt;
     ///
     /// let mut ascii = 'a';
@@ -138,7 +136,7 @@ pub trait AsciiExt {
     ///
     /// assert_eq!('A', ascii);
     /// ```
-    #[unstable(feature = "ascii", issue = "27809")]
+    #[stable(feature = "ascii", since = "1.9.0")]
     fn make_ascii_uppercase(&mut self);
 
     /// Converts this type to its ASCII lower case equivalent in-place.
@@ -148,8 +146,6 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii)]
-    ///
     /// use std::ascii::AsciiExt;
     ///
     /// let mut ascii = 'A';
@@ -158,7 +154,7 @@ pub trait AsciiExt {
     ///
     /// assert_eq!('a', ascii);
     /// ```
-    #[unstable(feature = "ascii", issue = "27809")]
+    #[stable(feature = "ascii", since = "1.9.0")]
     fn make_ascii_lowercase(&mut self);
 }
 
@@ -566,5 +562,11 @@ mod tests {
             assert!((from_u32(i).unwrap()).to_string().eq_ignore_ascii_case(
                     &from_u32(lower).unwrap().to_string()));
         }
+    }
+
+    #[test]
+    fn inference_works() {
+        let x = "a".to_string();
+        x.eq_ignore_ascii_case("A");
     }
 }

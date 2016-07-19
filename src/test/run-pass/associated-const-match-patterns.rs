@@ -17,6 +17,7 @@ use empty_struct::XEmpty2 as XFoo;
 
 struct Foo;
 
+#[derive(PartialEq, Eq)]
 enum Bar {
     Var1,
     Var2,

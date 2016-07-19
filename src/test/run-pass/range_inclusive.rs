@@ -117,11 +117,6 @@ pub fn main() {
     assert_eq!(nonsense.next(), None);
     assert_eq!(nonsense, RangeInclusive::Empty { at: 10 });
 
-    // conversion
-    assert_eq!(0...9, (0..10).into());
-    assert_eq!(0...0, (0..1).into());
-    assert_eq!(RangeInclusive::Empty { at: 1 }, (1..0).into());
-
     // output
     assert_eq!(format!("{:?}", 0...10), "0...10");
     assert_eq!(format!("{:?}", ...10), "...10");

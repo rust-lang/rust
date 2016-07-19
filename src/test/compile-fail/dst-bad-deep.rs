@@ -21,5 +21,5 @@ pub fn main() {
     let f: Fat<[isize; 3]> = Fat { ptr: [5, 6, 7] };
     let g: &Fat<[isize]> = &f;
     let h: &Fat<Fat<[isize]>> = &Fat { ptr: *g };
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
+    //~^ ERROR `[isize]: std::marker::Sized` is not satisfied
 }

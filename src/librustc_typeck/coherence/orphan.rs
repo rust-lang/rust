@@ -12,22 +12,22 @@
 //! crate or pertains to a type defined in this crate.
 
 use middle::cstore::LOCAL_CRATE;
-use middle::def_id::DefId;
-use middle::traits;
-use middle::ty::{self, TyCtxt};
+use hir::def_id::DefId;
+use rustc::traits;
+use rustc::ty::{self, TyCtxt};
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use rustc::dep_graph::DepNode;
-use rustc_front::intravisit;
-use rustc_front::hir;
+use rustc::hir::intravisit;
+use rustc::hir;
 
-pub fn check(tcx: &TyCtxt) {
+pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut orphan = OrphanChecker { tcx: tcx };
     tcx.visit_all_items_in_krate(DepNode::CoherenceOrphanCheck, &mut orphan);
 }
 
 struct OrphanChecker<'cx, 'tcx:'cx> {
-    tcx: &'cx TyCtxt<'tcx>
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>
 }
 
 impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {

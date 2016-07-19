@@ -12,13 +12,13 @@ pub use self::SyntaxExtension::*;
 
 use ast;
 use ast::{Name, PatKind};
-use codemap;
-use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION};
+use attr::HasAttrs;
+use codemap::{self, CodeMap, ExpnInfo};
+use syntax_pos::{Span, ExpnId, NO_EXPANSION};
 use errors::DiagnosticBuilder;
 use ext;
 use ext::expand;
 use ext::tt::macro_rules;
-use feature_gate::GatedCfgAttr;
 use parse;
 use parse::parser;
 use parse::token;
@@ -26,12 +26,12 @@ use parse::token::{InternedString, intern, str_to_ident};
 use ptr::P;
 use util::small_vector::SmallVector;
 use util::lev_distance::find_best_match_for_name;
-use ext::mtwt;
 use fold::Folder;
 
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::default::Default;
+use tokenstream;
 
 
 #[derive(Debug,Clone)]
@@ -41,28 +41,30 @@ pub enum Annotatable {
     ImplItem(P<ast::ImplItem>),
 }
 
-impl Annotatable {
-    pub fn attrs(&self) -> &[ast::Attribute] {
+impl HasAttrs for Annotatable {
+    fn attrs(&self) -> &[ast::Attribute] {
         match *self {
-            Annotatable::Item(ref i) => &i.attrs,
-            Annotatable::TraitItem(ref ti) => &ti.attrs,
-            Annotatable::ImplItem(ref ii) => &ii.attrs,
+            Annotatable::Item(ref item) => &item.attrs,
+            Annotatable::TraitItem(ref trait_item) => &trait_item.attrs,
+            Annotatable::ImplItem(ref impl_item) => &impl_item.attrs,
         }
     }
 
-    pub fn fold_attrs(self, attrs: Vec<ast::Attribute>) -> Annotatable {
+    fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
         match self {
-            Annotatable::Item(i) => Annotatable::Item(i.map(|i| ast::Item {
-                attrs: attrs,
-                ..i
-            })),
-            Annotatable::TraitItem(i) => Annotatable::TraitItem(i.map(|ti| {
-                ast::TraitItem { attrs: attrs, ..ti }
-            })),
-            Annotatable::ImplItem(i) => Annotatable::ImplItem(i.map(|ii| {
-                ast::ImplItem { attrs: attrs, ..ii }
-            })),
+            Annotatable::Item(item) => Annotatable::Item(item.map_attrs(f)),
+            Annotatable::TraitItem(trait_item) => Annotatable::TraitItem(trait_item.map_attrs(f)),
+            Annotatable::ImplItem(impl_item) => Annotatable::ImplItem(impl_item.map_attrs(f)),
         }
+    }
+}
+
+impl Annotatable {
+    pub fn attrs(&self) -> &[ast::Attribute] {
+        HasAttrs::attrs(self)
+    }
+    pub fn fold_attrs(self, attrs: Vec<ast::Attribute>) -> Annotatable {
+        self.map_attrs(|_| attrs)
     }
 
     pub fn expect_item(self) -> P<ast::Item> {
@@ -95,6 +97,16 @@ impl Annotatable {
             _ => panic!("expected Item")
         }
     }
+
+    pub fn fold_with<F: Folder>(self, folder: &mut F) -> SmallVector<Self> {
+        match self {
+            Annotatable::Item(item) => folder.fold_item(item).map(Annotatable::Item),
+            Annotatable::ImplItem(item) =>
+                folder.fold_impl_item(item.unwrap()).map(|item| Annotatable::ImplItem(P(item))),
+            Annotatable::TraitItem(item) =>
+                folder.fold_trait_item(item.unwrap()).map(|item| Annotatable::TraitItem(P(item))),
+        }
+    }
 }
 
 // A more flexible ItemDecorator.
@@ -120,9 +132,7 @@ impl<F> MultiItemDecorator for F
     }
 }
 
-// A more flexible ItemKind::Modifier (ItemKind::Modifier should go away, eventually, FIXME).
-// meta_item is the annotation, item is the item being modified, parent_item
-// is the impl or trait item is declared in if item is part of such a thing.
+// `meta_item` is the annotation, and `item` is the item being modified.
 // FIXME Decorators should follow the same pattern too.
 pub trait MultiItemModifier {
     fn expand(&self,
@@ -130,22 +140,26 @@ pub trait MultiItemModifier {
               span: Span,
               meta_item: &ast::MetaItem,
               item: Annotatable)
-              -> Annotatable;
+              -> Vec<Annotatable>;
 }
 
-impl<F> MultiItemModifier for F
-    where F: Fn(&mut ExtCtxt,
-                Span,
-                &ast::MetaItem,
-                Annotatable) -> Annotatable
+impl<F, T> MultiItemModifier for F
+    where F: Fn(&mut ExtCtxt, Span, &ast::MetaItem, Annotatable) -> T,
+          T: Into<Vec<Annotatable>>,
 {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
               meta_item: &ast::MetaItem,
               item: Annotatable)
-              -> Annotatable {
-        (*self)(ecx, span, meta_item, item)
+              -> Vec<Annotatable> {
+        (*self)(ecx, span, meta_item, item).into()
+    }
+}
+
+impl Into<Vec<Annotatable>> for Annotatable {
+    fn into(self) -> Vec<Annotatable> {
+        vec![self]
     }
 }
 
@@ -154,20 +168,22 @@ pub trait TTMacroExpander {
     fn expand<'cx>(&self,
                    ecx: &'cx mut ExtCtxt,
                    span: Span,
-                   token_tree: &[ast::TokenTree])
+                   token_tree: &[tokenstream::TokenTree])
                    -> Box<MacResult+'cx>;
 }
 
 pub type MacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt, Span, &[ast::TokenTree]) -> Box<MacResult+'cx>;
+    for<'cx> fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
+                -> Box<MacResult+'cx>;
 
 impl<F> TTMacroExpander for F
-    where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, &[ast::TokenTree]) -> Box<MacResult+'cx>
+    where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
+                          -> Box<MacResult+'cx>
 {
     fn expand<'cx>(&self,
                    ecx: &'cx mut ExtCtxt,
                    span: Span,
-                   token_tree: &[ast::TokenTree])
+                   token_tree: &[tokenstream::TokenTree])
                    -> Box<MacResult+'cx> {
         (*self)(ecx, span, token_tree)
     }
@@ -178,22 +194,23 @@ pub trait IdentMacroExpander {
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    ident: ast::Ident,
-                   token_tree: Vec<ast::TokenTree> )
+                   token_tree: Vec<tokenstream::TokenTree> )
                    -> Box<MacResult+'cx>;
 }
 
 pub type IdentMacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree>) -> Box<MacResult+'cx>;
+    for<'cx> fn(&'cx mut ExtCtxt, Span, ast::Ident, Vec<tokenstream::TokenTree>)
+                -> Box<MacResult+'cx>;
 
 impl<F> IdentMacroExpander for F
     where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, ast::Ident,
-                          Vec<ast::TokenTree>) -> Box<MacResult+'cx>
+                          Vec<tokenstream::TokenTree>) -> Box<MacResult+'cx>
 {
     fn expand<'cx>(&self,
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    ident: ast::Ident,
-                   token_tree: Vec<ast::TokenTree> )
+                   token_tree: Vec<tokenstream::TokenTree> )
                    -> Box<MacResult+'cx>
     {
         (*self)(cx, sp, ident, token_tree)
@@ -203,10 +220,11 @@ impl<F> IdentMacroExpander for F
 // Use a macro because forwarding to a simple function has type system issues
 macro_rules! make_stmts_default {
     ($me:expr) => {
-        $me.make_expr().map(|e| {
-            SmallVector::one(codemap::respan(
-                e.span, ast::StmtKind::Expr(e, ast::DUMMY_NODE_ID)))
-        })
+        $me.make_expr().map(|e| SmallVector::one(ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            span: e.span,
+            node: ast::StmtKind::Expr(e),
+        }))
     }
 }
 
@@ -224,6 +242,11 @@ pub trait MacResult {
 
     /// Create zero or more impl items.
     fn make_impl_items(self: Box<Self>) -> Option<SmallVector<ast::ImplItem>> {
+        None
+    }
+
+    /// Create zero or more trait items.
+    fn make_trait_items(self: Box<Self>) -> Option<SmallVector<ast::TraitItem>> {
         None
     }
 
@@ -274,6 +297,7 @@ make_MacEager! {
     pat: P<ast::Pat>,
     items: SmallVector<P<ast::Item>>,
     impl_items: SmallVector<ast::ImplItem>,
+    trait_items: SmallVector<ast::TraitItem>,
     stmts: SmallVector<ast::Stmt>,
     ty: P<ast::Ty>,
 }
@@ -289,6 +313,10 @@ impl MacResult for MacEager {
 
     fn make_impl_items(self: Box<Self>) -> Option<SmallVector<ast::ImplItem>> {
         self.impl_items
+    }
+
+    fn make_trait_items(self: Box<Self>) -> Option<SmallVector<ast::TraitItem>> {
+        self.trait_items
     }
 
     fn make_stmts(self: Box<Self>) -> Option<SmallVector<ast::Stmt>> {
@@ -351,7 +379,7 @@ impl DummyResult {
             id: ast::DUMMY_NODE_ID,
             node: ast::ExprKind::Lit(P(codemap::respan(sp, ast::LitKind::Bool(false)))),
             span: sp,
-            attrs: None,
+            attrs: ast::ThinVec::new(),
         })
     }
 
@@ -399,11 +427,24 @@ impl MacResult for DummyResult {
         }
     }
 
+    fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVector<ast::TraitItem>> {
+        if self.expr_only {
+            None
+        } else {
+            Some(SmallVector::zero())
+        }
+    }
+
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVector<ast::Stmt>> {
-        Some(SmallVector::one(
-            codemap::respan(self.span,
-                            ast::StmtKind::Expr(DummyResult::raw_expr(self.span),
-                                                ast::DUMMY_NODE_ID))))
+        Some(SmallVector::one(ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span)),
+            span: self.span,
+        }))
+    }
+
+    fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
+        Some(DummyResult::raw_ty(self.span))
     }
 }
 
@@ -441,15 +482,12 @@ pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 pub struct BlockInfo {
     /// Should macros escape from this scope?
     pub macros_escape: bool,
-    /// What are the pending renames?
-    pub pending_renames: mtwt::RenameList,
 }
 
 impl BlockInfo {
     pub fn new() -> BlockInfo {
         BlockInfo {
             macros_escape: false,
-            pending_renames: Vec::new(),
         }
     }
 }
@@ -536,6 +574,17 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders
 }
 
+pub trait MacroLoader {
+    fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<ast::MacroDef>;
+}
+
+pub struct DummyMacroLoader;
+impl MacroLoader for DummyMacroLoader {
+    fn load_crate(&mut self, _: &ast::Item, _: bool) -> Vec<ast::MacroDef> {
+        Vec::new()
+    }
+}
+
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the backtrace()
 /// -> expn_info of their expansion context stored into their span.
@@ -545,7 +594,7 @@ pub struct ExtCtxt<'a> {
     pub backtrace: ExpnId,
     pub ecfg: expand::ExpansionConfig<'a>,
     pub crate_root: Option<&'static str>,
-    pub feature_gated_cfgs: &'a mut Vec<GatedCfgAttr>,
+    pub loader: &'a mut MacroLoader,
 
     pub mod_path: Vec<ast::Ident> ,
     pub exported_macros: Vec<ast::MacroDef>,
@@ -561,7 +610,8 @@ pub struct ExtCtxt<'a> {
 impl<'a> ExtCtxt<'a> {
     pub fn new(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
                ecfg: expand::ExpansionConfig<'a>,
-               feature_gated_cfgs: &'a mut Vec<GatedCfgAttr>) -> ExtCtxt<'a> {
+               loader: &'a mut MacroLoader)
+               -> ExtCtxt<'a> {
         let env = initial_syntax_expander_table(&ecfg);
         ExtCtxt {
             parse_sess: parse_sess,
@@ -570,8 +620,8 @@ impl<'a> ExtCtxt<'a> {
             mod_path: Vec::new(),
             ecfg: ecfg,
             crate_root: None,
-            feature_gated_cfgs: feature_gated_cfgs,
             exported_macros: Vec::new(),
+            loader: loader,
             syntax_env: env,
             recursion_count: 0,
 
@@ -586,7 +636,7 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self)
     }
 
-    pub fn new_parser_from_tts(&self, tts: &[ast::TokenTree])
+    pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree])
         -> parser::Parser<'a> {
         parse::tts_to_parser(self.parse_sess, tts.to_vec(), self.cfg())
     }
@@ -601,22 +651,6 @@ impl<'a> ExtCtxt<'a> {
         })
     }
     pub fn backtrace(&self) -> ExpnId { self.backtrace }
-
-    /// Original span that caused the current exapnsion to happen.
-    pub fn original_span(&self) -> Span {
-        let mut expn_id = self.backtrace;
-        let mut call_site = None;
-        loop {
-            match self.codemap().with_expn_info(expn_id, |ei| ei.map(|ei| ei.call_site)) {
-                None => break,
-                Some(cs) => {
-                    call_site = Some(cs);
-                    expn_id = cs.expn_id;
-                }
-            }
-        }
-        call_site.expect("missing expansion backtrace")
-    }
 
     /// Returns span for the macro which originally caused the current expansion to happen.
     ///
@@ -764,15 +798,14 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn suggest_macro_name(&mut self,
                               name: &str,
-                              span: Span,
                               err: &mut DiagnosticBuilder<'a>) {
         let names = &self.syntax_env.names;
         if let Some(suggestion) = find_best_match_for_name(names.iter(), name, None) {
             if suggestion != name {
-                err.fileline_help(span, &format!("did you mean `{}!`?", suggestion));
+                err.help(&format!("did you mean `{}!`?", suggestion));
             } else {
-                err.fileline_help(span, &format!("have you added the `#[macro_use]` on the \
-                                                  module/import?"));
+                err.help(&format!("have you added the `#[macro_use]` on the \
+                                   module/import?"));
             }
         }
     }
@@ -783,6 +816,12 @@ impl<'a> ExtCtxt<'a> {
 /// compilation on error, merely emits a non-fatal error and returns None.
 pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
                       -> Option<(InternedString, ast::StrStyle)> {
+    // Update `expr.span`'s expn_id now in case expr is an `include!` macro invocation.
+    let expr = expr.map(|mut expr| {
+        expr.span.expn_id = cx.backtrace;
+        expr
+    });
+
     // we want to be able to handle e.g. concat("foo", "bar")
     let expr = cx.expander().fold_expr(expr);
     match expr.node {
@@ -802,7 +841,7 @@ pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
 /// done as rarely as possible).
 pub fn check_zero_tts(cx: &ExtCtxt,
                       sp: Span,
-                      tts: &[ast::TokenTree],
+                      tts: &[tokenstream::TokenTree],
                       name: &str) {
     if !tts.is_empty() {
         cx.span_err(sp, &format!("{} takes no arguments", name));
@@ -813,7 +852,7 @@ pub fn check_zero_tts(cx: &ExtCtxt,
 /// is not a string literal, emit an error and return None.
 pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
                                sp: Span,
-                               tts: &[ast::TokenTree],
+                               tts: &[tokenstream::TokenTree],
                                name: &str)
                                -> Option<String> {
     let mut p = cx.new_parser_from_tts(tts);
@@ -834,7 +873,7 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
 /// parsing error, emit a non-fatal error and return None.
 pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
                           sp: Span,
-                          tts: &[ast::TokenTree]) -> Option<Vec<P<ast::Expr>>> {
+                          tts: &[tokenstream::TokenTree]) -> Option<Vec<P<ast::Expr>>> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
@@ -907,9 +946,8 @@ impl SyntaxEnv {
 
     pub fn find(&self, k: Name) -> Option<Rc<SyntaxExtension>> {
         for frame in self.chain.iter().rev() {
-            match frame.map.get(&k) {
-                Some(v) => return Some(v.clone()),
-                None => {}
+            if let Some(v) = frame.map.get(&k) {
+                return Some(v.clone());
             }
         }
         None
@@ -925,5 +963,11 @@ impl SyntaxEnv {
     pub fn info(&mut self) -> &mut BlockInfo {
         let last_chain_index = self.chain.len() - 1;
         &mut self.chain[last_chain_index].info
+    }
+
+    pub fn is_crate_root(&mut self) -> bool {
+        // The first frame is pushed in `SyntaxEnv::new()` and the second frame is
+        // pushed when folding the crate root pseudo-module (c.f. noop_fold_crate).
+        self.chain.len() <= 2
     }
 }

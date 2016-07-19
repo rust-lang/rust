@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static A: &'static [i32] = &[];
-static B: i32 = (&A)[1]; //~ ERROR: const index-expr is out of bounds
+const A: &'static [i32] = &[];
+const B: i32 = (&A)[1];
+//~^ ERROR index out of bounds: the len is 0 but the index is 1
 
 fn main() {
     let _ = B;

@@ -62,6 +62,7 @@ fn mut_plus_immut() {
     &mut f
     +
     &f;  //~ ERROR: cannot borrow `f` as immutable because it is also borrowed as mutable
+    //~^ cannot borrow `f` as immutable because it is also borrowed as mutable
 }
 
 fn immut_plus_mut() {
@@ -70,6 +71,7 @@ fn immut_plus_mut() {
     &f
     +
     &mut f;  //~ ERROR: cannot borrow `f` as mutable because it is also borrowed as immutable
+    //~^ cannot borrow `f` as mutable because it is also borrowed as immutable
 }
 
 fn main() {}

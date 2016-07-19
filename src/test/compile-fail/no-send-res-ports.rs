@@ -33,7 +33,7 @@ fn main() {
     let x = foo(Port(Rc::new(())));
 
     thread::spawn(move|| {
-        //~^ ERROR `core::marker::Send` is not implemented
+        //~^ ERROR `std::rc::Rc<()>: std::marker::Send` is not satisfied
         let y = x;
         println!("{:?}", y);
     });

@@ -15,11 +15,9 @@
 #![allow(non_snake_case)]
 #![stable(feature = "core_char", since = "1.2.0")]
 
-use iter::Iterator;
+use prelude::v1::*;
+
 use mem::transmute;
-use option::Option::{None, Some};
-use option::Option;
-use slice::SliceExt;
 
 // UTF-8 ranges and tags for encoding characters
 const TAG_CONT: u8    = 0b1000_0000;
@@ -269,10 +267,10 @@ pub trait CharExt {
     fn len_utf8(self) -> usize;
     #[stable(feature = "core", since = "1.6.0")]
     fn len_utf16(self) -> usize;
-    #[stable(feature = "core", since = "1.6.0")]
-    fn encode_utf8(self, dst: &mut [u8]) -> Option<usize>;
-    #[stable(feature = "core", since = "1.6.0")]
-    fn encode_utf16(self, dst: &mut [u16]) -> Option<usize>;
+    #[unstable(feature = "unicode", issue = "27784")]
+    fn encode_utf8(self) -> EncodeUtf8;
+    #[unstable(feature = "unicode", issue = "27784")]
+    fn encode_utf16(self) -> EncodeUtf16;
 }
 
 #[stable(feature = "core", since = "1.6.0")]
@@ -299,7 +297,20 @@ impl CharExt for char {
 
     #[inline]
     fn escape_unicode(self) -> EscapeUnicode {
-        EscapeUnicode { c: self, state: EscapeUnicodeState::Backslash }
+        let c = self as u32;
+
+        // or-ing 1 ensures that for c==0 the code computes that one
+        // digit should be printed and (which is the same) avoids the
+        // (31 - 32) underflow
+        let msb = 31 - (c | 1).leading_zeros();
+
+        // the index of the most significant hex digit
+        let ms_hex_digit = msb / 4;
+        EscapeUnicode {
+            c: self,
+            state: EscapeUnicodeState::Backslash,
+            hex_digit_idx: ms_hex_digit as usize,
+        }
     }
 
     #[inline]
@@ -336,75 +347,47 @@ impl CharExt for char {
     }
 
     #[inline]
-    fn encode_utf8(self, dst: &mut [u8]) -> Option<usize> {
-        encode_utf8_raw(self as u32, dst)
+    fn encode_utf8(self) -> EncodeUtf8 {
+        let code = self as u32;
+        let mut buf = [0; 4];
+        let pos = if code < MAX_ONE_B {
+            buf[3] = code as u8;
+            3
+        } else if code < MAX_TWO_B {
+            buf[2] = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+            buf[3] = (code & 0x3F) as u8 | TAG_CONT;
+            2
+        } else if code < MAX_THREE_B {
+            buf[1] = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+            buf[2] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+            buf[3] = (code & 0x3F) as u8 | TAG_CONT;
+            1
+        } else {
+            buf[0] = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
+            buf[1] = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+            buf[2] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+            buf[3] = (code & 0x3F) as u8 | TAG_CONT;
+            0
+        };
+        EncodeUtf8 { buf: buf, pos: pos }
     }
 
     #[inline]
-    fn encode_utf16(self, dst: &mut [u16]) -> Option<usize> {
-        encode_utf16_raw(self as u32, dst)
-    }
-}
-
-/// Encodes a raw u32 value as UTF-8 into the provided byte buffer,
-/// and then returns the number of bytes written.
-///
-/// If the buffer is not large enough, nothing will be written into it
-/// and a `None` will be returned.
-#[inline]
-#[unstable(feature = "char_internals",
-           reason = "this function should not be exposed publicly",
-           issue = "0")]
-#[doc(hidden)]
-pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<usize> {
-    // Marked #[inline] to allow llvm optimizing it away
-    if code < MAX_ONE_B && !dst.is_empty() {
-        dst[0] = code as u8;
-        Some(1)
-    } else if code < MAX_TWO_B && dst.len() >= 2 {
-        dst[0] = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-        dst[1] = (code & 0x3F) as u8 | TAG_CONT;
-        Some(2)
-    } else if code < MAX_THREE_B && dst.len() >= 3  {
-        dst[0] = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-        dst[1] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
-        dst[2] = (code & 0x3F) as u8 | TAG_CONT;
-        Some(3)
-    } else if dst.len() >= 4 {
-        dst[0] = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-        dst[1] = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-        dst[2] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
-        dst[3] = (code & 0x3F) as u8 | TAG_CONT;
-        Some(4)
-    } else {
-        None
-    }
-}
-
-/// Encodes a raw u32 value as UTF-16 into the provided `u16` buffer,
-/// and then returns the number of `u16`s written.
-///
-/// If the buffer is not large enough, nothing will be written into it
-/// and a `None` will be returned.
-#[inline]
-#[unstable(feature = "char_internals",
-           reason = "this function should not be exposed publicly",
-           issue = "0")]
-#[doc(hidden)]
-pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
-    // Marked #[inline] to allow llvm optimizing it away
-    if (ch & 0xFFFF) == ch && !dst.is_empty() {
-        // The BMP falls through (assuming non-surrogate, as it should)
-        dst[0] = ch as u16;
-        Some(1)
-    } else if dst.len() >= 2 {
-        // Supplementary planes break into surrogates.
-        ch -= 0x1_0000;
-        dst[0] = 0xD800 | ((ch >> 10) as u16);
-        dst[1] = 0xDC00 | ((ch as u16) & 0x3FF);
-        Some(2)
-    } else {
-        None
+    fn encode_utf16(self) -> EncodeUtf16 {
+        let mut buf = [0; 2];
+        let mut code = self as u32;
+        let pos = if (code & 0xFFFF) == code {
+            // The BMP falls through (assuming non-surrogate, as it should)
+            buf[1] = code as u16;
+            1
+        } else {
+            // Supplementary planes break into surrogates.
+            code -= 0x1_0000;
+            buf[0] = 0xD800 | ((code >> 10) as u16);
+            buf[1] = 0xDC00 | ((code as u16) & 0x3FF);
+            0
+        };
+        EncodeUtf16 { buf: buf, pos: pos }
     }
 }
 
@@ -420,17 +403,25 @@ pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeUnicode {
     c: char,
-    state: EscapeUnicodeState
+    state: EscapeUnicodeState,
+
+    // The index of the next hex digit to be printed (0 if none),
+    // i.e. the number of remaining hex digits to be printed;
+    // increasing from the least significant digit: 0x543210
+    hex_digit_idx: usize,
 }
 
+// The enum values are ordered so that their representation is the
+// same as the remaining length (besides the hexadecimal digits). This
+// likely makes `len()` a single load from memory) and inline-worth.
 #[derive(Clone, Debug)]
 enum EscapeUnicodeState {
-    Backslash,
-    Type,
-    LeftBrace,
-    Value(usize),
-    RightBrace,
     Done,
+    RightBrace,
+    Value,
+    LeftBrace,
+    Type,
+    Backslash,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -448,19 +439,16 @@ impl Iterator for EscapeUnicode {
                 Some('u')
             }
             EscapeUnicodeState::LeftBrace => {
-                let mut n = 0;
-                while (self.c as u32) >> (4 * (n + 1)) != 0 {
-                    n += 1;
-                }
-                self.state = EscapeUnicodeState::Value(n);
+                self.state = EscapeUnicodeState::Value;
                 Some('{')
             }
-            EscapeUnicodeState::Value(offset) => {
-                let c = from_digit(((self.c as u32) >> (offset * 4)) & 0xf, 16).unwrap();
-                if offset == 0 {
+            EscapeUnicodeState::Value => {
+                let hex_digit = ((self.c as u32) >> (self.hex_digit_idx * 4)) & 0xf;
+                let c = from_digit(hex_digit, 16).unwrap();
+                if self.hex_digit_idx == 0 {
                     self.state = EscapeUnicodeState::RightBrace;
                 } else {
-                    self.state = EscapeUnicodeState::Value(offset - 1);
+                    self.hex_digit_idx -= 1;
                 }
                 Some(c)
             }
@@ -472,20 +460,43 @@ impl Iterator for EscapeUnicode {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let mut n = 0;
-        while (self.c as usize) >> (4 * (n + 1)) != 0 {
-            n += 1;
-        }
-        let n = match self.state {
-            EscapeUnicodeState::Backslash => n + 5,
-            EscapeUnicodeState::Type => n + 4,
-            EscapeUnicodeState::LeftBrace => n + 3,
-            EscapeUnicodeState::Value(offset) => offset + 2,
-            EscapeUnicodeState::RightBrace => 1,
-            EscapeUnicodeState::Done => 0,
-        };
+        let n = self.len();
         (n, Some(n))
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.len()
+    }
+
+    fn last(self) -> Option<char> {
+        match self.state {
+            EscapeUnicodeState::Done => None,
+
+            EscapeUnicodeState::RightBrace |
+            EscapeUnicodeState::Value |
+            EscapeUnicodeState::LeftBrace |
+            EscapeUnicodeState::Type |
+            EscapeUnicodeState::Backslash => Some('}'),
+        }
+    }
+}
+
+#[stable(feature = "exact_size_escape", since = "1.11.0")]
+impl ExactSizeIterator for EscapeUnicode {
+    #[inline]
+    fn len(&self) -> usize {
+        // The match is a single memory access with no branching
+        self.hex_digit_idx + match self.state {
+            EscapeUnicodeState::Done => 0,
+            EscapeUnicodeState::RightBrace => 1,
+            EscapeUnicodeState::Value => 2,
+            EscapeUnicodeState::LeftBrace => 3,
+            EscapeUnicodeState::Type => 4,
+            EscapeUnicodeState::Backslash => 5,
+        }
     }
 }
 
@@ -504,9 +515,9 @@ pub struct EscapeDefault {
 
 #[derive(Clone, Debug)]
 enum EscapeDefaultState {
-    Backslash(char),
-    Char(char),
     Done,
+    Char(char),
+    Backslash(char),
     Unicode(EscapeUnicode),
 }
 
@@ -529,22 +540,15 @@ impl Iterator for EscapeDefault {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.state {
-            EscapeDefaultState::Char(_) => (1, Some(1)),
-            EscapeDefaultState::Backslash(_) => (2, Some(2)),
-            EscapeDefaultState::Unicode(ref iter) => iter.size_hint(),
-            EscapeDefaultState::Done => (0, Some(0)),
-        }
+        let n = self.len();
+        (n, Some(n))
     }
 
+    #[inline]
     fn count(self) -> usize {
-        match self.state {
-            EscapeDefaultState::Char(_) => 1,
-            EscapeDefaultState::Unicode(iter) => iter.count(),
-            EscapeDefaultState::Done => 0,
-            EscapeDefaultState::Backslash(_) => 2,
-        }
+        self.len()
     }
 
     fn nth(&mut self, n: usize) -> Option<char> {
@@ -581,5 +585,141 @@ impl Iterator for EscapeDefault {
             EscapeDefaultState::Done => None,
             EscapeDefaultState::Backslash(c) | EscapeDefaultState::Char(c) => Some(c),
         }
+    }
+}
+
+#[stable(feature = "exact_size_escape", since = "1.11.0")]
+impl ExactSizeIterator for EscapeDefault {
+    fn len(&self) -> usize {
+        match self.state {
+            EscapeDefaultState::Done => 0,
+            EscapeDefaultState::Char(_) => 1,
+            EscapeDefaultState::Backslash(_) => 2,
+            EscapeDefaultState::Unicode(ref iter) => iter.len(),
+        }
+    }
+}
+
+/// An iterator over `u8` entries represending the UTF-8 encoding of a `char`
+/// value.
+///
+/// Constructed via the `.encode_utf8()` method on `char`.
+#[unstable(feature = "unicode", issue = "27784")]
+#[derive(Debug)]
+pub struct EncodeUtf8 {
+    buf: [u8; 4],
+    pos: usize,
+}
+
+impl EncodeUtf8 {
+    /// Returns the remaining bytes of this iterator as a slice.
+    #[unstable(feature = "unicode", issue = "27784")]
+    pub fn as_slice(&self) -> &[u8] {
+        &self.buf[self.pos..]
+    }
+}
+
+#[unstable(feature = "unicode", issue = "27784")]
+impl Iterator for EncodeUtf8 {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<u8> {
+        if self.pos == self.buf.len() {
+            None
+        } else {
+            let ret = Some(self.buf[self.pos]);
+            self.pos += 1;
+            ret
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.as_slice().iter().size_hint()
+    }
+}
+
+/// An iterator over `u16` entries represending the UTF-16 encoding of a `char`
+/// value.
+///
+/// Constructed via the `.encode_utf16()` method on `char`.
+#[unstable(feature = "unicode", issue = "27784")]
+#[derive(Debug)]
+pub struct EncodeUtf16 {
+    buf: [u16; 2],
+    pos: usize,
+}
+
+impl EncodeUtf16 {
+    /// Returns the remaining bytes of this iterator as a slice.
+    #[unstable(feature = "unicode", issue = "27784")]
+    pub fn as_slice(&self) -> &[u16] {
+        &self.buf[self.pos..]
+    }
+}
+
+
+#[unstable(feature = "unicode", issue = "27784")]
+impl Iterator for EncodeUtf16 {
+    type Item = u16;
+
+    fn next(&mut self) -> Option<u16> {
+        if self.pos == self.buf.len() {
+            None
+        } else {
+            let ret = Some(self.buf[self.pos]);
+            self.pos += 1;
+            ret
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.as_slice().iter().size_hint()
+    }
+}
+
+
+/// An iterator over an iterator of bytes of the characters the bytes represent
+/// as UTF-8
+#[unstable(feature = "decode_utf8", issue = "33906")]
+#[derive(Clone, Debug)]
+pub struct DecodeUtf8<I: Iterator<Item = u8>>(::iter::Peekable<I>);
+
+/// Decodes an `Iterator` of bytes as UTF-8.
+#[unstable(feature = "decode_utf8", issue = "33906")]
+#[inline]
+pub fn decode_utf8<I: IntoIterator<Item = u8>>(i: I) -> DecodeUtf8<I::IntoIter> {
+    DecodeUtf8(i.into_iter().peekable())
+}
+
+/// `<DecodeUtf8 as Iterator>::next` returns this for an invalid input sequence.
+#[unstable(feature = "decode_utf8", issue = "33906")]
+#[derive(PartialEq, Debug)]
+pub struct InvalidSequence(());
+
+#[unstable(feature = "decode_utf8", issue = "33906")]
+impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
+    type Item = Result<char, InvalidSequence>;
+    #[inline]
+    fn next(&mut self) -> Option<Result<char, InvalidSequence>> {
+        self.0.next().map(|b| {
+            if b & 0x80 == 0 { Ok(b as char) } else {
+                let l = (!b).leading_zeros() as usize; // number of bytes in UTF-8 representation
+                if l < 2 || l > 6 { return Err(InvalidSequence(())) };
+                let mut x = (b as u32) & (0x7F >> l);
+                for _ in 0..l-1 {
+                    match self.0.peek() {
+                        Some(&b) if b & 0xC0 == 0x80 => {
+                            self.0.next();
+                            x = (x << 6) | (b as u32) & 0x3F;
+                        },
+                        _ => return Err(InvalidSequence(())),
+                    }
+                }
+                match from_u32(x) {
+                    Some(x) if l == x.len_utf8() => Ok(x),
+                    _ => Err(InvalidSequence(())),
+                }
+            }
+        })
     }
 }

@@ -19,7 +19,7 @@ workaround; see [newtype for views](../types/newtype.md))
 
 The most important common traits to implement from `std` are:
 
-```rust
+```text
 Clone, Debug, Hash, Eq
 ```
 

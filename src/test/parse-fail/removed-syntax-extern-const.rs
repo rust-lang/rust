@@ -12,5 +12,5 @@
 
 extern {
     const i: isize;
-    //~^ ERROR expected one of `fn`, `pub`, `static`, `unsafe`, or `}`, found `const`
+    //~^ ERROR expected one of `fn`, `pub`, `static`, or `}`, found `const`
 }

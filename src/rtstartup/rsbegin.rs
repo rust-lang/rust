@@ -27,8 +27,7 @@
 #![allow(non_camel_case_types)]
 
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
-pub mod eh_frames
-{
+pub mod eh_frames {
     #[no_mangle]
     #[link_section = ".eh_frame"]
     // Marks beginning of the stack frame unwind info section
@@ -40,7 +39,7 @@ pub mod eh_frames
 
     // Unwind info registration/deregistration routines.
     // See the docs of `unwind` module in libstd.
-    extern {
+    extern "C" {
         fn rust_eh_register_frames(eh_frame_begin: *const u8, object: *mut u8);
         fn rust_eh_unregister_frames(eh_frame_begin: *const u8, object: *mut u8);
     }
@@ -58,8 +57,7 @@ pub mod eh_frames
     }
 
     // MSVC-specific init/uninit routine registration
-    pub mod ms_init
-    {
+    pub mod ms_init {
         // .CRT$X?? sections are roughly analogous to ELF's .init_array and .fini_array,
         // except that they exploit the fact that linker will sort them alphabitically,
         // so e.g. sections with names between .CRT$XIA and .CRT$XIZ are guaranteed to be

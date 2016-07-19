@@ -10,6 +10,4 @@
 
 // compile-flags: -Z parse-only
 
-type v = [mut isize];
-    //~^  ERROR expected identifier, found keyword `mut`
-    //~^^ ERROR expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `]`, found `isize`
+type v = [mut isize]; //~ ERROR expected type, found keyword `mut`

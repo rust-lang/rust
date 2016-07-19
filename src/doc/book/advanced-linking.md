@@ -12,7 +12,7 @@ the `link_args` attribute. This attribute is applied to `extern` blocks and
 specifies raw flags which need to get passed to the linker when producing an
 artifact. An example usage would be:
 
-``` no_run
+```rust,no_run
 #![feature(link_args)]
 
 #[link_args = "-foo -bar -baz"]
@@ -52,7 +52,7 @@ By default, all Rust programs on Linux will link to the system `libc` along with
 a number of other libraries. Let's look at an example on a 64-bit Linux machine
 with GCC and `glibc` (by far the most common `libc` on Linux):
 
-``` text
+```text
 $ cat example.rs
 fn main() {}
 $ rustc example.rs
@@ -134,7 +134,7 @@ $ ldd example
         not a dynamic executable
 $ ./example
 hi!
-thread '<main>' panicked at 'failed', example.rs:1
+thread 'main' panicked at 'failed', example.rs:1
 ```
 
 Success! This binary can be copied to almost any Linux machine with the same

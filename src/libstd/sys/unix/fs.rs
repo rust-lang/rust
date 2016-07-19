@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use prelude::v1::*;
-use io::prelude::*;
 use os::unix::prelude::*;
 
 use ffi::{CString, CStr, OsString, OsStr};
@@ -28,7 +27,7 @@ use sys_common::{AsInner, FromInner};
 #[cfg(any(target_os = "linux", target_os = "emscripten"))]
 use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64, lseek64, dirent64, readdir64_r, open64};
 #[cfg(target_os = "android")]
-use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off64_t, ftruncate64, lseek64,
+use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off64_t, lseek64,
            dirent as dirent64, open as open64};
 #[cfg(not(any(target_os = "linux",
               target_os = "emscripten",
@@ -85,7 +84,7 @@ pub struct OpenOptions {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FilePermissions { mode: mode_t }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType { mode: mode_t }
 
 pub struct DirBuilder { mode: mode_t }
@@ -98,31 +97,6 @@ impl FileAttr {
 
     pub fn file_type(&self) -> FileType {
         FileType { mode: self.stat.st_mode as mode_t }
-    }
-}
-
-#[cfg(any(target_os = "ios", target_os = "macos"))]
-// FIXME: update SystemTime to store a timespec and don't lose precision
-impl FileAttr {
-    pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timeval {
-            tv_sec: self.stat.st_mtime,
-            tv_usec: (self.stat.st_mtime_nsec / 1000) as libc::suseconds_t,
-        }))
-    }
-
-    pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timeval {
-            tv_sec: self.stat.st_atime,
-            tv_usec: (self.stat.st_atime_nsec / 1000) as libc::suseconds_t,
-        }))
-    }
-
-    pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timeval {
-            tv_sec: self.stat.st_birthtime,
-            tv_usec: (self.stat.st_birthtime_nsec / 1000) as libc::suseconds_t,
-        }))
     }
 }
 
@@ -150,7 +124,7 @@ impl FileAttr {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "macos", target_os = "netbsd")))]
+#[cfg(not(target_os = "netbsd"))]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
@@ -168,7 +142,9 @@ impl FileAttr {
 
     #[cfg(any(target_os = "bitrig",
               target_os = "freebsd",
-              target_os = "openbsd"))]
+              target_os = "openbsd",
+              target_os = "macos",
+              target_os = "ios"))]
     pub fn created(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_birthtime as libc::time_t,
@@ -178,7 +154,9 @@ impl FileAttr {
 
     #[cfg(not(any(target_os = "bitrig",
                   target_os = "freebsd",
-                  target_os = "openbsd")))]
+                  target_os = "openbsd",
+                  target_os = "macos",
+                  target_os = "ios")))]
     pub fn created(&self) -> io::Result<SystemTime> {
         Err(io::Error::new(io::ErrorKind::Other,
                            "creation time is not available on this platform \
@@ -227,9 +205,15 @@ impl Iterator for ReadDir {
                 // of the thread safety, on Illumos the readdir(3C) function is safe to use
                 // in threaded applications and it is generally preferred over the
                 // readdir_r(3C) function.
+                super::os::set_errno(0);
                 let entry_ptr = libc::readdir(self.dirp.0);
                 if entry_ptr.is_null() {
-                    return None
+                    // NULL can mean either the end is reached or an error occurred.
+                    // So we had to clear errno beforehand to check for an error now.
+                    return match super::os::errno() {
+                        0 => None,
+                        e => Some(Err(Error::from_raw_os_error(e))),
+                    }
                 }
 
                 let name = (*entry_ptr).d_name.as_ptr();
@@ -418,18 +402,18 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let path = try!(cstr(path));
+        let path = cstr(path)?;
         File::open_c(&path, opts)
     }
 
     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
         let flags = libc::O_CLOEXEC |
-                    try!(opts.get_access_mode()) |
-                    try!(opts.get_creation_mode()) |
+                    opts.get_access_mode()? |
+                    opts.get_creation_mode()? |
                     (opts.custom_flags as c_int & !libc::O_ACCMODE);
-        let fd = try!(cvt_r(|| unsafe {
+        let fd = cvt_r(|| unsafe {
             open64(path.as_ptr(), flags, opts.mode as c_int)
-        }));
+        })?;
         let fd = FileDesc::new(fd);
 
         // Currently the standard library supports Linux 2.6.18 which did not
@@ -440,7 +424,7 @@ impl File {
         // The CLOEXEC flag, however, is supported on versions of OSX/BSD/etc
         // that we support, so we only do this on Linux currently.
         if cfg!(target_os = "linux") {
-            fd.set_cloexec();
+            fd.set_cloexec()?;
         }
 
         Ok(File(fd))
@@ -448,19 +432,19 @@ impl File {
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         let mut stat: stat64 = unsafe { mem::zeroed() };
-        try!(cvt(unsafe {
+        cvt(unsafe {
             fstat64(self.0.raw(), &mut stat)
-        }));
+        })?;
         Ok(FileAttr { stat: stat })
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        try!(cvt_r(|| unsafe { libc::fsync(self.0.raw()) }));
+        cvt_r(|| unsafe { libc::fsync(self.0.raw()) })?;
         Ok(())
     }
 
     pub fn datasync(&self) -> io::Result<()> {
-        try!(cvt_r(|| unsafe { os_datasync(self.0.raw()) }));
+        cvt_r(|| unsafe { os_datasync(self.0.raw()) })?;
         return Ok(());
 
         #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -476,10 +460,13 @@ impl File {
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
-        try!(cvt_r(|| unsafe {
+        #[cfg(target_os = "android")]
+        return ::sys::android::ftruncate64(self.0.raw(), size);
+
+        #[cfg(not(target_os = "android"))]
+        return cvt_r(|| unsafe {
             ftruncate64(self.0.raw(), size as off64_t)
-        }));
-        Ok(())
+        }).map(|_| ());
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -502,7 +489,7 @@ impl File {
             SeekFrom::End(off) => (libc::SEEK_END, off as off64_t),
             SeekFrom::Current(off) => (libc::SEEK_CUR, off as off64_t),
         };
-        let n = try!(cvt(unsafe { lseek64(self.0.raw(), pos, whence) }));
+        let n = cvt(unsafe { lseek64(self.0.raw(), pos, whence) })?;
         Ok(n as u64)
     }
 
@@ -521,8 +508,8 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let p = try!(cstr(p));
-        try!(cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }));
+        let p = cstr(p)?;
+        cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) })?;
         Ok(())
     }
 
@@ -532,7 +519,7 @@ impl DirBuilder {
 }
 
 fn cstr(path: &Path) -> io::Result<CString> {
-    Ok(try!(CString::new(path.as_os_str().as_bytes())))
+    Ok(CString::new(path.as_os_str().as_bytes())?)
 }
 
 impl FromInner<c_int> for File {
@@ -610,7 +597,7 @@ impl fmt::Debug for File {
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = Arc::new(p.to_path_buf());
-    let p = try!(cstr(p));
+    let p = cstr(p)?;
     unsafe {
         let ptr = libc::opendir(p.as_ptr());
         if ptr.is_null() {
@@ -622,32 +609,32 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let p = try!(cstr(p));
-    try!(cvt(unsafe { libc::unlink(p.as_ptr()) }));
+    let p = cstr(p)?;
+    cvt(unsafe { libc::unlink(p.as_ptr()) })?;
     Ok(())
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let old = try!(cstr(old));
-    let new = try!(cstr(new));
-    try!(cvt(unsafe { libc::rename(old.as_ptr(), new.as_ptr()) }));
+    let old = cstr(old)?;
+    let new = cstr(new)?;
+    cvt(unsafe { libc::rename(old.as_ptr(), new.as_ptr()) })?;
     Ok(())
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    let p = try!(cstr(p));
-    try!(cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }));
+    let p = cstr(p)?;
+    cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) })?;
     Ok(())
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let p = try!(cstr(p));
-    try!(cvt(unsafe { libc::rmdir(p.as_ptr()) }));
+    let p = cstr(p)?;
+    cvt(unsafe { libc::rmdir(p.as_ptr()) })?;
     Ok(())
 }
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
-    let filetype = try!(lstat(path)).file_type();
+    let filetype = lstat(path)?.file_type();
     if filetype.is_symlink() {
         unlink(path)
     } else {
@@ -656,27 +643,27 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
 }
 
 fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
-    for child in try!(readdir(path)) {
-        let child = try!(child);
-        if try!(child.file_type()).is_dir() {
-            try!(remove_dir_all_recursive(&child.path()));
+    for child in readdir(path)? {
+        let child = child?;
+        if child.file_type()?.is_dir() {
+            remove_dir_all_recursive(&child.path())?;
         } else {
-            try!(unlink(&child.path()));
+            unlink(&child.path())?;
         }
     }
     rmdir(path)
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    let c_path = try!(cstr(p));
+    let c_path = cstr(p)?;
     let p = c_path.as_ptr();
 
     let mut buf = Vec::with_capacity(256);
 
     loop {
-        let buf_read = try!(cvt(unsafe {
+        let buf_read = cvt(unsafe {
             libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity() as libc::size_t)
-        })) as usize;
+        })? as usize;
 
         unsafe { buf.set_len(buf_read); }
 
@@ -694,39 +681,39 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = try!(cstr(src));
-    let dst = try!(cstr(dst));
-    try!(cvt(unsafe { libc::symlink(src.as_ptr(), dst.as_ptr()) }));
+    let src = cstr(src)?;
+    let dst = cstr(dst)?;
+    cvt(unsafe { libc::symlink(src.as_ptr(), dst.as_ptr()) })?;
     Ok(())
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = try!(cstr(src));
-    let dst = try!(cstr(dst));
-    try!(cvt(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) }));
+    let src = cstr(src)?;
+    let dst = cstr(dst)?;
+    cvt(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) })?;
     Ok(())
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let p = try!(cstr(p));
+    let p = cstr(p)?;
     let mut stat: stat64 = unsafe { mem::zeroed() };
-    try!(cvt(unsafe {
+    cvt(unsafe {
         stat64(p.as_ptr(), &mut stat as *mut _ as *mut _)
-    }));
+    })?;
     Ok(FileAttr { stat: stat })
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let p = try!(cstr(p));
+    let p = cstr(p)?;
     let mut stat: stat64 = unsafe { mem::zeroed() };
-    try!(cvt(unsafe {
+    cvt(unsafe {
         lstat64(p.as_ptr(), &mut stat as *mut _ as *mut _)
-    }));
+    })?;
     Ok(FileAttr { stat: stat })
 }
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-    let path = try!(CString::new(p.as_os_str().as_bytes()));
+    let path = CString::new(p.as_os_str().as_bytes())?;
     let buf;
     unsafe {
         let r = libc::realpath(path.as_ptr(), ptr::null_mut());
@@ -746,11 +733,11 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                               "the source path is not an existing regular file"))
     }
 
-    let mut reader = try!(File::open(from));
-    let mut writer = try!(File::create(to));
-    let perm = try!(reader.metadata()).permissions();
+    let mut reader = File::open(from)?;
+    let mut writer = File::create(to)?;
+    let perm = reader.metadata()?.permissions();
 
-    let ret = try!(io::copy(&mut reader, &mut writer));
-    try!(set_permissions(to, perm));
+    let ret = io::copy(&mut reader, &mut writer)?;
+    set_permissions(to, perm)?;
     Ok(ret)
 }

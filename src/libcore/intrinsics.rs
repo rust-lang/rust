@@ -10,7 +10,7 @@
 
 //! rustc compiler intrinsics.
 //!
-//! The corresponding definitions are in librustc_trans/trans/intrinsic.rs.
+//! The corresponding definitions are in librustc_trans/intrinsic.rs.
 //!
 //! # Volatiles
 //!
@@ -53,34 +53,14 @@ extern "rust-intrinsic" {
     // NB: These intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
 
-    #[cfg(all(stage0, not(cargobuild)))]
-    pub fn atomic_cxchg<T>(dst: *mut T, old: T, src: T) -> T;
-    #[cfg(all(stage0, not(cargobuild)))]
-    pub fn atomic_cxchg_acq<T>(dst: *mut T, old: T, src: T) -> T;
-    #[cfg(all(stage0, not(cargobuild)))]
-    pub fn atomic_cxchg_rel<T>(dst: *mut T, old: T, src: T) -> T;
-    #[cfg(all(stage0, not(cargobuild)))]
-    pub fn atomic_cxchg_acqrel<T>(dst: *mut T, old: T, src: T) -> T;
-    #[cfg(all(stage0, not(cargobuild)))]
-    pub fn atomic_cxchg_relaxed<T>(dst: *mut T, old: T, src: T) -> T;
-
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_acq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_rel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_acqrel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_failacq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_acq_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_acqrel_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     pub fn atomic_cxchgweak<T>(dst: *mut T, old: T, src: T) -> (T, bool);
@@ -188,6 +168,15 @@ extern "rust-intrinsic" {
     pub fn atomic_singlethreadfence_rel();
     pub fn atomic_singlethreadfence_acqrel();
 
+    /// Magic intrinsic that derives its meaning from attributes
+    /// attached to the function.
+    ///
+    /// For example, dataflow uses this to inject static assertions so
+    /// that `rustc_peek(potentially_uninitialized)` would actually
+    /// double-check that dataflow did indeed compute that it is
+    /// uninitialized at that point in the control flow.
+    pub fn rustc_peek<T>(_: T) -> T;
+
     /// Aborts the execution of the process.
     pub fn abort() -> !;
 
@@ -212,11 +201,8 @@ extern "rust-intrinsic" {
 
     /// The size of a type in bytes.
     ///
-    /// This is the exact number of bytes in memory taken up by a
-    /// value of the given type. In other words, a memset of this size
-    /// would *exactly* overwrite a value. When laid out in vectors
-    /// and structures there may be additional padding between
-    /// elements.
+    /// More specifically, this is the offset in bytes between successive
+    /// items of the same type, including alignment padding.
     pub fn size_of<T>() -> usize;
 
     /// Moves a value to an uninitialized memory location.
@@ -305,12 +291,6 @@ extern "rust-intrinsic" {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn transmute<T, U>(e: T) -> U;
-
-    /// Gives the address for the return value of the enclosing function.
-    ///
-    /// Using this intrinsic in a function that does not use an out pointer
-    /// will trigger a compiler error.
-    pub fn return_address() -> *const u8;
 
     /// Returns `true` if the actual type given as `T` requires drop
     /// glue; returns `false` if the actual type provided for `T`
@@ -548,27 +528,22 @@ extern "rust-intrinsic" {
 
     /// Float addition that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    #[cfg(not(stage0))]
     pub fn fadd_fast<T>(a: T, b: T) -> T;
 
     /// Float subtraction that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    #[cfg(not(stage0))]
     pub fn fsub_fast<T>(a: T, b: T) -> T;
 
     /// Float multiplication that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    #[cfg(not(stage0))]
     pub fn fmul_fast<T>(a: T, b: T) -> T;
 
     /// Float division that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    #[cfg(not(stage0))]
     pub fn fdiv_fast<T>(a: T, b: T) -> T;
 
     /// Float remainder that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    #[cfg(not(stage0))]
     pub fn frem_fast<T>(a: T, b: T) -> T;
 
 

@@ -44,7 +44,12 @@ pub enum ItemType {
 
 impl ItemType {
     pub fn from_item(item: &clean::Item) -> ItemType {
-        match item.inner {
+        let inner = match item.inner {
+            clean::StrippedItem(box ref item) => item,
+            ref inner@_ => inner,
+        };
+
+        match *inner {
             clean::ModuleItem(..)          => ItemType::Module,
             clean::ExternCrateItem(..)     => ItemType::ExternCrate,
             clean::ImportItem(..)          => ItemType::Import,
@@ -67,6 +72,7 @@ impl ItemType {
             clean::AssociatedConstItem(..) => ItemType::AssociatedConst,
             clean::AssociatedTypeItem(..)  => ItemType::AssociatedType,
             clean::DefaultImplItem(..)     => ItemType::Impl,
+            clean::StrippedItem(..)        => unreachable!(),
         }
     }
 

@@ -83,10 +83,10 @@ impl<T: 'static> P<T> {
     }
 }
 
-impl<T> Deref for P<T> {
+impl<T: ?Sized> Deref for P<T> {
     type Target = T;
 
-    fn deref<'a>(&'a self) -> &'a T {
+    fn deref(&self) -> &T {
         &self.ptr
     }
 }
@@ -97,11 +97,12 @@ impl<T: 'static + Clone> Clone for P<T> {
     }
 }
 
-impl<T: Debug> Debug for P<T> {
+impl<T: ?Sized + Debug> Debug for P<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&**self, f)
+        Debug::fmt(&self.ptr, f)
     }
 }
+
 impl<T: Display> Display for P<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt(&**self, f)
@@ -126,19 +127,8 @@ impl<T: Encodable> Encodable for P<T> {
     }
 }
 
-
-impl<T:fmt::Debug> fmt::Debug for P<[T]> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        self.ptr.fmt(fmt)
-    }
-}
-
 impl<T> P<[T]> {
     pub fn new() -> P<[T]> {
-        P::empty()
-    }
-
-    pub fn empty() -> P<[T]> {
         P { ptr: Default::default() }
     }
 
@@ -151,31 +141,11 @@ impl<T> P<[T]> {
     pub fn into_vec(self) -> Vec<T> {
         self.ptr.into_vec()
     }
-
-    pub fn as_slice<'a>(&'a self) -> &'a [T] {
-        &self.ptr
-    }
-
-    pub fn move_iter(self) -> vec::IntoIter<T> {
-        self.into_vec().into_iter()
-    }
-
-    pub fn map<U, F: FnMut(&T) -> U>(&self, f: F) -> P<[U]> {
-        self.iter().map(f).collect()
-    }
-}
-
-impl<T> Deref for P<[T]> {
-    type Target = [T];
-
-    fn deref(&self) -> &[T] {
-        self.as_slice()
-    }
 }
 
 impl<T> Default for P<[T]> {
     fn default() -> P<[T]> {
-        P::empty()
+        P::new()
     }
 }
 

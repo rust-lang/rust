@@ -8,11 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern: overflow representing the type `S`
+
+#![feature(rustc_attrs)]
+
 trait Mirror { type It: ?Sized; }
 impl<T: ?Sized> Mirror for T { type It = Self; }
 struct S(Option<<S as Mirror>::It>);
-//~^ ERROR recursive type `S` has infinite size
 
+#[rustc_no_mir] // FIXME #27840 MIR tries to represent `std::option::Option<S>` first.
 fn main() {
     let _s = S(None);
 }

@@ -12,12 +12,12 @@
 
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::Span;
-use syntax::errors;
+use errors;
+use syntax_pos::Span;
 use rustc::dep_graph::DepNode;
-use rustc::front::map::Map;
-use rustc_front::intravisit::Visitor;
-use rustc_front::hir;
+use rustc::hir::map::Map;
+use rustc::hir::intravisit::Visitor;
+use rustc::hir;
 
 struct RegistrarFinder {
     registrars: Vec<(ast::NodeId, Span)> ,

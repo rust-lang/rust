@@ -20,7 +20,8 @@
 
 use os::raw::c_long;
 
-#[unstable(feature = "pthread_t", issue = "29791")] pub type pthread_t = c_long;
+#[stable(feature = "pthread_t", since = "1.8.0")]
+pub type pthread_t = c_long;
 
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]

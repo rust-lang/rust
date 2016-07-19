@@ -32,8 +32,8 @@ impl<'a> set_f<'a> for c<'a> {
     fn set_f_bad(&mut self, b: Box<b>) {
         self.f = b;
         //~^ ERROR mismatched types
-        //~| expected `Box<Box<&'a isize>>`
-        //~| found `Box<Box<&isize>>`
+        //~| expected type `Box<Box<&'a isize>>`
+        //~| found type `Box<Box<&isize>>`
         //~| lifetime mismatch
     }
 }

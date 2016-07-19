@@ -9,10 +9,10 @@
 // except according to those terms.
 
 
-static A: [u8; 1] = ['h' as u8];
-static B: u8 = (&A)[0];
-static C: &'static &'static &'static &'static [u8; 1] = & & & &A;
-static D: u8 = (&C)[0];
+const A: [u8; 1] = ['h' as u8];
+const B: u8 = (&A)[0];
+const C: &'static &'static &'static &'static [u8; 1] = & & & &A;
+const D: u8 = (&C)[0];
 
 pub fn main() {
     assert_eq!(B, A[0]);

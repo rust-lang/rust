@@ -14,13 +14,13 @@
 
 pub use self::Variant::*;
 
-pub use rustc::middle::cfg::graphviz::{Node, Edge};
-use rustc::middle::cfg::graphviz as cfg_dot;
+pub use rustc::cfg::graphviz::{Node, Edge};
+use rustc::cfg::graphviz as cfg_dot;
 
 use borrowck;
 use borrowck::{BorrowckCtxt, LoanPath};
 use dot;
-use rustc::middle::cfg::CFGIndex;
+use rustc::cfg::CFGIndex;
 use rustc::middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use std::rc::Rc;
 use dot::IntoCow;
@@ -129,7 +129,9 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> dot::Labeller<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 'tcx> {
+impl<'a, 'tcx> dot::Labeller<'a> for DataflowLabeller<'a, 'tcx> {
+    type Node = Node<'a>;
+    type Edge = Edge<'a>;
     fn graph_id(&'a self) -> dot::Id<'a> { self.inner.graph_id() }
     fn node_id(&'a self, n: &Node<'a>) -> dot::Id<'a> { self.inner.node_id(n) }
     fn node_label(&'a self, n: &Node<'a>) -> dot::LabelText<'a> {
@@ -143,7 +145,9 @@ impl<'a, 'tcx> dot::Labeller<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 't
     fn edge_label(&'a self, e: &Edge<'a>) -> dot::LabelText<'a> { self.inner.edge_label(e) }
 }
 
-impl<'a, 'tcx> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 'tcx> {
+impl<'a, 'tcx> dot::GraphWalk<'a> for DataflowLabeller<'a, 'tcx> {
+    type Node = Node<'a>;
+    type Edge = Edge<'a>;
     fn nodes(&'a self) -> dot::Nodes<'a, Node<'a>> { self.inner.nodes() }
     fn edges(&'a self) -> dot::Edges<'a, Edge<'a>> { self.inner.edges() }
     fn source(&'a self, edge: &Edge<'a>) -> Node<'a> { self.inner.source(edge) }

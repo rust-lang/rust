@@ -1,4 +1,5 @@
 {
+    "intrinsic_prefix": "_mm",
     "llvm_prefix": "llvm.x86.avx.",
     "intrinsics": [
         {

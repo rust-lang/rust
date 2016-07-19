@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// The raw_pointer_derived lint only warns about its own removal
+// The raw_pointer_derived lint was removed, but is now reported by
+// the renamed_and_removed_lints lint, which means it's a warning by
+// default, and allowed in cargo dependency builds.
 // cc #30346
 
 #[deny(raw_pointer_derive)] //~ WARN raw_pointer_derive has been removed
-#[deny(warnings)]
-fn main() { let unused = (); } //~ ERR unused
+#[deny(unused_variables)]
+fn main() { let unused = (); } //~ ERROR unused

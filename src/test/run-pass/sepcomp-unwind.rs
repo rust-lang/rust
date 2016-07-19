@@ -39,5 +39,5 @@ mod b {
 }
 
 fn main() {
-    thread::spawn(move|| { ::b::g() }).join().err().unwrap();
+    thread::spawn(move|| { ::b::g() }).join().unwrap_err();
 }

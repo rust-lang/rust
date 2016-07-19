@@ -147,23 +147,23 @@ impl f64 {
     /// [subnormal][subnormal], or `NaN`.
     ///
     /// ```
-    /// use std::f32;
+    /// use std::f64;
     ///
-    /// let min = f32::MIN_POSITIVE; // 1.17549435e-38f64
-    /// let max = f32::MAX;
-    /// let lower_than_min = 1.0e-40_f32;
-    /// let zero = 0.0f32;
+    /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308f64
+    /// let max = f64::MAX;
+    /// let lower_than_min = 1.0e-308_f64;
+    /// let zero = 0.0f64;
     ///
     /// assert!(min.is_normal());
     /// assert!(max.is_normal());
     ///
     /// assert!(!zero.is_normal());
-    /// assert!(!f32::NAN.is_normal());
-    /// assert!(!f32::INFINITY.is_normal());
+    /// assert!(!f64::NAN.is_normal());
+    /// assert!(!f64::INFINITY.is_normal());
     /// // Values between `0` and `min` are Subnormal.
     /// assert!(!lower_than_min.is_normal());
     /// ```
-    /// [subnormal]: http://en.wikipedia.org/wiki/Denormal_number
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_normal(self) -> bool { num::Float::is_normal(self) }
@@ -209,7 +209,11 @@ impl f64 {
     /// [floating-point]: ../reference.html#machine-types
     #[unstable(feature = "float_extras", reason = "signature is undecided",
                issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
+    #[allow(deprecated)]
     pub fn integer_decode(self) -> (u64, i16, i8) { num::Float::integer_decode(self) }
 
     /// Returns the largest integer less than or equal to a number.
@@ -546,7 +550,12 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f64 {
-        self.log_wrapper(|n| { unsafe { intrinsics::log2f64(n) } })
+        self.log_wrapper(|n| {
+            #[cfg(target_os = "android")]
+            return ::sys::android::log2f64(n);
+            #[cfg(not(target_os = "android"))]
+            return unsafe { intrinsics::log2f64(n) };
+        })
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -608,6 +617,9 @@ impl f64 {
     #[unstable(feature = "float_extras",
                reason = "pending integer conventions",
                issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn ldexp(x: f64, exp: isize) -> f64 {
         unsafe { cmath::ldexp(x, exp as c_int) }
@@ -635,6 +647,9 @@ impl f64 {
     #[unstable(feature = "float_extras",
                reason = "pending integer conventions",
                issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn frexp(self) -> (f64, isize) {
         unsafe {
@@ -650,15 +665,18 @@ impl f64 {
     /// ```
     /// #![feature(float_extras)]
     ///
-    /// let x = 1.0f32;
+    /// let x = 1.0f64;
     ///
-    /// let abs_diff = (x.next_after(2.0) - 1.00000011920928955078125_f32).abs();
+    /// let abs_diff = (x.next_after(2.0) - 1.0000000000000002220446049250313_f64).abs();
     ///
     /// assert!(abs_diff < 1e-10);
     /// ```
     #[unstable(feature = "float_extras",
                reason = "unsure about its place in the world",
                issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn next_after(self, other: f64) -> f64 {
         unsafe { cmath::nextafter(self, other) }
@@ -713,9 +731,16 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn abs_sub(self, other: f64) -> f64 {
-        unsafe { cmath::fdim(self, other) }
-    }
+    #[rustc_deprecated(since = "1.10.0",
+                       reason = "you probably meant `(self - other).abs()`: \
+                                 this operation is `(self - other).max(0.0)` (also \
+                                 known as `fdim` in C). If you truly need the positive \
+                                 difference, consider using that expression or the C function \
+                                 `fdim`, depending on how you wish to handle NaN (please consider \
+                                 filing an issue describing your use-case too).")]
+     pub fn abs_sub(self, other: f64) -> f64 {
+         unsafe { cmath::fdim(self, other) }
+     }
 
     /// Takes the cubic root of a number.
     ///
@@ -903,7 +928,7 @@ impl f64 {
     /// let abs_difference_1 = (f.1 - x.cos()).abs();
     ///
     /// assert!(abs_difference_0 < 1e-10);
-    /// assert!(abs_difference_0 < 1e-10);
+    /// assert!(abs_difference_1 < 1e-10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1023,9 +1048,10 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f64 {
-        match self {
-            NEG_INFINITY => NEG_INFINITY,
-            x => (x + ((x * x) + 1.0).sqrt()).ln(),
+        if self == NEG_INFINITY {
+            NEG_INFINITY
+        } else {
+            (self + ((self * self) + 1.0).sqrt()).ln()
         }
     }
 
@@ -1264,7 +1290,7 @@ mod tests {
     }
 
     #[test]
-    #[rustc_no_mir] // FIXME #27840 MIR NAN ends up negative.
+    #[allow(deprecated)]
     fn test_integer_decode() {
         assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906, -51, 1));
         assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931, -39, -1));
@@ -1273,7 +1299,11 @@ mod tests {
         assert_eq!((-0f64).integer_decode(), (0, -1075, -1));
         assert_eq!(INFINITY.integer_decode(), (4503599627370496, 972, 1));
         assert_eq!(NEG_INFINITY.integer_decode(), (4503599627370496, 972, -1));
-        assert_eq!(NAN.integer_decode(), (6755399441055744, 972, 1));
+
+        // Ignore the "sign" (quiet / signalling flag) of NAN.
+        // It can vary between runtime operations and LLVM folding.
+        let (nan_m, nan_e, _nan_s) = NAN.integer_decode();
+        assert_eq!((nan_m, nan_e), (6755399441055744, 972));
     }
 
     #[test]
@@ -1588,6 +1618,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_ldexp() {
         let f1 = 2.0f64.powi(-123);
         let f2 = 2.0f64.powi(-111);
@@ -1608,6 +1639,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_frexp() {
         let f1 = 2.0f64.powi(-123);
         let f2 = 2.0f64.powi(-111);
@@ -1627,6 +1659,7 @@ mod tests {
     }
 
     #[test] #[cfg_attr(windows, ignore)] // FIXME #8755
+    #[allow(deprecated)]
     fn test_frexp_nowin() {
         let inf: f64 = INFINITY;
         let neg_inf: f64 = NEG_INFINITY;
@@ -1634,24 +1667,6 @@ mod tests {
         assert_eq!(match inf.frexp() { (x, _) => x }, inf);
         assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
         assert!(match nan.frexp() { (x, _) => x.is_nan() })
-    }
-
-    #[test]
-    fn test_abs_sub() {
-        assert_eq!((-1f64).abs_sub(1f64), 0f64);
-        assert_eq!(1f64.abs_sub(1f64), 0f64);
-        assert_eq!(1f64.abs_sub(0f64), 1f64);
-        assert_eq!(1f64.abs_sub(-1f64), 2f64);
-        assert_eq!(NEG_INFINITY.abs_sub(0f64), 0f64);
-        assert_eq!(INFINITY.abs_sub(1f64), INFINITY);
-        assert_eq!(0f64.abs_sub(NEG_INFINITY), INFINITY);
-        assert_eq!(0f64.abs_sub(INFINITY), 0f64);
-    }
-
-    #[test]
-    fn test_abs_sub_nowin() {
-        assert!(NAN.abs_sub(-1f64).is_nan());
-        assert!(1f64.abs_sub(NAN).is_nan());
     }
 
     #[test]

@@ -35,25 +35,22 @@ fn main() {
     // n == m
     let &x = &1isize as &T;      //~ ERROR type `&T` cannot be dereferenced
     let &&x = &(&1isize as &T);  //~ ERROR type `&T` cannot be dereferenced
-    let box x = box 1isize as Box<T>; //~ ERROR the trait `core::marker::Sized` is not implemented
+    let box x = box 1isize as Box<T>; //~ ERROR `T: std::marker::Sized` is not satisfied
 
     // n > m
     let &&x = &1isize as &T;
     //~^ ERROR mismatched types
-    //~| expected `T`
-    //~| found `&_`
-    //~| expected trait T
-    //~| found &-ptr
+    //~| expected type `T`
+    //~| found type `&_`
+    //~| expected trait T, found &-ptr
     let &&&x = &(&1isize as &T);
     //~^ ERROR mismatched types
-    //~| expected `T`
-    //~| found `&_`
-    //~| expected trait T
-    //~| found &-ptr
+    //~| expected type `T`
+    //~| found type `&_`
+    //~| expected trait T, found &-ptr
     let box box x = box 1isize as Box<T>;
     //~^ ERROR mismatched types
-    //~| expected `T`
-    //~| found `Box<_>`
-    //~| expected trait T
-    //~| found box
+    //~| expected type `T`
+    //~| found type `Box<_>`
+    //~| expected trait T, found box
 }

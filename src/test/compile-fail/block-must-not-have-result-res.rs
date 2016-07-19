@@ -13,10 +13,6 @@ struct r;
 impl Drop for r {
     fn drop(&mut self) {
         true //~  ERROR mismatched types
-             //~| expected ()
-             //~| found bool
-             //~| expected ()
-             //~| found bool
     }
 }
 

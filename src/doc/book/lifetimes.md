@@ -1,7 +1,7 @@
 % Lifetimes
 
-This guide is three of three presenting Rust’s ownership system. This is one of
-Rust’s most unique and compelling features, with which Rust developers should
+This is the last of three sections presenting Rust’s ownership system. This is one of
+Rust’s most distinct and compelling features, with which Rust developers should
 become quite acquainted. Ownership is how Rust achieves its largest goal,
 memory safety. There are a few distinct concepts, each with its own chapter:
 
@@ -56,8 +56,8 @@ To fix this, we have to make sure that step four never happens after step
 three. The ownership system in Rust does this through a concept called
 lifetimes, which describe the scope that a reference is valid for.
 
-When we have a function that takes a reference by argument, we can be implicit
-or explicit about the lifetime of the reference:
+When we have a function that takes an argument by reference, we can be
+implicit or explicit about the lifetime of the reference:
 
 ```rust
 // implicit
@@ -282,17 +282,15 @@ to it.
 
 ## Lifetime Elision
 
-Rust supports powerful local type inference in function bodies, but it’s
-forbidden in item signatures to allow reasoning about the types based on
-the item signature alone. However, for ergonomic reasons a very restricted
-secondary inference algorithm called “lifetime elision” applies in function
-signatures. It infers only based on the signature components themselves and not
-based on the body of the function, only infers lifetime parameters, and does
-this with only three easily memorizable and unambiguous rules. This makes
-lifetime elision a shorthand for writing an item signature, while not hiding
+Rust supports powerful local type inference in the bodies of functions but not in their item signatures. 
+It's forbidden to allow reasoning about types based on the item signature alone. 
+However, for ergonomic reasons, a very restricted secondary inference algorithm called 
+“lifetime elision” does apply when judging lifetimes. Lifetime elision is concerned solely to infer 
+lifetime parameters using three easily memorizable and unambiguous rules. This means lifetime elision 
+acts as a shorthand for writing an item signature, while not hiding
 away the actual types involved as full local inference would if applied to it.
 
-When talking about lifetime elision, we use the term *input lifetime* and
+When talking about lifetime elision, we use the terms *input lifetime* and
 *output lifetime*. An *input lifetime* is a lifetime associated with a parameter
 of a function, and an *output lifetime* is a lifetime associated with the return
 value of a function. For example, this function has an input lifetime:
@@ -337,11 +335,13 @@ fn print<'a>(s: &'a str); // expanded
 
 fn debug(lvl: u32, s: &str); // elided
 fn debug<'a>(lvl: u32, s: &'a str); // expanded
+```
 
-// In the preceding example, `lvl` doesn’t need a lifetime because it’s not a
-// reference (`&`). Only things relating to references (such as a `struct`
-// which contains a reference) need lifetimes.
+In the preceding example, `lvl` doesn’t need a lifetime because it’s not a
+reference (`&`). Only things relating to references (such as a `struct`
+which contains a reference) need lifetimes.
 
+```rust,ignore
 fn substr(s: &str, until: u32) -> &str; // elided
 fn substr<'a>(s: &'a str, until: u32) -> &'a str; // expanded
 

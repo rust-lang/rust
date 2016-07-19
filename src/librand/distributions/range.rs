@@ -14,7 +14,7 @@
 
 use core::marker::Sized;
 use Rng;
-use distributions::{Sample, IndependentSample};
+use distributions::{IndependentSample, Sample};
 
 /// Sample values uniformly between two bounds.
 ///
@@ -148,7 +148,7 @@ float_impl! { f64 }
 
 #[cfg(test)]
 mod tests {
-    use distributions::{Sample, IndependentSample};
+    use distributions::{IndependentSample, Sample};
     use super::Range;
 
     #[should_panic]

@@ -33,7 +33,7 @@ pub const tag_items_data_item_family: usize = 0x24;
 
 pub const tag_items_data_item_type: usize = 0x25;
 
-pub const tag_items_data_item_symbol: usize = 0x26;
+// GAP 0x26
 
 pub const tag_items_data_item_variant: usize = 0x27;
 
@@ -73,6 +73,7 @@ pub const tag_crate_dep: usize = 0x35;
 
 pub const tag_crate_hash: usize = 0x103; // top-level only
 pub const tag_crate_crate_name: usize = 0x104; // top-level only
+pub const tag_crate_disambiguator: usize = 0x113; // top-level only
 
 pub const tag_crate_dep_crate_name: usize = 0x36;
 pub const tag_crate_dep_hash: usize = 0x37;
@@ -85,13 +86,10 @@ pub const tag_item_trait_ref: usize = 0x3b;
 // discriminator value for variants
 pub const tag_disr_val: usize = 0x3c;
 
-// used to encode ast_map::PathElem
-pub const tag_path: usize = 0x3d;
-pub const tag_path_len: usize = 0x3e;
-pub const tag_path_elem_mod: usize = 0x3f;
-pub const tag_path_elem_name: usize = 0x40;
-pub const tag_item_field: usize = 0x41;
+// GAP 0x3d, 0x3e, 0x3f, 0x40
 
+pub const tag_item_field: usize = 0x41;
+// GAP 0x42
 pub const tag_item_variances: usize = 0x43;
 /*
   trait items contain tag_item_trait_item elements,
@@ -252,3 +250,9 @@ pub fn rustc_version() -> String {
         option_env!("CFG_VERSION").unwrap_or("unknown version")
     )
 }
+
+pub const tag_panic_strategy: usize = 0x114;
+
+// NB: increment this if you change the format of metadata such that
+// rustc_version can't be found.
+pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 2];

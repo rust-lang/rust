@@ -17,6 +17,6 @@ impl !Sync for Foo {}
 
 static FOO: usize = 3;
 static BAR: Foo = Foo;
-//~^ ERROR: the trait `core::marker::Sync` is not implemented
+//~^ ERROR: `Foo: std::marker::Sync` is not satisfied
 
 fn main() {}

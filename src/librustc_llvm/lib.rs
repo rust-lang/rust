@@ -44,6 +44,7 @@ pub use self::FileType::*;
 pub use self::MetadataType::*;
 pub use self::AsmDialect::*;
 pub use self::CodeGenOptLevel::*;
+pub use self::CodeGenOptSize::*;
 pub use self::RelocMode::*;
 pub use self::CodeGenModel::*;
 pub use self::DiagnosticKind::*;
@@ -53,6 +54,7 @@ pub use self::DiagnosticSeverity::*;
 pub use self::Linkage::*;
 pub use self::DLLStorageClassTypes::*;
 
+use std::str::FromStr;
 use std::ffi::{CString, CStr};
 use std::cell::RefCell;
 use std::slice;
@@ -97,7 +99,7 @@ pub enum Visibility {
 // DLLExportLinkage, GhostLinkage and LinkOnceODRAutoHideLinkage.
 // LinkerPrivateLinkage and LinkerPrivateWeakLinkage are not included either;
 // they've been removed in upstream LLVM commit r203866.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Linkage {
     ExternalLinkage = 0,
     AvailableExternallyLinkage = 1,
@@ -377,6 +379,14 @@ pub enum CodeGenOptLevel {
 
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
+pub enum CodeGenOptSize {
+    CodeGenOptSizeNone = 0,
+    CodeGenOptSizeDefault = 1,
+    CodeGenOptSizeAggressive = 2,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
 pub enum RelocMode {
     RelocDefault = 0,
     RelocStatic = 1,
@@ -415,6 +425,20 @@ pub enum ArchiveKind {
     K_MIPS64,
     K_BSD,
     K_COFF,
+}
+
+impl FromStr for ArchiveKind {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "gnu" => Ok(ArchiveKind::K_GNU),
+            "mips64" => Ok(ArchiveKind::K_MIPS64),
+            "bsd" => Ok(ArchiveKind::K_BSD),
+            "coff" => Ok(ArchiveKind::K_COFF),
+            _ => Err(()),
+        }
+    }
 }
 
 /// Represents the different LLVM passes Rust supports
@@ -964,9 +988,10 @@ extern {
     pub fn LLVMAddFunctionAttrStringValue(Fn: ValueRef, index: c_uint,
                                           Name: *const c_char,
                                           Value: *const c_char);
+    pub fn LLVMRemoveFunctionAttributes(Fn: ValueRef, index: c_uint, attr: uint64_t);
     pub fn LLVMRemoveFunctionAttrString(Fn: ValueRef, index: c_uint, Name: *const c_char);
-    pub fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_ulonglong;
-    pub fn LLVMRemoveFunctionAttr(Fn: ValueRef, val: c_ulonglong);
+    pub fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_uint;
+    pub fn LLVMRemoveFunctionAttr(Fn: ValueRef, val: c_uint);
 
     /* Operations on parameters */
     pub fn LLVMCountParams(Fn: ValueRef) -> c_uint;
@@ -2012,6 +2037,9 @@ extern {
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> PassRef;
     pub fn LLVMRustAddPass(PM: PassManagerRef, Pass: PassRef);
 
+    pub fn LLVMRustHasFeature(T: TargetMachineRef,
+                              s: *const c_char) -> bool;
+
     pub fn LLVMRustCreateTargetMachine(Triple: *const c_char,
                                        CPU: *const c_char,
                                        Features: *const c_char,
@@ -2124,6 +2152,9 @@ extern {
     pub fn LLVMRustFreeOperandBundleDef(Bundle: OperandBundleDefRef);
 
     pub fn LLVMRustPositionBuilderAtStart(B: BuilderRef, BB: BasicBlockRef);
+
+    pub fn LLVMRustSetComdat(M: ModuleRef, V: ValueRef, Name: *const c_char);
+    pub fn LLVMRustUnsetComdat(V: ValueRef);
 }
 
 // LLVM requires symbols from this library, but apparently they're not printed
@@ -2145,6 +2176,24 @@ pub fn SetFunctionCallConv(fn_: ValueRef, cc: CallConv) {
 pub fn SetLinkage(global: ValueRef, link: Linkage) {
     unsafe {
         LLVMSetLinkage(global, link as c_uint);
+    }
+}
+
+// Externally visible symbols that might appear in multiple translation units need to appear in
+// their own comdat section so that the duplicates can be discarded at link time. This can for
+// example happen for generics when using multiple codegen units. This function simply uses the
+// value's name as the comdat value to make sure that it is in a 1-to-1 relationship to the
+// function.
+// For more details on COMDAT sections see e.g. http://www.airs.com/blog/archives/52
+pub fn SetUniqueComdat(llmod: ModuleRef, val: ValueRef) {
+    unsafe {
+        LLVMRustSetComdat(llmod, val, LLVMGetValueName(val));
+    }
+}
+
+pub fn UnsetComdat(val: ValueRef) {
+    unsafe {
+        LLVMRustUnsetComdat(val);
     }
 }
 
@@ -2181,6 +2230,13 @@ pub fn SetFunctionAttribute(fn_: ValueRef, attr: Attribute) {
     unsafe {
         LLVMAddFunctionAttribute(fn_, FunctionIndex as c_uint,
                                  attr.bits() as uint64_t)
+    }
+}
+
+pub fn RemoveFunctionAttributes(fn_: ValueRef, attr: Attribute) {
+    unsafe {
+        LLVMRemoveFunctionAttributes(fn_, FunctionIndex as c_uint,
+                                           attr.bits() as uint64_t)
     }
 }
 

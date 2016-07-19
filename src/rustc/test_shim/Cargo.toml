@@ -1,0 +1,27 @@
+# This is a shim Cargo.toml which serves as a proxy for building libtest.
+#
+# The reason this shim exists is basically the same reason that `std_shim`
+# exists, and more documentation can be found in that `Cargo.toml` as to why.
+
+[package]
+name = "test_shim"
+version = "0.1.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+name = "test_shim"
+path = "lib.rs"
+
+[profile.release]
+opt-level = 2
+[profile.bench]
+opt-level = 2
+
+# These options are controlled from our rustc wrapper script, so turn them off
+# here and have them controlled elsewhere.
+[profile.dev]
+debug = false
+debug-assertions = false
+
+[dependencies]
+test = { path = "../../libtest" }

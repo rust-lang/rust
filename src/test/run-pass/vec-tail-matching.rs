@@ -11,26 +11,28 @@
 
 
 #![feature(slice_patterns)]
+#![feature(rustc_attrs)]
 
 struct Foo {
-    string: String
+    string: &'static str
 }
 
+#[rustc_mir]
 pub fn main() {
     let x = [
-        Foo { string: "foo".to_string() },
-        Foo { string: "bar".to_string() },
-        Foo { string: "baz".to_string() }
+        Foo { string: "foo" },
+        Foo { string: "bar" },
+        Foo { string: "baz" }
     ];
     match x {
-        [ref first, tail..] => {
-            assert_eq!(first.string, "foo".to_string());
+        [ref first, ref tail..] => {
+            assert_eq!(first.string, "foo");
             assert_eq!(tail.len(), 2);
-            assert_eq!(tail[0].string, "bar".to_string());
-            assert_eq!(tail[1].string, "baz".to_string());
+            assert_eq!(tail[0].string, "bar");
+            assert_eq!(tail[1].string, "baz");
 
-            match tail {
-                [Foo { .. }, _, Foo { .. }, _tail..] => {
+            match *(tail as &[_]) {
+                [Foo { .. }, _, Foo { .. }, ref _tail..] => {
                     unreachable!();
                 }
                 [Foo { string: ref a }, Foo { string: ref b }] => {

@@ -64,7 +64,7 @@ mod imp {
     unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
         #[repr(C)]
         struct siginfo_t {
-            a: [libc::c_int; 3], // si_signo, si_code, si_errno,
+            a: [libc::c_int; 3], // si_signo, si_errno, si_code
             si_addr: *mut libc::c_void,
         }
 

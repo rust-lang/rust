@@ -26,7 +26,7 @@ impl<'a> Drop for Droppable<'a> {
 }
 
 #[rustc_mir]
-fn mir<'a>(d: Droppable<'a>){
+fn mir<'a>(d: Droppable<'a>) {
     loop {
         let x = d;
         break;

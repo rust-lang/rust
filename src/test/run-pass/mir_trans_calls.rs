@@ -30,6 +30,7 @@ fn test2(a: isize) -> isize {
     callee(a)
 }
 
+#[derive(PartialEq, Eq, Debug)]
 struct Foo;
 impl Foo {
     fn inherent_method(&self, a: isize) -> isize { a }
@@ -138,6 +139,45 @@ fn test_fn_nil_call<F>(f: &F) -> i32
     f()
 }
 
+#[rustc_mir]
+fn test_fn_transmute_zst(x: ()) -> [(); 1] {
+    fn id<T>(x: T) -> T {x}
+
+    id(unsafe {
+        std::mem::transmute(x)
+    })
+}
+
+#[rustc_mir]
+fn test_fn_ignored_pair() -> ((), ()) {
+    ((), ())
+}
+
+#[rustc_mir]
+fn test_fn_ignored_pair_0() {
+    test_fn_ignored_pair().0
+}
+
+#[rustc_mir]
+fn id<T>(x: T) -> T { x }
+
+#[rustc_mir]
+fn ignored_pair_named() -> (Foo, Foo) {
+    (Foo, Foo)
+}
+
+#[rustc_mir]
+fn test_fn_ignored_pair_named() -> (Foo, Foo) {
+    id(ignored_pair_named())
+}
+
+#[rustc_mir]
+fn test_fn_nested_pair(x: &((f32, f32), u32)) -> (f32, f32) {
+    let y = *x;
+    let z = y.0;
+    (z.0, z.1)
+}
+
 fn main() {
     assert_eq!(test1(1, (2, 3), &[4, 5, 6]), (1, (2, 3), &[4, 5, 6][..]));
     assert_eq!(test2(98), 98);
@@ -159,4 +199,9 @@ fn main() {
     assert_eq!(test_fn_direct_call(&closure, 100, 4), 324);
 
     assert_eq!(test_fn_nil_call(&(|| 42)), 42);
+    assert_eq!(test_fn_transmute_zst(()), [()]);
+
+    assert_eq!(test_fn_ignored_pair_0(), ());
+    assert_eq!(test_fn_ignored_pair_named(), (Foo, Foo));
+    assert_eq!(test_fn_nested_pair(&((1.0, 2.0), 0)), (1.0, 2.0));
 }

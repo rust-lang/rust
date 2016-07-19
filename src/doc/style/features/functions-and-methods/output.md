@@ -16,7 +16,7 @@ API.
 
 Prefer
 
-```rust
+```rust,ignore
 struct SearchResult {
     found: bool,          // item in container?
     expected_index: usize // what would the item's index be?
@@ -26,13 +26,13 @@ fn binary_search(&self, k: Key) -> SearchResult
 ```
 or
 
-```rust
+```rust,ignore
 fn binary_search(&self, k: Key) -> (bool, usize)
 ```
 
 over
 
-```rust
+```rust,ignore
 fn binary_search(&self, k: Key) -> bool
 ```
 
@@ -40,13 +40,13 @@ fn binary_search(&self, k: Key) -> bool
 
 Prefer
 
-```rust
+```rust,ignore
 fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>>
 ```
 
 over
 
-```rust
+```rust,ignore
 fn from_utf8_owned(vv: Vec<u8>) -> Option<String>
 ```
 

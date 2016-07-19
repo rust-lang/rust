@@ -86,7 +86,7 @@ macro_rules! assert {
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! assert_eq {
     ($left:expr , $right:expr) => ({
-        match (&($left), &($right)) {
+        match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
                     panic!("assertion failed: `(left == right)` \
@@ -94,7 +94,18 @@ macro_rules! assert_eq {
                 }
             }
         }
-    })
+    });
+    ($left:expr , $right:expr, $($arg:tt)*) => ({
+        match (&($left), &($right)) {
+            (left_val, right_val) => {
+                if !(*left_val == *right_val) {
+                    panic!("assertion failed: `(left == right)` \
+                           (left: `{:?}`, right: `{:?}`): {}", left_val, right_val,
+                           format_args!($($arg)*))
+                }
+            }
+        }
+    });
 }
 
 /// Ensure that a boolean expression is `true` at runtime.
@@ -182,7 +193,7 @@ macro_rules! debug_assert_eq {
 /// fn write_to_file_using_match() -> Result<(), io::Error> {
 ///     let mut file = try!(File::create("my_best_friends.txt"));
 ///     match file.write_all(b"This is a list of my best friends.") {
-///         Ok(_) => (),
+///         Ok(v) => v,
 ///         Err(e) => return Err(e),
 ///     }
 ///     println!("I wrote to the file");
@@ -227,6 +238,8 @@ macro_rules! write {
 }
 
 /// Use the `format!` syntax to write data into a buffer, appending a newline.
+/// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`)
+/// alone (no additional CARRIAGE RETURN (`\r`/`U+000D`).
 ///
 /// This macro is typically used with a buffer of `&mut `[`Write`][write].
 ///

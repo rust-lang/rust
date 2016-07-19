@@ -11,7 +11,6 @@
 fn f<Z>() -> bool {
     enum E { V(Z) }
     //~^ ERROR can't use type parameters from outer function
-    //~^^ ERROR type name `Z` is undefined or not in scope
     true
 }
 

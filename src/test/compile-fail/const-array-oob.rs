@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 #![feature(const_indexing)]
 
 const FOO: [u32; 3] = [1, 2, 3];
 const BAR: u32 = FOO[5]; // no error, because the error below occurs before regular const eval
 
 const BLUB: [u32; FOO[4]] = [5, 6];
-//~^ ERROR array length constant evaluation error: array index out of bounds [E0250]
+//~^ ERROR array length constant evaluation error: index out of bounds: the len is 3 but the index is 4 [E0250]
 
 fn main() {
     let _ = BAR;

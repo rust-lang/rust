@@ -16,6 +16,8 @@
 // resolve data structures and because it finalises the privacy information for
 // `use` directives.
 //
+// Unused trait imports can't be checked until the method resolution. We save
+// candidates here, and do the acutal check in librustc_typeck/check_unused.rs.
 
 use std::ops::{Deref, DerefMut};
 
@@ -23,66 +25,65 @@ use Resolver;
 use Namespace::{TypeNS, ValueNS};
 
 use rustc::lint;
-use syntax::ast;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::ast::{self, ViewPathGlob, ViewPathList, ViewPathSimple};
+use syntax::visit::{self, Visitor};
+use syntax_pos::{Span, DUMMY_SP};
 
-use rustc_front::hir;
-use rustc_front::hir::{ViewPathGlob, ViewPathList, ViewPathSimple};
-use rustc_front::intravisit::Visitor;
 
-struct UnusedImportCheckVisitor<'a, 'b: 'a, 'tcx: 'b> {
-    resolver: &'a mut Resolver<'b, 'tcx>,
+struct UnusedImportCheckVisitor<'a, 'b: 'a> {
+    resolver: &'a mut Resolver<'b>,
 }
 
 // Deref and DerefMut impls allow treating UnusedImportCheckVisitor as Resolver.
-impl<'a, 'b, 'tcx:'b> Deref for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
-    type Target = Resolver<'b, 'tcx>;
+impl<'a, 'b> Deref for UnusedImportCheckVisitor<'a, 'b> {
+    type Target = Resolver<'b>;
 
-    fn deref<'c>(&'c self) -> &'c Resolver<'b, 'tcx> {
+    fn deref<'c>(&'c self) -> &'c Resolver<'b> {
         &*self.resolver
     }
 }
 
-impl<'a, 'b, 'tcx:'b> DerefMut for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
-    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b, 'tcx> {
+impl<'a, 'b> DerefMut for UnusedImportCheckVisitor<'a, 'b> {
+    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b> {
         &mut *self.resolver
     }
 }
 
-impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
+impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     // We have information about whether `use` (import) directives are actually
-    // used now. If an import is not used at all, we signal a lint error. If an
-    // import is only used for a single namespace, we remove the other namespace
-    // from the recorded privacy information. That means in privacy.rs, we will
-    // only check imports and namespaces which are used. In particular, this
-    // means that if an import could name either a public or private item, we
-    // will check the correct thing, dependent on how the import is used.
-    fn finalize_import(&mut self, id: ast::NodeId, span: Span) {
-        debug!("finalizing import uses for {:?}",
-               self.session.codemap().span_to_snippet(span));
-
+    // used now. If an import is not used at all, we signal a lint error.
+    fn check_import(&mut self, id: ast::NodeId, span: Span) {
         if !self.used_imports.contains(&(id, TypeNS)) &&
            !self.used_imports.contains(&(id, ValueNS)) {
+            if self.maybe_unused_trait_imports.contains(&id) {
+                // Check later.
+                return;
+            }
             self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
                                   id,
                                   span,
                                   "unused import".to_string());
+        } else {
+            // This trait import is definitely used, in a way other than
+            // method resolution.
+            self.maybe_unused_trait_imports.remove(&id);
         }
     }
 }
 
-impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
+    fn visit_item(&mut self, item: &ast::Item) {
+        visit::walk_item(self, item);
         // Ignore is_public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
-        if item.vis == hir::Public || item.span.source_equal(&DUMMY_SP) {
+        if item.vis == ast::Visibility::Public || item.span.source_equal(&DUMMY_SP) {
             return;
         }
 
         match item.node {
-            hir::ItemExternCrate(_) => {
+            ast::ItemKind::ExternCrate(_) => {
                 if let Some(crate_num) = self.session.cstore.extern_mod_stmt_cnum(item.id) {
                     if !self.used_crates.contains(&crate_num) {
                         self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
@@ -92,26 +93,19 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                     }
                 }
             }
-            hir::ItemUse(ref p) => {
+            ast::ItemKind::Use(ref p) => {
                 match p.node {
                     ViewPathSimple(_, _) => {
-                        self.finalize_import(item.id, p.span)
+                        self.check_import(item.id, p.span)
                     }
 
                     ViewPathList(_, ref list) => {
                         for i in list {
-                            self.finalize_import(i.node.id(), i.span);
+                            self.check_import(i.node.id(), i.span);
                         }
                     }
                     ViewPathGlob(_) => {
-                        if !self.used_imports.contains(&(item.id, TypeNS)) &&
-                           !self.used_imports.contains(&(item.id, ValueNS)) {
-                            self.session
-                                .add_lint(lint::builtin::UNUSED_IMPORTS,
-                                          item.id,
-                                          p.span,
-                                          "unused import".to_string());
-                        }
+                        self.check_import(item.id, p.span)
                     }
                 }
             }
@@ -120,7 +114,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     }
 }
 
-pub fn check_crate(resolver: &mut Resolver, krate: &hir::Crate) {
+pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
     let mut visitor = UnusedImportCheckVisitor { resolver: resolver };
-    krate.visit_all_items(&mut visitor);
+    visit::walk_crate(&mut visitor, krate);
 }

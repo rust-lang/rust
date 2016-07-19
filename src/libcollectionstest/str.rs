@@ -123,8 +123,6 @@ macro_rules! test_concat {
 fn test_concat_for_different_types() {
     test_concat!("ab", vec![s("a"), s("b")]);
     test_concat!("ab", vec!["a", "b"]);
-    test_concat!("ab", vec!["a", "b"]);
-    test_concat!("ab", vec![s("a"), s("b")]);
 }
 
 #[test]
@@ -194,24 +192,24 @@ fn test_unsafe_slice() {
 
 #[test]
 fn test_starts_with() {
-    assert!(("".starts_with("")));
-    assert!(("abc".starts_with("")));
-    assert!(("abc".starts_with("a")));
-    assert!((!"a".starts_with("abc")));
-    assert!((!"".starts_with("abc")));
-    assert!((!"ödd".starts_with("-")));
-    assert!(("ödd".starts_with("öd")));
+    assert!("".starts_with(""));
+    assert!("abc".starts_with(""));
+    assert!("abc".starts_with("a"));
+    assert!(!"a".starts_with("abc"));
+    assert!(!"".starts_with("abc"));
+    assert!(!"ödd".starts_with("-"));
+    assert!("ödd".starts_with("öd"));
 }
 
 #[test]
 fn test_ends_with() {
-    assert!(("".ends_with("")));
-    assert!(("abc".ends_with("")));
-    assert!(("abc".ends_with("c")));
-    assert!((!"a".ends_with("abc")));
-    assert!((!"".ends_with("abc")));
-    assert!((!"ddö".ends_with("-")));
-    assert!(("ddö".ends_with("dö")));
+    assert!("".ends_with(""));
+    assert!("abc".ends_with(""));
+    assert!("abc".ends_with("c"));
+    assert!(!"a".ends_with("abc"));
+    assert!(!"".ends_with("abc"));
+    assert!(!"ddö".ends_with("-"));
+    assert!("ddö".ends_with("dö"));
 }
 
 #[test]
@@ -346,6 +344,22 @@ fn test_slice_fail() {
     &"中华Việt Nam"[0..2];
 }
 
+
+#[test]
+fn test_is_char_boundary() {
+    let s = "ศไทย中华Việt Nam β-release 🐱123";
+    assert!(s.is_char_boundary(0));
+    assert!(s.is_char_boundary(s.len()));
+    assert!(!s.is_char_boundary(s.len() + 1));
+    for (i, ch) in s.char_indices() {
+        // ensure character locations are boundaries and continuation bytes are not
+        assert!(s.is_char_boundary(i), "{} is a char boundary in {:?}", i, s);
+        for j in 1..ch.len_utf8() {
+            assert!(!s.is_char_boundary(i + j),
+                    "{} should not be a char boundary in {:?}", i + j, s);
+        }
+    }
+}
 const LOREM_PARAGRAPH: &'static str = "\
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem sit amet dolor \
 ultricies condimentum. Praesent iaculis purus elit, ac malesuada quam malesuada in. Duis sed orci \
@@ -461,18 +475,6 @@ fn test_is_whitespace() {
     assert!("\u{2009}".chars().all(|c| c.is_whitespace())); // Thin space
     assert!("  \n\t   ".chars().all(|c| c.is_whitespace()));
     assert!(!"   _   ".chars().all(|c| c.is_whitespace()));
-}
-
-#[test]
-fn test_slice_shift_char() {
-    let data = "ประเทศไทย中";
-    assert_eq!(data.slice_shift_char(), Some(('ป', "ระเทศไทย中")));
-}
-
-#[test]
-fn test_slice_shift_char_2() {
-    let empty = "";
-    assert_eq!(empty.slice_shift_char(), None);
 }
 
 #[test]
@@ -657,28 +659,6 @@ fn test_contains_char() {
 }
 
 #[test]
-fn test_char_at() {
-    let s = "ศไทย中华Việt Nam";
-    let v = vec!['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-    let mut pos = 0;
-    for ch in &v {
-        assert!(s.char_at(pos) == *ch);
-        pos += ch.to_string().len();
-    }
-}
-
-#[test]
-fn test_char_at_reverse() {
-    let s = "ศไทย中华Việt Nam";
-    let v = vec!['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-    let mut pos = s.len();
-    for ch in v.iter().rev() {
-        assert!(s.char_at_reverse(pos) == *ch);
-        pos -= ch.to_string().len();
-    }
-}
-
-#[test]
 fn test_split_at() {
     let s = "ศไทย中华Việt Nam";
     for (index, _) in s.char_indices() {
@@ -745,24 +725,6 @@ fn test_total_ord() {
 }
 
 #[test]
-fn test_char_range_at() {
-    let data = "b¢€𤭢𤭢€¢b";
-    assert_eq!('b', data.char_range_at(0).ch);
-    assert_eq!('¢', data.char_range_at(1).ch);
-    assert_eq!('€', data.char_range_at(3).ch);
-    assert_eq!('𤭢', data.char_range_at(6).ch);
-    assert_eq!('𤭢', data.char_range_at(10).ch);
-    assert_eq!('€', data.char_range_at(14).ch);
-    assert_eq!('¢', data.char_range_at(17).ch);
-    assert_eq!('b', data.char_range_at(19).ch);
-}
-
-#[test]
-fn test_char_range_at_reverse_underflow() {
-    assert_eq!("abc".char_range_at_reverse(0).next, 0);
-}
-
-#[test]
 fn test_iterator() {
     let s = "ศไทย中华Việt Nam";
     let v = ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
@@ -794,10 +756,9 @@ fn test_rev_iterator() {
 
 #[test]
 fn test_chars_decoding() {
-    let mut bytes = [0; 4];
     for c in (0..0x110000).filter_map(::std::char::from_u32) {
-        let len = c.encode_utf8(&mut bytes).unwrap_or(0);
-        let s = ::std::str::from_utf8(&bytes[..len]).unwrap();
+        let bytes = c.encode_utf8();
+        let s = ::std::str::from_utf8(bytes.as_slice()).unwrap();
         if Some(c) != s.chars().next() {
             panic!("character {:x}={} does not decode correctly", c as u32, c);
         }
@@ -806,10 +767,9 @@ fn test_chars_decoding() {
 
 #[test]
 fn test_chars_rev_decoding() {
-    let mut bytes = [0; 4];
     for c in (0..0x110000).filter_map(::std::char::from_u32) {
-        let len = c.encode_utf8(&mut bytes).unwrap_or(0);
-        let s = ::std::str::from_utf8(&bytes[..len]).unwrap();
+        let bytes = c.encode_utf8();
+        let s = ::std::str::from_utf8(bytes.as_slice()).unwrap();
         if Some(c) != s.chars().rev().next() {
             panic!("character {:x}={} does not decode correctly", c as u32, c);
         }

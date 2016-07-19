@@ -13,10 +13,11 @@ fn main() {
     // Original borrow ends at end of function
     let mut x = 1;
     let y = &mut x;
-    //~^ previous borrow of `x` occurs here; the mutable borrow prevents
+    //~^ mutable borrow occurs here
     let z = &x; //~ ERROR cannot borrow
+    //~^ immutable borrow occurs here
 }
-//~^ NOTE previous borrow ends here
+//~^ NOTE mutable borrow ends here
 
 fn foo() {
     match true {
@@ -24,10 +25,11 @@ fn foo() {
             // Original borrow ends at end of match arm
             let mut x = 1;
             let y = &x;
-            //~^ previous borrow of `x` occurs here; the immutable borrow prevents
+            //~^ immutable borrow occurs here
             let z = &mut x; //~ ERROR cannot borrow
+            //~^ mutable borrow occurs here
         }
-     //~^ NOTE previous borrow ends here
+     //~^ NOTE immutable borrow ends here
         false => ()
     }
 }
@@ -37,8 +39,9 @@ fn bar() {
     || {
         let mut x = 1;
         let y = &mut x;
-        //~^ previous borrow of `x` occurs here; the mutable borrow prevents
+        //~^ first mutable borrow occurs here
         let z = &mut x; //~ ERROR cannot borrow
+        //~^ second mutable borrow occurs here
     };
- //~^ NOTE previous borrow ends here
+ //~^ NOTE first borrow ends here
 }

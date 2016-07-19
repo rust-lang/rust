@@ -95,12 +95,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub VARIANT_SIZE_DIFFERENCES,
-    Allow,
-    "detects enums with widely varying variant sizes"
-}
-
-declare_lint! {
     pub FAT_PTR_TRANSMUTES,
     Allow,
     "detects transmutes of fat pointers"
@@ -137,6 +131,19 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN,
+    Warn,
+    "floating-point constants cannot be used in patterns"
+}
+
+declare_lint! {
+    pub ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
+    Warn,
+    "constants of struct or enum type can only be used in a pattern if \
+     the struct or enum has `#[derive(PartialEq, Eq)]`"
+}
+
+declare_lint! {
     pub MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
     Deny,
     "unit struct or enum variant erroneously allowed to match via path::ident(..)"
@@ -155,9 +162,46 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub HR_LIFETIME_IN_ASSOC_TYPE,
+    Warn,
+    "binding for associated type references higher-ranked lifetime \
+     that does not appear in the trait input types"
+}
+
+declare_lint! {
     pub OVERLAPPING_INHERENT_IMPLS,
     Warn,
     "two overlapping inherent impls define an item with the same name were erroneously allowed"
+}
+
+declare_lint! {
+    pub RENAMED_AND_REMOVED_LINTS,
+    Warn,
+    "lints that have been renamed or removed"
+}
+
+declare_lint! {
+    pub SUPER_OR_SELF_IN_GLOBAL_PATH,
+    Warn,
+    "detects super or self keywords at the beginning of global path"
+}
+
+declare_lint! {
+    pub UNSIZED_IN_TUPLE,
+    Warn,
+    "unsized types in the interior of a tuple were erroneously allowed"
+}
+
+declare_lint! {
+    pub OBJECT_UNSAFE_FRAGMENT,
+    Warn,
+    "object-unsafe non-principal fragments in object types were erroneously allowed"
+}
+
+declare_lint! {
+    pub LIFETIME_UNDERSCORE,
+    Warn,
+    "lifetimes or labels named `'_` were erroneously allowed"
 }
 
 /// Does nothing as a lint pass, but registers some `Lint`s
@@ -180,18 +224,25 @@ impl LintPass for HardwiredLints {
             UNUSED_FEATURES,
             STABLE_FEATURES,
             UNKNOWN_CRATE_TYPES,
-            VARIANT_SIZE_DIFFERENCES,
             FAT_PTR_TRANSMUTES,
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
             INACCESSIBLE_EXTERN_CRATE,
             INVALID_TYPE_PARAM_DEFAULT,
+            ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN,
+            ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
             MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
             CONST_ERR,
             RAW_POINTER_DERIVE,
             TRANSMUTE_FROM_FN_ITEM_TYPES,
-            OVERLAPPING_INHERENT_IMPLS
+            OVERLAPPING_INHERENT_IMPLS,
+            RENAMED_AND_REMOVED_LINTS,
+            SUPER_OR_SELF_IN_GLOBAL_PATH,
+            UNSIZED_IN_TUPLE,
+            OBJECT_UNSAFE_FRAGMENT,
+            HR_LIFETIME_IN_ASSOC_TYPE,
+            LIFETIME_UNDERSCORE
         )
     }
 }

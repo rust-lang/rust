@@ -12,13 +12,15 @@
 
 fn match_vecs<'a, T>(l1: &'a [T], l2: &'a [T]) {
     match (l1, l2) {
-        ([], []) => println!("both empty"),
-        ([], [hd, tl..]) | ([hd, tl..], []) => println!("one empty"),
-        //~^ ERROR: cannot move out of borrowed content
+        (&[], &[]) => println!("both empty"),
+        (&[], &[hd, ..]) | (&[hd, ..], &[])
+            => println!("one empty"),
         //~^^ ERROR: cannot move out of borrowed content
-        ([hd1, tl1..], [hd2, tl2..]) => println!("both nonempty"),
-        //~^ ERROR: cannot move out of borrowed content
+        //~^^^ ERROR: cannot move out of borrowed content
+        (&[hd1, ..], &[hd2, ..])
+            => println!("both nonempty"),
         //~^^ ERROR: cannot move out of borrowed content
+        //~^^^ ERROR: cannot move out of borrowed content
     }
 }
 

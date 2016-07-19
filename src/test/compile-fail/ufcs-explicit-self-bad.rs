@@ -45,12 +45,12 @@ impl<'a, T> SomeTrait for &'a Bar<T> {
     //~^ ERROR mismatched types
     fn dummy3(self: &&Bar<T>) {}
     //~^ ERROR mismatched types
-    //~| expected `&&'a Bar<T>`
-    //~| found `&&Bar<T>`
+    //~| expected type `&&'a Bar<T>`
+    //~| found type `&&Bar<T>`
     //~| lifetime mismatch
     //~| ERROR mismatched types
-    //~| expected `&&'a Bar<T>`
-    //~| found `&&Bar<T>`
+    //~| expected type `&&'a Bar<T>`
+    //~| found type `&&Bar<T>`
     //~| lifetime mismatch
 }
 

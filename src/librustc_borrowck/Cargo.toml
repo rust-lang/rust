@@ -7,10 +7,14 @@ version = "0.0.0"
 name = "rustc_borrowck"
 path = "lib.rs"
 crate-type = ["dylib"]
+test = false
 
 [dependencies]
 log = { path = "../liblog" }
 syntax = { path = "../libsyntax" }
+syntax_pos = { path = "../libsyntax_pos" }
 graphviz = { path = "../libgraphviz" }
 rustc = { path = "../librustc" }
-rustc_front = { path = "../librustc_front" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_mir = { path = "../librustc_mir" }
+rustc_errors = { path = "../librustc_errors" }

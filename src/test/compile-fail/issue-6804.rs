@@ -24,9 +24,13 @@ fn main() { //~ ERROR compilation successful
         _ => {},
     };
     //~^^^ WARNING unmatchable NaN in pattern, use the is_nan method in a guard instead
+    //~| WARNING floating point constants cannot be used
+    //~| WARNING this was previously accepted
     match [x, 1.0] {
         [NAN, _] => {},
         _ => {},
     };
     //~^^^ WARNING unmatchable NaN in pattern, use the is_nan method in a guard instead
+    //~| WARNING floating point constants cannot be used
+    //~| WARNING this was previously accepted
 }

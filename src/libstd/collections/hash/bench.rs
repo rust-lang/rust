@@ -11,7 +11,6 @@
 #![cfg(test)]
 
 extern crate test;
-use prelude::v1::*;
 
 use self::test::Bencher;
 

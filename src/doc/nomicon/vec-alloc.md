@@ -150,7 +150,7 @@ LLVM needs to work with different languages' semantics and custom allocators,
 it can't really intimately understand allocation. Instead, the main idea behind
 allocation is "doesn't overlap with other stuff". That is, heap allocations,
 stack allocations, and globals don't randomly overlap. Yep, it's about alias
-analysis. As such, Rust can technically play a bit fast an loose with the notion of
+analysis. As such, Rust can technically play a bit fast and loose with the notion of
 an allocation as long as it's *consistent*.
 
 Getting back to the empty allocation case, there are a couple of places where

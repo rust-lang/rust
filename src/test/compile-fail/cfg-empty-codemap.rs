@@ -12,7 +12,7 @@
 
 // compile-flags: --cfg ""
 
-// error-pattern: expected ident, found
+// error-pattern: expected identifier, found
 
 pub fn main() {
 }

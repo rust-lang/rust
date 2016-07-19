@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(recover, rand, std_panic)]
+#![feature(rand, std_panic)]
 
 use std::__rand::{thread_rng, Rng};
-use std::panic::{self, AssertRecoverSafe};
+use std::panic::{self, AssertUnwindSafe};
 
 use std::collections::BinaryHeap;
 use std::cmp;
@@ -70,8 +70,8 @@ fn test_integrity() {
             {
                 // push the panicking item to the heap and catch the panic
                 let thread_result = {
-                    let mut heap_ref = AssertRecoverSafe(&mut heap);
-                    panic::recover(move || {
+                    let mut heap_ref = AssertUnwindSafe(&mut heap);
+                    panic::catch_unwind(move || {
                         heap_ref.push(panic_item);
                     })
                 };

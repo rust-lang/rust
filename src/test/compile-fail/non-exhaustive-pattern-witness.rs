@@ -80,7 +80,7 @@ enum Enum {
 
 fn vectors_with_nested_enums() {
     let x: &'static [Enum] = &[Enum::First, Enum::Second(false)];
-    match x {
+    match *x {
     //~^ ERROR non-exhaustive patterns: `[Second(true), Second(false)]` not covered
         [] => (),
         [_] => (),
@@ -88,7 +88,7 @@ fn vectors_with_nested_enums() {
         [Enum::Second(true), Enum::First] => (),
         [Enum::Second(true), Enum::Second(true)] => (),
         [Enum::Second(false), _] => (),
-        [_, _, tail.., _] => ()
+        [_, _, ref tail.., _] => ()
     }
 }
 

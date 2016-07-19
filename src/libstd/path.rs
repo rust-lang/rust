@@ -466,7 +466,7 @@ enum State {
     Done = 3,
 }
 
-/// A Windows path prefix, e.g. `C:` or `\server\share`.
+/// A Windows path prefix, e.g. `C:` or `\\server\share`.
 ///
 /// Does not occur on Unix.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -525,10 +525,30 @@ impl<'a> Hash for PrefixComponent<'a> {
 ///
 /// See the module documentation for an in-depth explanation of components and
 /// their role in the API.
+///
+/// This `enum` is created from iterating over the [`path::Components`]
+/// `struct`.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::path::{Component, Path};
+///
+/// let path = Path::new("/tmp/foo/bar.txt");
+/// let components = path.components().collect::<Vec<_>>();
+/// assert_eq!(&components, &[
+///     Component::RootDir,
+///     Component::Normal("tmp".as_ref()),
+///     Component::Normal("foo".as_ref()),
+///     Component::Normal("bar.txt".as_ref()),
+/// ]);
+/// ```
+///
+/// [`path::Components`]: struct.Components.html
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Component<'a> {
-    /// A Windows path prefix, e.g. `C:` or `\server\share`.
+    /// A Windows path prefix, e.g. `C:` or `\\server\share`.
     ///
     /// Does not occur on Unix.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -579,6 +599,8 @@ impl<'a> AsRef<OsStr> for Component<'a> {
 /// See the module documentation for an in-depth explanation of components and
 /// their role in the API.
 ///
+/// This `struct` is created by the [`path::Path::components`] method.
+///
 /// # Examples
 ///
 /// ```
@@ -590,6 +612,8 @@ impl<'a> AsRef<OsStr> for Component<'a> {
 ///     println!("{:?}", component);
 /// }
 /// ```
+///
+/// [`path::Path::components`]: struct.Path.html#method.components
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
@@ -1033,7 +1057,6 @@ impl PathBuf {
         self._push(path.as_ref())
     }
 
-    #[allow(deprecated)]
     fn _push(&mut self, path: &Path) {
         // in general, a separator is needed if the rightmost byte is not a separator
         let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
@@ -1419,8 +1442,7 @@ impl Path {
     /// `is_absolute` and `has_root` are equivalent.
     ///
     /// * On Windows, a path is absolute if it has a prefix and starts with the
-    /// root: `c:\windows` is absolute, while `c:temp` and `\temp` are not. In
-    /// other words, `path.is_absolute() == path.prefix().is_some() && path.has_root()`.
+    /// root: `c:\windows` is absolute, while `c:temp` and `\temp` are not.
     ///
     /// # Examples
     ///
@@ -1507,8 +1529,7 @@ impl Path {
 
     /// The final component of the path, if it is a normal file.
     ///
-    /// If the path terminates in `.`, `..`, or consists solely of a root of
-    /// prefix, `file_name` will return `None`.
+    /// If the path terminates in `..`, `file_name` will return `None`.
     ///
     /// # Examples
     ///
@@ -1520,6 +1541,17 @@ impl Path {
     /// let os_str = OsStr::new("foo.txt");
     ///
     /// assert_eq!(Some(os_str), path.file_name());
+    /// ```
+    ///
+    /// # Other examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    /// use std::ffi::OsStr;
+    ///
+    /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.").file_name());
+    /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.//").file_name());
+    /// assert_eq!(None, Path::new("foo.txt/..").file_name());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_name(&self) -> Option<&OsStr> {
@@ -1781,7 +1813,9 @@ impl Path {
     /// This function will traverse symbolic links to query information about the
     /// destination file.
     ///
-    /// This is an alias to `fs::metadata`.
+    /// This is an alias to [`fs::metadata`].
+    ///
+    /// [`fs::metadata`]: ../fs/fn.metadata.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn metadata(&self) -> io::Result<fs::Metadata> {
         fs::metadata(self)
@@ -1789,7 +1823,9 @@ impl Path {
 
     /// Query the metadata about a file without following symlinks.
     ///
-    /// This is an alias to `fs::symlink_metadata`.
+    /// This is an alias to [`fs::symlink_metadata`].
+    ///
+    /// [`fs::symlink_metadata`]: ../fs/fn.symlink_metadata.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn symlink_metadata(&self) -> io::Result<fs::Metadata> {
         fs::symlink_metadata(self)
@@ -1798,7 +1834,9 @@ impl Path {
     /// Returns the canonical form of the path with all intermediate components
     /// normalized and symbolic links resolved.
     ///
-    /// This is an alias to `fs::canonicalize`.
+    /// This is an alias to [`fs::canonicalize`].
+    ///
+    /// [`fs::canonicalize`]: ../fs/fn.canonicalize.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn canonicalize(&self) -> io::Result<PathBuf> {
         fs::canonicalize(self)
@@ -1806,7 +1844,9 @@ impl Path {
 
     /// Reads a symbolic link, returning the file that the link points to.
     ///
-    /// This is an alias to `fs::read_link`.
+    /// This is an alias to [`fs::read_link`].
+    ///
+    /// [`fs::read_link`]: ../fs/fn.read_link.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn read_link(&self) -> io::Result<PathBuf> {
         fs::read_link(self)
@@ -1817,7 +1857,9 @@ impl Path {
     /// The iterator will yield instances of `io::Result<DirEntry>`. New errors may
     /// be encountered after an iterator is initially constructed.
     ///
-    /// This is an alias to `fs::read_dir`.
+    /// This is an alias to [`fs::read_dir`].
+    ///
+    /// [`fs::read_dir`]: ../fs/fn.read_dir.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn read_dir(&self) -> io::Result<fs::ReadDir> {
         fs::read_dir(self)

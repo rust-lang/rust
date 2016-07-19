@@ -8,32 +8,42 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use dep_graph::DepGraph;
+use hir::def_id::DefIndex;
+use hir::svh::Svh;
 use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
+use session::config::{DebugInfoLevel, PanicStrategy};
+use ty::tls;
 use util::nodemap::{NodeMap, FnvHashMap};
 use mir::transform as mir_pass;
 
-use syntax::ast::{NodeId, NodeIdAssigner, Name};
-use syntax::codemap::{Span, MultiSpan};
-use syntax::errors::{self, DiagnosticBuilder};
-use syntax::errors::emitter::{Emitter, BasicEmitter, EmitterWriter};
-use syntax::errors::json::JsonEmitter;
-use syntax::diagnostics;
+use syntax::ast::{NodeId, Name};
+use errors::{self, DiagnosticBuilder};
+use errors::emitter::{Emitter, EmitterWriter};
+use errors::snippet::FormatMode;
+use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::parse;
 use syntax::parse::ParseSess;
+use syntax::parse::token;
 use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
+use syntax_pos::{Span, MultiSpan};
 
 use rustc_back::target::Target;
+use llvm;
 
 use std::path::{Path, PathBuf};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
+use std::ffi::CString;
 use std::rc::Rc;
+use std::fmt;
+use libc::c_int;
 
 pub mod config;
 pub mod filesearch;
@@ -42,6 +52,7 @@ pub mod search_paths;
 // Represents the data associated with a compilation
 // session for a single crate.
 pub struct Session {
+    pub dep_graph: DepGraph,
     pub target: config::Config,
     pub host: Target,
     pub opts: config::Options,
@@ -64,16 +75,23 @@ pub struct Session {
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
-    pub crate_metadata: RefCell<Vec<String>>,
+    // The crate_disambiguator is constructed out of all the `-C metadata`
+    // arguments passed to the compiler. Its value together with the crate-name
+    // forms a unique global identifier for the crate. It is used to allow
+    // multiple crates with the same name to coexist. See the
+    // trans::back::symbol_names module for more information.
+    pub crate_disambiguator: Cell<ast::Name>,
     pub features: RefCell<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
     pub recursion_limit: Cell<usize>,
 
-    /// The metadata::creader module may inject an allocator dependency if it
-    /// didn't already find one, and this tracks what was injected.
+    /// The metadata::creader module may inject an allocator/panic_runtime
+    /// dependency if it didn't already find one, and this tracks what was
+    /// injected.
     pub injected_allocator: Cell<Option<ast::CrateNum>>,
+    pub injected_panic_runtime: Cell<Option<ast::CrateNum>>,
 
     /// Names of all bang-style macros and syntax extensions
     /// available in this crate
@@ -210,21 +228,9 @@ impl Session {
             None => self.warn(msg),
         }
     }
-    pub fn opt_span_bug<S: Into<MultiSpan>>(&self, opt_sp: Option<S>, msg: &str) -> ! {
-        match opt_sp {
-            Some(sp) => self.span_bug(sp, msg),
-            None => self.bug(msg),
-        }
-    }
     /// Delay a span_bug() call until abort_if_errors()
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().delay_span_bug(sp, msg)
-    }
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.diagnostic().span_bug(sp, msg)
-    }
-    pub fn bug(&self, msg: &str) -> ! {
-        self.diagnostic().bug(msg)
     }
     pub fn note_without_error(&self, msg: &str) {
         self.diagnostic().note_without_error(msg)
@@ -245,9 +251,12 @@ impl Session {
                     msg: String) {
         let lint_id = lint::LintId::of(lint);
         let mut lints = self.lints.borrow_mut();
-        match lints.get_mut(&id) {
-            Some(arr) => { arr.push((lint_id, sp, msg)); return; }
-            None => {}
+        if let Some(arr) = lints.get_mut(&id) {
+            let tuple = (lint_id, sp, msg);
+            if !arr.contains(&tuple) {
+                arr.push(tuple);
+            }
+            return;
         }
         lints.insert(id, vec!((lint_id, sp, msg)));
     }
@@ -256,10 +265,13 @@ impl Session {
 
         match id.checked_add(count) {
             Some(next) => self.next_node_id.set(next),
-            None => self.bug("Input too large, ran out of node ids!")
+            None => bug!("Input too large, ran out of node ids!")
         }
 
         id
+    }
+    pub fn next_node_id(&self) -> NodeId {
+        self.reserve_node_ids(1)
     }
     pub fn diagnostic<'a>(&'a self) -> &'a errors::Handler {
         &self.parse_sess.span_diagnostic
@@ -267,18 +279,10 @@ impl Session {
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
         self.parse_sess.codemap()
     }
-    // This exists to help with refactoring to eliminate impossible
-    // cases later on
-    pub fn impossible_case<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.span_bug(sp, &format!("impossible case reached: {}", msg));
-    }
     pub fn verbose(&self) -> bool { self.opts.debugging_opts.verbose }
     pub fn time_passes(&self) -> bool { self.opts.debugging_opts.time_passes }
     pub fn count_llvm_insns(&self) -> bool {
         self.opts.debugging_opts.count_llvm_insns
-    }
-    pub fn count_type_sizes(&self) -> bool {
-        self.opts.debugging_opts.count_type_sizes
     }
     pub fn time_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.time_llvm_passes
@@ -295,17 +299,28 @@ impl Session {
         self.opts.cg.lto
     }
     pub fn no_landing_pads(&self) -> bool {
-        self.opts.debugging_opts.no_landing_pads
+        self.opts.debugging_opts.no_landing_pads ||
+            self.opts.cg.panic == PanicStrategy::Abort
     }
     pub fn unstable_options(&self) -> bool {
         self.opts.debugging_opts.unstable_options
     }
-    pub fn print_enum_sizes(&self) -> bool {
-        self.opts.debugging_opts.print_enum_sizes
-    }
     pub fn nonzeroing_move_hints(&self) -> bool {
         self.opts.debugging_opts.enable_nonzeroing_move_hints
     }
+
+    pub fn must_not_eliminate_frame_pointers(&self) -> bool {
+        self.opts.debuginfo != DebugInfoLevel::NoDebugInfo ||
+        !self.target.target.options.eliminate_frame_pointer
+    }
+
+    /// Returns the symbol name for the registrar function,
+    /// given the crate Svh and the function DefIndex.
+    pub fn generate_plugin_registrar_symbol(&self, svh: &Svh, index: DefIndex)
+                                            -> String {
+        format!("__rustc_plugin_registrar__{}_{}", svh, index.as_usize())
+    }
+
     pub fn sysroot<'a>(&'a self) -> &'a Path {
         match self.opts.maybe_sysroot {
             Some (ref sysroot) => sysroot,
@@ -328,16 +343,6 @@ impl Session {
     }
 }
 
-impl NodeIdAssigner for Session {
-    fn next_node_id(&self) -> NodeId {
-        self.reserve_node_ids(1)
-    }
-
-    fn peek_node_id(&self) -> NodeId {
-        self.next_node_id.get().checked_add(1).unwrap()
-    }
-}
-
 fn split_msg_into_multilines(msg: &str) -> Option<String> {
     // Conditions for enabling multi-line errors:
     if !msg.contains("mismatched types") &&
@@ -350,11 +355,11 @@ fn split_msg_into_multilines(msg: &str) -> Option<String> {
             return None
     }
     let first = msg.match_indices("expected").filter(|s| {
-        s.0 > 0 && (msg.char_at_reverse(s.0) == ' ' ||
-                    msg.char_at_reverse(s.0) == '(')
+        let last = msg[..s.0].chars().rev().next();
+        last == Some(' ') || last == Some('(')
     }).map(|(a, b)| (a - 1, a + b.len()));
     let second = msg.match_indices("found").filter(|s| {
-        msg.char_at_reverse(s.0) == ' '
+        msg[..s.0].chars().rev().next() == Some(' ')
     }).map(|(a, b)| (a - 1, a + b.len()));
 
     let mut new_msg = String::new();
@@ -400,10 +405,26 @@ fn split_msg_into_multilines(msg: &str) -> Option<String> {
 }
 
 pub fn build_session(sopts: config::Options,
+                     dep_graph: &DepGraph,
                      local_crate_source_file: Option<PathBuf>,
-                     registry: diagnostics::registry::Registry,
+                     registry: errors::registry::Registry,
                      cstore: Rc<for<'a> CrateStore<'a>>)
                      -> Session {
+    build_session_with_codemap(sopts,
+                               dep_graph,
+                               local_crate_source_file,
+                               registry,
+                               cstore,
+                               Rc::new(codemap::CodeMap::new()))
+}
+
+pub fn build_session_with_codemap(sopts: config::Options,
+                                  dep_graph: &DepGraph,
+                                  local_crate_source_file: Option<PathBuf>,
+                                  registry: errors::registry::Registry,
+                                  cstore: Rc<for<'a> CrateStore<'a>>,
+                                  codemap: Rc<codemap::CodeMap>)
+                                  -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
     // later via the source code.
@@ -415,10 +436,12 @@ pub fn build_session(sopts: config::Options,
         .unwrap_or(true);
     let treat_err_as_bug = sopts.treat_err_as_bug;
 
-    let codemap = Rc::new(codemap::CodeMap::new());
     let emitter: Box<Emitter> = match sopts.error_format {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, Some(registry), codemap.clone()))
+            Box::new(EmitterWriter::stderr(color_config,
+                                           Some(registry),
+                                           Some(codemap.clone()),
+                                           errors::snippet::FormatMode::EnvironmentSelected))
         }
         config::ErrorOutputType::Json => {
             Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))
@@ -430,10 +453,16 @@ pub fn build_session(sopts: config::Options,
                                       treat_err_as_bug,
                                       emitter);
 
-    build_session_(sopts, local_crate_source_file, diagnostic_handler, codemap, cstore)
+    build_session_(sopts,
+                   dep_graph,
+                   local_crate_source_file,
+                   diagnostic_handler,
+                   codemap,
+                   cstore)
 }
 
 pub fn build_session_(sopts: config::Options,
+                      dep_graph: &DepGraph,
                       local_crate_source_file: Option<PathBuf>,
                       span_diagnostic: errors::Handler,
                       codemap: Rc<codemap::CodeMap>,
@@ -462,6 +491,7 @@ pub fn build_session_(sopts: config::Options,
     );
 
     let sess = Session {
+        dep_graph: dep_graph.clone(),
         target: target_cfg,
         host: host,
         opts: sopts,
@@ -481,37 +511,97 @@ pub fn build_session_(sopts: config::Options,
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FnvHashMap()),
-        crate_metadata: RefCell::new(Vec::new()),
+        crate_disambiguator: Cell::new(token::intern("")),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
         next_node_id: Cell::new(1),
         injected_allocator: Cell::new(None),
+        injected_panic_runtime: Cell::new(None),
         available_macros: RefCell::new(HashSet::new()),
         imported_macro_spans: RefCell::new(HashMap::new()),
     };
 
+    init_llvm(&sess);
+
     sess
 }
 
+fn init_llvm(sess: &Session) {
+    unsafe {
+        // Before we touch LLVM, make sure that multithreading is enabled.
+        use std::sync::Once;
+        static INIT: Once = Once::new();
+        static mut POISONED: bool = false;
+        INIT.call_once(|| {
+            if llvm::LLVMStartMultithreaded() != 1 {
+                // use an extra bool to make sure that all future usage of LLVM
+                // cannot proceed despite the Once not running more than once.
+                POISONED = true;
+            }
+
+            configure_llvm(sess);
+        });
+
+        if POISONED {
+            bug!("couldn't enable multi-threaded LLVM");
+        }
+    }
+}
+
+unsafe fn configure_llvm(sess: &Session) {
+    let mut llvm_c_strs = Vec::new();
+    let mut llvm_args = Vec::new();
+
+    {
+        let mut add = |arg: &str| {
+            let s = CString::new(arg).unwrap();
+            llvm_args.push(s.as_ptr());
+            llvm_c_strs.push(s);
+        };
+        add("rustc"); // fake program name
+        if sess.time_llvm_passes() { add("-time-passes"); }
+        if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
+
+        for arg in &sess.opts.cg.llvm_args {
+            add(&(*arg));
+        }
+    }
+
+    llvm::LLVMInitializePasses();
+
+    llvm::initialize_available_targets();
+
+    llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
+                                 llvm_args.as_ptr());
+}
+
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
-    let mut emitter: Box<Emitter> = match output {
+    let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(BasicEmitter::stderr(color_config))
+            Box::new(EmitterWriter::stderr(color_config,
+                                           None,
+                                           None,
+                                           FormatMode::EnvironmentSelected))
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };
-    emitter.emit(None, msg, None, errors::Level::Fatal);
+    let handler = errors::Handler::with_emitter(true, false, emitter);
+    handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
     panic!(errors::FatalError);
 }
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
-    let mut emitter: Box<Emitter> = match output {
+    let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(BasicEmitter::stderr(color_config))
+            Box::new(EmitterWriter::stderr(color_config,
+                                           None,
+                                           None,
+                                           FormatMode::EnvironmentSelected))
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };
-    emitter.emit(None, msg, None, errors::Level::Warning);
+    let handler = errors::Handler::with_emitter(true, false, emitter);
+    handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);
 }
 
 // Err(0) means compilation was stopped, but no errors were found.
@@ -524,4 +614,36 @@ pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
     } else {
         Err(err_count)
     }
+}
+
+#[cold]
+#[inline(never)]
+pub fn bug_fmt(file: &'static str, line: u32, args: fmt::Arguments) -> ! {
+    // this wrapper mostly exists so I don't have to write a fully
+    // qualified path of None::<Span> inside the bug!() macro defintion
+    opt_span_bug_fmt(file, line, None::<Span>, args);
+}
+
+#[cold]
+#[inline(never)]
+pub fn span_bug_fmt<S: Into<MultiSpan>>(file: &'static str,
+                                        line: u32,
+                                        span: S,
+                                        args: fmt::Arguments) -> ! {
+    opt_span_bug_fmt(file, line, Some(span), args);
+}
+
+fn opt_span_bug_fmt<S: Into<MultiSpan>>(file: &'static str,
+                                        line: u32,
+                                        span: Option<S>,
+                                        args: fmt::Arguments) -> ! {
+    tls::with_opt(move |tcx| {
+        let msg = format!("{}:{}: {}", file, line, args);
+        match (tcx, span) {
+            (Some(tcx), Some(span)) => tcx.sess.diagnostic().span_bug(span, &msg),
+            (Some(tcx), None) => tcx.sess.diagnostic().bug(&msg),
+            (None, _) => panic!(msg)
+        }
+    });
+    unreachable!();
 }

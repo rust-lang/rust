@@ -35,9 +35,9 @@ impl Foo for i64 {
 }
 
 fn test_foo() {
-    assert!(0i8.foo() == false);
-    assert!(0i32.foo() == false);
-    assert!(0i64.foo() == true);
+    assert!(!0i8.foo());
+    assert!(!0i32.foo());
+    assert!(0i64.foo());
 }
 
 // Next, test mixture of explicit `default` and provided methods:

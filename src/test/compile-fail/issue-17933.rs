@@ -13,7 +13,7 @@ pub static X: usize = 1;
 fn main() {
     match 1 {
         self::X => { },
-        //~^ ERROR static variables cannot be referenced in a pattern, use a `const` instead
+        //~^ ERROR expected variant, struct or constant, found static `X`
         _       => { },
     }
 }

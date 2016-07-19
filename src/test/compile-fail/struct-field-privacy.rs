@@ -25,9 +25,10 @@ mod inner {
         pub a: isize,
         b: isize,
     }
+    pub struct Z(pub isize, isize);
 }
 
-fn test(a: A, b: inner::A, c: inner::B, d: xc::A, e: xc::B) {
+fn test(a: A, b: inner::A, c: inner::B, d: xc::A, e: xc::B, z: inner::Z) {
     a.a;
     b.a; //~ ERROR: field `a` of struct `inner::A` is private
     b.b;
@@ -39,6 +40,9 @@ fn test(a: A, b: inner::A, c: inner::B, d: xc::A, e: xc::B) {
 
     e.a;
     e.b; //~ ERROR: field `b` of struct `xc::B` is private
+
+    z.0;
+    z.1; //~ ERROR: field `1` of struct `inner::Z` is private
 }
 
 fn main() {}

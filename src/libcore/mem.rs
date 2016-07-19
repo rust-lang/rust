@@ -110,12 +110,16 @@ pub use intrinsics::transmute;
 ///     }
 /// }
 /// ```
+#[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn forget<T>(t: T) {
     unsafe { intrinsics::forget(t) }
 }
 
 /// Returns the size of a type in bytes.
+///
+/// More specifically, this is the offset in bytes between successive
+/// items of the same type, including alignment padding.
 ///
 /// # Examples
 ///
@@ -514,6 +518,10 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn drop<T>(_x: T) { }
 
+macro_rules! repeat_u8_as_u16 {
+    ($name:expr) => { (($name as u16) <<  8 |
+                       ($name as u16)) }
+}
 macro_rules! repeat_u8_as_u32 {
     ($name:expr) => { (($name as u32) << 24 |
                        ($name as u32) << 16 |
@@ -539,11 +547,18 @@ macro_rules! repeat_u8_as_u64 {
 pub const POST_DROP_U8: u8 = 0x1d;
 #[unstable(feature = "filling_drop", issue = "5016")]
 #[allow(missing_docs)]
+pub const POST_DROP_U16: u16 = repeat_u8_as_u16!(POST_DROP_U8);
+#[unstable(feature = "filling_drop", issue = "5016")]
+#[allow(missing_docs)]
 pub const POST_DROP_U32: u32 = repeat_u8_as_u32!(POST_DROP_U8);
 #[unstable(feature = "filling_drop", issue = "5016")]
 #[allow(missing_docs)]
 pub const POST_DROP_U64: u64 = repeat_u8_as_u64!(POST_DROP_U8);
 
+#[cfg(target_pointer_width = "16")]
+#[unstable(feature = "filling_drop", issue = "5016")]
+#[allow(missing_docs)]
+pub const POST_DROP_USIZE: usize = POST_DROP_U16 as usize;
 #[cfg(target_pointer_width = "32")]
 #[unstable(feature = "filling_drop", issue = "5016")]
 #[allow(missing_docs)]

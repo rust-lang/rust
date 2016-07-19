@@ -21,10 +21,13 @@ fn main() {
     let x = Foo;
     x.zero(0)   //~ ERROR this function takes 0 parameters but 1 parameter was supplied
      .one()     //~ ERROR this function takes 1 parameter but 0 parameters were supplied
+     //~^ NOTE the following parameter type was expected
      .two(0);   //~ ERROR this function takes 2 parameters but 1 parameter was supplied
+     //~^ NOTE the following parameter types were expected
 
     let y = Foo;
     y.zero()
      .take()    //~ ERROR no method named `take` found for type `Foo` in the current scope
+     //~^ NOTE the method `take` exists but the following trait bounds were not satisfied
      .one(0);
 }

@@ -19,8 +19,7 @@ pub fn main() {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let x: Box<Trait> = Box::new(Foo);
     let _y: &Trait = x; //~  ERROR mismatched types
-                        //~| expected `&Trait`
-                        //~| found `Box<Trait>`
-                        //~| expected &-ptr
-                        //~| found box
+                        //~| expected type `&Trait`
+                        //~| found type `Box<Trait>`
+                        //~| expected &-ptr, found box
 }

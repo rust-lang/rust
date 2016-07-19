@@ -15,20 +15,20 @@
 
 use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc_data_structures::fnv::FnvHashMap;
-use rustc::middle::const_eval::ConstVal;
-use rustc::middle::region::CodeExtent;
-use rustc::middle::ty::{AdtDef, Ty};
+use rustc_data_structures::bitvec::BitVector;
+use rustc::middle::const_val::ConstVal;
+use rustc::ty::{AdtDef, Ty};
 use rustc::mir::repr::*;
 use hair::*;
 use syntax::ast::{Name, NodeId};
-use syntax::codemap::Span;
+use syntax_pos::Span;
 
 // helper functions, broken out by category:
 mod simplify;
 mod test;
 mod util;
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn match_expr(&mut self,
                       destination: &Lvalue<'tcx>,
                       span: Span,
@@ -38,25 +38,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                       -> BlockAnd<()> {
         let discriminant_lvalue = unpack!(block = self.as_lvalue(block, discriminant));
 
-        // Before we do anything, create uninitialized variables with
-        // suitable extent for all of the bindings in this match. It's
-        // easiest to do this up front because some of these arms may
-        // be unreachable or reachable multiple times.
-        let var_extent = self.extent_of_innermost_scope();
-        for arm in &arms {
-            self.declare_bindings(var_extent, &arm.patterns[0]);
-        }
-
         let mut arm_blocks = ArmBlocks {
             blocks: arms.iter()
                         .map(|_| self.cfg.start_new_block())
                         .collect(),
         };
 
-        let arm_bodies: Vec<ExprRef<'tcx>> =
-            arms.iter()
-                .map(|arm| arm.body.clone())
-                .collect();
+        // Get the arm bodies and their scopes, while declaring bindings.
+        let arm_bodies: Vec<_> = arms.iter().map(|arm| {
+            let body = self.hir.mirror(arm.body.clone());
+            let scope = self.declare_bindings(None, body.span, &arm.patterns[0]);
+            (body, scope.unwrap_or(self.visibility_scope))
+        }).collect();
 
         // assemble a list of candidates: there is one candidate per
         // pattern, which means there may be more than one candidate
@@ -72,6 +65,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 })
                 .map(|(arm_index, pattern, guard)| {
                     Candidate {
+                        span: pattern.span,
                         match_pairs: vec![MatchPair::new(discriminant_lvalue.clone(), pattern)],
                         bindings: vec![],
                         guard: guard,
@@ -84,69 +78,69 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // branch to the appropriate arm block
         let otherwise = self.match_candidates(span, &mut arm_blocks, candidates, block);
 
-        // because all matches are exhaustive, in principle we expect
-        // an empty vector to be returned here, but the algorithm is
-        // not entirely precise
         if !otherwise.is_empty() {
-            let join_block = self.join_otherwise_blocks(otherwise);
-            self.panic(join_block, "something about matches algorithm not being precise", span);
+            // All matches are exhaustive. However, because some matches
+            // only have exponentially-large exhaustive decision trees, we
+            // sometimes generate an inexhaustive decision tree.
+            //
+            // In that case, the inexhaustive tips of the decision tree
+            // can't be reached - terminate them with an `unreachable`.
+            let source_info = self.source_info(span);
+
+            let mut otherwise = otherwise;
+            otherwise.sort();
+            otherwise.dedup(); // variant switches can introduce duplicate target blocks
+            for block in otherwise {
+                self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+            }
         }
 
         // all the arm blocks will rejoin here
         let end_block = self.cfg.start_new_block();
 
-        for (arm_index, arm_body) in arm_bodies.into_iter().enumerate() {
+        let outer_source_info = self.source_info(span);
+        for (arm_index, (body, visibility_scope)) in arm_bodies.into_iter().enumerate() {
             let mut arm_block = arm_blocks.blocks[arm_index];
-            unpack!(arm_block = self.into(destination, arm_block, arm_body));
-            self.cfg.terminate(arm_block, Terminator::Goto { target: end_block });
+            // Re-enter the visibility scope we created the bindings in.
+            self.visibility_scope = visibility_scope;
+            unpack!(arm_block = self.into(destination, arm_block, body));
+            self.cfg.terminate(arm_block, outer_source_info,
+                               TerminatorKind::Goto { target: end_block });
         }
+        self.visibility_scope = outer_source_info.scope;
 
         end_block.unit()
     }
 
     pub fn expr_into_pattern(&mut self,
                              mut block: BasicBlock,
-                             var_extent: CodeExtent, // lifetime of vars
                              irrefutable_pat: Pattern<'tcx>,
                              initializer: ExprRef<'tcx>)
                              -> BlockAnd<()> {
         // optimize the case of `let x = ...`
         match *irrefutable_pat.kind {
-            PatternKind::Binding { mutability,
-                                   name,
-                                   mode: BindingMode::ByValue,
+            PatternKind::Binding { mode: BindingMode::ByValue,
                                    var,
-                                   ty,
-                                   subpattern: None } => {
-                let index = self.declare_binding(var_extent,
-                                                 mutability,
-                                                 name,
-                                                 var,
-                                                 ty,
-                                                 irrefutable_pat.span);
-                let lvalue = Lvalue::Var(index);
+                                   subpattern: None, .. } => {
+                let lvalue = Lvalue::Var(self.var_indices[&var]);
                 return self.into(&lvalue, block, initializer);
             }
             _ => {}
         }
         let lvalue = unpack!(block = self.as_lvalue(block, initializer));
         self.lvalue_into_pattern(block,
-                                 var_extent,
                                  irrefutable_pat,
                                  &lvalue)
     }
 
     pub fn lvalue_into_pattern(&mut self,
                                mut block: BasicBlock,
-                               var_extent: CodeExtent,
                                irrefutable_pat: Pattern<'tcx>,
                                initializer: &Lvalue<'tcx>)
                                -> BlockAnd<()> {
-        // first, creating the bindings
-        self.declare_bindings(var_extent, &irrefutable_pat);
-
         // create a dummy candidate
         let mut candidate = Candidate {
+            span: irrefutable_pat.span,
             match_pairs: vec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
             bindings: vec![],
             guard: None,
@@ -158,10 +152,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         unpack!(block = self.simplify_candidate(block, &mut candidate));
 
         if !candidate.match_pairs.is_empty() {
-            self.hir.span_bug(candidate.match_pairs[0].pattern.span,
-                              &format!("match pairs {:?} remaining after simplifying \
-                                        irrefutable pattern",
-                                       candidate.match_pairs));
+            span_bug!(candidate.match_pairs[0].pattern.span,
+                      "match pairs {:?} remaining after simplifying \
+                       irrefutable pattern",
+                      candidate.match_pairs);
         }
 
         // now apply the bindings, which will also declare the variables
@@ -170,32 +164,47 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         block.unit()
     }
 
-    pub fn declare_bindings(&mut self, var_extent: CodeExtent, pattern: &Pattern<'tcx>) {
+    /// Declares the bindings of the given pattern and returns the visibility scope
+    /// for the bindings in this patterns, if such a scope had to be created.
+    /// NOTE: Declaring the bindings should always be done in their drop scope.
+    pub fn declare_bindings(&mut self,
+                            mut var_scope: Option<VisibilityScope>,
+                            scope_span: Span,
+                            pattern: &Pattern<'tcx>)
+                            -> Option<VisibilityScope> {
         match *pattern.kind {
             PatternKind::Binding { mutability, name, mode: _, var, ty, ref subpattern } => {
-                self.declare_binding(var_extent, mutability, name, var, ty, pattern.span);
+                if var_scope.is_none() {
+                    var_scope = Some(self.new_visibility_scope(scope_span));
+                }
+                let source_info = SourceInfo {
+                    span: pattern.span,
+                    scope: var_scope.unwrap()
+                };
+                self.declare_binding(source_info, mutability, name, var, ty);
                 if let Some(subpattern) = subpattern.as_ref() {
-                    self.declare_bindings(var_extent, subpattern);
+                    var_scope = self.declare_bindings(var_scope, scope_span, subpattern);
                 }
             }
             PatternKind::Array { ref prefix, ref slice, ref suffix } |
             PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
                 for subpattern in prefix.iter().chain(slice).chain(suffix) {
-                    self.declare_bindings(var_extent, subpattern);
+                    var_scope = self.declare_bindings(var_scope, scope_span, subpattern);
                 }
             }
             PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {
             }
             PatternKind::Deref { ref subpattern } => {
-                self.declare_bindings(var_extent, subpattern);
+                var_scope = self.declare_bindings(var_scope, scope_span, subpattern);
             }
             PatternKind::Leaf { ref subpatterns } |
             PatternKind::Variant { ref subpatterns, .. } => {
                 for subpattern in subpatterns {
-                    self.declare_bindings(var_extent, &subpattern.pattern);
+                    var_scope = self.declare_bindings(var_scope, scope_span, &subpattern.pattern);
                 }
             }
         }
+        var_scope
     }
 }
 
@@ -207,6 +216,9 @@ struct ArmBlocks {
 
 #[derive(Clone, Debug)]
 pub struct Candidate<'pat, 'tcx:'pat> {
+    // span of the original pattern that gave rise to this candidate
+    span: Span,
+
     // all of these must be satisfied...
     match_pairs: Vec<MatchPair<'pat, 'tcx>>,
 
@@ -252,6 +264,7 @@ enum TestKind<'tcx> {
     // test the branches of enum
     Switch {
         adt_def: AdtDef<'tcx>,
+        variants: BitVector,
     },
 
     // test the branches of enum
@@ -290,7 +303,7 @@ pub struct Test<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Main matching algorithm
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// The main match algorithm. It begins with a set of candidates
     /// `candidates` and has the job of generating code to determine
     /// which of these candidates, if any, is the correct one. The
@@ -371,20 +384,25 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }
 
         // Otherwise, let's process those remaining candidates.
-        let join_block = self.join_otherwise_blocks(otherwise);
+        let join_block = self.join_otherwise_blocks(span, otherwise);
         self.match_candidates(span, arm_blocks, untested_candidates, join_block)
     }
 
     fn join_otherwise_blocks(&mut self,
-                             otherwise: Vec<BasicBlock>)
+                             span: Span,
+                             mut otherwise: Vec<BasicBlock>)
                              -> BasicBlock
     {
+        let source_info = self.source_info(span);
+        otherwise.sort();
+        otherwise.dedup(); // variant switches can introduce duplicate target blocks
         if otherwise.len() == 1 {
             otherwise[0]
         } else {
             let join_block = self.cfg.start_new_block();
             for block in otherwise {
-                self.cfg.terminate(block, Terminator::Goto { target: join_block });
+                self.cfg.terminate(block, source_info,
+                                   TerminatorKind::Goto { target: join_block });
             }
             join_block
         }
@@ -420,42 +438,87 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// simpler (and, in fact, irrefutable).
     ///
     /// But there may also be candidates that the test just doesn't
-    /// apply to. For example, consider the case of #29740:
+    /// apply to. The classical example involves wildcards:
     ///
-    /// ```rust
-    /// match x {
-    ///     "foo" => ...,
-    ///     "bar" => ...,
-    ///     "baz" => ...,
-    ///     _ => ...,
+    /// ```rust,ignore
+    /// match (x, y, z) {
+    ///     (true, _, true) => true,    // (0)
+    ///     (_, true, _) => true,       // (1)
+    ///     (false, false, _) => false, // (2)
+    ///     (true, _, false) => false,  // (3)
     /// }
     /// ```
     ///
-    /// Here the match-pair we are testing will be `x @ "foo"`, and we
-    /// will generate an `Eq` test. Because `"bar"` and `"baz"` are different
-    /// constants, we will decide that these later candidates are just not
-    /// informed by the eq test. So we'll wind up with three candidate sets:
+    /// In that case, after we test on `x`, there are 2 overlapping candidate
+    /// sets:
     ///
-    /// - If outcome is that `x == "foo"` (one candidate, derived from `x @ "foo"`)
-    /// - If outcome is that `x != "foo"` (empty list of candidates)
-    /// - Otherwise (three candidates, `x @ "bar"`, `x @ "baz"`, `x @
-    ///   _`). Here we have the invariant that everything in the
-    ///   otherwise list is of **lower priority** than the stuff in the
-    ///   other lists.
+    /// - If the outcome is that `x` is true, candidates 0, 1, and 3
+    /// - If the outcome is that `x` is false, candidates 1 and 2
     ///
-    /// So we'll compile the test. For each outcome of the test, we
-    /// recursively call `match_candidates` with the corresponding set
-    /// of candidates. But note that this set is now inexhaustive: for
-    /// example, in the case where the test returns false, there are
-    /// NO candidates, even though there is stll a value to be
-    /// matched. So we'll collect the return values from
-    /// `match_candidates`, which are the blocks where control-flow
-    /// goes if none of the candidates matched. At this point, we can
-    /// continue with the "otherwise" list.
+    /// Here, the traditional "decision tree" method would generate 2
+    /// separate code-paths for the 2 separate cases.
+    ///
+    /// In some cases, this duplication can create an exponential amount of
+    /// code. This is most easily seen by noticing that this method terminates
+    /// with precisely the reachable arms being reachable - but that problem
+    /// is trivially NP-complete:
+    ///
+    /// ```rust
+    ///     match (var0, var1, var2, var3, ..) {
+    ///         (true, _, _, false, true, ...) => false,
+    ///         (_, true, true, false, _, ...) => false,
+    ///         (false, _, false, false, _, ...) => false,
+    ///         ...
+    ///         _ => true
+    ///     }
+    /// ```
+    ///
+    /// Here the last arm is reachable only if there is an assignment to
+    /// the variables that does not match any of the literals. Therefore,
+    /// compilation would take an exponential amount of time in some cases.
+    ///
+    /// That kind of exponential worst-case might not occur in practice, but
+    /// our simplistic treatment of constants and guards would make it occur
+    /// in very common situations - for example #29740:
+    ///
+    /// ```rust
+    /// match x {
+    ///     "foo" if foo_guard => ...,
+    ///     "bar" if bar_guard => ...,
+    ///     "baz" if baz_guard => ...,
+    ///     ...
+    /// }
+    /// ```
+    ///
+    /// Here we first test the match-pair `x @ "foo"`, which is an `Eq` test.
+    ///
+    /// It might seem that we would end up with 2 disjoint candidate
+    /// sets, consisting of the first candidate or the other 3, but our
+    /// algorithm doesn't reason about "foo" being distinct from the other
+    /// constants; it considers the latter arms to potentially match after
+    /// both outcomes, which obviously leads to an exponential amount
+    /// of tests.
+    ///
+    /// To avoid these kinds of problems, our algorithm tries to ensure
+    /// the amount of generated tests is linear. When we do a k-way test,
+    /// we return an additional "unmatched" set alongside the obvious `k`
+    /// sets. When we encounter a candidate that would be present in more
+    /// than one of the sets, we put it and all candidates below it into the
+    /// "unmatched" set. This ensures these `k+1` sets are disjoint.
+    ///
+    /// After we perform our test, we branch into the appropriate candidate
+    /// set and recurse with `match_candidates`. These sub-matches are
+    /// obviously inexhaustive - as we discarded our otherwise set - so
+    /// we set their continuation to do `match_candidates` on the
+    /// "unmatched" set (which is again inexhaustive).
     ///
     /// If you apply this to the above test, you basically wind up
     /// with an if-else-if chain, testing each candidate in turn,
     /// which is precisely what we want.
+    ///
+    /// In addition to avoiding exponential-time blowups, this algorithm
+    /// also has nice property that each guard and arm is only generated
+    /// once.
     fn test_candidates<'pat>(&mut self,
                              span: Span,
                              arm_blocks: &mut ArmBlocks,
@@ -483,6 +546,15 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     }
                 }
             }
+            TestKind::Switch { adt_def: _, ref mut variants} => {
+                for candidate in candidates.iter() {
+                    if !self.add_variants_to_switch(&match_pair.lvalue,
+                                                    candidate,
+                                                    variants) {
+                        break;
+                    }
+                }
+            }
             _ => { }
         }
 
@@ -506,6 +578,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                                           &mut target_candidates))
                       .count();
         assert!(tested_candidates > 0); // at least the last candidate ought to be tested
+        debug!("tested_candidates: {}", tested_candidates);
+        debug!("untested_candidates: {}", candidates.len() - tested_candidates);
 
         // For each outcome of test, process the candidates that still
         // apply. Collect a list of blocks where control flow will
@@ -554,13 +628,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         if let Some(guard) = candidate.guard {
             // the block to branch to if the guard fails; if there is no
             // guard, this block is simply unreachable
+            let guard = self.hir.mirror(guard);
+            let source_info = self.source_info(guard.span);
             let cond = unpack!(block = self.as_operand(block, guard));
             let otherwise = self.cfg.start_new_block();
-            self.cfg.terminate(block, Terminator::If { cond: cond,
-                                                       targets: (arm_block, otherwise)});
+            self.cfg.terminate(block, source_info,
+                               TerminatorKind::If { cond: cond,
+                                                    targets: (arm_block, otherwise)});
             Some(otherwise)
         } else {
-            self.cfg.terminate(block, Terminator::Goto { target: arm_block });
+            let source_info = self.source_info(candidate.span);
+            self.cfg.terminate(block, source_info,
+                               TerminatorKind::Goto { target: arm_block });
             None
         }
     }
@@ -585,34 +664,35 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     Rvalue::Ref(region, borrow_kind, binding.source),
             };
 
-            self.cfg.push_assign(block, binding.span, &Lvalue::Var(var_index), rvalue);
+            let source_info = self.source_info(binding.span);
+            self.cfg.push_assign(block, source_info,
+                                 &Lvalue::Var(var_index), rvalue);
         }
     }
 
     fn declare_binding(&mut self,
-                       var_extent: CodeExtent,
+                       source_info: SourceInfo,
                        mutability: Mutability,
                        name: Name,
                        var_id: NodeId,
-                       var_ty: Ty<'tcx>,
-                       span: Span)
-                       -> u32
+                       var_ty: Ty<'tcx>)
+                       -> Var
     {
-        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, var_extent={:?}, span={:?})",
-               var_id, name, var_ty, var_extent, span);
+        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, source_info={:?})",
+               var_id, name, var_ty, source_info);
 
-        let index = self.var_decls.len();
-        self.var_decls.push(VarDecl::<'tcx> {
+        let var = self.var_decls.push(VarDecl::<'tcx> {
+            source_info: source_info,
             mutability: mutability,
             name: name,
             ty: var_ty.clone(),
         });
-        let index = index as u32;
-        self.schedule_drop(span, var_extent, &Lvalue::Var(index), var_ty);
-        self.var_indices.insert(var_id, index);
+        let extent = self.extent_of_innermost_scope();
+        self.schedule_drop(source_info.span, extent, &Lvalue::Var(var), var_ty);
+        self.var_indices.insert(var_id, var);
 
-        debug!("declare_binding: index={:?}", index);
+        debug!("declare_binding: var={:?}", var);
 
-        index
+        var
     }
 }

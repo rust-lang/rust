@@ -59,10 +59,11 @@
 #   * check-stage$(stage)-$(crate) - Test a crate in a specific stage
 #   * check-stage$(stage)-{rpass,rfail,cfail,rmake,...} - Run tests in src/test/
 #   * check-stage1-T-$(target)-H-$(host) - Run cross-compiled-tests
-#   * tidy-basic - show file / line stats
-#   * tidy-errors - show the highest rustc error code
-#   * tidy-features - show the status of language and lib features
+#   * tidy - Basic style check, show highest rustc error code and
+#     the status of language and lib features
 #   * rustc-stage$(stage) - Only build up to a specific stage
+#   * $host/stage1/bin/rustc - Only build stage1 rustc, not libstd. For further
+#     information see "Rust recipes for build system success" below.
 #
 # Then mix in some of these environment variables to harness the
 # ultimate power of The Rust Build System.
@@ -94,6 +95,15 @@
 #     // Modifying libstd? Use this command to run unit tests just on your change
 #     make check-stage1-std NO_REBUILD=1 NO_BENCH=1
 #
+#     // Modifying just rustc?
+#     // Compile rustc+libstd once
+#     make rustc-stage1
+#     // From now on use this command to rebuild just rustc and reuse the previously built libstd
+#     // $host is a target triple, eg. x86_64-unknown-linux-gnu
+#     // The resulting binary is located at $host/stage1/bin/rustc.
+#     // If there are any issues with libstd recompile it with the command above.
+#     make $host/stage1/bin/rustc
+#
 #     // Added a run-pass test? Use this to test running your test
 #     make check-stage1-rpass TESTNAME=my-shiny-new-test
 #
@@ -107,6 +117,20 @@
 # If you really feel like getting your hands dirty, then:
 #
 #     run `make nitty-gritty`
+#
+# # Make command examples
+#
+# ## Docs linked commands
+#
+# * make check-stage1-rustdocck: Builds rustdoc. It has the advantage to compile
+#                                quite quickly since we're only using stage1
+#                                executables.
+# * make doc/error-index.md: Gets all doc blocks from doc comments and error
+#                            explanations to put them in a markdown file. You
+#                            can then test them by running
+#                            "rustdoc --test error-index.md".
+#
+# And of course, the wonderfully useful 'make tidy'! Always run it before opening a pull request to rust!
 #
 # </tips>
 #
@@ -214,13 +238,6 @@ include $(CFG_SRC_DIR)mk/debuggers.mk
 # Secondary makefiles, conditionalized for speed
 ######################################################################
 
-# Binary snapshots
-ifneq ($(strip $(findstring snap,$(MAKECMDGOALS))   \
-               $(findstring clean,$(MAKECMDGOALS))),)
-  CFG_INFO := $(info cfg: including snap rules)
-  include $(CFG_SRC_DIR)mk/snap.mk
-endif
-
 # The test suite
 ifneq ($(strip $(findstring check,$(MAKECMDGOALS)) \
                $(findstring test,$(MAKECMDGOALS))  \
@@ -260,7 +277,17 @@ endif
 
 # CTAGS building
 ifneq ($(strip $(findstring TAGS.emacs,$(MAKECMDGOALS)) \
-               $(findstring TAGS.vi,$(MAKECMDGOALS))),)
+               $(findstring TAGS.vi,$(MAKECMDGOALS)) \
+               $(findstring TAGS.rustc.emacs,$(MAKECMDGOALS)) \
+               $(findstring TAGS.rustc.vi,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including ctags rules)
   include $(CFG_SRC_DIR)mk/ctags.mk
 endif
+
+.DEFAULT:
+	@echo
+	@echo "======================================================"
+	@echo "== If you need help, run 'make help' or 'make tips' =="
+	@echo "======================================================"
+	@echo
+	exit 1

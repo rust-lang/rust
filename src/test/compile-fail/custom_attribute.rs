@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(stmt_expr_attributes)]
+
 #[foo] //~ ERROR The attribute `foo`
 fn main() {
-
+    #[foo] //~ ERROR The attribute `foo`
+    let x = ();
+    #[foo] //~ ERROR The attribute `foo`
+    x
 }

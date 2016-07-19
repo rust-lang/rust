@@ -72,12 +72,12 @@ a [`Drop`][drop] implementation.
 # Initializing
 
 Both `const` and `static` have requirements for giving them a value. They must
-be given a value that’s a constant expression. In other words, you cannot use 
+be given a value that’s a constant expression. In other words, you cannot use
 the result of a function call or anything similarly complex or at runtime.
 
 # Which construct should I use?
 
 Almost always, if you can choose between the two, choose `const`. It’s pretty
 rare that you actually want a memory location associated with your constant,
-and using a const allows for optimizations like constant propagation not only
+and using a `const` allows for optimizations like constant propagation not only
 in your crate but downstream crates.

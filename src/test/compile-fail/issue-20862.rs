@@ -10,11 +10,7 @@
 
 fn foo(x: i32) {
     |y| x + y
-//~^ ERROR: mismatched types:
-//~| expected `()`,
-//~|     found closure
-//~| (expected (),
-//~|     found closure) [E0308]
+//~^ ERROR: mismatched types
 }
 
 fn main() {

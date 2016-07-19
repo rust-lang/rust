@@ -22,7 +22,7 @@ struct Struct<T>(T);
 fn is_reflect<T:Reflect>() { }
 
 fn c<T>() {
-    is_reflect::<Struct<T>>(); //~ ERROR not implemented
+    is_reflect::<Struct<T>>(); //~ ERROR E0277
 }
 
 fn ok_c<T: Reflect>() {
@@ -30,7 +30,7 @@ fn ok_c<T: Reflect>() {
 }
 
 fn d<T>() {
-    is_reflect::<(i32, T)>(); //~ ERROR not implemented
+    is_reflect::<(i32, T)>(); //~ ERROR E0277
 }
 
 fn main() {

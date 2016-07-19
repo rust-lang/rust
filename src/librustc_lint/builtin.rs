@@ -28,15 +28,15 @@
 //! Use the former for unit-like structs and the latter for structs with
 //! a `pub fn new()`.
 
-use middle::{cfg, infer, stability, traits};
-use middle::def::Def;
-use middle::cstore::CrateStore;
-use middle::def_id::DefId;
-use middle::subst::Substs;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::adjustment;
-use middle::traits::ProjectionMode;
-use rustc::front::map as hir_map;
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
+use middle::stability;
+use rustc::cfg;
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::adjustment;
+use rustc::traits::{self, ProjectionMode};
+use rustc::hir::map as hir_map;
 use util::nodemap::{NodeSet};
 use lint::{Level, LateContext, LintContext, LintArray, Lint};
 use lint::{LintPass, LateLintPass};
@@ -45,10 +45,10 @@ use std::collections::HashSet;
 
 use syntax::{ast};
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::{self, Span};
+use syntax_pos::{self, Span};
 
-use rustc_front::hir::{self, PatKind};
-use rustc_front::intravisit::FnKind;
+use rustc::hir::{self, PatKind};
+use rustc::hir::intravisit::FnKind;
 
 use bad_style::{MethodLateContext, method_context};
 
@@ -157,22 +157,13 @@ impl LintPass for NonShorthandFieldPatterns {
 
 impl LateLintPass for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext, pat: &hir::Pat) {
-        let def_map = cx.tcx.def_map.borrow();
-        if let PatKind::Struct(_, ref v, _) = pat.node {
-            let field_pats = v.iter().filter(|fieldpat| {
-                if fieldpat.node.is_shorthand {
-                    return false;
-                }
-                let def = def_map.get(&fieldpat.node.pat.id).map(|d| d.full_def());
-                if let Some(def_id) = cx.tcx.map.opt_local_def_id(fieldpat.node.pat.id) {
-                    def == Some(Def::Local(def_id, fieldpat.node.pat.id))
-                } else {
-                    false
-                }
-            });
+        if let PatKind::Struct(_, ref field_pats, _) = pat.node {
             for fieldpat in field_pats {
-                if let PatKind::Ident(_, ident, None) = fieldpat.node.pat.node {
-                    if ident.node.unhygienic_name == fieldpat.node.name {
+                if fieldpat.node.is_shorthand {
+                    continue;
+                }
+                if let PatKind::Binding(_, ident, None) = fieldpat.node.pat.node {
+                    if ident.node == fieldpat.node.name {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant and can \
                                               be removed", ident.node))
@@ -223,10 +214,10 @@ impl LateLintPass for UnsafeCode {
     fn check_fn(&mut self, cx: &LateContext, fk: FnKind, _: &hir::FnDecl,
                 _: &hir::Block, span: Span, _: ast::NodeId) {
         match fk {
-            FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, _, _, _) =>
+            FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, _, _, _, _) =>
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
-            FnKind::Method(_, sig, _) => {
+            FnKind::Method(_, sig, _, _) => {
                 if sig.unsafety == hir::Unsafety::Unsafe {
                     cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
                 }
@@ -377,7 +368,7 @@ impl LateLintPass for MissingDoc {
             hir::ItemImpl(_, _, _, Some(ref trait_ref), _, ref impl_items) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
-                let real_trait = cx.tcx.trait_ref_to_def_id(trait_ref);
+                let real_trait = cx.tcx.expect_def(trait_ref.ref_id).def_id();
                 if let Some(node_id) = cx.tcx.map.as_local_node_id(real_trait) {
                     match cx.tcx.map.find(node_id) {
                         Some(hir_map::NodeItem(item)) => if item.vis == hir::Visibility::Inherited {
@@ -496,10 +487,10 @@ impl LateLintPass for MissingCopyImplementations {
         let parameter_environment = cx.tcx.empty_parameter_environment();
         // FIXME (@jroesch) should probably inver this so that the parameter env still impls this
         // method
-        if !ty.moves_by_default(&parameter_environment, item.span) {
+        if !ty.moves_by_default(cx.tcx, &parameter_environment, item.span) {
             return;
         }
-        if parameter_environment.can_type_implement_copy(ty, item.span).is_ok() {
+        if parameter_environment.can_type_implement_copy(cx.tcx, ty, item.span).is_ok() {
             cx.span_lint(MISSING_COPY_IMPLEMENTATIONS,
                          item.span,
                          "type could implement `Copy`; consider adding `impl \
@@ -670,7 +661,7 @@ impl LateLintPass for UnconditionalRecursion {
                 cx.tcx.impl_or_trait_item(cx.tcx.map.local_def_id(id)).as_opt_method()
             }
             // closures can't recur, so they don't matter.
-            FnKind::Closure => return
+            FnKind::Closure(_) => return
         };
 
         // Walk through this function (say `f`) looking to see if
@@ -763,8 +754,8 @@ impl LateLintPass for UnconditionalRecursion {
                 for call in &self_call_spans {
                     db.span_note(*call, "recursive call site");
                 }
-                db.fileline_help(sp, "a `loop` may express intention \
-                                      better if this is on purpose");
+                db.help("a `loop` may express intention \
+                         better if this is on purpose");
             }
             db.emit();
         }
@@ -775,25 +766,23 @@ impl LateLintPass for UnconditionalRecursion {
         // Functions for identifying if the given Expr NodeId `id`
         // represents a call to the function `fn_id`/method `method`.
 
-        fn expr_refers_to_this_fn(tcx: &TyCtxt,
+        fn expr_refers_to_this_fn(tcx: TyCtxt,
                                   fn_id: ast::NodeId,
                                   id: ast::NodeId) -> bool {
             match tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
-                    tcx.def_map
-                       .borrow()
-                       .get(&callee.id)
-                       .map_or(false,
-                               |def| def.def_id() == tcx.map.local_def_id(fn_id))
+                    tcx.expect_def_or_none(callee.id).map_or(false, |def| {
+                        def.def_id() == tcx.map.local_def_id(fn_id)
+                    })
                 }
                 _ => false
             }
         }
 
         // Check if the expression `id` performs a call to `method`.
-        fn expr_refers_to_this_method(tcx: &TyCtxt,
-                                      method: &ty::Method,
-                                      id: ast::NodeId) -> bool {
+        fn expr_refers_to_this_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                method: &ty::Method,
+                                                id: ast::NodeId) -> bool {
             // Check for method calls and overloaded operators.
             let opt_m = tcx.tables.borrow().method_map.get(&ty::MethodCall::expr(id)).cloned();
             if let Some(m) = opt_m {
@@ -820,13 +809,11 @@ impl LateLintPass for UnconditionalRecursion {
             // Check for calls to methods via explicit paths (e.g. `T::method()`).
             match tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
-                    match tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def()) {
+                    // The callee is an arbitrary expression,
+                    // it doesn't necessarily have a definition.
+                    match tcx.expect_def_or_none(callee.id) {
                         Some(Def::Method(def_id)) => {
-                            let item_substs =
-                                tcx.tables.borrow().item_substs
-                                                   .get(&callee.id)
-                                                   .cloned()
-                                                   .unwrap_or_else(|| ty::ItemSubsts::empty());
+                            let item_substs = tcx.node_id_item_substs(callee.id);
                             method_call_refers_to_method(
                                 tcx, method, def_id, &item_substs.substs, id)
                         }
@@ -839,11 +826,11 @@ impl LateLintPass for UnconditionalRecursion {
 
         // Check if the method call to the method with the ID `callee_id`
         // and instantiated with `callee_substs` refers to method `method`.
-        fn method_call_refers_to_method<'tcx>(tcx: &TyCtxt<'tcx>,
-                                              method: &ty::Method,
-                                              callee_id: DefId,
-                                              callee_substs: &Substs<'tcx>,
-                                              expr_id: ast::NodeId) -> bool {
+        fn method_call_refers_to_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                  method: &ty::Method,
+                                                  callee_id: DefId,
+                                                  callee_substs: &Substs<'tcx>,
+                                                  expr_id: ast::NodeId) -> bool {
             let callee_item = tcx.impl_or_trait_item(callee_id);
 
             match callee_item.container() {
@@ -868,39 +855,37 @@ impl LateLintPass for UnconditionalRecursion {
                     // checking, so it's always local
                     let node_id = tcx.map.as_local_node_id(method.def_id).unwrap();
 
-                    let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
-                    let infcx = infer::new_infer_ctxt(tcx,
-                                                      &tcx.tables,
-                                                      Some(param_env),
-                                                      ProjectionMode::AnyFinal);
-                    let mut selcx = traits::SelectionContext::new(&infcx);
-                    match selcx.select(&obligation) {
-                        // The method comes from a `T: Trait` bound.
-                        // If `T` is `Self`, then this call is inside
-                        // a default method definition.
-                        Ok(Some(traits::VtableParam(_))) => {
-                            let self_ty = callee_substs.self_ty();
-                            let on_self = self_ty.map_or(false, |t| t.is_self());
-                            // We can only be recurring in a default
-                            // method if we're being called literally
-                            // on the `Self` type.
-                            on_self && callee_id == method.def_id
-                        }
+                    let param_env = Some(ty::ParameterEnvironment::for_item(tcx, node_id));
+                    tcx.infer_ctxt(None, param_env, ProjectionMode::AnyFinal).enter(|infcx| {
+                        let mut selcx = traits::SelectionContext::new(&infcx);
+                        match selcx.select(&obligation) {
+                            // The method comes from a `T: Trait` bound.
+                            // If `T` is `Self`, then this call is inside
+                            // a default method definition.
+                            Ok(Some(traits::VtableParam(_))) => {
+                                let self_ty = callee_substs.self_ty();
+                                let on_self = self_ty.map_or(false, |t| t.is_self());
+                                // We can only be recurring in a default
+                                // method if we're being called literally
+                                // on the `Self` type.
+                                on_self && callee_id == method.def_id
+                            }
 
-                        // The `impl` is known, so we check that with a
-                        // special case:
-                        Ok(Some(traits::VtableImpl(vtable_impl))) => {
-                            let container = ty::ImplContainer(vtable_impl.impl_def_id);
-                            // It matches if it comes from the same impl,
-                            // and has the same method name.
-                            container == method.container
-                                && callee_item.name() == method.name
-                        }
+                            // The `impl` is known, so we check that with a
+                            // special case:
+                            Ok(Some(traits::VtableImpl(vtable_impl))) => {
+                                let container = ty::ImplContainer(vtable_impl.impl_def_id);
+                                // It matches if it comes from the same impl,
+                                // and has the same method name.
+                                container == method.container
+                                    && callee_item.name() == method.name
+                            }
 
-                        // There's no way to know if this call is
-                        // recursive, so we assume it's not.
-                        _ => return false
-                    }
+                            // There's no way to know if this call is
+                            // recursive, so we assume it's not.
+                            _ => false
+                        }
+                    })
                 }
             }
         }
@@ -1063,7 +1048,7 @@ impl LateLintPass for MutableTransmutes {
                 hir::ExprPath(..) => (),
                 _ => return None
             }
-            if let Def::Fn(did) = cx.tcx.resolve_expr(expr) {
+            if let Def::Fn(did) = cx.tcx.expect_def(expr.id) {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
@@ -1086,10 +1071,7 @@ impl LateLintPass for MutableTransmutes {
                 ty::TyFnDef(_, _, ref bfty) if bfty.abi == RustIntrinsic => (),
                 _ => return false
             }
-            cx.tcx.with_path(def_id, |path| match path.last() {
-                Some(ref last) => last.name().as_str() == "transmute",
-                _ => false
-            })
+            cx.tcx.item_name(def_id).as_str() == "transmute"
         }
     }
 }
@@ -1158,9 +1140,9 @@ impl LateLintPass for DropWithReprExtern {
                     if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
                         self_type_def.dtor_kind().has_drop_flag() {
                         let drop_impl_span = ctx.tcx.map.def_id_span(drop_impl_did,
-                                                                     codemap::DUMMY_SP);
+                                                                     syntax_pos::DUMMY_SP);
                         let self_defn_span = ctx.tcx.map.def_id_span(self_type_did,
-                                                                     codemap::DUMMY_SP);
+                                                                     syntax_pos::DUMMY_SP);
                         ctx.span_lint_note(DROP_WITH_REPR_EXTERN,
                                            drop_impl_span,
                                            "implementing Drop adds hidden state to types, \

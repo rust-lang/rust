@@ -9,68 +9,183 @@
 // except according to those terms.
 
 use graphviz::IntoCow;
-use middle::const_eval::ConstVal;
-use rustc_const_eval::{ConstUsize, ConstInt};
-use middle::def_id::DefId;
-use middle::subst::Substs;
-use middle::ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
+use middle::const_val::ConstVal;
+use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
+use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
+use rustc_data_structures::control_flow_graph::ControlFlowGraph;
+use hir::def_id::DefId;
+use ty::subst::Substs;
+use ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use util::ppaux;
 use rustc_back::slice;
-use rustc_front::hir::InlineAsm;
+use hir::InlineAsm;
 use std::ascii;
 use std::borrow::{Cow};
+use std::cell::Ref;
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
 use std::ops::{Index, IndexMut};
+use std::vec::IntoIter;
 use syntax::ast::{self, Name};
-use syntax::codemap::Span;
+use syntax_pos::Span;
+
+use super::cache::Cache;
+
+macro_rules! newtype_index {
+    ($name:ident, $debug_name:expr) => (
+        #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
+         RustcEncodable, RustcDecodable)]
+        pub struct $name(u32);
+
+        impl Idx for $name {
+            fn new(value: usize) -> Self {
+                assert!(value < (u32::MAX) as usize);
+                $name(value as u32)
+            }
+            fn index(self) -> usize {
+                self.0 as usize
+            }
+        }
+
+        impl Debug for $name {
+            fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+                write!(fmt, "{}{}", $debug_name, self.0)
+            }
+        }
+    )
+}
 
 /// Lowered representation of a single function.
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
-    pub basic_blocks: Vec<BasicBlockData<'tcx>>,
+    basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+
+    /// List of visibility (lexical) scopes; these are referenced by statements
+    /// and used (eventually) for debuginfo. Indexed by a `VisibilityScope`.
+    pub visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
+
+    /// Rvalues promoted from this function, such as borrows of constants.
+    /// Each of them is the Mir of a constant with the fn's type parameters
+    /// in scope, but no vars or args and a separate set of temps.
+    pub promoted: IndexVec<Promoted, Mir<'tcx>>,
 
     /// Return type of the function.
     pub return_ty: FnOutput<'tcx>,
 
     /// Variables: these are stack slots corresponding to user variables. They may be
     /// assigned many times.
-    pub var_decls: Vec<VarDecl<'tcx>>,
+    pub var_decls: IndexVec<Var, VarDecl<'tcx>>,
 
     /// Args: these are stack slots corresponding to the input arguments.
-    pub arg_decls: Vec<ArgDecl<'tcx>>,
+    pub arg_decls: IndexVec<Arg, ArgDecl<'tcx>>,
 
     /// Temp declarations: stack slots that for temporaries created by
     /// the compiler. These are assigned once, but they are not SSA
     /// values in that it is possible to borrow them and mutate them
     /// through the resulting reference.
-    pub temp_decls: Vec<TempDecl<'tcx>>,
+    pub temp_decls: IndexVec<Temp, TempDecl<'tcx>>,
+
+    /// Names and capture modes of all the closure upvars, assuming
+    /// the first argument is either the closure or a reference to it.
+    pub upvar_decls: Vec<UpvarDecl>,
 
     /// A span representing this MIR, for error reporting
     pub span: Span,
+
+    /// A cache for various calculations
+    cache: Cache
 }
 
 /// where execution begins
 pub const START_BLOCK: BasicBlock = BasicBlock(0);
 
-/// where execution ends, on normal return
-pub const END_BLOCK: BasicBlock = BasicBlock(1);
-
 impl<'tcx> Mir<'tcx> {
-    pub fn all_basic_blocks(&self) -> Vec<BasicBlock> {
-        (0..self.basic_blocks.len())
-            .map(|i| BasicBlock::new(i))
-            .collect()
+    pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+               visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
+               promoted: IndexVec<Promoted, Mir<'tcx>>,
+               return_ty: FnOutput<'tcx>,
+               var_decls: IndexVec<Var, VarDecl<'tcx>>,
+               arg_decls: IndexVec<Arg, ArgDecl<'tcx>>,
+               temp_decls: IndexVec<Temp, TempDecl<'tcx>>,
+               upvar_decls: Vec<UpvarDecl>,
+               span: Span) -> Self
+    {
+        Mir {
+            basic_blocks: basic_blocks,
+            visibility_scopes: visibility_scopes,
+            promoted: promoted,
+            return_ty: return_ty,
+            var_decls: var_decls,
+            arg_decls: arg_decls,
+            temp_decls: temp_decls,
+            upvar_decls: upvar_decls,
+            span: span,
+            cache: Cache::new()
+        }
     }
 
-    pub fn basic_block_data(&self, bb: BasicBlock) -> &BasicBlockData<'tcx> {
-        &self.basic_blocks[bb.index()]
+    #[inline]
+    pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        &self.basic_blocks
     }
 
-    pub fn basic_block_data_mut(&mut self, bb: BasicBlock) -> &mut BasicBlockData<'tcx> {
-        &mut self.basic_blocks[bb.index()]
+    #[inline]
+    pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        self.cache.invalidate();
+        &mut self.basic_blocks
+    }
+
+    #[inline]
+    pub fn predecessors(&self) -> Ref<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+        self.cache.predecessors(self)
+    }
+
+    #[inline]
+    pub fn predecessors_for(&self, bb: BasicBlock) -> Ref<Vec<BasicBlock>> {
+        Ref::map(self.predecessors(), |p| &p[bb])
+    }
+
+    #[inline]
+    pub fn dominators(&self) -> Dominators<BasicBlock> {
+        dominators(self)
+    }
+
+    /// Maps locals (Arg's, Var's, Temp's and ReturnPointer, in that order)
+    /// to their index in the whole list of locals. This is useful if you
+    /// want to treat all locals the same instead of repeating yourself.
+    pub fn local_index(&self, lvalue: &Lvalue<'tcx>) -> Option<Local> {
+        let idx = match *lvalue {
+            Lvalue::Arg(arg) => arg.index(),
+            Lvalue::Var(var) => {
+                self.arg_decls.len() +
+                var.index()
+            }
+            Lvalue::Temp(temp) => {
+                self.arg_decls.len() +
+                self.var_decls.len() +
+                temp.index()
+            }
+            Lvalue::ReturnPointer => {
+                self.arg_decls.len() +
+                self.var_decls.len() +
+                self.temp_decls.len()
+            }
+            Lvalue::Static(_) |
+            Lvalue::Projection(_) => return None
+        };
+        Some(Local::new(idx))
+    }
+
+    /// Counts the number of locals, such that that local_index
+    /// will always return an index smaller than this count.
+    pub fn count_locals(&self) -> usize {
+        self.arg_decls.len() +
+        self.var_decls.len() +
+        self.temp_decls.len() + 1
     }
 }
 
@@ -79,15 +194,27 @@ impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
 
     #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
-        self.basic_block_data(index)
+        &self.basic_blocks()[index]
     }
 }
 
 impl<'tcx> IndexMut<BasicBlock> for Mir<'tcx> {
     #[inline]
     fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
-        self.basic_block_data_mut(index)
+        &mut self.basic_blocks_mut()[index]
     }
+}
+
+/// Grouped information about the source code origin of a MIR entity.
+/// Intended to be inspected by diagnostics and debuginfo.
+/// Most passes can work with it as a whole, within a single function.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+pub struct SourceInfo {
+    /// Source span for the AST pertaining to this MIR entity.
+    pub span: Span,
+
+    /// The lexical visibility scope, i.e. which bindings can be seen.
+    pub scope: VisibilityScope
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -152,9 +279,18 @@ pub enum BorrowKind {
 /// decl, a let, etc.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct VarDecl<'tcx> {
+    /// `let mut x` vs `let x`
     pub mutability: Mutability,
+
+    /// name that user gave the variable; not that, internally,
+    /// mir references variables by index
     pub name: Name,
+
+    /// type inferred for this variable (`let x: ty = ...`)
     pub ty: Ty<'tcx>,
+
+    /// source information (span, scope, etc.) for the declaration
+    pub source_info: SourceInfo,
 }
 
 /// A "temp" is a temporary that we place on the stack. They are
@@ -181,49 +317,60 @@ pub struct ArgDecl<'tcx> {
 
     /// If true, this argument is a tuple after monomorphization,
     /// and has to be collected from multiple actual arguments.
-    pub spread: bool
+    pub spread: bool,
+
+    /// Either keywords::Invalid or the name of a single-binding
+    /// pattern associated with this argument. Useful for debuginfo.
+    pub debug_name: Name
+}
+
+/// A closure capture, with its name and mode.
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct UpvarDecl {
+    pub debug_name: Name,
+
+    /// If true, the capture is behind a reference.
+    pub by_ref: bool
 }
 
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlock
 
-/// The index of a particular basic block. The index is into the `basic_blocks`
-/// list of the `Mir`.
-///
-/// (We use a `u32` internally just to save memory.)
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub struct BasicBlock(u32);
-
-impl BasicBlock {
-    pub fn new(index: usize) -> BasicBlock {
-        assert!(index < (u32::MAX as usize));
-        BasicBlock(index as u32)
-    }
-
-    /// Extract the index.
-    pub fn index(self) -> usize {
-        self.0 as usize
-    }
-}
-
-impl Debug for BasicBlock {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        write!(fmt, "bb{}", self.0)
-    }
-}
+newtype_index!(BasicBlock, "bb");
 
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct BasicBlockData<'tcx> {
+    /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,
+
+    /// Terminator for this block.
+    ///
+    /// NB. This should generally ONLY be `None` during construction.
+    /// Therefore, you should generally access it via the
+    /// `terminator()` or `terminator_mut()` methods. The only
+    /// exception is that certain passes, such as `simplify_cfg`, swap
+    /// out the terminator temporarily with `None` while they continue
+    /// to recurse over the set of basic blocks.
     pub terminator: Option<Terminator<'tcx>>,
+
+    /// If true, this block lies on an unwind path. This is used
+    /// during trans where distinct kinds of basic blocks may be
+    /// generated (particularly for MSVC cleanup). Unwind blocks must
+    /// only branch to other unwind blocks.
     pub is_cleanup: bool,
 }
 
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct Terminator<'tcx> {
+    pub source_info: SourceInfo,
+    pub kind: TerminatorKind<'tcx>
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable)]
-pub enum Terminator<'tcx> {
+pub enum TerminatorKind<'tcx> {
     /// block should have one successor in the graph; we jump there
     Goto {
         target: BasicBlock,
@@ -267,15 +414,25 @@ pub enum Terminator<'tcx> {
     Resume,
 
     /// Indicates a normal return. The ReturnPointer lvalue should
-    /// have been filled in by now. This should only occur in the
-    /// `END_BLOCK`.
+    /// have been filled in by now. This should occur at most once.
     Return,
+
+    /// Indicates a terminator that can never be reached.
+    Unreachable,
 
     /// Drop the Lvalue
     Drop {
-        value: Lvalue<'tcx>,
+        location: Lvalue<'tcx>,
         target: BasicBlock,
         unwind: Option<BasicBlock>
+    },
+
+    /// Drop the Lvalue and assign the new value over it
+    DropAndReplace {
+        location: Lvalue<'tcx>,
+        value: Operand<'tcx>,
+        target: BasicBlock,
+        unwind: Option<BasicBlock>,
     },
 
     /// Block ends with a call of a converging function
@@ -289,11 +446,31 @@ pub enum Terminator<'tcx> {
         /// Cleanups to be done if the call unwinds.
         cleanup: Option<BasicBlock>
     },
+
+    /// Jump to the target if the condition has the expected value,
+    /// otherwise panic with a message and a cleanup target.
+    Assert {
+        cond: Operand<'tcx>,
+        expected: bool,
+        msg: AssertMessage<'tcx>,
+        target: BasicBlock,
+        cleanup: Option<BasicBlock>
+    }
 }
 
 impl<'tcx> Terminator<'tcx> {
     pub fn successors(&self) -> Cow<[BasicBlock]> {
-        use self::Terminator::*;
+        self.kind.successors()
+    }
+
+    pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
+        self.kind.successors_mut()
+    }
+}
+
+impl<'tcx> TerminatorKind<'tcx> {
+    pub fn successors(&self) -> Cow<[BasicBlock]> {
+        use self::TerminatorKind::*;
         match *self {
             Goto { target: ref b } => slice::ref_slice(b).into_cow(),
             If { targets: (b1, b2), .. } => vec![b1, b2].into_cow(),
@@ -301,20 +478,29 @@ impl<'tcx> Terminator<'tcx> {
             SwitchInt { targets: ref b, .. } => b[..].into_cow(),
             Resume => (&[]).into_cow(),
             Return => (&[]).into_cow(),
+            Unreachable => (&[]).into_cow(),
             Call { destination: Some((_, t)), cleanup: Some(c), .. } => vec![t, c].into_cow(),
             Call { destination: Some((_, ref t)), cleanup: None, .. } =>
                 slice::ref_slice(t).into_cow(),
             Call { destination: None, cleanup: Some(ref c), .. } => slice::ref_slice(c).into_cow(),
             Call { destination: None, cleanup: None, .. } => (&[]).into_cow(),
-            Drop { target, unwind: Some(unwind), .. } => vec![target, unwind].into_cow(),
-            Drop { ref target, .. } => slice::ref_slice(target).into_cow(),
+            DropAndReplace { target, unwind: Some(unwind), .. } |
+            Drop { target, unwind: Some(unwind), .. } => {
+                vec![target, unwind].into_cow()
+            }
+            DropAndReplace { ref target, unwind: None, .. } |
+            Drop { ref target, unwind: None, .. } => {
+                slice::ref_slice(target).into_cow()
+            }
+            Assert { target, cleanup: Some(unwind), .. } => vec![target, unwind].into_cow(),
+            Assert { ref target, .. } => slice::ref_slice(target).into_cow(),
         }
     }
 
     // FIXME: no mootable cow. I’m honestly not sure what a “cow” between `&mut [BasicBlock]` and
     // `Vec<&mut BasicBlock>` would look like in the first place.
     pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
-        use self::Terminator::*;
+        use self::TerminatorKind::*;
         match *self {
             Goto { target: ref mut b } => vec![b],
             If { targets: (ref mut b1, ref mut b2), .. } => vec![b1, b2],
@@ -322,12 +508,19 @@ impl<'tcx> Terminator<'tcx> {
             SwitchInt { targets: ref mut b, .. } => b.iter_mut().collect(),
             Resume => Vec::new(),
             Return => Vec::new(),
+            Unreachable => Vec::new(),
             Call { destination: Some((_, ref mut t)), cleanup: Some(ref mut c), .. } => vec![t, c],
             Call { destination: Some((_, ref mut t)), cleanup: None, .. } => vec![t],
             Call { destination: None, cleanup: Some(ref mut c), .. } => vec![c],
             Call { destination: None, cleanup: None, .. } => vec![],
+            DropAndReplace { ref mut target, unwind: Some(ref mut unwind), .. } |
             Drop { ref mut target, unwind: Some(ref mut unwind), .. } => vec![target, unwind],
-            Drop { ref mut target, .. } => vec![target]
+            DropAndReplace { ref mut target, unwind: None, .. } |
+            Drop { ref mut target, unwind: None, .. } => {
+                vec![target]
+            }
+            Assert { ref mut target, cleanup: Some(ref mut unwind), .. } => vec![target, unwind],
+            Assert { ref mut target, .. } => vec![target]
         }
     }
 }
@@ -354,9 +547,9 @@ impl<'tcx> BasicBlockData<'tcx> {
     }
 }
 
-impl<'tcx> Debug for Terminator<'tcx> {
+impl<'tcx> Debug for TerminatorKind<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        try!(self.fmt_head(fmt));
+        self.fmt_head(fmt)?;
         let successors = self.successors();
         let labels = self.fmt_successor_labels();
         assert_eq!(successors.len(), labels.len());
@@ -367,12 +560,12 @@ impl<'tcx> Debug for Terminator<'tcx> {
             1 => write!(fmt, " -> {:?}", successors[0]),
 
             _ => {
-                try!(write!(fmt, " -> ["));
+                write!(fmt, " -> [")?;
                 for (i, target) in successors.iter().enumerate() {
                     if i > 0 {
-                        try!(write!(fmt, ", "));
+                        write!(fmt, ", ")?;
                     }
-                    try!(write!(fmt, "{}: {:?}", labels[i], target));
+                    write!(fmt, "{}: {:?}", labels[i], target)?;
                 }
                 write!(fmt, "]")
             }
@@ -381,12 +574,12 @@ impl<'tcx> Debug for Terminator<'tcx> {
     }
 }
 
-impl<'tcx> Terminator<'tcx> {
+impl<'tcx> TerminatorKind<'tcx> {
     /// Write the "head" part of the terminator; that is, its name and the data it uses to pick the
     /// successor basic block, if any. The only information not inlcuded is the list of possible
     /// successors, which may be rendered differently between the text and the graphviz format.
     pub fn fmt_head<W: Write>(&self, fmt: &mut W) -> fmt::Result {
-        use self::Terminator::*;
+        use self::TerminatorKind::*;
         match *self {
             Goto { .. } => write!(fmt, "goto"),
             If { cond: ref lv, .. } => write!(fmt, "if({:?})", lv),
@@ -394,18 +587,41 @@ impl<'tcx> Terminator<'tcx> {
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Return => write!(fmt, "return"),
             Resume => write!(fmt, "resume"),
-            Drop { ref value, .. } => write!(fmt, "drop({:?})", value),
+            Unreachable => write!(fmt, "unreachable"),
+            Drop { ref location, .. } => write!(fmt, "drop({:?})", location),
+            DropAndReplace { ref location, ref value, .. } =>
+                write!(fmt, "replace({:?} <- {:?})", location, value),
             Call { ref func, ref args, ref destination, .. } => {
                 if let Some((ref destination, _)) = *destination {
-                    try!(write!(fmt, "{:?} = ", destination));
+                    write!(fmt, "{:?} = ", destination)?;
                 }
-                try!(write!(fmt, "{:?}(", func));
+                write!(fmt, "{:?}(", func)?;
                 for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
-                        try!(write!(fmt, ", "));
+                        write!(fmt, ", ")?;
                     }
-                    try!(write!(fmt, "{:?}", arg));
+                    write!(fmt, "{:?}", arg)?;
                 }
+                write!(fmt, ")")
+            }
+            Assert { ref cond, expected, ref msg, .. } => {
+                write!(fmt, "assert(")?;
+                if !expected {
+                    write!(fmt, "!")?;
+                }
+                write!(fmt, "{:?}, ", cond)?;
+
+                match *msg {
+                    AssertMessage::BoundsCheck { ref len, ref index } => {
+                        write!(fmt, "{:?}, {:?}, {:?}",
+                               "index out of bounds: the len is {} but the index is {}",
+                               len, index)?;
+                    }
+                    AssertMessage::Math(ref err) => {
+                        write!(fmt, "{:?}", err.description())?;
+                    }
+                }
+
                 write!(fmt, ")")
             }
         }
@@ -413,9 +629,9 @@ impl<'tcx> Terminator<'tcx> {
 
     /// Return the list of labels for the edges to the successor basic blocks.
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
-        use self::Terminator::*;
+        use self::TerminatorKind::*;
         match *self {
-            Return | Resume => vec![],
+            Return | Resume | Unreachable => vec![],
             Goto { .. } => vec!["".into()],
             If { .. } => vec!["true".into(), "false".into()],
             Switch { ref adt_def, .. } => {
@@ -439,19 +655,34 @@ impl<'tcx> Terminator<'tcx> {
             Call { destination: Some(_), cleanup: None, .. } => vec!["return".into_cow()],
             Call { destination: None, cleanup: Some(_), .. } => vec!["unwind".into_cow()],
             Call { destination: None, cleanup: None, .. } => vec![],
+            DropAndReplace { unwind: None, .. } |
             Drop { unwind: None, .. } => vec!["return".into_cow()],
-            Drop { .. } => vec!["return".into_cow(), "unwind".into_cow()],
+            DropAndReplace { unwind: Some(_), .. } |
+            Drop { unwind: Some(_), .. } => {
+                vec!["return".into_cow(), "unwind".into_cow()]
+            }
+            Assert { cleanup: None, .. } => vec!["".into()],
+            Assert { .. } =>
+                vec!["success".into_cow(), "unwind".into_cow()]
         }
     }
 }
 
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub enum AssertMessage<'tcx> {
+    BoundsCheck {
+        len: Operand<'tcx>,
+        index: Operand<'tcx>
+    },
+    Math(ConstMathErr)
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // Statements
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Statement<'tcx> {
-    pub span: Span,
+    pub source_info: SourceInfo,
     pub kind: StatementKind<'tcx>,
 }
 
@@ -468,22 +699,28 @@ impl<'tcx> Debug for Statement<'tcx> {
         }
     }
 }
+
 ///////////////////////////////////////////////////////////////////////////
 // Lvalues
+
+newtype_index!(Var, "var");
+newtype_index!(Temp, "tmp");
+newtype_index!(Arg, "arg");
+newtype_index!(Local, "local");
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Lvalue<'tcx> {
     /// local variable declared by the user
-    Var(u32),
+    Var(Var),
 
     /// temporary introduced during lowering into MIR
-    Temp(u32),
+    Temp(Temp),
 
     /// formal parameter of the function; note that these are NOT the
     /// bindings that the user declares, which are vars
-    Arg(u32),
+    Arg(Arg),
 
     /// static or static mut variable
     Static(DefId),
@@ -499,13 +736,13 @@ pub enum Lvalue<'tcx> {
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
 /// shared between `Constant` and `Lvalue`. See the aliases
 /// `LvalueProjection` etc below.
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct Projection<'tcx, B, V> {
     pub base: B,
     pub elem: ProjectionElem<'tcx, V>,
 }
 
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum ProjectionElem<'tcx, V> {
     Deref,
     Field(Field, Ty<'tcx>),
@@ -529,6 +766,14 @@ pub enum ProjectionElem<'tcx, V> {
         from_end: bool,
     },
 
+    /// These indices are generated by slice patterns.
+    ///
+    /// slice[from:-to] in Python terms.
+    Subslice {
+        from: u32,
+        to: u32,
+    },
+
     /// "Downcast" to a variant of an ADT. Currently, we only introduce
     /// this for ADTs with more than one variant. It may be better to
     /// just introduce it always, or always for enums.
@@ -543,20 +788,7 @@ pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Operand<'tcx>>;
 /// and the index is an operand.
 pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Operand<'tcx>>;
 
-/// Index into the list of fields found in a `VariantDef`
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub struct Field(u32);
-
-impl Field {
-    pub fn new(value: usize) -> Field {
-        assert!(value < (u32::MAX) as usize);
-        Field(value as u32)
-    }
-
-    pub fn index(self) -> usize {
-        self.0 as usize
-    }
-}
+newtype_index!(Field, "field");
 
 impl<'tcx> Lvalue<'tcx> {
     pub fn field(self, f: Field, ty: Ty<'tcx>) -> Lvalue<'tcx> {
@@ -584,12 +816,9 @@ impl<'tcx> Debug for Lvalue<'tcx> {
         use self::Lvalue::*;
 
         match *self {
-            Var(id) =>
-                write!(fmt, "var{:?}", id),
-            Arg(id) =>
-                write!(fmt, "arg{:?}", id),
-            Temp(id) =>
-                write!(fmt, "tmp{:?}", id),
+            Var(id) => write!(fmt, "{:?}", id),
+            Arg(id) => write!(fmt, "{:?}", id),
+            Temp(id) => write!(fmt, "{:?}", id),
             Static(def_id) =>
                 write!(fmt, "{}", ty::tls::with(|tcx| tcx.item_path_str(def_id))),
             ReturnPointer =>
@@ -608,18 +837,37 @@ impl<'tcx> Debug for Lvalue<'tcx> {
                         write!(fmt, "{:?}[{:?} of {:?}]", data.base, offset, min_length),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
                         write!(fmt, "{:?}[-{:?} of {:?}]", data.base, offset, min_length),
+                    ProjectionElem::Subslice { from, to } if to == 0 =>
+                        write!(fmt, "{:?}[{:?}:", data.base, from),
+                    ProjectionElem::Subslice { from, to } if from == 0 =>
+                        write!(fmt, "{:?}[:-{:?}]", data.base, to),
+                    ProjectionElem::Subslice { from, to } =>
+                        write!(fmt, "{:?}[{:?}:-{:?}]", data.base,
+                               from, to),
+
                 },
         }
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////
+// Scopes
+
+newtype_index!(VisibilityScope, "scope");
+pub const ARGUMENT_VISIBILITY_SCOPE : VisibilityScope = VisibilityScope(0);
+
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct VisibilityScopeData {
+    pub span: Span,
+    pub parent_scope: Option<VisibilityScope>,
+}
+
+///////////////////////////////////////////////////////////////////////////
 // Operands
-//
+
 /// These are values that can appear inside an rvalue (or an index
 /// lvalue). They are intentionally limited to prevent rvalues from
 /// being nested in one another.
-
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Operand<'tcx> {
     Consume(Lvalue<'tcx>),
@@ -656,6 +904,7 @@ pub enum Rvalue<'tcx> {
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
     BinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
+    CheckedBinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
 
     UnaryOp(UnOp, Operand<'tcx>),
 
@@ -668,17 +917,6 @@ pub enum Rvalue<'tcx> {
     /// that `Foo` has a destructor. These rvalues can be optimized
     /// away after type-checking and before lowering.
     Aggregate(AggregateKind<'tcx>, Vec<Operand<'tcx>>),
-
-    /// Generates a slice of the form `&input[from_start..L-from_end]`
-    /// where `L` is the length of the slice. This is only created by
-    /// slice pattern matching, so e.g. a pattern of the form `[x, y,
-    /// .., z]` might create a slice with `from_start=2` and
-    /// `from_end=1`.
-    Slice {
-        input: Lvalue<'tcx>,
-        from_start: usize,
-        from_end: usize,
-    },
 
     InlineAsm {
         asm: InlineAsm,
@@ -710,7 +948,7 @@ pub enum AggregateKind<'tcx> {
     Vec,
     Tuple,
     Adt(AdtDef<'tcx>, usize, &'tcx Substs<'tcx>),
-    Closure(DefId, &'tcx ClosureSubsts<'tcx>),
+    Closure(DefId, ClosureSubsts<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
@@ -749,6 +987,16 @@ pub enum BinOp {
     Gt,
 }
 
+impl BinOp {
+    pub fn is_checkable(self) -> bool {
+        use self::BinOp::*;
+        match self {
+            Add | Sub | Mul | Shl | Shr => true,
+            _ => false
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum UnOp {
     /// The `!` operator for logical inversion
@@ -767,13 +1015,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Len(ref a) => write!(fmt, "Len({:?})", a),
             Cast(ref kind, ref lv, ref ty) => write!(fmt, "{:?} as {:?} ({:?})", lv, ty, kind),
             BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
+            CheckedBinaryOp(ref op, ref a, ref b) => {
+                write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
+            }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Box(ref t) => write!(fmt, "Box({:?})", t),
             InlineAsm { ref asm, ref outputs, ref inputs } => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
             }
-            Slice { ref input, from_start, from_end } =>
-                write!(fmt, "{:?}[{:?}..-{:?}]", input, from_start, from_end),
 
             Ref(_, borrow_kind, ref lv) => {
                 let kind_str = match borrow_kind {
@@ -808,13 +1057,13 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     Adt(adt_def, variant, substs) => {
                         let variant_def = &adt_def.variants[variant];
 
-                        try!(ppaux::parameterized(fmt, substs, variant_def.did,
-                                                  ppaux::Ns::Value, &[],
-                                                  |tcx| {
-                            tcx.lookup_item_type(variant_def.did).generics
-                        }));
+                        ppaux::parameterized(fmt, substs, variant_def.did,
+                                             ppaux::Ns::Value, &[],
+                                             |tcx| {
+                            Some(tcx.lookup_item_type(variant_def.did).generics)
+                        })?;
 
-                        match variant_def.kind() {
+                        match variant_def.kind {
                             ty::VariantKind::Unit => Ok(()),
                             ty::VariantKind::Tuple => fmt_tuple(fmt, lvs),
                             ty::VariantKind::Struct => {
@@ -857,7 +1106,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// this does not necessarily mean that they are "==" in Rust -- in
 /// particular one must be wary of `NaN`!
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct Constant<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
@@ -877,7 +1126,9 @@ impl<'tcx> Debug for TypedConstVal<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+newtype_index!(Promoted, "promoted");
+
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
     Item {
         def_id: DefId,
@@ -885,6 +1136,10 @@ pub enum Literal<'tcx> {
     },
     Value {
         value: ConstVal,
+    },
+    Promoted {
+        // Index into the `promoted` vector of `Mir`.
+        index: Promoted
     },
 }
 
@@ -899,12 +1154,16 @@ impl<'tcx> Debug for Literal<'tcx> {
         use self::Literal::*;
         match *self {
             Item { def_id, substs } => {
-                ppaux::parameterized(fmt, substs, def_id, ppaux::Ns::Value, &[],
-                                     |tcx| tcx.lookup_item_type(def_id).generics)
+                ppaux::parameterized(
+                    fmt, substs, def_id, ppaux::Ns::Value, &[],
+                    |tcx| Some(tcx.lookup_item_type(def_id).generics))
             }
             Value { ref value } => {
-                try!(write!(fmt, "const "));
+                write!(fmt, "const ")?;
                 fmt_const_val(fmt, value)
+            }
+            Promoted { index } => {
+                write!(fmt, "{:?}", index)
             }
         }
     }
@@ -912,7 +1171,7 @@ impl<'tcx> Debug for Literal<'tcx> {
 
 /// Write a `ConstVal` in a way closer to the original source code than the `Debug` output.
 fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
-    use middle::const_eval::ConstVal::*;
+    use middle::const_val::ConstVal::*;
     match *const_val {
         Float(f) => write!(fmt, "{:?}", f),
         Integral(n) => write!(fmt, "{}", n),
@@ -929,7 +1188,7 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
         Struct(node_id) | Tuple(node_id) | Array(node_id, _) | Repeat(node_id, _) =>
             write!(fmt, "{}", node_to_string(node_id)),
         Char(c) => write!(fmt, "{:?}", c),
-        Dummy => unreachable!(),
+        Dummy => bug!(),
     }
 }
 
@@ -939,4 +1198,34 @@ fn node_to_string(node_id: ast::NodeId) -> String {
 
 fn item_path_str(def_id: DefId) -> String {
     ty::tls::with(|tcx| tcx.item_path_str(def_id))
+}
+
+impl<'tcx> ControlFlowGraph for Mir<'tcx> {
+
+    type Node = BasicBlock;
+
+    fn num_nodes(&self) -> usize { self.basic_blocks.len() }
+
+    fn start_node(&self) -> Self::Node { START_BLOCK }
+
+    fn predecessors<'graph>(&'graph self, node: Self::Node)
+                            -> <Self as GraphPredecessors<'graph>>::Iter
+    {
+        self.predecessors_for(node).clone().into_iter()
+    }
+    fn successors<'graph>(&'graph self, node: Self::Node)
+                          -> <Self as GraphSuccessors<'graph>>::Iter
+    {
+        self.basic_blocks[node].terminator().successors().into_owned().into_iter()
+    }
+}
+
+impl<'a, 'b> GraphPredecessors<'b> for Mir<'a> {
+    type Item = BasicBlock;
+    type Iter = IntoIter<BasicBlock>;
+}
+
+impl<'a, 'b>  GraphSuccessors<'b> for Mir<'a> {
+    type Item = BasicBlock;
+    type Iter = IntoIter<BasicBlock>;
 }

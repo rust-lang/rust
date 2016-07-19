@@ -25,6 +25,7 @@ pub fn target() -> Target {
         no_compiler_rt: false,
         linker_is_gnu: true,
         allow_asm: false,
+        max_atomic_width: 32,
         .. Default::default()
     };
     Target {
@@ -34,6 +35,7 @@ pub fn target() -> Target {
         target_os: "nacl".to_string(),
         target_env: "newlib".to_string(),
         target_vendor: "unknown".to_string(),
+        data_layout: "e-i64:64:64-p:32:32:32-v128:32:32".to_string(),
         arch: "le32".to_string(),
         options: opts,
     }

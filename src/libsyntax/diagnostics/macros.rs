@@ -101,9 +101,9 @@ macro_rules! span_help {
 }
 
 #[macro_export]
-macro_rules! fileline_help {
-    ($err:expr, $span:expr, $($message:tt)*) => ({
-        ($err).fileline_help($span, &format!($($message)*));
+macro_rules! help {
+    ($err:expr, $($message:tt)*) => ({
+        ($err).help(&format!($($message)*));
     })
 }
 

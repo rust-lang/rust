@@ -15,7 +15,7 @@ use build::expr::category::Category;
 use hair::*;
 use rustc::mir::repr::*;
 
-impl<'a,'tcx> Builder<'a,'tcx> {
+impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
     pub fn as_temp<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Lvalue<'tcx>>
@@ -35,13 +35,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         let expr_ty = expr.ty.clone();
         let temp = this.temp(expr_ty.clone());
-        let temp_lifetime = match expr.temp_lifetime {
-            Some(t) => t,
-            None => {
-                this.hir.span_bug(expr.span, "no temp_lifetime for expr");
-            }
-        };
-        this.schedule_drop(expr.span, temp_lifetime, &temp, expr_ty);
+        let temp_lifetime = expr.temp_lifetime;
+        let expr_span = expr.span;
 
         // Careful here not to cause an infinite cycle. If we always
         // called `into`, then for lvalues like `x.f`, it would
@@ -52,14 +47,21 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // course) `as_temp`.
         match Category::of(&expr.kind).unwrap() {
             Category::Lvalue => {
-                let expr_span = expr.span;
                 let lvalue = unpack!(block = this.as_lvalue(block, expr));
                 let rvalue = Rvalue::Use(Operand::Consume(lvalue));
-                this.cfg.push_assign(block, expr_span, &temp, rvalue);
+                let source_info = this.source_info(expr_span);
+                this.cfg.push_assign(block, source_info, &temp, rvalue);
             }
             _ => {
                 unpack!(block = this.into(&temp, block, expr));
             }
+        }
+
+        // In constants, temp_lifetime is None. We should not need to drop
+        // anything because no values with a destructor can be created in
+        // a constant at this time, even if the type may need dropping.
+        if let Some(temp_lifetime) = temp_lifetime {
+            this.schedule_drop(expr_span, temp_lifetime, &temp, expr_ty);
         }
 
         block.and(temp)

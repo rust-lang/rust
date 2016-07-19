@@ -16,14 +16,14 @@
 
 use rustc::mir::repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp,
     TypedConstVal};
-use rustc::middle::const_eval::ConstVal;
-use rustc::middle::def_id::DefId;
+use rustc::middle::const_val::ConstVal;
+use rustc::hir::def_id::DefId;
 use rustc::middle::region::CodeExtent;
-use rustc::middle::subst::Substs;
-use rustc::middle::ty::{self, AdtDef, ClosureSubsts, Region, Ty};
-use rustc_front::hir;
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, AdtDef, ClosureSubsts, Region, Ty};
+use rustc::hir;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax_pos::Span;
 use self::cx::Cx;
 
 pub mod cx;
@@ -222,7 +222,7 @@ pub enum ExprKind<'tcx> {
     },
     Closure {
         closure_id: DefId,
-        substs: &'tcx ClosureSubsts<'tcx>,
+        substs: ClosureSubsts<'tcx>,
         upvars: Vec<ExprRef<'tcx>>,
     },
     Literal {
@@ -358,13 +358,13 @@ pub struct FieldPattern<'tcx> {
 pub trait Mirror<'tcx> {
     type Output;
 
-    fn make_mirror<'a>(self, cx: &mut Cx<'a, 'tcx>) -> Self::Output;
+    fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Self::Output;
 }
 
 impl<'tcx> Mirror<'tcx> for Expr<'tcx> {
     type Output = Expr<'tcx>;
 
-    fn make_mirror<'a>(self, _: &mut Cx<'a, 'tcx>) -> Expr<'tcx> {
+    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
         self
     }
 }
@@ -372,7 +372,7 @@ impl<'tcx> Mirror<'tcx> for Expr<'tcx> {
 impl<'tcx> Mirror<'tcx> for ExprRef<'tcx> {
     type Output = Expr<'tcx>;
 
-    fn make_mirror<'a>(self, hir: &mut Cx<'a, 'tcx>) -> Expr<'tcx> {
+    fn make_mirror<'a, 'gcx>(self, hir: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
         match self {
             ExprRef::Hair(h) => h.make_mirror(hir),
             ExprRef::Mirror(m) => *m,
@@ -383,7 +383,7 @@ impl<'tcx> Mirror<'tcx> for ExprRef<'tcx> {
 impl<'tcx> Mirror<'tcx> for Stmt<'tcx> {
     type Output = Stmt<'tcx>;
 
-    fn make_mirror<'a>(self, _: &mut Cx<'a, 'tcx>) -> Stmt<'tcx> {
+    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Stmt<'tcx> {
         self
     }
 }
@@ -391,7 +391,7 @@ impl<'tcx> Mirror<'tcx> for Stmt<'tcx> {
 impl<'tcx> Mirror<'tcx> for StmtRef<'tcx> {
     type Output = Stmt<'tcx>;
 
-    fn make_mirror<'a>(self, _: &mut Cx<'a,'tcx>) -> Stmt<'tcx> {
+    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Stmt<'tcx> {
         match self {
             StmtRef::Mirror(m) => *m,
         }
@@ -401,7 +401,7 @@ impl<'tcx> Mirror<'tcx> for StmtRef<'tcx> {
 impl<'tcx> Mirror<'tcx> for Block<'tcx> {
     type Output = Block<'tcx>;
 
-    fn make_mirror<'a>(self, _: &mut Cx<'a, 'tcx>) -> Block<'tcx> {
+    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Block<'tcx> {
         self
     }
 }

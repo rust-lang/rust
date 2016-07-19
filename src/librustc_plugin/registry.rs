@@ -18,11 +18,11 @@ use rustc::mir::transform::MirMapPass;
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
 use syntax::ext::base::{IdentTT, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroExpanderFn, MacroRulesTT};
-use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::ast;
 use syntax::feature_gate::AttributeType;
+use syntax_pos::Span;
 
 use std::collections::HashMap;
 use std::borrow::ToOwned;
@@ -92,8 +92,11 @@ impl<'a> Registry<'a> {
     /// ```no_run
     /// #![plugin(my_plugin_name(... args ...))]
     /// ```
-    pub fn args<'b>(&'b self) -> &'b Vec<P<ast::MetaItem>> {
-        self.args_hidden.as_ref().expect("args not set")
+    ///
+    /// Returns empty slice in case the plugin was loaded
+    /// with `--extra-plugins`
+    pub fn args<'b>(&'b self) -> &'b [P<ast::MetaItem>] {
+        self.args_hidden.as_ref().map(|v| &v[..]).unwrap_or(&[])
     }
 
     /// Register a syntax extension of any kind.

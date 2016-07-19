@@ -74,7 +74,7 @@ for x in 0..10 {
 
 In slightly more abstract terms,
 
-```ignore
+```rust,ignore
 for var in expression {
     code
 }
@@ -105,7 +105,7 @@ When you need to keep track of how many times you already looped, you can use th
 #### On ranges:
 
 ```rust
-for (i,j) in (5..10).enumerate() {
+for (i, j) in (5..10).enumerate() {
     println!("i = {} and j = {}", i, j);
 }
 ```
@@ -178,7 +178,7 @@ loop {
 
 We now loop forever with `loop` and use `break` to break out early. Issuing an explicit `return` statement will also serve to terminate the loop early.
 
-`continue` is similar, but instead of ending the loop, goes to the next
+`continue` is similar, but instead of ending the loop, it goes to the next
 iteration. This will only print the odd numbers:
 
 ```rust

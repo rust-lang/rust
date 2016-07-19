@@ -10,8 +10,6 @@
 
 // Various checks that deprecation attributes are used correctly
 
-#![feature(deprecated)]
-
 mod bogus_attribute_types_1 {
     #[deprecated(since = "a", note = "a", reason)] //~ ERROR unknown meta item 'reason'
     fn f1() { }

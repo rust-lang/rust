@@ -16,6 +16,7 @@ pub fn target() -> Target {
         llvm_target: "arm64-apple-ios".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
+        data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".to_string(),
         arch: "aarch64".to_string(),
         target_os: "ios".to_string(),
         target_env: "".to_string(),
@@ -23,6 +24,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+neon,+fp-armv8,+cyclone".to_string(),
             eliminate_frame_pointer: false,
+            max_atomic_width: 128,
             .. opts(Arch::Arm64)
         },
     }

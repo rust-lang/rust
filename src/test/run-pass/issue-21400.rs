@@ -11,6 +11,8 @@
 // Regression test for #21400 which itself was extracted from
 // stackoverflow.com/questions/28031155/is-my-borrow-checker-drunk/28031580
 
+#![feature(question_mark)]
+
 fn main() {
     let mut t = Test;
     assert_eq!(t.method1("one"), Ok(1));
@@ -54,7 +56,7 @@ impl GitConnect {
         let c = format!("git-upload-pack");
 
         let mut out = String::new();
-        let data = try!(self.command(&c));
+        let data = self.command(&c)?;
 
         for line in data.iter() {
             out.push_str(&format!("{:?}", line));

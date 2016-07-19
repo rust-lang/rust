@@ -23,5 +23,5 @@ fn bar<T: Send>(_: T) {}
 fn main() {
     let x = Foo { a: 5 };
     bar(x);
-    //~^ ERROR the trait `core::marker::Send` is not implemented
+    //~^ ERROR `Foo: std::marker::Send` is not satisfied
 }

@@ -10,4 +10,4 @@
 
 #[deny(unknown_features)] //~ WARN lint unknown_features has been renamed to unused_features
 #[deny(unused)]
-fn main() { let unused = (); } //~ ERR unused
+fn main() { let unused = (); } //~ ERROR unused

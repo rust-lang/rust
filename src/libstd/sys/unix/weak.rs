@@ -75,11 +75,5 @@ unsafe fn fetch(name: &str) -> usize {
         Ok(cstr) => cstr,
         Err(..) => return 0,
     };
-    let lib = libc::dlopen(0 as *const _, libc::RTLD_LAZY);
-    if lib.is_null() {
-        return 0
-    }
-    let ret = libc::dlsym(lib, name.as_ptr()) as usize;
-    libc::dlclose(lib);
-    return ret
+    libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
 }

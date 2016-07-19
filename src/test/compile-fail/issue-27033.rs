@@ -10,11 +10,11 @@
 
 fn main() {
     match Some(1) {
-        None @ _ => {} //~ ERROR declaration of `None` shadows an enum variant
+        None @ _ => {} //~ ERROR match bindings cannot shadow variants
     };
     const C: u8 = 1;
     match 1 {
-        C @ 2 => { //~ ERROR only irrefutable patterns allowed here
+        C @ 2 => { //~ ERROR match bindings cannot shadow constant
             println!("{}", C);
         }
         _ => {}

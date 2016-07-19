@@ -10,17 +10,15 @@ $(HLIB0_H_$(CFG_BUILD))/:
 endif
 
 $(SNAPSHOT_RUSTC_POST_CLEANUP): \
-		$(S)src/snapshots.txt \
-		$(S)src/etc/get-snapshot.py $(MKFILE_DEPS) \
+		$(S)src/stage0.txt \
+		$(S)src/etc/local_stage0.sh \
+		$(S)src/etc/get-stage0.py $(MKFILE_DEPS) \
 		| $(HBIN0_H_$(CFG_BUILD))/
-
 	@$(call E, fetch: $@)
-#   Note: the variable "SNAPSHOT_FILE" is generally not set, and so
-#   we generally only pass one argument to this script.
 ifdef CFG_ENABLE_LOCAL_RUST
 	$(Q)$(S)src/etc/local_stage0.sh $(CFG_BUILD) $(CFG_LOCAL_RUST_ROOT) rustlib
 else
-	$(Q)$(CFG_PYTHON) $(S)src/etc/get-snapshot.py $(CFG_BUILD) $(SNAPSHOT_FILE)
+	$(Q)$(CFG_PYTHON) $(S)src/etc/get-stage0.py $(CFG_BUILD)
 endif
 	$(Q)if [ -e "$@" ]; then touch "$@"; else echo "ERROR: snapshot $@ not found"; exit 1; fi
 

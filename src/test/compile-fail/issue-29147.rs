@@ -28,5 +28,5 @@ impl Foo for S5<u32> { fn xxx(&self) {} }
 impl Foo for S5<u64> { fn xxx(&self) {} }
 
 fn main() {
-    let _ = <S5<_>>::xxx; //~ ERROR cannot resolve `S5<_> : Foo`
+    let _ = <S5<_>>::xxx; //~ ERROR cannot resolve `S5<_>: Foo`
 }

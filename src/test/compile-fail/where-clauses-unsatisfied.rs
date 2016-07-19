@@ -15,5 +15,5 @@ struct Struct;
 
 fn main() {
     drop(equal(&Struct, &Struct))
-    //~^ ERROR the trait `core::cmp::Eq` is not implemented
+    //~^ ERROR the trait bound `Struct: std::cmp::Eq` is not satisfied
 }

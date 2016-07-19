@@ -16,10 +16,10 @@
 // reachable as well.
 
 use dep_graph::DepNode;
-use front::map as ast_map;
-use middle::def::Def;
-use middle::def_id::DefId;
-use middle::ty::{self, TyCtxt};
+use hir::map as ast_map;
+use hir::def::Def;
+use hir::def_id::DefId;
+use ty::{self, TyCtxt};
 use middle::privacy;
 use session::config;
 use util::nodemap::NodeSet;
@@ -28,9 +28,9 @@ use std::collections::HashSet;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
-use rustc_front::intravisit;
+use hir;
+use hir::intravisit::Visitor;
+use hir::intravisit;
 
 // Returns true if the given set of generics implies that the item it's
 // associated with must be inlined.
@@ -55,9 +55,10 @@ fn item_might_be_inlined(item: &hir::Item) -> bool {
     }
 }
 
-fn method_might_be_inlined(tcx: &TyCtxt, sig: &hir::MethodSig,
-                           impl_item: &hir::ImplItem,
-                           impl_src: DefId) -> bool {
+fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     sig: &hir::MethodSig,
+                                     impl_item: &hir::ImplItem,
+                                     impl_src: DefId) -> bool {
     if attr::requests_inline(&impl_item.attrs) ||
         generics_require_inlining(&sig.generics) {
         return true
@@ -67,17 +68,17 @@ fn method_might_be_inlined(tcx: &TyCtxt, sig: &hir::MethodSig,
             Some(ast_map::NodeItem(item)) =>
                 item_might_be_inlined(&item),
             Some(..) | None =>
-                tcx.sess.span_bug(impl_item.span, "impl did is not an item")
+                span_bug!(impl_item.span, "impl did is not an item")
         }
     } else {
-        tcx.sess.span_bug(impl_item.span, "found a foreign impl as a parent of a local method")
+        span_bug!(impl_item.span, "found a foreign impl as a parent of a local method")
     }
 }
 
 // Information needed while computing reachability.
 struct ReachableContext<'a, 'tcx: 'a> {
     // The type context.
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: NodeSet,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
@@ -91,14 +92,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
             hir::ExprPath(..) => {
-                let def = match self.tcx.def_map.borrow().get(&expr.id) {
-                    Some(d) => d.full_def(),
-                    None => {
-                        self.tcx.sess.span_bug(expr.span,
-                                               "def ID not in def map?!")
-                    }
-                };
-
+                let def = self.tcx.expect_def(expr.id);
                 let def_id = def.def_id();
                 if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
                     if self.def_id_represents_local_inlined_item(def_id) {
@@ -143,9 +137,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
 
 impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // Creates a new reachability computation context.
-    fn new(tcx: &'a TyCtxt<'tcx>) -> ReachableContext<'a, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ReachableContext<'a, 'tcx> {
         let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
-            *ty != config::CrateTypeExecutable
+            *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib
         });
         ReachableContext {
             tcx: tcx,
@@ -312,12 +306,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             ast_map::NodeVariant(_) |
             ast_map::NodeStructCtor(_) => {}
             _ => {
-                self.tcx
-                    .sess
-                    .bug(&format!("found unexpected thingy in worklist: {}",
-                                 self.tcx
-                                     .map
-                                     .node_to_string(search_item)))
+                bug!("found unexpected thingy in worklist: {}",
+                     self.tcx.map.node_to_string(search_item))
             }
         }
     }
@@ -349,9 +339,9 @@ impl<'a, 'v> Visitor<'v> for CollectPrivateImplItemsVisitor<'a> {
     }
 }
 
-pub fn find_reachable(tcx: &TyCtxt,
-                      access_levels: &privacy::AccessLevels)
-                      -> NodeSet {
+pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                access_levels: &privacy::AccessLevels)
+                                -> NodeSet {
     let _task = tcx.dep_graph.in_task(DepNode::Reachability);
 
     let mut reachable_context = ReachableContext::new(tcx);

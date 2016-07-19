@@ -20,7 +20,7 @@ trait T1<Z: T> {
 
 struct S3<Y: ?Sized>(Box<Y>);
 impl<X: ?Sized + T> T1<X> for S3<X> {
-    //~^ ERROR `core::marker::Sized` is not implemented for the type `X`
+    //~^ ERROR `X: std::marker::Sized` is not satisfied
 }
 
 fn main() { }

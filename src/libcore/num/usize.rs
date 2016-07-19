@@ -14,6 +14,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(target_pointer_width = "16")]
+uint_module! { usize, 16 }
 #[cfg(target_pointer_width = "32")]
 uint_module! { usize, 32 }
 #[cfg(target_pointer_width = "64")]

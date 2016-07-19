@@ -23,11 +23,17 @@ fn main() {
     let bar2 = {extern crate crate_a2 as a; a::bar()};
     {
         extern crate crate_a1 as a;
-        a::try_foo(foo2); //~ ERROR mismatched types
-                          //~^ HELP run
-                          //~^^ NOTE Perhaps two different versions of crate `crate_a1`
-        a::try_bar(bar2); //~ ERROR mismatched types
-                          //~^ HELP run
-                          //~^^ NOTE Perhaps two different versions of crate `crate_a1`
+        a::try_foo(foo2);
+        //~^ ERROR mismatched types
+        //~| Perhaps two different versions of crate `crate_a1`
+        //~| expected struct `main::a::Foo`
+        //~| expected type `main::a::Foo`
+        //~| found type `main::a::Foo`
+        a::try_bar(bar2);
+        //~^ ERROR mismatched types
+        //~| Perhaps two different versions of crate `crate_a1`
+        //~| expected trait `main::a::Bar`
+        //~| expected type `Box<main::a::Bar + 'static>`
+        //~| found type `Box<main::a::Bar>`
     }
 }

@@ -61,7 +61,6 @@ use core::iter::FromIterator;
 use core::mem;
 use core::ops::{self, Add, Index, IndexMut};
 use core::ptr;
-use core::slice;
 use core::str::pattern::Pattern;
 use rustc_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use rustc_unicode::str as unicode_str;
@@ -185,7 +184,7 @@ use boxed::Box;
 /// let len = story.len();
 /// let capacity = story.capacity();
 ///
-/// // story has thirteen bytes
+/// // story has nineteen bytes
 /// assert_eq!(19, len);
 ///
 /// // Now that we have our parts, we throw the story away.
@@ -970,22 +969,7 @@ impl String {
     pub fn push(&mut self, ch: char) {
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
-            ch_len => {
-                let cur_len = self.len();
-                // This may use up to 4 bytes.
-                self.vec.reserve(ch_len);
-
-                unsafe {
-                    // Attempt to not use an intermediate buffer by just pushing bytes
-                    // directly onto this string.
-                    let slice = slice::from_raw_parts_mut(self.vec
-                                                              .as_mut_ptr()
-                                                              .offset(cur_len as isize),
-                                                          ch_len);
-                    let used = ch.encode_utf8(slice).unwrap_or(0);
-                    self.vec.set_len(cur_len + used);
-                }
-            }
+            _ => self.vec.extend_from_slice(ch.encode_utf8().as_slice()),
         }
     }
 
@@ -1008,10 +992,12 @@ impl String {
 
     /// Shortens this `String` to the specified length.
     ///
+    /// If `new_len` is greater than the string's current length, this has no
+    /// effect.
+    ///
     /// # Panics
     ///
-    /// Panics if `new_len` > current length, or if `new_len` does not lie on a
-    /// [`char`] boundary.
+    /// Panics if `new_len` does not lie on a [`char`] boundary.
     ///
     /// [`char`]: ../../std/primitive.char.html
     ///
@@ -1029,8 +1015,10 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, new_len: usize) {
-        assert!(self.is_char_boundary(new_len));
-        self.vec.truncate(new_len)
+        if new_len <= self.len() {
+            assert!(self.is_char_boundary(new_len));
+            self.vec.truncate(new_len)
+        }
     }
 
     /// Removes the last character from the string buffer and returns it.
@@ -1053,14 +1041,13 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<char> {
-        let len = self.len();
-        if len == 0 {
-            return None;
-        }
-
-        let ch = self.char_at_reverse(len);
+        let ch = match self.chars().rev().next() {
+            Some(ch) => ch,
+            None => return None,
+        };
+        let newlen = self.len() - ch.len_utf8();
         unsafe {
-            self.vec.set_len(len - ch.len_utf8());
+            self.vec.set_len(newlen);
         }
         Some(ch)
     }
@@ -1091,11 +1078,13 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, idx: usize) -> char {
-        let len = self.len();
-        assert!(idx < len);
+        let ch = match self[idx..].chars().next() {
+            Some(ch) => ch,
+            None => panic!("cannot remove a char from the end of a string"),
+        };
 
-        let ch = self.char_at(idx);
         let next = idx + ch.len_utf8();
+        let len = self.len();
         unsafe {
             ptr::copy(self.vec.as_ptr().offset(next as isize),
                       self.vec.as_mut_ptr().offset(idx as isize),
@@ -1136,9 +1125,10 @@ impl String {
         let len = self.len();
         assert!(idx <= len);
         assert!(self.is_char_boundary(idx));
-        self.vec.reserve(4);
-        let mut bits = [0; 4];
-        let amt = ch.encode_utf8(&mut bits).unwrap();
+        let bits = ch.encode_utf8();
+        let bits = bits.as_slice();
+        let amt = bits.len();
+        self.vec.reserve(amt);
 
         unsafe {
             ptr::copy(self.vec.as_ptr().offset(idx as isize),
@@ -1403,35 +1393,35 @@ impl Clone for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
-    fn from_iter<I: IntoIterator<Item = char>>(iterable: I) -> String {
+    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String {
         let mut buf = String::new();
-        buf.extend(iterable);
+        buf.extend(iter);
         buf
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I: IntoIterator<Item = &'a str>>(iterable: I) -> String {
+    fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String {
         let mut buf = String::new();
-        buf.extend(iterable);
+        buf.extend(iter);
         buf
     }
 }
 
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl FromIterator<String> for String {
-    fn from_iter<I: IntoIterator<Item = String>>(iterable: I) -> String {
+    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {
         let mut buf = String::new();
-        buf.extend(iterable);
+        buf.extend(iter);
         buf
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<char> for String {
-    fn extend<I: IntoIterator<Item = char>>(&mut self, iterable: I) {
-        let iterator = iterable.into_iter();
+    fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
+        let iterator = iter.into_iter();
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);
         for ch in iterator {
@@ -1442,15 +1432,15 @@ impl Extend<char> for String {
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a> Extend<&'a char> for String {
-    fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iterable: I) {
-        self.extend(iterable.into_iter().cloned());
+    fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
-    fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iterable: I) {
-        for s in iterable {
+    fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
+        for s in iter {
             self.push_str(s)
         }
     }
@@ -1458,8 +1448,8 @@ impl<'a> Extend<&'a str> for String {
 
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl Extend<String> for String {
-    fn extend<I: IntoIterator<Item = String>>(&mut self, iterable: I) {
-        for s in iterable {
+    fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
+        for s in iter {
             self.push_str(&s)
         }
     }
@@ -1770,12 +1760,20 @@ pub trait ToString {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> ToString for T {
     #[inline]
-    fn to_string(&self) -> String {
+    default fn to_string(&self) -> String {
         use core::fmt::Write;
         let mut buf = String::new();
         let _ = buf.write_fmt(format_args!("{}", self));
         buf.shrink_to_fit();
         buf
+    }
+}
+
+#[stable(feature = "str_to_string_specialization", since = "1.9.0")]
+impl ToString for str {
+    #[inline]
+    fn to_string(&self) -> String {
+        String::from(self)
     }
 }
 

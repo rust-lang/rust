@@ -11,7 +11,6 @@
 // Lifetime annotation needed because we have no arguments.
 fn f() -> &isize {    //~ ERROR missing lifetime specifier
 //~^ HELP there is no value for it to be borrowed from
-//~| HELP run `rustc --explain E0106` to see a detailed explanation
 //~| HELP consider giving it a 'static lifetime
     panic!()
 }
@@ -19,7 +18,6 @@ fn f() -> &isize {    //~ ERROR missing lifetime specifier
 // Lifetime annotation needed because we have two by-reference parameters.
 fn g(_x: &isize, _y: &isize) -> &isize {    //~ ERROR missing lifetime specifier
 //~^ HELP the signature does not say whether it is borrowed from `_x` or `_y`
-//~| HELP run `rustc --explain E0106` to see a detailed explanation
     panic!()
 }
 
@@ -31,13 +29,11 @@ struct Foo<'a> {
 // and one on the reference.
 fn h(_x: &Foo) -> &isize { //~ ERROR missing lifetime specifier
 //~^ HELP the signature does not say which one of `_x`'s 2 elided lifetimes it is borrowed from
-//~| HELP run `rustc --explain E0106` to see a detailed explanation
     panic!()
 }
 
 fn i(_x: isize) -> &isize { //~ ERROR missing lifetime specifier
 //~^ HELP this function's return type contains a borrowed value
-//~| HELP run `rustc --explain E0106` to see a detailed explanation
 //~| HELP consider giving it an explicit bounded or 'static lifetime
     panic!()
 }

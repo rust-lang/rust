@@ -20,3 +20,5 @@ fn bar() {
     let x = 1;
     foo!(x)
 }
+
+fn y() {}

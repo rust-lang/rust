@@ -45,13 +45,29 @@ fn template(me: &str) -> Command {
     return m;
 }
 
+fn expected(fn_name: &str) -> String {
+    // FIXME(#32481)
+    //
+    // On windows, we read the function name from debuginfo using some
+    // system APIs. For whatever reason, these APIs seem to use the
+    // "name" field, which is only the "relative" name, not the full
+    // name with namespace info, so we just see `foo` and not
+    // `backtrace::foo` as we see on linux (which uses the linkage
+    // name).
+    if cfg!(windows) && cfg!(target_env = "msvc") {
+        format!(" - {}", fn_name)
+    } else {
+        format!(" - backtrace::{}", fn_name)
+    }
+}
+
 fn runtest(me: &str) {
     // Make sure that the stack trace is printed
     let p = template(me).arg("fail").env("RUST_BACKTRACE", "1").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(&out.stderr).unwrap();
-    assert!(s.contains("stack backtrace") && s.contains(" - foo"),
+    assert!(s.contains("stack backtrace") && s.contains(&expected("foo")),
             "bad output: {}", s);
 
     // Make sure the stack trace is *not* printed
@@ -61,8 +77,18 @@ fn runtest(me: &str) {
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(&out.stderr).unwrap();
-    assert!(!s.contains("stack backtrace") && !s.contains(" - foo"),
+    assert!(!s.contains("stack backtrace") && !s.contains(&expected("foo")),
             "bad output2: {}", s);
+
+    // Make sure the stack trace is *not* printed
+    // (RUST_BACKTRACE=0 acts as if it were unset from our own environment,
+    // in case developer is running `make check` with it set.)
+    let p = template(me).arg("fail").env("RUST_BACKTRACE","0").spawn().unwrap();
+    let out = p.wait_with_output().unwrap();
+    assert!(!out.status.success());
+    let s = str::from_utf8(&out.stderr).unwrap();
+    assert!(!s.contains("stack backtrace") && !s.contains(" - foo"),
+            "bad output3: {}", s);
 
     // Make sure a stack trace is printed
     let p = template(me).arg("double-fail").spawn().unwrap();
@@ -71,7 +97,7 @@ fn runtest(me: &str) {
     let s = str::from_utf8(&out.stderr).unwrap();
     // loosened the following from double::h to double:: due to
     // spurious failures on mac, 32bit, optimized
-    assert!(s.contains("stack backtrace") && s.contains(" - double"),
+    assert!(s.contains("stack backtrace") && s.contains(&expected("double")),
             "bad output3: {}", s);
 
     // Make sure a stack trace isn't printed too many times
@@ -89,7 +115,7 @@ fn runtest(me: &str) {
 }
 
 fn main() {
-    if cfg!(windows) && cfg!(target_arch = "x86") && cfg!(target_env = "gnu") {
+    if cfg!(windows) && cfg!(target_env = "gnu") {
         return
     }
 

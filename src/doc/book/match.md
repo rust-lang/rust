@@ -28,18 +28,18 @@ patterns][patterns] that covers all the patterns that are possible here.
 
 [patterns]: patterns.html
 
-One of the many advantages of `match` is it enforces ‘exhaustiveness checking’. 
-For example if we remove the last arm with the underscore `_`, the compiler will 
+One of the many advantages of `match` is it enforces ‘exhaustiveness checking’.
+For example if we remove the last arm with the underscore `_`, the compiler will
 give us an error:
 
 ```text
 error: non-exhaustive patterns: `_` not covered
 ```
 
-Rust is telling us that we forgot a value. The compiler infers from `x` that it
-can have any positive 32bit value; for example 1 to 2,147,483,647. The `_` acts 
+Rust is telling us that we forgot some value. The compiler infers from `x` that it
+can have any 32bit integer value; for example -2,147,483,648 to 2,147,483,647. The `_` acts 
 as a 'catch-all', and will catch all possible values that *aren't* specified in 
-an arm of `match`. As you can see with the previous example, we provide `match` 
+an arm of `match`. As you can see in the previous example, we provide `match` 
 arms for integers 1-5, if `x` is 6 or any other value, then it is caught by `_`.
 
 `match` is also an expression, which means we can use it on the right-hand
@@ -58,7 +58,7 @@ let number = match x {
 };
 ```
 
-Sometimes it’s a nice way of converting something from one type to another; in 
+Sometimes it’s a nice way of converting something from one type to another; in
 this example the integers are converted to `String`.
 
 # Matching on enums
@@ -90,7 +90,7 @@ fn process_message(msg: Message) {
 
 Again, the Rust compiler checks exhaustiveness, so it demands that you
 have a match arm for every variant of the enum. If you leave one off, it
-will give you a compile-time error unless you use `_` or provide all possible 
+will give you a compile-time error unless you use `_` or provide all possible
 arms.
 
 Unlike the previous uses of `match`, you can’t use the normal `if`

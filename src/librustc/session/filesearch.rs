@@ -15,7 +15,6 @@ pub use self::FileMatch::*;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
 use session::search_paths::{SearchPaths, PathKind};
@@ -155,14 +154,14 @@ pub fn get_or_default_sysroot() -> PathBuf {
                 // gcc chokes on verbatim paths which fs::canonicalize generates
                 // so we try to avoid those kinds of paths.
                 Ok(canon) => Some(rustcfs::fix_windows_verbatim_for_gcc(&canon)),
-                Err(e) => panic!("failed to get realpath: {}", e),
+                Err(e) => bug!("failed to get realpath: {}", e),
             }
         })
     }
 
     match canonicalize(env::current_exe().ok()) {
         Some(mut p) => { p.pop(); p.pop(); p }
-        None => panic!("can't determine value for sysroot")
+        None => bug!("can't determine value for sysroot")
     }
 }
 

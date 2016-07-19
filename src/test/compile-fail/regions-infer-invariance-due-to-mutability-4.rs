@@ -10,7 +10,7 @@
 
 
 struct Invariant<'a> {
-    f: Box<for<'b> FnOnce() -> &'b mut &'a isize + 'static>,
+    f: Box<FnOnce() -> *mut &'a isize + 'static>,
 }
 
 fn to_same_lifetime<'r>(b_isize: Invariant<'r>) {

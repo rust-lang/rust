@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:thread '<main>' panicked at 'foobar'
+// error-pattern:thread 'main' panicked at 'foobar'
 
-#![feature(std_panic, panic_handler)]
+#![feature(panic_handler)]
+
 use std::panic;
 use std::io::{self, Write};
 
 fn main() {
-    panic::set_handler(|i| {
+    panic::set_hook(Box::new(|i| {
         write!(io::stderr(), "greetings from the panic handler");
-    });
-    panic::take_handler();
+    }));
+    panic::take_hook();
     panic!("foobar");
 }

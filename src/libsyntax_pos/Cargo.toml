@@ -1,0 +1,12 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "syntax_pos"
+version = "0.0.0"
+
+[lib]
+name = "syntax_pos"
+path = "lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+serialize = { path = "../libserialize" }

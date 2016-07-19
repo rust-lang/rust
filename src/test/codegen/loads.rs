@@ -11,6 +11,7 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
+#![feature(rustc_attrs)]
 
 pub struct Bytes {
   a: u8,
@@ -21,6 +22,7 @@ pub struct Bytes {
 
 // CHECK-LABEL: @borrow
 #[no_mangle]
+#[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 pub fn borrow(x: &i32) -> &i32 {
 // CHECK: load {{(i32\*, )?}}i32** %x{{.*}}, !nonnull
     x
@@ -28,6 +30,7 @@ pub fn borrow(x: &i32) -> &i32 {
 
 // CHECK-LABEL: @_box
 #[no_mangle]
+#[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 pub fn _box(x: Box<i32>) -> i32 {
 // CHECK: load {{(i32\*, )?}}i32** %x{{.*}}, !nonnull
     *x

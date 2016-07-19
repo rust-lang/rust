@@ -24,7 +24,7 @@ pub trait GetToInt
 fn foo<G>(g: G) -> isize
     where G : GetToInt
 {
-    ToInt::to_int(&g.get()) //~ ERROR not implemented
+    ToInt::to_int(&g.get()) //~ ERROR E0277
 }
 
 fn bar<G : GetToInt>(g: G) -> isize

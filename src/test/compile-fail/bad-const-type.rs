@@ -10,8 +10,7 @@
 
 static i: String = 10;
 //~^ ERROR mismatched types
-//~| expected `collections::string::String`
-//~| found `_`
-//~| expected struct `collections::string::String`
-//~| found integral variable
+//~| expected type `std::string::String`
+//~| found type `_`
+//~| expected struct `std::string::String`, found integral variable
 fn main() { println!("{}", i); }

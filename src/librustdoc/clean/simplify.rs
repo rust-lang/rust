@@ -11,7 +11,7 @@
 //! Simplification of where clauses and parameter bounds into a prettier and
 //! more canonical form.
 //!
-//! Currently all cross-crate-inlined function use `middle::ty` to reconstruct
+//! Currently all cross-crate-inlined function use `rustc::ty` to reconstruct
 //! the AST (e.g. see all of `clean::inline`), but this is not always a
 //! non-lossy transformation. The current format of storage for where clauses
 //! for functions and such is simply a list of predicates. One example of this
@@ -27,10 +27,10 @@
 //! bounds by special casing scenarios such as these. Fun!
 
 use std::mem;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-use rustc::middle::def_id::DefId;
-use rustc::middle::subst;
+use rustc::hir::def_id::DefId;
+use rustc::ty::subst;
 
 use clean::PathParameters as PP;
 use clean::WherePredicate as WP;
@@ -39,7 +39,7 @@ use core::DocContext;
 
 pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
     // First, partition the where clause into its separate components
-    let mut params = HashMap::new();
+    let mut params = BTreeMap::new();
     let mut lifetimes = Vec::new();
     let mut equalities = Vec::new();
     let mut tybounds = Vec::new();
@@ -62,7 +62,7 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
     // Simplify the type parameter bounds on all the generics
     let mut params = params.into_iter().map(|(k, v)| {
         (k, ty_bounds(v))
-    }).collect::<HashMap<_, _>>();
+    }).collect::<BTreeMap<_, _>>();
 
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates

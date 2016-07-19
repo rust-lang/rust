@@ -40,6 +40,17 @@ impl<'a> TheTrait<&'a isize> for UintStruct {
     }
 }
 
+struct Tuple {
+}
+
+impl<'a> TheTrait<(&'a isize, &'a isize)> for Tuple {
+    type A = &'a isize;
+
+    fn get(&self, t: (&'a isize, &'a isize)) -> &'a isize {
+        t.0
+    }
+}
+
 fn foo<T>()
     where T : for<'x> TheTrait<&'x isize, A = &'x isize>
 {
@@ -52,10 +63,28 @@ fn bar<T>()
     // ok for UintStruct, but not IntStruct
 }
 
-fn baz<T>()
-    where T : for<'x,'y> TheTrait<&'x isize, A = &'y isize>
+fn tuple_one<T>()
+    where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>
 {
-    // not ok for either struct, due to the use of two lifetimes
+    // not ok for tuple, two lifetimes and we pick first
+}
+
+fn tuple_two<T>()
+    where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>
+{
+    // not ok for tuple, two lifetimes and we pick second
+}
+
+fn tuple_three<T>()
+    where T : for<'x> TheTrait<(&'x isize, &'x isize), A = &'x isize>
+{
+    // ok for tuple
+}
+
+fn tuple_four<T>()
+    where T : for<'x,'y> TheTrait<(&'x isize, &'y isize)>
+{
+    // not ok for tuple, two lifetimes, and lifetime matching is invariant
 }
 
 pub fn main() {
@@ -65,6 +94,16 @@ pub fn main() {
     bar::<IntStruct>(); //~ ERROR type mismatch
     bar::<UintStruct>();
 
-    baz::<IntStruct>(); //~ ERROR type mismatch
-    baz::<UintStruct>(); //~ ERROR type mismatch
+    tuple_one::<Tuple>();
+    //~^ ERROR E0277
+    //~| ERROR type mismatch
+
+    tuple_two::<Tuple>();
+    //~^ ERROR E0277
+    //~| ERROR type mismatch
+
+    tuple_three::<Tuple>();
+
+    tuple_four::<Tuple>();
+    //~^ ERROR E0277
 }

@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub extern {
-    //~^ ERROR unnecessary visibility
+pub extern { //~ ERROR unnecessary visibility qualifier
     pub fn bar();
 }
 
@@ -19,10 +18,10 @@ trait A {
 
 struct B;
 
-pub impl B {} //~ ERROR: unnecessary visibility
+pub impl B {} //~ ERROR unnecessary visibility qualifier
 
-pub impl A for B { //~ ERROR: unnecessary visibility
-    pub fn foo(&self) {} //~ ERROR: unnecessary visibility
+pub impl A for B { //~ ERROR unnecessary visibility qualifier
+    pub fn foo(&self) {} //~ ERROR unnecessary visibility qualifier
 }
 
 pub fn main() {}

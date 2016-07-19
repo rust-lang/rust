@@ -18,48 +18,54 @@ use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::process;
 use std::sync::mpsc::channel;
+use std::time::Duration;
 use std::thread::{self, Builder};
 
 fn main() {
     // This test has a chance to time out, try to not let it time out
     thread::spawn(move|| -> () {
-        thread::sleep_ms(30 * 1000);
+        thread::sleep(Duration::from_secs(30));
         process::exit(1);
     });
 
-    let mut listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
     thread::spawn(move || -> () {
         loop {
             let mut stream = match listener.accept() {
                 Ok(stream) => stream.0,
-                Err(error) => continue,
+                Err(_) => continue,
             };
-            stream.read(&mut [0]);
-            stream.write(&[2]);
+            let _ = stream.read(&mut [0]);
+            let _ = stream.write(&[2]);
         }
     });
 
     let (tx, rx) = channel();
+    let mut spawned_cnt = 0;
     for _ in 0..1000 {
         let tx = tx.clone();
-        Builder::new().stack_size(64 * 1024).spawn(move|| {
+        let res = Builder::new().stack_size(64 * 1024).spawn(move|| {
             match TcpStream::connect(addr) {
                 Ok(mut stream) => {
-                    stream.write(&[1]);
-                    stream.read(&mut [0]);
+                    let _ = stream.write(&[1]);
+                    let _ = stream.read(&mut [0]);
                 },
                 Err(..) => {}
             }
             tx.send(()).unwrap();
         });
+        if let Ok(_) = res {
+            spawned_cnt += 1;
+        };
     }
 
     // Wait for all clients to exit, but don't wait for the server to exit. The
     // server just runs infinitely.
     drop(tx);
-    for _ in 0..1000 {
+    for _ in 0..spawned_cnt {
         rx.recv().unwrap();
     }
+    assert_eq!(spawned_cnt, 1000);
     process::exit(0);
 }

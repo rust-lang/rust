@@ -13,11 +13,15 @@
 // error-pattern:oops
 
 fn bigpanic() {
-    while (panic!("oops")) { if (panic!()) {
-        match (panic!()) { () => {
+    while (panic!("oops")) {
+        if (panic!()) {
+            match (panic!()) {
+                () => {}
+            }
         }
-                     }
-    }};
+    }
 }
 
-fn main() { bigpanic(); }
+fn main() {
+    bigpanic();
+}

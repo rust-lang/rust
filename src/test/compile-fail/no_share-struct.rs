@@ -20,5 +20,5 @@ fn bar<T: Sync>(_: T) {}
 fn main() {
     let x = Foo { a: 5 };
     bar(x);
-    //~^ ERROR the trait `core::marker::Sync` is not implemented
+    //~^ ERROR `Foo: std::marker::Sync` is not satisfied
 }

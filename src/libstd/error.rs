@@ -49,13 +49,11 @@
 
 use any::TypeId;
 use boxed::Box;
-use convert::From;
+use char;
 use fmt::{self, Debug, Display};
 use marker::{Send, Sync, Reflect};
 use mem::transmute;
 use num;
-use option::Option::{self, Some, None};
-use result::Result::{self, Ok, Err};
 use raw::TraitObject;
 use str;
 use string::{self, String};
@@ -68,10 +66,80 @@ pub trait Error: Debug + Display + Reflect {
     /// The description should not contain newlines or sentence-ending
     /// punctuation, to facilitate embedding in larger user-facing
     /// strings.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    ///
+    /// match "xc".parse::<u32>() {
+    ///     Err(e) => {
+    ///         println!("Error: {}", e.description());
+    ///     }
+    ///     _ => println!("No error"),
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn description(&self) -> &str;
 
     /// The lower-level cause of this error, if any.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::fmt;
+    ///
+    /// #[derive(Debug)]
+    /// struct SuperError {
+    ///     side: SuperErrorSideKick,
+    /// }
+    ///
+    /// impl fmt::Display for SuperError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///         write!(f, "SuperError is here!")
+    ///     }
+    /// }
+    ///
+    /// impl Error for SuperError {
+    ///     fn description(&self) -> &str {
+    ///         "I'm the superhero of errors!"
+    ///     }
+    ///
+    ///     fn cause(&self) -> Option<&Error> {
+    ///         Some(&self.side)
+    ///     }
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct SuperErrorSideKick;
+    ///
+    /// impl fmt::Display for SuperErrorSideKick {
+    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///         write!(f, "SuperErrorSideKick is here!")
+    ///     }
+    /// }
+    ///
+    /// impl Error for SuperErrorSideKick {
+    ///     fn description(&self) -> &str {
+    ///         "I'm SuperError side kick!"
+    ///     }
+    /// }
+    ///
+    /// fn get_super_error() -> Result<(), SuperError> {
+    ///     Err(SuperError { side: SuperErrorSideKick })
+    /// }
+    ///
+    /// fn main() {
+    ///     match get_super_error() {
+    ///         Err(e) => {
+    ///             println!("Error: {}", e.description());
+    ///             println!("Caused by: {}", e.cause().unwrap());
+    ///         }
+    ///         _ => println!("No error"),
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn cause(&self) -> Option<&Error> { None }
 
@@ -161,6 +229,13 @@ impl Error for num::ParseIntError {
     }
 }
 
+#[unstable(feature = "try_from", issue = "33417")]
+impl Error for num::TryFromIntError {
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for num::ParseFloatError {
     fn description(&self) -> &str {
@@ -189,6 +264,13 @@ impl Error for string::ParseError {
     }
 }
 
+#[stable(feature = "decode_utf16", since = "1.9.0")]
+impl Error for char::DecodeUtf16Error {
+    fn description(&self) -> &str {
+        "unpaired surrogate found"
+    }
+}
+
 #[stable(feature = "box_error", since = "1.7.0")]
 impl<T: Error> Error for Box<T> {
     fn description(&self) -> &str {
@@ -197,6 +279,13 @@ impl<T: Error> Error for Box<T> {
 
     fn cause(&self) -> Option<&Error> {
         Error::cause(&**self)
+    }
+}
+
+#[stable(feature = "fmt_error", since = "1.11.0")]
+impl Error for fmt::Error {
+    fn description(&self) -> &str {
+        "an error occurred when formatting an argument"
     }
 }
 

@@ -189,12 +189,16 @@ mod dl {
     pub fn check_for_errors_in<T, F>(f: F) -> Result<T, String> where
         F: FnOnce() -> T,
     {
-        use std::sync::StaticMutex;
-        static LOCK: StaticMutex = StaticMutex::new();
+        use std::sync::{Mutex, Once, ONCE_INIT};
+        static INIT: Once = ONCE_INIT;
+        static mut LOCK: *mut Mutex<()> = 0 as *mut _;
         unsafe {
+            INIT.call_once(|| {
+                LOCK = Box::into_raw(Box::new(Mutex::new(())));
+            });
             // dlerror isn't thread safe, so we need to lock around this entire
             // sequence
-            let _guard = LOCK.lock();
+            let _guard = (*LOCK).lock();
             let _old_error = libc::dlerror();
 
             let result = f();

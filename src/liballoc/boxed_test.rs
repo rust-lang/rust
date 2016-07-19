@@ -12,7 +12,7 @@
 
 use core::any::Any;
 use core::ops::Deref;
-use core::result::Result::{Ok, Err};
+use core::result::Result::{Err, Ok};
 use core::clone::Clone;
 
 use std::boxed::Box;

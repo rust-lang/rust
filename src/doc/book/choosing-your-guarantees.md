@@ -232,7 +232,7 @@ indicator (one word in size) along with the data.
 
 At runtime each borrow causes a modification/check of the refcount.
 
-[cell-mod]: ../std/cell/
+[cell-mod]: ../std/cell/index.html
 [cell]: ../std/cell/struct.Cell.html
 [refcell]: ../std/cell/struct.RefCell.html
 

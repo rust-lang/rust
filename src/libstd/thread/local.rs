@@ -60,7 +60,7 @@ use mem;
 /// # Platform-specific behavior
 ///
 /// Note that a "best effort" is made to ensure that destructors for types
-/// stored in thread local storage are run, but not all platforms can gurantee
+/// stored in thread local storage are run, but not all platforms can guarantee
 /// that destructors will be run for all types in thread local storage. For
 /// example, there are a number of known caveats where destructors are not run:
 ///
@@ -100,18 +100,52 @@ pub struct LocalKey<T: 'static> {
 
 /// Declare a new thread local storage key of type `std::thread::LocalKey`.
 ///
+/// # Syntax
+///
+/// The macro wraps any number of static declarations and makes them thread local.
+/// Each static may be public or private, and attributes are allowed. Example:
+///
+/// ```
+/// use std::cell::RefCell;
+/// thread_local! {
+///     pub static FOO: RefCell<u32> = RefCell::new(1);
+///
+///     #[allow(unused)]
+///     static BAR: RefCell<f32> = RefCell::new(1.0);
+/// }
+/// # fn main() {}
+/// ```
+///
 /// See [LocalKey documentation](thread/struct.LocalKey.html) for more
 /// information.
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
 macro_rules! thread_local {
-    (static $name:ident: $t:ty = $init:expr) => (
-        static $name: $crate::thread::LocalKey<$t> =
+    // rule 0: empty (base case for the recursion)
+    () => {};
+
+    // rule 1: process multiple declarations where the first one is private
+    ($(#[$attr:meta])* static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
+        thread_local!($(#[$attr])* static $name: $t = $init); // go to rule 2
+        thread_local!($($rest)*);
+    );
+
+    // rule 2: handle a single private declaration
+    ($(#[$attr:meta])* static $name:ident: $t:ty = $init:expr) => (
+        $(#[$attr])* static $name: $crate::thread::LocalKey<$t> =
             __thread_local_inner!($t, $init);
     );
-    (pub static $name:ident: $t:ty = $init:expr) => (
-        pub static $name: $crate::thread::LocalKey<$t> =
+
+    // rule 3: handle multiple declarations where the first one is public
+    ($(#[$attr:meta])* pub static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
+        thread_local!($(#[$attr])* pub static $name: $t = $init); // go to rule 4
+        thread_local!($($rest)*);
+    );
+
+    // rule 4: handle a single public declaration
+    ($(#[$attr:meta])* pub static $name:ident: $t:ty = $init:expr) => (
+        $(#[$attr])* pub static $name: $crate::thread::LocalKey<$t> =
             __thread_local_inner!($t, $init);
     );
 }
@@ -254,7 +288,7 @@ impl<T: 'static> LocalKey<T> {
     /// destruction has completed. Keys without destructors (e.g. with types
     /// that are `Copy`), may never enter the `Destroyed` state.
     ///
-    /// Keys in the `Uninitialized` can be accessed so long as the
+    /// Keys in the `Uninitialized` state can be accessed so long as the
     /// initialization does not panic. Keys in the `Valid` state are guaranteed
     /// to be able to be accessed. Keys in the `Destroyed` state will panic on
     /// any call to `with`.

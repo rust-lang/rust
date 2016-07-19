@@ -34,19 +34,6 @@ pub trait CommandExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn gid(&mut self, id: u32) -> &mut process::Command;
 
-    /// Create a new session (cf. `setsid(2)`) for the child process. This means
-    /// that the child is the leader of a new process group. The parent process
-    /// remains the child reaper of the new process.
-    ///
-    /// This is not enough to create a daemon process. The *init* process should
-    /// be the child reaper of a daemon. This can be achieved if the parent
-    /// process exit. Moreover, a daemon should not have a controlling terminal.
-    /// To achieve this, a session leader (the child) must spawn another process
-    /// (the daemon) in the same session.
-    #[unstable(feature = "process_session_leader", reason = "recently added",
-               issue = "27811")]
-    fn session_leader(&mut self, on: bool) -> &mut process::Command;
-
     /// Schedules a closure to be run just before the `exec` function is
     /// invoked.
     ///
@@ -94,7 +81,7 @@ pub trait CommandExt {
     /// file descriptors may have changed. If a "transactional spawn" is
     /// required to gracefully handle errors it is recommended to use the
     /// cross-platform `spawn` instead.
-    #[unstable(feature = "process_exec", issue = "31398")]
+    #[stable(feature = "process_exec2", since = "1.9.0")]
     fn exec(&mut self) -> io::Error;
 }
 
@@ -107,11 +94,6 @@ impl CommandExt for process::Command {
 
     fn gid(&mut self, id: u32) -> &mut process::Command {
         self.as_inner_mut().gid(id);
-        self
-    }
-
-    fn session_leader(&mut self, on: bool) -> &mut process::Command {
-        self.as_inner_mut().session_leader(on);
         self
     }
 
@@ -130,6 +112,11 @@ impl CommandExt for process::Command {
 /// Unix-specific extensions to `std::process::ExitStatus`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExitStatusExt {
+    /// Creates a new `ExitStatus` from the raw underlying `i32` return value of
+    /// a process.
+    #[unstable(feature = "exit_status_from", issue = "32713")]
+    fn from_raw(raw: i32) -> Self;
+
     /// If the process was terminated by a signal, returns that signal.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn signal(&self) -> Option<i32>;
@@ -137,6 +124,10 @@ pub trait ExitStatusExt {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ExitStatusExt for process::ExitStatus {
+    fn from_raw(raw: i32) -> Self {
+        process::ExitStatus::from_inner(From::from(raw))
+    }
+
     fn signal(&self) -> Option<i32> {
         self.as_inner().signal()
     }

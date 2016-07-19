@@ -19,11 +19,13 @@ struct T { a: isize, mv: Box<isize> }
 impl Drop for T { fn drop(&mut self) { } }
 
 fn f(s0:S) {
-    let _s2 = S{a: 2, ..s0}; //~error: cannot move out of type `S`, which defines the `Drop` trait
+    let _s2 = S{a: 2, ..s0};
+    //~^ error: cannot move out of type `S`, which implements the `Drop` trait
 }
 
 fn g(s0:T) {
-    let _s2 = T{a: 2, ..s0}; //~error: cannot move out of type `T`, which defines the `Drop` trait
+    let _s2 = T{a: 2, ..s0};
+    //~^ error: cannot move out of type `T`, which implements the `Drop` trait
 }
 
 fn main() { }

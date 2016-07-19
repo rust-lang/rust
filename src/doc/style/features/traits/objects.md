@@ -6,7 +6,7 @@ Trait objects are useful primarily when _heterogeneous_ collections of objects
 need to be treated uniformly; it is the closest that Rust comes to
 object-oriented programming.
 
-```rust
+```rust,ignore
 struct Frame  { ... }
 struct Button { ... }
 struct Label  { ... }

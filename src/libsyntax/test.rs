@@ -12,30 +12,33 @@
 
 #![allow(dead_code)]
 #![allow(unused_imports)]
+
 use self::HasTestSignature::*;
 
 use std::iter;
 use std::slice;
 use std::mem;
 use std::vec;
-use ast_util::*;
 use attr::AttrMetaMethods;
 use attr;
-use codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
-use codemap;
+use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
+use std::rc::Rc;
+
+use codemap::{self, CodeMap, ExpnInfo, NameAndSpan, MacroAttribute};
 use errors;
+use errors::snippet::{SnippetData};
 use config;
 use entry::{self, EntryPointType};
-use ext::base::ExtCtxt;
+use ext::base::{ExtCtxt, DummyMacroLoader};
 use ext::build::AstBuilder;
 use ext::expand::ExpansionConfig;
 use fold::Folder;
 use util::move_map::MoveMap;
 use fold;
-use parse::token::{intern, InternedString};
+use parse::token::{intern, keywords, InternedString};
 use parse::{token, ParseSess};
 use print::pprust;
-use {ast, ast_util};
+use ast;
 use ptr::P;
 use util::small_vector::SmallVector;
 
@@ -60,7 +63,6 @@ struct TestCtxt<'a> {
     testfns: Vec<Test>,
     reexport_test_harness_main: Option<InternedString>,
     is_test_crate: bool,
-    config: ast::CrateConfig,
 
     // top-level re-export submodule, filled out after folding is finished
     toplevel_reexport: Option<ast::Ident>,
@@ -69,14 +71,9 @@ struct TestCtxt<'a> {
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
 pub fn modify_for_testing(sess: &ParseSess,
-                          cfg: &ast::CrateConfig,
+                          should_test: bool,
                           krate: ast::Crate,
                           span_diagnostic: &errors::Handler) -> ast::Crate {
-    // We generate the test harness when building in the 'test'
-    // configuration, either with the '--test' or '--cfg test'
-    // command line options.
-    let should_test = attr::contains_name(&krate.config, "test");
-
     // Check for #[reexport_test_harness_main = "some_name"] which
     // creates a `use some_name = __test::main;`. This needs to be
     // unconditional, so that the attribute is still marked as used in
@@ -86,9 +83,9 @@ pub fn modify_for_testing(sess: &ParseSess,
                                            "reexport_test_harness_main");
 
     if should_test {
-        generate_test_harness(sess, reexport_test_harness_main, krate, cfg, span_diagnostic)
+        generate_test_harness(sess, reexport_test_harness_main, krate, span_diagnostic)
     } else {
-        strip_test_functions(span_diagnostic, krate)
+        krate
     }
 }
 
@@ -117,11 +114,10 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
     fn fold_item(&mut self, i: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         let ident = i.ident;
-        if ident.name != token::special_idents::invalid.name {
+        if ident.name != keywords::Invalid.name() {
             self.cx.path.push(ident);
         }
-        debug!("current path: {}",
-               ast_util::path_name_i(&self.cx.path));
+        debug!("current path: {}", path_name_i(&self.cx.path));
 
         let i = if is_test_fn(&self.cx, &i) || is_bench_fn(&self.cx, &i) {
             match i.node {
@@ -162,7 +158,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             ast::ItemKind::Mod(..) => fold::noop_fold_item(i, self),
             _ => SmallVector::one(i),
         };
-        if ident.name != token::special_idents::invalid.name {
+        if ident.name != keywords::Invalid.name() {
             self.cx.path.pop();
         }
         res
@@ -189,6 +185,8 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
         mod_folded
     }
+
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
 }
 
 struct EntryPointCleaner {
@@ -238,6 +236,8 @@ impl fold::Folder for EntryPointCleaner {
 
         SmallVector::one(folded)
     }
+
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
 }
 
 fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
@@ -273,24 +273,22 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
 fn generate_test_harness(sess: &ParseSess,
                          reexport_test_harness_main: Option<InternedString>,
                          krate: ast::Crate,
-                         cfg: &ast::CrateConfig,
                          sd: &errors::Handler) -> ast::Crate {
     // Remove the entry points
     let mut cleaner = EntryPointCleaner { depth: 0 };
     let krate = cleaner.fold_crate(krate);
 
-    let mut feature_gated_cfgs = vec![];
+    let mut loader = DummyMacroLoader;
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         span_diagnostic: sd,
-        ext_cx: ExtCtxt::new(sess, cfg.clone(),
+        ext_cx: ExtCtxt::new(sess, vec![],
                              ExpansionConfig::default("test".to_string()),
-                             &mut feature_gated_cfgs),
+                             &mut loader),
         path: Vec::new(),
         testfns: Vec::new(),
         reexport_test_harness_main: reexport_test_harness_main,
         is_test_crate: is_test_crate(&krate),
-        config: krate.config.clone(),
         toplevel_reexport: None,
     };
     cx.ext_cx.crate_root = Some("std");
@@ -312,16 +310,6 @@ fn generate_test_harness(sess: &ParseSess,
     let res = fold.fold_crate(krate);
     fold.cx.ext_cx.bt_pop();
     return res;
-}
-
-fn strip_test_functions(diagnostic: &errors::Handler, krate: ast::Crate)
-                        -> ast::Crate {
-    // When not compiling with --test we should not compile the
-    // #[test] functions
-    config::strip_items(diagnostic, krate, |attrs| {
-        !attr::contains_name(&attrs[..], "test") &&
-        !attr::contains_name(&attrs[..], "bench")
-    })
 }
 
 /// Craft a span that will be ignored by the stability lint's
@@ -348,7 +336,6 @@ enum HasTestSignature {
     No,
     NotEvenAFunction,
 }
-
 
 fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     let has_test_attr = attr::contains_name(&i.attrs, "test");
@@ -456,7 +443,7 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
         (ast::ItemKind::Use(
             P(nospan(ast::ViewPathSimple(id_test,
                                          path_node(vec!(id_test)))))),
-         ast::Visibility::Public, token::special_idents::invalid)
+         ast::Visibility::Public, keywords::Invalid.ident())
     } else {
         (ast::ItemKind::ExternCrate(None), ast::Visibility::Inherited, id_test)
     };
@@ -495,7 +482,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     let main_attr = ecx.attribute(sp, main_meta);
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(vec![]));
-    let main_body = ecx.block_all(sp, vec![call_test_main], None);
+    let main_body = ecx.block(sp, vec![call_test_main]);
     let main = ast::ItemKind::Fn(ecx.fn_decl(vec![], main_ret_ty),
                            ast::Unsafety::Normal,
                            ast::Constness::NotConst,
@@ -548,7 +535,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
 
         P(ast::Item {
             id: ast::DUMMY_NODE_ID,
-            ident: token::special_idents::invalid,
+            ident: keywords::Invalid.ident(),
             attrs: vec![],
             node: ast::ItemKind::Use(P(use_path)),
             vis: ast::Visibility::Inherited,
@@ -576,6 +563,11 @@ fn path_node(ids: Vec<ast::Ident> ) -> ast::Path {
     }
 }
 
+fn path_name_i(idents: &[ast::Ident]) -> String {
+    // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
+    idents.iter().map(|i| i.to_string()).collect::<Vec<String>>().join("::")
+}
+
 fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     // The vector of test_descs for this crate
     let test_descs = mk_test_descs(cx);
@@ -588,7 +580,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     let struct_type = ecx.ty_path(ecx.path(sp, vec![ecx.ident_of("self"),
                                                     ecx.ident_of("test"),
                                                     ecx.ident_of("TestDescAndFn")]));
-    let static_lt = ecx.lifetime(sp, token::special_idents::static_lifetime.name);
+    let static_lt = ecx.lifetime(sp, keywords::StaticLifetime.name());
     // &'static [self::test::TestDescAndFn]
     let static_type = ecx.ty_rptr(sp,
                                   ecx.ty(sp, ast::TyKind::Vec(struct_type)),
@@ -620,10 +612,10 @@ fn mk_test_descs(cx: &TestCtxt) -> P<ast::Expr> {
                     mk_test_desc_and_fn_rec(cx, test)
                 }).collect()),
                 span: DUMMY_SP,
-                attrs: None,
+                attrs: ast::ThinVec::new(),
             })),
         span: DUMMY_SP,
-        attrs: None,
+        attrs: ast::ThinVec::new(),
     })
 }
 
@@ -645,10 +637,10 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     // creates $name: $expr
     let field = |name, expr| ecx.field_imm(span, ecx.ident_of(name), expr);
 
-    debug!("encoding {}", ast_util::path_name_i(&path[..]));
+    debug!("encoding {}", path_name_i(&path[..]));
 
     // path to the #[test] function: "foo::bar::baz"
-    let path_string = ast_util::path_name_i(&path[..]);
+    let path_string = path_name_i(&path[..]);
     let name_expr = ecx.expr_str(span, token::intern_and_get_ident(&path_string[..]));
 
     // self::test::StaticTestName($name_expr)

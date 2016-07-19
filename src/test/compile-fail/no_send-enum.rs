@@ -24,5 +24,5 @@ fn bar<T: Send>(_: T) {}
 fn main() {
     let x = Foo::A(NoSend);
     bar(x);
-    //~^ ERROR `core::marker::Send` is not implemented
+    //~^ ERROR `NoSend: std::marker::Send` is not satisfied
 }

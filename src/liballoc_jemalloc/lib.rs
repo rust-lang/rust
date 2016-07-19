@@ -39,25 +39,30 @@ use libc::{c_int, c_void, size_t};
                not(target_env = "musl")),
            link(name = "pthread"))]
 #[cfg(not(cargobuild))]
-extern {}
+extern "C" {}
 
-// Note that the symbols here are prefixed by default on OSX (we don't
-// explicitly request it), and on Android we explicitly request it as
-// unprefixing cause segfaults (mismatches in allocators).
-extern {
-    #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios"),
+// Note that the symbols here are prefixed by default on OSX and Windows (we
+// don't explicitly request it), and on Android and DragonFly we explicitly
+// request it as unprefixing cause segfaults (mismatches in allocators).
+extern "C" {
+    #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
+                   target_os = "dragonfly", target_os = "windows"),
                link_name = "je_mallocx")]
     fn mallocx(size: size_t, flags: c_int) -> *mut c_void;
-    #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios"),
+    #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
+                   target_os = "dragonfly", target_os = "windows"),
                link_name = "je_rallocx")]
     fn rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
-    #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios"),
+    #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
+                   target_os = "dragonfly", target_os = "windows"),
                link_name = "je_xallocx")]
     fn xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
-    #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios"),
+    #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
+                   target_os = "dragonfly", target_os = "windows"),
                link_name = "je_sdallocx")]
     fn sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
-    #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios"),
+    #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
+                   target_os = "dragonfly", target_os = "windows"),
                link_name = "je_nallocx")]
     fn nallocx(size: size_t, flags: c_int) -> size_t;
 }
@@ -131,8 +136,9 @@ pub extern "C" fn __rust_usable_size(size: usize, align: usize) -> usize {
 // are available.
 #[no_mangle]
 #[cfg(target_os = "android")]
-pub extern fn pthread_atfork(_prefork: *mut u8,
-                             _postfork_parent: *mut u8,
-                             _postfork_child: *mut u8) -> i32 {
+pub extern "C" fn pthread_atfork(_prefork: *mut u8,
+                                 _postfork_parent: *mut u8,
+                                 _postfork_child: *mut u8)
+                                 -> i32 {
     0
 }

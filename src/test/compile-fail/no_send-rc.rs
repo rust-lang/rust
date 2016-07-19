@@ -15,5 +15,5 @@ fn bar<T: Send>(_: T) {}
 fn main() {
     let x = Rc::new(5);
     bar(x);
-    //~^ ERROR `core::marker::Send` is not implemented
+    //~^ ERROR `std::rc::Rc<_>: std::marker::Send` is not satisfied
 }

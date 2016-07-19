@@ -11,12 +11,14 @@
 use target::Target;
 
 pub fn target() -> Target {
-    let base = super::linux_base::opts();
+    let mut base = super::linux_base::opts();
+    base.max_atomic_width = 128;
     Target {
         llvm_target: "aarch64-unknown-linux-gnu".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
         target_env: "gnu".to_string(),
+        data_layout: "e-m:e-i64:64-i128:128-n32:64-S128".to_string(),
         arch: "aarch64".to_string(),
         target_os: "linux".to_string(),
         target_vendor: "unknown".to_string(),

@@ -12,23 +12,11 @@
 
 //! Threadsafe reference-counted boxes (the `Arc<T>` type).
 //!
-//! The `Arc<T>` type provides shared ownership of an immutable value.
-//! Destruction is deterministic, and will occur as soon as the last owner is
-//! gone. It is marked as `Send` because it uses atomic reference counting.
+//! The `Arc<T>` type provides shared ownership of an immutable value through
+//! atomic reference counting.
 //!
-//! If you do not need thread-safety, and just need shared ownership, consider
-//! the [`Rc<T>` type](../rc/struct.Rc.html). It is the same as `Arc<T>`, but
-//! does not use atomics, making it both thread-unsafe as well as significantly
-//! faster when updating the reference count.
-//!
-//! The `downgrade` method can be used to create a non-owning `Weak<T>` pointer
-//! to the box. A `Weak<T>` pointer can be upgraded to an `Arc<T>` pointer, but
-//! will return `None` if the value has already been dropped.
-//!
-//! For example, a tree with parent pointers can be represented by putting the
-//! nodes behind strong `Arc<T>` pointers, and then storing the parent pointers
-//! as `Weak<T>` pointers.
-//!
+//! `Weak<T>` is a weak reference to the `Arc<T>` box, and it is created by
+//! the `downgrade` method.
 //! # Examples
 //!
 //! Sharing some immutable data between threads:
@@ -47,32 +35,11 @@
 //!     });
 //! }
 //! ```
-//!
-//! Sharing mutable data safely between threads with a `Mutex`:
-//!
-//! ```no_run
-//! use std::sync::{Arc, Mutex};
-//! use std::thread;
-//!
-//! let five = Arc::new(Mutex::new(5));
-//!
-//! for _ in 0..10 {
-//!     let five = five.clone();
-//!
-//!     thread::spawn(move || {
-//!         let mut number = five.lock().unwrap();
-//!
-//!         *number += 1;
-//!
-//!         println!("{}", *number); // prints 6
-//!     });
-//! }
-//! ```
 
 use boxed::Box;
 
 use core::sync::atomic;
-use core::sync::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
+use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
 use core::fmt;
 use core::cmp::Ordering;
@@ -85,32 +52,37 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 use core::marker::Unsize;
 use core::hash::{Hash, Hasher};
-use core::{usize, isize};
+use core::{isize, usize};
 use core::convert::From;
 use heap::deallocate;
 
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
 /// An atomically reference counted wrapper for shared state.
+/// Destruction is deterministic, and will occur as soon as the last owner is
+/// gone. It is marked as `Send` because it uses atomic reference counting.
+///
+/// If you do not need thread-safety, and just need shared ownership, consider
+/// the [`Rc<T>` type](../rc/struct.Rc.html). It is the same as `Arc<T>`, but
+/// does not use atomics, making it both thread-unsafe as well as significantly
+/// faster when updating the reference count.
 ///
 /// # Examples
 ///
-/// In this example, a large vector is shared between several threads.
-/// With simple pipes, without `Arc`, a copy would have to be made for each
-/// thread.
-///
-/// When you clone an `Arc<T>`, it will create another pointer to the data and
-/// increase the reference counter.
+/// In this example, a large vector of data will be shared by several threads. First we
+/// wrap it with a `Arc::new` and then clone the `Arc<T>` reference for every thread (which will
+/// increase the reference count atomically).
 ///
 /// ```
 /// use std::sync::Arc;
 /// use std::thread;
 ///
 /// fn main() {
-///     let numbers: Vec<_> = (0..100u32).collect();
+///     let numbers: Vec<_> = (0..100).collect();
 ///     let shared_numbers = Arc::new(numbers);
 ///
 ///     for _ in 0..10 {
+///         // prepare a copy of reference here and it will be moved to the thread
 ///         let child_numbers = shared_numbers.clone();
 ///
 ///         thread::spawn(move || {
@@ -121,12 +93,33 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///     }
 /// }
 /// ```
+/// You can also share mutable data between threads safely
+/// by putting it inside `Mutex` and then share `Mutex` immutably
+/// with `Arc<T>` as shown below.
+///
+/// ```
+/// use std::sync::{Arc, Mutex};
+/// use std::thread;
+///
+/// let five = Arc::new(Mutex::new(5));
+///
+/// for _ in 0..10 {
+///     let five = five.clone();
+///
+///     thread::spawn(move || {
+///         let mut number = five.lock().unwrap();
+///
+///         *number += 1;
+///
+///         println!("{}", *number); // prints 6
+///     });
+/// }
+/// ```
+
 #[unsafe_no_drop_flag]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
-    // FIXME #12808: strange name to try to avoid interfering with
-    // field accesses of the contained type via Deref
-    _ptr: Shared<ArcInner<T>>,
+    ptr: Shared<ArcInner<T>>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -141,12 +134,18 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 ///
 /// Weak pointers will not keep the data inside of the `Arc` alive, and can be
 /// used to break cycles between `Arc` pointers.
+///
+/// A `Weak<T>` pointer can be upgraded to an `Arc<T>` pointer, but
+/// will return `None` if the value has already been dropped.
+///
+/// For example, a tree with parent pointers can be represented by putting the
+/// nodes behind strong `Arc<T>` pointers, and then storing the parent pointers
+/// as `Weak<T>` pointers.
+
 #[unsafe_no_drop_flag]
 #[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
-    // FIXME #12808: strange name to try to avoid interfering with
-    // field accesses of the contained type via Deref
-    _ptr: Shared<ArcInner<T>>,
+    ptr: Shared<ArcInner<T>>,
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -198,7 +197,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data: data,
         };
-        Arc { _ptr: unsafe { Shared::new(Box::into_raw(x)) } }
+        Arc { ptr: unsafe { Shared::new(Box::into_raw(x)) } }
     }
 
     /// Unwraps the contained value if the `Arc<T>` has exactly one strong reference.
@@ -223,18 +222,18 @@ impl<T> Arc<T> {
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
         // See `drop` for why all these atomics are like this
-        if this.inner().strong.compare_and_swap(1, 0, Release) != 1 {
+        if this.inner().strong.compare_exchange(1, 0, Release, Relaxed).is_err() {
             return Err(this);
         }
 
         atomic::fence(Acquire);
 
         unsafe {
-            let ptr = *this._ptr;
+            let ptr = *this.ptr;
             let elem = ptr::read(&(*ptr).data);
 
             // Make a weak pointer to clean up the implicit strong-weak reference
-            let _weak = Weak { _ptr: this._ptr };
+            let _weak = Weak { ptr: this.ptr };
             mem::forget(this);
 
             Ok(elem)
@@ -256,13 +255,14 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[stable(feature = "arc_weak", since = "1.4.0")]
     pub fn downgrade(this: &Self) -> Weak<T> {
-        loop {
-            // This Relaxed is OK because we're checking the value in the CAS
-            // below.
-            let cur = this.inner().weak.load(Relaxed);
+        // This Relaxed is OK because we're checking the value in the CAS
+        // below.
+        let mut cur = this.inner().weak.load(Relaxed);
 
+        loop {
             // check if the weak counter is currently "locked"; if so, spin.
             if cur == usize::MAX {
+                cur = this.inner().weak.load(Relaxed);
                 continue;
             }
 
@@ -273,8 +273,9 @@ impl<T: ?Sized> Arc<T> {
             // Unlike with Clone(), we need this to be an Acquire read to
             // synchronize with the write coming from `is_unique`, so that the
             // events prior to that write happen before this read.
-            if this.inner().weak.compare_and_swap(cur, cur + 1, Acquire) == cur {
-                return Weak { _ptr: this._ptr };
+            match this.inner().weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
+                Ok(_) => return Weak { ptr: this.ptr },
+                Err(old) => cur = old,
             }
         }
     }
@@ -302,13 +303,13 @@ impl<T: ?Sized> Arc<T> {
         // `ArcInner` structure itself is `Sync` because the inner data is
         // `Sync` as well, so we're ok loaning out an immutable pointer to these
         // contents.
-        unsafe { &**self._ptr }
+        unsafe { &**self.ptr }
     }
 
     // Non-inlined part of `drop`.
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {
-        let ptr = *self._ptr;
+        let ptr = *self.ptr;
 
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
@@ -366,7 +367,7 @@ impl<T: ?Sized> Clone for Arc<T> {
             }
         }
 
-        Arc { _ptr: self._ptr }
+        Arc { ptr: self.ptr }
     }
 }
 
@@ -416,7 +417,7 @@ impl<T: Clone> Arc<T> {
         // before release writes (i.e., decrements) to `strong`. Since we hold a
         // weak count, there's no chance the ArcInner itself could be
         // deallocated.
-        if this.inner().strong.compare_and_swap(1, 0, Acquire) != 1 {
+        if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
             // Another strong pointer exists; clone
             *this = Arc::new((**this).clone());
         } else if this.inner().weak.load(Relaxed) != 1 {
@@ -434,7 +435,7 @@ impl<T: Clone> Arc<T> {
 
             // Materialize our own implicit weak pointer, so that it can clean
             // up the ArcInner as needed.
-            let weak = Weak { _ptr: this._ptr };
+            let weak = Weak { ptr: this.ptr };
 
             // mark the data itself as already deallocated
             unsafe {
@@ -442,7 +443,7 @@ impl<T: Clone> Arc<T> {
                 // here (due to zeroing) because data is no longer accessed by
                 // other threads (due to there being no more strong refs at this
                 // point).
-                let mut swap = Arc::new(ptr::read(&(**weak._ptr).data));
+                let mut swap = Arc::new(ptr::read(&(**weak.ptr).data));
                 mem::swap(this, &mut swap);
                 mem::forget(swap);
             }
@@ -455,7 +456,7 @@ impl<T: Clone> Arc<T> {
         // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
         unsafe {
-            let inner = &mut **this._ptr;
+            let inner = &mut **this.ptr;
             &mut inner.data
         }
     }
@@ -487,7 +488,7 @@ impl<T: ?Sized> Arc<T> {
             // the Arc itself to be `mut`, so we're returning the only possible
             // reference to the inner data.
             unsafe {
-                let inner = &mut **this._ptr;
+                let inner = &mut **this.ptr;
                 Some(&mut inner.data)
             }
         } else {
@@ -506,7 +507,7 @@ impl<T: ?Sized> Arc<T> {
         // The acquire label here ensures a happens-before relationship with any
         // writes to `strong` prior to decrements of the `weak` count (via drop,
         // which uses Release).
-        if self.inner().weak.compare_and_swap(1, usize::MAX, Acquire) == 1 {
+        if self.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
             // Due to the previous acquire read, this will observe any writes to
             // `strong` that were due to upgrading weak pointers; only strong
             // clones remain, which require that the strong count is > 1 anyway.
@@ -556,7 +557,7 @@ impl<T: ?Sized> Drop for Arc<T> {
         // This structure has #[unsafe_no_drop_flag], so this drop glue may run
         // more than once (but it is guaranteed to be zeroed after the first if
         // it's run more than once)
-        let thin = *self._ptr as *const ();
+        let thin = *self.ptr as *const ();
 
         if thin as usize == mem::POST_DROP_USIZE {
             return;
@@ -594,6 +595,33 @@ impl<T: ?Sized> Drop for Arc<T> {
     }
 }
 
+impl<T> Weak<T> {
+    /// Constructs a new `Weak<T>` without an accompanying instance of T.
+    ///
+    /// This allocates memory for T, but does not initialize it. Calling
+    /// Weak<T>::upgrade() on the return value always gives None.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Weak;
+    ///
+    /// let empty: Weak<i64> = Weak::new();
+    /// ```
+    #[stable(feature = "downgraded_weak", since = "1.10.0")]
+    pub fn new() -> Weak<T> {
+        unsafe {
+            Weak {
+                ptr: Shared::new(Box::into_raw(box ArcInner {
+                    strong: atomic::AtomicUsize::new(0),
+                    weak: atomic::AtomicUsize::new(1),
+                    data: uninitialized(),
+                })),
+            }
+        }
+    }
+}
+
 impl<T: ?Sized> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
     ///
@@ -618,25 +646,29 @@ impl<T: ?Sized> Weak<T> {
         // We use a CAS loop to increment the strong count instead of a
         // fetch_add because once the count hits 0 it must never be above 0.
         let inner = self.inner();
+
+        // Relaxed load because any write of 0 that we can observe
+        // leaves the field in a permanently zero state (so a
+        // "stale" read of 0 is fine), and any other value is
+        // confirmed via the CAS below.
+        let mut n = inner.strong.load(Relaxed);
+
         loop {
-            // Relaxed load because any write of 0 that we can observe
-            // leaves the field in a permanently zero state (so a
-            // "stale" read of 0 is fine), and any other value is
-            // confirmed via the CAS below.
-            let n = inner.strong.load(Relaxed);
             if n == 0 {
                 return None;
             }
 
             // See comments in `Arc::clone` for why we do this (for `mem::forget`).
             if n > MAX_REFCOUNT {
-                unsafe { abort(); }
+                unsafe {
+                    abort();
+                }
             }
 
             // Relaxed is valid for the same reason it is on Arc's Clone impl
-            let old = inner.strong.compare_and_swap(n, n + 1, Relaxed);
-            if old == n {
-                return Some(Arc { _ptr: self._ptr });
+            match inner.strong.compare_exchange_weak(n, n + 1, Relaxed, Relaxed) {
+                Ok(_) => return Some(Arc { ptr: self.ptr }),
+                Err(old) => n = old,
             }
         }
     }
@@ -644,7 +676,7 @@ impl<T: ?Sized> Weak<T> {
     #[inline]
     fn inner(&self) -> &ArcInner<T> {
         // See comments above for why this is "safe"
-        unsafe { &**self._ptr }
+        unsafe { &**self.ptr }
     }
 }
 
@@ -678,7 +710,14 @@ impl<T: ?Sized> Clone for Weak<T> {
             }
         }
 
-        return Weak { _ptr: self._ptr };
+        return Weak { ptr: self.ptr };
+    }
+}
+
+#[stable(feature = "downgraded_weak", since = "1.10.0")]
+impl<T> Default for Weak<T> {
+    fn default() -> Weak<T> {
+        Weak::new()
     }
 }
 
@@ -710,7 +749,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// } // implicit drop
     /// ```
     fn drop(&mut self) {
-        let ptr = *self._ptr;
+        let ptr = *self.ptr;
         let thin = ptr as *const ();
 
         // see comments above for why this check is here
@@ -882,7 +921,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Arc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&*self._ptr, f)
+        fmt::Pointer::fmt(&*self.ptr, f)
     }
 }
 
@@ -907,35 +946,6 @@ impl<T> From<T> for Arc<T> {
     }
 }
 
-impl<T> Weak<T> {
-    /// Constructs a new `Weak<T>` without an accompanying instance of T.
-    ///
-    /// This allocates memory for T, but does not initialize it. Calling
-    /// Weak<T>::upgrade() on the return value always gives None.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(downgraded_weak)]
-    ///
-    /// use std::sync::Weak;
-    ///
-    /// let empty: Weak<i64> = Weak::new();
-    /// ```
-    #[unstable(feature = "downgraded_weak",
-               reason = "recently added",
-               issue = "30425")]
-    pub fn new() -> Weak<T> {
-        unsafe {
-            Weak { _ptr: Shared::new(Box::into_raw(box ArcInner {
-                strong: atomic::AtomicUsize::new(0),
-                weak: atomic::AtomicUsize::new(1),
-                data: uninitialized(),
-            }))}
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::clone::Clone;
@@ -943,7 +953,7 @@ mod tests {
     use std::mem::drop;
     use std::ops::Drop;
     use std::option::Option;
-    use std::option::Option::{Some, None};
+    use std::option::Option::{None, Some};
     use std::sync::atomic;
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
     use std::thread;
@@ -1118,7 +1128,7 @@ mod tests {
 
     #[test]
     fn test_strong_count() {
-        let a = Arc::new(0u32);
+        let a = Arc::new(0);
         assert!(Arc::strong_count(&a) == 1);
         let w = Arc::downgrade(&a);
         assert!(Arc::strong_count(&a) == 1);
@@ -1135,7 +1145,7 @@ mod tests {
 
     #[test]
     fn test_weak_count() {
-        let a = Arc::new(0u32);
+        let a = Arc::new(0);
         assert!(Arc::strong_count(&a) == 1);
         assert!(Arc::weak_count(&a) == 0);
         let w = Arc::downgrade(&a);
@@ -1161,7 +1171,7 @@ mod tests {
 
     #[test]
     fn show_arc() {
-        let a = Arc::new(5u32);
+        let a = Arc::new(5);
         assert_eq!(format!("{:?}", a), "5");
     }
 

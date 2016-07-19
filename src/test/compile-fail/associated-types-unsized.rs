@@ -14,7 +14,7 @@ trait Get {
 }
 
 fn foo<T:Get>(t: T) {
-    let x = t.get(); //~ ERROR the trait `core::marker::Sized` is not implemented
+    let x = t.get(); //~ ERROR `<T as Get>::Value: std::marker::Sized` is not
 }
 
 fn main() {

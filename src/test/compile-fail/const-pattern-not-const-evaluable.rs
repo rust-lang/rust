@@ -17,12 +17,12 @@ enum Cake {
 use Cake::*;
 
 const BOO: (Cake, Cake) = (Marmor, BlackForest);
-//~^ ERROR: constant evaluation error: non-constant path in constant expression [E0471]
+//~^ ERROR: constant evaluation error: unimplemented constant expression: enum variants [E0471]
 const FOO: Cake = BOO.1;
 
 const fn foo() -> Cake {
-    Marmor //~ ERROR: constant evaluation error: non-constant path in constant expression [E0471]
-    //~^ ERROR: non-constant path in constant expression
+    Marmor //~ ERROR: constant evaluation error: unimplemented constant expression: enum variants
+    //~^ ERROR: unimplemented constant expression: enum variants
 }
 
 const WORKS: Cake = Marmor;

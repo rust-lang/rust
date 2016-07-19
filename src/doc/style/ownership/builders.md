@@ -35,7 +35,7 @@ be consumed. The follow variant on
 [`std::process::Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html)
 is one example:
 
-```rust
+```rust,ignore
 // NOTE: the actual Command API does not use owned Strings;
 // this is a simplified version.
 
@@ -94,7 +94,7 @@ methods take and return a mutable borrow of `self`.
 By using borrows throughout, `Command` can be used conveniently for both
 one-liner and more complex constructions:
 
-```rust
+```rust,ignore
 // One-liners
 Command::new("/bin/cat").arg("file.txt").spawn();
 
@@ -114,7 +114,7 @@ cmd.spawn();
 Sometimes builders must transfer ownership when constructing the final type
 `T`, meaning that the terminal methods must take `self` rather than `&self`:
 
-```rust
+```rust,ignore
 // A simplified excerpt from std::thread::Builder
 
 impl ThreadBuilder {
@@ -156,7 +156,7 @@ Under the rubric of making easy things easy and hard things possible, _all_
 builder methods for a consuming builder should take and returned an owned
 `self`. Then client code works as follows:
 
-```rust
+```rust,ignore
 // One-liners
 ThreadBuilder::new().named("my_thread").spawn(proc() { ... });
 

@@ -17,33 +17,76 @@
 
 use hair::*;
 use rustc::mir::repr::*;
+use rustc::mir::transform::MirSource;
 
-use rustc::middle::const_eval::{self, ConstVal};
-use rustc::middle::def_id::DefId;
-use rustc::middle::infer::InferCtxt;
-use rustc::middle::subst::{Subst, Substs};
-use rustc::middle::ty::{self, Ty, TyCtxt};
-use syntax::codemap::Span;
+use rustc::middle::const_val::ConstVal;
+use rustc_const_eval as const_eval;
+use rustc_data_structures::indexed_vec::Idx;
+use rustc::hir::def_id::DefId;
+use rustc::hir::intravisit::FnKind;
+use rustc::hir::map::blocks::FnLikeNode;
+use rustc::infer::InferCtxt;
+use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::{self, Ty, TyCtxt};
 use syntax::parse::token;
-use rustc_front::hir;
-use rustc_const_eval::{ConstInt, ConstUsize};
+use rustc::hir;
+use rustc_const_math::{ConstInt, ConstUsize};
+use syntax::attr::AttrMetaMethods;
 
 #[derive(Copy, Clone)]
-pub struct Cx<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
-    infcx: &'a InferCtxt<'a, 'tcx>,
+pub struct Cx<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    constness: hir::Constness,
+
+    /// True if this constant/function needs overflow checks.
+    check_overflow: bool
 }
 
-impl<'a,'tcx> Cx<'a,'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Cx<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+               src: MirSource)
+               -> Cx<'a, 'gcx, 'tcx> {
+        let constness = match src {
+            MirSource::Const(_) |
+            MirSource::Static(..) => hir::Constness::Const,
+            MirSource::Fn(id) => {
+                let fn_like = FnLikeNode::from_node(infcx.tcx.map.get(id));
+                match fn_like.map(|f| f.kind()) {
+                    Some(FnKind::ItemFn(_, _, _, c, _, _, _)) => c,
+                    Some(FnKind::Method(_, m, _, _)) => m.constness,
+                    _ => hir::Constness::NotConst
+                }
+            }
+            MirSource::Promoted(..) => bug!()
+        };
+
+        let attrs = infcx.tcx.map.attrs(src.item_id());
+
+        // Some functions always have overflow checks enabled,
+        // however, they may not get codegen'd, depending on
+        // the settings for the crate they are translated in.
+        let mut check_overflow = attrs.iter().any(|item| {
+            item.check_name("rustc_inherit_overflow_checks")
+        });
+
+        // Respect -Z force-overflow-checks=on and -C debug-assertions.
+        check_overflow |= infcx.tcx.sess.opts.debugging_opts.force_overflow_checks
+               .unwrap_or(infcx.tcx.sess.opts.debug_assertions);
+
+        // Constants and const fn's always need overflow checks.
+        check_overflow |= constness == hir::Constness::Const;
+
         Cx {
             tcx: infcx.tcx,
             infcx: infcx,
+            constness: constness,
+            check_overflow: check_overflow
         }
     }
 }
 
-impl<'a,'tcx:'a> Cx<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     /// Normalizes `ast` into the appropriate `mirror` type.
     pub fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
         ast.make_mirror(self)
@@ -56,7 +99,7 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
     pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
         match ConstUsize::new(value, self.tcx.sess.target.uint_type) {
             Ok(val) => Literal::Value { value: ConstVal::Integral(ConstInt::Usize(val))},
-            Err(_) => panic!("usize literal out of range for target"),
+            Err(_) => bug!("usize literal out of range for target"),
         }
     }
 
@@ -81,21 +124,9 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
     }
 
     pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
-        Literal::Value { value: const_eval::eval_const_expr(self.tcx, e) }
-    }
-
-    pub fn try_const_eval_literal(&mut self, e: &hir::Expr) -> Option<Literal<'tcx>> {
-        let hint = const_eval::EvalHint::ExprTypeChecked;
-        const_eval::eval_const_expr_partial(self.tcx, e, hint, None).ok().and_then(|v| {
-            match v {
-                // All of these contain local IDs, unsuitable for storing in MIR.
-                ConstVal::Struct(_) | ConstVal::Tuple(_) |
-                ConstVal::Array(..) | ConstVal::Repeat(..) |
-                ConstVal::Function(_) => None,
-
-                _ => Some(Literal::Value { value: v })
-            }
-        })
+        Literal::Value {
+            value: const_eval::eval_const_expr(self.tcx.global_tcx(), e)
+        }
     }
 
     pub fn trait_method(&mut self,
@@ -123,29 +154,33 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
             }
         }
 
-        self.tcx.sess.bug(&format!("found no method `{}` in `{:?}`", method_name, trait_def_id));
+        bug!("found no method `{}` in `{:?}`", method_name, trait_def_id);
     }
 
-    pub fn num_variants(&mut self, adt_def: ty::AdtDef<'tcx>) -> usize {
+    pub fn num_variants(&mut self, adt_def: ty::AdtDef) -> usize {
         adt_def.variants.len()
     }
 
-    pub fn all_fields(&mut self, adt_def: ty::AdtDef<'tcx>, variant_index: usize) -> Vec<Field> {
+    pub fn all_fields(&mut self, adt_def: ty::AdtDef, variant_index: usize) -> Vec<Field> {
         (0..adt_def.variants[variant_index].fields.len())
             .map(Field::new)
             .collect()
     }
 
     pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
+        let ty = self.tcx.lift_to_global(&ty).unwrap_or_else(|| {
+            bug!("MIR: Cx::needs_drop({}) got \
+                  type with inference types/regions", ty);
+        });
         self.tcx.type_needs_drop_given_env(ty, &self.infcx.parameter_environment)
     }
 
-    pub fn span_bug(&mut self, span: Span, message: &str) -> ! {
-        self.tcx.sess.span_bug(span, message)
+    pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
+        self.tcx
     }
 
-    pub fn tcx(&self) -> &'a TyCtxt<'tcx> {
-        self.tcx
+    pub fn check_overflow(&self) -> bool {
+        self.check_overflow
     }
 }
 

@@ -18,10 +18,10 @@ struct Foo<T:Trait> {
 
 fn main() {
     let foo = Foo {
-    //~^ ERROR not implemented
+    //~^ ERROR E0277
         x: 3
     };
 
     let baz: Foo<usize> = loop { };
-    //~^ ERROR not implemented
+    //~^ ERROR E0277
 }

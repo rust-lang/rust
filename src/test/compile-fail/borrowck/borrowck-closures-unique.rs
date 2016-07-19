@@ -39,7 +39,7 @@ fn c(x: &mut isize) {
 
 fn d(x: &mut isize) {
     let c1 = || set(x);
-    let c2 = || set(x); //~ ERROR closure requires unique access to `x`
+    let c2 = || set(x); //~ ERROR two closures require unique access to `x` at the same time
 }
 
 fn e(x: &mut isize) {

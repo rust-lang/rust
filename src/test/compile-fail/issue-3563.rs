@@ -13,10 +13,6 @@ trait A {
         || self.b()
         //~^ ERROR no method named `b` found for type `&Self` in the current scope
         //~| ERROR mismatched types
-        //~| expected `()`
-        //~| found closure
-        //~| expected ()
-        //~| found closure
     }
 }
 fn main() {}

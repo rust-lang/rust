@@ -12,11 +12,11 @@ use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast::{MetaItem, Expr, self};
-use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
+use syntax_pos::Span;
 
 pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                            span: Span,
@@ -42,6 +42,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                 ret_ty: Literal(path_std!(cx, core::cmp::Ordering)),
                 attributes: attrs,
                 is_unsafe: false,
+                unify_fieldless_variants: true,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     cs_cmp(a, b, c)
                 })),

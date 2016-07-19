@@ -11,18 +11,15 @@
 fn parse_type(iter: Box<Iterator<Item=&str>+'static>) -> &str { iter.next() }
 //~^ ERROR missing lifetime specifier [E0106]
 //~^^ HELP 2 elided lifetimes
-//~^^^ HELP run `rustc --explain E0106` to see a detailed explanation
 
 fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
 //~^ ERROR missing lifetime specifier [E0106]
 //~^^ HELP lifetime cannot be derived
-//~^^^ HELP run `rustc --explain E0106` to see a detailed explanation
-//~^^^^ HELP consider giving it an explicit bounded or 'static lifetime
+//~^^^ HELP consider giving it an explicit bounded or 'static lifetime
 
 fn parse_type_3() -> &str { unimplemented!() }
 //~^ ERROR missing lifetime specifier [E0106]
 //~^^ HELP no value for it to be borrowed from
-//~^^^ HELP run `rustc --explain E0106` to see a detailed explanation
-//~^^^^ HELP consider giving it a 'static lifetime
+//~^^^ HELP consider giving it a 'static lifetime
 
 fn main() {}

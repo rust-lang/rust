@@ -10,7 +10,7 @@
 
 #![allow(unreachable_code)]
 
-//error-pattern:One
+// error-pattern:One
 fn main() {
     panic!("One");
     panic!("Two");

@@ -8,22 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cell::Cell;
 use error::{Error};
 use fmt;
 use marker::Reflect;
+use sync::atomic::{AtomicBool, Ordering};
 use thread;
 
-pub struct Flag { failed: Cell<bool> }
+pub struct Flag { failed: AtomicBool }
 
-// This flag is only ever accessed with a lock previously held. Note that this
-// a totally private structure.
-unsafe impl Send for Flag {}
-unsafe impl Sync for Flag {}
+// Note that the Ordering uses to access the `failed` field of `Flag` below is
+// always `Relaxed`, and that's because this isn't actually protecting any data,
+// it's just a flag whether we've panicked or not.
+//
+// The actual location that this matters is when a mutex is **locked** which is
+// where we have external synchronization ensuring that we see memory
+// reads/writes to this flag.
+//
+// As a result, if it matters, we should see the correct value for `failed` in
+// all cases.
 
 impl Flag {
     pub const fn new() -> Flag {
-        Flag { failed: Cell::new(false) }
+        Flag { failed: AtomicBool::new(false) }
     }
 
     #[inline]
@@ -39,13 +45,13 @@ impl Flag {
     #[inline]
     pub fn done(&self, guard: &Guard) {
         if !guard.panicking && thread::panicking() {
-            self.failed.set(true);
+            self.failed.store(true, Ordering::Relaxed);
         }
     }
 
     #[inline]
     pub fn get(&self) -> bool {
-        self.failed.get()
+        self.failed.load(Ordering::Relaxed)
     }
 }
 

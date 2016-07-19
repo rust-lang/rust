@@ -23,9 +23,6 @@ fn main() {
     format!("{foo}", 1, foo=2);        //~ ERROR: argument never used
     format!("", foo=2);                //~ ERROR: named argument never used
 
-    format!("{0:x} {0:X}", 1);         //~ ERROR: redeclared with type `X`
-    format!("{foo:x} {foo:X}", foo=1); //~ ERROR: redeclared with type `X`
-
     format!("{foo}", foo=1, foo=2);    //~ ERROR: duplicate argument
     format!("", foo=1, 2);             //~ ERROR: positional arguments cannot follow
 
@@ -50,8 +47,4 @@ fn main() {
 
     format!("foo } bar"); //~ ERROR: unmatched `}` found
     format!("foo }"); //~ ERROR: unmatched `}` found
-
-    format!();          //~ ERROR: requires at least a format string argument
-    format!("" 1);      //~ ERROR: expected token: `,`
-    format!("", 1 1);   //~ ERROR: expected token: `,`
 }

@@ -18,15 +18,13 @@ struct Bar { x: isize }
 
 static bar: Bar = Bar { x: 5 };
 static foo: Foo = Foo { a: 2, ..bar }; //~  ERROR mismatched types
-                                       //~| expected `Foo`
-                                       //~| found `Bar`
-                                       //~| expected struct `Foo`
-                                       //~| found struct `Bar`
+                                       //~| expected type `Foo`
+                                       //~| found type `Bar`
+                                       //~| expected struct `Foo`, found struct `Bar`
 static foo_i: Foo = Foo { a: 2, ..4 }; //~  ERROR mismatched types
-                                       //~| expected `Foo`
-                                       //~| found `_`
-                                       //~| expected struct `Foo`
-                                       //~| found integral variable
+                                       //~| expected type `Foo`
+                                       //~| found type `_`
+                                       //~| expected struct `Foo`, found integral variable
 
 fn main() {
     let b = Bar { x: 5 };
