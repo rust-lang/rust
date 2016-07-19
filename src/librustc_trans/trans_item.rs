@@ -29,6 +29,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst;
 use rustc::dep_graph::DepNode;
+use rustc_const_eval::fatal_const_eval_err;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{self, NodeId};
 use syntax::{attr,errors};
@@ -81,7 +82,11 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 if let hir::ItemStatic(_, m, ref expr) = item.node {
                     match consts::trans_static(&ccx, m, expr, item.id, &item.attrs) {
                         Ok(_) => { /* Cool, everything's alright. */ },
-                        Err(err) => ccx.tcx().sess.span_fatal(expr.span, &err.description()),
+                        Err(err) => {
+                            // FIXME: shouldn't this be a `span_err`?
+                            fatal_const_eval_err(
+                                ccx.tcx(), &err, expr.span, "static");
+                        }
                     };
                 } else {
                     span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")

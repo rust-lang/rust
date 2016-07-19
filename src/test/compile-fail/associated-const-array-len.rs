@@ -14,7 +14,7 @@ trait Foo {
     const ID: usize;
 }
 
-const X: [i32; <i32 as Foo>::ID] = [0, 1, 2]; //~ ERROR E0250
+const X: [i32; <i32 as Foo>::ID] = [0, 1, 2]; //~ ERROR E0080
 
 fn main() {
     assert_eq!(1, X);

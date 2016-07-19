@@ -126,7 +126,7 @@ use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
 use rustc_back::slice;
-use rustc_const_eval::eval_repeat_count;
+use rustc_const_eval::eval_length;
 
 mod assoc;
 mod autoderef;
@@ -3539,7 +3539,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           }
           hir::ExprRepeat(ref element, ref count_expr) => {
             self.check_expr_has_type(&count_expr, tcx.types.usize);
-            let count = eval_repeat_count(self.tcx.global_tcx(), &count_expr);
+            let count = eval_length(self.tcx.global_tcx(), &count_expr, "repeat count")
+                  .unwrap_or(0);
 
             let uty = match expected {
                 ExpectHasType(uty) => {

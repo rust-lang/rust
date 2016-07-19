@@ -17,10 +17,11 @@ const fn f(x: usize) -> usize {
     for i in 0..x {
         sum += i;
     }
-    sum //~ ERROR: E0250
+    sum //~ ERROR E0080
+        //~| non-constant path in constant
 }
 
 #[allow(unused_variables)]
 fn main() {
-    let a : [i32; f(X)];
+    let a : [i32; f(X)]; //~ NOTE for array length here
 }
