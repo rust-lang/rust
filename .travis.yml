@@ -26,6 +26,7 @@ script:
  - cd clippy_lints && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ..
 
 after_success:
+- ./.github/deploy.sh
 # trigger rebuild of the clippy-service, to keep it up to date with clippy itself
 - |
     #!/bin/bash
@@ -45,12 +46,4 @@ after_success:
 
     else
       echo "Ignored"
-    fi
-- |
-    if  [ "$TRAVIS_PULL_REQUEST" == "false" ] &&
-        [ "$TRAVIS_REPO_SLUG" == "Manishearth/rust-clippy" ] &&
-        [ "$TRAVIS_BRANCH" == "master" ] ; then
-    
-        python util/export.py
-    
     fi
