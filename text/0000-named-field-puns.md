@@ -45,10 +45,10 @@ a pattern match can use `SomeStruct { field1, field2 } => ...` to match
 `field1` and `field2` into values with the same names. This RFC introduces
 symmetric syntax for initializers.
 
-A family of related structures will often use the same name for the same type
-of value. Combining this new syntax with the existing pattern-matching syntax
-allows simple movement of data between fields with a pattern match: `Struct1 {
-field1, .. } => Struct2 { field1 }`.
+A family of related structures will often use the same field name for a
+semantically-shared value. Combining this new syntax with the existing
+pattern-matching syntax allows simple movement of data between fields with a
+pattern match: `Struct1 { field1, .. } => Struct2 { field1 }`.
 
 The proposed syntax also improves structure initializers in closures, such as
 might appear in a chain of iterator adapters: `|field1, field2| SomeStruct {
