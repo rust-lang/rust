@@ -11,8 +11,8 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr, BinOpKind};
-use syntax::ext::base::{ExtCtxt, Annotatable};
+use syntax::ast::{BinOpKind, Expr, MetaItem};
+use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
@@ -22,43 +22,44 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                                   span: Span,
                                   mitem: &MetaItem,
                                   item: &Annotatable,
-                                  push: &mut FnMut(Annotatable))
-{
+                                  push: &mut FnMut(Annotatable)) {
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
     fn cs_eq(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
-        cs_fold(
-            true,  // use foldl
-            |cx, span, subexpr, self_f, other_fs| {
-                let other_f = match (other_fs.len(), other_fs.get(0)) {
-                    (1, Some(o_f)) => o_f,
-                    _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`")
-                };
+        cs_fold(true, // use foldl
+                |cx, span, subexpr, self_f, other_fs| {
+            let other_f = match (other_fs.len(), other_fs.get(0)) {
+                (1, Some(o_f)) => o_f,
+                _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`"),
+            };
 
-                let eq = cx.expr_binary(span, BinOpKind::Eq, self_f, other_f.clone());
+            let eq = cx.expr_binary(span, BinOpKind::Eq, self_f, other_f.clone());
 
-                cx.expr_binary(span, BinOpKind::And, subexpr, eq)
-            },
-            cx.expr_bool(span, true),
-            Box::new(|cx, span, _, _| cx.expr_bool(span, false)),
-            cx, span, substr)
+            cx.expr_binary(span, BinOpKind::And, subexpr, eq)
+        },
+                cx.expr_bool(span, true),
+                Box::new(|cx, span, _, _| cx.expr_bool(span, false)),
+                cx,
+                span,
+                substr)
     }
     fn cs_ne(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
-        cs_fold(
-            true,  // use foldl
-            |cx, span, subexpr, self_f, other_fs| {
-                let other_f = match (other_fs.len(), other_fs.get(0)) {
-                    (1, Some(o_f)) => o_f,
-                    _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`")
-                };
+        cs_fold(true, // use foldl
+                |cx, span, subexpr, self_f, other_fs| {
+            let other_f = match (other_fs.len(), other_fs.get(0)) {
+                (1, Some(o_f)) => o_f,
+                _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`"),
+            };
 
-                let eq = cx.expr_binary(span, BinOpKind::Ne, self_f, other_f.clone());
+            let eq = cx.expr_binary(span, BinOpKind::Ne, self_f, other_f.clone());
 
-                cx.expr_binary(span, BinOpKind::Or, subexpr, eq)
-            },
-            cx.expr_bool(span, false),
-            Box::new(|cx, span, _, _| cx.expr_bool(span, true)),
-            cx, span, substr)
+            cx.expr_binary(span, BinOpKind::Or, subexpr, eq)
+        },
+                cx.expr_bool(span, false),
+                Box::new(|cx, span, _, _| cx.expr_bool(span, true)),
+                cx,
+                span,
+                substr)
     }
 
     macro_rules! md {

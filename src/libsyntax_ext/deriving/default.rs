@@ -11,8 +11,8 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr};
-use syntax::ext::base::{ExtCtxt, Annotatable};
+use syntax::ast::{Expr, MetaItem};
+use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
@@ -22,10 +22,9 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
                                span: Span,
                                mitem: &MetaItem,
                                item: &Annotatable,
-                               push: &mut FnMut(Annotatable))
-{
+                               push: &mut FnMut(Annotatable)) {
     let inline = cx.meta_word(span, InternedString::new("inline"));
-    let attrs = vec!(cx.attribute(span, inline));
+    let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -33,21 +32,19 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
-        methods: vec!(
-            MethodDef {
-                name: "default",
-                generics: LifetimeBounds::empty(),
-                explicit_self: None,
-                args: Vec::new(),
-                ret_ty: Self_,
-                attributes: attrs,
-                is_unsafe: false,
-                unify_fieldless_variants: false,
-                combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                    default_substructure(a, b, c)
-                }))
-            }
-        ),
+        methods: vec![MethodDef {
+                          name: "default",
+                          generics: LifetimeBounds::empty(),
+                          explicit_self: None,
+                          args: Vec::new(),
+                          ret_ty: Self_,
+                          attributes: attrs,
+                          is_unsafe: false,
+                          unify_fieldless_variants: false,
+                          combine_substructure: combine_substructure(Box::new(|a, b, c| {
+                              default_substructure(a, b, c)
+                          })),
+                      }],
         associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
@@ -69,18 +66,19 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructur
                     }
                 }
                 Named(ref fields) => {
-                    let default_fields = fields.iter().map(|&(ident, span)| {
-                        cx.field_imm(span, ident, default_call(span))
-                    }).collect();
+                    let default_fields = fields.iter()
+                        .map(|&(ident, span)| cx.field_imm(span, ident, default_call(span)))
+                        .collect();
                     cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
                 }
             }
         }
         StaticEnum(..) => {
-            cx.span_err(trait_span, "`Default` cannot be derived for enums, only structs");
+            cx.span_err(trait_span,
+                        "`Default` cannot be derived for enums, only structs");
             // let compilation continue
             cx.expr_usize(trait_span, 0)
         }
-        _ => cx.span_bug(trait_span, "Non-static method in `derive(Default)`")
+        _ => cx.span_bug(trait_span, "Non-static method in `derive(Default)`"),
     };
 }
