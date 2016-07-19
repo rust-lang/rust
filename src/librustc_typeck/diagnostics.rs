@@ -1079,25 +1079,6 @@ impl Foo {
 ```
 "##,
 
-E0080: r##"
-This error indicates that the compiler was unable to sensibly evaluate an
-integer expression provided as an enum discriminant. Attempting to divide by 0
-or causing integer overflow are two ways to induce this error. For example:
-
-```compile_fail
-enum Enum {
-    X = (1 << 500),
-    Y = (1 / 0)
-}
-```
-
-Ensure that the expressions given can be evaluated as the desired integer type.
-See the FFI section of the Reference for more information about using a custom
-integer type:
-
-https://doc.rust-lang.org/reference.html#ffi-attributes
-"##,
-
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -2970,38 +2951,6 @@ not a distinct static type. Likewise, it's not legal to attempt to
 behavior for specific enum variants.
 "##,
 
-E0249: r##"
-This error indicates a constant expression for the array length was found, but
-it was not an integer (signed or unsigned) expression.
-
-Some examples of code that produces this error are:
-
-```compile_fail
-const A: [u32; "hello"] = []; // error
-const B: [u32; true] = []; // error
-const C: [u32; 0.0] = []; // error
-"##,
-
-E0250: r##"
-There was an error while evaluating the expression for the length of a fixed-
-size array type.
-
-Some examples of this error are:
-
-```compile_fail
-// divide by zero in the length expression
-const A: [u32; 1/0] = [];
-
-// Rust currently will not evaluate the function `foo` at compile time
-fn foo() -> usize { 12 }
-const B: [u32; foo()] = [];
-
-// it is an error to try to add `u8` and `f64`
-use std::{f64, u8};
-const C: [u32; u8::MAX + f64::EPSILON] = [];
-```
-"##,
-
 E0318: r##"
 Default impls for a trait must be located in the same crate where the trait was
 defined. For more information see the [opt-in builtin traits RFC](https://github
@@ -4088,6 +4037,7 @@ register_diagnostics! {
     E0245, // not a trait
 //  E0246, // invalid recursive type
 //  E0247,
+//  E0249,
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0328, // cannot implement Unsize explicitly

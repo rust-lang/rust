@@ -12,6 +12,7 @@ fn main() {
     let x = 0;
     match 1 {
         0 ... x => {}
-        //~^ ERROR non-constant path in constant expression
+        //~^ ERROR constant evaluation error
+        //~| non-constant path in constant expression
     };
 }

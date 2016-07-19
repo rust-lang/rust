@@ -10,7 +10,8 @@
 
 const A: &'static [i32] = &[];
 const B: i32 = (&A)[1];
-//~^ ERROR index out of bounds: the len is 0 but the index is 1
+//~^ ERROR constant evaluation error
+//~| index out of bounds: the len is 0 but the index is 1
 
 fn main() {
     let _ = B;

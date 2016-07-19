@@ -11,6 +11,6 @@
 // Regression test for issue #28586
 
 pub trait Foo {}
-impl Foo for [u8; usize::BYTES] {} //~ ERROR E0250
+impl Foo for [u8; usize::BYTES] {} //~ ERROR E0080
 
 fn main() { }
