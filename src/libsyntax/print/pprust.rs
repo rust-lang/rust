@@ -242,6 +242,8 @@ pub fn token_to_string(tok: &Token) -> String {
         token::CloseDelim(token::Bracket) => "]".to_string(),
         token::OpenDelim(token::Brace) => "{".to_string(),
         token::CloseDelim(token::Brace) => "}".to_string(),
+        token::OpenDelim(token::NoDelim) => " ".to_string(),
+        token::CloseDelim(token::NoDelim) => " ".to_string(),
         token::Pound                => "#".to_string(),
         token::Dollar               => "$".to_string(),
         token::Question             => "?".to_string(),
@@ -1777,12 +1779,14 @@ impl<'a> State<'a> {
                 try!(self.head(""));
                 try!(self.bopen());
             }
+            token::NoDelim => {}
         }
         try!(self.print_tts(&m.node.tts));
         match delim {
             token::Paren => self.pclose(),
             token::Bracket => word(&mut self.s, "]"),
             token::Brace => self.bclose(m.span),
+            token::NoDelim => Ok(()),
         }
     }
 
