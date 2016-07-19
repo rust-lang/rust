@@ -326,6 +326,20 @@ pub enum Entry<'a, K: 'a, V: 'a> {
              OccupiedEntry<'a, K, V>),
 }
 
+#[stable(feature= "debug_btree_map", since = "1.12.0")]
+impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for Entry<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Vacant(ref v) => f.debug_tuple("Entry")
+                              .field(v)
+                              .finish(),
+            Occupied(ref o) => f.debug_tuple("Entry")
+                                .field(o)
+                                .finish(),
+        }
+    }
+}
+
 /// A vacant Entry.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
@@ -337,6 +351,15 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
     _marker: PhantomData<&'a mut (K, V)>,
 }
 
+#[stable(feature= "debug_btree_map", since = "1.12.0")]
+impl<'a, K: 'a + Debug + Ord, V: 'a> Debug for VacantEntry<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("VacantEntry")
+         .field(self.key())
+         .finish()
+    }
+}
+
 /// An occupied Entry.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
@@ -346,6 +369,16 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 
     // Be invariant in `K` and `V`
     _marker: PhantomData<&'a mut (K, V)>,
+}
+
+#[stable(feature= "debug_btree_map", since = "1.12.0")]
+impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("OccupiedEntry")
+         .field("key", self.key())
+         .field("value", self.get())
+         .finish()
+    }
 }
 
 // An iterator for merging two sorted sequences into one
