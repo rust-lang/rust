@@ -790,6 +790,8 @@ impl<A> DoubleEndedIterator for Item<A> {
 impl<A> ExactSizeIterator for Item<A> {}
 
 /// An iterator over a reference of the contained item in an Option.
+///
+/// This iterator is fused.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Iter<'a, A: 'a> { inner: Item<&'a A> }
@@ -821,6 +823,8 @@ impl<'a, A> Clone for Iter<'a, A> {
 }
 
 /// An iterator over a mutable reference of the contained item in an Option.
+///
+/// This iterator is fused.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IterMut<'a, A: 'a> { inner: Item<&'a mut A> }
@@ -845,6 +849,8 @@ impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
 impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
 
 /// An iterator over the item contained inside an Option.
+///
+/// This iterator is fused.
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<A> { inner: Item<A> }

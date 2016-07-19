@@ -21,6 +21,8 @@ use super::{DoubleEndedIterator, IntoIterator, Iterator, ExactSizeIterator};
 ///
 /// This `struct` is created by the [`repeat()`] function. See its documentation for more.
 ///
+/// This iterator is fused because it never returns `None`.
+///
 /// [`repeat()`]: fn.repeat.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -100,6 +102,8 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 ///
 /// This `struct` is created by the [`empty()`] function. See its documentation for more.
 ///
+/// This iterator is fused.
+///
 /// [`empty()`]: fn.empty.html
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub struct Empty<T>(marker::PhantomData<T>);
@@ -178,6 +182,8 @@ pub fn empty<T>() -> Empty<T> {
 /// An iterator that yields an element exactly once.
 ///
 /// This `struct` is created by the [`once()`] function. See its documentation for more.
+///
+/// This iterator is fused.
 ///
 /// [`once()`]: fn.once.html
 #[derive(Clone, Debug)]

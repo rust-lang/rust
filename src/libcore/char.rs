@@ -397,6 +397,8 @@ impl CharExt for char {
 /// This `struct` is created by the [`escape_unicode()`] method on [`char`]. See
 /// its documentation for more.
 ///
+/// This iterator is fused.
+///
 /// [`escape_unicode()`]: ../../std/primitive.char.html#method.escape_unicode
 /// [`char`]: ../../std/primitive.char.html
 #[derive(Clone, Debug)]
@@ -505,6 +507,8 @@ impl ExactSizeIterator for EscapeUnicode {
 /// This `struct` is created by the [`escape_default()`] method on [`char`]. See
 /// its documentation for more.
 ///
+/// This iterator is fused.
+///
 /// [`escape_default()`]: ../../std/primitive.char.html#method.escape_default
 /// [`char`]: ../../std/primitive.char.html
 #[derive(Clone, Debug)]
@@ -604,6 +608,8 @@ impl ExactSizeIterator for EscapeDefault {
 /// value.
 ///
 /// Constructed via the `.encode_utf8()` method on `char`.
+///
+/// This iterator is fused.
 #[unstable(feature = "unicode", issue = "27784")]
 #[derive(Debug)]
 pub struct EncodeUtf8 {
@@ -642,6 +648,8 @@ impl Iterator for EncodeUtf8 {
 /// value.
 ///
 /// Constructed via the `.encode_utf16()` method on `char`.
+///
+/// This iterator is fused.
 #[unstable(feature = "unicode", issue = "27784")]
 #[derive(Debug)]
 pub struct EncodeUtf16 {
