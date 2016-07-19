@@ -46,3 +46,11 @@ after_success:
     else
       echo "Ignored"
     fi
+- |
+    if  [ "$TRAVIS_PULL_REQUEST" == "false" ] &&
+        [ "$TRAVIS_REPO_SLUG" == "Manishearth/rust-clippy" ] &&
+        [ "$TRAVIS_BRANCH" == "master" ] ; then
+    
+        python util/export.py
+    
+    fi
