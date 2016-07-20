@@ -1,6 +1,6 @@
 use rustc::hir;
 use rustc::lint::*;
-use utils::{span_lint_and_then, span_lint, snippet_opt, SpanlessEq, get_trait_def_id, implements_trait};
+use utils::{span_lint_and_then, snippet_opt, SpanlessEq, get_trait_def_id, implements_trait};
 use utils::{higher, sugg};
 
 /// **What it does:** This lint checks for `+=` operations and similar.
@@ -104,23 +104,18 @@ impl LateLintPass for AssignOps {
                                 BitXor: BiBitXor,
                                 Shr: BiShr,
                                 Shl: BiShl) {
-                            if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span),
-                                                                   snippet_opt(cx, rhs.span)) {
-                                span_lint_and_then(cx,
-                                                   ASSIGN_OP_PATTERN,
-                                                   expr.span,
-                                                   "manual implementation of an assign operation",
-                                                   |db| {
+                            span_lint_and_then(cx,
+                                               ASSIGN_OP_PATTERN,
+                                               expr.span,
+                                               "manual implementation of an assign operation",
+                                               |db| {
+                                                   if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span),
+                                                                                          snippet_opt(cx, rhs.span)) {
                                                        db.span_suggestion(expr.span,
                                                                           "replace it with",
                                                                           format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
-                                                   });
-                            } else {
-                                span_lint(cx,
-                                          ASSIGN_OP_PATTERN,
-                                          expr.span,
-                                          "manual implementation of an assign operation");
-                            }
+                                                   }
+                                               });
                         }
                     };
                     // a = a op b
