@@ -10,9 +10,9 @@
 
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
-use syntax::ast::{MetaItem, MetaItemKind, self};
+use syntax::ast::{self, MetaItem, MetaItemKind};
 use syntax::attr::AttrMetaMethods;
-use syntax::ext::base::{ExtCtxt, SyntaxEnv, Annotatable};
+use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxEnv};
 use syntax::ext::base::{MultiDecorator, MultiItemDecorator, MultiModifier};
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
@@ -123,7 +123,8 @@ fn expand_derive(cx: &mut ExtCtxt,
                             span: Some(titem.span),
                             allow_internal_unstable: true,
                         },
-                    }), ..titem.span
+                    }),
+                    ..titem.span
                 };
 
                 if &tname[..] == "Eq" {
@@ -133,8 +134,9 @@ fn expand_derive(cx: &mut ExtCtxt,
                 }
 
                 // #[derive(Foo, Bar)] expands to #[derive_Foo] #[derive_Bar]
-                item.attrs.push(cx.attribute(span, cx.meta_word(titem.span,
-                    intern_and_get_ident(&format!("derive_{}", tname)))));
+                item.attrs.push(cx.attribute(span,
+                               cx.meta_word(titem.span,
+                                            intern_and_get_ident(&format!("derive_{}", tname)))));
             }
 
             // RFC #1445. `#[derive(PartialEq, Eq)]` adds a (trusted)
@@ -142,18 +144,18 @@ fn expand_derive(cx: &mut ExtCtxt,
             if let Some(eq_span) = eq_span {
                 if found_partial_eq {
                     let structural_match = intern_and_get_ident("structural_match");
-                    item.attrs.push(cx.attribute(eq_span,
-                                                 cx.meta_word(eq_span,
-                                                              structural_match)));
+                    item.attrs.push(cx.attribute(eq_span, cx.meta_word(eq_span, structural_match)));
                 }
             }
 
             item
         })
-    }, |a| {
-        cx.span_err(span, "`derive` can only be applied to items");
-        a
-    });
+    },
+                                        |a| {
+                                            cx.span_err(span,
+                                                        "`derive` can only be applied to items");
+                                            a
+                                        });
     debug!("expand_derive: annotatable output = {:?}", annot);
     annot
 }
@@ -261,8 +263,10 @@ fn warn_if_deprecated(ecx: &mut ExtCtxt, sp: Span, name: &str) {
         "Decodable" => Some("RustcDecodable"),
         _ => None,
     } {
-        ecx.span_warn(sp, &format!("derive({}) is deprecated in favor of derive({})",
-                                   name, replacement));
+        ecx.span_warn(sp,
+                      &format!("derive({}) is deprecated in favor of derive({})",
+                               name,
+                               replacement));
     }
 }
 
@@ -275,8 +279,7 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
     if let Annotatable::Item(ref item) = *item {
         match item.node {
             ast::ItemKind::Struct(_, ast::Generics { ref ty_params, .. }) |
-                ast::ItemKind::Enum(_, ast::Generics { ref ty_params, .. }) => {
-
+            ast::ItemKind::Enum(_, ast::Generics { ref ty_params, .. }) => {
                 for ty in ty_params.iter() {
                     typaram.push_str(&ty.ident.name.as_str());
                 }
@@ -293,7 +296,8 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
 fn call_intrinsic(cx: &ExtCtxt,
                   span: Span,
                   intrinsic: &str,
-                  args: Vec<P<ast::Expr>>) -> P<ast::Expr> {
+                  args: Vec<P<ast::Expr>>)
+                  -> P<ast::Expr> {
     let path = cx.std_path(&["intrinsics", intrinsic]);
     let call = cx.expr_call_global(span, path, args);
 
@@ -301,6 +305,6 @@ fn call_intrinsic(cx: &ExtCtxt,
         stmts: vec![cx.stmt_expr(call)],
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
-        span: span }))
+        span: span,
+    }))
 }
-
