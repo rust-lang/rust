@@ -157,3 +157,26 @@ in the middle of a larger expression. There is also precedent for
 language-level support. Pattern matching already allows using field names as
 the _destination_ for the field values via destructuring. This change adds a
 symmetrical mechanism for construction which uses existing names as _sources_.
+
+
+## Sigils
+
+To minimize confusing shorthand expressions with the construction of
+tuple-like structs, we might elect to prefix expanded field names with
+sigils.
+
+For example, if the sigil were `:`, the existing syntax `S { x: x }`
+would be expressed as `S { :x }`. This is used in
+[MoonScript](http://moonscript.org/reference/#the-language/table-literals).
+
+This particular choice of sigil may be confusing, due to the
+already-overloaded use of `:` for fields and type ascription. Additionally,
+in languages such as Ruby and Elixir, `:x` denotes a symbol or atom, which
+may be confusing for newcomers.
+
+Other sigils could be used instead, but even then we are then increasing
+the amount of new syntax being introduced. This both increases language
+complexity and reduces the gained compactness, worsening the
+cost/benefit ratio of adding a shorthand. Any use of a sigil also breaks
+the symmetry between binding pattern matching and the proposed
+shorthand.
