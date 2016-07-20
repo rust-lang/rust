@@ -398,6 +398,16 @@ fn rust_panic_with_hook(msg: Box<Any + Send>,
     rust_panic(msg)
 }
 
+/// Shim around rust_panic. Called by resume_unwind.
+pub fn update_count_then_panic(msg: Box<Any + Send>) -> ! {
+    PANIC_COUNT.with(|c| {
+        let prev = c.get();
+        c.set(prev + 1);
+    });
+
+    rust_panic(msg)
+}
+
 /// A private no-mangle function on which to slap yer breakpoints.
 #[no_mangle]
 #[allow(private_no_mangle_fns)] // yes we get it, but we like breakpoints
