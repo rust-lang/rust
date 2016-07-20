@@ -158,7 +158,6 @@ language-level support. Pattern matching already allows using field names as
 the _destination_ for the field values via destructuring. This change adds a
 symmetrical mechanism for construction which uses existing names as _sources_.
 
-
 ## Sigils
 
 To minimize confusing shorthand expressions with the construction of
@@ -180,3 +179,19 @@ complexity and reduces the gained compactness, worsening the
 cost/benefit ratio of adding a shorthand. Any use of a sigil also breaks
 the symmetry between binding pattern matching and the proposed
 shorthand.
+
+## Keyword-prefixed
+
+Similarly to sigils, we could use a keyword like Nix uses
+[inherit](http://nixos.org/nix/manual/#idm46912467627696). Some forms we could
+decide upon (using `use` as the keyword of choice here, but it could be
+something else), it could look like the following.
+
+* `S { use x, y, z: 10}`
+* `S { use (x, y), z: 10 }`
+* `S { use {x, y}, z: 10 }`
+* `S { use x, use y, z: 10}`
+
+This has the same drawbacks as sigils except that it won't be confused for
+symbols in other languages or adding more sigils. It also has the benefit
+of being something that can be searched for in documentation.
