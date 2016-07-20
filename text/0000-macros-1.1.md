@@ -204,15 +204,15 @@ use rustc_macro::TokenStream;
 
 #[rustc_macro_derive(Double)]
 pub fn double(input: TokenStream) -> TokenStream {
-    let source = input.to_source(cx);
+    let source = input.to_string();
 
     // Parse `source` for struct/enum declaration, and then build up some new
     // source code representing representing a number of items in the
     // implementation of the `Double` trait for the struct/enum in question.
-    let source = derive_double(cx, source);
+    let source = derive_double(&source);
 
     // Parse this back to a token stream and return it
-    TokenStream::from_source(cx, &source).unwrap()
+    source.parse().unwrap()
 }
 ```
 
@@ -223,14 +223,15 @@ struct that `#[derive]` was attached to, attributes and all. The output is
 **expected to include the `struct`/`enum` itself** as well as any number of
 items to be contextually "placed next to" the initial declaration.
 
-Again, though, there is no hygiene, it's as if the source was simply
-copy/pasted. All span information for the `TokenStream` structures returned by
-`from_source` will point to the original `#[derive]` annotation. This means
-that error messages related to struct definitions will get *worse* if they have
-a custom derive attribute placed on them, because the entire struct's span will
-get folded into the `#[derive]` annotation. Eventually, though, more span
-information will be stable on the `TokenStream` type, so this is just a
-temporary limitation.
+Again, though, there is no hygiene. More specifically, the
+`TokenStream::from_str` method will use the same expansion context as the derive
+attribute itself, not the point of definition of the derive function. All span
+information for the `TokenStream` structures returned by `from_source` will
+point to the original `#[derive]` annotation. This means that error messages
+related to struct definitions will get *worse* if they have a custom derive
+attribute placed on them, because the entire struct's span will get folded into
+the `#[derive]` annotation. Eventually, though, more span information will be
+stable on the `TokenStream` type, so this is just a temporary limitation.
 
 The `rustc_macro_derive` attribute requires the signature (similar to [macros
 2.0][mac20sig]):
