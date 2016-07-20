@@ -137,11 +137,15 @@ shorthand initializer for the named fields `x` and `y`.
 # Alternatives
 [alternatives]: #alternatives
 
+## Wildcards
+
 In addition to this syntax, initializers could support omitting the field names
 entirely, with syntax like `SomeStruct { .. }`, which would implicitly
 initialize omitted fields from identically named variables. However, that would
 introduce far too much magic into initializers, and the context-dependence
 seems likely to result in less readable, less obvious code.
+
+## Macros
 
 A macro wrapped around the initializer could implement this syntax, without
 changing the language; for instance, `pun! { SomeStruct { field1, field2 } }`
