@@ -19,7 +19,8 @@ pub fn get_tok(it: &mut IntoIter<u8>) {
     })
         .cloned()
         //~^ ERROR type mismatch resolving
-        //~| expected u8, found &-ptr
+        //~| expected type `u8`
+        //~| found type `&_`
         .collect(); //~ ERROR no method named `collect`
 }
 
