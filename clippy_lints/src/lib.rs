@@ -300,6 +300,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         approx_const::APPROX_CONSTANT,
         array_indexing::OUT_OF_BOUNDS_INDEXING,
         assign_ops::ASSIGN_OP_PATTERN,
+        assign_ops::MISREFACTORED_ASSIGN_OP,
         attrs::DEPRECATED_SEMVER,
         attrs::INLINE_ALWAYS,
         bit_mask::BAD_BIT_MASK,

@@ -1,6 +1,6 @@
 use rustc::hir;
 use rustc::lint::*;
-use utils::{span_lint_and_then, span_lint, snippet_opt, SpanlessEq, get_trait_def_id, implements_trait};
+use utils::{span_lint_and_then, snippet_opt, SpanlessEq, get_trait_def_id, implements_trait};
 use utils::{higher, sugg};
 
 /// **What it does:** This lint checks for `+=` operations and similar.
@@ -38,12 +38,31 @@ declare_lint! {
     "assigning the result of an operation on a variable to that same variable"
 }
 
+/// **What it does:** Check for `a op= a op b` or `a op= b op a` patterns.
+///
+/// **Why is this bad?** Most likely these are bugs where one meant to write `a op= b`
+///
+/// **Known problems:** Someone might actually mean `a op= a op b`, but that should rather be written as `a = (2 * a) op b` where applicable.
+///
+/// **Example:**
+///
+/// ```rust
+/// let mut a = 5;
+/// ...
+/// a += a + b;
+/// ```
+declare_lint! {
+    pub MISREFACTORED_ASSIGN_OP,
+    Warn,
+    "having a variable on both sides of an assign op"
+}
+
 #[derive(Copy, Clone, Default)]
 pub struct AssignOps;
 
 impl LintPass for AssignOps {
     fn get_lints(&self) -> LintArray {
-        lint_array!(ASSIGN_OPS, ASSIGN_OP_PATTERN)
+        lint_array!(ASSIGN_OPS, ASSIGN_OP_PATTERN, MISREFACTORED_ASSIGN_OP)
     }
 }
 
@@ -59,6 +78,40 @@ impl LateLintPass for AssignOps {
                                        "replace it with",
                                        format!("{} = {}", lhs, sugg::make_binop(higher::binop(op.node), lhs, rhs)));
                 });
+                if let hir::ExprBinary(binop, ref l, ref r) = rhs.node {
+                    if op.node == binop.node {
+                        let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
+                            let ty = cx.tcx.expr_ty(assignee);
+                            if ty.walk_shallow().next().is_some() {
+                                return; // implements_trait does not work with generics
+                            }
+                            let rty = cx.tcx.expr_ty(rhs);
+                            if rty.walk_shallow().next().is_some() {
+                                return; // implements_trait does not work with generics
+                            }
+                            span_lint_and_then(cx,
+                                               MISREFACTORED_ASSIGN_OP,
+                                               expr.span,
+                                               "variable appears on both sides of an assignment operation",
+                                               |db| {
+                                                   if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span),
+                                                                                          snippet_opt(cx, rhs.span)) {
+                                                       db.span_suggestion(expr.span,
+                                                                          "replace it with",
+                                                                          format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
+                                                   }
+                                               });
+                        };
+                        // lhs op= l op r
+                        if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, l) {
+                            lint(lhs, r);
+                        }
+                        // lhs op= l commutative_op r
+                        if is_commutative(op.node) && SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, r) {
+                            lint(lhs, l);
+                        }
+                    }
+                }
             }
             hir::ExprAssign(ref assignee, ref e) => {
                 if let hir::ExprBinary(op, ref l, ref r) = e.node {
@@ -104,23 +157,18 @@ impl LateLintPass for AssignOps {
                                 BitXor: BiBitXor,
                                 Shr: BiShr,
                                 Shl: BiShl) {
-                            if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span),
-                                                                   snippet_opt(cx, rhs.span)) {
-                                span_lint_and_then(cx,
-                                                   ASSIGN_OP_PATTERN,
-                                                   expr.span,
-                                                   "manual implementation of an assign operation",
-                                                   |db| {
+                            span_lint_and_then(cx,
+                                               ASSIGN_OP_PATTERN,
+                                               expr.span,
+                                               "manual implementation of an assign operation",
+                                               |db| {
+                                                   if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span),
+                                                                                          snippet_opt(cx, rhs.span)) {
                                                        db.span_suggestion(expr.span,
                                                                           "replace it with",
                                                                           format!("{} {}= {}", snip_a, op.node.as_str(), snip_r));
-                                                   });
-                            } else {
-                                span_lint(cx,
-                                          ASSIGN_OP_PATTERN,
-                                          expr.span,
-                                          "manual implementation of an assign operation");
-                            }
+                                                   }
+                                               });
                         }
                     };
                     // a = a op b
@@ -141,5 +189,29 @@ impl LateLintPass for AssignOps {
             }
             _ => {}
         }
+    }
+}
+
+fn is_commutative(op: hir::BinOp_) -> bool {
+    use rustc::hir::BinOp_::*;
+    match op {
+        BiAdd |
+        BiMul |
+        BiAnd |
+        BiOr |
+        BiBitXor |
+        BiBitAnd |
+        BiBitOr |
+        BiEq |
+        BiNe => true,
+        BiSub |
+        BiDiv |
+        BiRem |
+        BiShl |
+        BiShr |
+        BiLt |
+        BiLe |
+        BiGe |
+        BiGt => false,
     }
 }
