@@ -409,8 +409,8 @@
 //! ## Precision
 //!
 //! For non-numeric types, this can be considered a "maximum width". If the resulting string is
-//! longer than this width, then it is truncated down to this many characters and only those are
-//! emitted.
+//! longer than this width, then it is truncated down to this many characters and that truncated
+//! value is emitted with proper `fill`, `alignment` and `width` if those parameters are set.
 //!
 //! For integral types, this is ignored.
 //!
@@ -470,6 +470,7 @@
 //! ```
 //! println!("{}, `{name:.*}` has 3 fractional digits", "Hello", 3, name=1234.56);
 //! println!("{}, `{name:.*}` has 3 characters", "Hello", 3, name="1234.56");
+//! println!("{}, `{name:>8.*}` has 3 right-aligned characters", "Hello", 3, name="1234.56");
 //! ```
 //!
 //! print two significantly different things:
@@ -477,6 +478,7 @@
 //! ```text
 //! Hello, `1234.560` has 3 fractional digits
 //! Hello, `123` has 3 characters
+//! Hello, `     123` has 3 right-aligned characters
 //! ```
 //!
 //! # Escaping

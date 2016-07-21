@@ -125,7 +125,7 @@ pub fn main() {
     t!(format!("{:<4.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
     t!(format!("{:>4.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
     t!(format!("{:^4.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
-    t!(format!("{:>10.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(format!("{:>10.4}", "aaaaaaaaaaaaaaaaaa"), "      aaaa");
     t!(format!("{:2.4}", "aaaaa"), "aaaa");
     t!(format!("{:2.4}", "aaaa"), "aaaa");
     t!(format!("{:2.4}", "aaa"), "aaa");
@@ -140,6 +140,7 @@ pub fn main() {
     t!(format!("{:a$}", "a", a=4), "a   ");
     t!(format!("{:-#}", "a"), "a");
     t!(format!("{:+#}", "a"), "a");
+    t!(format!("{:/^10.8}", "1234567890"), "/12345678/");
 
     // Some float stuff
     t!(format!("{:}", 1.0f32), "1");
