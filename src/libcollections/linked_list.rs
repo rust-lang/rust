@@ -172,6 +172,14 @@ impl<T> Default for LinkedList<T> {
 
 impl<T> LinkedList<T> {
     /// Creates an empty `LinkedList`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::LinkedList;
+    ///
+    /// let list: LinkedList<u32> = LinkedList::new();
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Self {
@@ -226,6 +234,24 @@ impl<T> LinkedList<T> {
     }
 
     /// Provides a forward iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut list: LinkedList<u32> = LinkedList::new();
+    ///
+    /// list.push_back(0);
+    /// list.push_back(1);
+    /// list.push_back(2);
+    ///
+    /// let mut iter = list.iter();
+    /// assert_eq!(iter.next(), Some(&0));
+    /// assert_eq!(iter.next(), Some(&1));
+    /// assert_eq!(iter.next(), Some(&2));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
@@ -238,6 +264,28 @@ impl<T> LinkedList<T> {
     }
 
     /// Provides a forward iterator with mutable references.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut list: LinkedList<u32> = LinkedList::new();
+    ///
+    /// list.push_back(0);
+    /// list.push_back(1);
+    /// list.push_back(2);
+    ///
+    /// for element in list.iter_mut() {
+    ///     *element += 10;
+    /// }
+    ///
+    /// let mut iter = list.iter();
+    /// assert_eq!(iter.next(), Some(&10));
+    /// assert_eq!(iter.next(), Some(&11));
+    /// assert_eq!(iter.next(), Some(&12));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<T> {
@@ -289,7 +337,6 @@ impl<T> LinkedList<T> {
     ///
     /// dl.push_back(3);
     /// assert_eq!(dl.len(), 3);
-    ///
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -316,7 +363,6 @@ impl<T> LinkedList<T> {
     /// dl.clear();
     /// assert_eq!(dl.len(), 0);
     /// assert_eq!(dl.front(), None);
-    ///
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -326,6 +372,23 @@ impl<T> LinkedList<T> {
 
     /// Returns `true` if the `LinkedList` contains an element equal to the
     /// given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(linked_list_contains)]
+    ///
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut list: LinkedList<u32> = LinkedList::new();
+    ///
+    /// list.push_back(0);
+    /// list.push_back(1);
+    /// list.push_back(2);
+    ///
+    /// assert_eq!(list.contains(&0), true);
+    /// assert_eq!(list.contains(&10), false);
+    /// ```
     #[unstable(feature = "linked_list_contains", reason = "recently added",
                issue = "32630")]
     pub fn contains(&self, x: &T) -> bool
@@ -347,7 +410,6 @@ impl<T> LinkedList<T> {
     ///
     /// dl.push_front(1);
     /// assert_eq!(dl.front(), Some(&1));
-    ///
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -374,7 +436,6 @@ impl<T> LinkedList<T> {
     ///     Some(x) => *x = 5,
     /// }
     /// assert_eq!(dl.front(), Some(&5));
-    ///
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -395,7 +456,6 @@ impl<T> LinkedList<T> {
     ///
     /// dl.push_back(1);
     /// assert_eq!(dl.back(), Some(&1));
-    ///
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -422,7 +482,6 @@ impl<T> LinkedList<T> {
     ///     Some(x) => *x = 5,
     /// }
     /// assert_eq!(dl.back(), Some(&5));
-    ///
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -446,7 +505,6 @@ impl<T> LinkedList<T> {
     ///
     /// dl.push_front(1);
     /// assert_eq!(dl.front().unwrap(), &1);
-    ///
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_front(&mut self, elt: T) {
@@ -471,9 +529,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(d.pop_front(), Some(3));
     /// assert_eq!(d.pop_front(), Some(1));
     /// assert_eq!(d.pop_front(), None);
-    ///
     /// ```
-    ///
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop_front(&mut self) -> Option<T> {
         self.pop_front_node().map(Node::into_element)
