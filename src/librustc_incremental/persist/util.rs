@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use rustc::middle::cstore::LOCAL_CRATE;
+use rustc::session::Session;
 use rustc::ty::TyCtxt;
 
 use std::fs;
@@ -17,33 +18,56 @@ use std::path::{Path, PathBuf};
 use syntax::ast;
 
 pub fn dep_graph_path(tcx: TyCtxt) -> Option<PathBuf> {
-    path(tcx, LOCAL_CRATE, "local")
+    tcx_path(tcx, LOCAL_CRATE, "local")
 }
 
 pub fn metadata_hash_path(tcx: TyCtxt, cnum: ast::CrateNum) -> Option<PathBuf> {
-    path(tcx, cnum, "metadata")
+    tcx_path(tcx, cnum, "metadata")
 }
 
-fn path(tcx: TyCtxt, cnum: ast::CrateNum, suffix: &str) -> Option<PathBuf> {
+pub fn tcx_work_products_path(tcx: TyCtxt) -> Option<PathBuf> {
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
+    sess_work_products_path(tcx.sess, &crate_name)
+}
+
+pub fn sess_work_products_path(sess: &Session,
+                               local_crate_name: &str)
+                               -> Option<PathBuf> {
+    let crate_disambiguator = sess.local_crate_disambiguator();
+    path(sess, local_crate_name, &crate_disambiguator, "work-products")
+}
+
+pub fn in_incr_comp_dir(sess: &Session, file_name: &str) -> Option<PathBuf> {
+    sess.opts.incremental.as_ref().map(|incr_dir| incr_dir.join(file_name))
+}
+
+fn tcx_path(tcx: TyCtxt,
+            cnum: ast::CrateNum,
+            middle: &str)
+            -> Option<PathBuf> {
+    path(tcx.sess, &tcx.crate_name(cnum), &tcx.crate_disambiguator(cnum), middle)
+}
+
+fn path(sess: &Session,
+        crate_name: &str,
+        crate_disambiguator: &str,
+        middle: &str)
+        -> Option<PathBuf> {
     // For now, just save/load dep-graph from
     // directory/dep_graph.rbml
-    tcx.sess.opts.incremental.as_ref().and_then(|incr_dir| {
+    sess.opts.incremental.as_ref().and_then(|incr_dir| {
         match create_dir_racy(&incr_dir) {
             Ok(()) => {}
             Err(err) => {
-                tcx.sess.err(
+                sess.err(
                     &format!("could not create the directory `{}`: {}",
                              incr_dir.display(), err));
                 return None;
             }
         }
 
-        let crate_name = tcx.crate_name(cnum);
-        let crate_disambiguator = tcx.crate_disambiguator(cnum);
-        let file_name = format!("{}-{}.{}.bin",
-                                crate_name,
-                                crate_disambiguator,
-                                suffix);
+        let file_name = format!("{}-{}.{}.bin", crate_name, crate_disambiguator, middle);
+
         Some(incr_dir.join(file_name))
     })
 }
