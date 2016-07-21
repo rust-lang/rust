@@ -1351,11 +1351,35 @@ pub enum Entry<'a, K: 'a, V: 'a> {
     ),
 }
 
+#[stable(feature= "debug_hash_map", since = "1.12.0")]
+impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Entry<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Vacant(ref v) => f.debug_tuple("Entry")
+                              .field(v)
+                              .finish(),
+            Occupied(ref o) => f.debug_tuple("Entry")
+                                .field(o)
+                                .finish(),
+        }
+    }
+}
+
 /// A view into a single occupied location in a HashMap.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     key: Option<K>,
     elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
+}
+
+#[stable(feature= "debug_hash_map", since = "1.12.0")]
+impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("OccupiedEntry")
+         .field("key", self.key())
+         .field("value", self.get())
+         .finish()
+    }
 }
 
 /// A view into a single empty location in a HashMap.
@@ -1364,6 +1388,15 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
     hash: SafeHash,
     key: K,
     elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
+}
+
+#[stable(feature= "debug_hash_map", since = "1.12.0")]
+impl<'a, K: 'a + Debug, V: 'a> Debug for VacantEntry<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("VacantEntry")
+         .field(self.key())
+         .finish()
+    }
 }
 
 /// Possible states of a VacantEntry.
