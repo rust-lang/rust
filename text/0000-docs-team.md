@@ -94,7 +94,14 @@ This is Yet Another Team. Do we have too many teams? I don't think so, but someo
 
 The main alternative is not having a team. This is the status quo, so the situation is well-understood.
 
+It's possible that docs come under the purvew of "tools", and so maybe the docs team would be an expansion
+of the tools team, rather than its own new team. Or some other subteam.
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-Should we quantify the number of commits before you can get on the team?
+Should we quantify the number of commits before you can get on the team? Or the amount of time?
+
+Rustdoc is a tool that's owned by the tools team, but the doc team makes
+significant contributions to it. Is it part of the tools team or the docs team?
+Maybe a backend-frontend split? Or maybe it just stays with tools?
