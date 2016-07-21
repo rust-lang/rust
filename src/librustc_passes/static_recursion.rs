@@ -13,11 +13,11 @@
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as ast_map;
-use rustc::session::{Session, CompileResult};
+use rustc::session::{CompileResult, Session};
 use rustc::hir::def::{Def, DefMap};
 use rustc::util::nodemap::NodeMap;
 
-use syntax::{ast};
+use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax_pos::Span;
 use rustc::hir::intravisit::{self, Visitor};
@@ -41,18 +41,17 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
         match it.node {
             hir::ItemStatic(..) |
             hir::ItemConst(..) => {
-                let mut recursion_visitor =
-                    CheckItemRecursionVisitor::new(self, &it.span);
+                let mut recursion_visitor = CheckItemRecursionVisitor::new(self, &it.span);
                 recursion_visitor.visit_item(it);
-            },
+            }
             hir::ItemEnum(ref enum_def, ref generics) => {
                 // We could process the whole enum, but handling the variants
                 // with discriminant expressions one by one gives more specific,
                 // less redundant output.
                 for variant in &enum_def.variants {
                     if let Some(_) = variant.node.disr_expr {
-                        let mut recursion_visitor =
-                            CheckItemRecursionVisitor::new(self, &variant.span);
+                        let mut recursion_visitor = CheckItemRecursionVisitor::new(self,
+                                                                                   &variant.span);
                         recursion_visitor.populate_enum_discriminants(enum_def);
                         recursion_visitor.visit_variant(variant, generics, it.id);
                     }
@@ -67,8 +66,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
         match ti.node {
             hir::ConstTraitItem(_, ref default) => {
                 if let Some(_) = *default {
-                    let mut recursion_visitor =
-                        CheckItemRecursionVisitor::new(self, &ti.span);
+                    let mut recursion_visitor = CheckItemRecursionVisitor::new(self, &ti.span);
                     recursion_visitor.visit_trait_item(ti);
                 }
             }
@@ -80,8 +78,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
     fn visit_impl_item(&mut self, ii: &'ast hir::ImplItem) {
         match ii.node {
             hir::ImplItemKind::Const(..) => {
-                let mut recursion_visitor =
-                    CheckItemRecursionVisitor::new(self, &ii.span);
+                let mut recursion_visitor = CheckItemRecursionVisitor::new(self, &ii.span);
                 recursion_visitor.visit_impl_item(ii);
             }
             _ => {}
@@ -117,7 +114,8 @@ struct CheckItemRecursionVisitor<'a, 'ast: 'a> {
 }
 
 impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
-    fn new(v: &'a CheckCrateVisitor<'a, 'ast>, span: &'a Span)
+    fn new(v: &'a CheckCrateVisitor<'a, 'ast>,
+           span: &'a Span)
            -> CheckItemRecursionVisitor<'a, 'ast> {
         CheckItemRecursionVisitor {
             root_span: span,
@@ -129,7 +127,8 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
         }
     }
     fn with_item_id_pushed<F>(&mut self, id: ast::NodeId, f: F)
-          where F: Fn(&mut Self) {
+        where F: Fn(&mut Self)
+    {
         if self.idstack.iter().any(|&x| x == id) {
             let any_static = self.idstack.iter().any(|&x| {
                 if let ast_map::NodeItem(item) = self.ast_map.get(x) {
@@ -146,7 +145,9 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
                 if !self.sess.features.borrow().static_recursion {
                     emit_feature_err(&self.sess.parse_sess.span_diagnostic,
                                      "static_recursion",
-                                     *self.root_span, GateIssue::Language, "recursive static");
+                                     *self.root_span,
+                                     GateIssue::Language,
+                                     "recursive static");
                 }
             } else {
                 span_err!(self.sess, *self.root_span, E0265, "recursive constant");
@@ -170,7 +171,9 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
         // has no variants.
         let mut discriminant_map = self.discriminant_map.borrow_mut();
         match enum_definition.variants.first() {
-            None => { return; }
+            None => {
+                return;
+            }
             Some(variant) if discriminant_map.contains_key(&variant.node.data.id()) => {
                 return;
             }
@@ -203,14 +206,19 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
         self.with_item_id_pushed(it.id, |v| intravisit::walk_item(v, it));
     }
 
-    fn visit_enum_def(&mut self, enum_definition: &'ast hir::EnumDef,
-                      generics: &'ast hir::Generics, item_id: ast::NodeId, _: Span) {
+    fn visit_enum_def(&mut self,
+                      enum_definition: &'ast hir::EnumDef,
+                      generics: &'ast hir::Generics,
+                      item_id: ast::NodeId,
+                      _: Span) {
         self.populate_enum_discriminants(enum_definition);
         intravisit::walk_enum_def(self, enum_definition, generics, item_id);
     }
 
-    fn visit_variant(&mut self, variant: &'ast hir::Variant,
-                     _: &'ast hir::Generics, _: ast::NodeId) {
+    fn visit_variant(&mut self,
+                     variant: &'ast hir::Variant,
+                     _: &'ast hir::Generics,
+                     _: ast::NodeId) {
         let variant_id = variant.node.data.id();
         let maybe_expr;
         if let Some(get_expr) = self.discriminant_map.borrow().get(&variant_id) {
@@ -246,18 +254,14 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                     Some(Def::Const(def_id)) => {
                         if let Some(node_id) = self.ast_map.as_local_node_id(def_id) {
                             match self.ast_map.get(node_id) {
-                                ast_map::NodeItem(item) =>
-                                    self.visit_item(item),
-                                ast_map::NodeTraitItem(item) =>
-                                    self.visit_trait_item(item),
-                                ast_map::NodeImplItem(item) =>
-                                    self.visit_impl_item(item),
-                                ast_map::NodeForeignItem(_) => {},
+                                ast_map::NodeItem(item) => self.visit_item(item),
+                                ast_map::NodeTraitItem(item) => self.visit_trait_item(item),
+                                ast_map::NodeImplItem(item) => self.visit_impl_item(item),
+                                ast_map::NodeForeignItem(_) => {}
                                 _ => {
-                                    span_bug!(
-                                        e.span,
-                                        "expected item, found {}",
-                                        self.ast_map.node_to_string(node_id));
+                                    span_bug!(e.span,
+                                              "expected item, found {}",
+                                              self.ast_map.node_to_string(node_id));
                                 }
                             }
                         }
@@ -268,9 +272,9 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                     // might be (if any).
                     Some(Def::Variant(enum_id, variant_id)) => {
                         if let Some(enum_node_id) = self.ast_map.as_local_node_id(enum_id) {
-                            if let hir::ItemEnum(ref enum_def, ref generics) =
-                                self.ast_map.expect_item(enum_node_id).node
-                            {
+                            if let hir::ItemEnum(ref enum_def, ref generics) = self.ast_map
+                                .expect_item(enum_node_id)
+                                .node {
                                 self.populate_enum_discriminants(enum_def);
                                 let enum_id = self.ast_map.as_local_node_id(enum_id).unwrap();
                                 let variant_id = self.ast_map.as_local_node_id(variant_id).unwrap();
@@ -283,10 +287,10 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                             }
                         }
                     }
-                    _ => ()
+                    _ => (),
                 }
-            },
-            _ => ()
+            }
+            _ => (),
         }
         intravisit::walk_expr(self, e);
     }

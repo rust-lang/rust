@@ -28,12 +28,15 @@
 #![feature(rustc_private)]
 
 extern crate core;
-#[macro_use] extern crate rustc;
+#[macro_use]
+extern crate rustc;
 extern crate rustc_const_eval;
 extern crate rustc_const_math;
 
-#[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 
