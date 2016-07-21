@@ -52,7 +52,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         debug!("leaving monomorphic fn {:?}", instance);
         return (val, mono_ty);
     } else {
-        assert!(!ccx.codegen_unit().items.contains_key(&TransItem::Fn(instance)));
+        assert!(!ccx.codegen_unit().contains_item(&TransItem::Fn(instance)));
     }
 
     debug!("monomorphic_fn({:?})", instance);

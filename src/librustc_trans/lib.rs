@@ -37,6 +37,8 @@
 #![feature(unicode)]
 #![feature(question_mark)]
 
+use std::path::PathBuf;
+
 extern crate arena;
 extern crate flate;
 extern crate getopts;
@@ -133,6 +135,18 @@ mod value;
 #[derive(Clone)]
 pub struct ModuleTranslation {
     pub name: String,
+    pub symbol_name_hash: u64,
+    pub source: ModuleSource,
+}
+
+#[derive(Clone)]
+pub enum ModuleSource {
+    Preexisting(PathBuf),
+    Translated(ModuleLlvm),
+}
+
+#[derive(Copy, Clone)]
+pub struct ModuleLlvm {
     pub llcx: llvm::ContextRef,
     pub llmod: llvm::ModuleRef,
 }

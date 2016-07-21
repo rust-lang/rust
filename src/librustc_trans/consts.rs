@@ -1029,7 +1029,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                 assert!(!ccx.external_srcs().borrow().contains_key(&id));
 
                 let defined_in_current_codegen_unit = ccx.codegen_unit()
-                                                         .items
+                                                         .items()
                                                          .contains_key(&TransItem::Static(id));
                 if defined_in_current_codegen_unit {
                     if declare::get_declared_value(ccx, sym).is_none() {

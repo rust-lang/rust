@@ -10,13 +10,14 @@
 
 use back::lto;
 use back::link::{get_linker, remove};
+use rustc_incremental::save_trans_partition;
 use session::config::{OutputFilenames, Passes, SomePasses, AllPasses};
 use session::Session;
 use session::config::{self, OutputType};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, ContextRef};
 use llvm::SMDiagnosticRef;
-use {CrateTranslation, ModuleTranslation};
+use {CrateTranslation, ModuleLlvm, ModuleSource, ModuleTranslation};
 use util::common::time;
 use util::common::path2cstr;
 use errors::{self, Handler, Level, DiagnosticBuilder};
@@ -26,6 +27,7 @@ use syntax_pos::MultiSpan;
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::{Arc, Mutex};
@@ -422,10 +424,11 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 // Unsafe due to LLVM calls.
 unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                                mtrans: ModuleTranslation,
+                               mllvm: ModuleLlvm,
                                config: ModuleConfig,
                                output_names: OutputFilenames) {
-    let llmod = mtrans.llmod;
-    let llcx = mtrans.llcx;
+    let llmod = mllvm.llmod;
+    let llcx = mllvm.llcx;
     let tm = config.tm;
 
     // llcx doesn't outlive this function, so we can put this on the stack.
@@ -628,8 +631,14 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 pub fn cleanup_llvm(trans: &CrateTranslation) {
     for module in trans.modules.iter() {
         unsafe {
-            llvm::LLVMDisposeModule(module.llmod);
-            llvm::LLVMContextDispose(module.llcx);
+            match module.source {
+                ModuleSource::Translated(llvm) => {
+                    llvm::LLVMDisposeModule(llvm.llmod);
+                    llvm::LLVMContextDispose(llvm.llcx);
+                }
+                ModuleSource::Preexisting(_) => {
+                }
+            }
         }
     }
 }
@@ -741,6 +750,13 @@ pub fn run_passes(sess: &Session,
         run_work_singlethreaded(sess, &trans.reachable, work_items);
     } else {
         run_work_multithreaded(sess, work_items, num_workers);
+    }
+
+    // If in incr. comp. mode, preserve the `.o` files for potential re-use
+    for mtrans in trans.modules.iter() {
+        let path_to_obj = crate_output.temp_path(OutputType::Object, Some(&mtrans.name));
+        debug!("wrote module {:?} to {:?}", mtrans.name, path_to_obj);
+        save_trans_partition(sess, &mtrans.name, mtrans.symbol_name_hash, &path_to_obj);
     }
 
     // All codegen is finished.
@@ -913,13 +929,46 @@ fn build_work_item(sess: &Session,
     }
 }
 
+fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<()> {
+    let p = p.as_ref();
+    let q = q.as_ref();
+    if q.exists() {
+        try!(fs::remove_file(&q));
+    }
+    fs::hard_link(p, q)
+        .or_else(|_| fs::copy(p, q).map(|_| ()))
+}
+
 fn execute_work_item(cgcx: &CodegenContext,
                      work_item: WorkItem) {
     unsafe {
-        optimize_and_codegen(cgcx,
-                             work_item.mtrans,
-                             work_item.config,
-                             work_item.output_names);
+        match work_item.mtrans.source {
+            ModuleSource::Translated(mllvm) => {
+                debug!("llvm-optimizing {:?}", work_item.mtrans.name);
+                optimize_and_codegen(cgcx,
+                                     work_item.mtrans,
+                                     mllvm,
+                                     work_item.config,
+                                     work_item.output_names);
+            }
+            ModuleSource::Preexisting(ref buf) => {
+                let obj_out = work_item.output_names.temp_path(OutputType::Object,
+                                                               Some(&work_item.mtrans.name));
+                debug!("copying pre-existing module `{}` from {} to {}",
+                       work_item.mtrans.name,
+                       buf.display(),
+                       obj_out.display());
+                match link_or_copy(buf, &obj_out) {
+                    Ok(()) => { }
+                    Err(err) => {
+                        cgcx.handler.err(&format!("unable to copy {} to {}: {}",
+                                                  buf.display(),
+                                                  obj_out.display(),
+                                                  err));
+                    }
+                }
+            }
+        }
     }
 }
 
