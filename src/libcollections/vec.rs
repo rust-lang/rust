@@ -541,6 +541,14 @@ impl<T> Vec<T> {
     /// Extracts a slice containing the entire vector.
     ///
     /// Equivalent to `&s[..]`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{self, Write};
+    /// let buffer = vec![1, 2, 3, 5, 8];
+    /// io::sink().write(buffer.as_slice()).unwrap();
+    /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
     pub fn as_slice(&self) -> &[T] {
@@ -550,6 +558,14 @@ impl<T> Vec<T> {
     /// Extracts a mutable slice of the entire vector.
     ///
     /// Equivalent to `&mut s[..]`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{self, Read};
+    /// let mut buffer = vec![0; 3];
+    /// io::repeat(0b101).read_exact(buffer.as_mut_slice()).unwrap();
+    /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
@@ -565,9 +581,37 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut v = vec![1, 2, 3, 4];
+    /// use std::ptr;
+    ///
+    /// let mut vec = vec!['r', 'u', 's', 't'];
+    ///
     /// unsafe {
-    ///     v.set_len(1);
+    ///     ptr::drop_in_place(&mut vec[3]);
+    ///     vec.set_len(3);
+    /// }
+    /// assert_eq!(vec, ['r', 'u', 's']);
+    /// ```
+    ///
+    /// In this example, there is a memory leak since the memory locations
+    /// owned by the vector were not freed prior to the `set_len` call:
+    ///
+    /// ```
+    /// let mut vec = vec!['r', 'u', 's', 't'];
+    ///
+    /// unsafe {
+    ///     vec.set_len(0);
+    /// }
+    /// ```
+    ///
+    /// In this example, the vector gets expanded from zero to four items
+    /// without any memory allocations occurring, resulting in vector
+    /// values of unallocated memory:
+    ///
+    /// ```
+    /// let mut vec: Vec<char> = Vec::new();
+    ///
+    /// unsafe {
+    ///     vec.set_len(4);
     /// }
     /// ```
     #[inline]
