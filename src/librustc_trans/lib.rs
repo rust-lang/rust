@@ -88,6 +88,7 @@ mod macros;
 mod abi;
 mod adt;
 mod asm;
+mod assert_module_sources;
 mod attributes;
 mod base;
 mod basic_block;

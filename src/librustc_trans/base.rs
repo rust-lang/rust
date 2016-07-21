@@ -30,6 +30,7 @@ use super::ModuleLlvm;
 use super::ModuleSource;
 use super::ModuleTranslation;
 
+use assert_module_sources;
 use back::link;
 use back::linker::LinkerInfo;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
@@ -2557,6 +2558,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         })
         .collect();
+
+    assert_module_sources::assert_module_sources(tcx, &modules);
 
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.no_trans {
