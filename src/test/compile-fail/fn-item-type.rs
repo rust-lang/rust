@@ -33,8 +33,8 @@ fn main() {
     eq(bar::<String>, bar::<Vec<u8>>);
     //~^ ERROR mismatched types
     //~|  expected type `fn(isize) -> isize {bar::<std::string::String>}`
-    //~|  found type `fn(isize) -> isize {bar::<std::vec::Vec<u8>>}`
-    //~|  expected struct `std::string::String`, found struct `std::vec::Vec`
+    //~|  found type `fn(isize) -> isize {bar::<std::collections::Vec<u8>>}`
+    //~|  expected struct `std::string::String`, found struct `std::collections::Vec`
 
     // Make sure we distinguish between trait methods correctly.
     eq(<u8 as Foo>::foo, <u16 as Foo>::foo);
