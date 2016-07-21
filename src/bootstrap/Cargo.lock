@@ -5,7 +5,7 @@ dependencies = [
  "build_helper 0.1.0",
  "cmake 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "filetime 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "gcc 0.3.26 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gcc 0.3.31 (git+https://github.com/alexcrichton/gcc-rs)",
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "kernel32-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -25,7 +25,7 @@ name = "cmake"
 version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "gcc 0.3.26 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gcc 0.3.31 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -38,7 +38,12 @@ dependencies = [
 
 [[package]]
 name = "gcc"
-version = "0.3.26"
+version = "0.3.31"
+source = "git+https://github.com/alexcrichton/gcc-rs#b8e2400883f1a2749b323354dad372cdd1c838c7"
+
+[[package]]
+name = "gcc"
+version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
