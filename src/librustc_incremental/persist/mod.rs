@@ -22,3 +22,4 @@ mod util;
 
 pub use self::load::load_dep_graph;
 pub use self::save::save_dep_graph;
+pub use self::save::save_work_products;

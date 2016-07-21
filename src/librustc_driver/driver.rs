@@ -88,7 +88,7 @@ pub fn compile_input(sess: &Session,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, trans) = {
+    let (outputs, trans, id) = {
         let krate = match phase_1_parse_input(sess, cfg, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
@@ -212,11 +212,11 @@ pub fn compile_input(sess: &Session,
             // Discard interned strings as they are no longer required.
             token::clear_ident_interner();
 
-            Ok((outputs, trans))
+            Ok((outputs, trans, id.clone()))
         })??
     };
 
-    let phase5_result = phase_5_run_llvm_passes(sess, &trans, &outputs);
+    let phase5_result = phase_5_run_llvm_passes(sess, &id, &trans, &outputs);
 
     controller_entry_point!(after_llvm,
                             sess,
@@ -1020,6 +1020,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
 pub fn phase_5_run_llvm_passes(sess: &Session,
+                               crate_name: &str,
                                trans: &trans::CrateTranslation,
                                outputs: &OutputFilenames) -> CompileResult {
     if sess.opts.cg.no_integrated_as {
@@ -1040,6 +1041,10 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
              "LLVM passes",
              || write::run_passes(sess, trans, &sess.opts.output_types, outputs));
     }
+
+    time(sess.time_passes(),
+         "serialize work products",
+         move || rustc_incremental::save_work_products(sess, crate_name));
 
     if sess.err_count() > 0 {
         Err(sess.err_count())

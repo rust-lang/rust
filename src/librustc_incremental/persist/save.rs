@@ -11,6 +11,7 @@
 use rbml::opaque::Encoder;
 use rustc::dep_graph::DepNode;
 use rustc::middle::cstore::LOCAL_CRATE;
+use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_serialize::{Encodable as RustcEncodable};
 use std::hash::{Hasher, SipHasher};
@@ -24,19 +25,26 @@ use super::hash::*;
 use super::util::*;
 
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    debug!("save_dep_graph()");
     let _ignore = tcx.dep_graph.in_ignore();
+    let sess = tcx.sess;
     let mut hcx = HashContext::new(tcx);
-    save_in(&mut hcx, dep_graph_path(tcx), encode_dep_graph);
-    save_in(&mut hcx, metadata_hash_path(tcx, LOCAL_CRATE), encode_metadata_hashes);
+    save_in(sess, dep_graph_path(tcx), |e| encode_dep_graph(&mut hcx, e));
+    save_in(sess, metadata_hash_path(tcx, LOCAL_CRATE), |e| encode_metadata_hashes(&mut hcx, e));
 }
 
-fn save_in<'a, 'tcx, F>(hcx: &mut HashContext<'a, 'tcx>,
-                        opt_path_buf: Option<PathBuf>,
-                        encode: F)
-    where F: FnOnce(&mut HashContext<'a, 'tcx>, &mut Encoder) -> io::Result<()>
-{
-    let tcx = hcx.tcx;
+pub fn save_work_products(sess: &Session, local_crate_name: &str) {
+    debug!("save_work_products()");
+    let _ignore = sess.dep_graph.in_ignore();
+    let path = sess_work_products_path(sess, local_crate_name);
+    save_in(sess, path, |e| encode_work_products(sess, e));
+}
 
+fn save_in<F>(sess: &Session,
+              opt_path_buf: Option<PathBuf>,
+              encode: F)
+    where F: FnOnce(&mut Encoder) -> io::Result<()>
+{
     let path_buf = match opt_path_buf {
         Some(p) => p,
         None => return
@@ -49,7 +57,7 @@ fn save_in<'a, 'tcx, F>(hcx: &mut HashContext<'a, 'tcx>,
         match fs::remove_file(&path_buf) {
             Ok(()) => { }
             Err(err) => {
-                tcx.sess.err(
+                sess.err(
                     &format!("unable to delete old dep-graph at `{}`: {}",
                              path_buf.display(), err));
                 return;
@@ -59,10 +67,10 @@ fn save_in<'a, 'tcx, F>(hcx: &mut HashContext<'a, 'tcx>,
 
     // generate the data in a memory buffer
     let mut wr = Cursor::new(Vec::new());
-    match encode(hcx, &mut Encoder::new(&mut wr)) {
+    match encode(&mut Encoder::new(&mut wr)) {
         Ok(()) => { }
         Err(err) => {
-            tcx.sess.err(
+            sess.err(
                 &format!("could not encode dep-graph to `{}`: {}",
                          path_buf.display(), err));
             return;
@@ -77,7 +85,7 @@ fn save_in<'a, 'tcx, F>(hcx: &mut HashContext<'a, 'tcx>,
     {
         Ok(_) => { }
         Err(err) => {
-            tcx.sess.err(
+            sess.err(
                 &format!("failed to write dep-graph to `{}`: {}",
                          path_buf.display(), err));
             return;
@@ -192,3 +200,22 @@ pub fn encode_metadata_hashes<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
 
     Ok(())
 }
+
+pub fn encode_work_products(sess: &Session,
+                            encoder: &mut Encoder)
+                            -> io::Result<()>
+{
+    let work_products: Vec<_> =
+        sess.dep_graph.work_products()
+                     .iter()
+                     .map(|(id, work_product)| {
+                         SerializedWorkProduct {
+                             id: id.clone(),
+                             work_product: work_product.clone(),
+                         }
+                     })
+                     .collect();
+
+    work_products.encode(encoder)
+}
+
