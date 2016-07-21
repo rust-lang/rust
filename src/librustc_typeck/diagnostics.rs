@@ -3980,6 +3980,32 @@ impl SpaceLlama for i32 {
 ```
 "##,
 
+E0560: r##"
+An unknown field was specified into a structure.
+
+Erroneous code example:
+
+```compile_fail,E0560
+struct Simba {
+    mother: u32,
+}
+
+let s = Simba { mother: 1, father: 0 };
+// error: structure `Simba` has no field named `father`
+```
+
+Verify you didn't misspell the field's name or that the field exists. Example:
+
+```
+struct Simba {
+    mother: u32,
+    father: u32,
+}
+
+let s = Simba { mother: 1, father: 0 }; // ok!
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -4054,5 +4080,4 @@ register_diagnostics! {
     E0529, // slice pattern expects array or slice, not `{}`
     E0533, // `{}` does not name a unit variant, unit struct or a constant
     E0559,
-    E0560,
 }
