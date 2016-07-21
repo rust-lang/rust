@@ -36,7 +36,7 @@ impl<'a, 'tcx> SvhCalculate for TyCtxt<'a, 'tcx, 'tcx> {
         // to ensure it is not incorporating implementation artifacts into
         // the hash that are not otherwise visible.)
 
-        let crate_disambiguator = self.sess.crate_disambiguator.get();
+        let crate_disambiguator = self.sess.local_crate_disambiguator();
         let krate = self.map.krate();
 
         // FIXME: this should use SHA1, not SipHash. SipHash is not built to
@@ -47,10 +47,10 @@ impl<'a, 'tcx> SvhCalculate for TyCtxt<'a, 'tcx, 'tcx> {
         // FIXME(#32753) -- at (*) we `to_le` for endianness, but is
         // this enough, and does it matter anyway?
         "crate_disambiguator".hash(&mut state);
-        crate_disambiguator.as_str().len().to_le().hash(&mut state); // (*)
-        crate_disambiguator.as_str().hash(&mut state);
+        crate_disambiguator.len().to_le().hash(&mut state); // (*)
+        crate_disambiguator.hash(&mut state);
 
-        debug!("crate_disambiguator: {:?}", crate_disambiguator.as_str());
+        debug!("crate_disambiguator: {:?}", crate_disambiguator);
         debug!("state: {:?}", state);
 
         {
