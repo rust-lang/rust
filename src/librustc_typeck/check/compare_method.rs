@@ -325,13 +325,19 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             debug!("sub_types failed: impl ty {:?}, trait ty {:?}",
                    impl_fty,
                    trait_fty);
-            let values = Some(infer::ValuePairs::Types(ExpectedFound {
-                expected: trait_fty,
-                found: impl_fty
-            }));
-            type_err!(infcx, origin, values, terr, E0053,
-                      "method `{}` has an incompatible type for trait",
-                      trait_m.name).emit();
+
+            let mut diag = struct_span_err!(
+                tcx.sess, origin.span(), E0053,
+                "method `{}` has an incompatible type for trait", trait_m.name
+            );
+            infcx.note_type_err(
+                &mut diag, origin,
+                Some(infer::ValuePairs::Types(ExpectedFound {
+                    expected: trait_fty,
+                    found: impl_fty
+                })), &terr
+            );
+            diag.emit();
             return
         }
 
@@ -476,13 +482,19 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
                    impl_ty,
                    trait_ty);
-            let values = Some(infer::ValuePairs::Types(ExpectedFound {
-                expected: trait_ty,
-                found: impl_ty
-            }));
-            type_err!(infcx, origin, values, terr, E0326,
-                      "implemented const `{}` has an incompatible type for \
-                      trait", trait_c.name).emit();
+            let mut diag = struct_span_err!(
+                tcx.sess, origin.span(), E0326,
+                "implemented const `{}` has an incompatible type for trait",
+                trait_c.name
+            );
+            infcx.note_type_err(
+                &mut diag, origin,
+                Some(infer::ValuePairs::Types(ExpectedFound {
+                    expected: trait_ty,
+                    found: impl_ty
+                })), &terr
+            );
+            diag.emit();
         }
     });
 }

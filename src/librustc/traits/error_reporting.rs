@@ -157,14 +157,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            let mut diag = type_err!(
-                self,
-                origin,
-                values,
-                err,
-                E0271,
-                "type mismatch resolving `{}`",
-                predicate);
+            let mut diag = struct_span_err!(
+                self.tcx.sess, origin.span(), E0271,
+                "type mismatch resolving `{}`", predicate
+            );
+            self.note_type_err(&mut diag, origin, values, err);
             self.note_obligation_cause(&mut diag, obligation);
             diag.emit();
         });
