@@ -22,7 +22,7 @@ pub fn target() -> Target {
         target_vendor: "unknown".to_string(),
         options: TargetOptions {
             cpu: "mips32".to_string(),
-            features: "+mips32".to_string(),
+            features: "+mips32,+soft-float".to_string(),
             max_atomic_width: 32,
             ..super::linux_base::opts()
         }
