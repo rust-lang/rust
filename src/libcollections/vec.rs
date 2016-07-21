@@ -565,9 +565,37 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut v = vec![1, 2, 3, 4];
+    /// use std::ptr;
+    ///
+    /// let mut vec = vec!['r', 'u', 's', 't'];
+    ///
     /// unsafe {
-    ///     v.set_len(1);
+    ///     ptr::drop_in_place(&mut vec[3]);
+    ///     vec.set_len(3);
+    /// }
+    /// assert_eq!(vec, ['r', 'u', 's']);
+    /// ```
+    ///
+    /// In this example, there is a memory leak since the memory locations
+    /// owned by the vector were not freed prior to the `set_len` call:
+    ///
+    /// ```
+    /// let mut vec = vec!['r', 'u', 's', 't'];
+    ///
+    /// unsafe {
+    ///     vec.set_len(0);
+    /// }
+    /// ```
+    ///
+    /// In this example, the vector gets expanded from zero to four items
+    /// without any memory allocations occurring, resulting in vector
+    /// values of unallocated memory:
+    ///
+    /// ```
+    /// let mut vec: Vec<char> = Vec::new();
+    ///
+    /// unsafe {
+    ///     vec.set_len(4);
     /// }
     /// ```
     #[inline]
