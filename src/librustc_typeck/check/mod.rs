@@ -3704,6 +3704,33 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                expected);
     }
 
+    // Finish resolving a path in a struct expression or pattern `S::A { .. }` if necessary.
+    // The newly resolved definition is written into `def_map`.
+    pub fn finish_resolving_struct_path(&self,
+                                        path: &hir::Path,
+                                        node_id: ast::NodeId,
+                                        span: Span)
+                                        -> Def
+    {
+        let path_res = self.tcx().expect_resolution(node_id);
+        if path_res.depth == 0 {
+            // If fully resolved already, we don't have to do anything.
+            path_res.base_def
+        } else {
+            let base_ty_end = path.segments.len() - path_res.depth;
+            let (_ty, def) = AstConv::finish_resolving_def_to_ty(self, self, span,
+                                                                 PathParamMode::Optional,
+                                                                 path_res.base_def,
+                                                                 None,
+                                                                 node_id,
+                                                                 &path.segments[..base_ty_end],
+                                                                 &path.segments[base_ty_end..]);
+            // Write back the new resolution.
+            self.tcx().def_map.borrow_mut().insert(node_id, def::PathResolution::new(def));
+            def
+        }
+    }
+
     pub fn resolve_ty_and_def_ufcs<'b>(&self,
                                        path_res: def::PathResolution,
                                        opt_self_ty: Option<Ty<'tcx>>,
