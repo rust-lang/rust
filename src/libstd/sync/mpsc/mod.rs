@@ -1854,8 +1854,6 @@ mod tests {
                 for x in response_rx.try_iter() {
                     count += x;
                     if count == 6 {
-                        drop(response_rx);
-                        drop(request_tx);
                         return count;
                     }
                 }
@@ -1864,7 +1862,9 @@ mod tests {
         });
 
         for _ in request_rx.iter() {
-            response_tx.send(2).unwrap();
+            if response_tx.send(2).is_err() {
+                break;
+            }
         }
 
         assert_eq!(t.join().unwrap(), 6);
