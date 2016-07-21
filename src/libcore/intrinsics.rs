@@ -284,8 +284,8 @@ extern "rust-intrinsic" {
     ///
     /// `transmute` is semantically equivalent to a bitwise move of one type
     /// into another. It copies the bits from the destination type into the
-    /// source type, then forgets the original. If you know C or C++, it's like
-    /// `memcpy` under the hood.
+    /// source type, then forgets the original. It's equivalent to C's `memcpy`
+    /// under the hood, just like `transmute_copy`.
     ///
     /// `transmute` is incredibly unsafe. There are a vast number of ways to
     /// cause undefined behavior with this function. `transmute` should be
@@ -299,7 +299,7 @@ extern "rust-intrinsic" {
     /// There are a few things that `transmute` is really useful for.
     ///
     /// Getting the bitpattern of a floating point type (or, more generally,
-    /// type punning, when T and U aren't pointers):
+    /// type punning, when `T` and `U` aren't pointers):
     ///
     /// ```
     /// let bitpattern = unsafe {
@@ -339,11 +339,10 @@ extern "rust-intrinsic" {
     /// # Alternatives
     ///
     /// However, many uses of `transmute` can be achieved through other means.
-    /// `transmute` can transform
-    /// any type into any other, with just the caveat that they're the same
-    /// size, and it sometimes results in interesting results. Below are common
-    /// applications of `transmute` which can be replaced with safe applications
-    /// of `as`:
+    /// `transmute` can transform any type into any other, with just the caveat
+    /// that they're the same size, and often interesting results occur. Below
+    /// are common applications of `transmute` which can be replaced with safe
+    /// applications of `as`:
     ///
     /// Turning a pointer into a `usize`:
     ///
