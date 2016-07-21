@@ -4053,4 +4053,6 @@ register_diagnostics! {
     E0528, // expected at least {} elements, found {}
     E0529, // slice pattern expects array or slice, not `{}`
     E0533, // `{}` does not name a unit variant, unit struct or a constant
+    E0559,
+    E0560,
 }
