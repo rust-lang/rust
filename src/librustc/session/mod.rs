@@ -80,7 +80,7 @@ pub struct Session {
     // forms a unique global identifier for the crate. It is used to allow
     // multiple crates with the same name to coexist. See the
     // trans::back::symbol_names module for more information.
-    pub crate_disambiguator: Cell<ast::Name>,
+    pub crate_disambiguator: RefCell<token::InternedString>,
     pub features: RefCell<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
@@ -106,6 +106,9 @@ pub struct Session {
 }
 
 impl Session {
+    pub fn local_crate_disambiguator(&self) -> token::InternedString {
+        self.crate_disambiguator.borrow().clone()
+    }
     pub fn struct_span_warn<'a, S: Into<MultiSpan>>(&'a self,
                                                     sp: S,
                                                     msg: &str)
@@ -438,7 +441,7 @@ pub fn build_session_(sopts: config::Options,
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FnvHashMap()),
-        crate_disambiguator: Cell::new(token::intern("")),
+        crate_disambiguator: RefCell::new(token::intern("").as_str()),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
         next_node_id: Cell::new(1),
