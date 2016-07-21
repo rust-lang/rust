@@ -3980,6 +3980,31 @@ impl SpaceLlama for i32 {
 ```
 "##,
 
+E0559: r##"
+An unknown field was specified into an enum's structure variant.
+
+Erroneous code example:
+
+```compile_fail,E0559
+enum Field {
+    Fool { x: u32 },
+}
+
+let s = Field::Fool { joke: 0 };
+// error: struct variant `Field::Fool` has no field named `joke`
+```
+
+Verify you didn't misspell the field's name or that the field exists. Example:
+
+```
+enum Field {
+    Fool { joke: u32 },
+}
+
+let s = Field::Fool { joke: 0 }; // ok!
+```
+"##,
+
 E0560: r##"
 An unknown field was specified into a structure.
 
@@ -4079,5 +4104,4 @@ register_diagnostics! {
     E0528, // expected at least {} elements, found {}
     E0529, // slice pattern expects array or slice, not `{}`
     E0533, // `{}` does not name a unit variant, unit struct or a constant
-    E0559,
 }
