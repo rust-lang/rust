@@ -94,7 +94,7 @@ LLVMRustArchiveIteratorNext(RustArchiveIterator *rai) {
     if (rai->cur == rai->end)
         return NULL;
 #if LLVM_VERSION_MINOR == 8
-    Archive::Child* cur = rai->cur.operator->();
+    const ErrorOr<Archive::Child>* cur = rai->cur.operator->();
     if (!*cur) {
         LLVMRustSetLastError(cur->getError().message().c_str());
         return NULL;
