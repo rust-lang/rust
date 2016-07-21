@@ -1510,6 +1510,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.type_error_struct(sp, mk_msg, actual_ty).emit();
     }
 
+    // FIXME: this results in errors without an error code. Deprecate?
     pub fn type_error_struct<M>(&self,
                                 sp: Span,
                                 mk_msg: M,
@@ -1517,19 +1518,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 -> DiagnosticBuilder<'tcx>
         where M: FnOnce(String) -> String,
     {
-        debug!("type_error_struct({:?}, {:?})", sp, actual_ty);
+        self.type_error_struct_with_diag(sp, |actual_ty| {
+            self.tcx.sess.struct_span_err(sp, &mk_msg(actual_ty))
+        }, actual_ty)
+    }
 
+    pub fn type_error_struct_with_diag<M>(&self,
+                                          sp: Span,
+                                          mk_diag: M,
+                                          actual_ty: Ty<'tcx>)
+                                          -> DiagnosticBuilder<'tcx>
+        where M: FnOnce(String) -> DiagnosticBuilder<'tcx>,
+    {
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
+        debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
 
         // Don't report an error if actual type is TyError.
         if actual_ty.references_error() {
             return self.tcx.sess.diagnostic().struct_dummy();
         }
 
-        let msg = mk_msg(self.ty_to_string(actual_ty));
-
-        // FIXME: use an error code.
-        self.tcx.sess.struct_span_err(sp, &msg)
+        mk_diag(self.ty_to_string(actual_ty))
     }
 
     pub fn report_mismatched_types(&self,
