@@ -91,6 +91,105 @@ You need to link your code to the relevant crate in order to be able to use it
 well, and you link to them the same way.
 "##,
 
+E0467: r##"
+Invalid or no macros listed for reexport.
+
+Causes of this error:
+```ignore
+#[macro_reexport] // error: no macros listed for export
+extern crate macros_for_good;
+```
+
+```ignore
+#[macro_reexport(fun_macro = "foo")] // error: not a macro identifier
+extern crate macros_for_good;
+```
+
+Currently, `macro_reexport` requires at least one macro name to be listed. 
+Unlike `macro_use`, listing no names does not reexport all macros from the 
+given crate.
+
+Decide which macros you would like to export and list them properly.
+
+"##,
+
+E0468: r##"
+A non-root module attempts to import macros from another crate.
+
+```ignore
+mod foo {
+    #[macro_use(helpful_macro)] // error: must be at crate root to import
+    extern crate some_crate;    //        macros from another crate
+    helpful_macro!(...)
+}
+
+fn main() {
+    // ...
+}
+```
+
+Only `extern crate` imports at the crate root level (i.e., in lib.rs) are 
+allowed to import macros.
+
+Either move the macro import to crate root or do without the foreign macros.
+
+This will work: 
+
+```ignore
+#[macro_use(helpful_macro)]
+extern crate some_crate;
+mod foo {
+    helpful_macro!(...)
+}
+
+fn main() {
+    //...
+}
+```
+
+"##,
+
+E0469: r##"
+A macro listed for import was not found.
+
+```ignore
+/// // crate some_crate contains:
+/// macro_rules! eat {
+///     ...
+/// }
+/// macro_rules! drink {
+///     ...
+/// }
+#[macro_use(be_merry)]      // error: be_merry is not
+extern crate some_crate;    // a macro in some_crate!
+```
+
+This is likely caused by a typo. Did you misspell the macro's name?
+
+Double-check the names of the macros listed for import, and that the crate 
+in question exports them.
+"##,
+
+E0470: r##"
+A macro listed for reexport was not found.
+
+```ignore
+/// // crate some_crate contains:
+/// macro_rules! eat {
+///     ...
+/// }
+/// macro_rules! drink {
+///     ...
+/// }
+#[macro_reexport(be_merry)] // error: be_merry is not
+extern crate some_crate;    // a macro in some_crate!
+```
+
+This is likely caused by a typo. Did you misspell the macro's name?
+
+Double-check the names of the macros listed for reexport, and that the crate 
+in question exports them.
+"##
 }
 
 register_diagnostics! {
@@ -103,10 +202,6 @@ register_diagnostics! {
     E0464, // multiple matching crates for `..`
     E0465, // multiple .. candidates for `..` found
     E0466, // bad macro import
-    E0467, // bad macro reexport
-    E0468, // an `extern crate` loading macros must be at the crate root
-    E0469, // imported macro not found
-    E0470, // reexported macro not found
     E0519, // local crate and dependency have same (crate-name, disambiguator)
     E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
 }
