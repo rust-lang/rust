@@ -41,4 +41,6 @@ pub use assert_dep_graph::assert_dep_graph;
 pub use calculate_svh::SvhCalculate;
 pub use persist::load_dep_graph;
 pub use persist::save_dep_graph;
+pub use persist::save_trans_partition;
 pub use persist::save_work_products;
+pub use persist::in_incr_comp_dir;

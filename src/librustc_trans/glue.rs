@@ -239,7 +239,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     Falling back to on-demand instantiation.",
                     g,
                     TransItem::DropGlue(g).to_raw_string(),
-                    ccx.codegen_unit().name);
+                    ccx.codegen_unit().name());
 
             ccx.stats().n_fallback_instantiations.set(ccx.stats()
                                                          .n_fallback_instantiations

@@ -20,6 +20,7 @@ extern crate rustc_metadata;
 extern crate rustc_resolve;
 extern crate rustc_errors;
 extern crate rustc_errors as errors;
+extern crate rustc_trans;
 #[macro_use] extern crate syntax;
 
 use std::ffi::{CStr, CString};
@@ -37,6 +38,7 @@ use rustc::session::build_session;
 use rustc_driver::{driver, abort_on_err};
 use rustc_resolve::MakeGlobMap;
 use rustc_metadata::cstore::CStore;
+use rustc_trans::ModuleSource;
 use libc::c_void;
 
 use rustc_errors::registry::Registry;
@@ -261,7 +263,10 @@ fn compile_program(input: &str, sysroot: PathBuf)
                 .filter_map(|(_, p)| p).collect();
 
             assert_eq!(trans.modules.len(), 1);
-            let llmod = trans.modules[0].llmod;
+            let llmod = match trans.modules[0].source {
+                ModuleSource::Preexisting(_) => unimplemented!(),
+                ModuleSource::Translated(llvm) => llvm.llmod,
+            };
 
             // Workaround because raw pointers do not impl Send
             let modp = llmod as usize;
