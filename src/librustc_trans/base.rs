@@ -89,13 +89,14 @@ use value::Value;
 use Disr;
 use util::common::indenter;
 use util::sha2::Sha256;
-use util::nodemap::{NodeMap, NodeSet};
+use util::nodemap::{NodeMap, NodeSet, FnvHashSet};
 
 use arena::TypedArena;
 use libc::c_uint;
 use std::ffi::{CStr, CString};
+use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ptr;
 use std::rc::Rc;
 use std::str;
@@ -2256,12 +2257,20 @@ fn write_metadata(cx: &SharedCrateContext,
 
 /// Find any symbols that are defined in one compilation unit, but not declared
 /// in any other compilation unit.  Give these symbols internal linkage.
-fn internalize_symbols(cx: &CrateContextList, reachable: &HashSet<&str>) {
-    unsafe {
-        let mut declared = HashSet::new();
+fn internalize_symbols<'a, 'tcx>(ccxs: &CrateContextList<'a, 'tcx>,
+                                 symbol_map: &SymbolMap<'tcx>,
+                                 reachable: &FnvHashSet<&str>) {
+    let scx = ccxs.shared();
+    let tcx = scx.tcx();
 
-        // Collect all external declarations in all compilation units.
-        for ccx in cx.iter() {
+    // 'unsafe' because we are holding on to CStr's from the LLVM module within
+    // this block.
+    unsafe {
+        let mut referenced_somewhere = FnvHashSet();
+
+        // Collect all symbols that need to stay externally visible because they
+        // are referenced via a declaration in some other codegen unit.
+        for ccx in ccxs.iter() {
             for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
                 let linkage = llvm::LLVMGetLinkage(val);
                 // We only care about external declarations (not definitions)
@@ -2270,39 +2279,67 @@ fn internalize_symbols(cx: &CrateContextList, reachable: &HashSet<&str>) {
                 let is_decl = llvm::LLVMIsDeclaration(val) != 0;
 
                 if is_decl || is_available_externally {
-                    let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
-                    declared.insert(name);
+                    let symbol_name = CStr::from_ptr(llvm::LLVMGetValueName(val));
+                    referenced_somewhere.insert(symbol_name);
                 }
             }
         }
 
+        // Also collect all symbols for which we cannot adjust linkage, because
+        // it is fixed by some directive in the source code (e.g. #[no_mangle]).
+        let linkage_fixed_explicitly: FnvHashSet<_> = scx
+            .translation_items()
+            .borrow()
+            .iter()
+            .cloned()
+            .filter(|trans_item|{
+                let def_id = match *trans_item {
+                    TransItem::DropGlue(..) => {
+                        return false
+                    },
+                    TransItem::Fn(ref instance) => {
+                        instance.def
+                    }
+                    TransItem::Static(node_id) => {
+                        tcx.map.local_def_id(node_id)
+                    }
+                };
+
+                trans_item.explicit_linkage(tcx).is_some() ||
+                attr::contains_extern_indicator(tcx.sess.diagnostic(),
+                                                &tcx.get_attrs(def_id))
+            })
+            .map(|trans_item| symbol_map.get_or_compute(scx, trans_item))
+            .collect();
+
         // Examine each external definition.  If the definition is not used in
         // any other compilation unit, and is not reachable from other crates,
         // then give it internal linkage.
-        for ccx in cx.iter() {
+        for ccx in ccxs.iter() {
             for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
                 let linkage = llvm::LLVMGetLinkage(val);
 
                 let is_externally_visible = (linkage == llvm::ExternalLinkage as c_uint) ||
                                             (linkage == llvm::LinkOnceODRLinkage as c_uint) ||
                                             (linkage == llvm::WeakODRLinkage as c_uint);
-                let is_definition = llvm::LLVMIsDeclaration(val) != 0;
+                let is_definition = llvm::LLVMIsDeclaration(val) == 0;
 
                 // If this is a definition (as opposed to just a declaration)
                 // and externally visible, check if we can internalize it
                 if is_definition && is_externally_visible {
                     let name_cstr = CStr::from_ptr(llvm::LLVMGetValueName(val));
                     let name_str = name_cstr.to_str().unwrap();
+                    let name_cow = Cow::Borrowed(name_str);
 
-                    let is_referenced_somewhere = declared.contains(&name_cstr);
-                    let is_reachable = reachable.contains(name_str);
+                    let is_referenced_somewhere = referenced_somewhere.contains(&name_cstr);
+                    let is_reachable = reachable.contains(&name_str);
+                    let has_fixed_linkage = linkage_fixed_explicitly.contains(&name_cow);
 
-                    if !is_referenced_somewhere && !is_reachable {
+                    if !is_referenced_somewhere && !is_reachable && !has_fixed_linkage {
                         llvm::SetLinkage(val, llvm::InternalLinkage);
                         llvm::SetDLLStorageClass(val, llvm::DefaultStorageClass);
                         llvm::UnsetComdat(val);
                     }
-
                 }
             }
         }
@@ -2616,8 +2653,13 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }));
     }
 
-    internalize_symbols(&crate_context_list,
-                        &reachable_symbols.iter().map(|x| &x[..]).collect());
+    time(shared_ccx.sess().time_passes(), "internalize symbols", || {
+        internalize_symbols(&crate_context_list,
+                            &symbol_map,
+                            &reachable_symbols.iter()
+                                              .map(|s| &s[..])
+                                              .collect())
+    });
 
     if sess.target.target.options.is_like_msvc &&
        sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
