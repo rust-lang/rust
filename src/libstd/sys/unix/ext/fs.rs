@@ -239,6 +239,16 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
     /// 0o777.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use std::fs::DirBuilder;
+    /// use std::os::unix::fs::DirBuilderExt;
+    ///
+    /// let mut builder = DirBuilder::new();
+    /// builder.mode(0o755);
+    /// ```
     #[stable(feature = "dir_builder", since = "1.6.0")]
     fn mode(&mut self, mode: u32) -> &mut Self;
 }
